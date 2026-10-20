@@ -149,7 +149,7 @@ bool FocusNavigator::takePageAction(const NavigationInput& navigation, const Tar
 }
 
 void FocusNavigator::beginDraw() {
-    building.nodes.clear();
+    building.nodeCount = 0;
     building.scopes.clear();
     building.targets.clear();
     building.guis.clear();
@@ -210,19 +210,25 @@ void FocusNavigator::addItem(ImGuiID item, const math::Rect& bounds, bool play, 
     // A component becomes a node the first time it registers a target in a frame, so components without targets cost nothing. The targets a collection registers for its cells each name their own item, so each one is a node.
     Level& level = levels.back();
     if (!level.node || (cellOwner != nullptr && level.component == cellOwner)) {
-        Node node{.id = level.id, .gui = currentGui, .name = level.component->getId(), .item = {}, .part = {}, .neighbors = level.component->getCommon().focusNeighbors, .usedDirections = 0, .scope = level.scope};
-        if (cellOwner != nullptr) {
-            node.name = cellOwner->getId();
-            node.item = cellItem;
-            node.part = level.component == cellOwner ? std::string() : level.component->getId();
+        // The nodes of a frame take the slots of the frame before the last one, so their names reuse the storage those names had.
+        if (building.nodeCount == building.nodes.size()) {
+            building.nodes.emplace_back();
         }
+        Node& node = building.nodes[building.nodeCount];
+        node.id = level.id;
+        node.gui = currentGui;
+        node.name.assign(cellOwner != nullptr ? cellOwner->getId() : level.component->getId());
+        node.item.assign(cellOwner != nullptr ? cellItem : std::string_view());
+        node.part.assign(cellOwner != nullptr && level.component != cellOwner ? std::string_view(level.component->getId()) : std::string_view());
+        node.neighbors = level.component->getCommon().focusNeighbors;
+        node.usedDirections = 0;
+        node.scope = level.scope;
         for (const FocusDirection direction : {FocusDirection::Left, FocusDirection::Right, FocusDirection::Up, FocusDirection::Down}) {
             if (level.component->usesFocusDirection(direction)) {
                 node.usedDirections |= toBit(direction);
             }
         }
-        building.nodes.push_back(std::move(node));
-        level.node = building.nodes.size() - 1;
+        level.node = building.nodeCount++;
     }
     const bool inputable = GImGui->LastItemData.ID == item && (GImGui->LastItemData.ItemFlags & ImGuiItemFlags_Inputable) != 0;
     building.targets.push_back({.id = item, .window = ImGui::GetCurrentWindow(), .bounds = bounds, .node = *level.node, .inputable = inputable, .play = play, .shown = shown});
@@ -320,9 +326,9 @@ void FocusNavigator::endDraw() {
     focusedItem = focused != nullptr ? focused->id : 0;
     focusedPlay = focused != nullptr && focused->play;
     focusedGui = node != nullptr ? node->gui : nullptr;
-    focusedName = node != nullptr ? node->name : std::string();
-    focusedCellItem = node != nullptr ? node->item : std::string();
-    focusedPart = node != nullptr ? node->part : std::string();
+    focusedName.assign(node != nullptr ? std::string_view(node->name) : std::string_view());
+    focusedCellItem.assign(node != nullptr ? std::string_view(node->item) : std::string_view());
+    focusedPart.assign(node != nullptr ? std::string_view(node->part) : std::string_view());
     focusedRoot = focused != nullptr ? focused->window->RootWindow : nullptr;
     focusedBounds = focused != nullptr ? focused->bounds : math::Rect{};
 

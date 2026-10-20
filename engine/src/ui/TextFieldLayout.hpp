@@ -2,7 +2,7 @@
 
 #include <cstddef>
 #include <memory>
-#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -15,7 +15,8 @@ namespace haylen::ui {
 // The text of a field as it shows, shaped and ordered for display, and where its caret goes. Positions are code points of the text, the caret stops between characters, a letter with its marks or the letters a ligature joins, and points are relative to the top-left of the text block. Right-to-left runs place the caret on the side a character starts, and the caret moves on screen, so the right arrow always moves it right.
 class TextFieldLayout final {
   public:
-    TextFieldLayout(std::shared_ptr<const text::Layout> laid, std::u32string codePoints);
+    // The layout reads the code points of its text from storage that outlives it.
+    TextFieldLayout(std::shared_ptr<const text::Layout> laid, std::u32string_view codePoints);
 
     [[nodiscard]] const text::Layout& getLayout() const noexcept {
         return *layout;
@@ -45,7 +46,7 @@ class TextFieldLayout final {
     [[nodiscard]] std::size_t hitLine(const text::Layout::Line& line, float x) const;
 
     std::shared_ptr<const text::Layout> layout;
-    std::u32string content;
+    std::u32string_view content;
 };
 
 } // namespace haylen::ui

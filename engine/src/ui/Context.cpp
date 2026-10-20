@@ -10,6 +10,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/core/Utf8.hpp"
 #include "haylen/localization/Catalog.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichTextRegistry.hpp"
@@ -182,6 +183,15 @@ std::string_view Context::getText(const TextValue& value) {
     return translated;
 }
 
+std::u32string_view Context::getFrameCodePoints(std::string_view text) {
+    if (frameCodePointCount == frameCodePoints.size()) {
+        frameCodePoints.emplace_back();
+    }
+    std::u32string& codePoints = frameCodePoints[frameCodePointCount++];
+    core::Utf8::decode(text, codePoints);
+    return codePoints;
+}
+
 std::string& Context::getFrameText() {
     if (frameTextCount == frameTexts.size()) {
         frameTexts.emplace_back();
@@ -250,6 +260,7 @@ void Context::setStick(std::string_view name, math::Vec2 value) {
 void Context::beginFrame(double now, float delta) noexcept {
     ++frame;
     frameTextCount = 0;
+    frameCodePointCount = 0;
     heldButtons.clear();
     sticks.clear();
     reshapes.clear();

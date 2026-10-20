@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <deque>
 #include <fstream>
 #include <iterator>
 #include <memory>
@@ -29,8 +30,9 @@ class RightToLeftTest : public ::testing::Test {
         return std::make_shared<text::TrueTypeFont>(ui.getEngine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
     }
 
+    // Each layout reads its code points from storage of its own that the test keeps.
     [[nodiscard]] TextFieldLayout lay(const std::string& value) {
-        return {family->layout(value, {.size = 30.0F}), core::Utf8::decode(value)};
+        return {family->layout(value, {.size = 30.0F}), codePoints.emplace_back(core::Utf8::decode(value))};
     }
 
     [[nodiscard]] int getCaret() {
@@ -38,6 +40,7 @@ class RightToLeftTest : public ::testing::Test {
     }
 
     test::UiFixture ui;
+    std::deque<std::u32string> codePoints;
     std::shared_ptr<text::FontFamily> family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = ui.getEngine().getDefaultFont(), .fallbacks = {load("noto-sans-hebrew-regular.ttf"), load("noto-sans-devanagari-regular.ttf")}});
 };
 

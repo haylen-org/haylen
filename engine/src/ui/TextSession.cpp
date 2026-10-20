@@ -128,7 +128,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
 
     // The UI changed the field when ImGui edited it, when the limit cut it, or when the caret moved without an edit of the platform, as a click in the field moves it.
     const bool cut = limit(data, options.maxLength);
-    std::string current(data.Buf, static_cast<std::size_t>(data.BufTextLen));
+    const std::string_view current(data.Buf, static_cast<std::size_t>(data.BufTextLen));
     const auto [start, end] = getSelection(data);
     const bool changed = edited || cut || (!applied && (current != text || start != selectionStart || end != selectionEnd));
     if (changed && !activated) {
@@ -136,7 +136,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
         compositionStart = -1;
         compositionEnd = -1;
     }
-    text = std::move(current);
+    text.assign(current);
     selectionStart = start;
     selectionEnd = end;
 }
@@ -175,8 +175,12 @@ void TextSession::publish() {
             input.finish();
         }
     } else if (!composing) {
-        platform::TextInput::Field field{.id = active, .revision = revision, .text = text, .selectionStart = selectionStart, .selectionEnd = selectionEnd, .bounds = toFramebuffer(bounds), .caret = toFramebuffer(caretRect), .options = options};
-        if (published != field) {
+        // The field compares with the one the platform has in place, so a field that did not change costs no copy of its text.
+        const math::Rect fieldBounds = toFramebuffer(bounds);
+        const math::Rect caret = toFramebuffer(caretRect);
+        const bool same = published && published->id == active && published->revision == revision && published->text == text && published->selectionStart == selectionStart && published->selectionEnd == selectionEnd && published->bounds == fieldBounds && published->caret == caret && published->options == options;
+        if (!same) {
+            platform::TextInput::Field field{.id = active, .revision = revision, .text = text, .selectionStart = selectionStart, .selectionEnd = selectionEnd, .bounds = fieldBounds, .caret = caret, .options = options};
             input.edit(field);
             published = std::move(field);
         }

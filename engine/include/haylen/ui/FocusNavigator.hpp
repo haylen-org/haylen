@@ -228,8 +228,10 @@ class FocusNavigator final {
     };
 
     // Everything one frame of drawing registered.
+    // The nodes of a frame are the first `nodeCount` of its list, whose other slots keep their storage for later frames.
     struct Frame {
         std::vector<Node> nodes;
+        std::size_t nodeCount = 0;
         std::vector<Scope> scopes;
         std::vector<Target> targets;
         std::vector<GuiEntry> guis;

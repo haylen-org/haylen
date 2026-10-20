@@ -175,6 +175,9 @@ class Context final {
     // Returns empty storage for a text that stays valid until the next frame begins, such as a translation, the bullets of a password or a shortened line, from slots that frames reuse.
     [[nodiscard]] std::string& getFrameText();
 
+    // Returns the code points of a text, valid until the next frame begins, from slots that frames reuse.
+    [[nodiscard]] std::u32string_view getFrameCodePoints(std::string_view text);
+
     // Returns the texture that draws a picture over `size` UI units at the density of the screen, or an empty texture while it loads.
     [[nodiscard]] graphics::Texture getImage(std::string_view path, math::Vec2 size) const;
 
@@ -320,6 +323,8 @@ class Context final {
     // The texts the frame keeps, in slots that frames reuse and that never move while the frame draws.
     std::deque<std::string> frameTexts;
     std::size_t frameTextCount = 0;
+    std::deque<std::u32string> frameCodePoints;
+    std::size_t frameCodePointCount = 0;
 
     // The direction and language in effect, from the whole UI at the bottom to the node being drawn at the top.
     std::vector<Writing> writings{Writing{}};

@@ -12,6 +12,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/UiFixture.hpp"
 
 namespace haylen::ui {
@@ -176,6 +177,27 @@ TEST_F(FocusTest, TabsNowhereAfterTheGuiWithTheFocusWentAway) {
     gui.reset();
     key(input::Key::Tab);
     EXPECT_EQ(getUi().getFocus().getFocusedGui(), nullptr);
+}
+
+// Focusable nodes whose names are longer than a short string and a field that edits a long text draw their frames without allocating once they settled.
+TEST_F(FocusTest, FocusesLongNamesAndEditsLongTextsWithoutAllocating) {
+    // clang-format off
+    const auto measure = [this] {
+        frames(5);
+        const test::AllocationTracker tracker;
+        frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure();
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [
+        {"kind": "button", "id": "the-button-with-a-name-longer-than-a-short-string", "text": "Play", "focusDown": "the-field-with-a-name-longer-than-a-short-string"},
+        {"kind": "textField", "id": "the-field-with-a-name-longer-than-a-short-string", "value": "A typed text that is longer than a short string"}
+    ]})");
+    click(*gui, "the-field-with-a-name-longer-than-a-short-string");
+    ASSERT_TRUE(isFocused(*gui, "the-field-with-a-name-longer-than-a-short-string"));
+    frames(30);
+    EXPECT_EQ(measure(), empty);
 }
 
 TEST_F(FocusTest, SendsCancelToTheTopmostGuiWithoutFocus) {

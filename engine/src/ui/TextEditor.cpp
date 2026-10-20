@@ -32,7 +32,7 @@ std::string_view TextEditor::writeBullets(std::string_view value, std::string& b
 }
 
 TextFieldLayout TextEditor::layOut(Context& context, std::string_view shown, const text::Style& style) {
-    return {Typography::layout(context, Theme::Font::Body, shown, style), core::Utf8::decode(shown)};
+    return {Typography::layout(context, Theme::Font::Body, shown, style), context.getFrameCodePoints(shown)};
 }
 
 math::Vec2 TextEditor::getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline) {
@@ -228,7 +228,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const std::string_view shown = password ? writeBullets(value, context.getFrameText()) : std::string_view(value);
     const std::shared_ptr<const text::Layout> laid = Typography::layout(context, Theme::Font::Body, shown, style);
     const ImGuiInputTextState* state = ImGui::GetActiveID() == id ? ImGui::GetInputTextState(id) : nullptr;
-    const std::optional<TextFieldLayout> field = state != nullptr ? std::optional<TextFieldLayout>(std::in_place, laid, core::Utf8::decode(shown)) : std::nullopt;
+    const std::optional<TextFieldLayout> field = state != nullptr ? std::optional<TextFieldLayout>(std::in_place, laid, context.getFrameCodePoints(shown)) : std::nullopt;
     const auto toPosition = [&value](int bytes) { return core::Utf8::countCodePoints(std::string_view(value).substr(0, static_cast<std::size_t>(std::clamp(bytes, 0, static_cast<int>(value.size()))))); };
     const float overflow = std::max(0.0F, laid->size.y - area.height);
     math::Vec2 scroll = editing.scroll;

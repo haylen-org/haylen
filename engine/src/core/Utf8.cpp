@@ -49,11 +49,16 @@ char32_t Utf8::decode(std::string_view text, std::size_t& offset) noexcept {
 
 std::u32string Utf8::decode(std::string_view text) {
     std::u32string result;
-    result.reserve(text.size());
-    for (std::size_t offset = 0; offset < text.size();) {
-        result.push_back(decode(text, offset));
-    }
+    decode(text, result);
     return result;
+}
+
+void Utf8::decode(std::string_view text, std::u32string& output) {
+    output.clear();
+    output.reserve(text.size());
+    for (std::size_t offset = 0; offset < text.size();) {
+        output.push_back(decode(text, offset));
+    }
 }
 
 bool Utf8::isValid(std::string_view text) noexcept {

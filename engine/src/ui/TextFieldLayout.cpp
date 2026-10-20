@@ -9,7 +9,7 @@
 
 namespace haylen::ui {
 
-TextFieldLayout::TextFieldLayout(std::shared_ptr<const text::Layout> laid, std::u32string codePoints) : layout(std::move(laid)), content(std::move(codePoints)) {}
+TextFieldLayout::TextFieldLayout(std::shared_ptr<const text::Layout> laid, std::u32string_view codePoints) : layout(std::move(laid)), content(codePoints) {}
 
 std::size_t TextFieldLayout::findLine(std::size_t position) const {
     for (std::size_t index = 0; index < layout->lines.size(); ++index) {
