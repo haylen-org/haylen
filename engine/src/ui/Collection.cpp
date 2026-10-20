@@ -805,13 +805,15 @@ void Collection::bindRange(std::size_t first, std::size_t last, bool withBinders
     }
 }
 
-// Binders run from a copy of the waiting cells, so a binder never runs while the collection walks its own cells, and a cell that moved on to another item meanwhile skips the binder of the old one.
+// Binders run from a copy of the waiting cells, so a binder never runs while the collection walks its own cells, and a cell that moved on to another item meanwhile skips the binder of the old one. Each binder runs from a copy of itself, since a binder may replace or remove the binders.
 void Collection::runBinders() {
     binderQueue.swap(waiting);
     for (const std::shared_ptr<CollectionCell>& cell : binderQueue) {
         if (cell->waiting && cell->index != CollectionCell::kNoIndex) {
             cell->waiting = false;
-            binders[sizes->getType(cell->index)](*cell, cell->index);
+            if (const Binder binder = binders[sizes->getType(cell->index)]) {
+                binder(*cell, cell->index);
+            }
         }
     }
     binderQueue.clear();

@@ -191,6 +191,16 @@ TEST_F(CollectionLuaTest, ReadsItsStateThroughProperties) {
     EXPECT_EQ(fixture.lua("return state.item .. ' ' .. state.distance .. ' ' .. state.focused .. ' ' .. list.scrollOffset"), "i4 0.0 i7 180.0");
 }
 
+// A binder that removes itself while cells wait for it leaves the other cells unbound instead of calling a binder that is gone.
+TEST_F(CollectionLuaTest, SkipsTheBinderThatABinderRemoved) {
+    fixture.runLua("binds = 0");
+    mountRows(1000);
+    fixture.runLua("list:setBinder('row', function(cell, item) binds = binds + 1 list:setBinder('row', nil) end)");
+    fixture.frames(5);
+    EXPECT_EQ(fixture.lua("return binds"), "1");
+    EXPECT_EQ(getEngine().getError(), nullptr);
+}
+
 TEST_F(CollectionLuaTest, CallsTheLuaBinderOncePerBoundCell) {
     fixture.runLua("binds = 0");
     mountRows(1000);
