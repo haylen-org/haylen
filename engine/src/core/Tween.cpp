@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
 #include <exception>
 #include <limits>
 #include <memory>
@@ -34,8 +35,8 @@ void Tween::setRepeatDelay(float seconds) {
 }
 
 void Tween::setTimeScale(float value) {
-    if (!(value >= 0.0F)) {
-        throw std::invalid_argument("A tween time scale cannot be negative.");
+    if (!(value >= 0.0F && std::isfinite(value))) {
+        throw std::invalid_argument("A tween time scale must be a finite number of 0 or more.");
     }
     timeScale = value;
 }
@@ -66,16 +67,17 @@ float Tween::getTotalDuration() const noexcept {
     return getDuration() * loops + repeatDelay * (loops - 1.0F);
 }
 
-Tween::Position Tween::locate(float totalTime) const noexcept {
+Tween::Position Tween::locate(double totalTime) const noexcept {
     const float loopLength = getDuration();
-    const float period = loopLength + repeatDelay;
-    if (period <= 0.0F) {
+    const double period = static_cast<double>(loopLength) + static_cast<double>(repeatDelay);
+    if (period <= 0.0) {
         return {};
     }
 
-    const int lastLoop = repeatCount < 0 ? std::numeric_limits<int>::max() : repeatCount;
-    const auto loop = static_cast<int>(std::min(std::floor(totalTime / period), static_cast<float>(lastLoop)));
-    const float inside = std::min(totalTime - static_cast<float>(loop) * period, loopLength);
+    // The last loop of a tween that repeats forever stays below the largest int, so a step to the loop after it never overflows.
+    const int lastLoop = repeatCount < 0 ? std::numeric_limits<int>::max() - 1 : repeatCount;
+    const auto loop = static_cast<int>(std::min(std::floor(totalTime / period), static_cast<double>(lastLoop)));
+    const auto inside = static_cast<float>(std::min(totalTime - static_cast<double>(loop) * period, static_cast<double>(loopLength)));
     return {.loop = loop, .time = loopMode == LoopMode::Yoyo && loop % 2 == 1 ? loopLength - inside : inside};
 }
 
@@ -93,7 +95,7 @@ float Tween::getProgress() const noexcept {
         const float loopLength = getDuration();
         return loopLength > 0.0F ? locate(time).time / loopLength : 1.0F;
     }
-    return total > 0.0F ? time / total : 1.0F;
+    return total > 0.0F ? static_cast<float>(time / static_cast<double>(total)) : 1.0F;
 }
 
 float Tween::getRenderedProgress() const noexcept {
@@ -120,7 +122,7 @@ void Tween::discard() noexcept {
     finished.clear();
 }
 
-void Tween::render(float totalTime, bool silent) {
+void Tween::render(double totalTime, bool silent) {
     if (killed) {
         return;
     }
@@ -134,9 +136,9 @@ void Tween::render(float totalTime, bool silent) {
         }
     }
 
-    const float total = getTotalDuration();
-    const float target = std::clamp(totalTime, 0.0F, total);
-    const float previous = time;
+    const auto total = static_cast<double>(getTotalDuration());
+    const double target = std::clamp(totalTime, 0.0, total);
+    const double previous = time;
     const bool forward = target >= previous;
     const Position left = locate(previous);
     const Position entered = locate(target);
@@ -163,7 +165,8 @@ void Tween::render(float totalTime, bool silent) {
             return;
         }
         const int direction = forward ? 1 : -1;
-        for (int loop = left.loop + direction; loop != entered.loop + direction && !silent && events && events->loop; loop += direction) {
+        const int reported = std::abs(entered.loop - left.loop) > kMaxLoopCalls ? entered.loop - direction * (kMaxLoopCalls - 1) : left.loop + direction;
+        for (int loop = reported; loop != entered.loop + direction && !silent && events && events->loop; loop += direction) {
             events->loop(loop);
             if (killed) {
                 return;
@@ -185,7 +188,7 @@ void Tween::render(float totalTime, bool silent) {
     if (killed) {
         return;
     }
-    atStart = !forward && target <= 0.0F;
+    atStart = !forward && target <= 0.0;
     if (!silent && events && events->update) {
         events->update(getRenderedProgress());
         if (killed) {
@@ -194,8 +197,8 @@ void Tween::render(float totalTime, bool silent) {
     }
 
     // A tween completes when it reaches its end in the direction it plays, and it stops counting as complete once it moves away.
-    const bool atEnd = !std::isinf(total) && (reversed ? target <= 0.0F : target >= total);
-    const bool arrived = atEnd && !completed && (first || (reversed ? previous > 0.0F : previous < total));
+    const bool atEnd = !std::isinf(total) && (reversed ? target <= 0.0 : target >= total);
+    const bool arrived = atEnd && !completed && (first || (reversed ? previous > 0.0 : previous < total));
     completed = atEnd && (completed || arrived);
     if (!arrived) {
         return;
@@ -233,7 +236,7 @@ void Tween::advance(float seconds) {
 void Tween::play() {
     reversed = false;
     paused = false;
-    completed = !std::isinf(getTotalDuration()) && time >= getTotalDuration() && rendered;
+    completed = !std::isinf(getTotalDuration()) && time >= static_cast<double>(getTotalDuration()) && rendered;
 }
 
 void Tween::pause() noexcept {
@@ -260,7 +263,7 @@ void Tween::reverse() {
     reversed = true;
     paused = false;
     delayLeft = 0.0F;
-    completed = time <= 0.0F;
+    completed = time <= 0.0;
 }
 
 void Tween::seek(float seconds) {
@@ -271,10 +274,10 @@ void Tween::seek(float seconds) {
         return;
     }
     delayLeft = 0.0F;
-    float target = std::max(seconds, 0.0F);
+    double target = std::max(seconds, 0.0F);
     if (std::isinf(getTotalDuration())) {
-        const float period = getDuration() + repeatDelay;
-        target = static_cast<float>(locate(time).loop) * period + std::min(target, getDuration());
+        const double period = static_cast<double>(getDuration()) + static_cast<double>(repeatDelay);
+        target = static_cast<double>(locate(time).loop) * period + std::min(std::max(seconds, 0.0F), getDuration());
     }
     render(target, true);
 }

@@ -13,7 +13,7 @@ void FrameClock::advance(double frameSeconds) noexcept {
     skipNext = false;
     delta = unscaledDelta * timeScale;
     if (!paused) {
-        accumulator += delta;
+        accumulator = std::min(accumulator + delta, fixedStep * kMaxFixedSteps);
     }
     elapsed += delta;
     ++frameIndex;
@@ -29,7 +29,7 @@ bool FrameClock::consumeFixedStep() noexcept {
     return true;
 }
 
-// An infinite scale would make every frame owe endless fixed steps, so the frame loop would never end.
+// An infinite scale would turn every scaled time into infinity or NaN.
 void FrameClock::setTimeScale(double value) {
     if (!std::isfinite(value)) {
         throw std::invalid_argument("The time scale must be a finite number.");

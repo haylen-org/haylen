@@ -224,7 +224,7 @@ print('frozen:', frozen)
 
 ### haylen.setTimeScale(scale)
 
-Sets the speed of app time. The scale `0.5` plays at half speed, `0` freezes app time and values above `1` speed the app up. Negative values count as `0`, and a scale that is not finite, such as `math.huge`, raises the error `The time scale must be a finite number.`. A frozen app still calls updates, with a delta of zero, and `haylen.setPaused` is the way to stop what the pause should stop. The scale applies to `haylen.delta()`, `haylen.elapsed()`, the `dt` of scene updates, and timers and tweens that are not `unscaled`. Fixed updates keep their step length but run less or more often, so a physics world stepped from `fixedUpdate` slows down with the rest of the app. The function `haylen.unscaledDelta()` is not affected.
+Sets the speed of app time. The scale `0.5` plays at half speed, `0` freezes app time and values above `1` speed the app up. Negative values count as `0`, and a scale that is not finite, such as `math.huge`, raises the error `The time scale must be a finite number.`. A frozen app still calls updates, with a delta of zero, and `haylen.setPaused` is the way to stop what the pause should stop. The scale applies to `haylen.delta()`, `haylen.elapsed()`, the `dt` of scene updates, and timers and tweens that are not `unscaled`. Fixed updates keep their step length but run less or more often, so a physics world stepped from `fixedUpdate` slows down with the rest of the app, and a frame runs at most 240 of them, so a scale large enough to owe more drops the rest instead of holding the frame. The function `haylen.unscaledDelta()` is not affected.
 
 ```lua
 local haylen = require('haylen')

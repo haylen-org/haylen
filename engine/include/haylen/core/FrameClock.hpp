@@ -9,6 +9,9 @@ namespace haylen::core {
 // Converts variable frame durations into scaled frame time and fixed simulation steps, and holds the pause state that decides which process modes run. Pausing does not change the frame times, but no fixed steps accumulate while paused.
 class FrameClock final {
   public:
+    // A frame runs at most this many fixed steps, and the time a large time scale owes beyond them is dropped, so a frame always ends.
+    static constexpr std::uint32_t kMaxFixedSteps = 240;
+
     explicit FrameClock(double fixedStepSeconds = 1.0 / 60.0, double maxFrameSeconds = 0.25) noexcept;
 
     void advance(double frameSeconds) noexcept;

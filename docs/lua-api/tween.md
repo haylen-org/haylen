@@ -66,7 +66,7 @@ Every tween and timeline takes an optional options table, and unknown keys raise
 | `repeatCount` | integer | `0` | Extra loops after the first one. A negative count repeats forever. |
 | `loopMode` | string | `'restart'` | The mode `'restart'` plays every loop from the start, `'yoyo'` plays every other loop backwards and `'incremental'` continues every loop from where the previous one ended. |
 | `repeatDelay` | number | `0` | Seconds to wait between loops. |
-| `timeScale` | number | `1` | Speed of this tween, multiplied with the time scale of its tag. |
+| `timeScale` | number | `1` | Speed of this tween, multiplied with the time scale of its tag. A scale that is negative or not finite raises `A tween time scale must be a finite number of 0 or more.` |
 | `tag` | string | `''` | Group name for the tag functions, such as `tween.killTag` and `tween.setTimeScale`. |
 | `owner` | table or userdata | `nil` | Kills the tween when the owner ends, as the [owners of `haylen.events`](events.md#owners) describe. A tween that inherits its process mode follows the mode of its owner every frame, so it changes along with the owner. |
 | `processMode` | string | `'inherit'` | `'inherit'`, `'pausable'`, `'whenPaused'`, `'always'` or `'disabled'`. |
@@ -328,7 +328,7 @@ tween.resumeTag('world')
 
 ### tween.setTimeScale(tag, scale)
 
-Scales the time of every tween with the tag, including tweens created later, on top of their own `timeScale`.
+Scales the time of every tween with the tag, including tweens created later, on top of their own `timeScale`. A scale that is negative or not finite raises `A tween time scale must be a finite number of 0 or more.`
 
 ```lua
 local tween = require('haylen.tween')

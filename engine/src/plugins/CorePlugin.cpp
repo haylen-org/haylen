@@ -8,6 +8,7 @@
 #include "core/SignalLua.hpp"
 #include "core/TimerLua.hpp"
 #include "core/TweenLua.hpp"
+#include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneView.hpp"
 #include "math/MathLua.hpp"
 #include "platform/WindowLua.hpp"
@@ -32,8 +33,11 @@ void CorePlugin::installLua(core::Engine&, lua_State* L) {
     ai::AiLua::install(L);
 }
 
+// The app stops while the error screen shows, so its autoloads hear no events, like its scenes.
 void CorePlugin::event(core::Engine& engine, const platform::Event& event) {
-    autoloads.event(engine, event);
+    if (engine.getError() == nullptr) {
+        autoloads.event(engine, event);
+    }
 }
 
 void CorePlugin::fixedUpdate(core::Engine& engine, float stepSeconds) {

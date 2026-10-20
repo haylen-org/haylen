@@ -46,7 +46,19 @@ TEST(FrameClockTest, TimeScaleAffectsScaledTimeOnly) {
     EXPECT_DOUBLE_EQ(clock.getTimeScale(), 0.0);
 }
 
-// An infinite scale would owe endless fixed steps, so the frame loop that consumes them would never end.
+// A huge finite scale owes more fixed steps than a frame runs, and the frame drops the rest so it ends.
+TEST(FrameClockTest, RunsABoundedNumberOfFixedStepsAtHugeTimeScales) {
+    core::FrameClock clock;
+    clock.setTimeScale(1.0e18);
+    clock.advance(1.0 / 60.0);
+    std::uint32_t steps = 0;
+    while (clock.consumeFixedStep()) {
+        ++steps;
+    }
+    EXPECT_EQ(steps, core::FrameClock::kMaxFixedSteps);
+    EXPECT_LT(clock.getInterpolation(), 1.0);
+}
+
 TEST(FrameClockTest, RefusesTimeScalesThatAreNotFinite) {
     core::FrameClock clock;
     clock.setTimeScale(2.0);
@@ -208,6 +220,20 @@ TEST(TimerSchedulerTest, ZeroIntervalRepeatsOncePerUpdate) {
     clock.advance(1.0);
     timers.update(clock);
     EXPECT_EQ(calls, 2);
+}
+
+// An interval too small to pay back a frame would repeat without end, so the timer drops what it owes past the calls of one update.
+TEST(TimerSchedulerTest, TinyIntervalsRunABoundedNumberOfTimesPerUpdate) {
+    core::TimerScheduler timers;
+    core::FrameClock clock(0.1, 10.0);
+    std::uint32_t calls = 0;
+    timers.every(1.0e-10F, [&] { ++calls; });
+    clock.advance(1.0 / 60.0);
+    timers.update(clock);
+    EXPECT_EQ(calls, core::TimerScheduler::kMaxCallsPerUpdate);
+    clock.advance(1.0 / 60.0);
+    timers.update(clock);
+    EXPECT_EQ(calls, core::TimerScheduler::kMaxCallsPerUpdate * 2);
 }
 
 TEST(TimerSchedulerTest, ProcessModesAndUnscaledTime) {

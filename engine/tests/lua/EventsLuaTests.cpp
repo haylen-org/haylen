@@ -352,6 +352,18 @@ TEST(AutoloadTest, LoadsModulesBeforeMainAndRunsTheirCallbacks) {
     EXPECT_EQ(fixture.lua("return stopLog[#stopLog]"), "stop");
 }
 
+// The error screen stops the app, so its autoloads hear no more events, like its scenes.
+TEST(AutoloadTest, HearsNoEventsWhileTheErrorScreenShows) {
+    test::EngineFixture fixture({
+        {"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "autoload": ["listener"]})"},
+        {"source/listener.lua", "heard = {} return {event = function(self, event) heard[#heard + 1] = event.type end}"},
+    });
+    fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A});
+    fixture.engine().reportError("The level broke.");
+    fixture.engine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::B});
+    EXPECT_EQ(fixture.lua("return #heard"), "1");
+}
+
 TEST(AutoloadTest, StopsEveryAutoloadWhenOneFails) {
     // clang-format off
     test::EngineFixture fixture({

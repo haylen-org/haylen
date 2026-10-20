@@ -40,7 +40,7 @@ timer.after(2, function() print('press start') end, {processMode = 'always', uns
 
 ### timer.every(seconds, callback, options)
 
-Calls `callback` every `seconds`, the first time after one interval. The `count` option limits the number of calls, and a count of zero raises `A repeating timer needs a positive count, or a negative count to repeat until it is cancelled.` Returns the timer id. When a long frame covers several intervals, the callback runs once for each interval in that frame, so no call is lost. An interval of zero calls the callback once per frame.
+Calls `callback` every `seconds`, the first time after one interval. The `count` option limits the number of calls, and a count of zero raises `A repeating timer needs a positive count, or a negative count to repeat until it is cancelled.` Returns the timer id. When a long frame covers several intervals, the callback runs once for each interval in that frame, so no call is lost, up to 256 calls in one frame, after which a timer with an interval that tiny drops the intervals it still owes. An interval of zero calls the callback once per frame.
 
 ```lua
 local timer = require('haylen.timer')

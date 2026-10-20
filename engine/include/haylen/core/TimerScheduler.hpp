@@ -18,6 +18,9 @@ class TimerScheduler final {
   public:
     using Id = std::uint64_t;
 
+    // A repeating timer runs at most this many times in one update and drops the intervals it still owes after that.
+    static constexpr std::uint32_t kMaxCallsPerUpdate = 256;
+
     struct Options {
         // The mode `Inherit` follows the parent mode, and counts as `Pausable` without one.
         ProcessMode processMode = ProcessMode::Inherit;
@@ -57,6 +60,7 @@ class TimerScheduler final {
         bool paused = false;
         bool cancelled = false;
         bool firedThisUpdate = false;
+        std::uint32_t callsThisUpdate = 0;
         std::function<void()> callback;
 
         void disconnect() override {

@@ -111,6 +111,7 @@ void TimerScheduler::update(const FrameClock& clock) {
         Timer& timer = *timers[index];
         const bool running = !timer.cancelled && !timer.paused && clock.canProcess(resolveMode(timer.options));
         timer.firedThisUpdate = !running;
+        timer.callsThisUpdate = 0;
         if (!running) {
             continue;
         }
@@ -135,6 +136,10 @@ void TimerScheduler::update(const FrameClock& clock) {
                 --timer.repeatsLeft;
             }
             timer.remaining += timer.interval;
+            // A timer that owes more calls than one update runs, as one with a tiny interval does, drops the rest of its debt.
+            if (++timer.callsThisUpdate >= kMaxCallsPerUpdate && timer.remaining <= 0.0F) {
+                timer.remaining = timer.interval;
+            }
             timer.firedThisUpdate = timer.interval <= 0.0F;
             timer.cancelled = timer.repeatsLeft == 0;
             timer.callback();

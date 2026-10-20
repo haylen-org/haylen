@@ -167,7 +167,7 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     }
 
     [[nodiscard]] float getTime() const noexcept {
-        return time;
+        return static_cast<float>(time);
     }
 
     // Returns how far the tween is through all its loops, or through the current loop when it repeats forever.
@@ -243,14 +243,17 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
         float time = 0.0F;
     };
 
+    // A step across more loops than this reports the `loop` callbacks of its last loops only.
+    static constexpr int kMaxLoopCalls = 256;
+
     static debug::ObjectCounter& counter;
 
-    [[nodiscard]] Position locate(float totalTime) const noexcept;
+    [[nodiscard]] Position locate(double totalTime) const noexcept;
     [[nodiscard]] float getLoopStart(int loop) const noexcept;
     [[nodiscard]] float getLoopEnd(int loop) const noexcept;
 
     // Moves the playhead to a time between 0 and the total duration and renders it. Timelines call it for the tweens they hold.
-    void render(float totalTime, bool silent);
+    void render(double totalTime, bool silent);
 
     // Advances a root tween by the elapsed time, spending the delay first.
     void advance(float seconds);
@@ -268,7 +271,9 @@ class Tween : public Connection::Link, public std::enable_shared_from_this<Tween
     float delayLeft = 0.0F;
     float repeatDelay = 0.0F;
     float timeScale = 1.0F;
-    float time = 0.0F;
+
+    // The playhead counts in double precision, so a tween that repeats forever keeps exact steps however long it plays.
+    double time = 0.0;
     int repeatCount = 0;
     LoopMode loopMode = LoopMode::Restart;
     ProcessMode processMode = ProcessMode::Inherit;

@@ -1,6 +1,7 @@
 #include "haylen/core/TweenManager.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <iterator>
 #include <stdexcept>
 #include <utility>
@@ -143,8 +144,8 @@ void TweenManager::pauseTag(std::string_view tag, bool paused) {
 }
 
 void TweenManager::setTimeScale(std::string_view tag, float value) {
-    if (!(value >= 0.0F)) {
-        throw std::invalid_argument("A tween time scale cannot be negative.");
+    if (!(value >= 0.0F && std::isfinite(value))) {
+        throw std::invalid_argument("A tween time scale must be a finite number of 0 or more.");
     }
     groups[getGroup(tag)].timeScale = value;
 }

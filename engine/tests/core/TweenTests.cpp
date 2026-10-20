@@ -341,6 +341,25 @@ TEST(TweenManagerTest, RepeatsWithEveryLoopMode) {
     EXPECT_FLOAT_EQ(third->getTime(), 11.25F);
 }
 
+// A tween that repeats forever moves by every frame after days of play, and a step across countless loops reports only its last loops.
+TEST(TweenManagerTest, RepeatsForeverWithoutLosingSteps) {
+    TweenRig rig;
+    Box box;
+    auto tween = rig.tweenX(box, 0.1F, core::TweenProperty::to(1.0));
+    tween->setRepeatCount(-1);
+    int loops = 0;
+    tween->getCallbacks().loop = [&loops](int) { ++loops; };
+    rig.step(100.0);
+    EXPECT_EQ(loops, 256);
+    for (int step = 0; step < 12 * 864; ++step) {
+        rig.step(100.0);
+    }
+
+    const float before = tween->getProgress();
+    rig.step(0.01);
+    EXPECT_NEAR(std::fmod(tween->getProgress() - before + 1.0F, 1.0F), 0.1F, 1e-3F);
+}
+
 TEST(TweenManagerTest, ControlsPlayback) {
     TweenRig rig;
     Box box;
