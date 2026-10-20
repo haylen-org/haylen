@@ -7,6 +7,7 @@
 #include <windows.media.h>
 #include <wrl/client.h>
 
+#include <atomic>
 #include <optional>
 #include <string>
 
@@ -33,7 +34,8 @@ class WindowsMediaSession final {
 
     static Microsoft::WRL::ComPtr<ABI::Windows::Media::ISystemMediaTransportControls> controls;
     static bool attempted;
-    static MediaSession::Commands offered;
+    // The commands the app offers, which the frame thread writes and the handlers of the controls read on a thread of the system.
+    static std::atomic<MediaSession::Commands> offered;
 };
 
 } // namespace haylen::platform

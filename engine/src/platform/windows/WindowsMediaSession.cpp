@@ -26,7 +26,7 @@ using Microsoft::WRL::Wrappers::HStringReference;
 
 ComPtr<ISystemMediaTransportControls> WindowsMediaSession::controls;
 bool WindowsMediaSession::attempted = false;
-MediaSession::Commands WindowsMediaSession::offered = 0;
+std::atomic<MediaSession::Commands> WindowsMediaSession::offered = 0;
 
 std::wstring WindowsMediaSession::toWide(const std::string& text) {
     if (text.empty()) {
@@ -43,7 +43,8 @@ void WindowsMediaSession::receiveButton(SystemMediaTransportControlsButton butto
     using Command = MediaSession::Command;
     // clang-format off
     const auto send = [](Command command) {
-        const bool toggled = (command == Command::Play || command == Command::Pause) && (offered & MediaSession::bit(command)) == 0 && (offered & MediaSession::bit(Command::TogglePlayPause)) != 0;
+        const MediaSession::Commands commands = offered.load();
+        const bool toggled = (command == Command::Play || command == Command::Pause) && (commands & MediaSession::bit(command)) == 0 && (commands & MediaSession::bit(Command::TogglePlayPause)) != 0;
         MediaSession::receive(toggled ? Command::TogglePlayPause : command, 0.0);
     };
     // clang-format on
@@ -98,7 +99,7 @@ ISystemMediaTransportControls* WindowsMediaSession::getControls() {
     if (SUCCEEDED(controls.As(&seeking))) {
         seeking->add_PlaybackPositionChangeRequested(Callback<ABI::Windows::Foundation::ITypedEventHandler<ABI::Windows::Media::SystemMediaTransportControls*, ABI::Windows::Media::PlaybackPositionChangeRequestedEventArgs*>>([](ISystemMediaTransportControls*, ABI::Windows::Media::IPlaybackPositionChangeRequestedEventArgs* event) {
             ABI::Windows::Foundation::TimeSpan position{};
-            if ((offered & MediaSession::bit(MediaSession::Command::Seek)) != 0 && SUCCEEDED(event->get_RequestedPlaybackPosition(&position))) {
+            if ((offered.load() & MediaSession::bit(MediaSession::Command::Seek)) != 0 && SUCCEEDED(event->get_RequestedPlaybackPosition(&position))) {
                 MediaSession::receive(MediaSession::Command::Seek, static_cast<double>(position.Duration) / kUnitsPerSecond);
             }
             return S_OK;
@@ -114,7 +115,7 @@ void WindowsMediaSession::update(const std::optional<MediaSession::NowPlaying>& 
         return;
     }
     if (!value) {
-        offered = 0;
+        offered.store(0);
         ComPtr<ISystemMediaTransportControlsDisplayUpdater> updater;
         if (SUCCEEDED(found->get_DisplayUpdater(&updater))) {
             updater->ClearAll();
@@ -128,7 +129,7 @@ void WindowsMediaSession::update(const std::optional<MediaSession::NowPlaying>& 
 
 void WindowsMediaSession::show(ISystemMediaTransportControls& target, const MediaSession::NowPlaying& value) {
     using Command = MediaSession::Command;
-    offered = value.commands;
+    offered.store(value.commands);
     const auto offers = [&value](Command command) -> boolean { return (value.commands & MediaSession::bit(command)) != 0; };
     const boolean toggles = offers(Command::TogglePlayPause);
     target.put_IsEnabled(true);
