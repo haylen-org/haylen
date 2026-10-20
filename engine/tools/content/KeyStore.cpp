@@ -138,7 +138,7 @@ void KeyStore::writePrivate(const std::filesystem::path& file, std::span<const s
 
 void KeyStore::restrictToOwner(const std::filesystem::path& path, bool folder) {
 #if defined(_WIN32)
-    // Windows keeps who may open a file in its access list, which then grants the user who runs the tool alone, without the entries that the folders above pass down.
+    // Windows keeps who may open a file in its access list, which then grants the user who runs the tool alone, without the entries that the folders above pass down. The rights are those of files, since generic rights that a folder passes down become a second entry.
     HANDLE token = nullptr;
     if (OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token) == FALSE) {
         throw std::runtime_error("The user that runs the tool could not be identified to close its private files to everyone else.");
@@ -153,7 +153,7 @@ void KeyStore::restrictToOwner(const std::filesystem::path& path, bool folder) {
     }
 
     EXPLICIT_ACCESS_W access{};
-    access.grfAccessPermissions = GENERIC_ALL;
+    access.grfAccessPermissions = FILE_ALL_ACCESS;
     access.grfAccessMode = SET_ACCESS;
     access.grfInheritance = folder ? SUB_CONTAINERS_AND_OBJECTS_INHERIT : NO_INHERITANCE;
     access.Trustee.TrusteeForm = TRUSTEE_IS_SID;
