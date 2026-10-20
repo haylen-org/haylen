@@ -26,6 +26,7 @@
 #include "haylen/io/MemoryPackage.hpp"
 #include "support/BrowserStoreFiles.hpp"
 #include "support/ContentServer.hpp"
+#include "support/CrashingStoreFiles.hpp"
 #include "support/LimitedStoreFiles.hpp"
 #include "support/QuotaStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -201,6 +202,72 @@ TEST_F(UpdaterTest, AsksTheKeyProviderForTheKeyOfAnUpdate) {
     }
 
     const std::unique_ptr<Client> client = connect(rotated);
+    EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
+}
+
+// A connection that drops while the manifest of an update downloads leaves the content as it was, and the next check finds the update again.
+TEST_F(UpdaterTest, KeepsTheContentWhenTheDownloadOfTheManifestStops) {
+    publish(makeUpdate(2));
+    const std::unique_ptr<Client> client = connect();
+    server.dropAfter(256);
+    auto [offer, error] = check(*client);
+    EXPECT_FALSE(offer);
+    EXPECT_TRUE(error);
+    EXPECT_TRUE(client->package->getStore()->getState().pending.isZero());
+    EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
+
+    const UpdateOffer again = requireOffer(*client);
+    ASSERT_FALSE(install(*client, again));
+}
+
+// An app that stops while it verifies the manifest of an update leaves the store as it was, and the next start finds the update again.
+TEST_F(UpdaterTest, LeavesTheStoreAsItWasWhenTheAppStopsWhileItChecks) {
+    publish(makeUpdate(2));
+    {
+        std::unique_ptr<Client> client = connect();
+        client->updater->check([](std::optional<UpdateOffer>, std::optional<Error>) { ADD_FAILURE() << "An updater that is gone never answers."; });
+        // clang-format off
+        ASSERT_TRUE(runtime.pumpUntil([this] {
+            const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
+            return std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.path.starts_with(std::string(PublicationLayout::kManifestsFolder)); });
+        }));
+        // clang-format on
+        client.reset();
+        (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(200));
+    }
+
+    const std::unique_ptr<Client> client = connect();
+    EXPECT_TRUE(client->package->getStore()->getState().pending.isZero());
+    EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
+    (void)requireOffer(*client);
+}
+
+// A loss of power while the new content becomes active tears the state that names it, so the next start plays the content before it and installs the update again from the records that reached the disk.
+TEST_F(UpdaterTest, KeepsTheContentWhenThePowerFailsAsTheUpdateBecomesActive) {
+    publish(makeUpdate(2));
+    {
+        auto files = std::make_unique<test::CrashingStoreFiles>(store.getPath());
+        test::CrashingStoreFiles& crashing = *files;
+        const auto client = std::make_unique<Client>(*this, std::move(files));
+        const UpdateOffer offer = requireOffer(*client);
+
+        // The install writes the state twice: once to mark the update pending and once to make it active.
+        crashing.crashOnWrite("state-", 1);
+        EXPECT_TRUE(install(*client, offer));
+        EXPECT_TRUE(crashing.hasCrashed());
+    }
+    {
+        const std::unique_ptr<Client> client = connect();
+        EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 1})");
+        EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
+        const UpdateOffer offer = requireOffer(*client);
+        EXPECT_EQ(offer.downloadBytes, 0U) << "The records that reached the disk before the loss of power stay.";
+        server.clearExchanges();
+        ASSERT_FALSE(install(*client, offer));
+        EXPECT_EQ(server.getSentBytes(), 0U);
+    }
+
+    const std::unique_ptr<Client> client = connect();
     EXPECT_EQ(readText(*client->package, "content/data/config.json"), R"({"level": 2})");
 }
 

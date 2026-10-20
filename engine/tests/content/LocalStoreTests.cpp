@@ -18,6 +18,7 @@
 #include "content/format/StoreEntry.hpp"
 #include "content/format/StoreState.hpp"
 #include "haylen/content/Error.hpp"
+#include "support/CrashingStoreFiles.hpp"
 #include "support/LimitedStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
@@ -274,6 +275,42 @@ TEST_F(LocalStoreTest, StopsACollectionAndLeavesTheStoreAsItWas) {
     for (const std::vector<std::uint8_t>& record : records) {
         ASSERT_TRUE(reopened->readRecord(idOf(record), read, keyId));
         EXPECT_EQ(read, record);
+    }
+}
+
+// A collection that loses power while it moves a record, or while it writes the state that switches to its journal, leaves every record of the store where the earlier state finds it.
+TEST_F(LocalStoreTest, KeepsEveryRecordWhenACollectionLosesPower) {
+    for (const bool duringMove : {true, false}) {
+        std::filesystem::remove_all(folder.getPath());
+        std::filesystem::create_directories(folder.getPath());
+        std::vector<std::vector<std::uint8_t>> records;
+        for (std::uint64_t seed = 0; seed < 12; ++seed) {
+            records.push_back(makeRecord(seed));
+        }
+        auto files = std::make_unique<test::CrashingStoreFiles>(folder.getPath());
+        test::CrashingStoreFiles& crashing = *files;
+        LocalStore store(std::move(files), application, kAppBuild, 4 * records[0].size() + 16);
+        for (const std::vector<std::uint8_t>& record : records) {
+            store.addRecord(key.getId(), record);
+        }
+        store.commit(store.getState());
+        const StoreState before = store.getState();
+        if (duringMove) {
+            crashing.crashOnAppend(0);
+        } else {
+            crashing.crashOnWrite("state-");
+        }
+        EXPECT_THROW((void)store.collect(keepSomeRecords(records), {}, {}, std::atomic<bool>(false)), Error);
+        EXPECT_TRUE(crashing.hasCrashed());
+
+        const std::unique_ptr<LocalStore> reopened = open();
+        EXPECT_EQ(reopened->getState().journal, before.journal);
+        std::vector<std::uint8_t> read;
+        Digest keyId;
+        for (const std::vector<std::uint8_t>& record : records) {
+            ASSERT_TRUE(reopened->readRecord(idOf(record), read, keyId)) << (duringMove ? "move" : "state");
+            EXPECT_EQ(read, record);
+        }
     }
 }
 
