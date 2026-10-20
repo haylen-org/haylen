@@ -30,6 +30,14 @@ Bridge::Bridge(Dispatcher native, Canceller nativeCancel) : dispatcher(std::move
     }
 }
 
+Bridge::~Bridge() {
+    for (const auto& [id, entry] : pending) {
+        if (entry.native) {
+            canceller(id, entry.method);
+        }
+    }
+}
+
 void Bridge::registerHandler(std::string method, Handler handler) {
     if (method.empty() || !handler) {
         throw std::invalid_argument("A platform handler needs a method name and a function.");

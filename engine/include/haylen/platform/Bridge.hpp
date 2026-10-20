@@ -77,6 +77,9 @@ class Bridge final {
     // The dispatcher hands calls to native code, and the canceller tells native code that the app no longer waits for one.
     Bridge(Dispatcher native, Canceller nativeCancel);
 
+    // Tells native code of every call that is still pending that nobody waits for it anymore, so a restarted app inherits no work of the app before it.
+    ~Bridge();
+
     Bridge(const Bridge&) = delete;
     Bridge& operator=(const Bridge&) = delete;
 

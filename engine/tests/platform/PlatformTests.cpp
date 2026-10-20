@@ -322,6 +322,22 @@ TEST(BridgeTest, TimesOutAndCancelsCallsAndTellsNativeCode) {
     EXPECT_FALSE(bridge.cancel(answered));
 }
 
+// A bridge that goes away, as the one of an app that restarts does, tells native code of every call it still waited for, so native work such as a watch that streams events stops with it.
+TEST(BridgeTest, CancelsThePendingNativeCallsWhenItGoesAway) {
+    std::vector<std::pair<std::uint64_t, std::string>> cancelled;
+    std::uint64_t watch = 0;
+    {
+        Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [&cancelled](std::uint64_t id, std::string_view method) { cancelled.emplace_back(id, method); });
+        bridge.registerHandler("engine.slow", [](const Bridge::Payload&, Bridge::Reply) {});
+        watch = bridge.call("native.watch", {}, [](const Bridge::Result&) {});
+        bridge.call("engine.slow", {}, [](const Bridge::Result&) {});
+        const std::uint64_t answered = bridge.call("native.answered", {}, [](const Bridge::Result&) {});
+        bridge.resolve(answered, true, "1");
+        bridge.pump();
+    }
+    EXPECT_EQ(cancelled, (std::vector<std::pair<std::uint64_t, std::string>>{{watch, "native.watch"}}));
+}
+
 TEST(BridgeTest, RunsPostedWorkOnTheFrameThreadUntilTheBridgeIsGone) {
     std::vector<std::thread::id> threads;
     // clang-format off
