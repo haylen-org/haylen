@@ -1,7 +1,11 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <array>
 #include <cstdint>
 #include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <list>
 #include <map>
 #include <memory>
@@ -16,6 +20,7 @@
 #include "content/PublicationLayout.hpp"
 #include "content/ReleasePackage.hpp"
 #include "content/Updater.hpp"
+#include "content/format/ShardHeader.hpp"
 #include "haylen/content/Error.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/io/MemoryPackage.hpp"
@@ -361,6 +366,53 @@ TEST_F(UpdaterTest, SharesOneDownloadAmongRequestsAndKeepsItForTheOnesThatStay) 
     EXPECT_EQ((*first)->getCode(), Error::Code::NetworkCancelled);
     EXPECT_FALSE(*second);
     EXPECT_LE(server.getSentBytes(), offer.downloadBytes + 64 * 1024) << "Both requests share every download.";
+}
+
+// A record whose bytes fail their checks fails its request and stops being wanted, so a request after the server serves it right downloads it again.
+TEST_F(UpdaterTest, DownloadsARecordAgainAfterItFailedItsChecks) {
+    const ChannelPublisher::Publication publication = publish(makeUpdate(2));
+
+    // Every new pack serves records with a damaged byte in every block, while its header and its index stay whole.
+    std::map<std::string, std::string> originals;
+    for (const ShardReference& reference : publication.newPacks) {
+        const std::string pack = PublicationLayout::getPackPath(reference);
+        std::ifstream stream(tree.getPath() / pack, std::ios::binary);
+        std::string bytes{std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>()};
+        originals.emplace(pack, bytes);
+        std::array<std::uint8_t, ShardHeader::kSize> header{};
+        std::copy_n(bytes.begin(), header.size(), reinterpret_cast<char*>(header.data()));
+        const std::uint64_t indexOffset = ShardHeader::parse(header, bytes.size()).indexOffset;
+        for (std::uint64_t offset = ShardHeader::kSize + 64; offset < indexOffset; offset += 1024) {
+            bytes[offset] = static_cast<char>(~bytes[offset]);
+        }
+        tree.write(pack, bytes);
+        server.touch(pack);
+    }
+
+    const std::unique_ptr<Client> client = connect();
+    const UpdateOffer offer = requireOffer(*client);
+    const auto locate = [&client](const ShardReference& reference) { return client->updater->locate(reference); };
+    std::optional<std::optional<Error>> first;
+    client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&first](std::optional<Error> error) { first.emplace(std::move(error)); }});
+    ASSERT_TRUE(runtime.pumpUntil([&first] { return first.has_value(); }));
+    ASSERT_TRUE(*first);
+
+    // Records that the damaged pack sent before may still fail their checks, but every attempt settles, and one that the whole pack serves succeeds.
+    for (const auto& [pack, bytes] : originals) {
+        tree.write(pack, bytes);
+        server.touch(pack);
+    }
+    std::optional<Error> failure;
+    for (int attempt = 0; attempt < 3; ++attempt) {
+        std::optional<std::optional<Error>> retried;
+        client->downloader->fetch(offer.content->shards, offer.missing, locate, {.onComplete = [&retried](std::optional<Error> error) { retried.emplace(std::move(error)); }});
+        ASSERT_TRUE(runtime.pumpUntil([&retried] { return retried.has_value(); }));
+        failure = *retried;
+        if (!failure) {
+            break;
+        }
+    }
+    EXPECT_FALSE(failure);
 }
 
 TEST_F(UpdaterTest, CollectsWhatNoRetainedContentUses) {

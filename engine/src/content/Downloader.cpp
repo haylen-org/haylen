@@ -425,9 +425,25 @@ void Downloader::finishTransfer(const std::shared_ptr<Transfer>& transfer, std::
             fail(transfer->records[index].first, *failure);
         }
     }
+    // A record of a transfer that stopped because nobody wanted it may have found a request since, which downloads it again.
+    std::set<Digest> touched;
     for (std::size_t index = transfer->current; index < transfer->records.size(); ++index) {
-        if (const auto found = wanted.find(transfer->records[index].first); found != wanted.end()) {
-            found->second.transferring = false;
+        const auto found = wanted.find(transfer->records[index].first);
+        if (found == wanted.end()) {
+            continue;
+        }
+        found->second.transferring = false;
+        if (!found->second.requests.empty() && shards.contains(found->second.shard)) {
+            shards.at(found->second.shard).queued.push_back(found->first);
+            touched.insert(found->second.shard);
+        }
+    }
+    for (const Digest& shardId : touched) {
+        Shard& shard = shards.at(shardId);
+        if (shard.index) {
+            plan(shard);
+        } else if (!shard.indexing) {
+            indexShard(shard);
         }
     }
     dropUnwanted();
@@ -507,12 +523,14 @@ void Downloader::stored(const Digest& storedId, std::optional<Error> failure) {
     }
 }
 
+// The attempt at the record is over, so the record stops being wanted and a later request downloads it again.
 void Downloader::fail(const Digest& storedId, const Error& error) {
     const auto found = wanted.find(storedId);
     if (found == wanted.end()) {
         return;
     }
-    const std::vector<std::uint64_t> waiting = found->second.requests;
+    const std::vector<std::uint64_t> waiting = std::move(found->second.requests);
+    wanted.erase(found);
     for (const std::uint64_t id : waiting) {
         complete(id, error);
     }
