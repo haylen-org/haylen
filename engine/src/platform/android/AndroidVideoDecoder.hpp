@@ -4,6 +4,7 @@
 #include <media/NdkMediaCodec.h>
 #include <media/NdkMediaDataSource.h>
 #include <media/NdkMediaExtractor.h>
+#include <miniaudio.h>
 
 #include <cstdint>
 #include <memory>
@@ -79,6 +80,10 @@ class AndroidVideoDecoder final : public VideoDecoder {
     void release(Track& track) noexcept;
     [[noreturn]] void fail(std::string_view what) const;
 
+    // Converts the decoded sound to the rate the video reported when it opened, for a codec whose output runs at another rate, as the sound of HE-AAC with an implicit SBR runs at twice the rate of its track.
+    void setSoundRate(std::uint32_t rate);
+    void appendSound(std::vector<float>& samples);
+
     std::string path;
     std::shared_ptr<io::PackageReader> file;
     Info info;
@@ -88,7 +93,12 @@ class AndroidVideoDecoder final : public VideoDecoder {
     double skipUntil = 0.0;
     double soundTime = 0.0;
     std::uint32_t soundChannels = 0;
+    std::uint32_t soundRate = 0;
     bool floatSound = false;
+    ma_linear_resampler resampler{};
+    bool resampling = false;
+    std::vector<float> decodedSound;
+    std::vector<float> resampledSound;
 };
 
 } // namespace haylen::platform

@@ -85,10 +85,14 @@ void AndroidVideoDecoder::open() {
     info.sampleRate = static_cast<std::uint32_t>(rate);
     info.channels = std::min<std::uint32_t>(static_cast<std::uint32_t>(std::max(channels, 1)), 2);
     soundChannels = static_cast<std::uint32_t>(std::max(channels, 1));
+    soundRate = info.sampleRate;
     startCodec(sound, soundFormat, false);
 }
 
 AndroidVideoDecoder::~AndroidVideoDecoder() {
+    if (resampling) {
+        ma_linear_resampler_uninit(&resampler, nullptr);
+    }
     release(sound);
     release(picture);
     AImageReader_delete(images);
@@ -247,11 +251,14 @@ bool AndroidVideoDecoder::readAudio(std::vector<float>& samples, double until) {
             AMediaFormat* format = AMediaCodec_getOutputFormat(sound.codec);
             std::int32_t channels = static_cast<std::int32_t>(soundChannels);
             std::int32_t encoding = 2;
+            auto rate = static_cast<std::int32_t>(soundRate);
             AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_CHANNEL_COUNT, &channels);
             AMediaFormat_getInt32(format, "pcm-encoding", &encoding);
+            AMediaFormat_getInt32(format, AMEDIAFORMAT_KEY_SAMPLE_RATE, &rate);
             AMediaFormat_delete(format);
             soundChannels = static_cast<std::uint32_t>(std::max(channels, 1));
             floatSound = encoding == 4;
+            setSoundRate(static_cast<std::uint32_t>(std::max(rate, 1)));
             continue;
         }
         if (index < 0) {
@@ -263,21 +270,23 @@ bool AndroidVideoDecoder::readAudio(std::vector<float>& samples, double until) {
         const std::uint8_t* data = AMediaCodec_getOutputBuffer(sound.codec, static_cast<std::size_t>(index), &capacity) + buffer.offset;
         const std::size_t sampleSize = floatSound ? sizeof(float) : sizeof(std::int16_t);
         const std::size_t frames = static_cast<std::size_t>(buffer.size) / (sampleSize * soundChannels);
+        decodedSound.clear();
         for (std::size_t frame = 0; frame < frames; ++frame) {
             for (std::uint32_t channel = 0; channel < info.channels; ++channel) {
                 const std::size_t at = (frame * soundChannels + std::min(channel, soundChannels - 1)) * sampleSize;
                 if (floatSound) {
                     float value = 0.0F;
                     std::memcpy(&value, data + at, sizeof(value));
-                    samples.push_back(value);
+                    decodedSound.push_back(value);
                 } else {
                     std::int16_t value = 0;
                     std::memcpy(&value, data + at, sizeof(value));
-                    samples.push_back(static_cast<float>(value) / 32768.0F);
+                    decodedSound.push_back(static_cast<float>(value) / 32768.0F);
                 }
             }
         }
-        soundTime = static_cast<double>(buffer.presentationTimeUs) / 1000000.0 + static_cast<double>(frames) / info.sampleRate;
+        appendSound(samples);
+        soundTime = static_cast<double>(buffer.presentationTimeUs) / 1000000.0 + static_cast<double>(frames) / soundRate;
         sound.outputEnded = (buffer.flags & AMEDIACODEC_BUFFER_FLAG_END_OF_STREAM) != 0;
         AMediaCodec_releaseOutputBuffer(sound.codec, static_cast<std::size_t>(index), false);
     }
@@ -295,8 +304,40 @@ void AndroidVideoDecoder::seek(double seconds) {
         track->inputEnded = false;
         track->outputEnded = false;
     }
+    if (resampling) {
+        ma_linear_resampler_reset(&resampler);
+    }
     skipUntil = seconds;
     soundTime = seconds;
+}
+
+void AndroidVideoDecoder::setSoundRate(std::uint32_t rate) {
+    if (resampling) {
+        ma_linear_resampler_uninit(&resampler, nullptr);
+        resampling = false;
+    }
+    soundRate = rate;
+    if (rate == info.sampleRate) {
+        return;
+    }
+    const ma_linear_resampler_config config = ma_linear_resampler_config_init(ma_format_f32, info.channels, rate, info.sampleRate);
+    if (ma_linear_resampler_init(&config, nullptr, &resampler) != MA_SUCCESS) {
+        fail("its sound needs a resampler that could not start");
+    }
+    resampling = true;
+}
+
+void AndroidVideoDecoder::appendSound(std::vector<float>& samples) {
+    if (!resampling) {
+        samples.insert(samples.end(), decodedSound.begin(), decodedSound.end());
+        return;
+    }
+    ma_uint64 inputFrames = decodedSound.size() / info.channels;
+    ma_uint64 outputFrames = 0;
+    ma_linear_resampler_get_expected_output_frame_count(&resampler, inputFrames, &outputFrames);
+    resampledSound.resize(static_cast<std::size_t>(outputFrames) * info.channels);
+    ma_linear_resampler_process_pcm_frames(&resampler, decodedSound.data(), &inputFrames, resampledSound.data(), &outputFrames);
+    samples.insert(samples.end(), resampledSound.begin(), resampledSound.begin() + static_cast<std::ptrdiff_t>(outputFrames * info.channels));
 }
 
 void AndroidVideoDecoder::release(Track& track) noexcept {

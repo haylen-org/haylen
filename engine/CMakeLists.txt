@@ -888,9 +888,9 @@ target_link_libraries(haylen_runtime PUBLIC haylen_platform PRIVATE haylen_sokol
 if(EMSCRIPTEN)
   target_link_libraries(haylen_runtime PRIVATE haylen_miniaudio)
 endif()
-# The Android host is GameActivity, whose static library holds the native side of the activity.
+# The Android host is GameActivity, whose static library holds the native side of the activity, and its video decoder resamples the sound of codecs whose rate differs from their track with miniaudio.
 if(ANDROID)
-  target_link_libraries(haylen_runtime PRIVATE haylen_game_activity)
+  target_link_libraries(haylen_runtime PRIVATE haylen_game_activity haylen_miniaudio)
 endif()
 haylen_enable_warnings(haylen_runtime)
 haylen_link_runtime_platform(haylen_runtime PUBLIC)
