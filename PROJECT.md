@@ -2052,7 +2052,7 @@ README e documentação:
 
 Revisão:
 
-- [ ] Revisar todo o código procurando bugs, erros, falhas, inconsistências, coisas que deveriam funcionar ou aparecer e estão quebradas, e condições de corrida.
+- [x] Revisar todo o código procurando bugs, erros, falhas, inconsistências, coisas que deveriam funcionar ou aparecer e estão quebradas, e condições de corrida. Revisado por área (animação, Tiled e partículas, conteúdo, áudio e armazenamento, UI, gráficos e texto, física, navegação e procedural, plataformas, core, Lua e plugins), com 36 defeitos achados e corrigidos, cada um com um teste que falha sem a correção. As corridas eram o mundo de colisão das partículas guardado por ponteiro cru, o fim do som de um vídeo que um `seek` perdia, a sessão de mídia do Windows e as chamadas nativas pendentes de uma ponte que parava. Os laços sem fim vinham de escalas de tempo enormes ou infinitas, de timers e loops de som curtos demais e de tweens que repetiam para sempre. Os estouros e alocações sem limite estavam no recorte de imagens, nas páginas de fontes bitmap, nos dados comprimidos do Tiled e nas trilhas de esqueletos. Entraram também textos que não são UTF-8 nos leitores de tela e na sessão de mídia, o limite dos campos contado em pontos de código no Android e na web, o som de vídeos Android com outra taxa, as referências locais do JNI e o Tab que não entrava numa GUI sem foco. A suíte passou também com o thread sanitizer e o address sanitizer, e o projeto de testes passou no player headless.
 
 #### AT. Documentação
 
