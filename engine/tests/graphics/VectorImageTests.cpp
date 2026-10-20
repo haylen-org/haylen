@@ -58,6 +58,21 @@ TEST_F(VectorImageTest, RasterizesFillsStrokesGradientsAndGroupsAtAScale) {
     EXPECT_EQ(raster.getPixel(40, 30).a, 0.0F);
 }
 
+// A drawing program leaves hidden shapes in documents, such as the background of a logo, which stay hidden like the shapes that display none.
+TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
+    const Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="30" height="10">
+        <rect x="0" y="0" width="30" height="10" fill="#FFFFFF" visibility="hidden"/>
+        <rect x="10" y="0" width="10" height="10" fill="#FFFFFF" style="visibility: collapse"/>
+        <g display="none"><rect x="20" y="0" width="10" height="10" fill="#FFFFFF"/></g>
+        <rect x="0" y="0" width="5" height="10" fill="#FF0000"/>
+    </svg>)svg")
+                             .rasterize(1.0F);
+    EXPECT_EQ(raster.getPixel(2, 5), math::Color::fromHex(0xFF0000FFU));
+    for (const int x : {8, 15, 25}) {
+        EXPECT_EQ(raster.getPixel(x, 5).a, 0.0F) << "x " << x;
+    }
+}
+
 TEST_F(VectorImageTest, RejectsDocumentsWithoutASize) {
     try {
         (void)parse("not an svg document");

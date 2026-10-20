@@ -105,10 +105,16 @@ CPMAddPackage(
 )
 
 # NanoSVG reads SVG documents into cubic curves and rasterizes them with anti-aliasing, which vector images rasterize their sizes with. It publishes no releases, so it is pinned to a commit of its default branch.
+# NanoSVG hides the shapes of `display` none but draws those whose `visibility` is hidden, such as the background a drawing program leaves in a logo, so the patch hides those too.
+set(nanosvg_patches "${CMAKE_CURRENT_LIST_DIR}/patches/nanosvg-visibility.patch")
+set(nanosvg_hash 2bc68bdb518d7800252042e5cad50a0ab321596f0cbf49ef2a752926329063d2)
+haylen_patched_package_key(nanosvg_cache_key ${nanosvg_hash} ${nanosvg_patches})
 CPMAddPackage(
   NAME nanosvg
   URL "https://github.com/memononen/nanosvg/archive/239e102ec2c691f2902e20ace2ed36ee4a35cfe6.tar.gz"
-  URL_HASH SHA256=2bc68bdb518d7800252042e5cad50a0ab321596f0cbf49ef2a752926329063d2
+  URL_HASH SHA256=${nanosvg_hash}
+  PATCHES ${nanosvg_patches}
+  CUSTOM_CACHE_KEY ${nanosvg_cache_key}
   DOWNLOAD_ONLY YES
 )
 
