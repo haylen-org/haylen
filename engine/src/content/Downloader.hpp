@@ -36,8 +36,17 @@ class Downloader final {
     // At most this many requests run at once, so a few large records never wait behind many small ones and a slow network is not flooded.
     static constexpr std::size_t kMaximumTransfers = 4;
 
+    // Background work holds at most this many of those requests, so what the app waits for always finds a free one.
+    static constexpr std::size_t kMaximumBackgroundTransfers = 1;
+
     // A record whose download stops keeps its bytes for a resume once it holds at least this much.
     static constexpr std::size_t kMinimumPartialSize = 64 * 1024;
+
+    // Foreground requests are what the app waits for, such as its required content, an asset it loads or an update, and background requests are content it may need later, which downloads only while nothing in the foreground waits.
+    enum class Priority : std::uint8_t {
+        Foreground,
+        Background,
+    };
 
     // The address of the file of a shard.
     using Locator = std::function<std::string(const ShardReference&)>;
@@ -73,8 +82,8 @@ class Downloader final {
     // The bytes that downloading chunks takes: the sizes of their records, without the ones the store holds and reads in instead, as a web page does with what an earlier visit downloaded.
     [[nodiscard]] static std::uint64_t measure(std::span<const Catalog::Chunk> chunks, const LocalStore& store);
 
-    // Brings chunks that the device lacked when `findMissing` looked, and returns the ID of the request. Chunks that the store received since are skipped.
-    std::uint64_t fetch(std::shared_ptr<const ShardSet> shards, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks);
+    // Brings chunks that the device lacked when `findMissing` looked, and returns the ID of the request. Chunks that the store received since are skipped. A record that a foreground request also waits for downloads in the foreground.
+    std::uint64_t fetch(std::shared_ptr<const ShardSet> shards, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks, Priority priority = Priority::Foreground);
 
     // Ends a request with `NetworkCancelled`. Downloads that other requests still need go on.
     void cancel(std::uint64_t request);
@@ -92,6 +101,7 @@ class Downloader final {
   private:
     struct Request {
         Callbacks callbacks;
+        Priority priority = Priority::Foreground;
         std::set<Digest> waiting;
         Progress progress;
         bool changed = false;
@@ -133,6 +143,7 @@ class Downloader final {
     void fetchRange(const std::string& url, std::uint64_t offset, std::uint64_t size, std::function<void(std::vector<std::uint8_t>, std::optional<Error>)> done);
     void plan(Shard& shard);
     void pump();
+    [[nodiscard]] bool isForeground(const Transfer& transfer) const;
     void start(std::shared_ptr<Transfer> transfer);
     void receive(Transfer& transfer, std::span<const std::uint8_t> bytes);
     void finishTransfer(const std::shared_ptr<Transfer>& transfer, std::optional<Error> failure);

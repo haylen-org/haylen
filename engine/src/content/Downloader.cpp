@@ -49,10 +49,11 @@ std::uint64_t Downloader::measure(std::span<const Catalog::Chunk> chunks, const 
     return bytes;
 }
 
-std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks) {
+std::uint64_t Downloader::fetch(std::shared_ptr<const ShardSet> shardSet, std::span<const Catalog::Chunk> chunks, const Locator& locate, Callbacks callbacks, Priority priority) {
     const std::uint64_t id = nextRequest++;
     Request& request = requests[id];
     request.callbacks = std::move(callbacks);
+    request.priority = priority;
 
     std::set<Digest> touched;
     std::vector<Digest> held;
@@ -302,10 +303,28 @@ void Downloader::plan(Shard& shard) {
     }
 }
 
+bool Downloader::isForeground(const Transfer& transfer) const {
+    // clang-format off
+    return std::any_of(transfer.records.begin() + static_cast<std::ptrdiff_t>(transfer.current), transfer.records.end(), [this](const auto& record) {
+        const auto found = wanted.find(record.first);
+        return found != wanted.end() && std::ranges::any_of(found->second.requests, [this](std::uint64_t id) { return requests.at(id).priority == Priority::Foreground; });
+    });
+    // clang-format on
+}
+
 void Downloader::pump() {
     while (activeTransfers.size() < kMaximumTransfers && !waitingTransfers.empty()) {
-        std::shared_ptr<Transfer> transfer = std::move(waitingTransfers.front());
-        waitingTransfers.pop_front();
+        // The foreground goes first, and background work takes a request only while nothing in the foreground waits and it holds fewer than its share.
+        auto next = std::ranges::find_if(waitingTransfers, [this](const std::shared_ptr<Transfer>& waiting) { return isForeground(*waiting); });
+        if (next == waitingTransfers.end()) {
+            const auto background = std::ranges::count_if(activeTransfers, [this](const std::shared_ptr<Transfer>& active) { return !isForeground(*active); });
+            if (static_cast<std::size_t>(background) >= kMaximumBackgroundTransfers) {
+                return;
+            }
+            next = waitingTransfers.begin();
+        }
+        std::shared_ptr<Transfer> transfer = std::move(*next);
+        waitingTransfers.erase(next);
         // clang-format off
         const bool needed = std::ranges::any_of(transfer->records, [this](const auto& record) {
             const auto found = wanted.find(record.first);

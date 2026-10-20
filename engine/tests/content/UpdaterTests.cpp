@@ -364,6 +364,47 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
     EXPECT_EQ(client->package->read("content/maps/level.tmj"), makeUpdate(2).at("content/maps/level.tmj"));
 }
 
+TEST_F(UpdaterTest, LetsBackgroundWorkHoldOneRequestAndTheForegroundGoFirst) {
+    Files update = game;
+    for (const char* name : {"content/extra/a.bin", "content/extra/b.bin", "content/extra/c.bin"}) {
+        update[name] = test::TestFiles::randomBytes(200 * 1024, static_cast<std::uint64_t>(name[14]));
+    }
+    publish(update);
+    const std::unique_ptr<Client> client = connect();
+    const UpdateOffer offer = requireOffer(*client);
+    const auto chunksOf = [&offer](std::string_view path) {
+        const Catalog& catalog = *offer.content->catalog;
+        const Catalog::File file = catalog.getFile(*catalog.findFile(path));
+        std::vector<Catalog::Chunk> chunks;
+        for (std::uint64_t part = file.firstPart; part < file.firstPart + file.partCount; ++part) {
+            chunks.push_back(catalog.getChunk(catalog.getPart(part).chunk));
+        }
+        return chunks;
+    };
+    const auto locate = [&client](const ShardReference& pack) { return client->updater->locate(pack); };
+    std::vector<std::string> finished;
+    const auto fetch = [&](std::string_view path, Downloader::Priority priority) {
+        // clang-format off
+        client->downloader->fetch(offer.content->shards, chunksOf(path), locate, {.onComplete = [&finished, name = std::string(path)](std::optional<Error> error) {
+            EXPECT_FALSE(error) << error->what();
+            finished.push_back(name);
+        }}, priority);
+        // clang-format on
+    };
+    server.clearExchanges();
+    server.setDelay(150);
+
+    // The first background request reads the header and the index of the shard before its range starts, so the requests after it plan ranges of their own.
+    fetch("content/extra/a.bin", Downloader::Priority::Background);
+    ASSERT_TRUE(runtime.pumpUntil([&client] { return client->downloader->getStatistics().requests >= 3; }));
+    fetch("content/extra/b.bin", Downloader::Priority::Background);
+    fetch("content/extra/c.bin", Downloader::Priority::Foreground);
+    ASSERT_TRUE(runtime.pumpUntil([&finished] { return finished.size() == 3; }));
+
+    EXPECT_EQ(finished.back(), "content/extra/b.bin") << "The second background request starts only once the first ends.";
+    EXPECT_EQ(server.getMostConcurrent(), 2) << "The second background request waits for the first, while the foreground one runs next to it.";
+}
+
 TEST_F(UpdaterTest, SharesOneDownloadAmongRequestsAndKeepsItForTheOnesThatStay) {
     publish(makeUpdate(2));
     const std::unique_ptr<Client> client = connect();

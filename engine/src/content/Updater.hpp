@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -30,9 +31,6 @@ class Updater final {
     static constexpr std::uint64_t kMaximumDescriptorSize = 64 * 1024;
     static constexpr std::uint64_t kMaximumManifestSize = std::uint64_t{640} << 20;
 
-    // An install keeps at least this much of the device free beyond what it writes, or a twentieth of its download when that is larger.
-    static constexpr std::uint64_t kSafetyMargin = std::uint64_t{64} << 20;
-
     struct Collection {
         std::uint64_t removedRecords = 0;
         std::uint64_t freedBytes = 0;
@@ -54,8 +52,11 @@ class Updater final {
     // Ends the check or install that runs with `NetworkCancelled`.
     void cancel();
 
-    // Removes from the store what neither the content that ships with the app, the active content, the previous one nor the one an install is bringing uses.
+    // Removes from the store what neither the content that ships with the app, the active content, the previous one nor the one an install is bringing uses. A collection that runs when the updater goes away stops and leaves the store as it was.
     void collect(std::function<void(Collection, std::optional<Error>)> done);
+
+    // The room that downloading records takes in the store: their bytes, their journal entries, the staged starts of the records that download at once and the margin the device keeps free.
+    [[nodiscard]] static std::uint64_t getRequiredSpace(std::uint64_t downloadBytes, std::uint64_t records) noexcept;
 
     // The address of a pack of the publication tree.
     [[nodiscard]] std::string locate(const ShardReference& pack) const;
@@ -79,6 +80,7 @@ class Updater final {
     std::string baseUrl;
     std::string channel;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
+    std::shared_ptr<std::atomic<bool>> stopping = std::make_shared<std::atomic<bool>>(false);
     std::vector<HttpTransport::Transfer> transfers;
     std::optional<std::uint64_t> download;
     std::uint64_t checks = 0;

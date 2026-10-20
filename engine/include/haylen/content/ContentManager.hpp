@@ -144,6 +144,15 @@ class ContentManager final {
     void prefetch();
     void fail(const Error& failure);
 
+    // The network and the state of the app steer the work of the manager: the work that failed for want of a network starts again when it comes back, and the background downloads stop while the app is in the background.
+    void listen();
+    void resumeOnline();
+    void pauseBackground();
+    void resumeBackground();
+
+    // The room that downloading records needs, or the error that tells how much the device lacks.
+    [[nodiscard]] std::optional<Error> checkRoom(std::uint64_t downloadBytes, std::uint64_t records, std::uint64_t available) const;
+
     // Whether the content has a server to download from: the server of `app.json`, or the place that the release of a web page stays.
     [[nodiscard]] bool hasServer() const noexcept;
 
@@ -160,6 +169,7 @@ class ContentManager final {
     std::unique_ptr<UpdateOffer> offer;
     std::shared_ptr<void> startHold;
     core::ScopedConnection recoveryReport;
+    std::vector<core::ScopedConnection> listeners;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::set<std::string> broughtInDevelopment;
     Status status = Status::Idle;
@@ -167,6 +177,11 @@ class ContentManager final {
     Progress progress;
     bool holdingStart = false;
     bool installed = false;
+    bool inBackground = false;
+    bool prefetchWanted = false;
+    bool prefetching = false;
+    bool checkAgain = false;
+    std::uint64_t prefetchRequest = 0;
 };
 
 } // namespace haylen::content

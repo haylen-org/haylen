@@ -24,6 +24,7 @@ Updater::Updater(std::shared_ptr<ReleasePackage> releasePackage, core::JobSystem
 }
 
 Updater::~Updater() {
+    stopping->store(true);
     for (const HttpTransport::Transfer& transfer : transfers) {
         transfer.cancel();
     }
@@ -143,11 +144,15 @@ void Updater::readOffer(std::uint64_t generation, const Digest& manifest, std::v
     // clang-format on
 }
 
+std::uint64_t Updater::getRequiredSpace(std::uint64_t downloadBytes, std::uint64_t records) noexcept {
+    const std::uint64_t overhead = records * StoreEntry::kSize + Downloader::kMaximumTransfers * (ChunkRecord::kHeaderSize + Chunker::kMaximumSize);
+    return downloadBytes + overhead + std::max(LocalStore::kSafetyMargin, downloadBytes / 20);
+}
+
 std::uint64_t Updater::getRequiredSpace(const UpdateOffer& offer) noexcept {
-    // Beyond its records an install writes their journal entries, the indexes of their shards, the manifest and the staged starts of the records that run at once.
+    // Beyond what its records take, an install writes the indexes of their shards and the manifest.
     const std::uint64_t records = offer.missing.size();
-    const std::uint64_t overhead = records * (StoreEntry::kSize + ShardIndex::kEntrySize) + offer.content->manifest->getEnvelope().shards.size() * ShardHeader::kSize + offer.manifest->size() + Downloader::kMaximumTransfers * (ChunkRecord::kHeaderSize + Chunker::kMaximumSize);
-    return offer.downloadBytes + overhead + std::max(kSafetyMargin, offer.downloadBytes / 20);
+    return getRequiredSpace(offer.downloadBytes, records) + records * ShardIndex::kEntrySize + offer.content->manifest->getEnvelope().shards.size() * ShardHeader::kSize + offer.manifest->size();
 }
 
 void Updater::install(const UpdateOffer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> done) {
@@ -242,7 +247,7 @@ void Updater::cancel() {
 
 void Updater::collect(std::function<void(Collection, std::optional<Error>)> done) {
     // clang-format off
-    jobs.postIo([&pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, done = std::move(done)]() mutable {
+    jobs.postIo([&pool = jobs, owner = std::weak_ptr(alive), releasePackage = release, stop = stopping, done = std::move(done)]() mutable {
         Collection collection;
         std::optional<Error> failure;
         try {
@@ -269,7 +274,7 @@ void Updater::collect(std::function<void(Collection, std::optional<Error>)> done
                     manifests.insert(id);
                 }
             }
-            const LocalStore::Collection collected = store->collect(live, manifests, shards);
+            const LocalStore::Collection collected = store->collect(live, manifests, shards, *stop);
             collection = {.removedRecords = collected.removedRecords, .freedBytes = collected.freedBytes};
         } catch (const Error& error) {
             failure = error;

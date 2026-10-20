@@ -1,6 +1,7 @@
 #pragma once
 
 #include <array>
+#include <atomic>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -27,6 +28,9 @@ class LocalStore final {
   public:
     // Segments close near this size by default, so the store holds few files without ever rewriting a large one.
     static constexpr std::uint64_t kSegmentTarget = std::uint64_t{256} << 20;
+
+    // What the store writes keeps at least this much of the device free, or a twentieth of a download when that is larger.
+    static constexpr std::uint64_t kSafetyMargin = std::uint64_t{64} << 20;
 
     struct Location {
         std::uint32_t segment = 0;
@@ -91,8 +95,8 @@ class LocalStore final {
     [[nodiscard]] std::vector<PartialRecord> listPartials() const;
     void removePartial(const Digest& shard, std::uint64_t recordOffset);
 
-    // Removes the records outside the live set, and the manifests, shard indexes and staged records that are no longer kept, and moves the live records of segments that are mostly dead into new ones, without ever touching what the live set uses. The new journal becomes active with a new state, so a collection that a crash interrupts leaves the store as it was.
-    Collection collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards);
+    // Removes the records outside the live set, and the manifests, shard indexes and staged records that are no longer kept, and moves the live records of segments that are mostly dead into new ones, without ever touching what the live set uses. It moves records only when the device has room for them and its margin, and otherwise removes only the segments that hold no live record. The new journal becomes active with a new state, so a collection that a crash interrupts leaves the store as it was, and one that `stop` ends before it switches throws `UpdateInterrupted` and leaves the store as it was too.
+    Collection collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards, const std::atomic<bool>& stop);
 
     [[nodiscard]] Statistics getStatistics() const;
     [[nodiscard]] std::uint64_t getAvailableSpace() const;

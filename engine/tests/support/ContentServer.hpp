@@ -59,6 +59,16 @@ class ContentServer final {
         stalls = value;
     }
 
+    // Waits this many milliseconds before every body, so requests that a client makes at once overlap.
+    void setDelay(int milliseconds) noexcept {
+        delay = milliseconds;
+    }
+
+    // The most requests that the server answered at once.
+    [[nodiscard]] int getMostConcurrent() const noexcept {
+        return mostConcurrent;
+    }
+
     // Answers ranges one byte later than asked.
     void setShiftsRanges(bool value) noexcept {
         shiftsRanges = value;
@@ -83,6 +93,9 @@ class ContentServer final {
     std::unique_ptr<Poco::Net::HTTPServer> server;
     std::atomic<bool> ignoresRanges = false;
     std::atomic<bool> stalls = false;
+    std::atomic<int> delay = 0;
+    std::atomic<int> concurrent = 0;
+    std::atomic<int> mostConcurrent = 0;
     std::atomic<bool> shiftsRanges = false;
     std::atomic<std::uint64_t> dropBytes = 0;
     std::atomic<int> drops = 0;

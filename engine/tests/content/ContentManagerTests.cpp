@@ -30,6 +30,7 @@
 #include "io/CompositePackage.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/ContentServer.hpp"
+#include "support/LimitedStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 #include "support/TestFiles.hpp"
@@ -101,7 +102,13 @@ class ContentManagerTest : public ::testing::Test {
     void run(std::shared_ptr<const io::Package> files) {
         engine.reset();
         const VerifyingKey trusted = release.getSigningKey().getVerifyingKey();
-        auto store = std::make_shared<LocalStore>(std::make_unique<FolderStoreFiles>(storeFolder.getPath()), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
+        std::unique_ptr<StoreFiles> storeFiles;
+        if (storeRoom) {
+            storeFiles = std::make_unique<test::LimitedStoreFiles>(storeFolder.getPath(), *storeRoom);
+        } else {
+            storeFiles = std::make_unique<FolderStoreFiles>(storeFolder.getPath());
+        }
+        auto store = std::make_shared<LocalStore>(std::move(storeFiles), release.getCompatibility().application, test::ReleaseFixture::kAppBuild);
         package = ReleasePackage::open(std::move(files), release.getKeys(), std::span(&trusted, 1), release.getCompatibility(), std::move(store));
         core::AppConfig config = core::AppConfig::fromPackage(*package);
         auto application = std::make_unique<lua::Application>();
@@ -146,6 +153,7 @@ class ContentManagerTest : public ::testing::Test {
     test::TemporaryDirectory data;
     platform::HeadlessHost host{data.getPath()};
     int ships = 0;
+    std::optional<std::uint64_t> storeRoom;
     std::shared_ptr<ReleasePackage> package;
     std::unique_ptr<core::Engine> engine;
 };
@@ -234,6 +242,51 @@ TEST_F(ContentManagerTest, DownloadsPrefetchedContentInTheBackground) {
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().isLocal("music/theme.ogg"); }));
     EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json"));
     EXPECT_EQ(engine->getAssets().bytes("music/theme.ogg"), game.at("content/music/theme.ogg"));
+}
+
+TEST_F(ContentManagerTest, TriesTheRequiredContentAgainWhenTheNetworkComesBack) {
+    setPacksStatus(503);
+    run(shipWithoutContent());
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatus() == ContentManager::Status::Failed; }));
+
+    setPacksStatus(0);
+    engine->handleEvent({.type = platform::Event::Type::NetworkChanged, .online = false});
+    engine->handleEvent({.type = platform::Event::Type::NetworkChanged, .online = true});
+    EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Downloading);
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+}
+
+TEST_F(ContentManagerTest, StopsPrefetchingInTheBackgroundAndGoesOnOnceActive) {
+    server.setStalls(true);
+    run(ship());
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().getStatistics().pendingDownloads == 1; }));
+
+    engine->handleEvent({.type = platform::Event::Type::Suspended});
+    EXPECT_EQ(engine->getContent().getStatistics().pendingDownloads, 0U) << "The background downloads stop with the app.";
+    EXPECT_FALSE(engine->getContent().isLocal("music/theme.ogg"));
+
+    server.setStalls(false);
+    engine->handleEvent({.type = platform::Event::Type::Resumed});
+    ASSERT_TRUE(frameUntil([this] { return engine->getContent().isLocal("music/theme.ogg"); }));
+}
+
+TEST_F(ContentManagerTest, RefusesToBringAnAssetWithoutRoomForIt) {
+    storeRoom = 1024;
+    run(ship());
+    engine->frame(1.0 / 60.0);
+
+    std::string failure;
+    bool loaded = false;
+    // clang-format off
+    engine->getAssets().loadAsync("json", "levels/forest.json", [&loaded, &failure](std::shared_ptr<void> asset, std::string error) {
+        loaded = asset != nullptr;
+        failure = std::move(error);
+    });
+    // clang-format on
+    ASSERT_TRUE(frameUntil([&loaded, &failure] { return loaded || !failure.empty(); }));
+    EXPECT_FALSE(loaded);
+    EXPECT_NE(failure.find("1024 are free"), std::string::npos) << failure;
+    EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json"));
 }
 
 TEST_F(ContentManagerTest, UpdatesFromTheChannelAndAppliesTheUpdateOnRestart) {

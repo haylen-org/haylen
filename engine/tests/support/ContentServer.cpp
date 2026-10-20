@@ -97,14 +97,18 @@ std::string ContentServer::getValidator(const std::string& path) {
     return std::format("\"{}-{}\"", path.size(), versions[path]);
 }
 
+// Every answer ends with its record, which also ends its count among the requests the server answers at once.
 void ContentServer::record(Exchange exchange) {
     std::scoped_lock lock(mutex);
     exchanges.push_back(std::move(exchange));
+    --concurrent;
 }
 
 void ContentServer::serve(const std::string& target, const std::string& range, const std::string& ifRange, Poco::Net::HTTPServerResponse& response, Poco::Net::StreamSocket& socket) {
     const std::string path = target.substr(1, target.find('?') == std::string::npos ? std::string::npos : target.find('?') - 1);
     Exchange exchange{.path = path};
+    const int answering = ++concurrent;
+    for (int most = mostConcurrent.load(); answering > most && !mostConcurrent.compare_exchange_weak(most, answering);) {}
     {
         std::scoped_lock lock(mutex);
         if (const auto found = statuses.find(path); found != statuses.end()) {
@@ -170,6 +174,7 @@ void ContentServer::serve(const std::string& target, const std::string& range, c
     for (int waited = 0; stalls && waited < kStallMilliseconds && !stopping; waited += 10) {
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+    std::this_thread::sleep_for(std::chrono::milliseconds(delay.load()));
 
     std::ifstream stream(file, std::ios::binary);
     stream.seekg(static_cast<std::streamoff>(sent));

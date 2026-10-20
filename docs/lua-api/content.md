@@ -93,7 +93,7 @@ Returns counters of the content for debugging: `generation`, `catalogFiles`, the
 
 Brings assets onto the device without loading them, and returns a promise that resolves to `true` once every one of them is there. The argument `groupOrPaths` is the name of a [preload group](assets.md#preload-groups), whose folders count with every asset in them, or a list of asset paths. The optional `progress` function receives a table with `receivedBytes` and `totalBytes` as bytes arrive. The options table takes `owner`, which ends the progress function with its owner, and any other key raises `Unknown option "<key>".`
 
-The promise rejects with the message of the failure, such as a device that is offline, and the rejection never stops the app when nothing awaits it. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`
+The promise rejects with the message of the failure, such as a device that is offline or one without room for the assets and the margin the store keeps free, and the rejection never stops the app when nothing awaits it. The assets download as foreground work, ahead of the prefetched content of `app.json`. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`
 
 A later `assets.load`, `assets.loadAsync` or preload of the group reads the bytes from the device at once, and only then decodes the assets into memory, so prefetching costs storage and no memory.
 

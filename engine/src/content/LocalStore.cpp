@@ -288,7 +288,7 @@ void LocalStore::removePartial(const Digest& shard, std::uint64_t recordOffset) 
     files->remove(getPartialName(shard, recordOffset));
 }
 
-LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards) {
+LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Digest::Hash>& liveRecords, const std::set<Digest>& keptManifests, const std::set<Digest>& keptShards, const std::atomic<bool>& stop) {
     std::scoped_lock write(writeMutex);
     flush();
     Collection collection;
@@ -320,6 +320,22 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
             collection.freedBytes += size;
         }
     }
+
+    // Moving records writes them again before the old segments go, so without room for that only the segments that hold no live record go.
+    std::uint64_t moved = 0;
+    for (const std::uint32_t segment : emptied) {
+        moved += live[segment];
+    }
+    if (moved > 0 && files->getAvailableSpace() < moved + kSafetyMargin) {
+        for (auto segment = emptied.begin(); segment != emptied.end();) {
+            if (live[*segment] == 0) {
+                ++segment;
+                continue;
+            }
+            collection.freedBytes -= files->getSize(getSegmentName(*segment));
+            segment = emptied.erase(segment);
+        }
+    }
     if (emptied.contains(oldAppend)) {
         ++appendSegment;
     }
@@ -328,6 +344,9 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
     for (auto& [storedId, location] : kept) {
         if (!emptied.contains(location.segment)) {
             continue;
+        }
+        if (stop) {
+            throw Error(Error::Code::UpdateInterrupted, "The collection of the content store stopped before it finished, and the store stays as it was.");
         }
         bytes.resize(static_cast<std::size_t>(location.size));
         files->readRange(getSegmentName(location.segment), location.offset, bytes);

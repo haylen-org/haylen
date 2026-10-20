@@ -1,6 +1,7 @@
 #include "haylen/content/ContentManager.hpp"
 
 #include <algorithm>
+#include <format>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
@@ -105,9 +106,56 @@ void ContentManager::start() {
     if (!downloader) {
         return;
     }
+    listen();
     startHold = engine.holdStart();
     holdingStart = true;
     bringRequired();
+}
+
+void ContentManager::listen() {
+    core::EventBus& events = engine.getEvents();
+    listeners.emplace_back(events.on(core::LifecycleEvent::kNetworkOnline, [this](core::EventBus::Event&) { resumeOnline(); }));
+    listeners.emplace_back(events.on(core::LifecycleEvent::kAppBackground, [this](core::EventBus::Event&) { pauseBackground(); }));
+    listeners.emplace_back(events.on(core::LifecycleEvent::kAppActive, [this](core::EventBus::Event&) { resumeBackground(); }));
+}
+
+void ContentManager::resumeOnline() {
+    const bool retryable = status == Status::Failed && error && error->isRetryable();
+    if (holdingStart) {
+        if (retryable) {
+            bringRequired();
+        }
+        return;
+    }
+    if (prefetchWanted && !prefetching && !inBackground) {
+        prefetch();
+    }
+    if (checkAgain && retryable) {
+        checkAgain = false;
+        startCheck();
+    }
+}
+
+void ContentManager::pauseBackground() {
+    inBackground = true;
+    if (prefetchRequest != 0) {
+        downloader->cancel(std::exchange(prefetchRequest, 0));
+    }
+}
+
+void ContentManager::resumeBackground() {
+    inBackground = false;
+    if (prefetchWanted && !prefetching) {
+        prefetch();
+    }
+}
+
+std::optional<Error> ContentManager::checkRoom(std::uint64_t downloadBytes, std::uint64_t records, std::uint64_t available) const {
+    const std::uint64_t required = Updater::getRequiredSpace(downloadBytes, records);
+    if (required <= available) {
+        return std::nullopt;
+    }
+    return Error(Error::Code::InsufficientStorage, std::format("The content needs {} bytes of room on the device and {} are free. Free some room and try again.", required, available), {.requiredBytes = required, .availableBytes = available});
 }
 
 void ContentManager::bringRequired() {
@@ -193,30 +241,72 @@ void ContentManager::finishStart() {
 }
 
 void ContentManager::prefetch() {
+    prefetchWanted = true;
+    prefetching = true;
     const std::shared_ptr<const ReleasePackage::Content> content = release->getContent();
     // clang-format off
-    engine.getJobs().run([content, rules = settings] { return Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Prefetch, rules)); }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) {
-        if (owner.expired() || !missing.isOk() || missing.value->empty()) {
+    engine.getJobs().run([content, rules = settings, store = release->getStore()] {
+        return std::pair(Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Prefetch, rules)), store->getAvailableSpace());
+    }, [this, owner = std::weak_ptr(alive), content](core::JobSystem::Result<std::pair<std::vector<Catalog::Chunk>, std::uint64_t>> found) {
+        if (owner.expired()) {
             return;
         }
-        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
-            .onComplete = [](std::optional<Error> failure) {
-                if (failure) {
-                    core::Log::warning("The prefetched content stopped downloading, and it downloads when the app asks for it: {}", failure->what());
+        prefetching = false;
+        if (!found.isOk() || found.value->first.empty()) {
+            prefetchWanted = false;
+            return;
+        }
+        // The app went to the background meanwhile, and the prefetch begins once it is active again.
+        if (inBackground) {
+            return;
+        }
+        const std::vector<Catalog::Chunk>& missing = found.value->first;
+        if (const std::optional<Error> lacking = checkRoom(Downloader::measure(missing, *release->getStore()), missing.size(), found.value->second)) {
+            core::Log::warning("The prefetched content does not download, and it downloads when the app asks for it: {}", lacking->what());
+            prefetchWanted = false;
+            return;
+        }
+        prefetching = true;
+        prefetchRequest = downloader->fetch(content->shards, missing, [this](const ShardReference& pack) { return locate(pack); }, {
+            .onComplete = [this, owner](std::optional<Error> failure) {
+                if (owner.expired()) {
+                    return;
                 }
+                prefetching = false;
+                prefetchRequest = 0;
+                if (failure && failure->getCode() == Error::Code::NetworkCancelled) {
+                    if (!inBackground) {
+                        prefetch();
+                    }
+                    return;
+                }
+                if (failure) {
+                    core::Log::warning("The prefetched content stopped downloading, and it goes on when the network comes back or downloads when the app asks for it: {}", failure->what());
+                    return;
+                }
+                prefetchWanted = false;
             },
-        });
+        }, Downloader::Priority::Background);
     });
     // clang-format on
 }
 
 void ContentManager::startCheck() {
+    // A check or an install that the manager starts by itself starts again when the network comes back after it failed for want of it.
     // clang-format off
     check([this](std::optional<Update> found, std::optional<Error> failure) {
-        if (failure || !found) {
+        if (failure) {
+            checkAgain = true;
             return;
         }
-        download({}, [](std::optional<Error>) {});
+        if (!found) {
+            return;
+        }
+        download({}, [this, owner = std::weak_ptr(alive)](std::optional<Error> installFailure) {
+            if (!owner.expired() && installFailure) {
+                checkAgain = true;
+            }
+        });
     });
     // clang-format on
 }
@@ -266,15 +356,22 @@ void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCall
         }
     }
     // clang-format off
-    engine.getJobs().run([content, chunks = std::move(chunks)] { return Downloader::findMissing(*content->shards, chunks); }, [this, owner = std::weak_ptr(alive), content, onProgress = std::move(onProgress), done = std::move(done)](core::JobSystem::Result<std::vector<Catalog::Chunk>> missing) mutable {
+    engine.getJobs().run([content, chunks = std::move(chunks), store = release->getStore()] {
+        return std::pair(Downloader::findMissing(*content->shards, chunks), store->getAvailableSpace());
+    }, [this, owner = std::weak_ptr(alive), content, onProgress = std::move(onProgress), done = std::move(done)](core::JobSystem::Result<std::pair<std::vector<Catalog::Chunk>, std::uint64_t>> found) mutable {
         if (owner.expired()) {
             return;
         }
-        if (!missing.isOk()) {
-            done(Error(Error::Code::CacheCorrupt, missing.error));
+        if (!found.isOk()) {
+            done(Error(Error::Code::CacheCorrupt, found.error));
             return;
         }
-        downloader->fetch(content->shards, *missing.value, [this](const ShardReference& pack) { return locate(pack); }, {
+        const std::vector<Catalog::Chunk>& missing = found.value->first;
+        if (std::optional<Error> lacking = missing.empty() ? std::nullopt : checkRoom(Downloader::measure(missing, *release->getStore()), missing.size(), found.value->second)) {
+            done(std::move(lacking));
+            return;
+        }
+        downloader->fetch(content->shards, missing, [this](const ShardReference& pack) { return locate(pack); }, {
             .onProgress = [onProgress = std::move(onProgress)](const Downloader::Progress& received) {
                 if (onProgress) {
                     onProgress({.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes});

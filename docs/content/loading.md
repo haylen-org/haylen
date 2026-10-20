@@ -249,7 +249,7 @@ The delivery of an asset says when its encrypted bytes must be on the device. It
 | Delivery | Meaning |
 | --- | --- |
 | `required` | The bytes are on the device before the app starts: they ship with the app, or the engine downloads them behind the update screen when the device lacks them. Every asset is required unless a rule of `app.json` says otherwise. |
-| `prefetch` | The app does not need the bytes to start, and the engine downloads them in the background once the app runs, so a later load finds them on the device. |
+| `prefetch` | The app does not need the bytes to start, and the engine downloads them in the background once the app runs, so a later load finds them on the device. The download yields to what the app loads, stops while the app is in the background, goes on when the network comes back and needs room on the device. |
 | `onDemand` | The bytes download only when the app asks for the asset: through `assets.loadAsync`, a preload group, the `load` hook of a scene that preloads, or `content.prefetch`. Once they arrived they stay, and the asset behaves like a local one. |
 
 The `delivery` rules of the `content` section of `app.json` match paths relative to `content/`, where `**` stands for any folders, `*` for any name inside a folder and `?` for one character, and the first rule that matches an asset decides it. The key `updates.baseUrl` names the server that `content publish` fills, from which assets download. The [delivery settings](content.md#delivery) list every key with its default and its errors.
