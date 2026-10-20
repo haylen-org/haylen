@@ -18,8 +18,9 @@ class Procedural2DLuaTest : public ::testing::Test {
     }
 
     // Runs an asynchronous call in a task and waits until it stores its result in the global `done`.
+    // Awaits the promise twice and keeps the second result, since every await receives the result of its own.
     void await(const std::string& call) {
-        fixture.runLua("done = nil require('async').spawn(function() done = {" + call + ":await()} end)");
+        fixture.runLua("done = nil require('async').spawn(function() local promise = " + call + " promise:await() done = {promise:await()} end)");
         ASSERT_TRUE(fixture.frameUntil([this] { return lua("return done ~= nil") == "true"; }, std::chrono::seconds(10)));
     }
 

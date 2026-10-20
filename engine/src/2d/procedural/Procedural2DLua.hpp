@@ -54,8 +54,9 @@ class Procedural2DLua final {
                 promise.reject(result.error);
                 return;
             }
-            auto value = std::make_shared<Value>(std::move(*result.value));
-            promise.resolveWith([push, value](lua_State* state) { push(state, std::move(*value)); });
+            // Every await of the promise pushes the result, so each one receives its own copy.
+            auto value = std::make_shared<const Value>(std::move(*result.value));
+            promise.resolveWith([push, value](lua_State* state) { push(state, *value); });
         });
         // clang-format on
         promise.push(L);
