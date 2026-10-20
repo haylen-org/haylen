@@ -1,5 +1,5 @@
 # Merges static libraries and object files into one static library with the archiver of the platform.
-# Run with `-DKIND=libtool|lib|mri -DTOOL=<archiver> -DOUTPUT=<library> -DINPUTS=<file with one input per line>`, and `-DLTCG=ON` for the objects that MSVC compiled for whole program optimization.
+# Run with `-DKIND=libtool|lib|mri -DTOOL=<archiver> -DOUTPUT=<library> -DINPUTS=<file with one input per line>`.
 
 file(STRINGS "${INPUTS}" inputs)
 file(REMOVE "${OUTPUT}")
@@ -9,11 +9,7 @@ if(KIND STREQUAL "libtool")
   # Libraries from different projects share object names, which libtool reports although both objects are kept.
   string(REGEX REPLACE "[^\n]*same member name[^\n]*\n?" "" messages "${messages}")
 elseif(KIND STREQUAL "lib")
-  set(ltcg)
-  if(LTCG)
-    set(ltcg /LTCG)
-  endif()
-  execute_process(COMMAND "${TOOL}" /NOLOGO ${ltcg} "/OUT:${OUTPUT}" ${inputs} RESULT_VARIABLE result ERROR_VARIABLE messages)
+  execute_process(COMMAND "${TOOL}" /NOLOGO "/OUT:${OUTPUT}" ${inputs} RESULT_VARIABLE result ERROR_VARIABLE messages)
 else()
   set(script "CREATE ${OUTPUT}\n")
   foreach(input IN LISTS inputs)

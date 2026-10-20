@@ -13,10 +13,10 @@ if(NOT MSVC)
   endif()
 endif()
 
-# A Release build compiles the engine and its dependencies to the intermediate code of the compiler, so the link of each program optimizes the engine, its dependencies and the program as one and drops what the program never reaches. The prebuilt SDK keeps that code, so an app that links it is optimized the same way. The tools of Apple build an xcframework only from machine code, so its slices compile without it.
+# A Release build compiles the engine and its dependencies to the intermediate code of the compiler, so the link of each program optimizes the engine, its dependencies and the program as one and drops what the program never reaches. The prebuilt SDK keeps that code, so an app that links it is optimized the same way. The tools of Apple build an xcframework only from machine code, and the intermediate code of MSVC makes the one library of the SDK larger than the 4 GB that a library of Windows holds, so those compile without it, while a C++ app that compiles the engine with MSVC keeps it.
 include(CheckIPOSupported)
 check_ipo_supported(RESULT HAYLEN_LINK_TIME_OPTIMIZATION LANGUAGES C CXX)
-if(HAYLEN_BUILD_FRAMEWORK)
+if(HAYLEN_BUILD_FRAMEWORK OR (MSVC AND HAYLEN_BUILD_SDK))
   set(HAYLEN_LINK_TIME_OPTIMIZATION OFF)
 endif()
 if(HAYLEN_LINK_TIME_OPTIMIZATION)
