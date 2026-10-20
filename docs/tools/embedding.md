@@ -154,7 +154,7 @@ The build runs the content tool on the package with the keys of the app from its
 | Web | The manifests and the app domain preloaded at `/app`, and the whole release in `app/` next to the page, from which the content streams by range into the [content store of the browser](../content/content.md#the-web). |
 | Android | The release in `bin/<target>/release.txt`, which `run-cpp` places in the assets of the Android project instead of the package. |
 
-An app with a content server in `app.json` ships only what its required content needs, and the shards of named packs stay in `haylen-release/<target>/packs/`, as the [delivery guide](../content/content.md#delivery) explains. The command `run-cpp --config Release` inspects the built app before it launches and stops when it holds Lua text, a file of the package as it is, symbol files or a key in any form.
+An app with a content server in `app.json` ships only what its required content needs, and the shards of named packs stay in `haylen-release/<target>/packs/`, as the [delivery guide](../content/content.md#delivery) explains. The command `run-cpp --config Release` inspects the built app before it launches and stops when it holds Lua text, a file of the package as it is, symbol files or a key in any form. The command `haylen.py steam <project> --platform <this machine>` builds the same release and lays it out as Steam depots, the app in one and the shards of each pack in another, as the [Steam section](distribution.md#steam) describes.
 
 ## An app written in C++
 

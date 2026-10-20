@@ -4815,23 +4815,33 @@ def command_run_cpp(args: argparse.Namespace) -> None:
     elif args.platform in APPLE_NATIVE_SLICES and args.platform != "macos":
         run_cpp_apple(project, target, folder, args)
     else:
-        directory = folder / f"{host_name()}-{args.config.lower()}"
-        command = ["cmake", "-S", project, "-B", directory, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
-        if host_name() != "windows" or shutil.which("ninja"):
-            command += ["-G", "Ninja"]
-        if host_name() == "macos":
-            command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
-        terminal.step(f'Building the target "{target}" in `{shown_path(directory)}`')
-        run(command)
-        run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
-        executable = cmake_app_executable(directory, target)
-        if args.config == "Release":
-            app = cpp_release_app(directory, target)
-            bundle = next((parent for parent in executable.parents if parent.suffix == ".app"), None)
-            stop_on_release_problems(cpp_release_problems(app, bundle, "Contents/Resources/app") if bundle else cpp_release_problems(app, executable.parent, "app"))
+        executable = build_cpp_desktop(project, target, folder / f"{host_name()}-{args.config.lower()}", args)
         if not args.build_only:
             terminal.step(f'Running "{target}"')
             run([executable], stream=True)
+
+
+def build_cpp_desktop(project: Path, target: str, directory: Path, args: argparse.Namespace) -> Path:
+    """Builds the target of a C++ app project for this machine in a build folder and returns its executable, after inspecting a Release build for anything a release never holds."""
+    command = ["cmake", "-S", project, "-B", directory, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
+    if host_name() != "windows" or shutil.which("ninja"):
+        command += ["-G", "Ninja"]
+    if host_name() == "macos":
+        command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
+    terminal.step(f'Building the target "{target}" in `{shown_path(directory)}`')
+    run(command)
+    run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
+    executable = cmake_app_executable(directory, target)
+    if args.config == "Release":
+        app = cpp_release_app(directory, target)
+        bundle = apple_bundle_of(executable)
+        stop_on_release_problems(cpp_release_problems(app, bundle, "Contents/Resources/app") if bundle else cpp_release_problems(app, executable.parent, "app"))
+    return executable
+
+
+def apple_bundle_of(executable: Path) -> Path | None:
+    """The app bundle that holds an executable on macOS, or nothing for an executable of Windows or Linux."""
+    return next((parent for parent in executable.parents if parent.suffix == ".app"), None)
 
 
 def cpp_release_options(args: argparse.Namespace) -> list[str]:
@@ -5230,9 +5240,13 @@ def write_steam_scripts(output: Path, app_id: str, description: str, depots: dic
 
 
 def command_steam(args: argparse.Namespace) -> None:
-    """Builds the release of an app for a desktop platform and lays it out for SteamPipe in `build/apps/<app>-<hash>/steam/`: the depot of the platform with the app and its protected release, a depot for every named pack whose shards install into `packs/` next to the executable or the bundle, and the build scripts of steamcmd."""
-    app = App(resolve_lua_app(args.app), RUN_TARGETS[args.platform].plugins)
+    """Builds the release of an app for a desktop platform and lays it out for SteamPipe in `build/apps/<app>-<hash>/steam/`: the depot of the platform with the app and its protected release, a depot for every named pack whose shards install into `packs/` next to the executable or the bundle, and the build scripts of steamcmd. A C++ app builds with its CMake project for this machine."""
+    folder = resolve_app(args.app)
     args.config = "Release"
+    if app_kind(folder) == "cpp":
+        stage_cpp_steam(folder, args)
+        return
+    app = App(folder, RUN_TARGETS[args.platform].plugins)
     depots = steam_depot_ids(args, [args.platform, *app.content_packs])
     output = Path(args.output).resolve() if args.output else app.build_folder / "steam"
     shutil.rmtree(output / "content", ignore_errors=True)
@@ -5258,6 +5272,31 @@ def command_steam(args: argparse.Namespace) -> None:
         shutil.copytree(packs / pack, output / "content" / pack / place / "packs")
     write_steam_scripts(output, args.app_id, f"{app.name} {app.version}", depots, args.branch)
     terminal.success(f"Staged the Steam depots of `{shown_path(app.folder)}` in `{shown_path(output)}`.")
+    terminal.info(f'Upload them with "steamcmd +login <account> +run_app_build {shown_path(output / "scripts" / "app_build.vdf")} +quit".')
+
+
+def stage_cpp_steam(project: Path, args: argparse.Namespace) -> None:
+    """Builds the target of a C++ app project in Release for this machine and lays out its Steam depots like those of a Lua app: the folder of the executable, or the macOS bundle, and the shards of each pack in `packs/` next to it, as the release build of CMake staged them."""
+    if args.platform != host_name():
+        raise BuildError(f'A C++ app builds its Steam depots on the platform they ship to, since its CMake project builds for this machine, so run "{TOOL} steam" with "--platform {host_name()}" here and on each other platform.')
+    directory = CPP_BUILDS_DIR / build_folder_name(project) / f"{host_name()}-release"
+    executable = build_cpp_desktop(project, args.target, directory, args)
+    app = cpp_release_app(directory, args.target)
+    depots = steam_depot_ids(args, [args.platform, *app.content_packs])
+    output = Path(args.output).resolve() if args.output else app.build_folder / "steam"
+    shutil.rmtree(output / "content", ignore_errors=True)
+    bundle = apple_bundle_of(executable)
+    if bundle:
+        (output / "content" / args.platform).mkdir(parents=True)
+        shutil.copytree(bundle, output / "content" / args.platform / bundle.name, symlinks=True)
+    else:
+        shutil.copytree(executable.parent, output / "content" / args.platform, symlinks=True)
+
+    packs = directory / "haylen-release" / args.target / "packs"
+    for pack in app.content_packs:
+        shutil.copytree(packs / pack, output / "content" / pack / "packs")
+    write_steam_scripts(output, args.app_id, f"{app.name} {app.version}", depots, args.branch)
+    terminal.success(f"Staged the Steam depots of `{shown_path(project)}` in `{shown_path(output)}`.")
     terminal.info(f'Upload them with "steamcmd +login <account> +run_app_build {shown_path(output / "scripts" / "app_build.vdf")} +quit".')
 
 
@@ -5944,6 +5983,7 @@ def build_parser() -> argparse.ArgumentParser:
     steam.add_argument("--depot", action="append", default=[], metavar="name=id", help="The ID of a depot: the one named after the platform, and one for every pack of the app. Repeat it for every depot.")
     steam.add_argument("--branch", help="The beta branch that the build goes live on, such as \"beta\". Without it the build waits in Steamworks to be set live.")
     steam.add_argument("--output", help="The folder of the staging, build/apps/<app>-<hash>/steam by default.")
+    steam.add_argument("--target", default="main", help='The "haylen_add_app" target of a C++ app, "main" by default, as the C++ template names it.')
     steam.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the app links.")
     steam.add_argument("--device", help=argparse.SUPPRESS)
     add_jobs_option(steam)

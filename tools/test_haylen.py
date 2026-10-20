@@ -978,9 +978,36 @@ class TemplateLayersTest(unittest.TestCase):
 
     def test_the_commands_of_platform_projects_send_a_cpp_app_to_run_cpp(self):
         app = self.new_app("game", "--kind", "cpp")
-        for arguments in (["run", str(app)], ["prepare", str(app), "--platform", "web"], ["dist", str(app), "--platform", "linux"], ["xcodegen", str(app)], ["steam", str(app), "--platform", "linux", "--app-id", "1", "--depot", "linux=2"]):
+        for arguments in (["run", str(app)], ["prepare", str(app), "--platform", "web"], ["dist", str(app), "--platform", "linux"], ["xcodegen", str(app)]):
             with self.assertRaisesRegex(haylen.BuildError, 'is a C\\+\\+ app, whose CMake project builds it for every platform. Run it with "haylen run-cpp'):
                 haylen.build_parser().parse_args(arguments).handler(haylen.build_parser().parse_args(arguments))
+
+    def test_a_cpp_app_stages_the_steam_depots_of_the_executable_its_cmake_project_builds(self):
+        app = self.new_app("game", "--kind", "cpp")
+        build = self.scratch / "cpp-build"
+        (build / "bin" / "main" / "app").mkdir(parents=True)
+        (build / "bin" / "main" / "main").write_bytes(b"executable")
+        (build / "bin" / "main" / "app" / "app.hmanifest").write_bytes(b"manifest")
+        (build / "haylen-release" / "main" / "packs" / "chapter-2").mkdir(parents=True)
+        (build / "haylen-release" / "main" / "packs" / "chapter-2" / "shard.hpak").write_bytes(b"shard")
+        released = mock.Mock(content_packs=["chapter-2"], version="1.0.0", build_folder=self.scratch / "app-build")
+        released.name = "Game"
+        arguments = ["steam", str(app), "--platform", haylen.host_name(), "--app-id", "7", "--depot", f"{haylen.host_name()}=8", "--depot", "chapter-2=9"]
+        parsed = haylen.build_parser().parse_args(arguments)
+        executable = build / "bin" / "main" / "main"
+        with mock.patch.object(haylen, "build_cpp_desktop", return_value=executable) as built, mock.patch.object(haylen, "cpp_release_app", return_value=released), mock.patch.object(haylen, "CPP_BUILDS_DIR", self.scratch), mock.patch.object(haylen, "build_folder_name", return_value=""), mock.patch.object(haylen, "apple_bundle_of", return_value=None):
+            (self.scratch / f"{haylen.host_name()}-release").symlink_to(build)
+            parsed.handler(parsed)
+        self.assertEqual(built.call_args.args[1], "main")
+        steam = released.build_folder / "steam"
+        self.assertEqual((steam / "content" / haylen.host_name() / "main").read_bytes(), b"executable")
+        self.assertTrue((steam / "content" / haylen.host_name() / "app" / "app.hmanifest").is_file())
+        self.assertEqual((steam / "content" / "chapter-2" / "packs" / "shard.hpak").read_bytes(), b"shard", "The shards of a pack install next to the executable.")
+        self.assertIn('"7"', (steam / "scripts" / "app_build.vdf").read_text())
+        other = "windows" if haylen.host_name() != "windows" else "linux"
+        with self.assertRaisesRegex(haylen.BuildError, "builds its Steam depots on the platform they ship to"):
+            parsed = haylen.build_parser().parse_args(["steam", str(app), "--platform", other, "--app-id", "7", "--depot", f"{other}=8"])
+            parsed.handler(parsed)
 
     def test_no_file_of_a_kind_copies_the_common_file_it_replaces(self):
         common = haylen.project_files(haylen.COMMON_TEMPLATE)
