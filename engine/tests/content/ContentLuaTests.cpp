@@ -41,15 +41,17 @@ TEST_F(ContentLuaTest, BringsAGroupWithoutLoadingIt) {
     // clang-format off
     fixture.runLua(R"(
         assets.defineGroup('forest', {'levels/'})
+        local before = content.isGroupLocal('forest')
         async.spawn(function()
             local fractions = {}
             local done = content.prefetch('forest', function(progress) fractions[#fractions + 1] = progress.receivedBytes / progress.totalBytes end):await()
-            result = tostring(done) .. ' ' .. #fractions .. ' ' .. tostring(content.isLocal('levels/desert.json'))
+            result = tostring(done) .. ' ' .. #fractions .. ' ' .. tostring(content.isLocal('levels/desert.json')) .. ' ' .. tostring(before) .. ' ' .. tostring(content.isGroupLocal('forest'))
         end)
     )");
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return result") != "nil"; }));
-    EXPECT_EQ(fixture.lua("return result"), "true 1 true");
+    EXPECT_EQ(fixture.lua("return result"), "true 1 true false true");
+    EXPECT_NE(fixture.lua("return content.isGroupLocal('desert')").find("The asset group \"desert\" is not defined."), std::string::npos);
     EXPECT_EQ(fixture.lua("return assets.json('levels/forest.json').trees"), "12");
 }
 

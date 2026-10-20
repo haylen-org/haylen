@@ -309,11 +309,11 @@ TEST_F(AssetsManagerTest, KeepsAGroupAsItWasWhenItsPreloadFails) {
     assets::Manager& assets = fixture.engine().getAssets();
 
     // An entry without an asset type and an entry with invalid options fail the preload before the group gains a listener or starts to load.
-    const std::vector<assets::Manager::Entry> untyped{{.path = "images/readme.txt"}};
-    const std::vector<assets::Manager::Entry> misconfigured{{.path = "images/blue.png"}, {.path = "images/red.png", .options = {{"filter", "blurry"}}}};
+    const std::vector<assets::GroupManifest::Entry> untyped{{.path = "images/readme.txt"}};
+    const std::vector<assets::GroupManifest::Entry> misconfigured{{.path = "images/blue.png"}, {.path = "images/red.png", .options = {{"filter", "blurry"}}}};
     int staleProgress = 0;
     int staleCompletions = 0;
-    for (const std::vector<assets::Manager::Entry>* broken : {&untyped, &misconfigured}) {
+    for (const std::vector<assets::GroupManifest::Entry>* broken : {&untyped, &misconfigured}) {
         assets.defineGroup("menu", *broken);
         EXPECT_THROW(assets.preload("menu", [&](float) { ++staleProgress; }, [&](std::vector<std::string>) { ++staleCompletions; }), std::invalid_argument);
         EXPECT_FALSE(assets.isGroupLoaded("menu"));

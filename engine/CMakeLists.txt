@@ -229,6 +229,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ai/UtilityLua.cpp
   src/ai/UtilitySelector.cpp
   src/assets/AssetsLua.cpp
+  src/assets/GroupManifest.cpp
   src/assets/Manager.cpp
   src/audio/AudioLua.cpp
   src/audio/Delay.cpp

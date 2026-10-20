@@ -103,15 +103,19 @@ struct AppConfig {
             bool enabled = true;
         };
 
-        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery, and with a pack name they go into shards of that pack, which a store delivers on its own, such as the content of a downloadable expansion.
+        // The files under `content` whose path matches the pattern, relative to `content`, take the delivery, and with a pack name they go into shards of that pack, which a store delivers on its own, such as the content of a downloadable expansion. A rule may name a preload group instead of a pattern, which `fromPackage` replaces with a rule for each entry of the group in the manifest that `groups` names.
         struct Rule {
             std::string match;
             content::Delivery mode = content::Delivery::Required;
             std::string pack;
+            std::string group;
         };
 
         std::optional<Updates> updates;
         std::vector<Rule> delivery;
+
+        // The group manifest of the rules that name groups, by its path relative to `content`, such as `groups.json`, which the asset manager loads with `assets.defineGroups` too.
+        std::string groups;
 
         // The delivery of an asset by its path relative to `content`: the mode of the first rule that matches it, or required.
         [[nodiscard]] content::Delivery getDelivery(std::string_view path) const noexcept;
@@ -178,6 +182,8 @@ struct AppConfig {
     static void requireNonNegative(double value, const char* key);
     [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);
     static void readPlugins(const Json& section, AppConfig& config);
+    static void expandGroups(const io::Package& package, Content& content);
+    [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;
     static void readContent(const Json& section, AppConfig& config);
     [[nodiscard]] static bool isServerAddress(std::string_view url) noexcept;
     [[nodiscard]] static bool isPluginId(std::string_view text) noexcept;

@@ -272,6 +272,35 @@ TEST(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
     }
 }
 
+// A rule that names a preload group delivers the files of the group, which the group manifest of the app lists for the asset manager too.
+TEST(AppConfigTest, DeliversThePreloadGroupsThatRulesName) {
+    const std::string app = R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}, {"match": "world/**", "mode": "prefetch"}]}})";
+    io::MemoryPackage package("app", {{"app.json", test::TestFiles::bytes(app)}, {"content/groups.json", test::TestFiles::bytes(R"({"groups": {"asia": ["world/asia/", {"path": "music/tokyo.ogg", "options": {"stream": true}}]}})")}});
+    const core::AppConfig config = core::AppConfig::fromPackage(package);
+    EXPECT_EQ(config.content.getDelivery("world/asia/maps/tokyo.tmj"), content::Delivery::OnDemand);
+    EXPECT_EQ(config.content.getDelivery("music/tokyo.ogg"), content::Delivery::OnDemand);
+    EXPECT_EQ(config.content.getDelivery("world/europe/paris.tmj"), content::Delivery::Prefetch) << "The rules after the group keep their order.";
+    EXPECT_EQ(config.content.getDelivery("music/paris.ogg"), content::Delivery::Required);
+    EXPECT_EQ(core::AppConfig::fromJson(core::AppConfig::fromJson(core::Json::parse(app)).toJson()).content.delivery.front().group, "asia");
+
+    const auto failure = [](const std::string& document, const std::string& groups) {
+        io::MemoryPackage broken("app", {{"app.json", test::TestFiles::bytes(document)}, {"content/groups.json", test::TestFiles::bytes(groups)}});
+        try {
+            (void)core::AppConfig::fromPackage(broken);
+        } catch (const std::invalid_argument& error) {
+            return std::string(error.what());
+        }
+        return std::string();
+    };
+    const std::string asia = R"({"groups": {"asia": ["world/asia/"]}})";
+    EXPECT_NE(failure(R"({"content": {"delivery": [{"group": "asia", "mode": "onDemand"}]}})", asia).find("\"content.groups\" must name the group manifest"), std::string::npos);
+    EXPECT_NE(failure(R"({"content": {"groups": "groups.json", "delivery": [{"group": "europe", "mode": "onDemand"}]}})", asia).find("names the group \"europe\", which \"content/groups.json\" does not define"), std::string::npos);
+    EXPECT_NE(failure(R"({"content": {"groups": "missing.json", "delivery": [{"group": "asia", "mode": "onDemand"}]}})", asia).find("is not in the package"), std::string::npos);
+    EXPECT_NE(failure(R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "match": "x/**", "mode": "onDemand"}]}})", asia).find("either a \"match\" pattern or the name of a preload \"group\""), std::string::npos);
+    EXPECT_NE(failure(R"({"content": {"groups": "groups.json", "delivery": [{"group": "asia", "mode": "onDemand"}]}})", R"({"groups": {"asia": ["../secret/"]}})").find("is not relative to the \"content\" folder"), std::string::npos);
+    EXPECT_NE(failure(R"({"content": {"groups": "/groups.json"}})", asia).find("must name a file relative to the \"content\" folder"), std::string::npos);
+}
+
 TEST(AppConfigTest, ReadsThePluginsOfTheApp) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"plugins": {"ads": {"testMode": true, "placements": ["top"]}, "cloud-analytics": {}}})"));
     EXPECT_EQ(config.plugins.size(), 2U);

@@ -2,11 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
 
 #include "content/format/Manifest.hpp"
+#include "haylen/assets/GroupManifest.hpp"
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/io/Package.hpp"
@@ -63,7 +65,11 @@ bool AppConfig::isServerAddress(std::string_view url) noexcept {
 }
 
 void AppConfig::readContent(const Json& section, AppConfig& config) {
-    JsonValidator::requireKnownKeys(section, {"updates", "delivery"}, "the \"content\" section of \"app.json\"");
+    JsonValidator::requireKnownKeys(section, {"updates", "delivery", "groups"}, "the \"content\" section of \"app.json\"");
+    readValue(section, "groups", config.content.groups);
+    if (section.contains("groups") && !isContentPattern(config.content.groups)) {
+        throw std::invalid_argument("The \"content.groups\" in \"app.json\" must name a file relative to the \"content\" folder, such as \"groups.json\", not \"" + config.content.groups + "\".");
+    }
     if (section.contains("updates")) {
         const Json& updates = section.at("updates");
         JsonValidator::requireKnownKeys(updates, {"baseUrl", "channel", "enabled"}, "the \"content.updates\" section of \"app.json\"");
@@ -82,15 +88,22 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
     if (section.contains("delivery")) {
         const Json& rules = section.at("delivery");
         if (!rules.is_array()) {
-            throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" and a \"mode\" or a \"pack\".");
+            throw std::invalid_argument("The \"content.delivery\" section of \"app.json\" must be a list of rules with \"match\" or \"group\" and a \"mode\" or a \"pack\".");
         }
         for (const Json& rule : rules) {
-            JsonValidator::requireKnownKeys(rule, {"match", "mode", "pack"}, "a rule of \"content.delivery\" in \"app.json\"");
+            JsonValidator::requireKnownKeys(rule, {"match", "group", "mode", "pack"}, "a rule of \"content.delivery\" in \"app.json\"");
             Content::Rule read;
             std::string mode = "required";
             readValue(rule, "match", read.match);
+            readValue(rule, "group", read.group);
             readValue(rule, "mode", mode);
             readValue(rule, "pack", read.pack);
+            if (rule.contains("match") == rule.contains("group")) {
+                throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"match\" pattern or the name of a preload \"group\".");
+            }
+            if (rule.contains("group") && config.content.groups.empty()) {
+                throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + read.group + "\", so \"content.groups\" must name the group manifest that defines it.");
+            }
             if (rule.contains("mode") == rule.contains("pack")) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" needs either a \"mode\" or a \"pack\", since a store delivers a pack on its own.");
             }
@@ -98,7 +111,7 @@ void AppConfig::readContent(const Json& section, AppConfig& config) {
                 throw std::invalid_argument("The \"pack\" of a rule of \"content.delivery\" in \"app.json\" must have at most 64 lowercase letters, digits, dashes and dots, not \"" + read.pack + "\".");
             }
             const std::optional<content::Delivery> delivery = deliveryFromName(mode);
-            if (read.match.empty() || read.match.starts_with('/') || read.match.find("..") != std::string::npos || read.match.find('\\') != std::string::npos) {
+            if (rule.contains("match") && !isContentPattern(read.match)) {
                 throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" must match paths relative to the \"content\" folder, such as \"world/asia/**\", not \"" + read.match + "\".");
             }
             if (!delivery) {
@@ -199,8 +212,43 @@ void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     config.plugins = section;
 }
 
+bool AppConfig::isContentPattern(std::string_view pattern) noexcept {
+    return !pattern.empty() && !pattern.starts_with('/') && pattern.find("..") == std::string_view::npos && pattern.find('\\') == std::string_view::npos;
+}
+
+// A rule that names a preload group takes its place with a rule for each entry of the group: the path of a file, or every file under a folder.
+void AppConfig::expandGroups(const io::Package& package, Content& content) {
+    if (std::ranges::none_of(content.delivery, [](const Content::Rule& rule) { return !rule.group.empty(); })) {
+        return;
+    }
+    const std::string manifest = io::Path::asset(content.groups);
+    if (!package.exists(manifest)) {
+        throw std::invalid_argument("The group manifest \"" + manifest + "\" that \"content.groups\" in \"app.json\" names is not in the package.");
+    }
+    const std::map<std::string, std::vector<assets::GroupManifest::Entry>> groups = assets::GroupManifest::read(Json::parse(package.readText(manifest)));
+    std::vector<Content::Rule> expanded;
+    for (Content::Rule& rule : content.delivery) {
+        if (rule.group.empty()) {
+            expanded.push_back(std::move(rule));
+            continue;
+        }
+        const auto found = groups.find(rule.group);
+        if (found == groups.end()) {
+            throw std::invalid_argument("A rule of \"content.delivery\" in \"app.json\" names the group \"" + rule.group + "\", which \"" + manifest + "\" does not define.");
+        }
+        for (const assets::GroupManifest::Entry& entry : found->second) {
+            if (!isContentPattern(entry.path)) {
+                throw std::invalid_argument("The group \"" + rule.group + "\" of \"" + manifest + "\" has the path \"" + entry.path + "\", which is not relative to the \"content\" folder.");
+            }
+            expanded.push_back({.match = entry.path.ends_with('/') ? entry.path + "**" : entry.path, .mode = rule.mode, .pack = rule.pack, .group = rule.group});
+        }
+    }
+    content.delivery = std::move(expanded);
+}
+
 AppConfig AppConfig::fromPackage(const io::Package& package) {
     AppConfig config = fromJson(Json::parse(package.readText(io::Path::kAppConfigFile)));
+    expandGroups(package, config.content);
     for (const auto& [id, values] : config.plugins.items()) {
         const std::string manifest = io::Path::plugin(id, io::Path::kPluginManifestFile);
         if (!package.exists(manifest)) {
@@ -496,13 +544,19 @@ Json AppConfig::toJson() const {
     if (window.position) {
         windowJson["position"] = window.position->toJson();
     }
+    // A rule that names a group keeps the name until `fromPackage` replaces it with the patterns of the group.
     Json contentJson = {{"delivery", Json::array()}};
     for (const Content::Rule& rule : content.delivery) {
+        Json written = rule.match.empty() ? Json{{"group", rule.group}} : Json{{"match", rule.match}};
         if (rule.pack.empty()) {
-            contentJson["delivery"].push_back({{"match", rule.match}, {"mode", deliveryName(rule.mode)}});
+            written["mode"] = deliveryName(rule.mode);
         } else {
-            contentJson["delivery"].push_back({{"match", rule.match}, {"pack", rule.pack}});
+            written["pack"] = rule.pack;
         }
+        contentJson["delivery"].push_back(std::move(written));
+    }
+    if (!content.groups.empty()) {
+        contentJson["groups"] = content.groups;
     }
     if (content.updates) {
         contentJson["updates"] = {{"baseUrl", content.updates->baseUrl}, {"channel", content.updates->channel}, {"enabled", content.updates->enabled}};

@@ -11,6 +11,7 @@
 #include "content/ReleasePackage.hpp"
 #include "content/UpdateOffer.hpp"
 #include "content/Updater.hpp"
+#include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/JobSystem.hpp"
@@ -69,6 +70,10 @@ bool ContentManager::isLocal(std::string_view path) const {
         return settings.getDelivery(io::Path::normalize(path)) == Delivery::Required || broughtInDevelopment.contains(io::Path::normalize(path));
     }
     return release->isLocal(toPackagePath(path));
+}
+
+bool ContentManager::isGroupLocal(std::string_view group) const {
+    return std::ranges::all_of(engine.getAssets().getGroupPaths(group), [this](const std::string& path) { return isLocal(path); });
 }
 
 void ContentManager::addPackFolder(const std::filesystem::path& folder) {

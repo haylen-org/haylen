@@ -43,6 +43,7 @@ class ContentLua final {
     static int error(lua_State* L);
     static int update(lua_State* L);
     static int isLocal(lua_State* L);
+    static int isGroupLocal(lua_State* L);
     static int addPackFolder(lua_State* L);
     static int prefetch(lua_State* L);
     static int check(lua_State* L);

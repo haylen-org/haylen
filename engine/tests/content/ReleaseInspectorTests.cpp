@@ -117,6 +117,18 @@ TEST_F(ReleaseInspectorTest, NamesTheFilesWhoseDeliveryChanged) {
     EXPECT_EQ(content.redeliveredFiles.front().after, Delivery::OnDemand);
 }
 
+TEST_F(ReleaseInspectorTest, DeliversTheFilesOfAPreloadGroupThatARuleNames) {
+    Files files = makeFiles();
+    files["app.json"] = test::TestFiles::bytes(R"({"name": "Release Test", "identifier": "com.haylen.tests", "content": {"groups": "groups.json", "delivery": [{"group": "world", "mode": "onDemand"}]}})");
+    files["content/groups.json"] = test::TestFiles::bytes(R"({"groups": {"world": ["world/"]}})");
+    release.build(io::MemoryPackage("source", files));
+    const ReleaseInspector::Report report = makeInspector().inspect(release.getFolder());
+
+    for (const ReleaseInspector::File& file : report.content.files) {
+        EXPECT_EQ(file.delivery, file.path.starts_with("content/world/") ? Delivery::OnDemand : Delivery::Required) << file.path;
+    }
+}
+
 TEST_F(ReleaseInspectorTest, VerifiesEveryByteOfARelease) {
     release.build(io::MemoryPackage("source", makeFiles()));
     const ReleaseInspector inspector = makeInspector();

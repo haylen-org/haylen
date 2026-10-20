@@ -110,6 +110,9 @@ class ContentManager final {
     // Whether every byte of an asset, by its path relative to `content`, is on the device and readable now, so loading it never waits. On the web the bytes that the browser keeps become readable once a load reads them in.
     [[nodiscard]] bool isLocal(std::string_view path) const;
 
+    // Whether every asset of a preload group of the asset manager is on the device, so preloading it never waits for a download. Throws `std::invalid_argument` for a group that is not defined.
+    [[nodiscard]] bool isGroupLocal(std::string_view group) const;
+
     // Reads the shards of a pack from a folder where a store installed them while the app runs, such as an asset pack that a store delivered on demand, so its assets load from then on. In development the folder of the app holds every pack, so it does nothing. Throws `std::runtime_error` for a path that is no folder.
     void addPackFolder(const std::filesystem::path& folder);
 

@@ -10,6 +10,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "haylen/assets/GroupManifest.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -60,12 +61,6 @@ class Manager final {
     };
 
     // One asset of a preload group. An empty type is resolved from the file extension.
-    struct Entry {
-        std::string path;
-        std::string type;
-        core::Json options = core::Json::object();
-    };
-
     using Callback = std::function<void(std::shared_ptr<void>, std::string)>;
     using GroupProgress = std::function<void(float)>;
     using GroupCompletion = std::function<void(std::vector<std::string>)>;
@@ -115,7 +110,7 @@ class Manager final {
     [[nodiscard]] std::vector<std::string> list(std::string_view directory) const;
 
     // Groups name a set of assets that load together and are released together. A path ending with a slash includes every file under that folder.
-    void defineGroup(std::string name, std::vector<Entry> entries);
+    void defineGroup(std::string name, std::vector<GroupManifest::Entry> entries);
     void defineGroups(const core::Json& manifest);
     void preload(std::string_view group, GroupProgress progress = {}, GroupCompletion completion = {});
     void unloadGroup(std::string_view group);
@@ -162,7 +157,7 @@ class Manager final {
     };
 
     struct Group {
-        std::vector<Entry> entries;
+        std::vector<GroupManifest::Entry> entries;
         std::vector<std::shared_ptr<void>> held;
         std::vector<std::string> errors;
         std::vector<GroupProgress> progressListeners;
@@ -198,13 +193,11 @@ class Manager final {
     [[nodiscard]] static text::TrueTypeFont::Options fontOptionsFromJson(const core::Json& options);
     [[nodiscard]] static core::Json fontOptionsToJson(const text::TrueTypeFont::Options& options);
     [[nodiscard]] static std::string cacheKey(std::string_view type, std::string_view path, const core::Json& options);
-    [[nodiscard]] static bool isList(const core::Json& value) noexcept;
-    [[nodiscard]] static Entry readEntry(std::string_view group, const core::Json& item);
 
     [[nodiscard]] const Type& getType(std::string_view name) const;
     [[nodiscard]] Request makeRequest(std::string_view typeName, std::string_view path, const core::Json& options) const;
     [[nodiscard]] std::shared_ptr<void> findCached(const std::string& key) const;
-    [[nodiscard]] std::vector<Entry> expand(const std::vector<Entry>& entries) const;
+    [[nodiscard]] std::vector<GroupManifest::Entry> expand(const std::vector<GroupManifest::Entry>& entries) const;
     void startLoad(Request request, Callback callback);
     void readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType);
 

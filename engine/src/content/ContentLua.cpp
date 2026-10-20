@@ -158,6 +158,11 @@ int ContentLua::isLocal(lua_State* L) {
     return 1;
 }
 
+int ContentLua::isGroupLocal(lua_State* L) {
+    lua_pushboolean(L, getManager(L).isGroupLocal(lua::Stack::read<std::string_view>(L, 1)) ? 1 : 0);
+    return 1;
+}
+
 int ContentLua::addPackFolder(lua_State* L) {
     getManager(L).addPackFolder(std::filesystem::path(lua::Stack::read<std::string_view>(L, 1)));
     return 0;
@@ -247,7 +252,7 @@ int ContentLua::stats(lua_State* L) {
 
 int ContentLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"isProtected", &lua::Binding::native<&isProtected>}, {"generation", &lua::Binding::native<&generation>}, {"channel", &lua::Binding::native<&channel>}, {"status", &lua::Binding::native<&status>}, {"progress", &lua::Binding::native<&progress>}, {"error", &lua::Binding::native<&error>}, {"update", &lua::Binding::native<&update>}, {"isLocal", &lua::Binding::native<&isLocal>}, {"addPackFolder", &lua::Binding::native<&addPackFolder>}, {"prefetch", &lua::Binding::native<&prefetch>}, {"check", &lua::Binding::native<&check>}, {"download", &lua::Binding::native<&download>}, {"apply", &lua::Binding::native<&apply>}, {"cancel", &lua::Binding::native<&cancel>}, {"stats", &lua::Binding::native<&stats>}, {nullptr, nullptr},
+        {"isProtected", &lua::Binding::native<&isProtected>}, {"generation", &lua::Binding::native<&generation>}, {"channel", &lua::Binding::native<&channel>}, {"status", &lua::Binding::native<&status>}, {"progress", &lua::Binding::native<&progress>}, {"error", &lua::Binding::native<&error>}, {"update", &lua::Binding::native<&update>}, {"isLocal", &lua::Binding::native<&isLocal>}, {"isGroupLocal", &lua::Binding::native<&isGroupLocal>}, {"addPackFolder", &lua::Binding::native<&addPackFolder>}, {"prefetch", &lua::Binding::native<&prefetch>}, {"check", &lua::Binding::native<&check>}, {"download", &lua::Binding::native<&download>}, {"apply", &lua::Binding::native<&apply>}, {"cancel", &lua::Binding::native<&cancel>}, {"stats", &lua::Binding::native<&stats>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

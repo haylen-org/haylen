@@ -288,7 +288,7 @@ end
 
 A preload group names a set of assets that load together in the background and are released together. Groups suit loading screens and levels: preload the group of the next level, show progress while it loads, and unload the group of the previous level.
 
-A group manifest is a table or a JSON file with a `groups` object. Every group is a list of entries, and each entry is either a path or a table with `path` and optional `type` and `options`. A path that ends with `/` includes every file under that folder, in subfolders too, whose extension an asset type handles, and the `type` and `options` of that entry apply to each of those files.
+A group manifest is a table or a JSON file with a `groups` object. A JSON file that `content.groups` of `app.json` names also decides delivery: a rule of `content.delivery` with `group` instead of `match` makes the files of a group download in the background or on demand, as the [content guide](../content/content.md#delivery) describes. Every group is a list of entries, and each entry is either a path or a table with `path` and optional `type` and `options`. A path that ends with `/` includes every file under that folder, in subfolders too, whose extension an asset type handles, and the `type` and `options` of that entry apply to each of those files.
 
 ```json
 {

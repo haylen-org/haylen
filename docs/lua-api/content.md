@@ -84,6 +84,20 @@ if not content.isLocal('world/asia/maps/tokyo.tmj') then
 end
 ```
 
+### content.isGroupLocal(name)
+
+Returns whether every asset of the [preload group](assets.md#preload-groups) `name` is on the device, so preloading it reads the bytes from the device at once and never waits for a download. A group that is not defined raises `The asset group "<name>" is not defined.`
+
+```lua
+local assets = require('haylen.assets')
+local content = require('haylen.content')
+
+assets.defineGroups('groups.json')
+if not content.isGroupLocal('asia') then
+    content.prefetch('asia')
+end
+```
+
 ### content.addPackFolder(path)
 
 Reads the shards of a pack from a folder where a store installed them while the app runs, so the assets of the pack load from then on, without a restart. A native plugin of a store that delivers packs on request, such as an asset pack that a store downloads when the player buys an expansion, calls it with the folder the store reports. Every shard is checked against the signed manifest of the release, so a folder never brings content that the release does not name. In development the folder of the app holds every pack, so the call does nothing. A path that is no folder raises `The pack folder "<path>" does not exist.`
