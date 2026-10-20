@@ -1417,6 +1417,12 @@ class SiteServerTest(unittest.TestCase):
         beyond, _ = self.get({"Range": "bytes=5000-"})
         self.assertEqual(beyond.status, 416)
 
+    def test_sends_no_isolation_policy_that_blocks_the_scripts_of_plugins(self):
+        response, _ = self.get({})
+        self.assertIsNone(response.getheader("Cross-Origin-Embedder-Policy"))
+        self.assertIsNone(response.getheader("Cross-Origin-Opener-Policy"))
+        self.assertEqual(haylen.build_parser().parse_args(["serve", "site"]).coep, "off")
+
 
 class DevelopmentServerTest(unittest.TestCase):
     def setUp(self):

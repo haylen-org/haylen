@@ -4767,7 +4767,7 @@ def command_package(args: argparse.Namespace) -> None:
 class WebHandler(http.server.SimpleHTTPRequestHandler):
     """Serves a folder with the headers WebAssembly pages need: explicit MIME types, no caching and precompressed files. The web runtime is single-threaded, so the page stays in one browsing context group with the popups it opens, such as sign-in and payment pages, unless a page asks for cross-origin isolation with the opener policy `same-origin`."""
 
-    coep = "require-corp"
+    coep = "off"
     coop = "off"
     development: DevelopmentServer | None = None
 
@@ -4856,7 +4856,7 @@ class FileRange:
         self.stream.close()
 
 
-def serve(directory: Path, host: str, port: int, coep: str = "require-corp", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None) -> None:
+def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None) -> None:
     handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop, "development": development}), directory=str(directory))
     try:
         server = http.server.ThreadingHTTPServer((host, port), handler)
@@ -5225,7 +5225,7 @@ def add_sanitizer_option(parser: argparse.ArgumentParser) -> None:
 def add_web_server_options(parser: argparse.ArgumentParser, port: int) -> None:
     parser.add_argument("--host", default="127.0.0.1", help='Address the local web server listens on, and the development server of a Debug run on a device, a simulator or this Mac. The LAN address of this machine lets phones and other computers open the page, which then runs without sound, because browsers offer "AudioWorklet" only to pages served over https or from "localhost". Apple devices reach the development server on every address of this machine unless it names one.')
     parser.add_argument("--port", type=int, default=port, help="Port of the local web server, and of the development server of a Debug run on a device, a simulator or this Mac.")
-    parser.add_argument("--coep", default="require-corp", choices=["require-corp", "credentialless", "off"], help='The "Cross-Origin-Embedder-Policy" header. Pages that load third-party scripts, such as sign-in libraries, need "credentialless" or "off".')
+    parser.add_argument("--coep", default="off", choices=["require-corp", "credentialless", "off"], help='The "Cross-Origin-Embedder-Policy" header, none by default, since the single-threaded runtime needs no cross-origin isolation and "require-corp" blocks the third-party scripts of plugins, such as those of ads and sign-in, which send no resource policy. A policy with "--coop same-origin" isolates the page for "SharedArrayBuffer" and threads.')
     parser.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header, none by default, since the single-threaded runtime needs no cross-origin isolation and "same-origin" cuts the page off from the sign-in and payment popups of plugins. The value "same-origin" with a "--coep" policy isolates the page for "SharedArrayBuffer" and threads.')
     parser.add_argument("--open", action="store_true", help="Open the page in the default browser.")
 

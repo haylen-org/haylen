@@ -1,4 +1,4 @@
-// Native part of the sign-in of Tiny Island on the web. It answers `sign-in.signIn` with the identity service of the account, whose script it loads when the player first signs in, and needs a server that allows that script, such as `haylen.py run --platform web --coep off`.
+// Native part of the sign-in of Tiny Island on the web. It answers `sign-in.signIn` with the identity service of the account, whose script it loads when the player first signs in, and needs a server that sends no embedder policy that blocks that script, as the one of `haylen.py run --platform web` does.
 export default function load(context) {
     let library;
     const loadLibrary = () => {

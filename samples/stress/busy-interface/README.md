@@ -13,7 +13,7 @@ The commands run from the root of the repository:
 | iPhone and iPad simulator | `haylen run samples/stress/busy-interface --platform ios-simulator` |
 | Apple TV simulator | `haylen run samples/stress/busy-interface --platform tvos-simulator` |
 | Android device or emulator | `haylen run samples/stress/busy-interface --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/busy-interface --platform web --coep off` |
+| Browser | `haylen run samples/stress/busy-interface --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/stress/busy-interface --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it shows more cards, fills the lists with a hundred thousand items each, scrolls, goes through every rate of change, hides the charts, logs the frame numbers of every step and quits.

@@ -80,7 +80,7 @@ haylen run ~/apps/my-game --platform catalyst
 haylen run ~/apps/my-game --platform ios-simulator --device "iPad Pro 13-inch (M5)"
 haylen run ~/apps/my-game --platform tvos-simulator
 haylen run ~/apps/my-game --platform android --device emulator-5554
-haylen run ~/apps/my-game --platform web --coep off --open
+haylen run ~/apps/my-game --platform web --open
 ```
 
 Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the configuration of `--engine-config`, `Release` by default, in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#platform-projects), and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it prepares the project of the platform as [platform projects](#platform-projects) describes and then:
@@ -141,7 +141,7 @@ Compiles every source under `content/shaders/` that declares an `@program` into 
 
 ```sh
 haylen serve dist/my-game --port 8000
-haylen serve dist/my-game --coep off --open
+haylen serve dist/my-game --open
 haylen serve dist/my-game --host 192.168.1.20
 ```
 
@@ -150,13 +150,13 @@ Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. Th
 | Header | Value |
 | --- | --- |
 | `Cross-Origin-Opener-Policy` | None by default, `same-origin-allow-popups` with `--coop same-origin-allow-popups`, and `same-origin` with `--coop same-origin` |
-| `Cross-Origin-Embedder-Policy` | `require-corp` by default, `credentialless` with `--coep credentialless`, and none with `--coep off` |
+| `Cross-Origin-Embedder-Policy` | None by default, `credentialless` with `--coep credentialless`, and `require-corp` with `--coep require-corp` |
 | `Cross-Origin-Resource-Policy` | `cross-origin` |
 | `Access-Control-Allow-Origin` | `*` |
 | `Cache-Control` | `no-cache` |
 | `ETag`, `Accept-Ranges` | A strong validator of each file, and `bytes`, since the server answers one byte range of a file with `206`, `Content-Range` and the bytes asked for, and a range whose `If-Range` names another validator with the whole file, as a content delivery network serves the shards of a protected release. |
 
-The web runtime is single-threaded, so its pages need no cross-origin isolation, and the server sends no opener policy by default: `same-origin` would put the sign-in and payment popups of plugins into a browsing context group of their own, which cuts them off from the page, as the [plugin guide](../platform/plugins.md#web-screens) explains. The option `--coop same-origin` together with a `--coep` policy makes a page cross-origin isolated, for pages that use `SharedArrayBuffer` or threads of their own, and `--coop same-origin-allow-popups` keeps the popups of the page linked to it. Pages that load third-party scripts, such as sign-in libraries, need `--coep credentialless` or `--coep off`, because those scripts do not send the resource policy that `require-corp` asks for. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
+The web runtime is single-threaded, so its pages need no cross-origin isolation, and the server sends neither policy by default: an opener policy of `same-origin` would put the sign-in and payment popups of plugins into a browsing context group of their own, which cuts them off from the page, as the [plugin guide](../platform/plugins.md#web-screens) explains, and an embedder policy of `require-corp` would block the third-party scripts that plugins load, such as those of ads, analytics and sign-in, which do not send the resource policy it asks for. The option `--coop same-origin` together with `--coep credentialless` or `--coep require-corp` makes a page cross-origin isolated, for pages that use `SharedArrayBuffer` or threads of their own, and `--coop same-origin-allow-popups` keeps the popups of the page linked to it. The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg` and `.png` explicitly. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding` when the browser accepts that encoding.
 
 ### plugin
 

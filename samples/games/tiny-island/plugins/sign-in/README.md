@@ -17,7 +17,7 @@ Both platforms sign in with the web client id that the identity service of the a
 | Platform | Setup |
 | --- | --- |
 | Android | The Android client of the same project of the identity service names the package and the signing certificate of the APK. The module brings Credential Manager and the ID token library of the identity service. |
-| Web | The web client lists the origin that serves the page among its authorized JavaScript origins. The page loads the script of the identity service, which does not send the resource policy that `require-corp` asks for, so the server runs with `--coep off` or `--coep credentialless`. |
+| Web | The web client lists the origin that serves the page among its authorized JavaScript origins. The page loads the script of the identity service, which does not send the resource policy that `require-corp` asks for, so a server of the page sends no `Cross-Origin-Embedder-Policy`, as the development server does, or `credentialless`. |
 
 Without a client id, `signIn` fails with a message that names the key to set.
 

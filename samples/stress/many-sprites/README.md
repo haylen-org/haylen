@@ -13,7 +13,7 @@ The commands run from the root of the repository:
 | iPhone and iPad simulator | `haylen run samples/stress/many-sprites --platform ios-simulator` |
 | Apple TV simulator | `haylen run samples/stress/many-sprites --platform tvos-simulator` |
 | Android device or emulator | `haylen run samples/stress/many-sprites --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/many-sprites --platform web --coep off` |
+| Browser | `haylen run samples/stress/many-sprites --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/stress/many-sprites --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it adds fish, goes through every simulation and hand-over mode, empties the pond, fills it again, logs the frame numbers of every step and quits.

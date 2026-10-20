@@ -13,7 +13,7 @@ The commands run from the root of the repository:
 | iPhone and iPad simulator | `haylen run samples/stress/streamed-map --platform ios-simulator` |
 | Apple TV simulator | `haylen run samples/stress/streamed-map --platform tvos-simulator` |
 | Android device or emulator | `haylen run samples/stress/streamed-map --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/streamed-map --platform web --coep off` |
+| Browser | `haylen run samples/stress/streamed-map --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/stress/streamed-map --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it flies at several zooms and build budgets, starts a new world, logs the frame numbers of every step and quits.

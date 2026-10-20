@@ -13,7 +13,7 @@ The commands run from the root of the repository:
 | iPhone and iPad simulator | `haylen run samples/stress/many-bodies --platform ios-simulator` |
 | Apple TV simulator | `haylen run samples/stress/many-bodies --platform tvos-simulator` |
 | Android device or emulator | `haylen run samples/stress/many-bodies --platform android --device <serial>` |
-| Browser | `haylen run samples/stress/many-bodies --platform web --coep off` |
+| Browser | `haylen run samples/stress/many-bodies --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/stress/many-bodies --frames 900` |
 
 On the headless platform the app runs a short tour by itself: it pours, sets off blasts, shakes the bin, removes toys, empties the bin, pours again, logs the frame numbers of every step and quits.
