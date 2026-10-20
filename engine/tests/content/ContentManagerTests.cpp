@@ -285,7 +285,7 @@ TEST_F(ContentManagerTest, StopsPrefetchingInTheBackgroundAndGoesOnOnceActive) {
     ASSERT_TRUE(frameUntil([this] { return engine->getContent().isLocal("music/theme.ogg"); }));
 }
 
-// iOS and tvOS may empty the caches of an app while it is suspended, so the content that the app needs comes down again once it is active.
+// Apple systems such as iOS and tvOS may empty the caches of an app while it is suspended, so the content that the app needs comes down again once it is active.
 TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackground) {
     run(shipWithoutContent());
     ASSERT_TRUE(frameUntil([this] { return hasStarted() && engine->getContent().getStatistics().pendingDownloads == 0; }));
