@@ -82,6 +82,20 @@ void ContentManager::addPackFolder(const std::filesystem::path& folder) {
     }
 }
 
+void ContentManager::PackSourceLink::disconnect() {
+    source.reset();
+    const std::map<std::uint64_t, std::function<void()>> abandoned = std::exchange(waiting, {});
+    for (const auto& [request, abandon] : abandoned) {
+        abandon();
+    }
+}
+
+core::Connection ContentManager::addPackSource(std::shared_ptr<PackSource> source) {
+    std::erase_if(packSources, [](const std::shared_ptr<PackSourceLink>& link) { return !link->isConnected(); });
+    const std::shared_ptr<PackSourceLink>& link = packSources.emplace_back(std::make_shared<PackSourceLink>(std::move(source)));
+    return core::Connection(link);
+}
+
 bool ContentManager::hasServer() const noexcept {
     return settings.updates.has_value() || !release->getRemoteAddress().empty();
 }
@@ -343,10 +357,117 @@ void ContentManager::acquire(const std::vector<std::string>& paths, ProgressCall
         // clang-format on
         return;
     }
+
+    // The assets of packs come from the sources of packs first, and what they leave out from the server.
+    std::vector<std::string> packs;
+    for (const std::string& path : wanted) {
+        const std::string pack(settings.getPack(path));
+        if (!pack.empty() && std::ranges::find(packs, pack) == packs.end()) {
+            packs.push_back(pack);
+        }
+    }
+    std::erase_if(packSources, [](const std::shared_ptr<PackSourceLink>& link) { return !link->isConnected(); });
+    if (packs.empty() || packSources.empty()) {
+        bring(std::move(wanted), std::move(onProgress), std::move(done));
+        return;
+    }
+    // clang-format off
+    deliverPacks(std::move(packs), 0, std::make_shared<const PackSources>(packSources), onProgress, [this, wanted = std::move(wanted), onProgress, done = std::move(done)](std::optional<Error> failure) mutable {
+        if (failure) {
+            done(std::move(failure));
+            return;
+        }
+        std::erase_if(wanted, [this](const std::string& path) { return isLocal(path); });
+        if (wanted.empty()) {
+            done(std::nullopt);
+            return;
+        }
+        bring(std::move(wanted), std::move(onProgress), std::move(done));
+    });
+    // clang-format on
+}
+
+void ContentManager::deliverPacks(std::vector<std::string> packs, std::size_t index, std::shared_ptr<const PackSources> sources, ProgressCallback onProgress, Completion done) {
+    if (index == packs.size()) {
+        done(std::nullopt);
+        return;
+    }
+    std::string pack = packs[index];
+    // clang-format off
+    askSource(std::move(pack), sources, 0, onProgress, [this, packs = std::move(packs), index, sources, onProgress, done = std::move(done)](std::optional<Error> failure) mutable {
+        if (failure) {
+            done(std::move(failure));
+            return;
+        }
+        deliverPacks(std::move(packs), index + 1, std::move(sources), std::move(onProgress), std::move(done));
+    });
+    // clang-format on
+}
+
+void ContentManager::askSource(std::string pack, std::shared_ptr<const PackSources> sources, std::size_t index, ProgressCallback onProgress, Completion done) {
+    while (index < sources->size() && (!(*sources)[index]->isConnected() || (*sources)[index]->isBlocked())) {
+        ++index;
+    }
+    if (index == sources->size()) {
+        done(std::nullopt);
+        return;
+    }
+    const std::shared_ptr<PackSourceLink>& link = (*sources)[index];
+    const std::uint64_t request = ++packRequests;
+
+    // The source answers once, and a source that its connection removes first answers that it does not deliver the pack, in the next frame.
+    // clang-format off
+    auto answer = std::make_shared<std::function<void(std::optional<std::filesystem::path>, std::optional<Error>)>>();
+    *answer = [this, owner = std::weak_ptr(alive), held = std::weak_ptr(link), request, pack, sources, index, onProgress, done = std::move(done)](std::optional<std::filesystem::path> folder, std::optional<Error> failure) mutable {
+        const std::shared_ptr<PackSourceLink> source = held.lock();
+        if (owner.expired() || !done) {
+            return;
+        }
+        Completion finish = std::exchange(done, nullptr);
+        if (source) {
+            source->waiting.erase(request);
+        }
+        if (failure) {
+            finish(std::move(failure));
+            return;
+        }
+        if (!folder) {
+            askSource(std::move(pack), std::move(sources), index + 1, std::move(onProgress), std::move(finish));
+            return;
+        }
+        try {
+            addPackFolder(*folder);
+        } catch (const std::runtime_error&) {
+            finish(Error(Error::Code::StoreAssetUnavailable, "The source of packs delivered the pack \"" + pack + "\" into \"" + folder->generic_string() + "\", which is no folder."));
+            return;
+        }
+        finish(std::nullopt);
+    };
+    link->waiting.emplace(request, [&jobs = engine.getJobs(), owner = std::weak_ptr(alive), answer] {
+        jobs.postToFrame([owner, answer] {
+            if (!owner.expired()) {
+                (*answer)(std::nullopt, std::nullopt);
+            }
+        });
+    });
+    link->source->acquire(pack, [owner = std::weak_ptr(alive), onProgress](const PackSource::Progress& received) {
+        if (!owner.expired() && onProgress) {
+            onProgress({.receivedBytes = received.receivedBytes, .totalBytes = received.totalBytes});
+        }
+    }, [answer](std::optional<std::filesystem::path> folder, std::optional<Error> failure) {
+        (*answer)(std::move(folder), std::move(failure));
+    });
+    // clang-format on
+}
+
+void ContentManager::bring(std::vector<std::string> wanted, ProgressCallback onProgress, Completion done) {
     if (!downloader || !hasServer()) {
+        const std::string& path = wanted.front();
+        const std::string pack(settings.getPack(path));
+        std::string message = pack.empty() ? "The asset \"" + path + "\" is not on the device, and the app names no server to download it from." : "The asset \"" + path + "\" of the pack \"" + pack + "\" is not on the device, no source of packs delivered the pack, and the app names no server to download it from.";
         // clang-format off
-        engine.getJobs().postToFrame([path = wanted.front(), done = std::move(done)] {
-            done(Error(Error::Code::StoreAssetUnavailable, "The asset \"" + path + "\" is not on the device, and the app names no server to download it from."));
+        engine.getJobs().postToFrame([message = std::move(message), done = std::move(done)] {
+            done(Error(Error::Code::StoreAssetUnavailable, message));
         });
         // clang-format on
         return;

@@ -289,6 +289,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/content/HttpTransport.cpp
   src/content/LocalStore.cpp
   src/content/LuaCompiler.cpp
+  src/content/LuaPackSource.cpp
   src/content/PublicationLayout.cpp
   src/content/RangePlanner.cpp
   src/content/RecordCache.cpp

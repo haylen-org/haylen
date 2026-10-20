@@ -7,13 +7,17 @@
 #include <string>
 #include <vector>
 
+#include "content/LuaPackSource.hpp"
 #include "haylen/assets/Manager.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
+#include "haylen/lua/TypeConverter.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "lua/Owners.hpp"
 
 namespace haylen::content {
@@ -168,6 +172,28 @@ int ContentLua::addPackFolder(lua_State* L) {
     return 0;
 }
 
+int ContentLua::addPackSource(lua_State* L) {
+    luaL_checktype(L, 1, LUA_TFUNCTION);
+    int owner = 0;
+    if (!lua_isnoneornil(L, 2)) {
+        luaL_checktype(L, 2, LUA_TTABLE);
+        lua::Table::checkFields(L, 2, {kOptions});
+        if (lua_getfield(L, 2, "owner") != LUA_TNIL) {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
+    }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
+    core::Connection connection = getManager(L).addPackSource(std::make_shared<LuaPackSource>(L, 1, owner));
+    if (owner != 0) {
+        lua::Owners::add(L, owner, connection);
+    }
+    lua::Userdata::emplace<core::Connection>(L, connection);
+    return 1;
+}
+
 int ContentLua::prefetch(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     std::vector<std::string> paths;
@@ -252,7 +278,7 @@ int ContentLua::stats(lua_State* L) {
 
 int ContentLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"isProtected", &lua::Binding::native<&isProtected>}, {"generation", &lua::Binding::native<&generation>}, {"channel", &lua::Binding::native<&channel>}, {"status", &lua::Binding::native<&status>}, {"progress", &lua::Binding::native<&progress>}, {"error", &lua::Binding::native<&error>}, {"update", &lua::Binding::native<&update>}, {"isLocal", &lua::Binding::native<&isLocal>}, {"isGroupLocal", &lua::Binding::native<&isGroupLocal>}, {"addPackFolder", &lua::Binding::native<&addPackFolder>}, {"prefetch", &lua::Binding::native<&prefetch>}, {"check", &lua::Binding::native<&check>}, {"download", &lua::Binding::native<&download>}, {"apply", &lua::Binding::native<&apply>}, {"cancel", &lua::Binding::native<&cancel>}, {"stats", &lua::Binding::native<&stats>}, {nullptr, nullptr},
+        {"isProtected", &lua::Binding::native<&isProtected>}, {"generation", &lua::Binding::native<&generation>}, {"channel", &lua::Binding::native<&channel>}, {"status", &lua::Binding::native<&status>}, {"progress", &lua::Binding::native<&progress>}, {"error", &lua::Binding::native<&error>}, {"update", &lua::Binding::native<&update>}, {"isLocal", &lua::Binding::native<&isLocal>}, {"isGroupLocal", &lua::Binding::native<&isGroupLocal>}, {"addPackFolder", &lua::Binding::native<&addPackFolder>}, {"addPackSource", &lua::Binding::native<&addPackSource>}, {"prefetch", &lua::Binding::native<&prefetch>}, {"check", &lua::Binding::native<&check>}, {"download", &lua::Binding::native<&download>}, {"apply", &lua::Binding::native<&apply>}, {"cancel", &lua::Binding::native<&cancel>}, {"stats", &lua::Binding::native<&stats>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

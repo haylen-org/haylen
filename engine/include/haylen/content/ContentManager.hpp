@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <set>
@@ -13,7 +14,9 @@
 #include <vector>
 
 #include "haylen/content/Error.hpp"
+#include "haylen/content/PackSource.hpp"
 #include "haylen/core/AppConfig.hpp"
+#include "haylen/core/Connection.hpp"
 #include "haylen/core/ScopedConnection.hpp"
 
 namespace haylen::core {
@@ -116,7 +119,10 @@ class ContentManager final {
     // Reads the shards of a pack from a folder where a store installed them while the app runs, such as an asset pack that a store delivered on demand, so its assets load from then on. In development the folder of the app holds every pack, so it does nothing. Throws `std::runtime_error` for a path that is no folder.
     void addPackFolder(const std::filesystem::path& folder);
 
-    // Brings the assets that the device lacks, by their paths relative to `content`, and calls back once all of them are on the device. Throws `std::invalid_argument` for an asset that does not exist.
+    // Adds a source of packs, which the manager asks after the sources before it for a pack that an asset needs, before the content server, and returns the connection that removes it. A source that the connection removes while it delivers counts as one that does not deliver the pack.
+    core::Connection addPackSource(std::shared_ptr<PackSource> source);
+
+    // Brings the assets that the device lacks, by their paths relative to `content`, and calls back once all of them are on the device: the assets of packs from the sources of packs first, and the rest from the content server. Throws `std::invalid_argument` for an asset that does not exist.
     void acquire(const std::vector<std::string>& paths, ProgressCallback onProgress, Completion done);
 
     // Asks the channel for newer content. Throws `std::logic_error` in an app without a content server.
@@ -139,6 +145,34 @@ class ContentManager final {
 
   private:
     static const std::array<std::pair<std::string_view, Status>, 5> kStatusNames;
+
+    // A source of packs as the manager holds it. Removing it answers the requests that wait for it as not delivered, and its late answers change nothing.
+    class PackSourceLink final : public core::Connection::Link {
+      public:
+        explicit PackSourceLink(std::shared_ptr<PackSource> value) : source(std::move(value)) {}
+
+        void disconnect() override;
+        [[nodiscard]] bool isConnected() const noexcept override {
+            return source != nullptr;
+        }
+        void setBlocked(bool value) override {
+            blocked = value;
+        }
+        [[nodiscard]] bool isBlocked() const noexcept override {
+            return blocked;
+        }
+
+        std::shared_ptr<PackSource> source;
+        std::map<std::uint64_t, std::function<void()>> waiting;
+        bool blocked = false;
+    };
+
+    using PackSources = std::vector<std::shared_ptr<PackSourceLink>>;
+
+    // Asks the sources for each pack in turn, and then for the next pack, until every pack was asked for or a source failed.
+    void deliverPacks(std::vector<std::string> packs, std::size_t index, std::shared_ptr<const PackSources> sources, ProgressCallback onProgress, Completion done);
+    void askSource(std::string pack, std::shared_ptr<const PackSources> sources, std::size_t index, ProgressCallback onProgress, Completion done);
+    void bring(std::vector<std::string> wanted, ProgressCallback onProgress, Completion done);
 
     void startCheck();
     void installOffer(ProgressCallback onProgress, Completion done);
@@ -175,6 +209,8 @@ class ContentManager final {
     std::vector<core::ScopedConnection> listeners;
     std::shared_ptr<bool> alive = std::make_shared<bool>(true);
     std::set<std::string> broughtInDevelopment;
+    PackSources packSources;
+    std::uint64_t packRequests = 0;
     Status status = Status::Idle;
     std::optional<Error> error;
     Progress progress;

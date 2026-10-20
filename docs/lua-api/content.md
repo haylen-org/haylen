@@ -110,6 +110,20 @@ content.addPackFolder(folder)
 print(content.isLocal('expansion/island.json'))
 ```
 
+### content.addPackSource(fn, options)
+
+Adds a source of packs and returns a [`Connection`](signal.md#connection) that removes it. When the app loads an asset of a pack that the device lacks, with `assets.loadAsync`, `assets.preload` or `content.prefetch`, the engine asks each source in the order they were added for the pack, before the content server, so the code that loads the asset never knows which store delivers it. The function `fn` runs as a task with the name of the pack and a progress function, which takes a table with `receivedBytes` and `totalBytes`, and returns the folder that holds the shards of the delivered pack, `nil` when it does not deliver the pack, which passes it on to the next source, or a promise of either. The folder joins the release as `content.addPackFolder` adds it. An error of `fn` or a promise that rejects fails the load with `storeAssetUnavailable` and the message `The source of packs failed to deliver the pack "<pack>". <reason>`, a folder that does not exist with `The source of packs delivered the pack "<pack>" into "<folder>", which is no folder.`, and any other value with `The source of packs must return the folder of the pack, nil or a promise of either.` A load whose pack no source delivers comes from the content server, or fails with `storeAssetUnavailable` in an app without one. The options table takes `owner`, whose end removes the source and stops its tasks, and any other key raises `Unknown option "<key>".` A source that is removed while it delivers counts as one that delivers nothing. In development the folder of the app holds every pack, so no source is asked.
+
+```lua
+local content = require('haylen.content')
+local store = require('store-packs')
+
+-- The Lua part of a store plugin hands every pack request to its native part, which answers with the folder where the store installed the pack.
+content.addPackSource(function(pack, progress)
+    return store.download(pack, progress)
+end, {owner = self})
+```
+
 ### content.stats()
 
 Returns counters of the content for debugging: `generation`, `catalogFiles`, the files the content holds, `storedRecords` and `storedBytes`, what the local store of downloads holds, `downloadedBytes` and `requests` since the app started, `resumedRecords`, the downloads that went on from where an earlier one stopped, and `pendingDownloads`, which is `1` while anything downloads.
