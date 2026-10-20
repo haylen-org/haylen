@@ -186,6 +186,26 @@ jobs:
       - name: Build and check the protected release of the starter C++ app
         run: python haylen.py --verbose run-cpp build/starter-cpp --config Release --build-only
 
+  sanitizers:
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, thread]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+      - name: Install Linux packages
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+      - uses: actions/cache@v6
+        with:
+          path: .cache/cpm
+          key: cpm-sanitizers-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - name: Run the engine tests under the sanitizer
+        run: python haylen.py --verbose test --sanitizers ${{ matrix.sanitizer }}
+
   fuzz:
     runs-on: ubuntu-latest
     steps:

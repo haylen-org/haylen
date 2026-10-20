@@ -417,6 +417,7 @@ The file `.github/workflows/ci.yml` runs every command a change must pass, on ev
 | `web` | `haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, and `haylen.py test --platform web`, the memory check of the web. |
 | `android` | `haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository, and the protected release APK of the starter app with `run --config Release --build-only`. |
 | `apple` | `haylen.py engine --platform apple` on macOS, which builds `Haylen.xcframework`, and the protected release of the starter app for the iOS simulator with `run --config Release --build-only`. |
+| `sanitizers` | `haylen.py test --sanitizers address` and `--sanitizers thread` on Ubuntu. |
 | `fuzz` | `haylen.py fuzz --seconds 60` with the Clang of Ubuntu, which runs every fuzzer for a minute. |
 
 The jobs cache `.cache/cpm`, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`, and the web job also caches `.tools/emsdk`.
