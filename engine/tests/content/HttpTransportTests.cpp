@@ -2,6 +2,7 @@
 
 #include <Poco/Net/ServerSocket.h>
 
+#include <algorithm>
 #include <chrono>
 #include <cstdint>
 #include <optional>
@@ -112,10 +113,11 @@ TEST_F(HttpTransportTest, StartsARangeAgainWhenTheFileChanged) {
     ASSERT_FALSE(outcome.error) << outcome.error->what();
     EXPECT_FALSE(outcome.start->resumed);
     EXPECT_EQ(outcome.bytes, slice(2000, 50000));
+    // The server records an exchange when its answer ends, and the whole file that the client stopped reading may end after the range that followed it.
     const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
     ASSERT_EQ(exchanges.size(), 2U);
-    EXPECT_EQ(exchanges[0].status, 200);
-    EXPECT_EQ(exchanges[1].first, 2000U);
+    EXPECT_TRUE(std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.status == 200 && !exchange.first; }));
+    EXPECT_TRUE(std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.status == 206 && exchange.first == 2000U; }));
 }
 
 TEST_F(HttpTransportTest, NeverResumesWithoutAValidator) {
