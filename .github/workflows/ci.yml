@@ -103,13 +103,18 @@ jobs:
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
       - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
           key: cpm-android-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build the Android library and publish it to the local Maven repository
         run: python haylen.py --verbose engine --platform android
+      - name: Build and check the protected release APK of the starter app, with the content tool of the desktop artifacts
+        run: |
+          python haylen.py --verbose new build/starter
+          python haylen.py --verbose android-key build/starter
+          python haylen.py --verbose run build/starter --platform android --config Release --build-only
 
   apple:
     runs-on: macos-latest
@@ -125,6 +130,10 @@ jobs:
           key: cpm-apple-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Build "Haylen.xcframework"
         run: python haylen.py --verbose engine --platform apple
+      - name: Build and check the protected release of the starter app for the iOS simulator
+        run: |
+          python haylen.py --verbose new build/starter
+          python haylen.py --verbose run build/starter --platform ios-simulator --config Release --build-only
 
   desktop-apps:
     strategy:
@@ -174,6 +183,24 @@ jobs:
         run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build the starter C++ app from the C++ template
         run: python haylen.py --verbose run-cpp build/starter-cpp --build-only
+      - name: Build and check the protected release of the starter C++ app
+        run: python haylen.py --verbose run-cpp build/starter-cpp --config Release --build-only
+
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+      - name: Install Linux packages
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang libclang-rt-dev libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+      - uses: actions/cache@v6
+        with:
+          path: .cache/cpm
+          key: cpm-fuzz-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - name: Fuzz the parsers that read hostile bytes for a minute each
+        run: python haylen.py --verbose fuzz --seconds 60 --llvm /usr/bin
 
   tests-project:
     runs-on: ubuntu-latest

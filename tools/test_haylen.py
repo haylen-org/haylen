@@ -1334,6 +1334,15 @@ class AndroidPluginsTest(unittest.TestCase):
         self.assertIn('deliveryType.set("install-time")', (generated / "asset-packs" / "haylencontent1" / "build.gradle.kts").read_text())
         self.assertEqual(haylen.android_release_shards(scratch / "project"), {f"{index:064x}.hpak" for index in range(5)})
 
+    def test_a_build_only_run_builds_and_checks_every_abi_without_a_device(self):
+        args = haylen.build_parser().parse_args(["run", "game", "--platform", "android", "--config", "Release", "--build-only"])
+        with mock.patch.object(haylen, "android_device") as device, mock.patch.object(haylen, "build_android", return_value=Path("app.apk")) as build, mock.patch.object(haylen, "check_android", return_value=[]) as check, mock.patch.object(haylen, "launch_android") as launch:
+            haylen.run_android(mock.Mock(), Path("project"), args)
+        device.assert_not_called()
+        self.assertIsNone(build.call_args.args[3])
+        check.assert_called_once()
+        launch.assert_not_called()
+
     def test_a_debug_build_for_a_device_packs_only_its_abi(self):
         app = mock.Mock(plugins=[], plugin_values={}, build_folder=Path("build"))
         for config, abi, packed in (("Debug", "x86_64", True), ("Debug", None, False), ("Release", "x86_64", False)):

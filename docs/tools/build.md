@@ -60,6 +60,7 @@ Every command is about the engine or about an app, plugin or project that the de
 | `shaders` | Compile the shaders of an app. See the [shader guide](../graphics/shaders.md). |
 | `serve` | Serve a folder with the headers WebAssembly pages need. See the [distribution guide](distribution.md#serve). |
 | `coverage` | Measure engine code coverage. |
+| `fuzz` | Build the fuzzers of the parsers that read hostile bytes with a Clang that links libFuzzer and run each for a while. See the [testing guide](testing.md#fuzzing). |
 | `format` | Format the C, C++ and Objective-C++ sources. |
 | `bench` | Build and run a benchmark of the engine in Release. |
 | `sdk` | Build the engine SDK, install it for `find_package(haylen)` and check that other projects consume the engine. |
@@ -413,8 +414,9 @@ The file `.github/workflows/ci.yml` runs every command a change must pass, on ev
 | `format` | `haylen.py format --check` with clang-format 23.1.3, and the tests of `tools/test_haylen.py`. |
 | `desktop` | `haylen.py test --config Debug` and `haylen.py sdk --config Release --check-consumers package`, which builds the SDK and a project that finds it with `find_package`, on macOS, Ubuntu and Windows. |
 | `coverage` | `haylen.py coverage` on macOS, whose report table shows in the log. |
-| `web` | `haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player. |
-| `android` | `haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository. |
-| `apple` | `haylen.py engine --platform apple` on macOS, which builds `Haylen.xcframework`. |
+| `web` | `haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, and `haylen.py test --platform web`, the memory check of the web. |
+| `android` | `haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository, and the protected release APK of the starter app with `run --config Release --build-only`. |
+| `apple` | `haylen.py engine --platform apple` on macOS, which builds `Haylen.xcframework`, and the protected release of the starter app for the iOS simulator with `run --config Release --build-only`. |
+| `fuzz` | `haylen.py fuzz --seconds 60` with the Clang of Ubuntu, which runs every fuzzer for a minute. |
 
 The jobs cache `.cache/cpm`, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`, and the web job also caches `.tools/emsdk`.

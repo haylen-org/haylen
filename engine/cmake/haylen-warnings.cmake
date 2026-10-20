@@ -21,13 +21,19 @@ if(HAYLEN_BUILD_FUZZERS)
   add_link_options(-fsanitize=address)
 endif()
 
+# Compilers that warn apart about designated initializers that leave fields out take a switch of its own for it, while the others report them as missing field initializers.
+include(CheckCXXCompilerFlag)
+if(NOT MSVC)
+  check_cxx_compiler_flag(-Wmissing-designated-field-initializers HAYLEN_DESIGNATED_INITIALIZER_WARNING)
+endif()
+
 function(haylen_enable_warnings target)
   if(MSVC)
     target_compile_options(${target} PRIVATE /W4 /permissive- /Zc:preprocessor /utf-8)
   else()
     target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wshadow)
     # Designated initializers that leave fields to their default member values are the intended style.
-    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if(HAYLEN_DESIGNATED_INITIALIZER_WARNING)
       target_compile_options(${target} PRIVATE -Wno-missing-designated-field-initializers)
     else()
       target_compile_options(${target} PRIVATE -Wno-missing-field-initializers)

@@ -778,6 +778,39 @@ def command_test(args: argparse.Namespace) -> None:
     terminal.success("The engine tests passed.")
 
 
+# The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
+FUZZERS = ("haylen_content_fuzzer", "haylen_input_fuzzer", "haylen_messagepack_fuzzer", "haylen_placeholder_fuzzer")
+FUZZ_MAX_LENGTH = 65536
+FUZZ_LLVM_FOLDERS = ("/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin", "/usr/lib/llvm-20/bin", "/usr/lib/llvm-19/bin", "/usr/lib/llvm-18/bin")
+
+
+def fuzzing_compilers(requested: str | None) -> tuple[Path, Path]:
+    """The Clang and Clang++ that link libFuzzer: of the LLVM folder given or that `HAYLEN_LLVM` names, or else of a package manager, since the Clang of Xcode does not ship libFuzzer."""
+    folders = [folder for folder in (requested, os.environ.get("HAYLEN_LLVM")) if folder] or list(FUZZ_LLVM_FOLDERS)
+    for folder in folders:
+        clang = Path(folder) / "clang"
+        if (Path(folder) / "clang++").is_file() and clang.is_file():
+            return clang, Path(folder) / "clang++"
+    raise BuildError('No Clang with libFuzzer was found. Install the LLVM of a package manager, such as "brew install llvm" or "apt install clang libclang-rt-dev", or name its "bin" folder with "--llvm".')
+
+
+def command_fuzz(args: argparse.Namespace) -> None:
+    clang, clangxx = fuzzing_compilers(args.llvm)
+    directory = BUILD_ROOT / "fuzz"
+    terminal.step(f"Building the fuzzers with `{shown_path(clangxx)}` in `{shown_path(directory)}`")
+    # The engine uses no C++ modules, so the build skips the scan for them, which would need the "clang-scan-deps" of the same LLVM.
+    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}"])
+    run(["cmake", "--build", directory, "--target", *FUZZERS, "--parallel", str(args.jobs)])
+
+    # Each fuzzer keeps the inputs that reached new code in a corpus of its own, which the next run starts from.
+    for fuzzer in FUZZERS:
+        corpus = directory / "corpus" / fuzzer
+        corpus.mkdir(parents=True, exist_ok=True)
+        terminal.step(f'Running "{fuzzer}" for {args.seconds} seconds')
+        run([directory / "bin" / fuzzer, corpus, f"-max_total_time={args.seconds}", f"-max_len={FUZZ_MAX_LENGTH}", "-print_final_stats=1"], stream=True)
+    terminal.success(f"The {len(FUZZERS)} fuzzers ran without a crash.")
+
+
 def llvm_tool(name: str) -> str:
     if host_name() == "macos":
         return capture(["xcrun", "--find", name]).strip()
@@ -2907,6 +2940,8 @@ def run_apple(app: App, root: Path, args: argparse.Namespace) -> None:
     requirements = check_apple(app, root, args)
     stop_on_release_problems(requirements)
     report_requirements(requirements)
+    if args.build_only:
+        return
     with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
         launch_apple(bundle, args, simulator, arguments)
 
@@ -3278,11 +3313,14 @@ def prepare_android_run(app: App, args: argparse.Namespace) -> Path:
 
 
 def run_android(app: App, root: Path, args: argparse.Namespace) -> None:
-    device = android_device(args.device)
-    apk = build_android(app, root, args, android_device_abi(device))
+    # A build without a device packs the native libraries of every ABI.
+    device = None if args.build_only else android_device(args.device)
+    apk = build_android(app, root, args, android_device_abi(device) if device else None)
     requirements = check_android(app, root, args)
     stop_on_release_problems(requirements)
     report_requirements(requirements)
+    if device is None:
+        return
     with device_development(app, root / GENERATED_FOLDER / "assets" / "app", args, device) as arguments:
         launch_android(apk, args, device, arguments)
 
@@ -3513,7 +3551,11 @@ def device_development(app: App, package: Path, args: argparse.Namespace, device
 
 def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     """Serves the site, in development with the Debug configuration, where the development server pushes every saved file of the app to the open pages, and as it ships with the Release configuration."""
-    report_requirements(check_web(app, site, args))
+    requirements = check_web(app, site, args)
+    stop_on_release_problems(requirements)
+    report_requirements(requirements)
+    if args.build_only:
+        return
     if args.config == "Release":
         serve(site, args.host, args.port, args.coep, args.coop, args.open)
         return
@@ -3824,6 +3866,8 @@ def run_desktop(app: App, root: Path, args: argparse.Namespace) -> None:
     requirements = check_desktop(app, root, args)
     stop_on_release_problems(requirements)
     report_requirements(requirements)
+    if args.build_only:
+        return
     executable = desktop_folder(app, args.platform) / DESKTOP_LAYOUTS[args.platform][1].format(executable=app.executable)
     with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
         run([executable, *arguments], cwd=executable.parent, stream=True)
@@ -5455,6 +5499,7 @@ def build_parser() -> argparse.ArgumentParser:
     run_app.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
     run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project of a platform builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
     run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the engine: of the player that runs the app on this machine, or of the artifacts the project of a platform uses. "Release" by default, and "Debug" only to debug the engine itself, because it runs many times slower.')
+    run_app.add_argument("--build-only", action="store_true", help="Build and check the app for a platform without launching it, such as in continuous integration, which needs no device.")
     add_jobs_option(run_app)
     add_previous_release_option(run_app)
     add_web_server_options(run_app, 8000)
@@ -5590,6 +5635,12 @@ def build_parser() -> argparse.ArgumentParser:
     serve_folder.add_argument("directory", help="The folder of the web page.")
     add_web_server_options(serve_folder, 8000)
     serve_folder.set_defaults(handler=command_serve)
+
+    fuzz = commands.add_parser("fuzz", parents=[common], help="Build the fuzzers of the parsers that read hostile bytes with a Clang that links libFuzzer, and run each for a while.")
+    fuzz.add_argument("--seconds", type=int, default=60, help="How long each fuzzer runs, 60 seconds by default.")
+    fuzz.add_argument("--llvm", help='The "bin" folder of an LLVM whose Clang links libFuzzer, which "HAYLEN_LLVM" also names, or else the LLVM of a package manager.')
+    add_jobs_option(fuzz)
+    fuzz.set_defaults(handler=command_fuzz)
 
     coverage = commands.add_parser("coverage", parents=[common], help="Measure engine code coverage with LLVM source-based coverage.")
     add_jobs_option(coverage)

@@ -34,7 +34,7 @@ The file `haylen` at the root of the repository, a shell script for macOS and Li
 | `new <folder> [--kind lua\|cpp] [--name] [--identifier] [--orientation]` | Creates a Lua or C++ app from the layers of its [template](#templates), with a project of every platform template under `platform/`. |
 | `platform add <app> <template>` | Creates `platform/<template>` of an app from the template of a platform for the kind of the app. |
 | `platform diff <app> --template` | Shows how `platform/<template>` of an app differs from the current template for the kind of the app, without changing anything. |
-| `run <app> [--platform] [--device] [--config] [--engine-config]` | Runs an app, in the desktop player by default or built for a platform. |
+| `run <app> [--platform] [--device] [--config] [--engine-config] [--build-only]` | Runs an app, in the desktop player by default or built for a platform, or with `--build-only` builds and checks it for the platform without launching it, which needs no device. |
 | `prepare <app> --platform [--config] [--engine-config]` | Writes the folder `haylen/` of the project of a platform and nothing else, or the site of the web, with the package as it is or, with `--config Release`, with the protected release of the app. |
 | `xcodegen [app] [--platform] [--config] [--template]` | Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, or generates the project of the Apple template. |
 | `check <app> --platform [--config] [--coop]` | Checks the last build of an app against what the engine and its plugins need, and prints every missing requirement with the snippet that adds it. |
@@ -81,9 +81,10 @@ haylen run ~/apps/my-game --platform ios-simulator --device "iPad Pro 13-inch (M
 haylen run ~/apps/my-game --platform tvos-simulator
 haylen run ~/apps/my-game --platform android --device emulator-5554
 haylen run ~/apps/my-game --platform web --open
+haylen run ~/apps/my-game --platform android --config Release --build-only
 ```
 
-Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the configuration of `--engine-config`, `Release` by default, in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#platform-projects), and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it prepares the project of the platform as [platform projects](#platform-projects) describes and then:
+Before anything else, `run` compiles the shaders of the app whose sources changed, as [shaders](#shaders) describes. Without `--platform`, `run` builds the `haylen` player in the configuration of `--engine-config`, `Release` by default, in the build tree of this machine (`build/<host>-<config>`), builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#platform-projects), and starts the player with `--dev`, `--native` and that folder when there are libraries, and the app folder. While the player runs it compiles every shader source that changes again, which the player then reloads. With `--platform` it prepares the project of the platform as [platform projects](#platform-projects) describes and then builds, checks and launches it as below, and with `--build-only` it stops after the check, which needs no device, simulator or server, so continuous integration builds the packages of every platform with it. A build-only Android run packs the native libraries of every ABI.
 
 | Platform | Build | Launch |
 | --- | --- | --- |
