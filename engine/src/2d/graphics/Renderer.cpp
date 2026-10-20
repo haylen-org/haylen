@@ -1095,12 +1095,13 @@ bool Renderer::isCapturing() const noexcept {
     return !state->openCaptures.empty();
 }
 
+// A failure on the way, such as a group left open that cannot close, still drops what the frame drew, so the next frame starts clean.
 void Renderer::endFrame(const graphics::FrameTarget& target) {
-    finishCanvas();
-    while (!state->openCaptures.empty()) {
-        state->closeCapture();
-    }
     try {
+        finishCanvas();
+        while (!state->openCaptures.empty()) {
+            state->closeCapture();
+        }
         FrameSubmitter(*state, target).submit();
     } catch (...) {
         state->resetFrame();

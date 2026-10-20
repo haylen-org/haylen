@@ -174,6 +174,20 @@ TEST_F(GroupTest, KeepsTheModesThatReadWhatLiesBelowForGroups) {
     EXPECT_EQ(errors[1], "A group that blends with what lies below draws in a canvas without ambient light.");
 }
 
+// A group that cannot close when its frame ends fails that frame alone, and the next frame draws none of what the failed one drew.
+TEST_F(GroupTest, DropsAFrameWhoseGroupsCannotCloseAtItsEnd) {
+    // clang-format off
+    test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(camera, {.ambientLight = math::Color(0.5F, 0.5F, 0.5F, 1.0F)});
+        renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::SoftLight}});
+        renderer.drawRect({0.0F, 0.0F, 8.0F, 8.0F}, math::Color::white());
+    });
+    // clang-format on
+    ASSERT_NE(fixture.engine().getError(), nullptr);
+    EXPECT_THROW((void)fixture.engine().getRenderer2D().isCanvasLit(), std::logic_error);
+}
+
 TEST_F(GroupTest, DrawsTheSameGroupsEveryFrameWithoutAllocating) {
     // clang-format off
     fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
