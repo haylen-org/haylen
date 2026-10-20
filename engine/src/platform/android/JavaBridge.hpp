@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "haylen/platform/ScreenRequest.hpp"
+#include "platform/android/JavaLocalRef.hpp"
 
 namespace haylen::platform {
 
@@ -106,8 +107,11 @@ class JavaBridge final {
     [[nodiscard]] static JNIEnv& getEnv();
     static void detachThread(void* env);
 
-    [[nodiscard]] static jbyteArray toBytes(JNIEnv& env, std::string_view text);
-    [[nodiscard]] static jobjectArray toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers);
+    [[nodiscard]] static JavaLocalRef<jbyteArray> toBytes(JNIEnv& env, std::string_view text);
+    [[nodiscard]] static JavaLocalRef<jobjectArray> toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers);
+
+    // Returns the text of a byte array that a static method of Java returns, or `fallback` when the method threw.
+    [[nodiscard]] static std::string callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback);
 
     // Return a global reference to the class, or the static method, and log an engine error that names it when it is missing.
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);

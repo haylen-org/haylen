@@ -103,10 +103,9 @@ jint JavaBridge::load(JavaVM* vm) {
     }
 
     // The plugins load when the process starts, before any activity loads this library, so their list is final here.
-    const auto ids = static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, idsMethod));
+    const JavaLocalRef ids(*env, static_cast<jbyteArray>(env->CallStaticObjectMethod(pluginsClass, idsMethod)));
     if (!clearException(*env, "dev.haylen.HaylenPlugins.ids")) {
-        plugins = core::Json::parse(toString(*env, ids)).get<std::vector<std::string>>();
-        env->DeleteLocalRef(ids);
+        plugins = core::Json::parse(toString(*env, ids.get())).get<std::vector<std::string>>();
     }
 
     varn::http::client::AndroidHttpBridge::publish(vm);
@@ -114,16 +113,14 @@ jint JavaBridge::load(JavaVM* vm) {
 }
 
 jclass JavaBridge::findClass(JNIEnv& env, const char* name) {
-    const jclass found = env.FindClass(name);
-    if (found == nullptr) {
+    const JavaLocalRef found(env, env.FindClass(name));
+    if (found.get() == nullptr) {
         env.ExceptionDescribe();
         env.ExceptionClear();
         core::Log::error("The Java class \"{}\" of the haylen library is missing, so the engine cannot start. Keep the classes of the library in the rules of R8.", name);
         return nullptr;
     }
-    const auto global = static_cast<jclass>(env.NewGlobalRef(found));
-    env.DeleteLocalRef(found);
-    return global;
+    return static_cast<jclass>(env.NewGlobalRef(found.get()));
 }
 
 jmethodID JavaBridge::findMethod(JNIEnv& env, jclass owner, const char* name, const char* signature) {
@@ -138,13 +135,12 @@ jmethodID JavaBridge::findMethod(JNIEnv& env, jclass owner, const char* name, co
 
 void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
     JNIEnv& env = getEnv();
-    const jbyteArray methodBytes = toBytes(env, method);
-    const jbyteArray paramsBytes = toBytes(env, paramsJson);
-    const jobjectArray arrays = toByteArrays(env, buffers);
-    env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes, paramsBytes, arrays);
-    env.DeleteLocalRef(methodBytes);
-    env.DeleteLocalRef(paramsBytes);
-    env.DeleteLocalRef(arrays);
+    {
+        const JavaLocalRef methodBytes = toBytes(env, method);
+        const JavaLocalRef paramsBytes = toBytes(env, paramsJson);
+        const JavaLocalRef arrays = toByteArrays(env, buffers);
+        env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes.get(), paramsBytes.get(), arrays.get());
+    }
 
     // A call that the Java registry never took would wait forever, so it fails at once.
     if (clearException(env, "dev.haylen.HaylenBridge.dispatch")) {
@@ -167,9 +163,7 @@ void JavaBridge::setAppRunning(bool value) {
 
 void JavaBridge::reportError(std::string_view reportJson) {
     JNIEnv& env = getEnv();
-    const jbyteArray bytes = toBytes(env, reportJson);
-    env.CallStaticVoidMethod(pluginsClass, reportErrorMethod, bytes);
-    env.DeleteLocalRef(bytes);
+    env.CallStaticVoidMethod(pluginsClass, reportErrorMethod, toBytes(env, reportJson).get());
     clearException(env, "dev.haylen.HaylenPlugins.reportError");
 }
 
@@ -179,9 +173,7 @@ const std::vector<std::string>& JavaBridge::getPlugins() noexcept {
 
 void JavaBridge::editText(std::string_view fieldJson) {
     JNIEnv& env = getEnv();
-    const jbyteArray bytes = toBytes(env, fieldJson);
-    env.CallStaticVoidMethod(editorClass, editMethod, bytes);
-    env.DeleteLocalRef(bytes);
+    env.CallStaticVoidMethod(editorClass, editMethod, toBytes(env, fieldJson).get());
     clearException(env, "dev.haylen.HaylenEditText.edit");
 }
 
@@ -212,54 +204,28 @@ void JavaBridge::captureBack(bool value) {
 // The device reports nothing when Java fails, so every value of the info stays unknown.
 std::string JavaBridge::getSystemInfo() {
     JNIEnv& env = getEnv();
-    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, systemInfoMethod));
-    if (clearException(env, "dev.haylen.HaylenActivity.systemInfo")) {
-        return "{}";
-    }
-    std::string json = toString(env, bytes);
-    env.DeleteLocalRef(bytes);
-    return json;
+    return callText(env, activityClass, systemInfoMethod, "dev.haylen.HaylenActivity.systemInfo", "{}");
 }
 
 void JavaBridge::setClipboard(std::string_view text) {
     JNIEnv& env = getEnv();
-    const jbyteArray bytes = toBytes(env, text);
-    env.CallStaticVoidMethod(activityClass, setClipboardMethod, bytes);
-    env.DeleteLocalRef(bytes);
+    env.CallStaticVoidMethod(activityClass, setClipboardMethod, toBytes(env, text).get());
     clearException(env, "dev.haylen.HaylenActivity.setClipboard");
 }
 
 std::string JavaBridge::getClipboard() {
     JNIEnv& env = getEnv();
-    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, clipboardMethod));
-    if (clearException(env, "dev.haylen.HaylenActivity.clipboard")) {
-        return {};
-    }
-    std::string text = toString(env, bytes);
-    env.DeleteLocalRef(bytes);
-    return text;
+    return callText(env, activityClass, clipboardMethod, "dev.haylen.HaylenActivity.clipboard", "");
 }
 
 std::string JavaBridge::getNetworkRequirement() {
     JNIEnv& env = getEnv();
-    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, networkRequirementMethod));
-    if (clearException(env, "dev.haylen.HaylenActivity.networkRequirement")) {
-        return {};
-    }
-    std::string sentence = toString(env, bytes);
-    env.DeleteLocalRef(bytes);
-    return sentence;
+    return callText(env, activityClass, networkRequirementMethod, "dev.haylen.HaylenActivity.networkRequirement", "");
 }
 
 std::string JavaBridge::getDevelopmentServer() {
     JNIEnv& env = getEnv();
-    const auto bytes = static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, developmentServerMethod));
-    if (clearException(env, "dev.haylen.HaylenActivity.developmentServer")) {
-        return {};
-    }
-    std::string address = toString(env, bytes);
-    env.DeleteLocalRef(bytes);
-    return address;
+    return callText(env, activityClass, developmentServerMethod, "dev.haylen.HaylenActivity.developmentServer", "");
 }
 
 // The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
@@ -271,9 +237,7 @@ void JavaBridge::openUrl(std::string_view url, std::function<void(bool opened)> 
         urlCallbacks.emplace(request, std::move(callback));
     }
     JNIEnv& env = getEnv();
-    const jbyteArray bytes = toBytes(env, url);
-    env.CallStaticVoidMethod(activityClass, openUrlMethod, static_cast<jlong>(request), bytes);
-    env.DeleteLocalRef(bytes);
+    env.CallStaticVoidMethod(activityClass, openUrlMethod, static_cast<jlong>(request), toBytes(env, url).get());
     if (clearException(env, "dev.haylen.HaylenActivity.openUrl")) {
         answerUrl(request, false);
     }
@@ -307,41 +271,33 @@ void JavaBridge::rumbleGamepad(std::int32_t device, float low, float high, std::
 
 void JavaBridge::updateAccessibility(std::string_view treeJson) {
     JNIEnv& env = getEnv();
-    const jbyteArray tree = toBytes(env, treeJson);
-    env.CallStaticVoidMethod(accessibilityClass, updateAccessibilityMethod, tree);
-    env.DeleteLocalRef(tree);
+    env.CallStaticVoidMethod(accessibilityClass, updateAccessibilityMethod, toBytes(env, treeJson).get());
     clearException(env, "dev.haylen.HaylenAccessibilityTree.update");
 }
 
 void JavaBridge::announce(std::string_view text, bool interrupt) {
     JNIEnv& env = getEnv();
-    const jbyteArray bytes = toBytes(env, text);
-    env.CallStaticVoidMethod(accessibilityClass, announceMethod, bytes, static_cast<jboolean>(interrupt ? JNI_TRUE : JNI_FALSE));
-    env.DeleteLocalRef(bytes);
+    env.CallStaticVoidMethod(accessibilityClass, announceMethod, toBytes(env, text).get(), static_cast<jboolean>(interrupt ? JNI_TRUE : JNI_FALSE));
     clearException(env, "dev.haylen.HaylenAccessibilityTree.announce");
 }
 
 void JavaBridge::updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork) {
     JNIEnv& env = getEnv();
-    const jbyteArray info = infoJson.empty() ? nullptr : toBytes(env, infoJson);
-    const jbyteArray bytes = artwork.empty() ? nullptr : toBytes(env, std::string_view(reinterpret_cast<const char*>(artwork.data()), artwork.size()));
-    env.CallStaticVoidMethod(mediaSessionClass, updateMediaSessionMethod, info, bytes);
-    for (const jbyteArray local : {info, bytes}) {
-        if (local != nullptr) {
-            env.DeleteLocalRef(local);
-        }
+    {
+        const JavaLocalRef info = infoJson.empty() ? JavaLocalRef<jbyteArray>(env, nullptr) : toBytes(env, infoJson);
+        const JavaLocalRef bytes = artwork.empty() ? JavaLocalRef<jbyteArray>(env, nullptr) : toBytes(env, std::string_view(reinterpret_cast<const char*>(artwork.data()), artwork.size()));
+        env.CallStaticVoidMethod(mediaSessionClass, updateMediaSessionMethod, info.get(), bytes.get());
     }
     clearException(env, "dev.haylen.HaylenMediaSession.update");
 }
 
 void JavaBridge::showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data) {
     JNIEnv& env = getEnv();
-    const jbyteArray request = toBytes(env, requestJson);
-    const jbyteArray bytes = env.NewByteArray(static_cast<jsize>(data.size()));
-    env.SetByteArrayRegion(bytes, 0, static_cast<jsize>(data.size()), reinterpret_cast<const jbyte*>(data.data()));
-    env.CallStaticVoidMethod(dialogsClass, showDialogMethod, static_cast<jlong>(id), request, bytes);
-    env.DeleteLocalRef(request);
-    env.DeleteLocalRef(bytes);
+    {
+        const JavaLocalRef request = toBytes(env, requestJson);
+        const JavaLocalRef bytes = toBytes(env, std::string_view(reinterpret_cast<const char*>(data.data()), data.size()));
+        env.CallStaticVoidMethod(dialogsClass, showDialogMethod, static_cast<jlong>(id), request.get(), bytes.get());
+    }
     if (clearException(env, "dev.haylen.HaylenDialogs.show")) {
         DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Failed, .message = "The dialog failed, because the Java method \"dev.haylen.HaylenDialogs.show\" threw an exception."}});
     }
@@ -355,17 +311,14 @@ void JavaBridge::cancelDialog(std::uint64_t id) {
 
 void JavaBridge::openScreen(const ScreenRequest& request) {
     JNIEnv& env = getEnv();
-    const jbyteArray plugin = toBytes(env, request.plugin);
-    const jbyteArray screen = toBytes(env, request.screen);
-    const jbyteArray params = toBytes(env, request.params.json.dump());
-    const jobjectArray buffers = toByteArrays(env, request.params.buffers);
-    const jbyteArray state = toBytes(env, request.state.dump());
-    env.CallStaticVoidMethod(screensClass, openScreenMethod, static_cast<jlong>(request.id), plugin, screen, params, buffers, state, static_cast<jboolean>(request.opaque ? JNI_TRUE : JNI_FALSE));
-    env.DeleteLocalRef(plugin);
-    env.DeleteLocalRef(screen);
-    env.DeleteLocalRef(params);
-    env.DeleteLocalRef(buffers);
-    env.DeleteLocalRef(state);
+    {
+        const JavaLocalRef plugin = toBytes(env, request.plugin);
+        const JavaLocalRef screen = toBytes(env, request.screen);
+        const JavaLocalRef params = toBytes(env, request.params.json.dump());
+        const JavaLocalRef buffers = toByteArrays(env, request.params.buffers);
+        const JavaLocalRef state = toBytes(env, request.state.dump());
+        env.CallStaticVoidMethod(screensClass, openScreenMethod, static_cast<jlong>(request.id), plugin.get(), screen.get(), params.get(), buffers.get(), state.get(), static_cast<jboolean>(request.opaque ? JNI_TRUE : JNI_FALSE));
+    }
     if (clearException(env, "dev.haylen.HaylenScreens.open")) {
         ScreenRelay::finish(request.id, false, core::Json{{"message", "The screen failed, because the Java method \"dev.haylen.HaylenScreens.open\" threw an exception."}, {"code", "exception"}}.dump());
     }
@@ -399,9 +352,8 @@ std::vector<std::string> JavaBridge::toStrings(JNIEnv& env, jobjectArray texts) 
     std::vector<std::string> strings;
     strings.reserve(static_cast<std::size_t>(count));
     for (jsize index = 0; index < count; ++index) {
-        const auto text = static_cast<jbyteArray>(env.GetObjectArrayElement(texts, index));
-        strings.push_back(toString(env, text));
-        env.DeleteLocalRef(text);
+        const JavaLocalRef text(env, static_cast<jbyteArray>(env.GetObjectArrayElement(texts, index)));
+        strings.push_back(toString(env, text.get()));
     }
     return strings;
 }
@@ -411,44 +363,50 @@ std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectAr
     const jsize count = env.GetArrayLength(buffers);
     std::vector<std::vector<std::byte>> copies(static_cast<std::size_t>(count));
     for (jsize index = 0; index < count; ++index) {
-        const jobject buffer = env.GetObjectArrayElement(buffers, index);
+        const JavaLocalRef buffer(env, env.GetObjectArrayElement(buffers, index));
         std::vector<std::byte>& copy = copies[static_cast<std::size_t>(index)];
-        if (const void* address = env.GetDirectBufferAddress(buffer)) {
+        if (const void* address = env.GetDirectBufferAddress(buffer.get())) {
             const auto* bytes = static_cast<const std::byte*>(address);
-            copy.assign(bytes, bytes + env.GetDirectBufferCapacity(buffer));
+            copy.assign(bytes, bytes + env.GetDirectBufferCapacity(buffer.get()));
         } else {
-            const auto array = static_cast<jbyteArray>(buffer);
+            const auto array = static_cast<jbyteArray>(buffer.get());
             copy.resize(static_cast<std::size_t>(env.GetArrayLength(array)));
             env.GetByteArrayRegion(array, 0, static_cast<jsize>(copy.size()), reinterpret_cast<jbyte*>(copy.data()));
         }
-        env.DeleteLocalRef(buffer);
     }
     return copies;
 }
 
 // Java may run out of memory for an array, which leaves `OutOfMemoryError` pending, so the exception is cleared and the call fails in C++ before any other call into Java.
-jbyteArray JavaBridge::toBytes(JNIEnv& env, std::string_view text) {
-    const jbyteArray bytes = env.NewByteArray(static_cast<jsize>(text.size()));
-    if (bytes == nullptr) {
+JavaLocalRef<jbyteArray> JavaBridge::toBytes(JNIEnv& env, std::string_view text) {
+    JavaLocalRef bytes(env, env.NewByteArray(static_cast<jsize>(text.size())));
+    if (bytes.get() == nullptr) {
         clearException(env, "NewByteArray");
         throw std::runtime_error("Java has no memory for an array of " + std::to_string(text.size()) + " bytes.");
     }
-    env.SetByteArrayRegion(bytes, 0, static_cast<jsize>(text.size()), reinterpret_cast<const jbyte*>(text.data()));
+    env.SetByteArrayRegion(bytes.get(), 0, static_cast<jsize>(text.size()), reinterpret_cast<const jbyte*>(text.data()));
     return bytes;
 }
 
-jobjectArray JavaBridge::toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers) {
-    const jobjectArray arrays = env.NewObjectArray(static_cast<jsize>(buffers.size()), byteArrayClass, nullptr);
-    if (arrays == nullptr) {
+JavaLocalRef<jobjectArray> JavaBridge::toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers) {
+    JavaLocalRef arrays(env, env.NewObjectArray(static_cast<jsize>(buffers.size()), byteArrayClass, nullptr));
+    if (arrays.get() == nullptr) {
         clearException(env, "NewObjectArray");
         throw std::runtime_error("Java has no memory for a list of " + std::to_string(buffers.size()) + " buffers.");
     }
     for (std::size_t index = 0; index < buffers.size(); ++index) {
-        const jbyteArray array = toBytes(env, std::string_view(reinterpret_cast<const char*>(buffers[index].data()), buffers[index].size()));
-        env.SetObjectArrayElement(arrays, static_cast<jsize>(index), array);
-        env.DeleteLocalRef(array);
+        const JavaLocalRef array = toBytes(env, std::string_view(reinterpret_cast<const char*>(buffers[index].data()), buffers[index].size()));
+        env.SetObjectArrayElement(arrays.get(), static_cast<jsize>(index), array.get());
     }
     return arrays;
+}
+
+std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback) {
+    const JavaLocalRef bytes(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(owner, method)));
+    if (clearException(env, name)) {
+        return std::string(fallback);
+    }
+    return toString(env, bytes.get());
 }
 
 // A thread that this class attached keeps its attachment, which the key ends when the thread exits, so no call pays for attaching and every attachment is released.
