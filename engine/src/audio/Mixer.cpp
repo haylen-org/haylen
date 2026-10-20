@@ -139,10 +139,15 @@ std::uint64_t Mixer::toFrame(float seconds, std::uint32_t sampleRate) noexcept {
     return static_cast<std::uint64_t>(std::llround(static_cast<double>(seconds) * static_cast<double>(sampleRate)));
 }
 
-void Mixer::requireLoop(const PlayOptions& options, float duration) {
+void Mixer::requireLoop(const PlayOptions& options, float duration, std::uint32_t sampleRate) {
     const float end = options.loopEnd.value_or(duration);
     if (!std::isfinite(options.loopStart) || !std::isfinite(end) || options.loopStart < 0.0F || end <= options.loopStart || end > duration + 1.0e-4F) {
         throw std::invalid_argument("A loop needs 0 <= loopStart < loopEnd <= the length of the sound.");
+    }
+
+    // The voice repeats whole frames, and a loop that rounds to none would repeat nothing forever.
+    if (toFrame(end, sampleRate) <= toFrame(options.loopStart, sampleRate)) {
+        throw std::invalid_argument("A loop needs to span at least one frame of the sound.");
     }
 }
 
@@ -151,14 +156,14 @@ Mixer::VoiceId Mixer::play(const Sound& sound, const PlayOptions& options) {
         throw std::invalid_argument("Cannot play an empty sound.");
     }
     requirePlayOptions(options);
+    const SoundData& data = *sound.getData();
     const bool region = options.loopStart > 0.0F || options.loopEnd.has_value();
     if (region) {
-        requireLoop(options, sound.getDuration());
+        requireLoop(options, sound.getDuration(), data.sampleRate);
     }
     std::unique_ptr<MixerState::Voice> voice = state->createVoice(options);
     voice->sound = sound;
 
-    const SoundData& data = *sound.getData();
     if (data.reader) {
         voice->readerSource = std::make_unique<ReaderSource>(data);
         if (region) {

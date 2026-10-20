@@ -300,7 +300,7 @@ class Mixer final {
     static void requirePitch(float value);
     static void requirePosition(math::Vec2 position);
     static void requirePlayOptions(const PlayOptions& options);
-    static void requireLoop(const PlayOptions& options, float duration);
+    static void requireLoop(const PlayOptions& options, float duration, std::uint32_t sampleRate);
     [[nodiscard]] static std::uint64_t toFrame(float seconds, std::uint32_t sampleRate) noexcept;
 
     std::unique_ptr<MixerState> state;

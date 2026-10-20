@@ -145,6 +145,14 @@ TEST_F(StreamedSoundTest, LoopsBetweenLoopPointsWithoutAGap) {
     }
     EXPECT_THROW((void)mixer.play(makeTone(100), {.loop = true, .loopStart = 0.5F}), std::invalid_argument);
     EXPECT_THROW((void)mixer.play(makeTone(toFrames(1.0F)), {.loop = true, .loopStart = 0.5F, .loopEnd = 0.4F}), std::invalid_argument);
+
+    // A loop shorter than a frame would repeat nothing, which would keep a decoder busy forever.
+    try {
+        (void)mixer.play(makeTone(toFrames(1.0F)), {.loop = true, .loopStart = 0.5F, .loopEnd = 0.500001F});
+        FAIL() << "A loop shorter than a frame plays.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "A loop needs to span at least one frame of the sound.");
+    }
 }
 
 TEST_F(StreamedSoundTest, PlaysTheFramesOfItsDecodedSoundAndEndsWithThem) {
