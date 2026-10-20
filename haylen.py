@@ -2950,8 +2950,17 @@ def android_product(app: App, config: str) -> Path:
     return apks[-1]
 
 
+def missing_android_plugin_files(app: App, root: Path) -> list[tuple[Plugin, Path, str]]:
+    """Returns the files that the plugins of an app place in its Android project and that the project lacks, as the plugin, the source and the path in the project. A project of the developer gets no copy from haylen.py, since it belongs to the developer."""
+    return [(plugin, source, destination) for plugin in app.plugins if "android" in plugin.manifest for source, destination in android_plugin_files(app, plugin) if not (root / destination).exists()]
+
+
 def build_android(app: App, root: Path, args: argparse.Namespace) -> Path:
-    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project."""
+    """Builds the APK of an Android project with Gradle, whose outputs and project cache go to the build folder of the app, outside the project. A file that a plugin needs in the project, such as the configuration of a service, stops the build first with the copy to make, since Gradle would fail without it."""
+    lacking = missing_android_plugin_files(app, root)
+    if lacking:
+        copies = " ".join(f'The plugin "{plugin.id}" needs "{destination}", so copy `{shown_path(source)}` to `{shown_path(root / destination)}`.' for plugin, source, destination in lacking)
+        raise BuildError(f"The Android project lacks files that its plugins need. {copies}")
     variant = "Release" if args.config == "Release" else "Debug"
     terminal.step(f'Building the APK of `{shown_path(root)}` with Gradle in the "{args.config}" configuration')
     run([ensure_gradle(), "-p", root, f":app:assemble{variant}", f"--max-workers={args.jobs}", "--project-cache-dir", app.build_folder / "gradle-cache"])
@@ -3042,9 +3051,8 @@ def check_android(app: App, root: Path, args: argparse.Namespace) -> list[Requir
         owner = f'The plugin "{plugin.id}"'
         for tag, name in android_module_needs(plugin.folder / android["module"]):
             need(owner, tag, name)
-        for source, destination in android_plugin_files(app, plugin):
-            if not (root / destination).exists():
-                missing.append(Requirement(f'{owner} needs "{destination}" in the Android project, which the project lacks.', f'Copy `{shown_path(source)}` to `{shown_path(root / destination)}`.'))
+    for plugin, source, destination in missing_android_plugin_files(app, root):
+        missing.append(Requirement(f'The plugin "{plugin.id}" needs "{destination}" in the Android project, which the project lacks.', f'Copy `{shown_path(source)}` to `{shown_path(root / destination)}`.'))
     if args.config == "Release":
         missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, apk_entries(apk), "assets/app", read_secrets(app))]
         missing += [Requirement(f'The release holds the shard "{name}" compressed, while the runtime reads shards in place.', f'Keep "noCompress" of "hpak" in `{shown_path(root / "app" / "build.gradle.kts")}`.') for name in compressed]

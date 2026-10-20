@@ -1294,6 +1294,25 @@ class AndroidPluginsTest(unittest.TestCase):
         self.assertEqual(written, {"plugins": [{"id": "accounts", "version": "2.0.0", "config": {"server": "accounts.example.com"}}, {"id": "store", "version": "1.1.0", "config": {"sandbox": True}}]})
 
 
+    def test_an_android_project_without_the_files_of_its_plugins_stops_before_gradle(self):
+        scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, scratch)
+        (scratch / "cloud").mkdir()
+        (scratch / "cloud" / "services.json").write_text("{}")
+        cloud = haylen.Plugin(scratch / "cloud", {"id": "cloud", "version": "1.0.0", "android": {"module": "android", "files": [{"from": "services.json", "to": "app/services.json"}]}}, None)
+        app = mock.Mock(plugins=[cloud], plugin_values={"cloud": {}}, folder=scratch / "game", build_folder=scratch / "build")
+        project = scratch / "project"
+        arguments = haylen.argparse.Namespace(config="Debug", jobs=1)
+        with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_gradle", return_value=Path("gradle")), mock.patch.object(haylen, "android_product", return_value=Path("app.apk")), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            with self.assertRaises(haylen.BuildError) as stopped:
+                haylen.build_android(app, project, arguments)
+            self.assertIn('needs "app/services.json"', str(stopped.exception))
+            run.assert_not_called()
+            (project / "app").mkdir(parents=True)
+            (project / "app" / "services.json").write_text("{}")
+            haylen.build_android(app, project, arguments)
+            run.assert_called_once()
+
 
 class CheckTest(unittest.TestCase):
     """The check of a web site or a Windows or Linux folder looks in the build folder of the app."""
