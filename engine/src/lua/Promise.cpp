@@ -43,6 +43,14 @@ void Promise::rejectHandled(std::string message) const {
     promise->rejectReported(std::move(message));
 }
 
+void Promise::rejectFailure(lua_State* L) const {
+    promise->rejectFailure(L, "The promise failed.");
+}
+
+void Promise::rejectHandledFailure(lua_State* L) const {
+    promise->rejectFailure(L, "The promise failed.", true);
+}
+
 bool Promise::isSettled() const {
     return promise->state() != varn::async::Promise::State::Pending;
 }

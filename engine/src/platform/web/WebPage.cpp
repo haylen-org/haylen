@@ -35,6 +35,7 @@
 #include "platform/sokol/SokolHost.hpp"
 #include "platform/sokol/SokolRuntime.hpp"
 #include "platform/web/WebDialogJson.hpp"
+#include "platform/web/WebEntry.hpp"
 #include "platform/web/WebTextInput.hpp"
 
 // clang-format off
@@ -338,7 +339,7 @@ core::Json WebPage::getFrameStatistics(core::Engine& engine) {
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_media_command(int command, double position) {
-    haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position);
+    haylen::platform::WebEntry::guard("haylen_web_media_command", [&] { haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position); });
 }
 
 EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {
@@ -346,19 +347,19 @@ EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_resolve(double call, int ok, const char* json, const std::uint32_t* buffers, int count) {
-    haylen::platform::WebPage::resolve(call, ok != 0, json, buffers, count);
+    haylen::platform::WebEntry::guard("haylen_web_resolve", [&] { haylen::platform::WebPage::resolve(call, ok != 0, json, buffers, count); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_emit(const char* event, const char* json, const std::uint32_t* buffers, int count, int flags) {
-    haylen::platform::WebPage::emit(event, json, buffers, count, flags);
+    haylen::platform::WebEntry::guard("haylen_web_emit", [&] { haylen::platform::WebPage::emit(event, json, buffers, count, flags); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_finish_screen(double id, int ok, const char* json, const std::uint32_t* buffers, int count) {
-    haylen::platform::WebPage::finishScreen(id, ok != 0, json, buffers, count);
+    haylen::platform::WebEntry::guard("haylen_web_finish_screen", [&] { haylen::platform::WebPage::finishScreen(id, ok != 0, json, buffers, count); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_restore_screen(const char* plugin, const char* screen, const char* state, int ok, const char* json, const std::uint32_t* buffers, int count) {
-    haylen::platform::WebPage::restoreScreen(plugin, screen, state, ok != 0, json, buffers, count);
+    haylen::platform::WebEntry::guard("haylen_web_restore_screen", [&] { haylen::platform::WebPage::restoreScreen(plugin, screen, state, ok != 0, json, buffers, count); });
 }
 
 EMSCRIPTEN_KEEPALIVE void* haylen_web_open_video_stream(const char* plugin, const char* name) {
@@ -378,19 +379,19 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_push_audio_frames(void* stream, const float*
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_reserve_insets(const char* key, float left, float top, float right, float bottom) {
-    haylen::platform::SokolHost::getNativeViews().reserveInsets(key, {.left = left, .top = top, .right = right, .bottom = bottom});
+    haylen::platform::WebEntry::guard("haylen_web_reserve_insets", [&] { haylen::platform::SokolHost::getNativeViews().reserveInsets(key, {.left = left, .top = top, .right = right, .bottom = bottom}); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_release_insets(const char* key) {
-    haylen::platform::SokolHost::getNativeViews().releaseInsets(key);
+    haylen::platform::WebEntry::guard("haylen_web_release_insets", [&] { haylen::platform::SokolHost::getNativeViews().releaseInsets(key); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_cover_app() {
-    haylen::platform::SokolHost::getNativeViews().coverApp();
+    haylen::platform::WebEntry::guard("haylen_web_cover_app", [&] { haylen::platform::SokolHost::getNativeViews().coverApp(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_uncover_app() {
-    haylen::platform::SokolHost::getNativeViews().uncoverApp();
+    haylen::platform::WebEntry::guard("haylen_web_uncover_app", [&] { haylen::platform::SokolHost::getNativeViews().uncoverApp(); });
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_load_zip(const std::uint8_t* bytes, int size) {
@@ -414,19 +415,19 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_run_files() {
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_console(double id, const char* line) {
-    haylen::platform::WebPage::runConsoleLine(id, line);
+    haylen::platform::WebEntry::guard("haylen_web_console", [&] { haylen::platform::WebPage::runConsoleLine(id, line); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_restart() {
-    haylen::platform::SokolRuntime::restart();
+    haylen::platform::WebEntry::guard("haylen_web_restart", [&] { haylen::platform::SokolRuntime::restart(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_stop() {
-    haylen::platform::SokolRuntime::stop();
+    haylen::platform::WebEntry::guard("haylen_web_stop", [&] { haylen::platform::SokolRuntime::stop(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_set_paused(int paused) {
-    haylen::platform::SokolRuntime::setPaused(paused != 0);
+    haylen::platform::WebEntry::guard("haylen_web_set_paused", [&] { haylen::platform::SokolRuntime::setPaused(paused != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_paused() {
@@ -438,46 +439,46 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_apply_changes() {
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_visibility(int visible) {
-    haylen::platform::WebPage::setVisible(visible != 0);
+    haylen::platform::WebEntry::guard("haylen_web_visibility", [&] { haylen::platform::WebPage::setVisible(visible != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_page_hidden() {
-    haylen::platform::WebPage::hide();
+    haylen::platform::WebEntry::guard("haylen_web_page_hidden", [&] { haylen::platform::WebPage::hide(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_network(int online) {
-    haylen::platform::WebPage::setOnline(online != 0);
+    haylen::platform::WebEntry::guard("haylen_web_network", [&] { haylen::platform::WebPage::setOnline(online != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_theme(int dark) {
-    haylen::platform::WebPage::setTheme(dark != 0);
+    haylen::platform::WebEntry::guard("haylen_web_theme", [&] { haylen::platform::WebPage::setTheme(dark != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility_action(double element, int action) {
-    haylen::platform::AccessibilityRelay::perform({.element = static_cast<std::uint64_t>(element), .action = static_cast<haylen::platform::AccessibilityElement::Action>(action)});
+    haylen::platform::WebEntry::guard("haylen_web_accessibility_action", [&] { haylen::platform::AccessibilityRelay::perform({.element = static_cast<std::uint64_t>(element), .action = static_cast<haylen::platform::AccessibilityElement::Action>(action)}); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility(double textScale, int reducedMotion, int highContrast, int reducedTransparency) {
-    haylen::platform::WebPage::setAccessibility(textScale, reducedMotion != 0, highContrast != 0, reducedTransparency != 0);
+    haylen::platform::WebEntry::guard("haylen_web_accessibility", [&] { haylen::platform::WebPage::setAccessibility(textScale, reducedMotion != 0, highContrast != 0, reducedTransparency != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_battery(double level, int charging, int full) {
-    haylen::platform::WebPage::setBattery(level, charging != 0, full != 0);
+    haylen::platform::WebEntry::guard("haylen_web_battery", [&] { haylen::platform::WebPage::setBattery(level, charging != 0, full != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_resolve_dialog(double id, const char* json) {
-    haylen::platform::WebPage::resolveDialog(id, json);
+    haylen::platform::WebEntry::guard("haylen_web_resolve_dialog", [&] { haylen::platform::WebPage::resolveDialog(id, json); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_text_edited(double field, double revision, const char* text, int selectionStart, int selectionEnd, int compositionStart, int compositionEnd) {
-    haylen::platform::WebTextInput::receiveEdit(field, revision, text, selectionStart, selectionEnd, compositionStart, compositionEnd);
+    haylen::platform::WebEntry::guard("haylen_web_text_edited", [&] { haylen::platform::WebTextInput::receiveEdit(field, revision, text, selectionStart, selectionEnd, compositionStart, compositionEnd); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_text_action(double field, int action) {
-    haylen::platform::WebTextInput::receiveAction(field, action);
+    haylen::platform::WebEntry::guard("haylen_web_text_action", [&] { haylen::platform::WebTextInput::receiveAction(field, action); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_keyboard(float x, float y, float width, float height) {
-    haylen::platform::WebTextInput::receiveKeyboard(x, y, width, height);
+    haylen::platform::WebEntry::guard("haylen_web_keyboard", [&] { haylen::platform::WebTextInput::receiveKeyboard(x, y, width, height); });
 }
 }

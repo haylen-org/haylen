@@ -155,8 +155,15 @@ std::uint64_t Updater::getRequiredSpace(const UpdateOffer& offer) noexcept {
     return getRequiredSpace(offer.downloadBytes, records) + records * ShardIndex::kEntrySize + offer.content->manifest->getEnvelope().shards.size() * ShardHeader::kSize + offer.manifest->size();
 }
 
-void Updater::install(const UpdateOffer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> done) {
+void Updater::install(const UpdateOffer& offer, std::function<void(const Downloader::Progress&)> progress, std::function<void(std::optional<Error>)> installed) {
+    // Every failure of an install names the manifest it brings.
     // clang-format off
+    auto done = [manifestId = offer.content->manifest->getId().toHex(), installed = std::move(installed)](std::optional<Error> failure) {
+        if (failure && failure->getDetails().manifestId.empty()) {
+            failure->getDetails().manifestId = manifestId;
+        }
+        installed(std::move(failure));
+    };
     jobs.postIo([this, &pool = jobs, owner = std::weak_ptr(alive), store = release->getStore(), offer, progress = std::move(progress), done = std::move(done)]() mutable {
         const std::uint64_t available = store->getAvailableSpace();
         const std::uint64_t required = getRequiredSpace(offer);

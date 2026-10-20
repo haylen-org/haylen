@@ -1,4 +1,5 @@
 #include "platform/web/BrowserAudioOutput.hpp"
+#include "platform/web/WebEntry.hpp"
 
 #include <emscripten/emscripten.h>
 
@@ -90,6 +91,6 @@ ma_result BrowserAudioOutput::stopDevice(ma_device* device) {
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_audio_render(ma_device* device, float* samples, int frames) {
-    haylen::audio::BrowserAudioOutput::render(device, samples, static_cast<ma_uint32>(frames));
+    haylen::platform::WebEntry::guard("haylen_web_audio_render", [&] { haylen::audio::BrowserAudioOutput::render(device, samples, static_cast<ma_uint32>(frames)); });
 }
 }

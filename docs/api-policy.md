@@ -44,7 +44,7 @@ A capability enters as new names, never as a new meaning of an existing name. Th
 
 ### Asynchronous calls
 
-- A call that finishes later returns a Varn promise that a coroutine awaits, and the asynchronous variant of a synchronous function ends with `Async`, such as `assets.loadAsync`. A rejection that the app asked for, such as a cancellation, never stops the app.
+- A call that finishes later returns a Varn promise that a coroutine awaits, and the asynchronous variant of a synchronous function ends with `Async`, such as `assets.loadAsync`. A rejection that the app asked for, such as a cancellation, never stops the app. A rejection that the app may act on carries a table next to its message, which `await` returns as its third value, with the message in `error` and the same fields as the other failures of its module, such as the `code` and the IDs of the content failures.
 - A promise resolves with one value, which follows the rules of returns, so its result grows like any other.
 
 ### Value types

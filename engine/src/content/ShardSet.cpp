@@ -69,14 +69,22 @@ void ShardSet::forgetMissing() const {
 }
 
 void ShardSet::readChunk(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {
-    if (const std::shared_ptr<const ShardReader> reader = findShard(chunk.shard)) {
-        reader->readChunk(chunk, scratch, plain);
-        return;
+    try {
+        if (const std::shared_ptr<const ShardReader> reader = findShard(chunk.shard)) {
+            reader->readChunk(chunk, scratch, plain);
+            return;
+        }
+        if (!store) {
+            throw Error(Error::Code::MissingShard, "The shard file \"" + references[chunk.shard].getFileName() + "\" is missing, so the app needs to be installed again.");
+        }
+        readRecord(chunk, scratch, plain);
+    } catch (Error& error) {
+        Error::Details& details = error.getDetails();
+        details.packId = references[chunk.shard].shardId.toHex();
+        details.contentId = chunk.contentId.toHex();
+        details.storedId = chunk.storedId.toHex();
+        throw;
     }
-    if (!store) {
-        throw Error(Error::Code::MissingShard, "The shard file \"" + references[chunk.shard].getFileName() + "\" is missing, so the app needs to be installed again.");
-    }
-    readRecord(chunk, scratch, plain);
 }
 
 void ShardSet::readRecord(const Catalog::Chunk& chunk, std::vector<std::uint8_t>& scratch, std::vector<std::uint8_t>& plain) const {

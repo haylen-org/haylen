@@ -38,6 +38,10 @@ class Promise final {
 
     // Rejects with a failure that reaches the app another way, such as through an error handler or the log, or that the app asked for, such as a cancellation, so the rejection never stops the app when nothing awaits it.
     void rejectHandled(std::string message) const;
+
+    // Reject with the table at the top of the stack, which describes the failure with its message in the field `error` and anything else the app may act on, and pop it. Awaiters receive `nil`, the message and the table. They run on the frame thread, and the handled one never stops the app when nothing awaits it, like `rejectHandled`.
+    void rejectFailure(lua_State* L) const;
+    void rejectHandledFailure(lua_State* L) const;
     [[nodiscard]] bool isSettled() const;
 
   private:

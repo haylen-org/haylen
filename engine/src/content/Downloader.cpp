@@ -548,10 +548,15 @@ void Downloader::fail(const Digest& storedId, const Error& error) {
     if (found == wanted.end()) {
         return;
     }
+    Error failure = error;
+    Error::Details& details = failure.getDetails();
+    details.packId = found->second.shard.toHex();
+    details.contentId = found->second.chunk.contentId.toHex();
+    details.storedId = storedId.toHex();
     const std::vector<std::uint64_t> waiting = std::move(found->second.requests);
     wanted.erase(found);
     for (const std::uint64_t id : waiting) {
-        complete(id, error);
+        complete(id, failure);
     }
 }
 

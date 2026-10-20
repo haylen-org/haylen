@@ -45,6 +45,12 @@ Returns the last failure as a table, or `nil`:
 | `retryable` | Whether trying again may succeed without a new build of the app, such as once the network comes back or room is freed. |
 | `httpStatus` | The status the server answered, when the failure was one. |
 | `requiredBytes`, `availableBytes` | The room an update needs and the room that is free, when the device lacked it. |
+| `path` | The file of the package that the app read, such as `content/levels/forest.json`, when a read failed. |
+| `manifestId`, `packId`, `contentId`, `storedId` | The hexadecimal IDs of the manifest, the pack, the plain content and the stored record involved, when the failure knows them. |
+| `platform` | The content profile of the app, when a manifest was made for another one. |
+| `platformMessage` | What the system or the browser said, such as the reason of a refused write. |
+
+The promises of `content.prefetch`, `content.check` and `content.download` reject with the same table: their `await` gives `nil`, the message and the table, which also holds the message in `error`, and the second argument of a `catch` handler is the table.
 
 ```lua
 local content = require('haylen.content')
@@ -53,6 +59,13 @@ local failure = content.error()
 if failure and failure.code == 'insufficientStorage' then
     print('Free ' .. (failure.requiredBytes - failure.availableBytes) .. ' bytes to update.')
 end
+
+require('async').spawn(function()
+    local done, message, prefetchFailure = content.prefetch({'levels/forest.json'}):await()
+    if not done and prefetchFailure.retryable then
+        print('The level downloads later: ' .. message)
+    end
+end)
 ```
 
 ### content.update()
@@ -93,7 +106,7 @@ Returns counters of the content for debugging: `generation`, `catalogFiles`, the
 
 Brings assets onto the device without loading them, and returns a promise that resolves to `true` once every one of them is there. The argument `groupOrPaths` is the name of a [preload group](assets.md#preload-groups), whose folders count with every asset in them, or a list of asset paths. The optional `progress` function receives a table with `receivedBytes` and `totalBytes` as bytes arrive. The options table takes `owner`, which ends the progress function with its owner, and any other key raises `Unknown option "<key>".`
 
-The promise rejects with the message of the failure, such as a device that is offline or one without room for the assets and the margin the store keeps free, and the rejection never stops the app when nothing awaits it. The assets download as foreground work, ahead of the prefetched content of `app.json`. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`
+The promise rejects with the failure, its message and the table of [`content.error`](#contenterror), such as a device that is offline or one without room for the assets and the margin the store keeps free, and the rejection never stops the app when nothing awaits it. The assets download as foreground work, ahead of the prefetched content of `app.json`. An asset that does not exist raises `The asset "<path>" does not exist.`, and a group that is not defined raises `The asset group "<name>" is not defined.`
 
 A later `assets.load`, `assets.loadAsync` or preload of the group reads the bytes from the device at once, and only then decodes the assets into memory, so prefetching costs storage and no memory.
 
@@ -115,7 +128,7 @@ An app with a content server and `enabled` updates checks its channel when it st
 
 ### content.check()
 
-Asks the channel for newer content and returns a promise that resolves to a table with `generation` and `downloadBytes`, or to `nil` when the app plays the newest content. The promise rejects with the message of the failure, such as `manifestRollbackRejected` for a server that offers an older generation or `manifestIncompatible` for content that needs a newer build of the app. In development it raises `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.`, and in a release without a content server `The app names no content server, so it has no updates. Name one in "content.updates" of "app.json".`
+Asks the channel for newer content and returns a promise that resolves to a table with `generation` and `downloadBytes`, or to `nil` when the app plays the newest content. The promise rejects with the failure, its message and the table of [`content.error`](#contenterror), such as `manifestRollbackRejected` for a server that offers an older generation or `manifestIncompatible` for content that needs a newer build of the app. In development it raises `The app plays its folder in development, which has no updates. Build it in the Release configuration to check for updates.`, and in a release without a content server `The app names no content server, so it has no updates. Name one in "content.updates" of "app.json".`
 
 ### content.download(progress, options)
 

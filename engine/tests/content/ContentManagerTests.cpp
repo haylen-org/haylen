@@ -289,6 +289,44 @@ TEST_F(ContentManagerTest, RefusesToBringAnAssetWithoutRoomForIt) {
     EXPECT_FALSE(engine->getContent().isLocal("levels/forest.json"));
 }
 
+TEST_F(ContentManagerTest, RejectsAPrefetchWithTheFailureThatDescribesIt) {
+    run(ship());
+    ASSERT_TRUE(frameUntil([this] { return hasStarted(); }));
+    setPacksStatus(503);
+
+    lua_State* L = engine->getLuaState();
+    // clang-format off
+    ASSERT_EQ(luaL_dostring(L, R"lua(
+        require('async').spawn(function()
+            local done, message, failure = require('haylen.content').prefetch({'levels/forest.json'}):await()
+            prefetched = {done = done, message = message, code = failure.code, status = failure.httpStatus, retryable = failure.retryable, pack = failure.packId, record = failure.storedId, error = failure.error}
+        end)
+    )lua"), LUA_OK) << lua_tostring(L, -1);
+    ASSERT_TRUE(frameUntil([L] {
+        lua_getglobal(L, "prefetched");
+        const bool settled = lua_istable(L, -1);
+        lua_pop(L, 1);
+        return settled;
+    }));
+
+    lua_getglobal(L, "prefetched");
+    const auto field = [L](const char* name) {
+        lua_getfield(L, -1, name);
+        std::string value = lua_isstring(L, -1) != 0 ? lua_tostring(L, -1) : (lua_isboolean(L, -1) ? (lua_toboolean(L, -1) != 0 ? "true" : "false") : "nil");
+        lua_pop(L, 1);
+        return value;
+    };
+    // clang-format on
+    EXPECT_EQ(field("done"), "nil");
+    EXPECT_EQ(field("code"), "unexpectedHttpStatus");
+    EXPECT_EQ(field("status"), "503");
+    EXPECT_EQ(field("retryable"), "true");
+    EXPECT_EQ(field("pack").size(), Digest::kSize * 2);
+    EXPECT_EQ(field("record").size(), Digest::kSize * 2);
+    EXPECT_EQ(field("error"), field("message"));
+    lua_pop(L, 1);
+}
+
 TEST_F(ContentManagerTest, UpdatesFromTheChannelAndAppliesTheUpdateOnRestart) {
     Files update = game;
     update["content/data/config.json"] = test::TestFiles::bytes(R"({"level": 2})");

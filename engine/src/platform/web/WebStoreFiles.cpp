@@ -7,6 +7,7 @@
 
 #include "haylen/content/Error.hpp"
 #include "haylen/core/Json.hpp"
+#include "platform/web/WebEntry.hpp"
 
 // The page side lives in `platform/web/haylen-runtime.js`, whose store hands every change to the worker of `haylen-content-store.js`.
 
@@ -253,10 +254,10 @@ void WebStoreFiles::evict() {
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_store_received(int request, const std::uint8_t* bytes, int size, int ok) {
-    haylen::platform::WebStoreFiles::receive(static_cast<std::uint32_t>(request), {bytes, static_cast<std::size_t>(size)}, ok != 0);
+    haylen::platform::WebEntry::guard("haylen_web_store_received", [&] { haylen::platform::WebStoreFiles::receive(static_cast<std::uint32_t>(request), {bytes, static_cast<std::size_t>(size)}, ok != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_store_refused(int quota, const char* message) {
-    haylen::platform::WebStoreFiles::refuse(quota != 0, message);
+    haylen::platform::WebEntry::guard("haylen_web_store_refused", [&] { haylen::platform::WebStoreFiles::refuse(quota != 0, message); });
 }
 }

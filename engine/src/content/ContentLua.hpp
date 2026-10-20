@@ -10,9 +10,13 @@
 
 struct lua_State;
 
+namespace haylen::lua {
+class Promise;
+}
+
 namespace haylen::content {
 
-// Installs `haylen.content`, which tells which content plays and which assets are on the device, brings assets down ahead of time without loading them, and checks, downloads and applies the updates of the content. Its promises reject with the message of the error, and `content.error` gives the details of the last failure.
+// Installs `haylen.content`, which tells which content plays and which assets are on the device, brings assets down ahead of time without loading them, and checks, downloads and applies the updates of the content. Its promises reject with the message of the error and the table that describes it, and `content.error` gives the same table for the last failure of the manager.
 class ContentLua final {
   public:
     static void install(lua_State* L);
@@ -22,6 +26,7 @@ class ContentLua final {
 
     [[nodiscard]] static ContentManager& getManager(lua_State* L);
     static void pushError(lua_State* L, const Error& error);
+    static void reject(lua_State* L, const lua::Promise& promise, const Error& failure);
     static void pushProgress(lua_State* L, const ContentManager::Progress& progress);
 
     // Sets a field of the table on top of the stack to a count, which Lua keeps as an integer.

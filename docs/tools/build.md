@@ -342,6 +342,8 @@ The file `engine/platform/web/haylen-runtime.js` is linked with `--pre-js` and f
 
 The runtime of a release, which carries the bootstrap of its app, plays only its protected release, so `loadZip`, `clearFiles`, `setFile`, `removeFile`, `applyChanges` and `run` throw an `Error` there and leave the app as it is.
 
+No C++ exception crosses into the page: a function of the runtime that fails throws an `Error` with the reason when it answers the page, and logs an engine error that names it otherwise, so the page goes on.
+
 | Function | Meaning |
 | --- | --- |
 | `loadZip(bytes)` | Replaces the running app with a zipped package given as a `Uint8Array` or an `ArrayBuffer`. A file that is not a valid zip shows the error screen and reaches `onError`, like any package that fails to load. |

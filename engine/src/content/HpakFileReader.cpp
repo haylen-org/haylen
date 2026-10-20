@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <utility>
 
+#include "haylen/content/Error.hpp"
+
 namespace haylen::content {
 
 HpakFileReader::HpakFileReader(std::shared_ptr<const Catalog> fileCatalog, std::shared_ptr<const ShardSet> fileShards, const Catalog::File& catalogFile) : catalog(std::move(fileCatalog)), shards(std::move(fileShards)), file(catalogFile) {}
@@ -25,7 +27,12 @@ std::size_t HpakFileReader::read(std::uint64_t offset, std::span<std::uint8_t> t
         const Catalog::Part piece = catalog->getPart(part);
         if (cachedPart != part) {
             cachedPart.reset();
-            shards->readChunk(catalog->getChunk(piece.chunk), scratch, plain);
+            try {
+                shards->readChunk(catalog->getChunk(piece.chunk), scratch, plain);
+            } catch (Error& error) {
+                error.getDetails().path = file.path;
+                throw;
+            }
             cachedPart = part;
         }
 

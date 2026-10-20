@@ -23,7 +23,7 @@ ContentManager& ContentLua::getManager(lua_State* L) {
 }
 
 void ContentLua::pushError(lua_State* L, const Error& failure) {
-    lua_createtable(L, 0, 6);
+    lua_createtable(L, 0, 8);
     lua::Stack::push(L, Error::getCodeName(failure.getCode()));
     lua_setfield(L, -2, "code");
     lua::Stack::push(L, std::string(failure.what()));
@@ -41,6 +41,20 @@ void ContentLua::pushError(lua_State* L, const Error& failure) {
     if (details.availableBytes) {
         setInteger(L, "availableBytes", *details.availableBytes);
     }
+    for (const auto& [field, value] : {std::pair{"path", &details.path}, {"manifestId", &details.manifestId}, {"packId", &details.packId}, {"contentId", &details.contentId}, {"storedId", &details.storedId}, {"platform", &details.platform}, {"platformMessage", &details.platformMessage}}) {
+        if (!value->empty()) {
+            lua::Stack::push(L, *value);
+            lua_setfield(L, -2, field);
+        }
+    }
+}
+
+// The app reads the failure of a content promise like the one of `content.error`, as the third value of its await.
+void ContentLua::reject(lua_State* L, const lua::Promise& promise, const Error& failure) {
+    pushError(L, failure);
+    lua::Stack::push(L, std::string(failure.what()));
+    lua_setfield(L, -2, "error");
+    promise.rejectHandledFailure(L);
 }
 
 void ContentLua::setInteger(lua_State* L, const char* field, std::uint64_t value) {
@@ -162,9 +176,9 @@ int ContentLua::prefetch(lua_State* L) {
 
     const lua::Promise promise(engine);
     // clang-format off
-    engine.getContent().acquire(paths, std::move(onProgress), [promise](std::optional<Error> failure) {
+    engine.getContent().acquire(paths, std::move(onProgress), [&engine, promise](std::optional<Error> failure) {
         if (failure) {
-            promise.rejectHandled(failure->what());
+            reject(engine.getLuaState(), promise, *failure);
             return;
         }
         promise.resolve(true);
@@ -178,9 +192,9 @@ int ContentLua::check(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const lua::Promise promise(engine);
     // clang-format off
-    engine.getContent().check([promise](std::optional<ContentManager::Update> found, std::optional<Error> failure) {
+    engine.getContent().check([&engine, promise](std::optional<ContentManager::Update> found, std::optional<Error> failure) {
         if (failure) {
-            promise.rejectHandled(failure->what());
+            reject(engine.getLuaState(), promise, *failure);
             return;
         }
         promise.resolve(found ? core::Json{{"generation", found->generation}, {"downloadBytes", found->downloadBytes}} : core::Json());
@@ -195,9 +209,9 @@ int ContentLua::download(lua_State* L) {
     ContentManager::ProgressCallback onProgress = readProgress(L, 1);
     const lua::Promise promise(engine);
     // clang-format off
-    engine.getContent().download(std::move(onProgress), [promise](std::optional<Error> failure) {
+    engine.getContent().download(std::move(onProgress), [&engine, promise](std::optional<Error> failure) {
         if (failure) {
-            promise.rejectHandled(failure->what());
+            reject(engine.getLuaState(), promise, *failure);
             return;
         }
         promise.resolve(true);

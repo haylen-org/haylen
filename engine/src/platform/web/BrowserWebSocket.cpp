@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "haylen/core/Json.hpp"
+#include "platform/web/WebEntry.hpp"
 
 // clang-format off
 EM_JS(void, haylen_js_socket_open, (int id, const char* url, const char* protocols), {
@@ -80,18 +81,18 @@ void BrowserWebSocket::deliver(int socket, Event event) {
 extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_socket_opened(int id, const char* protocol) {
-    haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Opened, .text = protocol});
+    haylen::platform::WebEntry::guard("haylen_web_socket_opened", [&] { haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Opened, .text = protocol}); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_socket_received(int id, const char* data, int size, int binary) {
-    haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Received, .text = std::string(data, static_cast<std::size_t>(size)), .binary = binary != 0});
+    haylen::platform::WebEntry::guard("haylen_web_socket_received", [&] { haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Received, .text = std::string(data, static_cast<std::size_t>(size)), .binary = binary != 0}); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_socket_closed(int id, int code, const char* reason) {
-    haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Closed, .text = reason, .code = code});
+    haylen::platform::WebEntry::guard("haylen_web_socket_closed", [&] { haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Closed, .text = reason, .code = code}); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_socket_failed(int id, const char* message) {
-    haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Failed, .text = message});
+    haylen::platform::WebEntry::guard("haylen_web_socket_failed", [&] { haylen::net::BrowserWebSocket::deliver(id, {.kind = haylen::net::WebSocketTransport::Event::Kind::Failed, .text = message}); });
 }
 }

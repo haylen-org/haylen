@@ -176,6 +176,7 @@ set(HAYLEN_TEST_SOURCES
   platform/StreamTests.cpp
   platform/SystemTests.cpp
   platform/WebDialogJsonTests.cpp
+  platform/WebEntryTests.cpp
   platform/WindowLuaTests.cpp
   platform/WindowTests.cpp
   platform/WindowsPowerStatusTests.cpp

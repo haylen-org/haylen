@@ -80,11 +80,17 @@ std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<
 std::shared_ptr<const ReleasePackage::Content> ReleasePackage::load(std::vector<std::uint8_t> manifestBytes, Manifest::Domain domain) const {
     auto manifest = std::make_shared<const Manifest>(Manifest::read(std::move(manifestBytes), trusted));
     if (manifest->getEnvelope().domain != domain) {
-        throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest->getId().toHex() + "\" belongs to the other domain.");
+        throw Error(Error::Code::CorruptManifest, "The manifest \"" + manifest->getId().toHex() + "\" belongs to the other domain.", {.manifestId = manifest->getId().toHex()});
     }
     compatibility.check(*manifest);
 
-    auto catalog = std::make_shared<const Catalog>(manifest->decryptCatalog(*keys));
+    std::shared_ptr<const Catalog> catalog;
+    try {
+        catalog = std::make_shared<const Catalog>(manifest->decryptCatalog(*keys));
+    } catch (Error& error) {
+        error.getDetails().manifestId = manifest->getId().toHex();
+        throw;
+    }
     // clang-format off
     auto shards = std::make_shared<const ShardSet>(manifest->getEnvelope().shards, keys, [releaseFiles = files, packFolders = packs](const ShardReference& reference) -> std::unique_ptr<io::PackageReader> {
         const std::string name = reference.getFileName();

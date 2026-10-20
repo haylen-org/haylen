@@ -7,6 +7,16 @@
 namespace haylen::content {
 
 void Compatibility::check(const Manifest& manifest) const {
+    try {
+        checkEnvelope(manifest);
+    } catch (Error& error) {
+        error.getDetails().manifestId = manifest.getId().toHex();
+        error.getDetails().platform = profile;
+        throw;
+    }
+}
+
+void Compatibility::checkEnvelope(const Manifest& manifest) const {
     const Manifest::Envelope& envelope = manifest.getEnvelope();
     const std::string name = manifest.getId().toHex();
     if (envelope.application != application) {

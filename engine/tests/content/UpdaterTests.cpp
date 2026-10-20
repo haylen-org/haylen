@@ -203,6 +203,8 @@ TEST_F(UpdaterTest, RefusesContentForLaterBuildsOfTheApp) {
     EXPECT_FALSE(offer);
     ASSERT_TRUE(error);
     EXPECT_EQ(error->getCode(), Error::Code::ManifestIncompatible);
+    EXPECT_EQ(error->getDetails().manifestId.size(), Digest::kSize * 2) << "The failure names the manifest it refused.";
+    EXPECT_EQ(error->getDetails().platform, test::ReleaseFixture::kProfile);
 }
 
 TEST_F(UpdaterTest, KeepsTheContentWhenTheDeviceLacksRoom) {
@@ -215,6 +217,7 @@ TEST_F(UpdaterTest, KeepsTheContentWhenTheDeviceLacksRoom) {
     EXPECT_TRUE(error->isRetryable());
     EXPECT_GT(error->getDetails().requiredBytes, error->getDetails().availableBytes);
     EXPECT_EQ(error->getDetails().availableBytes, 10 * kMegabyte);
+    EXPECT_EQ(error->getDetails().manifestId.size(), Digest::kSize * 2) << "The failure names the manifest of the install.";
     EXPECT_TRUE(client->package->getStore()->getState().active.isZero());
 }
 
@@ -341,7 +344,16 @@ TEST_F(UpdaterTest, ReadsInWhatTheStoreHoldsInsteadOfDownloadingItAgain) {
     auto files = std::make_unique<test::BrowserStoreFiles>(store.getPath());
     test::BrowserStoreFiles& browser = *files;
     const auto client = std::make_unique<Client>(*this, std::move(files));
-    EXPECT_THROW((void)client->package->read("content/maps/level.tmj"), Error);
+    try {
+        (void)client->package->read("content/maps/level.tmj");
+        ADD_FAILURE() << "A record that the store did not read in is not readable.";
+    } catch (const Error& error) {
+        // The failure names the file that the app read, the pack and the record it needed.
+        EXPECT_EQ(error.getDetails().path, "content/maps/level.tmj");
+        EXPECT_EQ(error.getDetails().packId.size(), Digest::kSize * 2);
+        EXPECT_EQ(error.getDetails().storedId.size(), Digest::kSize * 2);
+        EXPECT_EQ(error.getDetails().contentId.size(), Digest::kSize * 2);
+    }
     const std::shared_ptr<const ReleasePackage::Content> content = client->package->getContent();
     const std::vector<Catalog::Chunk> missing = Downloader::findMissing(*content->shards, Updater::getChunks(*content->catalog, Delivery::Required, {}));
     ASSERT_FALSE(missing.empty());

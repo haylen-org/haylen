@@ -17,8 +17,11 @@ class Compatibility final {
     std::string profile;
     std::string luaAbi = LuaCompiler::getAbi();
 
-    // Throws `ManifestIncompatible` with the reason when the manifest is not for this build of the app, and `LuaBytecodeIncompatible` when its Lua bytecode does not load into it.
+    // Throws `ManifestIncompatible` with the reason when the manifest is not for this build of the app, and `LuaBytecodeIncompatible` when its Lua bytecode does not load into it, both naming the manifest and the profile in their details.
     void check(const Manifest& manifest) const;
+
+  private:
+    void checkEnvelope(const Manifest& manifest) const;
 };
 
 } // namespace haylen::content
