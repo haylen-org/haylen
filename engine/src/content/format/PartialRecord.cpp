@@ -19,10 +19,10 @@ PartialRecord PartialRecord::parse(std::span<const std::uint8_t> file) {
     BinaryReader reader(file, Error::Code::CacheCorrupt, "partial record");
     const std::span<const std::uint8_t> magic = reader.readBytes(kMagic.size());
     if (!std::ranges::equal(magic, kMagic)) {
-        reader.fail("It does not start with the magic of a partial record.");
+        reader.fail("does not start with the magic of a partial record");
     }
     if (reader.read<std::uint16_t>() != kVersion) {
-        reader.fail("Its version is not one this build reads.");
+        reader.fail("has a version this build does not read");
     }
     reader.skipZeros(6);
 
@@ -30,7 +30,7 @@ PartialRecord PartialRecord::parse(std::span<const std::uint8_t> file) {
     partial.validator = std::string(reader.readString(kMaximumValidatorLength));
     const std::span<const std::uint8_t> held = reader.readBytes(reader.getRemaining());
     if (partial.recordSize <= ChunkRecord::kHeaderSize || partial.recordSize > ChunkRecord::kHeaderSize + Chunker::kMaximumSize || held.empty() || held.size() >= partial.recordSize || partial.validator.empty()) {
-        reader.fail("Its sizes are not those of a record that stopped part way.");
+        reader.fail("has sizes that are not those of a record that stopped part way");
     }
     partial.bytes.assign(held.begin(), held.end());
     return partial;

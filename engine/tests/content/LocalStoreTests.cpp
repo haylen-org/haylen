@@ -237,7 +237,12 @@ TEST(StoreFormatTest, ReadsWhatItWritesAndRefusesTornCopies) {
     std::vector<std::uint8_t> bytes = state.write();
     EXPECT_EQ(StoreState::parse(bytes), state);
     bytes[40] ^= 1U;
-    EXPECT_THROW((void)StoreState::parse(bytes), Error);
+    try {
+        (void)StoreState::parse(bytes);
+        FAIL() << "A torn state parses.";
+    } catch (const Error& error) {
+        EXPECT_STREQ(error.what(), "The store state has a checksum that does not match, so a write tore it.");
+    }
     EXPECT_THROW((void)StoreState::parse(std::span(bytes).first(10)), Error);
 
     const StoreEntry entry{.storedId = Digest::of(test::TestFiles::bytes("record")), .segment = 3, .offset = 16, .size = 500};
