@@ -168,7 +168,7 @@ final class HaylenEditText extends EditText {
 
         // The limit holds what the user types, while the text the engine sets always fits it already.
         int maxLength = value.optInt("maxLength");
-        setFilters(maxLength > 0 ? new InputFilter[] {new InputFilter.LengthFilter(maxLength)} : new InputFilter[0]);
+        setFilters(maxLength > 0 ? new InputFilter[] {limitCodePoints(maxLength)} : new InputFilter[0]);
         editing = true;
         setFocusable(true);
         setFocusableInTouchMode(true);
@@ -264,4 +264,16 @@ final class HaylenEditText extends EditText {
     private static native void nativeTextEdited(long field, long revision, byte[] text, int selectionStart, int selectionEnd, int compositionStart, int compositionEnd);
 
     private static native void nativeTextAction(long field, int action);
+
+    // Holds the text to a number of code points, as every platform counts the limit of a field, so an emoji takes one place and not the two of its UTF-16 units.
+    private static InputFilter limitCodePoints(int maxLength) {
+        return (source, start, end, dest, dstart, dend) -> {
+            int kept = Character.codePointCount(dest, 0, dest.length()) - Character.codePointCount(dest, dstart, dend);
+            int room = maxLength - kept;
+            if (Character.codePointCount(source, start, end) <= room) {
+                return null;
+            }
+            return room <= 0 ? "" : source.subSequence(start, Character.offsetByCodePoints(source, start, room));
+        };
+    }
 }

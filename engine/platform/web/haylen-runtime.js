@@ -1528,12 +1528,25 @@ Module.haylen = Module.haylen || {};
         return { left: box.left + bounds[0] * scale, top: box.top + bounds[1] * scale, width: bounds[2] * scale, height: bounds[3] * scale };
     };
 
+    // The limit of a field counts code points, as on every platform, so the page cuts the text itself instead of with "maxlength", which counts UTF-16 units. A composition is cut once it ends.
+    const limit = (target, field) => {
+        const value = target.value;
+        if (field.maxLength <= 0 || text.composition || toCodePoints(value, value.length) <= field.maxLength) {
+            return;
+        }
+        const cut = toUtf16(value, field.maxLength);
+        const caret = Math.min(target.selectionEnd, cut);
+        target.value = value.slice(0, cut);
+        target.setSelectionRange(caret, caret);
+    };
+
     const report = () => {
         const target = text.active;
         const field = text.field;
         if (!field || !target) {
             return;
         }
+        limit(target, field);
         const value = target.value;
         const composition = text.composition;
         const start = composition ? toCodePoints(value, composition.start) : -1;
@@ -1676,11 +1689,6 @@ Module.haylen = Module.haylen || {};
         target.setAttribute("autocapitalize", field.autocapitalize);
         target.setAttribute("autocorrect", field.autocorrect ? "on" : "off");
         target.spellcheck = field.autocorrect;
-        if (field.maxLength > 0) {
-            target.maxLength = field.maxLength;
-        } else {
-            target.removeAttribute("maxlength");
-        }
         const place = toPage(field.bounds);
         target.style.left = place.left + "px";
         target.style.top = place.top + "px";
