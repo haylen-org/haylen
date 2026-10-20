@@ -438,18 +438,22 @@ TEST_F(ParticlesTest, ParticlesCollideWithFloorsBoundsAndWorlds) {
     EXPECT_EQ(dying.getCount(), 0U);
 
     // World collision casts each move through the shapes of a physics world.
-    physics2d::World world;
-    physics2d::Body wall = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 0.0F}});
+    auto world = std::make_shared<physics2d::World>();
+    physics2d::Body wall = world->createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 0.0F}});
     wall.addBox({20.0F, 400.0F});
     Emitter hitting({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {400.0F, 400.0F}, .direction = 0.0F, .spread = 0.0F, .collision = {.type = Collision::Type::World, .bounce = 1.0F}});
-    hitting.setCollisionWorld(&world);
+    hitting.setCollisionWorld(world);
     hitting.burst(1);
     for (int step = 0; step < 10; ++step) {
         hitting.update(0.05F);
     }
     EXPECT_LT(hitting.getPositions().front().x, 90.0F);
     EXPECT_LT(hitting.getParticle(0).velocity.x, 0.0F);
+    const std::weak_ptr<physics2d::World> held = world;
+    world.reset();
+    EXPECT_FALSE(held.expired());
     hitting.setCollisionWorld(nullptr);
+    EXPECT_TRUE(held.expired());
 
     EXPECT_THROW(Emitter({.texture = texture(), .collision = {.type = Collision::Type::Bounds}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .collision = {.friction = 2.0F}}), std::invalid_argument);
@@ -530,6 +534,9 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
 
     EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{0.0F, 0.0F}, {1.0F, 0.0F}}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}}), std::invalid_argument);
+    // An outline with area that ear clipping cannot split into a single triangle has nowhere to spawn.
+    EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{4.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 3.0F}, {3.0F, 3.0F}}}), std::invalid_argument);
+    EXPECT_THROW(polygon.setShapePoints({{0.0F, 4.0F}, {0.0F, 6.0F}, {4.0F, 6.0F}, {3.0F, 6.0F}, {8.0F, 4.0F}, {9.0F, 6.0F}}), std::invalid_argument);
     EXPECT_THROW(polyline.setShapePoints({{0.0F, 0.0F}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Image}), std::invalid_argument);
 }

@@ -836,19 +836,16 @@ int Particles2DLua::emitterSetCollisionWorld(lua_State* L) {
     Emitter& emitter = lua::Userdata::check<Emitter>(L, 1);
     if (lua_isnoneornil(L, 2)) {
         emitter.setCollisionWorld(nullptr);
-        lua_pushnil(L);
-        lua::Userdata::setField(L, 1, "collisionWorld", lua_gettop(L));
         return 0;
     }
-    const physics2d::World& world = lua::Userdata::check<physics2d::World>(L, 2);
+    const std::shared_ptr<physics2d::World>& world = lua::Userdata::checkShared<physics2d::World>(L, 2);
     physics2d::CollisionFilter filter;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
         lua::Table::checkFields(L, 3, {kFilterFields});
         filter = physics2d::ShapeLua::readFilter(L, 3, {});
     }
-    emitter.setCollisionWorld(&world, filter);
-    lua::Userdata::setField(L, 1, "collisionWorld", 2);
+    emitter.setCollisionWorld(world, filter);
     return 0;
 }
 

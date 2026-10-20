@@ -93,8 +93,8 @@ class Emitter final {
     // Replaces the points of the polygon and polyline shapes, such as the path of a bolt that changes every frame.
     void setShapePoints(std::vector<math::Vec2> points);
 
-    // Gives world collision the shapes of a physics world that the filter lets through, or none. The world must outlive the emitter or be removed from it first.
-    void setCollisionWorld(const physics2d::World* world, const physics2d::CollisionFilter& filter = {});
+    // Gives world collision the shapes of a physics world that the filter lets through, or none, and keeps the world alive while it uses it.
+    void setCollisionWorld(std::shared_ptr<const physics2d::World> world, const physics2d::CollisionFilter& filter = {});
 
     // The position, scale and rotation apply to particles as they are born: the scale multiplies the spawn area, speeds, sizes, gravity and accelerations, and the rotation turns the direction, the spawn area and the particles.
     math::Vec2 position{};
@@ -228,7 +228,7 @@ class Emitter final {
     // The positions before the step, which world collision casts rays from.
     std::vector<math::Vec2> previousPositions;
     physics2d::RayBatch rays;
-    const physics2d::World* collisionWorld = nullptr;
+    std::shared_ptr<const physics2d::World> collisionWorld;
     physics2d::CollisionFilter collisionFilter{};
 
     bool usesTints = false;

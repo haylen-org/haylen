@@ -126,7 +126,8 @@ void Emitter::validateLook(const EmitterConfig& settings) {
 
 void Emitter::validateShape(const EmitterConfig& settings) {
     using Shape = EmitterConfig::Shape;
-    if (settings.shape == Shape::Polygon && (settings.shapePoints.size() < 3 || std::fabs(math::Geometry::signedArea(settings.shapePoints)) <= 0.0F)) {
+    // Ear clipping finds no triangle in an outline that crosses itself everywhere, which leaves nothing to spawn in.
+    if (settings.shape == Shape::Polygon && (std::fabs(math::Geometry::signedArea(settings.shapePoints)) <= 0.0F || math::Geometry::triangulate(settings.shapePoints).empty())) {
         throw std::invalid_argument("The polygon shape of a particle emitter needs at least three points that enclose an area.");
     }
     if (settings.shape == Shape::Polyline && settings.shapePoints.size() < 2) {
@@ -350,8 +351,8 @@ void Emitter::setShapePoints(std::vector<math::Vec2> points) {
     prepareShape();
 }
 
-void Emitter::setCollisionWorld(const physics2d::World* world, const physics2d::CollisionFilter& filter) {
-    collisionWorld = world;
+void Emitter::setCollisionWorld(std::shared_ptr<const physics2d::World> world, const physics2d::CollisionFilter& filter) {
+    collisionWorld = std::move(world);
     collisionFilter = filter;
 }
 

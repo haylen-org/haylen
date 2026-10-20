@@ -177,6 +177,18 @@ TEST(Particles2DLuaTest, CreatesSystemsTrailsAndImageShapes) {
     EXPECT_NE(fixture.lua("particles2d.newEmitter(blast)").find("create it with \"particles2d.newSystem\""), std::string::npos);
     EXPECT_EQ(fixture.lua("return particles2d.newSystem(assets.load('effects/spark.particles')).alive"), "true");
 
+    // An emitter of a system keeps colliding with its world after the world and the userdata that gave it the world are collected.
+    // clang-format off
+    fixture.runLua(R"(
+        local world = require('haylen.physics2d').newWorld({gravity = {0, 0}})
+        world:createBody({type = 'static', x = 200}):addBox(10, 400)
+        local ring = system:emitter('ring')
+        ring:configure({bursts = {}, speed = 300, direction = 0, spread = 0, lifetime = 5, collision = {type = 'world', result = 'die'}})
+        ring:setCollisionWorld(world)
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("collectgarbage() collectgarbage() local ring = system:emitter('ring') ring:clear() ring:burst(3) for step = 1, 10 do ring:update(0.05) end return ring.count"), "0");
+
     EXPECT_EQ(fixture.lua("return trail.count .. ' ' .. trail.config.widthStart .. ' ' .. trail.config.blend .. ' ' .. trail.config.layer"), "5 10.0 additive 2");
     EXPECT_EQ(fixture.lua("trail:configure({widthStart = 4, maxPoints = 3}) return trail.count .. ' ' .. trail.config.widthStart .. ' ' .. trail.config.layer"), "3 4.0 2");
     EXPECT_EQ(fixture.lua("trail.emitting = false trail:update(1) return trail.count .. ' ' .. tostring(trail.alive)"), "0 false");
