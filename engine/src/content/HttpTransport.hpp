@@ -8,6 +8,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <vector>
 
 #include "haylen/content/Error.hpp"
 
@@ -98,6 +99,9 @@ class HttpTransport final {
     [[nodiscard]] static std::string readValidator(std::optional<std::string_view> etag);
 
     std::unique_ptr<varn::http::client::HttpClient> client;
+
+    // The requests that the transport sent, which it lets go of when it ends.
+    std::vector<std::weak_ptr<Transfer::State>> states;
 };
 
 } // namespace haylen::content

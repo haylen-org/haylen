@@ -44,7 +44,17 @@ bool HttpTransport::Transfer::isActive() const {
 
 HttpTransport::HttpTransport(varn::runtime::Runtime& runtime) : client(std::make_unique<client::HttpClient>(runtime)) {}
 
-HttpTransport::~HttpTransport() = default;
+// A request that never completes, such as one that the app cancels as it stops, keeps its state and the transfer of the client alive through each other, so the transport lets both go when it ends.
+HttpTransport::~HttpTransport() {
+    for (const std::weak_ptr<Transfer::State>& weak : states) {
+        if (const std::shared_ptr<Transfer::State> state = weak.lock()) {
+            const std::scoped_lock lock(state->mutex);
+            state->handle.cancel();
+            state->handle = {};
+            state->callbacks = {};
+        }
+    }
+}
 
 std::chrono::milliseconds HttpTransport::getTimeout(std::uint64_t bytes) noexcept {
     return kBaseTimeout + std::chrono::milliseconds(bytes * 1000 / kSlowestBytesPerSecond);
@@ -54,6 +64,8 @@ HttpTransport::Transfer HttpTransport::fetch(Request request, Callbacks callback
     auto state = std::make_shared<Transfer::State>();
     state->request = std::move(request);
     state->callbacks = std::move(callbacks);
+    std::erase_if(states, [](const std::weak_ptr<Transfer::State>& weak) { return weak.expired(); });
+    states.push_back(state);
     send(state);
     return Transfer(state);
 }

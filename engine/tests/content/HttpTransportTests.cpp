@@ -190,6 +190,19 @@ TEST_F(HttpTransportTest, EndsARequestThatTakesTooLong) {
     EXPECT_EQ(outcome.error->getCode(), Error::Code::NetworkTimeout);
 }
 
+TEST_F(HttpTransportTest, LetsGoOfARequestThatNeverCompletesWhenItEnds) {
+    server.setStalls(true);
+    const auto sentinel = std::make_shared<int>(0);
+    {
+        HttpTransport ending(runtime.getRuntime());
+        const HttpTransport::Transfer transfer = ending.fetch({.url = url()}, {.onComplete = [sentinel](std::optional<Error>) {}});
+        ASSERT_TRUE(runtime.pumpUntil([this] { return server.getAnswering() > 0; }));
+        transfer.cancel();
+    }
+    server.setStalls(false);
+    EXPECT_EQ(sentinel.use_count(), 1) << "The callbacks of the request end with the transport.";
+}
+
 TEST_F(HttpTransportTest, CancelsFromAnotherThread) {
     server.setStalls(true);
     Outcome outcome;
