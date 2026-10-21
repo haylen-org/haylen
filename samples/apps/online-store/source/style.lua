@@ -34,7 +34,7 @@ end
 Style.space = {xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48, xxxl = 64}
 
 -- The shapes: soft rectangles everywhere, with pictures a little rounder than controls.
-Style.radius = {control = 10, picture = 14, card = 16, chip = 8}
+Style.radius = {control = 10, picture = 14, card = 16}
 
 -- The sizes of the parts the screens repeat.
 Style.size = {

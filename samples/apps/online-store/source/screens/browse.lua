@@ -18,7 +18,6 @@ Browse.sorts = {
     {id = 'rated', text = 'Best rated', less = function(a, b) return a.rating > b.rating end},
 }
 Browse.maxPrice = 250
-Browse.chip = {metrics = {controlRadius = Style.radius.chip}}
 
 function Browse:enter()
     local space = Style.space
@@ -31,11 +30,11 @@ function Browse:enter()
         end
     end
     self.filters = {low = 0, high = Browse.maxPrice, sale = self.params.sale == true, colors = {}}
-    local chips = {gap = space.xs, padding = {0, space.l}, ui.chip{id = 'category-all', text = 'All', selected = self.category == nil, style = Browse.chip, onChange = function()
+    local chips = {gap = space.xs, padding = {0, space.l}, ui.chip{id = 'category-all', text = 'All', selected = self.category == nil, onChange = function()
         self:pickCategory(nil)
     end}}
     for _, category in ipairs(Store.categories) do
-        chips[#chips + 1] = ui.chip{id = 'category-' .. category.id, text = category.name, selected = self.category == category.id, style = Browse.chip, onChange = function()
+        chips[#chips + 1] = ui.chip{id = 'category-' .. category.id, text = category.name, selected = self.category == category.id, onChange = function()
             self:pickCategory(category.id)
         end}
     end
@@ -45,7 +44,7 @@ function Browse:enter()
     end
     local colors = {gap = space.xs, wrap = true}
     for _, color in ipairs(Store.colors) do
-        colors[#colors + 1] = ui.chip{id = 'color-' .. color.id, text = color.name, style = Browse.chip, onChange = function(event)
+        colors[#colors + 1] = ui.chip{id = 'color-' .. color.id, text = color.name, onChange = function(event)
             self.pending.colors[color.id] = event.selected or nil
         end}
     end
