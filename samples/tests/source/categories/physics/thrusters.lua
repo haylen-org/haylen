@@ -1,4 +1,5 @@
--- A lander with two thrusters that push with `body:applyForce` at points off its center, so one thruster turns it and both lift it, with fuel, a landing speed limit and a sensor over the landing pad.
+-- A moon lander with two thrusters that push with `body:applyForce` at points off its center, so one thruster turns it and both lift it, with fuel, a landing speed limit and a sensor over the landing pad. An autopilot flies it to the pad until the player fires a thruster.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -6,8 +7,9 @@ local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
-local parts = require('categories.physics.parts')
+local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local Thrusters = haylen.class('Thrusters', PhysicsTest)
 
@@ -24,15 +26,24 @@ Thrusters.actions = {
     {name = 'bothThrusters', type = 'button', bindings = {'key:w', 'key:up', 'key:space', 'button:south', 'virtual:bothThrusters'}},
 }
 
-local kStart = {-560, -300}
-local kThrusters = {{-18, 14}, {18, 14}}
-local kFuel = 100
-local kBurn = 9
-local kCrashSpeed = 150
-local kLandSpeed = 12
-local kLandTime = 1
-local kPad = {430, 242, 200}
-local kGround = {{-800, -430}, {-800, 200}, {-650, 260}, {-500, 180}, {-380, 300}, {-200, 330}, {-50, 220}, {100, 290}, {250, 250}, {330, 250}, {530, 250}, {600, 150}, {700, 220}, {800, 120}, {800, -430}}
+Thrusters.gravity = 300
+Thrusters.start = {-560, -260}
+Thrusters.nozzles = {{-18, 22}, {18, 22}}
+Thrusters.fuelTank = 100
+Thrusters.burn = 6
+Thrusters.crashSpeed = 150
+Thrusters.landSpeed = 12
+Thrusters.landTime = 1
+Thrusters.pad = {430, 242, 200}
+Thrusters.terrain = {{-800, -430}, {-800, 200}, {-650, 260}, {-500, 180}, {-380, 300}, {-200, 330}, {-50, 220}, {100, 290}, {250, 250}, {330, 250}, {530, 250}, {600, 150}, {700, 220}, {800, 120}, {800, -430}}
+Thrusters.hull = {{-34, -50}, {34, -50}, {44, 10}, {-44, 10}}
+-- The picture of the lander, its size and how far its middle sits above the center of the body, so its feet stand where the legs of the body end.
+Thrusters.picture = {path = 'physics/lander.png', width = 118, height = 110, lift = 6}
+-- The autopilot cruises at this height and speed, and settles onto the pad at this speed.
+Thrusters.cruise = {height = -60, speed = 200, descent = 60}
+-- The craters of the moon ground, by their middle and their half width and height.
+Thrusters.craters = {{-600, 300, 50, 13}, {-250, 365, 70, 18}, {80, 345, 40, 11}, {650, 262, 46, 12}, {-720, 270, 30, 8}, {300, 330, 34, 9}}
+Thrusters.moon = Look.tint('stone', '#FFA59BC8', '#FF7A6FA3', '#FFD3CCEA')
 
 function Thrusters:enter()
     self:frame{
@@ -54,30 +65,39 @@ function Thrusters:enter()
     }
     self.thrust = 300
     self.random = m.random(56)
+    self.picture = assets.texture(Thrusters.picture.path, {filter = 'linear'})
+    self.earth = assets.texture('physics/planet-grass.png', {filter = 'linear'})
+    local fill = {{-1600, 200}}
+    for index = 2, #Thrusters.terrain - 1 do
+        fill[#fill + 1] = Thrusters.terrain[index]
+    end
+    fill[#fill + 1] = {1600, 120}
+    fill[#fill + 1] = {1600, 1200}
+    fill[#fill + 1] = {-1600, 1200}
+    self.ground = Look.newShape(fill, Thrusters.moon)
+    self.flame = {kind = 'ellipse', rotation = 0, color = '#FFFFFFFF', layer = 2}
+    self.flameRect = {0, 0, 0, 0}
     self:build()
 end
 
 function Thrusters:build()
-    self.world = physics2d.newWorld({gravity = {0, 300}})
-    self.fuel, self.state, self.onPad, self.still, self.touchdown = kFuel, 'Flying', 0, 0, 0
+    self.world = physics2d.newWorld({gravity = {0, Thrusters.gravity}})
+    self.fuel, self.state, self.onPad, self.still, self.touchdown = Thrusters.fuelTank, 'flying', 0, 0, 0
     self.throttles = {0, 0}
+    self.autopilot = true
 
-    self.ground = self.world:createBody({type = 'static'})
-    parts.chain(self.ground, kGround, false, {friction = 0.8})
-    local fill = {table.unpack(kGround, 2, #kGround - 1)}
-    fill[#fill + 1] = {800, 430}
-    fill[#fill + 1] = {-800, 430}
-    parts.outline(self.ground, fill)
-    parts.paint(self.ground, '#FF5D5A6B')
-    self.pad = self.world:createBody({type = 'static', x = kPad[1], y = kPad[2]})
-    parts.box(self.pad, kPad[3], 16, {friction = 0.9})
-    self.pad:addBox(kPad[3], 60, {offsetY = -38, sensor = true})
+    local ground = self.world:createBody({type = 'static'})
+    ground:addChain(Thrusters.terrain, false, {friction = 0.8})
+    local pad = Thrusters.pad
+    self.padBody = self.world:createBody({type = 'static', x = pad[1], y = pad[2]})
+    self.padBody:addBox(pad[3], 16, {friction = 0.9})
+    self.padBody:addBox(pad[3], 60, {offsetY = -38, sensor = true})
 
-    self.lander = self.world:createBody({x = kStart[1], y = kStart[2], angularDamping = 4})
-    parts.polygon(self.lander, {{-36, -30}, {36, -30}, {44, 10}, {-44, 10}})
-    parts.capsule(self.lander, -30, 10, -50, 40, 5)
-    parts.capsule(self.lander, 30, 10, 50, 40, 5)
-    parts.paint(self.lander, '#FFECEFF1')
+    local start = Thrusters.start
+    self.lander = self.world:createBody({x = start[1], y = start[2], angularDamping = 4})
+    self.lander:addPolygon(Thrusters.hull)
+    self.lander:addCapsule(-30, 10, -50, 40, 5)
+    self.lander:addCapsule(30, 10, 50, 40, 5)
 
     -- Every shape of the lander enters and leaves the sensor on its own, so a count tells whether any part is over the pad.
     self.world.onSensorBegin = function(sensor, visitor)
@@ -91,11 +111,10 @@ function Thrusters:build()
         end
     end
     self.world.onHit = function(a, b, contact)
-        if (a == self.lander or b == self.lander) and self.state == 'Flying' then
+        if (a == self.lander or b == self.lander) and self.state ~= 'crashed' then
             self.touchdown = math.max(self.touchdown, contact.speed)
-            if contact.speed > kCrashSpeed then
-                self.state = 'Crashed'
-                parts.paint(self.lander, '#FFE57373')
+            if contact.speed > Thrusters.crashSpeed then
+                self.state = 'crashed'
             end
         end
     end
@@ -106,66 +125,148 @@ function Thrusters:exit()
     input.clearVirtual()
 end
 
+-- The autopilot holds the cruise height while it tilts toward the pad, then sinks onto it slowly and upright, and cuts the thrusters once the lander has landed.
+function Thrusters:steer()
+    local lander, pad = self.lander, Thrusters.pad
+    if self.state ~= 'flying' then
+        return 0, 0
+    end
+    local velocity = lander.velocity
+    local cruise = Thrusters.cruise
+    local offset = pad[1] - lander.x
+    local wantedX = m.clamp(offset * 0.5, -cruise.speed, cruise.speed)
+    local tilt = m.clamp((wantedX - velocity.x) * 0.005, -0.4, 0.4)
+    local wantedY
+    if math.abs(offset) > 40 or math.abs(velocity.x) > 30 then
+        wantedY = m.clamp((cruise.height - lander.y) * 1.2, -150, 150)
+    else
+        wantedY = m.clamp((pad[2] - 60 - lander.y) * 0.8, 20, cruise.descent)
+        tilt = m.clamp(tilt, -0.15, 0.15)
+    end
+    local lift = (Thrusters.gravity - (wantedY - velocity.y) * 3) / math.max(0.5, math.cos(lander.rotation))
+    local base = lift / (2 * self.thrust)
+    local turn = (tilt - lander.rotation) * 4 - lander.angularVelocity * 1.2
+    return m.clamp(base + turn, 0, 1), m.clamp(base - turn, 0, 1)
+end
+
 function Thrusters:update(dt)
     Thrusters.super.update(self, dt)
     if input.pressed('reset') then
         self:build()
     end
     local both = input.value('bothThrusters')
-    local active = self.state ~= 'Crashed' and self.fuel > 0
-    self.throttles[1] = active and math.max(input.value('leftThruster'), both) or 0
-    self.throttles[2] = active and math.max(input.value('rightThruster'), both) or 0
-    local velocity = self.lander.velocity
-    local speed = math.sqrt(velocity.x ^ 2 + velocity.y ^ 2)
-    self:status(string.format('%s, fuel %.0f%%, speed %.0f, tilt %.0f degrees, hardest touch %.0f, safe up to %d, %s the pad, step %.2f ms', self.state, self.fuel / kFuel * 100, speed, math.deg(self.lander.rotation), self.touchdown, kCrashSpeed, self.onPad > 0 and 'over' or 'off', self:stepTime()))
+    local left, right = math.max(input.value('leftThruster'), both), math.max(input.value('rightThruster'), both)
+    if left > 0 or right > 0 then
+        self.autopilot = false
+    end
+    if self.autopilot then
+        left, right = self:steer()
+    end
+    local active = self.state ~= 'crashed' and self.fuel > 0
+    self.throttles[1] = active and left or 0
+    self.throttles[2] = active and right or 0
+
+    local speed = math.floor(self.lander.velocity:length() + 0.5)
+    local fuel = math.floor(self.fuel / Thrusters.fuelTank * 100 + 0.5)
+    if self.state == 'crashed' then
+        self:status(string.format('The lander crashed at %d units per second, faster than the safe %d. Start over to fly again.', math.floor(self.touchdown + 0.5), Thrusters.crashSpeed))
+    elseif self.state == 'landed' then
+        self:status(string.format('The lander stands on the pad, set down at %d units per second with %d percent of its fuel left.', math.floor(self.touchdown + 0.5), fuel))
+    elseif self.autopilot then
+        self:status(string.format('The autopilot flies the lander to the pad at %d units per second until you fire a thruster, with %d percent of the fuel left.', speed, fuel))
+    else
+        self:status(string.format('The lander flies at %d units per second, tilted %d degrees, with %d percent of the fuel left.', speed, PhysicsTest.degrees(self.lander.rotation), fuel))
+    end
 end
 
 -- Each thruster pushes along the up direction of the lander at its own point, so a single one also turns it.
 function Thrusters:fixedUpdate(step)
     local lander = self.lander
     local cos, sin = math.cos(lander.rotation), math.sin(lander.rotation)
-    for index, point in ipairs(kThrusters) do
+    for index, point in ipairs(Thrusters.nozzles) do
         local throttle = self.throttles[index]
         if throttle > 0 then
             local force = lander.mass * self.thrust * throttle
             lander:applyForce(sin * force, -cos * force, lander.x + point[1] * cos - point[2] * sin, lander.y + point[1] * sin + point[2] * cos)
-            self.fuel = math.max(0, self.fuel - throttle * kBurn * step)
+            self.fuel = math.max(0, self.fuel - throttle * Thrusters.burn * step)
         end
     end
     self:simulate(self.world, step)
 
     local velocity = lander.velocity
-    local resting = math.sqrt(velocity.x ^ 2 + velocity.y ^ 2) < kLandSpeed and math.abs(lander.rotation) < 0.25
+    local resting = velocity:length() < Thrusters.landSpeed and math.abs(lander.rotation) < 0.25
     self.still = resting and self.onPad > 0 and self.still + step or 0
-    if self.state == 'Flying' and self.still > kLandTime then
-        self.state = 'Landed'
-    elseif self.state == 'Landed' and self.onPad == 0 then
-        self.state = 'Flying'
+    if self.state == 'flying' and self.still > Thrusters.landTime then
+        self.state = 'landed'
+    elseif self.state == 'landed' and self.onPad == 0 then
+        self.state = 'flying'
+    end
+end
+
+-- The pad is a steel deck on two legs with lamps at its ends, which blink while the lander flies and glow green once it has landed.
+function Thrusters:drawPad()
+    local pad = Thrusters.pad
+    local x, y, width = pad[1], pad[2], pad[3]
+    for _, side in ipairs({-1, 1}) do
+        Look.block(x + side * (width / 2 - 24), y + 30, 14, 50, 'iron', 0)
+    end
+    Look.block(x, y, width, 16, 'steel', 1)
+    local on = self.state == 'landed' or math.sin(haylen.elapsed() * 6) > 0
+    local lamp = on and (self.state == 'landed' and 'green' or 'yellow') or 'slate'
+    for _, side in ipairs({-1, 1}) do
+        Look.disc(x + side * (width / 2 - 10), y - 14, 7, lamp, 2)
+    end
+end
+
+-- The lander is its painted picture, with a flickering flame under every nozzle that fires.
+function Thrusters:drawLander()
+    local lander, picture = self.lander, Thrusters.picture
+    local cos, sin = math.cos(lander.rotation), math.sin(lander.rotation)
+    local color = self.state == 'crashed' and '#FFFF9A92' or '#FFFFFFFF'
+    graphics2d.draw(self.picture, lander.x + picture.lift * sin, lander.y - picture.lift * cos, {width = picture.width, height = picture.height, rotation = lander.rotation, color = color, layer = 3})
+    local shape, rect = self.flame, self.flameRect
+    for index, point in ipairs(Thrusters.nozzles) do
+        local throttle = self.throttles[index]
+        if throttle > 0.02 then
+            local length = (26 + self.random:range(0, 12)) * throttle + 8
+            local x, y = lander.x + point[1] * cos - point[2] * sin, lander.y + point[1] * sin + point[2] * cos
+            local cx, cy = x - sin * length / 2, y + cos * length / 2
+            shape.rotation = lander.rotation
+            rect[1], rect[2], rect[3], rect[4] = cx - 9, cy - length / 2, 18, length
+            shape.color = '#E6FF9A3C'
+            graphics2d.drawShape(rect, shape)
+            rect[1], rect[2], rect[3], rect[4] = cx - 5, cy - length / 2 + 2, 10, length * 0.6
+            shape.color = '#FFFFF0A0'
+            graphics2d.drawShape(rect, shape)
+        end
+    end
+end
+
+-- The fuel gauge is a plate in the corner with a bar that turns red when the tank runs low.
+function Thrusters:drawFuel()
+    local unit = Look.pixel
+    local share = self.fuel / Thrusters.fuelTank
+    graphics2d.drawShape({-780, -370, 300, 76}, {radius = 14, color = '#EE2F3352', borderWidth = 2 * unit, borderColor = '#FF15172A', layer = 40})
+    self:tag(string.format('Fuel %d%%', math.floor(share * 100 + 0.5)), -630, -346, {size = 22, layer = 41})
+    graphics2d.drawShape({-764, -326, 268, 18}, {radius = 9, color = '#FF15172A', layer = 41})
+    if share > 0 then
+        graphics2d.drawShape({-764, -326, 268 * share, 18}, {radius = 9, color = share > 0.2 and '#FF7BC74D' or '#FFF0473E', layer = 41})
     end
 end
 
 function Thrusters:draw(area)
-    parts.draw(self.ground)
-    parts.draw(self.pad, {layer = 1})
-    for _, side in ipairs({-1, 1}) do
-        graphics2d.drawCircle(kPad[1] + side * (kPad[3] / 2 - 10), kPad[2] - 14, 7, self.state == 'Landed' and '#FF66BB6A' or '#FFFFD54F', {layer = 2})
+    Scenery.space()
+    graphics2d.draw(self.earth, 560, -250, {width = 150, height = 150, layer = -800})
+    Look.drawShape(self.ground, -10)
+    for _, crater in ipairs(Thrusters.craters) do
+        local x, y, width, height = crater[1], crater[2], crater[3], crater[4]
+        graphics2d.drawShape({x - width, y - height, width * 2, height * 2}, {kind = 'ellipse', color = '#FF7A6FA3', layer = -9})
+        graphics2d.drawShape({x - width * 0.8, y - height * 0.2, width * 1.6, height * 1.1}, {kind = 'ellipse', color = '#FFD3CCEA', layer = -9})
+        graphics2d.drawShape({x - width * 0.85, y - height * 0.75, width * 1.7, height * 1.5}, {kind = 'ellipse', color = '#FF8C82B5', layer = -9})
     end
-    graphics2d.drawRectOutline({kPad[1] - kPad[3] / 2, kPad[2] - 68, kPad[3], 60}, 2, self.onPad > 0 and '#8866BB6A' or '#44FFFFFF', {layer = 2})
-
-    local lander = self.lander
-    parts.draw(lander, {layer = 3})
-    local cos, sin = math.cos(lander.rotation), math.sin(lander.rotation)
-    for index, point in ipairs(kThrusters) do
-        local throttle = self.throttles[index]
-        if throttle > 0 then
-            local length = (30 + self.random:range(0, 14)) * throttle
-            local x, y = lander.x + point[1] * cos - point[2] * sin, lander.y + point[1] * sin + point[2] * cos
-            graphics2d.drawPolygon({{x - cos * 10, y - sin * 10}, {x + cos * 10, y + sin * 10}, {x - sin * length, y + cos * length}}, '#FFFFB74D', {layer = 2, blend = 'additive'})
-        end
-    end
-    graphics2d.drawRect({-780, -410, 300, 18}, '#FF2C3147', {layer = 4})
-    graphics2d.drawRect({-780, -410, 300 * self.fuel / kFuel, 18}, self.fuel > 20 and '#FF6FDCA0' or '#FFFF8A84', {layer = 5})
-    Thrusters.caption('Fuel', -780, -386, {layer = 5})
+    self:drawPad()
+    self:drawLander()
+    self:drawFuel()
 end
 
 return Thrusters
