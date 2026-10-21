@@ -425,7 +425,7 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
     flow.lines.push_back(line);
 }
 
-// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next. A segment wider than a whole line wraps between its clusters instead, and every line keeps at least one piece. A mandatory break, such as the one after a vertical tab or a form feed, ends the line. Lines beside a drop cap are shorter.
+// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next. A segment wider than a whole line wraps between its clusters instead, and every line keeps at least one piece. A mandatory break, such as the one after a vertical tab or a form feed, ends the line. Lines beside a drop cap and the lines after the first of a hanging indent are shorter.
 void LayoutBuilder::breakLines(Flow& flow, float available) {
     const std::vector<Piece>& pieces = flow.pieces;
     const bool bounded = available > 0.0F;
@@ -435,7 +435,8 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
 
     // clang-format off
     const auto start = [&](std::size_t begin) {
-        line = Line{.begin = begin, .end = begin, .visibleEnd = begin, .top = top, .shift = top < flow.dropCapHeight ? flow.dropCapShift : 0.0F};
+        const float hang = flow.lines.empty() ? 0.0F : flow.hangShift;
+        line = Line{.begin = begin, .end = begin, .visibleEnd = begin, .top = top, .shift = std::max(top < flow.dropCapHeight ? flow.dropCapShift : 0.0F, hang)};
         penX = 0.0F;
     };
     const auto isVisible = [](const Piece& piece) {
@@ -590,6 +591,7 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
     }
 
     const float indent = paragraph.indent * getIndentUnit();
+    flow.hangShift = paragraph.hang * getIndentUnit();
     breakLines(flow, width > 0.0F ? std::max(width - indent, 1.0F) : 0.0F);
     for (Line& line : flow.lines) {
         line.order = orderPieces(flow.pieces, line.begin, line.end, bidi);

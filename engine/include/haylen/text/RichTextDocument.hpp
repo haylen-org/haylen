@@ -118,7 +118,7 @@ struct RichTextDocument {
         UpperRoman,
     };
 
-    // A block of the document: a paragraph of text, a horizontal rule, or a table. The indent counts levels on the side the paragraph starts, and a list item carries the marker drawn in the indent before its first line.
+    // A block of the document: a paragraph of text, a horizontal rule, or a table. The indent counts levels on the side the paragraph starts, the hanging indent moves every line after the first that many levels further in, and a list item carries the marker drawn in the indent before its first line.
     struct Paragraph {
         enum class Kind : std::uint8_t {
             Text,
@@ -130,6 +130,7 @@ struct RichTextDocument {
         std::optional<Alignment> align;
         std::optional<Direction> direction;
         float indent = 0.0F;
+        float hang = 0.0F;
         std::u32string marker;
         std::size_t markerStyle = 0;
         std::vector<Inline> inlines;

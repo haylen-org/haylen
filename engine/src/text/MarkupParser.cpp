@@ -435,7 +435,7 @@ void MarkupParser::openBlock(const Tag& tag) {
     const std::string& name = tag.name;
     if (name == "p") {
         requireNoValue(tag);
-        checkAttributes(tag, {"align", "dir", "indent"});
+        checkAttributes(tag, {"align", "dir", "indent", "hang"});
         if (tag.attributes.contains("align")) {
             const std::optional<Alignment> align = Style::alignmentFromName(tag.attributes.at("align"));
             if (!align) {
@@ -452,6 +452,9 @@ void MarkupParser::openBlock(const Tag& tag) {
         }
         if (tag.attributes.contains("indent")) {
             block.indent += number(tag, tag.attributes.at("indent"), "indent");
+        }
+        if (tag.attributes.contains("hang")) {
+            block.hang = number(tag, tag.attributes.at("hang"), "hang");
         }
     } else if (name == "ul") {
         requireNoValue(tag);
@@ -713,7 +716,7 @@ void MarkupParser::newline() {
 }
 
 void MarkupParser::beginParagraph(bool fromNewline) {
-    paragraph = {.align = currentBlock().align, .direction = currentBlock().direction, .indent = currentBlock().indent};
+    paragraph = {.align = currentBlock().align, .direction = currentBlock().direction, .indent = currentBlock().indent, .hang = currentBlock().hang};
     paragraphFromNewline = fromNewline;
 }
 

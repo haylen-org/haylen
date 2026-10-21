@@ -100,7 +100,7 @@ Markup is text with tags in square brackets. Inline tags open with `[name]` or `
 | `[icon=name width= height= color= valign=]` | An icon that `graphics2d.registerTextIcon` registered, as tall as its text unless sized. |
 | `[pause=0.5]` | Holds the typewriter reveal for half a second before the next character. |
 | `[speed=2]` | Reveals the text inside twice as fast. |
-| `[p align=center dir=rightToLeft indent=1]` | A paragraph block with an alignment (`start`, `end`, `left`, `center`, `right` or `fill`), a direction (`auto`, `leftToRight` or `rightToLeft`) and an indent in levels of one and a half times the base size, which stands on the side the paragraph starts. |
+| `[p align=center dir=rightToLeft indent=1 hang=2]` | A paragraph block with an alignment (`start`, `end`, `left`, `center`, `right` or `fill`), a direction (`auto`, `leftToRight` or `rightToLeft`), an indent in levels of one and a half times the base size, which stands on the side the paragraph starts, and a hanging indent in the same levels, which moves every line after the first further in, as wrapped code reads. |
 | `[center]`, `[left]`, `[right]`, `[fill]` | Paragraph blocks with an alignment. Fill stretches the spaces of every wrapped line to both edges. |
 | `[ul bullet=*]`, `[ol type=1]` | Lists, where every paragraph inside is an item with a bullet or a number, counted as `1`, `a`, `A`, `i` or `I`. Lists nest and indent one level each. |
 | `[hr width=50% height=2 color=c]` | A horizontal rule, centered unless its block aligns it. |

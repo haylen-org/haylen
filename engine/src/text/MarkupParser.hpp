@@ -51,6 +51,7 @@ class MarkupParser final {
         std::optional<Alignment> align;
         std::optional<Direction> direction;
         float indent = 0.0F;
+        float hang = 0.0F;
         std::optional<RichTextDocument::ListKind> list;
         std::u32string bullet;
         std::size_t items = 0;

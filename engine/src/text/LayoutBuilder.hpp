@@ -114,6 +114,7 @@ class LayoutBuilder final {
         float dropCapAscent = 0.0F;
         float dropCapHeight = 0.0F;
         float dropCapShift = 0.0F;
+        float hangShift = 0.0F;
         float emptyAscent = 0.0F;
         float emptyDescent = 0.0F;
         float naturalWidth = 0.0F;

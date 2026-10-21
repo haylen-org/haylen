@@ -249,6 +249,19 @@ TEST_F(RichTextLayoutTest, RefusesEffectNumbersThatAreNotFinite) {
     EXPECT_FLOAT_EQ(parameters.getNumber("speed", 1.0F), 2.0F);
 }
 
+// A hanging indent keeps the first line of a paragraph at its start and moves the lines it wraps onto further in, as wrapped code reads.
+TEST_F(RichTextLayoutTest, HangsTheWrappedLinesOfAParagraph) {
+    RichText hung = make("[p hang=2]first words wrap onto more lines that start further in than the first[/p]", {.size = 20.0F, .maxWidth = 240.0F});
+    const Layout& layout = hung.getLayout();
+    ASSERT_GT(layout.lines.size(), 2U);
+    EXPECT_NEAR(layout.lines[0].box.x, 0.0F, 1.0F);
+    for (std::size_t index = 1; index < layout.lines.size(); ++index) {
+        EXPECT_NEAR(layout.lines[index].box.x, 2.0F * 1.5F * 20.0F, 1.0F) << index;
+        EXPECT_LE(layout.lines[index].box.getRight(), 240.0F + 1.0F) << index;
+    }
+    EXPECT_THROW((void)make("[p hang=wide]x[/p]"), std::invalid_argument);
+}
+
 // A table stands at the indent of the block around it, like the paragraphs and rules there.
 TEST_F(RichTextLayoutTest, IndentsTablesWithTheirBlock) {
     RichText plain = make("[table=1][cell]x[/cell][/table]");
