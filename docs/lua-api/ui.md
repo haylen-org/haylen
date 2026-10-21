@@ -2200,7 +2200,7 @@ A field that shows an [action map binding](input.md#action-map) and, once presse
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:leftShift'` and `1` for `'key:digit1'`. |
+| `value` | string | `''` | The binding, shown for people, such as `Left Shift` for `'key:leftShift'`, `1` for `'key:digit1'` and `D-pad Up` for `'button:dpadUp'`. |
 | `placeholder` | text | none | Text shown while there is no binding. |
 | `prompt` | text | `'…'` | Text shown while it listens. |
 | `sources` | list of strings | every source | Kinds of input it takes: `'key'`, `'mouse'`, `'button'` and `'axis'`. It ignores the others and goes on listening. |

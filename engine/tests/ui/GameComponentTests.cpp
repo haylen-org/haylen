@@ -483,6 +483,8 @@ TEST_F(GameComponentTest, CapturesBindingsForRemapping) {
     EXPECT_EQ(KeyCapture::describe("key:digit1"), "1");
     EXPECT_EQ(KeyCapture::describe("key:f12"), "F12");
     EXPECT_EQ(KeyCapture::describe("mouse:right"), "Mouse Right");
+    EXPECT_EQ(KeyCapture::describe("button:south"), "Button South");
+    EXPECT_EQ(KeyCapture::describe("button:dpadUp"), "D-pad Up");
 }
 
 TEST_F(GameComponentTest, SnapsScrolledItemsIntoPlace) {

@@ -25,7 +25,7 @@ std::string KeyCapture::describe(std::string_view binding) {
         name.pop_back();
     }
 
-    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the first letter is capitalized, so `leftShift` reads Left Shift, `keypad0` reads Keypad 0 and `f12` stays F12.
+    // A digit key reads as the number on its key. Otherwise a word starts at each capital letter and at a number after a word, and the first letter is capitalized, so `leftShift` reads Left Shift, `keypad0` reads Keypad 0 and `f12` stays F12, and the buttons of the directional pad read D-pad, such as D-pad Up.
     if (constexpr std::string_view digit = "digit"; kind == "key" && name.starts_with(digit)) {
         return name.substr(digit.size());
     }
@@ -40,6 +40,9 @@ std::string KeyCapture::describe(std::string_view binding) {
     }
     if (kind == "mouse") {
         return "Mouse " + label;
+    }
+    if (constexpr std::string_view dpad = "Dpad "; kind == "button" && label.starts_with(dpad)) {
+        return "D-pad " + label.substr(dpad.size());
     }
     if (kind == "button") {
         return "Button " + label;
