@@ -101,8 +101,9 @@ function BlendModes:drawPicture()
         end
     end
     local ground = top + tile * 0.4
-    graphics2d.draw(self.tree, width * 0.24, ground, {width = height * 0.5, height = height * 0.75, pivotY = 1, layer = 3})
-    graphics2d.draw(self.hero, width * 0.76, ground + tile * 0.25, {width = height * 0.46, height = height * 0.46, pivotY = 1, layer = 3})
+    local tree, hero = height * 0.75 / self.tree.height, height * 0.46 / self.hero.height
+    graphics2d.draw(self.tree, width * 0.24, ground, {scaleX = tree, scaleY = tree, pivotY = 1, layer = 3})
+    graphics2d.draw(self.hero, width * 0.76, ground + tile * 0.25, {scaleX = hero, scaleY = hero, pivotY = 1, layer = 3})
 end
 
 -- The picture draws before the stage, which then shows it in every cell.

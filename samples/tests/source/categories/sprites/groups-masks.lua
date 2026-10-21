@@ -107,7 +107,7 @@ function GroupsMasks:drawPortrait(rect)
     end)
     graphics2d.drawShape({x - 140, y - 140, 280, 280}, {texture = self.sky})
     graphics2d.draw(self.images.terrain, x, y + 70, {source = {2, 2, 128, 128}, width = 300, height = 150, pivotY = 0})
-    graphics2d.draw(self.hero, x, y + 96, {width = 200, height = 200, pivotY = 1, layer = 1})
+    graphics2d.draw(self.hero, x, y + 96, {scaleX = 200 / self.hero.height, scaleY = 200 / self.hero.height, pivotY = 1, layer = 1})
     graphics2d.popMask()
     graphics2d.drawRing(x, y, radius + 4, 8, '#FFFFC93C', {layer = 2})
     graphics2d.drawRing(x, y, radius + 9, 3, '#FF1E1B33', {layer = 2})
@@ -130,7 +130,7 @@ function GroupsMasks:drawCard(rect)
         graphics2d.draw(self.images.terrain, x + column * width * 0.4, y + height * 0.66 + width * 0.4, {source = {2, 2, 128, 128}, width = width * 0.4, height = width * 0.4, pivotX = 0, pivotY = 0})
     end
     graphics2d.draw(self.images.tree, x - width * 0.08, y + height * 0.74, {source = {2, 2, 128, 256}, width = width * 0.5, height = width, pivotY = 1, layer = 1})
-    graphics2d.draw(self.hero, x + width * 0.62, y + height * 0.8, {width = width * 0.66, height = width * 0.66, pivotY = 1, layer = 2})
+    graphics2d.draw(self.hero, x + width * 0.62, y + height * 0.8, {scaleX = width * 0.66 / self.hero.height, scaleY = width * 0.66 / self.hero.height, pivotY = 1, layer = 2})
     graphics2d.drawShape({x, y + height - 54, width, 54}, {color = '#E01E1B33', layer = 3})
     graphics2d.drawText(nil, 'Island knight', x + width / 2, y + height - 27, {size = 26, color = '#FFFFE9A8', anchor = {0.5, 0.5}, layer = 4})
     graphics2d.popMask()
@@ -172,9 +172,10 @@ end
 -- A tree, the hero and a rock overlap over a patch of sky, drawn once with each sprite faded by itself, which shows the tree through the hero, and once inside a group that fades the three as one picture.
 function GroupsMasks:sprites(x, y, size, alpha)
     local color = string.format('#%02XFFFFFF', math.floor(alpha * 255 + 0.5))
-    graphics2d.draw(self.tree, x - size * 0.14, y - size * 0.04, {width = size * 0.66, height = size, pivotY = 1, color = color})
-    graphics2d.draw(self.hero, x + size * 0.1, y, {width = size * 0.72, height = size * 0.72, pivotY = 1, color = color, layer = 1})
-    graphics2d.draw(self.rock, x - size * 0.3, y + 4, {width = size * 0.5, height = size * 0.33, pivotY = 1, color = color, layer = 2})
+    local tree, hero, rock = size / self.tree.height, size * 0.72 / self.hero.height, size * 0.33 / self.rock.height
+    graphics2d.draw(self.tree, x - size * 0.14, y - size * 0.04, {scaleX = tree, scaleY = tree, pivotY = 1, color = color})
+    graphics2d.draw(self.hero, x + size * 0.1, y, {scaleX = hero, scaleY = hero, pivotY = 1, color = color, layer = 1})
+    graphics2d.draw(self.rock, x - size * 0.3, y + 4, {scaleX = rock, scaleY = rock, pivotY = 1, color = color, layer = 2})
 end
 
 function GroupsMasks:drawGroups(rect)

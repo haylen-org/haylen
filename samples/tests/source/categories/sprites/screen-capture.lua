@@ -115,7 +115,7 @@ function ScreenCapture:drawScene(rect)
     things[#things + 1] = {texture = self.hero, x = centerX + math.cos(angle) * cell * 3.9, y = centerY + math.sin(angle) * cell * 3 + cell * 0.6 - math.abs(math.sin(time * 8)) * 6, height = cell * 1.3, flip = math.sin(angle) > 0}
     table.sort(things, function(a, b) return a.y < b.y end)
     for _, thing in ipairs(things) do
-        local width = thing.source and thing.height * thing.source[3] / thing.source[4] or thing.height
+        local width = thing.source and thing.height * thing.source[3] / thing.source[4] or thing.height * thing.texture.width / thing.texture.height
         graphics2d.draw(thing.texture, thing.x, thing.y, {source = thing.source, width = width, height = thing.height, pivotY = 0.94, flipHorizontal = thing.flip, layer = 2})
     end
     graphics2d.popMask()
