@@ -12,6 +12,8 @@ local Style = require('style')
 local Widgets = {}
 
 Widgets.placeholder = Photos.look('lake-sunrise', 'full')
+-- The units on each side of the documents of the faces, which a picture button scales to the size of a face.
+Widgets.faceSize = 120
 Widgets.postMenu = {
     {id = 'profile', text = 'Go to the profile', image = Shell.icon('home')},
     {id = 'send', text = 'Send to a friend', image = Shell.icon('send')},
@@ -38,7 +40,7 @@ function Widgets.post(wide, gallery)
     end
     local body = ui.column{gap = 0, padding = wide and {0, 0, space.m, 0} or {0, 0, space.xl, 0},
         ui.row{gap = space.s, padding = {space.s, gutter - space.xs, space.s, gutter},
-            ui.avatar{part = 'avatar', bind = {image = 'avatar'}, size = Style.size.avatar},
+            ui.imageButton{part = 'face', bind = {image = 'avatar'}, image = Social.me.avatar, scale = Style.size.avatar / Widgets.faceSize, accessibilityLabel = 'Profile of the author'},
             ui.column{gap = 0, grow = 1,
                 ui.button{part = 'author', bind = {text = 'authorName'}, text = '', variant = 'link', align = 'start', height = 40, style = Widgets.nameLink},
                 ui.label{part = 'place', bind = {text = 'place'}, font = 'caption', color = 'textMuted', wrap = false},
@@ -100,7 +102,7 @@ function Widgets.onPostEvent(page, list, event)
         Shell.open(require('screens.post'), {post = post.id})
     elseif part == 'send' then
         Widgets.askFriend(page, post)
-    elseif part == 'author' then
+    elseif part == 'author' or part == 'face' then
         Widgets.openPerson(post.author)
     elseif part == 'more' then
         if event.item == 'profile' then
