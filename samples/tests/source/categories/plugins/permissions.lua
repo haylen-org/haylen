@@ -20,9 +20,20 @@ function Permissions:enter()
             ui.button{id = 'camera', text = 'Ask for the camera', variant = 'primary', onClick = function() self:ask('camera') end},
             ui.button{id = 'notifications', text = 'Ask for notifications', onClick = function() self:ask('notifications') end},
             ui.button{id = 'notify', text = string.format('Notify in %d seconds', Permissions.notifySeconds), onClick = function() self:notify() end},
-            ui.label{text = 'Apple platforms show the camera prompt with the usage description that "plugin.json" puts into the "Info.plist", and Android asks for the permissions that the manifest of the plugin declares. The notification shows while the app is in front too, and its tap reaches the app whether it runs, waits in the background or was closed.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Apple platforms show the prompt with the usage description of "plugin.json", and Android asks for the permissions of the manifest of the plugin. The tap on the notification reaches the app whether it runs, waits in the background or was closed.', color = 'textMuted', font = 'caption'},
         },
-        code = "local answer = demo.requestPermission('camera'):await()\ndemo.notify(5):await()\ndemo.onNotificationOpened(function(tap)\n  print(tap.identifier)\nend)",
+        showcase = {
+            ui.row{gap = 16, align = 'stretch',
+                Permissions.card('camera', 'plugins/camera.svg', 'Camera'),
+                Permissions.card('notifications', 'plugins/bell.svg', 'Notifications'),
+            },
+            ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
+                ui.icon{image = 'plugins/bell.svg', size = 96, color = 'textMuted', align = 'center'},
+                ui.label{text = 'Local notification', font = 'heading', textAlign = 'center', align = 'stretch'},
+                ui.label{id = 'notification', text = string.format('Notify in %d seconds, then tap the notification, even after closing the app.', Permissions.notifySeconds), color = 'textMuted', textAlign = 'center', align = 'stretch'},
+            },
+        },
+        code ="local answer = demo.requestPermission('camera'):await()\ndemo.notify(5):await()\ndemo.onNotificationOpened(function(tap)\n  print(tap.identifier)\nend)",
     }
     if not self.native then
         return
@@ -33,6 +44,14 @@ function Permissions:enter()
         self:showOpened()
     end)
     self:showOpened()
+end
+
+-- A card with the state of one permission, which the answer of its prompt changes.
+function Permissions.card(kind, icon, title)
+    return ui.card{grow = 1, align = 'stretch', gap = 12,
+        ui.row{gap = 16, ui.icon{image = icon, size = 56, color = 'accentText'}, ui.label{text = title, font = 'heading', grow = 1}},
+        ui.statusIndicator{id = kind .. 'State', text = 'Not asked yet', tone = 'information'},
+    }
 end
 
 function Permissions:exit()
@@ -54,6 +73,7 @@ function Permissions:ask(kind)
             self.results:failure(kind, name, err)
             return
         end
+        self:set(kind .. 'State', {text = answer.granted and 'Granted' or 'Not granted, with the status "' .. answer.status .. '"', tone = answer.granted and 'success' or 'danger'})
         self.results:set(kind, 'pass', name, string.format('The native part in %s answered %s with the status "%s".', answer.language, answer.granted and 'granted' or 'not granted', answer.status))
     end)
 end
@@ -69,7 +89,8 @@ function Permissions:notify()
             self.results:failure('notify', name, err)
             return
         end
-        self.results:set('notify', 'pass', name, string.format('The notification "%s" shows in %d seconds. Tap it now, or close the app first to see the tap launch it, except on the web, where a closed page shows nothing.', scheduled.identifier, Permissions.notifySeconds))
+        self:set('notification', {text = string.format('The notification shows in %d seconds. Tap it now, or close the app first to see the tap launch it, except on the web, where a closed page shows nothing.', Permissions.notifySeconds)})
+        self.results:set('notify', 'pass', name, string.format('The notification "%s" is on its way.', scheduled.identifier))
     end)
 end
 

@@ -10,6 +10,8 @@ local demo = require('native-demo')
 
 local Screen = haylen.class('Screen', DemoTest)
 
+Screen.apple = {ios = true, tvos = true, macos = true}
+
 -- The restored end outlives the scene, because a retained event reaches only the listener that connects first.
 Screen.restored = nil
 
@@ -17,27 +19,28 @@ Screen.rows = {
     {key = 'result', name = 'The screen answers the call', waiting = 'Open the screen and confirm or decline it.'},
     {key = 'covered', name = 'The app is covered while the screen shows', waiting = 'Open the screen to see the cover.'},
     {key = 'busy', name = 'A second screen fails with "busy"', waiting = 'Open the screen to try a second one.'},
-    {key = 'cancel', name = 'A cancel closes the screen', waiting = 'Open and cancel after a second.'},
-    {key = 'restored', name = 'The event "screenRestored" brings the end and the state to the next app', waiting = 'Open, then restart the app, answer the screen and open this test again.'},
-    {key = 'redirect', name = 'The redirect screen comes back as "screenRestored"', waiting = 'Open by redirect, answer the page and open this test again.'},
-    {key = 'swiftUI', name = 'The SwiftUI screen answers the call', waiting = 'Open the SwiftUI screen and answer or close it.'},
-    {key = 'dialog', name = 'A screen opens right in the answer of a message', waiting = 'Open from the answer of a message, then answer the message and the screen.'},
+    {key = 'cancel', name = 'A cancel closes the screen', waiting = 'Cancel after a second.'},
+    {key = 'restored', name = 'The next app hears "screenRestored"', waiting = 'Restart under it, answer the screen and open this test again.'},
+    {key = 'redirect', name = 'The redirect comes back as "screenRestored"', waiting = 'Open by redirect, answer the page and open this test again.'},
+    {key = 'swiftUI', name = 'The SwiftUI screen answers the call', waiting = 'Open in SwiftUI and answer or close it.'},
+    {key = 'dialog', name = 'A screen opens in the answer of a message', waiting = 'Open after a message, then answer the message and the screen.'},
 }
 
 function Screen:enter()
     self:listen('appInactive', function() self:covered() end)
     self:listen('appActive', function() self:uncovered() end)
     self:frame{
-        hint = 'Open the screen and answer it, then open and restart the app. The menu offers this test again after the restart.',
+        hint = 'Open the screen and answer it, then restart under it. The menu offers this test again after the restart.',
+        checksTitle = 'Screens of the plugin',
         focus = 'open',
         controls = {
             ui.button{id = 'open', text = 'Open the screen', variant = 'primary', onClick = function() self:open() end},
-            ui.button{id = 'cancel', text = 'Open and cancel after a second', onClick = function() self:cancelLater() end},
-            ui.button{id = 'restart', text = 'Open, then restart the app', onClick = function() self:openAndRestart() end},
-            ui.button{id = 'redirect', text = 'Open by redirect', onClick = function() self:openRedirect() end},
-            ui.button{id = 'swiftUI', text = 'Open the SwiftUI screen', onClick = function() self:openSwiftUI() end},
-            ui.button{id = 'dialog', text = 'Open from the answer of a message', onClick = function() self:openFromDialog() end},
-            ui.label{text = 'A UIKit controller on iOS, iPadOS, Mac Catalyst and tvOS, an AndroidX activity on Android, a popup page on the web, which a popup blocker stops when the tap is too long ago, and a sheet on macOS, an owned window on Windows and a transient X11 window on Linux. The redirect leaves the page for a page of the plugin, which only the web has, and the SwiftUI screen shows over the app on iOS, iPadOS and tvOS and in a window of its own on Mac Catalyst and macOS.', color = 'textMuted', font = 'caption'},
+            ui.button{id = 'cancel', text = 'Cancel after a second', onClick = function() self:cancelLater() end},
+            ui.button{id = 'restart', text = 'Restart under it', onClick = function() self:openAndRestart() end},
+            ui.button{id = 'redirect', text = 'Open by redirect', enabled = haylen.platform == 'web', onClick = function() self:openRedirect() end},
+            ui.button{id = 'swiftUI', text = 'Open in SwiftUI', enabled = Screen.apple[haylen.platform] ~= nil, onClick = function() self:openSwiftUI() end},
+            ui.button{id = 'dialog', text = 'Open after a message', onClick = function() self:openFromDialog() end},
+            ui.label{text = 'Each platform opens its own kind of screen: a UIKit controller or an AppKit sheet, an AndroidX activity, a popup page of the browser or a window over the app. Only the web opens by redirect, and only Apple platforms open SwiftUI.', color = 'textMuted', font = 'caption'},
         },
         code = "local answer, err = demo.openScreen({state = {level = 3}}):await()\ndemo.onScreenRestored(function(ending)\n  print(ending.state.level, ending.result)\nend)",
     }
@@ -46,6 +49,12 @@ function Screen:enter()
     end
     for _, row in ipairs(Screen.rows) do
         self.results:set(row.key, 'waiting', row.name, row.waiting)
+    end
+    if haylen.platform ~= 'web' then
+        self.results:set('redirect', 'skip', Screen.rows[6].name, 'Only the web opens a screen by redirect.')
+    end
+    if not Screen.apple[haylen.platform] then
+        self.results:set('swiftUI', 'skip', Screen.rows[7].name, 'Only Apple platforms open the SwiftUI screen.')
     end
     self.connection = demo.onScreenRestored(function(ending)
         Screen.restored = ending

@@ -20,9 +20,18 @@ function Cover:enter()
     self:frame{
         hint = 'Show the native screen, wait a moment and close it.',
         focus = 'show',
+        checksEmpty = 'Show the native screen to check the cover.',
         controls = {
             ui.button{id = 'show', text = 'Show the native screen', variant = 'primary', onClick = function() self:show() end},
             ui.label{text = 'A presented view controller on iOS, iPadOS, Mac Catalyst and tvOS, a sheet on macOS, a full screen dialog on Android and a modal dialog element on the web. The remote of a TV, gamepads and the keyboard reach its Close button, since it is native UI that takes the focus.', color = 'textMuted', font = 'caption'},
+        },
+        showcase = {
+            ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
+                ui.label{text = 'The app under the native screen', font = 'heading', textAlign = 'center', align = 'stretch'},
+                ui.statusIndicator{id = 'appState', text = 'Active and updating', tone = 'success', align = 'center'},
+                ui.label{id = 'updates', text = '', font = 'title', textAlign = 'center', align = 'stretch'},
+                ui.label{id = 'coverInfo', text = 'Show the native screen, and this count stops while it covers the app.', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+            },
         },
         code = "events.on('appInactive', function()\n  print(haylen.appCovered())\nend)\nlocal closed = demo.showScreen('Title'):await()\nprint(closed.seconds)",
     }
@@ -46,6 +55,7 @@ function Cover:show()
             return
         end
         self.results:set('screen', 'pass', name, string.format('The screen showed for %.1f seconds and answered once Close closed it.', closed.seconds))
+        self:set('coverInfo', {text = string.format('The last cover lasted %.1f seconds, while the count stood still.', closed.seconds)})
     end)
 end
 
@@ -63,8 +73,10 @@ end
 function Cover:update(dt)
     Cover.super.update(self, dt)
     self.updates = self.updates + 1
+    self:set('updates', {text = string.format('%d updates', self.updates)})
     if self.cover and self.cover.frames and not haylen.appCovered() and not self.cover.ended then
         self.cover.ended = true
+        self:set('appState', {text = 'Active and updating', tone = 'success'})
         local during = self.updates - 1 - self.cover.updates
         if during == 0 then
             self.results:set('halted', 'pass', Cover.rows[2].name, string.format('Update %d ran before the cover, none ran during its %d frames, and update %d ran after it ended.', self.cover.updates, self.cover.frames, self.updates))
@@ -81,6 +93,7 @@ function Cover:render()
         return
     end
     if not self.cover.frames then
+        self:set('appState', {text = 'Covered and halted', tone = 'warning'})
         self.cover.frames = 0
         self.cover.updates = self.updates
         self.results:set('covered', 'pass', Cover.rows[1].name, string.format('The cover started after update %d with the app state "%s".', self.updates, haylen.appState()))

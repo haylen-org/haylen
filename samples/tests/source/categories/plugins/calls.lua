@@ -18,9 +18,10 @@ function Calls:enter()
     self:frame{
         hint = 'Run the calls again to see that they hold.',
         focus = 'run',
+        checksTitle = 'Calls to the native part',
         controls = {
             ui.button{id = 'run', text = 'Run the calls again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'Every call crosses the bridge to the native part of the plugin and back, and a coroutine awaits its answer. Swift answers on Apple platforms, Kotlin on Android, JavaScript on the web and C on the desktops, where the handlers of native libraries run on the frame thread.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'Every call crosses the bridge to the native part and back while a coroutine awaits its answer. Swift answers on Apple platforms, Kotlin on Android, JavaScript on the web and C on the desktops.', color = 'textMuted', font = 'caption'},
         },
         code = "local demo = require('native-demo')\nlocal answer, err = demo.compute(200000):await()\nlocal call = demo.wait(1, {timeout = 0.5})\nlocal _, failure = call:await()\nprint(failure.code)",
     }
@@ -54,7 +55,7 @@ function Calls:echo()
     local value = echoed.echo
     local same = value.text == 'hello' and value.number == 42 and #value.list == 3
     local thread = echoed.thread == 'main' or (echoed.language == 'C' and echoed.thread == 'frame')
-    self.results:set('echo', (same and thread) and 'pass' or 'fail', name, string.format('%s answered %s on the thread "%s".', echoed.language, DemoTest.json(value), echoed.thread))
+    self.results:set('echo', (same and thread) and 'pass' or 'fail', name, string.format('%s sent back the text "%s", the number %s and a list of %d on the thread "%s".', echoed.language, tostring(value.text), tostring(value.number), #(value.list or {}), echoed.thread))
 end
 
 function Calls:compute()
@@ -68,7 +69,7 @@ function Calls:compute()
     end
     -- The web runtime has one thread, so its handler counts in slices that yield to the page instead.
     local thread = computed.thread == 'background' or computed.language == 'JavaScript'
-    local detail = string.format('%s counted %d primes below %d on the thread "%s", %s, in %d frames while the app kept drawing.', computed.language, computed.primes, Calls.limit, computed.thread, computed.detail, haylen.frameIndex() - started)
+    local detail = string.format('%s counted %d primes below %d in %d frames while the app kept drawing, on the thread "%s".', computed.language, computed.primes, Calls.limit, haylen.frameIndex() - started, computed.thread)
     self.results:set('compute', (computed.primes == Calls.primes and thread) and 'pass' or 'fail', name, detail)
 end
 
@@ -81,7 +82,7 @@ function Calls:fail()
         return
     end
     local typed = failure.code == 'demoFailure' and failure.data and failure.data.reason == 'requested'
-    self.results:set('fail', typed and 'pass' or 'fail', name, string.format('It failed with the code "%s" and the data %s: %s', tostring(failure.code), DemoTest.json(failure.data), failure.message))
+    self.results:set('fail', typed and 'pass' or 'fail', name, string.format('%s failed on purpose with the code "%s" and the reason "%s".', tostring(failure.data and failure.data.language), tostring(failure.code), tostring(failure.data and failure.data.reason)))
 end
 
 function Calls:waitWithTimeout()
@@ -110,7 +111,7 @@ function Calls:waitAndCancel()
         self.results:set('cancel', 'fail', name, 'The call "wait" ended with "' .. tostring(failure and failure.code) .. '" instead of "cancelled".')
         return
     end
-    self:reportHeard('cancel', name, token, 'The method "call:cancel()" failed the call with the code "cancelled"')
+    self:reportHeard('cancel', name, token, 'The cancel failed the call with the code "cancelled"')
 end
 
 -- The native part hears that the app gave the call up and sends `waitCancelled` with the token of the call.
@@ -119,7 +120,7 @@ function Calls:reportHeard(key, name, token, what)
         self.results:set(key, 'fail', name, what .. ', but the native part sent no "waitCancelled" within two seconds.')
         return
     end
-    self.results:set(key, 'pass', name, string.format('%s, and %s sent "waitCancelled" for the token %d.', what, self.cancelled[token], token))
+    self.results:set(key, 'pass', name, string.format('%s, and %s heard it and sent "waitCancelled" for the call %d.', what, self.cancelled[token], token))
 end
 
 return Calls

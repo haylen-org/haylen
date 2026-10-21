@@ -1,8 +1,9 @@
--- The base of the tests of the category: the rows of results on the stage, the summary in the status line and the native part of the plugin `native-demo`. Without the native part a test shows why and keeps only its explanation.
+-- The base of the tests of the category: the checks in a panel next to what the test shows, the state of the native part of the plugin `native-demo` in the status line, and the calls that wait for it. Without the native part a test shows why and keeps only its explanation.
 local async = require('async')
 local haylen = require('haylen')
 local json = require('json')
 local platform = require('haylen.platform')
+local ui = require('haylen.ui')
 
 local Results = require('harness.results')
 local Test = require('harness.test')
@@ -11,29 +12,43 @@ local demo = require('native-demo')
 local DemoTest = haylen.class('DemoTest', Test)
 
 DemoTest.missing = 'The native part is not available on this platform.'
+DemoTest.checksWidth = 620
 
 function DemoTest:init(entry)
     DemoTest.super.init(self, entry)
     self.results = Results(entry.code)
 end
 
+-- Mounts the frame with the checks as its content, or beside the nodes of `showcase`, which show what the test does, such as a video, a store or an account. The options `checksTitle` and `checksEmpty` name the panel of the checks and tell what to do while it is empty.
 function DemoTest:frame(options)
     self.native = demo.available()
     if not self.native then
         self.results:set('native', 'skip', 'Native part', DemoTest.missing)
         options.focus = 'back'
     end
-    DemoTest.super.frame(self, options)
+    local checks = self.results:view(options.checksTitle, {grow = options.showcase and 0 or 1, width = options.showcase and DemoTest.checksWidth, empty = options.checksEmpty})
+    local content = {checks}
+    if options.showcase then
+        content = {ui.row{grow = 1, gap = 24, align = 'stretch', ui.column{grow = 1, gap = 16, align = 'stretch', children = options.showcase}, checks}}
+    end
+    DemoTest.super.frame(self, {hint = options.hint, focus = options.focus, controls = options.controls, code = options.code, content = content})
+    self.results:show(self.gui)
 end
 
 function DemoTest:update(dt)
     DemoTest.super.update(self, dt)
-    self:status(string.format('%s, platform "%s", native "%s", %d pending calls', self.results:summary(), haylen.platform, tostring(demo.available()), platform.pendingCallCount()))
+    local pending = platform.pendingCallCount()
+    local native = demo.available() and 'The native part of "native-demo" runs here' or 'The native part of "native-demo" does not run here'
+    local calls = pending == 0 and 'no call waits for an answer' or string.format('%d %s for an answer', pending, pending == 1 and 'call waits' or 'calls wait')
+    self:status(string.format('%s, and %s.', native, calls))
 end
 
--- Draws the rows of results. Tests that draw more call it first.
-function DemoTest:draw(area)
-    self.results:draw(area)
+-- A frame that waits for what a test will show in it, such as a video or a map, with an icon and a line that says what comes there.
+function DemoTest.placeholder(id, icon, text)
+    return ui.column{id = id, align = 'center', gap = 16,
+        ui.icon{image = icon, size = 96, color = 'textMuted', align = 'center'},
+        ui.label{id = id .. '-text', text = text, color = 'textMuted', textAlign = 'center', maxWidth = 520},
+    }
 end
 
 -- Runs `body` as a task of the test when the native part runs here, and otherwise only shows that it is missing.

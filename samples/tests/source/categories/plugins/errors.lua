@@ -18,6 +18,14 @@ function Errors:enter()
             ui.button{id = 'raise', text = 'Raise a Lua error', variant = 'primary', onClick = function() self:raise() end},
             ui.label{text = 'The method "appDidFail(with:)" receives the error on Apple platforms, "onAppError" on Android, "context.onAppError" on the web and the error handler of "HaylenNativeApi" on the desktops. The native part keeps the message and sends it when the next app starts.', color = 'textMuted', font = 'caption'},
         },
+        showcase = {
+            ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
+                ui.icon{id = 'errorIcon', image = 'interface/states/info.svg', size = 96, color = 'textMuted', align = 'center'},
+                ui.label{text = 'The last error the native part kept', font = 'heading', textAlign = 'center', align = 'stretch'},
+                ui.label{id = 'errorMessage', text = 'No earlier app of this process stopped with an error.', textAlign = 'center', align = 'stretch'},
+                ui.label{id = 'errorPlace', text = '', font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+            },
+        },
         code = "demo.onLastError(function(failure)\n  print(failure.message, failure.line)\nend)",
     }
     if not self.native then
@@ -51,8 +59,14 @@ function Errors:showError()
         self.results:set('last', 'waiting', name, 'No earlier app of this process stopped with an error. Raise one and restart with R.')
         return
     end
-    local expected = received.message:find('raised this error on purpose', 1, true) ~= nil
-    self.results:set('last', expected and 'pass' or 'fail', name, string.format('%s kept "%s" from "%s", line %s, and sent it back as "lastError" after the restart.', received.language, received.message, received.file, tostring(received.line)))
+    self:set('errorMessage', {text = received.message})
+    self:set('errorPlace', {text = string.format('From "%s", line %s, kept by %s.', received.file, tostring(received.line), received.language)})
+    self:set('errorIcon', {image = 'interface/states/fail.svg', color = 'dangerText'})
+    if not received.message:find('raised this error on purpose', 1, true) then
+        self.results:set('last', 'info', name, 'The last error of this process came from another part of the project. Raise the error of this test to check it.')
+        return
+    end
+    self.results:set('last', 'pass', name, string.format('%s kept the error of this test and sent it back as "lastError" after the restart.', received.language))
 end
 
 return Errors

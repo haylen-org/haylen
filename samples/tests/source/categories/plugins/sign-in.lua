@@ -1,4 +1,4 @@
--- The fake sign-in of an SDK: the person picks an account in a native sheet, which is a screen of the plugin that covers the app, the account comes back with a token, the device keeps it as the current user, and signing out forgets it. The native part tells the app of every change with "userChanged".
+-- The fake sign-in of an SDK: the person picks an account in a native sheet, which is a screen of the plugin that covers the app, the account comes back with a token, the device keeps it as the current user, and signing out forgets it. The native part tells the app of every change with "userChanged", which the account card follows.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -11,17 +11,33 @@ function SignIn:enter()
     self:frame{
         hint = 'Sign in with an account or cancel, check the current user, then sign out.',
         focus = 'signIn',
+        checksEmpty = 'Sign in or check the current user to see what the device keeps.',
         controls = {
             ui.button{id = 'signIn', text = 'Sign in', variant = 'primary', onClick = function() self:signIn() end},
             ui.button{id = 'current', text = 'Check the current user', onClick = function() self:current() end},
             ui.button{id = 'signOut', text = 'Sign out', onClick = function() self:signOut() end},
             ui.label{text = 'The accounts are fake, and no password or network takes part.', color = 'textMuted', font = 'caption'},
         },
+        showcase = {
+            ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
+                ui.stack{align = 'center',
+                    ui.avatar{id = 'avatar', size = 112, visible = false},
+                    ui.icon{id = 'nobody', image = 'plugins/person.svg', size = 112, color = 'textMuted'},
+                },
+                ui.label{id = 'accountName', text = 'Not signed in', font = 'heading', textAlign = 'center', align = 'stretch'},
+                ui.label{id = 'accountEmail', text = 'Sign in to pick one of the accounts of the device.', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+                ui.statusIndicator{id = 'accountState', text = 'Signed out', tone = 'information', align = 'center'},
+            },
+        },
         code = "local account, err = demo.signIn():await()\ndemo.onUserChanged(function(user) print(user and user.name) end)\nlocal current = demo.currentUser():await()\ndemo.signOut():await()",
     }
     if self.native then
         self.connection = demo.onUserChanged(function(user)
+            self:showAccount(user)
             self.results:set('changed', 'pass', 'The event "userChanged" follows the account', user and string.format('Signed in as "%s".', user.name) or 'Signed out.')
+        end)
+        self:spawn(function()
+            self:showAccount(demo.currentUser():await())
         end)
     end
 end
@@ -31,6 +47,14 @@ function SignIn:exit()
         self.connection:disconnect()
     end
     SignIn.super.exit(self)
+end
+
+function SignIn:showAccount(account)
+    self:set('avatar', {name = account and account.name or '', visible = account ~= nil})
+    self:set('nobody', {visible = account == nil})
+    self:set('accountName', {text = account and account.name or 'Not signed in'})
+    self:set('accountEmail', {text = account and account.email or 'Sign in to pick one of the accounts of the device.'})
+    self:set('accountState', {text = account and 'Signed in on this device' or 'Signed out', tone = account and 'success' or 'information'})
 end
 
 function SignIn:signIn()
@@ -46,7 +70,8 @@ function SignIn:signIn()
             self.results:failure('signIn', name, err)
             return
         end
-        self.results:set('signIn', 'pass', name, string.format('%s signed in "%s" <%s> with a token of %d characters.', account.language, account.name, account.email, #account.token))
+        self:showAccount(account)
+        self.results:set('signIn', 'pass', name, string.format('%s signed in "%s" with a token of %d characters.', account.language, account.name, #account.token))
     end)
 end
 
@@ -58,6 +83,7 @@ function SignIn:current()
             self.results:failure('current', name, err)
             return
         end
+        self:showAccount(account)
         self.results:set('current', 'pass', name, account and string.format('The current user is "%s".', account.name) or 'Nobody is signed in.')
     end)
 end
@@ -71,6 +97,7 @@ function SignIn:signOut()
             return
         end
         local account = demo.currentUser():await()
+        self:showAccount(account)
         self.results:set('signOut', account == nil and 'pass' or 'fail', name, account == nil and 'Nobody is signed in anymore.' or 'The account stayed after signing out.')
     end)
 end

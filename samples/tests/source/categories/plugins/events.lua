@@ -1,5 +1,7 @@
 -- The events `tick` of a native timer that runs every `tickInterval` seconds, and `loaded`, which the native part sent retained when it loaded. This test is the first listener of `loaded` and connects long after the app started, and still receives it.
 local haylen = require('haylen')
+local m = require('haylen.math')
+local tween = require('haylen.tween')
 local ui = require('haylen.ui')
 
 local DemoTest = require('categories.plugins.demo-test')
@@ -19,15 +21,23 @@ function Events:enter()
     self.ticking = false
     self.connections = {demo.onTick(function(payload) self:tick(payload) end)}
     self:frame{
-        hint = 'Start the ticks, watch them arrive and stop them.',
+        hint = 'The ticks start when the test opens. Stop them, and start them again.',
         focus = 'ticks',
         controls = {
             ui.button{id = 'ticks', text = 'Start the native ticks', variant = 'primary', onClick = function() self:toggleTicks() end},
             ui.label{text = 'Swift runs a "Timer" on the main run loop, Kotlin posts to the main "Handler", JavaScript uses "setInterval" and C a thread of the library. The native part sent "loaded" retained when it loaded, before any Lua ran, and the bridge kept it for the first listener.', color = 'textMuted', font = 'caption'},
         },
+        showcase = {
+            ui.card{grow = 1, align = 'stretch', gap = 20, justify = 'center',
+                ui.label{text = 'The native timer', font = 'heading', textAlign = 'center', align = 'stretch'},
+                ui.circularProgress{id = 'beat', size = 260, thickness = 18, value = 0, text = '0', align = 'center'},
+                ui.label{id = 'beatState', text = 'Stopped. Start the ticks to hear from it.', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+            },
+        },
         code = "demo.onLoaded(function(payload)\n  print(payload.language)\nend)\ndemo.onTick(function(tick) print(tick.count) end)\ndemo.setTicking(true)",
     }
     self:listenLoaded()
+    self:toggleTicks()
 end
 
 function Events:exit()
@@ -59,7 +69,7 @@ function Events:listenLoaded()
     end)
     self:spawn(function()
         if not DemoTest.waitFor(function() return Events.loaded.payload ~= nil end, Events.loadedWait) then
-            self.results:set('loaded', 'skip', name, 'The event "loaded" has not arrived. The native part sends it once, when it loads with the process, so an app that restarted in the same process, such as from the error screen, does not receive it again.')
+            self.results:set('loaded', 'info', name, 'The native part sends it once, when it loads with the process, so it reached an earlier app before this one restarted.')
         end
     end)
 end
@@ -80,6 +90,7 @@ function Events:toggleTicks()
         self.ticking = answer.enabled
         self.interval = answer.interval
         self:set('ticks', {text = self.ticking and 'Stop the native ticks' or 'Start the native ticks'})
+        self:set('beatState', {text = self.ticking and string.format('Ticking every %s seconds.', tostring(answer.interval)) or 'Stopped. Start the ticks to hear from it.'})
         if self.ticking then
             self.ticks = {}
             self.results:set('ticks', 'waiting', Events.ticksName, string.format('The native timer ticks every %s seconds.', tostring(answer.interval)))
@@ -90,12 +101,26 @@ function Events:toggleTicks()
     end)
 end
 
+-- The ring fills between two ticks, so it closes as the next one is due.
+function Events:update(dt)
+    Events.super.update(self, dt)
+    local value = 0
+    if self.ticking and self.lastTick and self.interval then
+        value = math.min(1, (haylen.elapsed() - self.lastTick) / self.interval)
+    end
+    self:set('beat', {value = value})
+end
+
 function Events:tick(payload)
     if not self.ticks then
         return
     end
     self.ticks[#self.ticks + 1] = {count = payload.count, at = haylen.elapsed()}
     self.lastTick = haylen.elapsed()
+    self:set('beat', {text = payload.count})
+    local beat = self.gui:transform('beat')
+    beat.scale = m.vec2(1.12, 1.12)
+    tween.to(beat, 0.35, {scale = m.vec2(1, 1)}, {ease = 'backOut', owner = self, overwrite = true})
     local first, last = self.ticks[1], self.ticks[#self.ticks]
     local average = #self.ticks > 1 and (last.at - first.at) / (#self.ticks - 1) or 0
     local state = self.ticking and #self.ticks >= Events.ticksToPass and 'pass' or 'waiting'
