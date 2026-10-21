@@ -10,18 +10,20 @@ local ParticleTest = require('categories.particles.particle-test')
 local ShapesDirections = haylen.class('ShapesDirections', ParticleTest)
 
 ShapesDirections.code = [[
-local arc = particles2d.newEmitter({texture = dot, shape = 'arc', shapeSize = {120, 0}, shapeArc = {-2.8, -0.35}, directionMode = 'outward', spread = 0.3})
-arc:configure({shapeAngle = 0.5, shapeThickness = 40, directionMode = 'tangent'})  -- Or "fixed" and "inward".
-local path = particles2d.newEmitter({texture = dot, shape = 'polyline', shapePoints = {{-140, 60}, {-70, -60}, {0, 40}, {70, -60}}})
+local arc = particles2d.newEmitter({texture = dot, shape = 'arc', shapeSize = {120, 0}})
+arc:configure({shapeArc = {-2.8, -0.35}, directionMode = 'outward', spread = 0.3})
+arc:configure({shapeAngle = 0.5, shapeThickness = 40})
+arc:configure({directionMode = 'tangent'})  -- Or "fixed" and "inward".
+local path = particles2d.newEmitter({texture = dot, shape = 'polyline', shapePoints = points})
 path:setShapePoints(points)  -- Follows the cursor.]]
 
 ShapesDirections.modes = {{id = 'fixed', text = 'Fixed'}, {id = 'outward', text = 'Outward'}, {id = 'inward', text = 'Inward'}, {id = 'tangent', text = 'Tangent'}}
 ShapesDirections.shapes = {
-    {name = 'ellipse', size = {150, 70}, color = '#FF80E0FF'},
-    {name = 'rectangleEdge', size = {130, 80}, color = '#FFFFD060'},
-    {name = 'arc', size = {120, 0}, arc = {-2.8, -0.35}, color = '#FFFF80A0'},
-    {name = 'polygon', points = {{-120, -40}, {10, -40}, {10, -110}, {130, 0}, {10, 110}, {10, 40}, {-120, 40}}, color = '#FF80FFA0'},
-    {name = 'polyline', points = {{-140, 60}, {-70, -60}, {0, 40}, {70, -60}, {140, 60}}, color = '#FFC0A0FF'},
+    {name = 'ellipse', title = 'Ellipse', size = {150, 70}, color = '#FF80E0FF'},
+    {name = 'rectangleEdge', title = 'Rectangle edge', size = {130, 80}, color = '#FFFFD060'},
+    {name = 'arc', title = 'Arc', size = {120, 0}, arc = {-2.8, -0.35}, color = '#FFFF80A0'},
+    {name = 'polygon', title = 'Polygon', points = {{-120, -40}, {10, -40}, {10, -110}, {130, 0}, {10, 110}, {10, 40}, {-120, 40}}, color = '#FF80FFA0'},
+    {name = 'polyline', title = 'Polyline', points = {{-140, 60}, {-70, -60}, {0, 40}, {70, -60}, {140, 60}}, color = '#FFC0A0FF'},
 }
 ShapesDirections.row = -250
 ShapesDirections.pathPoints = 16
@@ -37,7 +39,7 @@ function ShapesDirections:init(entry)
     self.emitters = {}
     self.labels = {}
     for index, shape in ipairs(ShapesDirections.shapes) do
-        self.labels[index] = 'Shape "' .. shape.name .. '"'
+        self.labels[index] = {shape.title, string.format("shape = '%s'", shape.name)}
         local emitter = particles2d.newEmitter(ParticleTest.look(dot, {rate = 60, lifetime = {1.2, 1.6}, speed = {30, 60}, spread = 0.3, directionMode = self.mode, startSize = 16, endSize = 4, colors = {shape.color, shape.color, '#00FFFFFF'}, shape = shape.name, shapeSize = shape.size, shapeArc = shape.arc, shapePoints = shape.points, blend = 'additive', layer = 2, seed = 250 + index}))
         emitter.x, emitter.y = -760 + (index - 1) * 380, ShapesDirections.row
         self.emitters[index] = emitter
@@ -52,6 +54,7 @@ function ShapesDirections:init(entry)
     end
     self.follower = particles2d.newEmitter(ParticleTest.look(dot, {rate = 160, lifetime = {0.8, 1.2}, speed = {20, 70}, spread = 0.8, gravity = {0, -60}, startSize = 18, endSize = 2, colors = {'#FFFFFFFF', '#FF60E0FF', '#0040A0FF'}, shape = 'polyline', shapePoints = self.path, blend = 'additive', maxParticles = 512, layer = 3, seed = 256}))
     self.emitters[#self.emitters + 1] = self.follower
+    self.pointer.origin = {0.5, 0.82}
 end
 
 -- Computes the outline of every spawn area turned by the shape angle, once at the start and again whenever the angle changes.
@@ -135,17 +138,18 @@ function ShapesDirections:update(dt)
     ShapesDirections.super.update(self, dt)
     self:follow()
     local count = ParticleTest.updateAll(self.emitters, dt)
-    self:report('Direction mode "%s"   Shape angle %.2f   Thickness %.0f   Particles %d', self.mode, self.angle, self.thickness, count)
+    self:report('%d particles leave their shapes "%s", turned by %.2f radians and spread across %.0f units.', count, self.mode, self.angle, self.thickness)
 end
 
 function ShapesDirections:draw(area)
     ParticleTest.backdrop({0.04, 0.05, 0.1}, {0.08, 0.1, 0.18})
     for index, outline in ipairs(self.outlines) do
-        graphics2d.drawPolyline(outline.points, 2, '#60FFFFFF', outline.closed, ShapesDirections.lines)
-        ParticleTest.label(self.labels[index], self.emitters[index].x, -60)
+        graphics2d.drawPolyline(outline.points, 3, '#70FFFFFF', outline.closed, ShapesDirections.lines)
+        ParticleTest.label(self.labels[index][1], self.emitters[index].x, -70, self.labels[index][2])
     end
-    graphics2d.drawPolyline(self.path, 2, '#40FFFFFF', false, ShapesDirections.lines)
-    ParticleTest.label('A polyline that follows the cursor', 0, 440)
+    graphics2d.drawPolyline(self.path, 3, '#50FFFFFF', false, ShapesDirections.lines)
+    local head = self.path[#self.path]
+    ParticleTest.label('A polyline that follows the cursor', head[1], math.min(head[2] + 60, 480))
     ParticleTest.drawAll(self.emitters)
 end
 

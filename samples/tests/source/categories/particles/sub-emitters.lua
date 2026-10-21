@@ -1,5 +1,4 @@
 -- Sub-emitters: every entry of `subEmitters` spawns the particles of another effect where a particle of its emitter dies, hits something or, at a rate, while it lives, with the share `inheritVelocity` of its velocity and, with `inheritColor`, its color. The effect of a sub-emitter may have sub-emitters of its own, like the stars of a firework that crackle when they die.
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
 local particles2d = require('haylen.particles2d')
@@ -10,15 +9,15 @@ local ParticleTest = require('categories.particles.particle-test')
 local SubEmitters = haylen.class('SubEmitters', ParticleTest)
 
 SubEmitters.code = [[
-local rain = particles2d.newEmitter({texture = streak, collision = {type = 'floor', y = 900, result = 'die'}, subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}})
-local rockets = particles2d.newEmitter({texture = dot, tints = neon, subEmitters = {{effect = stars, trigger = 'death', count = {40, 60}, inheritColor = true}}})
-local debris = particles2d.newEmitter({texture = rock, collision = {type = 'floor', y = 60, bounce = 0.35}, subEmitters = {{effect = dust, trigger = 'collision', count = {1, 2}}}})
-local comets = particles2d.newEmitter({texture = dot, subEmitters = {{effect = sparkleDust, trigger = 'alive', rate = 60, inheritVelocity = 0.2}}})
--- Each "effect" is an options table or a loaded effect, and may have sub-emitters of its own.]]
+local splash = {texture = dot, lifetime = 0.4, speed = {80, 220}}  -- An options table or an effect.
+rain:configure({subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}})
+rockets:configure({subEmitters = {{effect = stars, trigger = 'death', inheritColor = true}}})
+debris:configure({subEmitters = {{effect = dust, trigger = 'collision'}}})
+comets:configure({subEmitters = {{effect = sparkles, trigger = 'alive', rate = 60}}})
+-- The stars have sub-emitters of their own, which crackle when they die.]]
 
 SubEmitters.ground = 400
-SubEmitters.floor = {-1000, 400, 2000, 200}
-SubEmitters.order = {layer = 1}
+
 
 function SubEmitters:init(entry)
     SubEmitters.super.init(self, entry)
@@ -27,7 +26,7 @@ function SubEmitters:init(entry)
     local dot, spark = 'soft-dot', 'hard-dot'
 
     local splash = ParticleTest.look(spark, {lifetime = {0.25, 0.45}, speed = {80, 220}, direction = -1.5708, spread = 2.2, gravity = {0, 900}, startSize = {5, 8}, endSize = 2, colors = {'#E0C0D8F8', '#00C0D8F8'}, maxParticles = 512, layer = 3})
-    self.rain = particles2d.newEmitter(ParticleTest.look('rain-streak', {rate = 70, lifetime = 3, speed = {900, 1050}, direction = 1.5708, spread = 0.02, startSize = 40, endSize = 40, colors = {'#B0B0C8F0'}, shape = 'rectangle', shapeSize = {230, 4}, collision = {type = 'floor', y = SubEmitters.ground + 500, result = 'die'}, subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}, maxParticles = 256, layer = 2, seed = 291}))
+    self.rain = particles2d.newEmitter(ParticleTest.look('rain-streak', {rate = 110, lifetime = 3, speed = {900, 1050}, direction = 1.5708, spread = 0.02, startSize = 48, endSize = 48, aspect = 2, colors = {'#C0B0C8F0'}, shape = 'rectangle', shapeSize = {360, 4}, collision = {type = 'floor', y = SubEmitters.ground + 500, result = 'die'}, subEmitters = {{effect = splash, trigger = 'death', count = {3, 5}}}, maxParticles = 256, layer = 2, seed = 291}))
     self.rain.x, self.rain.y = -680, -500
 
     self.crackle = ParticleTest.look('star-4point', {lifetime = {0.15, 0.35}, speed = {20, 120}, spread = m.tau, startSize = {10, 18}, endSize = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}, blend = 'additive', maxParticles = 512, layer = 5})
@@ -60,7 +59,7 @@ function SubEmitters:enter()
         hint = 'The drops splash where they die on the ground, the rockets burst into stars that crackle, the debris raises dust at every hit and the comets leave dust behind them.',
         code = SubEmitters.code,
         controls = {
-            ui.toggle{id = 'inheritColor', text = 'Stars take the color of their rocket', checked = self.inheritColor, onChange = function(event)
+            ui.toggle{id = 'inheritColor', text = 'Stars in rocket colors', checked = self.inheritColor, onChange = function(event)
                 self.inheritColor = event.checked
                 self.rockets:configure({subEmitters = self:rocketSubEmitters()})
             end},
@@ -76,16 +75,17 @@ end
 function SubEmitters:update(dt)
     SubEmitters.super.update(self, dt)
     ParticleTest.updateAll(self.emitters, dt)
-    self:report('Drops %d   Rockets %d   Debris %d   Comets %d   Stars take the rocket color "%s"   Comet dust inherits %.2f', self.rain.count, self.rockets.count, self.debris.count, self.comets.count, self.inheritColor, self.cometDrag)
+    local stars = self.inheritColor and 'in the color of their rocket' or 'in white'
+    self:report('The stars burst %s, and the comet dust keeps %.2f of the speed of its comet.', stars, self.cometDrag)
 end
 
 function SubEmitters:draw(area)
     ParticleTest.backdrop({0.02, 0.02, 0.07}, {0.08, 0.07, 0.16})
-    graphics2d.drawRect(SubEmitters.floor, '#FF1E2230', SubEmitters.order)
+    ParticleTest.paveFloor('stone', SubEmitters.ground, 140, '#FF5A5A70')
     ParticleTest.drawAll(self.emitters)
-    ParticleTest.label('Splashes at death', self.rain.x, SubEmitters.ground + 30)
-    ParticleTest.label('Stars at death that crackle', self.rockets.x, SubEmitters.ground + 30)
-    ParticleTest.label('Dust at every hit', self.debris.x, SubEmitters.ground + 30)
+    ParticleTest.label('Splashes', self.rain.x, SubEmitters.ground + 24, "trigger = 'death'")
+    ParticleTest.label('Stars that crackle', self.rockets.x, SubEmitters.ground + 24, "trigger = 'death'")
+    ParticleTest.label('Dust at every hit', self.debris.x, SubEmitters.ground + 24, "trigger = 'collision'")
 end
 
 return SubEmitters

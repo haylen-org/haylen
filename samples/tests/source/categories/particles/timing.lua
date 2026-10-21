@@ -1,5 +1,4 @@
 -- Delays and burst cycles: `delay` holds an emitter back before its emission cycle starts, so the parts of an effect start in sequence, and a burst fires `cycles` times `interval` seconds apart, each time with the chance `probability` and a count picked in its range, which makes crackles, sputters and pulses without any Lua per frame.
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
 local particles2d = require('haylen.particles2d')
@@ -10,14 +9,15 @@ local ParticleTest = require('categories.particles.particle-test')
 local Timing = haylen.class('Timing', ParticleTest)
 
 Timing.code = [[
-local flame = particles2d.newEmitter({texture = flameSoft, rate = 70, delay = 0.5, duration = 1.6})  -- Starts half a second after the smoke.
-local crackle = particles2d.newEmitter({texture = star, rate = 0, bursts = {{time = 0, count = {4, 10}, cycles = 12, interval = 0.07, probability = 0.6}}, duration = 1.6, loop = true})
-local pulse = particles2d.newEmitter({texture = droplet, rate = 0, bursts = {{time = 0, count = {18, 26}, cycles = 3, interval = 0.25}}, duration = 1.5, loop = true})
+local flame = particles2d.newEmitter({texture = flameSoft, rate = 70, duration = 1.6})
+flame:configure({delay = 0.5})  -- Starts half a second after the smoke.
+local crackle = particles2d.newEmitter({texture = star, rate = 0, duration = 1.6, loop = true})
+crackle:configure({bursts = {{time = 0, count = {4, 10}, cycles = 12, interval = 0.07}}})
+crackle:configure({bursts = {{time = 0, count = 6, cycles = 12, probability = 0.6}}})
 flame:restart()  -- Arms the delay again.]]
 
-Timing.launch = {-600, 360}
-Timing.pad = {-720, 360, 240, 30}
-Timing.order = {layer = 1}
+Timing.launch = {-720, 300}
+Timing.captionY = 360
 Timing.rest = 1.2
 
 function Timing:init(entry)
@@ -39,9 +39,9 @@ function Timing:init(entry)
     self.crackle = particles2d.newEmitter(ParticleTest.look('star-4point', {rate = 0, bursts = self:crackleBursts(), duration = 1.6, loop = true, lifetime = {0.2, 0.5}, speed = {60, 260}, spread = m.tau, startSize = {14, 28}, endSize = 0, rotation = {0, m.tau}, colors = {'#FFFFFFFF', '#FFFFE080', '#00FFA040'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 284}))
     self.sputter = particles2d.newEmitter(ParticleTest.look('fireball', {frameMode = 'random', rate = 0, bursts = self:sputterBursts(), duration = 1.4, loop = true, lifetime = {0.3, 0.6}, speed = {300, 520}, direction = 0, spread = 0.35, damping = 2, startSize = {30, 46}, endSize = {60, 80}, colors = {'#FFFFF0B0', '#FFFF8020', '#00602000'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 285}))
     self.pulse = particles2d.newEmitter(ParticleTest.look('droplet', {rate = 0, bursts = {{time = 0, count = {18, 26}, cycles = 3, interval = 0.25}}, duration = 1.5, loop = true, lifetime = {1, 1.3}, speed = {500, 680}, direction = -1.5708, spread = 0.4, gravity = {0, 1100}, startSize = {14, 20}, endSize = 10, colors = {'#FFA0D8FF', '#0060A0FF'}, maxParticles = 256, layer = 3, seed = 286}))
-    self.crackle.x, self.crackle.y = 100, -120
-    self.sputter.x, self.sputter.y = 380, 60
-    self.pulse.x, self.pulse.y = 720, 360
+    self.crackle.x, self.crackle.y = -240, 40
+    self.sputter.x, self.sputter.y = 120, 100
+    self.pulse.x, self.pulse.y = 720, 300
     self.emitters = {self.smoke, self.flame, self.sparks, self.crackle, self.sputter, self.pulse}
     self:describeDelays()
 end
@@ -63,7 +63,7 @@ function Timing:space()
 end
 
 function Timing:describeDelays()
-    self.captions = {'Smoke at 0 s', string.format('Flame at %.2f s', self.gap), string.format('Sparks at %.2f s', self.gap * 2)}
+    self.launchTimes = string.format('Smoke at 0, flame at %.2f, sparks at %.2f s', self.gap, self.gap * 2)
 end
 
 function Timing:fire()
@@ -111,19 +111,17 @@ function Timing:update(dt)
             self:fire()
         end
     end
-    self:report('Delays 0, %.2f and %.2f s   Crackle of %d cycles   Probability %.2f   Crackle cycle %.2f s   Particles %d', self.gap, self.gap * 2, self.cycles, self.probability, self.crackle.cycleTime, count)
+    self:report('The parts start %.2f seconds apart, the crackle fires %d times with a chance of %.2f, and %d particles fly.', self.gap, self.cycles, self.probability, count)
 end
 
 function Timing:draw(area)
     ParticleTest.backdrop({0.03, 0.03, 0.08}, {0.1, 0.07, 0.12})
-    graphics2d.drawRect(Timing.pad, '#FF3A3A48', Timing.order)
+    ParticleTest.paveFloor('stone', Timing.launch[2] + 10, 140, '#FF6A6478')
     ParticleTest.drawAll(self.emitters)
-    for index, caption in ipairs(self.captions) do
-        ParticleTest.label(caption, Timing.launch[1], 380 + (index - 1) * 40)
-    end
-    ParticleTest.label('Crackle', self.crackle.x, self.crackle.y + 160)
-    ParticleTest.label('Sputter', self.sputter.x + 200, self.sputter.y + 90)
-    ParticleTest.label('Pulses', self.pulse.x, self.pulse.y + 20)
+    ParticleTest.label('Launch in sequence', Timing.launch[1], Timing.captionY, self.launchTimes)
+    ParticleTest.label('Crackle', self.crackle.x, Timing.captionY, 'Cycles and a probability')
+    ParticleTest.label('Sputter', self.sputter.x + 150, Timing.captionY, 'Small coughs, then a puff')
+    ParticleTest.label('Pulses', self.pulse.x, Timing.captionY, 'Three bursts a cycle')
 end
 
 return Timing

@@ -1,4 +1,5 @@
 -- Turbulence and attractors: `turbulence` pushes particles through moving noise so smoke curls, and an attractor pulls the particles inside its radius toward a point, harder the closer they get, and removes them at its kill radius, like coins that fly to a counter. The attractor lives in world space and `emitter:setAttractor` moves it to the cursor every frame.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -6,19 +7,23 @@ local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
 
 local ParticleTest = require('categories.particles.particle-test')
+local Town = require('categories.lighting.town')
 
 local TurbulenceAttractors = haylen.class('TurbulenceAttractors', ParticleTest)
 
 TurbulenceAttractors.code = [[
-local smoke = particles2d.newEmitter({texture = puff, rate = 14, turbulence = {strength = 260, frequency = 0.004, speed = 0.6}})
-local coins = particles2d.newEmitter({texture = coin, rate = 5, damping = 1.2, attractors = {{x = 0, y = 0, strength = 2800, radius = 2600, killRadius = 40, space = 'world'}}})
+local smoke = particles2d.newEmitter({texture = puff, rate = 14})
+smoke:configure({turbulence = {strength = 260, frequency = 0.004, speed = 0.6}})
+local coins = particles2d.newEmitter({texture = coin, rate = 5, damping = 1.2})
+coins:configure({attractors = {{x = 0, y = 0, strength = 2800, radius = 2600, killRadius = 40, space = 'world'}}})
 coins:setAttractor(1, cursorX, cursorY)  -- Every frame, in the space of the attractor.
 coins:burst(24)]]
 
 TurbulenceAttractors.killRadius = 40
-TurbulenceAttractors.chest = {460, 360, 140, 90}
-TurbulenceAttractors.chimney = {-560, 300, 120, 260}
-TurbulenceAttractors.order = {layer = 1}
+TurbulenceAttractors.ground = 400
+TurbulenceAttractors.house = {x = -560, scale = 0.62}
+-- The chest of the terrain tileset, which the coins jump out of.
+TurbulenceAttractors.chest = {x = 530, size = 170, source = {662, 266, 128, 128}}
 TurbulenceAttractors.ring = {layer = 4}
 
 function TurbulenceAttractors:init(entry)
@@ -27,9 +32,12 @@ function TurbulenceAttractors:init(entry)
     self.frequency = 0.004
     self.pull = 2800
     self.smoke = particles2d.newEmitter(ParticleTest.look('smoke', {frameMode = 'random', rate = 14, prewarm = 4, lifetime = {4, 5}, speed = {90, 120}, spread = 0.2, turbulence = self:turbulence(), startSize = {50, 70}, endSize = {200, 260}, rotation = {0, m.tau}, spin = {-0.4, 0.4}, colors = {'#00D0D0D8', '#A0B0B0B8', '#00909098'}, maxParticles = 128, layer = 2, seed = 221}))
-    self.smoke.x, self.smoke.y = -500, 300
+    self.town = Town()
+    local house = TurbulenceAttractors.house
+    self.smoke.position = {self.town:chimney('stone-house', house.x, TurbulenceAttractors.ground, house.scale)}
     self.coins = particles2d.newEmitter(ParticleTest.look('coin', {frameMode = 'loopRandomStart', frameRate = 12, rate = 5, lifetime = 4, speed = {450, 750}, spread = 1.4, damping = 1.2, startSize = 44, endSize = 44, attractors = self:attractors(), maxParticles = 256, layer = 3, seed = 222}))
-    self.coins.x, self.coins.y = 530, 360
+    local chest = TurbulenceAttractors.chest
+    self.coins.x, self.coins.y = chest.x, TurbulenceAttractors.ground - chest.size * 0.6
     self.emitters = {self.smoke, self.coins}
 end
 
@@ -71,17 +79,19 @@ function TurbulenceAttractors:update(dt)
         self.coins:burst(24)
     end
     ParticleTest.updateAll(self.emitters, dt)
-    self:report('Smoke %d with turbulence %.0f and frequency %.3f   Coins %d   Attractor at %.0f, %.0f with strength %.0f', self.smoke.count, self.strength, self.frequency, self.coins.count, self.cursorX, self.cursorY, self.pull)
+    self:report('%d puffs curl in a turbulence of %.0f at a frequency of %.3f, and %d coins fly to the cursor with a pull of %.0f.', self.smoke.count, self.strength, self.frequency, self.coins.count, self.pull)
 end
 
 function TurbulenceAttractors:draw(area)
-    ParticleTest.backdrop({0.05, 0.06, 0.12}, {0.16, 0.14, 0.18})
-    graphics2d.drawRect(TurbulenceAttractors.chimney, '#FF4A3A34', TurbulenceAttractors.order)
-    graphics2d.drawRect(TurbulenceAttractors.chest, '#FF8A5A2A', TurbulenceAttractors.order)
+    local ground, house, chest = TurbulenceAttractors.ground, TurbulenceAttractors.house, TurbulenceAttractors.chest
+    ParticleTest.backdrop({0.14, 0.2, 0.36}, {0.5, 0.42, 0.46})
+    ParticleTest.paveFloor('grass', ground - 10, 140)
+    self.town:house('stone-house', house.x, ground, house.scale, 1, 0)
+    graphics2d.draw(assets.texture(ParticleTest.tiles, {filter = 'linear'}), chest.x, ground + 6, {source = chest.source, width = chest.size, height = chest.size, pivotY = 1, layer = 2})
     graphics2d.drawRing(self.cursorX, self.cursorY, TurbulenceAttractors.killRadius, 4, '#C0FFD860', TurbulenceAttractors.ring)
     ParticleTest.drawAll(self.emitters)
-    ParticleTest.label('Smoke with "turbulence"', -500, 380)
-    ParticleTest.label('Coins pulled to the cursor', 530, 460)
+    ParticleTest.label('Smoke that curls', house.x, ground + 16, 'turbulence')
+    ParticleTest.label('Coins pulled to the cursor', chest.x, ground + 16, 'attractors')
 end
 
 return TurbulenceAttractors

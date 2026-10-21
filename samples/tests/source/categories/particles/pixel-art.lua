@@ -11,12 +11,19 @@ local PixelArt = haylen.class('PixelArt', ParticleTest)
 
 PixelArt.code = [[
 local atlas = assets.load('particles/library/textures/pixel.json', 'atlas', {filter = 'nearest'})
-local flame = particles2d.newEmitter({texture = atlas.texture, frames = {atlas:source('pixel-flame-1'), atlas:source('pixel-flame-2')}, frameMode = 'loopRandomStart', frameRate = 8, colors = {'#FFFFF8C0', '#FFFFC040', '#FFF06020', '#00402018'}})
-flame:configure({pixelSnap = 5, rotationStep = 1.5708, colorBlend = 'steps'})  -- On the grid of the art, by quarter turns, inside the palette.]]
+local frames = {atlas:source('pixel-flame-1'), atlas:source('pixel-flame-2')}
+local flame = particles2d.newEmitter({texture = atlas.texture, frames = frames, frameRate = 8})
+flame:configure({colors = {'#FFFFF8C0', '#FFFFC040', '#FFF06020', '#00402018'}})
+flame:configure({pixelSnap = 5})  -- On the grid of the art.
+flame:configure({rotationStep = 1.5708, colorBlend = 'steps'})  -- Quarter turns, palette colors.]]
 
 PixelArt.pixel = 5
-PixelArt.fire = {'#FFFFF8C0', '#FFFFC040', '#FFF06020', '#FF902828', '#00402018'}
+PixelArt.fire = {'#FFFFF8C0', '#FFFFD84A', '#FFFF9A2E', '#FFE8452C', '#00E8452C'}
 PixelArt.smoke = {'#00A8A8B8', '#C0A8A8B8', '#C0707080', '#00484858'}
+-- The leaves of the art are white, and the steps of this palette paint them the colors of autumn.
+PixelArt.leaves = {'#00F8D860', '#FFF8D860', '#FFF09838', '#FFD8602C', '#00D8602C'}
+-- The frames of the explosion hold their own colors, which a white tint keeps.
+PixelArt.painted = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}
 PixelArt.divider = {-3, -1000, 6, 2000}
 PixelArt.order = {layer = 1}
 PixelArt.interval = 2.5
@@ -25,8 +32,8 @@ PixelArt.interval = 2.5
 function PixelArt.effects()
     local pixel = PixelArt.pixel
     return {
-        {x = -480, y = -500, options = ParticleTest.look('pixel-leaf', {frameMode = 'random', rate = 5, prewarm = 4, lifetime = 4, speed = {60, 100}, direction = 1.5708, spread = 0.4, startSize = 8 * pixel, endSize = 8 * pixel, rotation = {0, m.tau}, spin = {-2.5, 2.5}, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.1, 0.85, 1}, shape = 'rectangle', shapeSize = {400, 0}, layer = 3})},
-        {x = -560, y = -80, explosion = true, options = ParticleTest.look('pixel-explosion', {rate = 0, bursts = {{time = 0, count = {6, 9}}}, duration = 0.1, lifetime = {0.6, 0.9}, speed = {40, 160}, spread = m.tau, startSize = 32 * pixel, endSize = 32 * pixel, rotation = {0, m.tau}, colors = PixelArt.fire, shape = 'circle', shapeSize = {10 * pixel, 0}, layer = 3})},
+        {x = -480, y = -500, options = ParticleTest.look('pixel-leaf', {frameMode = 'random', rate = 5, prewarm = 4, lifetime = 4, speed = {60, 100}, direction = 1.5708, spread = 0.4, startSize = 8 * pixel, endSize = 8 * pixel, rotation = {0, m.tau}, spin = {-2.5, 2.5}, colors = PixelArt.leaves, colorTimes = {0, 0.1, 0.45, 0.85, 1}, shape = 'rectangle', shapeSize = {400, 0}, layer = 3})},
+        {x = -560, y = -80, explosion = true, options = ParticleTest.look('pixel-explosion', {rate = 0, bursts = {{time = 0, count = {6, 9}}}, duration = 0.1, lifetime = {0.6, 0.9}, speed = {40, 160}, spread = m.tau, startSize = 32 * pixel, endSize = 32 * pixel, rotation = {0, m.tau}, colors = PixelArt.painted, colorTimes = {0, 0.7, 1}, shape = 'circle', shapeSize = {10 * pixel, 0}, layer = 3})},
         {x = -780, y = 330, options = ParticleTest.look('pixel-coin', {frameMode = 'loop', frameRate = 8, rate = 4, lifetime = 1.6, speed = {420, 520}, spread = 0.5, gravity = {0, 700}, startSize = 8 * pixel, endSize = 8 * pixel, rotation = {-0.4, 0.4}, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.8, 1}, layer = 3})},
         {x = -260, y = 240, options = ParticleTest.look('pixel-smoke', {rate = 5, lifetime = {1.6, 2.2}, speed = {50, 80}, spread = 0.4, startSize = 8 * pixel, endSize = 16 * pixel, colors = PixelArt.smoke, layer = 2})},
         {x = -260, y = 330, options = ParticleTest.look('pixel-flame', {frameMode = 'loopRandomStart', frameRate = 8, rate = 18, lifetime = {0.8, 1.1}, speed = {70, 110}, spread = 0.3, startSize = 16 * pixel, endSize = 6 * pixel, colors = PixelArt.fire, shape = 'rectangle', shapeSize = {4 * pixel, 0}, layer = 3})},
@@ -103,15 +110,15 @@ function PixelArt:update(dt)
     end
     local left = ParticleTest.updateAll(self.snapped, dt)
     local right = ParticleTest.updateAll(self.smooth, dt)
-    self:report('Pixel snap %.0f   Quarter turns "%s"   Palette steps "%s"   Particles %d on the left and %d on the right', self.snap, self.quarterTurns, self.steps, left, right)
+    self:report('The left half snaps to %.0f units with %d particles, and the right half draws %d particles freely.', self.snap, left, right)
 end
 
 function PixelArt:draw(area)
-    ParticleTest.backdrop({0.08, 0.06, 0.16}, {0.16, 0.1, 0.2})
-    graphics2d.drawRect(PixelArt.divider, '#FF404060', PixelArt.order)
+    ParticleTest.backdrop({0.16, 0.2, 0.34}, {0.28, 0.24, 0.36})
+    graphics2d.drawRect(PixelArt.divider, '#FF1E1B33', PixelArt.order)
     ParticleTest.drawAll(self.emitters)
-    ParticleTest.label('With "pixelSnap", "rotationStep" and "steps"', -480, 440)
-    ParticleTest.label('Without them', 480, 440)
+    ParticleTest.label('Pixel art kept', -480, 410, 'On the grid, by quarter turns, in the palette')
+    ParticleTest.label('Smooth', 480, 410, 'The same effects without the three options')
 end
 
 return PixelArt

@@ -1,4 +1,4 @@
--- Trails and ribbons: the `trail` option draws a ribbon behind every particle of an emitter, all of them in one mesh, and `particles2d.newTrail` makes a single ribbon that follows a point, such as the tip of a blade, adding a point whenever it moved `minDistance` and dropping the points older than its lifetime.
+-- Trails and ribbons: the `trail` option draws a ribbon behind every particle of an emitter, and `particles2d.newTrail` makes a single ribbon that follows a point, such as the tip of a blade, adding a point whenever it moved `minDistance` and dropping the points older than its lifetime. Every ribbon is a stroke with round ends whose edges fade over one pixel. The blade swings on its own until the cursor moves.
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
@@ -8,11 +8,12 @@ local ParticleTest = require('categories.particles.particle-test')
 local TrailsRibbons = haylen.class('TrailsRibbons', ParticleTest)
 
 TrailsRibbons.code = [[
-local sparks = particles2d.newEmitter({texture = dot, rate = 14, trail = {length = 16, lifetime = 0.35, widthStart = 10, widthEnd = 0, colors = {'#FFFFFFFF', '#00FFFFFF'}}})
-local blade = particles2d.newTrail({lifetime = 0.3, minDistance = 6, maxPoints = 96, widthStart = 36, widthEnd = 0, colors = {'#FFFFFFFF', '#C080E0FF', '#002060FF'}, texture = glowLine, blend = 'additive'})
+local trail = {length = 16, lifetime = 0.35, widthStart = 10, widthEnd = 0}
+local sparks = particles2d.newEmitter({texture = dot, rate = 14, trail = trail})
+local blade = particles2d.newTrail({lifetime = 0.3, minDistance = 6, widthStart = 36})
+blade:configure({colors = {'#FFFFFFFF', '#C080E0FF', '#002060FF'}, texture = glowLine})
 blade.x, blade.y = cursorX, cursorY
-blade:update(dt)  blade:draw()
-blade:configure({widthStart = 60})]]
+blade:update(dt)  -- Then blade:draw() in the canvas.]]
 
 TrailsRibbons.neon = {'#FFFF40C0', '#FF40E0FF', '#FFB0FF40', '#FFFFB030'}
 
@@ -29,6 +30,7 @@ function TrailsRibbons:init(entry)
     self.blade = particles2d.newTrail({lifetime = self.lifetime, minDistance = 6, maxPoints = 96, widthStart = self.width, widthEnd = 0, colors = {'#FFFFFFFF', '#C080E0FF', '#002060FF'}, texture = ParticleTest.library('glow-line'), blend = 'additive', layer = 4})
     self.wisp = particles2d.newTrail({lifetime = 0.8, minDistance = 8, widthStart = 22, widthEnd = 2, colors = {'#FFFFE080', '#80FF6040', '#00FF2000'}, blend = 'additive', layer = 2})
     self.ribbons = {self.blade, self.wisp}
+    self.swinging = true
 end
 
 function TrailsRibbons:enter()
@@ -56,19 +58,27 @@ end
 function TrailsRibbons:update(dt)
     TrailsRibbons.super.update(self, dt)
     self.time = self.time + dt
-    self.blade.x, self.blade.y = self.cursorX, self.cursorY
+    if self.swinging and (math.abs(self.cursorX) > 1 or math.abs(self.cursorY) > 1) then
+        self.swinging = false
+    end
+    if self.swinging then
+        local angle = -2.2 + math.sin(self.time * 2.4) * 1.3
+        self.blade.x, self.blade.y = -60 + math.cos(angle) * 300, 120 + math.sin(angle) * 300
+    else
+        self.blade.x, self.blade.y = self.cursorX, self.cursorY
+    end
     self.wisp.x, self.wisp.y = 520 + math.cos(self.time * 2.2) * 260, -40 + math.sin(self.time * 3.1) * 200
     ParticleTest.updateAll(self.ribbons, dt)
     self.sparks:update(dt)
-    self:report('Spark ribbons of %d points on %d sparks   Blade %d points, width %.0f, lifetime %.2f s   Wisp %d points', self.length, self.sparks.count, self.blade.count, self.width, self.lifetime, self.wisp.count)
+    self:report('%d sparks draw ribbons of %d points, and the blade keeps %d points for %.2f seconds.', self.sparks.count, self.length, self.blade.count, self.lifetime)
 end
 
 function TrailsRibbons:draw(area)
     ParticleTest.backdrop({0.02, 0.01, 0.06}, {0.06, 0.03, 0.12})
     self.sparks:draw()
     ParticleTest.drawAll(self.ribbons)
-    ParticleTest.label('Sparks with "trail"', self.sparks.x, 420)
-    ParticleTest.label('A ribbon of "newTrail"', 520, 280)
+    ParticleTest.label('Spark ribbons', self.sparks.x, 420, 'trail')
+    ParticleTest.label('A wisp', 520, 300, 'particles2d.newTrail')
 end
 
 return TrailsRibbons

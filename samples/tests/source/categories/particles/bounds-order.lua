@@ -1,4 +1,5 @@
 -- Bounds and draw order: `bounds` is a rectangle relative to the emitter that particles stay in, where `boundsMode = 'kill'` removes the ones that leave it and `'wrap'` brings them back on the other side, and `particleOrder` draws new particles above the older ones with `'oldestFirst'` or below them with `'newestFirst'`.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -10,19 +11,22 @@ local ParticleTest = require('categories.particles.particle-test')
 local BoundsOrder = haylen.class('BoundsOrder', ParticleTest)
 
 BoundsOrder.code = [[
-local rain = particles2d.newEmitter({texture = streak, rate = 150, speed = {950, 1100}, direction = 1.62, bounds = {-400, -20, 800, 800}, boundsMode = 'kill'})
-local snow = particles2d.newEmitter({texture = flake, gravity = {60, 30}, bounds = {-260, -300, 520, 600}, boundsMode = 'wrap'})  -- Flakes come back on the other side.
-local smoke = particles2d.newEmitter({texture = puff, rate = 12, startSize = {60, 80}, endSize = {180, 220}, particleOrder = 'newestFirst'})  -- New puffs draw below the older ones.
+local rain = particles2d.newEmitter({texture = streak, rate = 150, speed = {950, 1100}})
+rain:configure({bounds = {-400, -20, 800, 800}, boundsMode = 'kill'})  -- Dies at the ground.
+snow:configure({bounds = {-260, -300, 520, 600}, boundsMode = 'wrap'})  -- Comes back.
+smoke:configure({particleOrder = 'newestFirst'})  -- New puffs draw below the older ones.
 rain:configure({bounds = false})  -- Removes the bounds.]]
 
 BoundsOrder.cloud = -480
 BoundsOrder.snowBox = {-220, -330, 520, 600}
 BoundsOrder.order = {layer = 1}
+BoundsOrder.captionY = 400
+BoundsOrder.tile = 140
 
 function BoundsOrder:init(entry)
     BoundsOrder.super.init(self, entry)
     self.ground = 300
-    self.groundRect = {-1000, self.ground, 700, 700}
+    self.groundRect = {-1020, self.ground, 840, 700}
     self.bounded = true
     self.wind = 60
 
@@ -38,8 +42,8 @@ function BoundsOrder:init(entry)
     self.oldestFirst = particles2d.newEmitter(smoke)
     smoke.particleOrder, smoke.seed = 'newestFirst', 244
     self.newestFirst = particles2d.newEmitter(smoke)
-    self.oldestFirst.x, self.oldestFirst.y = 500, 330
-    self.newestFirst.x, self.newestFirst.y = 790, 330
+    self.oldestFirst.x, self.oldestFirst.y = 460, 330
+    self.newestFirst.x, self.newestFirst.y = 860, 330
 
     self.emitters = {self.rain, self.snow, self.oldestFirst, self.newestFirst}
 end
@@ -75,18 +79,31 @@ end
 function BoundsOrder:update(dt)
     BoundsOrder.super.update(self, dt)
     ParticleTest.updateAll(self.emitters, dt)
-    self:report('Raindrops %d with bounds "%s" down to %.0f   Snowflakes %d in a wind of %.0f   Smoke %d and %d', self.rain.count, self.bounded, self.ground, self.snow.count, self.wind, self.oldestFirst.count, self.newestFirst.count)
+    local rain = self.bounded and string.format('dies at the ground at %.0f', self.ground) or 'falls through the ground'
+    self:report('%d raindrops: the rain %s, and %d flakes wrap around their box in a wind of %.0f.', self.rain.count, rain, self.snow.count, self.wind)
+end
+
+-- Paves the ground under the rain with stone tiles from its height down, with a dark rim along its top.
+function BoundsOrder:drawGround()
+    local tiles = assets.texture(ParticleTest.tiles, {filter = 'linear'})
+    local rect, size = self.groundRect, BoundsOrder.tile
+    for y = rect[2], rect[2] + rect[4], size do
+        for x = rect[1], rect[1] + rect[3] - size, size do
+            graphics2d.draw(tiles, x, y, {source = ParticleTest.floors.stone, width = size, height = size, pivotX = 0, pivotY = 0, color = '#FF7A8090', layer = 1})
+        end
+    end
+    graphics2d.drawRect({rect[1], rect[2] - 4, rect[3], 8}, '#FF1E1B33', {layer = 1})
 end
 
 function BoundsOrder:draw(area)
     ParticleTest.backdrop({0.07, 0.08, 0.14}, {0.16, 0.18, 0.24})
-    graphics2d.drawRect(self.groundRect, '#FF26303A', BoundsOrder.order)
-    graphics2d.drawRectOutline(BoundsOrder.snowBox, 3, '#FF8090B0', BoundsOrder.order)
+    self:drawGround()
+    graphics2d.drawShape(BoundsOrder.snowBox, {radius = 10, color = '#201E1B33', borderWidth = 6, borderColor = '#FF9AA6C8', layer = 1})
     ParticleTest.drawAll(self.emitters)
-    ParticleTest.label('Rain with "boundsMode" set to "kill"', -600, math.min(self.ground, 440) + 20)
-    ParticleTest.label('Snow with "boundsMode" set to "wrap"', 40, 290)
-    ParticleTest.label('Order "oldestFirst"', 500, 380)
-    ParticleTest.label('Order "newestFirst"', 790, 380)
+    ParticleTest.label('Rain that dies', -600, BoundsOrder.captionY, "boundsMode = 'kill'")
+    ParticleTest.label('Snow that wraps', 40, BoundsOrder.captionY, "boundsMode = 'wrap'")
+    ParticleTest.label('New on top', 460, BoundsOrder.captionY, "particleOrder = 'oldestFirst'")
+    ParticleTest.label('New below', 860, BoundsOrder.captionY, "particleOrder = 'newestFirst'")
 end
 
 return BoundsOrder

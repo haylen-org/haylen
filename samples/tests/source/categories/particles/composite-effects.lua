@@ -1,6 +1,5 @@
 -- Composite effects: a `.particles` file whose only key is `emitters` lists the parts of one effect, each another effect file or its own options, with an offset, a scale, a delay and a layer offset. The function `particles2d.newSystem` creates them together, the system moves, scales and turns them as one, and `system:emitter(name)` returns a part by its name, such as the smoke of the campfire to switch off.
 local assets = require('haylen.assets')
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
@@ -10,16 +9,16 @@ local ParticleTest = require('categories.particles.particle-test')
 local CompositeEffects = haylen.class('CompositeEffects', ParticleTest)
 
 CompositeEffects.code = [[
-local campfire = particles2d.newSystem(assets.load('particles/composites/campfire.particles'), {seed = 311})
+local effect = assets.load('particles/composites/campfire.particles')
+local campfire = particles2d.newSystem(effect, {seed = 311})
 campfire.x, campfire.y = x, y
-campfire.scale, campfire.rotation = 1.5, 0.3  -- Every part scales and turns with the system.
+campfire.scale, campfire.rotation = 1.5, 0.3  -- Every part scales and turns with it.
 campfire:emitter('smoke').emitting = false  -- A part by its name.
-campfire:update(dt)  campfire:draw()  explosion:restart()]]
+explosion:restart()  -- Plays every part again.]]
 
 CompositeEffects.spots = {{-560, -60}, {520, 120}, {-200, 220}, {300, -220}}
 CompositeEffects.interval = 2.2
-CompositeEffects.logs = {layer = 1}
-CompositeEffects.logAngles = {0.35, -0.35}
+CompositeEffects.floor = 360
 
 function CompositeEffects:init(entry)
     CompositeEffects.super.init(self, entry)
@@ -36,16 +35,17 @@ function CompositeEffects:init(entry)
     self.campfireSmoke = self.campfire:emitter('smoke')
     self.explosion.x, self.explosion.y = CompositeEffects.spots[1][1], CompositeEffects.spots[1][2]
     self.systems = {self.explosion, self.campfire}
-    self.legends = {CompositeEffects.legend('Explosion', explosion), CompositeEffects.legend('Campfire', campfire)}
+    self.legends = {CompositeEffects.legend('Explosion', explosion, '#FFFF9040'), CompositeEffects.legend('Campfire', campfire, '#FFFFD060')}
+    self.pointer.origin = {0.5, 0.78}
 end
 
--- Names the parts of a composite effect in the order they draw.
-function CompositeEffects.legend(title, effect)
+-- Names the parts of a composite effect in the order they draw, as a line of the legend.
+function CompositeEffects.legend(title, effect, color)
     local names = {}
     for index, part in ipairs(effect.parts) do
-        names[index] = '"' .. part.name .. '"'
+        names[index] = part.name
     end
-    return string.format('%s with %d parts: %s', title, #names, table.concat(names, ', '))
+    return {text = string.format('%s, %d parts: %s', title, #names, table.concat(names, ', ')), color = color}
 end
 
 function CompositeEffects:explode(x, y)
@@ -95,26 +95,22 @@ function CompositeEffects:update(dt)
     end
     self.campfire.x, self.campfire.y = self.cursorX, self.cursorY
     ParticleTest.updateAll(self.systems, dt)
-    self:report('Campfire %d particles with smoke "%s"   Explosion %d particles, alive "%s"   Scale %.2f   Rotation %.2f', self.campfire.count, self.smoking, self.explosion.count, self.explosion.alive, self.scale, self.rotation)
+    self:report('The campfire burns with %d particles and the explosion with %d, scaled by %.2f and turned by %.2f.', self.campfire.count, self.explosion.count, self.scale, self.rotation)
 end
 
--- Draws two crossed logs under the campfire, turned and scaled with it.
+-- Draws the logs and stones of the campfire under its flames, turned and scaled with it.
 function CompositeEffects:drawLogs()
     local scale = self.scale
-    local x, y = self.campfire.x - math.sin(self.rotation) * 10 * scale, self.campfire.y + math.cos(self.rotation) * 10 * scale
-    for _, angle in ipairs(CompositeEffects.logAngles) do
-        local turn = angle + self.rotation
-        local dx, dy = math.cos(turn) * 70 * scale, math.sin(turn) * 70 * scale
-        graphics2d.drawLine(x - dx, y - dy, x + dx, y + dy, 18 * scale, '#FF6A4228', CompositeEffects.logs)
-    end
+    local x, y = self.campfire.x - math.sin(self.rotation) * 30 * scale, self.campfire.y + math.cos(self.rotation) * 30 * scale
+    ParticleTest.prop('campfire', x, y, 0.42 * scale, {rotation = self.rotation, layer = 1})
 end
 
 function CompositeEffects:draw(area)
-    ParticleTest.backdrop({0.03, 0.04, 0.09}, {0.12, 0.1, 0.14})
+    ParticleTest.backdrop({0.04, 0.05, 0.11}, {0.14, 0.11, 0.16})
+    ParticleTest.paveFloor('dirt', CompositeEffects.floor, 150, '#FF6A5A58')
     self:drawLogs()
     ParticleTest.drawAll(self.systems)
-    ParticleTest.label(self.legends[1], 0, -500)
-    ParticleTest.label(self.legends[2], 0, -455)
+    ParticleTest.legend(self.legends)
 end
 
 return CompositeEffects

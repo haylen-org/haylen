@@ -9,13 +9,21 @@ local ParticleTest = require('categories.particles.particle-test')
 local RotationFrames = haylen.class('RotationFrames', ParticleTest)
 
 RotationFrames.code = [[
-local shards = particles2d.newEmitter({texture = shard, rotation = {0, 6.2832}, spin = {-1.6, 1.6}, rotationStep = 0.7854})
-local streaks = particles2d.newEmitter({texture = streak, speed = {520, 800}, gravity = {0, 900}, alignToVelocity = true, stretch = 0.03})
-local dots = particles2d.newEmitter({texture = dot, aspect = {0.3, 3}})
-local runes = particles2d.newEmitter({texture = runeSheet, frameGrid = {columns = 4, rows = 1}, frameMode = 'loop', frameRate = 3})  -- Or "overLife", "loopRandomStart" and "random".]]
+local shards = particles2d.newEmitter({texture = shard, rotation = {0, 6.2832}, spin = {-1.6, 1.6}})
+shards:configure({rotationStep = 0.7854})  -- Draws them at eighths of a turn.
+local streaks = particles2d.newEmitter({texture = streak, alignToVelocity = true, stretch = 0.03})
+local leaves = particles2d.newEmitter({texture = atlas.texture, frames = leaf, aspect = {0.45, 2.2}})
+local runes = particles2d.newEmitter({texture = runeSheet, frameGrid = {columns = 4, rows = 1}})
+runes:configure({frameMode = 'loop', frameRate = 3})  -- Or "overLife", "loopRandomStart" or "random".]]
 
-RotationFrames.frameModes = {'overLife', 'loop', 'loopRandomStart', 'random'}
+RotationFrames.frameModes = {
+    {mode = 'overLife', title = 'Once over its life'},
+    {mode = 'loop', title = 'Loops'},
+    {mode = 'loopRandomStart', title = 'Loops from any frame'},
+    {mode = 'random', title = 'A random frame'},
+}
 RotationFrames.columns = {-720, -240, 240, 720}
+RotationFrames.rows = {-60, 420}
 
 function RotationFrames:init(entry)
     RotationFrames.super.init(self, entry)
@@ -28,23 +36,30 @@ function RotationFrames:init(entry)
 
     self.random = particles2d.newEmitter(ParticleTest.look('star-5point', {rate = 4, lifetime = 3, speed = {10, 30}, spread = m.tau, startSize = 64, endSize = 64, rotation = {0, m.tau}, colors = {'#00FFD860', '#FFFFD860', '#FFFFD860', '#00FFD860'}, colorTimes = fadeTimes, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 211}))
     self.stepped = particles2d.newEmitter(ParticleTest.look('shard', {rate = 4, lifetime = 3, speed = {10, 30}, spread = m.tau, startSize = 72, endSize = 72, rotation = {0, m.tau}, spin = {-1.6, 1.6}, rotationStep = self.rotationStep, colors = {'#00A0E0FF', '#FFA0E0FF', '#FFA0E0FF', '#00A0E0FF'}, colorTimes = fadeTimes, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 212}))
-    self.streaks = particles2d.newEmitter(ParticleTest.look('spark-streak', {rate = 70, lifetime = 1.2, speed = {520, 800}, spread = 0.9, gravity = {0, 900}, startSize = 18, endSize = 8, alignToVelocity = true, stretch = self.stretch, colors = {'#FFFFFFE0', '#FFFFB040', '#00FF6020'}, blend = 'additive', maxParticles = 256, layer = 2, seed = 213}))
-    self.aspects = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 6, lifetime = 3, speed = {10, 30}, spread = m.tau, startSize = 40, endSize = 40, aspect = {0.3, 3}, colors = {'#0060F0C0', '#FF60F0C0', '#FF60F0C0', '#0060F0C0'}, colorTimes = fadeTimes, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 214}))
+    self.streaks = particles2d.newEmitter(ParticleTest.look('spark-streak', {rate = 60, lifetime = 1.1, speed = {560, 820}, spread = 0.8, gravity = {0, 1100}, startSize = {30, 38}, endSize = 14, alignToVelocity = true, stretch = self.stretch, colors = {'#FFFFFFFF', '#FFFFE070', '#C0FF9030', '#00FF5010'}, blend = 'additive', maxParticles = 256, layer = 2, seed = 213}))
+    self.glow = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 24, lifetime = 0.3, speed = 0, startSize = {90, 110}, endSize = 60, colors = {'#80FFD070', '#00FF9030'}, blend = 'additive', layer = 3, seed = 218}))
+    self.aspects = particles2d.newEmitter(ParticleTest.look('leaf', {frameMode = 'random', rate = 6, lifetime = 3, speed = {10, 30}, spread = m.tau, startSize = 56, endSize = 56, rotation = {0, m.tau}, spin = {-0.8, 0.8}, aspect = {0.45, 2.2}, colors = {'#00F8D068', '#FFF8C860', '#FFF09848', '#00E87838'}, colorTimes = fadeTimes, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 214}))
     self.random.x, self.random.y = columns[1], -250
     self.stepped.x, self.stepped.y = columns[2], -250
-    self.streaks.x, self.streaks.y = columns[3], -100
+    self.streaks.x, self.streaks.y = columns[3], -110
+    self.glow.x, self.glow.y = columns[3], -110
     self.aspects.x, self.aspects.y = columns[4], -250
-    self.emitters = {self.random, self.stepped, self.streaks, self.aspects}
-    self.labels = {'Random "rotation"', 'Snapped by "rotationStep"', 'Along the motion, stretched', 'Widths from "aspect"'}
+    self.emitters = {self.random, self.stepped, self.streaks, self.glow, self.aspects}
+    self.labels = {
+        {'Random turns', 'rotation'},
+        {'Snapped turns', 'rotationStep'},
+        {'Stretched streaks', 'alignToVelocity, stretch'},
+        {'Leaves of many widths', 'aspect'},
+    }
 
     local runes = ParticleTest.library('rune-sheet')
     self.sheets = {}
-    for index, mode in ipairs(RotationFrames.frameModes) do
-        local emitter = particles2d.newEmitter({texture = runes, frameGrid = {columns = 4, rows = 1}, frameMode = mode, frameRate = self.frameRate, rate = 2.5, lifetime = 4, speed = {40, 60}, spread = 0.2, startSize = 64, endSize = 64, colors = violet, colorTimes = fadeTimes, shape = 'rectangle', shapeSize = {90, 0}, layer = 2, seed = 214 + index})
+    for index, frames in ipairs(RotationFrames.frameModes) do
+        local emitter = particles2d.newEmitter({texture = runes, frameGrid = {columns = 4, rows = 1}, frameMode = frames.mode, frameRate = self.frameRate, rate = 2.5, lifetime = 4, speed = {40, 60}, spread = 0.2, startSize = 64, endSize = 64, colors = violet, colorTimes = fadeTimes, shape = 'rectangle', shapeSize = {90, 0}, layer = 2, seed = 214 + index})
         emitter.x, emitter.y = columns[index], 380
         self.sheets[index] = emitter
         self.emitters[#self.emitters + 1] = emitter
-        self.labels[#self.labels + 1] = 'Frame mode "' .. mode .. '"'
+        self.labels[#self.labels + 1] = {frames.title, string.format("frameMode = '%s'", frames.mode)}
     end
 end
 
@@ -75,15 +90,15 @@ end
 function RotationFrames:update(dt)
     RotationFrames.super.update(self, dt)
     local count = ParticleTest.updateAll(self.emitters, dt)
-    self:report('Rotation step %.2f   Stretch %.3f   Frame rate %.1f   Particles %d', self.rotationStep, self.stretch, self.frameRate, count)
+    self:report('%d particles turn in steps of %.2f radians, stretch by %.3f of their speed and play their runes at %.1f frames per second.', count, self.rotationStep, self.stretch, self.frameRate)
 end
 
 function RotationFrames:draw(area)
     ParticleTest.backdrop({0.04, 0.05, 0.1}, {0.1, 0.08, 0.18})
     ParticleTest.drawAll(self.emitters)
-    for index, text in ipairs(self.labels) do
+    for index, label in ipairs(self.labels) do
         local x = RotationFrames.columns[(index - 1) % 4 + 1]
-        ParticleTest.label(text, x, index <= 4 and -60 or 440)
+        ParticleTest.label(label[1], x, RotationFrames.rows[index <= 4 and 1 or 2], label[2])
     end
 end
 
