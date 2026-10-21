@@ -17,7 +17,7 @@
 
 namespace haylen::ui {
 
-// Shows one child in an area that scrolls up and down or sideways. The wheel, the scroll bar and a finger dragging the content scroll it, with the motion of a `Scroller`, the focus scrolls to the focused control, the command `scrollTo` scrolls to an offset or to a node inside it, and with snapping it settles on the start of the nearest item of its child. While the child is longer than the area, the bar takes a lane of its own beside it.
+// Shows one child in an area that scrolls up and down or sideways. The wheel, the scroll bar and a finger dragging the content scroll it, with the motion of a `Scroller`, the focus scrolls to the focused control, the command `scrollTo` scrolls to an offset or to a node inside it, and with snapping it settles on the start of the nearest item of its child. While the child is longer than the area, the bar takes a lane of its own beside it, and a scroll that fills stretches a shorter child to the length of the area.
 class Scroll final : public Component {
   public:
     [[nodiscard]] std::string_view getKind() const noexcept override {
@@ -75,6 +75,7 @@ class Scroll final : public Component {
     bool scrollbarShown = true;
     bool horizontal = false;
     bool snap = false;
+    bool fill = false;
     bool pressed = false;
     bool dragging = false;
     float idle = 0.0F;

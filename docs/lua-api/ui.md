@@ -1394,6 +1394,7 @@ Shows one child in an area that scrolls up and down or sideways. The mouse wheel
 | `scrollbar` | boolean | `true` | Shows the scroll bar while the child is longer than the area. Without it the child takes the whole area. |
 | `axis` | string | `'vertical'` | Either `'vertical'` or `'horizontal'`, which lays the child out at its full width and scrolls it sideways, with a sideways trackpad gesture, Shift and the mouse wheel, or a finger. |
 | `snap` | boolean | `false` | Settles, once the player lets go, on the start of the item of the child nearest to the scrolled position, such as a card of a row. |
+| `fill` | boolean | `false` | Stretches a child shorter than the area to the whole length of the area, so the children of a column inside that grow share the room, as a page that fills the screen and scrolls once its content is longer. |
 
 Across the other axis the child stretches over the scroll within its size bounds, so a column with a `maxWidth` keeps that width on a wide screen, or sits at the `align` it sets, such as `'center'`. A horizontal scroll lays its child out at the width of its content. Kinds that otherwise fill the width they get, `list`, `tree`, `table`, `accordion`, `carousel` and `splitter`, take the width of their content there, and grids and splitters give each of their children its own. An axis other than `'vertical'` or `'horizontal'` raises `The property "axis" of a "scroll" must be "vertical" or "horizontal".`.
 

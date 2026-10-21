@@ -22,6 +22,7 @@ void Scroll::readProperties(PropertyReader& reader) {
     reader.read("scrollbar", scrollbarShown);
     reader.read("axis", axis);
     reader.read("snap", snap);
+    reader.read("fill", fill);
     if (axis != "vertical" && axis != "horizontal") {
         reader.fail("axis", "must be \"vertical\" or \"horizontal\"");
     }
@@ -177,15 +178,15 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
     ImGui::EndChild();
 }
 
-// The child spans the scrolling axis at its measured length and stretches across the other axis within its size bounds, or sits there at the alignment it sets.
+// The child spans the scrolling axis at its measured length, or at least the length of the area when the scroll fills, and stretches across the other axis within its size bounds, or sits there at the alignment it sets.
 math::Rect Scroll::place(Context& context, Component& child, math::Vec2 size, const math::Rect& view) const {
     const Alignment alignment = child.getCommon().align.value_or(Alignment::Stretch);
     if (horizontal) {
         const float height = alignment == Alignment::Stretch ? std::min(child.clampHeight(view.height), view.height) : std::min(size.y, view.height);
-        return {view.x, std::floor(align(alignment, view.y, view.height, height)), size.x, height};
+        return {view.x, std::floor(align(alignment, view.y, view.height, height)), fill ? std::max(size.x, view.width) : size.x, height};
     }
     const float width = alignment == Alignment::Stretch ? std::min(child.clampWidth(view.width), view.width) : std::min(size.x, view.width);
-    return {std::floor(context.alignHorizontally(alignment, view.x, view.width, width)), view.y, width, size.y};
+    return {std::floor(context.alignHorizontally(alignment, view.x, view.width, width)), view.y, width, fill ? std::max(size.y, view.height) : size.y};
 }
 
 void Scroll::followWindow() {

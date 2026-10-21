@@ -131,6 +131,30 @@ TEST_F(LayoutTest, BoundsAndAlignsTheChildOfAScroll) {
     EXPECT_EQ(getBounds(*gui, "tall").height, 200.0F);
 }
 
+// A scroll that fills stretches a child shorter than its area to the whole area, so the children that grow share the room, and scrolls the child once it is longer.
+TEST_F(LayoutTest, FillsTheAreaOfAScrollWithAShorterChild) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "page", "fill": true, "height": 500, "children": [{"kind": "column", "gap": 0, "children": [
+        {"kind": "spacer", "id": "top", "height": 100},
+        {"kind": "spacer", "id": "growing", "grow": 1},
+        {"kind": "spacer", "id": "bottom", "height": 100}
+    ]}]}]})");
+    // clang-format on
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "growing").height, 300.0F);
+    EXPECT_EQ(getBounds(*gui, "bottom").y, 400.0F);
+
+    gui->set("top", {{"height", 800}});
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "growing").height, 0.0F);
+    EXPECT_EQ(getBounds(*gui, "bottom").y, 800.0F);
+
+    gui->set("page", {{"fill", false}});
+    gui->set("top", {{"height", 100}});
+    frames(2);
+    EXPECT_EQ(getBounds(*gui, "bottom").y, 100.0F);
+}
+
 TEST_F(LayoutTest, KeepsMarginsAroundChildrenAndPaddingInsideContainers) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "padding": [5, 6, 7, 8], "gap": 4, "children": [
