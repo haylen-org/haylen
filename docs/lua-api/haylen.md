@@ -190,7 +190,7 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 | `content.groups` | string | Absent | The group manifest that defines the groups the rules name, relative to `content/`, such as `"groups.json"`. |
 | `autoload` | list of strings | `[]` | The modules that load as [autoloads](#haylenautoloadname-module) before `source/main.lua`, such as `"state.player-data"`. |
 | `native` | object | `{}` | The native libraries that the app ships, by name, as the [native code guide](../platform/native.md#packaging-libraries-with-an-app) describes. The engine keeps the section as `app.json` wrote it. |
-| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) that the app uses, by id in `dash-case`, each with an object of the values of its parameters, such as `{"ads": {"testMode": true}}`. Every id needs `plugins/<id>/plugin.json` in the package. The field [`platform.plugin(id).config`](platform.md#plugin-handles) adds the defaults of their parameters. |
+| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) that the app uses, by id in `dash-case`, each with an object of the values of its parameters, such as `{"ads": {"testMode": true}}`. Every id needs `plugins/<id>/plugin.json` in the package. The field [`platform.plugin(id).config`](platform.md#appplugin) adds the defaults of their parameters. |
 
 The [errors](#errors-of-appjson) section lists the message of every value that `app.json` refuses.
 

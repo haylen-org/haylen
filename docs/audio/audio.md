@@ -96,7 +96,7 @@ A plugin can feed an audio stream that the app plays as a voice. The native part
 - The ring has one reader, so a new voice of a stream takes it over from the voice that played it before.
 - The app can also read the newest samples into a float buffer, such as for a level meter.
 
-The [`haylen.platform` reference](../lua-api/platform.md#audio-streams) describes the Lua side, and the [plugin guide](../platform/plugins.md#streams) shows how native code pushes samples.
+The [`haylen.platform` reference](../lua-api/platform.md#audiostream) describes the Lua side, and the [plugin guide](../platform/plugins.md#streams) shows how native code pushes samples.
 
 ## Voices
 
