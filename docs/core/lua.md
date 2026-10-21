@@ -1,10 +1,19 @@
 # 🌙 Lua guide
 
-Apps for Haylen are written in Lua 5.5, which the engine runs through the [Varn](https://github.com/varn-org/varn) runtime. This guide explains the model an app is built on: the package layout, `app.json`, how modules and assets are found, scenes, autoloads, classes, disk access, asynchronous code, errors, hot reload and the fast paths for performance. The last section shows how a C++ project adds its own Lua modules. Every engine module has a reference page listed in the [Lua API reference](../README.md), and the [architecture guide](architecture.md) explains what happens underneath.
+This guide is the first page to read after the [quick start](../../README.md#quick-start). It walks you through how a Haylen app is made in Lua: the app package, `app.json`, modules, scenes, owners, asynchronous code, errors and hot reload. Each section explains one idea with a short example and links to the reference for the details. The last sections cover performance and how a C++ project adds its own Lua modules.
+
+Haylen apps are written in Lua 5.5. The engine runs them through [Varn](https://github.com/varn-org/varn), a Lua runtime with an event loop, worker threads and modules for the network and the file system. Every engine module has a reference page in the [Lua API reference](../lua-api/README.md), and the [architecture guide](architecture.md) explains what happens underneath.
 
 ## The app package
 
-An app is a package: a folder, or the same folder zipped, with `app.json` at its root, the Lua modules under `source/`, the assets under `content/` and the manifest and Lua modules of every [plugin](../platform/plugins.md) the app uses under `plugins/`. Nothing else in the folder belongs to the package, so platform projects, notes, build files and the native parts of plugins can live next to it.
+An app is a package. A package is a folder, or the same folder zipped, that holds these entries:
+
+- `app.json` at the root, with the settings of the app.
+- `source/`, with the Lua modules of the app.
+- `content/`, with the assets: images, sounds, fonts, maps and data files.
+- `plugins/`, with the manifest and the Lua modules of every [plugin](../platform/plugins.md) that the app uses.
+
+Nothing else in the folder belongs to the package. So platform projects, notes, build files and the native parts of plugins can live next to it.
 
 ```text
 my-app/
@@ -24,73 +33,13 @@ my-app/
         init.lua       Loaded with require('ads').
 ```
 
-Lua files use `dash-case` names, and asset files and folders use lowercase names with dashes, such as `audio/fire-loop.ogg`. The command `haylen package my-app -o my-app.zip` zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of a folder, with `app.json` at the root of the archive. The desktop player runs either form with `haylen my-app` or `haylen my-app.zip`, and the [distribution guide](../tools/distribution.md) shows how to run a package on every platform and in the browser.
+Lua files take `dash-case` names, such as `main-menu.lua`. Asset files and folders take lowercase names with dashes, such as `audio/fire-loop.ogg`.
+
+The desktop player runs a folder with `haylen my-app` and a zip file with `haylen my-app.zip`. To make the zip file, run `haylen package my-app -o my-app.zip`. It zips `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin, with `app.json` at the root of the archive. The [distribution guide](../tools/distribution.md) shows how to run a package on every platform and in the browser.
 
 ## app.json
 
-The runtime reads `app.json` before the window exists, so it configures everything that must be known before the first script runs. Every field is optional.
-
-| Field | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `name` | string | `"Haylen App"` | Display name of the app. |
-| `identifier` | string | `"com.haylen.app"` | Unique reverse-domain id. It names the folder where `haylen.storage` and `haylen.preferences` keep their files. |
-| `version` | string | `"1.0.0"` | Version of the app. |
-| `description` | string | The value of `name` | One sentence about the app, which the Windows and Linux templates give the executable, the desktop entry, the AppStream metainfo and the packages. |
-| `company` | string | The value of `name` | The person or company that publishes the app, in the same places. |
-| `copyright` | string | `"Copyright © <company>"` | The copyright notice of the app, which the Windows executable and the installer show. |
-| `website` | string | `""` | The address of the website of the app, which the AppStream metainfo, the `.deb` package and the Windows installer link to. |
-| `window.title` | string | The value of `name` | Window title. |
-| `window.width`, `window.height` | integer | `1280`, `720` | Initial window size. |
-| `window.fullscreen` | boolean | `false` | Starts fullscreen. |
-| `window.highDpi` | boolean | `true` | Uses the full display density for the framebuffer. |
-| `window.resizable` | boolean | `true` | Whether the player may resize the window. |
-| `window.vsync` | boolean | `true` | Waits for the display refresh when presenting. |
-| `window.sampleCount` | integer | `1` | Multisampling sample count. |
-| `window.decorated` | boolean | `true` | Whether the desktop window has a title bar and a border. |
-| `window.transparent` | boolean | `false` | Opens the window able to be transparent, and transparent, so the desktop shows through its transparent pixels, and makes `clearColor` default to `"#00000000"`. Only such a window can turn transparent again after `window.setTransparent(false)`. |
-| `window.alwaysOnTop` | boolean | `false` | Keeps the desktop window above normal windows. |
-| `window.showInTaskbar` | boolean | `true` | Whether the window has a taskbar button, and on macOS whether the app has a Dock icon and a menu bar. |
-| `window.focusable` | boolean | `true` | Whether clicking the window activates the app and gives it the keyboard. |
-| `window.mousePassthrough` | boolean | `false` | Lets every click pass through the window to what is behind it, until the app gives regions that keep the mouse. |
-| `window.statusBar` | string | `"hidden"` | How the status bar of phones and tablets shows when the app launches: `"hidden"`, or `"auto"`, `"light"` or `"dark"` content, described in [`window.setStatusBar`](../lua-api/window.md#windowsetstatusbarvalue). |
-| `window.statusBarColor` | string | absent | The color such as `"#FF1E2A44"` that the engine paints behind the status bar while it shows, described in [`window.setStatusBarColor`](../lua-api/window.md#windowsetstatusbarcolorcolor). |
-| `window.position` | string or object | centered | Where the desktop window opens: `"center"`, a point `{"x": 40, "y": 60}` in desktop points, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`, described in the [desktop guide](../platform/desktop.md#placing-the-window). |
-| `design.width`, `design.height` | number | `1920`, `1080` | Design resolution, the coordinate space the app draws and receives input in. |
-| `design.scaling` | string | `"expand"` | One of `"fit"`, `"fill"`, `"stretch"`, `"expand"`, `"pixelPerfect"`, `"fitWidth"` or `"none"`, described in [`haylen.viewport`](../lua-api/viewport.md). |
-| `orientation` | string | `"landscape"` | `"landscape"`, `"portrait"` or `"any"`. |
-| `fixedRate` | number | `60` | Fixed updates per second. The function `haylen.fixedStep()` returns the matching step length in seconds. |
-| `maxFrameTime` | number | `0.25` | Longest frame time in seconds that the clock accepts, so a stall never causes a burst of fixed steps. |
-| `clearColor` | string | `"#FF000000"`, or `"#00000000"` for a transparent window | Background color as `"#RRGGBB"` or `"#AARRGGBB"`. |
-| `splash.logo` | string | the Haylen symbol | Image of the launch screen, relative to `content/`, such as `"ui/splash.png"`. |
-| `splash.background` | string | The value of `clearColor` | Background color of the launch screen as `"#RRGGBB"` or `"#AARRGGBB"`. |
-| `splash.darkBackground` | string | The value of `splash.background` | Background color of the launch screen while the system uses dark colors. |
-| `splash.duration` | number | `0` | Least seconds the launch screen stays from the launch, which always lasts until the first frame of the app. |
-| `splash.fadeOut` | number | `0.25` | Seconds the launch screen takes to fade out into the app, as the [distribution guide](../tools/distribution.md#splash-screens) describes. |
-| `lifecycle.pauseOnBackground` | boolean | `true` | Halts the app while it is in the background. |
-| `lifecycle.pauseOnFocusLoss` | boolean | `false` | Halts the app while its window has no focus. |
-| `lifecycle.muteOnFocusLoss` | boolean | `false` | Mutes the output while the app is not active. |
-| `audio.iosSession` | string | `"ambient"` | Category of the audio session on iOS and tvOS: `"ambient"`, `"soloAmbient"` or `"playback"`, described in the [audio guide](../audio/audio.md#sessions-and-interruptions). |
-| `audio.mixWithOthers` | boolean | `false` | Lets the `"playback"` session play along with other apps. Other sessions reject `true`. |
-| `audio.latency` | string | `"balanced"` | How the output trades latency for power: `"low"`, `"balanced"` or `"powerSaving"`. |
-| `audio.limiter` | boolean | `true` | Puts a limiter on the `master` bus, so the mix never clips. |
-| `input.mouseAsTouch` | boolean | `false` | Makes the mouse act as a finger from the start, as [`input.setMouseAsTouch`](../lua-api/input.md#inputsetmouseastouchenabled) describes. |
-| `input.touchAsMouse` | boolean | `false` | Makes a finger act as the mouse from the start, as [`input.setTouchAsMouse`](../lua-api/input.md#inputsettouchasmouseenabled) describes. |
-| `input.scrollSpeed` | number | `1` | Multiplies every scroll of the wheels and the trackpads from the start, as [`input.setScrollSpeed`](../lua-api/input.md#inputsetscrollspeedspeed) describes. A value that is not positive raises `The "input.scrollSpeed" value in "app.json" must be a positive number.` |
-| `ui.scaleMode` | string | `"design"` | How large the interface draws: `"design"` or `"physical"`, as [`ui.setScaleMode`](../lua-api/ui.md#uisetscalemodemode) describes. |
-| `ui.scale` | number | `1` | Factor from 0.25 to 4 that multiplies the size of the interface, as [`ui.setScale`](../lua-api/ui.md#uisetscalefactor) describes. |
-| `debug.stats` | string | `"off"` | Debug statistics the app starts with: `"off"`, `"compact"` for a line of each compact item in a corner, or `"full"` for the debug overlay, described in [`haylen.debug`](../lua-api/debug.md). |
-| `debug.statsItems` | array of strings | `["frameRate", "drawCalls", "geometry"]` | The [items](../lua-api/debug.md#compact-items) the compact statistics show: `"frameRate"`, `"drawCalls"`, `"geometry"`, `"memory"`, `"counters"`, `"physics"`, `"particles"` and `"audio"`. An unknown item raises an error that lists them. |
-| `debug.drawings` | list of strings | `[]` | The [debug drawings](../lua-api/debug.md#drawings) the app starts with, such as `["physics", "bounds"]`. An empty name raises `The "debug.drawings" list in "app.json" has an empty drawing name.` |
-| `debug.objectEvents` | boolean | `false` | Publishes `objectCreated` and `objectDestroyed` for every counted object, as [`haylen.debug`](../lua-api/debug.md#object-counts-and-events) describes. |
-| `debug.console` | boolean | `false` | Turns the [developer console](../lua-api/debug.md#console) on outside development runs, so it opens and runs the lines of the web page. Development runs always have it. |
-| `debug.safeArea` | string or insets | none | Safe area to simulate instead of the one of the device: a device name such as `"iphoneDynamicIsland"` or insets in window points, as [`viewport.setSafeAreaSimulation`](../lua-api/viewport.md#viewportsetsafeareasimulationvalue) describes. |
-| `debug.fold` | string or table | none | Fold to simulate instead of the one of the device: a preset such as `"book"` or `"tabletop"`, or an object with `axis`, `state` and `hinge`, as [`window.setFoldSimulation`](../lua-api/window.md#windowsetfoldsimulationvalue) describes. |
-| `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](../lua-api/ui.md#uisetsafeareavisiblevisible) describes. |
-| `debug.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development: `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](#hot-reload) describes. Any other value raises `The "debug.reload" option must be "module" or "restart".` |
-| `content` | object | none | The server of the protected content of a release in `updates` and the `delivery` rules that let assets arrive after the start, as the [delivery settings](../content/content.md#delivery) describe. Without it every asset is required and the app has no content server. |
-| `autoload` | array of strings | `[]` | Modules that load as [autoloads](#autoloads) before `source/main.lua`, such as `"state.player-data"`. |
-| `native` | object | `{}` | The native libraries the app ships, by name, as the [native code guide](../platform/native.md#packaging-libraries-with-an-app) describes. |
-| `plugins` | object | `{}` | The [plugins](../platform/plugins.md) the app uses, by id in `dash-case`, each with an object of the values of its parameters, such as `{"ads": {"testMode": true}}`. Every id needs `plugins/<id>/plugin.json` in the package, and the app fails to load with `The plugin "ads" in "app.json" has no "plugins/ads/plugin.json" in the package.` otherwise. |
+The file `app.json` holds the settings that the engine needs before any Lua runs, such as the size of the window. The runtime reads it before the window exists. Every field is optional, so an app may start with a name and an identifier and add the rest when it needs it.
 
 ```json
 {
@@ -104,11 +53,25 @@ The runtime reads `app.json` before the window exists, so it configures everythi
 }
 ```
 
-Unknown keys are errors, so a misspelled field never goes unnoticed. The loader rejects them with messages such as `Unknown key "widht" in the "window" section of "app.json".`, and it also rejects values of the wrong type, sizes and rates that are not positive, and unknown scaling policies, orientations and colors. A package that fails to load shows `The app could not be loaded.` and the reason on screen. The option `window.resizable` applies to desktop windows, and `window.setResizable` changes it later. The other desktop options of `window` change later through [`haylen.window`](../lua-api/window.md#desktop-windows) as well, and the [desktop guide](../platform/desktop.md) describes them. The option `orientation` applies to mobile apps: `haylen.py` writes it into the `Info.plist` of the Apple template and the manifest of the Android template, and `haylen_add_app` into the `Info.plist` of iOS apps built with CMake, as the [distribution guide](../tools/distribution.md) describes. Desktop windows and the web ignore it. The option `splash` sets the launch screen that iOS, tvOS, Mac Catalyst and Android show while the app starts and the loading page of the web, which `haylen.py` builds from the platform templates as the [distribution guide](../tools/distribution.md#splash-screens) describes. Scripts read the resolved configuration, with every default filled in, from `require('haylen').config`.
+These are the parts of `app.json` that most apps set.
+
+| Part | What it sets |
+| --- | --- |
+| `name`, `identifier`, `version` | Who the app is. The `identifier` also names the folder where the app keeps the files of the player. |
+| `window` | The size and title of the window, fullscreen, and the desktop modes, such as a window without a frame. |
+| `design` | The design resolution: the space of units that the app draws in, whatever the size of the screen. |
+| `orientation`, `splash` | How a phone holds the app, and the launch screen. |
+| `lifecycle`, `audio` | What the app does when it loses the focus, and how it shares sound with other apps. |
+| `debug` | The debug statistics, drawings and the reload mode of development. |
+| `autoload`, `plugins` | The modules that load before the first scene, and the plugins of the app. |
+
+The reference of [`haylen.config`](../lua-api/haylen.md#haylenconfig) lists every field with its default. Scripts read the same settings, with every default filled in, from `require('haylen').config`.
+
+The engine checks the file strictly. An unknown key is an error, so a misspelled field never goes unnoticed. A value of the wrong type or out of its range is an error too. A package whose `app.json` fails shows the reason on the screen instead of the app, and the reference lists [every message](../lua-api/haylen.md#errors-of-appjson).
 
 ## source/main.lua
 
-The file `source/main.lua` runs once when the engine starts, after every plugin has installed its modules and the autoloads have started, and before the first frame. It usually loads shared data, configures input and the UI theme and pushes the first scene. This is the whole entry point of Tiny Island.
+The file `source/main.lua` is the entry point of the app. It runs once when the engine starts, after every plugin has installed its modules and the autoloads have started, and before the first frame. It usually loads shared data, sets up input and the theme of the interface, and shows the first scene. This is the whole entry point of the sample Tiny Island.
 
 ```lua
 local assets = require('haylen.assets')
@@ -131,21 +94,62 @@ scene.push(require('scenes.boot').new())
 
 ## Modules and require
 
-The function `require` returns a module that is already loaded, which is where Varn's modules are from the start. Otherwise it looks in two places. It first builds the modules registered in `package.preload`, which are the engine modules such as `haylen.graphics` and the modules of any plugin a C++ project adds. Then it searches the `source/` folder of the package: `require('scenes.main-menu')` loads `source/scenes/main-menu.lua` and, when that file is missing, `source/scenes/main-menu/init.lua`. A module whose first name part is the id of a plugin of `app.json` comes from the `source/` folder of that plugin instead: `require('ads')` loads `plugins/ads/source/init.lua` and `require('ads.consent')` loads `plugins/ads/source/consent.lua`, so a module of the app named after a plugin is an error when the app starts, as the [plugin guide](../platform/plugins.md#modules) explains. Modules load as text, except in a protected release, where the Lua modules of the app and its plugins ship as bytecode that the release build compiled and the module loader of the engine alone loads, as the [content guide](../content/content.md#lua-bytecode) describes. The same names, files and lines appear in errors either way.
+Split an app into modules: one Lua file per scene, system or kind of object. The function `require(name)` loads a module once and returns what the module returns. Later calls with the same name return the same value.
 
-The fields `package.path` and `package.cpath` are empty, so nothing is ever loaded from the host file system and an app behaves the same from a folder, a zip file or the browser. A missing module raises `no file 'source/scenes/missing.lua' or 'source/scenes/missing/init.lua' in the app package`.
+`require` looks for a module in this order:
 
-When `require` loads a module for the first time, it returns a second value, which for a package module is the path of its file. Wrap the call in parentheses when it is the last argument of another call, as in `scene.push((require('scenes.level')))`, because otherwise the path becomes an extra argument.
+1. A module that is already loaded. Varn's modules are loaded from the start.
+2. A module of `package.preload`. These are the engine modules, such as `haylen.graphics`, and the modules that the plugins of a C++ project add.
+3. A module of the app, in the `source/` folder. The name `scenes.main-menu` loads `source/scenes/main-menu.lua`, and when that file is missing, `source/scenes/main-menu/init.lua`.
 
-App code loads chunks only as text. The functions `load` and `loadfile` take only text, so a mode other than `'t'` raises `chunks load only as text, so the mode is 't'` and binary chunks fail to load, `dofile` runs only text files, and `string.dump` does not exist. Precompiled bytecode is never checked by the Lua virtual machine and could build values that crash it, so the only bytecode that ever runs is the bytecode of a protected release, whose signed and encrypted catalog vouches for every module.
+A module whose first part is the id of a plugin in `app.json` comes from the `source/` folder of that plugin instead. So `require('ads')` loads `plugins/ads/source/init.lua`, and `require('ads.consent')` loads `plugins/ads/source/consent.lua`. A module of the app named after a plugin is therefore an error when the app starts, as the [plugin guide](../platform/plugins.md#modules) explains.
 
-The metatables of engine types are protected. The function `getmetatable(value)` returns the type name, such as `'haylen.Sprite'`, so it can tell engine values apart, and neither `setmetatable` nor the debug library can read or replace their metatables. The function `debug.getmetatable` returns the same as `getmetatable`, `debug.setmetatable` raises `The metatable of this value is protected and cannot be changed.` for an engine value, `debug.getregistry`, `debug.getuservalue` and `debug.setuservalue` do not exist, `debug.getupvalue` and `debug.setupvalue` see no upvalues in native functions, and the frames of native functions, whose stack slots hold the state of the engine while they run, show no locals to `debug.getlocal`, refuse `debug.setlocal` with `The locals of native functions cannot be changed.` and leave `func` out of `debug.getinfo`. A value can therefore never be finalized by hand or given the members of another type, and no internal function of the engine runs with arguments it did not expect.
+```lua
+-- The file `source/config.lua`.
+return {startLevel = 'forest', lives = 3}
+```
 
-Varn's modules live in the same state: `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` and `ffi`. The [Varn documentation](https://github.com/varn-org/varn) describes them. Apps use `haylen.storage` for their own files and `haylen.log` and `haylen.platform` for logging and native calls, which are different modules from Varn's `log` and `platform`. Browsers have no raw TCP, so the `socket` module works only in native builds, as the [networking guide](../network/networking.md) explains with the other limits of the browser.
+```lua
+local config = require('config')
+
+print('The game starts in the ' .. config.startLevel .. ' with ' .. config.lives .. ' lives.')
+```
+
+A missing module raises `no file 'source/scenes/missing.lua' or 'source/scenes/missing/init.lua' in the app package`. The fields `package.path` and `package.cpath` are empty, so nothing ever loads from the file system of the computer. An app therefore behaves the same from a folder, a zip file or the browser.
+
+The first time `require` loads a module, it returns a second value. For a module of the package that value is the path of its file. When `require` is the last argument of another call, wrap it in parentheses, as in `scene.push((require('scenes.level')))`. Otherwise the path becomes an extra argument of that call.
+
+### Text only
+
+Modules load as Lua text. The one exception is a protected release, where the Lua modules of the app and its plugins ship as bytecode, compiled by the release build. Only the module loader of the engine loads that bytecode, as the [content guide](../content/content.md#lua-bytecode) describes. Errors name the same files and lines either way.
+
+App code itself loads chunks only as text:
+
+- The functions `load` and `loadfile` take only text. A mode other than `'t'` raises `chunks load only as text, so the mode is 't'`, and a binary chunk fails to load.
+- The function `dofile` runs only text files.
+- The function `string.dump` does not exist.
+
+The reason is safety. The Lua virtual machine never checks precompiled bytecode, and bad bytecode can build values that crash it. So the only bytecode that ever runs is the bytecode of a protected release, whose signed and encrypted catalog vouches for every module.
+
+### Engine values are protected
+
+The values that the engine hands to Lua, such as sprites and textures, have protected metatables. A metatable is the hidden table that gives a Lua value its methods and operators.
+
+- The function `getmetatable(value)` returns the name of the type, such as `'haylen.Sprite'`. Use it to tell engine values apart.
+- The function `setmetatable` cannot replace their metatables, and neither can the debug library. The function `debug.getmetatable` returns the same as `getmetatable`, and `debug.setmetatable` raises `The metatable of this value is protected and cannot be changed.` for an engine value.
+- The functions `debug.getregistry`, `debug.getuservalue` and `debug.setuservalue` do not exist.
+- The functions `debug.getupvalue` and `debug.setupvalue` see no upvalues in native functions.
+- The frames of native functions show no locals to `debug.getlocal`, since their stack slots hold the state of the engine while they run. They refuse `debug.setlocal` with `The locals of native functions cannot be changed.`, and `debug.getinfo` leaves `func` out for them.
+
+So no script can finalize an engine value by hand or give it the members of another type, and no internal function of the engine runs with arguments it did not expect.
+
+### The modules of Varn
+
+Varn's modules live in the same Lua state: `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` and `ffi`. The [Varn documentation](https://github.com/varn-org/varn) describes them. Two of them share a name with an engine module, so pick the right one: apps log with `haylen.log` and call native code with `haylen.platform`, which are not Varn's `log` and `platform`. For files of the player, use `haylen.storage`, as [files of the player](#disk-access) shows. Browsers have no raw TCP, so the `socket` module works only in native builds, as the [networking guide](../network/networking.md) explains with the other limits of the browser.
 
 ## Asset paths
 
-Every asset path is relative to the package `content/` folder and never includes the `content/` prefix.
+Every asset path is relative to the `content/` folder of the package and never starts with `content/`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -154,11 +158,18 @@ local assets = require('haylen.assets')
 local idle = assets.texture('sprites/knight/idle.png')
 ```
 
-Paths use `/` as the separator and `.` segments are ignored. An absolute path raises `The path "<path>" must be relative.`, and a path that leaves the package raises `The path "<path>" must stay inside its root folder.` The same rule holds for every module that reads package files, such as `haylen.tiled`, `haylen.audio`, `haylen.localization` and `haylen.ui`. The [`haylen.assets`](../lua-api/assets.md) reference covers caching, preload groups and asynchronous loading.
+Paths use `/` as the separator, and `.` segments are ignored. An absolute path raises `The path "<path>" must be relative.`, and a path that leaves the package raises `The path "<path>" must stay inside its root folder.`. The same rule holds for every module that reads files of the package, such as `haylen.tiled`, `haylen.audio`, `haylen.localization` and `haylen.ui`. The [`haylen.assets`](../lua-api/assets.md) reference covers the cache, preload groups and loading in the background.
 
 ## Scenes
 
-An app is a stack of scenes, and a scene is any Lua table with optional callbacks, such as `enter`, `exit`, `update`, `render` and `renderUi`, plus a `transparent` field for overlays and a `processMode` field for the game pause. Only the top scene updates and receives input, and the scenes below a transparent scene keep rendering. The engine looks callbacks up by name on every call and passes the table as `self`, so methods inherited through a metatable or a [class](#classes) work. A scene usually lives in its own module, and the [lifecycle guide](lifecycle.md) explains when each callback runs.
+An app shows one screen at a time, such as a title screen, a level or a pause menu. Each screen is a scene, and the scenes form a stack. The scene on top runs, and pushing a scene on top of another, such as a pause menu over a level, keeps the one below alive.
+
+A scene is any Lua table with optional hooks: functions that the engine calls at the right moment, such as `enter`, `exit`, `update`, `render` and `renderUi`. Two fields change how a scene behaves:
+
+- `transparent = true` keeps the scenes below drawing, for an overlay such as a pause menu.
+- `processMode` decides whether the scene runs while the game is paused, as the [lifecycle guide](lifecycle.md#pause-and-process-modes) explains.
+
+Only the top scene updates and receives input. The engine looks each hook up by name on every call and passes the table as `self`, so methods that a table inherits through a metatable or a [class](#classes) work too. A scene usually lives in a module of its own.
 
 ```lua
 -- The file `source/scenes/title.lua`.
@@ -188,11 +199,13 @@ end
 return title
 ```
 
-The file `source/main.lua` then pushes it with `require('haylen.scene').push(require('scenes.title').new())`. The [`haylen.scene`](../lua-api/scene.md) reference lists every callback, the stack operations, transitions and event tables. Gameplay reads input through the action map described in the [input guide](../input/input.md), and menus and HUDs use the [UI guide](../ui/ui.md).
+Then `source/main.lua` shows it with `require('haylen.scene').push(require('scenes.title').new())`.
+
+A scene can also load what it needs in its `load` hook before it shows, with progress and an optional loading view. The [lifecycle guide](lifecycle.md#scene-lifecycle) explains the states of a scene and when each hook runs, and the [`haylen.scene`](../lua-api/scene.md) reference lists every hook, stack operation and transition. Gameplay reads input through the action map of the [input guide](../input/input.md), and menus and HUDs use the [UI guide](../ui/ui.md).
 
 ## Autoloads
 
-Autoloads are modules that load before the first scene and live for the whole app. They hold what every scene shares, such as the player profile, the music or a server connection. The file `app.json` lists them in its `autoload` array, and they load in that order before `source/main.lua` runs. An autoload is the table its module returns, which `require` returns again anywhere and `haylen.autoloads.<name>` holds, where the name is the last part of the module in camel case. It receives `start`, `event`, `fixedUpdate`, `update`, `render`, `renderUi` and `stop` when it defines them, and its `processMode` field decides whether it runs while the game is paused. The function `haylen.autoload` adds one at run time. The [lifecycle guide](lifecycle.md#autoloads) explains when each callback runs, and the [loading guide](../content/loading.md#autoloads) how autoloads differ from preloads and deliveries and how a release ships them.
+Some things live longer than any scene, such as the profile of the player, the music or a connection to a server. Make such a module an autoload: list it in the `autoload` array of `app.json`, and it loads before `source/main.lua` runs and lives for the whole app. An autoload is the table that its module returns. It receives hooks like a scene, such as `start`, `update` and `stop`.
 
 ```json
 {
@@ -217,33 +230,24 @@ end
 return session
 ```
 
+Any module reaches the autoload through `require` or through `haylen.autoloads`, under the last part of its module name in camel case.
+
 ```lua
 local haylen = require('haylen')
 
 local session = haylen.autoloads.session
 session.kills = session.kills + 1
-print('kills', require('state.session').kills) -- kills 1
+print(require('state.session').kills) -- 1
 ```
+
+The [lifecycle guide](lifecycle.md#autoloads) lists the hooks and when they run, and [`haylen.autoload`](../lua-api/haylen.md#haylenautoloadname-module) adds an autoload while the app runs. The [loading guide](../content/loading.md#autoloads) explains how autoloads differ from preloads and how a release ships them.
 
 ## Classes
 
-The function `haylen.class(name, parent, ...)` builds a class for app-wide types, such as units, items or scenes. It returns the class table, where methods are defined with `function Class:method()`. Calling the class, or its `new` function, creates an instance and calls its `init` method with the arguments.
-
-- The argument `parent`, when given, must be another class. Instances inherit its methods, and the class copies the metamethods it has at that moment, such as `__eq`, `__lt` or `__add`, because Lua looks metamethods up without inheritance.
-- The field `Class.super` is the parent, so an overriding method calls the one it overrides with `Class.super.method(self, ...)`.
-- The method `object:is(Class)` returns whether the object is an instance of the class, of a class that inherits from it or of a class that includes it as a mixin. It works on classes too, such as `Hero:is(Unit)`.
-- The remaining arguments are mixins: tables whose fields are copied into the class unless the class already defines them. The method `Class:include(mixin)` adds one later, and a mixin with an `included(class)` function hears about it.
-- The field `Class.name` is the name, `tostring(Class)` reads `class <name>` and `tostring(object)` reads `<name>: <address>`.
-
-The call raises `bad argument #1 to 'class' (string expected, got <type>)` without a name and `bad argument #2 to 'class' (class expected, got <type>)` for a parent that is not a class. The table `scene.Scene` of [`haylen.scene`](../lua-api/scene.md#scene) is a class to build scenes on.
+Lua has no classes of its own, but games have many objects of the same kind, such as enemies, items or scenes. The function `haylen.class(name, parent, ...)` builds a class: a table of methods that every object of the class shares. A class can inherit from a parent class and take mixins, which are tables of methods that several classes share. Calling the class creates an object and runs its `init` method.
 
 ```lua
 local haylen = require('haylen')
-
-local Walker = {
-    walk = function(self) return self.name .. ' walks' end,
-    included = function(class) print(class.name .. ' can walk') end,
-}
 
 local Unit = haylen.class('Unit')
 
@@ -252,37 +256,51 @@ function Unit:init(name, health)
 end
 
 function Unit:describe()
-    return self.name .. ' ' .. self.health
+    return self.name .. ' has ' .. self.health .. ' health.'
 end
 
-function Unit.__eq(a, b)
-    return a.name == b.name
-end
-
-local Hero = haylen.class('Hero', Unit, Walker)
+local Hero = haylen.class('Hero', Unit)
 
 function Hero:init(name)
     Hero.super.init(self, name, 100)
-    self.level = 1
-end
-
-function Hero:describe()
-    return 'hero ' .. Hero.super.describe(self)
 end
 
 local ana = Hero('Ana')
-print(ana:describe(), ana:walk()) -- hero Ana 100 Ana walks
-print(ana:is(Hero), ana:is(Unit), ana:is(Walker), Hero:is(Unit)) -- true true true true
-print(ana == Hero.new('Ana'), tostring(Hero)) -- true class Hero
+print(ana:describe()) -- Ana has 100 health.
+print(ana:is(Unit)) -- true
 ```
+
+The [`haylen.class`](../lua-api/haylen.md#haylenclassname-parent-) reference lists every member of a class, such as `super`, `is` and `include`. The table `scene.Scene` of [`haylen.scene`](../lua-api/scene.md#scene) is a class to build scenes on.
+
+## Owners
+
+A listener, a timer or a tween that outlives the thing it belongs to keeps running code for something that is gone, such as a scene that the player left. Owners prevent that. Every function that registers a callback takes an `owner` option. When the owner ends, everything registered with it ends too.
+
+```lua
+local events = require('haylen.events')
+local scene = require('haylen.scene')
+local timer = require('haylen.timer')
+
+local level = {}
+
+function level:enter()
+    -- The listener and the timer belong to the level, so they end when it unloads.
+    events.on('coinCollected', function(value) print('A coin of ' .. value .. ' points.') end, {owner = self})
+    timer.every(1, function() print('The level ticks.') end, {owner = self})
+end
+
+scene.push(level)
+```
+
+A scene ends when it unloads, and any other table ends when the garbage collector frees it. The [lifecycle guide](lifecycle.md#subscription-scopes) lists every kind of owner and every function that takes one.
 
 ## Disk access
 
-Apps read their own package through [`haylen.assets`](../lua-api/assets.md), which works the same from a folder, a zip file or the browser, and they write only to the storage folder of the player, which every platform gives the app for itself.
+An app reads its own package through [`haylen.assets`](../lua-api/assets.md), which works the same from a folder, a zip file or the browser. It writes only to the storage folder of the player, which every platform gives the app for itself. Two modules write there.
 
-The module [`haylen.storage`](../lua-api/storage.md) reads and writes that folder synchronously. Its paths are relative to the folder and cannot leave it, writes are atomic and create missing folders, and it lists and removes files and keeps save slots. The function `storage.flush()` makes the files durable on platforms that buffer them, such as the browser, and the engine flushes by itself when the app goes to the background.
+The module [`haylen.storage`](../lua-api/storage.md) reads and writes that folder right away, on the frame thread. Each of its file and slot functions also has an `Async` version that runs on the I/O pool, a set of worker threads for slow input and output, as [calls on the I/O pool](../lua-api/storage.md#calls-on-the-io-pool) describes. Its paths are relative to the folder and cannot leave it. Its writes are atomic, which means a crash never leaves half a file, and they create missing folders. It also lists and removes files and keeps save slots. The function `storage.flush()` makes the files durable on platforms that buffer them, such as the browser. The engine flushes by itself when the app goes to the background.
 
-Varn's `fs` module reads and writes asynchronously, on the I/O pool, and returns promises that a coroutine awaits. The function `storage.root()` returns the absolute path of the storage folder for it. Use `fs` for large files, streaming, directories and anything that should not hold up a frame. Its paths are not confined, so build them from `storage.root()`.
+The module `fs` of Varn reads and writes in the background, on the I/O pool too. It returns promises that a task awaits, as [asynchronous code](#asynchronous-code) explains. Use `fs` for large files, for streaming, for folders and for anything that should not hold up a frame. Its paths are not confined, so build them from `storage.root()`, the absolute path of the storage folder.
 
 | Task | `haylen.storage` | Varn `fs` |
 | --- | --- | --- |
@@ -298,15 +316,15 @@ local async = require('async')
 local fs = require('fs')
 local storage = require('haylen.storage')
 
-storage.writeJson('saves/profile.json', {name = 'Ana', coins = 12})
-print(table.concat(storage.list('saves'), ', ')) -- saves/profile.json
+storage.writeJson('data/profile.json', {name = 'Ana', coins = 12})
+print(table.concat(storage.list('data'), ', ')) -- data/profile.json
 
 async.spawn(function()
     local cache = storage.root() .. '/cache/maps'
     fs.mkdir(cache):await()
     fs.writeFile(cache .. '/island.json', '{"size": 64}'):await()
     local names = fs.readdir(cache):await()
-    local profile = fs.readFile(storage.root() .. '/saves/profile.json'):await()
+    local profile = fs.readFile(storage.root() .. '/data/profile.json'):await()
     print(names[1], #profile > 0) -- island.json true
     fs.removeRecursive(storage.root() .. '/cache'):await()
     print(storage.exists('cache/maps/island.json')) -- false
@@ -315,28 +333,70 @@ end)
 
 ## Asynchronous code
 
-Operations that take time return a Varn promise instead of blocking the frame, such as `assets.loadAsync`, `assets.preload`, `platform.call`, `jobs.spawn` and `handle:wait()` of a tween, together with Varn's own `async.sleep` and `http` requests. A coroutine started with `async.spawn` waits for a promise with `:await()`. The coroutine pauses and the app keeps running, and the coroutine resumes during the poll of the event loop at the start of a frame, before the updates of that frame. The poll takes a budget of a quarter of the frame time, between 1 and 8 milliseconds, and runs in passes: a promise that settles during a pass, such as one of `async.sleep(0)` or `async.yield()`, resumes its coroutine in the next pass, which runs in the same frame while the budget lasts and in the next frame once it is spent. An `:await()` of a promise that already settled answers at once without pausing. A loop of many small steps therefore awaits `async.yield()` now and then to hand the frame back, and a long computation that never awaits runs as a [job](../lua-api/jobs.md). The debug overlay and `debug.stats().eventLoop` of [`haylen.debug`](../lua-api/debug.md#debugstats) show the budget and whether work was left for the next frame.
+Some work takes time, such as loading a large image, waiting for a server or waiting for a timer. A frame must never wait for it, or the app would freeze. So such functions return a promise instead of the result. A promise is a value that settles later: it resolves with a result or rejects with an error.
 
-The method `:await()` never raises. It returns the value when the promise resolves, and `nil` and the error message when it rejects, so always check the result.
+Engine functions that return promises include `assets.loadAsync`, `assets.preload`, `platform.call`, `jobs.spawn` and `handle:wait()` of a tween. Varn's `async.sleep` and its `http` requests return promises too.
+
+### Tasks and await
+
+A task is a function that runs as a coroutine, so it can pause and resume. Start one with `async.spawn(fn)`. Inside a task, `promise:await()` pauses the task until the promise settles, while the app keeps running. Then it returns the result.
+
+The method `:await()` never raises. It returns the value when the promise resolves, and `nil` and the error message when it rejects. So always check the result.
 
 ```lua
 local async = require('async')
 local assets = require('haylen.assets')
 local log = require('haylen.log')
 
+local hero = {}
+
 async.spawn(function()
     local texture, failure = assets.loadAsync('images/hero.png'):await()
     if not texture then
-        log.warning('the hero could not be loaded: ' .. failure)
+        log.warning('The hero could not be loaded: ' .. failure)
         return
     end
-    hero = texture
+    hero.texture = texture
 end)
 ```
 
-The method `:await()` only works inside a coroutine, so code at the top level of `source/main.lua` or in a scene callback starts one with `async.spawn`, or with `scene.spawn(owner, fn)` of [`haylen.scene`](../lua-api/scene.md#scenespawnowner-fn) for a task that stops for good when its owner, such as its scene, goes away. The `load` hook of a scene already runs in such a task. The functions `async.spawn` and `async.run` return the handle of the task, whose `task.cancel()` stops it for good: no promise resumes it again, and its coroutine closes, which runs its to-be-closed variables, at once when the task waits and right after its next `:await()` when the task cancels itself. A to-be-closed variable that raises while its task closes stops the app with the error screen like a failed task. An error that escapes the function given to `async.spawn` or `async.run` stops the app and shows the error screen with the stack of that coroutine, like an error in a scene callback, and a web page receives it through `onError`. The engine receives these errors through the handler it sets with `async.onFailure`, together with the errors of `ffi` callbacks that fail outside any `ffi` call, of the handlers of Varn's servers, of the callbacks of `http.client.stream` and of the promises that reject while nothing awaits them, with the stack of each error as a list of frames, so an app that sets a handler of its own takes them over and they no longer stop the app. Code that expects a failure catches it with `pcall` inside the coroutine, and a promise that rejects makes `:await()` return `nil` and the error instead of raising.
+`:await()` works only inside a task. Code at the top level of `source/main.lua` or in a scene hook starts one with `async.spawn`. The `load` hook of a scene already runs in a task. For a task that belongs to a scene, use `scene.spawn(owner, fn)` of [`haylen.scene`](../lua-api/scene.md#scenespawnowner-fn): the task stops for good when its owner, such as its scene, goes away.
 
-A promise that rejects while nothing awaits it, catches it or passes it to a combinator such as `async.all` is an error of the app, like a task that failed, because the work the app started failed without anyone hearing of it. Varn checks once the code that was running when the promise rejected returned to the event loop, so a task that awaits a promise a little later still observes it. The error screen then shows the error of the promise after the sentence `A promise rejected, and nothing awaited or caught it.`, with the stack the rejection carries, such as the stack of the task of `async.promise` that failed, and without a stack when native code rejected it, such as a failed request. Work whose failure does not matter catches it with `promise:catch(fn)`, which answers a new promise of what `fn(err)` returns. Promises meant to settle together are awaited with `async.all` or `async.allSettled`, because awaiting them one after another leaves the later ones unobserved while the task waits for the first.
+### When tasks resume
+
+A task resumes during the poll of the event loop at the start of a frame, before the updates of that frame. The poll has a budget of a quarter of the frame time, between 1 and 8 milliseconds. It runs in passes. A promise that settles during a pass, such as the one of `async.sleep(0)` or `async.yield()`, resumes its task in the next pass. That pass runs in the same frame while the budget lasts, and in the next frame once it is spent. An `:await()` of a promise that already settled answers at once, without a pause.
+
+So a loop of many small steps awaits `async.yield()` now and then to hand the frame back. A long computation that never awaits runs as a [job](#long-computations) instead. The debug overlay and `debug.stats().eventLoop` of [`haylen.debug`](../lua-api/debug.md#debugstats) show the budget and whether work was left for the next frame.
+
+### Cancelling a task
+
+The functions `async.spawn` and `async.run` return the handle of the task. Its `task.cancel()` stops the task for good: no promise resumes it again, and its coroutine closes. Closing runs its to-be-closed variables, which are the locals declared with `<close>`. That happens at once when the task waits, and right after its next `:await()` when the task cancels itself. A to-be-closed variable that raises while its task closes stops the app with the error screen, like a failed task.
+
+```lua
+local async = require('async')
+
+local countdown = async.spawn(function()
+    for seconds = 3, 1, -1 do
+        print(seconds .. ' seconds left.')
+        async.sleep(1000):await()
+    end
+end)
+
+async.spawn(function()
+    async.sleep(1500):await()
+    countdown.cancel()
+    print('The countdown was cancelled.')
+end)
+```
+
+### Failures nobody hears
+
+An error that escapes the function of `async.spawn` or `async.run` stops the app. The error screen shows it with the stack of that task, like an error in a scene hook, and a web page receives it through `onError`. Code that expects a failure catches it with `pcall` inside the task.
+
+A promise that rejects while nothing awaits it, catches it or passes it to a combinator such as `async.all` is an error of the app too. The work that the app started failed, and nobody heard of it. Varn checks once the code that ran when the promise rejected returns to the event loop, so a task that awaits the promise a little later still observes it. The error screen then shows the error of the promise after the sentence `A promise rejected, and nothing awaited or caught it.`. It shows the stack that the rejection carries, such as the stack of the task of `async.promise` that failed, and no stack when native code rejected it, such as a failed request.
+
+- Work whose failure does not matter catches it with `promise:catch(fn)`, which returns a new promise of what `fn(err)` returns.
+- Promises meant to settle together are awaited with `async.all` or `async.allSettled`. Awaiting them one after another would leave the later ones unobserved while the task waits for the first.
 
 ```lua
 local async = require('async')
@@ -352,30 +412,38 @@ async.spawn(function()
 end)
 ```
 
-A rejection that the engine reports another way never stops the app this way: a scene change whose load failed, whose error goes to `onError` or the log as [`haylen.scene`](../lua-api/scene.md#errors) describes, a group of `context:preload` that failed the load it belongs to, and a platform call, a dialog or a screen that was cancelled.
+The engine receives these failures through the handler that it sets with `async.onFailure`. The same handler receives the errors of `ffi` callbacks that fail outside any `ffi` call, of the handlers of Varn's servers and of the callbacks of `http.client.stream`, each with its stack as a list of frames. An app that sets a handler of its own takes them over, and they no longer stop the app.
 
-Long computations written in Lua, such as generating a map, run as jobs of [`haylen.jobs`](../lua-api/jobs.md). The Lua state belongs to the frame thread, so a job is a coroutine that works within a time budget each frame and pauses at `jobs.checkpoint()` when the budget is spent. The function `jobs.spawn` returns a promise with the result of the job.
+A rejection that the engine reports another way never stops the app like this. Such rejections are a scene change whose load failed, whose error goes to `onError` or the log as [`haylen.scene`](../lua-api/scene.md#errors) describes, a group of `context:preload` that failed the load it belongs to, and a platform call, a dialog or a screen that was cancelled.
+
+### Long computations
+
+Long computations written in Lua, such as generating a map, run as jobs of [`haylen.jobs`](../lua-api/jobs.md). The Lua state belongs to the frame thread, so a job cannot run on another thread. Instead, a job is a coroutine that works within a time budget each frame and pauses at `jobs.checkpoint()` when the budget is spent. The function `jobs.spawn` returns a promise of the result of the job.
 
 ```lua
 local async = require('async')
 local jobs = require('haylen.jobs')
 
 async.spawn(function()
-    local total = jobs.spawn(function(count)
+    local total = jobs.spawn(function()
         local sum = 0
-        for index = 1, count do
+        for index = 1, 1000000 do
             sum = sum + index
             jobs.checkpoint()
         end
         return sum
-    end, 1000000):await()
-    print('total', total)
+    end):await()
+    print('The total is ' .. total .. '.')
 end)
 ```
 
 Engine work written in C++, such as decoding images and sounds, already runs on worker threads and needs no jobs.
 
-The `timeoutSeconds` option of Varn's `http` requests is one deadline for the whole request, from connecting to the last byte of the answer and across every redirect, so a server that keeps sending a little at a time still ends it on time. It takes any positive number of seconds, a fraction such as `2.5` included, and a request with any other value fails with a message that names the option. A request past its deadline rejects with a message that says it did not finish within its timeout, and a secure request never waits for the server to confirm the close of its connection once the answer is whole. The function `async.timeout` gives up waiting on any promise instead, while the request it waits for goes on until its own deadline.
+### Timeouts of requests
+
+The option `timeoutSeconds` of Varn's `http` requests is one deadline for the whole request. It counts from the connection to the last byte of the answer, across every redirect, so a server that keeps sending a little at a time still ends on time. It takes any positive number of seconds, fractions such as `2.5` included, and any other value fails the request with a message that names the option. A request past its deadline rejects with a message that says it did not finish within its timeout. A secure request never waits for the server to confirm the close of its connection once the answer is whole.
+
+The function `async.timeout(promise, ms)` stops waiting for any promise instead, while the request it waits for goes on until its own deadline. The [networking guide](../network/networking.md#timeouts-cancellation-and-owners) shows the other ways to stop waiting.
 
 ```lua
 local async = require('async')
@@ -384,7 +452,7 @@ local http = require('http')
 async.spawn(function()
     local response, failure = http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2.5}):await()
     if not response then
-        print('no answer within 2.5 seconds: ' .. failure)
+        print('No answer within 2.5 seconds: ' .. failure)
         return
     end
     print(response.status)
@@ -393,7 +461,7 @@ end)
 
 ## Errors and stack traces
 
-An uncaught error in `source/main.lua`, in a scene callback, in a timer or tween callback, in a task of `async.spawn` or `async.run` or in any other engine callback stops the app. The engine keeps the first error, writes its report to the log, stops updating and rendering the scenes and shows the error screen: the app name and version, the platform and the engine version, the message, the file and line, the lines of the script around the error line and the stack of the failing call, innermost first.
+An error that nobody catches stops the app. It may come from `source/main.lua`, a scene hook, a timer or tween callback, a task of `async.spawn` or `async.run`, or any other engine callback. The engine keeps the first error, writes its report to the log, stops updating and drawing the scenes, and shows the error screen. The screen shows the name and version of the app, the platform and the version of the engine, the message, the file and line, the lines of the script around the error line, and the stack of the failing call, innermost first.
 
 ```text
 The app stopped with an error
@@ -412,15 +480,40 @@ Stack
 source/scenes/level.lua:12  function <source/scenes/level.lua:10>
 ```
 
-That report is also what `C` copies to the clipboard, and `R` restarts the app. Both actions are also buttons at the bottom of the screen, which a click or a tap presses, and on touch devices the buttons show without their keys. Gamepads and TV remotes move an outlined focus between the buttons with the directional pad or the arrows of the remote and press the focused one with the south button or the select button of the remote, and the focus starts on the restart button. A report taller than the screen scrolls with the mouse wheel, a drag of the mouse or a finger, the arrow and page keys, Home and End, and the directional pad up and down. The stack names each function the way Lua does, such as `local 'spawnWave'`, `method 'hit'` or `main chunk`, and a function that native code calls, like a scene callback or the function of a task, shows where it is defined, such as `function <source/scenes/level.lua:10>`. The stack of a task of `async.spawn` or `async.run` and of an `ffi` callback comes from Varn and reads the same. A deep stack, such as a runaway recursion, keeps its innermost and its outermost calls around one line that says how many levels it skipped, such as `...  140 levels skipped`. A to-be-closed variable that fails while a cancelled task closes shows its error without a stack, because the stack of the task is gone by then.
+### Using the error screen
 
-Chunk names are package paths, so every position in a message points at a file of the package. The function `haylen.reportError(message)` stops the app the same way with a message of the app's choosing and the stack of the code that reported it. In the browser, the page receives the error in `Module.haylen.onError` as `{message, file, line, traceback, frames}`, where `traceback` is the stack as text and `frames` lists every frame as `{source, line, function, kind}` with the kind `lua`, `c` or `main`. On other platforms the report goes to the console with the rest of the log. The native parts of [plugins](../platform/plugins.md#errors-of-the-app) receive the same report, so a crash reporter records it with the stack of the Lua code.
+- `C` copies that report to the clipboard, and `R` restarts the app. Both actions are also buttons at the bottom of the screen, which a click or a tap presses. On touch devices the buttons show without their keys.
+- Gamepads and TV remotes move an outlined focus between the buttons with the directional pad or the arrows of the remote. The south button or the select button of the remote presses the focused one. The focus starts on the restart button.
+- A report taller than the screen scrolls with the mouse wheel, a drag of the mouse or a finger, the arrow and page keys, Home and End, and the directional pad up and down.
 
-Some failures go to the code that asked for the work instead of the error screen. A promise that rejects, such as the one of a request that failed, of an asset that failed to load or of a job whose function raised, makes `:await()` return `nil` and the error, and stops the app only when nothing awaits or catches it, as [asynchronous code](#asynchronous-code) describes. A scene `load` that fails while the scene below stays sends its error to `onError` of the change or to the log, as [`haylen.scene`](../lua-api/scene.md#errors) describes, and an error in a handler of `platform.registerHandler` fails the call that asked for it. An error in a handler or route of the HTTP servers of Varn's `http` module, in a callback of a WebSocket route or in a callback of `http.client.stream` stops the app with the error screen and the stack of the handler, while the server answers the request that failed with status 500 and the WebSocket connection stays open. Warnings of Lua, such as an error in a `__gc` metamethod or a call of `warn`, go to the log as warnings that start with `Lua warning:`, and `warn('@off')` and `warn('@on')` turn them off and on.
+### Reading the stack
 
-The runtime stays alive on the error screen. In development, saving the fix resumes or restarts the app, as [hot reload](#hot-reload) describes, and a browser editor restarts it with `Module.haylen.restart()` or `Module.haylen.run()`.
+The stack names each function the way Lua does, such as `local 'spawnWave'`, `method 'hit'` or `main chunk`. A function that native code calls, such as a scene hook or the function of a task, shows where it is defined instead, such as `function <source/scenes/level.lua:10>`. The stack of a task of `async.spawn` or `async.run` and of an `ffi` callback comes from Varn and reads the same. A deep stack, such as a runaway recursion, keeps its innermost and outermost calls around one line that says how many levels it skipped, such as `...  140 levels skipped`. A to-be-closed variable that fails while a cancelled task closes shows its error without a stack, because the stack of the task is gone by then.
 
-An app that can return to a safe screen after an error calls [`haylen.setRecoverable(true)`](../lua-api/haylen.md#haylensetrecoverablerecoverable). Its error screen then offers `Back to the app` next to copying and restarting, with Escape, the east button and the back button of the platform, and it starts with the focus on it. Going back publishes `appRecovered` with the error at the start of the next frame, before the app updates again, so its listener leaves the scene that failed first, and the app runs on with the same Lua state. Every error also publishes `appError` at the end of its frame, which an app that runs on by itself answers with `haylen.recover()`, the way the test project of the samples runs every test and lists the ones that failed.
+Chunk names are paths of the package, so every position in a message points at a file of the package.
+
+### Where the report goes
+
+The log receives the report on every platform. In the browser, the page receives the error in `Module.haylen.onError` as `{message, file, line, traceback, frames}`. There `traceback` is the stack as text, and `frames` lists every frame as `{source, line, function, kind}` with the kind `lua`, `c` or `main`. The native parts of [plugins](../platform/plugins.md#errors-of-the-app) receive the same report, so a crash reporter records it with the stack of the Lua code.
+
+The function [`haylen.reportError(message)`](../lua-api/haylen.md#haylenreporterrormessage) stops the app the same way, with a message of the app and the stack of the code that reported it.
+
+### Failures that go to the caller
+
+Some failures go to the code that asked for the work instead of the error screen.
+
+- A promise that rejects, such as the one of a failed request, of an asset that failed to load or of a job whose function raised, makes `:await()` return `nil` and the error. It stops the app only when nothing awaits or catches it, as [failures nobody hears](#failures-nobody-hears) describes.
+- A scene `load` that fails while the scene below stays sends its error to the `onError` of the change or to the log, as [`haylen.scene`](../lua-api/scene.md#errors) describes.
+- An error in a handler of `platform.registerHandler` fails the call that asked for it.
+- An error in a handler or route of the HTTP servers of Varn's `http` module, in a callback of a WebSocket route or in a callback of `http.client.stream` stops the app with the stack of the handler. The server still answers the request that failed with status `500`, and the WebSocket connection stays open.
+
+Warnings of Lua, such as an error in a `__gc` metamethod or a call of `warn`, go to the log as warnings that start with `Lua warning:`. The calls `warn('@off')` and `warn('@on')` turn them off and on.
+
+### Going on after an error
+
+The runtime stays alive on the error screen. In development, saving the fix resumes or restarts the app, as [hot reload](#hot-reload) describes. A browser editor restarts it with `Module.haylen.restart()` or `Module.haylen.run()`.
+
+An app that can return to a safe screen after an error calls [`haylen.setRecoverable(true)`](../lua-api/haylen.md#haylensetrecoverablerecoverable). Its error screen then offers `Back to the app` next to copying and restarting, also with Escape, the east button and the back button of the platform, and the focus starts on it. Going back publishes `appRecovered` with the error at the start of the next frame, before the app updates again. So its listener first leaves the scene that failed, and the app then runs on with the same Lua state. Every error also publishes `appError` at the end of its frame. An app that runs on by itself answers it with `haylen.recover()`, the way the test project of the samples runs every test and lists the ones that failed.
 
 ```lua
 local events = require('haylen.events')
@@ -436,37 +529,57 @@ end)
 
 ## Hot reload
 
-An app runs in development when the desktop player receives `--dev` with its package folder, as in `haylen --dev samples/games/tiny-island` or `haylen run samples/games/tiny-island`, and in the page of `haylen run samples/games/tiny-island --platform web`. The player then checks `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin for changes every half second of real time on the I/O pool, so frames never wait for the file system, and ignores everything else in the folder. Every save reaches the app at the start of a frame, also while the error screen shows and while the app is halted, such as an app that pauses while the editor has the focus.
+Hot reload applies the files that you save to the app while it runs, so you see a change without starting the app again. It works while the app runs in development:
 
-- A changed Lua module that the app loaded reloads in place: its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hotReload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload, and saving the fix reloads it. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
-- A changed file under `content/` reloads the assets read from it without a restart. Textures, shaders and JSON change in place, so sprites that already use a texture show the new pixels, and other asset types leave the cache so the next load reads the new file, with the event `assetChanged` for every live asset that went stale, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files, and a changed font file restarts the app.
-- A Lua file that no module loaded yet changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.
-- A change that cannot apply in place restarts the app with a fresh Lua state, and `source/main.lua` runs again: a changed `app.json`, `source/main.lua` or `plugin.json`, a removed module, a module that now returns another kind of value or another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `debug.reload` of `app.json` is `"restart"`. The log names the reason. This also works from an app whose `app.json` failed to load, so fixing the file restarts it.
-- Hidden files, backup files and files under `source/` that are not Lua never count, so the swap and backup files that editors write change nothing, and a file that is still being written waits for the next check. A change saved while the app restarts reaches the app that starts.
+- The desktop player runs an app in development with `--dev` and the package folder, as in `haylen --dev samples/games/tiny-island`, and so does `haylen run samples/games/tiny-island`.
+- The page of `haylen run samples/games/tiny-island --platform web` runs in development too.
 
-The error screen tells how a fix applies. An error of code that runs again every frame, such as an `update` hook, a timer, a listener, a reload or its `reloaded` hook, can resume: saving the fix reloads the module and the app runs on from where it stopped, with its state, which the screen announces with `Save a fix to resume the app.` A resumed app may hold state that the failed frame left half updated, and `R` always gives a clean start. An error of a step of the lifecycle, such as the start of the app, `source/main.lua`, a scene `load`, `enter`, `exit`, `unload`, `pause` or `resume`, an autoload `start` or `stop`, or a task of `async.spawn`, `async.run` or `scene.spawn` that failed, stopped that step half way, so saving any file restarts the app, which the screen announces with `Saving a file of the app restarts it.`
+The player checks `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin for changes every half second of real time. It checks on the I/O pool, so frames never wait for the file system, and it ignores everything else in the folder. Every save reaches the app at the start of a frame, also while the error screen shows and while the app is halted, such as an app that pauses while the editor has the focus.
 
-A reload keeps state but cannot rewrite code that already runs or that the app built at run time:
+### What a save does
 
-- A coroutine suspended in old code, such as a loop of `scene.spawn`, runs the old body of its function until it returns, while its calls through tables and the shared variables of the module reach the new code. A scene restarts such loops in its `reloaded` hook.
-- An anonymous function created at run time, such as `function() self:fire() end` inside `enter`, keeps its old body, while its calls through `self`, module tables and module variables reach the new code.
-- Fields that a constructor sets in `init` keep their old values in existing instances, because `init` does not run again, and a renamed field or variable starts from its initial value.
-- A value a module derived when it loaded from another module stays old until the module reloads or recomputes it in its `reloaded` hook.
-- What runs at the top level of a module without an owner to end it runs again on every reload, such as `scene.push` or `async.spawn`, so the top level of a module only defines things and registers what belongs to it. Objects that other code connects to belong in `hotReload.keep`.
+- **A Lua module that the app loaded** reloads in place. Its functions run the new code everywhere, while the state of the app stays, as [`haylen.hotReload`](../lua-api/hotReload.md#how-a-module-reloads) describes. A module that fails to compile or to run changes nothing and shows its error, while the other changed modules of the save still reload. Saving the fix reloads it. A module keeps the text it loaded, so a save while its first load runs reloads it like any later save.
+- **A file under `content/`** reloads the assets read from it without a restart. Textures, shaders and JSON change in place, so sprites that already use a texture show the new pixels. Other asset types leave the cache, so the next load reads the new file, and every live asset that went stale gets the event `assetChanged`, as [`haylen.assets`](../lua-api/assets.md#hot-reload-of-assets) describes. The texts of a folder that `localization.loadFolder` loaded and the themes that `ui.loadTheme` loaded rebuild from their changed files. A changed font file restarts the app.
+- **A Lua file that no module loaded yet** changes nothing, because the next `require` reads it. While an error shows, such as one of a module whose first load failed, saving the file resumes the app, so the code that failed requires it again, or restarts the app when the error cannot resume.
+- **A change that cannot apply in place** restarts the app with a fresh Lua state, and `source/main.lua` runs again. The log names the reason. These changes restart the app: a changed `app.json`, `source/main.lua` or `plugin.json`, a removed module, a module that now returns another kind of value, a module that returns another value that is neither a table nor a function, such as a string, a module whose functions capture two different variables with the same name, a module that called `hotReload.restartOnChange()`, a save that touches more than 32 loaded modules, and every changed module while `debug.reload` of `app.json` is `"restart"`. A restart works even from an app whose `app.json` failed to load, so fixing the file restarts it.
+- **Other files** never count: hidden files, backup files and files under `source/` that are not Lua. So the swap and backup files that editors write change nothing. A file that is still being written waits for the next check, and a change saved while the app restarts reaches the app that starts.
+
+### Resume or restart
+
+The error screen tells how a fix applies.
+
+- An error of code that runs again every frame can resume. Such code is an `update` hook, a timer, a listener, a reload or its `reloaded` hook. Saving the fix reloads the module, and the app runs on from where it stopped, with its state. The screen announces it with `Save a fix to resume the app.`. A resumed app may hold state that the failed frame left half updated, and `R` always gives a clean start.
+- An error of a step of the lifecycle stopped that step half way, so saving any file restarts the app. The screen announces it with `Saving a file of the app restarts it.`. Such steps are the start of the app, `source/main.lua`, a scene `load`, `enter`, `exit`, `unload`, `pause` or `resume`, an autoload `start` or `stop`, and a task of `async.spawn`, `async.run` or `scene.spawn` that failed.
+
+### What a reload cannot change
+
+A reload keeps state, but it cannot rewrite code that already runs or that the app built while it ran.
+
+- A coroutine suspended in old code, such as a loop of `scene.spawn`, runs the old body of its function until it returns. Its calls through tables and the shared variables of the module reach the new code. A scene restarts such loops in its `reloaded` hook.
+- An anonymous function created at run time, such as `function() self:fire() end` inside `enter`, keeps its old body. Its calls through `self`, module tables and module variables reach the new code.
+- Fields that a constructor sets in `init` keep their old values in existing objects, because `init` does not run again. A renamed field or variable starts from its initial value.
+- A value that a module computed from another module when it loaded stays old until the module reloads or computes it again in its `reloaded` hook.
+- What runs at the top level of a module without an owner to end it, such as `scene.push` or `async.spawn`, runs again on every reload. So the top level of a module only defines things and registers what belongs to it. Objects that other code connects to belong in `hotReload.keep`.
 - Every reload walks the whole Lua heap once to put the new functions in place, so a large app pauses for one longer frame at each save.
 
-State that must survive a restart belongs in [`haylen.storage`](../lua-api/storage.md) or [`haylen.preferences`](../lua-api/preferences.md). Zip packages and shipped apps are never watched. The command `haylen run <app> --platform web` serves the page in development, connected to a development server that pushes every file saved in the app to the open pages, which reload it the same way, and `run` with `--platform android`, `ios-simulator`, `tvos-simulator`, `ios`, `tvos`, `macos` or `catalyst` launches the app connected to such a server, so the emulator, the simulators and the devices reload every save too, as the [distribution guide](../tools/distribution.md#development-mode) describes. A browser editor turns on development with `Module.haylen.development`, sends changed files with `Module.haylen.setFile` and applies them with `Module.haylen.applyChanges()`, as the [build guide](../tools/build.md#runtime-api) describes.
+State that must survive a restart belongs in [`haylen.storage`](../lua-api/storage.md) or [`haylen.preferences`](../lua-api/preferences.md).
+
+### Devices, browsers and editors
+
+Zip packages and shipped apps are never watched. The command `haylen run <app> --platform web` serves the page in development, connected to a development server that pushes every file saved in the app to the open pages, which reload it the same way. The command `run` with `--platform android`, `ios-simulator`, `tvos-simulator`, `ios`, `tvos`, `macos` or `catalyst` launches the app connected to such a server, so the emulator, the simulators and the devices reload every save too, as the [distribution guide](../tools/distribution.md#development-mode) describes. A browser editor turns development on with `Module.haylen.development`, sends changed files with `Module.haylen.setFile` and applies them with `Module.haylen.applyChanges()`, as the [build guide](../tools/build.md#runtime-api) describes.
 
 ## Performance
 
-Scripts run on the frame thread, so the Lua work spent on each item decides how many items an app moves every frame. A call from Lua into the engine costs far more than plain Lua arithmetic, and a table read field by field on the C++ side costs more still, so the fast paths avoid both for every item and let C++ do the per-item work.
+Scripts run on the frame thread, so the Lua work spent on each item decides how many items an app can move every frame. A call from Lua into the engine costs far more than plain Lua arithmetic. A table that C++ reads field by field costs more still. So the fast paths avoid both for every item and let C++ do the work for each item.
 
-- **Native properties.** Number, `Vec2` and `Color` properties of engine objects, such as the position of a sprite, the zoom of a camera or the transform of a UI node, are animated by [`haylen.tween`](../lua-api/tween.md#native-properties) in C++ without running Lua every frame.
-- **Numbers over values.** A number field such as `sprite.x` reads and writes a float, while `sprite.position` creates a `Vec2` for every read. Hot loops read numbers.
+- **Native properties.** [`haylen.tween`](../lua-api/tween.md#native-properties) animates the number, `Vec2` and `Color` properties of engine objects in C++, without running Lua every frame. Examples are the position of a sprite, the zoom of a camera and the transform of a UI node.
+- **Numbers over values.** A number field such as `sprite.x` reads and writes a float, while `sprite.position` creates a new `Vec2` for every read. Hot loops read numbers.
 - **Float buffers.** A float buffer of [`haylen.collections`](../lua-api/collections.md#float-buffers) holds numbers that Lua and C++ share without copying. The expression `buffer[index]` reads and writes one value, and `buffer:set(first, list)` copies a whole Lua array in one call.
-- **Bulk APIs.** The function `graphics2d.drawBatch(texture, buffer, layout)` draws the sprites a buffer holds without a table for each one, `SpriteBatch:resize` fills a large batch in one call, `SpriteBatch:writeFields` moves every sprite of a batch from a buffer, `world:readTransforms` and `world:writeTransforms` of [`haylen.physics2d`](../lua-api/physics2d.md) move the transforms of many bodies, and `emitter:readPositions` of [`haylen.particles2d`](../lua-api/particles2d.md) reads every particle.
-- **Garbage.** The Lua state collects garbage in generational mode, which frees the short-lived tables and closures of a frame in small, frequent steps instead of long pauses. The standard `collectgarbage` still controls it: `collectgarbage('incremental')` and `collectgarbage('generational')` switch the mode, `collectgarbage('step')` runs a step at a moment the app chooses, such as behind a loading screen, and `collectgarbage('count')` and the `memory` statistics of `debug.stats()` show how much Lua holds. Hot paths that create nothing, through pools, buffers and bulk APIs, give the collector nothing to do.
-- **Measure.** The functions `debug.profile` and `debug.beginScope` of [`haylen.debug`](../lua-api/debug.md) time a piece of script, `debug.stats()` counts objects and memory, and the compact statistics show the frame time, draw calls and the counts the app picks while the app runs.
+- **Bulk APIs.** These calls handle many objects at once. `graphics2d.drawBatch(texture, buffer, layout)` draws the sprites that a buffer holds without a table for each one. `SpriteBatch:resize` fills a large batch in one call, and `SpriteBatch:writeFields` moves every sprite of a batch from a buffer. `world:readTransforms` and `world:writeTransforms` of [`haylen.physics2d`](../lua-api/physics2d.md) move the transforms of many bodies, and `emitter:readPositions` of [`haylen.particles2d`](../lua-api/particles2d.md) reads every particle.
+- **Garbage.** The Lua state collects garbage in generational mode. It frees the short-lived tables and closures of a frame in small, frequent steps instead of long pauses. The standard `collectgarbage` still controls it: `collectgarbage('incremental')` and `collectgarbage('generational')` switch the mode, `collectgarbage('step')` runs a step at a moment the app picks, such as behind a loading screen, and `collectgarbage('count')` and the `memory` statistics of `debug.stats()` show how much Lua holds. Hot paths that create nothing, through pools, buffers and bulk APIs, give the collector nothing to do.
+- **Measure.** The functions `debug.profile` and `debug.beginScope` of [`haylen.debug`](../lua-api/debug.md) time a piece of script, and `debug.stats()` counts objects and memory. While the app runs, the compact statistics show the frame time, the draw calls and the counts that the app picks.
+
+This example keeps the math in plain Lua arrays, copies them into the shared buffer once, and moves every sprite with one call.
 
 ```lua
 local collections = require('haylen.collections')
@@ -474,7 +587,6 @@ local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
--- Plain Lua arrays for the math, one copy into the shared buffer, and one call to move every sprite.
 local count = 50000
 local positions, speeds = {}, {}
 for index = 1, count do
@@ -502,7 +614,19 @@ scene.push({
 })
 ```
 
-The command `haylen bench --suite lua` runs the Lua sprite benchmark `engine/bench/lua-benchmark` on the headless host: every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways. The mode `tables` keeps one table for each sprite and draws the list with `graphics2d.drawBatch(texture, sprites)`. The mode `calls` keeps the same tables and draws each one with its own `graphics2d.draw(texture, x, y, sprite)`. The mode `buffer` keeps the positions in a float buffer written one value at a time with `buffer[index]` and draws the buffer. The mode `bulk` keeps the positions in a plain Lua array, copies it into the buffer with one `buffer:set(1, positions)` and draws the buffer. The mode `batch` does the same update and moves a sprite batch with `batch:writeFields`. These are the average CPU milliseconds of one frame on an Apple M5 Pro in Release, where the draw column is the recording of the draw calls, including the conversion of the sprites on worker threads, and the frame column covers the whole frame of the engine.
+### The cost of each way
+
+The command `haylen bench --suite lua` runs the Lua sprite benchmark `engine/bench/lua-benchmark` on the headless host. Every sprite falls and bounces off the edges of the screen, and the benchmark times Lua moving and drawing them in five ways.
+
+| Mode | How it moves and draws the sprites |
+| --- | --- |
+| `tables` | One table for each sprite, and the list drawn with `graphics2d.drawBatch(texture, sprites)`. |
+| `calls` | The same tables, each drawn with its own `graphics2d.draw(texture, x, y, sprite)`. |
+| `buffer` | The positions in a float buffer, written one value at a time with `buffer[index]`, and the buffer drawn. |
+| `bulk` | The positions in a plain Lua array, copied into the buffer with one `buffer:set(1, positions)`, and the buffer drawn. |
+| `batch` | The update of `bulk`, and a sprite batch moved with `batch:writeFields`. |
+
+These are the average CPU milliseconds of one frame on an Apple M5 Pro in Release. The draw column is the recording of the draw calls, including the conversion of the sprites on worker threads, and the frame column covers the whole frame of the engine.
 
 | Sprites | Mode | Update | Draw | Frame |
 | --- | --- | --- | --- | --- |
@@ -522,31 +646,43 @@ The command `haylen bench --suite lua` runs the Lua sprite benchmark `engine/ben
 | 1,000,000 | `bulk` | 41.44 | 8.19 | 49.71 |
 | 1,000,000 | `batch` | 41.01 | 10.85 | 51.92 |
 
-Plain Lua arithmetic on tables is the fastest way to update, but reading a table for every sprite makes the draw call about ten times slower than reading a buffer, and a `graphics2d.draw` call for every sprite costs about a quarter of a microsecond, almost three times the cost of the same tables in one `drawBatch`. The engine reads an option table in one pass over the keys it holds, so a table costs in proportion to its keys and not to the options a function knows: pass only the keys that differ from the defaults. Every `buffer[index]` access is a call into the engine of about 25 nanoseconds, against a few nanoseconds for an array, so a loop that touches every value through the buffer spends three times longer updating. Doing the math in plain Lua arrays and handing them over with one `buffer:set` combines both strengths: a frame of 100,000 moving sprites costs about 5.5 milliseconds, less than half of what tables cost. Keep `buffer[index]` for values that C++ fills, such as the transforms `world:readTransforms` writes, where Lua reads only a few of them.
+What the numbers show:
+
+- Plain Lua arithmetic on tables is the fastest way to update. But reading a table for every sprite makes the draw about ten times slower than reading a buffer.
+- A `graphics2d.draw` call for every sprite costs about a quarter of a microsecond, almost three times the cost of the same tables in one `drawBatch`.
+- The engine reads an option table in one pass over the keys it holds. So a table costs in proportion to its keys, not to the options that a function knows. Pass only the keys that differ from the defaults.
+- Every `buffer[index]` access is a call into the engine of about 25 nanoseconds, against a few nanoseconds for an array. So a loop that touches every value through the buffer spends three times longer updating.
+- Doing the math in plain Lua arrays and handing them over with one `buffer:set` combines both strengths. A frame of 100,000 moving sprites then costs about 5.5 milliseconds, less than half of what tables cost.
+
+Keep `buffer[index]` for values that C++ fills, such as the transforms that `world:readTransforms` writes, where Lua reads only a few of them.
 
 ## Extending the engine from C++
 
-A C++ project can add its own Lua modules, backed by its own plugin, while the app itself stays in Lua. The public binding toolkit in `engine/include/haylen/lua/` is the same one every built-in module uses, and everything in it lives in the `haylen::lua` namespace.
+A C++ project can add Lua modules of its own, backed by a plugin of its own, while the app itself stays in Lua. The public binding toolkit in `engine/include/haylen/lua/` is the same one that every built-in module uses, and everything in it lives in the namespace `haylen::lua`.
 
-| Header | What it provides |
+| Header | What it gives |
 | --- | --- |
 | `Stack.hpp` | `Stack::push`, `Stack::read` and `Stack::is`, which move C++ values on and off the Lua stack through their converters. |
-| `Userdata.hpp` | `Userdata::check`, `Userdata::checkShared`, `Userdata::test` and `Userdata::emplace` for bound objects, `Userdata::equal` for an `__eq` that compares the bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction` for storing Lua callbacks on userdata. |
-| `Type.hpp` | The `Type<T>` trait that binds a C++ type as userdata. |
-| `Converter.hpp` | The `Converter<T>` trait with the conversions of scalars, strings, optionals, vectors and bound types. |
-| `EnumNames.hpp` | The `EnumNames<T>` trait for enums passed as strings. Every engine enum has one table of its names, which its specialization and the file parsers share, usually owned by its class, such as `Texture::filterFromName` and `Texture::filterName`. |
+| `Userdata.hpp` | `Userdata::check`, `Userdata::checkShared`, `Userdata::test` and `Userdata::emplace` for bound objects, `Userdata::equal` for an `__eq` that compares the bound objects, and `Userdata::pushField`, `Userdata::setField` and `Userdata::pushFunction`, which store Lua callbacks on userdata. |
+| `Type.hpp` | The trait `Type<T>`, which binds a C++ type as userdata. |
+| `Converter.hpp` | The trait `Converter<T>`, with the conversions of scalars, strings, optionals, vectors and bound types. |
+| `EnumNames.hpp` | The trait `EnumNames<T>` for enums passed as strings. Every engine enum has one table of its names, which its specialization and the file parsers share. Its class usually owns it, such as `Texture::filterFromName` and `Texture::filterName`. |
 | `Table.hpp` | `Table::checkFields` and `Table::readField` for option tables whose unknown keys are errors, and `Table::readFields` with `Table::readValue`, which read an option table in one pass over the keys it holds, for options read on every draw. |
-| `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule` and the `Binding::native`, `Binding::function` and `Binding::method` wrappers. |
-| `ClassBuilder.hpp` | `ClassBuilder` for metatables with methods and properties. |
-| `Runtime.hpp` | `Runtime::getEngine(L)` to reach the engine from a binding, `Runtime::getMainThread` for callbacks that outlive their coroutine, `Runtime::protectedCall`, `Runtime::protectedRun`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |
+| `Binding.hpp` | `Binding::preload`, which adds a module to the Varn runtime of the engine, `Binding::newModule`, and the wrappers `Binding::native`, `Binding::function` and `Binding::method`. |
+| `ClassBuilder.hpp` | `ClassBuilder`, which builds metatables with methods and properties. |
+| `Runtime.hpp` | `Runtime::getEngine(L)`, which reaches the engine from a binding, `Runtime::getMainThread` for callbacks that outlive their coroutine, `Runtime::protectedCall`, `Runtime::protectedRun`, `Runtime::runChunk`, `Runtime::runReporting`, `Runtime::reportError` and `Runtime::captureError`. |
 | `Reference.hpp` | `Reference`, which keeps a Lua value alive from C++. |
-| `JsonConverter.hpp` | `JsonConverter::push` and `JsonConverter::read` to move JSON between C++ and Lua tables. |
-| `Promise.hpp` | `Promise`, a result that a Lua coroutine waits for with `:await()` and that native code settles later, from any thread, with `Promise::isSettled`, and `Promise::isPromise` to recognize any Varn promise on the stack. |
-| `TypeConverter.hpp` | The bindings of engine types such as `math::Vec2`, `math::Rect`, `math::Color`, `graphics::Texture` and `graphics2d::Sprite`, so bindings accept and return them. |
-| `Error.hpp` | `Error`, the exception a failed protected call throws, with the message, the script position and the frames of the stack. |
+| `JsonConverter.hpp` | `JsonConverter::push` and `JsonConverter::read`, which move JSON between C++ and Lua tables. |
+| `Promise.hpp` | `Promise`, a result that a Lua task awaits and that native code settles later, from any thread, with `Promise::isSettled`, and `Promise::isPromise`, which recognizes any Varn promise on the stack. |
+| `TypeConverter.hpp` | The bindings of engine types such as `math::Vec2`, `math::Rect`, `math::Color`, `graphics::Texture` and `graphics2d::Sprite`, so bindings take and return them. |
+| `Error.hpp` | `Error`, the exception that a failed protected call throws, with the message, the script position and the frames of the stack. |
 | `Application.hpp` | `Application`, the application that runs `source/main.lua`. |
 
-A plugin registers its modules in `installLua` with `Binding::preload`, so `require` builds the module table the first time a script asks for it. The function adds the module to the Varn runtime of the engine with `varn::runtime::Runtime::addModule`, and a name that a module of Varn, such as `json`, or of another plugin already has raises `std::runtime_error` with `The Lua module "<name>" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.`, which the error screen shows. This complete source file adds an `app.score` module to a Lua app. Like the built-in modules, the plugin keeps its Lua entry points as private static methods.
+### A module of your own
+
+A plugin registers its modules in its `installLua` hook with `Binding::preload`. Then `require` builds the module table the first time a script asks for it. `Binding::preload` adds the module to the Varn runtime of the engine with `varn::runtime::Runtime::addModule`. A name that a module of Varn, such as `json`, or of another plugin already has raises `std::runtime_error` with `The Lua module "<name>" cannot be added, because a module of Varn or of another plugin already has its name. Give the module another name.`, which the error screen shows.
+
+This complete source file adds an `app.score` module to a Lua app. Like the built-in modules, the plugin keeps its Lua entry points as private static methods.
 
 ```cpp
 #include <algorithm>
@@ -636,10 +772,10 @@ Scripts use the module like any other.
 local score = require('app.score')
 
 score.submit(120)
-print('best score', score.best())
+print('The best score is ' .. score.best() .. '.')
 ```
 
-The app is built with `haylen_add_app` and the `CPP` option, which tells it that the sources define `haylen::core::Application::create()`.
+The app builds with `haylen_add_app` and the option `CPP`, which says that its sources define `haylen::core::Application::create()`.
 
 ```cmake
 haylen_add_app(my-app CPP
@@ -648,9 +784,13 @@ haylen_add_app(my-app CPP
 )
 ```
 
-The template `Binding::native<&f>` wraps a function that takes the Lua state, so a C++ exception thrown inside it, such as the `std::logic_error` of a missing plugin, becomes a Lua error with the same message. The template `Binding::function<&f>` goes one step further and converts the parameters and the result of a plain C++ function or static method, so `static int clampScore(int points)` is exposed with `&haylen::lua::Binding::function<&clampScore>`.
+The template `Binding::native<&f>` wraps a function that takes the Lua state. A C++ exception thrown inside it, such as the `std::logic_error` of a missing plugin, becomes a Lua error with the same message. The template `Binding::function<&f>` goes one step further: it converts the parameters and the result of a plain C++ function or static method. So `static int clampScore(int points)` is exposed with `&haylen::lua::Binding::function<&clampScore>`.
 
-A C++ type becomes a Lua type with a `Type<T>` specialization, which names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it, and a `ClassBuilder` that fills the metatable in `installLua`. The metatable is protected like the ones of the engine, so `getmetatable` returns the type name and Lua code never reaches the finalizer. It also keeps the getters and setters of the properties, so the [inspector](../lua-api/debug.md#inspector) lists and edits the properties of every bound type, those of plugins too. A binding that creates a userdata metatable of its own does it with `Userdata::newMetatable`, which protects it the same way.
+### A type of your own
+
+A C++ type becomes a Lua type with two things. A specialization of `Type<T>` names its metatable and says whether Lua holds the value itself or a `std::shared_ptr` to it. A `ClassBuilder` fills the metatable in `installLua`.
+
+The metatable is protected like the ones of the engine, so `getmetatable` returns the type name and Lua code never reaches the finalizer. It also keeps the getters and setters of the properties, so the [inspector](../lua-api/debug.md#inspector) lists and edits the properties of every bound type, those of plugins too. A binding that creates a userdata metatable of its own does it with `Userdata::newMetatable`, which protects it the same way.
 
 ```cpp
 namespace app {
@@ -711,12 +851,23 @@ Once the application adds `EconomyPlugin` the way it adds `ScorePlugin`, scripts
 ```lua
 local wallet = require('app.economy').newWallet()
 wallet:add(5)
-print(wallet.coins)
+print('The wallet holds ' .. wallet.coins .. ' coins.')
 ```
 
-Reading a member the type does not have raises `The type "app.Wallet" has no member "<name>".`, and assigning one without a setter raises `The type "app.Wallet" has no writable property "<name>".`.
+Reading a member that the type does not have raises `The type "app.Wallet" has no member "<name>".`. Assigning one without a setter raises `The type "app.Wallet" has no writable property "<name>".`.
 
-A binding that finishes later returns a `lua::Promise`. The binding creates it, pushes it as its result and settles it once with `resolve` (a JSON value that arrives in Lua as plain tables), `resolveWith` (a function that pushes one value on the frame thread), `reject` (a message that `:await()` returns as its second value, which stops the app when nothing awaits or catches the promise) or `rejectHandled` (the same for a failure that reaches the app another way or that the app asked for, such as a cancellation, which never stops the app). It may be settled from a worker thread, and the waiting coroutine resumes on the frame thread in a later poll of the event loop of Varn. A JSON value that Lua cannot hold, which is binary JSON or JSON nested more than 128 levels deep, rejects the promise with the reason instead, so its coroutines still resume.
+### A function that finishes later
+
+A binding that finishes later returns a `lua::Promise`. The binding creates it, pushes it as its result and settles it once with one of these methods.
+
+| Method | What the waiting task gets |
+| --- | --- |
+| `resolve` | A JSON value, which arrives in Lua as plain tables. |
+| `resolveWith` | The one value that a function pushes on the frame thread. |
+| `reject` | A message, which `:await()` returns as its second value. It stops the app when nothing awaits or catches the promise. |
+| `rejectHandled` | The same, for a failure that reaches the app another way or that the app asked for, such as a cancellation. It never stops the app. |
+
+The promise may be settled from a worker thread. The waiting task resumes on the frame thread, in a later poll of the event loop of Varn. A JSON value that Lua cannot hold, which is binary JSON or JSON nested more than 128 levels deep, rejects the promise with the reason instead, so its tasks still resume.
 
 ```cpp
 #include "haylen/core/Engine.hpp"
@@ -760,9 +911,9 @@ async.spawn(function()
 end)
 ```
 
-A few rules keep extensions safe.
+### Rules for extensions
 
-- Every hook and binding runs on the frame thread, and long work goes to `engine.getJobs()` as the [architecture guide](architecture.md#threads-and-async) describes.
-- A Lua callback kept by C++ lives in a `lua::Reference`, is called on the main Lua thread and is run inside `lua::Runtime::runReporting`, so a failure reaches the error screen instead of the native code that triggered it.
+- Every hook and binding runs on the frame thread. Long work goes to `engine.getJobs()`, as the [architecture guide](architecture.md#threads-and-async) describes.
+- C++ keeps a Lua callback in a `lua::Reference`, calls it on the main Lua thread and runs it inside `lua::Runtime::runReporting`. So a failure reaches the error screen instead of the native code that triggered it.
 - The plugin releases every `lua::Reference` it holds in `stop`, because the Lua state closes before plugins are destroyed.
 - Project modules use a namespace of their own, such as `app.score`, and leave `haylen.` to the engine.
