@@ -11,7 +11,7 @@ The 2D block holds the modules that build 2D games and apps: retained node trees
 | Navigation | Path finding on grids, graphs and navigation meshes, flow fields, Dijkstra maps, steering and crowds, and which to choose. | [`navigation.md`](navigation.md) |
 | Nodes | Retained trees of objects made of parts: what nodes pass to their children, updating and drawing, handles, prefabs, nodes with physics, tweens, animation and particles, and performance. | [`nodes.md`](nodes.md) |
 | Particles | Emitters and effect files, how particles are born, move, collide and look, composite effects, sub-emitters, trails, lights, the effect library and performance. | [`particles.md`](particles.md) |
-| Physics | Worlds, bodies and shapes, units, stepping on several threads, sleeping, the common problems of physics games and their solutions, and performance. | [`physics.md`](physics.md) |
+| Physics | Worlds, bodies, shapes and joints, units, stepping on several threads, sleeping, collisions and queries, the helpers, the common problems of physics games with their solutions, and performance. | [`physics.md`](physics.md) |
 | Procedural | Deterministic generation of scatterings, caves, dungeons, mazes, tile maps, triangulations and autotiles, on the frame or in the background. | [`procedural.md`](procedural.md) |
 | Spatial | Spatial structures, grid algorithms, screen picking and overlap worlds, and which to choose. | [`spatial.md`](spatial.md) |
 | Tiled | Maps and worlds made with the Tiled editor: authoring, supported features, loading, drawing, reading a map, collision and spawning objects. | [`tiled.md`](tiled.md) |
