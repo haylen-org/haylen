@@ -1,4 +1,5 @@
--- A car from `physics2d.newVehicle` on a long hilly road, driven with the keyboard, a gamepad or touch pedals: the motors size their torque from the acceleration it asks for, so it climbs, brakes and coasts without lifting its nose, and the camera follows it.
+-- A car from `physics2d.newVehicle` on a long grassy road over the hills, driven with the keyboard, a gamepad or touch pedals: the motors size their torque from the acceleration it asks for, so it climbs, brakes and coasts without lifting its nose, and the camera follows it inside the limits of the road.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -6,26 +7,32 @@ local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
-local parts = require('categories.physics.parts')
+local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local Vehicle = haylen.class('Vehicle', PhysicsTest)
 
 Vehicle.code = [[
-local car = physics2d.newVehicle(world, {x = 0, y = 200, chassisWidth = 170, chassisHeight = 36, wheelRadius = 30, rearWheel = {-65, 34}, frontWheel = {65, 34}, drive = 'all', acceleration = 700, topSpeed = 1400, suspensionHertz = 4, suspensionTravel = 16, antiRoll = 0.5})
+local car = physics2d.newVehicle(world, {x = 0, y = 200, chassisWidth = 240, chassisHeight = 50, wheelRadius = 30, rearWheel = {-70, 34}, frontWheel = {70, 34}, drive = 'all'})
 car.throttle = input.value('throttle')  -- From -1 to 1.
 car.brake = input.down('brake') and 1 or 0
-print(car.speed, car.grounded)
-road:addChain(points, false, {friction = 0.9})]]
+road:addChain(points, false, {friction = 0.9})
+camera.limits = {-400, -1600, 9400, 2500}  -- The view never leaves the road.
+camera:follow(car.chassis.x, car.chassis.y - 150, dt)]]
 
 Vehicle.actions = {
     {name = 'throttle', type = 'axis', positive = {'key:d', 'key:right', 'axis:rightTrigger+', 'axis:leftX+', 'button:dpadRight', 'virtual:gas'}, negative = {'key:a', 'key:left', 'axis:leftTrigger+', 'axis:leftX-', 'button:dpadLeft', 'virtual:reverse'}},
     {name = 'brake', type = 'button', bindings = {'key:space', 'key:s', 'key:down', 'button:south', 'virtual:brake'}},
 }
 
-local kRoadLength = 9000
-local kWheelRadius = 30
-local kOutline = {{-85, 18}, {-85, -18}, {-40, -18}, {-20, -48}, {40, -48}, {62, -18}, {85, -12}, {85, 18}}
+Vehicle.roadLength = 9000
+Vehicle.start = -400
+Vehicle.wheelRadius = 30
+-- The car picture is drawn at this many world units per pixel, which puts its wheel arches over the wheels, and this far above and beside the middle of the chassis.
+Vehicle.carScale = 0.7
+Vehicle.carOffset = {2, -24}
+Vehicle.metersPerUnit = 1 / 64
 
 function Vehicle:enter()
     self:frame{
@@ -51,8 +58,10 @@ function Vehicle:enter()
     }
     self.drive = 'all'
     self.antiRoll = 0.5
+    self.carTexture = assets.texture('physics/car.png', {filter = 'linear'})
     self.camera.positionSmoothing = true
     self.camera.positionSmoothingSpeed = 4
+    self.camera.limits = {Vehicle.start, -1600, Vehicle.roadLength - Vehicle.start, 2500}
     self:build()
 end
 
@@ -60,27 +69,37 @@ function Vehicle:build()
     self.world = physics2d.newWorld()
     local noise = m.noise(4)
     -- Every segment of an open chain collides, so the walls at both ends close the road.
-    local road = {{-400, -600}, {-400, 300}}
-    for x = -300, kRoadLength, 60 do
+    local road = {{Vehicle.start, -600}, {Vehicle.start, 300}}
+    self.surface = {}
+    for x = Vehicle.start + 60, Vehicle.roadLength, 60 do
         local hills = noise:fractal(x / 900, 0.5, 3) * 260 * math.min(1, math.max(0, x) / 1500)
         road[#road + 1] = {x, 300 + hills}
     end
-    road[#road + 1] = {kRoadLength, -600}
-    self.ground = self.world:createBody({type = 'static'})
-    parts.chain(self.ground, road, false, {friction = 0.9})
-
-    -- The road fills down to a flat bottom, which the chain outline alone would not show.
-    local fill = {}
+    road[#road + 1] = {Vehicle.roadLength, -600}
     for index = 2, #road - 1 do
-        fill[#fill + 1] = road[index]
+        self.surface[#self.surface + 1] = road[index]
     end
-    fill[#fill + 1] = {kRoadLength, 900}
-    fill[#fill + 1] = {-400, 900}
-    parts.outline(self.ground, fill)
-    parts.paint(self.ground, '#FF4E5D45')
+    self.ground = self.world:createBody({type = 'static'})
+    self.ground:addChain(road, false, {friction = 0.9})
+    self.terrain = Scenery.newTerrain(self.surface, 2000)
+    self.signs = {}
+    for x = 1000, Vehicle.roadLength - 500, 1000 do
+        self.signs[#self.signs + 1] = {x = x, y = self:surfaceAt(x), text = string.format('%d m', math.floor(x * Vehicle.metersPerUnit + 0.5))}
+    end
 
     self:place(0, 200)
-    self.camera:snapTo(0, 100)
+    self.camera:snapTo(0, 50)
+end
+
+function Vehicle:surfaceAt(x)
+    local surface = self.surface
+    for index = 2, #surface do
+        local a, b = surface[index - 1], surface[index]
+        if x <= b[1] then
+            return a[2] + (b[2] - a[2]) * (x - a[1]) / (b[1] - a[1])
+        end
+    end
+    return surface[#surface][2]
 end
 
 function Vehicle:place(x, y)
@@ -88,15 +107,11 @@ function Vehicle:place(x, y)
         self.car:destroy()
     end
     self.car = physics2d.newVehicle(self.world, {
-        x = x, y = y, chassisWidth = 170, chassisHeight = 36, wheelRadius = kWheelRadius, rearWheel = {-65, 34}, frontWheel = {65, 34},
+        x = x, y = y, chassisWidth = 240, chassisHeight = 50, wheelRadius = Vehicle.wheelRadius, rearWheel = {-70, 34}, frontWheel = {70, 34},
         wheelDensity = 1.5, drive = self.drive, acceleration = 700, topSpeed = 1400, suspensionHertz = 4, suspensionTravel = 16, antiRoll = self.antiRoll,
     })
-    parts.outline(self.car.chassis, kOutline)
-    parts.paint(self.car.chassis, '#FFE57373')
     for _, wheel in ipairs({self.car.rearWheel, self.car.frontWheel}) do
-        parts.round(wheel, kWheelRadius)
-        parts.round(wheel, kWheelRadius * 0.45)
-        parts.paint(wheel, '#FF37474F')
+        Look.dress(wheel, 'wheel')
     end
 end
 
@@ -118,22 +133,35 @@ function Vehicle:update(dt)
     self.car.throttle = input.value('throttle')
     self.car.brake = input.down('brake') and 1 or 0
     local chassis = self.car.chassis
-    self.camera:follow(chassis.x + chassis.velocity.x * 0.3, chassis.y - 60, dt)
-    self:status(string.format('Speed %d units per second, throttle %.2f, brake %.0f, %s, drive "%s", step %.2f ms', math.floor(self.car.speed + 0.5), self.car.throttle, self.car.brake, self.car.grounded and 'on the road' or 'in the air', self.car.drive, self:stepTime()))
+    self.camera:follow(chassis.x + chassis.velocity.x * 0.3, chassis.y - 150, dt)
+    local speed = math.floor(math.abs(self.car.speed) * Vehicle.metersPerUnit * 3.6 + 0.5)
+    local where = self.car.grounded and 'on the road' or 'in the air'
+    local driving = self.car.brake > 0 and 'braking' or self.car.throttle > 0.05 and 'speeding up' or self.car.throttle < -0.05 and 'reversing' or 'coasting'
+    self:status(string.format('The car is %s at %d km/h %s, %d m down the road.', driving, speed, where, math.max(0, math.floor(chassis.x * Vehicle.metersPerUnit + 0.5))))
 end
 
 function Vehicle:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
+function Vehicle:drawCar()
+    local chassis = self.car.chassis
+    local cos, sin = math.cos(chassis.rotation), math.sin(chassis.rotation)
+    local dx, dy = Vehicle.carOffset[1], Vehicle.carOffset[2]
+    Look.draw(self.car.rearWheel, {layer = 1})
+    Look.draw(self.car.frontWheel, {layer = 1})
+    graphics2d.draw(self.carTexture, chassis.x + dx * cos - dy * sin, chassis.y + dx * sin + dy * cos, {width = 384 * Vehicle.carScale, height = 201 * Vehicle.carScale, rotation = chassis.rotation, layer = 2})
+end
+
 function Vehicle:draw(area)
-    parts.draw(self.ground)
-    parts.draw(self.car.chassis, {layer = 1})
-    parts.draw(self.car.rearWheel, {layer = 2})
-    parts.draw(self.car.frontWheel, {layer = 2})
-    for x = 0, kRoadLength, 1000 do
-        graphics2d.drawText(nil, string.format('%d meters', x // 64), x, -300, {size = 28, color = '#66FFFFFF', anchor = {0.5, 0.5}})
+    Scenery.sky(self.camera, 300, {parallax = 1})
+    Scenery.drawTerrain(self.terrain)
+    Look.block(Vehicle.start - 60, -150, 120, 1100, 'stone', -8)
+    for _, sign in ipairs(self.signs) do
+        Look.block(sign.x, sign.y - 50, 14, 100, 'darkWood', -9)
+        self:label(sign.text, sign.x, sign.y - 100, {size = 20, layer = -8})
     end
+    self:drawCar()
 end
 
 return Vehicle

@@ -1,7 +1,8 @@
 -- Drags the dynamic body under the pointer with a grabber of the world, whose pull scales with the mass of everything joined to the held body, so a coin and a ragdoll follow the pointer alike with the mouse, a finger or a gamepad.
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local physics2d = require('haylen.physics2d')
+
+local Look = require('categories.physics.look')
 
 local Grab = haylen.class('Grab')
 
@@ -37,8 +38,10 @@ function Grab:draw()
         return
     end
     local handle, target = self.grabber.handle, self.grabber.target
-    graphics2d.drawLine(handle.x, handle.y, target.x, target.y, 3, '#CCFFFFFF', {layer = 50})
-    graphics2d.drawCircle(target.x, target.y, 6, '#FFFFFFFF', {layer = 50})
+    local unit = Look.pixel
+    Look.line(handle.x, handle.y, target.x, target.y, 4 * unit, '#FFFFE6A0', 50)
+    Look.pin(handle.x, handle.y, 6 * unit, 50, '#FFFFC93C')
+    Look.pin(target.x, target.y, 9 * unit, 50, '#FFFFFFFF')
 end
 
 return Grab
