@@ -7,7 +7,7 @@ local ui = require('haylen.ui')
 
 local Card = require('categories.scenes.card')
 local SceneTest = require('categories.scenes.scene-test')
-local Test = require('harness.test')
+local Scenery = require('categories.effects.scenery')
 
 local CustomEffect = haylen.class('CustomEffect', SceneTest)
 
@@ -59,18 +59,21 @@ CustomEffect.curtain = {
 function CustomEffect:init(entry)
     CustomEffect.super.init(self, entry)
     self.pushed = 0
+    self.scenery = Scenery()
 end
 
 function CustomEffect:enter()
     self:frame{
-        hint = 'Push a card with either effect. Both show the two scenes during the whole transition, so they switch at 0 and exit at 1.',
+        hint = 'Push the island at night with either effect. Both show the two scenes during the whole transition, so they switch at 0 and exit at 1.',
         code = CustomEffect.code,
+        view = Card.world,
         controls = {
             ui.button{id = 'blinds', text = 'Push with blinds', onClick = function() self:push('blinds') end},
             ui.button{id = 'curtain', text = 'Push with the curtain', onClick = function() self:push('curtain') end},
         },
         focus = 'blinds',
     }
+    self:set('status', {text = 'The island by day waits under the cards. Push one with an effect.'})
 end
 
 function CustomEffect:push(name)
@@ -79,18 +82,18 @@ function CustomEffect:push(name)
     end
     local transition = {effect = CustomEffect[name], duration = 1.1, ease = 'cubicInOut'}
     self.pushed = self.pushed + 1
-    scene.push(Card({title = 'Effect "' .. name .. '"', caption = 'A Lua transition effect', color = self.pushed % 2 == 0 and '#FF3E6E8A' or '#FF8A4E3E', stay = 1.2, leave = transition}), transition)
-    self:set('status', {text = string.format('Cards pushed with custom effects %d', self.pushed)})
+    local title = name == 'blinds' and 'Blinds' or 'Curtain'
+    scene.push(Card({title = title, caption = 'A transition effect written in Lua', night = true, stay = 1.2, leave = transition}), transition)
+    self:set('status', {text = string.format('The last card came in with the effect "%s", and %d cards came in with custom effects.', name, self.pushed)})
+end
+
+function CustomEffect:update(dt)
+    CustomEffect.super.update(self, dt)
+    self.scenery:update(dt)
 end
 
 function CustomEffect:draw(area)
-    graphics2d.drawRect(area, '#FF222A20')
-    local time = haylen.elapsed()
-    for index = 0, 7 do
-        local x = area.width * (index + 0.5) / 8
-        graphics2d.drawCircle(x, area.height * 0.6 + math.sin(time * 2 + index) * 80, 50, '#FF5A8A4A')
-    end
-    Test.caption('The scene under the cards', area.width / 2, 40, {size = 40, anchor = {0.5, 0}, color = Test.ink})
+    self.scenery:draw(false)
 end
 
 return CustomEffect

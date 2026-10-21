@@ -1,6 +1,7 @@
--- Stack and hooks: the operations of `haylen.scene` on the cards above this test, with the stack and the last hooks each scene received listed next to the buttons. Each card is a transparent panel over the play area, so the buttons of the test stay visible and usable while cards cover it. The test sits on the menus of the project, so "Pop to the test" is the `popTo` that "popToRoot" would be in an app of its own.
+-- Stack and hooks: the operations of `haylen.scene` on the cards above this test, with the hooks each scene received on a timeline next to the cards. Each card is a transparent panel over a part of the play area, cascaded by its depth, so the stack shows as cards over cards while the buttons of the test stay usable. The test sits on the menus of the project, so "Pop to the test" is the `popTo` that "popToRoot" would be in an app of its own.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local m = require('haylen.math')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 
@@ -17,19 +18,21 @@ scene.pop({effect = 'slideIn', direction = 'right', duration = 0.45})
 scene.popTo(2)  -- Or scene.popToRoot().
 print(scene.size(), scene.top().title, #scene.list(), scene.transitioning())]]
 
-Stack.colors = {'#FF2E5E8A', '#FF8A3E5E', '#FF3E8A5E', '#FF8A6E2E', '#FF5E3E8A'}
 Stack.transitions = {
     none = {},
     slide = {arrive = {effect = 'slideIn', direction = 'left', duration = 0.45, ease = 'quadOut'}, leave = {effect = 'slideIn', direction = 'right', duration = 0.45, ease = 'quadOut'}},
     fade = {arrive = {effect = 'fade', duration = 0.5}, leave = {effect = 'fade', duration = 0.5}},
 }
-Stack.lines = 12
+Stack.lines = 14
+-- The colors of the hooks on the timeline.
+Stack.hookColors = {load = Test.violet, enter = Test.green, exit = Test.red, unload = Test.muted, pause = Test.warm, resume = Test.accent, exitTransitionStarted = Test.warm, enterTransitionFinished = Test.accent}
 
 function Stack:init(entry)
     Stack.super.init(self, entry)
     self.title = 'This test'
     self.history = {}
     self.cards = 0
+    self.started = haylen.elapsed()
     self.transition = Stack.transitions.slide
 end
 
@@ -50,24 +53,30 @@ function Stack:enter(params)
             ui.formField{label = 'Transition', ui.combo{id = 'transition', selected = 'slide', items = {{id = 'none', text = 'Instant'}, {id = 'slide', text = 'Slide'}, {id = 'fade', text = 'Fade'}}, onChange = function(event)
                 self.transition = Stack.transitions[event.value]
             end}},
-            ui.column{gap = 8, children = {
-                self:operation('push', 'Push', function() scene.push(self:card(), self:arrival()) end),
-                self:operation('pop', 'Pop', function() if scene.size() > self.depth then scene.pop(self.transition.leave) end end),
-                self:operation('replace', 'Replace', function() if scene.size() > self.depth then scene.replace(self:card(), self:arrival()) end end),
-                self:operation('popFirst', 'Pop to number 2', function() if scene.size() > self.depth + 1 then scene.popTo(self.depth + 1, self.transition.leave) end end),
-                self:operation('popTest', 'Pop to the test', function() if scene.size() > self.depth then scene.popTo(self.depth, self.transition.leave) end end),
-            }},
-            ui.label{id = 'stack', text = '', font = 'monospace'},
-            ui.label{id = 'log', text = '', font = 'caption', color = 'textMuted'},
+            self:operation('push', 'Push', function() scene.push(self:card(), self:arrival()) end),
+            self:operation('pop', 'Pop', function() if scene.size() > self.depth then scene.pop(self.transition.leave) end end),
+            self:operation('replace', 'Replace', function() if scene.size() > self.depth then scene.replace(self:card(), self:arrival()) end end),
+            self:operation('popFirst', 'Pop to the first card', function() if scene.size() > self.depth + 1 then scene.popTo(self.depth + 1, self.transition.leave) end end),
+            self:operation('popTest', 'Pop to the test', function() if scene.size() > self.depth then scene.popTo(self.depth, self.transition.leave) end end),
         },
         focus = 'push',
     }
     self:record(self.title, 'enter')
 end
 
+-- The place of a card at a depth above the test, where the test itself is depth 0: a panel in the left part of the play area, moved down and right by its depth.
+function Stack:cardRect(depth)
+    local stage = self.stage
+    local width, height = stage.width * 0.5, stage.height * 0.62
+    local step = math.min(46, (stage.height - height - 48) / 5)
+    local offset = math.min(depth, 5) * step
+    return m.rect(stage.x + 24 + offset, stage.y + 24 + offset, width, height)
+end
+
 function Stack:card()
     self.cards = self.cards + 1
-    return Card({title = 'Card ' .. self.cards, caption = 'The "params" of its change say where it came from', color = Stack.colors[self.cards % #Stack.colors + 1], leave = self.transition.leave, stage = self.stage, listener = function(card, hook, detail)
+    local depth = scene.size() - self.depth + 1
+    return Card({title = 'Card ' .. self.cards, caption = 'Pushed at depth ' .. depth, night = self.cards % 2 == 0, leave = self.transition.leave, stage = self:cardRect(depth), listener = function(card, hook, detail)
         self:record(card.title, hook, detail)
     end})
 end
@@ -81,18 +90,14 @@ function Stack:arrival()
     return options
 end
 
--- Adds a hook to the list, newest first, with the `params` it received, and shows the scenes from this test up as they are now.
+-- Adds a hook to the timeline, newest first, with the time since the test opened and the `params` the hook received, and shows the stack in the status line, since the test does not update while cards cover it.
 function Stack:record(name, hook, detail)
-    table.insert(self.history, 1, string.format('%.2f  %s: "%s"%s', haylen.elapsed(), name, hook, detail and ' (' .. tostring(detail) .. ')' or ''))
+    table.insert(self.history, 1, {time = haylen.elapsed() - self.started, name = name, hook = hook, detail = detail})
     self.history[Stack.lines + 1] = nil
-    local names = {}
-    local list = scene.list()
-    for index = self.depth or #list, #list do
-        names[#names + 1] = (index - self.depth + 1) .. '. ' .. list[index].title
+    if self.gui then
+        local cards = scene.size() - self.depth
+        Test.setNode(self, 'status', {text = string.format('%d %s above the test, and the last hook was "%s".', cards, cards == 1 and 'card is' or 'cards are', hook)})
     end
-    self:set('stack', {text = 'Stack from this test up:\n' .. table.concat(names, '\n')})
-    self:set('log', {text = table.concat(self.history, '\n')})
-    self:set('status', {text = string.format('Scenes above the menus %d   Transitioning "%s"', #list - self.depth + 1, scene.transitioning())})
 end
 
 function Stack:exit()
@@ -116,9 +121,28 @@ function Stack:enterTransitionFinished()
     self:record(self.title, 'enterTransitionFinished')
 end
 
+-- Draws the place of the stack, where the test itself is the bottom card, and the timeline of the hooks on the right.
 function Stack:draw(area)
-    graphics2d.drawRect(area, '#FF1C2230')
-    Test.caption('This test, under its cards', area.width / 2, area.height / 2, {size = 64, anchor = {0.5, 0.5}, color = '#FF5A6A8A'})
+    local bottom = self:cardRect(0)
+    graphics2d.drawShape({bottom.x - self.stage.x, bottom.y - self.stage.y, bottom.width, bottom.height}, {radius = 18, color = '#FF232938', borderWidth = 3, borderColor = Test.line})
+    graphics2d.drawText(nil, 'This test, under its cards', bottom.x - self.stage.x + bottom.width / 2, bottom.y - self.stage.y + bottom.height / 2, {size = 30, color = Test.muted, anchor = {0.5, 0.5}, layer = 1})
+
+    local left = area.width * 0.5 + 24 + 5 * 46
+    local log = {math.min(left, area.width - 420), 24, 0, area.height - 48}
+    log[3] = area.width - log[1] - 24
+    graphics2d.drawShape(log, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+    graphics2d.drawText(nil, 'Hooks, newest first', log[1] + 20, log[2] + 18, {size = 22, color = Test.muted, layer = 2})
+    local lineHeight = math.min(36, (log[4] - 70) / Stack.lines)
+    for index, entry in ipairs(self.history) do
+        local y = log[2] + 60 + (index - 1) * lineHeight
+        if y + lineHeight > log[2] + log[4] then
+            break
+        end
+        local color = Stack.hookColors[entry.hook] or Test.ink
+        graphics2d.drawText(nil, string.format('%.2f s', entry.time), log[1] + 96, y, {size = 20, color = Test.muted, anchor = {1, 0}, layer = 2})
+        graphics2d.drawShape({log[1] + 110, y + 6, 12, 12}, {kind = 'ellipse', color = color, layer = 2})
+        graphics2d.drawText(nil, entry.name .. ': ' .. entry.hook .. (entry.detail and ', ' .. tostring(entry.detail) or ''), log[1] + 132, y, {size = 20, color = Test.ink, maxWidth = log[3] - 150, wrap = false, minScale = 0.7, layer = 2})
+    end
 end
 
 return Stack

@@ -1,4 +1,4 @@
--- Transition gallery: every built-in effect of `haylen.scene` pushes a card with the chosen direction, easing, duration and color, and the card pops itself back with the opposite direction.
+-- Transition gallery: every built-in effect of `haylen.scene` pushes the island by day or by night with the chosen direction, easing, duration and color, and the card pops itself back with the opposite direction.
 local haylen = require('haylen')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -17,13 +17,13 @@ Transitions.effects = {'fade', 'crossFade', 'moveIn', 'slideIn', 'push', 'shrink
 Transitions.directions = {'left', 'right', 'up', 'down', 'upLeft', 'upRight', 'downLeft', 'downRight'}
 Transitions.opposite = {left = 'right', right = 'left', up = 'down', down = 'up', upLeft = 'downRight', upRight = 'downLeft', downLeft = 'upRight', downRight = 'upLeft'}
 Transitions.eases = {'linear', 'sineInOut', 'quadOut', 'cubicInOut', 'expoInOut', 'backOut', 'elasticOut', 'bounceOut'}
-Transitions.colors = {'#FF2E5E8A', '#FF8A3E5E', '#FF3E8A5E', '#FF8A6E2E', '#FF5E3E8A'}
+Transitions.easeNames = {linear = 'Linear', sineInOut = 'Sine in and out', quadOut = 'Quad out', cubicInOut = 'Cubic in and out', expoInOut = 'Exponential in and out', backOut = 'Back out', elasticOut = 'Elastic out', bounceOut = 'Bounce out'}
 
--- Turns a list of names into the items of a picker.
-function Transitions.items(names, noun)
+-- Turns a list of names into the items of a picker, written for people.
+function Transitions.items(names, words)
     local items = {}
     for index, name in ipairs(names) do
-        items[index] = {id = name, text = noun .. ' "' .. name .. '"'}
+        items[index] = {id = name, text = words and words[name] or Transitions.label(name)}
     end
     return items
 end
@@ -43,7 +43,7 @@ function Transitions:enter()
     local options = self.options
     local buttons = {}
     for index, effect in ipairs(Transitions.effects) do
-        buttons[index] = ui.button{id = effect, text = Transitions.label(effect), onClick = function()
+        buttons[index] = ui.button{id = effect, text = Transitions.label(effect), align = 'stretch', onClick = function()
             self:play(effect)
         end}
     end
@@ -52,10 +52,10 @@ function Transitions:enter()
         code = Transitions.code,
         content = {ui.grid{columns = 4, gap = 12, children = buttons}},
         controls = {
-            ui.formField{label = 'Direction', ui.combo{id = 'direction', items = Transitions.items(Transitions.directions, 'Direction'), selected = options.direction, onChange = function(event)
+            ui.formField{label = 'Direction', ui.combo{id = 'direction', items = Transitions.items(Transitions.directions), selected = options.direction, onChange = function(event)
                 options.direction = event.value
             end}},
-            ui.formField{label = 'Easing', ui.combo{id = 'ease', items = Transitions.items(Transitions.eases, 'Easing'), selected = options.ease, onChange = function(event)
+            ui.formField{label = 'Easing', ui.combo{id = 'ease', items = Transitions.items(Transitions.eases, Transitions.easeNames), selected = options.ease, onChange = function(event)
                 options.ease = event.value
             end}},
             ui.formField{label = 'Duration in seconds', ui.slider{id = 'duration', min = 0.2, max = 2.5, value = options.duration, showValue = true, onChange = function(event)
@@ -67,6 +67,7 @@ function Transitions:enter()
         },
         focus = 'fade',
     }
+    self:set('status', {text = 'Pick an effect to push the island with it.'})
 end
 
 function Transitions:play(effect)
@@ -77,9 +78,9 @@ function Transitions:play(effect)
     local arrive = {effect = effect, direction = options.direction, ease = options.ease, duration = options.duration, color = options.color}
     local leave = {effect = effect, direction = Transitions.opposite[options.direction], ease = options.ease, duration = options.duration, color = options.color}
     self.played = self.played + 1
-    local color = Transitions.colors[self.played % #Transitions.colors + 1]
-    scene.push(Card({title = 'Effect "' .. effect .. '"', caption = string.format('Direction "%s", easing "%s", %.1f s', options.direction, options.ease, options.duration), color = color, stay = 1.2, leave = leave}), arrive)
-    self:set('status', {text = string.format('Pushed with "%s"   Played %d', effect, self.played)})
+    local caption = string.format('%s, %s, %.1f seconds', Transitions.label(options.direction), Transitions.easeNames[options.ease]:lower(), options.duration)
+    scene.push(Card({title = Transitions.label(effect), caption = caption, night = self.played % 2 == 0, stay = 1.2, leave = leave}), arrive)
+    self:set('status', {text = string.format('Pushed with "%s", %d transitions so far.', effect, self.played)})
 end
 
 return Transitions
