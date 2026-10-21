@@ -171,8 +171,8 @@ class Emitter final {
     void prepareShape();
     void prepareSubEmitters(const std::vector<EmitterConfig::SubEmitter>& previous);
 
-    // Spawns up to `count` particles, as many as `maxParticles` leaves room for, spread along the segment the emitter moved this step, with the velocity they inherit and a tint over their colors.
-    void spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec2 inherited, math::Color tint);
+    // Spawns up to `count` particles, as many as `maxParticles` leaves room for, spread along the segment the emitter moved this step, with the velocity they inherit and a tint over their colors. Their births spread evenly over the last `span` seconds before the final `rest` seconds of the step, and each one moves for the time it lived since, so particles of a long step leave as a stream instead of a clump.
+    void spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec2 inherited, math::Color tint, float span, float rest);
     void spawnParticle(math::Vec2 origin, math::Vec2 inherited, math::Color tint);
     [[nodiscard]] Spawn pickSpawn();
     [[nodiscard]] math::Vec2 pickShapePoint(std::size_t& pixel);
@@ -183,7 +183,8 @@ class Emitter final {
     void emit(float deltaSeconds);
     void simulate(float deltaSeconds, std::size_t begin, std::size_t end) noexcept;
     void collide(std::size_t index, math::Vec2 contact, math::Vec2 normal) noexcept;
-    void collideWithWorld(core::JobSystem* jobs);
+    // Casts the moves of the particles from `begin` on, from the positions of `previousPositions`, which line up with them.
+    void collideWithWorld(std::size_t begin, core::JobSystem* jobs);
     void removeExpired();
     void runTriggers(float deltaSeconds);
     void trigger(std::size_t subEmitter, std::size_t index);
@@ -196,6 +197,7 @@ class Emitter final {
     [[nodiscard]] math::Color colorAt(float life) const noexcept;
     [[nodiscard]] math::Color particleColor(std::size_t index) const noexcept;
     [[nodiscard]] math::Rect frameAt(std::size_t index, float life) const noexcept;
+    [[nodiscard]] bool castsRays() const noexcept;
     [[nodiscard]] graphics2d::SpriteInstance spriteAt(std::size_t index) const noexcept;
     [[nodiscard]] math::Vec2 getVelocity(std::size_t index) const noexcept;
     [[nodiscard]] static float easeDown(const std::optional<math::EasingCurve>& curve, float life) noexcept;
@@ -224,7 +226,7 @@ class Emitter final {
     mutable std::vector<float> trailPlaces;
     mutable Ribbon ribbon;
 
-    // The positions before the step, which world collision casts rays from.
+    // The positions before the step, which world collision casts rays from, and then the positions where the particles of the step were born.
     std::vector<math::Vec2> previousPositions;
     physics2d::RayBatch rays;
     std::shared_ptr<const physics2d::World> collisionWorld;

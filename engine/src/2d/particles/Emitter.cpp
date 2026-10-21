@@ -355,11 +355,22 @@ void Emitter::setCollisionWorld(std::shared_ptr<const physics2d::World> world, c
     collisionFilter = filter;
 }
 
-void Emitter::spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec2 inherited, math::Color tint) {
+// World collision casts each new particle from where it was born, so the rays of its step start there.
+void Emitter::spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec2 inherited, math::Color tint, float span, float rest) {
     const std::size_t room = config.maxParticles - std::min(getCount(), config.maxParticles);
     const std::size_t made = std::min(count, room);
+    const bool casts = castsRays();
     for (std::size_t index = 0; index < made; ++index) {
-        spawnParticle(math::Vec2::lerp(from, to, static_cast<float>(index + 1) / static_cast<float>(made)), inherited, tint);
+        const float share = static_cast<float>(index + 1) / static_cast<float>(made);
+        spawnParticle(math::Vec2::lerp(from, to, share), inherited, tint);
+        const std::size_t born = getCount() - 1;
+        if (casts) {
+            previousPositions.push_back(particles.positions[born]);
+        }
+        const float lived = rest + span * (1.0F - share);
+        if (lived > 0.0F) {
+            simulate(lived, born, born + 1);
+        }
     }
 }
 
@@ -525,7 +536,7 @@ void Emitter::spawnParticle(math::Vec2 origin, math::Vec2 inherited, math::Color
 }
 
 void Emitter::burst(std::size_t count) {
-    spawn(count, position, position, velocity * config.inheritVelocity, math::Color::white());
+    spawn(count, position, position, velocity * config.inheritVelocity, math::Color::white(), 0.0F, 0.0F);
     liveParticles.set(getCount());
 }
 
@@ -540,7 +551,7 @@ void Emitter::trigger(std::size_t subEmitter, std::size_t index) {
     const math::Vec2 inherited = getVelocity(index) * sub.inheritVelocity;
     const math::Color tint = sub.inheritColor ? particleColor(index) : math::Color::white();
     Emitter& child = *children[subEmitter];
-    child.spawn(count, at, at, inherited, tint);
+    child.spawn(count, at, at, inherited, tint, 0.0F, 0.0F);
 }
 
 void Emitter::update(float deltaSeconds) {
@@ -556,8 +567,8 @@ void Emitter::update(float deltaSeconds, core::JobSystem& jobs) {
 void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
     velocity = deltaSeconds > 0.0F ? (position - previousPosition) / deltaSeconds : math::Vec2{};
     clock += deltaSeconds;
-    const bool castsRays = config.collision.type == EmitterConfig::Collision::Type::World && collisionWorld != nullptr;
-    if (castsRays) {
+    const bool casts = castsRays();
+    if (casts) {
         previousPositions.assign(particles.positions.begin(), particles.positions.end());
     }
 
@@ -570,13 +581,20 @@ void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
         });
         // clang-format on
     }
-    if (castsRays) {
-        collideWithWorld(jobs);
+    if (casts) {
+        collideWithWorld(0, jobs);
     }
     runTriggers(deltaSeconds);
     removeExpired();
-    sampleTrails(deltaSeconds);
+
+    // The particles born in this step cast the part of the step they lived from where they were born.
+    const std::size_t firstBorn = getCount();
+    previousPositions.clear();
     emit(deltaSeconds);
+    if (casts && getCount() > firstBorn) {
+        collideWithWorld(firstBorn, jobs);
+    }
+    sampleTrails(deltaSeconds);
     previousPosition = position;
     peakCount = std::max(peakCount, getCount());
     for (const std::unique_ptr<Emitter>& child : children) {
@@ -696,17 +714,18 @@ void Emitter::collide(std::size_t index, math::Vec2 contact, math::Vec2 normal) 
 }
 
 // Casts the move of every particle of the step through the physics world, on the job system when it is given.
-void Emitter::collideWithWorld(core::JobSystem* jobs) {
+void Emitter::collideWithWorld(std::size_t begin, core::JobSystem* jobs) {
     const math::Vec2 origin = getOrigin();
     const std::size_t count = getCount();
-    rays.resize(count);
-    for (std::size_t index = 0; index < count; ++index) {
+    rays.resize(count - begin);
+    for (std::size_t index = begin; index < count; ++index) {
         const bool moving = (particles.flags[index] & kStuck) == 0;
-        rays.setRay(index, origin + previousPositions[index], origin + (moving ? particles.positions[index] : previousPositions[index]));
+        const math::Vec2 from = previousPositions[index - begin];
+        rays.setRay(index - begin, origin + from, origin + (moving ? particles.positions[index] : from));
     }
     physics2d::Raycaster(*collisionWorld).castBatch(rays, collisionFilter, jobs);
-    for (std::size_t index = 0; index < count; ++index) {
-        if (const std::optional<physics2d::RaycastHit>& hit = rays.getHit(index)) {
+    for (std::size_t index = begin; index < count; ++index) {
+        if (const std::optional<physics2d::RaycastHit>& hit = rays.getHit(index - begin)) {
             collide(index, hit->point - origin + hit->normal * 0.01F, hit->normal);
         }
     }
@@ -861,7 +880,7 @@ void Emitter::emit(float deltaSeconds) {
 
     const math::Vec2 inherited = velocity * config.inheritVelocity;
     const auto limit = static_cast<double>(config.maxParticles);
-    spawn(due < limit ? static_cast<std::size_t>(due) : config.maxParticles, position, position, inherited, math::Color::white());
+    spawn(due < limit ? static_cast<std::size_t>(due) : config.maxParticles, position, position, inherited, math::Color::white(), 0.0F, 0.0F);
 
     // Fractional particles carry over, so low rates still emit on average at the requested pace.
     emitDebt += config.rate * emitted;
@@ -869,7 +888,7 @@ void Emitter::emit(float deltaSeconds) {
     const float whole = std::floor(emitDebt) + std::floor(distanceDebt);
     emitDebt -= std::floor(emitDebt);
     distanceDebt -= std::floor(distanceDebt);
-    spawn(static_cast<double>(whole) < limit ? static_cast<std::size_t>(whole) : config.maxParticles, previousPosition, position, inherited, math::Color::white());
+    spawn(static_cast<double>(whole) < limit ? static_cast<std::size_t>(whole) : config.maxParticles, previousPosition, position, inherited, math::Color::white(), emitted, deltaSeconds - emitted);
 }
 
 math::Color Emitter::colorAt(float life) const noexcept {
@@ -951,6 +970,10 @@ graphics2d::SpriteInstance Emitter::spriteAt(std::size_t index) const noexcept {
         at = math::Vec2{std::round(at.x / config.pixelSnap), std::round(at.y / config.pixelSnap)} * config.pixelSnap;
     }
     return {.position = at, .size = {width, size}, .source = frameAt(index, life), .rotation = angle, .tilt = config.tilt, .color = particleColor(index)};
+}
+
+bool Emitter::castsRays() const noexcept {
+    return config.collision.type == EmitterConfig::Collision::Type::World && collisionWorld != nullptr;
 }
 
 // Lays a point of the simulation on the tilted plane of the emitter, which passes through the emitter and shortens every height above or below it.

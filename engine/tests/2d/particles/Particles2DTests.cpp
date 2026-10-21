@@ -460,6 +460,19 @@ TEST_F(ParticlesTest, ParticlesCollideWithFloorsBoundsAndWorlds) {
     EXPECT_THROW(Emitter({.texture = texture(), .collision = {.friction = 2.0F}}), std::invalid_argument);
 }
 
+TEST_F(ParticlesTest, ParticlesOfTheRateSpreadTheirBirthsOverTheStep) {
+    Emitter stream({.texture = texture(), .rate = 100.0F, .lifetime = {10.0F, 10.0F}, .speed = {100.0F, 100.0F}, .direction = 0.0F, .spread = 0.0F});
+    stream.update(0.1F);
+    ASSERT_EQ(stream.getCount(), 10U);
+
+    // Each particle moves for the part of the step it lived, so a long step leaves an evenly spaced stream that ends at the emitter.
+    for (std::size_t index = 0; index < 10; ++index) {
+        const float lived = 0.1F * static_cast<float>(9 - index) / 10.0F;
+        EXPECT_NEAR(stream.getParticle(index).position.x, lived * 100.0F, 1e-3F);
+        EXPECT_NEAR(stream.getParticle(index).age, lived, 1e-5F);
+    }
+}
+
 TEST_F(ParticlesTest, BoundsKillOrWrapParticles) {
     Emitter killing({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {100.0F, 100.0F}, .direction = 0.0F, .spread = 0.0F, .bounds = math::Rect{-50.0F, -50.0F, 100.0F, 100.0F}});
     killing.burst(1);

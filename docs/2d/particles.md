@@ -18,8 +18,9 @@ Every update runs these steps:
 2. The particles move in chunks of 4096 on the job system when Lua updates the emitter: gravity, radial and tangential acceleration, turbulence from `math::Noise2D` at the position of each particle, the attractors, damping, the speed and spin curves, and the floor, bounds walls and bounds of the configuration. A chunk only touches its own particles, so the result is identical to the update on one thread.
 3. World collision casts the move of every particle through the physics world in one `physics2d::RayBatch`, also on the job system.
 4. The sub-emitters of hits and of living particles fire, then the expired particles fire the sub-emitters of death and leave the arrays, which compact in place and keep the order particles draw in.
-5. The trails record the positions of the particles at fixed moments, and new particles spawn: bursts at the position of the emitter, and the particles of the rate and of the distance spread along the segment the emitter moved.
-6. The emitters of the sub-emitters update the same way.
+5. New particles spawn: bursts at the position of the emitter, and the particles of the rate and of the distance spread along the segment the emitter moved and over the time of the update. Each one is born at its moment of the update and moves, collides and ages for the part of the update it lived, so a long frame, a slow device or a fast emitter leaves an even stream instead of a clump at the emitter and a gap behind it, and world collision casts these first moves from where the particles were born.
+6. The trails record the positions of the particles at fixed moments.
+7. The emitters of the sub-emitters update the same way.
 
 Nothing calls Lua for each particle, which is why particle curves take names and tables and never Lua functions.
 
