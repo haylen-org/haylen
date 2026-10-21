@@ -1,166 +1,16 @@
 # 📖 `haylen.lighting2d`
 
-The module `haylen.lighting2d` holds the lights and occluders of lit 2D canvases: point, spot and directional lights with blend modes, masks, layer ranges and shadows, the occluders that cast those shadows and helpers that build them from physics bodies and Tiled maps. It also answers how lit a point is, for stealth and visibility gameplay, gives the falloff curve of its lights and makes torches waver with its flicker function. Canvases, draws and the draw options that shade them come from [`haylen.graphics2d`](graphics2d.md). The [lighting guide](../2d/lighting.md) explains how a lit scene is set up and what it costs.
+The module `haylen.lighting2d` holds the lights and occluders of lit 2D canvases, the helpers that build occluders from physics bodies and Tiled maps, and the light queries of gameplay. Canvases, draws and the draw options that shade them come from [`haylen.graphics2d`](graphics2d.md). The [lighting guide](../2d/lighting.md) explains lit canvases, light types, blend modes, masks and shadows.
 
 ```lua
 local lighting2d = require('haylen.lighting2d')
-```
-
-## How 2D lighting works
-
-A world or render target canvas becomes lit when it receives `ambientLight`. Its draws then fill four images at once: their colors, their emission, the normal and specular strength of their surface, and the light mask and layer that lights test. Every `graphics2d.drawLight` draws into a light map that starts at the ambient color, in the order the lights were drawn, and the composite multiplies the colors by the light map and adds the emission. A white ambient color shows the scene unchanged, and a dark blue one turns it into night where only the lights show color.
-
-The light map holds light in floating point when the backend can render and blend it, which `graphics2d.hdrLighting()` reports and which holds on Metal, Direct3D 11, desktop OpenGL, WebGPU and WebGL2 with `EXT_color_buffer_float`. Light then goes past 1, so an intensity of 3 or overlapping lights brighten the scene beyond its unlit colors, and a subtracted light can take the light map below 0. Without floating-point render targets the light map saturates at white.
-
-Lights come in three types:
-
-| Type | Shape |
-| --- | --- |
-| `'point'` | Shines around its position up to its radius through its texture, the radial falloff of `graphics2d.lightTexture()` when it has none. |
-| `'spot'` | A point light that only shines inside a cone around its rotation, fully inside `innerAngle` and fading out at `outerAngle`, both full angles in radians. |
-| `'directional'` | Covers the whole canvas from its rotation, the direction the light travels, like the sun. Position, radius, texture and scale do not apply. |
-
-Each light combines with the light map by its blend mode: `'add'` brightens it, `'subtract'` darkens it, `'mix'` replaces it by the strength of the light, which suits a colored pool of light over a lit room, and `'max'` keeps the brighter of the map and the light in each channel, so torches whose circles overlap light the overlap no more than the brightest of them, as many tile games light their maps. A light reaches a draw when the draw's `lightMask` shares a bit with the light's `itemMask` and the draw's layer lies between `layerMin` and `layerMax`. Draws have the light mask 1 and lights the item mask 1 unless they say otherwise, so masks only matter once they change. Light masks and item masks have 8 bits, shadow masks and occluder masks have 32 bits, and layer ranges tell layers apart from -128 to 127 and count layers beyond them as the nearest end.
-
-Draws shade themselves with the draw options of [`graphics2d`](graphics2d.md#draw-order). The option `normalMap` gives a sprite a second texture with the same layout as its texture, whose red and green store the x and y of the surface normal with y pointing up the image, from 0 for -1 to 255 for 1, the convention of most normal map tools. Normal-mapped sprites take light by the angle it reaches them at, where the light `height` lifts it above the canvas, and `specular`, scaled by the alpha of the normal map, and `shininess` shape their highlights. Draws with `unshaded` keep their own colors whatever the light, and `emission` makes the colors of a draw glow by that strength on top of the light, so `emission = 1` shows them fully even in the dark.
-
-### Shadows
-
-A light with `shadows = true` is blocked by occluders, the outlines that `graphics2d.drawOccluder` draws in the same canvas. Every frame the engine casts a 1D shadow map of 1024 texels per shadowed light: the distance of the nearest occluder in every direction around a point or spot light, and for a directional light the depth of the nearest occluder along the light at every point across the canvas, so its shadows run across the whole view. The light pass compares each pixel with its texel, with one sample when `shadowFilter` is `'none'` and 5 or 13 samples with `'pcf5'` and `'pcf13'`, spread wider by `shadowSmoothness`. Shadowed pixels receive `shadowColor`, whose alpha sets how dark the shadow is.
-
-Every edge of an occluder casts shadows unless its `cull` mode skips the edges the light sees wound one way. A polygon whose points go clockwise on screen with `cull = 'counterClockwise'` skips its edges that face the light, so the object stays lit and only what lies behind it is dark. Without culling the object sits in its own shadow. An edge whose line passes through the light, such as the two edges of a corner the light sits on, shows the light only its side and casts no shadow, while the other edges of its occluder still do. Occluders cast the shadows of lights whose `shadowMask` shares a bit with the occluder `mask`.
-
-Occluders and lights belong to the canvas they are drawn in, and every lit canvas casts the shadows of its own lights from its own occluders. Shadow maps are cast on the CPU in parallel on the task pool, so their cost grows with the shadowed lights times the edges within their reach.
-
-```lua
-local graphics2d = require('haylen.graphics2d')
-local lighting2d = require('haylen.lighting2d')
-local haylen = require('haylen')
-local scene = require('haylen.scene')
-
-local camera = graphics2d.newCamera()
-local torch = lighting2d.newLight({x = -150, y = 0, radius = 420, color = '#FFFFC080', intensity = 1.4, shadows = true, shadowFilter = 'pcf13', shadowSmoothness = 1})
-local crate = lighting2d.newOccluder({points = {-20, -20, 20, -20, 20, 20, -20, 20}, cull = 'counterClockwise'})
-
-scene.push({
-    render = function(self)
-        graphics2d.beginWorld(camera, {ambientLight = '#FF141824'})
-        graphics2d.drawRect({-600, -400, 1200, 800}, '#FF6A6A62')
-        graphics2d.drawRect({-20, -20, 40, 40}, '#FF5A4A3A', {layer = 1})
-        graphics2d.drawOccluder(crate)
-        torch.intensity = 1.4 * lighting2d.flicker(haylen.elapsed(), {seed = 2})
-        graphics2d.drawLight(torch)
-    end,
-})
-```
-
-## Light
-
-A `Light` holds every setting of one light, so a scene creates it once and draws it every frame with `graphics2d.drawLight`, which also accepts a table with the same keys. Its properties read and write straight into the light:
-
-| Property | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `type` | string | `'point'` | `'point'`, `'spot'` or `'directional'`. |
-| `x`, `y`, `position` | number, Vec2 | `0` | Center of point and spot lights. |
-| `radius` | number | `160` | Reach of point and spot lights. It must be positive. |
-| `color` | Color | `'#FFFFFFFF'` | Light color, whose alpha scales the light like the intensity. |
-| `intensity` | number | `1` | Multiplies the color. It must be zero or positive and may go above 1. |
-| `rotation` | number | `0` | Turns the texture of point lights and points spot and directional lights, where 0 points right and a quarter turn points down. |
-| `scaleX`, `scaleY` | number | `1` | Stretch the texture of point and spot lights. They must be positive. |
-| `texture` | Texture or nil | nil | Shape of point and spot lights, whose colors tint the light and whose alpha is its strength. The value `nil` uses the radial falloff. |
-| `innerAngle`, `outerAngle` | number | `0.5`, `1` | Full angles in radians of the cone of spot lights. The inner angle may not exceed the outer one, which may not exceed a full turn. |
-| `height` | number | `0` | Height above the canvas, which sets the angle light reaches normal-mapped draws at. |
-| `enabled` | boolean | `true` | Disabled lights draw nothing. |
-| `blend` | string | `'add'` | `'add'`, `'subtract'`, `'mix'` or `'max'`. |
-| `itemMask` | integer | `1` | Bits of the light masks of the draws the light reaches, from 0 to 255. |
-| `layerMin`, `layerMax` | integer | all layers | The layers of the draws the light reaches. |
-| `shadows` | boolean | `false` | Lets occluders block the light. |
-| `shadowFilter` | string | `'none'` | `'none'`, `'pcf5'` or `'pcf13'`. |
-| `shadowColor` | Color | `'#FF000000'` | Light that shadowed pixels still receive, whose alpha sets how dark shadows are. |
-| `shadowSmoothness` | number | `0` | Spreads the filter samples wider, in shadow map texels beyond the first. |
-| `shadowMask` | integer | `1` | Bits of the masks of the occluders that cast the light's shadows. |
-
-The function `graphics2d.drawLight` raises an error for a value out of its range, such as `A light radius must be positive.`, `A light intensity must be zero or positive.` or `A light layer range needs "layerMin" at most "layerMax".`
-
-### light:affects(lightMask, layer)
-
-Tells whether the light reaches draws with the light mask and the layer.
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local lamp = lighting2d.newLight({itemMask = 6, layerMin = 1})
-print(lamp:affects(2, 1), lamp:affects(1, 1), lamp:affects(2, 0))
-```
-
-### light:strengthAt(x, y)
-
-Returns how strongly the light reaches a point, from 0 to 1, through the radial falloff and the cone of point and spot lights. Directional lights reach every point fully, and textured lights count with the radial falloff. Like `light:apply`, `light:shadowedAt` and `lighting2d.illuminate`, it first checks the light as a draw does, so a light that could never draw raises the same error, such as `A light radius must be positive.`
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local spot = lighting2d.newLight({type = 'spot', x = 0, y = 0, radius = 300, rotation = 0, innerAngle = 0.4, outerAngle = 0.8})
-print(spot:strengthAt(100, 0), spot:strengthAt(0, 100))
-```
-
-### light:apply(color, x, y)
-
-Returns the light map value after the light draws over `color` at a point, with its blend mode and its falloff, without normal maps or shadows.
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local sun = lighting2d.newLight({type = 'directional', intensity = 0.5})
-print(sun:apply('#FF404040', 0, 0))
-```
-
-### light:shadowedAt(x, y, occluders)
-
-Tells whether one of the occluders stands between the light and a point, with the cull modes and masks the shadow map uses. The argument `occluders` is a list of `Occluder` objects or tables with their properties. Lights without shadows never shadow a point, which makes the query suit stealth games that hide the player in shadows. An occluder with too few points raises `An occluder needs at least 2 points, and 3 when it is closed.`
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local lamp = lighting2d.newLight({x = 0, y = 0, radius = 300, shadows = true})
-local wall = lighting2d.newOccluder({points = {100, -50, 100, 50}, closed = false})
-print(lamp:shadowedAt(200, 0, {wall}), lamp:shadowedAt(50, 0, {wall}))
-```
-
-## Occluder
-
-An `Occluder` is an outline that blocks the light of lights with shadows. Its points are local to its position, rotation and scale, so the occluder of a moving object copies the object's position and rotation every frame. The function `graphics2d.drawOccluder` draws it in a lit canvas, and also accepts a table with the same keys.
-
-| Property | Type | Default | Meaning |
-| --- | --- | --- | --- |
-| `points` | list of Vec2 | empty | The outline, given as a list of vectors or as a flat list of numbers, two per point. Reading it returns a list of vectors. |
-| `closed` | boolean | `true` | Joins the last point to the first. Closed occluders need 3 points and open ones 2. |
-| `cull` | string | `'disabled'` | `'disabled'`, `'clockwise'` or `'counterClockwise'`, the edges the light sees wound that way on screen that cast no shadow. |
-| `mask` | integer | `1` | Bits the shadow masks of lights test. |
-| `x`, `y`, `position` | number, Vec2 | `0` | Where the points go. |
-| `rotation` | number | `0` | Turns the points in radians. |
-| `scaleX`, `scaleY` | number | `1` | Scale the points. |
-
-Drawing an occluder with too few points raises `An occluder needs at least 2 points, and 3 when it is closed.`
-
-### occluder:worldPoints()
-
-Returns the points in world coordinates, through the scale, the rotation and the position.
-
-```lua
-local lighting2d = require('haylen.lighting2d')
-
-local door = lighting2d.newOccluder({points = {0, 0, 40, 0}, closed = false, x = 100, y = 50, rotation = math.pi / 2})
-for _, point in ipairs(door:worldPoints()) do
-    print(point.x, point.y)
-end
 ```
 
 ## Functions
 
 ### lighting2d.newLight(properties)
 
-Creates a `Light` with the properties of the table over the defaults. Unknown keys raise `Unknown option "name".`
+Creates a [`Light`](#light) with the [properties](#properties) of the table over the defaults. The table is optional, and a `Light` in its place makes a copy. Unknown keys raise `Unknown option "<key>".`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -183,7 +33,7 @@ scene.push({
 
 ### lighting2d.newOccluder(properties)
 
-Creates an `Occluder` with the properties of the table over the defaults. Unknown keys raise `Unknown option "name".`, and a flat list of points with an odd count or a value that is not a number raises `A flat list of points needs two numbers per point.`
+Creates an [`Occluder`](#occluder) with the [properties](#properties-1) of the table over the defaults. The table is optional, and an `Occluder` in its place makes a copy. Unknown keys raise `Unknown option "<key>".`, and a flat list of points with an odd count or a value that is not a number raises `A flat list of points needs two numbers per point.`
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -210,7 +60,7 @@ scene.push({
 
 ### lighting2d.occludersFromBody(world, body)
 
-Returns a list of occluders, one per shape of a [`physics2d`](physics2d.md) body, in the space of the body at its current position and rotation: polygons, boxes, circles and capsules closed, and segments open. The segments of a chain join into one outline, closed when the chain loops. Occluders of a moving body follow it when they take its position and rotation every frame. The collision of a Tiled map, which `map:buildCollision(world)` turns into bodies, gives occluders for its tile collision shapes this way too.
+Returns a list of occluders, one for each shape of a body of a [`physics2d`](physics2d.md) world. The occluders sit in the space of the body at its current position and rotation. Polygons, boxes, circles and capsules make closed occluders, and segments open ones. The segments of a chain join into one outline, closed when the chain loops. To follow a moving body, give its occluders its position and rotation in every frame.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -247,14 +97,14 @@ scene.push({
 
 ### lighting2d.occludersFromMap(map, layer)
 
-Returns a list of occluders, one per object of the named object layer of a [Tiled](tiled.md) map, or of every object layer when `layer` is `nil`, in world coordinates with the offsets of the layer and its groups: rectangles, tile objects, ellipses, capsules and polygons closed, and polylines open. Tile objects outline their image where it draws. Points and text have no outline and make no occluder. A name that is not an object layer raises `The map has no object layer named "name".`
+Returns a list of occluders, one for each object of the named object layer of a [Tiled](tiled.md) map renderer, or of every object layer when `layer` is `nil`. The occluders are in world coordinates, with the offsets of the layer and its groups. Rectangles, tile objects, ellipses, capsules and polygons make closed occluders, and polylines open ones. A tile object outlines its image where it draws. Points and text have no outline and make no occluder. A name that is not an object layer raises `The map has no object layer named "<name>".`
 
 ```lua
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local lighting2d = require('haylen.lighting2d')
-local tiled = require('haylen.tiled')
-local assets = require('haylen.assets')
 local scene = require('haylen.scene')
+local tiled = require('haylen.tiled')
 
 local map = tiled.newMapRenderer(assets.load('maps/level.tmj'))
 local walls = lighting2d.occludersFromMap(map, 'walls')
@@ -275,26 +125,24 @@ scene.push({
 
 ### lighting2d.illuminate(ambient, lights, x, y, options)
 
-Returns the `Color` of the light map at a point that the ambient color and a list of lights leave, in order and with their blend modes, as the light pass computes it without normal maps or shadows. The argument `lights` holds `Light` objects or tables with their properties. The argument `options` is optional:
+Returns the `Color` of the light map at a point, after the ambient color and a list of lights, in order and with their blend modes. It works as the light pass does, without normal maps or shadows. The list `lights` holds `Light` objects or tables with their properties. Combine it with `light:shadowedAt` to tell how lit a character really is. The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `lightMask` | integer | `1` | Light mask of the draw at the point. |
-| `layer` | integer | `0` | Layer of the draw at the point. |
-
-It tells how visible a character standing in the dark is, and combined with `light:shadowedAt` how lit it really is.
+| `lightMask` | integer | `1` | The light mask of the draw at the point. |
+| `layer` | integer | `0` | The layer of the draw at the point. |
 
 ```lua
 local lighting2d = require('haylen.lighting2d')
 
 local torches = {lighting2d.newLight({x = 0, y = 0, radius = 200}), {x = 150, y = 0, radius = 120, color = '#FFFF8040'}}
-local seen = lighting2d.illuminate('#FF101020', torches, 60, 0)
+local seen = lighting2d.illuminate('#FF101020', torches, 60, 0, {layer = 2})
 print(seen.r > 0.5 and 'visible' or 'hidden')
 ```
 
 ### lighting2d.falloff(distance)
 
-Returns the radial falloff of lights without a texture, the curve of `graphics2d.lightTexture()`, for a distance given as a fraction of the radius: 1 at the center, fading smoothly to 0 at the radius and beyond. It lets gameplay code weigh light the way the light pass does, such as a light meter that sums the falloff of nearby lamps.
+Returns the radial falloff of lights without a texture, the curve of `graphics2d.lightTexture()`. The `distance` is a fraction of the radius. The result is 1 at the center and fades smoothly to 0 at the radius and beyond. Gameplay code uses it to weigh light the way the light pass does.
 
 ```lua
 local lighting2d = require('haylen.lighting2d')
@@ -306,20 +154,18 @@ print(lighting2d.falloff(distance / lamp.radius), lamp:strengthAt(distance, 0))
 
 ### lighting2d.flicker(time, options)
 
-Returns an intensity multiplier that wavers like a flame, from smooth noise, between `1 - amount` and 1. The same time, options and seed always give the same value. The argument `options` is optional:
+Returns an intensity multiplier that wavers like a flame, between `1 - amount` and 1, from smooth noise. The same time, options and seed always give the same value. Unknown keys raise `Unknown option "<key>".` The table `options` is optional:
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `speed` | number | `8` | How fast the value changes. |
-| `amount` | number | `0.15` | How far the value can dim below 1. 0 always returns 1. |
-| `seed` | integer | `0` | Noise seed. Give each light its own seed so they do not flicker in step. |
-
-Unknown keys raise `Unknown option "name".`
+| `amount` | number | `0.15` | How far the value can dim below 1. With 0 it always returns 1. |
+| `seed` | integer | `0` | The seed of the noise. Give each light its own seed so they do not flicker in step. |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
-local lighting2d = require('haylen.lighting2d')
 local haylen = require('haylen')
+local lighting2d = require('haylen.lighting2d')
 local scene = require('haylen.scene')
 
 local camera = graphics2d.newCamera()
@@ -331,4 +177,118 @@ scene.push({
         graphics2d.drawLight({x = 0, y = 0, radius = 140 * wave, color = '#FFFF9040', intensity = 0.8 * wave})
     end,
 })
+```
+
+## Light
+
+A `Light` holds every setting of one light. Create it once with `lighting2d.newLight` and draw it in every frame with [`graphics2d.drawLight`](graphics2d.md), which also takes a table with the same keys. Its properties read and write straight into the light.
+
+### Properties
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `type` | string | `'point'` | `'point'`, `'spot'` or `'directional'`. |
+| `x`, `y`, `position` | number, Vec2 | `0` | The center of point and spot lights. |
+| `radius` | number | `160` | The reach of point and spot lights. It must be positive. |
+| `color` | Color | `'#FFFFFFFF'` | The color of the light. Its alpha scales the light like the intensity. |
+| `intensity` | number | `1` | Multiplies the color. It must be zero or positive and may go above 1. |
+| `rotation` | number | `0` | Turns the texture of point lights and points spot and directional lights. 0 points right and a quarter turn points down. |
+| `scaleX`, `scaleY` | number | `1` | Stretch the texture of point and spot lights. They must be positive. |
+| `texture` | Texture or nil | `nil` | The shape of point and spot lights. Its colors tint the light and its alpha is the strength. With `nil` the light uses the radial falloff. |
+| `innerAngle`, `outerAngle` | number | `0.5`, `1` | The full angles in radians of the cone of spot lights. The inner angle may not exceed the outer one, and the outer one may not exceed a full turn. |
+| `height` | number | `0` | The height above the canvas, which sets the angle light reaches normal-mapped draws at. It must be zero or positive. |
+| `enabled` | boolean | `true` | A disabled light draws nothing. |
+| `blend` | string | `'add'` | `'add'`, `'subtract'`, `'mix'` or `'max'`. |
+| `itemMask` | integer | `1` | The bits of the light masks of the draws the light reaches, from 0 to 255. |
+| `layerMin`, `layerMax` | integer | all layers | The layers of the draws the light reaches. |
+| `shadows` | boolean | `false` | Lets occluders block the light. |
+| `shadowFilter` | string | `'none'` | `'none'`, `'pcf5'` or `'pcf13'`. |
+| `shadowColor` | Color | `'#FF000000'` | The light that shadowed pixels still receive. Its alpha sets how dark shadows are. |
+| `shadowSmoothness` | number | `0` | Spreads the filter samples wider, in shadow map texels beyond the first. It must be zero or positive. |
+| `shadowMask` | integer | `1` | The bits of the masks of the occluders that cast the shadows of the light. |
+
+### Errors
+
+The function `graphics2d.drawLight` checks a light before it draws it, and so do `light:strengthAt`, `light:apply`, `light:shadowedAt` and `lighting2d.illuminate`. A value out of its range raises one of these errors:
+
+- `A light radius must be positive.`
+- `A light intensity must be zero or positive.`
+- `A light scale must be positive.`
+- `A spot light needs an outer angle up to a full turn and an inner angle from 0 to the outer angle.`
+- `A light height must be zero or positive.`
+- `A light layer range needs "layerMin" at most "layerMax".`
+- `A light shadow smoothness must be zero or positive.`
+
+### light:affects(lightMask, layer)
+
+Returns whether the light reaches draws with the light mask and the layer.
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local lamp = lighting2d.newLight({itemMask = 6, layerMin = 1})
+print(lamp:affects(2, 1), lamp:affects(1, 1), lamp:affects(2, 0))
+```
+
+### light:strengthAt(x, y)
+
+Returns how strongly the light reaches a point, from 0 to 1, through the radial falloff and the cone of point and spot lights. A directional light reaches every point fully, and a textured light counts with the radial falloff.
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local spot = lighting2d.newLight({type = 'spot', x = 0, y = 0, radius = 300, rotation = 0, innerAngle = 0.4, outerAngle = 0.8})
+print(spot:strengthAt(100, 0), spot:strengthAt(0, 100))
+```
+
+### light:apply(color, x, y)
+
+Returns the light map value after the light draws over `color` at a point, with its blend mode and its falloff, without normal maps or shadows.
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local sun = lighting2d.newLight({type = 'directional', intensity = 0.5})
+print(sun:apply('#FF404040', 0, 0))
+```
+
+### light:shadowedAt(x, y, occluders)
+
+Returns whether one of the occluders stands between the light and a point, with the cull modes and masks of the shadow map. The list `occluders` holds `Occluder` objects or tables with their properties. A light without shadows never shadows a point. An occluder with too few points raises `An occluder needs at least 2 points, and 3 when it is closed.`
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local lamp = lighting2d.newLight({x = 0, y = 0, radius = 300, shadows = true})
+local wall = lighting2d.newOccluder({points = {100, -50, 100, 50}, closed = false})
+print(lamp:shadowedAt(200, 0, {wall}), lamp:shadowedAt(50, 0, {wall}))
+```
+
+## Occluder
+
+An `Occluder` is an outline that blocks the lights with shadows. Its points are local to its position, rotation and scale. The function [`graphics2d.drawOccluder`](graphics2d.md) draws it in a lit canvas, and also takes a table with the same keys. Drawing an occluder with too few points raises `An occluder needs at least 2 points, and 3 when it is closed.`
+
+### Properties
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `points` | list of Vec2 | empty | The outline, as a list of vectors or as a flat list of numbers, two per point. Reading it returns a list of vectors. |
+| `closed` | boolean | `true` | Joins the last point to the first. A closed occluder needs 3 points and an open one 2. |
+| `cull` | string | `'disabled'` | `'disabled'`, `'clockwise'` or `'counterClockwise'`: the edges that the light sees wound that way on the screen cast no shadow. |
+| `mask` | integer | `1` | The bits that the shadow masks of lights test. |
+| `x`, `y`, `position` | number, Vec2 | `0` | Where the points go. |
+| `rotation` | number | `0` | Turns the points, in radians. |
+| `scaleX`, `scaleY` | number | `1` | Scale the points. |
+
+### occluder:worldPoints()
+
+Returns the points in world coordinates, through the scale, the rotation and the position.
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local door = lighting2d.newOccluder({points = {0, 0, 40, 0}, closed = false, x = 100, y = 50, rotation = math.pi / 2})
+for _, point in ipairs(door:worldPoints()) do
+    print(point.x, point.y)
+end
 ```
