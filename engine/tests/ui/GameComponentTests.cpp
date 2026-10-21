@@ -669,4 +669,17 @@ TEST_F(GameComponentTest, KeepsTheLabelsOfSnugSegmentsWhole) {
     }
 }
 
+// A color field writes its color with the opacity only when the player can change it, so a field without opacity shows six digits.
+TEST_F(GameComponentTest, WritesTheOpacityOfAColorOnlyWhenTheFieldHasOne) {
+    mount(R"({"kind": "column", "children": [{"kind": "colorField", "value": "#802E7D32"}, {"kind": "colorField", "value": "#FF2E7D32", "alpha": false}]})");
+    frames(2);
+    std::vector<std::string> texts;
+    for (const Backend::Text& text : getUi().getBackend().getTexts()) {
+        texts.emplace_back(getUi().getBackend().getContent(text));
+    }
+    EXPECT_NE(std::ranges::find(texts, "#802E7D32"), texts.end());
+    EXPECT_NE(std::ranges::find(texts, "#2E7D32"), texts.end());
+    EXPECT_EQ(std::ranges::find(texts, "#FF2E7D32"), texts.end());
+}
+
 } // namespace haylen::ui

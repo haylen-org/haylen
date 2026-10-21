@@ -2179,7 +2179,7 @@ ui.mount(ui.column{
 
 ### ui.colorField(properties)
 
-A swatch with the color written as text that opens a color picker. A change reports `change` with the color as a `'#AARRGGBB'` string in `value`. It can take the focus.
+A swatch with the color written as text that opens a color picker. The text is `#AARRGGBB` while the player can change the opacity and `#RRGGBB` without it. A change reports `change` with the color as a `'#AARRGGBB'` string in `value`. It can take the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

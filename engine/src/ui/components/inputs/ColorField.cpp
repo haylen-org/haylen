@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <optional>
+#include <string>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -35,7 +36,13 @@ void ColorField::render(Context& context, const math::Rect& bounds) {
     const math::Rect swatch = context.mirror({bounds.x + padding, bounds.y + padding, bounds.height - padding * 2.0F, bounds.height - padding * 2.0F}, bounds);
     const float radius = context.getMetric(Theme::Metric::ControlRadius) * 0.5F;
     Surfaces::drawShape(context, {.bounds = swatch, .radii = {radius, radius, radius, radius}, .color = value, .borderWidth = 1.0F, .borderColor = context.getColor(Theme::Color::BorderStrong)});
-    Typography::drawAligned(context, Theme::Font::Monospace, context.mirror(math::Rect::fromMinMax({bounds.x + bounds.height, bounds.y}, {bounds.getRight() - padding, bounds.getBottom()}), bounds), context.getColor(Theme::Color::Text), value.toHex(), Alignment::Start);
+    // A field without opacity writes the color as "#RRGGBB", since its opacity is always full.
+    std::string& text = context.getFrameText();
+    text = value.toHex();
+    if (!alpha) {
+        text.erase(1, 2);
+    }
+    Typography::drawAligned(context, Theme::Font::Monospace, context.mirror(math::Rect::fromMinMax({bounds.x + bounds.height, bounds.y}, {bounds.getRight() - padding, bounds.getBottom()}), bounds), context.getColor(Theme::Color::Text), text, Alignment::Start);
 
     if (state.clicked) {
         ImGui::OpenPopup("##picker");
