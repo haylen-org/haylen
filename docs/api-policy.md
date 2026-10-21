@@ -28,6 +28,7 @@ A capability enters as new names, never as a new meaning of an existing name. Th
 - Essential inputs are positional and come first, such as the texture and the position of a draw, and nothing positional follows the options table. A positional boolean is kept for the one switch that defines a call, such as `closed` of a polyline or `restart` of `animator:play`, and every other switch is an option.
 - An unknown key raises `Unknown option "<key>".`, so a misspelled option never passes silently and a key added later never collides with an app's own key.
 - The last table of a draw call holds the draw order keys of [`haylen.graphics2d`](lua-api/graphics2d.md#draw-order) together with the options of that draw, such as `borderScale` of a nine-slice or `rotation` of a mesh, so a draw gains options without another argument.
+- A number the engine hands to Lua never carries a negative zero, so a coordinate at the origin formats as `0` and never as `-0`.
 - Hot paths that run per item, such as the primitives of `graphics2d` and the queries of `physics2d` and `spatial2d`, take numbers positionally to avoid tables in a loop, and end with an optional table for everything that may come later.
 
 ### Returns

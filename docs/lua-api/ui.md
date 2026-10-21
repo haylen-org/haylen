@@ -2079,7 +2079,7 @@ end})
 
 ### ui.numberField(properties)
 
-A number between a minimum and a maximum, changed with its minus and plus buttons or typed into the middle. A change reports `change` with the number as `value`. A typed number inside the range reports it at once, and one outside it waits until the player submits or leaves the field, which brings it into the range. Text that is not a finite number, such as `nan`, changes nothing, and the field shows the number again once the editing ends. It can take the focus.
+A number between a minimum and a maximum, changed with its minus and plus buttons, whose signs are strokes of one weight, or typed into the middle. The number shows without a sign when it rounds to zero, as the values of sliders do. A change reports `change` with the number as `value`. A typed number inside the range reports it at once, and one outside it waits until the player submits or leaves the field, which brings it into the range. Text that is not a finite number, such as `nan`, changes nothing, and the field shows the number again once the editing ends. It can take the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

@@ -37,6 +37,18 @@ math::Vec2 NumberField::measureContent(Context& context, float availableWidth) {
     return {std::min(availableWidth, height * 2.0F + 160.0F), height};
 }
 
+// The signs of the buttons are strokes of one weight, so the minus is as long and as thick as the bar of the plus, which the hyphen of a font is not.
+void NumberField::drawSign(Context& context, const math::Rect& button, bool plus) {
+    const math::Vec2 center = button.getCenter();
+    const float arm = std::round(button.height * kSignArm);
+    const float width = std::round(context.getMetric(Theme::Metric::StrokeWidth) * kSignWeight);
+    const math::Color color = context.getColor(Theme::Color::Text);
+    Widgets::line(context, {center.x - arm, center.y - width * 0.5F}, {center.x + arm, center.y - width * 0.5F}, width, color);
+    if (plus) {
+        Widgets::line(context, {center.x - width * 0.5F, center.y - arm}, {center.x - width * 0.5F, center.y + arm}, width, color);
+    }
+}
+
 void NumberField::render(Context& context, const math::Rect& bounds) {
     const float side = bounds.height;
     const math::Rect minus = context.mirror({bounds.x, bounds.y, side, side}, bounds);
@@ -44,10 +56,12 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
     const math::Rect middle = math::Rect::fromMinMax({bounds.x + side + 4.0F, bounds.y}, {bounds.getRight() - side - 4.0F, bounds.getBottom()});
 
     ImGui::PushID("minus");
-    const bool lower = Widgets::button(context, minus, "-", nullptr, Widgets::ButtonVariant::Default, false, {}, {});
+    const bool lower = Widgets::button(context, minus, {}, nullptr, Widgets::ButtonVariant::Default, false, {}, {});
+    drawSign(context, minus, false);
     ImGui::PopID();
     ImGui::PushID("plus");
-    const bool raise = Widgets::button(context, plus, "+", nullptr, Widgets::ButtonVariant::Default, false, {}, {});
+    const bool raise = Widgets::button(context, plus, {}, nullptr, Widgets::ButtonVariant::Default, false, {}, {});
+    drawSign(context, plus, true);
     ImGui::PopID();
 
     // Numeric keypads have no minus sign, so a field that takes negative numbers types on the text keyboard.

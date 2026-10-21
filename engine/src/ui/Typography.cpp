@@ -115,10 +115,15 @@ void Typography::drawAligned(Context& context, Theme::Font font, const math::Rec
     drawLayout(context, font, shown, style, {context.alignHorizontally(horizontal, bounds.x, bounds.width, size.x), bounds.y + (bounds.height - size.y) * 0.5F});
 }
 
+// A value that rounds to zero shows without a sign, so a slider at a tiny negative value or at -0 reads "0.00" and never "-0.00".
 std::string Typography::formatNumber(double value, int decimals) {
     std::array<char, 64> text{};
     std::snprintf(text.data(), text.size(), "%.*f", decimals, value);
-    return text.data();
+    std::string formatted = text.data();
+    if (formatted.front() == '-' && formatted.find_first_not_of("-0.") == std::string::npos) {
+        formatted.erase(0, 1);
+    }
+    return formatted;
 }
 
 } // namespace haylen::ui

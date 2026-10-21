@@ -83,9 +83,10 @@ template <Integer T> struct Converter<T> {
     }
 };
 
+// A number reaches Lua without a negative zero, which adding zero turns positive, so the coordinates of a rectangle at the origin never print as "-0".
 template <std::floating_point T> struct Converter<T> {
     static void push(lua_State* L, T value) {
-        lua_pushnumber(L, static_cast<lua_Number>(value));
+        lua_pushnumber(L, static_cast<lua_Number>(value) + 0.0);
     }
     static T read(lua_State* L, int index) {
         return static_cast<T>(luaL_checknumber(L, index));

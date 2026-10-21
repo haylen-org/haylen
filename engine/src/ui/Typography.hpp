@@ -49,7 +49,7 @@ class Typography final {
     // Draws a layout of the text in the style at the position of the top-left of its block, moved, scaled and tinted by the transforms of the nodes around it.
     static void drawLayout(Context& context, Theme::Font font, std::string_view text, const text::Style& style, math::Vec2 position);
 
-    // Formats a number with a fixed count of decimals.
+    // Formats a number with a fixed count of decimals, where a value that rounds to zero has no sign.
     [[nodiscard]] static std::string formatNumber(double value, int decimals);
 
   private:

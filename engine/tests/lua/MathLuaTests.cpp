@@ -6,6 +6,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/math/EasingCurve.hpp"
+#include "haylen/math/Rect.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::math {
@@ -178,6 +179,16 @@ TEST_F(MathLuaTest, PushesCurvesInTheFormsItReads) {
     lua::Stack::push(L, FloatRange{2.0F, 5.0F});
     lua_setglobal(L, "range");
     EXPECT_EQ(lua("return range[1] .. ' ' .. range[2]"), "2.0 5.0");
+}
+
+// Numbers reach Lua without a negative zero, so a rectangle whose corner the engine computed as -0 prints 0.
+TEST_F(MathLuaTest, PushesNumbersWithoutANegativeZero) {
+    lua_State* L = fixture.lua();
+    lua::Stack::push(L, Rect{-0.0F, -0.0F, 1920.0F, 1080.0F});
+    lua_setglobal(L, "visible");
+    lua::Stack::push(L, -0.0);
+    lua_setglobal(L, "zero");
+    EXPECT_EQ(lua("return string.format('%.0f %.0f %g', visible.x, visible.y, zero)"), "0 0 0");
 }
 
 TEST_F(MathLuaTest, RejectsCurvesWhoseValuesDoNotFit) {

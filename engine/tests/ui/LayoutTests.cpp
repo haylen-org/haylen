@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <string>
@@ -472,6 +473,34 @@ TEST_F(LayoutTest, DrawsTheLabelOfAProgressBarInTwoColorsAtTheEdgeOfItsFill) {
     const math::Rect bar = getBounds(*gui, "bar");
     EXPECT_TRUE(hasClip(math::Rect::fromMinMax(bar.getMin(), {bar.getCenter().x, bar.getBottom()})));
     EXPECT_TRUE(hasClip(math::Rect::fromMinMax({bar.getCenter().x, bar.y}, bar.getMax())));
+}
+
+// A slider shows a value that rounds to zero without a sign, and a number field draws its minus and plus as strokes of one weight rather than the hyphen of a font.
+TEST_F(LayoutTest, ShowsNumbersWithoutANegativeZeroAndDrawsTheSignsOfNumberFields) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [
+        {"kind": "slider", "width": 400, "value": -0.001, "min": -1, "max": 1, "showValue": true},
+        {"kind": "numberField", "id": "count", "value": 3}
+    ]})");
+    // clang-format on
+    frames(2);
+    Backend& backend = getUi().getBackend();
+    std::vector<std::string> texts;
+    for (const Backend::Text& text : backend.getTexts()) {
+        texts.emplace_back(backend.getContent(text));
+    }
+    EXPECT_NE(std::ranges::find(texts, "0.00"), texts.end());
+    EXPECT_EQ(std::ranges::find(texts, "-0.00"), texts.end());
+    EXPECT_EQ(std::ranges::find(texts, "-"), texts.end());
+    EXPECT_EQ(std::ranges::find(texts, "+"), texts.end());
+
+    const math::Rect field = getBounds(*gui, "count");
+    const math::Color ink = getUi().getTheme().getColor(Theme::Color::Text);
+    int strokes = 0;
+    for (const graphics2d::Shape& shape : backend.getShapes()) {
+        strokes += shape.color == ink && field.contains(shape.bounds.getCenter()) ? 1 : 0;
+    }
+    EXPECT_EQ(strokes, 3);
 }
 
 } // namespace haylen::ui

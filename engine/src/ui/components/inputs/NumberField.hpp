@@ -31,6 +31,12 @@ class NumberField final : public Component {
     }
 
   private:
+    // The arm of a sign as a share of the height of its button, and its weight as a multiple of the stroke width of the theme.
+    static constexpr float kSignArm = 0.16F;
+    static constexpr float kSignWeight = 1.5F;
+
+    void drawSign(Context& context, const math::Rect& button, bool plus);
+
     double value = 0.0;
     double minimum = 0.0;
     double maximum = 100.0;
