@@ -1730,7 +1730,7 @@ ui.mount(ui.column{
 
 ### ui.emptyState(properties)
 
-A placeholder for a view with nothing to show yet, with an optional picture, a title and a message, centered.
+A placeholder for a view with nothing to show yet, with an optional picture, a title and a message, centered, whose lines of text wrap at the theme `readingWidth`.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -3275,6 +3275,7 @@ Both built-in themes share these metrics, in design units.
 | `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
 | `splitterSize` | `10` | Thickness of the handle of splitters. |
 | `scrollLine` | `64` | Distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
+| `readingWidth` | `880` | Widest line of the title and the message of an empty state, which keeps a long message comfortable to read on a wide screen. |
 | `cellRadius` | `12` | Corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
 | `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |
 

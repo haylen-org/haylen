@@ -9,6 +9,7 @@
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
@@ -377,6 +378,26 @@ TEST_F(LayoutTest, LeavesTheEmptyPartsOfAnEmptyStateOut) {
     auto gui = mount(R"({"kind": "column", "align": "start", "children": [{"kind": "emptyState", "id": "alone", "message": "Nothing here"}, {"kind": "label", "id": "same", "text": "Nothing here"}]})");
     frames(2);
     EXPECT_EQ(getBounds(*gui, "alone").height, getBounds(*gui, "same").height);
+}
+
+// The title and the message of an empty state wrap at the reading width of the theme, centered, however wide the empty state is.
+TEST_F(LayoutTest, WrapsTheTextOfAnEmptyStateAtTheReadingWidth) {
+    const std::string message = "A message long enough to run across the whole width of a wide screen if nothing held it back to a comfortable width for reading it";
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "emptyState", "id": "empty", "title": "Nothing yet", "message": ")" + message + R"("}]})");
+    frames(2);
+    const float reading = getUi().getTheme().getMetric(Theme::Metric::ReadingWidth);
+    const math::Rect bounds = getBounds(*gui, "empty");
+    EXPECT_EQ(bounds.width, 1920.0F);
+    ui::Backend& backend = getUi().getBackend();
+    bool found = false;
+    for (const ui::Backend::Text& text : backend.getTexts()) {
+        if (backend.getContent(text) == message) {
+            found = true;
+            EXPECT_LE(text.style.maxWidth, reading);
+            EXPECT_GE(text.origin.x, bounds.getCenter().x - reading * 0.5F - 1.0F);
+        }
+    }
+    EXPECT_TRUE(found);
 }
 
 } // namespace haylen::ui
