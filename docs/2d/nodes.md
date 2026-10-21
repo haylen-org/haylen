@@ -294,6 +294,7 @@ The same tree is `haylen::nodes2d::NodeTree` in `haylen/2d/nodes/NodeTree.hpp`. 
 - The tree emits `destroyed` for every node that goes, and `onDestroyed(node, slot)` calls a slot for one node.
 
 ```cpp
+#include <any>
 #include <memory>
 
 #include "haylen/2d/graphics/Camera.hpp"
@@ -303,7 +304,7 @@ The same tree is `haylen::nodes2d::NodeTree` in `haylen/2d/nodes/NodeTree.hpp`. 
 
 class Garage final : public haylen::core::Scene {
   public:
-    void enter(haylen::core::Engine& engine) override {
+    void enter(haylen::core::Engine& engine, const std::any& params) override {
         haylen::nodes2d::Node tank = tree->add({.name = "tank", .position = {400.0F, 300.0F}});
         turret = tank.add({.name = "turret", .position = {0.0F, -8.0F}, .content = {.value = haylen::nodes2d::NodeContent::Text{.font = engine.getDefaultFont(), .content = "Turret"}}});
     }
