@@ -25,7 +25,8 @@ math::Vec2 Chip::measureContent(Context& context, float) {
 void Chip::render(Context& context, const math::Rect& bounds) {
     const float remove = removable ? bounds.height * 0.6F : 0.0F;
     const math::Rect body = context.mirror({bounds.x, bounds.y, bounds.width - remove, bounds.height}, bounds);
-    const Widgets::Interaction state = Widgets::interact(context, body, body.height * 0.5F, "##chip");
+    const float radius = std::min(context.getMetric(Theme::Metric::ChipRadius), bounds.height * 0.5F);
+    const Widgets::Interaction state = Widgets::interact(context, body, radius, "##chip");
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
@@ -35,13 +36,13 @@ void Chip::render(Context& context, const math::Rect& bounds) {
     if (state.hovered) {
         fill = math::Color{fill.r, fill.g, fill.b, std::min(1.0F, fill.a + 0.1F)};
     }
-    Surfaces::draw(context, surface, bounds, fill, context.getColor(selected ? Theme::Color::Accent : Theme::Color::Border), bounds.height * 0.5F);
+    Surfaces::draw(context, surface, bounds, fill, context.getColor(selected ? Theme::Color::Accent : Theme::Color::Border), radius);
     const math::Color ink = context.getColor(selected ? Theme::Color::AccentText : Theme::Color::Text);
     Typography::drawAligned(context, Theme::Font::Caption, body, ink, context.getText(text), Alignment::Center);
 
     if (removable) {
         const math::Rect cross = context.mirror({bounds.getRight() - remove, bounds.y, remove, bounds.height}, bounds);
-        const Widgets::Interaction removal = Widgets::interact(context, cross, cross.height * 0.5F, "##remove");
+        const Widgets::Interaction removal = Widgets::interact(context, cross, radius, "##remove");
         const math::Vec2 center = cross.getCenter() - math::Vec2{context.isRightToLeft() ? -remove * 0.25F : remove * 0.25F, 0.0F};
         Widgets::cross(context, center, remove * 0.18F, context.getMetric(Theme::Metric::StrokeWidth), context.getColor(removal.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
         if (removal.clicked) {

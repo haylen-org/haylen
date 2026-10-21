@@ -41,7 +41,7 @@ TEST(ThemeTest, ReadsEveryRoleByName) {
     EXPECT_EQ(Theme::colorFromName("accentText"), Theme::Color::AccentText);
     EXPECT_EQ(Theme::colorFromName("informationText"), Theme::Color::InformationText);
     EXPECT_EQ(Theme::metricFromName("pageIndicatorSize"), Theme::Metric::PageIndicatorSize);
-    EXPECT_EQ(Theme::metricFromName("sliderValueWidth"), Theme::Metric::SliderValueWidth);
+    EXPECT_EQ(Theme::metricFromName("chipRadius"), Theme::Metric::ChipRadius);
     EXPECT_EQ(Theme::fontFromName("monospace"), Theme::Font::Monospace);
     EXPECT_EQ(Theme::surfaceFromName("buttonPrimaryPressed"), Theme::Surface::ButtonPrimaryPressed);
     EXPECT_EQ(Theme::surfaceFromName("slotHighlighted"), Theme::Surface::SlotHighlighted);

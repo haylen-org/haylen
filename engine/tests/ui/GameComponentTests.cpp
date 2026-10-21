@@ -583,4 +583,26 @@ TEST_F(GameComponentTest, WrapsTheLabelsOfAVeryNarrowSegmentedControl) {
     }
 }
 
+// Chips round into pills by default, and a theme or a style rounds them less with its chip radius.
+TEST_F(GameComponentTest, RoundsChipsWithTheChipRadius) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "children": [
+        {"kind": "chip", "id": "pill", "text": "Wood"},
+        {"kind": "chip", "id": "tag", "text": "Stone", "style": {"metrics": {"chipRadius": 8}}}
+    ]})");
+    // clang-format on
+    frames(2);
+    const math::Rect pill = getBounds(*gui, "pill");
+    const math::Rect tag = getBounds(*gui, "tag");
+    std::vector<float> radii;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        if (shape.bounds == pill || shape.bounds == tag) {
+            radii.push_back(shape.radii[0]);
+        }
+    }
+    ASSERT_EQ(radii.size(), 2U);
+    EXPECT_FLOAT_EQ(radii[0], pill.height * 0.5F);
+    EXPECT_FLOAT_EQ(radii[1], 8.0F);
+}
+
 } // namespace haylen::ui

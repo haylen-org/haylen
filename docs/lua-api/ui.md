@@ -1839,7 +1839,7 @@ ui.mount(ui.imageButton{
 
 ### ui.chip(properties)
 
-A small pill that toggles when pressed and reports `change` with `selected`. A removable chip has its own cross button that reports `remove`. It can take the focus.
+A small pill, or a rounded tag with the theme `chipRadius`, that toggles when pressed and reports `change` with `selected`. A removable chip has its own cross button that reports `remove`. It can take the focus.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -3272,6 +3272,7 @@ Both built-in themes share these metrics, in design units.
 | `shadowSize` | `24` | Reach of the soft shadow of floating surfaces past their edge, along which the shadow starts at half its color, and which a toast casts at a share of this reach, nearer and lighter. The value `0` turns shadows off. |
 | `shadowOffset` | `6` | How far below its surface a shadow falls. |
 | `chipHeight` | `48` | Height of chips. |
+| `chipRadius` | `999` | Corner radius of chips, at most half their height, so the default rounds every chip into a pill. |
 | `strokeWidth` | `2` | Width of the lines of drawn icons, such as the cross of a removable chip and the lens of a filter field. |
 | `rowPadding` | `16` | Padding at the start and end of the rows of lists, trees, tables, popups and accordions. |
 | `checkRadius` | `8` | Corner radius of check boxes. |
