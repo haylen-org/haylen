@@ -1,6 +1,6 @@
 # Music Streaming
 
-Music Streaming is an app sample of a music service with a made-up library: 120 artists, 360 albums with covers drawn from shapes, more than 3,000 songs that the app makes with its own synthesizer, 2,400 liked songs, playlists, daily mixes, search, genres, a player that follows every screen, the now playing screen with a visualizer, seeking, shuffle, repeat and a sleep timer, and a queue to reorder. It looks like a product of its kind in a dark and immersive look lit by the colors of the music, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every artist, album and song is fake data made from a seed, and every song is music made for the project by the code of the app, so the same library shows and sounds the same on every run.
+Music Streaming is an app sample of a music service with a made-up library: 120 artists, 360 albums with covers drawn from shapes, more than 3,000 songs that the app makes with its own synthesizer, 2,400 favorite songs, playlists, a mix of every genre, search, genres, a player that follows every screen, the now playing screen with a visualizer, seeking, shuffle, repeat and a sleep timer, and a queue to reorder. It looks like a product of its kind in a dark and immersive look lit by the colors of the music, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every artist, album and song is fake data made from a seed, and every song is music made for the project by the code of the app, so the same library shows and sounds the same on every run.
 
 ## Running it
 
@@ -16,16 +16,16 @@ The commands run from the root of the repository:
 | Browser | `haylen run samples/apps/music-streaming --platform web` |
 | Headless player | `build/macos-debug/bin/haylen-headless samples/apps/music-streaming` |
 
-On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, picks a shorter song near the end of the one that plays and checks that the time of the old song never counts for the new one, skips, shuffles, repeats, sets the sleep timer, likes a song, reorders the queue, scrolls the liked songs, opens an artist, adds a song to a playlist, searches, opens a genre and the library, makes a playlist, logs every step and quits.
+On the headless platform the app runs a tour by itself: it plays a mix, opens the player, seeks, picks a shorter song near the end of the one that plays and checks that the time of the old song never counts for the new one, skips, shuffles, repeats, sets the sleep timer, likes a song, reorders the queue, scrolls the favorites, opens an artist, adds a song to a playlist, searches, opens a genre and the library, makes a playlist, logs every step and quits.
 
 ## Screens
 
 | Screen | What it shows |
 | --- | --- |
-| Home | A greeting, the playlists as quick picks with their covers, the mix of the day on a card in the colors of its genre, and shelves of mixes, new releases, popular artists and albums. |
+| Home | A greeting, the mix of the day on a card in the colors of its genre, and shelves of the mixes, the playlists, new releases, popular artists and albums played lately. |
 | Search | The genres as tiles in their colors while the field is empty, and the artists, albums and songs that match the typed text in one recycled list. |
 | Library | The playlists, albums and artists in a recycled grid, picked with pills, a dialog that makes a new playlist and, where quitting closes the app, a button that quits it. |
-| Album, playlist, mix and genre | The big cover, the names and the buttons that play and shuffle under the glow of the colors of the genre, over the songs in a recycled list that holds all 2,400 liked songs. |
+| Album, playlist, mix and genre | The big cover, the names and the buttons that play and shuffle under the glow of the colors of the genre, over the songs in a recycled list that holds all 2,400 favorites. |
 | Artist | The round picture, the listeners, the follow button, the popular songs and the albums in one recycled grid of mixed cells. |
 | Now playing | The big cover over the glow of its genre, the visualizer, the song with its heart, the position to drag, the controls with shuffle and repeat, the sleep timer and the volume. A wide window shows the cover beside the controls and the songs that come next. |
 | Queue | The song that plays and the songs that come next, which a drag or the keyboard, a gamepad or a remote put in another order. |

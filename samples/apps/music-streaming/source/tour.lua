@@ -1,4 +1,4 @@
--- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the liked songs, an artist, the search, a genre and the library, adds a song to a playlist and makes a playlist, logs each step and quits, so an unattended run checks every path of the app.
+-- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the favorites, an artist, the search, a genre and the library, adds a song to a playlist and makes a playlist, logs each step and quits, so an unattended run checks every path of the app.
 local haylen = require('haylen')
 local log = require('haylen.log')
 local scene = require('haylen.scene')
@@ -27,8 +27,8 @@ function Tour.steps()
         {'Open the queue', function() Shell.open(require('screens.queue')) end},
         {'Reorder the queue', function() Player.moveInQueue(Player.index + 3, Player.index + 1) Player.removeFromQueue(Player.index + 2) end},
         {'Close the player', function() Shell.back() Shell.back() end},
-        {'Open the liked songs', function() Shell.open(require('screens.collection'), {collection = 'liked'}) end},
-        {'Scroll the liked songs', function() scene.top().gui:collection('tracks'):scrollTo(2000, {align = 'center', animated = false}) end},
+        {'Open the favorites', function() Shell.open(require('screens.collection'), {collection = 'liked'}) end},
+        {'Scroll the favorites', function() scene.top().gui:collection('tracks'):scrollTo(2000, {align = 'center', animated = false}) end},
         {'Open an artist', function() Shell.open(require('screens.artist'), {artist = Catalog.artists[4].id}) end},
         {'Follow the artist', function() local page = scene.top() require('screens.artist').following[page.artist.id] = true page:showFollow() end},
         {'Add a song to a playlist', function() local page = scene.top() Widgets.askPlaylist(page, page.artist.tracks[2]) end},

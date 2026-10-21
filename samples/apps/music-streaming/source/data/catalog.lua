@@ -1,4 +1,4 @@
--- The made-up music of the app: genres, artists, albums with covers drawn from shapes, their songs, the liked songs, the mixes and the playlists. Every value comes from a seeded generator, so the same library shows on every run.
+-- The made-up music of the app: genres, artists, albums with covers drawn from shapes, their songs, the favorites, the mixes and the playlists. Every value comes from a seeded generator, so the same library shows on every run.
 local events = require('haylen.events')
 
 local Random = require('random')
@@ -26,9 +26,9 @@ Catalog.titleWords = {'Midnight', 'Golden', 'Slow', 'Paper', 'Electric', 'Summer
 Catalog.titleNouns = {'Lights', 'Waves', 'Hours', 'Streets', 'Dreams', 'Skies', 'Roads', 'Rooms', 'Echoes', 'Gardens', 'Signals', 'Mornings', 'Rivers', 'Hearts', 'Stars'}
 
 Catalog.playlists = {
-    {id = 'liked', name = 'Liked songs', description = 'Every song you liked, newest first.'},
+    {id = 'liked', name = 'Favorites', description = 'Every song you liked, newest first.'},
     {id = 'drive', name = 'Night drive', description = 'Neon lights and empty roads.'},
-    {id = 'focus', name = 'Deep focus', description = 'Calm music to keep you in the zone.'},
+    {id = 'focus', name = 'Calm focus', description = 'Quiet music for long hours of work.'},
     {id = 'coffee', name = 'Morning coffee', description = 'Easy songs for slow starts.'},
     {id = 'workout', name = 'Workout boost', description = 'Fast songs that keep you moving.'},
     {id = 'rain', name = 'Rainy window', description = 'Soft sounds for gray days.'},
@@ -62,7 +62,7 @@ function Catalog.build()
         taken[name] = true
         local genre = random:pick(Catalog.genres)
         local artist = {id = 'artist-' .. index, type = 'artist', name = name, genre = genre.id, listeners = random:integer(3, 900) * 1000, albums = {}, tracks = {}}
-        artist.caption = string.format('%s · %s monthly listeners', genre.name, Catalog.thousands(artist.listeners))
+        artist.caption = string.format('%s · %s listeners', genre.name, Catalog.thousands(artist.listeners))
         Catalog.artists[index] = artist
         Catalog.byId[artist.id] = artist
         for album = 1, 3 do
@@ -100,14 +100,14 @@ function Catalog.build()
     end
     Catalog.mixes = {}
     for index, genre in ipairs(Catalog.genres) do
-        local mix = {id = 'mix-' .. genre.id, type = 'playlist', genre = genre.id, name = 'Daily mix ' .. index, description = 'The ' .. string.lower(genre.name) .. ' you play most, and more like it.', tracks = {}}
+        local mix = {id = 'mix-' .. genre.id, type = 'playlist', genre = genre.id, name = genre.name .. ' mix', description = 'The ' .. string.lower(genre.name) .. ' you play most, and more like it.', tracks = {}}
         for _, track in ipairs(Catalog.tracks) do
             if track.genre == genre.id and #mix.tracks < 40 then
                 mix.tracks[#mix.tracks + 1] = track
             end
         end
         mix.cover = Catalog.newCover('mix-' .. genre.id, random, genre)
-        mix.caption = genre.name .. ' mix'
+        mix.caption = string.format('Mix · %d songs', #mix.tracks)
         Catalog.mixes[index] = mix
         Catalog.byId[mix.id] = mix
     end
@@ -174,7 +174,7 @@ function Catalog.find(id)
     return Catalog.byId[id]
 end
 
--- Likes a song or takes the like back, keeps the liked songs newest first, and emits "playerChanged" so every view of the song follows.
+-- Likes a song or takes the like back, keeps the favorites newest first, and emits "playerChanged" so every view of the song follows.
 function Catalog.toggleLike(track)
     track.liked = not track.liked
     if track.liked then
@@ -188,7 +188,7 @@ function Catalog.toggleLike(track)
         end
     end
     events.emit('playerChanged')
-    events.emit('notice', track.liked and 'Added to your liked songs.' or 'Removed from your liked songs.')
+    events.emit('notice', track.liked and 'Added to your favorites.' or 'Removed from your favorites.')
     return track.liked
 end
 

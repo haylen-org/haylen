@@ -1,4 +1,4 @@
--- The home tab: a greeting, the playlists to jump back into as quick picks, the mix of the day on a card lit by its colors, and shelves of mixes, new releases, popular artists and albums.
+-- The home tab: a greeting, the mix of the day on a card lit by its colors, and shelves of the mixes, the playlists, new releases, popular artists and albums played lately.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -12,31 +12,22 @@ local Widgets = require('widgets')
 
 local Home = haylen.class('Home', Page)
 
--- A quick pick: the cover and the name of a playlist on a button that opens it.
-Home.pick = {colors = {raised = Style.color.lifted, border = Style.color.lifted}, metrics = {controlRadius = Style.radius.cover, iconSize = 64, controlPaddingX = 0, contentSpacing = Style.space.m}, fonts = {button = {size = Style.type.label}}}
-
 function Home:enter()
     local space = Style.space
     self.glow = Catalog.mixes[1].genre
-    local picks = {}
-    for index = 1, 6 do
-        local playlist = Catalog.playlists[index] or Catalog.mixes[index]
-        picks[index] = ui.button{id = 'pick-' .. playlist.id, text = playlist.name, icon = playlist.cover, iconColor = false, justify = 'start', height = 64, align = 'stretch', style = Home.pick, onClick = function()
-            Shell.open(require('screens.collection'), {collection = playlist.id})
-        end}
-    end
     self:mountGui(Shell.frame('home', ui.scroll{grow = 1, height = 0,
         Shell.centered(Style.size.page, ui.column{id = 'page', gap = space.s, padding = {space.l, space.m, space.xl, space.m},
             ui.label{text = Home.greeting(), font = 'title', margin = {0, space.xs, space.xs, space.xs}},
-            ui.grid{id = 'picks', columns = 3, minColumnWidth = 210, gap = space.s, padding = {0, space.xs}, children = picks},
-            ui.column{id = 'featured', margin = {space.m, space.xs, 0, space.xs}},
-            Widgets.section('Made for you'),
+            ui.column{id = 'featured', margin = {0, space.xs}},
+            Widgets.section('Your mixes'),
             Widgets.shelf('mixes', 'playlist'),
+            Widgets.section('Your playlists'),
+            Widgets.shelf('playlists', 'playlist'),
             Widgets.section('New releases'),
             Widgets.shelf('releases', 'album'),
             Widgets.section('Popular artists'),
             Widgets.shelf('artists', 'artist'),
-            Widgets.section('Jump back in'),
+            Widgets.section('Played lately'),
             Widgets.shelf('albums', 'album'),
         }),
     }))
@@ -52,6 +43,7 @@ function Home:enter()
         artists[index] = Catalog.artists[index * 3]
     end
     self.gui:collection('mixes'):setItems(Catalog.mixes)
+    self.gui:collection('playlists'):setItems(Catalog.playlists)
     self.gui:collection('releases'):setItems(releases)
     self.gui:collection('artists'):setItems(artists)
     self.gui:collection('albums'):setItems(albums)

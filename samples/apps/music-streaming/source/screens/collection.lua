@@ -1,4 +1,4 @@
--- An album, a playlist, a mix or a genre: the big cover, the names and the buttons that play and shuffle under the glow of its colors, over the songs in a recycled list, which holds all 2,400 liked songs.
+-- An album, a playlist, a mix or a genre: the big cover, the names and the buttons that play and shuffle under the glow of its colors, over the songs in a recycled list, which holds all 2,400 favorites.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 

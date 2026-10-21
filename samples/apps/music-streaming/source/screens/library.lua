@@ -25,7 +25,7 @@ function Library:enter()
     self:mountGui(Shell.frame('library', ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
         Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
             ui.row{gap = space.xs,
-                ui.label{text = 'Your library', font = 'title', grow = 1, wrap = false},
+                ui.label{text = 'Library', font = 'title', grow = 1, wrap = false},
                 ui.button{id = 'new', icon = Shell.icon('plus'), iconColor = 'text', variant = 'icon', tooltip = 'New playlist', accessibilityLabel = 'New playlist', onClick = function(event)
                     event.gui:set('newDialog', {open = true})
                 end},
