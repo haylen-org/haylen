@@ -14,7 +14,8 @@ When the engine is not the top-level project, its player, tests and benchmarks a
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `HAYLEN_SHADERC` | Empty | Path to the Haylen shader compiler `haylen-shaderc`, which compiles the engine shaders. A source build fails without it. The command `haylen tools` downloads the pinned release into `.tools/` of a Haylen checkout, and the [releases](https://github.com/haylen-org/haylen-shader-compiler/releases) of the compiler hold its binaries for macOS, Linux and Windows. |
+| `HAYLEN_SHADERC` | Empty | Path to a build of the Haylen shader compiler `haylen-shaderc`, which compiles the engine shaders. Empty, the configure downloads the binary of the pinned [release](https://github.com/haylen-org/haylen-shader-compiler/releases) for the machine and checks its SHA-256, or builds the compiler from the source of that release on a machine the release has no binary for. |
+| `HAYLEN_SHADERC_CACHE` | The CPM source cache, or `tools` of the build tree without one | Folder that keeps the compilers that the configure provides, so build trees share them. |
 | `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | Folder of the backend, whose `backend.cmake` adds the window, the frames, the GPU device and the entry point to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. |
 | `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
@@ -39,7 +40,7 @@ haylen_add_app(my-app
 ```
 
 ```sh
-cmake -S . -B build -G Ninja -DHAYLEN_SHADERC=/path/to/haylen-shaderc
+cmake -S . -B build -G Ninja
 cmake --build build
 ```
 

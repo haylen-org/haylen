@@ -28,7 +28,7 @@ set(HAYLEN_GRAPHICS_API "AUTO" CACHE STRING "Graphics API the backend draws thro
 set_property(CACHE HAYLEN_GRAPHICS_API PROPERTY STRINGS AUTO METAL D3D11 GLCORE GLES3 WGPU)
 set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of desktop builds without MSVC: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
 set_property(CACHE HAYLEN_SANITIZERS PROPERTY STRINGS OFF ADDRESS THREAD)
-set(HAYLEN_SHADERC "" CACHE FILEPATH "Path to the Haylen shader compiler haylen-shaderc.")
+set(HAYLEN_SHADERC "" CACHE FILEPATH "Path to a build of the Haylen shader compiler haylen-shaderc, or empty for the pinned compiler that the build downloads or builds.")
 
 list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")
 

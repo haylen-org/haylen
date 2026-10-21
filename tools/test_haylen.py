@@ -6,6 +6,7 @@ import base64
 import dataclasses
 import contextlib
 import functools
+import hashlib
 import http.client
 import importlib.util
 import http.server
@@ -854,6 +855,8 @@ class ShaderCompilerTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.scratch)
+        haylen.ensure_shaderc.cache_clear()
+        self.addCleanup(haylen.ensure_shaderc.cache_clear)
 
     def test_another_shader_compiler_configures_the_build_tree_again(self):
         compiler = self.scratch / "tools" / "haylen-shaderc-new" / "haylen-shaderc"
@@ -874,73 +877,100 @@ class ShaderCompilerTest(unittest.TestCase):
         with mock.patch.dict(os.environ, {haylen.SHADER_COMPILER_VARIABLE: str(compiler)}), mock.patch.object(haylen, "run") as run:
             self.assertEqual(haylen.ensure_shaderc(), compiler.resolve())
         run.assert_not_called()
+        haylen.ensure_shaderc.cache_clear()
         with mock.patch.dict(os.environ, {haylen.SHADER_COMPILER_VARIABLE: str(self.scratch / "missing")}):
             with self.assertRaisesRegex(haylen.BuildError, haylen.SHADER_COMPILER_VARIABLE):
                 haylen.ensure_shaderc()
 
-    def test_a_machine_without_a_binary_builds_the_pinned_commit_once_into_a_folder_of_its_commit(self):
-        folder = self.scratch / f"haylen-shaderc-{haylen.SHADER_COMPILER_COMMIT[:7]}"
+    def archive(self, name: str, files: dict[str, str]) -> tuple[str, str]:
+        """Writes an archive like the ones of the releases, a zip or a gzipped tar after its name, and returns its URL and SHA-256."""
+        target = self.scratch / "server" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if name.endswith(".zip"):
+            with zipfile.ZipFile(target, "w") as package:
+                for path, text in files.items():
+                    package.writestr(path, text)
+        else:
+            with tarfile.open(target, "w:gz") as package:
+                for path, text in files.items():
+                    info = tarfile.TarInfo(path)
+                    info.size = len(text.encode())
+                    info.mode = 0o755
+                    package.addfile(info, io.BytesIO(text.encode()))
+        return target.as_uri(), hashlib.sha256(target.read_bytes()).hexdigest()
+
+    def provide(self, pins: dict, environment: dict[str, str] | None = None) -> tuple[subprocess.CompletedProcess, Path]:
+        """Runs the script of the engine with the pins as a machine would, and returns the run and the compiler it named."""
+        (self.scratch / "pins.json").write_text(json.dumps(pins))
+        result = self.scratch / "result"
+        result.unlink(missing_ok=True)
+        command = ["cmake", f"-DHAYLEN_SHADERC_CACHE={(self.scratch / 'cache').as_posix()}", f"-DHAYLEN_SHADERC_RESULT={result.as_posix()}", f"-DHAYLEN_SHADERC_PINS={(self.scratch / 'pins.json').as_posix()}", "-P", haylen.SHADER_COMPILER_SCRIPT]
+        run = subprocess.run(command, capture_output=True, text=True, env={**os.environ, **(environment or {})})
+        return run, Path(result.read_text()) if result.exists() else None
+
+    def host(self) -> str:
+        return f"{haylen.host_name()}-{haylen.host_arch()}"
+
+    def test_the_release_binary_of_the_machine_downloads_once_into_a_folder_of_its_version(self):
         executable = haylen.executable_name("haylen-shaderc")
-
-        def build(command, *arguments, **options):
-            if "--build" in command:
-                built = folder / "build" / "tools" / executable
-                built.parent.mkdir(parents=True, exist_ok=True)
-                built.write_text("compiler")
-
-        environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
-        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "SHADER_COMPILER_BINARIES", {}), mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "run", side_effect=build) as run, mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
-            self.assertEqual(haylen.ensure_shaderc(), folder / executable)
-            fetched = [call.args[0] for call in run.call_args_list if "fetch" in [str(part) for part in call.args[0]]]
-            self.assertEqual([str(part) for part in fetched[0]][-2:], [haylen.SHADER_COMPILER_REPOSITORY, haylen.SHADER_COMPILER_COMMIT])
-            calls = run.call_count
-            self.assertEqual(haylen.ensure_shaderc(), folder / executable)
-            self.assertEqual(run.call_count, calls)
-        self.assertEqual((folder / executable).read_text(), "compiler")
-
-    def download_release(self, host: str, arch: str) -> tuple[Path, list[tuple[str, str]]]:
-        """Asks for the compiler as a machine of the given system and processor would, with a download that writes an archive like the ones of the release and records what it fetched."""
-        downloads = []
-
-        def fake_download(url, target, sha256=None):
-            downloads.append((url, sha256))
-            executable = "haylen-shaderc.exe" if url.endswith(".zip") else "haylen-shaderc"
-            target.parent.mkdir(parents=True, exist_ok=True)
-            if url.endswith(".zip"):
-                with zipfile.ZipFile(target, "w") as package:
-                    package.writestr(executable, "compiler")
-                    package.writestr("LICENSE", "license")
-            else:
-                with tarfile.open(target, "w:gz") as package:
-                    for name, data in ((executable, b"compiler"), ("LICENSE", b"license")):
-                        info = tarfile.TarInfo(name)
-                        info.size = len(data)
-                        package.addfile(info, io.BytesIO(data))
-
-        environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
-        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "host_name", return_value=host), mock.patch.object(haylen, "host_arch", return_value=arch), mock.patch.object(haylen, "download", side_effect=fake_download), mock.patch.object(haylen, "run") as run:
-            compiler = haylen.ensure_shaderc()
-            self.assertEqual(haylen.ensure_shaderc(), compiler)
-        run.assert_not_called()
-        return compiler, downloads
-
-    def test_the_pinned_release_downloads_once_and_checks_its_digest(self):
-        compiler, downloads = self.download_release("linux", "x64")
-        self.assertEqual(compiler, self.scratch / f"haylen-shaderc-{haylen.SHADER_COMPILER_VERSION}" / "haylen-shaderc")
+        url, digest = self.archive("haylen-shaderc-9.9.9-host.zip" if haylen.host_name() == "windows" else "haylen-shaderc-9.9.9-host.tar.gz", {executable: "compiler", "LICENSE": "license"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": "file:///missing.tar.gz", "sha256": "0" * 64}, "binaries": {self.host(): {"url": url, "sha256": digest}}}
+        run, compiler = self.provide(pins)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(compiler, self.scratch / "cache" / "haylen-shaderc-9.9.9" / executable)
         self.assertEqual(compiler.read_text(), "compiler")
         self.assertTrue(os.access(compiler, os.X_OK))
-        name, digest = haylen.SHADER_COMPILER_BINARIES[("linux", "x64")]
-        self.assertEqual(downloads, [(f"{haylen.SHADER_COMPILER_RELEASES}/v{haylen.SHADER_COMPILER_VERSION}/haylen-shaderc-{haylen.SHADER_COMPILER_VERSION}-{name}", digest)])
-        self.assertEqual(sorted(path.name for path in compiler.parent.iterdir()), ["haylen-shaderc"])
+        self.assertEqual([path.name for path in compiler.parent.iterdir()], [executable])
 
-    def test_windows_takes_the_compiler_out_of_the_zip_of_its_release(self):
-        compiler, downloads = self.download_release("windows", "x64")
-        self.assertEqual(compiler.name, "haylen-shaderc.exe")
-        self.assertEqual(compiler.read_text(), "compiler")
-        self.assertTrue(downloads[0][0].endswith("-windows-x64.zip"))
+        (self.scratch / "server").rename(self.scratch / "gone")
+        run, again = self.provide(pins)
+        self.assertEqual((run.returncode, again), (0, compiler))
 
-    def test_both_apple_processors_share_the_universal_binary(self):
-        self.assertEqual(haylen.SHADER_COMPILER_BINARIES[("macos", "arm64")], haylen.SHADER_COMPILER_BINARIES[("macos", "x64")])
+    def test_a_download_that_differs_from_its_digest_fails_and_keeps_nothing(self):
+        url, digest = self.archive("haylen-shaderc-9.9.9-host.tar.gz", {"haylen-shaderc": "compiler"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": url, "sha256": digest}, "binaries": {self.host(): {"url": url, "sha256": "0" * 64}}}
+        run, compiler = self.provide(pins)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("haylen-shaderc-9.9.9-host.tar.gz", run.stderr)
+        self.assertIsNone(compiler)
+        self.assertEqual(list((self.scratch / "cache" / "haylen-shaderc-9.9.9").iterdir()), [])
+
+    def test_a_machine_without_a_binary_builds_the_commit_without_the_toolchain_of_a_cross_build(self):
+        executable = haylen.executable_name("haylen-shaderc")
+        project = f"""cmake_minimum_required(VERSION 3.28)
+project(compiler LANGUAGES NONE)
+if(HAYLEN_SHADERC_BUILD_TESTS)
+  message(FATAL_ERROR "The tests of the compiler are on.")
+endif()
+add_custom_target(haylen-shaderc ALL COMMAND ${{CMAKE_COMMAND}} -E copy ${{CMAKE_CURRENT_SOURCE_DIR}}/compiler ${{CMAKE_BINARY_DIR}}/bin/{executable})
+"""
+        url, digest = self.archive("abcdef0123456789.tar.gz", {"haylen-shader-compiler-abcdef0123456789/CMakeLists.txt": project, "haylen-shader-compiler-abcdef0123456789/compiler": "built"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": url, "sha256": digest}, "binaries": {"other-host": {"url": "file:///missing.tar.gz", "sha256": "0" * 64}}}
+        run, compiler = self.provide(pins, {"CMAKE_TOOLCHAIN_FILE": str(self.scratch / "missing-toolchain.cmake")})
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertEqual(compiler, self.scratch / "cache" / "haylen-shaderc-abcdef0" / executable)
+        self.assertEqual(compiler.read_text(), "built")
+        self.assertEqual([path.name for path in compiler.parent.iterdir()], [executable])
+
+    def test_haylen_py_takes_the_compiler_that_the_script_of_the_engine_provides(self):
+        script = self.scratch / "cmake" / "haylen-shader-compiler.cmake"
+        script.parent.mkdir()
+        shutil.copy2(haylen.SHADER_COMPILER_SCRIPT, script)
+        executable = haylen.executable_name("haylen-shaderc")
+        url, digest = self.archive("haylen-shaderc-9.9.9-host.zip", {executable: "compiler"})
+        (script.parent / "haylen-shader-compiler.json").write_text(json.dumps({"version": "9.9.9", "commit": "abcdef0123456789", "binaries": {self.host(): {"url": url, "sha256": digest}}}))
+        environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "SHADER_COMPILER_SCRIPT", script), mock.patch.object(haylen, "TOOLS_DIR", self.scratch / "tools"), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            self.assertEqual(haylen.ensure_shaderc(), self.scratch / "tools" / "haylen-shaderc-9.9.9" / executable)
+
+    def test_the_pins_name_the_archives_of_their_release_and_the_source_of_their_commit(self):
+        pins = json.loads((haylen.SHADER_COMPILER_SCRIPT.parent / "haylen-shader-compiler.json").read_text())
+        version, commit = pins["version"], pins["commit"]
+        self.assertTrue(pins["source"]["url"].endswith(f"/archive/{commit}.tar.gz"))
+        for host, binary in pins["binaries"].items():
+            self.assertIn(f"/releases/download/v{version}/haylen-shaderc-{version}-", binary["url"], host)
+            self.assertRegex(binary["sha256"], "^[0-9a-f]{64}$", host)
+        self.assertEqual(pins["binaries"]["macos-arm64"], pins["binaries"]["macos-x64"])
 
 
 class XcodeGenTest(unittest.TestCase):
