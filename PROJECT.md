@@ -2093,13 +2093,13 @@ A revisão visual de cada teste do projeto de testes, nas capturas do player web
 
 Moldura dos testes:
 
-- [ ] A área do teste (a área de jogo ou o conteúdo) fica entre o cabeçalho e o cartão de código, recortada e com rolagem quando o conteúdo passa da altura, e o cartão de código e a dica nunca cobrem nada nem empurram a moldura para fora da janela.
-- [ ] Controles de toque dentro da área de jogo, presos aos cantos dela com margem, e só onde o toque é a entrada (`touchOnly`), sem cobrir o cartão de código, o status ou o painel. As sobreposições dos testes ficam dentro da área do teste.
-- [ ] Cartão de código em fonte monoespaçada de verdade, com cores de sintaxe do tema (palavras-chave, textos, números, comentários e funções), sem partir um token no fim da linha, com recuo nas linhas que continuam e com altura fixa, para a área de jogo ter a mesma altura em todo teste.
-- [ ] O botão Back e o selo do código ficam no topo do cabeçalho mesmo com a descrição em duas linhas.
-- [ ] A linha de status vazia não ocupa espaço, e o status mostra sempre o último texto, sem perder uma chamada feita entre dois intervalos.
-- [ ] Painéis laterais que cabem ou rolam, mostrando um degradê na borda onde o conteúdo continua, com os botões na largura do painel e listas que não empurram os controles para fora da vista.
-- [ ] A dica traz só o que o teste explica, e as teclas de navegação aparecem uma vez, de forma compacta e igual em todo teste.
+- [x] A área do teste (a área de jogo ou o conteúdo) fica entre o cabeçalho e o cartão de código, recortada e com rolagem quando o conteúdo passa da altura, e o cartão de código e a dica nunca cobrem nada nem empurram a moldura para fora da janela. Feito: a região do teste é a área de jogo com as sobreposições presas a ela, ou o conteúdo num `scroll` com `fill`, que estica o conteúdo curto e rola o alto, e as GUIs próprias de um teste ficam na região com `Test:keepInRegion`, como a barra do player e a hotbar.
+- [x] Controles de toque dentro da área de jogo, presos aos cantos dela com margem, e só onde o toque é a entrada (`touchOnly`), sem cobrir o cartão de código, o status ou o painel. As sobreposições dos testes ficam dentro da área do teste. Feito: os controles se prendem à área de jogo com o `anchorTo = 'parent'` novo da engine. O `touchOnly` já funcionava, eles apareciam porque os testes de input não o usavam, e só os testes dos próprios controles de toque os mostram sem toque.
+- [x] Cartão de código em fonte monoespaçada de verdade, com cores de sintaxe do tema (palavras-chave, textos, números, comentários e funções), sem partir um token no fim da linha, com recuo nas linhas que continuam e com altura fixa, para a área de jogo ter a mesma altura em todo teste. Feito: `harness/code.lua` colore o Lua com as cores do tema em rich text, junta os espaços dos textos e da indentação para nunca quebrarem, e cada linha é um parágrafo com o recuo pendente `hang` novo do rich text. O cartão tem a altura de seis linhas e rola o código mais longo.
+- [x] O botão Back e o selo do código ficam no topo do cabeçalho mesmo com a descrição em duas linhas.
+- [x] A linha de status vazia não ocupa espaço, e o status mostra sempre o último texto, sem perder uma chamada feita entre dois intervalos.
+- [x] Painéis laterais que cabem ou rolam, mostrando um degradê na borda onde o conteúdo continua, com os botões na largura do painel e listas que não empurram os controles para fora da vista. Feito na moldura: o painel rola com o degradê novo da engine e estica os controles na largura dele. As listas longas de testes como o `PRT-034` ainda pedem uma caixa de altura fixa no próprio teste.
+- [x] A dica traz só o que o teste explica, e as teclas de navegação aparecem uma vez, de forma compacta e igual em todo teste.
 - [ ] As verificações de `harness/results.lua` rolam, então nenhuma fica escondida.
 - [ ] Todo teste mostra o cartão de código, também os de desenvolvimento, de idiomas, de desenhos de debug e de vídeo, e a página de não suportado mostra um ícone, o motivo numa largura de leitura, as plataformas onde o teste roda e o código.
 

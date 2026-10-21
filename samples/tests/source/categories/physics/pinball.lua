@@ -47,9 +47,9 @@ function Pinball:enter()
         pointer = false,
         actions = Pinball.actions,
         overlay = {
-            ui.touchButton{action = 'leftFlipper', text = 'Left', size = 150, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}},
-            ui.touchButton{action = 'rightFlipper', text = 'Right', size = 150, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
-            ui.touchButton{action = 'plunger', text = 'Plunger', size = 120, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 290, 0}},
+            ui.touchButton{action = 'leftFlipper', text = 'Left', size = 150, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
+            ui.touchButton{action = 'rightFlipper', text = 'Right', size = 150, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
+            ui.touchButton{action = 'plunger', text = 'Plunger', size = 120, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 204, 0}},
         },
     }
     self.best = 0

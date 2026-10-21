@@ -26,6 +26,7 @@ function SharedFocus:enter()
     }
     self.gui.sharedFocus = true
     self.bar = ui.mount(self:barTree(), {owner = self, layer = 1, sharedFocus = true})
+    self:keepInRegion(self.bar, 'bar', 24)
     self:refresh()
 end
 
@@ -43,7 +44,7 @@ function SharedFocus:form()
 end
 
 function SharedFocus:sheet()
-    return ui.panel{id = 'sheet', visible = false, anchor = 'stretchBottom', height = 220, focusScope = true, onCancel = function() self:setSheet(false) end,
+    return ui.panel{id = 'sheet', visible = false, anchor = 'stretchBottom', anchorTo = 'parent', height = 220, focusScope = true, onCancel = function() self:setSheet(false) end,
         ui.column{gap = 12,
             ui.label{text = 'This sheet comes after the scroll in the tree, so it covers the form.', font = 'heading'},
             ui.label{text = 'The focus stays in the sheet until it closes.', color = 'textMuted'},
@@ -53,7 +54,7 @@ function SharedFocus:sheet()
 end
 
 function SharedFocus:barTree()
-    return ui.panel{anchor = 'bottomRight', margin = 24, padding = 12,
+    return ui.panel{id = 'bar', anchor = 'bottomRight', margin = 24, padding = 12,
         ui.row{wrap = true, gap = 12,
             ui.button{id = 'previous', text = 'Previous', onClick = function() self:skip(-1) end},
             ui.button{id = 'play', text = 'Play', variant = 'primary', onClick = function() self:toggle() end},

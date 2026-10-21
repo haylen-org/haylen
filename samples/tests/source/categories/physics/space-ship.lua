@@ -46,10 +46,10 @@ function SpaceShip:enter()
         pointer = false,
         actions = SpaceShip.actions,
         overlay = {
-            ui.touchButton{action = 'turnLeft', text = 'Left', size = 130, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}},
-            ui.touchButton{action = 'turnRight', text = 'Right', size = 130, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 190}},
-            ui.touchButton{action = 'thrust', text = 'Thrust', size = 130, touchOnly = true, anchor = 'bottomRight', margin = {0, 690, 110, 0}},
-            ui.touchButton{action = 'fire', text = 'Fire', size = 150, touchOnly = true, anchor = 'bottomRight', margin = {0, 520, 110, 0}},
+            ui.touchButton{action = 'turnLeft', text = 'Left', size = 130, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
+            ui.touchButton{action = 'turnRight', text = 'Right', size = 130, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 174}},
+            ui.touchButton{action = 'thrust', text = 'Thrust', size = 130, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 174, 24, 0}},
+            ui.touchButton{action = 'fire', text = 'Fire', size = 150, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 4, 24, 0}},
         },
     }
     self.random = m.random(57)

@@ -42,8 +42,8 @@ function Players:enter()
         hint = 'Press start or south on a gamepad to join its seat. Each seat moves with its own devices only.',
         play = true,
         overlay = {
-            ui.touchStick{action = 'seat.move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 240, height = 240},
-            ui.touchButton{anchor = 'bottomRight', margin = {0, 40, 110, 0}, action = 'seat.jump', text = 'Jump'},
+            ui.touchStick{action = 'seat.move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 240, height = 240, touchOnly = true},
+            ui.touchButton{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, action = 'seat.jump', text = 'Jump', touchOnly = true},
         },
     })
 end

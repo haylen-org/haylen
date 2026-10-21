@@ -47,11 +47,11 @@ function TopDownCar:enter()
         pointer = false,
         actions = TopDownCar.actions,
         overlay = {
-            ui.touchButton{action = 'left', text = 'Left', size = 130, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}},
-            ui.touchButton{action = 'right', text = 'Right', size = 130, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 190}},
-            ui.touchButton{action = 'handbrake', text = 'Drift', size = 120, touchOnly = true, anchor = 'bottomRight', margin = {0, 710, 110, 0}},
-            ui.touchButton{action = 'reverse', text = 'Back', size = 120, touchOnly = true, anchor = 'bottomRight', margin = {0, 860, 110, 0}},
-            ui.touchButton{action = 'gas', text = 'Gas', size = 160, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
+            ui.touchButton{action = 'left', text = 'Left', size = 130, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
+            ui.touchButton{action = 'right', text = 'Right', size = 130, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 174}},
+            ui.touchButton{action = 'handbrake', text = 'Drift', size = 120, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 194, 24, 0}},
+            ui.touchButton{action = 'reverse', text = 'Back', size = 120, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 344, 24, 0}},
+            ui.touchButton{action = 'gas', text = 'Gas', size = 160, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
         },
     }
     self.drive = 'rear'

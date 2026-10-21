@@ -45,8 +45,8 @@ function Character:enter()
             ui.label{text = 'Holding jump jumps higher, a jump pressed just before landing still counts, and a jump just after running off a ledge too.', color = 'textMuted', font = 'caption'},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 360, height = 300},
-            ui.row{anchor = 'bottomRight', margin = {0, 540, 110, 0}, gap = 32,
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 360, height = 300},
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 32,
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', touchOnly = true},
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', touchOnly = true},
             },

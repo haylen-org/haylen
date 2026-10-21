@@ -45,8 +45,8 @@ function WreckingBall:enter()
         pointer = false,
         actions = WreckingBall.actions,
         overlay = {
-            ui.touchButton{action = 'left', text = 'Left', size = 140, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}},
-            ui.touchButton{action = 'right', text = 'Right', size = 140, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
+            ui.touchButton{action = 'left', text = 'Left', size = 140, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
+            ui.touchButton{action = 'right', text = 'Right', size = 140, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
         },
     }
     self.auto, self.speed, self.direction = true, 1.2, 1

@@ -43,7 +43,7 @@ function Steps:enter()
             end},
         },
         overlay = {
-            ui.touchButton{anchor = 'bottomRight', margin = {0, 40, 110, 0}, action = 'jump', text = 'Jump'},
+            ui.touchButton{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, action = 'jump', text = 'Jump', touchOnly = true},
         },
     })
 end

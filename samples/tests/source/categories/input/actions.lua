@@ -50,17 +50,17 @@ function Actions:enter()
             ui.formField{label = 'Gamepad the bindings read', ui.segmentedControl{id = 'pad', items = kIndices, selected = 'all', onChange = function(event)
                 input.actions().devices = event.value ~= 'all' and {gamepad = tonumber(event.value)} or {}
             end}},
-            ui.formField{label = 'Touch controls', ui.toggle{id = 'touchOnly', text = 'Only after a touch', onChange = function(event)
+            ui.formField{label = 'Touch controls', ui.toggle{id = 'touchOnly', text = 'Only after a touch', checked = true, onChange = function(event)
                 for _, id in ipairs({'stick', 'jump', 'dash'}) do
                     self:set(id, {touchOnly = event.checked})
                 end
             end}},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 260, height = 260},
-            ui.row{anchor = 'bottom', margin = {0, 0, 110, 0}, gap = 32,
-                ui.touchButton{id = 'jump', action = 'jump', text = 'Jump'},
-                ui.touchButton{id = 'dash', action = 'dash', text = 'Dash'},
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 260, height = 260, touchOnly = true},
+            ui.row{anchor = 'bottom', anchorTo = 'parent', margin = {0, 0, 24, 0}, gap = 32,
+                ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', touchOnly = true},
+                ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', touchOnly = true},
             },
         },
     })

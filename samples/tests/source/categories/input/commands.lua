@@ -66,12 +66,12 @@ function Commands:enter()
             end},
         },
         overlay = {
-            ui.row{anchor = 'bottomRight', margin = {0, 40, 110, 0}, gap = 16,
-                ui.touchButton{action = 'defend', text = 'Defend', size = 100, slideIn = true},
-                ui.touchButton{action = 'jump', text = 'Jump', size = 100, slideIn = true},
-                ui.touchButton{action = 'attack', text = 'Attack', size = 100, slideIn = true},
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 16,
+                ui.touchButton{action = 'defend', text = 'Defend', size = 100, slideIn = true, touchOnly = true},
+                ui.touchButton{action = 'jump', text = 'Jump', size = 100, slideIn = true, touchOnly = true},
+                ui.touchButton{action = 'attack', text = 'Attack', size = 100, slideIn = true, touchOnly = true},
             },
-            ui.touchStick{action = 'pad', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 240, height = 240},
+            ui.touchStick{action = 'pad', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 240, height = 240, touchOnly = true},
         },
     })
 end

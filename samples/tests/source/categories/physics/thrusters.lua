@@ -47,9 +47,9 @@ function Thrusters:enter()
         pointer = false,
         actions = Thrusters.actions,
         overlay = {
-            ui.touchButton{action = 'leftThruster', text = 'Left', size = 140, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 40}},
-            ui.touchButton{action = 'bothThrusters', text = 'Both', size = 140, touchOnly = true, anchor = 'bottomLeft', margin = {0, 0, 110, 200}},
-            ui.touchButton{action = 'rightThruster', text = 'Right', size = 140, touchOnly = true, anchor = 'bottomRight', margin = {0, 540, 110, 0}},
+            ui.touchButton{action = 'leftThruster', text = 'Left', size = 140, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
+            ui.touchButton{action = 'bothThrusters', text = 'Both', size = 140, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 184}},
+            ui.touchButton{action = 'rightThruster', text = 'Right', size = 140, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
         },
     }
     self.thrust = 300

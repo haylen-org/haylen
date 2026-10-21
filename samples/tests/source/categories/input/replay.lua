@@ -40,10 +40,10 @@ function Replay:enter()
             ui.button{id = 'replay', text = 'Replay the run', onClick = function() self:startReplay() end},
         },
         overlay = {
-            ui.row{anchor = 'bottomRight', margin = {0, 40, 110, 0}, gap = 16,
-                ui.touchButton{action = 'left', text = 'Left', size = 100},
-                ui.touchButton{action = 'right', text = 'Right', size = 100},
-                ui.touchButton{action = 'jump', text = 'Jump', size = 100},
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 16,
+                ui.touchButton{action = 'left', text = 'Left', size = 100, touchOnly = true},
+                ui.touchButton{action = 'right', text = 'Right', size = 100, touchOnly = true},
+                ui.touchButton{action = 'jump', text = 'Jump', size = 100, touchOnly = true},
             },
         },
     })

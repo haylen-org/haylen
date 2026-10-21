@@ -44,8 +44,8 @@ function TouchControls:enter()
         code = TouchControls.code,
         play = true,
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', mode = 'following', radius = 130, width = 520, height = 320, anchor = 'bottomLeft', margin = {0, 0, 150, 40}, style = {surfaces = TouchControls.art}},
-            ui.row{anchor = 'bottomRight', margin = {0, 60, 170, 0}, gap = 32, align = 'end',
+            ui.touchStick{id = 'stick', action = 'move', mode = 'following', radius = 130, width = 520, height = 320, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 64, 24}, style = {surfaces = TouchControls.art}},
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 44, 84, 0}, gap = 32, align = 'end',
                 ui.touchStick{id = 'aim', action = 'aim', radius = 100, deadZone = 0.25},
                 ui.column{gap = 24, style = {surfaces = TouchControls.art},
                     ui.touchButton{action = 'dash', text = 'Dash', size = 130, onPress = function() self.last = 'Dash pressed.' end},

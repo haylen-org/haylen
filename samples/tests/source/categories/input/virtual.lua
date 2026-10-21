@@ -45,8 +45,8 @@ function Virtual:enter()
             end},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', margin = {0, 0, 110, 40}, width = 420, height = 420},
-            ui.row{anchor = 'bottomRight', margin = {0, 540, 110, 0}, gap = 32,
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 420, height = 420},
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 32,
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', size = 130, onPress = logged('Dash press', Test.warm), onRelease = logged('Dash release', Test.red)},
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', size = 130, onPress = logged('Jump press', Test.warm), onRelease = logged('Jump release', Test.red)},
             },

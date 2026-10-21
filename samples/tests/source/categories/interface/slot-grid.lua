@@ -106,9 +106,10 @@ function SlotGrid:enter()
             }),
         }},
     }
-    self.hotbarGui = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', margin = {0, 0, 150, 0}, columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop, onCancel = function()
+    self.hotbarGui = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop, onCancel = function()
         self:cancel()
     end}, {owner = self})
+    self:keepInRegion(self.hotbarGui, 'hotbar', 24)
 end
 
 return SlotGrid
