@@ -166,7 +166,7 @@ end
 function Music:draw(area)
     local left, top, width, height = 60, 90, area.width - 100, area.height * 0.5
     local from = self.clock - kHistory
-    graphics2d.drawRect({left, top, width, height}, Test.surface)
+    graphics2d.drawShape({left, top, width, height}, {radius = 12, color = Test.surface})
     for index = 0, kHistory, 2 do
         local x = left + width * index / kHistory
         graphics2d.drawLine(x, top, x, top + height, 1, Test.line, {layer = 1})

@@ -219,12 +219,12 @@ function Effects:drawDelay(left, top, width, height)
     local seconds = 2.5
     local base = top + height
     graphics2d.drawLine(left, base, left + width, base, 2, Test.line, {layer = 1})
-    graphics2d.drawRect({left, base - height * math.min(1, effect.dry), 10, height * math.min(1, effect.dry)}, Test.green, {layer = 2})
+    graphics2d.drawShape({left, base - height * math.min(1, effect.dry), 12, height * math.min(1, effect.dry)}, {radius = {6, 6, 0, 0}, color = Test.green, layer = 2})
     local level = effect.wet
     local time = effect.time
     while time <= seconds and level > 0.01 do
         local x = left + width * time / seconds
-        graphics2d.drawRect({x, base - height * math.min(1, level), 10, height * math.min(1, level)}, Test.accent, {layer = 2})
+        graphics2d.drawShape({x, base - height * math.min(1, level), 12, height * math.min(1, level)}, {radius = {6, 6, 0, 0}, color = Test.accent, layer = 2})
         level = level * effect.feedback
         time = time + effect.time
     end
@@ -242,7 +242,7 @@ function Effects:drawReverb(left, top, width, height)
     end
     points[#points + 1] = {left + width, top + height}
     graphics2d.drawPolygon(points, '#608FB0FF', {layer = 1})
-    graphics2d.drawRect({left, top + height * (1 - math.min(1, effect.dry)), 10, height * math.min(1, effect.dry)}, Test.green, {layer = 2})
+    graphics2d.drawShape({left, top + height * (1 - math.min(1, effect.dry)), 12, height * math.min(1, effect.dry)}, {radius = {6, 6, 0, 0}, color = Test.green, layer = 2})
     Test.caption(string.format('Decay to -60 dB in %.2f seconds, drawn over %.1f seconds', effect.tail, seconds), left + 16, top + 12, {size = 20})
 end
 

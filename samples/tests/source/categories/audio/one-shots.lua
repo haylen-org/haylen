@@ -2,6 +2,7 @@
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
 local AudioTest = require('categories.audio.audio-test')
@@ -54,6 +55,10 @@ function OneShots:enter()
         },
     })
     self:loadActions({actions = Pointer.actions})
+    -- The test opens with three voices from the left speaker to the right one.
+    for index, pan in ipairs({-0.7, 0, 0.7}) do
+        timer.after(0.3 * index, function() self:play(pan) end, {owner = self})
+    end
 end
 
 function OneShots:exit()
@@ -106,7 +111,8 @@ function OneShots:update(dt)
         self:play(math.max(-1, math.min(1, self.pointer.worldX / self.area.width * 2 - 1)))
     end
     local last = self.voices[#self.voices]
-    self:status(string.format('%d voices of the test, %d in the engine, %d stopped by the limit, the last at a pitch of %.3f', #self.voices, audio.voiceCount(), self.stolen, last and audio.pitch(last.id) or 0))
+    local summary = string.format('%d voices of the test, %d in the engine, %d stopped by the limit', #self.voices, audio.voiceCount(), self.stolen)
+    self:status(last and string.format('%s, the last at a pitch of %.3f', summary, audio.pitch(last.id)) or summary)
 end
 
 function OneShots:renderUi()
