@@ -616,6 +616,21 @@ TEST_F(ComponentTest, WrapsTheLinesOfATextArea) {
     EXPECT_TRUE(drawn);
 }
 
+// The actions of a form center on one line, so a link beside taller buttons stands on their middle line.
+TEST_F(ComponentTest, CentersTheActionsOfASettingsFormOnOneLine) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "settingsForm", "children": [
+        {"kind": "settingsRow", "label": "Music", "children": [{"kind": "toggle"}]},
+        {"kind": "settingsActions", "children": [{"kind": "button", "id": "defaults", "text": "Defaults", "variant": "link"}, {"kind": "button", "id": "cancel", "text": "Cancel"}, {"kind": "button", "id": "save", "text": "Save", "variant": "primary"}]}
+    ]})");
+    // clang-format on
+    frames();
+    const float middle = getBounds(*gui, "save").getCenter().y;
+    EXPECT_NEAR(getBounds(*gui, "defaults").getCenter().y, middle, 1.0F);
+    EXPECT_NEAR(getBounds(*gui, "cancel").getCenter().y, middle, 1.0F);
+    EXPECT_LT(getBounds(*gui, "defaults").height, getBounds(*gui, "save").height);
+}
+
 // Only the rows in view draw their content, while every row still takes the focus and the pointer.
 TEST_F(ComponentTest, DrawsOnlyTheRowsOfAScrolledListInView) {
     // clang-format off
