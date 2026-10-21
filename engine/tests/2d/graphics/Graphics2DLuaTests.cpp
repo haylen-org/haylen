@@ -40,6 +40,9 @@ TEST_F(Graphics2DLuaTest, MeasuresTextWithFonts) {
     EXPECT_EQ(lua("local font = graphics2d.defaultFont() local w, h = font:measure('Hello', {size = 32}) return w > 0 and h == font:lineHeight(32)"), "true");
     EXPECT_EQ(lua("local font = graphics2d.defaultFont() local l = font:layout('Hi\\nyou', {size = 20}) local w, h = font:measure('Hi\\nyou', {size = 20}) return #l.quads .. ' ' .. l.lineCount .. ' ' .. tostring(l.size.x == w and l.size.y == h) .. ' ' .. tostring(l.quads[1].size.x > 0 and l.quads[1].source.width > 0 and l.quads[4].position.y > l.quads[1].position.y)"), "5 2 true true");
     EXPECT_EQ(lua("local font = graphics2d.defaultFont() return font:ascent(40) > 0 and font:ascent(40) < font:lineHeight(40) and font:ascent(40) == 2 * font:ascent(20)"), "true");
+
+    // The capital H of the default font reaches 1456 of its 2048 units to the em above the baseline.
+    EXPECT_EQ(lua("local font = graphics2d.defaultFont() return math.floor(font:capHeight(2048) + 0.5) .. ' ' .. tostring(font:capHeight(40) < font:ascent(40))"), "1456 true");
     EXPECT_EQ(lua("local w, h = graphics2d.measureText(nil, 'Hello', {size = 32}) return w > 0 and h > 0"), "true");
 
     // The style table of `drawText` also works for `measureText`, while a font only accepts the text style.

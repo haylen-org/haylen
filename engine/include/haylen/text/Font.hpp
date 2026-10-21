@@ -79,6 +79,8 @@ class Font {
     }
     [[nodiscard]] float getLineHeight(float size) const noexcept;
     [[nodiscard]] float getAscent(float size) const noexcept;
+    // The height of the capital H above the baseline, or the ascent of a font without one, which centers a word of capitals on a line or a button.
+    [[nodiscard]] float getCapHeight(float size) const noexcept;
 
     // Converts a length in pixels at a text size to the distance field units the text shader reads, where 0.5 spans the spread of the field. Fonts without a distance field convert everything to zero.
     [[nodiscard]] float toDistance(float pixels, float size) const noexcept;
@@ -96,12 +98,7 @@ class Font {
     explicit Font(Metrics fontMetrics);
 
   private:
-    // The layout lines the top of a drop cap up with the capitals of its first line.
-    friend class LayoutBuilder;
-
     static debug::ObjectCounter& counter;
-
-    [[nodiscard]] float getCapHeight(float size) const noexcept;
 
     Metrics metrics;
     std::unique_ptr<LayoutCache> layouts;

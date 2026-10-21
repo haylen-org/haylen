@@ -934,6 +934,26 @@ scene.push({
 })
 ```
 
+### font:capHeight(size)
+
+Returns how high the capital H of the font reaches above the baseline at `size`. A font without a capital H returns its ascent. Center a word of capitals or a number on a button or a badge by its cap height. The ascent keeps room for accents, so it would put the word too low.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local font = graphics2d.defaultFont()
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawRect({100, 100, 300, 80}, '#FF2C3147')
+        local baseline = 140 + font:capHeight(48) / 2
+        graphics2d.drawText(font, 'SCORE', 250, baseline - font:ascent(48), {size = 48, anchor = {0.5, 0}})
+    end,
+})
+```
+
 ## FontFamily
 
 A `FontFamily` is the set of faces of one typeface, with fallback fonts for the characters its faces lack, as the [text guide](../graphics/text.md#font-families) explains. Rich text draws with a family, and `graphics2d.drawText` and `graphics2d.measureText` take one in place of a font. Two family values compare equal with `==` when they refer to the same family.

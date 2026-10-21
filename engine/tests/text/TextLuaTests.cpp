@@ -56,6 +56,9 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     lua("pixel = assets.font('fonts/pixel.fnt') grid = graphics.newGridFont(assets.texture('images/coin.png'), {characters = 'ABCDEFGH', cellWidth = 8, cellHeight = 8, spacing = {0, 0}})");
     EXPECT_EQ(lua("return tostring(pixel.distanceField) .. ' ' .. pixel.nativeSize .. ' ' .. pixel:shape('AB')[1].advance - pixel:glyph('A').advance .. ' ' .. pixel:lineHeight(16) .. ' ' .. tostring(grid:hasGlyph('H'))"), "false 8.0 -1.0 20.0 true");
     EXPECT_EQ(lua("local layout = pixel:layout('AB', {size = 8}) return #layout.quads .. ' ' .. layout.quads[2].position.x .. ' ' .. layout.quads[2].page"), "2 8.0 1");
+
+    // A font without a capital H reaches its capitals as high as its ascent.
+    EXPECT_EQ(lua("return pixel:capHeight(16) .. ' ' .. pixel:ascent(16)"), "16.0 16.0");
     EXPECT_EQ(lua("local loaded = assets.load('images/coin.png', 'gridFont', {characters = 'XY', cellWidth = 16, cellHeight = 16}) return tostring(loaded:hasGlyph('Y'))"), "true");
     EXPECT_EQ(lua("local data = assets.text('fonts/pixel.fnt') local made = graphics.newBitmapFont(data, {assets.texture('fonts/pixel.png')}) return made:measure('AB', {size = 8})"), "17.0");
     EXPECT_NE(lua("assets.font('images/coin.png')").find("expected a .ttf, .otf or .fnt file"), std::string::npos);

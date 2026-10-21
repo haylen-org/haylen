@@ -13,6 +13,7 @@ Sizes.code = [[
 local serif = assets.font('fonts/crimson-text-regular.ttf')
 graphics2d.drawText(serif, 'Black sphinx', 64, y, {size = 12})
 y = y + serif:lineHeight(12) + 6
+local baseline = top + (height + serif:capHeight(320)) / 2  -- Centers the capitals.
 graphics2d.drawText(serif, 'Aa', x, baseline - serif:ascent(320), {size = 320, anchor = {0.5, 0}})]]
 
 Sizes.sizes = {12, 16, 20, 24, 32, 48, 64, 96}
@@ -24,8 +25,6 @@ Sizes.titleHeight = 52
 Sizes.maxZoom = 320
 -- The widths of the two columns of lines, each wide enough for its font at 96, and of the panel of the zoomed words.
 Sizes.columns = {560, 620, 420}
--- The share of the size that the capitals of both fonts reach above the baseline, which centers the zoomed word in its half of the panel.
-Sizes.capitals = 0.66
 
 function Sizes:init(entry)
     Sizes.super.init(self, entry)
@@ -87,7 +86,7 @@ end
 -- The zoomed word of each font stands on a baseline that centers its capitals at the largest size in its half of the panel.
 function Sizes:zoomed(font, x, top, height, color)
     local size = self.zoomSize
-    local baseline = top + (height + Sizes.maxZoom * Sizes.capitals) / 2
+    local baseline = top + (height + font:capHeight(Sizes.maxZoom)) / 2
     graphics2d.drawText(font, Sizes.word, x, baseline - font:ascent(size), {size = size, anchor = {0.5, 0}, color = color})
 end
 
