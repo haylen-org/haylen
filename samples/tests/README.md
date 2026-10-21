@@ -147,7 +147,7 @@ Retained trees of 2D nodes with parenting, culling, prefabs and saved descriptio
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
-| `NOD-001` | Node tree | A column of tanks from one prefab whose turrets aim at the pointer and whose wheels turn, culled as the camera pans, added, destroyed, hidden and saved. |  |
+| `NOD-001` | Node tree | Tanks of one prefab whose turrets aim at the pointer and wheels turn, culled as the camera pans, added, destroyed, hidden and saved. |  |
 
 #### Camera (CAM)
 
