@@ -3,10 +3,14 @@
 #include <stdexcept>
 #include <string>
 
+#include <imgui.h>
+#include <imgui_internal.h>
+
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/SafeAreaSimulation.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/UiFixture.hpp"
 
@@ -120,6 +124,29 @@ TEST_F(AnchorTest, SimulatesTheSafeAreaOfDevices) {
     getEngine().setSafeAreaSimulation(std::nullopt);
     frames();
     EXPECT_EQ(getEngine().getViewport().getSafeRect(), (math::Rect{100.0F, 50.0F, 1740.0F, 990.0F}));
+}
+
+// The overlay of the safe area writes its insets in a band outside the safe area, where they cover no interface.
+TEST_F(AnchorTest, WritesTheInsetsOfTheSafeAreaOutsideIt) {
+    auto gui = mount(R"({"kind": "button", "id": "back", "text": "Back", "anchor": "topLeft"})", Placement::Safe);
+    getUi().setSafeAreaVisible(true);
+    frames(2);
+    getUi().getBackend().makeCurrent();
+    const math::Rect safe = getEngine().getViewport().getSafeRect().translated(-getEngine().getViewport().getVisibleRect().getMin());
+    const ImU32 color = ImGui::ColorConvertFloat4ToU32({getUi().getTheme().getColor(Theme::Color::Warning).r, getUi().getTheme().getColor(Theme::Color::Warning).g, getUi().getTheme().getColor(Theme::Color::Warning).b, 1.0F});
+    const ImVec2 white = ImGui::GetDrawListSharedData()->TexUvWhitePixel;
+    int glyphs = 0;
+    for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+        for (const ImDrawVert& vertex : list->VtxBuffer) {
+            if (vertex.col != color || (vertex.uv.x == white.x && vertex.uv.y == white.y)) {
+                continue;
+            }
+            ++glyphs;
+            EXPECT_FALSE(safe.inset({4.0F, 4.0F, 4.0F, 4.0F}).contains(math::Vec2{vertex.pos.x, vertex.pos.y}));
+        }
+    }
+    EXPECT_GT(glyphs, 0);
+    EXPECT_FALSE(getBounds(*gui, "back").isEmpty());
 }
 
 TEST(SafeAreaConfigTest, ReadsTheSimulationFromTheAppFile) {

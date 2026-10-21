@@ -409,7 +409,7 @@ print(ui.safeAreaVisible())
 
 ### ui.setSafeAreaVisible(visible)
 
-Shows or hides the debug view of the safe area, which shades the screen outside the safe area, outlines it and prints its insets over everything. The `debug.showSafeArea` option of `app.json` turns it on at start. Together with [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue) it checks a layout against notches, rounded corners and gesture bars on a desktop.
+Shows or hides the debug view of the safe area, which shades the screen outside the safe area, outlines it and prints its insets by name in the widest shaded band that holds them, on one line in the top or bottom band or a line per edge in a side band, so they cover no interface, or on a dark pill at the bottom of the screen when no band holds them. The `debug.showSafeArea` option of `app.json` turns it on at start. Together with [`viewport.setSafeAreaSimulation`](viewport.md#viewportsetsafeareasimulationvalue) it checks a layout against notches, rounded corners and gesture bars on a desktop.
 
 ```lua
 local ui = require('haylen.ui')

@@ -137,7 +137,7 @@ ui.mount(ui.row{
 
 ### Testing the safe area on a desktop
 
-A desktop window has no notch, so the safe area can be simulated. The option `debug.safeArea` in `app.json`, or [`viewport.setSafeAreaSimulation`](../lua-api/viewport.md#viewportsetsafeareasimulationvalue) while the app runs, takes a device such as `'iphoneNotch'`, `'iphoneDynamicIsland'`, `'ipad'`, `'androidGestureBar'` or `'television'`, whose insets follow the window as it turns between landscape and portrait, or insets in window points. The option `debug.showSafeArea`, or [`ui.setSafeAreaVisible`](../lua-api/ui.md#uisetsafeareavisiblevisible), shades what lies outside the safe area and prints its insets over everything.
+A desktop window has no notch, so the safe area can be simulated. The option `debug.safeArea` in `app.json`, or [`viewport.setSafeAreaSimulation`](../lua-api/viewport.md#viewportsetsafeareasimulationvalue) while the app runs, takes a device such as `'iphoneNotch'`, `'iphoneDynamicIsland'`, `'ipad'`, `'androidGestureBar'` or `'television'`, whose insets follow the window as it turns between landscape and portrait, or insets in window points. The option `debug.showSafeArea`, or [`ui.setSafeAreaVisible`](../lua-api/ui.md#uisetsafeareavisiblevisible), shades what lies outside the safe area and prints its insets in a shaded band, where they cover no interface.
 
 ```json
 {

@@ -169,7 +169,11 @@ class UiPlugin final : public Plugin {
     void drawLeaving(core::Engine& engine, const core::SceneView& view);
     void drawCurrent(core::Engine& engine, const core::SceneView& view);
     void applyVirtualInput(core::Engine& engine);
+    // The size of the text of the insets that the safe area overlay shows.
+    static constexpr float kSafeAreaLabelSize = 24.0F;
+
     void drawSafeArea();
+    static void drawSafeAreaLabel(ImDrawList& list, const math::Rect& display, const math::Rect& safe, ImU32 color);
     [[nodiscard]] input::ActionMap::Capture getCapture() const;
     static void addCapture(input::ActionMap::Capture& capture, const std::vector<input::ActionMap::Binding>& bindings);
 

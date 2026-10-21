@@ -4,6 +4,7 @@
 #include <array>
 #include <exception>
 #include <format>
+#include <limits>
 #include <memory>
 #include <span>
 #include <stdexcept>
@@ -431,9 +432,35 @@ void UiPlugin::drawSafeArea() {
     list.AddRectFilled({display.x, safe.y}, {safe.x, safe.getBottom()}, shade);
     list.AddRectFilled({safe.getRight(), safe.y}, {display.getRight(), safe.getBottom()}, shade);
     list.AddRect({safe.x, safe.y}, {safe.getRight(), safe.getBottom()}, line, 0.0F, 3.0F);
+    drawSafeAreaLabel(list, display, safe, line);
+}
 
-    const std::string label = std::format("Safe area {:.0f} {:.0f} {:.0f} {:.0f}", safe.y - display.y, display.getRight() - safe.getRight(), display.getBottom() - safe.getBottom(), safe.x - display.x);
-    list.AddText({safe.x + 12.0F, safe.y + 8.0F}, line, label.c_str());
+// The insets read in the widest band outside the safe area that holds them, on one line in the top or bottom band or a line per edge in a side band, so the label never covers the interface. Without such a band they read on a dark pill at the bottom of the screen.
+void UiPlugin::drawSafeAreaLabel(ImDrawList& list, const math::Rect& display, const math::Rect& safe, ImU32 color) {
+    const float top = safe.y - display.y;
+    const float right = display.getRight() - safe.getRight();
+    const float bottom = display.getBottom() - safe.getBottom();
+    const float left = safe.x - display.x;
+    ImFont* font = ImGui::GetFont();
+    const float size = kSafeAreaLabelSize;
+    const float padding = size * 0.5F;
+    const std::string line = std::format("Safe area: top {:.0f}, right {:.0f}, bottom {:.0f}, left {:.0f}", top, right, bottom, left);
+    const ImVec2 lineSize = font->CalcTextSizeA(size, std::numeric_limits<float>::max(), 0.0F, line.c_str());
+    if (std::max(top, bottom) >= lineSize.y + padding) {
+        const float y = bottom >= lineSize.y + padding ? safe.getBottom() + (bottom - lineSize.y) * 0.5F : display.y + (top - lineSize.y) * 0.5F;
+        list.AddText(font, size, {std::floor(display.getCenter().x - lineSize.x * 0.5F), std::floor(y)}, color, line.c_str());
+        return;
+    }
+    const std::string lines = std::format("Safe area\ntop {:.0f}\nright {:.0f}\nbottom {:.0f}\nleft {:.0f}", top, right, bottom, left);
+    const ImVec2 linesSize = font->CalcTextSizeA(size, std::numeric_limits<float>::max(), 0.0F, lines.c_str());
+    if (std::max(left, right) >= linesSize.x + padding * 2.0F) {
+        const float x = left >= linesSize.x + padding * 2.0F ? display.x + (left - linesSize.x) * 0.5F : safe.getRight() + (right - linesSize.x) * 0.5F;
+        list.AddText(font, size, {std::floor(x), std::floor(safe.getCenter().y - linesSize.y * 0.5F)}, color, lines.c_str());
+        return;
+    }
+    const ImVec2 corner{std::floor(display.getCenter().x - lineSize.x * 0.5F), std::floor(display.getBottom() - lineSize.y - padding * 3.0F)};
+    list.AddRectFilled({corner.x - padding, corner.y - padding * 0.5F}, {corner.x + lineSize.x + padding, corner.y + lineSize.y + padding * 0.5F}, IM_COL32(0, 0, 0, 200), lineSize.y);
+    list.AddText(font, size, corner, color, line.c_str());
 }
 
 void UiPlugin::applyVirtualInput(core::Engine& engine) {
