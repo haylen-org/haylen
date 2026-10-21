@@ -247,9 +247,9 @@ end)
 
 Lays out rooms and joins them with corridors, so every room can reach every other one. It returns a table with three fields:
 
-- `grid`, the `CellGrid` of the map, with walls `1` and floors `0`.
-- `rooms`, a list of `{x, y, width, height}` tables in cells.
-- `connections`, a list of `{first, second}` pairs, the positions of the two rooms in `rooms` that a corridor joins, counted from 1.
+- The field `grid` is the `CellGrid` of the map, with walls `1` and floors `0`.
+- The field `rooms` is a list of `{x, y, width, height}` tables in cells.
+- The field `connections` is a list of `{first, second}` pairs. Each pair holds the positions in `rooms` of the two rooms that a corridor joins, counted from 1.
 
 The method `'bsp'` splits the map in two again and again, puts one room in each part and joins the closest rooms of the two halves of every split. The method `'placement'` drops rooms at random free spots and joins them through the shortest set of corridors between their centers. Each corridor is an L shape between two room centers. The table `options` is optional.
 
@@ -491,7 +491,7 @@ print(rules.tileCount, rules:weight(1)) -- 2 2.0
 
 ## WaveFunctionCollapseRules
 
-A `WaveFunctionCollapseRules` holds the tiles, their weights and which tile may sit beside which. [`procedural.waveFunctionCollapseRules`](#proceduralwavefunctioncollapserulesoptions) returns one.
+A `WaveFunctionCollapseRules` holds the tiles, their weights and which tile may sit beside which. The function [`procedural.waveFunctionCollapseRules`](#proceduralwavefunctioncollapserulesoptions) returns one.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |

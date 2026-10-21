@@ -904,7 +904,7 @@ Returns the path from the start point to the goal point and its length. The path
 Paths run through the triangles with A\*, and the funnel algorithm pulls them straight, so they turn only around the corners of obstacles. With an agent radius, the path keeps the agent clear of walls:
 
 - It skips a passage narrower than the agent. A way through the triangles has room exactly when every edge it crosses is at least as long as the agent is wide, within a thousandth of that width. The triangulation adds points on the walls where corners come close to them, which makes this hold, and it keeps walls that run almost parallel from filling with points.
-- Every leg of the path stays inside the mesh. The path turns at points just off each corner, one point for a turn up to a right angle and two for a wider turn, so the legs on both sides of a corner stay at least the radius away from it.
+- Every leg of the path stays inside the mesh. The path turns at points just off each corner: one point for a turn up to a right angle, and two for a wider turn. So the legs on both sides of a corner stay at least the radius away from it.
 - A start closer than the radius to a wall first steps straight to its room. The room is the closest point within twice the radius that is the radius away from every wall. A goal that close to a wall is reached last from its room. So an agent pushed against a wall, or sent to a point on one, still finds its way.
 
 It returns `nil` when either point lies outside the mesh, when no corridor is wide enough for the agent, or when the start or the goal has no room or cannot step straight to it.

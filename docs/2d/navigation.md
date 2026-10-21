@@ -86,7 +86,7 @@ print('A* visited ' .. plain .. ' cells, jump point search ' .. grid.expandedCou
 
 ### Smooth paths
 
-A grid path walks from cell to cell, so it zigzags on diagonals. The option `smooth = true` keeps only the cells where the path must turn, and a unit walks straight between them. [`grid:lineOfSight`](../lua-api/navigation2d.md#gridlineofsightfromx-fromy-tox-toy) tells whether a straight walk between two cells is clear, such as to skip the path entirely when the goal is in view. Smoothing looks at walls only, so a smoothed path may cross costly cells that the search avoided.
+A grid path walks from cell to cell, so it zigzags on diagonals. The option `smooth = true` keeps only the cells where the path must turn, and a unit walks straight between them. The method [`grid:lineOfSight`](../lua-api/navigation2d.md#gridlineofsightfromx-fromy-tox-toy) tells whether a straight walk between two cells is clear, such as to skip the path entirely when the goal is in view. Smoothing looks at walls only, so a smoothed path may cross costly cells that the search avoided.
 
 ### Large grids that change
 
@@ -149,7 +149,7 @@ scene.push({
 
 ### Chase and flee
 
-Dijkstra maps suit the monsters of a roguelike. A map whose source is the player makes a monster chase: it steps downhill. A flee map makes it run away. A flee map is not just the chase map turned upside down, which would send a monster into the nearest corner. [`map:flee`](../lua-api/navigation2d.md#mapfleecoefficient) scales the values and walks the map again, so the lowest cells are the far ones with open space beyond, and a fleeing monster runs along escape routes instead.
+Dijkstra maps suit the monsters of a roguelike. A map whose source is the player makes a monster chase: it steps downhill. A flee map makes it run away. A flee map is not just the chase map turned upside down, which would send a monster into the nearest corner. The method [`map:flee`](../lua-api/navigation2d.md#mapfleecoefficient) scales the values and walks the map again, so the lowest cells are the far ones with open space beyond, and a fleeing monster runs along escape routes instead.
 
 ```lua
 local navigation2d = require('haylen.navigation2d')
@@ -201,7 +201,7 @@ route = house:findPath(1, 3)
 print(table.concat(route, ' > '))
 ```
 
-A character joins the graph at the point closest to it, from [`graph:closestPoint`](../lua-api/navigation2d.md#graphclosestpointx-y-includedisabled), and leaves it at the point closest to its goal. [`graph:distances`](../lua-api/navigation2d.md#graphdistancessource) gives the cost from one point to every other, such as to find the nearest open shop.
+A character joins the graph at the point closest to it, which [`graph:closestPoint`](../lua-api/navigation2d.md#graphclosestpointx-y-includedisabled) finds. It leaves the graph at the point closest to its goal. The method [`graph:distances`](../lua-api/navigation2d.md#graphdistancessource) gives the cost from one point to every other, such as to find the nearest open shop.
 
 ## Navigation meshes
 
@@ -299,8 +299,8 @@ A [`Crowd`](../lua-api/navigation2d.md#crowd) moves many agents and keeps them f
 
 The crowd only avoids. Where an agent wants to go comes from the app, in one of two ways:
 
-- `crowd:setTarget` gives a point. The agent heads for it at full speed and stops on it.
-- `crowd:setPreferredVelocity` gives a velocity, such as the direction of a flow field times a speed, every frame.
+- The method `crowd:setTarget` gives a point. The agent heads for it at full speed and stops on it.
+- The method `crowd:setPreferredVelocity` gives a velocity, such as the direction of a flow field times a speed, every frame.
 
 A crowd steps in C++ and spreads its work over the job system, so thousands of agents cost far less than steering them from Lua. Its steps are deterministic, so a replay moves every agent the same way.
 

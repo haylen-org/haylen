@@ -1,6 +1,6 @@
 # 📍 Spatial
 
-This guide shows how to find things in space quickly with the module `haylen.spatial2d`: the entities near a point, under the cursor, inside a box or along a ray, the cells a unit sees, the rooms a door joins and the hits of a fighting game. It explains what each spatial structure is for, how to choose between them, how the grid algorithms work with maps, and what each one costs. Read it when a game has more than a few dozen things that look for each other. The [`haylen.spatial2d` reference](../lua-api/spatial2d.md) lists every function and method.
+This guide shows how to find things in space quickly with the module `haylen.spatial2d`. It finds the entities near a point, under the cursor, inside a box or along a ray. It also finds the cells a unit sees, the rooms a door joins and the hits of a fighting game. It explains what each spatial structure is for, how to choose between them, how the grid algorithms work with maps, and what each one costs. Read it when a game has more than a few dozen things that look for each other. The [`haylen.spatial2d` reference](../lua-api/spatial2d.md) lists every function and method.
 
 ## Why spatial structures
 
@@ -374,9 +374,9 @@ print(rooms:connected(1, 3), rooms:connected(1, 5), rooms.setCount) -- true fals
 
 The cursor lives on the screen, and the world lives behind a camera that moves, zooms and rotates. Three tools bridge the two:
 
-- [`camera:screenToWorld`](../lua-api/graphics2d.md#camerascreentoworldx-y) of `haylen.graphics2d` turns a screen point into a world point.
-- [`structure:pick`](../lua-api/spatial2d.md#structurepickcamera-x-y) lists the values of a structure under a screen point.
-- [`spatial2d.screenRay`](../lua-api/spatial2d.md#spatial2dscreenraycamera-x-y) returns the ray from the center of the view to the world point under the cursor, ready for any ray cast, such as the aim of a turret in the middle of the screen.
+- The method [`camera:screenToWorld`](../lua-api/graphics2d.md#camerascreentoworldx-y) of `haylen.graphics2d` turns a screen point into a world point.
+- The method [`structure:pick`](../lua-api/spatial2d.md#structurepickcamera-x-y) lists the values of a structure under a screen point.
+- The function [`spatial2d.screenRay`](../lua-api/spatial2d.md#spatial2dscreenraycamera-x-y) returns the ray from the center of the view to the world point under the cursor. It is ready for any ray cast, such as the aim of a turret in the middle of the screen.
 
 Screen points are in design coordinates, like the positions that `input.mousePosition()` and the touches of [`haylen.input`](../lua-api/input.md) report, so the same code serves mouse and touch.
 
