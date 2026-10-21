@@ -46,7 +46,7 @@ int Player::getExitStatus() noexcept {
     return getProcess().exitStatus;
 }
 
-const core::AppConfig& Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost) {
+void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost) {
     Services::initialize();
     Process& process = getProcess();
     process.current = std::make_unique<Player>(std::move(nativeHost));
@@ -90,7 +90,10 @@ const core::AppConfig& Player::create(int argc, char* argv[], std::unique_ptr<Na
     const core::AppConfig::Window& window = runtime.pending.config.window;
     runtime.openingSize = {static_cast<float>(window.width), static_cast<float>(window.height)};
     runtime.host->prepare({.transparent = window.transparent, .resizable = window.resizable, .decorated = window.decorated, .alwaysOnTop = window.alwaysOnTop, .shownInTaskbar = window.showInTaskbar}, window.focusable);
-    return runtime.pending.config;
+}
+
+const core::AppConfig& Player::getOpeningConfig() noexcept {
+    return getCurrent().pending.config;
 }
 
 math::Vec2 Player::getOpeningSize() noexcept {

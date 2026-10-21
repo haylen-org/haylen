@@ -48,7 +48,8 @@ sapp_desc Runtime::describe(int argc, char* argv[]) {
     // The library `sokol_app` makes D3D11 apps aware of the DPI of each monitor when their window opens, so the process is aware from the start and the monitors the player reads before the window exists have the coordinates of the window.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
-    const core::AppConfig& config = platform::Player::create(argc, argv, std::make_unique<Host>());
+    platform::Player::create(argc, argv, std::make_unique<Host>());
+    const core::AppConfig& config = platform::Player::getOpeningConfig();
 
     // AppKit and UIKit lay out the views of the services over the window as soon as they create it, before the first frame initializes the app.
     platform::NativeWindow::install(&getWindow());

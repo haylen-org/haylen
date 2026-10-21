@@ -34,7 +34,7 @@ namespace haylen::platform {
 
 class DevelopmentSession;
 
-// Plays apps on a real device for the backend that hosts them. It reads the command line, plays the package it names or the bundled one, replaces the running app whenever a package restarts it and hands the app the events of the window and the platform. The backend opens the window for the app that `create` returns, installs its `NativeWindow` and calls `initialize`, `frame` and `cleanup` while the window lives.
+// Plays apps on a real device for the backend that hosts them. It reads the command line, plays the package it names or the bundled one, replaces the running app whenever a package restarts it and hands the app the events of the window and the platform. The backend opens the window for the app that `getOpeningConfig` describes, installs its `NativeWindow` and calls `initialize`, `frame` and `cleanup` while the window lives.
 class Player final {
   public:
     // Where a press of the back button of the platform goes: to the system, which leaves the app, to the player, which quits a launched app to the one that launched it, or to the app, which receives it as an event.
@@ -46,8 +46,11 @@ class Player final {
 
     explicit Player(std::unique_ptr<NativeHost> nativeHost);
 
-    // Creates the player of the process for the command line with the host of the backend and returns the configuration of the app the window opens for.
-    [[nodiscard]] static const core::AppConfig& create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost);
+    // Creates the player of the process for the command line with the host of the backend.
+    static void create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost);
+
+    // The configuration of the app that the window opens for.
+    [[nodiscard]] static const core::AppConfig& getOpeningConfig() noexcept;
 
     // Where the window opens on the desktop, in desktop points, when `app.json` places it, which the backend opens it at.
     [[nodiscard]] static std::optional<math::Rect> getOpeningFrame();
