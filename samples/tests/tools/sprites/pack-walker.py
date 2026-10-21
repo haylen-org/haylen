@@ -1,6 +1,6 @@
 """Builds the walker sheet of the Sprites and Animation tests from the three sheets of it painted for the project.
 
-The paintings are the idle, run and attack frames of the walker in grids of four columns and two rows of cells of 384 by 512 pixels on flat magenta, painted with the "codex" command line in the style of the README of the test project. Run it with `python3 samples/tests/tools/sprites/pack-walker.py <folder of idle.png, run.png and attack.png>`. The tool keys the magenta out and unmixes it from the edges, scales each clip so the walker keeps one size, measured from the yellow headband down to the feet in a frame of the clip that stands upright, the run at the size of the idle, and writes `content/sprites/sheets/walker.png`: cells of 256 pixels in eight columns, the idle frames in the first row, the run in the second and the attack in the third. Every frame puts the middle of its head and torso on the middle of its cell, and each clip puts the lowest feet of its frames on the ground line of the cells, with the frames where both feet leave the ground at most `LIFT` above it, so the run keeps a natural bounce and no clip drifts.
+The paintings are the idle, run and attack frames of the walker in grids of four columns and two rows of cells of 384 by 512 pixels on flat magenta, painted with the "codex" command line in the style of the README of the test project. Run it with `python3 samples/tests/tools/sprites/pack-walker.py <folder of idle.png, run.png and attack.png>`. The tool keys out the magenta around the walker and in its gaps, unmixing it from the outline it borders so the purple of the vest stays whole, scales each clip so the walker keeps one size, measured from the yellow headband down to the feet in a frame of the clip that stands upright, the run at the size of the idle, and writes `content/sprites/sheets/walker.png`: cells of 256 pixels in eight columns, the idle frames in the first row, the run in the second and the attack in the third. Every frame puts the middle of its head and torso on the middle of its cell, and each clip puts the lowest feet of its frames on the ground line of the cells, with the frames where both feet leave the ground at most `LIFT` above it, so the run keeps a natural bounce and no clip drifts.
 """
 
 from __future__ import annotations
@@ -8,6 +8,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
+from collections import deque
 from pathlib import Path
 
 sys.dont_write_bytecode = True
@@ -27,16 +28,37 @@ PAINTED = (384, 512)
 CLIPS = (("idle", 4, 1), ("run", 8, None), ("attack", 6, 6))
 
 
+def coverage(red: int, green: int, blue: int) -> float:
+    """Returns how much of a pixel is the walker rather than the magenta behind it."""
+    return min(1.0, max(0.0, 1.0 - (min(red, blue) - green - 30) / 225))
+
+
 def key(painted: Image) -> Image:
-    """Turns the magenta of a painting into transparency, unmixing it from the colors of the edges."""
-    result = Image.blank(painted.width, painted.height)
-    for index in range(painted.width * painted.height):
+    """Makes the magenta around the walker and in its gaps transparent, and unmixes it from the pixels that border it, so colors near magenta inside the outline, such as the purple of the vest, stay whole."""
+    width, height = painted.width, painted.height
+    result = Image(width, height, bytearray(painted.pixels))
+    seen = bytearray(width * height)
+    edge = (index for index in range(width * height) if index % width in (0, width - 1) or index // width in (0, height - 1))
+    enclosed = (index for index in range(width * height) if coverage(*painted.pixels[index * 4 : index * 4 + 3]) <= 0.02)
+    queue = deque({*edge, *enclosed})
+    for index in queue:
+        seen[index] = 1
+    while queue:
+        index = queue.popleft()
         red, green, blue = painted.pixels[index * 4 : index * 4 + 3]
-        alpha = min(1.0, max(0.0, 1.0 - (min(red, blue) - green - 30) / 225))
-        if alpha <= 0.02:
+        alpha = coverage(red, green, blue)
+        if alpha >= 0.98:
             continue
-        unmixed = [min(255, max(0, round((value - (1 - alpha) * magenta) / alpha))) for value, magenta in ((red, 255), (green, 0), (blue, 255))]
-        result.pixels[index * 4 : index * 4 + 4] = bytes((*unmixed, round(alpha * 255)))
+        if alpha <= 0.02:
+            result.pixels[index * 4 : index * 4 + 4] = bytes(4)
+        else:
+            unmixed = [min(255, max(0, round((value - (1 - alpha) * magenta) / alpha))) for value, magenta in ((red, 255), (green, 0), (blue, 255))]
+            result.pixels[index * 4 : index * 4 + 4] = bytes((*unmixed, round(alpha * 255)))
+        x, y = index % width, index // width
+        for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+            if 0 <= nx < width and 0 <= ny < height and not seen[ny * width + nx]:
+                seen[ny * width + nx] = 1
+                queue.append(ny * width + nx)
     return result
 
 
