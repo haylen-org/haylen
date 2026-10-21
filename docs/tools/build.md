@@ -333,7 +333,7 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 | --- | --- |
 | `Module.canvas` | The canvas the app draws into. It must be a canvas element with an `id`. The runtime follows its size with a `ResizeObserver`, so the page layout decides the size. |
 | `Module.haylen.packageData` | Optional bytes of a zipped package, as an `ArrayBuffer` or a `Uint8Array`, which the runtime plays instead of the bundled package. The web loader downloads `app.zip` with a progress bar and hands it over this way. |
-| `Module.haylen.packageUrl` | Optional URL of a zipped package, used when `packageData` is not set. The runtime downloads it before the app starts and runs it instead of the bundled package, and a failed download reaches `onError`. |
+| `Module.haylen.packageUrl` | Optional URL of a zipped package, used when `packageData` is not set. The runtime downloads it before the app starts and runs it instead of the bundled package, and a failed download reaches `onError`. The default shell of C++ apps reads it from the `package` parameter of the address. |
 | `Module.haylen.development` | Optional `true` that runs the app in development, the way the player does with `--dev`: Lua modules and assets that the page changes with `applyChanges()` reload in place, as [hot reload](../core/lua.md#hot-reload) describes. |
 | `Module.haylen.developmentServer` | Optional WebSocket address of the development server that `haylen.py run --platform web` starts, such as `ws://127.0.0.1:8000/haylen/development?token=<token>`, which pushes every file saved in the app to the page. |
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback, instantiates `haylen.wasm` itself and passes the instance to the callback, so a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
@@ -364,6 +364,7 @@ No C++ exception crosses into the page: a function of the runtime that fails thr
 | `paused()` | Returns whether the app is paused. |
 | `register(method, handler)`, `unregister(method)`, `emit(event, payload, options)` | Platform bridge handlers and events, retained for the first listener with `options.retain`, described in the [platform bridge guide](../platform/platform-bridge.md#web). |
 | `createPluginContext(id, config)` | The context of the web module of a plugin, described in the [plugin guide](../platform/plugins.md#web-modules). |
+| `nativePlugins()` | Returns the ids of the plugins that have a web module. |
 
 The runtime reports back through callbacks the page assigns to `Module.haylen`:
 
