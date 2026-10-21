@@ -4,12 +4,12 @@ local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 
-local Test = require('harness.test')
+local CameraTest = require('categories.camera.camera-test')
 local Walker = require('categories.camera.walker')
 local World = require('categories.camera.world')
 local actions = require('categories.camera.actions')
 
-local Rotation = haylen.class('Rotation', Test)
+local Rotation = haylen.class('Rotation', CameraTest)
 
 Rotation.code = [[
 camera.rotationSmoothing = true
@@ -18,14 +18,21 @@ camera.rotation = camera.rotation + math.pi / 2  -- The drawn angle eases there 
 camera.ignoreRotation = true  -- Keeps the view upright.
 camera:update(dt)]]
 
+-- Until a player turns the view, it turns a quarter at a time every few seconds.
+Rotation.beat = 3
+
 function Rotation:init(entry)
     Rotation.super.init(self, entry)
     self.world = World()
-    self.walker = Walker(0, 0, '#FFFFD040', 'move')
+    self.walker = Walker(World.cottage.x + 60, World.cottage.y + 190, {action = 'move'})
     self.camera = graphics2d.newCamera()
     self.camera.rotationSmoothing = true
     self.camera.rotationSmoothingSpeed = 4
     self.camera.maxShakeAngle = 0.15
+    self.camera.rotation = 0.35
+    self.camera:snapTo(self.walker.x, self.walker.y - 100)
+    self.time = 0
+    self.turning = true
 end
 
 function Rotation:enter()
@@ -36,28 +43,48 @@ function Rotation:enter()
         code = Rotation.code,
         play = true,
         controls = {
-            ui.row{wrap = true, gap = 8,
-                ui.button{id = 'quarter', text = 'Quarter turn', grow = 1, onClick = function() camera.rotation = camera.rotation + math.pi / 2 end},
+            ui.row{gap = 8,
+                ui.button{id = 'quarter', text = 'Quarter turn', grow = 1, onClick = function() self:turn() end},
                 ui.button{id = 'shake', text = 'Shake', grow = 1, onClick = function() camera:addTrauma(0.8) end},
             },
-            ui.toggle{id = 'smoothing', text = 'Rotation smoothing', checked = true, onChange = function(event)
+            ui.toggle{id = 'smoothing', text = 'Ease the turns', checked = true, onChange = function(event)
                 camera.rotationSmoothing = event.checked
             end},
-            ui.toggle{id = 'ignore', text = 'Property "ignoreRotation"', onChange = function(event)
+            ui.toggle{id = 'ignore', text = 'Keep the view upright', onChange = function(event)
                 camera.ignoreRotation = event.checked
             end},
         },
     }
 end
 
+function Rotation:turn()
+    self.turning = false
+    self.camera.rotation = self.camera.rotation + math.pi / 2
+end
+
 function Rotation:update(dt)
     Rotation.super.update(self, dt)
     local camera = self.camera
-    camera.rotation = camera.rotation + input.value('rotate') * 1.5 * dt
-    self.walker:update(dt, camera)
-    camera:follow(self.walker.x, self.walker.y, dt)
+    local turn = input.value('rotate')
+    if turn ~= 0 then
+        self.turning = false
+        camera.rotation = camera.rotation + turn * 1.5 * dt
+    end
+    if self.turning then
+        self.time = self.time + dt
+        if self.time >= Rotation.beat then
+            self.time = 0
+            camera.rotation = camera.rotation + math.pi / 2
+        end
+    end
+    self.walker:update(dt, self.world, camera)
+    camera:follow(self.walker.x, self.walker.y - 100, dt)
     camera:update(dt)
-    self:status(string.format('Rotation %.2f   Drawn with %.2f   Property "ignoreRotation" is "%s"', camera.rotation, camera:renderRotation(), camera.ignoreRotation))
+    if camera.ignoreRotation then
+        self:status('The view stays upright whatever its rotation.')
+    else
+        self:status(string.format('The view is turned by %d degrees.', math.floor(math.deg(camera:renderRotation()) % 360 + 0.5) % 360))
+    end
 end
 
 function Rotation:draw(area)

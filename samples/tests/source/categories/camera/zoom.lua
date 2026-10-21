@@ -4,36 +4,52 @@ local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 
-local Test = require('harness.test')
+local CameraTest = require('categories.camera.camera-test')
+local Walker = require('categories.camera.walker')
 local World = require('categories.camera.world')
 local actions = require('categories.camera.actions')
 
-local Zoom = haylen.class('Zoom', Test)
+local Zoom = haylen.class('Zoom', CameraTest)
 
 Zoom.code = [[
-camera.minZoom, camera.maxZoom = 0.25, 4
+camera.minZoom = 0.25
+camera.maxZoom = 4
 local _, wheel = input.mouseScroll()
 local x, y = input.mousePosition()
 camera:zoomAt(1.15 ^ wheel, x, y)  -- The world point under the pointer stays in place.]]
 
+Zoom.home = {x = -820, y = -180}
+
 function Zoom:init(entry)
     Zoom.super.init(self, entry)
     self.world = World()
+    -- The walker waits by the cottage as a measure of the size of things at every zoom.
+    self.walker = Walker(World.cottage.x + 160, World.cottage.y + 150)
     self.camera = graphics2d.newCamera()
     self.camera.minZoom = 0.25
     self.camera.maxZoom = 4
+    self.camera.position = {Zoom.home.x, Zoom.home.y}
+    self.shown = 1
 end
 
 function Zoom:enter()
+    local camera = self.camera
     self:loadActions(actions)
     self:frame{
-        hint = 'Zoom with the wheel or a pinch toward the pointer, or with Z and X, minus and plus or the shoulders and triggers toward the middle. Pan with WASD, the arrows, the left stick or by dragging.',
+        hint = 'Zoom with the wheel or a pinch toward the pointer, with Z and X, minus and plus or the shoulders and triggers toward the middle, or with the slider. Pan with WASD, the arrows, the left stick or by dragging.',
         code = Zoom.code,
         play = true,
-        controls = {ui.button{id = 'reset', text = 'Reset the view', onClick = function()
-            self.camera.zoom = {1, 1}
-            self.camera.position = {0, 0}
-        end}},
+        controls = {
+            ui.formField{label = 'Zoom', ui.slider{id = 'zoom', min = camera.minZoom, max = camera.maxZoom, value = 1, showValue = true, decimals = 2, onChange = function(event)
+                local stage = self.stage
+                camera:zoomAt(event.value / camera.zoom.x, stage.x + stage.width / 2, stage.y + stage.height / 2)
+                self.shown = camera.zoom.x
+            end}},
+            ui.button{id = 'reset', text = 'Reset the view', onClick = function()
+                camera.zoom = {1, 1}
+                camera.position = {Zoom.home.x, Zoom.home.y}
+            end},
+        },
     }
 end
 
@@ -78,18 +94,25 @@ function Zoom:update(dt)
     end
     camera.x = camera.x + moveX * 700 * dt / camera.zoom.x - dragX / camera.zoom.x
     camera.y = camera.y + moveY * 700 * dt / camera.zoom.y - dragY / camera.zoom.y
-    self:status(string.format('Zoom %.2f between %.2f and %.2f   Center %.0f, %.0f', camera.zoom.x, camera.minZoom, camera.maxZoom, camera.x, camera.y))
+    self.walker:moveTo(self.walker.x, self.walker.y, dt)
+
+    if math.abs(camera.zoom.x - self.shown) > 0.005 then
+        self.shown = camera.zoom.x
+        self:set('zoom', {value = self.shown})
+    end
+    local zoom = camera.zoom.x
+    if zoom <= camera.minZoom + 0.001 then
+        self:status('The view is zoomed out as far as its smallest zoom allows.')
+    elseif zoom >= camera.maxZoom - 0.001 then
+        self:status('The view is zoomed in as far as its largest zoom allows.')
+    else
+        self:status(string.format('Things show at %d percent of their size.', math.floor(zoom * 100 + 0.5)))
+    end
 end
 
 function Zoom:draw(area)
     self.world:draw()
-    local width = 3 * graphics2d.canvasUnitSize()
-    for x = -2400, 2400, 400 do
-        graphics2d.drawLine(x, -1400, x, 1400, width, '#40FFFFFF', {layer = 5})
-    end
-    for y = -1400, 1400, 400 do
-        graphics2d.drawLine(-2400, y, 2400, y, width, '#40FFFFFF', {layer = 5})
-    end
+    self.walker:draw()
 end
 
 return Zoom

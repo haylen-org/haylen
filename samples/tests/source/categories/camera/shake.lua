@@ -4,12 +4,12 @@ local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 
-local Test = require('harness.test')
+local CameraTest = require('categories.camera.camera-test')
 local Walker = require('categories.camera.walker')
 local World = require('categories.camera.world')
 local actions = require('categories.camera.actions')
 
-local Shake = haylen.class('Shake', Test)
+local Shake = haylen.class('Shake', CameraTest)
 
 Shake.code = [[
 camera.maxShakeOffset = 40
@@ -18,13 +18,20 @@ camera:addTrauma(0.35)  -- A hit, whose shake grows with the square of the traum
 camera:shake(0.7, 1, 0)  -- A recoil along x.
 camera:update(dt)]]
 
+-- Until a player steers, the walker stops by the shrine, and a hit lands every few seconds.
+Shake.route = {{620, 560, 2}, {1050, 600, 2}}
+Shake.beat = 2.5
+
 function Shake:init(entry)
     Shake.super.init(self, entry)
     self.world = World()
-    self.walker = Walker(0, 0, '#FFFFD040', 'move')
+    self.walker = Walker(620, 560, {action = 'move', route = Shake.route})
     self.camera = graphics2d.newCamera()
     self.camera.maxShakeOffset = 40
     self.camera.maxShakeAngle = 0.06
+    self.camera:snapTo(self.walker.x, self.walker.y - 120)
+    self.time = Shake.beat - 0.6
+    self.shown = -1
 end
 
 function Shake:enter()
@@ -35,7 +42,8 @@ function Shake:enter()
         code = Shake.code,
         play = true,
         controls = {
-            ui.row{wrap = true, gap = 8,
+            ui.formField{label = 'Trauma', ui.progress{id = 'trauma', value = 0, tone = 'warning'}},
+            ui.row{gap = 8,
                 ui.button{id = 'hit', text = 'Hit', grow = 1, onClick = function() camera:addTrauma(0.35) end},
                 ui.button{id = 'blast', text = 'Blast', grow = 1, onClick = function() camera:addTrauma(0.9) end},
                 ui.button{id = 'recoil', text = 'Recoil', grow = 1, onClick = function() camera:shake(0.7, 1, 0) end},
@@ -46,7 +54,7 @@ function Shake:enter()
             ui.formField{label = 'Largest offset', ui.slider{id = 'offset', min = 0, max = 120, value = camera.maxShakeOffset, showValue = true, decimals = 0, onChange = function(event)
                 camera.maxShakeOffset = event.value
             end}},
-            ui.formField{label = 'Trauma lost per second', ui.slider{id = 'decay', min = 0.2, max = 4, value = camera.traumaDecay, showValue = true, onChange = function(event)
+            ui.formField{label = 'Trauma lost per second', ui.slider{id = 'decay', min = 0.2, max = 4, value = camera.traumaDecay, showValue = true, decimals = 1, onChange = function(event)
                 camera.traumaDecay = event.value
             end}},
         },
@@ -70,31 +78,37 @@ end
 
 function Shake:update(dt)
     Shake.super.update(self, dt)
+    local camera = self.camera
     if self.stage and self:pressed() then
-        self.camera:addTrauma(0.5)
+        camera:addTrauma(0.5)
     end
-    self.walker:update(dt)
-    self.camera:follow(self.walker.x, self.walker.y, dt)
-    self.camera:update(dt)
-    local offset = self.camera:shakeOffset()
-    self:status(string.format('Trauma %.2f   Offset %.1f, %.1f   Angle %.3f', self.camera.trauma, offset.x, offset.y, self.camera:renderRotation()))
+    if self.walker.route then
+        self.time = self.time + dt
+        if self.time >= Shake.beat then
+            self.time = 0
+            camera:addTrauma(0.55)
+        end
+    end
+    self.walker:update(dt, self.world)
+    camera:follow(self.walker.x, self.walker.y - 120, dt)
+    camera:update(dt)
+
+    local trauma = camera.trauma
+    if math.abs(trauma - self.shown) > 0.005 then
+        self.shown = trauma
+        self:set('trauma', {value = trauma, text = string.format('%d percent', math.floor(trauma * 100 + 0.5))})
+    end
+    local offset = camera:shakeOffset()
+    if trauma > 0 then
+        self:status(string.format('The view shakes by %d units at %d percent of the trauma.', math.floor(offset:length() + 0.5), math.floor(trauma * 100 + 0.5)))
+    else
+        self:status('The view rests until the next hit adds trauma.')
+    end
 end
 
 function Shake:draw(area)
     self.world:draw()
     self.walker:draw()
-end
-
--- The trauma bar stays still in a corner of the play area while the view shakes.
-function Shake:renderUi()
-    local stage = self.stage
-    if not stage then
-        return
-    end
-    graphics2d.beginScreen()
-    local x, y = stage.x + 24, stage:bottom() - 48
-    graphics2d.drawRect({x, y, 400, 24}, '#80000000')
-    graphics2d.drawRect({x, y, 400 * self.camera.trauma, 24}, '#FFFF6040', {layer = 1})
 end
 
 return Shake
