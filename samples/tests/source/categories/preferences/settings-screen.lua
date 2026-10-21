@@ -13,18 +13,20 @@ local settings = require('categories.preferences.settings')
 local SettingsScreen = haylen.class('SettingsScreen', Test)
 
 SettingsScreen.code = [[
-ui.settingsForm{
-    ui.settingsRow{label = {key = 'settings.music'}, ui.slider{id = 'music', value = audio.busVolume('music'), onChange = function(event)
-        audio.setBusVolume('music', event.value)  preferences.capture()  -- Changes the engine at once.
-    end}},
-    ui.settingsRow{label = {key = 'settings.difficulty'}, ui.segmentedControl{id = 'difficulty', items = levels, onChange = function(event) preferences.set('game.difficulty', event.value) end}},
-}
-function screen:exit() if preferences.dirty() then preferences.save() end end  -- Saves what is still unsaved.]]
+ui.settingsRow{label = {key = 'settings.music'}, ui.slider{id = 'music', value = audio.busVolume('music'), onChange = function(event)
+    audio.setBusVolume('music', event.value)
+    preferences.capture()  -- Changes the engine at once.
+end}}
+ui.settingsRow{label = {key = 'settings.difficulty'}, ui.segmentedControl{id = 'difficulty', items = levels, onChange = function(event)
+    preferences.set('game.difficulty', event.value)
+end}}
+if preferences.dirty() then preferences.save() end  -- Saves on the way out what is still unsaved.]]
 
 SettingsScreen.languages = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}, {id = 'es', text = 'Español'}}
 SettingsScreen.textFonts = {small = 'caption', medium = 'body', large = 'heading'}
 SettingsScreen.windowed = {macos = true, windows = true, linux = true, web = true}
 SettingsScreen.controlWidth = 520
+SettingsScreen.scene = 'interface/images/landscape.png'
 
 local function text(key, args)
     return {key = 'settings.' .. key, args = args}
@@ -42,10 +44,11 @@ function SettingsScreen:enter()
     self:frame{
         hint = 'Change anything, then Save, or just leave: unsaved changes are saved on the way out. Close the app and open this test again to see every value come back.',
         code = SettingsScreen.code,
-        focus = 'master',
+        focus = 'difficulty',
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{grow = 1, align = 'stretch', gap = 12,
-                ui.scroll{grow = 1, ui.column{padding = {0, 24, 0, 0}, ui.settingsForm{children = self:form()}}},
+                ui.scroll{grow = 1, height = 0, ui.settingsForm{style = {metrics = {controlPaddingY = 4, itemSpacing = 8}}, children = self:form()}},
+                ui.divider{},
                 ui.row{gap = 16,
                     ui.label{id = 'saveState', text = '', color = 'textMuted', grow = 1},
                     ui.button{id = 'save', text = text('save'), variant = 'primary', onClick = function()
@@ -53,9 +56,17 @@ function SettingsScreen:enter()
                     end},
                 },
             },
-            ui.panel{width = 520, align = 'stretch', gap = 12,
+            ui.panel{width = 600, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Subtitle preview'},
-                ui.label{id = 'subtitle', text = '', outline = '#FF000000', outlineWidth = 3},
+                ui.stack{height = 340, align = 'stretch',
+                    ui.image{image = SettingsScreen.scene, fit = 'cover', radius = 12, align = 'stretch'},
+                    ui.column{align = 'stretch', justify = 'end', padding = 16,
+                        ui.panel{id = 'plate', align = 'center', padding = {10, 18}, style = {colors = {panel = '#C8101418'}},
+                            ui.label{id = 'subtitle', text = '', color = 'onAccent', textAlign = 'center'},
+                        },
+                    },
+                },
+                ui.label{id = 'subtitleState', text = '', color = 'textMuted'},
             },
         }},
     }
@@ -74,6 +85,26 @@ end
 function SettingsScreen:form()
     local width = SettingsScreen.controlWidth
     local form = {
+        ui.sectionTitle{text = text('game')},
+        row('difficulty', ui.segmentedControl{id = 'difficulty', width = width, selected = settings.get('game.difficulty'), items = {{id = 'easy', text = text('easy')}, {id = 'normal', text = text('normal')}, {id = 'hard', text = text('hard')}}, onChange = function(event)
+            preferences.set('game.difficulty', event.value)
+        end}),
+        row('language', ui.combo{id = 'language', width = width, selected = settings.get('game.language'), items = SettingsScreen.languages, onChange = function(event)
+            preferences.set('game.language', event.value)
+            localization.setLanguage(event.value)
+        end}, 'languageCaption'),
+        row('subtitles', ui.toggle{id = 'subtitles', checked = settings.get('game.subtitles'), onChange = function(event)
+            preferences.set('game.subtitles', event.checked)
+            self:preview()
+        end}),
+        row('textSize', ui.stepper{id = 'textSize', width = width, selected = settings.get('game.textSize'), items = {{id = 'small', text = text('small')}, {id = 'medium', text = text('medium')}, {id = 'large', text = text('large')}}, onChange = function(event)
+            preferences.set('game.textSize', event.value)
+            self:preview()
+        end}),
+        row('name', ui.textField{id = 'name', width = width, value = settings.get('game.playerName'), maxLength = 24, autocorrect = false, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
+            preferences.set('game.playerName', event.value)
+            self:preview()
+        end}),
         ui.sectionTitle{text = text('audio')},
         row('master', ui.slider{id = 'master', value = audio.busVolume('master'), showValue = true, width = width, onChange = function(event)
             self:engine(audio.setBusVolume, 'master', event.value)
@@ -95,26 +126,6 @@ function SettingsScreen:form()
         end})
     end
     local rest = {
-        ui.sectionTitle{text = text('game')},
-        row('difficulty', ui.segmentedControl{id = 'difficulty', width = width, selected = settings.get('game.difficulty'), items = {{id = 'easy', text = text('easy')}, {id = 'normal', text = text('normal')}, {id = 'hard', text = text('hard')}}, onChange = function(event)
-            preferences.set('game.difficulty', event.value)
-        end}),
-        row('language', ui.combo{id = 'language', width = width, selected = settings.get('game.language'), items = SettingsScreen.languages, onChange = function(event)
-            preferences.set('game.language', event.value)
-            localization.setLanguage(event.value)
-        end}, 'languageCaption'),
-        row('subtitles', ui.toggle{id = 'subtitles', checked = settings.get('game.subtitles'), onChange = function(event)
-            preferences.set('game.subtitles', event.checked)
-            self:preview()
-        end}),
-        row('textSize', ui.stepper{id = 'textSize', width = width, selected = settings.get('game.textSize'), items = {{id = 'small', text = text('small')}, {id = 'medium', text = text('medium')}, {id = 'large', text = text('large')}}, onChange = function(event)
-            preferences.set('game.textSize', event.value)
-            self:preview()
-        end}),
-        row('name', ui.textField{id = 'name', width = width, value = settings.get('game.playerName'), maxLength = 24, autocorrect = false, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
-            preferences.set('game.playerName', event.value)
-            self:preview()
-        end}),
         ui.sectionTitle{text = text('controls')},
         row('jump', ui.keyCapture{id = 'jump', width = width, value = input.actionDefinition('jump').bindings[1], prompt = '…', onChange = function(event)
             local jump = input.actionDefinition('jump')
@@ -152,12 +163,13 @@ end
 
 -- Shows a line of dialogue the way the subtitle settings would, with the name and the size the player picked.
 function SettingsScreen:preview()
-    if not settings.get('game.subtitles') then
-        self:set('subtitle', {text = 'Subtitles are off.', font = 'body', color = 'textMuted'})
-        return
+    local shown = settings.get('game.subtitles')
+    self:set('plate', {visible = shown})
+    self:set('subtitleState', {text = shown and 'The line shows with the name and the size of text that the settings hold.' or 'Subtitles are off, so the scene shows without them.'})
+    if shown then
+        local line = string.format('%s: The storm reaches the island tonight. Get to the lighthouse!', settings.get('game.playerName'))
+        self:set('subtitle', {text = line, font = SettingsScreen.textFonts[settings.get('game.textSize')]})
     end
-    local line = string.format('%s: The storm reaches the island tonight. Get to the lighthouse!', settings.get('game.playerName'))
-    self:set('subtitle', {text = line, font = SettingsScreen.textFonts[settings.get('game.textSize')], color = 'text'})
 end
 
 return SettingsScreen

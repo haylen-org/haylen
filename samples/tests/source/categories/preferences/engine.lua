@@ -9,41 +9,54 @@ local preferences = require('haylen.preferences')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
+local Landscape = require('categories.sprites.landscape')
 local Test = require('harness.test')
 local settings = require('categories.preferences.settings')
 
 local Engine = haylen.class('Engine', Test)
 
 Engine.code = [[
-audio.setBusVolume('music', 0.4)  audio.setBusMuted('sfx', false)  window.setFullscreen(true)
+audio.setBusVolume('music', 0.4)
+audio.setBusMuted('sfx', false)
+window.setFullscreen(true)
 input.defineAction({name = 'jump', type = 'button', bindings = {'key:k'}})
-preferences.capture()  -- Stores `audio.volume`, `audio.muted`, `window.fullscreen` and `input.actions`.
+preferences.capture()  -- Stores the volumes, the mutes, fullscreen and the actions.
 preferences.save()
 preferences.apply()  -- At startup, after the buses and the default action map.]]
 
 Engine.clickInterval = 0.12
 Engine.keys = {'key:j', 'key:k', 'key:up', 'key:enter'}
 
+-- The meters of the buses on a card over the landscape, and the hop of the bunny that jump plays.
+Engine.meter = {width = 440, row = 52, bar = 14}
+Engine.hopSeconds = 0.5
+Engine.hopHeight = 150
+Engine.bunnyScale = 1.6
+Engine.busNames = {master = 'Master', music = 'Music', sfx = 'Sound effects', ui = 'Interface', ambience = 'Ambience'}
+
 function Engine:init(entry)
     Engine.super.init(self, entry)
     self.music = assets.load('preferences/audio/music-loop.wav')
     self.click = assets.load('preferences/audio/click.wav')
     self.clickTime = 0
+    self.hop = nil
 end
 
 -- The test starts the way an app does, with the stored settings, and leaves the engine as it found it.
 function Engine:enter()
     self.snapshot = settings.snapshot()
     settings.start(self)
+    self.landscape = self.landscape or Landscape()
+    self.bunny = self.bunny or assets.texture('sprites/images/bunny.png', {filter = 'linear'})
     local rows = {}
     for _, bus in ipairs(settings.buses) do
         rows[#rows + 1] = ui.row{gap = 16,
-            ui.label{text = 'Bus "' .. bus .. '"', width = 220},
+            ui.label{text = 'Bus "' .. bus .. '"', width = 200},
             ui.slider{id = 'volume-' .. bus, value = audio.busVolume(bus), showValue = true, grow = 1, onChange = function(event)
                 audio.setBusVolume(bus, event.value)
                 self:tick(bus)
             end},
-            ui.toggle{id = 'muted-' .. bus, text = 'Muted', checked = audio.busMuted(bus), onChange = function(event)
+            ui.toggle{id = 'muted-' .. bus, text = 'Mute', checked = audio.busMuted(bus), onChange = function(event)
                 audio.setBusMuted(bus, event.checked)
             end},
         }
@@ -52,23 +65,8 @@ function Engine:enter()
         hint = 'Move the sliders and toggles, rebind jump and press it on the play area. Capture and save stores the engine state, Mix it up changes it without saving and Apply brings the stored state back.',
         code = Engine.code,
         focus = 'volume-master',
-        panelWidth = 1100,
+        panelWidth = 820,
         controls = {
-            ui.sectionTitle{text = 'Audio buses'},
-            ui.column{gap = 12, children = rows},
-            ui.sectionTitle{text = 'Window and controls'},
-            ui.row{gap = 16,
-                ui.label{text = 'Fullscreen', width = 220},
-                ui.toggle{id = 'fullscreen', checked = window.fullscreen(), onChange = function(event)
-                    window.setFullscreen(event.checked)
-                end},
-            },
-            ui.row{gap = 16,
-                ui.label{text = 'Jump', width = 220},
-                ui.keyCapture{id = 'jump', value = self:binding(), prompt = 'Press a key or a button', width = 420, onChange = function(event)
-                    self:rebind(event.value)
-                end},
-            },
             ui.sectionTitle{text = 'Preferences'},
             ui.grid{columns = 2, gap = 12,
                 ui.button{id = 'capture', text = 'Capture and save', variant = 'primary', align = 'stretch', onClick = function()
@@ -92,6 +90,21 @@ function Engine:enter()
                 end},
             },
             ui.label{id = 'result', text = 'Nothing captured in this visit yet.', color = 'accentText'},
+            ui.sectionTitle{text = 'Audio buses'},
+            ui.column{gap = 12, children = rows},
+            ui.sectionTitle{text = 'Window and controls'},
+            ui.row{gap = 16,
+                ui.label{text = 'Fullscreen', width = 200},
+                ui.toggle{id = 'fullscreen', checked = window.fullscreen(), onChange = function(event)
+                    window.setFullscreen(event.checked)
+                end},
+            },
+            ui.row{gap = 16,
+                ui.label{text = 'Jump', width = 200},
+                ui.keyCapture{id = 'jump', value = self:binding(), prompt = 'Press a key or a button', width = 420, onChange = function(event)
+                    self:rebind(event.value)
+                end},
+            },
             ui.sectionTitle{text = 'Stored engine keys'},
             ui.label{id = 'stored', text = '', font = 'monospace'},
         },
@@ -109,6 +122,15 @@ end
 function Engine:update(dt)
     Engine.super.update(self, dt)
     self.clickTime = self.clickTime + dt
+    if input.pressed('jump') and not self.hop then
+        self.hop = 0
+    end
+    if self.hop then
+        self.hop = self.hop + dt
+        if self.hop >= Engine.hopSeconds then
+            self.hop = nil
+        end
+    end
 end
 
 -- Plays a click through the bus a slider changed, a few times per second at most, so the new volume can be heard.
@@ -155,21 +177,44 @@ function Engine:sync()
     self:set('jump', {value = self:binding()})
 end
 
--- The play area shows the volume of every bus, which buses are muted and a lamp that lights while jump is down.
+-- The play area shows a landscape with a card of the volume of every bus, the muted ones grey, and a bunny that hops each time jump is pressed.
 function Engine:draw(area)
-    local width = area.width - 300
+    self.landscape:draw(area, area.height * 0.84, 0.75, haylen.elapsed())
+
+    local meter = Engine.meter
+    local height = 64 + #settings.buses * meter.row
+    graphics2d.drawShape({24, 24, meter.width, height}, {radius = 16, color = '#D91B1E2B', borderWidth = 2, borderColor = Test.line, layer = 10})
+    graphics2d.drawText(nil, 'The buses of the mixer', 48, 44, {size = 22, color = Test.ink, layer = 11})
     for index, bus in ipairs(settings.buses) do
-        local y = 40 + (index - 1) * 70
+        local y = 84 + (index - 1) * meter.row
         local muted = audio.busMuted(bus)
-        Test.caption(string.format('Bus "%s"%s', bus, muted and ', muted' or ''), 32, y, {size = 22, color = muted and Test.muted or Test.ink})
-        graphics2d.drawRect({32, y + 32, width, 14}, Test.surface)
-        graphics2d.drawRect({32, y + 32, width * audio.busVolume(bus), 14}, muted and Test.line or Test.accent)
+        graphics2d.drawText(nil, Engine.busNames[bus] or bus, 48, y, {size = 19, color = muted and Test.muted or Test.ink, layer = 11})
+        if muted then
+            graphics2d.drawText(nil, 'Muted', meter.width, y, {size = 17, color = Test.red, anchor = {1, 0}, layer = 11})
+        end
+        local width = meter.width - 48
+        graphics2d.drawShape({48, y + 24, width, meter.bar}, {radius = meter.bar / 2, color = Test.line, layer = 11})
+        local filled = width * audio.busVolume(bus)
+        if filled > 0 then
+            graphics2d.drawShape({48, y + 24, math.max(meter.bar, filled), meter.bar}, {radius = meter.bar / 2, color = muted and Test.muted or Test.accent, layer = 12})
+        end
     end
-    local down = input.down('jump')
-    local y = 60 + #settings.buses * 70
-    graphics2d.drawCircle(72, y + 30, 36, down and Test.green or Test.surface)
-    graphics2d.drawRing(72, y + 30, 36, 4, down and Test.ink or Test.line)
-    Test.caption(down and 'Jumping' or 'Press jump here', 128, y + 14, {size = 26, color = Test.ink})
+
+    local ground = area.height * 0.84
+    local x = area.width * 0.68
+    local rise = 0
+    if self.hop then
+        local t = self.hop / Engine.hopSeconds
+        rise = 4 * t * (1 - t) * Engine.hopHeight
+    end
+    local shadow = 1 - rise / Engine.hopHeight * 0.5
+    graphics2d.drawEllipse(x, ground, 46 * shadow, 12 * shadow, '#55101418', {layer = 20})
+    graphics2d.draw(self.bunny, x, ground - rise, {pivotX = 0.5, pivotY = 1, scaleX = Engine.bunnyScale, scaleY = Engine.bunnyScale, layer = 21})
+    local binding = (self:binding() or ''):gsub('^key:', ''):gsub('^button:', 'the gamepad button ')
+    local text = self.hop and 'Hop!' or 'Press "' .. binding .. '" here to jump'
+    local labelWidth = graphics2d.measureText(nil, text, {size = 22}) + 36
+    graphics2d.drawShape({x - labelWidth / 2, ground + 20, labelWidth, 40}, {radius = 20, color = '#D91B1E2B', layer = 22})
+    graphics2d.drawText(nil, text, x, ground + 40, {size = 22, color = Test.ink, anchor = {0.5, 0.5}, layer = 23})
 end
 
 function Engine:report(text)

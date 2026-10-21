@@ -6,6 +6,7 @@ local storage = require('haylen.storage')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
+local code = require('harness.code')
 local settings = require('categories.preferences.settings')
 
 local Values = haylen.class('Values', Test)
@@ -104,32 +105,36 @@ function Values:enter()
         code = Values.code,
         focus = 'examples',
         content = {ui.row{grow = 1, gap = 24,
-            ui.panel{width = 640, align = 'stretch', gap = 12,
-                ui.formField{label = 'Key', ui.textField{id = 'key', value = self.key, autocorrect = false, autocapitalize = 'none', returnKey = 'next', onChange = function(event)
-                    self.key = event.value
-                end}},
-                ui.formField{label = 'Value', ui.textField{id = 'value', value = self.value, autocorrect = false, autocapitalize = 'none', returnKey = 'done', onChange = function(event)
-                    self.value = event.value
-                end}},
-                ui.segmentedControl{id = 'kind', selected = self.kind, items = {{id = 'text', text = 'Text'}, {id = 'number', text = 'Number'}, {id = 'boolean', text = 'Boolean'}, {id = 'list', text = 'List'}}, onChange = function(event)
-                    self.kind = event.value
-                end},
-                ui.grid{columns = 3, gap = 12, children = buttons},
-                ui.label{id = 'result', text = 'Pick an example or type a key.', color = 'accentText'},
-                ui.sectionTitle{text = 'Examples'},
-                ui.scroll{grow = 1, ui.list{id = 'examples', items = examples, onSelect = function(event)
-                    self:pick(event.item)
-                end}},
+            ui.panel{width = 640, align = 'stretch',
+                ui.scroll{grow = 1, height = 0, ui.column{gap = 12,
+                    ui.row{gap = 12,
+                        ui.formField{label = 'Key', grow = 3, ui.textField{id = 'key', value = self.key, autocorrect = false, autocapitalize = 'none', returnKey = 'next', onChange = function(event)
+                            self.key = event.value
+                        end}},
+                        ui.formField{label = 'Value', grow = 2, ui.textField{id = 'value', value = self.value, autocorrect = false, autocapitalize = 'none', returnKey = 'done', onChange = function(event)
+                            self.value = event.value
+                        end}},
+                    },
+                    ui.segmentedControl{id = 'kind', selected = self.kind, items = {{id = 'text', text = 'Text'}, {id = 'number', text = 'Number'}, {id = 'boolean', text = 'Boolean'}, {id = 'list', text = 'List'}}, onChange = function(event)
+                        self.kind = event.value
+                    end},
+                    ui.grid{columns = 3, gap = 12, children = buttons},
+                    ui.label{id = 'result', text = 'Pick an example or type a key.', color = 'accentText'},
+                    ui.sectionTitle{text = 'Examples', margin = {8, 0, 0, 0}},
+                    ui.list{id = 'examples', items = examples, onSelect = function(event)
+                        self:pick(event.item)
+                    end},
+                }},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.row{gap = 12, ui.sectionTitle{text = 'In memory', grow = 1}, ui.badge{id = 'dirty', text = 'Saved', tone = 'success'}},
                 ui.label{text = 'The table of "preferences.values()"', font = 'caption', color = 'textMuted'},
-                ui.scroll{grow = 1, ui.label{id = 'memory', text = '', font = 'monospace'}},
+                ui.scroll{grow = 1, height = 0, ui.richText{id = 'memory', text = '', font = 'monospace'}},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'On disk'},
                 ui.label{text = 'The file "preferences.json" of the user folder', font = 'caption', color = 'textMuted'},
-                ui.scroll{grow = 1, ui.label{id = 'disk', text = '', font = 'monospace'}},
+                ui.scroll{grow = 1, height = 0, ui.richText{id = 'disk', text = '', font = 'monospace'}},
             },
         }},
     }
@@ -212,8 +217,8 @@ end
 function Values:refresh()
     local dirty = preferences.dirty()
     self:set('dirty', {text = dirty and 'Unsaved changes' or 'Saved', tone = dirty and 'warning' or 'success'})
-    self:set('memory', {text = show(preferences.values())})
-    self:set('disk', {text = storage.exists('preferences.json') and storage.readText('preferences.json') or 'There is no "preferences.json" yet.'})
+    self:set('memory', {text = code.markup(show(preferences.values()))})
+    self:set('disk', {text = storage.exists('preferences.json') and code.markup(storage.readText('preferences.json')) or 'There is no "preferences.json" yet.'})
 end
 
 return Values

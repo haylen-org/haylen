@@ -15,7 +15,8 @@ local Reset = haylen.class('Reset', Test)
 Reset.code = [[
 local changed = preferences.get('game.difficulty', 'normal') ~= 'normal'
 preferences.remove('audio')  -- Drops the whole group, such as `audio.volume.music`.
-audio.setBusVolume('music', 0.8)  audio.setBusMuted('master', false)
+audio.setBusVolume('music', 0.8)
+audio.setBusMuted('master', false)
 preferences.capture()  -- Stores the default mix again.
 preferences.save()]]
 
@@ -49,7 +50,7 @@ function Reset:enter()
         hint = 'Change some values to see them marked, then reset the audio group or every setting of these tests. The table reads the stored preferences every time.',
         code = Reset.code,
         focus = 'change',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
+        content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.button{id = 'change', text = 'Change some values', align = 'stretch', onClick = function()
                     self:change()
@@ -61,10 +62,14 @@ function Reset:enter()
                     event.gui:set('confirm', {open = true})
                 end},
                 ui.label{id = 'result', text = '', color = 'accentText'},
+                ui.column{grow = 1, gap = 12, justify = 'center', align = 'stretch',
+                    ui.circularProgress{id = 'differ', size = 180, thickness = 16, value = 0, text = '0', align = 'center'},
+                    ui.label{text = 'Settings away from their defaults', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+                },
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.label{id = 'summary', text = '', color = 'textMuted'},
-                ui.scroll{grow = 1, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}}},
+                ui.scroll{grow = 1, height = 0, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}}},
             },
             ui.dialog{id = 'confirm', title = 'Reset every setting?', message = 'Every setting of these tests goes back to its default and is saved at once. The other preferences of the project stay.', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'reset', text = 'Reset', variant = 'destructive'}}, onAnswer = function(event)
                 if event.button == 'reset' then
@@ -107,6 +112,7 @@ function Reset:refresh(result)
     end
     self:set('values', {rows = rows})
     self:set('summary', {text = string.format('%d of %d settings differ from their defaults.', changed, #rows)})
+    self:set('differ', {value = changed / #rows, text = string.format('%d of %d', changed, #rows)})
     self:set('result', {text = result})
 end
 
