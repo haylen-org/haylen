@@ -13,5 +13,5 @@ Content brings the files of an app to the device and into memory, protects them 
 
 | Name | Description | Link |
 | --- | --- | --- |
-| `haylen.assets` | Loading package files now or in the background, and preload groups. | [`lua-api/assets.md`](../lua-api/assets.md) |
-| `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, and the updates of the content. | [`lua-api/content.md`](../lua-api/content.md) |
+| `haylen.assets` | Loading the files of the package at once or in the background, preload groups, the cache, the upload budget and the hot reload of assets. | [`lua-api/assets.md`](../lua-api/assets.md) |
+| `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, the packs that stores install, and the updates of the content. | [`lua-api/content.md`](../lua-api/content.md) |

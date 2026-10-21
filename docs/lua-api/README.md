@@ -10,10 +10,10 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.accessibility` | The accessibility settings of the system with their changes: text scale, reduced motion, high contrast, reduced transparency and screen readers. | [`accessibility.md`](accessibility.md) |
 | `haylen.ai` | Finite state machines, behavior trees, utility selectors and influence maps. | [`ai.md`](ai.md) |
 | `haylen.animation2d` | Frame animations from grids and atlases with frame data, animators, animated sprite batches, state graphs, skeletal and cutout animation, and atlases packed at run time. | [`animation2d.md`](animation2d.md) |
-| `haylen.assets` | Loading package files now or in the background, and preload groups. | [`assets.md`](assets.md) |
+| `haylen.assets` | Loading the files of the package at once or in the background, preload groups, the cache, the upload budget and the hot reload of assets. | [`assets.md`](assets.md) |
 | `haylen.audio` | Sounds from files, bytes or raw samples, music, buses, effects, pause modes, interruptions and positional audio. | [`audio.md`](audio.md) |
 | `haylen.collections` | Object pools that recycle Lua values, ring buffers of the newest values and float buffers shared with C++. | [`collections.md`](collections.md) |
-| `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, and the updates of the content. | [`content.md`](content.md) |
+| `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, the packs that stores install, and the updates of the content. | [`content.md`](content.md) |
 | `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`conversation.md`](conversation.md) |
 | `haylen.debug` | The debug statistics, object counts, monitors, the frame profiler and the recent log. | [`debug.md`](debug.md) |
 | `haylen.dialogs` | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. | [`dialogs.md`](dialogs.md) |
