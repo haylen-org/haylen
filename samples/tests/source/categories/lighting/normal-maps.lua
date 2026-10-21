@@ -6,11 +6,13 @@ local lighting2d = require('haylen.lighting2d')
 local ui = require('haylen.ui')
 
 local LightingTest = require('categories.lighting.lighting-test')
+local Room = require('categories.lighting.room')
 
 local NormalMaps = haylen.class('NormalMaps', LightingTest)
 
 NormalMaps.code = [[
-local lamp = lighting2d.newLight({radius = 700, color = '#FFFFEAD0', intensity = 1.6, height = 90})  -- Low lights graze the relief.
+local lamp = lighting2d.newLight({radius = 700, color = '#FFFFEAD0', intensity = 1.6})
+lamp.height = 90  -- Low lights graze the relief.
 graphics2d.draw(bricks, x, y, {normalMap = brickNormals, specular = 1, shininess = 32})
 graphics2d.drawLight(lamp)]]
 
@@ -47,7 +49,13 @@ function NormalMaps.generate(height, color, shine)
     return texture, graphics.newTexture(size, size, options)
 end
 
--- Bricks of 64 by 32 pixels with bevelled edges, rough and barely shiny.
+-- Returns a repeatable noise from 0 to 1 for a pixel and a seed, which roughens the bricks.
+function NormalMaps.grain(x, y, seed)
+    local value = math.sin(x * 12.9898 + y * 78.233 + seed * 37.719) * 43758.5453
+    return value - math.floor(value)
+end
+
+-- Bricks of 64 by 32 pixels with bevelled, slightly uneven edges and grainy faces in warm clay colors, laid in light mortar, rough and barely shiny.
 function NormalMaps.bricks()
     local function brick(x, y)
         local row = y // 32
@@ -55,16 +63,20 @@ function NormalMaps.bricks()
         return (x + offset) % 64, y % 32, ((x + offset) // 64) * 7 + row * 13
     end
     return NormalMaps.generate(function(x, y)
-        local u, v = brick(x, y)
+        local u, v, seed = brick(x, y)
         local edge = math.min(u, 63 - u, v, 31 - v)
-        return edge < 2 and 0 or math.min(1, (edge - 1) / 5)
+        local bevel = edge < 2 and 0 or math.min(1, (edge - 1) / 5)
+        return bevel * (0.9 + 0.1 * NormalMaps.grain(x // 3, y // 3, seed))
     end, function(x, y, level)
         local _, _, seed = brick(x, y)
         if level == 0 then
-            return 120, 116, 110
+            local mortar = 168 + math.floor(NormalMaps.grain(x, y, 1) * 18)
+            return mortar, mortar - 6, mortar - 16
         end
-        local shade = 150 + seed * 37 % 50
-        return shade, math.floor(shade * 0.45), math.floor(shade * 0.3)
+        local tone = seed * 37 % 5
+        local grain = NormalMaps.grain(x, y, seed) * 20 - 10
+        local red = 168 + tone * 9 + grain
+        return math.floor(red), math.floor(red * 0.47 + tone * 3), math.floor(red * 0.32)
     end, function(x, y)
         return 40
     end)
@@ -119,7 +131,7 @@ end
 function NormalMaps:update(dt)
     NormalMaps.super.update(self, dt)
     self.lamp.x, self.lamp.y = self.cursorX, self.cursorY
-    self:status(string.format('Height %.0f   Specular %.2f   Shininess %.0f', self.lamp.height, self.specular, self.shininess))
+    self:status(string.format('The light hangs %.0f units above the wall, with a specular strength of %.2f and a shininess of %.0f.', self.lamp.height, self.specular, self.shininess))
 end
 
 -- Tiles a texture over a rectangle, with its normal map when they are on.
@@ -132,9 +144,17 @@ function NormalMaps:drawSurface(texture, normals, rect)
     end
 end
 
+-- Bricks cover the left half of the canvas and the studded plate the right half, so the light starts on the seam between them.
 function NormalMaps:draw(area)
-    self:drawSurface(self.brick, self.brickNormals, {-1024, -768, 1280, 1536})
-    self:drawSurface(self.plate, self.plateNormals, {256, -768, 768, 1536})
+    local canvas = graphics2d.canvasBounds()
+    local tile = NormalMaps.size * 2
+    local left = math.floor(canvas.x / tile) * tile
+    local top = math.floor(canvas.y / tile) * tile
+    local height = math.ceil((canvas:bottom() - top) / tile) * tile
+    self:drawSurface(self.brick, self.brickNormals, {left, top, -left, height})
+    self:drawSurface(self.plate, self.plateNormals, {0, top, math.ceil(canvas:right() / tile) * tile, height})
+    graphics2d.drawLine(0, canvas.y, 0, canvas:bottom(), 8, '#FF1E1B33', {layer = 1})
+    Room.drawLamp(self.lamp.x, self.lamp.y, self.lamp.color, 26)
     graphics2d.drawLight(self.lamp)
 end
 

@@ -1,23 +1,45 @@
--- Flicker: `lighting2d.flicker` turns time into a flame-like multiplier, and a seed per torch keeps them from wavering in step.
+-- Flicker: `lighting2d.flicker` turns time into a flame-like multiplier, and a seed per torch keeps the torches on the wall and the campfire in the courtyard from wavering in step. Their flames are painted flame frames that particles play.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')
+local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
 
 local LightingTest = require('categories.lighting.lighting-test')
 local Room = require('categories.lighting.room')
+local Town = require('categories.lighting.town')
 
 local Flicker = haylen.class('Flicker', LightingTest)
 
 Flicker.code = [[
-local torch = lighting2d.newLight({x = -380, y = -330, radius = 380, color = '#FFFFA050', intensity = 1.2})
-local wave = lighting2d.flicker(haylen.elapsed(), {speed = 8, amount = 0.25, seed = 3})  -- A seed of its own for each torch.
-torch.intensity = 1.2 * wave
+local torch = lighting2d.newLight({x = -380, y = -330, radius = 380, color = '#FFFFA050'})
+local wave = lighting2d.flicker(haylen.elapsed(), {speed = 8, amount = 0.25, seed = 3})
+torch.intensity = 1.2 * wave  -- Each torch has a seed of its own.
 graphics2d.drawLight(torch)]]
+
+Flicker.wall = -300
+Flicker.torchScale = 0.62
+Flicker.campfire = {x = -60, y = 90}
+Flicker.props = 'particles/props.json'
+Flicker.effects = 'particles/library/textures/effects.json'
+
+-- Makes the flames of a fire from the painted flame frames, licking upward and fading from white through orange into red, glowing in the dark with emission.
+function Flicker.flames(atlas, size, rate, seed)
+    local frames = {}
+    for index = 1, 4 do
+        frames[index] = atlas:source('flame-' .. index)
+    end
+    return particles2d.newEmitter({texture = atlas.texture, frames = frames, frameMode = 'loopRandomStart', frameRate = 14, rate = rate, prewarm = 1, maxParticles = 64, lifetime = {0.45, 0.7}, speed = {size * 0.9, size * 1.5}, direction = -1.5708, spread = 0.18, shape = 'ellipse', shapeSize = {size * 0.3, size * 0.08}, startSize = {size, size * 1.3}, endSize = {size * 0.25, size * 0.35}, sizeCurve = 'quadIn', colors = {'#00FFE7A8', '#C0FFC24A', '#A0FF7A1F', '#50D8381F', '#00801010'}, colorTimes = {0, 0.12, 0.45, 0.8, 1}, emission = 1.2, layer = 4, seed = seed})
+end
 
 function Flicker:init(entry)
     Flicker.super.init(self, entry)
     self.room = Room()
+    self.town = Town()
+    self.bricks = Room.bricks()
+    self.props = assets.load(Flicker.props, 'atlas', {filter = 'linear'})
+    local effects = assets.load(Flicker.effects, 'atlas', {filter = 'linear'})
     self.ambientLight = '#FF0E1016'
     self.speed = 8
     self.amount = 0.25
@@ -25,9 +47,13 @@ function Flicker:init(entry)
     self.torches = {}
     for index = 1, 5 do
         local x = (index - 3) * 380
-        self.torches[index] = {seed = index, wave = 1, light = lighting2d.newLight({x = x, y = -330, radius = 380, color = '#FFFFA050', intensity = 1.2})}
+        local flame = Flicker.flames(effects, 58, 22, index)
+        flame.position = {x, Flicker.wall - 10 - 312 * Flicker.torchScale + 24}
+        self.torches[index] = {seed = index, wave = 1, flame = flame, light = lighting2d.newLight({x = x, y = Flicker.wall - 60, radius = 420, color = '#FFFFA050', intensity = 1.2})}
     end
-    self.fire = {seed = 9, wave = 1, light = lighting2d.newLight({x = -100, y = 60, radius = 520, color = '#FFFF8A30', intensity = 1.5})}
+    local fire = Flicker.flames(effects, 120, 30, 9)
+    fire.position = {Flicker.campfire.x, Flicker.campfire.y - 10}
+    self.fire = {seed = 9, wave = 1, flame = fire, light = lighting2d.newLight({x = Flicker.campfire.x, y = Flicker.campfire.y - 40, radius = 560, color = '#FFFF8A30', intensity = 1.5})}
 end
 
 function Flicker:enter()
@@ -59,28 +85,35 @@ function Flicker:update(dt)
     for _, torch in ipairs(self.torches) do
         torch.wave = self:wave(torch)
         torch.light.intensity = 1.2 * torch.wave
+        torch.flame:update(dt)
     end
     self.fire.wave = self:wave(self.fire)
     self.fire.light.intensity = 1.5 * self.fire.wave
-    self.fire.light.radius = 520 * (0.9 + 0.1 * self.fire.wave)
-    self:status(string.format('Flicker of the campfire %.3f', self.fire.wave))
+    self.fire.light.radius = 560 * (0.9 + 0.1 * self.fire.wave)
+    self.fire.flame:update(dt)
+    local together = self.shared and 'all together' or 'each on its own'
+    self:status(string.format('The flames waver %s, and the campfire burns at %.0f percent now.', together, self.fire.wave * 100))
 end
 
-function Flicker.drawFlame(flame, size)
-    local light = flame.light
-    graphics2d.draw(graphics2d.lightTexture(), light.x, light.y, {width = size * flame.wave, height = size * 1.4 * flame.wave, color = '#FFFFB040', blend = 'additive', layer = 3, emission = 1.5})
+-- The wall at the top of the courtyard, with the torches fixed to it.
+function Flicker:drawWall()
+    local canvas = graphics2d.canvasBounds()
+    local size = 128
+    graphics2d.draw(self.bricks, canvas.x, canvas.y, {source = {0, 0, canvas.width / size * 128, (Flicker.wall - canvas.y) / size * 128}, width = canvas.width, height = Flicker.wall - canvas.y, pivotX = 0, pivotY = 0, layer = 1})
+    graphics2d.drawRect({canvas.x, Flicker.wall - 6, canvas.width, 16}, '#FF1E1B33', {layer = 2})
+    for _, torch in ipairs(self.torches) do
+        self.town:piece('wall-torch', torch.light.x, Flicker.wall - 10, Flicker.torchScale, {pivotY = 1, layer = 3})
+        torch.flame:draw()
+        graphics2d.drawLight(torch.light)
+    end
 end
 
 function Flicker:draw(area)
     self.room:draw()
-    graphics2d.drawRect({-1600, -420, 3200, 60}, '#FF4A4450', {layer = 1})
-    for _, torch in ipairs(self.torches) do
-        graphics2d.drawRect({torch.light.x - 8, torch.light.y, 16, 50}, '#FF5A3A20', {layer = 2})
-        Flicker.drawFlame(torch, 70)
-        graphics2d.drawLight(torch.light)
-    end
-    graphics2d.drawCircle(self.fire.light.x, self.fire.light.y + 30, 60, '#FF3A2A1A', {layer = 2})
-    Flicker.drawFlame(self.fire, 160)
+    self:drawWall()
+    local source = self.props:source('campfire')
+    graphics2d.draw(self.props.texture, Flicker.campfire.x, Flicker.campfire.y + 40, {source = source, width = source.width * 0.55, height = source.height * 0.55, pivotY = 1, layer = 3})
+    self.fire.flame:draw()
     graphics2d.drawLight(self.fire.light)
 end
 

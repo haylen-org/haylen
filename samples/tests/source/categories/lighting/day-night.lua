@@ -1,4 +1,4 @@
--- Day and night written in Lua: the clock blends the ambient and sky colors between keyframes, turns the sun and switches the street lamps and windows on at dusk.
+-- Day and night written in Lua: the clock blends the ambient light and the sky between the colors of the hours, carries the sun and the moon across the sky, brings out the stars and lights the street lamps and the windows of the village at dusk.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')
@@ -6,44 +6,59 @@ local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local LightingTest = require('categories.lighting.lighting-test')
+local Town = require('categories.lighting.town')
 
 local DayNight = haylen.class('DayNight', LightingTest)
 
 DayNight.code = [[
-local sun = lighting2d.newLight({type = 'directional', color = '#FFFFF0D0', shadows = true, shadowFilter = 'pcf5'})
+local sun = lighting2d.newLight({type = 'directional', color = '#FFFFF0D0'})
 local arc = (hour - 6) / 12  -- The sun rises at 6 and sets at 18.
-sun.rotation, sun.intensity = arc * math.pi, math.max(0, math.sin(arc * math.pi)) * 0.9
-local ambient = m.color('#FFE08060'):lerp(m.color('#FF2E3060'), t)  -- From dusk into night.
+sun.rotation, sun.intensity = arc * math.pi, math.max(0, math.sin(arc * math.pi))
+local ambient = dusk:lerp(night, t)  -- The color between two hours.
 graphics2d.beginWorld(camera, {ambientLight = ambient})
-graphics2d.drawLight(sun)]]
+graphics2d.drawRect(window, '#FFFFC870', {emission = glow})  -- Lit at night.]]
 
--- Hours of the day with the ambient light and the sky color the clock blends between.
+-- Hours of the day with the ambient light and the colors of the sky at the top and at the horizon, which the clock blends between.
 DayNight.keys = {
-    {hour = 0, ambient = '#FF1C2244', sky = '#FF0A0E24'},
-    {hour = 5, ambient = '#FF262A50', sky = '#FF141A3A'},
-    {hour = 6.5, ambient = '#FFD8A080', sky = '#FFF0A070'},
-    {hour = 9, ambient = '#FFFFF6EA', sky = '#FF8CC8F0'},
-    {hour = 16, ambient = '#FFFFF6EA', sky = '#FF8CC8F0'},
-    {hour = 18.5, ambient = '#FFE08060', sky = '#FFF08050'},
-    {hour = 20, ambient = '#FF2E3060', sky = '#FF1A1C44'},
-    {hour = 24, ambient = '#FF1C2244', sky = '#FF0A0E24'},
+    {hour = 0, ambient = '#FF1C2244', zenith = '#FF070B22', horizon = '#FF1C2650'},
+    {hour = 5, ambient = '#FF262A50', zenith = '#FF0E1438', horizon = '#FF34386A'},
+    {hour = 6.5, ambient = '#FFD8A080', zenith = '#FF4A5AA0', horizon = '#FFF6A878'},
+    {hour = 9, ambient = '#FFFFF6EA', zenith = '#FF2F7FD8', horizon = '#FFA8DCF8'},
+    {hour = 16, ambient = '#FFFFF6EA', zenith = '#FF2F7FD8', horizon = '#FFA8DCF8'},
+    {hour = 18.5, ambient = '#FFE08060', zenith = '#FF44488E', horizon = '#FFF8925E'},
+    {hour = 20, ambient = '#FF2E3060', zenith = '#FF10163E', horizon = '#FF2E3264'},
+    {hour = 24, ambient = '#FF1C2244', zenith = '#FF070B22', horizon = '#FF1C2650'},
 }
 
-DayNight.houses = {-760, -300, 200, 640}
+DayNight.horizon = -110
+DayNight.ground = 250
+DayNight.houses = {
+    {name = 'cottage', x = -1120}, {name = 'stone-house', x = -700}, {name = 'cottage', x = -250},
+    {name = 'stone-house', x = 230}, {name = 'cottage', x = 650}, {name = 'stone-house', x = 1080},
+}
+DayNight.houseScale = 0.6
+DayNight.lampPosts = {-880, -505, 18, 411, 893}
+DayNight.lampHeight = 300
 DayNight.times = {{'Dawn', 6}, {'Noon', 12}, {'Dusk', 18.5}, {'Midnight', 0}}
 
 function DayNight:init(entry)
     DayNight.super.init(self, entry)
+    self.town = Town()
     self.hour = 17
     self.rate = 1
     self.running = true
-    self.night = false
-    self.ambientLight, self.sky = DayNight.colorsAt(self.hour)
-    self.sun = lighting2d.newLight({type = 'directional', color = '#FFFFF0D0', shadows = true, shadowFilter = 'pcf5'})
-    self.lamps, self.occluders = {}, {}
-    for index, x in ipairs(DayNight.houses) do
-        self.lamps[index] = lighting2d.newLight({x = x + 330, y = 140, radius = 300, color = '#FFFFC070'})
-        self.occluders[index] = lighting2d.newOccluder({points = {x, -60, x + 280, -60, x + 280, 240, x, 240}, cull = 'counterClockwise'})
+    self.glow = 0
+    self.colors = DayNight.colorsAt(self.hour)
+    self.ambientLight = self.colors.ambient
+    self.sun = lighting2d.newLight({type = 'directional', color = '#FFFFF0D0'})
+    self.lamps = {}
+    for index = 1, #DayNight.lampPosts do
+        self.lamps[index] = lighting2d.newLight({radius = 340, color = '#FFFFC070', intensity = 1.2})
+    end
+    local random = m.random(13)
+    self.stars = {}
+    for index = 1, 90 do
+        self.stars[index] = {x = random:range(-1400, 1400), y = random:range(-540, DayNight.horizon + 30), size = random:range(1.5, 4), phase = random:range(0, m.tau)}
     end
 end
 
@@ -55,7 +70,7 @@ function DayNight:enter()
         end}
     end
     self:frame{
-        hint = 'The clock runs by itself. Jump to a time of day or change how many hours pass per second.',
+        hint = 'The clock runs by itself. Jump to a time of day or change how many hours pass each second.',
         code = DayNight.code,
         controls = {
             ui.toggle{id = 'running', text = 'Clock runs', checked = true, onChange = function(event)
@@ -70,7 +85,7 @@ function DayNight:enter()
     }
 end
 
--- Returns the ambient and sky colors of an hour, blended between the two keyframes around it.
+-- Returns the ambient light and the sky colors of an hour, blended between the two keys around it.
 function DayNight.colorsAt(hour)
     local keys = DayNight.keys
     for index = 2, #keys do
@@ -78,10 +93,26 @@ function DayNight.colorsAt(hour)
         if hour <= after.hour then
             local before = keys[index - 1]
             local t = m.inverseLerp(before.hour, after.hour, hour)
-            return m.color(before.ambient):lerp(m.color(after.ambient), t), m.color(before.sky):lerp(m.color(after.sky), t)
+            local function blend(field)
+                return m.color(before[field]):lerp(m.color(after[field]), t)
+            end
+            return {ambient = blend('ambient'), zenith = blend('zenith'), horizon = blend('horizon')}
         end
     end
-    return m.color(keys[1].ambient), m.color(keys[1].sky)
+end
+
+-- How much the lamps and the windows glow: off by day, rising from 18 to 19 and fading from 6 to 7.
+function DayNight.glowAt(hour)
+    if hour >= 7 and hour <= 18 then
+        return 0
+    end
+    if hour > 18 and hour < 19 then
+        return m.smoothstep(18, 19, hour)
+    end
+    if hour > 6 and hour < 7 then
+        return 1 - m.smoothstep(6, 7, hour)
+    end
+    return 1
 end
 
 function DayNight:update(dt)
@@ -89,45 +120,56 @@ function DayNight:update(dt)
     if self.running then
         self.hour = (self.hour + dt * self.rate) % 24
     end
-    self.ambientLight, self.sky = DayNight.colorsAt(self.hour)
+    self.colors = DayNight.colorsAt(self.hour)
+    self.ambientLight = self.colors.ambient
+    self.glow = DayNight.glowAt(self.hour)
 
-    -- The sun rises at six on the left and sets at eighteen on the right.
+    -- The sun rises at six on the left and sets at eighteen on the right, and its light travels away from it.
     local arc = (self.hour - 6) / 12
     self.sun.enabled = arc > 0 and arc < 1
     self.sun.rotation = arc * math.pi
     self.sun.intensity = math.max(0, math.sin(arc * math.pi)) * 0.9
-    self.night = self.hour < 6.5 or self.hour > 18
     for _, lamp in ipairs(self.lamps) do
-        lamp.enabled = self.night
-        lamp.intensity = 1.2 * lighting2d.flicker(haylen.elapsed(), {amount = 0.05})
+        lamp.enabled = self.glow > 0
+        lamp.intensity = 1.2 * self.glow * lighting2d.flicker(haylen.elapsed(), {amount = 0.05})
     end
-    self:status(string.format('Time %02d:%02d   Ambient "%s"   %s', math.floor(self.hour), math.floor(self.hour % 1 * 60), self.ambientLight:toHex(), self.night and 'Lamps on' or 'Lamps off'))
+    local text = self.glow > 0.5 and 'The street lamps and the windows are lit.' or self.glow > 0 and 'The lamps are coming on.' or 'The lamps are off.'
+    self:status(string.format('It is %02d:%02d. %s', math.floor(self.hour), math.floor(self.hour % 1 * 60), text))
 end
 
+-- The sun crosses the sky from six to eighteen and the moon from eighteen to six, each on an arc above the hills.
 function DayNight:drawSky()
-    graphics2d.drawRect({-1600, -900, 3200, 820}, self.sky, {unshaded = true})
-    local arc = (self.hour - 6) / 12
-    if arc > 0 and arc < 1 then
-        graphics2d.drawCircle(-800 + arc * 1600, -120 - math.sin(arc * math.pi) * 520, 60, '#FFFFF0A0', {layer = 1, unshaded = true})
-    else
-        local night = ((self.hour + 6) % 24) / 12
-        graphics2d.drawCircle(-800 + night * 1600, -120 - math.sin(night * math.pi) * 460, 44, '#FFE0E8FF', {layer = 1, unshaded = true})
+    local colors = self.colors
+    self.town:sky(colors.zenith, colors.horizon, DayNight.horizon + 120)
+    local starlight = math.max(0, self.glow * 1.2 - 0.2)
+    if starlight > 0 then
+        local time = haylen.elapsed()
+        for _, star in ipairs(self.stars) do
+            local twinkle = 0.6 + 0.4 * math.sin(time * 2 + star.phase)
+            graphics2d.drawCircle(star.x, star.y, star.size, m.color(1, 1, 0.92, starlight * twinkle), {layer = -18, unshaded = true})
+        end
     end
+
+    local arc = (self.hour - 6) / 12
+    local body, place = 'sun', arc
+    if arc <= 0 or arc >= 1 then
+        body, place = 'moon', ((self.hour + 6) % 24) / 12
+    end
+    local x, y = -950 + place * 1900, DayNight.horizon + 80 - math.sin(place * math.pi) * 520
+    local halo = body == 'sun' and '#90FFE08A' or '#60C8D8FF'
+    graphics2d.draw(graphics2d.lightTexture(), x, y, {width = 520, height = 520, color = halo, blend = 'additive', layer = -17, unshaded = true})
+    self.town:piece(body, x, y, 0.55, {layer = -16, unshaded = true})
 end
 
 function DayNight:draw(area)
     self:drawSky()
-    graphics2d.drawRect({-1600, -80, 3200, 1000}, '#FF5A8A4A')
-    graphics2d.drawRect({-1600, 250, 3200, 160}, '#FF6A6A70', {layer = 1})
-    for index, x in ipairs(DayNight.houses) do
-        graphics2d.drawRect({x, -60, 280, 300}, '#FFB09070', {layer = 2})
-        graphics2d.drawPolygon({{x - 20, -60}, {x + 140, -180}, {x + 300, -60}}, '#FF8A4030', {layer = 2})
-        for column = 0, 1 do
-            graphics2d.drawRect({x + 40 + column * 140, 20, 60, 70}, self.night and '#FFFFD27A' or '#FF3A4A60', {layer = 3, emission = self.night and 1 or 0})
-        end
-        graphics2d.drawRect({x + 324, 150, 12, 110}, '#FF3A3A40', {layer = 2})
-        graphics2d.drawCircle(x + 330, 140, 16, self.night and '#FFFFE0A0' or '#FF707070', {layer = 3, emission = self.night and 1.5 or 0})
-        graphics2d.drawOccluder(self.occluders[index])
+    self.town:land(DayNight.horizon, DayNight.ground)
+    for _, house in ipairs(DayNight.houses) do
+        self.town:house(house.name, house.x, DayNight.ground + 12, DayNight.houseScale, 2, self.glow)
+    end
+    for index, x in ipairs(DayNight.lampPosts) do
+        local lanternX, lanternY = self.town:lampPost(x, DayNight.ground + 30, DayNight.lampHeight, 4, self.glow)
+        self.lamps[index].x, self.lamps[index].y = lanternX, lanternY
         graphics2d.drawLight(self.lamps[index])
     end
     graphics2d.drawLight(self.sun)

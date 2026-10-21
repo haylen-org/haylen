@@ -1,0 +1,10 @@
+{
+    "frames": {
+        "campfire": {"frame": {"x": 412, "y": 398, "w": 452, "h": 264}},
+        "cannon": {"frame": {"x": 4, "y": 4, "w": 365, "h": 390}},
+        "fountain": {"frame": {"x": 4, "y": 398, "w": 404, "h": 318}},
+        "ship": {"frame": {"x": 373, "y": 4, "w": 424, "h": 332}},
+        "grinder": {"frame": {"x": 4, "y": 720, "w": 429, "h": 258}}
+    },
+    "meta": {"image": "props.png"}
+}

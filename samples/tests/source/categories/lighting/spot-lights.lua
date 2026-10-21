@@ -1,4 +1,4 @@
--- Spot lights: point lights that shine only inside a cone around their rotation, full inside the inner angle and fading out at the outer one.
+-- Spot lights: point lights that shine only inside a cone around their rotation, full inside the inner angle and fading out at the outer one. A lantern in the middle aims at the cursor and two searchlights on stands sweep the courtyard.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')
@@ -23,8 +23,8 @@ function SpotLights:init(entry)
     self.softness = 0.5
     self.lamp = lighting2d.newLight({type = 'spot', x = -60, y = 40, radius = 900, color = '#FFFFF0C8', intensity = 1.4, shadows = true, shadowFilter = 'pcf5'})
     self.searchlights = {
-        lighting2d.newLight({type = 'spot', x = -900, y = -500, radius = 1500, innerAngle = 0.12, outerAngle = 0.22, color = '#FF80C8FF'}),
-        lighting2d.newLight({type = 'spot', x = 900, y = -500, radius = 1500, innerAngle = 0.12, outerAngle = 0.22, color = '#FFFF90C0'}),
+        lighting2d.newLight({type = 'spot', x = -880, y = -430, radius = 1500, innerAngle = 0.12, outerAngle = 0.22, color = '#FF80C8FF'}),
+        lighting2d.newLight({type = 'spot', x = 880, y = -430, radius = 1500, innerAngle = 0.12, outerAngle = 0.22, color = '#FFFF90C0'}),
     }
     self.time = 0
 end
@@ -54,15 +54,27 @@ function SpotLights:update(dt)
     lamp.innerAngle = self.cone * self.softness
     self.searchlights[1].rotation = math.pi * 0.25 + math.sin(self.time * 0.7) * 0.35
     self.searchlights[2].rotation = math.pi * 0.75 + math.sin(self.time * 0.9 + 1) * 0.35
-    self:status(string.format('Rotation %.2f   Property "innerAngle" %.2f   Property "outerAngle" %.2f', lamp.rotation, lamp.innerAngle, lamp.outerAngle))
+    self:status(string.format('The lantern shines fully within %.0f degrees of its aim and fades out by %.0f degrees.', math.deg(lamp.innerAngle), math.deg(lamp.outerAngle)))
+end
+
+-- Draws a searchlight on its stand: a round base and a barrel that turns with the light, with its glass glowing in the color of the light.
+function SpotLights.drawHousing(light, length)
+    local dx, dy = math.cos(light.rotation), math.sin(light.rotation)
+    local order = {layer = 5, unshaded = true}
+    graphics2d.drawCircle(light.x, light.y, 34, '#FF1E1B33', order)
+    graphics2d.drawCircle(light.x, light.y, 28, '#FF5A6080', order)
+    graphics2d.drawLine(light.x, light.y, light.x + dx * length, light.y + dy * length, 34, '#FF1E1B33', {layer = 6, unshaded = true})
+    graphics2d.drawLine(light.x, light.y, light.x + dx * length, light.y + dy * length, 24, '#FF8890B0', {layer = 6, unshaded = true})
+    graphics2d.drawCircle(light.x + dx * length, light.y + dy * length, 15, light.color, {layer = 7, emission = 1.5})
 end
 
 function SpotLights:draw(area)
     self.room:draw()
-    graphics2d.drawCircle(self.lamp.x, self.lamp.y, 18, '#FFFFF0C8', {layer = 2, unshaded = true})
     for _, light in ipairs(self.searchlights) do
+        SpotLights.drawHousing(light, 48)
         graphics2d.drawLight(light)
     end
+    SpotLights.drawHousing(self.lamp, 30)
     graphics2d.drawLight(self.lamp)
 end
 

@@ -1,44 +1,56 @@
--- Unshaded and emissive draws: unshaded draws keep their colors whatever the light, and emission adds the colors of a draw on top of the light, so windows and neon glow at night.
+-- Unshaded and emissive draws on a village street at night: unshaded draws keep their colors whatever the light, such as the painted signposts, and emission adds the colors of a draw on top of the light, so the windows and the neon sign of the coffee shop glow in the dark.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')
+local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local LightingTest = require('categories.lighting.lighting-test')
+local Room = require('categories.lighting.room')
+local Town = require('categories.lighting.town')
 
 local Emission = haylen.class('Emission', LightingTest)
 
 Emission.code = [[
 graphics2d.beginWorld(camera, {ambientLight = '#FF141A30'})
-graphics2d.drawRect({x, y, 60, 80}, '#FFFFD27A', {layer = 2, emission = 1})  -- A window that glows at night.
-graphics2d.drawPolygon(sign, '#FF30A0FF', {layer = 2, unshaded = true})  -- Keeps its color whatever the light.
+graphics2d.drawRect(window, '#FFFFC870', {emission = 1})  -- Glows in the dark.
+graphics2d.draw(scenery.texture, x, y, {source = tubes, emission = 1.5})  -- The neon.
+graphics2d.draw(tiles, x, y, {source = signpost, unshaded = true})  -- Keeps its colors.
 graphics2d.drawLight(lamp)]]
 
-Emission.houses = {
-    {x = -820, width = 420, height = 460, color = '#FF7A6A5A'},
-    {x = -300, width = 360, height = 620, color = '#FF6A7488'},
-    {x = 180, width = 480, height = 400, color = '#FF8A6A6A'},
-}
+Emission.ground = 300
+Emission.neonScale = 0.82
+Emission.houses = {{name = 'cottage', x = -620, scale = 0.72}, {name = 'stone-house', x = 40, scale = 0.72}, {name = 'cottage', x = 700, scale = 0.72}}
+Emission.signpost = {794, 398, 128, 128}
+Emission.signposts = {-1080, -300, 1180}
 
 function Emission:init(entry)
     Emission.super.init(self, entry)
+    self.town = Town()
+    self.tiles = assets.texture(Room.tileset, {filter = 'linear'})
     self.ambientLight = '#FF141A30'
     self.emission = 1
     self.unshaded = true
-    self.lamp = lighting2d.newLight({radius = 520, color = '#FFFFD8A0', intensity = 1.2})
-    self.time = 0
+    self.lamp = lighting2d.newLight({radius = 560, color = '#FFFFD8A0', intensity = 1.6})
+    self.pointer.origin = {0.36, 0.72}
+    local random = m.random(29)
+    self.stars = {}
+    for index = 1, 70 do
+        self.stars[index] = {x = random:range(-1400, 1400), y = random:range(-540, -200), size = random:range(1.5, 3.5), phase = random:range(0, m.tau)}
+    end
 end
 
 function Emission:enter()
     self:frame{
-        hint = 'The street lamp on the cursor lights the houses: move it with the mouse, a finger, the arrows, WASD or a stick. Windows and the neon sign use emission, and the road signs are unshaded.',
+        hint = 'The lantern on the cursor lights the street: move it with the mouse, a finger, the arrows, WASD or a stick. The windows and the neon glow with emission, and the signposts are unshaded.',
         code = Emission.code,
         cursor = true,
         controls = {
-            ui.formField{label = 'Emission of windows and neon', ui.slider{id = 'emission', min = 0, max = 3, value = self.emission, showValue = true, onChange = function(event)
+            ui.formField{label = 'Emission of the windows and the neon', ui.slider{id = 'emission', min = 0, max = 3, value = self.emission, showValue = true, onChange = function(event)
                 self.emission = event.value
             end}},
-            ui.toggle{id = 'unshaded', text = 'Unshaded road signs', checked = true, onChange = function(event)
+            ui.toggle{id = 'unshaded', text = 'Unshaded signposts', checked = true, onChange = function(event)
                 self.unshaded = event.checked
             end},
         },
@@ -47,51 +59,41 @@ end
 
 function Emission:update(dt)
     Emission.super.update(self, dt)
-    self.time = self.time + dt
     self.lamp.x, self.lamp.y = self.cursorX, self.cursorY
-    self:status(string.format('Emission %.2f   Unshaded "%s"', self.emission, self.unshaded))
+    local signs = self.unshaded and 'keep their painted colors in the dark' or 'take the light like everything else'
+    self:status(string.format('The windows and the neon glow with an emission of %.2f, and the signposts %s.', self.emission, signs))
 end
 
-function Emission:drawHouse(house)
-    local ground = 300
-    local top = ground - house.height
-    graphics2d.drawRect({house.x, top, house.width, house.height}, house.color, {layer = 1})
-    graphics2d.drawPolygon({{house.x - 30, top}, {house.x + house.width / 2, top - 140}, {house.x + house.width + 30, top}}, '#FF4A3030', {layer = 1})
-    for row = 0, math.floor((house.height - 120) / 130) do
-        for column = 0, math.floor((house.width - 100) / 120) do
-            local lit = (row * 3 + column + math.floor(house.x)) % 4 ~= 0
-            local color = lit and '#FFFFD27A' or '#FF2A3040'
-            graphics2d.drawRect({house.x + 50 + column * 120, top + 50 + row * 130, 60, 80}, color, {layer = 2, emission = lit and self.emission or 0})
-        end
-    end
-end
-
-function Emission:drawNeon()
-    local pulse = 0.75 + 0.25 * math.sin(self.time * 6)
-    local order = {layer = 2, emission = self.emission * pulse}
-    graphics2d.drawRing(760, -120, 90, 12, '#FFFF40C0', order)
-    graphics2d.drawLine(700, -120, 820, -120, 12, '#FF40E0FF', order)
-    graphics2d.drawLine(760, -180, 760, -60, 12, '#FF40E0FF', order)
-    graphics2d.draw(graphics2d.lightTexture(), 760, -120, {width = 420, height = 420, color = '#60FF40C0', blend = 'additive', layer = 3, emission = self.emission * pulse})
-end
-
-function Emission:drawSigns()
-    local order = {layer = 2, unshaded = self.unshaded}
-    for index, color in ipairs({'#FF30A0FF', '#FFFFC020', '#FF30D070'}) do
-        local x = -700 + index * 380
-        graphics2d.drawRect({x - 6, 330, 12, 150}, '#FF505058', {layer = 2, unshaded = self.unshaded})
-        graphics2d.drawPolygon({{x - 70, 300}, {x + 50, 300}, {x + 90, 340}, {x + 50, 380}, {x - 70, 380}}, color, order)
-    end
+-- The coffee shop hangs its neon sign from the wall of the stone house, and the neon pulses like a tube that warms up.
+function Emission:drawNeon(x, y)
+    local pulse = 0.85 + 0.15 * math.sin(haylen.elapsed() * 5) * math.sin(haylen.elapsed() * 1.7)
+    local scale = Emission.neonScale
+    self.town:piece('neon-sign', x, y, scale, {pivotX = 0, pivotY = 0, layer = 4})
+    self.town:piece('neon-tubes', x, y, scale, {pivotX = 0, pivotY = 0, layer = 5, emission = self.emission * pulse * 1.5})
+    local width, height = self.town:size('neon-sign')
+    graphics2d.draw(graphics2d.lightTexture(), x + width * scale * 0.58, y + height * scale * 0.62, {width = 440, height = 360, color = '#40FF3CA0', layer = 6, emission = self.emission * pulse * 0.8})
 end
 
 function Emission:draw(area)
-    graphics2d.drawRect({-1600, -900, 3200, 1200}, '#FF2A3450')
-    graphics2d.drawRect({-1600, 300, 3200, 700}, '#FF3A3A40')
-    for _, house in ipairs(Emission.houses) do
-        self:drawHouse(house)
+    local time = haylen.elapsed()
+    self.town:sky('#FF070B22', '#FF1C2650', -40)
+    for _, star in ipairs(self.stars) do
+        graphics2d.drawCircle(star.x, star.y, star.size, m.color(1, 1, 0.92, 0.5 + 0.4 * math.sin(time * 2 + star.phase)), {layer = -18, unshaded = true})
     end
-    self:drawNeon()
-    self:drawSigns()
+    self.town:piece('moon', 860, -400, 0.4, {layer = -16, unshaded = true})
+    self.town:land(-160, Emission.ground)
+
+    for _, house in ipairs(Emission.houses) do
+        self.town:house(house.name, house.x, Emission.ground + 14, house.scale, 2, self.emission)
+    end
+    local stone = Emission.houses[2]
+    local width, height = self.town:size(stone.name)
+    self:drawNeon(stone.x + width * stone.scale / 2 - 46, Emission.ground - height * stone.scale + 60)
+
+    for _, x in ipairs(Emission.signposts) do
+        graphics2d.draw(self.tiles, x, Emission.ground + 40, {source = Emission.signpost, width = 200, height = 200, pivotY = 1, layer = 3, unshaded = self.unshaded})
+    end
+    Room.drawLamp(self.lamp.x, self.lamp.y, self.lamp.color, 30)
     graphics2d.drawLight(self.lamp)
 end
 

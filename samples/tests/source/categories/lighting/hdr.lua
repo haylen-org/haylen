@@ -24,6 +24,7 @@ function Hdr:init(entry)
         self.fixed[index] = lighting2d.newLight({x = (index - 2) * 520, y = -40, radius = 260, color = '#FFFFD8A0', intensity = intensity})
     end
     self.held = lighting2d.newLight({radius = 300, color = '#FFA0D0FF', intensity = 3})
+    self.pointer.origin = {0.18, 0.8}
 end
 
 function Hdr:enter()
@@ -40,15 +41,17 @@ end
 function Hdr:update(dt)
     Hdr.super.update(self, dt)
     self.held.x, self.held.y = self.cursorX, self.cursorY
-    local mode = graphics2d.hdrLighting() and 'Floating point, light goes past 1' or 'Saturates at 1 on this backend'
-    self:status(string.format('Intensity %.2f   Light map: %s', self.held.intensity, mode))
+    local mode = graphics2d.hdrLighting() and 'holds floating point, so light goes past 1' or 'stops at 1 on this backend'
+    self:status(string.format('The cursor light shines at %.2f, and the light map %s.', self.held.intensity, mode))
 end
 
 function Hdr:draw(area)
     self.room:draw()
     for _, light in ipairs(self.fixed) do
+        Room.drawLamp(light.x, light.y, light.color, 26)
         graphics2d.drawLight(light)
     end
+    Room.drawLamp(self.held.x, self.held.y, self.held.color, 26)
     graphics2d.drawLight(self.held)
 end
 
@@ -58,8 +61,8 @@ function Hdr:renderUi()
     end
     Hdr.super.renderUi(self)
     for _, light in ipairs(self.fixed) do
-        local x, y = self.camera:worldToScreen(light.x, light.y + 300)
-        graphics2d.drawText(nil, string.format('Intensity %g', light.intensity), x, y, {size = 36, anchor = {0.5, 0.5}, outlineWidth = 3})
+        local x, y = self.camera:worldToScreen(light.x, light.y - 290)
+        graphics2d.drawText(nil, string.format('Intensity %g', light.intensity), x, y, {size = 34, anchor = {0.5, 1}, outlineWidth = 3})
     end
 end
 

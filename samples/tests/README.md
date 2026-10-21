@@ -82,6 +82,8 @@ The pictures of the categories are painted for the project with the `codex` comm
 | Tiled | `content/tiled/`: tiles painted at four times the grid of the maps, 128 pixels for a cell of 32, with the shores of the water, the sand and the paths blended into the grass by the corner sets of `transitions.png`, which `tools/tiled/transitions.py` draws from the painted textures so every pair of tiles that share corners joins without a seam, cut from seamless painted ground, water and lava textures whose animation frames ripple the same texture in place, with the props, the coin, the slime, the torch and the other objects painted in one sheet, the corner Wang set of the shore drawn from the field of its corners over the painted water and sand, isometric and hexagonal tiles cut from the same textures, sheared so neighbouring cells continue them, the hero of the y sorting test of 128 by 192 drawn at 32 by 48, and the backdrops of the parallax map, whose clouds sit inside their image so they repeat without a seam on both axes and whose ground is a strip seen from the side, with its grass in front of the foot of the near hills. Each tile sits in a gutter of its own edge pixels, the tilesets draw their tiles at the size of the grid with their collision shapes, and every Tiled test loads its map with the `linear` filter, since none of them shows pixel art. The tilesets and maps keep their layout and tile ids. |
 | Nine-slice | `content/nine-slice/`: one atlas of near white pieces, the button, its pressed state, the panel, the knob, the ribbon, the groove and the fill, painted at twice the size they draw at, the near white panel on a trimmed atlas frame, and a wooden frame of 192 pixels around a striped middle, whose stripes show stretching against tiling, alone and cut into nine pieces. |
 | Interface | `content/interface/`: five item icons of 128 pixels next to the eight of the fantasy theme, two avatars of 128, one landscape that tints into dusk and night, the wooden sign with its hover and pressed states and the touch controls. |
+| Village | `content/lighting/scenery.png`: the cottage of 664 by 488 and the stone house of 475 by 618, whose windows are open so the lit glass that the lighting tests draw behind them shows through, the sun and the moon of about 290 pixels, the neon sign of 324 by 381 with its tubes painted again on their own so they glow apart from the sign, and the wall torch of 109 by 312, each on a transparent background, with the houses standing on their bottom edge. |
+| Particle props | `content/particles/props.png`: the confetti cannon, the fountain, the spaceship, the grinder and the campfire of stones and logs that the particle tests emit from, of about 260 to 450 pixels, each on a transparent background. |
 | Others | The fighter of four frames of 491 by 408 pixels with its training dummy and the cutout puppet of the Animation tests, whose limbs are capsules that overlap at round joints, built by `tools/animation/pack-fighter.py` and `tools/animation/pack-puppet.py`, the parts of the tank of the Nodes tests with the road wheels that turn inside its track, built by `tools/nodes/pack-tank.py`, the badge of the Events tests, the album cover of 512 pixels that the now playing test of the Audio tests hands the controls of the system, the planet of the Shaders tests, and the prompts and pictures of rich text. The pixel art hero, the noise, the pattern and the ramps of the Shaders tests and the bitmap fonts of the Text tests stay data that their tests read pixel by pixel. |
 
 ## Art of the particle library
@@ -195,7 +197,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 
 #### Lighting (LIT)
 
-Lit canvases with ambient, point, spot and directional lights, shadows, normal maps, emission, masks and many lights at once. The tests are in `source/categories/lighting/`.
+Lit canvases with ambient, point, spot and directional lights, shadows, normal maps, emission, masks and many lights at once. The tests are in `source/categories/lighting/`, and the village of the street scenes, with its houses, lamp posts, sky and hills, is drawn by `source/categories/lighting/town.lua`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -208,10 +210,10 @@ Lit canvases with ambient, point, spot and directional lights, shadows, normal m
 | `LIT-007` | Shadows | Occluders, the "none", "pcf5" and "pcf13" filters, shadow color and smoothness. |  |
 | `LIT-008` | Physics and Tiled occluders | Shadows cast by falling physics crates and by the walls of a Tiled object layer. |  |
 | `LIT-009` | Normal maps and specular | Bricks and studs with normal maps generated in Lua, lit by the angle of the light with highlights. |  |
-| `LIT-010` | Unshaded and emissive | Signs that keep their colors in the dark and windows and neon that glow. |  |
+| `LIT-010` | Unshaded and emissive | A night street with signs that keep their colors in the dark through "unshaded", and windows and a neon sign that glow through "emission". |  |
 | `LIT-011` | Light masks and layers | Lights that reach only the draws whose mask and layer they select. |  |
-| `LIT-012` | Flicker | Torches that waver like flames, each with its own seed. |  |
-| `LIT-013` | Day and night | A day cycle written in Lua: ambient color, sun, street lamps and lit windows. |  |
+| `LIT-012` | Flicker | Wall torches and a campfire whose lights waver like flames, each with its own seed. |  |
+| `LIT-013` | Day and night | A day cycle written in Lua over a village: the sky, the ambient color, the sun and the moon, the stars, street lamps and windows that light up at dusk. |  |
 | `LIT-014` | Lit render targets | Lit canvases drawn into render targets and shown as screens. |  |
 | `LIT-015` | Many lights | Hundreds of moving lights with the renderer counters. |  |
 

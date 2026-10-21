@@ -12,8 +12,8 @@ local Stress = haylen.class('Stress', LightingTest)
 
 Stress.code = [[
 for index, entry in ipairs(lights) do
-    entry.light.x = math.sin(time * entry.speedX + entry.phase) * 900
-    entry.light.shadows = index <= 16  -- Each light with shadows casts a shadow map on the CPU.
+    entry.light.x = left + width * bounce(time * entry.speedX + entry.phaseX)
+    entry.light.shadows = index <= 16  -- Each casts a shadow map on the CPU.
     graphics2d.drawLight(entry.light)  -- One quad each in the light pass.
 end
 print(graphics2d.stats().lights, graphics2d.stats().shadows)]]
@@ -31,9 +31,10 @@ function Stress:init(entry)
     local random = m.random(3)
     for index = 1, Stress.maxLights do
         self.lights[index] = {
-            speedX = random:range(0.2, 0.9),
-            speedY = random:range(0.2, 0.9),
-            phase = random:range(0, m.tau),
+            speedX = random:range(0.04, 0.16),
+            speedY = random:range(0.04, 0.16),
+            phaseX = random:nextFloat() * 2,
+            phaseY = random:nextFloat() * 2,
             light = lighting2d.newLight({radius = random:range(50, 140), color = m.fromHsv(random:nextFloat(), 0.7, 1), intensity = 0.6}),
         }
     end
@@ -55,19 +56,25 @@ function Stress:enter()
     }
 end
 
+-- Goes from 0 to 1 and back at a steady pace, so the lights cross the canvas evenly instead of lingering at its edges.
+function Stress.bounce(value)
+    return 1 - math.abs(value % 2 - 1)
+end
+
 function Stress:update(dt)
     Stress.super.update(self, dt)
     local time = haylen.elapsed()
+    local area = self.camera:visibleBounds()
     for index = 1, self.count do
         local entry = self.lights[index]
-        entry.light.x = math.sin(time * entry.speedX + entry.phase) * 900
-        entry.light.y = math.cos(time * entry.speedY + entry.phase * 1.7) * 480
+        entry.light.x = area.x + area.width * Stress.bounce(time * entry.speedX + entry.phaseX)
+        entry.light.y = area.y + area.height * Stress.bounce(time * entry.speedY + entry.phaseY)
         entry.light.shadows = self.shadows and index <= 16
     end
 
     self.frameTime = m.lerp(self.frameTime, haylen.unscaledDelta(), 0.05)
     local stats = graphics2d.stats()
-    self:status(string.format('Lights %d   Shadow maps %d   Draw calls %d   %.0f frames per second', stats.lights, stats.shadows, stats.drawCalls, 1 / math.max(self.frameTime, 0.0001)))
+    self:status(string.format('%d lights and %d shadow maps drew in %d draw calls, at %.0f frames per second.', stats.lights, stats.shadows, stats.drawCalls, 1 / math.max(self.frameTime, 0.0001)))
 end
 
 function Stress:draw(area)

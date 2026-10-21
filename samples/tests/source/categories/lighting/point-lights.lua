@@ -1,4 +1,4 @@
--- Point lights: each one shines around its position up to its radius, with its own color and intensity.
+-- Point lights: each one shines around its position up to its radius, with its own color and intensity, from a lamp of its color.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')
@@ -11,7 +11,8 @@ local Room = require('categories.lighting.room')
 local PointLights = haylen.class('PointLights', LightingTest)
 
 PointLights.code = [[
-local lamp = lighting2d.newLight({x = -560, y = -260, radius = 260, color = '#FF70C0FF', intensity = 1.2})
+local lamp = lighting2d.newLight({x = -560, y = -260, radius = 260, color = '#FF70C0FF'})
+lamp.intensity = 1.2
 graphics2d.beginWorld(camera, {ambientLight = '#FF141820'})
 graphics2d.drawLight(lamp)]]
 
@@ -55,14 +56,16 @@ function PointLights:update(dt)
         self.lights[#self.lights + 1] = lighting2d.newLight({x = held.x, y = held.y, radius = held.radius, color = held.color, intensity = held.intensity})
         held.color = PointLights.colors[self.random:integer(1, #PointLights.colors)]
     end
-    self:status(string.format('Lights %d   Radius %.0f   Intensity %.2f', #self.lights + 1, held.radius, held.intensity))
+    self:status(string.format('%d lights shine. The one on the cursor reaches %.0f units at an intensity of %.2f.', #self.lights + 1, held.radius, held.intensity))
 end
 
 function PointLights:draw(area)
     self.room:draw()
     for _, light in ipairs(self.lights) do
+        Room.drawLamp(light.x, light.y, light.color)
         graphics2d.drawLight(light)
     end
+    Room.drawLamp(self.held.x, self.held.y, self.held.color, 36)
     graphics2d.drawLight(self.held)
 end
 

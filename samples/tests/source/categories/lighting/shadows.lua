@@ -10,10 +10,11 @@ local Room = require('categories.lighting.room')
 local Shadows = haylen.class('Shadows', LightingTest)
 
 Shadows.code = [[
-local lamp = lighting2d.newLight({radius = 900, intensity = 1.3, shadows = true, shadowFilter = 'pcf5', shadowSmoothness = 1, shadowColor = '#FF102050'})
-local wall = lighting2d.newOccluder({points = {760, -420, 760, -120, 880, 0}, closed = false})  -- An open outline.
-local crate = lighting2d.newOccluder({points = {-565, -165, -475, -165, -475, -75, -565, -75}, cull = 'counterClockwise'})  -- Its lit sides cast no shadow.
-graphics2d.drawOccluder(wall)
+local lamp = lighting2d.newLight({radius = 900, shadows = true, shadowFilter = 'pcf5'})
+lamp.shadowSmoothness, lamp.shadowColor = 1, '#FF102050'
+local wall = lighting2d.newOccluder({points = {380, -380, 380, -140, 500, -20}, closed = false})
+graphics2d.drawOccluder(wall)  -- An open outline casts a shadow from either side.
+crate.cull = 'counterClockwise'  -- Its lit sides cast no shadow.
 graphics2d.drawLight(lamp)]]
 
 Shadows.colors = {black = '#FF000000', blue = '#FF102050', soft = '#80000000'}
@@ -24,13 +25,14 @@ function Shadows:init(entry)
     self.ambientLight = '#FF181C26'
     self.held = lighting2d.newLight({radius = 900, color = '#FFFFE0B0', intensity = 1.3, shadows = true, shadowFilter = 'pcf5', shadowSmoothness = 1})
     self.corner = lighting2d.newLight({x = 820, y = 420, radius = 700, color = '#FFFF5050', intensity = 0.7, shadows = true, shadowFilter = 'pcf13'})
-    self.wall = lighting2d.newOccluder({points = {760, -420, 760, -120, 880, 0}, closed = false})
+    self.wall = lighting2d.newOccluder({points = {380, -380, 380, -140, 500, -20}, closed = false})
     self.door = lighting2d.newOccluder({points = {0, 0, 180, 0}, closed = false, x = -160, y = 80})
+    self.bricks = Room.bricks()
 end
 
 function Shadows:enter()
     self:frame{
-        hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. The wall on the right is an open outline and the door turns.',
+        hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. The brick wall is an open outline and the wooden door turns on its hinge.',
         code = Shadows.code,
         cursor = true,
         controls = {
@@ -56,19 +58,33 @@ function Shadows:update(dt)
     Shadows.super.update(self, dt)
     self.held.x, self.held.y = self.cursorX, self.cursorY
     self.door.rotation = self.door.rotation + dt * 0.8
-    self:status(string.format('Filter "%s"   Smoothness %.1f   Shadow maps %d', self.held.shadowFilter, self.held.shadowSmoothness, graphics2d.stats().shadows))
+    self:status(string.format('The lamp filters its shadows with "%s" at a smoothness of %.1f, and %d lights cast shadows.', self.held.shadowFilter, self.held.shadowSmoothness, graphics2d.stats().shadows))
+end
+
+-- Returns the points of an occluder in the world as a flat list for a stroke.
+function Shadows.flat(occluder)
+    local flat = {}
+    for _, point in ipairs(occluder:worldPoints()) do
+        flat[#flat + 1] = point.x
+        flat[#flat + 1] = point.y
+    end
+    return flat
 end
 
 function Shadows:draw(area)
     self.room:draw()
-    for _, occluder in ipairs({self.wall, self.door}) do
-        local points = occluder:worldPoints()
-        for index = 1, #points - 1 do
-            graphics2d.drawLine(points[index].x, points[index].y, points[index + 1].x, points[index + 1].y, 12, '#FF6A6A76', {layer = 1})
-        end
-        graphics2d.drawOccluder(occluder)
-    end
+    Room.drawWall(self.bricks, Shadows.flat(self.wall), 56, 1)
+    local door = Shadows.flat(self.door)
+    graphics2d.drawStroke(door, {width = 40, color = '#FF1E1B33', cap = 'round', layer = 1})
+    graphics2d.drawStroke(door, {width = 30, color = '#FFA8683A', cap = 'round', layer = 2})
+    graphics2d.drawStroke(door, {width = 6, color = '#FF7A4A28', cap = 'round', layer = 3})
+    graphics2d.drawCircle(door[1], door[2], 18, '#FF1E1B33', {layer = 3})
+    graphics2d.drawCircle(door[1], door[2], 12, '#FF8890B0', {layer = 4})
+    graphics2d.drawOccluder(self.wall)
+    graphics2d.drawOccluder(self.door)
+    Room.drawLamp(self.corner.x, self.corner.y, self.corner.color, 26)
     graphics2d.drawLight(self.corner)
+    Room.drawLamp(self.held.x, self.held.y, self.held.color, 26)
     graphics2d.drawLight(self.held)
 end
 

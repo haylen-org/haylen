@@ -1,0 +1,12 @@
+{
+    "frames": {
+        "cottage": {"frame": {"x": 483, "y": 4, "w": 664, "h": 488}},
+        "stone-house": {"frame": {"x": 4, "y": 4, "w": 475, "h": 618}},
+        "sun": {"frame": {"x": 297, "y": 626, "w": 288, "h": 284}},
+        "moon": {"frame": {"x": 4, "y": 626, "w": 289, "h": 289}},
+        "neon-sign": {"frame": {"x": 1151, "y": 4, "w": 324, "h": 381}},
+        "neon-tubes": {"frame": {"x": 1479, "y": 4, "w": 324, "h": 381}},
+        "wall-torch": {"frame": {"x": 1807, "y": 4, "w": 109, "h": 312}}
+    },
+    "meta": {"image": "scenery.png"}
+}
