@@ -295,7 +295,16 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
         requireLocal(shared.path);
         Request loading = shared;
         readFile(loading, isStreamed(loading, assetType));
-        return assetType.finalize(assetType.decode(loading), loading);
+        std::shared_ptr<void> decoded = assetType.decode(loading);
+
+        // The dependencies stay cached while the finalizer takes them.
+        std::vector<std::shared_ptr<void>> held;
+        if (assetType.dependencies) {
+            for (const Dependency& dependency : assetType.dependencies(decoded, loading)) {
+                held.push_back(load(dependency.type, dependency.path, dependency.options));
+            }
+        }
+        return assetType.finalize(std::move(decoded), loading);
     });
     // clang-format on
 }
@@ -374,10 +383,10 @@ void Manager::startLoad(Request request, Callback callback) {
 void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::string& key, const Type& assetType) {
     // The file is read on the I/O pool, where waiting on the disk blocks no decoding, then decoded on the task pool and queued on the frame thread, where `finalizePending` creates its GPU resources within the upload budget. An asset that streams decodes on the I/O pool as well, since its decoder reads the file.
     // clang-format off
-    const auto deliver = [this, owner = std::weak_ptr<bool>(alive), key, loading, finalize = assetType.finalize](std::shared_ptr<void> decoded, std::string error) {
-        jobs.postToFrame([this, owner, key, loading, finalize, decoded = std::move(decoded), error = std::move(error)]() mutable {
+    const auto deliver = [this, owner = std::weak_ptr<bool>(alive), key, loading, &assetType](std::shared_ptr<void> decoded, std::string error) {
+        jobs.postToFrame([this, owner, key, loading, &assetType, decoded = std::move(decoded), error = std::move(error)]() mutable {
             if (!owner.expired()) {
-                uploads.push_back({.key = key, .request = loading, .finalize = std::move(finalize), .decoded = std::move(decoded), .error = std::move(error)});
+                queueUpload({.key = key, .request = loading, .finalize = assetType.finalize, .decoded = std::move(decoded), .error = std::move(error)}, assetType);
             }
         });
     };
@@ -406,6 +415,47 @@ void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::
         jobs.post(decodeFile);
     });
     // clang-format on
+}
+
+// The dependencies load like direct loads, whose callbacks run later on the frame thread, and the asset waits for the last of them, failing with the error of the first one that fails.
+void Manager::queueUpload(Upload upload, const Type& assetType) {
+    std::vector<Dependency> needed;
+    if (assetType.dependencies && upload.decoded) {
+        try {
+            needed = assetType.dependencies(upload.decoded, *upload.request);
+        } catch (const std::exception& exception) {
+            upload.error = exception.what();
+        }
+    }
+    if (needed.empty()) {
+        uploads.push_back(std::move(upload));
+        return;
+    }
+
+    auto waiting = std::make_shared<Upload>(std::move(upload));
+    auto left = std::make_shared<std::size_t>(needed.size());
+    // clang-format off
+    const auto arrive = [this, owner = std::weak_ptr<bool>(alive), waiting, left](std::shared_ptr<void> asset, std::string error) {
+        if (owner.expired()) {
+            return;
+        }
+        if (asset) {
+            waiting->held.push_back(std::move(asset));
+        } else if (waiting->error.empty()) {
+            waiting->error = std::move(error);
+        }
+        if (--*left == 0) {
+            uploads.push_back(std::move(*waiting));
+        }
+    };
+    // clang-format on
+    for (const Dependency& dependency : needed) {
+        try {
+            startLoad(makeRequest(dependency.type, dependency.path, dependency.options), arrive);
+        } catch (const std::exception& exception) {
+            arrive(nullptr, exception.what());
+        }
+    }
 }
 
 bool Manager::isStreamed(const Request& request, const Type& assetType) {

@@ -48,6 +48,12 @@ struct Effect {
     // Hands out the texture of a path with the options the file gives it.
     using TextureMaker = std::function<graphics::Texture(const std::string& path, const core::Json& options)>;
 
+    // An image the effect names with the options the file gives it.
+    struct TextureFile {
+        std::string path;
+        core::Json options;
+    };
+
     EmitterConfig config;
     Files files;
     std::vector<Part> parts;
@@ -61,8 +67,8 @@ struct Effect {
     // Gives every emitter of the effect and of its sub-emitters the textures of the files they name.
     void applyTextures(const TextureMaker& make);
 
-    // Lists the texture paths of the effect once each, for the loader to decode.
-    [[nodiscard]] std::vector<std::string> getTexturePaths() const;
+    // Lists the images of the effect once each with their options, which the loader loads as textures.
+    [[nodiscard]] std::vector<TextureFile> getTextureFiles() const;
 
   private:
     // What reading a file needs: the reader and the files being read, which tells an effect that refers to itself apart.
@@ -102,7 +108,7 @@ struct Effect {
     template <typename Enum, std::size_t Size> [[nodiscard]] static Enum readName(const core::Json& value, std::string_view key, const std::array<std::pair<std::string_view, Enum>, Size>& names);
 
     static void applyTextures(EmitterConfig& config, const Files& files, const TextureMaker& make);
-    static void collectTextures(const Files& files, std::vector<std::string>& paths);
+    static void collectTextures(const Files& files, std::vector<TextureFile>& found);
 };
 
 } // namespace haylen::particles2d

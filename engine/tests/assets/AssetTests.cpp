@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <algorithm>
+#include <atomic>
 #include <map>
 #include <memory>
 #include <span>
@@ -415,6 +416,54 @@ TEST_F(AssetsManagerTest, RegistersCustomTypes) {
     EXPECT_NE(fixture.lua("assets.load('levels/one.level')").find("The asset type \"level\" has no Lua representation."), std::string::npos);
     fixture.engine().getPlugin<plugins::AssetsPlugin>().registerLuaPusher("level", [](lua_State* L, const std::shared_ptr<void>& asset) { lua_pushinteger(L, *std::static_pointer_cast<int>(asset)); });
     EXPECT_EQ(fixture.lua("return assets.load('levels/one.level')"), "3");
+}
+
+// Assets that name the same file load it once through the cache before they are finalized, however many of them load at the same time.
+TEST_F(AssetsManagerTest, LoadsTheDependenciesOfAnAssetOnceThroughTheCache) {
+    test::EngineFixture fixture({{"content/tiles/grass.tile", "7"}, {"content/maps/one.map", "tiles/grass.tile"}, {"content/maps/two.map", "tiles/grass.tile"}, {"content/maps/three.map", "tiles/grass.tile"}, {"content/maps/lost.map", "tiles/missing.tile"}});
+    assets::Manager& assets = fixture.engine().getAssets();
+    auto decodedTiles = std::make_shared<std::atomic<int>>(0);
+    // clang-format off
+    assets.registerType({
+        .name = "tile",
+        .extensions = {".tile"},
+        .normalize = [](const core::Json& options) { return options; },
+        .decode = [decodedTiles](assets::Manager::Request& request) -> std::shared_ptr<void> {
+            ++*decodedTiles;
+            return std::make_shared<int>(std::stoi(std::string(request.bytes.begin(), request.bytes.end())));
+        },
+        .finalize = [](std::shared_ptr<void> decoded, const assets::Manager::Request&) { return decoded; },
+    });
+    assets.registerType({
+        .name = "map",
+        .extensions = {".map"},
+        .normalize = [](const core::Json& options) { return options; },
+        .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> { return std::make_shared<std::string>(request.bytes.begin(), request.bytes.end()); },
+        .finalize = [&assets](std::shared_ptr<void> decoded, const assets::Manager::Request&) -> std::shared_ptr<void> {
+            return assets.load("tile", *std::static_pointer_cast<std::string>(decoded));
+        },
+        .dependencies = [](const std::shared_ptr<void>& decoded, const assets::Manager::Request&) {
+            return std::vector<assets::Manager::Dependency>{{.type = "tile", .path = *std::static_pointer_cast<std::string>(decoded), .options = core::Json::object()}};
+        },
+    });
+    // clang-format on
+
+    std::vector<std::shared_ptr<void>> maps;
+    std::string failure;
+    for (const char* name : {"maps/one.map", "maps/two.map", "maps/three.map"}) {
+        assets.loadAsync("map", name, [&maps](std::shared_ptr<void> asset, std::string) { maps.push_back(std::move(asset)); });
+    }
+    assets.loadAsync("map", "maps/lost.map", [&failure](std::shared_ptr<void> asset, std::string error) { failure = asset ? "loaded" : error; });
+    ASSERT_TRUE(fixture.frameUntil([&] { return maps.size() == 3 && !failure.empty(); }));
+    EXPECT_EQ(decodedTiles->load(), 1);
+    EXPECT_EQ(*std::static_pointer_cast<int>(maps.front()), 7);
+    EXPECT_EQ(maps.front(), maps.back());
+    EXPECT_NE(failure.find("tiles/missing.tile"), std::string::npos);
+    EXPECT_EQ(assets.getPendingCount(), 0U);
+
+    // A synchronous load loads the dependencies first as well, and finds the tile in the cache.
+    EXPECT_EQ(assets.load("map", "maps/one.map"), maps.front());
+    EXPECT_EQ(decodedTiles->load(), 1);
 }
 
 } // namespace haylen::assets

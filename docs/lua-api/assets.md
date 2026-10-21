@@ -34,7 +34,7 @@ The file extension picks the asset type, and the type decides what Lua receives.
 | `tiledWorld` | `.world` | List of the maps of a Tiled world. | None. |
 | `tiledRules` | None, so load a rules file or a rule map with the type `'tiledRules'` | Automapping rules for `map:automap()` from [`haylen.tiled`](tiled.md#automapping). | The `filter` and `wrap` of the tileset images of its rule maps. |
 
-Assets are cached by type, path and options. Loading the same asset again returns the same object while anything still holds it, such as a Lua variable, another asset or a preload group, so two loads of one asset compare equal with `==`, whatever its type. Different options load a separate asset. Atlases, skeletons, particle effects and Tiled maps share their images with textures loaded directly with the same `filter` and `wrap`, except Tiled images with a transparent color, which stay private to their map.
+Assets are cached by type, path and options. Loading the same asset again returns the same object while anything still holds it, such as a Lua variable, another asset or a preload group, so two loads of one asset compare equal with `==`, whatever its type. Different options load a separate asset. Atlases, skeletons, particle effects and Tiled maps share their images with textures loaded directly with the same `filter` and `wrap`, except Tiled images with a transparent color, which stay private to their map. A particle effect loads the images it names as textures of the cache before it is ready, so effects that share an image, such as the effects of one atlas, decode it once however many of them load at the same time.
 
 ## Loading
 

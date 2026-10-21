@@ -651,26 +651,27 @@ void Effect::applyTextures(const TextureMaker& make) {
     }
 }
 
-void Effect::collectTextures(const Files& source, std::vector<std::string>& paths) {
+void Effect::collectTextures(const Files& source, std::vector<TextureFile>& found) {
     for (const std::string& path : {source.texture, source.trailTexture}) {
-        if (!path.empty() && std::find(paths.begin(), paths.end(), path) == paths.end()) {
-            paths.push_back(path);
+        const bool known = std::any_of(found.begin(), found.end(), [&](const TextureFile& file) { return file.path == path && file.options == source.textureOptions; });
+        if (!path.empty() && !known) {
+            found.push_back({.path = path, .options = source.textureOptions});
         }
     }
     for (const Files& sub : source.subEmitters) {
-        collectTextures(sub, paths);
+        collectTextures(sub, found);
     }
 }
 
-std::vector<std::string> Effect::getTexturePaths() const {
-    std::vector<std::string> paths;
+std::vector<Effect::TextureFile> Effect::getTextureFiles() const {
+    std::vector<TextureFile> found;
     if (!isComposite()) {
-        collectTextures(files, paths);
+        collectTextures(files, found);
     }
     for (const Part& part : parts) {
-        collectTextures(part.files, paths);
+        collectTextures(part.files, found);
     }
-    return paths;
+    return found;
 }
 
 } // namespace haylen::particles2d

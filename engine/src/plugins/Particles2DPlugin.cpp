@@ -1,9 +1,9 @@
 #include "plugins/Particles2DPlugin.hpp"
 
-#include <map>
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "2d/particles/Particles2DLua.hpp"
 #include "haylen/2d/particles/Effect.hpp"
@@ -11,17 +11,11 @@
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/JsonValidator.hpp"
-#include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/plugins/AssetsPlugin.hpp"
 
 namespace haylen::plugins {
-
-struct Particles2DPlugin::DecodedEffect {
-    particles2d::Effect effect;
-    std::map<std::string, graphics::Image> images;
-};
 
 // The texture options a caller passes stay as given, so they win over the options of the effect file only where they name a key.
 core::Json Particles2DPlugin::normalizeEffectOptions(const core::Json& options) {
@@ -29,6 +23,13 @@ core::Json Particles2DPlugin::normalizeEffectOptions(const core::Json& options) 
         return core::Json::object();
     }
     (void)assets::Manager::textureOptionsFromJson(options);
+    return options;
+}
+
+// The options of the texture of an image of an effect: those the file gives, with the options of the load on top.
+core::Json Particles2DPlugin::textureOptions(const core::Json& fileOptions, const core::Json& loadOptions) {
+    core::Json options = fileOptions;
+    options.update(loadOptions);
     return options;
 }
 
@@ -60,26 +61,23 @@ void Particles2DPlugin::start(core::Engine& engine) {
         .normalize = [](const core::Json& options) { return normalizeEffectOptions(options); },
         .decode = [](assets::Manager::Request& request) -> std::shared_ptr<void> {
             const io::Package& package = *request.package;
-            auto decoded = std::make_shared<DecodedEffect>();
-            decoded->effect = particles2d::Effect::parse(core::Json::parse(request.bytes.begin(), request.bytes.end()), request.path, [&package](const std::string& path) {
+            return std::make_shared<particles2d::Effect>(particles2d::Effect::parse(core::Json::parse(request.bytes.begin(), request.bytes.end()), request.path, [&package](const std::string& path) {
                 return package.readAsset(path);
-            });
-            for (const std::string& path : decoded->effect.getTexturePaths()) {
-                decoded->images.emplace(path, graphics::Image::decode(package.readAsset(path)));
-            }
-            return decoded;
+            }));
         },
-        .finalize = [&manager = engine.getAssets(), &device = engine.getGraphics()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
-            auto& decoded = *std::static_pointer_cast<DecodedEffect>(result);
-            decoded.effect.applyTextures([&](const std::string& path, const core::Json& fileOptions) {
-                core::Json options = fileOptions;
-                options.update(request.options);
-                const auto resource = manager.share("texture", path, options, [&](const assets::Manager::Request& texture) {
-                    return device.createTexture(decoded.images.at(path), assets::Manager::textureOptionsFromJson(texture.options)).getResource();
-                });
-                return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(resource));
+        .finalize = [&manager = engine.getAssets()](std::shared_ptr<void> result, const assets::Manager::Request& request) -> std::shared_ptr<void> {
+            auto effect = std::static_pointer_cast<particles2d::Effect>(result);
+            effect->applyTextures([&](const std::string& path, const core::Json& fileOptions) {
+                return graphics::Texture(std::static_pointer_cast<graphics::TextureResource>(manager.load("texture", path, textureOptions(fileOptions, request.options))));
             });
-            return std::make_shared<particles2d::Effect>(std::move(decoded.effect));
+            return effect;
+        },
+        .dependencies = [](const std::shared_ptr<void>& decoded, const assets::Manager::Request& request) {
+            std::vector<assets::Manager::Dependency> needed;
+            for (const particles2d::Effect::TextureFile& file : std::static_pointer_cast<particles2d::Effect>(decoded)->getTextureFiles()) {
+                needed.push_back({.type = "texture", .path = file.path, .options = textureOptions(file.options, request.options)});
+            }
+            return needed;
         },
     });
     engine.getAssets().registerType({
