@@ -3042,7 +3042,7 @@ A virtual button that holds the virtual button `action` down while a finger or t
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `action` | string | required | Name of the virtual button it drives. |
-| `text` | text | none | Label in the middle of the button. |
+| `text` | text | none | Label in the middle of the button, which keeps the theme `contentSpacing` from the ring and draws smaller, down to half its size, when it is wider than the room the ring leaves. |
 | `image` | image | none | Picture in the middle of the button. |
 | `size` | number from 8 to 2048 | `120` | Width and height. |
 | `touchOnly` | boolean | `false` | Shows the button only while the last input came from a touch screen. |

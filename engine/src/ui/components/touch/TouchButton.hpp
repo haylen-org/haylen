@@ -34,6 +34,10 @@ class TouchButton final : public Component {
     }
 
   private:
+    static constexpr float kMinLabelScale = 0.5F;
+
+    void drawLabel(Context& context, const math::Rect& circle, std::string_view shown);
+
     std::string action;
     TextValue text;
     std::string image;

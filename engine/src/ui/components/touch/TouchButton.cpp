@@ -1,6 +1,8 @@
 #include "ui/components/touch/TouchButton.hpp"
 
 #include <algorithm>
+#include <cmath>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -57,8 +59,22 @@ void TouchButton::render(Context& context, const math::Rect& bounds) {
         Surfaces::drawImage(context, context.getImage(image, {icon, icon}), {content.getCenter().x - icon * 0.5F, content.getCenter().y - icon * 0.5F, icon, icon});
     }
     if (const std::string_view shown = context.getText(text); !shown.empty()) {
-        Typography::drawAligned(context, Theme::Font::Button, content, context.getColor(Theme::Color::OnAccent), shown, Alignment::Center);
+        drawLabel(context, content, shown);
     }
+}
+
+// The label keeps a margin inside the ring along the chord at the top and bottom of its line, and a label wider than that draws smaller, down to half its size, and ends with an ellipsis when it still does not fit.
+void TouchButton::drawLabel(Context& context, const math::Rect& circle, std::string_view shown) {
+    const float radius = circle.width * 0.5F;
+    const float lineHeight = Typography::getLineHeight(context, Theme::Font::Button);
+    const float half = std::min(lineHeight * 0.5F, radius);
+    const float room = std::max(0.0F, 2.0F * std::sqrt(radius * radius - half * half) - context.getMetric(Theme::Metric::ContentSpacing) * 2.0F);
+    const float natural = Typography::measure(context, Theme::Font::Button, shown).x;
+    const float scale = natural > room ? std::max(kMinLabelScale, room / natural) : 1.0F;
+    const std::string_view fitted = natural * scale > room ? Typography::elide(context, Theme::Font::Button, shown, room / scale) : shown;
+    const float height = lineHeight * scale;
+    const math::Rect line{circle.x, std::floor(circle.getCenter().y - height * 0.5F), circle.width, height};
+    Typography::drawParagraph(context, Theme::Font::Button, line, context.getColor(Theme::Color::OnAccent), fitted, Alignment::Center, std::nullopt, 2.0F, scale);
 }
 
 void TouchButton::drawingStopped(Context& context) {

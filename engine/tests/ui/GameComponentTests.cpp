@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -10,6 +11,8 @@
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/Input.hpp"
+#include "haylen/text/FontFamily.hpp"
+#include "haylen/text/Layout.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
@@ -483,6 +486,28 @@ TEST_F(GameComponentTest, FocusesARadioOptionThatCanBePicked) {
     key(input::Key::Enter);
     frames();
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"value", "fast"}}));
+}
+
+// A touch button draws its label inside its ring with a margin, smaller than its font when the label is wider than the room, and a short label at its full size.
+TEST_F(GameComponentTest, FitsTheLabelOfATouchButtonInsideItsRing) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "children": [
+        {"kind": "touchButton", "id": "attack", "action": "attack", "text": "Attack", "size": 100},
+        {"kind": "touchButton", "id": "go", "action": "go", "text": "Go", "size": 100}
+    ]})");
+    // clang-format on
+    frames(2);
+    Backend& backend = getUi().getBackend();
+    const float spacing = getUi().getTheme().getMetric(Theme::Metric::ContentSpacing);
+    for (const Backend::Text& text : backend.getTexts()) {
+        const std::string_view content = backend.getContent(text);
+        const math::Rect button = getBounds(*gui, content == "Go" ? "go" : "attack");
+        const std::shared_ptr<const text::Layout> laid = text.family->layout(content, text.style);
+        ASSERT_EQ(laid->lines.size(), 1U) << content;
+        const math::Rect box = laid->lines.front().box.translated(text.origin);
+        EXPECT_GE(box.x, button.x + spacing - 1.0F) << content;
+        EXPECT_LE(box.getRight(), button.getRight() - spacing + 1.0F) << content;
+    }
 }
 
 } // namespace haylen::ui
