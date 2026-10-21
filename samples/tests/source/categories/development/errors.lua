@@ -16,13 +16,12 @@ local Test = require('harness.test')
 local Errors = haylen.class('Errors', Test)
 
 Errors.code = [[
-haylen.setRecoverable(true)  -- The error screen offers `Back to the app`.
+haylen.setRecoverable(true)  -- The error screen offers "Back to the app".
 timer.after(0.05, function() error('A timer failed.') end, {owner = self})
 events.on('appError', function(error) print(error.message, error.file, error.line, #error.frames) end, {owner = self})
 events.on('appRecovered', function(error) scene.clear() scene.push(Menu()) end)]]
 
 Errors.file = 'source/categories/development/errors.lua'
-Errors.rowHeight = 36
 Errors.messageLength = 90
 -- What the error screen showed for each kind, kept for the whole run of the project, because going back to the app reopens the test list.
 Errors.reports = {}
@@ -137,14 +136,11 @@ function Errors.raise.button()
 end
 
 function Errors:enter()
-    local controls = {ui.sectionTitle{text = 'Raise an error from'}}
-    for _, kind in ipairs(Errors.kinds) do
-        controls[#controls + 1] = ui.button{id = kind.id, text = kind.text, onClick = function()
-            self.pending = kind.id
-            Errors.raise[kind.id](self)
-        end}
+    local rows = {}
+    for index, kind in ipairs(Errors.kinds) do
+        rows[index] = self:row(kind)
     end
-    self:frame{hint = 'Each button raises an error from one kind of code. The error screen shows it with its stack, and "Back to the app" returns to the test list, where this test opens again with the row filled in.', code = Errors.code, controls = controls, focus = Errors.kinds[1].id}
+    self:frame{hint = 'Each button raises an error from one kind of code. The error screen shows it with its stack, and "Back to the app" returns to the test list, where this test opens again with the row filled in.', code = Errors.code, content = rows, focus = Errors.kinds[1].id}
 
     events.on('appError', function(error)
         if self.pending then
@@ -193,18 +189,22 @@ function Errors:update(dt)
     self:status(string.format('Raised %d of %d kinds, and %d reached the error screen with their message, line and stack.', raised, #Errors.kinds, passed))
 end
 
-function Errors:draw(area)
-    local y = 24
-    for _, kind in ipairs(Errors.kinds) do
-        local report = Errors.reports[kind.id]
-        local passed = report and Errors.passed(kind, report)
-        Test.caption(not report and 'Not raised' or passed and 'Pass' or 'Fail', 24, y, {size = 20, color = not report and Test.muted or passed and Test.green or Test.red})
-        Test.caption(kind.text, 160, y, {size = 20, color = Test.ink})
-        if report then
-            Test.caption(string.format('Line %d, %d frames: %s', report.line, report.frames, Errors.shorten(report.message)), 420, y, {size = 18})
-        end
-        y = y + Errors.rowHeight
-    end
+-- A row of the table: whether the kind passed, its name, what the error screen showed and the button that raises it.
+function Errors:row(kind)
+    local report = Errors.reports[kind.id]
+    local passed = report and Errors.passed(kind, report)
+    local details = report and string.format('Line %d with %d frames: %s', report.line, report.frames, Errors.shorten(report.message)) or 'Not raised yet.'
+    return ui.card{padding = {10, 20}, align = 'stretch',
+        ui.row{gap = 20, alignItems = 'center',
+            ui.badge{text = not report and 'Waiting' or passed and 'Pass' or 'Fail', tone = not report and 'neutral' or passed and 'success' or 'danger', solid = report ~= nil},
+            ui.label{text = kind.text, font = 'button', width = 260},
+            ui.label{text = details, color = 'textMuted', grow = 1},
+            ui.button{id = kind.id, text = 'Raise', onClick = function()
+                self.pending = kind.id
+                Errors.raise[kind.id](self)
+            end},
+        },
+    }
 end
 
 return Errors
