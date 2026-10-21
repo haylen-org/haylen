@@ -99,7 +99,7 @@ function Home:side()
             ui.avatar{image = me.avatar, size = 64},
             ui.column{gap = 0, grow = 1, ui.label{text = me.handle, font = 'button', wrap = false}, ui.label{text = me.name, font = 'caption', color = 'textMuted', wrap = false}},
         },
-        ui.label{text = 'Suggested for you', font = 'button', color = 'textMuted', margin = {space.s, 0, 0, 0}},
+        ui.label{text = 'People to follow', font = 'button', color = 'textMuted', margin = {space.s, 0, 0, 0}},
         ui.collection{id = 'suggested', height = 80 * 5, gap = 0, scrollbar = false, types = {person = Widgets.person()},
             onClick = function(event)
                 local person = Social.person(event.cell.item)
