@@ -21,9 +21,9 @@ The images, sounds and maps of the app itself never need these modules. The engi
 
 ## Results arrive on the frame thread
 
-App code never runs on another thread. Every result, event and failure of the network reaches Lua on the frame thread: during the poll of the event loop at the start of a frame, or with the events of the frame. So every callback may change scenes, sprites and the UI.
+App code never runs on another thread. Every result, event and failure of the network reaches Lua on the frame thread. It arrives during the poll of the event loop at the start of a frame, or with the events of the frame. So every callback may change scenes, sprites and the UI.
 
-The functions of `http` and `socket` return promises. A promise is a value that settles later with a result or an error. A task waits for it with `:await()`, which returns the result, or `nil` and the error message. Start a task with `scene.spawn(owner, fn)`, which ends the task for good when its owner ends, such as the scene that started it, or with `async.spawn(fn)` for a task that belongs to nobody. A WebSocket reports through listeners instead, which `socket:on` adds.
+The functions of `http` and `socket` return promises. A promise is a value that settles later with a result or an error. A task waits for it with `:await()`, which returns the result, or `nil` and the error message. Start a task with `scene.spawn(owner, fn)`, which ends the task for good when its owner ends, such as the scene that started it. Use `async.spawn(fn)` for a task that belongs to nobody. A WebSocket reports through listeners instead, which `socket:on` adds.
 
 ```lua
 local http = require('http')
@@ -62,7 +62,7 @@ The response is a table:
 | `body` | The body as a Lua string. |
 | `json()` | A function that parses the body as JSON and returns it. |
 
-A status such as `404` or `500` still resolves the promise, so check `ok`. The promise rejects only when no answer came, such as when the host does not exist or the deadline passed.
+A status such as `404` or `500` still resolves the promise, so check `ok`. The promise rejects when the request itself fails, such as when the host does not exist, the deadline passed or the body grew past `maxResponseBytes`.
 
 ```lua
 local async = require('async')
@@ -116,7 +116,7 @@ end)
 
 ### Large downloads
 
-A request keeps its whole body in memory. For a large file, use `http.client.stream(options, onChunk)` instead. It calls `onResponse` of its options with the status and the headers first, then calls `onChunk` with each piece of the body as it arrives, and resolves once the body ended. A callback that falls behind holds only a bounded window of the body, so a slow app never gathers a whole download in memory. Save the file with the `fs` module of Varn under the folder of [`haylen.storage`](../lua-api/storage.md#storageroot).
+A request keeps its whole body in memory. For a large file, use `http.client.stream(options, onChunk)` instead. It first calls `onResponse` of its options with the status and the headers. Then it calls `onChunk` with each piece of the body as it arrives, and it resolves once the body ended. A callback that falls behind holds only a bounded window of the body, so a slow app never gathers a whole download in memory. Save the file with the `fs` module of Varn under the folder of [`haylen.storage`](../lua-api/storage.md#storageroot).
 
 ```lua
 local async = require('async')
@@ -192,7 +192,7 @@ A native socket answers the pings of the server on its own, joins messages that 
 
 ### Reconnecting
 
-Networks drop. Turn on the option `reconnect`, and the socket opens a new connection by itself after a drop or a failed attempt. It goes on until the app closes it, and it waits a little longer before each new attempt, at random, so many players who lost the same server never retry at the same moment. The [reference](../lua-api/net.md#reconnection) lists the settings of the waits.
+Networks drop. Turn on the option `reconnect`, and the socket opens a new connection by itself after a drop or a failed attempt. It goes on until the app closes it. It waits a little longer before each new attempt, with some chance in the wait, so many players who lost the same server never retry at the same moment. The [reference](../lua-api/net.md#reconnection) lists the settings of the waits.
 
 While it reconnects, the socket keeps its listeners. Each lost connection reports `disconnect`, each planned attempt reports `reconnecting`, and each connection that opens reports `open` again. Messages cannot be sent while the socket is not open, so keep them in a queue and send them on the next `open`.
 
@@ -293,7 +293,7 @@ The function `socket.tls.connect(host, port, options)` opens a TCP connection en
 
 ### UDP
 
-A UDP socket binds a port and then sends and receives datagrams. A game that sends the state of each frame sends many datagrams at once with `udp:sendMany(list)` and reads every datagram that waits with `udp:recvMany(maxDatagrams)`, one call each way instead of one await per datagram.
+A UDP socket binds a port and then sends and receives datagrams. A game that sends the state of each frame sends many datagrams at once with `udp:sendMany(list)`. It reads every datagram that waits with `udp:recvMany(maxDatagrams)`. That is one call each way instead of one await per datagram.
 
 ```lua
 local async = require('async')
@@ -377,7 +377,7 @@ A web page lives inside the rules of the browser. They keep a page from acting a
 - A page cannot send pings and never sees pongs. So `socket:ping` raises `Browsers cannot send WebSocket ping frames.`, and the event `pong` never comes. Every other event comes as on native builds, on the next frame of the app.
 - Browsers hide the cause of a failed connection from pages on purpose. A failed connection reports `The WebSocket connection to "<url>" failed.` without a cause. When the browser refuses to open the address at all, its own reason follows.
 - The option `connectTimeout`, the reconnection, the owners and `socket.bufferedAmount` work as on native builds.
-- Requests of `http.client` follow the rules of `fetch`, the request function of the browser. A server on another origin answers only when it allows the origin of the page through CORS, the rules by which a server lets pages of other sites read its answers. A page served over HTTPS requests only `https://` addresses.
+- Requests of `http.client` follow the rules of `fetch`, the request function of the browser. CORS is the set of rules by which a server lets pages of other sites read its answers. A server on another origin answers only when it allows the origin of the page through CORS. A page served over HTTPS requests only `https://` addresses.
 - The browser follows redirects itself, so `redirect` must be `'follow'`. A response shows only the headers that the CORS rules expose to the page.
 - The function `http.client.stream` reads the body as it arrives, with the head first, and `maxResponseBytes` stops a body at the piece that passes the limit, as on native builds.
 
@@ -434,7 +434,7 @@ Backpressure means that a sender slows down to the speed of the receiver, so dat
 
 ## Throughput within a frame
 
-The engine polls the event loop of Varn once per frame, with a budget of a quarter of the frame time, between 1 and 8 milliseconds, as the [architecture guide](../core/architecture.md#the-frame) describes. The loop runs in passes while they make progress and the budget lasts. Each pass serves every socket of the `socket` module and every connection of the servers of the `http` module until it would block. So a task that reads again after a receive reads in the same frame, a request to a server inside the app gets its answer within one frame, and a burst of datagrams or connections is served at once.
+The engine polls the event loop of Varn once per frame, with a budget of a quarter of the frame time, between 1 and 8 milliseconds, as the [architecture guide](../core/architecture.md#the-frame) describes. The loop runs in passes while they make progress and the budget lasts. Each pass serves every socket of the `socket` module and every connection of the servers of the `http` module until it would block. So a task that reads again after a receive reads in the same frame. A request to a server inside the app gets its answer within one frame, and a burst of datagrams or connections is served at once.
 
 A socket of `haylen.net` runs on a thread of its own, so the budget of the poll never slows it. Its messages only wait for the next frame to reach Lua.
 

@@ -576,7 +576,7 @@ steps:
   - run: python3 haylen.py check my-game --platform linux --config Release
 ```
 
-On a Mac, the command `tar -c -C ~/Library/Application\ Support/Haylen/keys com.example.mygame | base64` prints the text of that secret. A release build compiles the content keys into the binary of the app, sealed so the binary never holds them in plain form, and no key sits in a resource, a manifest or `app.json`, as [keys in the app](content.md#keys-in-the-app) describes.
+On a Mac, the command `tar -c -C ~/Library/Application\ Support/Haylen/keys com.example.mygame | base64` prints the text of that secret. A release build compiles the content keys into the binary of the app, sealed so that the binary never holds them in plain form. No key sits in a resource, a manifest or `app.json`, as [keys in the app](content.md#keys-in-the-app) describes.
 
 ## Performance
 
