@@ -57,7 +57,7 @@ Every draw that takes an `order` table, and every options table that lists `laye
 | `unshaded` | boolean | `false` | In lit canvases, keeps the colors of the draw whatever the light. |
 | `distortion` | number | `0` | Above 0, the draw bends the image of its canvas instead of drawing colors, as [distortion](#distortion) explains. |
 
-Unlit canvases ignore the lighting keys, and [`haylen.lighting2d`](lighting2d.md#how-2d-lighting-works) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values. A negative `specular` or `emission` raises `A draw needs a specular strength and an emission of zero or more.`, and a `shininess` out of range raises `A draw shininess must be from 1 to 255.`.
+Unlit canvases ignore the lighting keys, and [`haylen.lighting2d`](lighting2d.md) explains how lit canvases use them. A draw copies the values of its material when it is made, so a material changed between two draws shades each draw with its own values. A negative `specular` or `emission` raises `A draw needs a specular strength and an emission of zero or more.`, and a `shininess` out of range raises `A draw shininess must be from 1 to 255.`.
 
 The `sort` option of a canvas chooses how the draws of one layer are ordered:
 
@@ -3490,7 +3490,7 @@ scene.push({
 
 ## Lights
 
-Lights and occluders draw only in lit canvases, world or render target canvases with `ambientLight`. The module [`haylen.lighting2d`](lighting2d.md#how-2d-lighting-works) explains the kinds of light, blend modes, masks and shadows, and the [rendering guide](../graphics/rendering.md#lighting) explains the passes.
+Lights and occluders draw only in lit canvases, world or render target canvases with `ambientLight`. The module [`haylen.lighting2d`](lighting2d.md) explains the kinds of light, blend modes, masks and shadows, and the [rendering guide](../graphics/rendering.md#lighting) explains the passes.
 
 ### graphics2d.drawLight(light)
 
