@@ -610,7 +610,7 @@ scene.push({
 
 ## Bytes
 
-A `Bytes` value, named `haylen.Bytes` in messages, is a string marked to cross the bridge as a byte buffer. Make one with [`platform.bytes(data)`](#platformbytesdata). The mark holds a copy of the bytes. Only the bridge takes it, so any other conversion to JSON, such as `json.encode`, raises `A userdata cannot be converted to JSON.`.
+A `Bytes` value, named `haylen.Bytes` in messages, is a string marked to cross the bridge as a byte buffer. Make one with [`platform.bytes(data)`](#platformbytesdata). The mark holds a copy of the bytes. Only the bridge takes it, so any other conversion to JSON of the engine raises `A userdata cannot be converted to JSON.`.
 
 ### Properties
 
