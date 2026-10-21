@@ -1,6 +1,6 @@
 # 📖 `haylen.audio`
 
-The module `haylen.audio` plays sounds and music. Use it to start voices, crossfade music tracks, set the volume of groups of sounds, add effects, place sounds in the world and read the state of the audio output. The [audio guide](../audio/audio.md) explains voices, buses, process modes, positional audio and the sessions of each platform.
+The module `haylen.audio` plays sounds and music. Use it to play voices and music, group sounds into buses with effects, place sounds in the world and read the state of the audio output. The [audio guide](../audio/audio.md) explains voices, buses, process modes, positional audio and the sessions of each platform.
 
 ```lua
 local audio = require('haylen.audio')

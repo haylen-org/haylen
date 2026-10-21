@@ -1,6 +1,6 @@
 # 🎮 Input
 
-This guide explains how a Haylen app reads its players. It covers the action map that gameplay reads, the timing of presses, every device the engine supports (keyboards, mice, touch screens, gamepads and TV remotes), on-screen controls, how the game and the UI share the same devices, local multiplayer, command buffers and recorded replays. Read it before you write the controls of a game or a screen that players drive with a gamepad or a remote. The [`haylen.input` reference](../lua-api/input.md) lists every function, binding, event and error.
+This guide explains how a Haylen app reads its players. It covers the action map that gameplay reads and the timing of presses. It covers every device the engine supports: keyboards, mice, touch screens, gamepads and TV remotes. It also covers on-screen controls, how the game and the UI share the same devices, local multiplayer, command buffers and recorded replays. Read it before you write the controls of a game or a screen that players drive with a gamepad or a remote. The [`haylen.input` reference](../lua-api/input.md) lists every function, binding, event and error.
 
 ## Two levels of input
 
@@ -217,9 +217,9 @@ scene.push({
 })
 ```
 
-Each platform delivers keys in its own way, and the engine keeps one rule everywhere: a key whose press reached the app always reports its release to the app, so no key stays held.
+Each platform delivers keys in its own way. The engine keeps one rule everywhere: a key whose press reached the app always reports its release to the app. So no key stays held.
 
-- On Android, hardware keyboards report their keys with modifiers and repeats, and type characters. Keys that the app does not know, such as the volume keys, go on to the system. The Back button reaches the app as `escape` only while the app keeps back, as [TV remotes](#tv-remotes) explains, or while a text field edits. A view over the app that has the focus, such as a field of a plugin, takes the keys it wants first, and a key whose press went to such a view never reports its release to the app. A key whose press the app took reports its release to the app even when a view took the focus in between, such as the hidden field of a text field that the press started editing.
+- On Android, hardware keyboards report their keys with modifiers and repeats, and type characters. Keys that the app does not know, such as the volume keys, go on to the system. The Back button reaches the app as `escape` only while the app keeps back, as [TV remotes](#tv-remotes) explains, or while a text field edits. A view over the app that has the focus, such as a field of a plugin, takes the keys it wants first. A key whose press went to such a view never reports its release to the app. A key whose press the app took reports its release to the app, even when a view took the focus in between. That view may be the hidden field of a text field that the press started editing.
 - On macOS, the hidden field of a text field passes the release on to the view of the app.
 - iOS, iPadOS, tvOS and Mac Catalyst read a hardware keyboard through `GCKeyboard`. It reports every key by its place on the keyboard, with its release, whatever view has the focus, and without repeats. Typed characters and `input.text()` come from the native field of a text field there. So an app reads them while a text field, or the plain keyboard of `window.setKeyboardVisible()`, edits.
 - The web page hands a release to the app whenever its press reached the app.
@@ -254,7 +254,7 @@ scene.push({
 
 ### Touch
 
-The function `input.touches()` returns the fingers on the screen, with the fingers that lifted in this frame. Each finger has an `id` that stays the same while it is down, its position `x` and `y`, where it landed in `startX` and `startY`, its movement since the last frame in `dx` and `dy`, and how long it has been down in `duration`. Its `phase` is `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. Fingers in the phase `'ended'` or `'cancelled'` leave the list on the next frame. The function `input.findTouch(id)` follows one finger.
+The function `input.touches()` returns the fingers on the screen, with the fingers that lifted in this frame. Each finger has an `id` that stays the same while it is down. It also has its position `x` and `y`, and where it landed in `startX` and `startY`. The fields `dx` and `dy` hold its movement since the last frame, and `duration` how long it has been down. Its `phase` is `'began'`, `'moved'`, `'stationary'`, `'ended'` or `'cancelled'`. Fingers in the phase `'ended'` or `'cancelled'` leave the list on the next frame. The function `input.findTouch(id)` follows one finger.
 
 ```lua
 local input = require('haylen.input')
@@ -473,7 +473,7 @@ scene.push({
 
 ## UI and gameplay input
 
-The same devices drive both the UI and the game. The mouse clicks buttons of the HUD and swings swords. The arrows, the gamepad and the remote move the focus of a menu and walk the hero. Two rules decide which side hears a press, so the two never fight over the same input: the pointer goes to what is under it, and the keyboard, gamepads and remotes go to what has the focus.
+The same devices drive both the UI and the game. The mouse clicks buttons of the HUD and swings swords. The arrows, the gamepad and the remote move the focus of a menu and walk the hero. Two rules decide which side hears a press, so the two never fight over the same input. The pointer goes to what is under it. The keyboard, gamepads and remotes go to what has the focus.
 
 ### The pointer
 
@@ -503,7 +503,7 @@ scene.push({
 The keyboard, gamepads and TV remotes drive the UI through its navigation actions, and the game through the action map. The focus decides which side hears a press:
 
 - **A control has the focus.** The UI owns the navigation input. The directions, accept, cancel, menu, Tab and `uiFocus` move and press its controls. The actions `uiPagePrevious`, `uiPageNext`, `uiFirst` and `uiLast` page through its collections. The action map reads their keys, buttons and the left stick as up.
-- **A play area has the focus.** The game owns the directions, accept and menu. So the arrows, WASD, the directional pad, the left stick, Space, Enter and the south button reach the action map and never move the focus. Cancel, Tab and `uiFocus` still belong to the UI. So Escape, the east button and the Menu button of a TV remote reach the `onCancel` handler of the GUI, and Tab or `uiFocus` move the focus to the controls of the GUI and back.
+- **A play area has the focus.** The game owns the directions, accept and menu. So the arrows, WASD, the directional pad, the left stick, Space, Enter and the south button reach the action map and never move the focus. Cancel, Tab and `uiFocus` still belong to the UI. So Escape, the east button and the Menu button of a TV remote reach the `onCancel` handler of the GUI. Tab and `uiFocus` move the focus to the controls of the GUI and back.
 - **Nothing has the focus.** The action map reads every key. The UI takes only the presses it answers itself, such as the cancel that closes a popup.
 
 A press stays with the side that took it until it is released. A key held in the game keeps moving the game after Tab moved the focus to a control, and the control never sees it repeat. A key held on a control stays with the UI after the focus moved to the play area.
@@ -513,7 +513,7 @@ A press stays with the side that took it until it is released. A key held in the
 A [play area](../lua-api/ui.md#uiplayareaproperties) is the part of a GUI where the game shows, usually the space a screen leaves between its controls. It is a place the focus can go, which stands for the game.
 
 - A click or a touch on it gives it the focus and still reaches the game, which reads `mouse:` bindings and touches as usual. A click on a control gives the focus to the control.
-- The action `uiFocus`, on the View button of gamepads by default, moves the focus from the play area to the control that had it last, or to the first control of the GUI, and back. An app remaps it like any navigation action, such as to the `pause` key that the play and pause button of a TV remote sends.
+- The action `uiFocus` moves the focus from the play area to the control that had it last, or to the first control of the GUI, and back. It is the View button of gamepads by default. An app remaps it like any navigation action, such as to the `pause` key that the play and pause button of a TV remote sends.
 - The command `gui:command(id, 'focus')` moves the focus from code, and `ui.focusOwner()` returns `'control'`, `'playArea'` or `'none'`.
 
 This complete example shows a level next to a side panel. The hero walks with the arrows, WASD, the stick or the remote while the world has the focus. Tab, the View button or the play and pause button move the focus to the zoom slider, which then takes the arrows. A click on the world gives the focus back to the game.
@@ -563,7 +563,7 @@ scene.push(setmetatable({}, Level))
 
 ### Going back
 
-A screen goes back with the `onCancel` handler of its GUI root, not with an action of its own. The action `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first. So the Escape that closes a combo list never leaves the screen, and the next Escape does. A game that pauses with Escape either gives its screen a play area, whose GUI hears the cancel, or leaves the focus empty, so that its `pause` action hears it.
+A screen goes back with the `onCancel` handler of its GUI root, not with an action of its own. The action `uiCancel` reaches the root only when no popup, combo list, dialog or edit answers it first. So the Escape that closes a combo list never leaves the screen, and the next Escape does. A game that pauses with Escape has two choices. It gives its screen a play area, whose GUI hears the cancel, or it leaves the focus empty, so that its `pause` action hears it.
 
 ```lua
 local scene = require('haylen.scene')
@@ -594,7 +594,7 @@ A press that the UI answers itself never triggers an action, the same way the ac
 
 - The bindings of every navigation action and Tab, while a control has the focus.
 - The bindings of `uiCancel` and Tab while a play area has the focus. By default `uiCancel` is Escape, the east button and the Menu button of a TV remote.
-- The bindings of `uiCancel` while a popup, a combo list, a menu or a dialog is open, a control is being edited, an item is carried, or the focus is inside a window that closes.
+- The bindings of `uiCancel` while something waits for a cancel. That is an open popup, combo list, menu or dialog, a control being edited, a carried item, or the focus inside a window that closes.
 - The bindings of `uiFocus` while a GUI has the focus or draws a play area.
 - Every key while a text field edits. That includes iOS, iPadOS, tvOS and Mac Catalyst, where a hardware keyboard still reports keys while the native field edits.
 - Every key and gamepad button while a `keyCapture` listens.
@@ -617,7 +617,7 @@ scene.push({
 
 ## Local multiplayer
 
-In a local multiplayer game, each player gets an action map of their own. The function [`input.newActionMap(options)`](../lua-api/input.md#inputnewactionmapoptions) makes a map that reads only the devices its options name: the keyboard, the mouse, one gamepad or none, and the virtual controls. The option `virtualPrefix` goes in front of the names of `virtual:` bindings, so two touch layouts on one screen drive two players. Every map loads the same documents as the default map, updates at the start of every frame and every fixed step, and leaves the engine once Lua lets go of it. The functions of the module, such as `input.down`, read the default map, which `input.actions()` returns as a map too.
+In a local multiplayer game, each player gets an action map of their own. The function [`input.newActionMap(options)`](../lua-api/input.md#inputnewactionmapoptions) makes a map that reads only the devices its options name: the keyboard, the mouse, one gamepad or none, and the virtual controls. The option `virtualPrefix` goes in front of the names of `virtual:` bindings, so two touch layouts on one screen drive two players. Every map loads the same documents as the default map. It updates at the start of every frame and every fixed step, and it leaves the engine once Lua lets go of it. The functions of the module, such as `input.down`, read the default map, which `input.actions()` returns as a map too.
 
 A join screen finds the gamepad that pressed a button with `input.findGamepadPress('start')`, which returns the lowest index of a gamepad that pressed it in this frame. It gives that player a map that reads only that gamepad. The events `gamepadConnected` and `gamepadDisconnected` of [`haylen.events`](../lua-api/events.md#engine-events) carry the index. So a game pauses when the gamepad of a player leaves, and resumes when it comes back at the same index.
 
@@ -663,7 +663,7 @@ In a fixed step, `map:stepButtons(list)` returns one integer per player, with a 
 
 Action games read moves, not single buttons. A double tap runs. A jump and an attack on the same step make a jump attack. A sequence of defend, forward and attack makes a special. A press stays kept for a few steps, so it lands when the character can act. And the clock stops during hit stop, the short freeze when a blow lands.
 
-A [`CommandBuffer`](../lua-api/input.md#commandbuffer) does this in C++ for each character. It names its buttons and their lifetimes in steps, the back and forward buttons of a character that faces right, and the commands with their steps, time limits and priorities. In every fixed step, `buffer:update(map)` reads the step state of the actions named like its buttons, or an integer of buttons from `map:stepButtons()` or a recording. The method `buffer:peek()` names the kept command, and `buffer:consume(name)` takes it once the character acts on it. A step is one call that allocates nothing, and the same presses always type the same commands.
+A [`CommandBuffer`](../lua-api/input.md#commandbuffer) does this in C++ for each character. It names its buttons and their lifetimes in steps, and the back and forward buttons of a character that faces right. It also names the commands, with their steps, time limits and priorities. In every fixed step, `buffer:update(map)` reads the step state of the actions named like its buttons, or an integer of buttons from `map:stepButtons()` or a recording. The method `buffer:peek()` names the kept command, and `buffer:consume(name)` takes it once the character acts on it. A step is one call that allocates nothing, and the same presses always type the same commands.
 
 ```lua
 local input = require('haylen.input')
@@ -797,7 +797,7 @@ return player
 - One action can mean different things for each class. The warrior guards while `special` is held, so the game reads `input.down('special')`. The other classes fire their special once per press with `input.pressed('special')`.
 - The game reads `interact` with `input.down`, which doubles the reach for feeding the fire while it is held.
 - The gameplay and pause scenes read `input.pressed('pause')`, so Escape and Start open and close the pause menu during a run.
-- The settings and class selection screens go back with the `onCancel` handler of their GUI root, which the `uiCancel` action of the UI fires with Escape and the east button, as [going back](#going-back) describes.
+- The settings and class selection screens go back with the `onCancel` handler of their GUI root. The `uiCancel` action of the UI fires it with Escape and the east button, as [going back](#going-back) describes.
 - The HUD in `samples/games/tiny-island/source/ui/hud.lua` drives the virtual inputs with a floating `touchStick` for `move`, and `touchButton` controls for `attack`, `special` and `interact`, all with `touchOnly = true`. The pause button of the HUD is a plain icon button that opens the pause menu directly.
 - When the pause menu covers the run, the gameplay scene hides the HUD and calls `input.clearVirtual()`, so nothing stays pressed while the game is paused.
 

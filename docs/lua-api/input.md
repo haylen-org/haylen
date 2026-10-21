@@ -119,7 +119,7 @@ scene.push({
 
 ### input.keyCaptured(key)
 
-Returns `true` while the current press of a key belongs to the UI of [`haylen.ui`](ui.md), such as the Escape that closes a combo list or a key typed into a text field. The press stays with the UI until the key is released. Meanwhile the `key:` bindings of the [action map](#action-map) read it as up, while the keyboard functions above keep reporting the key. The [input guide](../input/input.md#what-the-ui-captures) lists which presses the UI takes.
+Returns `true` while the current press of a key belongs to the UI of [`haylen.ui`](ui.md). Examples are the Escape that closes a combo list and a key typed into a text field. The press stays with the UI until the key is released. Meanwhile the `key:` bindings of the [action map](#action-map) read it as up, while the keyboard functions above keep reporting the key. The [input guide](../input/input.md#what-the-ui-captures) lists which presses the UI takes.
 
 ```lua
 local input = require('haylen.input')
@@ -280,7 +280,7 @@ scene.push({
 
 Returns `true` while the UI of [`haylen.ui`](ui.md) owns the pointer, which is what `ui.usingPointer()` reported at the end of the frame before. A mouse button pressed meanwhile stays with the UI until it is released, and the `mouse:` bindings of the [action map](#action-map) read it as released. So a click on a menu button never swings a sword bound to `mouse:left`. A button pressed in the game stays with the game while the pointer passes over the UI.
 
-The UI learns what the pointer is over while it draws. So a press with no hover before it, such as the tap of a finger that drives the mouse, goes to the game, unless the UI owned the pointer in the frame before. The mouse functions above keep reporting every button, and the virtual buttons of touch controls keep driving their actions.
+The UI learns what the pointer is over while it draws. So a press with no hover before it goes to the game, unless the UI owned the pointer in the frame before. The tap of a finger that drives the mouse is such a press. The mouse functions above keep reporting every button, and the virtual buttons of touch controls keep driving their actions.
 
 ```lua
 local input = require('haylen.input')
@@ -636,7 +636,7 @@ scene.push({
 
 ### input.gamepadAxisCaptured(axis, index)
 
-Returns `true` while the current lean of an axis past the press threshold belongs to the UI, such as the left stick that moves the focus between the controls of a menu. Meanwhile the `axis:` and `stick:` bindings of that axis read it as `0`. The argument `axis` is one of `'leftX'`, `'leftY'`, `'rightX'`, `'rightY'`, `'leftTrigger'` or `'rightTrigger'`.
+Returns `true` while the current lean of an axis past the press threshold belongs to the UI. An example is the left stick that moves the focus between the controls of a menu. Meanwhile the `axis:` and `stick:` bindings of that axis read it as `0`. The argument `axis` is one of `'leftX'`, `'leftY'`, `'rightX'`, `'rightY'`, `'leftTrigger'` or `'rightTrigger'`.
 
 ```lua
 local input = require('haylen.input')
@@ -701,7 +701,7 @@ Returns the kind of device that the player used last: `'keyboardMouse'`, `'touch
 - A touch picks `'touch'`.
 - A gamepad button going down, or an axis leaving the dead zone, picks `'gamepad'`.
 
-Only a new press counts. Key repeats, a gamepad button or stick that stays held, and the keys of the plain on-screen keyboard that `window.setKeyboardVisible` opens never take over from the device the player used last.
+Only a new press counts. Key repeats never take over from the device that the player used last. Neither does a gamepad button or stick that stays held, nor a key of the plain on-screen keyboard that `window.setKeyboardVisible` opens.
 
 ```lua
 local input = require('haylen.input')
@@ -780,11 +780,11 @@ print(input.touchAsMouse())
 
 ## Text fields of the app
 
-A GUI that the app draws itself, such as one written in Lua over `haylen.graphics2d`, edits text through the native text input of the platform, as the text fields of `haylen.ui` do. It gets the on-screen keyboard, autocorrection and the input methods that compose Japanese, Chinese or Korean text. The app keeps the text and draws it. The platform reports every edit as a `textEdited` event with the field id `4294967296`, and its actions as a `textAction` event. One field edits at a time, and a text field of `haylen.ui` that takes the focus takes the keyboard over. The [text input guide](../ui/text-input.md) describes what each platform does.
+A GUI that the app draws itself, such as one written in Lua over `haylen.graphics2d`, can edit text through the native text input of the platform. It works as the text fields of `haylen.ui` do, and it gets the on-screen keyboard, autocorrection and the input methods that compose Japanese, Chinese or Korean text. The app keeps the text and draws it. The platform reports every edit as a `textEdited` event with the field id `4294967296`, and its actions as a `textAction` event. One field edits at a time, and a text field of `haylen.ui` that takes the focus takes the keyboard over. The [text input guide](../ui/text-input.md) describes what each platform does.
 
 ### input.editText(options)
 
-Starts editing the text field of the app, or follows it when it changes or moves. Call it again every frame, or whenever the text, the selection or the place change. The native field takes the text and the selection only when they differ from what the user typed last, so an app that shows the typed text back keeps a composition going.
+Starts editing the text field of the app, or follows it when it changes or moves. Call it again every frame, or whenever the text, the selection or the place change. The native field takes the text and the selection only when they differ from what the user typed last. So an app that shows the typed text back keeps a composition going.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1121,7 +1121,7 @@ scene.push({
 
 ### input.stepDown(action)
 
-Returns `true` while the action is down in the current fixed step. It is also `true` in the step after a press that was released before any step saw it, so a tap shorter than a step still holds the action for one step.
+Returns `true` while the action is down in the current fixed step. It is also `true` in the step after a press that was released before any step saw it. So a tap shorter than a step still holds the action for one step.
 
 ```lua
 local input = require('haylen.input')
@@ -1137,7 +1137,7 @@ scene.push({
 
 ### input.consumePress(action)
 
-Returns `true` once for each press of the action, and takes the press. The next call returns `false` until the action goes down again. A press stays ready from its frame to the end of the first fixed step after it, and the `buffer` of the action keeps it ready that much longer, counted in fixed steps. That is the usual jump buffer: a jump pressed just before landing still jumps. It works in `update` and in `fixedUpdate`. Input that a scene change holds back drops the press.
+Returns `true` once for each press of the action, and takes the press. The next call returns `false` until the action goes down again. A press stays ready from its frame to the end of the first fixed step after it. The `buffer` of the action keeps it ready that much longer, counted in fixed steps. That is the usual jump buffer: a jump pressed just before landing still jumps. It works in `update` and in `fixedUpdate`. Input that a scene change holds back drops the press.
 
 ```lua
 local input = require('haylen.input')
@@ -1488,7 +1488,7 @@ player.pressThreshold = 0.3
 
 ## CommandBuffer
 
-A `CommandBuffer`, named `haylen.CommandBuffer` in messages, turns the buttons held on each fixed step into one kept command, the way action games read moves. A command is a single press, a chord of buttons on one step, a double tap, or a sequence of presses such as defend, forward and attack, typed within a number of steps. Make one with [`input.newCommandBuffer`](#inputnewcommandbufferoptions). The [input guide](../input/input.md#command-buffers) shows when to use one.
+A `CommandBuffer`, named `haylen.CommandBuffer` in messages, turns the buttons held on each fixed step into one kept command, the way action games read moves. A command is a single press, a chord of buttons on one step, a double tap, or a sequence of presses such as defend, forward and attack. The presses of a command come within a number of steps. Make one with [`input.newCommandBuffer`](#inputnewcommandbufferoptions). The [input guide](../input/input.md#command-buffers) shows when to use one.
 
 - When several commands complete on one step, the highest priority wins, and the later one wins a tie.
 - A press on a later step replaces the kept command.
@@ -1552,7 +1552,10 @@ scene.push({
 
 ### buffer:update(mapOrMask)
 
-Moves the buffer one step forward with the buttons that are down on it. The argument is either an action map, whose actions named like the buttons give their step state as `map:stepDown` tells, so a tap shorter than a step still counts. Or it is an integer whose bit `n - 1` holds the button `n`, such as `map:stepButtons` returns or a recording plays back. An integer outside 32 bits raises a bad argument error with `the buttons of a step are an integer of 32 bits`.
+Moves the buffer one step forward with the buttons that are down on it. The argument `mapOrMask` is one of two things:
+
+- An action map. Its actions named like the buttons give their step state, as `map:stepDown` tells, so a tap shorter than a step still counts.
+- An integer whose bit `n - 1` holds the button `n`, such as `map:stepButtons` returns or a recording plays back. An integer outside 32 bits raises a bad argument error with `the buttons of a step are an integer of 32 bits`.
 
 ```lua
 local input = require('haylen.input')

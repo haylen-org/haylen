@@ -1,6 +1,6 @@
 # 🔊 Audio
 
-This guide explains how a Haylen app plays sound. It covers sounds and how they load, voices, buses, music, the game pause, effects, loudness, positional audio, and how each platform shares the speaker with the system and with other apps. Read it before you add sound effects, music or a volume screen to an app. The [`haylen.audio` reference](../lua-api/audio.md) lists every function, option and error.
+This guide explains how a Haylen app plays sound. It covers sounds and how they load, voices, buses, music, the game pause, effects, loudness and positional audio. It also shows how each platform shares the speaker with the system and with other apps. Read it before you add sound effects, music or a volume screen to an app. The [`haylen.audio` reference](../lua-api/audio.md) lists every function, option and error.
 
 Haylen mixes sound with the [miniaudio](https://miniaud.io) library. Every audio call runs on the frame thread and returns at once. The mixing itself runs on the audio thread of the platform, which Lua code never touches. When the app has [no audio output](#without-an-audio-output), the mixing runs on the frame thread instead. The [architecture guide](../core/architecture.md) describes the threads.
 
@@ -87,7 +87,7 @@ audio.play(audio.newSound(table.concat(samples), {format = 'float32', sampleRate
 
 ### Audio streams of plugins
 
-The native part of a plugin, such as a microphone, a speech synthesizer or a radio of the network, feeds an audio stream that the app plays as a voice. The stream works like this:
+A plugin can feed an audio stream that the app plays as a voice. The native part of the plugin fills the stream, such as from a microphone, a speech synthesizer or a radio of the network. The stream works like this:
 
 - Native code pushes samples from any thread into a lock-free ring of the stream, in its own sample rate, channels and format.
 - The voice reads the ring on the audio thread. It turns the samples into floats, resamples them to the rate of the mixer and spreads them over its channels.
@@ -211,7 +211,7 @@ audio.resume(music)
 
 ### Intro loops
 
-Many tracks start with an intro and then repeat a loop. Keep both in one file and give the loop points in seconds with `loopStart` and `loopEnd`. The voice plays from its start to `loopEnd` once, then repeats from `loopStart`. The jump is exact to the sample, without a gap, also for streamed tracks, which decode the start of the loop right after its end. Ogg Vorbis and WAV loop without a seam. MP3 encoders pad the start and the end of a file, and the decoder cannot always trim that padding, so use the other formats for loops that must be seamless.
+Many tracks start with an intro and then repeat a loop. Keep both in one file and give the loop points in seconds with `loopStart` and `loopEnd`. The voice plays from its start to `loopEnd` once, then repeats from `loopStart`. The jump is exact to the sample, without a gap, also for streamed tracks, which decode the start of the loop right after its end. Ogg Vorbis and WAV loop without a seam. MP3 encoders pad the start and the end of a file, and the decoder cannot always trim that padding. So use the other formats for loops that must be seamless.
 
 ```lua
 local assets = require('haylen.assets')
@@ -275,7 +275,7 @@ audio.resumeAll()
 print(audio.paused(radio), audio.paused(rain))
 ```
 
-The function `audio.busStats()` tells, for every bus, how many voices play through it, how many play and how many are paused, and whether its mode runs in the current pause state. Use it in debug overlays and tests.
+The function `audio.busStats()` tells, for every bus, how many voices play through it and how many of them play or are paused. It also tells whether the mode of the bus runs in the current pause state. Use it in debug overlays and tests.
 
 ```lua
 local audio = require('haylen.audio')
@@ -340,7 +340,7 @@ events.on('unpaused', function()
 end)
 ```
 
-Haylen writes its effects as nodes of its own in the node graph of miniaudio. The filter and delay nodes that miniaudio brings change their parameters by rewriting their numbers from the calling thread while the audio thread reads them, and their delay cannot change its time. The effects of Haylen keep their parameters in atomic values, which the audio thread picks up safely on its next block. Their delay glides to a new time, which bends the pitch of its repeats like a tape delay instead of clicking.
+Haylen writes its effects as nodes of its own in the node graph of miniaudio. The filter and delay nodes that miniaudio brings rewrite their numbers from the calling thread while the audio thread reads them. Their delay also cannot change its time. The effects of Haylen keep their parameters in atomic values, which the audio thread picks up safely on its next block. Their delay glides to a new time, which bends the pitch of its repeats like a tape delay instead of clicking.
 
 ## Loudness and latency
 
@@ -416,7 +416,7 @@ The models `'inverse'` and `'exponential'` need a `minDistance` above `0`. They 
 
 A voice pans by its horizontal offset from the listener, measured against `panDistance`, and adds its own `pan`. So a voice to the right sounds on the right, and a voice straight above or below the listener stays in the center.
 
-The Doppler effect is the rise in pitch of a sound that comes closer and the fall of one that moves away. It is on when `doppler` is above `0`. The engine measures how fast the listener and each voice move toward each other along the line between them, from their movement between frames, so an app only moves them. The new pitch is `(speedOfSound + doppler * listenerSpeed) / (speedOfSound - doppler * voiceSpeed)`, where each speed counts toward the other side. It stays within two octaves up or down. The function `audio.pitch(voice)` keeps returning the pitch the app set, without the shift.
+The Doppler effect is the rise in pitch of a sound that comes closer and the fall of one that moves away. It is on when `doppler` is above `0`. The engine measures how fast the listener and each voice move toward each other along the line between them. It takes that from their movement between frames, so an app only moves them. The new pitch is `(speedOfSound + doppler * listenerSpeed) / (speedOfSound - doppler * voiceSpeed)`, where each speed counts toward the other side. It stays within two octaves up or down. The function `audio.pitch(voice)` keeps returning the pitch the app set, without the shift.
 
 ```lua
 local assets = require('haylen.assets')
@@ -517,7 +517,7 @@ On the web, the engine plays through an audio output of its own, which is the on
 - Its processor, the file `haylen-audio-worklet.js` next to the runtime script, keeps them in a small ring and plays them on the audio thread of the browser.
 - The processor answers with the frames it played, so the page mixes new blocks until 50 ms of sound wait ahead of the output again.
 
-A frame of the app that takes much longer than usual therefore does not starve the output. The output needs no `SharedArrayBuffer`, no COOP or COEP headers and no WebAssembly threads. Browsers offer `AudioWorklet` only to pages served over `https` or from `localhost`. On any other page, such as one served over plain `http` from the network address of a computer, the app runs [without an audio output](#without-an-audio-output), and the console says why. The `audio` entry of [`onStats`](../tools/build.md#runtime-api) reports whether the output is available, its state, the sound waiting in it and the render quanta it played without samples.
+A frame of the app that takes much longer than usual therefore does not starve the output. The output needs no `SharedArrayBuffer`, no COOP or COEP headers and no WebAssembly threads. Browsers offer `AudioWorklet` only to pages served over `https` or from `localhost`. On any other page, such as one served over plain `http` from the network address of a computer, the app runs [without an audio output](#without-an-audio-output). The console says why. The `audio` entry of [`onStats`](../tools/build.md#runtime-api) reports whether the output is available, its state, the sound waiting in it and the render quanta it played without samples.
 
 Browsers keep audio silent until the player interacts with the page. The runtime resumes the output at every tap, click or key while the app plays in the foreground. This also brings the sound back after Safari on iOS suspends it for an interruption. Until the unlock, the output fills its 50 ms and then asks for no more blocks. So voices that started earlier, such as the menu music, begin when the player first clicks or taps. The engine adds no unlock screen of its own. A web app whose first screen matters for sound should wait for a click, as a title screen with a start button does.
 
@@ -531,11 +531,11 @@ An app never stops because it has no audio output. These cases leave the mixer w
 
 The app runs as usual. The log writes one warning with the reason, and `audio.outputAvailable()` returns `false`, so an app can tell the player that its sound is off.
 
-Without an output the mixer keeps time by itself. Every frame it mixes the time that passed and throws the samples away. So voices play to their end, loops repeat, fades and crossfades finish, effect tails ring out, the voice limit stops the voice with the lowest priority, and positional voices follow the listener, exactly as they would out loud. Time stands still for the audio while the app is in the background or an interruption holds it, as it does with an output.
+Without an output the mixer keeps time by itself. Every frame it mixes the time that passed and throws the samples away. So everything goes on exactly as it would out loud. Voices play to their end, loops repeat, and fades and crossfades finish. Effect tails ring out, the voice limit stops the voice with the lowest priority, and positional voices follow the listener. Time stands still for the audio while the app is in the background or an interruption holds it, as it does with an output.
 
 An interruption that ends while the system still refuses the audio ends all the same. The voices resume, the engine publishes `audioResumed`, the log warns once and the app goes on without an output. Whenever the app becomes active and whenever an interruption ends, the engine tries again to open the output, without a new warning. So the sound comes back as soon as the system offers it.
 
-The system may also take long to open the device, or never answer. For example, opening the device on the iOS simulator blocks inside AudioToolbox while the audio service of the Mac hangs, and the system ends an app that waits for it on its main thread. So the engine opens the device on a thread of its own, when the app starts and whenever it opens the output again. Meanwhile the frames go on without sound, as `audio.outputOpening()` tells, and the app plays sound from the first frame after the device opened. A device that does not answer within 3 seconds of frames makes the log write one warning, and the log tells when the device answers at last. Browsers have no threads, and the output of a page opens at once. Tests simulate a device that refuses to open or never answers with the output that `HeadlessHost::setAudioOutput` gives the headless host, as the [testing guide](../tools/testing.md) describes.
+The system may also take long to open the device, or never answer. For example, the iOS simulator blocks inside AudioToolbox while it opens the device, when the audio service of the Mac hangs. The system ends an app that waits for that on its main thread. So the engine opens the device on a thread of its own, when the app starts and whenever it opens the output again. Meanwhile the frames go on without sound, as `audio.outputOpening()` tells, and the app plays sound from the first frame after the device opened. A device that does not answer within 3 seconds of frames makes the log write one warning, and the log tells when the device answers at last. Browsers have no threads, and the output of a page opens at once. Tests simulate a device that refuses to open or never answers with the output that `HeadlessHost::setAudioOutput` gives the headless host, as the [testing guide](../tools/testing.md) describes.
 
 ```lua
 local audio = require('haylen.audio')
@@ -605,7 +605,7 @@ return sound
 
 - Effects with several recordings, such as `chop` or `footstep`, pick one at random on each play.
 - Gameplay sounds such as chopping, hits and footsteps pass their position, so they pan and fade with their distance to the player. Interface sounds pass none.
-- The campfire starts its crackle with `sound.loop` on the `ambience` bus, with a fade in of one second, and `sound.stop` fades it out over half a second when the fire is destroyed.
+- The campfire starts its crackle with `sound.loop` on the `ambience` bus, with a fade in of one second. When the fire is destroyed, `sound.stop` fades the crackle out over half a second.
 - The menu plays the track `menu`, and a run starts with `day`. Dusk crossfades to the `night` ambience over 3 seconds, and dawn crossfades back. The game over track plays once without looping.
 
 The rest of the game completes the picture:
@@ -619,7 +619,7 @@ The rest of the game completes the picture:
 C++ code reaches the same audio through these classes:
 
 - The class `haylen::audio::Mixer` of `haylen/audio/Mixer.hpp`, which `engine.getAudio()` returns, offers voices, buses, music, process modes, effects and positional audio. Its options are the structures `Mixer::PlayOptions`, `Mixer::MusicOptions` and `Mixer::Spatialization`. The method `Mixer::play` also takes a `std::shared_ptr<platform::AudioStream>` to play an audio stream.
-- The class `haylen::audio::Sound` of `haylen/audio/Sound.hpp` holds decoded or streamed sound data. The method `Sound::decode` makes it from encoded bytes, `Sound::stream` from a `std::shared_ptr<io::PackageReader>` of an encoded file, such as the one `Package::openAssetReader` returns, and `Sound::fromSamples` from spans of float or 16-bit samples.
+- The class `haylen::audio::Sound` of `haylen/audio/Sound.hpp` holds decoded or streamed sound data. The method `Sound::decode` makes it from encoded bytes, and `Sound::fromSamples` from spans of float or 16-bit samples. The method `Sound::stream` makes it from a `std::shared_ptr<io::PackageReader>` of an encoded file, such as the one `Package::openAssetReader` returns.
 - The effects are `audio::Filter`, `audio::Delay`, `audio::Reverb` and `audio::Limiter`, made with `std::make_shared` and their settings structures.
 - The class `audio::Session` is the audio session of `app.json`.
 
