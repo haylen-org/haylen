@@ -348,7 +348,7 @@ scene.push(setmetatable({}, Shop))
 
 ## Folds and dual screens
 
-Foldable phones and tablets fold their screen along a line, and dual-screen devices join two screens with a hinge. The window reports that fold, the posture the device is held in and the segments of the window on each side of the fold. An app uses them to lay its content out around the fold, such as a map on one side and its controls on the other, or a game on the top half and its buttons on the bottom half of a tabletop. Positions are in design units, like [`viewport.safeRect`](viewport.md#viewportsaferect). The event `windowFoldChanged` announces every change, such as when the device folds, unfolds or turns, or the window moves across the hinge.
+Foldable phones and tablets fold their screen along a line, and dual-screen devices join two screens with a hinge. The window reports that fold, the posture the device is held in and the segments of the window on each side of the fold. An app uses them to lay its content out around the fold. It may put a map on one side and its controls on the other, or a game on the top half and its buttons on the bottom half of a tabletop. Positions are in design units, like [`viewport.safeRect`](viewport.md#viewportsaferect). The event `windowFoldChanged` announces every change, such as when the device folds, unfolds or turns, or the window moves across the hinge.
 
 | Platform | Where the fold comes from |
 | --- | --- |
@@ -703,7 +703,7 @@ Regions are in design units by default, converted with the viewport of the momen
 
 Apps usually give their regions every frame, around what the player can click. The window keeps the mouse it has while a button is down, so a press that starts over the app also ends there. While clicks pass through, the app still hears the mouse move over the window on Windows and macOS. On Linux it hears the mouse only over the regions.
 
-A region that is neither a rectangle nor a polygon raises `A mouse passthrough region is a rectangle or a polygon, not a <type>.`, and a polygon with fewer than three points raises `A mouse passthrough polygon needs at least three points.`. A `value` that is neither a boolean nor a table raises a bad argument error, and other `units` raise `bad argument #2 to 'setMousePassthrough' ('design' or 'pixels' expected)`.
+A region that is neither a rectangle nor a polygon raises `A mouse passthrough region is a rectangle or a polygon, not a <type>.`. A polygon with fewer than three points raises `A mouse passthrough polygon needs at least three points.`. A `value` that is neither a boolean nor a table raises a bad argument error, and other `units` raise `bad argument #2 to 'setMousePassthrough' ('design' or 'pixels' expected)`.
 
 ```lua
 local scene = require('haylen.scene')

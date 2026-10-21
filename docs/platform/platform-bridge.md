@@ -1,6 +1,6 @@
 # 🌉 Platform bridge
 
-This guide explains the platform bridge, the road between a Lua app and native code. It is for developers who write native code for an app or a plugin: Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries and C++ in apps that compile the engine. It shows how a call travels, how events, bytes, timeouts and cancellation work, and how each platform registers its handlers. The [`haylen.platform` reference](../lua-api/platform.md) lists the Lua functions, and the [native code guide](native.md) compares the bridge with native libraries and C++ plugins.
+This guide explains the platform bridge, the road between a Lua app and native code. It is for developers who write native code for an app or a plugin. That code is Java or Kotlin on Android, Objective-C or Swift on Apple platforms, and JavaScript on the web. It is C in native libraries, and C++ in apps that compile the engine. It shows how a call travels, how events, bytes, timeouts and cancellation work, and how each platform registers its handlers. The [`haylen.platform` reference](../lua-api/platform.md) lists the Lua functions, and the [native code guide](native.md) compares the bridge with native libraries and C++ plugins.
 
 ## What the bridge carries
 
@@ -69,7 +69,7 @@ Every call gets an id that is unique in the whole process. So a native answer th
 
 ## Performance
 
-The test `PLG-022` of the test project measures the bridge to the native part of the demo plugin. It measures four things: the round trip of one call awaited after the other, the calls per second of 2000 calls sent at once, the work of a frame that sends N calls, and the work of the frames that receive N batched events 30 times per second. It logs every number with its code, so a run on a device, a simulator or a browser records them. These are the numbers of the Debug build of the test project:
+The test `PLG-022` of the test project measures the bridge to the native part of the demo plugin. It measures four things. The first is the round trip of one call awaited after the other, and the second the calls per second of 2000 calls sent at once. The third is the work of a frame that sends N calls, and the fourth the work of the frames that receive N batched events 30 times per second. It logs every number with its code, so a run on a device, a simulator or a browser records them. These are the numbers of the Debug build of the test project:
 
 | Measure | iOS simulator, Swift | Android emulator `Pixel_10a`, Kotlin | Chrome without a window, JavaScript |
 | --- | --- | --- | --- |
@@ -173,7 +173,7 @@ The engine covers the app before the platform shows the screen, and keeps it cov
 - A failure carries a JSON string, which becomes the error message, or an object with a `message` string and optional `code` and `data` values, which Lua receives as the fields of the error.
 - Any other failure payload, such as `null`, a number or an object without a string `message`, fails with `The native platform call failed without a message.`. It keeps the code and the data of an object.
 - An answer that is not JSON at all fails with the code `invalidJson` and `The platform returned invalid JSON.`.
-- The bridge and the platforms fail calls with their own codes: `timeout` and `cancelled` from the bridge, `noHandler` when nothing answers the method, `invalidJson`, `invalidBytes` for JSON that refers to a buffer it lacks, and `exception` when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The [reference](../lua-api/platform.md#platformerror) describes each one.
+- The bridge and the platforms fail calls with codes of their own. The bridge gives `timeout` and `cancelled`, and `noHandler` comes when nothing answers the method. The codes `invalidJson` and `invalidBytes` come for broken answers. The code `exception` comes when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The [reference](../lua-api/platform.md#platformerror) describes each one.
 - Method and event names are free-form strings, usually dotted names such as `auth.signIn`. [Plugins](plugins.md) put their id in front of their method and event names, which use camelCase, such as `ads.showBanner` and `ads.closed`. The plugin handle of Lua and the plugin contexts of native code add the prefix, so neither side writes it.
 
 ## Stand-ins in Lua
@@ -332,7 +332,7 @@ typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenRepl
 
 ### Swift
 
-Swift handlers use `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift` of the engine. `Params` is `Decodable`, and the helper decodes the parameters with `JSONDecoder`. `Result` is `Encodable`, and the helper encodes it with `JSONEncoder`. The handler runs on the main actor. A thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, and any other error fails it with the code `exception`. The task of the call is cancelled when the app gives the call up. The call `try HaylenBridge.emit(event, payload, retain: false)` sends an event with an `Encodable` payload. Plugin contexts have the same helpers, as the [plugin guide](plugins.md#swift-helpers) describes.
+Swift handlers use the helper `HaylenBridge.register` of `HaylenBridgeAsync.swift` of the engine, in the form `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }`. `Params` is `Decodable`, and the helper decodes the parameters with `JSONDecoder`. `Result` is `Encodable`, and the helper encodes it with `JSONEncoder`. The handler runs on the main actor. A thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, and any other error fails it with the code `exception`. The task of the call is cancelled when the app gives the call up. The call `try HaylenBridge.emit(event, payload, retain: false)` sends an event with an `Encodable` payload. Plugin contexts have the same helpers, as the [plugin guide](plugins.md#swift-helpers) describes.
 
 ```swift
 import Foundation
