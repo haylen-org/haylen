@@ -1,6 +1,6 @@
 # 🎞️ Animation
 
-This guide explains how to animate 2D images with the module `haylen.animation2d`. It is for developers who animate characters, effects and animated UI. It covers frame animations from sprite sheets and atlases, the data that frames carry for action games, the players that run animations, state graphs that pick an animation from the state of a character, skeletons for characters made of parts, chains for procedural motion and atlases packed while the app runs. The [`haylen.animation2d` reference](../lua-api/animation2d.md) lists every function, option and error.
+This guide explains how to animate 2D images with the module `haylen.animation2d`. It is for developers who animate characters, effects and animated UI. It covers frame animations from sprite sheets and atlases and the data that frames carry for action games. It also covers the players that run animations, state graphs that pick an animation from the state of a character, skeletons for characters made of parts, chains for procedural motion and atlases packed while the app runs. The [`haylen.animation2d` reference](../lua-api/animation2d.md) lists every function, option and error.
 
 ## Choosing a player
 
@@ -74,7 +74,7 @@ Action games read data at given frames, such as the frame where a sword can hit.
 - Events, names that fire when the animation enters the frame, such as `'step'` for a footstep sound or `'swing'` for the start of a hit.
 - Ticks, the length of the frame in fixed steps, as the next sections explain.
 
-An atlas reads frame data from its slices. The function `animation2d.fromFrames` takes it as tables, and `anim:addEvent` adds events in code. The methods `animator:box` and `animator:point` place a box or a point in the world, through the sprite that shows the frame, so they follow its position, scale, rotation and flips.
+An atlas reads frame data from its slices. The function `animation2d.fromFrames` takes it as tables, and `anim:addEvent` adds events in code. The methods `animator:box` and `animator:point` place a box or a point in the world. They go through the sprite that shows the frame, so they follow its position, scale, rotation and flips.
 
 ```lua
 local animation2d = require('haylen.animation2d')

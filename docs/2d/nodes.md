@@ -272,7 +272,7 @@ tree:writeTransforms(birds, places)
 
 A tree keeps its nodes in contiguous arrays in tree order and walks them in order. An update touches only the nodes that changed and their descendants. A tree of 4096 nodes or more updates the subtrees of its roots on the worker pool, in groups of at least 1024 nodes, while the frame thread does its share.
 
-A draw records every node in C++ without a call from Lua per node, and a culled node costs only a test of its bounds. The draw joins neighbouring sprite nodes of one texture and draw order into one batch, as the [rendering guide](../graphics/rendering.md#node-trees) explains, so a tree of the sprites of one atlas costs a few draw items however deep it is. A batch converts its sprites on the worker pool from 8,192 sprites on.
+A draw records every node in C++ without a call from Lua per node, and a culled node costs only a test of its bounds. The draw joins neighbouring sprite nodes of one texture and draw order into one batch, as the [rendering guide](../graphics/rendering.md#node-trees) explains. So a tree of the sprites of one atlas costs a few draw items however deep it is. A batch converts its sprites on the worker pool from 8,192 sprites on.
 
 The command `haylen bench --suite nodes` times a tree of 100,000 sprite nodes on the headless host: a thousand roots with 99 children each. These are the numbers of an Apple M5 Pro in Release with 15 workers:
 

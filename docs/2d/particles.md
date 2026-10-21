@@ -107,7 +107,7 @@ scene.push({
 
 ## Where particles are born
 
-Without a shape, particles are born at one point, the position of the emitter. The `shape` spreads them over an area: a circle, a ring, a rectangle or its outline, a cone, an ellipse, an arc, a polygon, a line through points, or the visible pixels of an image. The `shapeSize`, `shapeAngle` and `shapeThickness` size and turn the area.
+Without a shape, particles are born at one point, the position of the emitter. The `shape` spreads them over an area. It can be a circle, a ring, a rectangle or its outline, a cone, an ellipse, an arc, a polygon, a line through points, or the visible pixels of an image. The `shapeSize`, `shapeAngle` and `shapeThickness` size and turn the area.
 
 The `image` shape takes an `ImageShape`, the visible pixels of an image. With `colorFromImage` each particle takes the color of its pixel, so a sprite breaks apart into particles of its own colors.
 
@@ -192,7 +192,11 @@ Each particle draws as one sprite of the texture of its emitter. These options s
 - The `rotation` and `spin` turn particles. With `alignToVelocity` a particle points along its motion, and `stretch` lengthens it with its speed, for sparks and rain.
 - The `particleOrder` draws new particles on top or below the older ones. Below suits smoke that should not cover its own trail.
 
-Pixel art effects keep to the grid of their art. The `pixelSnap` rounds positions to the size of an art pixel, the `rotationStep` turns only by quarter turns, and `colorBlend = 'steps'` holds each color until the next one instead of blending, which keeps the effect inside its palette.
+Pixel art effects keep to the grid of their art:
+
+- The `pixelSnap` rounds positions to the size of an art pixel.
+- The `rotationStep` turns particles only by steps, such as quarter turns.
+- The value `'steps'` of `colorBlend` holds each color until the next one instead of blending, which keeps the effect inside its palette.
 
 An emitter draws with the [draw order](../graphics/rendering.md#draw-order) of its options, such as its `layer` and `blend`. An `'additive'` blend suits fire, sparks and magic, which brighten what lies behind them.
 
@@ -380,7 +384,7 @@ The tool `samples/tests/tools/particles/write-effect-library.py` writes every ef
 2. Load an effect with `assets.load('effects/fire/campfire-realistic.particles')`. Create it with `particles2d.newEmitter(effect)`, or with `particles2d.newSystem(effect)` for a composite effect. The effects of the painted atlas name the filter `linear` in the file, and the pixel effects keep `nearest`.
 3. Place it with `position`, `scale` and `rotation`. Adjust it with the overrides of `particles2d.newEmitter` or with `emitter:configure`, such as other `colors`. Restart a one-shot effect with `restart` when it fires again.
 
-The values of the library use the scale of the test project: world units at a design resolution of 1920 by 1080 with a camera zoom of 1, a character about 128 units tall, and pixel art whose art pixels are 4 units. Effects such as rain and snow cover the width of that view from just above it, and the app moves them with its camera.
+The values of the library use the scale of the test project. They are world units at a design resolution of 1920 by 1080 with a camera zoom of 1. A character is about 128 units tall, and an art pixel of the pixel art is 4 units. Effects such as rain and snow cover the width of that view from just above it, and the app moves them with its camera.
 
 The effects `fire/heat-haze`, `explosions/shockwave-distortion` and `scifi/shield-ripple-distortion` use `distortion`, so they show only in world canvases with lighting or post-processing. The test `EFX-002` shows them over a landscape.
 
@@ -424,7 +428,7 @@ The classes live in `haylen/2d/particles/`, in the namespace `haylen::particles2
 
 - `Emitter` (`Emitter.hpp`) simulates and draws one emitter. Its method `getParticle(index)` returns a live particle with the sprite it draws as, for gameplay that reacts to particles and for tests.
 - `EmitterConfig` (`EmitterConfig.hpp`) holds the options, which a Lua table or an effect file fills with the same keys. Every enum of it has one table of names, such as `EmitterConfig::kShapeNames`, which the file parser and the Lua binding read with `EmitterConfig::fromName` and `EmitterConfig::nameOf`.
-- `Effect` (`Effect.hpp`) parses a `.particles` file. Its `Effect::parse(document, path, read)` reads the keys in one pass, follows the effect files that sub-emitters and composite entries name through `read`, which the asset loader gives the package, refuses an effect that refers to itself, and reads image shapes from their images. The particles plugin decodes the textures of every emitter of a file on the worker thread that loads it, and shares them with the texture cache on the frame thread.
+- `Effect` (`Effect.hpp`) parses a `.particles` file. Its `Effect::parse(document, path, read)` reads the keys in one pass. It follows the effect files that sub-emitters and composite entries name through `read`, which the asset loader gives the package. It refuses an effect that refers to itself, and reads image shapes from their images. The particles plugin decodes the textures of every emitter of a file on the worker thread that loads it, and shares them with the texture cache on the frame thread.
 - `System` (`System.hpp`) holds the emitters of an effect, one for each entry of a composite file, or one for an effect of a single emitter.
 - `Trail` (`Trail.hpp`) is the ribbon behind one moving point, and `Ribbon` draws the trails of particles as strokes of the renderer.
 

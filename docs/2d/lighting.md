@@ -145,7 +145,7 @@ These settings shape the shadows:
 - The `shadowColor` is the light that shadowed pixels still get. Its alpha sets how dark the shadows are.
 - The `shadowMask` of a light and the `mask` of an occluder choose which occluders block which lights. An occluder casts the shadow of a light when the two masks share a bit.
 
-Every edge of an occluder casts a shadow, unless its `cull` mode skips the edges that the light sees wound one way. Take a box whose points go clockwise on the screen. With `cull = 'counterClockwise'` it skips the edges that face the light, so the box stays lit and only what lies behind it is dark. Without culling, the box sits in its own shadow. An edge whose line passes through the light, such as the two edges of a corner the light sits on, shows the light only its side and casts no shadow, while the other edges still do.
+Every edge of an occluder casts a shadow, unless its `cull` mode skips the edges that the light sees wound one way. Take a box whose points go clockwise on the screen. With `cull = 'counterClockwise'` it skips the edges that face the light, so the box stays lit and only what lies behind it is dark. Without culling, the box sits in its own shadow. Some edges have a line that passes through the light, such as the two edges of a corner the light sits on. Such an edge shows the light only its side and casts no shadow, while the other edges still do.
 
 Occluders and lights belong to the canvas you draw them in. Each lit canvas casts the shadows of its own lights from its own occluders.
 
