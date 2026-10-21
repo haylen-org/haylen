@@ -59,13 +59,15 @@ function PixelSnap:enter()
     }
 end
 
--- Splits the play area between the two cameras and moves both to the same point, back and forth over the island.
+-- Splits the play area between the two cameras and moves both to the same point, back and forth over the island. A tall half zooms in further than 4, so its view stays on the island.
 function PixelSnap:place(stage)
     local span = 160
     local phase = self.travel % (span * 2)
     local x, y = 330 + (phase < span and phase or span * 2 - phase) - span / 2, 150 + math.sin(self.time * 0.5) * 12
+    local zoom = math.max(4, stage.height / 260)
     for index, camera in ipairs(self.cameras) do
         camera.viewport = {stage.x + (index - 1) * stage.width / 2, stage.y, stage.width / 2, stage.height}
+        camera.zoom = {zoom, zoom}
         camera.position = {x, y}
     end
 end

@@ -21,6 +21,7 @@ clouds:update(dt)  -- Advances the autoscroll.
 hills:draw(camera, {layer = -2})]]
 
 Parallax.ground = 300
+Parallax.height = 1080
 -- The fence of the painted terrain tiles, repeated along the back of the ground.
 Parallax.fence = {source = {926, 2, 128, 128}, size = 150}
 
@@ -30,6 +31,7 @@ end
 
 function Parallax:init(entry)
     Parallax.super.init(self, entry)
+    self.camera.anchor = 'center'
     local sheet = World.texture('sprites/sheets/walker.png')
     self.walker = {x = 0, sprite = graphics2d.newSprite(sheet, {scaleX = 1, scaleY = 1, layer = 1}), animator = animation2d.newAnimator()}
     self.walker.animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 256, frameHeight = 256, cells = {1, 2, 3, 4}, framesPerSecond = 6}))
@@ -53,7 +55,6 @@ function Parallax:enter()
         hint = 'Walk with A and D, the arrows, the left stick or by holding the mouse button or a finger on either side, or let the camera travel by itself.',
         code = Parallax.code,
         play = true,
-        view = {1920, 1080},
         controls = {ui.toggle{id = 'travel', text = 'Camera travels by itself', checked = true, onChange = function(event)
             self.traveling = event.checked
         end}},
@@ -91,6 +92,9 @@ function Parallax:update(dt)
     local walker = self.walker
     walker.x = walker.x + speed * dt
     self.camera.x = walker.x
+    -- The view always shows the 1080 units from the clouds down to the grass, as wide as the play area makes it.
+    local zoom = self.stage.height / Parallax.height
+    self.camera.zoom = {zoom, zoom}
     local clip = speed ~= 0 and 'run' or 'idle'
     if walker.animator.current ~= clip then
         walker.animator:play(clip)
@@ -112,7 +116,7 @@ function Parallax:draw(area)
         entry.layer:draw(self.camera, {layer = entry.order})
     end
     -- The earth of the ground strip goes on below it to the bottom of the view.
-    graphics2d.drawRect({view.x, Parallax.ground + 200, view.width, 600}, '#FF81411F', {layer = -1})
+    graphics2d.drawRect({view.x, Parallax.ground + 200, view.width, view:bottom() - Parallax.ground - 200}, '#FF81411F', {layer = -1})
     local fence = Parallax.fence
     for x = math.floor(view.x / fence.size) * fence.size, view:right(), fence.size do
         graphics2d.draw(self.terrain, x, Parallax.ground + 16, {source = fence.source, width = fence.size, height = fence.size, pivotX = 0, pivotY = 1, layer = 0})

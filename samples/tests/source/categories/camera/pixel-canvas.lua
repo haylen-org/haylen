@@ -10,13 +10,13 @@ local Test = require('harness.test')
 local PixelCanvas = haylen.class('PixelCanvas', Test)
 
 PixelCanvas.code = [[
-local pixels = graphics2d.newPixelCanvas(180, 160, {smooth = true})
+local pixels = graphics2d.newPixelCanvas(220, 196, {smooth = true})
 pixels:begin(lowCamera, {clear = '#FF101418'})  -- In render, then draw the art in canvas pixels.
 graphics2d.draw(island, 0, 0, {pivotX = 0, pivotY = 0})
 pixels:draw(half.x, half.y, half.width, half.height)  -- In renderUi, scaled up to its half of the play area.]]
 
--- Each canvas is this many art pixels wide, and as tall as its half of the play area allows, so it fills the half.
-PixelCanvas.width = 180
+-- The longer side of each canvas holds this many art pixels, so its pixels are big and its view stays on the island whatever the shape of the play area.
+PixelCanvas.pixels = 220
 PixelCanvas.gap = 8
 
 function PixelCanvas:init(entry)
@@ -39,11 +39,12 @@ function PixelCanvas:enter()
     }
 end
 
--- Makes the two canvases again whenever the play area changes its shape.
+-- Makes the two canvases again whenever the play area changes its shape, each with the shape of its half.
 function PixelCanvas:resize(area)
     local halfWidth = (area.width - PixelCanvas.gap) / 2
-    self.height = math.max(1, math.floor(PixelCanvas.width * area.height / halfWidth + 0.5))
-    self.canvases = {graphics2d.newPixelCanvas(PixelCanvas.width, self.height, {smooth = false}), graphics2d.newPixelCanvas(PixelCanvas.width, self.height, {smooth = true})}
+    local scale = math.max(halfWidth, area.height) / PixelCanvas.pixels
+    self.canvasWidth, self.canvasHeight = math.max(1, math.floor(halfWidth / scale + 0.5)), math.max(1, math.floor(area.height / scale + 0.5))
+    self.canvases = {graphics2d.newPixelCanvas(self.canvasWidth, self.canvasHeight, {smooth = false}), graphics2d.newPixelCanvas(self.canvasWidth, self.canvasHeight, {smooth = true})}
 end
 
 function PixelCanvas:update(dt)
@@ -57,7 +58,7 @@ function PixelCanvas:update(dt)
     local phase = self.travel % (span * 2)
     self.lowCamera.position = {340 + (phase < span and phase or span * 2 - phase) - span / 2, 160 + math.sin(self.time * 0.5) * 12}
     local x, y = self.canvases[2]:fraction()
-    self:status(string.format('Each canvas is %d by %d pixels. The camera is at %.2f, %.2f, and the smooth canvas shifts by %.2f, %.2f of a pixel.', PixelCanvas.width, self.height, self.lowCamera.x, self.lowCamera.y, x, y))
+    self:status(string.format('Each canvas is %d by %d pixels. The camera is at %.2f, %.2f, and the smooth canvas shifts by %.2f, %.2f of a pixel.', self.canvasWidth, self.canvasHeight, self.lowCamera.x, self.lowCamera.y, x, y))
 end
 
 function PixelCanvas:render()
