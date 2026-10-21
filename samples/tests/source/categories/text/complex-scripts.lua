@@ -11,7 +11,7 @@ local ComplexScripts = haylen.class('ComplexScripts', TextTest)
 
 ComplexScripts.code = [[
 local family = graphics.newFontFamily({regular = fira, fallbacks = {arabic, hebrew, devanagari, thai}})
-graphics2d.drawText(family, 'مرحبا بالعالم', x, y, {size = 30, language = 'ar'})
+graphics2d.drawText(family, arabic, x, y, {size = 30, language = 'ar'})
 graphics2d.drawText(family, mixed, x, y, {size = 30, maxWidth = 560, direction = 'rightToLeft'})
 local paragraph = graphics2d.newRichText(markup, {family = family, size = 30, maxWidth = 460, language = 'ar'})
 local typed = graphics2d.newRichText(dialogue, {family = family, size = 30, revealSpeed = 14})]]

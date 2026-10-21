@@ -13,8 +13,8 @@ Fallback.code = [[
 local cjk = assets.font('fonts/mplus-1p-regular.ttf')
 local symbols = assets.font('fonts/noto-sans-symbols-2-regular.ttf')
 local family = graphics.newFontFamily({regular = serif, fallbacks = {cjk, symbols}})
-local line = graphics2d.newRichText('日本語のテキスト ★ ♚', {family = family, size = 34})
-local font, syntheticBold = family:resolve('★', {bold = true})]]
+local line = graphics2d.newRichText(japanese, {family = family, size = 34})
+local font, syntheticBold = family:resolve(star, {bold = true})]]
 
 Fallback.lines = {
     {'Japanese', '日本語のテキスト、ひらがなとカタカナと漢字。'},
