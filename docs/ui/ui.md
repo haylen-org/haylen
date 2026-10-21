@@ -117,7 +117,7 @@ A GUI that paints a background to the screen edges uses `placement = 'screen'` a
 
 ### Anchors
 
-The app draws over the whole screen on every platform, under notches, dynamic islands, rounded corners and gesture bars, and the interface chooses where each part of it sits. Any node, the GUI root included, can leave the layout of its parent with an [anchor](../lua-api/ui.md#anchors) and sit against the safe area or the whole screen: at a corner, at the middle of an edge, at the center, or stretched along an edge, a band or the whole area. The property `margin` keeps it away from the edges, and anchored nodes follow the safe area when it changes, such as when a phone turns.
+The app draws over the whole screen on every platform, under notches, dynamic islands, rounded corners and gesture bars, and the interface chooses where each part of it sits. Any node, the GUI root included, can leave the layout of its parent with an [anchor](../lua-api/ui.md#anchors) and sit against the safe area, the whole screen or the bounds of its parent: at a corner, at the middle of an edge, at the center, or stretched along an edge, a band or the whole area. The property `margin` keeps it away from the edges, and anchored nodes follow the safe area when it changes, such as when a phone turns. A node anchored to its parent with `anchorTo = 'parent'` moves and resizes with it, such as touch controls in the corners of a play area that shares the screen with panels.
 
 ```lua
 ui.mount(ui.stack{
@@ -125,6 +125,14 @@ ui.mount(ui.stack{
     ui.button{id = 'pause', icon = 'ui/pause.png', variant = 'icon', anchor = 'topRight', margin = 16},
     ui.panel{anchor = 'stretchBottom', height = 120, margin = {0, 24}, ui.label{text = 'Wood 12'}},
 }, {placement = 'screen'})
+
+ui.mount(ui.row{
+    ui.stack{grow = 1, align = 'stretch',
+        ui.playArea{id = 'stage', align = 'stretch'},
+        ui.touchStick{action = 'move', mode = 'floating', touchOnly = true, width = 360, height = 300, anchor = 'bottomLeft', anchorTo = 'parent', margin = 24},
+    },
+    ui.panel{width = 420, ui.button{text = 'Restart'}},
+})
 ```
 
 ### Testing the safe area on a desktop

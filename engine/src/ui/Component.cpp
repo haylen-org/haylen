@@ -288,9 +288,14 @@ void Component::draw(Context& context, const math::Rect& layout) {
     ImGui::PopID();
 }
 
-math::Rect Component::getAnchoredBounds(Context& context) {
+math::Rect Component::getAnchoredBounds(Context& context, const math::Rect& parent) {
     const Backend& backend = context.getBackend();
-    const math::Rect area = common.anchorArea == Anchor::Area::Safe ? backend.getLiftedSafeRect() : backend.getLiftedDisplayRect();
+    math::Rect area = parent;
+    if (common.anchorArea == Anchor::Area::Safe) {
+        area = backend.getLiftedSafeRect();
+    } else if (common.anchorArea == Anchor::Area::Screen) {
+        area = backend.getLiftedDisplayRect();
+    }
     return common.anchor.value_or(Anchor{}).place(measure(context, area.width), area);
 }
 
@@ -329,7 +334,7 @@ void Component::drawDetachedChildren(Context& context, const math::Rect& bounds)
             continue;
         }
         if (child->common.anchor) {
-            child->draw(context, child->getAnchoredBounds(context));
+            child->draw(context, child->getAnchoredBounds(context, bounds));
         } else if (child->isFloating()) {
             child->draw(context, {bounds.x, bounds.y, 0.0F, 0.0F});
         }

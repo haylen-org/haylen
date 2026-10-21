@@ -1004,8 +1004,8 @@ Every kind accepts these properties.
 | `minHeight` | number | `0` | Smallest height. |
 | `maxHeight` | number | unbounded | Largest height. |
 | `align` | string | depends on the kind | One of `'start'`, `'center'`, `'end'` or `'stretch'`. A column places the node across its width with it, a row across its height, a grid inside its cell, and a stack or the GUI root in both directions. Without `align`, rows center their children. Everywhere else labels, buttons, image buttons, menu buttons, popovers, chips, check boxes, toggles, radio groups, badges, status indicators, circular progress indicators, icons, images, avatars, rich text and touch controls use `start`, the busy indicator uses `center`, and every other kind stretches. |
-| `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area or the screen, as [Anchors](#anchors) describes. The value `'none'` puts it back in the layout. |
-| `anchorTo` | string | `'safe'` | Area an anchored node is placed in: `'safe'` or `'screen'`. |
+| `anchor` | string | none | Takes the node out of the layout of its parent and places it against the safe area, the screen or its parent, as [Anchors](#anchors) describes. The value `'none'` puts it back in the layout. |
+| `anchorTo` | string | `'safe'` | Area an anchored node is placed in: `'safe'`, `'screen'` or `'parent'`, the bounds of its parent, which for the root of a GUI is the area of the GUI. |
 | `margin` | insets | `0` | Space around the node: its parent places it that far from the nodes and edges around it, and an anchored node keeps that distance from the edges of its area. |
 | `aspectRatio` | number from 0.01 to 100 | none | The width divided by the height, which the node keeps. Its height follows its width, its width follows a fixed `height`, and without a fixed size it takes the whole width it is offered. A place of another shape shrinks around its center to the ratio. |
 | `focusable` | boolean | `true` | The value `false` keeps the controls of the node and of every node inside it out of keyboard, gamepad and remote navigation, and a click presses them without moving the focus there, which suits HUD buttons that share keys with gameplay. |
@@ -1038,7 +1038,7 @@ ui.mount(ui.row{
 
 ## Anchors
 
-An anchored node leaves the layout of its parent, takes no room there and draws over it, placed against the safe area or the whole visible screen. The GUI root may be anchored too, which places the whole GUI. The app draws under notches, dynamic islands, rounded corners and gesture bars on every platform, and anchors choose where each part of the interface sits.
+An anchored node leaves the layout of its parent, takes no room there and draws over it, placed against the safe area, the whole visible screen or the bounds of its parent. The GUI root may be anchored too, which places the whole GUI. The app draws under notches, dynamic islands, rounded corners and gesture bars on every platform, and anchors choose where each part of the interface sits.
 
 | Anchor | Place |
 | --- | --- |
@@ -1050,7 +1050,7 @@ An anchored node leaves the layout of its parent, takes no room there and draws 
 | `'stretchLeft'`, `'stretchRight'` | The left or right edge, as tall as the area. |
 | `'stretchHorizontal'`, `'stretchVertical'` | A band across the middle, as wide or as tall as the area. |
 
-The property `margin` keeps the node away from the edges of its area, and `width` and `height` fix the size along axes that do not stretch. An unknown name raises `The property "anchor" of a "<kind>" must be "none" or an anchor name such as "topLeft", "center" or "stretchHorizontal".`, and an `anchorTo` other than `'safe'` or `'screen'` raises `The property "anchorTo" of a "<kind>" must be "safe" or "screen".`.
+The property `margin` keeps the node away from the edges of its area, and `width` and `height` fix the size along axes that do not stretch. An unknown name raises `The property "anchor" of a "<kind>" must be "none" or an anchor name such as "topLeft", "center" or "stretchHorizontal".`, and an `anchorTo` other than `'safe'`, `'screen'` or `'parent'` raises `The property "anchorTo" of a "<kind>" must be "safe", "screen" or "parent".`. A node anchored to its parent moves and resizes with it, such as the touch controls in the corners of a play area beside a panel.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1061,6 +1061,11 @@ ui.mount(ui.stack{
     ui.panel{anchor = 'stretchBottom', height = 120, margin = {0, 24}, ui.label{text = 'Wood 12'}},
     ui.label{text = 'Day 3', font = 'heading', anchor = 'top', margin = {24, 0}},
 }, {placement = 'screen'})
+
+ui.mount(ui.stack{width = 1200, height = 700,
+    ui.playArea{id = 'stage', align = 'stretch'},
+    ui.touchButton{action = 'jump', text = 'Jump', touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = 24},
+})
 ```
 
 ## Right-to-left interfaces

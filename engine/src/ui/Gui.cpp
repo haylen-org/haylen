@@ -332,7 +332,7 @@ void Gui::draw(Context& context, const math::Rect& area) {
     const EventScope scope(context, events);
     context.getFocus().beginGui(*this);
     const bool writing = root->pushWriting(context);
-    const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context) : place(context, *root, root->measure(context, area.width), area);
+    const math::Rect placed = root->getCommon().anchor ? root->getAnchoredBounds(context, area) : place(context, *root, root->measure(context, area.width), area);
     if (writing) {
         context.popWriting();
     }

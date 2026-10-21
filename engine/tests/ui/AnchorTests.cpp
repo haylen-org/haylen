@@ -51,6 +51,29 @@ TEST_F(AnchorTest, AnchorsNodesToTheSafeAreaOrTheScreenOutsideTheLayout) {
     EXPECT_THROW(gui->set("pause", {{"anchorTo", "window"}}), std::invalid_argument);
 }
 
+// A node anchored to its parent sits against the bounds of its parent, such as touch controls in the corners of a play area that moves with the layout.
+TEST_F(AnchorTest, AnchorsNodesToTheirParent) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "row", "padding": 0, "gap": 0, "children": [
+        {"kind": "spacer", "width": 300},
+        {"kind": "stack", "id": "area", "grow": 1, "height": 600, "align": "start", "children": [
+            {"kind": "playArea", "align": "stretch"},
+            {"kind": "button", "id": "stick", "text": "Stick", "width": 200, "height": 200, "anchor": "bottomLeft", "anchorTo": "parent", "margin": 24},
+            {"kind": "button", "id": "jump", "text": "Jump", "width": 120, "height": 120, "anchor": "bottomRight", "anchorTo": "parent", "margin": 24}
+        ]}
+    ]})", Placement::Screen);
+    // clang-format on
+    const math::Rect area = getBounds(*gui, "area");
+    EXPECT_EQ(area, (math::Rect{300.0F, 0.0F, 1620.0F, 600.0F}));
+    EXPECT_EQ(getBounds(*gui, "stick"), (math::Rect{324.0F, 600.0F - 24.0F - 200.0F, 200.0F, 200.0F}));
+    EXPECT_EQ(getBounds(*gui, "jump"), (math::Rect{1920.0F - 24.0F - 120.0F, 600.0F - 24.0F - 120.0F, 120.0F, 120.0F}));
+
+    gui->set("area", {{"height", 400}});
+    frames();
+    EXPECT_EQ(getBounds(*gui, "stick").getBottom(), 400.0F - 24.0F);
+    EXPECT_THROW(gui->set("jump", {{"anchorTo", "window"}}), std::invalid_argument);
+}
+
 TEST_F(AnchorTest, AnchorsTheRootOfAGui) {
     auto gui = mount(R"({"kind": "panel", "id": "hud", "width": 400, "height": 100, "anchor": "top", "anchorTo": "screen", "margin": [16, 0]})", Placement::Safe);
     EXPECT_EQ(getBounds(*gui, "hud"), (math::Rect{760.0F, 16.0F, 400.0F, 100.0F}));

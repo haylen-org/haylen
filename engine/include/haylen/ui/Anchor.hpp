@@ -11,12 +11,13 @@
 
 namespace haylen::ui {
 
-// Places a node against an area of the screen instead of inside its parent: at a corner, at an edge, at the center, or stretched along one or both axes.
+// Places a node against an area instead of in the layout of its parent: at a corner, at an edge, at the center, or stretched along one or both axes.
 struct Anchor {
-    // The area an anchored node is placed in: the safe area, away from notches, rounded corners and system bars, or the whole visible screen.
+    // The area an anchored node is placed in: the safe area, away from notches, rounded corners and system bars, the whole visible screen, or the bounds of its parent, such as touch controls in the corners of a play area.
     enum class Area : std::uint8_t {
         Safe,
         Screen,
+        Parent,
     };
 
     struct Preset {

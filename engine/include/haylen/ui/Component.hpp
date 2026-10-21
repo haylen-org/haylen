@@ -164,8 +164,8 @@ class Component {
         return transform;
     }
 
-    // Returns where an anchored component goes on the screen, measured for the area its anchor names.
-    [[nodiscard]] math::Rect getAnchoredBounds(Context& context);
+    // Returns where an anchored component goes, measured for the area its anchor names, where the parent area is the bounds of its parent, or the area of the GUI for the root.
+    [[nodiscard]] math::Rect getAnchoredBounds(Context& context, const math::Rect& parent);
 
     // A column places a child across its width with the alignment, and a row places it across its height with the row alignment.
     [[nodiscard]] Alignment getAlignment() const noexcept {
@@ -267,9 +267,10 @@ class Component {
         {"end", Alignment::End},
         {"stretch", Alignment::Stretch},
     }};
-    static constexpr std::array<std::pair<std::string_view, Anchor::Area>, 2> kAnchorAreas{{
+    static constexpr std::array<std::pair<std::string_view, Anchor::Area>, 3> kAnchorAreas{{
         {"safe", Anchor::Area::Safe},
         {"screen", Anchor::Area::Screen},
+        {"parent", Anchor::Area::Parent},
     }};
     static constexpr std::array<std::pair<std::string_view, FocusWrap>, 4> kFocusWraps{{
         {"none", FocusWrap::None},
