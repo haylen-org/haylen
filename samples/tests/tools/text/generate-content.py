@@ -17,6 +17,8 @@ from png_image import write  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content" / "text"
 PAGE_SIZE = (128, 64)
+# The outline grows every glyph of the gold font by a pixel on each side, so its rows need a taller page.
+GOLD_PAGE_SIZE = (128, 72)
 
 
 def main() -> None:
@@ -24,9 +26,9 @@ def main() -> None:
     write(page, CONTENT / "haylen-pixel-0.png")
     bitmap_font.write_text(CONTENT / "haylen-pixel.fnt", "Haylen Pixel", "haylen-pixel-0.png", chars, PAGE_SIZE)
 
-    page, chars = bitmap_font.build(bitmap_font.gold, (59, 26, 0, 255), *PAGE_SIZE)
+    page, chars = bitmap_font.build(bitmap_font.gold, (59, 26, 0, 255), *GOLD_PAGE_SIZE)
     write(page, CONTENT / "haylen-pixel-gold-0.png")
-    bitmap_font.write_binary(CONTENT / "haylen-pixel-gold.fnt", "Haylen Pixel Gold", "haylen-pixel-gold-0.png", chars, PAGE_SIZE)
+    bitmap_font.write_binary(CONTENT / "haylen-pixel-gold.fnt", "Haylen Pixel Gold", "haylen-pixel-gold-0.png", chars, GOLD_PAGE_SIZE)
 
     write(art.lcd_digits(), CONTENT / "lcd-digits.png")
 

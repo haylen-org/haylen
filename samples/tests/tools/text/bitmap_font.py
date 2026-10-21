@@ -58,6 +58,8 @@ def build(color, outline: Color | None, page_width: int = 128, page_height: int 
             continue
         if x + width + border * 2 >= page_width:
             x, y = 1, y + height + 1
+        if y + height > page_height:
+            raise ValueError(f"The glyphs need a page taller than {page_height} pixels.")
         lit = {(column - first + border, row + border) for column, row in glyphs.pixels(character)}
         if outline:
             for column, row in lit:
