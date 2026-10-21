@@ -194,6 +194,16 @@ scene.push({
 })
 ```
 
+### localization.format(text, arguments)
+
+Fills the placeholders of a text that is not a key of the catalog, such as a text written in the code or in a data file before it is translated, the way [`localization.text()`](#localizationtextkey-arguments) fills the texts of the catalog. The optional arguments table fills `{name}` placeholders with its values, `{{` and `}}` produce single braces, and a placeholder without a matching argument stays in the text as it is. The text never goes through the catalog, so it shows without the pseudo translation, and arguments given as a list raise `Localization arguments must be a JSON object.`.
+
+```lua
+local localization = require('haylen.localization')
+
+print(localization.format('Wave {wave} of {waves}', {wave = 2, waves = 5}))
+```
+
 ### localization.findBestMatch(tag)
 
 Returns the added language that best matches a BCP 47 language tag, or `nil` when none matches. The match ignores case and treats `_` like `-`. An exact match wins, and otherwise a language with the same base language matches, preferring the plain base language, so `pt-BR` matches `pt` before `pt-PT`.

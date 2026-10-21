@@ -32,10 +32,10 @@ void ConversationLua::pushState(lua_State* L, std::shared_ptr<ConversationState>
     lua::Userdata::emplace<ConversationState>(L, std::move(state));
 }
 
-// A key of the catalog becomes its text with the variables as arguments, and anything else is the text itself.
+// A key of the catalog becomes its text, and anything else is the text itself, both with the variables in their placeholders.
 void ConversationLua::pushText(lua_State* L, const std::string& key, const core::Json& variables) {
     const localization::Catalog& catalog = lua::Runtime::getEngine(L).getPlugin<plugins::LocalizationPlugin>().getCatalog();
-    lua::Stack::push(L, catalog.has(key) ? catalog.getText(key, variables) : key);
+    lua::Stack::push(L, catalog.has(key) ? catalog.getText(key, variables) : localization::Catalog::format(key, variables));
 }
 
 // Listeners run after the step that ran the commands returned, so a listener may advance the state.

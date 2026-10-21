@@ -227,4 +227,21 @@ TEST(ConversationLuaTest, LoadsAssetsLocalizesLinesAndEndsListenersWithTheirOwne
     EXPECT_EQ(fixture.lua("return table.concat(talk.texts, ',') .. ' ' .. talk.nodes[1]"), "smith.hello,Plain text.,choice.buy,choice.leave start");
 }
 
+TEST(ConversationLuaTest, FillsThePlaceholdersOfTextsThatAreNotKeys) {
+    // clang-format off
+    test::EngineFixture fixture({{"content/talk/smith.conversation", R"({
+        "variables": {"swords": 0},
+        "nodes": {
+            "buy": {
+                "steps": [{"set": {"swords": "swords + 1"}}, {"text": "That makes {swords} so far, {{and}} {missing}."}],
+                "choices": [{"text": "Buy sword {swords}."}]
+            }
+        }
+    })"}});
+    // clang-format on
+    fixture.runLua("state = require('haylen.assets').load('talk/smith.conversation'):start('buy', {seed = 1})");
+    EXPECT_EQ(fixture.lua("return state.line.text .. ' | ' .. state.line.key"), "That makes 1 so far, {and} {missing}. | That makes {swords} so far, {{and}} {missing}.");
+    EXPECT_EQ(fixture.lua("state:advance() return state.choices[1].text"), "Buy sword 1.");
+}
+
 } // namespace haylen::conversation

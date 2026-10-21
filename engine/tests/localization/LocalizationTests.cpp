@@ -97,6 +97,11 @@ TEST_F(CatalogTest, HandlesBracesAndGroupsThatLookLikePlurals) {
     EXPECT_THROW((void)catalog.getText("note", core::Json::array()), std::invalid_argument);
 }
 
+TEST_F(CatalogTest, FormatsTextsOutsideTheCatalogLikeItsOwn) {
+    EXPECT_EQ(Catalog::format("You carry {gold} coins, {{gold}} {missing}.", {{"gold", 30}}), "You carry 30 coins, {gold} {missing}.");
+    EXPECT_THROW((void)Catalog::format("{gold}", core::Json::array()), std::invalid_argument);
+}
+
 TEST_F(CatalogTest, MatchesLanguageTags) {
     Catalog catalog;
     for (const char* language : {"en", "pt", "pt-PT", "es-MX"}) {
@@ -140,6 +145,7 @@ TEST(LocalizationLuaTest, LoadsLanguageFoldersFromThePackage) {
     EXPECT_EQ(fixture.lua("localization.setLanguage(localization.findBestMatch('pt_BR')) return localization.text('hud.day', {day = 4}) .. ' / ' .. localization.text('hud.wood', {count = 7})"), "Dia 4 / 7 logs");
     EXPECT_EQ(fixture.lua("localization.add('fr', {hud = {day = 'Jour {day}'}}) localization.setFallback('fr') return localization.fallback() .. ' ' .. tostring(localization.has('hud.wood'))"), "fr false");
     EXPECT_EQ(fixture.lua("return tostring(localization.findBestMatch('de')) .. ' ' .. localization.text('nothing.here')"), "nil nothing.here");
+    EXPECT_EQ(fixture.lua("return localization.format('Day {day} of {days}', {day = 2, days = 7}) .. ' / ' .. localization.format('No {day}')"), "Day 2 of 7 / No {day}");
     EXPECT_EQ(fixture.lua("localization.setPseudo(true) local text = localization.text('hud.day', {day = 5}) localization.setPseudo(false) return text .. ' ' .. tostring(localization.pseudo())"), "« Díá 5 . » false");
 
     EXPECT_EQ(fixture.lua("localization.add('ar', {['@direction'] = 'rightToLeft', hud = {day = 'اليوم {day}'}}) return localization.direction('ar') .. ' ' .. localization.direction()"), "rightToLeft leftToRight");

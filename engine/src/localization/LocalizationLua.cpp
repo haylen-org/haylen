@@ -86,6 +86,13 @@ int LocalizationLua::text(lua_State* L) {
     return 1;
 }
 
+// Fills with `format(text[, arguments])` the placeholders of a text that is not a key, the way `text` fills the texts of the catalog.
+int LocalizationLua::format(lua_State* L) {
+    const core::Json arguments = lua_isnoneornil(L, 2) ? core::Json::object() : lua::JsonConverter::read(L, 2);
+    lua::Stack::push(L, Catalog::format(lua::Stack::read<std::string_view>(L, 1), arguments));
+    return 1;
+}
+
 // Returns with `direction([language])` the direction the current or the named language declares, `leftToRight` or `rightToLeft`.
 int LocalizationLua::direction(lua_State* L) {
     const Catalog& catalog = getCatalog(L);
@@ -209,7 +216,7 @@ int LocalizationLua::assetPath(lua_State* L) {
 
 int LocalizationLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
+        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"format", &lua::Binding::native<&format>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

@@ -62,7 +62,14 @@ std::string Catalog::formatArgument(const core::Json& value) {
     return value.dump();
 }
 
+void Catalog::checkArguments(const core::Json& arguments) {
+    if (!arguments.is_object()) {
+        throw std::invalid_argument("Localization arguments must be a JSON object.");
+    }
+}
+
 std::string Catalog::format(std::string_view pattern, const core::Json& arguments) {
+    checkArguments(arguments);
     std::string result;
     result.reserve(pattern.size());
     for (std::size_t index = 0; index < pattern.size(); ++index) {
@@ -202,9 +209,7 @@ bool Catalog::has(std::string_view key) const {
 }
 
 std::string Catalog::getText(std::string_view key, const core::Json& arguments) const {
-    if (!arguments.is_object()) {
-        throw std::invalid_argument("Localization arguments must be a JSON object.");
-    }
+    checkArguments(arguments);
     const auto [entry, entryLanguage] = find(key);
     if (entry == nullptr) {
         return std::string(key);

@@ -40,6 +40,9 @@ class Catalog final {
     // Replaces `{name}` placeholders with the arguments, and `{{` and `}}` with single braces. A `count` argument picks the plural form by the plural rules of the language that holds the text, an `ordinal` argument of `true` picks it by the ordinal rules, a `zero` form takes a count of 0 whatever the rules say, and a form that the entry lacks falls back to `other`.
     [[nodiscard]] std::string getText(std::string_view key, const core::Json& arguments = core::Json::object()) const;
 
+    // Fills a text that is not in the catalog the way the catalog fills its own: `{name}` placeholders take the arguments, `{{` and `}}` give single braces, and a placeholder without an argument stays as it is.
+    [[nodiscard]] static std::string format(std::string_view pattern, const core::Json& arguments);
+
     // Turns every text of the catalog into a pseudo translation while it is on: accented letters, a third longer and between guillemets, with the placeholders and the tags of rich text kept. Text that overflows its space, that a font cannot draw or that skipped the catalog then shows without translating the app.
     void setPseudo(bool value) noexcept {
         pseudo = value;
@@ -59,8 +62,8 @@ class Catalog final {
     static void flatten(const core::Json& table, const std::string& prefix, Table& entries);
     [[nodiscard]] static std::string normalizeTag(std::string_view tag);
     [[nodiscard]] static std::string_view getBaseLanguage(std::string_view tag);
+    static void checkArguments(const core::Json& arguments);
     [[nodiscard]] static std::string formatArgument(const core::Json& value);
-    [[nodiscard]] static std::string format(std::string_view pattern, const core::Json& arguments);
     [[nodiscard]] static std::string translatePseudo(std::string_view pattern);
 
     // Returns the entry and the language that holds it.
