@@ -1,6 +1,10 @@
--- Sprite batches: a field of gems kept in one `SpriteBatch` whose sprites the test adds, changes and removes, drawn as one batch or one draw at a time for comparison.
+-- Sprite batches: a field of gems kept in one `SpriteBatch` whose sprites the test adds, changes and removes, drawn as one batch or one draw at a time for comparison. A wave runs down the field and turns each gem it passes once around.
+local debugging = require('haylen.debug')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local localization = require('haylen.localization')
+local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local SpriteTest = require('categories.sprites.sprite-test')
@@ -8,92 +12,137 @@ local SpriteTest = require('categories.sprites.sprite-test')
 local Batches = haylen.class('Batches', SpriteTest)
 
 Batches.icons = {'gem-red.png', 'gem-green.png', 'gem-blue.png', 'star.png', 'heart.png'}
-Batches.spacing = 40
+Batches.spacing = 42
+-- The longer side of every gem, which keeps the shape of its frame.
+Batches.size = 32
+-- The wave moves down this many units per second and turns the gems over a band this tall.
+Batches.waveSpeed = 320
+Batches.waveBand = 150
 
 Batches.code = [[
-local batch = graphics2d.newSpriteBatch(gems.texture)  batch:reserve(4000)
-local index = batch:add({x = 100, y = 100, width = 28, height = 28, source = gems:source('star.png')})
-batch:set(index, {rotation = 0.5, color = '#FFFFD166'})  batch:remove(index)  batch:get(index)  batch:size()
-batch:draw()  -- One batch for every sprite.]]
+local batch = graphics2d.newSpriteBatch(gems.texture)
+batch:reserve(4000)
+local index = batch:add({x = 100, y = 100, width = 26, height = 32, source = gems:source('gem-red.png')})
+batch:set(index, {rotation = 0.5})
+batch:remove(index)
+batch:draw()  -- One call from Lua for every gem of the batch.]]
 
 function Batches:enter()
     self.gems = SpriteTest.atlas('atlases/gems.json')
-    self.sources = {}
+    self.kinds = {}
     for index, name in ipairs(Batches.icons) do
-        self.sources[index] = self.gems:source(name)
+        local source = self.gems:source(name)
+        local scale = Batches.size / math.max(source.width, source.height)
+        self.kinds[index] = {source = source, width = source.width * scale, height = source.height * scale}
     end
+    self.random = m.random(4)
+    -- The gems lie on a tray of dark velvet that glows a little in the middle.
+    local velvet = graphics.newImage(128, 128)
+    velvet:fillGradient({kind = 'radial', radius = 0.75, stops = {{0, '#FF2E3558'}, {0.7, '#FF1C2036'}, {1, '#FF131626'}}})
+    self.velvet = graphics.newTexture(velvet, {filter = 'linear'})
     self.batch = graphics2d.newSpriteBatch(self.gems.texture)
     self.batch:reserve(4000)
+    -- The y of every gem by its index in the batch, so the wave finds the gems it passes without reading the batch back.
+    self.rows = {}
+    self.turned = {rotation = 0}
     self.oneByOne = false
-    self.time = 0
+    self.wave = 0
     self:frame{
         code = Batches.code,
-        hint = 'Click or tap a gem to remove it, or empty space to add one. The wave turns one row at a time with "batch:set".',
+        hint = 'Click or tap a gem to remove it, or empty space to add one. The wave turns the gems it passes with "batch:set".',
         controls = {
-            ui.button{id = 'add', text = 'Add 500 gems', variant = 'primary', onClick = function() self:scatter(500) end},
-            ui.button{id = 'refill', text = 'Refill the grid', onClick = function() self:resize(self.area) end},
-            ui.button{id = 'clear', text = 'Clear', variant = 'destructive', onClick = function() self.batch:clear() end},
-            ui.toggle{id = 'single', text = 'One draw per gem', onChange = function(event) self.oneByOne = event.checked end},
+            ui.button{id = 'add', text = 'Scatter 500 gems', variant = 'primary', onClick = function() self:scatter(500) end},
+            ui.button{id = 'refill', text = 'Refill the grid', onClick = function() self:fill(self.area) end},
+            ui.button{id = 'clear', text = 'Remove every gem', variant = 'destructive', onClick = function() self:clear() end},
+            ui.toggle{id = 'single', text = 'Draw each gem on its own', onChange = function(event) self.oneByOne = event.checked end},
         },
         focus = 'add',
     }
 end
 
-function Batches:gem(x, y)
-    return {x = x, y = y, width = 28, height = 28, source = self.sources[math.random(#self.sources)]}
+function Batches:resize(area)
+    self:fill(area)
 end
 
--- Fills the stage with a grid of gems.
-function Batches:resize(area)
-    self.columns = math.floor(area.width / Batches.spacing)
+-- Adds a gem of a random kind with its pivot at a point.
+function Batches:add(x, y)
+    local kind = self.kinds[self.random:integer(1, #self.kinds)]
+    self.batch:add({x = x, y = y, width = kind.width, height = kind.height, source = kind.source})
+    self.rows[#self.rows + 1] = y
+end
+
+function Batches:clear()
     self.batch:clear()
-    for row = 0, math.floor(area.height / Batches.spacing) - 1 do
-        for column = 0, self.columns - 1 do
-            self.batch:add(self:gem((column + 0.5) * Batches.spacing, (row + 0.5) * Batches.spacing))
+    self.rows = {}
+end
+
+-- Fills the stage with a grid of gems centered in it.
+function Batches:fill(area)
+    self:clear()
+    local spacing = Batches.spacing
+    local columns, rows = math.floor(area.width / spacing), math.floor(area.height / spacing)
+    local left, top = (area.width - columns * spacing) / 2, (area.height - rows * spacing) / 2
+    for row = 0, rows - 1 do
+        for column = 0, columns - 1 do
+            self:add(left + (column + 0.5) * spacing, top + (row + 0.5) * spacing)
         end
     end
 end
 
 function Batches:scatter(count)
+    local random, margin = self.random, Batches.size / 2
     for _ = 1, count do
-        self.batch:add(self:gem(math.random() * self.area.width, math.random() * self.area.height))
+        self:add(random:range(margin, self.area.width - margin), random:range(margin, self.area.height - margin))
     end
 end
 
 -- Removes the gem under the point, or adds one there when no gem is close.
 function Batches:touch(x, y)
+    local reach = Batches.size / 2
     for index = self.batch:size(), 1, -1 do
         local gem = self.batch:get(index)
-        if math.abs(gem.x - x) < 16 and math.abs(gem.y - y) < 16 then
+        if math.abs(gem.x - x) < reach and math.abs(gem.y - y) < reach then
             self.batch:remove(index)
+            table.remove(self.rows, index)
             return
         end
     end
-    self.batch:add(self:gem(x, y))
+    self:add(x, y)
+end
+
+-- Turns the gems inside the band above the wave once around, and sets the gems the band left this frame back to no rotation.
+function Batches:turn(dt)
+    local band, batch, fields = Batches.waveBand, self.batch, self.turned
+    local before, wave = self.wave, self.wave + Batches.waveSpeed * dt
+    for index, y in ipairs(self.rows) do
+        if y <= wave and y > before - band then
+            local progress = (wave - y) / band
+            fields.rotation = progress < 1 and m.tau * m.ease('cubicInOut', progress) or 0
+            batch:set(index, fields)
+        end
+    end
+    -- The wave starts over from the top once the band has left every gem.
+    self.wave = wave > self.area.height + band and 0 or wave
 end
 
 function Batches:update(dt)
     Batches.super.update(self, dt)
-    self.time = self.time + dt
+    if not self.area then
+        return
+    end
     local x, y, pressed = self:pointer()
     if pressed then
         self:touch(x, y)
     end
+    self:turn(dt)
 
-    -- A wave turns the gems of one grid row at a time.
-    local size = self.batch:size()
-    if self.columns and size > 0 then
-        local rows = math.max(1, math.floor(size / self.columns))
-        local row = math.floor(self.time * 6) % rows
-        for index = row * self.columns + 1, math.min(size, (row + 1) * self.columns) do
-            self.batch:set(index, {rotation = self.time * 4})
-        end
-    end
-    local stats = graphics2d.stats()
-    self:status(string.format('Gems %d   %s   Draw calls %d   Sprites submitted %d', size, self.oneByOne and 'One draw each' or 'One batch', stats.drawCalls, stats.sprites))
+    local count, frame = self.batch:size(), debugging.frame()
+    local calls = self.oneByOne and localization.formatNumber(count) .. ' draws from Lua' or 'one draw from Lua'
+    self:status(string.format('%s gems with %s. The frame takes %.2f ms and %d draw calls, the interface included.', localization.formatNumber(count), calls, frame.milliseconds, graphics2d.stats().drawCalls))
 end
 
 function Batches:draw(area)
+    graphics2d.draw(self.velvet, 0, 0, {width = area.width, height = area.height, pivotX = 0, pivotY = 0, layer = -1})
     if not self.oneByOne then
         self.batch:draw()
         return
