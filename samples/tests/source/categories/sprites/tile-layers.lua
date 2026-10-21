@@ -1,4 +1,4 @@
--- Tile layers: an endless world of ground tiles kept by chunks in a `TileLayer`, where chunks near the view are generated from noise as the camera travels and far ones are emptied away, each chunk bakes into a static batch only when its cells change, and tapping paints stone paths.
+-- Tile layers: an endless painted world kept by chunks in tile layers, one for the grass and one for each kind of edge over it. Chunks near the view are generated from noise as the camera travels and far ones are emptied away, each chunk bakes into static batches only when its cells change, and the pointer paints dirt paths whose edges follow the corners it paints.
 local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -7,59 +7,116 @@ local m = require('haylen.math')
 
 local SpriteTest = require('categories.sprites.sprite-test')
 local StaticBatches = require('categories.sprites.static-batches')
+local Terrain = require('categories.sprites.terrain')
 
 local TileLayers = haylen.class('TileLayers', SpriteTest)
 
-TileLayers.tile = 48
-TileLayers.chunk = 16
+TileLayers.tile = 64
+TileLayers.chunk = 8
 TileLayers.speed = 420
+-- A chunk that was generated or baked again glows for this many seconds.
+TileLayers.glow = 0.9
 TileLayers.actions = {actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left'}},
 }}
 
 TileLayers.code = [[
-local layer = graphics2d.newTileLayer(tiles, {cellWidth = 48, cellHeight = 48, chunkSize = 16})
-layer:defineFrame(1, {source = {0, 0, 32, 32}, width = 48, height = 48})
-layer:setCells(column, row, 16, ids)  -- A float buffer of ids, one call per chunk.
-layer:draw()  -- Bakes changed chunks and draws the ones in view.]]
+local grass = graphics2d.newTileLayer({terrain, transitions}, {cellWidth = 64, cellHeight = 64, chunkSize = 8})
+grass:defineFrame(1, {texture = 1, source = {2, 2, 128, 128}, width = 64, height = 64})
+grass:setCells(column, row, 8, ids)  -- A float buffer of ids, one call per chunk.
+paths:setCell(column, row, id)  -- Bakes only the chunk of the cell again.
+grass:draw({layer = 0})  -- Bakes changed chunks and draws the ones in view.]]
+
+-- The frame of the grass tile of a cell, and of the corner tile of a kind of edge with a mask.
+function TileLayers.grassFrame(tile)
+    return tile + 1
+end
+
+function TileLayers.edgeFrame(kind, mask)
+    return 2 + (kind - 1) * 15 + mask
+end
 
 function TileLayers:enter()
     local size = TileLayers.tile
-    self.layer = graphics2d.newTileLayer(SpriteTest.texture('images/tiles.png'), {cellWidth = size, cellHeight = size, chunkSize = TileLayers.chunk})
-    for tile = 0, 7 do
-        -- The frames draw the 32 pixel tiles at the cell size, so each one covers its cell.
-        self.layer:defineFrame(tile + 1, {source = {(tile % 4) * 32, (tile // 4) * 32, 32, 32}, width = size, height = size})
+    local terrain, transitions = Terrain.textures()
+    self.layers = {}
+    for kind = Terrain.grass, Terrain.water do
+        local layer = graphics2d.newTileLayer({terrain, transitions}, {cellWidth = size, cellHeight = size, chunkSize = TileLayers.chunk})
+        for tile = 0, 1 do
+            layer:defineFrame(TileLayers.grassFrame(tile), {texture = 1, source = Terrain.source(tile, 0), width = size, height = size})
+        end
+        for edge = Terrain.sand, Terrain.water do
+            for mask = 1, 15 do
+                layer:defineFrame(TileLayers.edgeFrame(edge, mask), {texture = 2, source = Terrain.source(mask, Terrain.rows[edge]), width = size, height = size})
+            end
+        end
+        self.layers[kind] = layer
     end
-    self.noise = m.noise(3)
-    self.ids = collections.newFloatBuffer(TileLayers.chunk * TileLayers.chunk)
-    self.empty = collections.newFloatBuffer(TileLayers.chunk * TileLayers.chunk)
-    self.chunks = {}
-    self.generated, self.dropped, self.painted = 0, 0, 0
+    self.lakes, self.roads = m.noise(3), m.noise(11)
+    self.painted = {}
+    local cells = TileLayers.chunk * TileLayers.chunk
+    self.buffers = {}
+    for kind = Terrain.grass, Terrain.water do
+        self.buffers[kind] = collections.newFloatBuffer(cells)
+    end
+    self.empty = collections.newFloatBuffer(cells)
+    self.chunks, self.glows = {}, {}
+    self.generated, self.dropped, self.paintedCount = 0, 0, 0
     self.time = 0
     self.camera.position = {0, 0}
     self:loadActions(TileLayers.actions)
     self:frame{
         code = TileLayers.code,
-        hint = 'Move with the arrow keys, WASD or the left stick, or let the camera wander, and tap or click to paint stone paths.',
+        hint = 'Move with the arrow keys, WASD or the left stick, or let the camera wander, and hold the pointer on the ground to paint dirt paths. Each square is a chunk, which glows when it is generated or baked again.',
         play = true,
     }
 end
 
--- Writes the cells of one chunk from noise with one call, or empties it, which removes the chunk.
-function TileLayers:writeChunk(chunkX, chunkY, keep)
-    local size = TileLayers.chunk
-    if not keep then
-        self.layer:setCells(chunkX * size, chunkY * size, size, self.empty)
-        return
+-- Returns the kind of ground at a corner: a painted path, or the noise of the map.
+function TileLayers:kindAt(column, row)
+    local painted = self.painted[column .. ',' .. row]
+    if painted then
+        return painted
     end
-    local ids, index = self.ids, 1
-    for row = chunkY * size, chunkY * size + size - 1 do
-        for column = chunkX * size, chunkX * size + size - 1 do
-            ids[index] = StaticBatches.tileAt(self.noise, column, row) + 1
-            index = index + 1
+    return StaticBatches.kindAt(self.lakes, self.roads, column, row)
+end
+
+-- Writes the tile of each layer for one cell into the buffers at an index, 0 where a layer has nothing.
+function TileLayers:writeCell(column, row, index)
+    local buffers = self.buffers
+    for kind = Terrain.grass, Terrain.water do
+        buffers[kind][index] = 0
+    end
+    buffers[Terrain.grass][index] = TileLayers.grassFrame(Terrain.grassAt(column, row))
+    local topLeft, topRight = self:kindAt(column, row), self:kindAt(column + 1, row)
+    local bottomRight, bottomLeft = self:kindAt(column + 1, row + 1), self:kindAt(column, row + 1)
+    for kind = Terrain.sand, Terrain.water do
+        local mask = Terrain.mask(kind, topLeft, topRight, bottomRight, bottomLeft)
+        if mask > 0 then
+            buffers[kind][index] = TileLayers.edgeFrame(kind, mask)
         end
     end
-    self.layer:setCells(chunkX * size, chunkY * size, size, ids)
+end
+
+-- Writes the cells of one chunk with one call per layer, or empties it, which removes the chunk.
+function TileLayers:writeChunk(chunkX, chunkY, keep)
+    local size = TileLayers.chunk
+    local column, row = chunkX * size, chunkY * size
+    if keep then
+        local index = 1
+        for y = row, row + size - 1 do
+            for x = column, column + size - 1 do
+                self:writeCell(x, y, index)
+                index = index + 1
+            end
+        end
+    end
+    for kind = Terrain.grass, Terrain.water do
+        self.layers[kind]:setCells(column, row, size, keep and self.buffers[kind] or self.empty)
+    end
+    if keep then
+        self.glows[chunkX .. ',' .. chunkY] = self.time
+    end
 end
 
 -- Keeps the chunks around the view generated and drops those two chunks past it, only when the view enters another chunk.
@@ -85,8 +142,30 @@ function TileLayers:stream()
     for name, chunk in pairs(self.chunks) do
         if chunk[1] < left - 1 or chunk[1] > right + 1 or chunk[2] < top - 1 or chunk[2] > bottom + 1 then
             self.chunks[name] = nil
+            self.glows[name] = nil
             self:writeChunk(chunk[1], chunk[2], false)
             self.dropped = self.dropped + 1
+        end
+    end
+end
+
+-- Paints the corner nearest a point of the world with dirt and writes again the four cells around it, whose chunks bake again.
+function TileLayers:paint(x, y)
+    local size = TileLayers.tile
+    local column, row = math.floor(x / size + 0.5), math.floor(y / size + 0.5)
+    local current = self:kindAt(column, row)
+    if current == Terrain.path or current == Terrain.water then
+        return
+    end
+    self.painted[column .. ',' .. row] = Terrain.path
+    self.paintedCount = self.paintedCount + 1
+    for cellY = row - 1, row do
+        for cellX = column - 1, column do
+            self:writeCell(cellX, cellY, 1)
+            for kind = Terrain.grass, Terrain.water do
+                self.layers[kind]:setCell(cellX, cellY, self.buffers[kind][1])
+            end
+            self.glows[math.floor(cellX / TileLayers.chunk) .. ',' .. math.floor(cellY / TileLayers.chunk)] = self.time
         end
     end
 end
@@ -106,19 +185,25 @@ function TileLayers:update(dt)
 
     local worldX, worldY, _, held = self:pointer()
     if held then
-        local column, row = math.floor(worldX / TileLayers.tile), math.floor(worldY / TileLayers.tile)
-        if self.layer:cell(column, row) ~= 0 and self.layer:cell(column, row) ~= 5 then
-            self.layer:setCell(column, row, 5)
-            self.painted = self.painted + 1
-        end
+        self:paint(worldX, worldY)
     end
-
-    local stats = graphics2d.stats()
-    self:status(string.format('Chunks %d with %d batches, generated %d, dropped %d, painted %d   Draw calls %d   Sprites %d   Bytes uploaded %d', self.layer.chunkCount, self.layer.batchCount, self.generated, self.dropped, self.painted, stats.drawCalls, stats.sprites, stats.uploadedBytes))
+    local layer = self.layers[Terrain.grass]
+    self:status(string.format('%d chunks hold the world near the view: %d generated and %d dropped so far, with %d corners of paths painted.', layer.chunkCount, self.generated, self.dropped, self.paintedCount))
 end
 
 function TileLayers:draw(area)
-    self.layer:draw()
+    for kind = Terrain.grass, Terrain.water do
+        self.layers[kind]:draw({layer = kind})
+    end
+    -- Every chunk shows its square, and one that was just generated or baked again glows.
+    local span = TileLayers.tile * TileLayers.chunk
+    local unit = graphics2d.canvasUnitSize()
+    for name, chunk in pairs(self.chunks) do
+        local box = {chunk[1] * span, chunk[2] * span, span, span}
+        local glow = self.glows[name]
+        local fade = glow and math.max(0, 1 - (self.time - glow) / TileLayers.glow) or 0
+        graphics2d.drawShape(box, {radius = 12, color = m.color(1, 0.88, 0.54, 0.22 * fade), borderWidth = 3 * unit, borderColor = m.color(1, 1, 1, 0.35 + 0.5 * fade), layer = 10})
+    end
 end
 
 return TileLayers
