@@ -13,6 +13,8 @@ local value, age = storage.resumeState()  -- Found only after the system ended t
 if value and age < 600 then openScreen(value.screen) end]]
 
 ResumeState.screens = {{id = 'map', text = 'Map'}, {id = 'shop', text = 'Shop'}, {id = 'inventory', text = 'Inventory'}}
+ResumeState.names = {map = 'Map', shop = 'Shop', inventory = 'Inventory'}
+ResumeState.pictures = {map = 'interface/icons/flag.png', shop = 'interface/themes/fantasy/icons/gem.png', inventory = 'interface/themes/fantasy/icons/potion.png'}
 
 function ResumeState:enter()
     self.state = {screen = 'map', coins = 0}
@@ -20,19 +22,35 @@ function ResumeState:enter()
         code = ResumeState.code,
         hint = 'Pick a screen and earn coins, send the app to the background, end it from the system and open it again, and this test shows what the app kept. A launch after the app quit by itself finds nothing.',
         focus = 'screen',
-        content = {ui.panel{align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'What this launch found'},
-            ui.label{id = 'found', text = ResumeState.describeFound()},
-            ui.sectionTitle{text = 'What the app keeps now'},
-            ui.segmentedControl{id = 'screen', items = ResumeState.screens, selected = 'map', onChange = function(event)
-                self.state.screen = event.value
-                self:keep()
-            end},
-            ui.button{id = 'coins', text = 'Earn a coin', onClick = function()
-                self.state.coins = self.state.coins + 1
-                self:keep()
-            end},
-            ui.label{id = 'kept', text = ''},
+        content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
+            ui.panel{width = 460, grow = 1, gap = 12,
+                ui.sectionTitle{text = 'What this launch found'},
+                self:found(),
+            },
+            ui.panel{width = 560, grow = 1, gap = 16,
+                ui.sectionTitle{text = 'What the app keeps now'},
+                ui.segmentedControl{id = 'screen', items = ResumeState.screens, selected = 'map', onChange = function(event)
+                    self.state.screen = event.value
+                    self:keep()
+                end},
+                ui.card{gap = 20, align = 'stretch',
+                    ui.row{gap = 24, alignItems = 'center',
+                        ui.image{id = 'picture', image = ResumeState.pictures.map, scale = 0.75},
+                        ui.column{gap = 6, grow = 1,
+                            ui.label{id = 'screenName', text = 'Map', font = 'title'},
+                            ui.row{gap = 10, alignItems = 'center',
+                                ui.image{image = 'interface/themes/fantasy/icons/coin.png', scale = 0.3},
+                                ui.label{id = 'coinCount', text = '', font = 'heading', color = 'warningText'},
+                            },
+                        },
+                    },
+                },
+                ui.button{id = 'coins', text = 'Earn a coin', align = 'stretch', onClick = function()
+                    self.state.coins = self.state.coins + 1
+                    self:keep()
+                end},
+                ui.label{id = 'kept', text = '', color = 'textMuted'},
+            },
         }},
     }
     self:keep()
@@ -44,16 +62,20 @@ function ResumeState:exit()
     ResumeState.super.exit(self)
 end
 
-function ResumeState.describeFound()
+-- What the launch found, as an alert with the screen and the coins, or the empty state when the run before kept nothing.
+function ResumeState:found()
     local value, age = storage.resumeState()
     if type(value) ~= 'table' then
-        return 'Nothing, because the run before quit, came back to the foreground or never went to the background.'
+        return ui.emptyState{title = 'Nothing kept', message = 'The run before quit, came back to the foreground or never went to the background.', grow = 1}
     end
-    return string.format('The screen "%s" with %d coins, kept %.0f seconds before this launch.', tostring(value.screen), tonumber(value.coins) or 0, age)
+    return ui.alert{tone = 'success', title = string.format('The %s with %d coins', ResumeState.names[value.screen] or tostring(value.screen), tonumber(value.coins) or 0), message = string.format('Kept %.0f seconds before this launch.', age)}
 end
 
 function ResumeState:keep()
     storage.setResumeState(self.state)
+    self:set('picture', {image = ResumeState.pictures[self.state.screen]})
+    self:set('screenName', {text = ResumeState.names[self.state.screen]})
+    self:set('coinCount', {text = self.state.coins == 1 and '1 coin' or string.format('%d coins', self.state.coins)})
     self:set('kept', {text = string.format('The call "storage.setResumeState" keeps the screen "%s" with %d coins.', self.state.screen, self.state.coins)})
 end
 

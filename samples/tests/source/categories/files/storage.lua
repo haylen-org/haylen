@@ -10,7 +10,7 @@ local readout = require('categories.files.readout')
 local Storage = haylen.class('Storage', Test)
 
 Storage.code = [[
-storage.writeText('notes/today.txt', 'Collected 12 wood')  -- The folder `notes` is created on the way.
+storage.writeText('notes/today.txt', 'Collected 12 wood')  -- The folder "notes" is created on the way.
 local text = storage.exists('notes/today.txt') and storage.readText('notes/today.txt')
 storage.writeJson('profile/player.json', {name = 'Ana', coins = 420})
 local profile = storage.readJson('profile/player.json')
@@ -22,7 +22,7 @@ Storage.folders = {'notes', 'profile'}
 
 function Storage:init(entry)
     Storage.super.init(self, entry)
-    self.activity = Activity(self, 'activity')
+    self.activity = Activity(self, 'activity', 'Press a button, and its call and result show here.')
     self.lines = 0
 end
 
@@ -35,9 +35,9 @@ function Storage:enter()
         {id = 'readJson', text = 'Read JSON', run = self.readJson},
         {id = 'exists', text = 'Check exists', run = self.exists},
         {id = 'missing', text = 'Read a missing file', run = self.missing},
-        {id = 'outside', text = 'Leave the folder', run = self.outside},
+        {id = 'outside', text = 'Try to leave the folder', run = self.outside},
         {id = 'remove', text = 'Remove the note', run = self.remove},
-        {id = 'clear', text = 'Remove its files', run = self.clear},
+        {id = 'clear', text = 'Remove every file', run = self.clear},
     }
     local buttons = {}
     for index, action in ipairs(actions) do
@@ -58,7 +58,12 @@ function Storage:enter()
             },
             ui.panel{width = 520, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Files of "notes" and "profile"'},
-                ui.scroll{grow = 1, focusable = false, ui.list{id = 'files', items = {}}},
+                ui.scroll{grow = 1, focusable = false, fill = true,
+                    ui.column{align = 'stretch', grow = 1,
+                        ui.emptyState{id = 'files-empty', title = 'No files', message = 'Write the note or the JSON to make a file here.', grow = 1},
+                        ui.list{id = 'files', items = {}},
+                    },
+                },
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Activity'},
@@ -77,7 +82,8 @@ function Storage:refresh()
             items[#items + 1] = {id = path, text = path, caption = readout.bytes(#storage.readText(path))}
         end
     end
-    self:set('files', {items = items})
+    self:set('files', {items = items, visible = #items > 0})
+    self:set('files-empty', {visible = #items == 0})
 end
 
 function Storage:write()

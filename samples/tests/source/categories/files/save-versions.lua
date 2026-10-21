@@ -4,6 +4,7 @@ local storage = require('haylen.storage')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
+local Activity = require('categories.files.activity')
 
 local SaveVersions = haylen.class('SaveVersions', Test)
 
@@ -18,22 +19,28 @@ local kSlot = 'versions'
 local kCopy = 'versions-copy'
 
 function SaveVersions:enter()
-    self.lines = {}
+    self.history = Activity(self, 'history', 'Write the slot as version 1 to begin.')
     self:listen('saveSlotWritten', function(info)
         self:note(string.format('Event "saveSlotWritten" for "%s", revision %d, version %d.', info.slot, info.revision, info.version))
     end)
     self:frame{
         code = SaveVersions.code,
         hint = 'Write a slot as version 1, then read it as version 3, damage it, and move it to another device.',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
-            ui.panel{width = 520, align = 'stretch', gap = 12,
+        content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
+            ui.panel{width = 520, gap = 12,
+                ui.sectionTitle{text = 'Versions of the game'},
                 ui.button{id = 'old', text = 'Write as version 1', align = 'stretch', onClick = function() self:writeOld() end},
                 ui.button{id = 'upgrade', text = 'Read as version 3', align = 'stretch', onClick = function() self:readUpgraded() end},
                 ui.button{id = 'write', text = 'Write again as version 3', align = 'stretch', onClick = function() self:writeNew() end},
                 ui.button{id = 'damage', text = 'Damage the file and read it', align = 'stretch', onClick = function() self:damage() end},
                 ui.button{id = 'export', text = 'Import on another device', align = 'stretch', onClick = function() self:transfer() end},
             },
-            ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
+            ui.panel{width = 520, grow = 1, gap = 12,
+                ui.sectionTitle{text = 'The slot "versions"'},
+                ui.label{id = 'state', text = 'Empty', font = 'heading', color = 'accentText'},
+                ui.sectionTitle{text = 'History'},
+                self.history:node(),
+            },
         }},
     }
 end
@@ -45,10 +52,11 @@ function SaveVersions:exit()
     storage.removeSlot(kCopy)
 end
 
+-- Adds a line to the history and shows the slot as it is now.
 function SaveVersions:note(line)
-    table.insert(self.lines, 1, line)
-    self.lines[13] = nil
-    self:set('log', {text = table.concat(self.lines, '\n')})
+    self.history:add(line)
+    local ok, state = pcall(self.describe, self, kSlot)
+    self:set('state', {text = ok and state:gsub('^%l', string.upper) or 'Damaged', color = ok and 'accentText' or 'dangerText'})
 end
 
 function SaveVersions:describe(slot)

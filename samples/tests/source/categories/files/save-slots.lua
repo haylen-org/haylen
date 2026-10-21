@@ -4,7 +4,6 @@ local storage = require('haylen.storage')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
-local readout = require('categories.files.readout')
 
 local SaveSlots = haylen.class('SaveSlots', Test)
 
@@ -15,6 +14,7 @@ local loaded = storage.readSlot('slot-1')
 storage.removeSlot('slot-1')]]
 
 SaveSlots.slots = {'slot-1', 'slot-2', 'slot-3', 'auto_save'}
+SaveSlots.names = {['slot-1'] = 'Slot 1', ['slot-2'] = 'Slot 2', ['slot-3'] = 'Slot 3', auto_save = 'Autosave'}
 SaveSlots.places = {'Beach', 'Forest', 'Cave', 'Lighthouse'}
 
 function SaveSlots:init(entry)
@@ -48,7 +48,7 @@ function SaveSlots:enter()
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Slots'},
-                ui.table{id = 'slots', columns = {{text = 'Slot', width = 200}, {text = 'Place'}, {text = 'Day', width = 110, align = 'end'}, {text = 'Wood', width = 110, align = 'end'}, {text = 'Saved', width = 330}}, rows = {}, selected = self.selected, onSelect = function(event)
+                ui.table{id = 'slots', columns = {{text = 'Slot', width = 150}, {text = 'Place'}, {text = 'Day', width = 80, align = 'end'}, {text = 'Wood', width = 90, align = 'end'}, {text = 'Saved', width = 200, align = 'end'}}, rows = {}, selected = self.selected, onSelect = function(event)
                     self.selected = event.item
                     self:refresh()
                 end},
@@ -91,6 +91,14 @@ function SaveSlots:report(text)
     self:set('status', {text = text})
 end
 
+-- The time of a save as the clock of today, or the date of an older day.
+function SaveSlots.when(seconds)
+    if os.date('%Y-%m-%d', seconds) == os.date('%Y-%m-%d') then
+        return 'Today ' .. os.date('%H:%M', seconds)
+    end
+    return os.date('%Y-%m-%d', seconds)
+end
+
 function SaveSlots:summary()
     return {day = self.game.day, wood = self.game.wood, place = SaveSlots.places[self.game.place]}
 end
@@ -107,13 +115,13 @@ function SaveSlots:refresh()
     for index, slot in ipairs(SaveSlots.slots) do
         local ok, info = pcall(storage.slotInfo, slot)
         if not ok then
-            rows[index] = {id = slot, cells = {slot, 'Damaged', '', '', ''}}
+            rows[index] = {id = slot, cells = {SaveSlots.names[slot], 'Damaged', '', '', ''}}
             problem = slot == self.selected and info or problem
         elseif info then
             local place = info.recovered and info.summary.place .. ', from the backup' or info.summary.place
-            rows[index] = {id = slot, cells = {slot, place, info.summary.day, info.summary.wood, readout.time(info.savedAt)}}
+            rows[index] = {id = slot, cells = {SaveSlots.names[slot], place, info.summary.day, info.summary.wood, SaveSlots.when(info.savedAt)}}
         else
-            rows[index] = {id = slot, cells = {slot, 'Empty', '', '', ''}}
+            rows[index] = {id = slot, cells = {SaveSlots.names[slot], 'Empty', '', '', ''}}
         end
     end
     self:set('slots', {rows = rows, selected = self.selected})

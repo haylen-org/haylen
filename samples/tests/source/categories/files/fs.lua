@@ -33,7 +33,7 @@ end
 
 function Fs:init(entry)
     Fs.super.init(self, entry)
-    self.activity = Activity(self, 'activity')
+    self.activity = Activity(self, 'activity', 'Press a button, and its call and result show here.')
     self.base = storage.root() .. '/fs-demo'
     self.file = self.base .. '/logs/run.txt'
 end
@@ -65,7 +65,10 @@ function Fs:enter()
             ui.panel{width = 560, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Varn module "fs"'},
                 ui.grid{columns = 2, gap = 12, children = buttons},
-                ui.progress{id = 'progress', value = 0, text = 'No stream yet'},
+                ui.column{id = 'streaming', gap = 8, align = 'stretch', visible = false,
+                    ui.label{id = 'streamText', text = '', color = 'textMuted'},
+                    ui.progress{id = 'progress', value = 0},
+                },
                 ui.label{text = 'Paths are built from "storage.root()": "' .. self.base .. '".', font = 'caption', color = 'textMuted'},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
@@ -136,11 +139,13 @@ end
 function Fs:stream()
     local path = self.base .. '/stream.bin'
     need(fs.mkdir(self.base))
+    self:set('streaming', {visible = true})
     local writer = need(fs.open(path, 'w'))
     local chunk = string.rep(string.char(0x48, 0x61, 0x79, 0x6C, 0x65, 0x6E, 0x21, 0x0A), Fs.chunk // 8)
     for index = 1, Fs.chunks do
         need(writer:write(chunk))
-        self:set('progress', {value = index / Fs.chunks / 2, text = 'Writing ' .. readout.bytes(index * Fs.chunk)})
+        self:set('progress', {value = index / Fs.chunks / 2})
+        self:set('streamText', {text = 'Writing ' .. readout.bytes(index * Fs.chunk)})
     end
     need(writer:close())
 
@@ -149,7 +154,8 @@ function Fs:stream()
     repeat
         local piece = need(reader:read(Fs.chunk))
         total = total + #piece
-        self:set('progress', {value = 0.5 + total / (Fs.chunk * Fs.chunks) / 2, text = 'Reading ' .. readout.bytes(total)})
+        self:set('progress', {value = 0.5 + total / (Fs.chunk * Fs.chunks) / 2})
+        self:set('streamText', {text = 'Reading ' .. readout.bytes(total)})
     until piece == ''
     need(reader:close())
     return string.format('Streamed %s out and %s back in chunks of %s', readout.bytes(Fs.chunk * Fs.chunks), readout.bytes(total), readout.bytes(Fs.chunk))
@@ -162,7 +168,7 @@ end
 
 function Fs:remove()
     need(fs.removeRecursive(self.base))
-    self:set('progress', {value = 0, text = 'No stream yet'})
+    self:set('streaming', {visible = false})
     return string.format('The call "fs.removeRecursive" removed "fs-demo", and "fs.exists" is now "%s"', tostring(fs.exists(self.base)))
 end
 

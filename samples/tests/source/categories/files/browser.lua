@@ -12,13 +12,14 @@ local Browser = haylen.class('Browser', Test)
 Browser.code = [[
 async.spawn(function()
     for _, name in ipairs(fs.readdir(storage.root()):await()) do
-        local info = fs.stat(storage.root() .. '/' .. name):await()  -- Holds `isDir`, `size` and `mtime`.
+        local info = fs.stat(storage.root() .. '/' .. name):await()  -- Holds "isDir", "size" and "mtime".
     end
     local handle = fs.open(path, 'r'):await()
     local start = handle:read(4096):await()  -- Only the start of a large file.
 end)]]
 
 Browser.up = '..'
+Browser.icons = {up = 'files/icons/up.svg', folder = 'files/icons/folder.svg', file = 'files/icons/text.svg'}
 Browser.previewBytes = 2048
 
 Browser.examples = {
@@ -50,8 +51,8 @@ function Browser:enter()
         code = Browser.code,
         hint = 'Pick a folder to open it and a file to preview it, with the mouse, a finger, the arrows or the directional pad. The first row goes up a folder.',
         focus = 'entries',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
-            ui.panel{width = 760, align = 'stretch', gap = 12,
+        content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
+            ui.panel{width = 640, grow = 1, gap = 12,
                 ui.label{id = 'path', text = '', font = 'monospace', color = 'accentText'},
                 ui.scroll{grow = 1, ui.list{id = 'entries', items = {}, onSelect = function(event)
                     self:pick(event.item)
@@ -63,7 +64,7 @@ function Browser:enter()
                     ui.button{id = 'newFile', text = 'New file', onClick = function()
                         self:create(false)
                     end},
-                    ui.button{id = 'delete', text = 'Delete', variant = 'destructive', onClick = function(event)
+                    ui.button{id = 'delete', text = 'Delete', variant = 'destructive', enabled = false, onClick = function(event)
                         if self.selected then
                             event.gui:set('confirm', {open = true, message = 'The file "' .. self:relative(self.selected) .. '" will be removed.'})
                         end
@@ -76,7 +77,7 @@ function Browser:enter()
                     end},
                 },
             },
-            ui.panel{grow = 1, align = 'stretch', gap = 12,
+            ui.panel{width = 520, grow = 1, gap = 12,
                 ui.sectionTitle{id = 'name', text = 'Nothing selected'},
                 ui.label{id = 'details', text = 'Pick a file to see its size, its date and its first bytes.', color = 'textMuted'},
                 ui.scroll{grow = 1, ui.label{id = 'preview', text = '', font = 'monospace'}},
@@ -134,12 +135,12 @@ function Browser:open(folder)
             return
         end
         self.entries = {}
-        local items = folder ~= '' and {{id = Browser.up, text = Browser.up, caption = 'Up one folder'}} or {}
+        local items = folder ~= '' and {{id = Browser.up, text = Browser.up, caption = 'Up one folder', image = Browser.icons.up, iconColor = false}} or {}
         for _, entry in ipairs(entries) do
             self.entries[entry.name] = entry.info
-            items[#items + 1] = {id = entry.name, text = entry.info.isDir and entry.name .. '/' or entry.name, caption = entry.info.isDir and 'Folder' or readout.bytes(entry.info.size) .. ', ' .. readout.time(entry.info.mtime)}
+            items[#items + 1] = {id = entry.name, text = entry.info.isDir and entry.name .. '/' or entry.name, caption = entry.info.isDir and 'Folder' or readout.bytes(entry.info.size) .. ', ' .. readout.time(entry.info.mtime), image = entry.info.isDir and Browser.icons.folder or Browser.icons.file, iconColor = false}
         end
-        self.selected = nil
+        self:select(nil)
         self:set('path', {text = 'User folder/' .. folder})
         self:set('entries', {items = items})
         self:set('name', {text = #entries == 0 and 'An empty folder' or 'Nothing selected'})
@@ -158,8 +159,14 @@ function Browser:pick(name)
         self:open(self:relative(name))
         return
     end
-    self.selected = name
+    self:select(name)
     self:preview(name, info)
+end
+
+-- Keeps the file to delete, which the delete button needs.
+function Browser:select(name)
+    self.selected = name
+    self:set('delete', {enabled = name ~= nil})
 end
 
 -- Reads only the start of the file through a handle, so a large file never loads whole for its preview.

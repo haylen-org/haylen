@@ -20,6 +20,9 @@ Package.folder = 'files/data'
 -- The file that is not in the package, which shows the error a missing file raises.
 Package.missing = 'files/data/missing.txt'
 
+-- The icon of each kind of file, and of the file that is missing.
+Package.icons = {txt = 'files/icons/text.svg', json = 'files/icons/data.svg', bin = 'files/icons/binary.svg', missing = 'files/icons/missing.svg'}
+
 -- The tiles of the level format, one character per tile kind.
 Package.tiles = {[0] = '~', '.', '"', '^'}
 
@@ -61,8 +64,9 @@ end
 function Package:enter()
     local items = {}
     for index, path in ipairs(self.paths) do
-        local caption = assets.exists(path) and readout.bytes(#assets.bytes(path)) or 'Not in the package'
-        items[index] = {id = path, text = path, caption = caption}
+        local present = assets.exists(path)
+        local caption = present and readout.bytes(#assets.bytes(path)) or 'Missing on purpose'
+        items[index] = {id = path, text = path:match('[^/]+$'), caption = caption, image = present and Package.icons[path:match('%.(%w+)$')] or Package.icons.missing, iconColor = false}
     end
     self:frame{
         code = Package.code,
@@ -70,7 +74,7 @@ function Package:enter()
         focus = 'files',
         content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 560, align = 'stretch', gap = 12,
-                ui.sectionTitle{text = 'The folder "content/' .. Package.folder .. '"'},
+                ui.sectionTitle{text = 'Files of the package'},
                 ui.label{text = string.format('The call "assets.list(\'%s\')" found %d files.', Package.folder, #self.paths - 1), color = 'textMuted'},
                 ui.list{id = 'files', items = items, selected = self.paths[1], onSelect = function(event)
                     self:open(event.item)

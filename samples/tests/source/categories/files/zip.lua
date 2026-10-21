@@ -36,7 +36,7 @@ end
 
 function Zip:init(entry)
     Zip.super.init(self, entry)
-    self.activity = Activity(self, 'activity')
+    self.activity = Activity(self, 'activity', 'Press a button, and its call and result show here.')
     self.base = storage.root() .. '/zip-demo'
     self.archive = self.base .. '/bundle.zip'
 end
@@ -60,18 +60,24 @@ function Zip:enter()
         code = Zip.code,
         hint = 'Write the files, create the archive, list it and extract it, or unpack the postcards shipped in the package. Every step is awaited in a task of the scene.',
         focus = 'files',
-        content = {ui.row{grow = 1, gap = 24,
-            ui.panel{width = 460, align = 'stretch', gap = 12,
+        content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
+            ui.panel{width = 420, grow = 1, gap = 12,
                 ui.sectionTitle{text = 'Varn module "zip"'},
-                ui.column{gap = 12, children = buttons},
+                ui.column{gap = 12, align = 'stretch', children = buttons},
                 ui.label{text = 'The folder is "' .. self.base .. '".', font = 'caption', color = 'textMuted'},
             },
-            ui.panel{width = 560, align = 'stretch', gap = 12,
+            ui.panel{width = 420, grow = 1, gap = 12,
                 ui.sectionTitle{id = 'entriesTitle', text = 'Entries'},
-                ui.scroll{grow = 1, focusable = false, ui.list{id = 'entries', items = {}}},
-                ui.label{id = 'preview', text = '', font = 'monospace', color = 'accentText'},
+                ui.scroll{grow = 1, focusable = false, fill = true,
+                    ui.column{gap = 12, align = 'stretch', grow = 1,
+                        ui.emptyState{id = 'entries-empty', title = 'No entries yet', message = 'Create and list the archive, extract it or unpack the postcards.', grow = 1},
+                        ui.list{id = 'entries', items = {}, visible = false},
+                        ui.column{id = 'cards', gap = 12, align = 'stretch'},
+                        ui.label{id = 'preview', text = '', font = 'monospace', color = 'accentText'},
+                    },
+                },
             },
-            ui.panel{grow = 1, align = 'stretch', gap = 12,
+            ui.panel{width = 420, grow = 1, gap = 12,
                 ui.sectionTitle{text = 'Activity'},
                 self.activity:node(),
             },
@@ -97,7 +103,10 @@ function Zip:showEntries(title, names)
         items[index] = {id = 'entry-' .. index, text = name}
     end
     self:set('entriesTitle', {text = title})
-    self:set('entries', {items = items})
+    self:set('entries', {items = items, visible = #items > 0})
+    self:set('entries-empty', {visible = #items == 0})
+    self.gui:replaceChildren('cards', {})
+    self:set('preview', {text = ''})
 end
 
 function Zip:writeFiles()
@@ -150,14 +159,18 @@ function Zip:postcards()
     local entries = need(zip.list(archive))
     need(zip.extract(archive, self.base .. '/postcards'))
     self:showEntries('Entries from "zip.list" of "postcards.zip"', Zip.describeEntries(entries))
-    self:set('preview', {text = storage.readText('zip-demo/postcards/postcards/palm-cove.txt')})
+    local cards = {}
+    for _, path in ipairs(storage.list('zip-demo/postcards/postcards')) do
+        local name = path:match('([^/]+)%.txt$'):gsub('-', ' '):gsub('^%l', string.upper)
+        cards[#cards + 1] = ui.card{gap = 6, align = 'stretch', ui.label{text = name, font = 'heading'}, ui.label{text = storage.readText(path), color = 'textMuted'}}
+    end
+    self.gui:replaceChildren('cards', cards)
     return string.format('Copied "files/archives/postcards.zip" from the package and extracted its %d entries', #entries)
 end
 
 function Zip:remove()
     need(fs.removeRecursive(self.base))
     self:showEntries('Entries', {})
-    self:set('preview', {text = ''})
     return 'The call "fs.removeRecursive" removed "zip-demo"'
 end
 
