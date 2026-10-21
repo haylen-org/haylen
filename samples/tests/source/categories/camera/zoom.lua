@@ -12,7 +12,7 @@ local actions = require('categories.camera.actions')
 local Zoom = haylen.class('Zoom', CameraTest)
 
 Zoom.code = [[
-camera.minZoom = 0.25
+camera.minZoom = 0.4
 camera.maxZoom = 4
 local _, wheel = input.mouseScroll()
 local x, y = input.mousePosition()
@@ -26,7 +26,7 @@ function Zoom:init(entry)
     -- The walker waits by the cottage as a measure of the size of things at every zoom.
     self.walker = Walker(World.cottage.x + 160, World.cottage.y + 150)
     self.camera = graphics2d.newCamera()
-    self.camera.minZoom = 0.25
+    self.camera.minZoom = 0.4
     self.camera.maxZoom = 4
     self.camera.position = {Zoom.home.x, Zoom.home.y}
     self.shown = 1
