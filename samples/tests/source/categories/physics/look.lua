@@ -613,4 +613,23 @@ function Look.block(x, y, width, height, material, layer, rotation)
     drawPart(block, Look.material(material), blockLook, x, y, math.cos(rotation), math.sin(rotation), rotation, layer or 0)
 end
 
+local disc = {kind = 'circle', x = 0, y = 0, radius = 0, size = 0}
+local discLook = {}
+
+-- Draws a disc of a material that no body holds, such as a roller or a hub of a machine, turned by `rotation`.
+function Look.disc(x, y, radius, material, layer, rotation)
+    disc.radius, disc.size = radius, radius * 2
+    rotation = rotation or 0
+    drawPart(disc, Look.material(material), discLook, x, y, math.cos(rotation), math.sin(rotation), rotation, layer or 0)
+end
+
+-- Returns a polygon of a material that no body holds, in world units, such as a ramp or a rock face, which `Look.drawShape` draws every frame.
+function Look.newShape(points, material)
+    return {part = polygonPart(points), material = Look.material(material), look = {}}
+end
+
+function Look.drawShape(shape, layer)
+    drawPart(shape.part, shape.material, shape.look, 0, 0, 1, 0, 0, layer or 0)
+end
+
 return Look

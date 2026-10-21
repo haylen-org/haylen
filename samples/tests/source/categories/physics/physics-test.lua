@@ -24,6 +24,9 @@ PhysicsTest.actions = {
 PhysicsTest.labelSize = 22
 PhysicsTest.plate = '#EE2F3352'
 PhysicsTest.plateEdge = '#FF15172A'
+-- The plates over the two sides of a test that shows a problem next to its solution.
+PhysicsTest.problemPlate = '#F2C2362F'
+PhysicsTest.solutionPlate = '#F2278A4F'
 
 function PhysicsTest:init(entry)
     PhysicsTest.super.init(self, entry)
@@ -34,6 +37,8 @@ function PhysicsTest:init(entry)
     self.labelPlate = {kind = 'rectangle', radius = 0, color = PhysicsTest.plate, borderWidth = 0, borderColor = PhysicsTest.plateEdge, layer = 0}
     self.labelRect = {0, 0, 0, 0}
     self.tagText = {size = 1, color = '#FFFFFFFF', outlineWidth = 1, outlineColor = Look.ink, anchor = {0.5, 0.5}, align = 'center', layer = 0}
+    self.divider = {0, 0, 0, 0}
+    self.dividerStroke = {width = 1, color = '#B3FFFFFF', dashes = {1, 1}, cap = 'round', layer = 35}
 end
 
 -- Mounts the frame of the harness around the world of the test and loads the actions of every physics test, the pointer and the `actions` of the options. Tests that drive a character instead of the pointer pass `pointer = false`.
@@ -94,6 +99,18 @@ function PhysicsTest:tag(text, x, y, options)
     style.color = options.color or '#FFFFFFFF'
     style.layer = options.layer or 40
     graphics2d.drawText(self.labelFont, text, x, y, style)
+end
+
+-- Draws the titles of the two halves of a test that shows a problem on the left of `x` and its solution on the right, at `y`, with a dashed line between the halves.
+function PhysicsTest:compare(problem, solution, x, y, options)
+    local unit = Look.pixel
+    local bounds = graphics2d.canvasBounds()
+    self.divider[1], self.divider[2], self.divider[3], self.divider[4] = x, bounds.y, x, bounds.y + bounds.height
+    self.dividerStroke.width, self.dividerStroke.dashes[1], self.dividerStroke.dashes[2] = 3 * unit, 14 * unit, 10 * unit
+    graphics2d.drawStroke(self.divider, self.dividerStroke)
+    local offset = options and options.offset or 400
+    self:label(problem, x - offset, y, {size = 24, plate = PhysicsTest.problemPlate})
+    self:label(solution, x + offset, y, {size = 24, plate = PhysicsTest.solutionPlate})
 end
 
 -- Steps a world inside the profiler scope that `stepTime` reads.

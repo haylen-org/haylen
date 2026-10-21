@@ -1,5 +1,5 @@
--- Hundreds of boxes and balls in one pile, drawn with two sprite batches, with the body count and the time of every physics step.
-local graphics = require('haylen.graphics')
+-- Hundreds of crates and coins in one pile, drawn with two sprite batches, with the body count and the time of every physics step on a readout over the stage.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -8,53 +8,44 @@ local physics2d = require('haylen.physics2d')
 local profiler = require('haylen.debug')
 local ui = require('haylen.ui')
 
-local parts = require('categories.physics.parts')
+local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local Stress = haylen.class('Stress', PhysicsTest)
 
 Stress.code = [[
 local world = physics2d.newWorld({subSteps = 4})
 local body = world:createBody({x = x, y = -420, rotation = angle})
-body:addBox(18, 18, {friction = 0.5})
+body:addBox(22, 22, {friction = 0.5})
 sprite.x, sprite.y, sprite.rotation = body.x, body.y, body.rotation  -- One sprite of a batch for each body.
+graphics2d.drawBatch(crate, sprites, {layer = 1})
 print(world.bodyCount, world:stats().stepMilliseconds)]]
 
-local kBox = 18
-local kBall = 10
-local kSpawnPerFrame = 40
-local kPalette = {'#FFE57373', '#FF64B5F6', '#FF81C784', '#FFFFD54F', '#FFBA68C8', '#FF4DD0E1'}
-local kDiscSize = 64
-
--- A white disc with a soft edge that tints into every ball of the batch.
-local function discTexture()
-    local bytes = {}
-    local center = (kDiscSize - 1) / 2
-    for y = 0, kDiscSize - 1 do
-        for x = 0, kDiscSize - 1 do
-            local distance = math.sqrt((x - center) ^ 2 + (y - center) ^ 2)
-            local alpha = math.floor(m.saturate(center - distance + 0.5) * 255)
-            bytes[#bytes + 1] = string.char(255, 255, 255, alpha)
-        end
-    end
-    return graphics.newTexture(kDiscSize, kDiscSize, {pixels = table.concat(bytes), filter = 'linear'})
-end
+Stress.box = 22
+Stress.coin = 12
+Stress.spawnPerFrame = 40
+Stress.ground = 360
+Stress.left, Stress.right = -760, 760
+-- The crate and the coin cover this share of their pictures.
+Stress.crateCover = 152 / 160
+Stress.coinCover = 88 / 96
 
 function Stress:enter()
     self:frame{
         code = Stress.code,
         hint = 'Add bodies and watch the step time grow. Every body is drawn from one of two sprite batches. R or the X button clears the pile.',
         controls = {
-            ui.button{id = 'boxes', text = 'Add 250 boxes', onClick = function() self:queue('box', 250) end},
-            ui.button{id = 'balls', text = 'Add 250 balls', onClick = function() self:queue('ball', 250) end},
+            ui.button{id = 'boxes', text = 'Add 250 crates', onClick = function() self:queue('box', 250) end},
+            ui.button{id = 'balls', text = 'Add 250 coins', onClick = function() self:queue('ball', 250) end},
             ui.button{id = 'many', text = 'Add 1000 of both', onClick = function() self:queue('mixed', 1000) end},
             ui.button{id = 'reset', text = 'Clear', onClick = function() self:build() end},
         },
         focus = 'boxes',
     }
     self.random = m.random(37)
-    self.disc = discTexture()
-    self.white = graphics.whiteTexture()
+    self.crate = assets.texture('physics/crate.png', {filter = 'linear'})
+    self.coin = assets.texture('physics/coin.png', {filter = 'linear'})
     self:build()
     self:queue('mixed', 600)
 end
@@ -65,11 +56,15 @@ function Stress:build()
     self.boxSprites, self.ballSprites = {}, {}
     self.pending = {}
     local walls = self.world:createBody({type = 'static'})
-    parts.box(walls, 1600, 40, {offsetY = 410})
-    parts.box(walls, 40, 900, {offsetX = -780})
-    parts.box(walls, 40, 900, {offsetX = 780})
-    parts.polygon(walls, {{-200, 390}, {0, 250}, {200, 390}})
-    self.statics = {walls}
+    walls:addBox(8000, 60, {offsetY = Stress.ground + 30})
+    walls:addBox(40, 760, {offsetX = Stress.left - 20, offsetY = Stress.ground - 380})
+    walls:addBox(40, 760, {offsetX = Stress.right + 20, offsetY = Stress.ground - 380})
+    walls:addPolygon({{-200, Stress.ground}, {0, Stress.ground - 140}, {200, Stress.ground}})
+    self.walls = {}
+    for _, x in ipairs({Stress.left - 20, Stress.right + 20}) do
+        self.walls[#self.walls + 1] = {x = x}
+    end
+    self.wedge = Look.newShape({{-200, Stress.ground}, {0, Stress.ground - 140}, {200, Stress.ground}}, 'stone')
 end
 
 function Stress:queue(kind, count)
@@ -80,19 +75,20 @@ end
 
 -- New bodies arrive a few per frame in a row above the pile, so they never start inside each other.
 function Stress:spawnPending()
-    for slot = 1, math.min(kSpawnPerFrame, #self.pending) do
+    for slot = 1, math.min(Stress.spawnPerFrame, #self.pending) do
         local kind = table.remove(self.pending)
-        local x = -720 + slot * 36 + self.random:range(-4, 4)
+        local x = Stress.left + 40 + slot * 36 + self.random:range(-4, 4)
         local body = self.world:createBody({x = x, y = -420, rotation = self.random:range(0, math.pi)})
-        local color = kPalette[self.random:integer(1, #kPalette)]
         if kind == 'box' then
-            body:addBox(kBox, kBox, {friction = 0.5})
+            body:addBox(Stress.box, Stress.box, {friction = 0.5})
             self.boxes[#self.boxes + 1] = body
-            self.boxSprites[#self.boxSprites + 1] = {width = kBox, height = kBox, color = color}
+            local size = Stress.box / Stress.crateCover
+            self.boxSprites[#self.boxSprites + 1] = {width = size, height = size}
         else
-            body:addCircle(kBall, {friction = 0.5})
+            body:addCircle(Stress.coin, {friction = 0.5})
             self.balls[#self.balls + 1] = body
-            self.ballSprites[#self.ballSprites + 1] = {width = kBall * 2, height = kBall * 2, color = color}
+            local size = Stress.coin * 2 / Stress.coinCover
+            self.ballSprites[#self.ballSprites + 1] = {width = size, height = size}
         end
     end
 end
@@ -104,7 +100,8 @@ function Stress:update(dt)
     end
     self:spawnPending()
     local frame = profiler.frame()
-    self:status(string.format('Bodies %d, waiting %d, step %.2f ms, frame %.2f ms, %.0f frames per second', self.world.bodyCount, #self.pending, self:stepTime(), frame.milliseconds, frame.fps))
+    self.readout = string.format('%d bodies, %d waiting\nPhysics step %.2f ms\nFrame %.2f ms, %d frames a second', self.world.bodyCount - 1, #self.pending, self:stepTime(), frame.milliseconds, math.floor(frame.fps + 0.5))
+    self:status(string.format('%d bodies in the pile, simulated in %.2f ms a step.', self.world.bodyCount - 1, self:stepTime()))
 end
 
 function Stress:fixedUpdate(step)
@@ -119,11 +116,19 @@ local function place(bodies, sprites)
 end
 
 function Stress:draw(area)
-    parts.drawAll(self.statics)
+    Scenery.sky(self.camera, Stress.ground)
+    Scenery.ground(Stress.ground)
+    for _, wall in ipairs(self.walls) do
+        Look.block(wall.x, Stress.ground - 380, 40, 760, 'stone', 0)
+    end
+    Look.drawShape(self.wedge, 0)
     place(self.boxes, self.boxSprites)
     place(self.balls, self.ballSprites)
-    graphics2d.drawBatch(self.white, self.boxSprites, {layer = 1})
-    graphics2d.drawBatch(self.disc, self.ballSprites, {layer = 1})
+    graphics2d.drawBatch(self.crate, self.boxSprites, {layer = 1})
+    graphics2d.drawBatch(self.coin, self.ballSprites, {layer = 1})
+    if self.readout then
+        self:label(self.readout, Stress.left + 30, -330, {anchor = {0, 0}, size = 20})
+    end
 end
 
 return Stress
