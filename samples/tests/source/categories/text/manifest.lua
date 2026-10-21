@@ -10,7 +10,7 @@ return {
         {code = 'TXT-004', title = 'Fallback fonts', description = 'Japanese, Chinese and symbols drawn by fallback fonts that the family resolves character by character.', module = 'fallback'},
         {code = 'TXT-005', title = 'Bitmap fonts', description = 'A bitmap font in the text format, a colored bitmap font in the binary format and a grid font of LCD digits.', module = 'bitmap'},
         {code = 'TXT-006', title = 'Alignment', description = 'Left, center, right and fill alignment, and the anchor point of a text block.', module = 'alignment'},
-        {code = 'TXT-007', title = 'Complex scripts and right-to-left text', description = 'Arabic, Persian, Urdu, Hebrew, Hindi and Thai, right-to-left paragraphs with English and numbers inside, wrapping in every script and a right-to-left typewriter.', module = 'complex-scripts'},
+        {code = 'TXT-007', title = 'Complex scripts and right-to-left text', description = 'Arabic, Persian, Urdu, Hebrew, Hindi and Thai, right-to-left text with English and numbers inside and a typewriter.', module = 'complex-scripts'},
         {code = 'TXT-008', title = 'Wrapping', description = 'Words that wrap at a width, lines that break between Chinese and Japanese characters, long words and line spacing.', module = 'wrapping'},
         {code = 'TXT-009', title = 'Rich text tags', description = 'Every tag of the markup: styles, colors, sizes, outlines, links, hints, images, icons, paragraphs, lists, rules, tables and drop caps.', module = 'rich-text'},
         {code = 'TXT-010', title = 'Effects and typewriter', description = 'The built-in effects with their attributes, and a dialogue revealed like a typewriter with pauses and speed changes.', module = 'typewriter'},
