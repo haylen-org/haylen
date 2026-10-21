@@ -151,9 +151,20 @@ void SlotGrid::drawContent(Context& context, const Slot& slot, const math::Rect&
         Surfaces::drawImage(context, context.getImage(slot.image, picture.getSize()), picture, math::Color::white().withAlpha(leaving ? 0.35F : 1.0F));
     }
     if (const std::string_view count = context.getText(slot.count); !count.empty()) {
-        const float line = Typography::getLineHeight(context, Theme::Font::Caption);
-        Typography::drawParagraph(context, Theme::Font::Caption, context.mirror({area.x, area.getBottom() - line - 4.0F, area.width - 8.0F, line}, area), context.getColor(Theme::Color::Text), count, Alignment::End, context.getColor(Theme::Color::Window), 2.0F);
+        drawCount(context, count, area);
     }
+}
+
+// The count sits on a dark pill in the end corner at the bottom of the slot, which keeps it readable over any picture, in the colors of tooltips, dark in every theme.
+void SlotGrid::drawCount(Context& context, std::string_view count, const math::Rect& area) {
+    const float inset = context.getMetric(Theme::Metric::BorderWidth) * 2.0F;
+    const float paddingX = context.getMetric(Theme::Metric::BadgePaddingX) * 0.5F;
+    const math::Vec2 text = Typography::measure(context, Theme::Font::Caption, count);
+    const float height = text.y + context.getMetric(Theme::Metric::BadgePaddingY) * 2.0F;
+    const float width = std::max(height, text.x + paddingX * 2.0F);
+    const math::Rect pill = context.mirror({area.getRight() - inset - width, area.getBottom() - inset - height, width, height}, area);
+    Surfaces::fill(context, pill, context.getColor(Theme::Color::Tooltip), height * 0.5F);
+    Typography::drawAligned(context, Theme::Font::Caption, pill, context.getColor(Theme::Color::OnTooltip), count, Alignment::Center);
 }
 
 void SlotGrid::drawingStopped(Context& context) {

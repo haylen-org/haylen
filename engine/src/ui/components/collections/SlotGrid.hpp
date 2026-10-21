@@ -49,6 +49,7 @@ class SlotGrid final : public Component {
 
     // Paints the surface, the picture and the count of a slot in view.
     void drawContent(Context& context, const Slot& slot, const math::Rect& area, bool slotHovered) const;
+    static void drawCount(Context& context, std::string_view count, const math::Rect& area);
 
     std::vector<Slot> slots;
     std::string selected;

@@ -2489,7 +2489,7 @@ A grid of square slots that hold pictures and counts, such as an inventory, a ch
 | `selected` | string | none | Id of the highlighted slot. |
 | `draggable` | boolean | `true` | Lets the player drag and carry items. Without it accept selects a slot. |
 
-A slot is a table with a unique `id` string and optional `image`, `count` (text drawn in its corner) and `enabled`. Slots without an id raise `The property "slots" of a "slotGrid" must hold objects with an id.`, a repeated id raises `The property "slots" of a "slotGrid" uses the slot id "<id>" more than once.`, and an unknown key raises `Unknown key "<key>" in "slotGrid.slots".`.
+A slot is a table with a unique `id` string and optional `image`, `count`, text drawn on a dark pill in the bottom corner on the end side, readable over any picture, in the theme colors `tooltip` and `onTooltip`, and `enabled`. Slots without an id raise `The property "slots" of a "slotGrid" must hold objects with an id.`, a repeated id raises `The property "slots" of a "slotGrid" uses the slot id "<id>" more than once.`, and an unknown key raises `Unknown key "<key>" in "slotGrid.slots".`.
 
 ```lua
 local ui = require('haylen.ui')
@@ -3181,7 +3181,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `window` | `#FF1B1E2B` | `#FFF4F5F9` | Background of ImGui windows and the outline of progress text. |
 | `panel` | `#FF232739` | `#FFFFFFFF` | Fill of panels and dialogs. |
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | Fill of cards, buttons, fields and chips. |
-| `tooltip` | `#FF0F111A` | `#FF1B1E2B` | Background of tooltips and toasts. |
+| `tooltip` | `#FF0F111A` | `#FF1B1E2B` | Background of tooltips, toasts and the counts of slots. |
 | `overlay` | `#A0000000` | `#66000000` | The backdrop behind dialogs and the base of touch controls. |
 | `shadow` | `#66000000` | `#291B1E2B` | The soft shadow under dialogs, windows, toasts, tooltips and the popups of combos, menus, popovers and color fields. |
 | `hover` | `#14FFFFFF` | `#0F000000` | Layer over hovered controls and rows. |
@@ -3198,7 +3198,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `text` | `#FFE8EAF2` | `#FF1B1E2B` | Main text. |
 | `textMuted` | `#FFA3A8BF` | `#FF5C6380` | Captions, placeholders, help lines and inactive tabs. |
 | `textDisabled` | `#FF6A7090` | `#FFA3A8BF` | Text of disabled ImGui items. |
-| `onTooltip` | `#FFE8EAF2` | `#FFF4F5F9` | Text of tooltips and toasts. |
+| `onTooltip` | `#FFE8EAF2` | `#FFF4F5F9` | Text of tooltips, toasts and the counts of slots. |
 | `accent` | `#FF4C7DFF` | `#FF3A66E0` | Accent fill of primary buttons, checked boxes, slider fills and the selected tab. |
 | `accentHover` | `#FF6690FF` | `#FF4C7DFF` | Hovered accent fill and hovered links. |
 | `accentStrong` | `#FF3A66E0` | `#FF2C52C0` | Pressed accent fill. |
