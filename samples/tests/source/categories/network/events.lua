@@ -69,7 +69,7 @@ function Events:enter()
         code = Events.code,
         hint = 'Open and close sockets and watch both kinds of events arrive. The counters on the left add up every event this visit heard.',
         focus = 'echo',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
+        content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 760, align = 'stretch', gap = 12,
                 ui.grid{columns = 2, gap = 12,
                     ui.button{id = 'echo', text = 'Open the echo socket', align = 'stretch', onClick = function()
@@ -88,11 +88,12 @@ function Events:enter()
                     end},
                 },
                 ui.label{id = 'open', text = '', color = 'accentText'},
-                ui.scroll{grow = 1, ui.table{id = 'counters', columns = {{text = 'Source', width = 190}, {text = 'Event'}, {text = 'Count', width = 110, align = 'end'}}, rows = counters}},
+                ui.scroll{grow = 1, height = 0, ui.table{id = 'counters', columns = {{text = 'Source', width = 190}, {text = 'Event'}, {text = 'Count', width = 110, align = 'end'}}, rows = counters}},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Timeline'},
-                ui.scroll{grow = 1, focusable = false, ui.list{id = 'timeline', items = {}}},
+                ui.label{id = 'timelineEmpty', text = 'Every event of the sockets and of the bus lands here, the newest first.', color = 'textMuted'},
+                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'timeline', items = {}}},
             },
         }},
     }
@@ -101,6 +102,7 @@ function Events:enter()
             self:record('bus', name, table.pack(...))
         end)
     end
+    self:open(services.echo, nil)
 end
 
 function Events:update(dt)
@@ -125,6 +127,7 @@ function Events:record(source, name, values)
     table.insert(self.lines, 1, {id = 'line-' .. self.logged, text = (source == 'bus' and 'Bus event "' or 'Socket event "') .. name .. '"', caption = readout.clock() .. '  ' .. describe(values)})
     self.lines[100] = nil
     self:set('timeline', {items = self.lines})
+    self:set('timelineEmpty', {visible = false})
 end
 
 -- Opens a socket, with reconnection when settings are given, and records every event it reports.

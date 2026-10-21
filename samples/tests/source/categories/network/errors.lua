@@ -18,90 +18,112 @@ local ok, problem = pcall(page.json)  -- The body is not JSON, so it raises.]]
 
 -- Each case sends one request and turns what came back into a line of text.
 Errors.cases = {
-    {id = 'host', text = 'Unknown host', call = "http.client.get('https://no-such-host.invalid/')", run = function()
+    {id = 'host', group = 'network', text = 'Unknown host', call = "http.client.get('https://no-such-host.invalid/')", run = function()
         return http.client.get('https://no-such-host.invalid/', {timeoutSeconds = 10}):await()
     end},
-    {id = 'refused', text = 'Refused connection', call = "http.client.get('http://127.0.0.1:9/')", run = function()
+    {id = 'refused', group = 'network', text = 'Refused connection', call = "http.client.get('http://127.0.0.1:9/')", run = function()
         return http.client.get('http://127.0.0.1:9/', {timeoutSeconds = 10}):await()
     end},
-    {id = 'timeout', text = 'Request timeout', call = "http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2})", run = function()
+    {id = 'timeout', group = 'time', text = 'Request timeout', call = "http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2})", run = function()
         return http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 2}):await()
     end},
-    {id = 'giveUp', text = 'Timeout with "async.timeout"', call = "async.timeout(http.client.get('https://httpbin.org/delay/5'), 1500)", run = function()
+    {id = 'giveUp', group = 'time', text = 'Timeout with "async.timeout"', call = "async.timeout(http.client.get('https://httpbin.org/delay/5'), 1500)", run = function()
         return async.timeout(http.client.get('https://httpbin.org/delay/5', {timeoutSeconds = 10}), 1500):await()
     end},
-    {id = 'missing', text = 'Status 404', call = "http.client.get('https://httpbin.org/status/404')", run = function()
+    {id = 'missing', group = 'status', text = 'Status 404', call = "http.client.get('https://httpbin.org/status/404')", run = function()
         return http.client.get('https://httpbin.org/status/404', {timeoutSeconds = 10}):await()
     end},
-    {id = 'server', text = 'Status 500', call = "http.client.get('https://httpbin.org/status/500')", run = function()
+    {id = 'server', group = 'status', text = 'Status 500', call = "http.client.get('https://httpbin.org/status/500')", run = function()
         return http.client.get('https://httpbin.org/status/500', {timeoutSeconds = 10}):await()
     end},
-    {id = 'certificate', text = 'Expired certificate', call = "http.client.get('https://expired.badssl.com/')", run = function()
+    {id = 'certificate', group = 'network', text = 'Expired certificate', call = "http.client.get('https://expired.badssl.com/')", run = function()
         return http.client.get('https://expired.badssl.com/', {timeoutSeconds = 10}):await()
     end},
-    {id = 'notJson', text = 'Body that is not JSON', call = "http.client.get('https://httpbin.org/html').json()", json = true, run = function()
+    {id = 'notJson', group = 'content', text = 'Body that is not JSON', call = "http.client.get('https://httpbin.org/html').json()", json = true, run = function()
         return http.client.get('https://httpbin.org/html', {timeoutSeconds = 10}):await()
     end},
 }
 
--- Describes a response: its status and `ok` flag, or the error `json()` raised when the case reads the body as JSON.
+-- Describes a response in a badge and a sentence: its status and `ok` flag, or the error `json()` raised when the case reads the body as JSON.
 local function describe(case, response)
     if case.json then
         local ok, failure = pcall(response.json)
-        return ok and 'The body was JSON after all.' or 'Status ' .. response.status .. ', then "json()" raised: ' .. tostring(failure)
+        return ok and 'JSON' or 'Not JSON', ok and 'The body was JSON after all.' or string.format('The status was %d, and "json()" raised: %s', response.status, tostring(failure))
     end
-    return string.format('A response with the status %d and "ok" "%s".', response.status, tostring(response.ok))
+    return 'Status ' .. response.status, string.format('A response came back with the status %d and "ok" set to "%s".', response.status, tostring(response.ok))
 end
 
-function Errors:init(entry)
-    Errors.super.init(self, entry)
-    self.results = {}
-end
+-- The kinds of failure, each with a title over its buttons and the tone of its results.
+Errors.groups = {
+    {id = 'network', title = 'No connection', tone = 'danger'},
+    {id = 'time', title = 'Too slow', tone = 'warning'},
+    {id = 'status', title = 'Error statuses', tone = 'information'},
+    {id = 'content', title = 'Bad content', tone = 'accent'},
+}
 
+-- The cases that answer at once, which the test tries when it opens.
+Errors.opening = {'refused', 'missing', 'notJson'}
+
+-- Every case has a button in its group and a card on the board of results, in the same order, so the board shows every failure from the start.
 function Errors:enter()
-    local buttons = {}
-    for index, case in ipairs(Errors.cases) do
-        buttons[index] = ui.button{id = case.id, text = case.text, align = 'stretch', onClick = function()
-            self:try(case)
-        end}
+    local controls, cards = {}, {}
+    for _, group in ipairs(Errors.groups) do
+        controls[#controls + 1] = ui.label{text = group.title, font = 'caption', color = 'textMuted', margin = {#controls > 0 and 8 or 0, 0, 0, 0}}
+        for _, case in ipairs(Errors.cases) do
+            if case.group == group.id then
+                controls[#controls + 1] = ui.button{id = case.id, text = case.text, align = 'stretch', onClick = function()
+                    self:try(case)
+                    self.gui:command('results', 'scrollTo', {node = case.id .. '-card'})
+                end}
+                cards[#cards + 1] = ui.card{id = case.id .. '-card', align = 'stretch', gap = 6, padding = {14, 20},
+                    ui.row{gap = 12, ui.label{text = case.text, font = 'heading', grow = 1}, ui.badge{id = case.id .. '-state', text = 'Not tried yet', tone = 'neutral'}},
+                    ui.label{text = case.call, font = 'monospace', color = 'accentText'},
+                    ui.label{id = case.id .. '-outcome', text = string.format('Press "%s" to send it.', case.text), color = 'textMuted'},
+                }
+            end
+        end
     end
     self:frame{
         code = Errors.code,
-        hint = 'Try each failure. Every result shows the call, what came back and how long it took, and the app keeps running whatever the network does.',
+        hint = 'Try each failure. Every card shows the call, what came back and how long it took, and the app keeps running whatever the network does.',
         focus = 'host',
         content = {ui.row{grow = 1, gap = 24,
-            ui.panel{width = 520, align = 'stretch', gap = 12, children = buttons},
+            ui.panel{width = 520, align = 'stretch', ui.scroll{grow = 1, height = 0, ui.column{gap = 10, children = controls}}},
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Results'},
-                ui.scroll{grow = 1, ui.column{id = 'results', gap = 16, padding = {0, 24, 0, 0}}},
+                ui.scroll{id = 'results', grow = 1, height = 0, ui.column{gap = 12, children = cards}},
             },
         }},
     }
+    for _, case in ipairs(Errors.cases) do
+        for _, id in ipairs(Errors.opening) do
+            if case.id == id then
+                self:try(case)
+            end
+        end
+    end
 end
 
--- Runs a case in a task of the scene and shows its outcome at the top of the results.
+-- Runs a case in a task of the scene and shows its outcome on its card.
 function Errors:try(case)
-    local result = {call = case.call, outcome = 'Waiting…', color = 'textMuted'}
-    table.insert(self.results, 1, result)
-    self:showResults()
+    local tone
+    for _, group in ipairs(Errors.groups) do
+        if group.id == case.group then
+            tone = group.tone
+        end
+    end
+    self:set(case.id .. '-state', {text = 'Sending', tone = 'information'})
+    self:set(case.id .. '-outcome', {text = 'Waiting for the answer.', color = 'textMuted'})
     self:spawn(function()
         local started = readout.millis()
         local response, failure = case.run()
-        result.outcome = string.format('After %d ms: %s', readout.millis() - started, response and describe(case, response) or '"nil" and ' .. tostring(failure))
-        result.color = response and 'warningText' or 'dangerText'
-        self:showResults()
+        local state, answer = 'No response', string.format('No response came back, only the reason: %s', tostring(failure))
+        if response then
+            state, answer = describe(case, response)
+        end
+        self:set(case.id .. '-state', {text = state, tone = tone})
+        self:set(case.id .. '-outcome', {text = string.format('%s It took %d ms.', answer:match('[.!?]$') and answer or answer .. '.', readout.millis() - started), color = 'text'})
     end)
-end
-
-function Errors:showResults()
-    local nodes = {}
-    for index, result in ipairs(self.results) do
-        nodes[index] = ui.column{gap = 4,
-            ui.label{text = result.call, font = 'monospace', color = 'accentText'},
-            ui.label{text = result.outcome, color = result.color},
-        }
-    end
-    self.gui:replaceChildren('results', nodes)
 end
 
 return Errors

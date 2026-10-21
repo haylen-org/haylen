@@ -17,12 +17,24 @@ socket:sendBinary(string.char(0x48, 0x4C, 0x00, 0xFF))
 socket:close(4000, 'the app is done')]]
 
 WebSocket.tones = {connecting = 'information', open = 'success', reconnecting = 'warning', closing = 'warning', closed = 'danger'}
+WebSocket.states = {connecting = 'Connecting', open = 'Connected', reconnecting = 'Reconnecting', closing = 'Closing', closed = 'Closed'}
 WebSocket.ping = 'ping '
+-- The controls that need an open socket.
+WebSocket.sending = {'close', 'closeApp', 'send', 'binary', 'ping'}
+
+-- A count with its name, which the panel keeps up to date.
+local function metric(id, title, value)
+    return ui.card{grow = 1, gap = 2, padding = {12, 18},
+        ui.label{text = title, font = 'caption', color = 'textMuted'},
+        ui.label{id = id, text = value, font = 'heading', wrap = false},
+    }
+end
 
 function WebSocket:init(entry)
     WebSocket.super.init(self, entry)
     self.text = 'Hello from Haylen!'
     self.sent = 0
+    self.messages = {sent = 0, received = 0}
     self.lines = {}
     self.logged = 0
 end
@@ -32,7 +44,7 @@ function WebSocket:enter()
         code = WebSocket.code,
         hint = 'Connect, then send text, binary data or a ping. The echo server sends everything back. Close ends the connection with the code 1000, or 4000 for a code of the app.',
         focus = 'connect',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
+        content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.statusIndicator{id = 'state', text = 'Not connected', tone = 'neutral'},
                 ui.label{text = services.echo, font = 'monospace', color = 'textMuted'},
@@ -47,7 +59,7 @@ function WebSocket:enter()
                         self:close(4000, 'the app is done')
                     end},
                 },
-                ui.sectionTitle{text = 'Send'},
+                ui.sectionTitle{text = 'Send', margin = {12, 0, 0, 0}},
                 ui.textField{id = 'message', value = self.text, maxLength = 200, returnKey = 'send', onChange = function(event)
                     self.text = event.value
                 end, onSubmit = function()
@@ -64,11 +76,15 @@ function WebSocket:enter()
                         self:sendText(WebSocket.ping .. readout.millis())
                     end},
                 },
-                ui.label{id = 'roundTrip', text = 'No ping yet.', color = 'accentText'},
+                ui.row{gap = 12, align = 'stretch', alignItems = 'stretch', margin = {12, 0, 0, 0},
+                    metric('sentCount', 'Sent', '0'),
+                    metric('receivedCount', 'Received', '0'),
+                    metric('roundTrip', 'Round trip', 'No ping'),
+                },
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'What happened'},
-                ui.scroll{grow = 1, focusable = false, ui.list{id = 'events', items = {}}},
+                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'events', items = {}}},
             },
         }},
     }
@@ -80,7 +96,11 @@ function WebSocket:update(dt)
     local state = self.socket and self.socket.state or 'not connected'
     if state ~= self.state then
         self.state = state
-        self:set('state', {text = 'State "' .. state .. '"', tone = WebSocket.tones[state] or 'neutral'})
+        self:set('state', {text = WebSocket.states[state] or 'Not connected', tone = WebSocket.tones[state] or 'neutral'})
+        self:set('connect', {variant = (state == 'closed' or state == 'not connected') and 'primary' or 'default'})
+        for _, id in ipairs(WebSocket.sending) do
+            self:set(id, {enabled = state == 'open'})
+        end
     end
 end
 
@@ -102,6 +122,8 @@ function WebSocket:connect()
     self:record('Called "net.connectWebSocket(url)"', 'Connecting to "' .. socket.url .. '"')
     self:on(socket, 'open', function()
         self:record('Event "open"', 'The connection is up')
+        self:sendText(self.text)
+        self:sendText(WebSocket.ping .. readout.millis())
     end)
     self:on(socket, 'message', function(data, binary)
         self:receive(data, binary)
@@ -133,6 +155,7 @@ end
 function WebSocket:sendText(text)
     if self:ready() then
         self.socket:send(text)
+        self:count('sent')
         self:record('Called "socket:send"', text)
     end
 end
@@ -143,11 +166,18 @@ function WebSocket:sendBinary()
         self.sent = self.sent + 1
         local bytes = string.pack('<I4f', self.sent, haylen.elapsed())
         self.socket:sendBinary(bytes)
+        self:count('sent')
         self:record('Called "socket:sendBinary"', #bytes .. ' bytes: ' .. readout.hex(bytes))
     end
 end
 
+function WebSocket:count(direction)
+    self.messages[direction] = self.messages[direction] + 1
+    self:set(direction .. 'Count', {text = tostring(self.messages[direction])})
+end
+
 function WebSocket:receive(data, binary)
+    self:count('received')
     if binary and #data == 8 then
         local count, time = string.unpack('<I4f', data)
         self:record('Event "message", binary', string.format('%d bytes: %s, counter %d, time %.2f', #data, readout.hex(data), count, time))
@@ -159,7 +189,7 @@ function WebSocket:receive(data, binary)
     end
     local sentAt = data:match('^' .. WebSocket.ping .. '(%d+)$')
     if sentAt then
-        self:set('roundTrip', {text = string.format('The round trip took %d ms.', readout.millis() - tonumber(sentAt))})
+        self:set('roundTrip', {text = string.format('%d ms', readout.millis() - tonumber(sentAt))})
     end
     self:record('Event "message", text', data)
 end

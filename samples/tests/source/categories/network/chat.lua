@@ -18,6 +18,7 @@ local message = json.encode({name = 'Ana', text = 'Hello'})
 if socket.state == 'open' then socket:send(message) else queue[#queue + 1] = message end]]
 
 Chat.limit = 40
+Chat.openers = {'Hi! Is the ferry running today?', 'The tide looks calm from the lighthouse.'}
 Chat.states = {open = {'Connected', 'success'}, connecting = {'Connecting', 'information'}, reconnecting = {'Reconnecting', 'warning'}, closing = {'Closing', 'warning'}, closed = {'Offline', 'danger'}}
 
 function Chat:init(entry)
@@ -32,7 +33,7 @@ end
 function Chat:enter()
     self:frame{
         code = Chat.code,
-        hint = 'Type a message and press Enter or Send. The newest message is at the top. The echo server sends every message back, and messages written while the connection is down wait for it.',
+        hint = 'Type a message and press Enter or Send. The echo server sends every message back, and messages written while the connection is down wait for it.',
         focus = 'message',
         content = {ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.row{gap = 12,
@@ -40,16 +41,16 @@ function Chat:enter()
                 ui.spacer{grow = 1},
                 ui.badge{id = 'queued', text = '', tone = 'warning', visible = false},
             },
-            ui.scroll{id = 'scroll', grow = 1, ui.column{id = 'messages', gap = 12, padding = {0, 24, 0, 0}}},
-            ui.row{gap = 12,
-                ui.textField{id = 'name', value = self.name, width = 220, maxLength = 16, autocapitalize = 'words', returnKey = 'next', onChange = function(event)
+            ui.scroll{id = 'scroll', grow = 1, height = 0, ui.column{id = 'messages', gap = 14}},
+            ui.row{gap = 12, alignItems = 'end',
+                ui.formField{label = 'Your name', width = 240, ui.textField{id = 'name', value = self.name, maxLength = 16, autocapitalize = 'words', returnKey = 'next', onChange = function(event)
                     self.name = event.value
-                end},
-                ui.textField{id = 'message', value = '', placeholder = 'Write a message', grow = 1, maxLength = 300, returnKey = 'send', onChange = function(event)
+                end}},
+                ui.formField{label = 'Message', grow = 1, ui.textField{id = 'message', value = '', placeholder = 'Write a message', maxLength = 300, returnKey = 'send', onChange = function(event)
                     self.draft = event.value
                 end, onSubmit = function()
                     self:write()
-                end},
+                end}},
                 ui.button{id = 'send', text = 'Send', variant = 'primary', onClick = function()
                     self:write()
                 end},
@@ -71,6 +72,11 @@ function Chat:enter()
     self:on(socket, 'error', function(message)
         self:note(message)
     end)
+    -- A few messages wait in the queue from the start, so the chat opens with a conversation.
+    for _, text in ipairs(Chat.openers) do
+        self.draft = text
+        self:write()
+    end
 end
 
 function Chat:update(dt)
@@ -128,24 +134,28 @@ function Chat:add(kind, message)
     self:showMessages()
 end
 
--- Draws the newest message first, mine on the right, the echoes on the left and notes in the middle.
+-- Shows the messages from the oldest to the newest, which the scroll keeps in view: mine on the right, the echoes on the left with the avatar of the name and notes in the middle.
 function Chat:showMessages()
     local nodes = {}
-    for index = #self.messages, 1, -1 do
-        local entry = self.messages[index]
+    for index, entry in ipairs(self.messages) do
         local message = entry.message
+        local id = 'message-' .. index
         if entry.kind == 'note' then
-            nodes[#nodes + 1] = ui.label{text = message.time .. '  ' .. message.text, font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'}
+            nodes[index] = ui.label{id = id, text = message.time .. '  ' .. message.text, font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'}
         else
             local mine = entry.kind == 'mine'
-            local bubble = ui.card{maxWidth = 900, gap = 4,
-                ui.label{text = (mine and 'You as ' or 'Echo of ') .. message.name .. ', ' .. message.time, font = 'caption', color = mine and 'accentText' or 'successText'},
+            local bubble = ui.card{maxWidth = 820, gap = 4, padding = {12, 18}, style = mine and {colors = {raised = 'accentBackground', border = 'accent'}} or nil,
+                ui.label{text = (mine and 'You' or 'Echo of ' .. message.name) .. ', ' .. message.time, font = 'caption', color = mine and 'accentText' or 'successText'},
                 ui.label{text = message.text},
             }
-            nodes[#nodes + 1] = ui.row{mine and ui.spacer{grow = 1} or bubble, mine and bubble or ui.spacer{grow = 1}}
+            local avatar = ui.avatar{name = message.name, size = 48}
+            nodes[index] = ui.row{id = id, gap = 12, alignItems = 'end', align = 'stretch', children = mine and {ui.spacer{grow = 1}, bubble, avatar} or {avatar, bubble, ui.spacer{grow = 1}}}
         end
     end
     self.gui:replaceChildren('messages', nodes)
+    if #nodes > 0 then
+        self.gui:command('scroll', 'scrollTo', {node = 'message-' .. #nodes, align = 'end'})
+    end
 end
 
 return Chat

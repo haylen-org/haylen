@@ -29,23 +29,21 @@ function Http:enter()
         code = Http.code,
         hint = 'Send a GET or a POST to the echo service, or type any address. Switch between the body and the headers of the response with the tabs.',
         focus = 'get',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
+        content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Echo service'},
                 ui.label{text = services.get, font = 'monospace', color = 'textMuted'},
-                ui.button{id = 'get', text = 'GET with a query', align = 'stretch', onClick = function()
-                    self:request('GET', services.get, function()
-                        return http.client.get(services.get, {query = {test = 'haylen', language = 'lua'}, headers = {['Accept'] = 'application/json'}, timeoutSeconds = Http.timeout})
-                    end)
+                ui.button{id = 'get', text = 'GET with a query', variant = 'primary', align = 'stretch', onClick = function()
+                    self:getQuery()
                 end},
-                ui.button{id = 'post', text = 'POST JSON', variant = 'primary', align = 'stretch', onClick = function()
+                ui.button{id = 'post', text = 'POST JSON', align = 'stretch', onClick = function()
                     self.requests = self.requests + 1
                     local payload = {player = 'Ana', score = 4200 + self.requests, items = {'rope', 'lamp'}, sentAt = readout.clock()}
                     self:request('POST', services.post, function()
                         return http.client.post(services.post, {json = payload, timeoutSeconds = Http.timeout})
                     end)
                 end},
-                ui.sectionTitle{text = 'Any address'},
+                ui.sectionTitle{text = 'Any address', margin = {12, 0, 0, 0}},
                 ui.textField{id = 'address', value = self.address, keyboard = 'url', returnKey = 'go', onChange = function(event)
                     self.address = event.value
                 end, onSubmit = function()
@@ -63,12 +61,20 @@ function Http:enter()
                 },
                 ui.label{id = 'request', text = '', font = 'monospace', color = 'accentText'},
                 ui.tabs{id = 'tabs', grow = 1, items = {{id = 'body', text = 'Body'}, {id = 'headers', text = 'Headers'}}, selected = 'body',
-                    ui.scroll{ui.label{id = 'body', text = '', font = 'monospace'}},
-                    ui.scroll{ui.table{id = 'headers', columns = {{text = 'Header', width = 420}, {text = 'Value'}}, rows = {}}},
+                    ui.scroll{grow = 1, height = 0, ui.label{id = 'body', text = '', font = 'monospace'}},
+                    ui.scroll{grow = 1, height = 0, ui.table{id = 'headers', columns = {{text = 'Header', width = 420}, {text = 'Value'}}, rows = {}}},
                 },
             },
         }},
     }
+    self:getQuery()
+end
+
+-- The first request goes out as the test opens, so the response shows at once.
+function Http:getQuery()
+    self:request('GET', services.get, function()
+        return http.client.get(services.get, {query = {test = 'haylen', language = 'lua'}, headers = {['Accept'] = 'application/json'}, timeoutSeconds = Http.timeout})
+    end)
 end
 
 function Http:getAddress()
@@ -79,7 +85,7 @@ end
 
 -- Sends a request in a task of the scene and shows what came back: the status, the time it took, the headers and the body.
 function Http:request(method, url, send)
-    self:set('state', {text = 'Waiting for "' .. url .. '"', tone = 'information'})
+    self:set('state', {text = 'Waiting for the answer', tone = 'information'})
     self:set('request', {text = method .. ' ' .. url})
     self:spawn(function()
         local started = readout.millis()

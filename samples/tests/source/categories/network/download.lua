@@ -30,13 +30,13 @@ end
 function Download:enter()
     local items = {}
     for index, choice in ipairs(services.downloads) do
-        items[index] = {id = choice.id, text = choice.text, caption = choice.caption}
+        items[index] = {id = choice.id, text = choice.text, caption = choice.caption, image = 'plugins/file.svg'}
     end
     self:frame{
         code = Download.code,
         hint = 'Pick what to download, then stream it with progress or fetch it in one piece. The file is saved in the downloads folder of the user folder.',
         focus = 'files',
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
+        content = {ui.row{grow = 1, gap = 24,
             ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.list{id = 'files', items = items, selected = self.choice.id, onSelect = function(event)
                     for _, choice in ipairs(services.downloads) do
@@ -55,11 +55,15 @@ function Download:enter()
             ui.panel{grow = 1, align = 'stretch', gap = 16,
                 ui.label{id = 'url', text = '', font = 'monospace', color = 'accentText'},
                 ui.progress{id = 'progress', value = 0, text = 'Nothing downloaded yet'},
-                ui.row{gap = 16, ui.busyIndicator{id = 'busy', size = 40, visible = false}, ui.label{id = 'outcome', text = '', grow = 1}},
+                ui.row{gap = 16, ui.busyIndicator{id = 'busy', size = 40, visible = false}, ui.label{id = 'outcome', text = 'Pick a file and stream it.', color = 'textMuted', grow = 1}},
                 ui.label{id = 'result', text = '', color = 'textMuted'},
+                ui.sectionTitle{text = 'Downloads of this visit'},
+                ui.label{id = 'historyEmpty', text = 'Every finished download lands here with its size, its speed and where it was saved.', color = 'textMuted'},
+                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'history', items = {}}},
             },
         }},
     }
+    self:stream()
 end
 
 -- The chunks arrive through callbacks of Varn, which only count bytes, and the page reads the count once per frame.
@@ -94,11 +98,17 @@ function Download:finish(data, failure)
     end
     local seconds = math.max(0.001, (readout.millis() - self.started) / 1000)
     self:set('progress', {value = 1, text = readout.bytes(#data)})
-    self:set('outcome', {text = string.format('Received %s in %.1f s, %s per second.', readout.bytes(#data), seconds, readout.bytes(#data / seconds)), color = 'successText'})
+    local speed = string.format('%s in %.1f s, %s per second', readout.bytes(#data), seconds, readout.bytes(#data / seconds))
+    self:set('outcome', {text = 'Received ' .. speed .. '.', color = 'successText'})
     local folder = storage.root() .. '/downloads'
     fs.mkdir(folder):await()
     local saved, problem = fs.writeFile(folder .. '/' .. self.choice.file, data):await()
     self:set('result', {text = saved and 'Saved as "' .. folder .. '/' .. self.choice.file .. '".' or 'Saving failed: ' .. tostring(problem)})
+    self.finished = (self.finished or 0) + 1
+    self.history = self.history or {}
+    table.insert(self.history, 1, {id = 'download-' .. self.finished, text = self.choice.text, caption = speed .. (saved and ', saved as "' .. self.choice.file .. '"' or ', not saved'), image = 'plugins/file.svg'})
+    self:set('history', {items = self.history})
+    self:set('historyEmpty', {visible = false})
 end
 
 function Download:stream()
