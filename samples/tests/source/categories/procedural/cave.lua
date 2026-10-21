@@ -11,9 +11,9 @@ Cave.blend = 14
 Cave.outlinePoints = 72
 Cave.walkStep = 32
 Cave.colors = {edge = '#FF1E1B33', rim = '#FF6E5A86', air = '#FF121722', glow = '#FF262F45'}
--- The world units one copy of the stone texture covers, and the layer the stone draws at, over the creatures.
+-- The world units one copy of the stone texture covers, and the layer the stone draws at, over the legs of the creatures and under their bodies.
 Cave.textureSize = 420
-Cave.layer = 20
+Cave.layer = 4
 
 -- The room spans `width` by `height` around the origin.
 function Cave:init(seed, width, height)
@@ -151,7 +151,7 @@ function Cave:clear(x1, y1, x2, y2, margin)
     return true
 end
 
--- Draws the air of the room under everything, and over the creatures the stone of the walls around the room and of the rocks inside it. Every outline draws before every fill of stone, so outlines show only along the edge of the stone and never inside where rocks meet each other or a wall.
+-- Draws the air of the room under everything, and over the legs of the creatures, which hides a leg where it reaches into the rock, the stone of the walls around the room and of the rocks inside it. Every outline draws before every fill of stone, so outlines show only along the edge of the stone and never inside where rocks meet each other or a wall.
 function Cave:draw()
     local width, height = self.halfWidth * 2, self.halfHeight * 2
     local room = {-self.halfWidth, -self.halfHeight, width, height}

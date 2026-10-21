@@ -280,7 +280,7 @@ function Spider:draw(area)
     end
     for _, leg in ipairs(self.legs) do
         local near = leg.layout.side == 'near'
-        self:drawLeg(leg, near and colors.near or colors.far, near and 4 or 2)
+        self:drawLeg(leg, near and colors.near or colors.far, near and 3 or 2)
         if self.showGuides then
             graphics2d.drawCircle(leg.restX, leg.restY, 4, '#FF6FDCA0', {layer = 30})
             graphics2d.drawCircle(leg.poleX, leg.poleY, 3, '#FF8FB0FF', {layer = 30})
@@ -288,7 +288,7 @@ function Spider:draw(area)
     end
     for _, palp in ipairs(self.palps) do
         local near = palp.side == 'near'
-        self:drawLeg(palp, near and colors.near or colors.far, near and 4 or 2)
+        self:drawLeg(palp, near and colors.near or colors.far, near and 3 or 2)
     end
     self:drawBody()
 end

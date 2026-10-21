@@ -253,13 +253,13 @@ function Centipede:draw(area)
     -- The legs grow from under the body, the far ones darker behind the near ones.
     for _, leg in ipairs(self.legs) do
         local near = leg.side == 'near'
-        leg:draw(near and colors.leg or colors.far, near and 4 or 2)
+        leg:draw(near and colors.leg or colors.far, near and 3 or 2)
     end
     for index, antenna in ipairs(self.antennae) do
         antenna:draw(index == 1 and colors.antenna or colors.far, index == 1 and 7 or 2)
     end
     for index, tail in ipairs(self.tails) do
-        tail:draw(index == 1 and colors.cercus or colors.far, index == 1 and 4 or 2)
+        tail:draw(index == 1 and colors.cercus or colors.far, index == 1 and 3 or 2)
     end
 
     -- The body draws from the tail to the head, so each plate overlaps the one behind it, with the light of its back plate on the side away from the rock, and the head carries its eye and fangs.
