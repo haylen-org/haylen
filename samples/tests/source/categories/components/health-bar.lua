@@ -6,6 +6,9 @@ local graphics2d = require('haylen.graphics2d')
 local HealthBar = {}
 HealthBar.__index = HealthBar
 
+-- The width of the border around the groove of the fills.
+HealthBar.border = 2
+
 HealthBar.colors = {
     back = {0.08, 0.09, 0.14, 0.85},
     border = {0.04, 0.05, 0.08, 1},
@@ -46,7 +49,13 @@ function HealthBar.new(maximum, options)
         tinted = {{0, 0, 0, 0}, {0, 0, 0, 0}},
         order = {layer = 0},
         shape = {radius = 0, color = nil, borderWidth = 0, borderColor = nil, layer = 0},
+        groove = {0, 0, 0, 0},
+        grooveShape = {radius = 0, color = '#FFFFFFFF'},
     }, HealthBar)
+    -- The groove inside the border masks the fills, so a fill keeps the curve of the track at its start however short it is.
+    self.drawGroove = function()
+        graphics2d.drawShape(self.groove, self.grooveShape)
+    end
     return self
 end
 
@@ -126,11 +135,17 @@ function HealthBar:faded(color, slot)
     return tinted
 end
 
-function HealthBar:box(left, top, width, color, radius, borderWidth, borderColor, layer)
+function HealthBar:box(left, top, width, height, color, borderWidth, borderColor, layer)
     local rect, shape = self.rect, self.shape
-    rect[1], rect[2], rect[3], rect[4] = left, top, width, self.height
-    shape.radius, shape.color, shape.borderWidth, shape.borderColor, shape.layer = radius, color, borderWidth, borderColor, layer
+    rect[1], rect[2], rect[3], rect[4] = left, top, width, height
+    shape.radius, shape.color, shape.borderWidth, shape.borderColor, shape.layer = height / 2, color, borderWidth, borderColor, layer
     graphics2d.drawShape(rect, shape)
+end
+
+-- A fill is a pill whose round end lands where the fill ends and which reaches past the start of the groove when it is shorter than a pill, where the mask of the groove cuts it.
+function HealthBar:fillBox(left, top, width, height, color, layer)
+    local span = math.max(width, height)
+    self:box(left + width - span, top, span, height, color, 0, nil, layer)
 end
 
 -- Draws the bar centered on `x`, `y`.
@@ -141,28 +156,36 @@ function HealthBar:draw(x, y)
 
     local width, height = self.width, self.height
     local left, top = x - width / 2, y - height / 2
-    local inner = width - 4
-    local radius = height / 2
     local layer = self.layer
 
-    self:box(left, top, width, self:faded(self.colors.back, 1), radius, 2, self:faded(self.colors.border, 2), layer)
+    -- The fills sit in the groove inside the border, whose round ends follow the ends of the track.
+    local border = HealthBar.border
+    local innerLeft, innerTop = left + border, top + border
+    local inner, innerHeight = width - border * 2, height - border * 2
+    self:box(left, top, width, height, self:faded(self.colors.back, 1), border, self:faded(self.colors.border, 2), layer)
+    local groove = self.groove
+    groove[1], groove[2], groove[3], groove[4] = innerLeft, innerTop, inner, innerHeight
+    self.grooveShape.radius = innerHeight / 2
+    self.order.layer = layer + 1
+    graphics2d.pushMask(self.drawGroove, self.order)
     if self.trail > self.shown then
-        self:box(left + 2, top + 2, inner * self.trail / self.maximum, self:faded(self.colors.trail), radius - 2, 0, nil, layer + 1)
+        self:fillBox(innerLeft, innerTop, inner * self.trail / self.maximum, innerHeight, self:faded(self.colors.trail), 1)
     end
     if self.shown > 0.5 then
-        self:box(left + 2, top + 2, inner * self.shown / self.maximum, self:fillColor(self.shown / self.maximum), radius - 2, 0, nil, layer + 2)
+        self:fillBox(innerLeft, innerTop, inner * self.shown / self.maximum, innerHeight, self:fillColor(self.shown / self.maximum), 2)
     end
     if self.shield > 0 then
         local share = math.min(self.shield, self.maximum) / self.maximum
-        self:box(left + 2, top + 2, inner * share, self:faded(self.colors.shield), radius - 2, 0, nil, layer + 3)
+        self:fillBox(innerLeft, innerTop, inner * share, innerHeight, self:faded(self.colors.shield), 3)
     end
+    graphics2d.popMask()
 
     if self.tick > 0 then
         local tick = self:faded(self.colors.border, 2)
         self.order.layer = layer + 4
         for value = self.tick, self.maximum - 1, self.tick do
-            local tickX = left + 2 + inner * value / self.maximum
-            graphics2d.drawLine(tickX, top + 3, tickX, top + height - 3, 1.5, tick, self.order)
+            local tickX = innerLeft + inner * value / self.maximum
+            graphics2d.drawLine(tickX, innerTop + 1, tickX, innerTop + innerHeight - 1, 1.5, tick, self.order)
         end
     end
 end
