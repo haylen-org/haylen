@@ -1,89 +1,145 @@
 -- What `haylen.system` tells about the device, its theme and its battery with their changes as they happen, and an address to open and a vibration to play, with the answer of the address and the frames it took.
 local haylen = require('haylen')
-local json = require('json')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
 
-local Journal = require('harness.journal')
 local Test = require('harness.test')
 
 local System = haylen.class('System', Test)
 
-System.events = {systemThemeChanged = Test.violet, batteryChanged = Test.green}
-System.fields = {'os', 'osVersion', 'deviceKind', 'deviceModel', 'manufacturer', 'cpuName', 'cpuCores', 'gpuName', 'locale', 'timeZone'}
+System.events = {'systemThemeChanged', 'batteryChanged'}
+System.fields = {
+    {'os', 'System'}, {'osVersion', 'Version'}, {'deviceKind', 'Kind of device'}, {'deviceModel', 'Model'}, {'manufacturer', 'Manufacturer'},
+    {'cpuName', 'Processor'}, {'cpuCores', 'Processor cores'}, {'gpuName', 'Graphics'}, {'memoryBytes', 'Memory'}, {'locale', 'Language'},
+    {'languages', 'Preferred languages'}, {'timeZone', 'Time zone'}, {'theme', 'Theme'}, {'battery', 'Battery'},
+}
+System.kept = 20
+System.longest = 44
+
+-- The states of the battery in words, without the ones the platform keeps to itself.
+System.batteryStates = {charging = 'charging', discharging = 'on battery power', full = 'full', none = 'no battery'}
 
 local function describeBattery(battery)
-    local level = battery.level and string.format('%.0f%%', battery.level * 100) or 'unknown'
-    return string.format('State "%s", level %s, %s', battery.state, level, battery.charging and 'charging' or 'not charging')
+    local state = System.batteryStates[battery.state]
+    if not state then
+        return 'Not reported'
+    end
+    if not battery.level then
+        return state:sub(1, 1):upper() .. state:sub(2)
+    end
+    return string.format('%.0f percent, %s', battery.level * 100, state)
+end
+
+-- Shortens a long name, such as the renderer string of a browser, to what fits a row, and keeps the whole of it for the tooltip.
+local function shortened(text)
+    local renderer = text:match('^ANGLE %(.-,%s*(.-)%s*,') or text
+    if #renderer > System.longest then
+        return renderer:sub(1, System.longest - 1) .. '…'
+    end
+    return renderer
 end
 
 function System:enter()
     self.device = system.info()
-    self.journal = Journal(16)
-    for name, color in pairs(System.events) do
+    self.lines = {}
+    self.logged = 0
+    for _, name in ipairs(System.events) do
         self:listen(name, function(data)
-            self.journal:add(string.format('Event "%s": %s', name, json.encode(data)), color)
+            self:record(string.format('Event "%s"', name), name == 'batteryChanged' and describeBattery(data) or 'The theme is now "' .. tostring(data.theme) .. '".')
         end)
     end
+    local rows = {}
+    for index, field in ipairs(System.fields) do
+        rows[index] = ui.row{gap = 16, alignItems = 'start',
+            ui.label{text = field[2], color = 'textMuted', width = 300},
+            ui.label{id = 'value-' .. field[1], text = '', grow = 1},
+        }
+    end
     self:frame{
-        hint = 'Switch the system between light and dark or plug the charger in, and the change arrives as an event. On an Android emulator, "adb shell cmd uimode night yes" and "no" switch the theme, and "adb shell dumpsys battery set level 37" and "reset" change the battery.',
+        hint = 'Switch the system between light and dark or plug the charger in, and the change arrives as an event.',
         focus = 'open',
         controls = {
             ui.button{id = 'open', text = 'Open "example.com"', variant = 'primary', onClick = function() self:open('https://example.com') end},
             ui.button{id = 'openNothing', text = 'Open an address no app takes', onClick = function() self:open('haylen-tests-nothing://open') end},
             ui.button{id = 'vibrate', text = 'Vibrate for 80 ms', onClick = function() self:vibrate() end},
-            ui.label{text = 'Android phones and phone browsers vibrate, iPhones play a haptic impact and the other devices do nothing. Values a platform does not report are "nil".', color = 'textMuted', font = 'caption'},
+            ui.label{text = haylen.platform == 'android' and 'On an emulator, "adb shell cmd uimode night yes" switches the theme, and "adb shell dumpsys battery set level 37" changes the battery.' or 'Android phones and phone browsers vibrate, iPhones play a haptic impact and the other devices do nothing.', color = 'textMuted', font = 'caption'},
         },
-        code = "local info = system.info()\nsystem.theme()\nsystem.battery()\nsystem.openUrl(url):await()",
+        content = {ui.row{grow = 1, gap = 24, align = 'stretch',
+            ui.panel{grow = 1, align = 'stretch', gap = 12,
+                ui.sectionTitle{text = 'What the system tells'},
+                ui.scroll{grow = 1, height = 0, ui.column{gap = 10, children = rows}},
+            },
+            ui.panel{width = 600, align = 'stretch', gap = 12,
+                ui.sectionTitle{text = 'Events and answers'},
+                ui.column{id = 'eventsEmpty', grow = 1, gap = 16, justify = 'center', align = 'stretch',
+                    ui.icon{image = 'plugins/bell.svg', size = 96, color = 'textMuted', align = 'center'},
+                    ui.label{text = 'Nothing yet. Open an address, or switch the theme of the system, to see the answer arrive.', color = 'textMuted', textAlign = 'center', align = 'center', maxWidth = 440},
+                },
+                ui.scroll{id = 'eventsScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'events', items = {}}},
+            },
+        }},
+        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level)\nlocal opened = system.openUrl('https://example.com'):await()\nsystem.vibrate(0.08)",
     }
+    self:showValues()
+end
+
+function System:record(text, detail)
+    self.logged = self.logged + 1
+    table.insert(self.lines, 1, {id = 'line-' .. self.logged, text = text, caption = os.date('%H:%M:%S') .. '  ' .. detail})
+    self.lines[System.kept + 1] = nil
+    self:set('events', {items = self.lines})
+    self:set('eventsEmpty', {visible = false})
+    self:set('eventsScroll', {visible = true})
 end
 
 -- Opens an address in a task of the scene, which waits for the answer and ends with the scene.
 function System:open(url)
     local frame = haylen.frameIndex()
-    self.journal:add(string.format('Called "system.openUrl" with "%s".', url), Test.accent)
+    self:record('Opening an address', '"' .. url .. '"')
     self:spawn(function()
         local opened = system.openUrl(url):await()
-        local text = string.format('The address "%s" answered after %d frames: %s.', url, haylen.frameIndex() - frame, opened and 'an app took it' or 'no app took it')
-        self.journal:add(text, opened and Test.green or Test.red)
+        self:record(opened and 'An app took the address' or 'No app took the address', string.format('"%s" answered after %d frames.', url, haylen.frameIndex() - frame))
     end)
 end
 
 function System:vibrate()
     system.vibrate(0.08)
-    self.journal:add('Called "system.vibrate(0.08)".', Test.accent)
+    self:record('Vibrating', 'The call "system.vibrate(0.08)" asked for 80 ms.')
 end
 
-function System:rows()
-    local rows = {}
+-- The value of each field for people, with the fields the platform does not report marked so.
+function System:values()
+    local device = self.device
+    local values = {}
     for _, field in ipairs(System.fields) do
-        local value = self.device[field]
-        local shown = type(value) == 'string' and '"' .. value .. '"' or tostring(value)
-        rows[#rows + 1] = {'"' .. field .. '"', value ~= nil and shown or 'Not reported'}
+        local value = device[field[1]]
+        values[field[1]] = value ~= nil and tostring(value) or 'Not reported'
     end
-    local memory = self.device.memoryBytes
-    rows[#rows + 1] = {'"memoryBytes"', memory and string.format('%.1f GB', memory / 2 ^ 30) or 'Not reported'}
-    rows[#rows + 1] = {'"languages"', #self.device.languages > 0 and '"' .. table.concat(self.device.languages, '", "') .. '"' or 'Not reported'}
-    rows[#rows + 1] = {'"system.theme()"', '"' .. system.theme() .. '"'}
-    rows[#rows + 1] = {'"system.battery()"', describeBattery(system.battery())}
-    return rows
+    values.gpuName = device.gpuName and shortened(device.gpuName) or 'Not reported'
+    values.memoryBytes = device.memoryBytes and string.format('%.1f GB', device.memoryBytes / 2 ^ 30) or 'Not reported'
+    values.languages = #device.languages > 0 and table.concat(device.languages, ', ') or 'Not reported'
+    values.theme = system.theme()
+    values.battery = describeBattery(system.battery())
+    return values
+end
+
+function System:showValues()
+    self.shown = self.shown or {}
+    for key, value in pairs(self:values()) do
+        if self.shown[key] ~= value then
+            self.shown[key] = value
+            self:set('value-' .. key, {text = value})
+        end
+    end
+    if self.device.gpuName and not self.gpuTooltip then
+        self.gpuTooltip = true
+        self:set('value-gpuName', {tooltip = self.device.gpuName})
+    end
 end
 
 function System:update(dt)
     System.super.update(self, dt)
-    local name = self.device.osVersion and self.device.os .. ' ' .. self.device.osVersion or self.device.os
-    self:status(string.format('System "%s" on a "%s", theme "%s", battery "%s"', name, self.device.deviceKind, system.theme(), system.battery().state))
-end
-
-function System:draw(area)
-    local y = 20
-    for _, row in ipairs(self:rows()) do
-        Test.caption(row[1], 24, y, {size = 20})
-        Test.caption(row[2], 300, y, {size = 20, color = Test.ink, maxWidth = area.width - 324})
-        y = y + 30
-    end
-    Test.caption('Events and answers', 24, y + 20, {size = 22, color = Test.ink})
-    self.journal:draw(24, y + 56, area.height - y - 76, 19)
+    self:showValues()
 end
 
 return System
