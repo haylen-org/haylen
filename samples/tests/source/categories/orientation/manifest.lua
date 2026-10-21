@@ -8,6 +8,6 @@ return {
         {code = 'ORI-002', title = 'Locking the orientation', description = 'Locking the screen in portrait, in landscape or letting it turn, and where each platform allows it.', module = 'lock'},
         {code = 'ORI-003', title = 'Adaptive layout', description = 'A screen that stacks its parts in portrait and places them side by side in landscape.', module = 'adaptive'},
         {code = 'ORI-004', title = 'Design resolution and scaling', description = 'How "fit", "fill", "stretch", "expand", "pixelPerfect", "fitWidth" and "none" map the design resolution onto screens of every shape.', module = 'scaling'},
-        {code = 'ORI-005', title = 'Folds and dual screens', description = 'A map and its instruments laid out around the fold of a book, a tabletop, a fold opened flat and the hinge of a dual-screen device, simulated or reported by the device.', module = 'fold'},
+        {code = 'ORI-005', title = 'Folds and dual screens', description = 'A map and its instruments laid out around the fold of a book, a tabletop, a fold opened flat or the hinge of a dual screen.', module = 'fold'},
     },
 }

@@ -44,22 +44,27 @@ end
 
 function Adaptive:portrait()
     return ui.card{gap = 16, align = 'stretch',
-        ui.row{gap = 24, ui.avatar{name = 'Ana Souza', size = 140}, ui.column{grow = 1, gap = 4, ui.label{text = 'Ana Souza', font = 'title'}, ui.label{text = 'Captain of the Gull, level 12', color = 'textMuted'}}},
+        ui.row{gap = 24, ui.avatar{image = 'interface/images/avatar-ana.png', size = 140}, ui.column{grow = 1, gap = 4, ui.label{text = 'Ana Souza', font = 'title'}, ui.label{text = 'Captain of the Gull, level 12', color = 'textMuted'}}},
         ui.row{gap = 12, ui.badge{text = 'Navigator', tone = 'accent', solid = true}, ui.badge{text = 'Fearless', tone = 'success'}, ui.badge{text = 'Seasick', tone = 'warning'}},
     }
 end
 
 function Adaptive:stats()
-    return ui.card{gap = 12, align = 'stretch',
+    return ui.card{gap = 16, align = 'stretch',
         ui.sectionTitle{text = 'Stats'},
-        ui.progress{value = 0.82, tone = 'success', text = 'Health 82'},
-        ui.progress{value = 0.45, tone = 'information', text = 'Stamina 45'},
-        ui.progress{value = 0.6, text = 'Experience 60%'},
+        Adaptive.stat('Health', 0.82, 'success', '82'),
+        Adaptive.stat('Stamina', 0.45, 'warning', '45'),
+        Adaptive.stat('Experience', 0.6, 'accent', '60%'),
     }
 end
 
+-- A stat reads as its name, its bar and its value, so no text crosses the end of the fill.
+function Adaptive.stat(name, value, tone, shown)
+    return ui.row{gap = 16, ui.label{text = name, width = 170}, ui.progress{value = value, tone = tone, grow = 1}, ui.label{text = shown, width = 80, textAlign = 'end', color = 'textMuted'}}
+end
+
 function Adaptive:actions(stacked)
-    local press = function(event) self.last = ', pressed "' .. event.id .. '"' end
+    local press = function(event) self.last = ' You pressed ' .. event.id:sub(1, 1):upper() .. event.id:sub(2) .. '.' end
     local buttons = {
         ui.button{id = 'equip', text = 'Equip', variant = 'primary', grow = stacked and 0 or 1, align = stacked and 'stretch' or nil, onClick = press},
         ui.button{id = 'train', text = 'Train', grow = stacked and 0 or 1, align = stacked and 'stretch' or nil, onClick = press},
@@ -73,9 +78,9 @@ function Adaptive:layout(shape)
     if shape == 'portrait' then
         return ui.column{gap = 24, self:portrait(), self:stats(), self:actions(true)}
     end
-    return ui.row{gap = 24,
-        ui.column{grow = 1, gap = 24, align = 'start', self:portrait()},
-        ui.column{grow = 1, gap = 24, align = 'start', self:stats(), self:actions(false)},
+    return ui.row{gap = 24, alignItems = 'start',
+        ui.column{grow = 1, gap = 24, self:portrait(), self:actions(false)},
+        ui.column{grow = 1, gap = 24, self:stats()},
     }
 end
 
@@ -88,7 +93,7 @@ function Adaptive:update(dt)
         self.gui:command('equip', 'focus')
     end
     local visible = viewport.visibleRect()
-    self:status(string.format('Laid out for "%s", visible %.0f x %.0f design units%s.', shape, visible.width, visible.height, self.last))
+    self:status(string.format('The screen is laid out for %s in %.0f by %.0f design units.%s', shape, visible.width, visible.height, self.last))
 end
 
 return Adaptive

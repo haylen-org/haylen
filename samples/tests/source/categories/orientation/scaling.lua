@@ -1,10 +1,12 @@
 -- The app lays out in design units, and the scaling policy of `app.json` maps them onto the screen. The preview applies each policy to screens of other shapes, and the live values show how this app is mapped right now, in either orientation.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
+local Device = require('categories.safe-area.device')
 local Test = require('harness.test')
 
 local Scaling = haylen.class('Scaling', Test)
@@ -18,18 +20,21 @@ local unitX, unitY = viewport.pixelsPerUnit()]]
 
 Scaling.policies = {{id = 'fit', text = 'Fit'}, {id = 'fill', text = 'Fill'}, {id = 'stretch', text = 'Stretch'}, {id = 'expand', text = 'Expand'}, {id = 'pixelPerfect', text = 'Pixel perfect'}, {id = 'fitWidth', text = 'Fit width'}, {id = 'none', text = 'None'}}
 Scaling.screens = {
-    {id = 'phone-portrait', text = 'Phone in portrait', width = 1170, height = 2532},
-    {id = 'phone-landscape', text = 'Phone in landscape', width = 2532, height = 1170},
-    {id = 'tablet', text = 'Tablet', width = 2048, height = 1536},
-    {id = 'ultrawide', text = 'Ultrawide monitor', width = 3440, height = 1440},
-    {id = 'full-hd', text = 'Full HD monitor', width = 1920, height = 1080},
-    {id = 'small', text = 'Small window', width = 800, height = 600},
+    {id = 'phone-portrait', text = 'Phone in portrait', width = 1170, height = 2532, device = 'island'},
+    {id = 'phone-landscape', text = 'Phone in landscape', width = 2532, height = 1170, device = 'island', sideways = true},
+    {id = 'tablet', text = 'Tablet', width = 2048, height = 1536, device = 'tablet', sideways = true},
+    {id = 'ultrawide', text = 'Ultrawide monitor', width = 3440, height = 1440, device = 'tv'},
+    {id = 'full-hd', text = 'Full HD monitor', width = 1920, height = 1080, device = 'tv'},
+    {id = 'small', text = 'Small window', width = 800, height = 600, device = 'tv'},
 }
 
 function Scaling:init(entry)
     Scaling.super.init(self, entry)
     self.policy = viewport.scaling()
     self.screen = Scaling.screens[1]
+    self.scenery = assets.texture('interface/images/landscape.png', {filter = 'linear'})
+    self.heart = assets.texture('interface/themes/fantasy/icons/heart.png', {filter = 'linear'})
+    self.coin = assets.texture('interface/themes/fantasy/icons/coin.png', {filter = 'linear'})
 end
 
 function Scaling:enter()
@@ -53,9 +58,9 @@ function Scaling:enter()
                     end
                 end
             end},
-            ui.label{id = 'mapping', text = '', font = 'monospace'},
+            ui.table{id = 'mapping', columns = {{text = 'Preview', width = 170}, {text = 'Value'}}},
             ui.sectionTitle{text = 'This app now'},
-            ui.label{id = 'live', text = '', font = 'monospace'},
+            ui.table{id = 'live', columns = {{text = 'Measure', width = 170}, {text = 'Value'}}},
         },
     }
 end
@@ -92,11 +97,24 @@ function Scaling:map(width, height)
     return scale, scale, offsetX, offsetY, designWidth, designHeight
 end
 
-function Scaling:show(id, text)
-    if self[id] ~= text then
-        self[id] = text
-        self:set(id, {text = text})
+-- Sets the rows of a table of two columns from pairs of a name and a value, only when a value changed.
+function Scaling:show(id, pairs)
+    local key = table.concat(pairs, '|')
+    if self[id] == key then
+        return
     end
+    self[id] = key
+    local rows = {}
+    for index = 1, #pairs, 2 do
+        rows[#rows + 1] = {id = id .. index, cells = {pairs[index], pairs[index + 1]}}
+    end
+    self:set(id, {rows = rows})
+end
+
+-- Formats a number with the decimals it needs, never as "-0".
+function Scaling.number(value, decimals)
+    local text = string.format('%.' .. (decimals or 0) .. 'f', value)
+    return (text:gsub('^%-(0[%.0]*)$', '%1'))
 end
 
 function Scaling:update(dt)
@@ -104,70 +122,69 @@ function Scaling:update(dt)
     local screen = self.screen
     local scaleX, scaleY, offsetX, offsetY, visibleWidth, visibleHeight = self:map(screen.width, screen.height)
     local designWidth, designHeight = viewport.designSize()
-    self:show('mapping', string.format('Scale    %.3f x %.3f\nDesign   %.0f x %.0f pixels at %.0f, %.0f\nVisible  %.0f x %.0f design units', scaleX, scaleY, designWidth * scaleX, designHeight * scaleY, offsetX, offsetY, visibleWidth, visibleHeight))
-    local visible, pixels = viewport.visibleRect(), viewport.pixelRect()
-    local unitX, unitY = viewport.pixelsPerUnit()
+    local n = Scaling.number
+    self:show('mapping', {
+        'Scale', scaleX == scaleY and n(scaleX, 2) or n(scaleX, 2) .. ' by ' .. n(scaleY, 2),
+        'Design', string.format('%s by %s pixels', n(designWidth * scaleX), n(designHeight * scaleY)),
+        'Placed at', string.format('%s, %s', n(offsetX), n(offsetY)),
+        'Visible', string.format('%s by %s units', n(visibleWidth), n(visibleHeight)),
+    })
+    local visible = viewport.visibleRect()
+    local unitX = viewport.pixelsPerUnit()
     local width, height = window.framebufferSize()
-    self:show('live', string.format('Design   %.0f x %.0f, "%s"\nWindow   %.0f x %.0f pixels\nVisible  %.0f, %.0f, %.0f x %.0f units\nPixels   %.0f, %.0f, %.0f x %.0f\nPer unit %.3f x %.3f pixels', designWidth, designHeight, viewport.scaling(), width, height, visible.x, visible.y, visible.width, visible.height, pixels.x, pixels.y, pixels.width, pixels.height, unitX, unitY))
-    self:status(string.format('Policy "%s" on the %s.', self.policy, self.screen.text:lower()))
+    self:show('live', {
+        'Design', string.format('%s by %s, "%s"', n(designWidth), n(designHeight), viewport.scaling()),
+        'Window', string.format('%s by %s pixels', n(width), n(height)),
+        'Visible', string.format('%s by %s units at %s, %s', n(visible.width), n(visible.height), n(visible.x), n(visible.y)),
+        'Per unit', string.format('%s pixels', n(unitX, 2)),
+    })
+    self:status(string.format('The policy "%s" maps the design onto the %s.', self.policy, self.screen.text:lower()))
 end
 
--- Draws a small picture of the design area through `place`, which maps design units to the preview.
-local function drawDesign(place, scaleX, scaleY)
+-- Draws the design area through `place`, which maps design units to the preview: the painted scenery of the app, a HUD in its top-left corner and coins in its other corners, which show where the policy puts the edges of the design.
+function Scaling:drawDesign(place, scaleX, scaleY)
     local designWidth, designHeight = viewport.designSize()
-    local function corner(x, y)
-        local px, py = place(x, y)
-        return {x = px, y = py}
+    local left, top = place(0, 0)
+    graphics2d.draw(self.scenery, left, top, {width = designWidth * scaleX, height = designHeight * scaleY, pivotX = 0, pivotY = 0, layer = 1})
+    local hudX, hudY = place(40, 40)
+    graphics2d.drawShape({hudX, hudY, 380 * scaleX, 120 * scaleY}, {radius = 30 * math.min(scaleX, scaleY), color = '#C0151826', borderWidth = 6 * math.min(scaleX, scaleY), borderColor = '#FF15172A', layer = 2})
+    for index = 0, 2 do
+        local x, y = place(70 + index * 105, 60)
+        graphics2d.draw(self.heart, x, y, {width = 80 * scaleX, height = 80 * scaleY, pivotX = 0, pivotY = 0, layer = 3})
     end
-    local function rect(x, y, width, height, color)
-        local left, top = place(x, y)
-        graphics2d.drawRect({left, top, width * scaleX, height * scaleY}, color)
+    for _, corner in ipairs({{designWidth - 130, 40}, {40, designHeight - 130}, {designWidth - 130, designHeight - 130}}) do
+        local x, y = place(corner[1], corner[2])
+        graphics2d.draw(self.coin, x, y, {width = 90 * scaleX, height = 90 * scaleY, pivotX = 0, pivotY = 0, layer = 3})
     end
-    local function ellipse(cx, cy, radius, color)
-        local points = {}
-        for step = 0, 23 do
-            local angle = step / 24 * math.pi * 2
-            points[#points + 1] = {place(cx + math.cos(angle) * radius, cy + math.sin(angle) * radius)}
-        end
-        graphics2d.drawPolygon(points, color)
-    end
-    local sky = {corner(0, 0), corner(designWidth, 0), corner(designWidth, 800), corner(0, 800)}
-    sky[1].color, sky[2].color, sky[3].color, sky[4].color = '#FF4FA3E0', '#FF4FA3E0', '#FFBFE6FF', '#FFBFE6FF'
-    graphics2d.drawMesh(nil, sky, {1, 2, 3, 1, 3, 4})
-    ellipse(1500, 260, 120, '#FFFFF3B0')
-    graphics2d.drawPolygon({{place(0, 800)}, {place(400, 520)}, {place(760, 800)}}, '#FF6D8FB3')
-    graphics2d.drawPolygon({{place(560, 800)}, {place(1000, 460)}, {place(1440, 800)}}, '#FF5B7AA0')
-    rect(0, 800, designWidth, designHeight - 800, '#FF3F7A57')
-    rect(1180, 600, 300, 200, '#FFF3E6C4')
-    graphics2d.drawPolygon({{place(1150, 600)}, {place(1330, 460)}, {place(1510, 600)}}, '#FFB53A2E')
-    rect(40, 40, 560, 110, '#C0101418')
-    local size = math.min(scaleX, scaleY)
-    local hudX, hudY = place(70, 60)
-    graphics2d.drawText(nil, 'HUD at 40, 40', hudX, hudY, {size = 56 * size})
-    local endX, endY = place(designWidth - 30, designHeight - 30)
-    graphics2d.drawText(nil, '1920, 1080', endX, endY, {size = 48 * size, anchor = {1, 1}})
-    graphics2d.drawPolyline({{place(0, 0)}, {place(designWidth, 0)}, {place(designWidth, designHeight)}, {place(0, designHeight)}}, 3, '#FFFFFFFF', true)
+    local right, bottom = place(designWidth, designHeight)
+    graphics2d.drawShape({left, top, right - left, bottom - top}, {color = '#00000000', borderWidth = 3, borderColor = '#E6FFFFFF', layer = 4})
 end
 
+-- The simulated screen sits in the device it belongs to, a phone, a tablet or a monitor, and shows the extra area of "expand" as a soft hatched band, the letterboxing as black and the design area in its place.
 function Scaling:draw(area)
     local screen = self.screen
-    local fit = math.min((area.width - 60) / screen.width, (area.height - 60) / screen.height)
+    local fit = math.min((area.width - 160) / screen.width, (area.height - 140) / screen.height)
     local screenRect = {(area.width - screen.width * fit) / 2, (area.height - screen.height * fit) / 2, screen.width * fit, screen.height * fit}
     local scaleX, scaleY, offsetX, offsetY = self:map(screen.width, screen.height)
+    local device, radius = Device.around(screen.device, screenRect, screen.sideways)
+    device.screen = '#FF000000'
+    device.layer = -10
+    Device.draw(device)
 
-    graphics2d.drawRect({screenRect[1] - 18, screenRect[2] - 18, screenRect[3] + 36, screenRect[4] + 36}, Test.line)
-    graphics2d.drawRect(screenRect, '#FF000000')
-    graphics2d.pushClip(screenRect)
+    graphics2d.pushMask(function()
+        graphics2d.drawShape(screenRect, {radius = radius, color = '#FFFFFFFF'})
+    end)
     -- The policy `expand` shows more than the design area, which the app is expected to fill.
     if self.policy == 'expand' then
-        for offset = -screenRect[4], screenRect[3], 24 do
-            graphics2d.drawLine(screenRect[1] + offset, screenRect[2] + screenRect[4], screenRect[1] + offset + screenRect[4], screenRect[2], 6, '#FF3A4058')
+        graphics2d.drawRect(screenRect, '#FF262B3D')
+        for offset = -screenRect[4], screenRect[3], 28 do
+            graphics2d.drawLine(screenRect[1] + offset, screenRect[2] + screenRect[4], screenRect[1] + offset + screenRect[4], screenRect[2], 8, '#1AFFFFFF')
         end
     end
-    drawDesign(function(x, y)
+    self:drawDesign(function(x, y)
         return screenRect[1] + (offsetX + x * scaleX) * fit, screenRect[2] + (offsetY + y * scaleY) * fit
     end, scaleX * fit, scaleY * fit)
-    graphics2d.popClip()
+    graphics2d.popMask()
 end
 
 return Scaling

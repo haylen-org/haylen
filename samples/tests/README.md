@@ -626,7 +626,7 @@ The orientation of the screen with its events and its lock, a layout that adapts
 | `ORI-002` | Locking the orientation | Locking the screen in portrait, in landscape or letting it turn, and where each platform allows it. |  |
 | `ORI-003` | Adaptive layout | A screen that stacks its parts in portrait and places them side by side in landscape. |  |
 | `ORI-004` | Design resolution and scaling | How "fit", "fill", "stretch", "expand", "pixelPerfect", "fitWidth" and "none" map the design resolution onto screens of every shape. |  |
-| `ORI-005` | Folds and dual screens | A map and its instruments laid out around the fold of a book, a tabletop, a fold opened flat and the hinge of a dual-screen device, simulated or reported by the device. |  |
+| `ORI-005` | Folds and dual screens | A map and its instruments laid out around the fold of a book, a tabletop, a fold opened flat or the hinge of a dual screen. |  |
 
 #### Safe area (SAF)
 
