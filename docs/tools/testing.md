@@ -1,6 +1,6 @@
 # 🧪 Testing
 
-Every engine capability that can run without a real graphics device or platform runtime has GoogleTest tests, and every Lua binding is tested by running Lua through a headless engine. This guide explains how the suite is organized, how the headless host and the engine fixture work, how to run the tests, coverage and the formatter, what the CI workflow checks and how to test a new binding.
+This guide is for people who change the engine and need to prove that it works. Every capability of the engine that runs without a real graphics device or platform has GoogleTest tests, and every Lua binding is tested by running Lua through a headless engine. The guide explains how the suite is organized, how the headless host and the engine fixture work, and how to test a new binding. It also covers the commands `test`, `coverage`, `fuzz` and `format`, the test project, the tests of `haylen.py` and continuous integration.
 
 ## Layout
 
@@ -8,94 +8,116 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 
 | Path | Contents |
 | --- | --- |
-| `engine/tests/<module>/` | Tests of one engine module, such as `core/EngineTests.cpp` or `io/IoTests.cpp`. |
-| `engine/tests/2d/<module>/` | Tests of the 2D modules, like the engine's own `2d` folders: `animation`, `graphics` (the renderer, fonts, cameras and their Lua binding), `lighting`, `navigation`, `particles`, `physics`, `spatial` and `tiled`. |
-| `engine/tests/lua/` | Binding tests of the core, math, input and assets modules, and of the Lua runtime and the binding toolkit. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
-| `engine/tests/support/` | Shared helpers in `haylen::test`: `EngineFixture` with `DrawingScene` and the test data helpers, `TemporaryDirectory`, `TestApplication`, `VarnRuntime`, and the helpers of the content tests, `ReleaseFixture`, `CountingPackage`, `AllocationTracker`, `ContentParsers` and the stand-ins of servers, devices, stores and key providers. |
+| `engine/tests/<module>/` | The tests of one module of the engine, such as `core/EngineTests.cpp` or `io/IoTests.cpp`. |
+| `engine/tests/2d/<module>/` | The tests of the 2D modules, which follow the `2d` folders of the engine: `animation`, `graphics` (the renderer, fonts, cameras and their Lua binding), `lighting`, `navigation`, `particles`, `physics`, `spatial` and `tiled`. |
+| `engine/tests/lua/` | The binding tests of the core, math, input and assets modules, and of the Lua runtime and the binding toolkit. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
+| `engine/tests/support/` | The shared helpers in `haylen::test`, which [the engine fixture](#the-engine-fixture) lists. |
 | `engine/tests/fuzz/` | The entry points of the fuzzers of the content formats, of input recordings, of MessagePack and of image placeholders, which the option `HAYLEN_BUILD_FUZZERS` builds. |
-| `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
-| `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, MP3, with and without the header that tells its length, and FLAC, which the streaming tests decode. CMake passes the folder to the tests as `HAYLEN_TEST_AUDIO`. |
-| `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation. CMake passes the folder to the tests as `HAYLEN_TEST_VIDEO`. |
-| `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native-test` next to `haylen-tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
+| `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters that the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
+| `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, in MP3 with and without the header that tells its length, and in FLAC, which the streaming tests decode. CMake passes the folder as `HAYLEN_TEST_AUDIO`. |
+| `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation. CMake passes the folder as `HAYLEN_TEST_VIDEO`. |
+| `engine/tests/native/` | The file `NativeTest.c`, a plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
 | `engine/tests/backends/<backend>/` | The tests of a backend, which its `backend.cmake` names in `HAYLEN_BACKEND_TEST_SOURCES`, such as `backends/sokol/EventsTests.cpp`, which tests the translation of the events of `sokol_app`. |
-| `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen-tests` target, which also compiles the tests of the backend of the build. |
+| `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`, which also compiles the tests of the backend of the build. |
 
-The target `haylen-tests` links `haylen::engine`, `haylen::headless`, the libraries of the tests of the backend in `HAYLEN_BACKEND_TEST_LIBRARIES` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory and a timeout of 120 seconds, far above the few seconds the slowest test takes, so a test that hangs fails on its own and the rest of the suite still runs. On Windows the target also compiles `WindowsVideoDecoder` and `WindowsSettings` from the runtime, which need no window, so `WindowsVideoDecoderTest` decodes the clip of `data/video` with Media Foundation and `WindowsSettingsTest` reads the accessibility settings of the user. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
+The target `haylen-tests` links `haylen::engine`, `haylen::headless`, the libraries of the tests of the backend in `HAYLEN_BACKEND_TEST_LIBRARIES` and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
 
-Every test file lives in the namespace of the context it tests, such as `haylen::input`, `haylen::storage` or `haylen::ui`, and the shared helpers live in `haylen::test`, one class per file. A test file has no free functions or namespace-scope variables: its helpers and constants are members of its fixtures, and suites that share them derive from the fixture that holds them. Test suites are named after the subject with a `Test` suffix, such as `SceneManagerTest` or `SpatialLuaTest`, and test names state the behavior they verify, such as `RequiresModulesFromThePackageOnly`.
+The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. Each test has a timeout of 120 seconds, far above the few seconds that the slowest test takes. So a test that hangs fails on its own, and the rest of the suite still runs.
+
+On Windows the target also compiles `WindowsVideoDecoder` and `WindowsSettings` from the runtime, which need no window. So `WindowsVideoDecoderTest` decodes the clip of `data/video` with Media Foundation, and `WindowsSettingsTest` reads the accessibility settings of the user. The suite builds only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on. That is the default when the engine or the root of the repository is the top-level project.
+
+Every test file lives in the namespace of the context it tests, such as `haylen::input`, `haylen::storage` or `haylen::ui`. The shared helpers live in `haylen::test`, one class per file. A test file has no free functions or namespace-scope variables. Its helpers and constants are members of its fixtures, and suites that share them derive from the fixture that holds them. A suite takes the name of its subject with a `Test` suffix, such as `SceneManagerTest` or `SpatialLuaTest`. A test takes the name of the behavior it checks, such as `RequiresModulesFromThePackageOnly`.
 
 ## The headless host
 
-The class `platform::HeadlessHost`, in `engine/src/platform/headless/`, implements the engine's `platform::Host` interface without a window or a GPU, so the real engine loop runs in tests.
+The class `platform::HeadlessHost`, in `engine/src/platform/headless/`, implements the `platform::Host` interface of the engine without a window or a GPU. So the real engine loop runs in tests.
 
-- The host draws through `gpu::NullDevice` (`engine/src/gpu/NullDevice.hpp`), the GPU device of the headless host, so the renderer, textures, render targets and the UI run and record statistics without drawing anything. The device checks every call against the contract of `gpu::Device` and throws `std::logic_error` on a broken one, so a test fails when the engine uses an object that does not exist, opens a pass inside another, draws outside a pass or without a pipeline, leaves a slot of the program unbound, hands a uniform block the wrong size or writes the dynamic images of a frame in more than one call or after its first pass, since a real device stages every image of a frame before it copies any of them. Its pools bound how many images, buffers, samplers, programs and pipelines exist, like the pools of a real device. It keeps what the last committed frame did, which a test reads with `fixture.host().getGpu().getLastFrame()`: its passes with whether each drew into the swapchain, its clear color, the write masks of its pipelines and its draws, and the image writes, their bytes and the buffer writes of the frame. A `gpu::NullDevice` that a test makes with a shader language, such as `gpu::Device::Language::Glsl300es`, asks every program for code in that language, so a test sees what a shader package lacks. The root `haylen` Lua module reports `'none'` as its `graphicsApi` and `'headless'` as its `platform`.
-- The audio mixer of the headless host has no device and keeps time, mixing the time of each frame into silence, so voices, fades and music end as they would on a device, while a mixer that a test makes without a device mixes only when the test asks it to. Tests of a mixer with a device give it an `audio::OutputBackend` of their own, which refuses the audio, opens a device that never plays or keeps the opening waiting the way an audio service that hangs does, so no test reaches the audio hardware. The method `setAudioOutput(backend)` gives the mixers of the engines created afterwards a device that opens through such a backend, which the option `audioOutput` of the engine fixture sets.
-- User data goes to a folder the test chooses, and `getPersistCount()` counts the requests to make it durable.
-- Bridge calls are recorded in `getPlatformCalls()` with their JSON parameters and byte buffers instead of reaching native code, and the calls the bridge gave up through a timeout or a cancel in `getCancelledCalls()`.
-- The methods `resize(size)`, `setSafeAreaInsets(insets)`, `setFold(fold)` and `setGamepad(index, state)` change what the engine sees, and `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
-- The method `getNativeViews()` returns the `platform::NativeViews` of the headless screen, whose `reserveInsets(key, insets)`, `releaseInsets(key)`, `coverApp()` and `uncoverApp()` a test calls from any thread, the way the native views of plugins do. The engine takes them at the start of the next frame, and they outlive the engines that a test restarts on the host.
-- The method `setNativePlugins(ids)` sets the plugins whose native part the headless platform reports, and `getErrorReports()` returns the JSON report of every error that stopped an app, in order.
-- The method `setSystemInfo(info)` sets what the headless system reports to the apps that start afterwards, which starts as a desktop of the operating system the tests run on with the cores of the machine, and the null device names no GPU. The methods `setTheme(theme)` and `setBattery(battery)` change the theme and the battery from any thread, the way platform services report them, and the engine publishes the change at its next frame.
-- The method `openUrl` records the urls in `getOpenedUrls()` and answers at once that an app took them, or that none did after `setOpensUrls(false)`, and `getVibrations()` returns the seconds of every vibration.
-- The method `enableDevelopment(folder)` gives the host a `platform::DevelopmentSession`, so the engines created afterwards run in development, and with a folder the session scans it for changes the way the player does. It outlives the engines a test restarts on the host, like the session of the runtime.
-- The method `setNetworkRequirement(sentence)` sets what the network errors of the apps that start afterwards end with, the way Android reports an app without the permission `INTERNET`.
-- The method `getDialogRequests()` returns the id, the `DialogRequest` and the folder for copies of every native dialog the engine asked for, and `getCancelledDialogs()` the ids of the dialogs it closed after a cancel, a timeout or the end of its app. A test answers a dialog with `engine.getDialogs().resolve(id, result)`, or from another thread through `DialogRelay::resolve`, the way platform code does.
-- The method `getScreenRequests()` returns the `ScreenRequest` of every screen of a plugin that the engine handed to the platform, once it covered the app, and `getCancelledScreens()` the ids of the screens it gave up. A test ends a screen from any thread through `ScreenRelay::finish(id, ok, resultJson, buffers)`, and restores the end of a screen of an earlier process through `ScreenRelay::restore`, the way platform code does. The screen that shows belongs to the process, like the covers of native libraries, so a test ends the screens it opened.
+- The host draws through `gpu::NullDevice` (`engine/src/gpu/NullDevice.hpp`), the GPU device of the headless host. The renderer, textures, render targets and the UI run and record their statistics without drawing anything.
+- The device checks every call against the contract of `gpu::Device` and throws `std::logic_error` on a broken one. So a test fails when the engine uses an object that does not exist, opens a pass inside another, draws outside a pass or without a pipeline, leaves a slot of the program unbound or hands a uniform block the wrong size. It also fails when the engine writes the dynamic images of a frame in more than one call or after its first pass, since a real device stages every image of a frame before it copies any of them.
+- Its pools limit how many images, buffers, samplers, programs and pipelines exist, like the pools of a real device.
+- It keeps what the last committed frame did, which a test reads with `fixture.host().getGpu().getLastFrame()`. That is its passes, with whether each drew into the swapchain, its clear color, the write masks of its pipelines and its draws, and the image writes, their bytes and the buffer writes of the frame.
+- A `gpu::NullDevice` that a test makes with a shader language, such as `gpu::Device::Language::Glsl300es`, asks every program for code in that language. So a test sees what a shader package lacks.
+- The root module `haylen` reports `'none'` as its `graphicsApi` and `'headless'` as its `platform`.
 
-Only one engine runs at a time in a process, and creating a second one throws `Only one engine can run at a time. Destroy the engine that runs before creating another.`, so a test never creates two fixtures at once. CTest runs every test in a process of its own, so tests still run in parallel.
+Audio:
+
+- The audio mixer of the headless host has no device and keeps time. It mixes the time of each frame into silence, so voices, fades and music end as they would on a device. A mixer that a test makes without a device mixes only when the test asks it to.
+- Tests of a mixer with a device give it an `audio::OutputBackend` of their own. Such a backend refuses the audio, opens a device that never plays, or keeps the opening waiting the way an audio service that hangs does. So no test reaches the audio hardware.
+- The method `setAudioOutput(backend)` gives the mixers of the engines created afterwards a device that opens through such a backend. The option `audioOutput` of the engine fixture sets it.
+
+What the host records and changes:
+
+- User data goes to a folder that the test chooses, and `getPersistCount()` counts the requests to make it durable.
+- Bridge calls go to `getPlatformCalls()` with their JSON parameters and byte buffers, instead of reaching native code. The calls that the bridge gave up through a timeout or a cancel go to `getCancelledCalls()`.
+- The methods `resize(size)`, `setSafeAreaInsets(insets)`, `setFold(fold)` and `setGamepad(index, state)` change what the engine sees. The methods `getTitle()`, `getCursor()`, `isCursorVisible()`, `isMouseLocked()`, `isKeyboardVisible()` and `isQuitRequested()` report what the engine asked for.
+- The method `getNativeViews()` returns the `platform::NativeViews` of the headless screen. A test calls its `reserveInsets(key, insets)`, `releaseInsets(key)`, `coverApp()` and `uncoverApp()` from any thread, the way the native views of plugins do. The engine takes them at the start of the next frame, and they outlive the engines that a test restarts on the host.
+- The method `setNativePlugins(ids)` sets the plugins whose native part the headless platform reports. The method `getErrorReports()` returns the JSON report of every error that stopped an app, in order.
+- The method `setSystemInfo(info)` sets what the headless system reports to the apps that start afterwards. It starts as a desktop of the operating system that runs the tests, with the cores of the machine, and the null device names no GPU. The methods `setTheme(theme)` and `setBattery(battery)` change the theme and the battery from any thread, the way platform services report them. The engine publishes the change at its next frame.
+- The method `openUrl` records the URLs in `getOpenedUrls()` and answers at once that an app took them, or that none did after `setOpensUrls(false)`. The method `getVibrations()` returns the seconds of every vibration.
+- The method `enableDevelopment(folder)` gives the host a `platform::DevelopmentSession`, so the engines created afterwards run in development. With a folder, the session scans it for changes the way the player does. It outlives the engines that a test restarts on the host, like the session of the runtime.
+- The method `setNetworkRequirement(sentence)` sets the sentence that the network errors of the apps that start afterwards end with, the way Android reports an app without the permission `INTERNET`.
+- The method `getDialogRequests()` returns the id, the `DialogRequest` and the folder for copies of every native dialog that the engine asked for. The method `getCancelledDialogs()` returns the ids of the dialogs that it closed after a cancel, a timeout or the end of its app. A test answers a dialog with `engine.getDialogs().resolve(id, result)`, or from another thread through `DialogRelay::resolve`, the way platform code does.
+- The method `getScreenRequests()` returns the `ScreenRequest` of every screen of a plugin that the engine handed to the platform, once it covered the app. The method `getCancelledScreens()` returns the ids of the screens it gave up. A test ends a screen from any thread through `ScreenRelay::finish(id, ok, resultJson, buffers)`. It restores the end of a screen of an earlier process through `ScreenRelay::restore`, the way platform code does. The screen that shows belongs to the process, like the covers of native libraries, so a test ends the screens it opened.
+
+Only one engine runs at a time in a process. Creating a second one throws `Only one engine can run at a time. Destroy the engine that runs before creating another.`. So a test never creates two fixtures at once. CTest runs every test in a process of its own, so tests still run in parallel.
 
 ## The engine fixture
 
-The class `haylen::test::EngineFixture` is a running engine on the headless host with an in-memory package.
+The class `haylen::test::EngineFixture` is a running engine on the headless host, with a package in memory.
 
 ```cpp
 explicit EngineFixture(std::map<std::string, std::string> files = {}, std::unique_ptr<core::Application> application = nullptr);
 EngineFixture(std::map<std::string, std::string> files, std::unique_ptr<core::Application> application, Options options);
 ```
 
-The argument `files` maps package paths to their contents. The fixture adds an `app.json` with the name `Test App` and the identifier `com.haylen.tests` and an empty `source/main.lua` unless the map has them, reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder that is removed afterwards. The option `development` of `EngineFixture::Options` turns on development on the host before the engine starts, the way the player does with `--dev`, so a test queues changed paths with `fixture.host().getDevelopmentSession()->addChanges(paths)` after it changed them with `fixture.package().setFile`, and the next frame applies them. The option `developmentServer` names the WebSocket address of a development server that the session connects to, and the package then plays under an `io::OverlayPackage` that takes the files the server sends, the way the runtime of the web plays it. The option `audioOutput` gives the mixer a device that opens through an `audio::OutputBackend` of the test.
+The argument `files` maps package paths to their contents. Unless the map has them, the fixture adds an `app.json` with the name `Test App` and the identifier `com.haylen.tests`, and an empty `source/main.lua`. It reads the configuration, creates the engine with a `lua::Application`, or with the given application, and starts it. User data goes to a temporary folder, which the fixture removes afterwards.
+
+The struct `EngineFixture::Options` has three options:
+
+- `development` turns on development on the host before the engine starts, as the player does with `--dev`. A test changes paths with `fixture.package().setFile`, queues them with `fixture.host().getDevelopmentSession()->addChanges(paths)`, and the next frame applies them.
+- `developmentServer` names the WebSocket address of a development server that the session connects to. The package then plays under an `io::OverlayPackage` that takes the files the server sends, as the runtime of the web plays it.
+- `audioOutput` gives the mixer a device that opens through an `audio::OutputBackend` of the test.
 
 | Member | Purpose |
 | --- | --- |
-| `engine()`, `host()`, `package()` | The `core::Engine`, the `platform::HeadlessHost` and the `io::MemoryPackage`, for driving the engine and asserting on its state. |
+| `engine()`, `host()`, `package()` | The `core::Engine`, the `platform::HeadlessHost` and the `io::MemoryPackage`, to drive the engine and check its state. |
 | `lua()` | The `lua_State*` of the engine. |
-| `restart()` | Replaces the engine with a new one that runs the package with a Lua application on the same host, the way the runtime restarts an app, so what the host keeps, such as the covers of the app, outlives it. |
+| `restart()` | Replaces the engine with a new one that runs the package with a Lua application on the same host, as the runtime restarts an app. What the host keeps, such as the covers of the app, outlives it. |
 | `frames(count, seconds)` | Runs `count` frames of `seconds` each, one sixtieth of a second by default. |
-| `frameUntil(condition, timeout)` | Runs frames, sleeping one millisecond between them so worker threads can finish, until `condition` returns `true` or the timeout, ten seconds by default, passes. It returns whether the condition was met. |
+| `frameUntil(condition, timeout)` | Runs frames until `condition` returns `true` or the timeout passes, ten seconds by default. It sleeps one millisecond between frames, so worker threads can finish. It returns whether the condition was met. |
 | `lua(source)` | Runs a chunk named `test` and returns its first result converted with `tostring`, or `error: ` followed by the message when it fails. |
 | `runLua(source)` | Runs a chunk and throws `std::runtime_error` when it fails, for setup code. |
 
-The support folder provides the other shared helpers.
+The folder `support/` holds the other shared helpers.
 
 | Helper | Purpose |
 | --- | --- |
 | `TestApplication(onStart)` | An application whose `start` runs the given function, for tests that add plugins or push C++ scenes, in `support/TestApplication.hpp`. |
 | `DrawingScene(draw)` | A scene whose `render` runs the given function inside a real frame, in `support/EngineFixture.hpp`. |
-| `RecordingScene(name, log, transparent, processMode)` | A scene that writes every hook it receives to a shared log as `name:hook`, counts its updates and renders, and loads at once, through a deferral the test completes or with a failure, preloading the asset groups it lists. Its `onHook` function runs with the entry of every hook right after it is logged, so a test can clear the stack or fail the hook in the middle of a change, in `support/RecordingScene.hpp`. |
-| `RecordingEffect(switchAt, exitAt)` | A transition effect with the given switch and exit points that records the progress and the images it draws, in `support/RecordingEffect.hpp`. |
-| `TemporaryDirectory` | A unique folder under the system temporary directory, removed afterwards, with `getPath()` and `write(relative, content)`, in `support/TemporaryDirectory.hpp`. |
-| `bytes(text)`, `pngImage(width, height, rgba)`, `randomBytes(size, seed)` | Test data: raw bytes, a solid PNG image and bytes that look random but are the same for the same seed, in `support/TestFiles.hpp`. |
-| `ReleaseFixture` | Builds the protected release of an app package with fixed test keys through `content::ReleaseBuilder`, each build into a temporary folder of its own that reuses the release of the build before, which `getFolder()` names, and opens it as one package with `open()`, in `support/ReleaseFixture.hpp`. |
-| `CountingPackage(inner)` | Passes a package through and counts the bytes its readers read and the largest single read, so a test shows which parts of a file an operation touches, and with `watch(thread)` the reads of one thread, so a test shows that the thread that mixes audio never reads, in `support/CountingPackage.hpp`. |
-| `ContentServer`, `LimitedStoreFiles`, `QuotaStoreFiles`, `CrashingStoreFiles`, `ServiceKeyProvider`, `StorePackSource`, `PrivateFiles` | The places the content system meets: a local server that serves ranges and misbehaves on purpose, store files on a device with little room, in a browser that runs out of quota or that loses power during a chosen write, which reaches the disk only in part, a key provider that hands out keys on request from a thread of its own, a source of packs like the plugin of a store, and the check that a file opens for its owner alone, in `support/`. |
-| `AllocationTracker` | Counts the allocations of the current thread while it lives, with the largest one and the total, through the global allocation functions that the test program replaces, so a test shows that an operation never allocates a whole file or package, in `support/AllocationTracker.hpp`. With the checked iterators of the debug library of MSVC, which allocate a proxy for every container, it leaves out the allocations of the size of that proxy. |
-| `ContentParsers::parse(input)` | Feeds bytes to a parser of the content formats that the first byte picks and lets only content errors through, for the hostile input tests and the fuzzer, in `support/ContentParsers.hpp`. |
+| `RecordingScene(name, log, transparent, processMode)` | A scene that writes every hook it receives to a shared log as `name:hook` and counts its updates and renders, in `support/RecordingScene.hpp`. It loads at once, through a deferral that the test completes, or with a failure, and preloads the asset groups it lists. Its function `onHook` runs with the entry of every hook right after the log gets it, so a test can clear the stack or fail the hook in the middle of a change. |
+| `RecordingEffect(switchAt, exitAt)` | A transition effect with the given switch and exit points, which records the progress and the images it draws, in `support/RecordingEffect.hpp`. |
+| `TemporaryDirectory` | A unique folder under the temporary folder of the system, removed afterwards, with `getPath()` and `write(relative, content)`, in `support/TemporaryDirectory.hpp`. |
+| `bytes(text)`, `pngImage(width, height, rgba)`, `randomBytes(size, seed)` | Test data: raw bytes, a PNG image of one color, and bytes that look random but are the same for the same seed, in `support/TestFiles.hpp`. |
+| `ReleaseFixture` | Builds the protected release of an app package with fixed test keys through `content::ReleaseBuilder`. Each build goes into a temporary folder of its own, which `getFolder()` names, and reuses the release of the build before. It opens the release as one package with `open()`. In `support/ReleaseFixture.hpp`. |
+| `CountingPackage(inner)` | Passes a package through and counts the bytes that its readers read and the largest single read, so a test shows which parts of a file an operation touches. With `watch(thread)` it counts the reads of one thread, so a test shows that the thread that mixes audio never reads. In `support/CountingPackage.hpp`. |
+| `ContentServer`, `LimitedStoreFiles`, `QuotaStoreFiles`, `CrashingStoreFiles`, `ServiceKeyProvider`, `StorePackSource`, `PrivateFiles` | The places where the content system meets the world, in `support/`: a local server that serves ranges and misbehaves on purpose, store files on a device with little room, store files in a browser that runs out of quota, store files that lose power during a chosen write, which reaches the disk only in part, a key provider that hands out keys on request from a thread of its own, a source of packs like the plugin of a store, and the check that a file opens for its owner alone. |
+| `AllocationTracker` | Counts the allocations of the current thread while it lives, with the largest one and the total, through the global allocation functions that the test program replaces. So a test shows that an operation never allocates a whole file or package. With the checked iterators of the debug library of MSVC, which allocate a proxy for every container, it leaves out the allocations of the size of that proxy. In `support/AllocationTracker.hpp`. |
+| `ContentParsers::parse(input)` | Feeds bytes to the parser of the content formats that the first byte picks, and lets only content errors through, for the hostile input tests and the fuzzer, in `support/ContentParsers.hpp`. |
+| `VarnRuntime` | Owns a Varn runtime without an engine, which `getRuntime()` returns. Its `pumpUntil(condition, timeout)` advances the event loop the way the engine does once per frame. The `JobSystem` tests use it. In `support/VarnRuntime.hpp`. |
 
-Data that only one test file needs is built by its fixture, such as the zip archives of the package tests and the WAV files of the audio tests, and the files that cannot be built in code live in `engine/tests/data/`, such as the fonts and the Ogg Vorbis and MP3 tones of the audio tests.
-
-The class `VarnRuntime` in `support/VarnRuntime.hpp` owns a Varn runtime without an engine, which `getRuntime()` returns, and `pumpUntil(condition, timeout)` advances its event loop the way the engine does once per frame. The `JobSystem` tests use it.
+The fixture of a test file builds the data that only that file needs, such as the zip archives of the package tests and the WAV files of the audio tests. Files that code cannot build live in `engine/tests/data/`, such as the fonts and the tones of the audio tests.
 
 ## Testing Lua bindings
 
-A binding test runs Lua through the fixture and checks what matters to an app: returned values, engine state, error messages and asynchronous results.
+A binding test runs Lua through the fixture and checks what matters to an app: returned values, engine state, error messages and results that arrive later.
 
 - Compare returned values as strings. The call `fixture.lua("return hash.size")` returns `"3"`, and a float returns `"32.0"`.
-- Check validation with the message an app would see, as in `EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos)`.
+- Check validation with the message that an app would see, as in `EXPECT_NE(fixture.lua("spatial2d.newHashGrid(-2)").find("positive cell size"), std::string::npos)`.
 - Check callbacks that fail through `fixture.engine().getError()`, the `lua::Error` that the error screen shows, with its message, position and frames.
 - Advance frames for anything asynchronous. Promises settle and coroutines resume during a frame, so a test waits with `frameUntil`.
-- Assert on engine state through `fixture.engine()` and `fixture.host()` when a binding changes the engine, such as the window title or a platform call.
+- Check engine state through `fixture.engine()` and `fixture.host()` when a binding changes the engine, such as the window title or a platform call.
 
-The test `Spatial2DLuaTest.StoresLuaValuesByBounds` in `engine/tests/2d/spatial/Spatial2DTests.cpp` is a compact model for a synchronous module. This test covers `jobs.spawn`, whose promise resolves in a later frame.
+The test `Spatial2DLuaTest.StoresLuaValuesByBounds` in `engine/tests/2d/spatial/Spatial2DTests.cpp` is a compact model for a synchronous module. This test covers `jobs.spawn`, whose promise resolves in a later frame:
 
 ```cpp
 #include <gtest/gtest.h>
@@ -138,17 +160,25 @@ TEST(JobsLuaTest, ResolvesSpawnedJobsInLaterFrames) {
 To add a test for a new binding:
 
 1. Add the test to the file of its module, or create `engine/tests/<module>/<Module>Tests.cpp` and add it to `HAYLEN_TEST_SOURCES` in `engine/tests/CMakeLists.txt`.
-2. Cover the results, the argument errors, the failures of callbacks and every asynchronous path. Write tests for behavior an app relies on, not tests that restate the implementation.
+2. Cover the results, the argument errors, the failures of callbacks and every asynchronous path. Write tests for behavior that an app relies on, not tests that restate the implementation.
 3. Wrap multi-line Lua sources and multi-line lambdas in `// clang-format off` and `// clang-format on`, as the example does.
-4. Run the tests, the coverage report and the formatter as the next sections describe, and document the binding in its `docs/lua-api/<module>.md` page.
+4. Run the tests, the coverage report and the formatter, as the next sections describe, and document the binding in its page `docs/lua-api/<module>.md`.
 
 ## Running the tests
 
 ```sh
 haylen test
+haylen test --config Release --jobs 4
 ```
 
-The command configures `build/<host>-<config>` when needed, builds `haylen-tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` or `--platform web-webgl2` it runs [the memory check of the web](#the-memory-check-of-the-web) instead.
+
+Run one suite or one test through CTest or through the executable:
+
+```sh
+ctest --test-dir build/macos-debug -R SpatialLuaTest --output-on-failure
+build/macos-debug/bin/haylen-tests --gtest_filter='SpatialLuaTest.*'
+```
 
 ## The memory check of the web
 
@@ -156,13 +186,23 @@ The command configures `build/<host>-<config>` when needed, builds `haylen-tests
 haylen test --platform web
 ```
 
-The page of the web reads content through a worker and keeps records in memory within a budget, which only a browser shows, so this check runs one. It copies the app `engine/tests/data/web-memory` into `build/tests/web-memory`, writes a file of 16 MiB and one of 384 MiB of random bytes into its content, which `app.json` delivers on demand, builds its release site, serves it and opens it in a headless Chrome, the one that `HAYLEN_CHROME` names or else the one of the machine. The driver `engine/tests/web/memory-check.mjs`, which the Node of the Emscripten SDK runs, follows the page and its workers over the debugging protocol while the app prefetches the file and reads a small asset, and reports the bytes they received, the peak of the memory of WebAssembly and the array buffers they keep after a collection. The check fails when the page did not download the file, when the memory of WebAssembly grew past half of the file or when more than 64 MiB of array buffers stay, which a page that holds what it downloads would do. It then opens the page again in a browser whose page finds no private file system, which the driver removes before the page loads, and fails unless that page keeps the file of 16 MiB in memory and refuses the large one for want of room.
+A web page reads content through a worker and keeps records in memory within a budget, which only a browser shows. So this check runs one:
+
+1. It copies the app `engine/tests/data/web-memory` into `build/tests/web-memory`.
+2. It writes a file of 16 MiB and one of 384 MiB of random bytes into its content, which `app.json` delivers on demand.
+3. It builds the release site of the app in the Release configuration and serves it.
+4. It opens the page in a headless Chrome: the one that the environment variable `HAYLEN_CHROME` names, or else the one of the machine.
+5. The driver `engine/tests/web/memory-check.mjs`, which the Node of the Emscripten SDK runs, follows the page and its workers over the debugging protocol. Meanwhile the app prefetches the large file and reads a small asset. The driver reports the bytes they received, the peak of the memory of WebAssembly, and the array buffers that they keep after a collection.
+
+The check fails when the page did not download the file, when the memory of WebAssembly grew past half of the file, or when more than 64 MiB of array buffers stay. A page that holds what it downloads would do that.
+
+Then it opens the page again in a browser whose page finds no private file system, which the driver removes before the page loads. That page must keep the file of 16 MiB in memory and refuse the large one for want of room, or the check fails. An Emscripten SDK without Node stops the check with a message to install it again with `haylen tools --emsdk`.
 
 ## The test project
 
-The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
+The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop. Its menu runs one test at a time, or every test one after the other.
 
-The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen-native-test` builds next to the player:
+The headless player runs it without a window, as every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen-native-test` builds next to the player:
 
 ```sh
 haylen build --target haylen-headless
@@ -170,7 +210,17 @@ haylen build --target haylen-native-test
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
-The executable `haylen-headless`, built with the player on desktop platforms, runs any app package on the headless host at 60 frames per second of real time, so asynchronous work such as decoding and file reads finishes the way it does on a device, and prints the log. It stops when the app quits, when an error stops an app that is not recoverable, or after the frames of `--frames`. With `--dev` it runs a package folder in development, like the player, so a file saved while it runs reloads the way [hot reload](../core/lua.md#hot-reload) describes and the log shows what each save did. It exits with 1 when an error stopped the app, even one the app went back from, or when the app did not quit in time, and otherwise with the status that the app quit with, which `haylen.quit({status = 1})` sets and which is 0 by default, as the [reference](../lua-api/haylen.md#haylenquitoptions) describes. On the headless platform the test project runs every test that supports the platform for 2 seconds, writes `[CODE] Running`, `[CODE] Passed`, `[CODE] Failed: <message>` or `[CODE] Failed to load: <message>` for each, where a check of the results of a test that settles on a failure fails the test too, goes back from every error with `haylen.recover()`, ends with a summary and quits with the status 1 when any test failed, so the headless player exits with 1 when a test raised an error, failed a check or its scene failed to load. A test that needs a person, a device or a native part that the headless host does not load lists `headless` among its unsupported platforms in its manifest.
+The executable `haylen-headless` builds with the player on desktop platforms. It runs any app package on the headless host at 60 frames per second of real time, so asynchronous work such as decoding and file reads finishes as it does on a device. It prints the log. It stops when the app quits, when an error stops an app that cannot recover, or after the frames of `--frames`. With `--dev` it runs a package folder in development, like the player. So a file saved while it runs reloads as [hot reload](../core/lua.md#hot-reload) describes, and the log shows what each save did.
+
+The headless player exits with 1 when an error stopped the app, even one that the app went back from, or when the app did not quit in time. Otherwise it exits with the status that the app quit with, which `haylen.quit({status = 1})` sets and which is 0 by default, as the [reference](../lua-api/haylen.md#haylenquitoptions) describes.
+
+On the headless platform the test project runs every test that supports the platform for 2 seconds each:
+
+- It writes `[CODE] Running`, `[CODE] Passed`, `[CODE] Failed: <message>` or `[CODE] Failed to load: <message>` for each test. A check of the results of a test that settles on a failure fails the test too.
+- It goes back from every error with `haylen.recover()`.
+- It ends with a summary, and quits with the status 1 when any test failed.
+
+So the headless player exits with 1 when a test raised an error, failed a check or its scene failed to load. A test that needs a person, a device or a native part that the headless host does not load lists `headless` among its unsupported platforms in its manifest.
 
 ## Sanitizers
 
@@ -179,21 +229,14 @@ haylen test --sanitizers address
 haylen test --sanitizers thread
 ```
 
-The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never rebuilds the plain tree. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
+The option `--sanitizers` builds the tests with sanitizers in a tree of its own, `build/<host>-<config>-address` or `build/<host>-<config>-thread`, so switching never builds the plain tree again. It sets `HAYLEN_SANITIZERS`, which MSVC builds ignore.
 
 | Value | Sanitizers | What they instrument |
 | --- | --- | --- |
-| `address` | AddressSanitizer and UndefinedBehaviorSanitizer | The engine libraries, the tests and the other targets of the engine, which catch memory errors and undefined behavior in engine code. |
+| `address` | AddressSanitizer and UndefinedBehaviorSanitizer | The engine libraries, the tests and the other targets of the engine, which catch memory errors and undefined behavior in the code of the engine. |
 | `thread` | ThreadSanitizer | Every C and C++ target of the build, dependencies included, because ThreadSanitizer sees only the synchronization of the code it instruments, such as the atomics with which libuv wakes its event loop. OpenSSL builds with its own scripts and stays uninstrumented. |
 
-AddressSanitizer and ThreadSanitizer fail the test whose process raised a report, while UndefinedBehaviorSanitizer prints its reports and lets the test go on. ThreadSanitizer runs the tests several times slower, and `TSAN_OPTIONS`, such as `TSAN_OPTIONS=halt_on_error=1`, tunes it.
-
-One suite or test runs through CTest or through the executable.
-
-```sh
-ctest --test-dir build/macos-debug -R SpatialLuaTest --output-on-failure
-build/macos-debug/bin/haylen-tests --gtest_filter='SpatialLuaTest.*'
-```
+AddressSanitizer and ThreadSanitizer fail the test whose process raised a report. UndefinedBehaviorSanitizer prints its reports and lets the test go on. ThreadSanitizer runs the tests several times slower, and `TSAN_OPTIONS`, such as `TSAN_OPTIONS=halt_on_error=1`, tunes it. ThreadSanitizer cannot follow the `_longjmp` with which a yield of Lua jumps back, so those builds tell Varn to keep the yields of Lua as exceptions.
 
 ## Fuzzing
 
@@ -202,17 +245,37 @@ haylen fuzz
 haylen fuzz --seconds 600 --llvm /opt/homebrew/opt/llvm/bin
 ```
 
-The command configures `build/fuzz` with the Clang of the LLVM folder that `--llvm` or `HAYLEN_LLVM` names, or else of the LLVM of a package manager, with `HAYLEN_BUILD_FUZZERS`, builds the four fuzzers and runs each for the seconds of `--seconds`, 60 by default, on inputs of at most 64 KiB, from a corpus of its own in `build/fuzz/corpus/<fuzzer>` that keeps the inputs that reached new code for the next run. A crash stops it with the input that caused it.
+A fuzzer feeds a parser with inputs that libFuzzer generates, to find the inputs that crash it. The command `fuzz` builds the fuzzers of the parsers that read untrusted bytes and runs each one for a while.
 
-The parsers of the content formats treat every file as hostile, and the fuzzer `haylen-content-fuzzer` feeds them the inputs libFuzzer generates: the first byte of an input picks the chunk record, the shard header, the shard index, the catalog, the manifest or the channel descriptor, and the parser may reject the rest only with a content error. The option `HAYLEN_BUILD_FUZZERS` instruments every target for libFuzzer and AddressSanitizer, and it needs a Clang that links libFuzzer, such as the LLVM of a package manager, since Apple Clang does not ship it. The hostile input tests in `engine/tests/content/HostileInputTests.cpp` drive the same parsers with random bytes and damaged copies of valid files in every test run. The fuzzer `haylen-input-fuzzer` feeds the reader of input recordings the same way, which may reject an input only as a malformed recording, and `InputRecordingTest` checks truncated, trailing and oversized inputs. The fuzzer `haylen-messagepack-fuzzer` decodes each input with `core::MessagePack` and encodes the result again, which may fail only as bytes that are not valid MessagePack, and `MessagePackTest` checks truncated, trailing, deeply nested and oversized messages. The fuzzer `haylen-placeholder-fuzzer` decodes each input as an image placeholder of `graphics::ImagePlaceholder`, which may fail only as a text that is not a placeholder, and `ImagePlaceholderTest` checks empty, cut, padded, foreign and oversized texts.
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--seconds` | `60` | How long each fuzzer runs. |
+| `--llvm` | the variable `HAYLEN_LLVM`, or else the LLVM of a package manager | The `bin` folder of an LLVM whose Clang links libFuzzer. Without either, the command looks in `/opt/homebrew/opt/llvm/bin`, `/usr/local/opt/llvm/bin` and `/usr/lib/llvm-<version>/bin` for the versions 20, 19 and 18. Apple Clang does not ship libFuzzer. |
+| `--jobs` | the processors minus one | The parallel jobs of the build. |
+
+The command configures `build/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the four fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
+
+| Fuzzer | What it checks | Tests that drive the same code on every run |
+| --- | --- | --- |
+| `haylen-content-fuzzer` | The parsers of the content formats treat every file as hostile. The first byte of an input picks the chunk record, the shard header, the shard index, the catalog, the manifest or the channel descriptor, and the parser may reject the rest only with a content error. | The hostile input tests in `engine/tests/content/HostileInputTests.cpp`, with random bytes and damaged copies of valid files. |
+| `haylen-input-fuzzer` | The reader of input recordings may reject an input only as a malformed recording. | `InputRecordingTest`, with truncated, trailing and oversized inputs. |
+| `haylen-messagepack-fuzzer` | It decodes each input with `core::MessagePack` and encodes the result again, which may fail only as bytes that are not valid MessagePack. | `MessagePackTest`, with truncated, trailing, deeply nested and oversized messages. |
+| `haylen-placeholder-fuzzer` | It decodes each input as an image placeholder of `graphics::ImagePlaceholder`, which may fail only as a text that is not a placeholder. | `ImagePlaceholderTest`, with empty, cut, padded, foreign and oversized texts. |
 
 ## Coverage
 
 ```sh
 haylen coverage
+haylen coverage --jobs 4 --sanitizers address
 ```
 
-Coverage uses LLVM source-based coverage and needs Clang. The command configures `build/coverage` with `HAYLEN_ENABLE_COVERAGE=ON` and without the samples and the player, builds `haylen-tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`. Then it merges the profiles with `llvm-profdata`, prints the `llvm-cov` report and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need a platform SDK (`apple`, `android`, `web`, `windows` and `linux`). On macOS the LLVM tools come from `xcrun`, and elsewhere they must be on `PATH`. Engine coverage stays as close to 100 percent as the code allows.
+Coverage uses the source-based coverage of LLVM, so it needs Clang. The command `coverage` works in these steps:
+
+1. It configures `build/coverage` in the Debug configuration with `HAYLEN_ENABLE_COVERAGE=ON` and without the player.
+2. It builds `haylen-tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`.
+3. It merges the profiles with `llvm-profdata`, prints the report of `llvm-cov` and writes an HTML report to `build/coverage/coverage/html/index.html`.
+
+The report leaves out the dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need the SDK of a platform: `apple`, `android`, `web`, `windows` and `linux`. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. The command also takes `--jobs` and `--sanitizers`. Coverage of the engine stays as close to 100 percent as the code allows.
 
 ## Formatting
 
@@ -221,7 +284,9 @@ haylen format
 haylen format --check
 ```
 
-The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `engine/tools`, `samples` and `templates`, except the files of the plugin template whose names hold a token such as `{{NAME}}`, which become code only once `plugin new` replaces their tokens, and then lists the multi-line lambdas that are not between `// clang-format off` and `// clang-format on`. The option `--check` changes nothing and fails when a file is not formatted or a lambda is missing its markers. The command `clang-format` must be on `PATH`, and CI installs version 23.1.3 with `pip install clang-format==23.1.3`.
+The command `format` runs `clang-format --style=file` on every `.h`, `.hpp`, `.c`, `.cpp`, `.m` and `.mm` file under `engine/include`, `engine/src`, `engine/tests`, `engine/tools`, `samples` and `templates`. It skips build outputs inside those folders, such as the `.cxx`, `.gradle`, `build` and `_deps` folders. It also skips the files of the plugin template whose names hold a token such as `{{NAME}}`, which become code only once `plugin new` replaces their tokens.
+
+Then it lists every multi-line lambda outside a `// clang-format off` and `// clang-format on` region, because `clang-format` cannot lay out such lambdas well. The option `--check` changes nothing. It fails when a file is not formatted or a lambda lacks its markers. The command `clang-format` must be on `PATH`, and continuous integration installs version 23.1.3 with `pip install clang-format==23.1.3`.
 
 ## The rules of haylen.py
 
@@ -229,24 +294,35 @@ The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`
 python3 -m unittest discover -s tools -p "test_*.py"
 ```
 
-The module `tools/test_haylen.py` tests the rules of `haylen.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation, how its terminal output marks reserved expressions, paths and URLs with and without color, how `run` reads the app folder it names, how `sdk --check-consumers` and `android-key` read their options, and that every tracked file and folder of the repository, and every target, project and install component of its CMake files and of the CMake text that `haylen.py` writes, uses dashes where nothing requires an underscore.
+The module `tools/test_haylen.py` tests the rules that need no build, with the `unittest` module of Python. It covers:
+
+- How `haylen.py` merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, and how `check` decides that a built app holds what a plugin needs.
+- How it writes `haylen.properties`, the CMake values, the resource scripts, the status bar and the splash screens, and when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation.
+- How it reads its arguments, such as the app folder of `run` and the options of `sdk --check-consumers` and `android-key`, how its launchers run it, and how its terminal output marks reserved expressions, paths and URLs with and without color.
+- How it provides the pinned shader compiler, XcodeGen and Emscripten, how it builds only the stale engine artifacts, and how the layers of the templates, the desktop projects, `run-cpp`, `plugin new` and native libraries behave.
+- That every tracked file and folder uses dashes where nothing requires an underscore, and so does every target, project and install component of the CMake files and of the CMake text that `haylen.py` writes.
+- That only the folder of a backend reaches its libraries and headers, that no Lua binding knows a backend or a host, and that comments and the texts of the interface are written as the project asks.
+- That the animated sheets and the images of the samples hold their pivots and have clean edges.
+- The documentation, through `DocsTest`: the titles, the languages of code blocks, one line per paragraph, every relative link and its heading, the tables of the indexes, and that no long sentence repeats in another page.
 
 ## Continuous integration
 
-The workflow `.github/workflows/ci.yml` runs on every push to a branch and every pull request, and a newer push to the same branch or pull request cancels the run in progress. It only tests, so no job uploads artifacts or publishes anything. It sets `CPM_SOURCE_CACHE` to `.cache/cpm` in the workspace, and the build jobs cache that folder, keyed by the hash of `engine/cmake/haylen-dependencies.cmake`.
+The workflow `.github/workflows/ci.yml` runs on every push to a branch and on every pull request. Every commit of `main` gets a complete run of its own. On any other branch or pull request, a newer push cancels the run in progress. The workflow only tests, so no job uploads artifacts or publishes anything, and tags and releases start no run. A GitHub release of the repository is its source archive alone, since every project compiles the engine from its sources, or builds the prebuilt engine of its apps with `haylen engine` on its own machine.
+
+Every job runs `haylen.py` with `--verbose`. The variable `CPM_SOURCE_CACHE` points at `.cache/cpm` of the workspace, and the build jobs cache that folder with a key made of the hash of `engine/cmake/haylen-dependencies.cmake`. The `web` and `release` jobs also cache `.tools/emsdk`, with a key made of the hash of `haylen.py`.
 
 | Job | Runner | What it does |
 | --- | --- | --- |
-| `format` | Ubuntu | Installs clang-format 23.1.3, runs `python haylen.py format --check` and the tests of the rules of `haylen.py`. |
-| `desktop` | macOS, Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages on Linux, and Ninja with the MSVC environment on Windows. Runs `python haylen.py test --config Debug`, then `python haylen.py sdk --config Release --check-consumers package`, which builds the SDK and the consumer project `engine/tests/consumer` that finds it with `find_package`. |
-| `coverage` | macOS | Runs `python haylen.py coverage`, whose report table shows in the log. |
-| `web` | Ubuntu | Caches the Emscripten SDK in `.tools/emsdk` and runs `python haylen.py engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, then `python haylen.py test --platform web`, the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner. |
-| `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2 and the Android 37.2 platform, and runs `python haylen.py engine --platform android`, which builds the Android libraries into the local Maven repository. Then it creates the starter app with an upload key and runs `python haylen.py run build/starter --platform android --config Release --build-only`, which builds its protected release with the content tool of the desktop artifacts, the library of the app for every ABI and the signed APK, and checks it for anything a release never holds. |
-| `apple` | macOS | Installs Ninja and runs `python haylen.py engine --platform apple`, which builds `Haylen.xcframework`. Then it creates the starter app and runs `python haylen.py run build/starter --platform ios-simulator --config Release --build-only`, which builds and checks its protected release for the iOS simulator. |
-| `sanitizers` | Ubuntu | Runs `python haylen.py test --sanitizers address` and `--sanitizers thread` in two jobs, which build and run the engine tests with AddressSanitizer and UndefinedBehaviorSanitizer, and with ThreadSanitizer. |
-| `fuzz` | Ubuntu | Installs Clang with its runtime libraries and runs `python haylen.py fuzz --seconds 60`, which builds the fuzzers and runs each for a minute. |
-| `desktop-apps` | Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and Ninja with the MSVC environment on Windows. Creates the starter app with `python haylen.py new build/starter`, adds to it a plugin that `python haylen.py plugin new build/echo-check` creates from the plugin template, and runs `python haylen.py dist build/starter` for the platform, which builds the desktop artifacts, the C library of the plugin, the starter app from the Linux or Windows template in the Release configuration and its `.deb` and AppImage or its installer, then checks the installed app and validates its desktop entry on Linux. Then it creates the starter C++ app with `python haylen.py new build/starter-cpp --kind cpp` and builds it with `python haylen.py run-cpp build/starter-cpp --build-only`, which compiles the engine with the app, and again with `--config Release`, which ships and checks its protected release. |
-| `release` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, which the desktop artifacts with the content tool need, caches the Emscripten SDK and builds the protected release of the test project for the web with `prepare --config Release`, with keys made for the job and thrown away with it, and inspects the site with `check --config Release`, which fails when it holds Lua text, a file of the package as it is, a zipped package, symbol files or a key in any form. |
-| `tests-project` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, builds `haylen-headless` with the test library `haylen-native-test` and runs every test of [the test project](#the-test-project) on it, which fails when a test raises an error or its scene fails to load. |
+| `format` | Ubuntu | Installs clang-format 23.1.3, runs `format --check` and the tests of [the rules of haylen.py](#the-rules-of-haylenpy). |
+| `desktop` | macOS, Ubuntu and Windows | Installs Ninja, with the development packages of X11 and OpenGL on Linux and the MSVC environment on Windows. Runs `test --config Debug`, then `sdk --config Release --check-consumers package`, which builds the SDK and the consumer project `engine/tests/consumer` that finds it with `find_package`. |
+| `coverage` | macOS | Runs `coverage`, whose report table shows in the log. |
+| `web` | Ubuntu | Installs Ninja and the development packages of X11 and OpenGL, which the content tool of the release needs. Runs `engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, then `test --platform web`, the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner. |
+| `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2, the Android 37.2 platform, Ninja and the development packages of X11 and OpenGL. Runs `engine --platform android`, which builds the Android libraries into the local Maven repository. Then it creates the starter app with `new build/starter`, gives it an upload key with `android-key build/starter` and runs `run build/starter --platform android --config Release --build-only`. That builds the protected release with the content tool of the desktop artifacts, the library of the app for every ABI and the signed APK, and checks it for anything a release never holds. |
+| `apple` | macOS | Installs Ninja and runs `engine --platform apple`, which builds `Haylen.xcframework`. Then it creates the starter app and runs `run build/starter --platform ios-simulator --config Release --build-only`, which builds and checks its protected release for the iOS simulator. |
+| `desktop-apps` | Ubuntu and Windows | Installs Ninja, with the development packages of X11 and OpenGL, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and the MSVC environment on Windows. Creates the starter app with `new build/starter`. Adds to it a plugin that `plugin new build/echo-check` creates from the plugin template, with `plugin add build/echo-check --app build/starter`. Runs `dist build/starter --output build/dist` for the platform, which builds the desktop artifacts, the C library of the plugin, the starter app from the Linux or Windows template in the Release configuration, and its `.deb` and AppImage or its installer. Then it checks the installed app with `check --config Release`, and on Linux validates its desktop entry with `desktop-file-validate`. Last it creates the starter C++ app with `new build/starter-cpp --kind cpp`, builds it with `run-cpp build/starter-cpp --build-only`, which compiles the engine with the app, and again with `--config Release`, which ships and checks its protected release. |
+| `sanitizers` | Ubuntu | Runs `test --sanitizers address` and `test --sanitizers thread` in two jobs, which build and run the engine tests with AddressSanitizer and UndefinedBehaviorSanitizer, and with ThreadSanitizer. |
+| `fuzz` | Ubuntu | Installs Clang with its runtime libraries and runs `fuzz --seconds 60 --llvm /usr/bin`, which builds the fuzzers and runs each for a minute. |
+| `tests-project` | Ubuntu | Installs Ninja and the development packages of X11 and OpenGL. Builds `haylen-headless` and the test library `haylen-native-test` in Debug, and runs every test of [the test project](#the-test-project) with `build/linux-debug/bin/haylen-headless samples/tests --frames 60000`. It fails when a test raises an error or its scene fails to load. |
+| `release` | Ubuntu | Installs Ninja and the development packages of X11 and OpenGL, which the desktop artifacts with the content tool need. Builds the protected release of the test project for the web with `prepare samples/tests --platform web --config Release`, with keys made for the job and thrown away with it. Then it inspects the site with `check --config Release`, which fails when it holds Lua text, a file of the package as it is, a zipped package, symbol files or a key in any form. |
 
-The engine tests run only in the `desktop` job, the web, Android and Apple jobs check that the engine artifacts of those platforms build, the `desktop-apps` job checks the desktop artifacts with the Windows and Linux templates and builds the C++ template on both systems, and the `release` job checks a protected web release. The [build guide](build.md) explains the platform builds, and the [embedding guide](embedding.md) explains the SDK.
+The engine tests run only in the `desktop` job. The `web`, `android` and `apple` jobs check that the engine artifacts of those platforms build. The `desktop-apps` job checks the desktop artifacts with the Windows and Linux templates and builds the C++ template on both systems, and the `release` job checks a protected web release.
