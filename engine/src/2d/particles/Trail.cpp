@@ -5,9 +5,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "haylen/2d/graphics/Renderer.hpp"
-#include "haylen/2d/particles/Ribbon.hpp"
-
 namespace haylen::particles2d {
 
 void Trail::validate(const Options& settings) {
@@ -62,14 +59,7 @@ void Trail::draw(graphics2d::Renderer& renderer) const {
         line.push_back(point->position);
         places.push_back(std::min(point->age / options.lifetime, 1.0F));
     }
-    if (line.size() < 2) {
-        return;
-    }
-
-    vertices.clear();
-    indices.clear();
-    Ribbon::append(line, places, {.widthStart = options.widthStart, .widthEnd = options.widthEnd, .colors = options.colors}, vertices, indices);
-    renderer.drawMesh(options.texture, vertices, indices, options.order);
+    ribbon.draw(renderer, line, places, {.widthStart = options.widthStart, .widthEnd = options.widthEnd, .colors = options.colors}, options.texture, options.order);
 }
 
 void Trail::clear() noexcept {

@@ -7,9 +7,9 @@
 #include <span>
 #include <vector>
 
-#include "haylen/2d/graphics/MeshVertex.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/particles/EmitterConfig.hpp"
+#include "haylen/2d/particles/Ribbon.hpp"
 #include "haylen/2d/physics/CollisionFilter.hpp"
 #include "haylen/2d/physics/RayBatch.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
@@ -222,8 +222,7 @@ class Emitter final {
     mutable std::vector<graphics2d::SpriteInstance> instances;
     mutable std::vector<math::Vec2> trailLine;
     mutable std::vector<float> trailPlaces;
-    mutable std::vector<graphics2d::MeshVertex> trailVertices;
-    mutable std::vector<std::uint32_t> trailIndices;
+    mutable Ribbon ribbon;
 
     // The positions before the step, which world collision casts rays from.
     std::vector<math::Vec2> previousPositions;

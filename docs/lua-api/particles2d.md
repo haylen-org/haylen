@@ -306,7 +306,7 @@ The `subEmitters` key takes a list of sub-emitters, each of which spawns the par
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `trail` | table | `{length = 0}` | A ribbon behind every particle: `length`, the points it keeps, at most 64, `lifetime = 0.25`, the seconds it spans, `widthStart = 6` and `widthEnd = 0`, `colors = {'#FFFFFFFF', '#00FFFFFF'}` from the particle to the end, multiplied by the color of the particle, and `texture`. The trails of an emitter draw as one mesh with its draw order. A length of 0 draws no trail. |
+| `trail` | table | `{length = 0}` | A ribbon behind every particle: `length`, the points it keeps, at most 64, `lifetime = 0.25`, the seconds it spans, `widthStart = 6` and `widthEnd = 0`, `colors = {'#FFFFFFFF', '#00FFFFFF'}` from the particle to the end, multiplied by the color of the particle, and `texture`. The trails of an emitter draw as strokes with round ends and edges that fade over one pixel, with its draw order. A length of 0 draws no trail. |
 | `light` | table | none | A light at the emitter in lit canvases: `type = 'point'`, `offset`, `radius = 160`, `color`, `intensity = 1`, `flicker = {speed, amount}`, which wavers like `lighting2d.flicker`, and `fade`, which is `'none'`, `'cycle'` to go out when the emitter stops emitting, or `'count'` to scale with the live particles over their peak, so a flash dies with its particles. The value `false` removes it. |
 | `particleLights` | table | none | `{radius = 24, intensity = 0.5, max = 16}` draws a small light in the color of up to `max` particles, spread over them and scaled by their alpha, in lit canvases. The value `false` removes them. |
 

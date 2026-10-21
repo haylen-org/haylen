@@ -13,7 +13,6 @@
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/2d/lighting/LightFlicker.hpp"
 #include "haylen/2d/particles/ImageShape.hpp"
-#include "haylen/2d/particles/Ribbon.hpp"
 #include "haylen/2d/physics/Raycaster.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/math/Geometry.hpp"
@@ -997,8 +996,6 @@ void Emitter::drawTrails(graphics2d::Renderer& renderer) const {
     if (length == 0) {
         return;
     }
-    trailVertices.clear();
-    trailIndices.clear();
     trailPlaces.resize(length + 1);
     for (std::size_t point = 0; point <= length; ++point) {
         trailPlaces[point] = static_cast<float>(point) / static_cast<float>(length);
@@ -1015,10 +1012,7 @@ void Emitter::drawTrails(graphics2d::Renderer& renderer) const {
         for (std::size_t point = 0; point < points; ++point) {
             trailLine.push_back(placeOnPlane(origin + particles.trails[index * length + point]));
         }
-        Ribbon::append(trailLine, std::span<const float>(trailPlaces).first(trailLine.size()), {.widthStart = trail.widthStart * scale, .widthEnd = trail.widthEnd * scale, .colors = trail.colors, .tint = particleColor(index)}, trailVertices, trailIndices);
-    }
-    if (!trailIndices.empty()) {
-        renderer.drawMesh(trail.texture, trailVertices, trailIndices, config.order);
+        ribbon.draw(renderer, trailLine, trailPlaces, {.widthStart = trail.widthStart * scale, .widthEnd = trail.widthEnd * scale, .colors = trail.colors, .tint = particleColor(index)}, trail.texture, config.order);
     }
 }
 

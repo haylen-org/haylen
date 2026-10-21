@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <optional>
@@ -692,8 +693,8 @@ TEST_F(ParticlesTest, TrailsDrawRibbonsBehindParticlesAndPoints) {
     for (int step = 0; step < 10; ++step) {
         streaks.update(0.1F);
     }
-    // Every particle draws its sprite and a ribbon of five points, two vertices each.
-    EXPECT_EQ(drawFrame({&streaks}).vertices, 20U);
+    // Every particle draws a ribbon of five points, whose fading edges and round ends take more vertices than a strip of two vertices for each point.
+    EXPECT_GT(drawFrame({&streaks}).vertices, 20U);
     EXPECT_THROW(Emitter({.texture = texture(), .trail = {.length = 65}}), std::invalid_argument);
 
     Trail blade({.lifetime = 0.5F, .minDistance = 10.0F, .maxPoints = 4});
@@ -714,17 +715,35 @@ TEST_F(ParticlesTest, TrailsDrawRibbonsBehindParticlesAndPoints) {
     EXPECT_THROW(Trail({.lifetime = 0.0F}), std::invalid_argument);
     EXPECT_THROW(Trail({.maxPoints = 1}), std::invalid_argument);
 
-    std::vector<graphics2d::MeshVertex> vertices;
-    std::vector<std::uint32_t> indices;
+    // A ribbon draws as a stroke with round ends and joins, whose widths and colors go from the head to the tail.
     const std::vector<math::Color> colors{math::Color::white(), math::Color::transparent()};
-    const std::vector<math::Vec2> line{{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 0.0F}};
+    const std::vector<math::Vec2> line{{0.0F, 0.0F}, {10.0F, 0.0F}, {20.0F, 5.0F}};
     const std::vector<float> places{0.0F, 0.5F, 1.0F};
-    Ribbon::append(line, places, {.widthStart = 8.0F, .widthEnd = 0.0F, .colors = colors}, vertices, indices);
-    ASSERT_EQ(vertices.size(), 6U);
-    EXPECT_EQ(indices.size(), 12U);
-    EXPECT_FLOAT_EQ(std::fabs(vertices[0].position.y), 4.0F);
-    EXPECT_FLOAT_EQ(std::fabs(vertices[2].position.y), 2.0F);
-    EXPECT_FLOAT_EQ(vertices[2].color.a, 0.5F);
+    const std::vector<float> widths{8.0F, 4.0F, 0.0F};
+    const std::vector<math::Color> tints{math::Color::white(), Ribbon::colorAt(colors, 0.5F), math::Color::transparent()};
+    EXPECT_FLOAT_EQ(tints[1].a, 0.5F);
+    Ribbon ribbon;
+    // clang-format off
+    const auto drawn = [this](const std::function<void(graphics2d::Renderer&)>& paint) {
+        fixture.engine().getScenes().push(std::make_shared<test::DrawingScene>([&paint](core::Engine& engine) {
+            engine.getRenderer2D().beginWorld(graphics2d::Camera{});
+            paint(engine.getRenderer2D());
+        }));
+        fixture.frames(1);
+        const graphics2d::Renderer::Stats stats = fixture.engine().getRenderer2D().getStats();
+        fixture.engine().getScenes().pop();
+        fixture.frames(1);
+        return stats.vertices;
+    };
+    const std::size_t ribbonVertices = drawn([&](graphics2d::Renderer& renderer) {
+        ribbon.draw(renderer, line, places, {.widthStart = 8.0F, .widthEnd = 0.0F, .colors = colors}, {}, {});
+    });
+    const std::size_t strokeVertices = drawn([&](graphics2d::Renderer& renderer) {
+        renderer.drawStroke(line, {.widths = widths, .colors = tints, .join = graphics2d::Stroke::Join::Round, .cap = graphics2d::Stroke::Cap::Round});
+    });
+    // clang-format on
+    EXPECT_GT(ribbonVertices, 6U);
+    EXPECT_EQ(ribbonVertices, strokeVertices);
 }
 
 TEST_F(ParticlesTest, SystemsMoveScaleAndRestartTheirEmitters) {

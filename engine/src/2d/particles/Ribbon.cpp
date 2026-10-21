@@ -2,6 +2,8 @@
 
 #include <algorithm>
 
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/Stroke.hpp"
 #include "haylen/math/Math.hpp"
 
 namespace haylen::particles2d {
@@ -18,33 +20,17 @@ math::Color Ribbon::colorAt(std::span<const math::Color> colors, float place) no
     return math::Color::lerp(colors[index], colors[index + 1], scaled - static_cast<float>(index));
 }
 
-// Every point takes the direction of the line through its neighbours, so the ribbon bends smoothly, and a point on top of its neighbour keeps the direction before it.
-void Ribbon::append(std::span<const math::Vec2> points, std::span<const float> places, const Style& style, std::vector<graphics2d::MeshVertex>& vertices, std::vector<std::uint32_t>& indices) {
+void Ribbon::draw(graphics2d::Renderer& renderer, std::span<const math::Vec2> points, std::span<const float> places, const Style& style, const graphics::Texture& texture, const graphics2d::DrawOrder& order) {
     if (points.size() < 2) {
         return;
     }
-
-    const auto base = static_cast<std::uint32_t>(vertices.size());
-    math::Vec2 normal{0.0F, 1.0F};
-    for (std::size_t index = 0; index < points.size(); ++index) {
-        const math::Vec2 before = points[index == 0 ? 0 : index - 1];
-        const math::Vec2 after = points[std::min(index + 1, points.size() - 1)];
-        const math::Vec2 along = before - after;
-        if (!along.isZero()) {
-            normal = along.getNormalized().getPerpendicular();
-        }
-
-        const float place = places[index];
-        const float half = math::Math::lerp(style.widthStart, style.widthEnd, place) * 0.5F;
-        const math::Color color = colorAt(style.colors, place) * style.tint;
-        vertices.push_back({.position = points[index] + normal * half, .uv = {place, 0.0F}, .color = color});
-        vertices.push_back({.position = points[index] - normal * half, .uv = {place, 1.0F}, .color = color});
+    widths.clear();
+    tints.clear();
+    for (const float place : places.first(points.size())) {
+        widths.push_back(math::Math::lerp(style.widthStart, style.widthEnd, place));
+        tints.push_back(colorAt(style.colors, place) * style.tint);
     }
-
-    for (std::uint32_t segment = 0; segment + 1 < static_cast<std::uint32_t>(points.size()); ++segment) {
-        const std::uint32_t first = base + segment * 2;
-        indices.insert(indices.end(), {first, first + 1, first + 3, first, first + 3, first + 2});
-    }
+    renderer.drawStroke(points, {.widths = widths, .colors = tints, .join = graphics2d::Stroke::Join::Round, .cap = graphics2d::Stroke::Cap::Round, .texture = texture}, order);
 }
 
 } // namespace haylen::particles2d

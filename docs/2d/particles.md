@@ -25,7 +25,7 @@ Nothing calls Lua for each particle, which is why particle curves take names and
 
 ## Drawing
 
-Drawing turns every live particle into one sprite of the emitter texture and records them as one batch, which the renderer converts on worker threads when it holds thousands of sprites. The trails of all particles of an emitter draw as one mesh through `particles2d::Ribbon`, the lights draw only in lit canvases, and the emitters of the sub-emitters draw after their parent. The method `Emitter::getParticle(index)`, `emitter:particle(index)` in Lua, returns a live particle with the sprite it draws as, for gameplay that reacts to particles and for tests.
+Drawing turns every live particle into one sprite of the emitter texture and records them as one batch, which the renderer converts on worker threads when it holds thousands of sprites. The trails of the particles of an emitter draw through `particles2d::Ribbon` as strokes of the renderer with round ends and joins, whose edges fade over one pixel at any width and zoom and whose meshes join into one draw call, the lights draw only in lit canvases, and the emitters of the sub-emitters draw after their parent. The method `Emitter::getParticle(index)`, `emitter:particle(index)` in Lua, returns a live particle with the sprite it draws as, for gameplay that reacts to particles and for tests.
 
 An emitter with a `tilt` draws on a plane through the emitter that leans away from the viewer, the ground of a top-down or side view seen at an angle. Its particles move as they would on a flat screen, and drawing brings their positions nearer to the emitter along the height of the screen by the cosine of the tilt and shortens their sprites the same way after their rotation, in the vertex shader, so a ring, a magic circle or the strokes of a whirlwind spin flat on the ground as ellipses while the ellipse itself stays still. A sprite takes the same `tilt` in `graphics2d.draw`, sprite batches and float buffers.
 
@@ -35,7 +35,7 @@ A `particles2d::System` (`System.hpp`) holds the emitters of an effect, one for 
 
 ## Trails
 
-A `particles2d::Trail` (`Trail.hpp`) is a ribbon that follows a moving point, such as a blade tip or a projectile, without particles. It adds a point when its position moves far enough, drops the points older than its lifetime, and draws one mesh whose width and colors go from the head to the tail. Particles take a ribbon each through the `trail` option, which records their positions at the same moments for all of them.
+A `particles2d::Trail` (`Trail.hpp`) is a ribbon that follows a moving point, such as a blade tip or a projectile, without particles. It adds a point when its position moves far enough, drops the points older than its lifetime, and draws one stroke with round ends whose width and colors go from the head to the tail and whose edges fade over one pixel. Particles take a ribbon each through the `trail` option, which records their positions at the same moments for all of them.
 
 ## Effect library
 

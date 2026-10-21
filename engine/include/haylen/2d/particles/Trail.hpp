@@ -1,11 +1,10 @@
 #pragma once
 
 #include <cstddef>
-#include <cstdint>
 #include <vector>
 
 #include "haylen/2d/graphics/DrawOrder.hpp"
-#include "haylen/2d/graphics/MeshVertex.hpp"
+#include "haylen/2d/particles/Ribbon.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -66,8 +65,7 @@ class Trail final {
     std::vector<Point> points;
     mutable std::vector<math::Vec2> line;
     mutable std::vector<float> places;
-    mutable std::vector<graphics2d::MeshVertex> vertices;
-    mutable std::vector<std::uint32_t> indices;
+    mutable Ribbon ribbon;
 };
 
 } // namespace haylen::particles2d
