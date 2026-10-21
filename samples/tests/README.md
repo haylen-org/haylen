@@ -124,7 +124,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |
 | `SPR-014` | Tile layers | An endless painted world in chunks of tile layers that stream in around the camera and bake only when their cells change. |  |
 | `SPR-015` | Strokes and meshes | Lines drawn with the pointer and stroked with joins, caps, widths, colors, dashes and a tiled texture, and a kept mesh that waves in place. |  |
-| `SPR-016` | Groups and masks | A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and shapes that fade as one group. |  |
+| `SPR-016` | Groups and masks | A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and sprites that fade as one group. |  |
 | `SPR-017` | Images and runtime atlases | A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps. |  |
 | `SPR-018` | Screen capture | The whole screen captured into an image without the frame thread waiting, shown and saved as a PNG file. |  |
 | `SPR-019` | Batches of several textures | A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite. |  |
