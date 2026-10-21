@@ -32,6 +32,9 @@ class StoreFile final {
     void truncate(std::uint64_t size);
     [[nodiscard]] std::uint64_t getSize() const;
 
+    // Whether the platform removed the file from its folder while it was open, which keeps its bytes for this process alone until it closes.
+    [[nodiscard]] bool isRemoved() const;
+
     // Makes the entries of a folder durable, so a file created in it survives a loss of power. Windows keeps them with the files.
     static void syncFolder(const std::filesystem::path& folder);
 

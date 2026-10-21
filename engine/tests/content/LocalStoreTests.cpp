@@ -176,6 +176,50 @@ TEST_F(LocalStoreTest, LosesTheRecordsOfASegmentThatThePlatformEvicted) {
     EXPECT_TRUE(store->contains(idOf(record)));
 }
 
+// The store keeps its files open while the app runs, and iOS and tvOS may empty the caches of an app they suspended.
+TEST_F(LocalStoreTest, ForgetsTheRecordsOfASegmentThatThePlatformRemovedWhileTheStoreRan) {
+    const std::vector<std::uint8_t> first = makeRecord(1);
+    const std::vector<std::uint8_t> second = makeRecord(2);
+    const std::unique_ptr<LocalStore> store = open();
+    store->addRecord(key.getId(), first);
+    store->flush();
+
+    std::filesystem::remove_all(folder.getPath() / "segments");
+    EXPECT_EQ(store->forgetLostRecords(), 1U);
+    EXPECT_FALSE(store->contains(idOf(first)));
+
+    // A record that downloads again lands in the folder, where the next run finds it.
+    store->addRecord(key.getId(), second);
+    store->flush();
+    std::vector<std::uint8_t> read;
+    Digest keyId;
+    ASSERT_TRUE(store->readRecord(idOf(second), read, keyId));
+    EXPECT_EQ(read, second);
+    EXPECT_TRUE(open()->contains(idOf(second)));
+}
+
+TEST_F(LocalStoreTest, ForgetsWhatARemovedSegmentHeldBeforeItWritesTheSegmentAgain) {
+    const std::vector<std::uint8_t> first = makeRecord(1);
+    const std::vector<std::uint8_t> second = makeRecord(2);
+    const std::vector<std::uint8_t> third = makeRecord(3, 9000);
+    const std::unique_ptr<LocalStore> store = open();
+    store->addRecord(key.getId(), first);
+    store->addRecord(key.getId(), second);
+    store->flush();
+
+    // A download that lands before the store looks for what the platform removed writes the segment again, longer than the first record it held.
+    std::filesystem::remove_all(folder.getPath() / "segments");
+    store->addRecord(key.getId(), third);
+    EXPECT_FALSE(store->contains(idOf(first)));
+    EXPECT_FALSE(store->contains(idOf(second)));
+    EXPECT_EQ(store->forgetLostRecords(), 0U);
+
+    std::vector<std::uint8_t> read;
+    Digest keyId;
+    ASSERT_TRUE(store->readRecord(idOf(third), read, keyId));
+    EXPECT_EQ(read, third);
+}
+
 TEST_F(LocalStoreTest, StartsANewBuildFromTheContentItShipsAndKeepsTheGenerationItAccepted) {
     {
         const std::unique_ptr<LocalStore> store = open();

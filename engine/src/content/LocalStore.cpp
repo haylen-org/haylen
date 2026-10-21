@@ -85,6 +85,7 @@ void LocalStore::readJournal() {
     for (const auto& [storedId, location] : records) {
         appendSegment = std::max(appendSegment, location.segment);
     }
+    appendEnd = files->getSize(getSegmentName(appendSegment));
 }
 
 // A segment that a platform evicted or that lost its end takes its records with it, which downloads bring back.
@@ -213,6 +214,12 @@ void LocalStore::addRecord(const Digest& keyId, std::span<const std::uint8_t> re
 LocalStore::Location LocalStore::appendRecord(const Digest& keyId, std::span<const std::uint8_t> record) {
     std::string name = getSegmentName(appendSegment);
     std::uint64_t size = files->getSize(name);
+
+    // A segment shorter than what the store wrote to it lost records, as when the platform removed it, and they go before new records land where they were.
+    if (size < appendEnd) {
+        std::unique_lock lock(mutex);
+        eraseLostRecords();
+    }
     if (size > kSegmentHeader.size() && size + record.size() > target) {
         ++appendSegment;
         name = getSegmentName(appendSegment);
@@ -222,6 +229,7 @@ LocalStore::Location LocalStore::appendRecord(const Digest& keyId, std::span<con
         files->append(name, kSegmentHeader);
     }
     const std::uint64_t offset = files->append(name, record);
+    appendEnd = offset + record.size();
     dirty.insert(name);
     return {.segment = appendSegment, .offset = offset, .size = record.size(), .keyId = keyId};
 }
@@ -350,6 +358,7 @@ LocalStore::Collection LocalStore::collect(const std::unordered_set<Digest, Dige
     }
     if (emptied.contains(oldAppend)) {
         ++appendSegment;
+        appendEnd = 0;
     }
 
     std::vector<std::uint8_t> bytes;

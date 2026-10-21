@@ -314,7 +314,8 @@ TEST_F(ContentManagerTest, CountsTheShardsAndChunksThatTheDeviceHoldsAndLacks) {
 // Apple systems such as iOS and tvOS may empty the caches of an app while it is suspended, so the content that the app needs comes down again once it is active.
 TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackground) {
     run(shipWithoutContent());
-    ASSERT_TRUE(frameUntil([this] { return hasStarted() && engine->getContent().getStatistics().pendingDownloads == 0; }));
+    // The music that the app prefetches is on the device too, so only what the engine brings back downloads after the app resumes.
+    ASSERT_TRUE(frameUntil([this] { return hasStarted() && engine->getContent().isLocal("music/theme.ogg") && engine->getContent().getStatistics().pendingDownloads == 0; }));
     ASSERT_TRUE(engine->getContent().isLocal("data/config.json"));
 
     engine->handleEvent({.type = platform::Event::Type::Suspended});
@@ -326,6 +327,7 @@ TEST_F(ContentManagerTest, BringsBackTheContentThatTheDeviceRemovedInTheBackgrou
         return !server.getExchanges().empty() && engine->getContent().getStatistics().pendingDownloads == 0 && engine->getContent().isLocal("data/config.json");
     })) << "The removed content downloads again.";
     // clang-format on
+    EXPECT_TRUE(std::filesystem::is_directory(storeFolder.getPath() / "segments")) << "The content that came back is in the folder of the store again.";
     EXPECT_EQ(engine->getAssets().json("data/config.json")["level"], 1);
     EXPECT_EQ(engine->getContent().getStatus(), ContentManager::Status::Idle);
 }

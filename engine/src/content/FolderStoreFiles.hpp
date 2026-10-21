@@ -11,7 +11,7 @@
 
 namespace haylen::content {
 
-// The files of a local content store in a folder of the device, readable only by the user that runs the app. It keeps the files it reads and appends to open, so reads of ranges take no lock of their own.
+// The files of a local content store in a folder of the device, readable only by the user that runs the app. It keeps the files it reads and appends to open, so reads of ranges take no lock of their own, and a file that the platform removes while it is open is gone, as the folder shows it.
 class FolderStoreFiles final : public StoreFiles {
   public:
     explicit FolderStoreFiles(std::filesystem::path storeFolder);

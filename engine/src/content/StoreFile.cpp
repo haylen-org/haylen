@@ -100,6 +100,14 @@ std::uint64_t StoreFile::getSize() const {
     return static_cast<std::uint64_t>(size.QuadPart);
 }
 
+bool StoreFile::isRemoved() const {
+    FILE_STANDARD_INFO info{};
+    if (!GetFileInformationByHandleEx(handle, FileStandardInfo, &info, sizeof(info))) {
+        fail("measure");
+    }
+    return info.DeletePending != 0 || info.NumberOfLinks == 0;
+}
+
 void StoreFile::syncFolder(const std::filesystem::path&) {}
 
 void StoreFile::fail(const char* action) const {
@@ -184,6 +192,14 @@ std::uint64_t StoreFile::getSize() const {
         fail("measure");
     }
     return static_cast<std::uint64_t>(status.st_size);
+}
+
+bool StoreFile::isRemoved() const {
+    struct stat status{};
+    if (::fstat(descriptor, &status) != 0) {
+        fail("measure");
+    }
+    return status.st_nlink == 0;
 }
 
 void StoreFile::syncFolder(const std::filesystem::path& folder) {

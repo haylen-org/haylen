@@ -134,6 +134,9 @@ class LocalStore final {
     std::unordered_map<Digest, Location, Digest::Hash> records;
     std::uint64_t target;
     std::uint32_t appendSegment = 1;
+
+    // The end of what the store wrote to the segment it appends to, which tells it that the segment lost records.
+    std::uint64_t appendEnd = 0;
     std::set<std::string> dirty;
 };
 

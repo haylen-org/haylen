@@ -23,7 +23,11 @@ void FolderStoreFiles::createFolder(const std::filesystem::path& folder) const {
 std::shared_ptr<StoreFile> FolderStoreFiles::open(const std::string& name, bool create) const {
     std::scoped_lock lock(mutex);
     if (const auto found = files.find(name); found != files.end()) {
-        return found->second;
+        // A file that the platform removed while the store held it open is gone from the folder, as it is for the next run, so the store opens what the folder holds now.
+        if (!found->second->isRemoved()) {
+            return found->second;
+        }
+        files.erase(found);
     }
     const std::filesystem::path file = root / name;
     std::error_code error;
