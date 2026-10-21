@@ -51,9 +51,7 @@ function Calls:runLibrary()
         return 'The function "native.load" returned ' .. tostring(lib) .. '.'
     end)
     if not lib then
-        for _, name in ipairs(Calls.libraryChecks) do
-            checks:set(name, 'fail', name, 'The library did not load, so this call did not run.')
-        end
+        checks:failEach(Calls.libraryChecks, 'The library did not load, so this call did not run.')
         return
     end
     checks:run('Integers', function() return 'The call "native_test_add(20, 22)" returned ' .. expect(lib.native_test_add(20, 22), 42, 'the sum') .. '.' end)

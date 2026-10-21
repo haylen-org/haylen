@@ -29,16 +29,22 @@ function StaticLibrary:enter()
     self:run()
 end
 
+-- The checks that need the linked library, which fail together when it is not linked.
+StaticLibrary.libraryChecks = {'The symbol table', 'Text from the linked copy', 'Integers'}
+
 function StaticLibrary:run()
     self.checks:clear()
     self:spawn(function()
         local checks = self.checks
         local lib
-        checks:run('The linked library', function()
+        if not checks:run('The linked library', function()
             lib = native.load('native_test_static')
             expect(lib, ffi.C, 'the namespace of the library')
             return 'The function "native.load" returned "ffi.C".'
-        end)
+        end) then
+            checks:failEach(StaticLibrary.libraryChecks, 'The library is not linked into this player, so this check did not run.')
+            return
+        end
         checks:run('The symbol table', function()
             local address = native.findSymbol('native_test_origin')
             if address == nil then

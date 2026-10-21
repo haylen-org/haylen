@@ -40,21 +40,29 @@ function LibraryHandlers:exit()
     LibraryHandlers.super.exit(self)
 end
 
+-- The checks that need the handlers of the library, which fail together when it does not start.
+LibraryHandlers.handlerChecks = {'An event from a thread of the library', 'An answer from a thread of the library', 'A typed error', 'A timeout', 'A cancel'}
+
 function LibraryHandlers:run()
     self.ready = nil
     self.checks:clear()
     self:spawn(function()
         local checks = self.checks
+        local started
         if native.available() then
-            checks:run('The init function', function()
+            started = checks:run('The init function', function()
                 native.load('native_test', {init = 'native_test_haylen_init'})
                 return 'The function "native_test_haylen_init" registered the handlers of the library.'
             end)
         else
-            checks:run('The init function', function()
+            started = checks:run('The init function', function()
                 Checks.await(nativeTest.call('init'))
                 return 'The page stands in for the library.'
             end)
+        end
+        if not started then
+            checks:failEach(LibraryHandlers.handlerChecks, 'The library did not start, so no handler answered.')
+            return
         end
 
         checks:run('An event from a thread of the library', function()

@@ -45,9 +45,19 @@ function Callbacks:run()
     end)
 end
 
+-- The checks that need the library, which fail together when it does not load.
+Callbacks.libraryChecks = {'A callback of "ffi.cast" during the call', 'A frame callback during the call', 'A callback at the next frame', 'A callback from a thread of the library', 'Bytes bounded by a length'}
+
 function Callbacks:runLibrary()
     local checks = self.checks
-    local lib = library.load()
+    local lib
+    if not checks:run('Load the library', function()
+        lib = library.load()
+        return 'The function "native.load" returned ' .. tostring(lib) .. '.'
+    end) then
+        checks:failEach(Callbacks.libraryChecks, 'The library did not load, so no callback ran.')
+        return
+    end
     local visits = {}
     local function visitor(prefix)
         return function(index, label)
