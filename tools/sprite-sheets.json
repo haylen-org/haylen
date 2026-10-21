@@ -16,6 +16,8 @@
         {"atlas": "samples/tests/content/sprites/atlases/slime.json", "pivot": "base", "free": {"hop": "The slime leaves the ground.", "splat": "The slime squashes flat."}},
         {"atlas": "samples/tests/content/sprites/atlases/gems.json", "pivot": "center"},
         {"grid": "samples/tests/content/camera/knight.png", "frame": [16, 16], "pivot": "base", "clips": {"step": [1, 2]}},
+        {"grid": "samples/tests/content/events/bat.png", "frame": [256, 256], "pivot": "center", "clips": {"flap": [1, 2]}, "free": {"flap": "The wings of the bat beat up and down around its body, which stays in place."}},
+        {"grid": "samples/tests/content/events/dragon.png", "frame": [256, 256], "pivot": "base", "clips": {"walk": [1, 2]}, "free": {"walk": "The wings of the dragon rise and fall over its back while its body and its feet stay in place."}},
         {"grid": "samples/tests/content/sprites/sheets/walker.png", "frame": [256, 256], "pivot": "base", "clips": {"idle": [1, 2, 3, 4], "run": [9, 10, 11, 12, 13, 14, 15, 16], "attack": [17, 18, 19, 20, 21, 22]}, "free": {"attack": "The walker swings the sword."}},
         {"tileset": "samples/tests/content/tiled/tilesets/transitions.tsj", "pivot": "center"},
         {"tileset": "samples/tests/content/tiled/tilesets/terrain.tsj", "pivot": "center", "pivots": {"slime": "base", "wall": "foot"}, "behind": {"wall": 5}}

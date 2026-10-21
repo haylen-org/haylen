@@ -31,11 +31,15 @@ local kEvents = {
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'systemThemeChanged', 'batteryChanged', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
     'assetLoaded', 'assetUnloaded', 'assetReloaded', 'objectCreated', 'objectDestroyed',
 }
-local kColors = {app = Test.warm, scene = Test.accent, window = Test.green, asset = '#FFC9A0FF', webSocket = Test.red}
+local kColors = {app = Test.warm, scene = Test.accent, window = Test.green, asset = Test.violet, webSocket = Test.red}
+local kLegend = {{'App', Test.warm}, {'Scenes', Test.accent}, {'Window', Test.green}, {'Assets', Test.violet}, {'Sockets', Test.red}}
 local kCode = [[
-events.on('transitionOutFinished', function(transfer) print(transfer.from, transfer.to) end, {owner = self})
+events.on('transitionOutFinished', function(change) print(change.from, change.to) end, {owner = self})
 scene.push(room, {duration = 0.8, loading = view, loadingDelay = 0.1, minimumLoadingTime = 0.6})
-function room:load(context) context:progress(0.5, 'Building the room') async.sleep(100):await() end]]
+function room:load(context)
+    context:progress(0.5, 'Building the room')
+    async.sleep(100):await()
+end]]
 
 -- Names a scene or a GUI by its type, or says that C++ pushed the scene.
 local function sceneName(value)
@@ -89,15 +93,17 @@ function Broken:load()
     error('The server did not answer.')
 end
 
--- The loading view draws the progress and the message of the load over the covered screen.
+-- The loading view draws a card with the message of the load and a bar with round ends over the covered screen.
 local loadingView = {
     render = function(self, progress, message)
         graphics2d.beginScreen()
         local area = graphics2d.canvasBounds()
-        local x, y, width = area.x + area.width / 2 - 400, area.y + area.height / 2, 800
-        graphics2d.drawRect({x, y, width, 24}, '#FF3A3F55')
-        graphics2d.drawRect({x, y, width * progress, 24}, '#FFF2C14E', {layer = 1})
-        graphics2d.drawText(nil, message or '', area.x + area.width / 2, y - 40, {size = 36, anchor = {0.5, 0.5}})
+        local width = math.min(800, area.width - 96)
+        local x, y = area.x + (area.width - width) / 2, area.y + area.height / 2 - 70
+        graphics2d.drawShape({x - 40, y - 40, width + 80, 180}, {radius = 24, color = '#F2232938', borderWidth = 2, borderColor = '#FF2C3147'})
+        graphics2d.drawText(nil, message or '', x + width / 2, y + 10, {size = 34, anchor = {0.5, 0.5}, layer = 1})
+        graphics2d.drawShape({x, y + 60, width, 28}, {radius = 14, color = '#FF15172A', layer = 1})
+        graphics2d.drawShape({x + 3, y + 63, math.max(22, (width - 6) * progress), 22}, {radius = 11, color = '#FFF2C14E', layer = 2})
     end,
 }
 
@@ -111,7 +117,7 @@ function Lifecycle:enter()
                 return
             end
             local detail = describe(value)
-            journal:add('Event "' .. name .. '"' .. (detail ~= '' and ', ' .. detail or ''), color)
+            journal:add('Event "' .. name .. '"' .. (detail ~= '' and ': ' .. detail or '') .. '.', color)
         end, {owner = self})
     end
 
@@ -119,17 +125,20 @@ function Lifecycle:enter()
         hint = 'Switch windows, resize, plug in a gamepad or turn the device to see the platform events too.',
         code = kCode,
         controls = {
+            ui.button{id = 'clear', text = 'Clear the log', onClick = function() journal:clear() end},
+            ui.label{text = 'Scenes and the pause', font = 'caption', color = 'textMuted'},
             ui.button{id = 'room', text = 'Push a scene that loads', variant = 'primary', onClick = function() self:pushRoom() end},
             ui.button{id = 'broken', text = 'Push a failing load', onClick = function() self:pushBroken() end},
             ui.toggle{id = 'pause', text = 'Pause the game', onChange = function(event) haylen.setPaused(event.checked) end},
-            ui.toggle{id = 'notch', text = 'Simulate a notch', onChange = function(event) viewport.setSafeAreaSimulation(event.checked and 'iphoneDynamicIsland' or nil) end},
+            ui.label{text = 'Objects and assets', font = 'caption', color = 'textMuted'},
             ui.toggle{id = 'objects', text = 'Object events', onChange = function(event) debugging.setObjectEvents(event.checked) end},
             ui.button{id = 'sprite', text = 'Create and drop a sprite', onClick = function() self:touchSprite() end},
             ui.button{id = 'asset', text = 'Load and release an asset', onClick = function() self:touchAsset() end},
             ui.button{id = 'gui', text = 'Mount a GUI', onClick = function() self:touchGui() end},
             ui.button{id = 'socket', text = 'Open a socket that retries', onClick = function() self:openSocket() end},
+            ui.label{text = 'Window', font = 'caption', color = 'textMuted'},
+            ui.toggle{id = 'notch', text = 'Simulate a notch', onChange = function(event) viewport.setSafeAreaSimulation(event.checked and 'iphoneDynamicIsland' or nil) end},
             ui.button{id = 'fullscreen', text = 'Toggle fullscreen', onClick = function() window.setFullscreen(not window.fullscreen()) end},
-            ui.button{id = 'clear', text = 'Clear the log', onClick = function() journal:clear() end},
         },
         focus = 'room',
     })
@@ -153,13 +162,13 @@ end
 
 function Lifecycle:pushBroken()
     if not scene.transitioning() then
-        scene.push(Broken(), {duration = 0.6, onError = function(message) self.journal:add('The handler "onError" received: ' .. message, Test.red) end})
+        scene.push(Broken(), {duration = 0.6, onError = function(message) self.journal:add('The handler "onError" received "' .. message .. '"', Test.red) end})
     end
 end
 
 function Lifecycle:touchSprite()
     local sprite = graphics2d.newSprite(graphics.whiteTexture())
-    self.journal:add('Made ' .. tostring(sprite):match('^[^:]+') .. ', dropping it now', Test.muted)
+    self.journal:add('Made a "' .. tostring(sprite):match('^[^:]+') .. '" and dropped it.', Test.muted)
     sprite = nil
     collectgarbage()
 end
@@ -184,16 +193,24 @@ function Lifecycle:openSocket()
         self.socket:close()
     end
     self.socket = net.connectWebSocket('ws://127.0.0.1:9/', {reconnect = {initialDelay = 0.5, maxDelay = 1, maxAttempts = 2}})
-    self.socket:on('close', function(code) self.journal:add('The socket gave up with code ' .. code, Test.red) end)
+    self.socket:on('close', function(code) self.journal:add('The socket gave up with the code ' .. code .. '.', Test.red) end)
 end
 
 function Lifecycle:update(dt)
     Lifecycle.super.update(self, dt)
-    self:status(string.format('App state "%s", game %s, %s, scenes %d, open sockets %d', haylen.appState(), haylen.paused() and 'paused' or 'running', haylen.halted() and 'halted' or 'not halted', scene.size(), net.openSocketCount()))
+    self:status(string.format('The app is %s, the game is %s and %s, with %d scenes and %d open sockets.', haylen.appState(), haylen.paused() and 'paused' or 'running', haylen.halted() and 'halted' or 'not halted', scene.size(), net.openSocketCount()))
 end
 
 function Lifecycle:draw(area)
-    self.journal:draw(24, 16, area.height - 32, 24)
+    local margin = 24
+    local x = margin
+    for _, entry in ipairs(kLegend) do
+        graphics2d.drawShape({x, 38, 20, 20}, {kind = 'ellipse', color = entry[2], layer = 2})
+        self:label(entry[1], x + 30, 48, {anchor = {0, 0.5}, size = 24})
+        x = x + 50 + graphics2d.measureText(self.font, entry[1], {size = 24})
+    end
+    local top = EventsTest.counterRoom
+    self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'Engine events as they happen')
 end
 
 return Lifecycle

@@ -12,9 +12,15 @@ local Test = require('harness.test')
 local Diagnostics = haylen.class('Diagnostics', EventsTest)
 
 local kCode = [[
-for _, topic in ipairs(events.topics()) do print(topic.name, topic.listeners, topic.emissions, topic.stale) end
-for _, entry in ipairs(signal.list()) do print(entry.name, entry.listeners, entry.emissions, entry.stale) end
-debug.setStatsMode('full')  -- The overlay lists the same counts and warns about dead owners.]]
+for _, topic in ipairs(events.topics()) do
+    print(topic.name, topic.listeners, topic.emissions, topic.stale)
+end
+for _, entry in ipairs(signal.list()) do
+    print(entry.name, entry.listeners, entry.emissions, entry.stale)
+end]]
+
+local kRow = 36
+local kFlash = 0.8
 
 -- Returns the row named `name`, or an empty row.
 local function find(rows, name)
@@ -27,7 +33,9 @@ local function find(rows, name)
 end
 
 function Diagnostics:enter()
-    self.note = ''
+    self.note = 'Drop an owner to compare the counts before and after the collector frees it.'
+    self.previous = {}
+    self.flashes = {}
     self.previousMode = debugging.statsMode()
     self.score = signal.new('demo.score')
     self.health = signal.new('demo.health')
@@ -72,39 +80,79 @@ function Diagnostics:dropOwner()
     owner = nil
     collectgarbage()
     local freed = find(events.topics(), 'demoPing')
-    self.note = string.format('Event "demoPing": %d listeners with the owner, %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
+    self.note = string.format('The event "demoPing" had %d listeners with the owner and %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
 end
 
 function Diagnostics:update(dt)
     Diagnostics.super.update(self, dt)
-    self:status(string.format('Event names %d, named signals %d', #events.topics(), #signal.list()))
+    for name, flash in pairs(self.flashes) do
+        self.flashes[name] = flash > dt and flash - dt or nil
+    end
+    self:status(string.format('The bus knows %d event names and %d named signals.', #events.topics(), #signal.list()))
 end
 
--- Draws the rows of one table in columns, with the demo rows of this test highlighted.
-local function drawTable(title, rows, x, y, height)
-    graphics2d.drawText(nil, title, x, y, {size = 28, color = Test.warm})
-    local headers = {'Name', 'Listeners', 'Emissions', 'Stale'}
-    local columns = {0, 360, 480, 600}
-    for index, header in ipairs(headers) do
-        graphics2d.drawText(nil, header, x + columns[index], y + 40, {size = 22, color = Test.muted})
+-- Puts the rows of the demo first and the others after them by name, and flashes the rows whose counts changed.
+function Diagnostics:prepare(rows, kind)
+    for _, row in ipairs(rows) do
+        local key = kind .. row.name
+        local counts = row.listeners .. ' ' .. row.emissions .. ' ' .. row.stale
+        if self.previous[key] and self.previous[key] ~= counts then
+            self.flashes[key] = kFlash
+        end
+        self.previous[key] = counts
+        row.flash = (self.flashes[key] or 0) / kFlash
+        row.demo = row.name:match('^demo') ~= nil
     end
-    table.sort(rows, function(a, b) return a.name < b.name end)
-    local count = math.min(#rows, math.floor((height - 80) / 28))
-    for index = 1, count do
+    table.sort(rows, function(a, b)
+        if a.demo ~= b.demo then
+            return a.demo
+        end
+        return a.name < b.name
+    end)
+    return rows
+end
+
+-- Draws the rows of one table in a card, with the names on the left, the counts aligned on the right of their columns, and the rows that do not fit counted at the bottom.
+function Diagnostics:drawTable(title, rows, rect)
+    EventsTest.panel(rect)
+    local x, y, width = rect[1] + 24, rect[2], rect[3] - 48
+    self:label(title, x, y + 34, {anchor = {0, 0.5}, size = 26, maxWidth = width})
+    local columns = {{'Listeners', width - 230}, {'Emissions', width - 100}, {'Stale', width}}
+    local headerY = y + 78
+    graphics2d.drawText(nil, 'Name', x, headerY, {size = 20, color = Test.muted, anchor = {0, 0.5}, layer = 2})
+    for _, column in ipairs(columns) do
+        graphics2d.drawText(nil, column[1], x + column[2], headerY, {size = 20, color = Test.muted, anchor = {1, 0.5}, layer = 2})
+    end
+    local count = math.max(0, math.floor((rect[4] - 150) / kRow))
+    local shown = math.min(#rows, count)
+    for index = 1, shown do
         local row = rows[index]
-        local color = row.name:match('^demo') and Test.accent or Test.ink
-        local top = y + 44 + index * 28
-        graphics2d.drawText(nil, row.name, x, top, {size = 22, color = color})
-        graphics2d.drawText(nil, tostring(row.listeners), x + columns[2], top, {size = 22, color = color})
-        graphics2d.drawText(nil, tostring(row.emissions), x + columns[3], top, {size = 22, color = color})
-        graphics2d.drawText(nil, tostring(row.stale), x + columns[4], top, {size = 22, color = row.stale > 0 and Test.red or color})
+        local top = headerY + 20 + (index - 1) * kRow
+        if index % 2 == 1 then
+            graphics2d.drawShape({rect[1] + 12, top, rect[3] - 24, kRow}, {radius = 8, color = '#FF1E2330', layer = 1})
+        end
+        if row.flash > 0 then
+            graphics2d.drawShape({rect[1] + 12, top, rect[3] - 24, kRow}, {radius = 8, color = {1, 0.79, 0.24, 0.3 * row.flash}, layer = 1})
+        end
+        local color = row.demo and Test.accent or Test.ink
+        local middle = top + kRow / 2
+        graphics2d.drawText(nil, row.name, x, middle, {size = 22, color = color, anchor = {0, 0.5}, maxWidth = width - 330, wrap = false, minScale = 0.7, layer = 2})
+        graphics2d.drawText(nil, tostring(row.listeners), x + columns[1][2], middle, {size = 22, color = color, anchor = {1, 0.5}, layer = 2})
+        graphics2d.drawText(nil, tostring(row.emissions), x + columns[2][2], middle, {size = 22, color = color, anchor = {1, 0.5}, layer = 2})
+        graphics2d.drawText(nil, tostring(row.stale), x + columns[3][2], middle, {size = 22, color = row.stale > 0 and Test.red or color, anchor = {1, 0.5}, layer = 2})
     end
+    graphics2d.drawText(nil, string.format('Showing %d of %d', shown, #rows), x, rect[2] + rect[4] - 24, {size = 20, color = Test.muted, anchor = {0, 0.5}, layer = 2})
 end
 
 function Diagnostics:draw(area)
-    drawTable('Topics from "events.topics()"', events.topics(), 30, 20, area.height - 80)
-    drawTable('Signals from "signal.list()"', signal.list(), area.width / 2 + 30, 20, area.height - 80)
-    graphics2d.drawText(nil, self.note, 30, area.height - 50, {size = 24, color = Test.red})
+    local margin, gap = 24, 16
+    local top = EventsTest.counterRoom
+    local width = (area.width - margin * 2 - gap) / 2
+    local height = area.height - top - margin - 64
+    self:label('Live counts of the bus and the signals', margin, 48, {anchor = {0, 0.5}, size = 26})
+    self:drawTable('Topics of "events.topics()"', self:prepare(events.topics(), 'topic'), {margin, top, width, height})
+    self:drawTable('Signals of "signal.list()"', self:prepare(signal.list(), 'signal'), {margin + width + gap, top, width, height})
+    graphics2d.drawText(nil, self.note, margin, area.height - margin - 20, {size = 24, color = Test.warm, anchor = {0, 0.5}, maxWidth = area.width - margin * 2, layer = 2})
 end
 
 return Diagnostics
