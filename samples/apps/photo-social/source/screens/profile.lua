@@ -154,7 +154,7 @@ function Profile:editDialog()
         ui.formField{label = 'Name', ui.textField{id = 'editName', maxLength = 40, autocapitalize = 'words', returnKey = 'next', onChange = function(event)
             self.edit.name = event.value
         end}},
-        ui.formField{label = 'Bio', ui.textField{id = 'editBio', maxLength = 80, returnKey = 'done', onChange = function(event)
+        ui.formField{label = 'Bio', ui.textArea{id = 'editBio', maxLength = 80, rows = 2, onChange = function(event)
             self.edit.bio = event.value
         end}},
     }

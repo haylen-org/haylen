@@ -23,7 +23,7 @@ function ComposeShare:enter()
             Shell.centered(720, ui.column{gap = space.l, padding = {space.l, space.m, space.xl, space.m},
                 ui.image{id = 'thumb', image = Compose.texture and Compose.preview or Compose.look(), fit = 'cover', aspectRatio = 1, maxWidth = 360, align = 'center', radius = Style.radius.photo, accessibilityLabel = 'The picture of the post'},
                 ui.formField{label = 'Caption',
-                    ui.textField{id = 'caption', placeholder = 'Write a caption', maxLength = 200, returnKey = 'next', onChange = function(event)
+                    ui.textArea{id = 'caption', placeholder = 'Write a caption', maxLength = 200, rows = 3, onChange = function(event)
                         self.caption = event.value
                     end},
                 },
