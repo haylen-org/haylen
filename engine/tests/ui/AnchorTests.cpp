@@ -1,11 +1,13 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
 #include <imgui.h>
 #include <imgui_internal.h>
 
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
@@ -147,6 +149,23 @@ TEST_F(AnchorTest, WritesTheInsetsOfTheSafeAreaOutsideIt) {
     }
     EXPECT_GT(glyphs, 0);
     EXPECT_FALSE(getBounds(*gui, "back").isEmpty());
+}
+
+// A window stays inside the safe area wherever the app asks to place it, and floats on a shadow deeper than that of a card.
+TEST_F(AnchorTest, KeepsWindowsInsideTheSafeAreaOnADeepShadow) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "window", "id": "bag", "title": "Bag", "x": 1800, "y": 0, "width": 400, "height": 300}]})", Placement::Screen);
+    frames(2);
+    const math::Rect safe = getEngine().getViewport().getSafeRect().translated(-getEngine().getViewport().getVisibleRect().getMin());
+    const math::Rect window = getBounds(*gui, "bag");
+    EXPECT_EQ(window.getRight(), safe.getRight());
+    EXPECT_EQ(window.y, safe.y);
+
+    const float shadow = getUi().getTheme().getMetric(Theme::Metric::ShadowSize);
+    float deepest = 0.0F;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        deepest = std::max(deepest, shape.softness);
+    }
+    EXPECT_GT(deepest, shadow * 2.0F);
 }
 
 TEST(SafeAreaConfigTest, ReadsTheSimulationFromTheAppFile) {

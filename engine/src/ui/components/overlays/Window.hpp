@@ -32,6 +32,9 @@ class Window final : public Linear {
     void render(Context& context, const math::Rect&) override;
 
   private:
+    // A window floats above the interface, so its shadow is larger and darker than the shadow of a card.
+    static constexpr float kShadowLift = 1.5F;
+
     [[nodiscard]] math::Vec2 getSize(Context& context);
     void drawTitle(Context& context, const math::Rect& bar);
     void close(Context& context);

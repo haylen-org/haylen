@@ -1489,7 +1489,8 @@ TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheThe
     ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/close.png"); }));
     const math::Rect window = getBounds(*gui, "bag");
     const float header = getUi().getTheme().getMetric(Theme::Metric::WindowTitleHeight);
-    const math::Rect button = math::Rect(window.getRight() - header, window.y, header, header).expanded(-header * 0.15F);
+    const float side = header - 10.0F - 12.0F;
+    const math::Rect button = math::Rect(window.getRight() - 16.0F - side, window.y + 10.0F, side, side).expanded(-side * 0.15F);
     const auto covers = [&button](const math::Rect& drawn) { return (drawn.getMin() - button.getMin()).getLength() + (drawn.getMax() - button.getMax()).getLength() < 0.01F; };
     EXPECT_EQ(drawFrame().at("ui/body.png"), math::Rect(window.x, window.y + header * 0.5F, window.width, window.height - header * 0.5F));
     EXPECT_TRUE(covers(drawFrame().at("ui/close.png")));

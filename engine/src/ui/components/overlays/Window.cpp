@@ -57,10 +57,10 @@ math::Vec2 Window::measureContent(Context&, float) {
 }
 
 math::Vec2 Window::getSize(Context& context) {
-    const math::Rect display = context.getBackend().getDisplayRect();
+    const math::Rect safe = context.getBackend().getSafeRect();
     const float header = context.getMetric(Theme::Metric::WindowTitleHeight);
-    const float width = std::min(getCommon().width.value_or(Linear::measureContent(context, display.width).x), display.width);
-    const float height = std::min(getCommon().height.value_or(header + Linear::measureContent(context, width).y), display.height);
+    const float width = std::min(getCommon().width.value_or(Linear::measureContent(context, safe.width).x), safe.width);
+    const float height = std::min(getCommon().height.value_or(header + Linear::measureContent(context, width).y), safe.height);
     return {width, height};
 }
 
@@ -69,13 +69,13 @@ void Window::render(Context& context, const math::Rect&) {
         return;
     }
 
-    // The window starts where the app asked or in the middle of the safe area, and its title bar never leaves the screen.
+    // The window starts where the app asked or in the middle of the safe area, and stays inside the safe area at every scale of the UI, but for the part of its body below the title bar that may leave the bottom.
     const math::Vec2 size = getSize(context);
-    const math::Rect display = context.getBackend().getDisplayRect();
+    const math::Rect safe = context.getBackend().getSafeRect();
     const float header = context.getMetric(Theme::Metric::WindowTitleHeight);
-    const math::Vec2 centered = context.getBackend().getSafeRect().getCenter() - size * 0.5F;
+    const math::Vec2 centered = safe.getCenter() - size * 0.5F;
     const math::Vec2 start = position.value_or(math::Vec2{requestedX.value_or(centered.x), requestedY.value_or(centered.y)});
-    position = math::Vec2{std::clamp(start.x, display.x, std::max(display.x, display.getRight() - size.x)), std::clamp(start.y, display.y, std::max(display.y, display.getBottom() - header))};
+    position = math::Vec2{std::clamp(start.x, safe.x, std::max(safe.x, safe.getRight() - size.x)), std::clamp(start.y, safe.y, std::max(safe.y, safe.getBottom() - header))};
     const math::Vec2 placed = *position - math::Vec2{0.0F, context.getBackend().getKeyboardOffset()};
     setBounds({placed.x, placed.y, size.x, size.y});
 
@@ -93,7 +93,7 @@ void Window::render(Context& context, const math::Rect&) {
         // An image of the title bar caps the window, so the body starts behind the middle of the bar and no corner of it shows around the ends of the bar.
         const float cap = context.getSurface(Theme::Surface::TitleBar) != nullptr ? std::min(header * 0.5F, frame.height) : 0.0F;
         const math::Rect body{frame.x, frame.y + cap, frame.width, frame.height - cap};
-        Surfaces::drawShadow(context, body, context.getMetric(Theme::Metric::PanelRadius));
+        Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::PanelRadius), kShadowLift);
         Surfaces::draw(context, Theme::Surface::Window, body, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
         drawTitle(context, {frame.x, frame.y, frame.width, header});
         Linear::render(context, {frame.x, frame.y + header, frame.width, std::max(0.0F, frame.height - header)});
@@ -105,10 +105,14 @@ void Window::render(Context& context, const math::Rect&) {
     ImGui::End();
 }
 
+// The close button stands at the end of the bar inside the padding of the image of the title bar, so it keeps clear of the rounded end of the bar.
 void Window::drawTitle(Context& context, const math::Rect& bar) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
-    const float side = closable ? bar.height : 0.0F;
-    const math::Rect grip = context.mirror({bar.x, bar.y, bar.width - side, bar.height}, bar);
+    const math::Insets padding = Surfaces::getPadding(context, Theme::Surface::TitleBar);
+    const math::Rect inside = bar.inset(padding);
+    const float side = closable ? inside.height : 0.0F;
+    const float end = closable ? side + padding.right : 0.0F;
+    const math::Rect grip = context.mirror({bar.x, bar.y, bar.width - end, bar.height}, bar);
 
     // An image of the title bar covers the whole bar, and the flat bar fills the top of the window inside its border, with its top corners parallel to the corners of the window.
     if (const Theme::Image* image = context.getSurface(Theme::Surface::TitleBar)) {
@@ -124,7 +128,7 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     Typography::drawAligned(context, Theme::Font::Button, {text.x + inset, text.y, std::max(0.0F, text.width - inset * 2.0F), text.height}, context.getColor(Theme::Color::Text), context.getText(title), Alignment::Start);
 
     if (closable) {
-        const math::Rect cross = context.mirror({bar.getRight() - side, bar.y, side, side}, bar).expanded(-side * 0.15F);
+        const math::Rect cross = context.mirror({inside.getRight() - side, inside.y, side, side}, bar).expanded(-side * 0.15F);
         const Widgets::Interaction state = Widgets::interact(context, cross, radius, "##close");
         if (!Widgets::closeImage(context, cross, state)) {
             if (state.hovered) {
