@@ -246,6 +246,17 @@ TEST_F(ShapingTest, BreaksLinesByTheRulesOfEachScript) {
     }
 }
 
+// A hyphen-minus inside a name, such as an identifier, a file name or a date, never ends a line, while a hyphen after a space still may.
+TEST_F(ShapingTest, KeepsHyphenatedNamesOnOneLine) {
+    const std::u32string text = U"Open native-sample and 2026-06-21 now";
+    const Layout& lines = lay("Open native-sample and 2026-06-21 now", {.size = 32.0F, .maxWidth = 260.0F});
+    ASSERT_GT(lines.lines.size(), 1U);
+    for (std::size_t index = 1; index < lines.lines.size(); ++index) {
+        const std::size_t first = lines.characters[lines.lines[index].firstCharacter].begin;
+        EXPECT_EQ(text[first - 1], U' ') << index;
+    }
+}
+
 // Styles apply across a change of direction, and backgrounds and lines split where it changes so each grows with the reveal from its own start.
 TEST_F(ShapingTest, SpansStylesAcrossDirections) {
     const std::shared_ptr<RichTextRegistry> registry = fixture.engine().getPlugin<plugins::TextPlugin>().getRegistry();

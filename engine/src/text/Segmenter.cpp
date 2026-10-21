@@ -57,8 +57,23 @@ std::vector<Segmenter::Break> Segmenter::getLineBreaks(std::u32string_view text,
             found[index] = Break::Allowed;
         }
     }
+    keepHyphenatedNames(text, found);
     addThaiPhrases(text, found);
     return found;
+}
+
+// A hyphen-minus between two letters or digits joins the parts of one name, such as an identifier, a file name or a date, so a line never breaks inside it.
+void Segmenter::keepHyphenatedNames(std::u32string_view text, std::vector<Break>& found) {
+    for (std::size_t index = 1; index + 1 < text.size(); ++index) {
+        if (text[index] == U'-' && found[index] == Break::Allowed && isLetterOrDigit(text[index - 1]) && isLetterOrDigit(text[index + 1])) {
+            found[index] = Break::Never;
+        }
+    }
+}
+
+bool Segmenter::isLetterOrDigit(char32_t codePoint) noexcept {
+    const SBGeneralCategory category = SBCodepointGetGeneralCategory(codePoint);
+    return (category >= SBGeneralCategoryLU && category <= SBGeneralCategoryLO) || (category >= SBGeneralCategoryND && category <= SBGeneralCategoryNO);
 }
 
 // Thai writes no spaces between words, which the Unicode rules leave unbroken, so its runs may also break between the phrases the Thai model finds, where a grapheme cluster starts.
