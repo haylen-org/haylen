@@ -43,7 +43,7 @@ function Animations:describe(x, y)
         end
     end
     local column, row = map:worldToCell(x, y)
-    for _, layer in ipairs({'walls', 'ground'}) do
+    for _, layer in ipairs({'walls', 'lava', 'water', 'path', 'ground'}) do
         local gid = map:tile(layer, column, row)
         if gid ~= 0 then
             return 'Layer "' .. layer .. '"', map:tileInfo(gid)
@@ -67,13 +67,14 @@ function Animations:update(dt)
     for _, frame in ipairs(info and info.animation or {}) do
         frames[#frames + 1] = string.format('Tile %d for %.0f ms', frame.tileId, frame.duration * 1000)
     end
-    local summary = info and string.format('%s\nClass %s\n%s', where, info.type ~= '' and '"' .. info.type .. '"' or 'none', #frames > 0 and table.concat(frames, '\n') or 'Still tile') or 'Nothing under the pointer'
-    self:status(string.format('Map time %.1f s', self.time))
+    local summary = info and string.format('%s\nClass %s\n%s', where, info.type ~= '' and '"' .. info.type .. '"' or 'none', #frames > 0 and table.concat(frames, '\n') or 'A still tile') or 'Point at a tile to read its frames.'
+    self:status(string.format('The map time is %.1f seconds.', self.time))
     self:details(summary)
 end
 
 function Animations:draw(area)
     self.map:draw(self.camera)
+    MapTest.frameMap(self.map.pixelBounds)
 end
 
 return Animations

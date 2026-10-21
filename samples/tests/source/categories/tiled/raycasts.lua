@@ -1,8 +1,8 @@
 -- Ray casts against a map without a physics world: `map:raycastTiles` walks the cells of the walls layer and `map:raycastObjects` hits the shapes of the obstacles layer, and the nearer hit stops the ray.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
-local physics2d = require('haylen.physics2d')
 local profiler = require('haylen.debug')
 local tiled = require('haylen.tiled')
 local ui = require('haylen.ui')
@@ -37,7 +37,8 @@ function Raycasts:enter()
         focus = 'mode',
     }
     self.mode, self.waterBlocks, self.fencesBlock = 'single', false, true
-    self.eye = {bounds.width * 0.3, bounds.height * 0.55}
+    self.rope = assets.texture('sprites/images/rope.png', {filter = 'linear', wrap = 'repeat'})
+    self.eye = {bounds.width * 0.42, bounds.height * 0.55}
     self.objects = self.map:objects('obstacles')
     self.camera:snapTo(bounds.width / 2, bounds.height / 2)
 end
@@ -59,7 +60,7 @@ end
 function Raycasts:update(dt)
     Raycasts.super.update(self, dt)
     if input.pressed('reset') then
-        self.eye = {self.map.pixelBounds.width * 0.3, self.map.pixelBounds.height * 0.55}
+        self.eye = {self.map.pixelBounds.width * 0.42, self.map.pixelBounds.height * 0.55}
     end
     if self.pointer.pressed then
         self.eye = {self.pointer.worldX, self.pointer.worldY}
@@ -78,30 +79,76 @@ function Raycasts:update(dt)
     profiler.endScope()
 
     local first = self.rays[1]
-    local summary = 'No hit'
+    local summary = 'The ray hits nothing'
     if first.source == 'tile' then
-        summary = string.format('Tile %d at cell %d, %d of class "%s"', tiled.tileId(first.hit.gid), first.hit.column, first.hit.row, self.map:tileInfo(first.hit.gid).type)
+        summary = string.format('The ray hits the tile %d of the class "%s" at the cell %d, %d', tiled.tileId(first.hit.gid), self.map:tileInfo(first.hit.gid).type, first.hit.column, first.hit.row)
     elseif first.source == 'object' then
-        summary = string.format('Object "%s" of class "%s"', first.hit.name, first.hit.type)
+        summary = string.format('The ray hits the object "%s" of the class "%s"', first.hit.name, first.hit.type)
     end
-    self:status(string.format('%s, distance %.0f, rays %d in %.3f ms', summary, first.hit and first.hit.distance or 0, count, self:timing('tiledCasts')))
+    self:status(string.format('%s, %.0f units away. %d rays took %.3f ms.', summary, first.hit and first.hit.distance or 0, count, self:timing('tiledCasts')))
+end
+
+-- A ray glows from the eye to where it stops, with a bright point and an arrow along the normal of a hit.
+function Raycasts:drawRay(ray, single)
+    local x1, y1 = self.eye[1], self.eye[2]
+    local x2, y2 = ray.x2, ray.y2
+    if ray.hit then
+        x2, y2 = ray.hit.x, ray.hit.y
+    end
+    local width = single and 4 or 2.5
+    graphics2d.drawStroke({x1, y1, x2, y2}, {width = width * 3.5, color = '#40FF8A84', cap = 'round', layer = 6})
+    graphics2d.drawStroke({x1, y1, x2, y2}, {width = width, color = '#FFFFD0C8', cap = 'round', layer = 7})
+    if not ray.hit then
+        return
+    end
+    graphics2d.drawShape({x2 - 9, y2 - 9, 18, 18}, {kind = 'ellipse', color = '#80FF8A84', softness = 8, layer = 7})
+    graphics2d.drawShape({x2 - 4, y2 - 4, 8, 8}, {kind = 'ellipse', color = '#FFFFFFFF', layer = 8})
+    if single then
+        local nx, ny = ray.hit.normalX, ray.hit.normalY
+        local tipX, tipY = x2 + nx * 34, y2 + ny * 34
+        graphics2d.drawStroke({x2, y2, tipX - nx * 8, tipY - ny * 8}, {width = 4, color = '#FF8FE3FF', cap = 'round', layer = 8})
+        graphics2d.drawPolygon({{tipX, tipY}, {tipX - nx * 12 - ny * 7, tipY - ny * 12 + nx * 7}, {tipX - nx * 12 + ny * 7, tipY - ny * 12 - nx * 7}}, '#FF8FE3FF', {layer = 8})
+    end
+end
+
+-- The eye looks toward the pointer.
+function Raycasts:drawEye()
+    local x, y = self.eye[1], self.eye[2]
+    local dx, dy = self.pointer.worldX - x, self.pointer.worldY - y
+    local length = math.max(1, math.sqrt(dx * dx + dy * dy))
+    graphics2d.drawShape({x - 17, y - 12, 34, 24}, {kind = 'ellipse', color = '#FFF2F3FF', borderWidth = 3, borderColor = MapTest.ink, layer = 9})
+    local px, py = x + dx / length * 6, y + dy / length * 4
+    graphics2d.drawShape({px - 7, py - 7, 14, 14}, {kind = 'ellipse', color = '#FF2F86F6', borderWidth = 2, borderColor = MapTest.ink, layer = 10})
+    graphics2d.drawShape({px - 2.5, py - 2.5, 5, 5}, {kind = 'ellipse', color = MapTest.ink, layer = 11})
 end
 
 function Raycasts:draw(area)
     local map = self.map
     map:draw(self.camera)
+    MapTest.frameMap(map.pixelBounds)
     local unit = graphics2d.canvasUnitSize()
     for _, object in ipairs(self.objects) do
-        outlines.draw(map, object, '#AAFFD54F', 2 * unit, {layer = 5})
-    end
-    for _, ray in ipairs(self.rays) do
-        physics2d.drawRay(self.eye[1], self.eye[2], ray.x2, ray.y2, ray.hit, {layer = 6})
-        if ray.source == 'tile' and self.mode == 'single' then
-            local x, y = map:cellToWorld(ray.hit.column, ray.hit.row)
-            graphics2d.drawRectOutline({x, y, map.tileWidth, map.tileHeight}, 3 * unit, '#FFFF5252', {layer = 6})
+        local points, closed = outlines.of(map, object)
+        if object.shape == 'polyline' then
+            local flat = {}
+            for _, point in ipairs(points) do
+                flat[#flat + 1] = point[1]
+                flat[#flat + 1] = point[2]
+            end
+            graphics2d.drawStroke(flat, {width = 12, texture = self.rope, textureMode = 'tile', join = 'round', cap = 'round', layer = 4})
+        else
+            graphics2d.drawPolyline(points, 2 * unit, '#99FFC93C', closed, {layer = 5})
         end
     end
-    graphics2d.drawCircle(self.eye[1], self.eye[2], 10, '#FFFFFFFF', {layer = 7})
+    local single = self.mode == 'single'
+    for _, ray in ipairs(self.rays) do
+        self:drawRay(ray, single)
+        if ray.source == 'tile' and single then
+            local x, y = map:cellToWorld(ray.hit.column, ray.hit.row)
+            graphics2d.drawShape({x, y, map.tileWidth, map.tileHeight}, {radius = 4, color = '#33FF8A84', borderWidth = 3 * unit, borderColor = '#FFFF8A84', layer = 6})
+        end
+    end
+    self:drawEye()
 end
 
 return Raycasts

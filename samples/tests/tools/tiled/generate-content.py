@@ -1,6 +1,6 @@
 """Generates the content of the Tiled tests: the tilesets, the templates, the maps and the world, as files that open and edit in Tiled 1.12.
 
-The images of the tilesets and the backdrops are painted for the project with the "codex" command line, as the art guide in the README of the test project describes, and the tilesets name them with their sizes. The transitions of water, sand and paths into the grass are drawn from those paintings by `transitions.py`.
+The images of the tilesets and the backdrops are painted for the project with the "codex" command line, as the art guide in the README of the test project describes, and the tilesets name them with their sizes. The transitions of water, sand, paths, lava and grass are drawn from those paintings by `transitions.py`, the roofs are packed by `pack-roofs.py`, the scenery tileset names the props of the Camera tests, and the sky and the sea behind the maps are drawn by `images.py`.
 
 Run it from anywhere with `python3 samples/tests/tools/tiled/generate-content.py`. The same run always writes the same files into `samples/tests/content/tiled`.
 """
@@ -13,6 +13,7 @@ from pathlib import Path
 # The tool runs from the test project, which keeps no compiled Python files.
 sys.dont_write_bytecode = True
 
+import images  # noqa: E402
 import maps_play  # noqa: E402
 import maps_views  # noqa: E402
 import tilesets  # noqa: E402
@@ -27,7 +28,11 @@ def write_tilesets() -> None:
     save(tilesets.props(), CONTENT / "tilesets" / "props.tsj")
     save(tilesets.diamonds(), CONTENT / "tilesets" / "diamonds.tsj")
     save(tilesets.hexagons(), CONTENT / "tilesets" / "hexagons.tsj")
+    save(tilesets.scenery(), CONTENT / "tilesets" / "scenery.tsj")
+    save(tilesets.roofs(), CONTENT / "tilesets" / "roofs.tsj")
     transitions.write_image()
+    images.write_sky()
+    images.write_sea()
     save(transitions.transitions(), CONTENT / "tilesets" / "transitions.tsj")
     save(tilesets.lamp_template(), CONTENT / "templates" / "lamp.tj")
     save(tilesets.sign_template(), CONTENT / "templates" / "sign.tj")
@@ -51,6 +56,7 @@ def write_maps() -> None:
     maps_play.spawning(maps)
     maps_play.ysort(maps)
     maps_play.raycasts(maps)
+    maps_play.garden(CONTENT)
 
 
 def main() -> None:

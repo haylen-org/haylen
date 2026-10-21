@@ -30,7 +30,8 @@ function ImageLayers:enter()
                 self.map:setLayerVisible('far hills', event.checked)
                 self.map:setLayerVisible('near hills', event.checked)
             end},
-            ui.label{id = 'details', text = '', color = 'textMuted'},
+            ui.sectionTitle{text = 'Layers'},
+            ui.table{id = 'layers', columns = {{text = 'Layer'}, {text = 'Parallax', width = 110, align = 'end'}, {text = 'Repeats', width = 150, align = 'end'}}, rows = self:rows()},
         },
         view = {640, bounds.height},
         play = true,
@@ -56,7 +57,12 @@ function ImageLayers:update(dt)
         end
     end
     self.camera.y = bounds.height / 2
-    local lines = {}
+    self:status(string.format('The camera is at x %.0f of the %.0f units of the map.', self.camera.x, bounds.width))
+end
+
+-- A row for every layer with its parallax and the axes its image repeats along.
+function ImageLayers:rows()
+    local rows = {}
     for _, layer in ipairs(self.map:layers()) do
         local axes = {}
         if layer.kind == 'image' and layer.repeatX then
@@ -65,11 +71,10 @@ function ImageLayers:update(dt)
         if layer.kind == 'image' and layer.repeatY then
             axes[#axes + 1] = 'y'
         end
-        local repeats = #axes > 0 and ', repeats along ' .. table.concat(axes, ' and ') or ''
-        lines[#lines + 1] = string.format('Layer "%s": parallax %.2f%s', layer.name, layer.parallaxX, repeats)
+        local name = layer.name:gsub('^%l', string.upper)
+        rows[#rows + 1] = {id = layer.name, cells = {name, string.format('%.2f', layer.parallaxX), #axes > 0 and 'Along ' .. table.concat(axes, ' and ') or 'No'}}
     end
-    self:status(string.format('Camera at x %.0f', self.camera.x))
-    self:details(table.concat(lines, '\n'))
+    return rows
 end
 
 function ImageLayers:draw(area)

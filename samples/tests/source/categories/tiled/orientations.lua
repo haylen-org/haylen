@@ -9,8 +9,9 @@ local MapTest = require('categories.tiled.map-test')
 local Orientations = haylen.class('Orientations', MapTest)
 
 Orientations.code = [[
-local map = tiled.newMapRenderer(assets.load('tiled/maps/hexagonal.tmj', nil, {filter = 'linear'}))
-print(map.orientation, map.hexSideLength, map.staggerX, map.staggerEven)
+local map = tiled.newMapRenderer(assets.load('tiled/maps/' .. name .. '.tmj', nil, {filter = 'linear'}))
+print(map.orientation, map.width, map.height, map.tileWidth, map.tileHeight)
+print(map.staggerX, map.staggerEven, map.hexSideLength, map.skewX)  -- What staggered, hexagonal and oblique maps add.
 local column, row = map:worldToCell(x, y)  -- The nearest cell center on staggered and hexagonal maps.
 local cornerX, cornerY = map:cellToWorld(column, row)
 map:draw(camera)]]
@@ -22,7 +23,7 @@ local kMaps = {
     {id = 'hexagonal', text = 'Hexagonal'},
     {id = 'oblique', text = 'Oblique'},
 }
-local kMargin = 48
+local kMargin = 40
 
 function Orientations:enter()
     self.maps = {}
@@ -47,8 +48,23 @@ function Orientations:show(id)
     local bounds = self.map.pixelBounds
     self.view = {bounds.width + kMargin * 2, bounds.height + kMargin * 2}
     self.camera:snapTo(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2)
+    self:details(self:describe())
+end
+
+-- The fields of the orientation that shows, without those that only other orientations use.
+function Orientations:describe()
     local map = self.map
-    self:details(string.format('Orientation "%s"\nSize %d by %d cells\nTile %d by %d\nStagger axis "%s", index "%s"\nHex side %d\nSkew %d, %d', map.orientation, map.width, map.height, map.tileWidth, map.tileHeight, map.staggerX and 'x' or 'y', map.staggerEven and 'even' or 'odd', map.hexSideLength, map.skewX, map.skewY))
+    local lines = {string.format('Orientation "%s"', map.orientation), string.format('%d by %d cells of %d by %d', map.width, map.height, map.tileWidth, map.tileHeight)}
+    if map.orientation == 'staggered' or map.orientation == 'hexagonal' then
+        lines[#lines + 1] = string.format('Staggered along %s, the %s rows shifted', map.staggerX and 'x' or 'y', map.staggerEven and 'even' or 'odd')
+    end
+    if map.orientation == 'hexagonal' then
+        lines[#lines + 1] = string.format('Hexagon sides of %d', map.hexSideLength)
+    end
+    if map.orientation == 'oblique' then
+        lines[#lines + 1] = string.format('Skewed by %d, %d', map.skewX, map.skewY)
+    end
+    return table.concat(lines, '\n')
 end
 
 function Orientations:cycle(step)
@@ -69,8 +85,13 @@ function Orientations:update(dt)
     end
     local map = self.map
     self.column, self.row = map:worldToCell(self.pointer.worldX, self.pointer.worldY)
+    self.inside = self.column >= 0 and self.row >= 0 and self.column < map.width and self.row < map.height
+    if not self.inside then
+        self:status('Point at a cell of the map to find it.')
+        return
+    end
     local x, y = map:cellToWorld(self.column, self.row)
-    self:status(string.format('Cell %d, %d, its corner at %.0f, %.0f', self.column, self.row, x, y))
+    self:status(string.format('The pointer is on the cell %d, %d, whose corner is at %.0f, %.0f.', self.column, self.row, x, y))
 end
 
 -- Orthogonal, isometric and oblique cells share their corners with their neighbors, so four calls of `cellToWorld` outline them. Staggered and hexagonal cells sit in their bounding boxes.
@@ -94,8 +115,15 @@ end
 
 function Orientations:draw(area)
     self.map:draw(self.camera)
-    graphics2d.drawRectOutline(self.map.pixelBounds, 2 * graphics2d.canvasUnitSize(), '#66FFFFFF', {layer = 5})
-    graphics2d.drawPolyline(self:cellOutline(), 3 * graphics2d.canvasUnitSize(), '#FFFFD54F', true, {layer = 6})
+    if self.map.orientation == 'orthogonal' then
+        MapTest.frameMap(self.map.pixelBounds)
+    end
+    if self.inside then
+        local unit = graphics2d.canvasUnitSize()
+        local points = self:cellOutline()
+        graphics2d.drawPolygon(points, '#40FFC93C', {layer = 6})
+        graphics2d.drawPolyline(points, 4 * unit, '#FFFFC93C', true, {layer = 7})
+    end
 end
 
 return Orientations

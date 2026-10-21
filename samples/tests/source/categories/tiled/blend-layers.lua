@@ -19,47 +19,47 @@ map:draw(camera)  -- The layer draws into a group that mixes it with the ground 
 
 BlendLayers.modes = {'alpha', 'additive', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'colorDodge', 'colorBurn', 'hardLight', 'softLight', 'difference', 'exclusion'}
 BlendLayers.tiledNames = {alpha = 'normal', additive = 'add', multiply = 'multiply', screen = 'screen', overlay = 'overlay', darken = 'darken', lighten = 'lighten', colorDodge = 'color-dodge', colorBurn = 'color-burn', hardLight = 'hard-light', softLight = 'soft-light', difference = 'difference', exclusion = 'exclusion'}
+BlendLayers.titles = {alpha = 'Normal', additive = 'Add', multiply = 'Multiply', screen = 'Screen', overlay = 'Overlay', darken = 'Darken', lighten = 'Lighten', colorDodge = 'Color dodge', colorBurn = 'Color burn', hardLight = 'Hard light', softLight = 'Soft light', difference = 'Difference', exclusion = 'Exclusion'}
 
-local kColumns, kRows, kTile = 40, 24, 32
+local kColumns, kRows, kTile = 40, 20, 32
 
 function BlendLayers:enter()
-    self.mode = 5
+    self.mode = 1
     self.map = tiled.newMapRenderer(tiled.newMap({width = kColumns, height = kRows, tileWidth = kTile, tileHeight = kTile}))
     self.terrain = self.map:addTileset(BuiltMap.painted('terrain'))
     self.shore = self.map:addTileset(BuiltMap.painted('shore'))
     self.map:addLayer({name = 'ground'})
 
-    -- The ground is grass with flowers and paths, and the water covers the cells where a second noise rises.
+    -- The ground is grass with flowers, and the water lies on the corners of the cells where a noise rises, so each cell takes the shore tile of its corners under water.
     local noise = m.noise(9)
     local ground, water = spatial2d.newCellGrid(kColumns, kRows), spatial2d.newCellGrid(kColumns, kRows)
+    local function wet(column, row)
+        return noise:fractal(column * 0.09 + 40, row * 0.09, 3, 2, 0.5) > 0.05 and 1 or 0
+    end
     for row = 0, kRows - 1 do
         for column = 0, kColumns - 1 do
-            ground:set(column, row, noise:fractal(column * 0.12, row * 0.12, 3, 2, 0.5) > 0.3 and 2 or ((column * 7 + row * 3) % 9 == 0 and 1 or 0))
-            water:set(column, row, noise:fractal(column * 0.07 + 40, row * 0.07, 3, 2, 0.5) > -0.05 and 15 or -1)
+            ground:set(column, row, (column * 7 + row * 3) % 9 == 0 and 1 or 0)
+            local mask = wet(column + 1, row) | wet(column + 1, row + 1) << 1 | wet(column, row + 1) << 2 | wet(column, row) << 3
+            water:set(column, row, mask > 0 and mask or -1)
         end
     end
     self.map:fill('ground', ground, self.terrain)
     self.water = water
     self:applyMode()
 
-    local items = {}
+    local buttons = {}
     for index, mode in ipairs(BlendLayers.modes) do
-        items[index] = {id = mode, text = BlendLayers.tiledNames[mode]}
+        buttons[index] = ui.button{id = mode, text = BlendLayers.titles[mode], variant = index == self.mode and 'primary' or 'default', onClick = function() self:pick(index) end}
     end
     self:frame{
         hint = 'Pick the blend mode of the water layer, or step through them with Q and E or the shoulder buttons.',
         code = BlendLayers.code,
         controls = {
-            ui.radioGroup{id = 'mode', items = items, selected = BlendLayers.modes[self.mode], onChange = function(event)
-                for index, mode in ipairs(BlendLayers.modes) do
-                    if mode == event.value then
-                        self:pick(index)
-                    end
-                end
-            end},
+            ui.label{text = 'Blend mode of the water layer', font = 'caption', color = 'textMuted'},
+            ui.grid{columns = 2, gap = 10, alignItems = 'stretch', children = buttons},
         },
         view = {kColumns * kTile + 64, kRows * kTile + 64},
-        focus = 'mode',
+        focus = BlendLayers.modes[1],
     }
     self.camera:snapTo(kColumns * kTile / 2, kRows * kTile / 2)
 end
@@ -75,9 +75,10 @@ function BlendLayers:applyMode()
 end
 
 function BlendLayers:pick(index)
+    self:set(BlendLayers.modes[self.mode], {variant = 'default'})
     self.mode = (index - 1) % #BlendLayers.modes + 1
     self:applyMode()
-    self:set('mode', {selected = BlendLayers.modes[self.mode]})
+    self:set(BlendLayers.modes[self.mode], {variant = 'primary'})
     self:log('The water layer blends with the mode "%s".', BlendLayers.tiledNames[BlendLayers.modes[self.mode]])
 end
 
@@ -89,11 +90,12 @@ function BlendLayers:update(dt)
         self:pick(self.mode - 1)
     end
     local stats = graphics2d.stats()
-    self:status(string.format('Water layer "%s", passes %d, draw calls %d', BlendLayers.tiledNames[BlendLayers.modes[self.mode]], stats.passes, stats.drawCalls))
+    self:status(string.format('The water layer blends with the mode "%s" of Tiled, in %d %s.', BlendLayers.tiledNames[BlendLayers.modes[self.mode]], stats.passes, stats.passes == 1 and 'pass' or 'passes'))
 end
 
 function BlendLayers:draw(area)
     self.map:draw(self.camera)
+    MapTest.frameMap(self.map.pixelBounds)
 end
 
 return BlendLayers

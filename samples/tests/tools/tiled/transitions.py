@@ -1,6 +1,6 @@
-"""The transitions of the Tiled tests: water with its sandy shore, sand and dirt paths that blend into the grass, as corner sets of sixteen tiles.
+"""The transitions of the Tiled tests: water with its sandy shore, sand and dirt paths that blend into the grass, lava in a crust of scorched rock, and grass that ends in a ragged edge over the sand, as corner sets of sixteen tiles.
 
-Every tile of a set is drawn from the painted textures of `tiles/terrain.png` and the four corners it covers: the corners that hold the terrain pull its edge toward them, and a noise that repeats every tile makes the edge wander naturally. The edge along a side of a tile depends only on the two corners of that side and the noise repeats across tiles, so any two tiles that share corners join without a seam. The water tiles play the four frames of the water, and the sets are Tiled corner sets, so maps pick their tiles from the terrain at the corners of their cells.
+Every tile of a set is drawn from the painted textures of `tiles/terrain.png` and the four corners it covers: the corners that hold the terrain pull its edge toward them, and a noise that repeats every tile makes the edge wander naturally. The edge along a side of a tile depends only on the two corners of that side and the noise repeats across tiles, so any two tiles that share corners join without a seam. The water and the lava tiles play the four frames of their textures, and the sets are Tiled corner sets, so maps pick their tiles from the terrain at the corners of their cells. The sets keep their rows, so the lava follows the paths.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ import sys
 from pathlib import Path
 
 import tilesets as t
-from tiled_json import tileset
+from tiled_json import prop, tileset
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[4] / "tools"))
 from png_image import Image, read, write  # noqa: E402
@@ -18,8 +18,8 @@ from png_image import Image, read, write  # noqa: E402
 TILES = Path(__file__).resolve().parents[2] / "content" / "tiled" / "tiles"
 SIZE = 32 * t.SCALE
 COLUMNS = 16
-# The sets and the row of their first tiles: the water takes a row for each frame of its animation.
-WATER, SAND, PATH = 0, 4, 5
+# The sets and the row of their first tiles: the water and the lava take a row for each frame of their animation.
+WATER, SAND, PATH, LAVA, GRASS = 0, 4, 5, 6, 10
 FRAMES = 4
 
 
@@ -100,6 +100,21 @@ def water_layers(sand: Image, water: Image):
     return shore, lake, foam
 
 
+def lava_layers(crust: Image, lava: Image):
+    """The lava sits in a crust of scorched rock, with a glowing seam where it meets the crust."""
+
+    def rock(depth: float, x: int, y: int):
+        return mix(pixel(crust, x, y), (58, 34, 28), 0.55 + 0.25 * ramp(depth, 0.02, 0.04)), ramp(depth, -0.06)
+
+    def melt(depth: float, x: int, y: int):
+        return pixel(lava, x, y), ramp(depth, 0.07)
+
+    def seam(depth: float, x: int, y: int):
+        return (255, 214, 120), 0.8 * ramp(depth, 0.07) * (1 - ramp(depth, 0.1))
+
+    return rock, melt, seam
+
+
 def solid_layers(surface: Image, rim: tuple):
     def ground(depth: float, x: int, y: int):
         return mix(pixel(surface, x, y), rim, 0.35 * (1 - ramp(depth, 0.03, 0.03))), ramp(depth, 0.0)
@@ -125,6 +140,9 @@ def write_image() -> None:
         rows[WATER + frame] = (water_layers(sand, texture(atlas, t.WATER + frame)), 31)
     rows[SAND] = (solid_layers(sand, (196, 150, 84)), 47)
     rows[PATH] = (solid_layers(dirt, (92, 52, 28)), 59)
+    for frame in range(FRAMES):
+        rows[LAVA + frame] = (lava_layers(dirt, texture(atlas, t.LAVA + frame)), 71)
+    rows[GRASS] = (solid_layers(texture(atlas, t.GRASS), (64, 128, 40)), 83)
     width, height = t.atlas_size(COLUMNS, len(rows), SIZE, SIZE)
     image = Image.blank(width, height)
     for row, (layers, seed) in rows.items():
@@ -145,10 +163,12 @@ def corner_set(name: str, color: str, row: int) -> dict:
 
 
 def transitions() -> dict:
-    width, height = t.atlas_size(COLUMNS, PATH + 1, SIZE, SIZE)
-    tiles = [{"id": tile_id(WATER, mask), "type": "water", "animation": [{"tileid": tile_id(WATER + frame, mask), "duration": 180} for frame in range(FRAMES)]} for mask in range(1, 16)]
+    width, height = t.atlas_size(COLUMNS, GRASS + 1, SIZE, SIZE)
+    liquid = [prop("liquid", "bool", True), prop("depth", "float", 1.5)]
+    tiles = [{"id": tile_id(WATER, mask), "type": "water", "properties": liquid, "animation": [{"tileid": tile_id(WATER + frame, mask), "duration": 180} for frame in range(FRAMES)]} for mask in range(1, 16)]
+    tiles += [{"id": tile_id(LAVA, mask), "type": "lava", "animation": [{"tileid": tile_id(LAVA + frame, mask), "duration": 220} for frame in range(FRAMES)]} for mask in range(1, 16)]
     document = tileset("transitions", "../tiles/transitions.png", width, height, SIZE, SIZE, tiles, **t.GRID)
-    document["wangsets"] = [corner_set("water", "#ff2fb3c4", WATER), corner_set("sand", "#fff3d58d", SAND), corner_set("path", "#ff8a5a32", PATH)]
+    document["wangsets"] = [corner_set("water", "#ff2fb3c4", WATER), corner_set("sand", "#fff3d58d", SAND), corner_set("path", "#ff8a5a32", PATH), corner_set("lava", "#ffff7043", LAVA), corner_set("grass", "#ff7bc74d", GRASS)]
     return document
 
 

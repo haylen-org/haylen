@@ -1,12 +1,12 @@
 {
  "columns": 16,
  "image": "../tiles/transitions.png",
- "imageheight": 792,
+ "imageheight": 1452,
  "imagewidth": 2112,
  "margin": 2,
  "name": "transitions",
  "spacing": 4,
- "tilecount": 96,
+ "tilecount": 176,
  "tiledversion": "1.12.0",
  "tileheight": 128,
  "tilewidth": 128,
@@ -16,6 +16,18 @@
   {
    "id": 1,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 1,
@@ -38,6 +50,18 @@
   {
    "id": 2,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 2,
@@ -60,6 +84,18 @@
   {
    "id": 3,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 3,
@@ -82,6 +118,18 @@
   {
    "id": 4,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 4,
@@ -104,6 +152,18 @@
   {
    "id": 5,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 5,
@@ -126,6 +186,18 @@
   {
    "id": 6,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 6,
@@ -148,6 +220,18 @@
   {
    "id": 7,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 7,
@@ -170,6 +254,18 @@
   {
    "id": 8,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 8,
@@ -192,6 +288,18 @@
   {
    "id": 9,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 9,
@@ -214,6 +322,18 @@
   {
    "id": 10,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 10,
@@ -236,6 +356,18 @@
   {
    "id": 11,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 11,
@@ -258,6 +390,18 @@
   {
    "id": 12,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 12,
@@ -280,6 +424,18 @@
   {
    "id": 13,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 13,
@@ -302,6 +458,18 @@
   {
    "id": 14,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 14,
@@ -324,6 +492,18 @@
   {
    "id": 15,
    "type": "water",
+   "properties": [
+    {
+     "name": "liquid",
+     "type": "bool",
+     "value": true
+    },
+    {
+     "name": "depth",
+     "type": "float",
+     "value": 1.5
+    }
+   ],
    "animation": [
     {
      "tileid": 15,
@@ -340,6 +520,336 @@
     {
      "tileid": 63,
      "duration": 180
+    }
+   ]
+  },
+  {
+   "id": 97,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 97,
+     "duration": 220
+    },
+    {
+     "tileid": 113,
+     "duration": 220
+    },
+    {
+     "tileid": 129,
+     "duration": 220
+    },
+    {
+     "tileid": 145,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 98,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 98,
+     "duration": 220
+    },
+    {
+     "tileid": 114,
+     "duration": 220
+    },
+    {
+     "tileid": 130,
+     "duration": 220
+    },
+    {
+     "tileid": 146,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 99,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 99,
+     "duration": 220
+    },
+    {
+     "tileid": 115,
+     "duration": 220
+    },
+    {
+     "tileid": 131,
+     "duration": 220
+    },
+    {
+     "tileid": 147,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 100,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 100,
+     "duration": 220
+    },
+    {
+     "tileid": 116,
+     "duration": 220
+    },
+    {
+     "tileid": 132,
+     "duration": 220
+    },
+    {
+     "tileid": 148,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 101,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 101,
+     "duration": 220
+    },
+    {
+     "tileid": 117,
+     "duration": 220
+    },
+    {
+     "tileid": 133,
+     "duration": 220
+    },
+    {
+     "tileid": 149,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 102,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 102,
+     "duration": 220
+    },
+    {
+     "tileid": 118,
+     "duration": 220
+    },
+    {
+     "tileid": 134,
+     "duration": 220
+    },
+    {
+     "tileid": 150,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 103,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 103,
+     "duration": 220
+    },
+    {
+     "tileid": 119,
+     "duration": 220
+    },
+    {
+     "tileid": 135,
+     "duration": 220
+    },
+    {
+     "tileid": 151,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 104,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 104,
+     "duration": 220
+    },
+    {
+     "tileid": 120,
+     "duration": 220
+    },
+    {
+     "tileid": 136,
+     "duration": 220
+    },
+    {
+     "tileid": 152,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 105,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 105,
+     "duration": 220
+    },
+    {
+     "tileid": 121,
+     "duration": 220
+    },
+    {
+     "tileid": 137,
+     "duration": 220
+    },
+    {
+     "tileid": 153,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 106,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 106,
+     "duration": 220
+    },
+    {
+     "tileid": 122,
+     "duration": 220
+    },
+    {
+     "tileid": 138,
+     "duration": 220
+    },
+    {
+     "tileid": 154,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 107,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 107,
+     "duration": 220
+    },
+    {
+     "tileid": 123,
+     "duration": 220
+    },
+    {
+     "tileid": 139,
+     "duration": 220
+    },
+    {
+     "tileid": 155,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 108,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 108,
+     "duration": 220
+    },
+    {
+     "tileid": 124,
+     "duration": 220
+    },
+    {
+     "tileid": 140,
+     "duration": 220
+    },
+    {
+     "tileid": 156,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 109,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 109,
+     "duration": 220
+    },
+    {
+     "tileid": 125,
+     "duration": 220
+    },
+    {
+     "tileid": 141,
+     "duration": 220
+    },
+    {
+     "tileid": 157,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 110,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 110,
+     "duration": 220
+    },
+    {
+     "tileid": 126,
+     "duration": 220
+    },
+    {
+     "tileid": 142,
+     "duration": 220
+    },
+    {
+     "tileid": 158,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 111,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 111,
+     "duration": 220
+    },
+    {
+     "tileid": 127,
+     "duration": 220
+    },
+    {
+     "tileid": 143,
+     "duration": 220
+    },
+    {
+     "tileid": 159,
+     "duration": 220
     }
    ]
   }
@@ -963,6 +1473,426 @@
     },
     {
      "tileid": 95,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "lava",
+   "type": "corner",
+   "tile": -1,
+   "colors": [
+    {
+     "name": "lava",
+     "color": "#ffff7043",
+     "tile": 111,
+     "probability": 1
+    }
+   ],
+   "wangtiles": [
+    {
+     "tileid": 97,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 98,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 99,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 100,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 101,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 102,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 103,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 104,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 105,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 106,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 107,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 108,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 109,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 110,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 111,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    }
+   ]
+  },
+  {
+   "name": "grass",
+   "type": "corner",
+   "tile": -1,
+   "colors": [
+    {
+     "name": "grass",
+     "color": "#ff7bc74d",
+     "tile": 175,
+     "probability": 1
+    }
+   ],
+   "wangtiles": [
+    {
+     "tileid": 161,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 162,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 163,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 164,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 165,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 166,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 167,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      0,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 168,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 169,
+     "wangid": [
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 170,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 171,
+     "wangid": [
+      0,
+      1,
+      0,
+      0,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 172,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 173,
+     "wangid": [
+      0,
+      0,
+      0,
+      1,
+      0,
+      1,
+      0,
+      1
+     ]
+    },
+    {
+     "tileid": 174,
+     "wangid": [
+      0,
+      1,
+      0,
+      1,
+      0,
+      1,
+      0,
+      0
+     ]
+    },
+    {
+     "tileid": 175,
      "wangid": [
       0,
       1,

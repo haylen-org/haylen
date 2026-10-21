@@ -1,4 +1,5 @@
 -- Custom properties of every type read from the map, its layers, its objects and its tiles, shown as a tree with the property type names Tiled stores next to them.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -15,7 +16,7 @@ print(map:layer('ground').properties.season)
 local guard = map:objects('things')[2]
 print(guard.properties.watches, guard.properties.route[2])  -- An object id, and an item of a list.]]
 
-local kTreeHeight = 560
+local kGuardSize = 72
 
 -- Class values arrive as tables of their members and lists as sequences, so both open into children.
 local function items(prefix, properties, types)
@@ -42,17 +43,17 @@ function Properties:enter()
     self.map = MapTest.loadMap('tiled/maps/properties.tmj')
     local map = self.map
     local owners = {
-        {id = 'map', text = 'Map of class ' .. map.type, properties = map.properties, types = map.propertyTypes},
-        {id = 'ground', text = 'Layer ground', properties = map:layer('ground').properties, types = map:layer('ground').propertyTypes},
-        {id = 'things', text = 'Layer things', properties = map:layer('things').properties, types = map:layer('things').propertyTypes},
+        {id = 'map', text = string.format('The map, of the class "%s"', map.type), properties = map.properties, types = map.propertyTypes},
+        {id = 'ground', text = 'The layer "ground"', properties = map:layer('ground').properties, types = map:layer('ground').propertyTypes},
+        {id = 'things', text = 'The layer "things"', properties = map:layer('things').properties, types = map:layer('things').propertyTypes},
     }
     self.objects = map:objects('things')
     for _, object in ipairs(self.objects) do
-        owners[#owners + 1] = {id = 'object ' .. object.id, text = string.format('Object %s (id %d)', object.name, object.id), properties = object.properties, types = object.propertyTypes, object = object}
+        owners[#owners + 1] = {id = 'object ' .. object.id, text = string.format('The object "%s", id %d', object.name, object.id), properties = object.properties, types = object.propertyTypes, object = object}
     end
-    for _, gid in ipairs({self.objects[1].gid, map:tile('ground', 20, 5)}) do
+    for _, gid in ipairs({self.objects[1].gid, map:tile('water', 18, 4)}) do
         local info = map:tileInfo(gid)
-        owners[#owners + 1] = {id = 'tile ' .. info.id, text = string.format('Tile %d of %s (%s)', info.id, info.tileset, info.type), properties = info.properties, types = info.propertyTypes}
+        owners[#owners + 1] = {id = 'tile ' .. info.id, text = string.format('The tile %d of "%s", a %s', info.id, info.tileset, info.type), properties = info.properties, types = info.propertyTypes}
     end
 
     local tree = {}
@@ -63,14 +64,15 @@ function Properties:enter()
     end
     local bounds = map.pixelBounds
     self:frame{
-        hint = 'Open the entries of the tree to read every value. Picking an object entry outlines the object on the map, and object properties hold the id of the object they point to.',
+        hint = 'Open the entries of the tree to read every value. Picking an entry of an object outlines it on the map, and object properties hold the id of the object they point to.',
         code = Properties.code,
         controls = {
-            ui.scroll{height = kTreeHeight, ui.tree{id = 'properties', items = tree, expanded = {'map', 'map/stats', 'map/loot'}, onSelect = function(event) self:select(event.item) end}},
+            ui.tree{id = 'properties', items = tree, expanded = {'map', 'map/stats', 'map/loot'}, onSelect = function(event) self:select(event.item) end},
         },
         view = {bounds.width + 64, bounds.height + 64},
         focus = 'properties',
     }
+    self.guard = assets.texture('sprites/sheets/walker.png', {filter = 'linear'})
     self.camera:snapTo(bounds.width / 2, bounds.height / 2)
 end
 
@@ -80,15 +82,29 @@ function Properties:select(id)
     self.selected = owner and owner.object
 end
 
+-- The haunted zone draws as the fog its property names, the guard as a character standing on its point, and the treasure as the chest of its tile, each named in a pill.
 function Properties:draw(area)
     local map = self.map
     map:draw(self.camera)
+    MapTest.frameMap(map.pixelBounds)
     local unit = graphics2d.canvasUnitSize()
     for _, object in ipairs(self.objects) do
         local selected = object == self.selected
-        outlines.draw(map, object, selected and '#FFFFD54F' or '#AAFFFFFF', (selected and 6 or 3) * unit, {layer = 5})
-        local top = object.shape == 'tile' and object.y - object.height or object.y
-        graphics2d.drawText(nil, object.name, object.x, top - 8, {size = 22 * unit, anchor = {0, 1}, layer = 6, outlineWidth = 2 * unit})
+        local top = object.y
+        if object.type == 'zone' then
+            graphics2d.drawShape({object.x, object.y, object.width, object.height}, {radius = 24, color = object.properties.fog, softness = 12, layer = 4})
+        elseif object.type == 'npc' then
+            graphics2d.drawShape({object.x - 22, object.y - 8, 44, 14}, {kind = 'ellipse', color = '#40000000', layer = 4})
+            graphics2d.draw(self.guard, object.x, object.y, {source = {0, 0, 256, 256}, width = kGuardSize, height = kGuardSize, pivotY = 0.92, flipHorizontal = true, layer = 5})
+            top = object.y - kGuardSize * 0.85
+        elseif object.shape == 'tile' then
+            top = object.y - object.height
+        end
+        if selected then
+            outlines.draw(map, object, MapTest.ink, 9 * unit, {layer = 6})
+            outlines.draw(map, object, '#FFFFC93C', 5 * unit, {layer = 7})
+        end
+        MapTest.pill(object.name, object.x + (object.shape == 'point' and 0 or object.width / 2), top - 6 * unit, {size = 18, layer = 8})
     end
 end
 

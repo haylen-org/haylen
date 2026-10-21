@@ -30,6 +30,7 @@ function Worlds:enter()
         area = area and area:merged(self.placed[#self.placed].bounds) or m.rect(entry.x, entry.y, entry.width, entry.height)
     end
     self.worldArea = area
+    self.empty = self:gaps()
     self:frame{
         hint = 'Drag, or use the arrows, the directional pad or the left stick, to pan, and the mouse wheel or the buttons to zoom. The map under the pointer is outlined with its path and its place in the world, and R or the X button shows the whole world.',
         code = Worlds.code,
@@ -39,12 +40,41 @@ function Worlds:enter()
                 ui.button{id = 'out', text = 'Zoom out', onClick = function() self.pan:zoom(0.8) end},
             },
             ui.button{id = 'whole', text = 'Show the whole world', onClick = function() self:home() end},
+            ui.sectionTitle{text = 'Maps of the world'},
+            ui.list{id = 'maps', items = self:items(), focusable = false},
         },
         view = {area.width + kMargin * 2, area.height + kMargin * 2},
         play = true,
     }
     self.pan = Pan(self)
     self:home()
+end
+
+-- The maps with their files and their places in the world.
+function Worlds:items()
+    local items = {}
+    for index, placed in ipairs(self.placed) do
+        items[index] = {id = placed.path, text = placed.title, caption = string.format('"%s" at %.0f, %.0f', placed.path:match('[^/]+$'), placed.bounds.x, placed.bounds.y)}
+    end
+    return items
+end
+
+-- The places of the box of the world that no map covers, as rectangles of the size of a map.
+function Worlds:gaps()
+    local gaps = {}
+    local size = self.placed[1].bounds
+    for y = self.worldArea.y, self.worldArea.y + self.worldArea.height - 1, size.height do
+        for x = self.worldArea.x, self.worldArea.x + self.worldArea.width - 1, size.width do
+            local covered = false
+            for _, placed in ipairs(self.placed) do
+                covered = covered or placed.bounds:contains({x + 1, y + 1})
+            end
+            if not covered then
+                gaps[#gaps + 1] = m.rect(x, y, size.width, size.height)
+            end
+        end
+    end
+    return gaps
 end
 
 function Worlds:home()
@@ -66,16 +96,22 @@ function Worlds:update(dt)
         end
     end
     local hovered = self.hovered
-    self:status(string.format('Maps %d, world of %.0f by %.0f, %s', #self.placed, self.worldArea.width, self.worldArea.height, hovered and string.format('pointing at %s, file "%s" at %.0f, %.0f', hovered.title, hovered.path, hovered.bounds.x, hovered.bounds.y) or 'point at a map'))
+    self:status(hovered and string.format('The pointer is on the %s, from "%s", placed at %.0f, %.0f.', hovered.title, hovered.path, hovered.bounds.x, hovered.bounds.y) or string.format('The world places %d maps over %.0f by %.0f units. Point at a map to read it.', #self.placed, self.worldArea.width, self.worldArea.height))
 end
 
 function Worlds:draw(area)
     local unit = graphics2d.canvasUnitSize()
+    for _, gap in ipairs(self.empty) do
+        graphics2d.drawShape({gap.x + 12, gap.y + 12, gap.width - 24, gap.height - 24}, {radius = 24, color = '#FF1C2130', borderWidth = 3 * unit, borderColor = '#FF3A4066'})
+        MapTest.pill('Outside the world, where no map lies', gap.x + gap.width / 2, gap.y + gap.height / 2, {anchor = {0.5, 0.5}, size = 22})
+    end
     for _, placed in ipairs(self.placed) do
         placed.map:draw(self.camera, {x = placed.bounds.x, y = placed.bounds.y})
-        local color = placed == self.hovered and '#FFFFD54F' or '#66FFFFFF'
-        graphics2d.drawRectOutline(placed.bounds, (placed == self.hovered and 5 or 2) * unit, color, {layer = 5})
-        graphics2d.drawText(nil, placed.title, placed.bounds.x + 12, placed.bounds.y + 10, {size = 28 * unit, outlineWidth = 3 * unit, layer = 6})
+        MapTest.pill(placed.title, placed.bounds.x + 14 * unit, placed.bounds.y + 14 * unit, {anchor = {0, 0}, size = 22})
+    end
+    MapTest.frameMap(self.worldArea)
+    if self.hovered then
+        graphics2d.drawShape(self.hovered.bounds, {color = '#00000000', borderWidth = 5 * unit, borderColor = '#FFFFC93C', layer = 9})
     end
 end
 

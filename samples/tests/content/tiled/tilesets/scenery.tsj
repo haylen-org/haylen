@@ -1,0 +1,152 @@
+{
+ "columns": 0,
+ "grid": {
+  "height": 1,
+  "orientation": "orthogonal",
+  "width": 1
+ },
+ "margin": 0,
+ "name": "scenery",
+ "objectalignment": "bottom",
+ "spacing": 0,
+ "tilecount": 12,
+ "tiledversion": "1.12.0",
+ "tileheight": 292,
+ "tiles": [
+  {
+   "id": 0,
+   "type": "shrine",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 6,
+   "y": 6,
+   "width": 233,
+   "height": 292
+  },
+  {
+   "id": 1,
+   "type": "cottage",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 251,
+   "y": 6,
+   "width": 280,
+   "height": 279
+  },
+  {
+   "id": 2,
+   "type": "well",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 543,
+   "y": 6,
+   "width": 216,
+   "height": 272
+  },
+  {
+   "id": 3,
+   "type": "signpost",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 771,
+   "y": 6,
+   "width": 205,
+   "height": 256
+  },
+  {
+   "id": 4,
+   "type": "stump",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 6,
+   "y": 310,
+   "width": 313,
+   "height": 224
+  },
+  {
+   "id": 5,
+   "type": "log",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 331,
+   "y": 310,
+   "width": 320,
+   "height": 208
+  },
+  {
+   "id": 6,
+   "type": "mushrooms",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 663,
+   "y": 310,
+   "width": 252,
+   "height": 218
+  },
+  {
+   "id": 7,
+   "type": "flowers",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 6,
+   "y": 546,
+   "width": 267,
+   "height": 246
+  },
+  {
+   "id": 8,
+   "type": "reeds",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 285,
+   "y": 546,
+   "width": 226,
+   "height": 257
+  },
+  {
+   "id": 9,
+   "type": "lilies",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 523,
+   "y": 546,
+   "width": 274,
+   "height": 167
+  },
+  {
+   "id": 10,
+   "type": "barrel",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 809,
+   "y": 546,
+   "width": 182,
+   "height": 225
+  },
+  {
+   "id": 11,
+   "type": "campfire",
+   "image": "../../camera/props.png",
+   "imagewidth": 1024,
+   "imageheight": 1052,
+   "x": 6,
+   "y": 815,
+   "width": 233,
+   "height": 231
+  }
+ ],
+ "tilewidth": 320,
+ "type": "tileset",
+ "version": "1.12"
+}

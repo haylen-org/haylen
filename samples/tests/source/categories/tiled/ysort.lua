@@ -12,12 +12,14 @@ local YSort = haylen.class('YSort', MapTest)
 YSort.code = [[
 local hero = graphics2d.newSprite(texture, {pivotY = 1, width = 32, height = 48, layer = 1})  -- Sorts by its feet.
 graphics2d.beginWorld(camera, {sort = 'y'})
-map:drawLayer('ground', camera, {layer = 0})
+map:drawLayer('ground', camera, {layer = -1})
 map:drawLayer('props', camera, {layer = 1, ysort = true})
 hero:draw()]]
 
 local kSpeed = 220
 local kArrive = 6
+-- The hero starts with its feet a little above the trunk of a tree, so it starts half behind it.
+local kStart = {574, 340}
 
 function YSort:enter()
     self.map = MapTest.loadMap('tiled/maps/ysort.tmj')
@@ -28,15 +30,15 @@ function YSort:enter()
         code = YSort.code,
         controls = {
             ui.toggle{id = 'sort', text = 'Sort by y', checked = true, onChange = function(event) self.sorting = event.checked end},
-            ui.checkbox{id = 'feet', text = 'Mark the sort lines', onChange = function(event) self.showFeet = event.checked end},
+            ui.checkbox{id = 'feet', text = 'Mark the sort lines', checked = true, onChange = function(event) self.showFeet = event.checked end},
         },
-        view = {bounds.width + 64, bounds.height + 64},
+        view = {bounds.width * 0.55, bounds.height * 0.55},
         play = true,
         overlay = {ui.touchStick{action = 'move', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 360, height = 300}},
     }
-    self.sorting = true
-    self.position = {bounds.width / 2, bounds.height / 2}
-    self.camera:snapTo(bounds.width / 2, bounds.height / 2)
+    self.sorting, self.showFeet = true, true
+    self.position = {kStart[1], kStart[2]}
+    self.camera:snapTo(kStart[1], kStart[2])
 end
 
 function YSort:exit()
@@ -68,23 +70,35 @@ function YSort:update(dt)
         self.hero.flipHorizontal = x < 0
     end
     self.hero.x, self.hero.y = self.position[1], self.position[2]
-    self:status(string.format('Hero feet at %.0f, %.0f, sorting %s, draws %d', self.position[1], self.position[2], self.sorting and 'by y' or 'by layer only', graphics2d.stats().sprites))
+    self:follow(dt)
+    self:status(string.format('The feet of the hero stand at %.0f, %.0f, and the canvas sorts %s.', self.position[1], self.position[2], self.sorting and 'by y' or 'by layer only'))
+end
+
+-- The camera follows the hero and stops where the view would leave the map.
+function YSort:follow(dt)
+    local bounds, visible = self.map.pixelBounds, self.camera:visibleBounds()
+    local halfWidth, halfHeight = visible.width / 2, visible.height / 2
+    local x = math.max(halfWidth, math.min(bounds.width - halfWidth, self.position[1]))
+    local y = math.max(halfHeight, math.min(bounds.height - halfHeight, self.position[2] - 24))
+    local share = 1 - math.exp(-dt * 6)
+    self.camera.x = self.camera.x + (x - self.camera.x) * share
+    self.camera.y = self.camera.y + (y - self.camera.y) * share
 end
 
 -- The map draws in a canvas of its own that sorts by y, over the stage the frame drew.
 function YSort:draw(area)
     graphics2d.beginWorld(self.camera, {sort = self.sorting and 'y' or 'layer'})
     local map, camera = self.map, self.camera
-    map:drawLayer('ground', camera, {layer = 0})
-    map:drawLayer('paths', camera, {layer = 0})
+    map:drawLayer('ground', camera, {layer = -2})
+    map:drawLayer('paths', camera, {layer = -1})
     map:drawLayer('fences', camera, {layer = 1, ysort = self.sorting})
     map:drawLayer('props', camera, {layer = 1, ysort = self.sorting})
     self.hero:draw()
     if self.showFeet then
         for _, object in ipairs(map:objects('props')) do
-            graphics2d.drawLine(object.x - 16, object.y, object.x + 16, object.y, 2, '#FFFFD54F', {layer = 2})
+            graphics2d.drawShape({object.x - 18, object.y - 2, 36, 4}, {radius = 2, color = '#E6FFC93C', layer = 2})
         end
-        graphics2d.drawLine(self.position[1] - 16, self.position[2], self.position[1] + 16, self.position[2], 3, '#FF4FC3F7', {layer = 2})
+        graphics2d.drawShape({self.position[1] - 20, self.position[2] - 2.5, 40, 5}, {radius = 2.5, color = '#FF8FE3FF', layer = 2})
     end
 end
 

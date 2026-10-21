@@ -1,8 +1,13 @@
 {
  "type": "template",
+ "tileset": {
+  "firstgid": 1,
+  "source": "../tilesets/terrain.tsj"
+ },
  "object": {
-  "width": 64,
-  "height": 32,
+  "gid": 31,
+  "width": 56,
+  "height": 56,
   "name": "sign",
   "type": "sign",
   "rotation": 0,

@@ -26,7 +26,7 @@ function Digging:enter()
     self:build()
     local bounds = self.map.pixelBounds
     self:frame{
-        hint = 'Tap or click a wall to dig it away and an empty cell to build a wall there. The lines are the collision loops, traced again around the regions each change touches. R or the X button restores the map.',
+        hint = 'Tap or click a wall to dig it away and an empty cell to build a wall there. The gold lines are the collision loops of the walls, traced again around the regions each change touches. R or the X button restores the map.',
         code = Digging.code,
         controls = {
             ui.button{id = 'dig', text = 'Dig a random wall', onClick = function() self:digRandom() end},
@@ -47,9 +47,20 @@ function Digging:build()
     self.walls = self.bodies[2]
     self.changes = 0
     self.balls = {}
-    for index = 1, kBalls do
+    -- The balls start spread over the open cells of the yard, one cell apart, and fly off in every direction.
+    local open = {}
+    for row = 1, self.map.height - 2 do
+        for column = 1, self.map.width - 2 do
+            if self.map:tile(kWallLayer, column, row) == 0 and (column + row) % 3 == 0 then
+                open[#open + 1] = {column, row}
+            end
+        end
+    end
+    self.random:shuffle(open)
+    for index = 1, math.min(kBalls, #open) do
         local angle = index / kBalls * math.pi * 2
-        local ball = self.world:createBody({x = 28 + index * 36, y = 64, vx = math.cos(angle) * 360, vy = math.sin(angle) * 360, bullet = true})
+        local x, y = self.map:cellToWorld(open[index][1], open[index][2])
+        local ball = self.world:createBody({x = x + self.map.tileWidth / 2, y = y + self.map.tileHeight / 2, vx = math.cos(angle) * 360, vy = math.sin(angle) * 360, bullet = true})
         ball:addCircle(kRadius, {restitution = 1, friction = 0})
         self.balls[index] = ball
     end
@@ -84,18 +95,25 @@ function Digging:update(dt)
         local column, row = self.map:worldToCell(self.pointer.worldX, self.pointer.worldY)
         self:toggle(column, row)
     end
-    self:status(string.format('Collision loops and shapes of the walls %d, changes %d, balls %d, step %.2f ms', #self.walls:outlines(), self.changes, #self.balls, self.world:stats().stepMilliseconds))
+    self:status(string.format('The walls hold %d loops and shapes after %d changes, and a step of the %d balls takes %.2f ms.', #self.walls:outlines(), self.changes, #self.balls, self.world:stats().stepMilliseconds))
 end
 
 function Digging:fixedUpdate(step)
     self.world:step(step)
 end
 
+-- The collision loops of the walls draw over the map, and the balls as polished marbles.
 function Digging:draw(area)
     self.map:draw(self.camera)
-    self.world:debugDraw({layer = 5})
+    MapTest.frameMap(self.map.pixelBounds)
+    local unit = graphics2d.canvasUnitSize()
+    for _, outline in ipairs(self.walls:outlines()) do
+        graphics2d.drawPolyline(outline.points, 5 * unit, MapTest.ink, outline.closed, {layer = 5})
+        graphics2d.drawPolyline(outline.points, 2.5 * unit, '#FFFFC93C', outline.closed, {layer = 6})
+    end
     for _, ball in ipairs(self.balls) do
-        graphics2d.drawCircle(ball.x, ball.y, kRadius, '#FFFFD54F', {layer = 6})
+        graphics2d.drawShape({ball.x - kRadius, ball.y - kRadius, kRadius * 2, kRadius * 2}, {kind = 'ellipse', color = '#FF2F86F6', borderWidth = 2.5, borderColor = MapTest.ink, layer = 7})
+        graphics2d.drawShape({ball.x - kRadius * 0.55, ball.y - kRadius * 0.6, kRadius * 0.6, kRadius * 0.45}, {kind = 'ellipse', color = '#B3FFFFFF', layer = 8})
     end
 end
 

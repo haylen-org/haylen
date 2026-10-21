@@ -1,6 +1,5 @@
--- Automapping: a garden painted with plain grass, dirt and water gets its shores, its decoration and its slimes from the rules of a rule map, the way Tiled automaps it, with a new seed on every press, and a toggle that shows the plain map again.
+-- Automapping: a garden painted with plain grass, dirt and water gets the shores of its ponds and the edges of its path from the corner tiles that the rules of a rule map pick for every mask of corners, and its decoration and slimes at random, the way Tiled automaps it, with a new seed on every press, and a toggle that shows the plain map again.
 local assets = require('haylen.assets')
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
@@ -17,6 +16,7 @@ map:draw(camera)]]
 
 Automapping.mapPath = 'tiled/maps/garden.tmj'
 Automapping.rulesPath = 'tiled/rules/rules.txt'
+Automapping.size = {26, 13}
 
 function Automapping:enter()
     self.rules = assets.load(Automapping.rulesPath, 'tiledRules', {filter = 'linear'})
@@ -24,16 +24,16 @@ function Automapping:enter()
     self.plain = false
     self:automap()
     self:frame{
-        hint = 'The rules turn grass beside water into sand, scatter bushes, rocks and flowers over open grass and put a slime on the path now and then. R or the X button automaps again with a new seed.',
+        hint = 'The rules give the ponds their shores and the path its edges from the plain tiles at the corners of each cell, scatter bushes, rocks and flowers over open grass and put a slime on the path now and then. R or the X button automaps again with a new seed.',
         code = Automapping.code,
         controls = {
             ui.button{id = 'again', text = 'Automap with a new seed', onClick = function() self:next() end},
             ui.toggle{id = 'plain', text = 'Show the plain map', onChange = function(event) self.plain = event.checked end},
         },
-        view = {32 * 32 + 64, 18 * 32 + 64},
+        view = {Automapping.size[1] * 32 + 64, Automapping.size[2] * 32 + 64},
         focus = 'again',
     }
-    self.camera:snapTo(32 * 32 / 2, 18 * 32 / 2)
+    self.camera:snapTo(Automapping.size[1] * 32 / 2, Automapping.size[2] * 32 / 2)
 end
 
 -- Each run starts from the map as it was painted, so the seed alone decides the result.
@@ -54,7 +54,7 @@ function Automapping:update(dt)
     if input.pressed('reset') then
         self:next()
     end
-    self:status(string.format('Seed %d, %d rule matches, %d slimes, rule maps %d, draw calls %d', self.seed, self.matches, self.slimes, #self.rules.ruleMaps, graphics2d.stats().drawCalls))
+    self:status(self.plain and 'The plain map, as it was painted, before the rules.' or string.format('The rules of %d rule map matched %d times with the seed %d, and put %d slimes on the path.', #self.rules.ruleMaps, self.matches, self.seed, self.slimes))
 end
 
 function Automapping:draw(area)
@@ -63,6 +63,7 @@ function Automapping:draw(area)
     else
         self.map:draw(self.camera)
     end
+    MapTest.frameMap(self.map.pixelBounds)
 end
 
 return Automapping

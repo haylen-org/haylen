@@ -1,5 +1,4 @@
--- Nested group layers: the town group moves and tints its walls, its upstairs group adds its own offset, opacity, tint and a parallax that lifts the roofs, and a background group lags behind the camera.
-local graphics2d = require('haylen.graphics2d')
+-- Nested group layers: a village on an island over the sea, where the background group of the sea and its reefs lags behind the camera, the town group tints its walls, and its upstairs group of roofs adds its own offset, opacity and a parallax that lifts the roofs above the walls.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
@@ -29,7 +28,8 @@ function Groups:enter()
             ui.checkbox{id = 'town', text = 'Town group', checked = true, onChange = function(event) self.map:setLayerVisible('town', event.checked) end},
             ui.checkbox{id = 'upstairs', text = 'Upstairs group inside it', checked = true, onChange = function(event) self.map:setLayerVisible('upstairs', event.checked) end},
             ui.toggle{id = 'sway', text = 'Sway the camera', checked = true, onChange = function(event) self.swaying = event.checked end},
-            ui.label{id = 'details', text = '', color = 'textMuted'},
+            ui.sectionTitle{text = 'Layers'},
+            ui.tree{id = 'tree', items = Groups.items(self.map:layers()), expanded = {'background', 'town', 'upstairs'}},
         },
         view = {bounds.width + kSway * 2, bounds.height + 96},
         play = true,
@@ -40,16 +40,27 @@ function Groups:enter()
     self.camera:snapTo(self.center[1], self.center[2])
 end
 
--- Lists every layer under its group with what the group passes on.
-function Groups:describe(layers, depth, lines)
+-- The layers as items of a tree, each group over its layers, with the offset, parallax, opacity and tint each one has of its own.
+function Groups.items(layers)
+    local items = {}
     for _, layer in ipairs(layers) do
-        local tint = layer.tint:toHex()
-        lines[#lines + 1] = string.format('%sLayer "%s": offset %d, %d, parallax %.1f, opacity %.2f%s', string.rep('    ', depth), layer.name, layer.offsetX, layer.offsetY, layer.parallaxX, layer.opacity, tint ~= '#FFFFFFFF' and ', tint "' .. tint .. '"' or '')
-        if layer.kind == 'group' then
-            self:describe(layer.layers, depth + 1, lines)
+        local parts = {}
+        if layer.offsetX ~= 0 or layer.offsetY ~= 0 then
+            parts[#parts + 1] = string.format('offset %d, %d', layer.offsetX, layer.offsetY)
         end
+        if layer.parallaxX ~= 1 then
+            parts[#parts + 1] = string.format('parallax %.1f', layer.parallaxX)
+        end
+        if layer.opacity < 1 then
+            parts[#parts + 1] = string.format('opacity %.2f', layer.opacity)
+        end
+        if layer.tint:toHex() ~= '#FFFFFFFF' then
+            parts[#parts + 1] = 'tinted'
+        end
+        local caption = #parts > 0 and table.concat(parts, ', '):gsub('^%l', string.upper) or 'Takes what its groups give'
+        items[#items + 1] = {id = layer.name, text = string.format('%s "%s"', layer.kind == 'group' and 'Group' or 'Layer', layer.name), caption = caption, children = layer.kind == 'group' and Groups.items(layer.layers) or nil}
     end
-    return lines
+    return items
 end
 
 function Groups:update(dt)
@@ -63,13 +74,11 @@ function Groups:update(dt)
         self.camera.x = self.center[1] + math.sin(self.time * 0.8) * kSway
         self.camera.y = self.center[2] + math.sin(self.time * 0.5) * kSway * 0.3
     end
-    self:status(string.format('Camera at %.0f, %.0f', self.camera.x, self.camera.y))
-    self:details(table.concat(self:describe(self.map:layers(), 0, {}), '\n'))
+    self:status(string.format('The camera is at %.0f, %.0f, and the map is centered at %.0f, %.0f.', self.camera.x, self.camera.y, self.center[1], self.center[2]))
 end
 
 function Groups:draw(area)
     self.map:draw(self.camera)
-    graphics2d.drawRectOutline(self.map.pixelBounds, 2 * graphics2d.canvasUnitSize(), '#44FFFFFF', {layer = 5})
 end
 
 return Groups
