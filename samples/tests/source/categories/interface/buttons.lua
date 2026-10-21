@@ -21,6 +21,7 @@ function Buttons:enter()
         focus = 'default',
         content = {self:columns()},
     }
+    self:report('No button was pressed yet.')
 end
 
 function Buttons:report(text)
@@ -70,12 +71,7 @@ function Buttons:columns()
                     ui.button{text = 'Forge', icon = 'interface/icons/hammer.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Forge" tab')},
                     ui.button{text = 'Settings', icon = 'interface/themes/fantasy/icons/gear.png', iconPlacement = 'top', variant = 'toolbar', grow = 1, onClick = self:pressed('the "Settings" tab')},
                 },
-                ui.button{text = 'Search the island', icon = 'interface/themes/fantasy/icons/key.png', justify = 'start', align = 'stretch', onClick = self:pressed('the search bar')},
-            }),
-            layout.section('Component "menuButton"', {
-                ui.menuButton{id = 'file', text = 'File', icon = 'interface/themes/fantasy/icons/key.png', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
-                    self:report('The menu picked "' .. event.item .. '".')
-                end},
+                ui.button{text = 'Search the island', icon = 'interface/icons/search.svg', justify = 'start', align = 'stretch', onClick = self:pressed('the search bar')},
             }),
         },
         ui.column{grow = 1, gap = 24,
@@ -100,6 +96,11 @@ function Buttons:columns()
                         event.gui:set('tag-coast', {visible = true})
                     end},
                 },
+            }),
+            layout.section('Component "menuButton"', {
+                ui.menuButton{id = 'file', text = 'File', icon = 'interface/icons/save.svg', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
+                    self:report('The menu picked "' .. event.item .. '".')
+                end},
             }),
         },
     }

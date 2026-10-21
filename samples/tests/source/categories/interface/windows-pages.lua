@@ -8,10 +8,10 @@ local layout = require('categories.interface.layout')
 local WindowsPages = haylen.class('WindowsPages', Test)
 
 WindowsPages.code = [[
-ui.window{id = 'bag', title = 'Bag', x = 1240, y = 380, width = 620, closable = true, onClose = function() log.info('The bag closed.') end}
+ui.window{id = 'bag', title = 'Bag', x = 1320, y = 410, width = 540, closable = true, onClose = function() log.info('The bag closed.') end}
 gui:set('bag', {open = true})
 ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food'}, foodRow, toolsRow}
-ui.carousel{height = 230, loop = true, interval = 5, dayPage, duskPage, nightPage}
+ui.carousel{height = 250, loop = true, interval = 5, dayPage, duskPage, nightPage}
 ui.scroll{axis = 'horizontal', snap = true, ui.row{gap = 24, children = levelCards}}]]
 
 local function levels()
@@ -25,10 +25,9 @@ local function levels()
     return cards
 end
 
--- A carousel page: a picture with its caption, narrower than the page so the arrows on the sides stay clear.
--- A page of the carousel: the landscape at a time of day, which a tint gives the light of that hour.
+-- A page of the carousel: the landscape at a time of day, which a tint gives the light of that hour, kept clear of the arrows on the sides.
 local function page(tint, caption)
-    return ui.column{gap = 8, ui.image{image = 'interface/images/landscape.png', tint = tint, height = 140, fit = 'contain', align = 'center'}, ui.label{text = caption, align = 'center'}}
+    return ui.column{gap = 8, padding = {0, 80}, ui.image{image = 'interface/images/landscape.png', tint = tint, height = 180, fit = 'cover', radius = 12, align = 'stretch'}, ui.label{text = caption, align = 'center'}}
 end
 
 function WindowsPages:enter()
@@ -64,7 +63,7 @@ function WindowsPages:columns()
         },
         ui.column{grow = 2, gap = 24,
             layout.section('Component "carousel"', {
-                ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
+                ui.carousel{height = 250, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
                     page('#FFFFFFFF', 'Day'),
                     page('#FFFFB08A', 'Dusk'),
                     page('#FF5A6AB8', 'Night'),
@@ -74,11 +73,10 @@ function WindowsPages:columns()
                 ui.scroll{axis = 'horizontal', snap = true, height = 150, ui.row{gap = 24, children = levels()}},
             }),
         },
-        ui.window{id = 'bag', title = 'Bag', x = 1240, y = 380, width = 620, closable = true,
+        ui.window{id = 'bag', title = 'Bag', x = 1320, y = 410, width = 540, closable = true,
             onMove = function(event) self:report(string.format('The window moved to %.0f, %.0f.', event.x, event.y)) end,
             onClose = function() self:report('The window closed.') end,
-            ui.label{text = 'An accordion with "multiple = true" keeps several sections open.', color = 'textMuted'},
-            ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food', 'tools'},
+            ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food'},
                 ui.row{gap = 12, ui.icon{image = 'interface/icons/apple.png', size = 56}, ui.icon{image = 'interface/icons/fish.png', size = 56}, ui.button{text = 'Eat an apple', onClick = function() self:report('Ate an apple.') end}},
                 ui.row{gap = 12, ui.icon{image = 'interface/icons/hammer.png', size = 56}, ui.icon{image = 'interface/themes/fantasy/icons/key.png', size = 56}},
             },

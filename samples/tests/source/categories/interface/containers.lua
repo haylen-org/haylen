@@ -26,7 +26,8 @@ end
 local function logLines()
     local list = {}
     for index = 1, 30 do
-        list[index] = ui.label{id = 'day-' .. index, text = string.format('Day %d: the tide rose %d cm', index, 20 + (index * 37) % 90), color = index % 5 == 0 and 'accentText' or 'text'}
+        local full = index % 7 == 0
+        list[index] = ui.label{id = 'day-' .. index, text = string.format(full and 'Day %d: full moon, the tide rose %d cm' or 'Day %d: the tide rose %d cm', index, 20 + (index * 37) % 90), color = full and 'accentText' or 'text'}
     end
     return list
 end
@@ -43,7 +44,7 @@ end
 function Containers:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
-            layout.section('Components "row", "column", "spacer" and "divider"', {
+            layout.section('Rows, spacers and dividers', {
                 ui.row{ui.label{text = 'Start'}, ui.spacer{grow = 1}, ui.label{text = 'A spacer pushes this to the end'}},
                 ui.divider{},
                 ui.row{gap = 16, ui.label{text = 'Wood 12'}, ui.divider{vertical = true, height = 40, color = 'borderStrong'}, ui.label{text = 'Stone 4'}, ui.divider{vertical = true, height = 40}, ui.label{text = 'Rope 2'}},
@@ -55,9 +56,9 @@ function Containers:columns()
         ui.column{grow = 1, gap = 24,
             layout.section('Component "stack"', {
                 ui.stack{height = 220,
-                    ui.image{image = 'interface/images/landscape.png', fit = 'cover', align = 'stretch', tint = '#FFFFB08A'},
-                    ui.label{text = 'Over the picture', font = 'heading', align = 'center', color = 'onAccent', outline = '#FF000000', outlineWidth = 3},
-                    ui.badge{text = 'Top right', tone = 'accent', solid = true, align = 'end'},
+                    ui.image{image = 'interface/images/landscape.png', fit = 'cover', align = 'stretch', radius = 12, tint = '#FFFFC8A0'},
+                    ui.label{text = 'Over the picture', font = 'heading', align = 'center', color = 'onAccent', outline = '#B01E1B33', outlineWidth = 2},
+                    ui.badge{text = 'Top right', tone = 'accent', solid = true, anchor = 'topRight', anchorTo = 'parent', margin = 12},
                 },
             }),
             layout.section('Component "scroll"', {

@@ -25,6 +25,10 @@ function SvgPictures.picture(name)
     return 'sprites/vector/' .. name .. '.svg'
 end
 
+function SvgPictures.captioned(node, caption)
+    return ui.column{gap = 6, alignItems = 'center', node, ui.label{text = caption, font = 'caption', color = 'textMuted'}}
+end
+
 function SvgPictures:enter()
     self:frame{
         hint = 'Move the UI scale to see the icons draw again for the size they cover instead of blurring. The buttons tint their icons with "iconColor", the bolt of the list takes the color of the text of its row, and the photo rounds its corners with "radius".',
@@ -42,7 +46,7 @@ end
 function SvgPictures:columns()
     local sizes = {}
     for index, size in ipairs(SvgPictures.sizes) do
-        sizes[index] = ui.column{gap = 4, align = 'end', ui.icon{image = SvgPictures.picture(SvgPictures.icons[(index - 1) % #SvgPictures.icons + 1]), size = size}, ui.label{text = size .. ' units', font = 'caption', color = 'textMuted'}}
+        sizes[index] = ui.column{gap = 4, align = 'end', alignItems = 'center', ui.icon{image = SvgPictures.picture('heart'), size = size}, ui.label{text = tostring(size), font = 'caption', color = 'textMuted'}}
     end
     local items = {}
     for index, name in ipairs(SvgPictures.icons) do
@@ -55,7 +59,7 @@ function SvgPictures:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
             layout.section('UI scale', {ui.slider{id = 'scale', min = 0.5, max = 2, step = 0.25, value = self.started, showValue = true, onChange = function(event) ui.setScale(event.value) end}}),
-            layout.section('One document at every size', {ui.row{gap = 18, wrap = true, alignItems = 'end', children = sizes}}),
+            layout.section('One document at every size', {ui.row{gap = 24, wrap = true, alignItems = 'end', children = sizes}, ui.label{text = 'The same heart at sizes from 16 to 128 units.', font = 'caption', color = 'textMuted'}}),
             layout.section('Buttons', {ui.row{gap = 12, wrap = true,
                 ui.button{id = 'plain', text = 'Own colors', icon = SvgPictures.picture('heart')},
                 ui.button{id = 'tinted', text = 'Tinted', icon = SvgPictures.picture('bolt'), iconColor = 'accent'},
@@ -65,11 +69,11 @@ function SvgPictures:columns()
             }}),
         },
         ui.column{grow = 1, gap = 24,
-            layout.section('Rounded corners', {ui.row{gap = 16, wrap = true,
-                ui.image{image = 'interface/images/landscape.png', width = 220, height = 140, fit = 'cover'},
-                ui.image{image = 'interface/images/landscape.png', width = 220, height = 140, fit = 'cover', radius = 24},
-                ui.image{image = SvgPictures.picture('chat'), width = 140, height = 140, radius = 70},
-                ui.avatar{image = SvgPictures.picture('heart'), size = 96},
+            layout.section('Rounded corners', {ui.row{gap = 16, wrap = true, alignItems = 'end',
+                SvgPictures.captioned(ui.image{image = 'interface/images/landscape.png', width = 220, height = 140, fit = 'cover'}, 'Radius 0'),
+                SvgPictures.captioned(ui.image{image = 'interface/images/landscape.png', width = 220, height = 140, fit = 'cover', radius = 24}, 'Radius 24'),
+                SvgPictures.captioned(ui.image{image = 'interface/images/landscape.png', width = 140, height = 140, fit = 'cover', radius = 70}, 'Radius 70'),
+                SvgPictures.captioned(ui.avatar{image = 'interface/images/avatar-ana.png', size = 96}, 'Avatar'),
             }}),
             layout.section('List rows', {ui.list{id = 'rows', items = items}}),
             layout.section('Surfaces', {ui.row{gap = 16, wrap = true, style = {surfaces = {

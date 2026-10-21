@@ -25,18 +25,20 @@ function Choices:enter()
         hint = 'Click or tap a choice, or focus it and press Enter, Space or the south button. In a radio group the arrows move between the options.',
         code = Choices.code,
         focus = 'hints',
-        content = {layout.columns{
-            layout.section('Component "checkbox"', {grow = 1,
+        content = {layout.columns{grow = 0,
+            layout.section('Component "checkbox"', {grow = 1, align = 'stretch',
                 ui.checkbox{id = 'hints', text = 'Show hints', checked = true, onChange = self:change('hints')},
                 ui.checkbox{text = 'Invert the camera', onChange = self:change('camera')},
+                ui.checkbox{text = 'Remember the island I visited last between sessions', onChange = self:change('remember')},
                 ui.checkbox{text = 'Disabled', checked = true, enabled = false},
             }),
-            layout.section('Component "toggle"', {grow = 1,
+            layout.section('Component "toggle"', {grow = 1, align = 'stretch',
                 ui.toggle{text = 'Music', checked = true, onChange = self:change('music')},
                 ui.toggle{text = 'Vibration', onChange = self:change('vibration')},
+                ui.toggle{text = 'Subtitles in a larger size for the dialogue', onChange = self:change('subtitles')},
                 ui.toggle{text = 'Disabled', enabled = false},
             }),
-            layout.section('Component "radioGroup"', {grow = 1,
+            layout.section('Component "radioGroup"', {grow = 1, align = 'stretch',
                 ui.radioGroup{items = difficulties, selected = 'normal', onChange = self:change('difficulty')},
                 ui.divider{},
                 ui.label{text = 'Horizontal', color = 'textMuted'},
@@ -54,7 +56,8 @@ function Choices:change(key)
             self.values[key] = event.value
         end
         local values = self.values
-        self:set('status', {text = string.format('Hints "%s", inverted camera "%s", music "%s", vibration "%s", difficulty "%s", hand "%s".', values.hints, values.camera, values.music, values.vibration, values.difficulty, values.hand)})
+        local switch = function(on) return on and 'on' or 'off' end
+        self:set('status', {text = string.format('Hints are %s and music is %s, the difficulty is %s and the %s hand leads.', switch(values.hints), switch(values.music), values.difficulty, values.hand)})
     end
 end
 

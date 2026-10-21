@@ -14,6 +14,7 @@ Immediate.colors = {
     ink = '#FFE8EAF2', muted = '#FF7A8099', accent = '#FF8FB0FF', focus = '#FFF2B23A',
 }
 Immediate.size = 26
+Immediate.radius = 12
 
 function Immediate:init(toStage, toScreen)
     self.toStage, self.toScreen = toStage, toScreen
@@ -95,16 +96,16 @@ function Immediate:control(id, rect)
     return over
 end
 
+-- Every frame and ring is a rounded shape whose edge fades over one pixel, with the border inside the same edge.
 function Immediate:frame(id, rect, over)
     local colors = Immediate.colors
-    graphics2d.drawRect(rect, self.active == id and colors.pressed or over and colors.hover or colors.face)
-    graphics2d.drawRectOutline(rect, 2, colors.line, {layer = 1})
+    graphics2d.drawShape(rect, {radius = Immediate.radius, color = self.active == id and colors.pressed or over and colors.hover or colors.face, borderWidth = 2, borderColor = colors.line})
     self:ring(id, rect)
 end
 
 function Immediate:ring(id, rect)
     if self.focus == id then
-        graphics2d.drawRectOutline({rect[1] - 6, rect[2] - 6, rect[3] + 12, rect[4] + 12}, 3, Immediate.colors.focus, {layer = 3})
+        graphics2d.drawShape({rect[1] - 7, rect[2] - 7, rect[3] + 14, rect[4] + 14}, {radius = Immediate.radius + 7, color = '#00000000', borderWidth = 3, borderColor = Immediate.colors.focus, layer = 3})
     end
 end
 
@@ -117,7 +118,7 @@ function Immediate:button(id, rect, text)
     if over then
         self.cursor = 'pointingHand'
     end
-    graphics2d.drawNineSlice(self.slice, rect, self.active == id and '#FFB0B0B0' or over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 0.4})
+    graphics2d.drawNineSlice(self.slice, rect, self.active == id and '#FFB0B0B0' or over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 0.6})
     self:ring(id, rect)
     local width, height = graphics2d.measureText(nil, text, {size = Immediate.size})
     self:label(text, rect[1] + (rect[3] - width) / 2, rect[2] + (rect[4] - height) / 2)
@@ -127,9 +128,13 @@ end
 function Immediate:checkbox(id, rect, text, checked)
     local box = {rect[1], rect[2], rect[4], rect[4]}
     local over = self:control(id, rect)
-    self:frame(id, box, over)
     if checked then
-        graphics2d.drawRect({box[1] + 10, box[2] + 10, box[3] - 20, box[4] - 20}, Immediate.colors.accent, {layer = 1})
+        graphics2d.drawShape(box, {radius = Immediate.radius, color = self.active == id and Immediate.colors.focus or Immediate.colors.pressed})
+        local x, y, size = box[1], box[2], box[3]
+        graphics2d.drawStroke({x + size * 0.27, y + size * 0.52, x + size * 0.43, y + size * 0.68, x + size * 0.74, y + size * 0.34}, {width = 5, color = Immediate.colors.ink, join = 'round', cap = 'round', layer = 1})
+        self:ring(id, box)
+    else
+        self:frame(id, box, over)
     end
     local _, height = graphics2d.measureText(nil, text, {size = Immediate.size})
     self:label(text, rect[1] + rect[4] + 16, rect[2] + (rect[4] - height) / 2)
@@ -153,9 +158,9 @@ function Immediate:slider(id, rect, value, low, high)
     end
     local share = (value - low) / (high - low)
     local middle = rect[2] + rect[4] / 2
-    graphics2d.drawRect({rect[1], middle - 6, rect[3], 12}, Immediate.colors.line)
-    graphics2d.drawRect({rect[1], middle - 6, rect[3] * share, 12}, Immediate.colors.accent, {layer = 1})
-    graphics2d.drawCircle(rect[1] + rect[3] * share, middle, 18, self.active == id and Immediate.colors.focus or Immediate.colors.ink, {layer = 2})
+    graphics2d.drawShape({rect[1], middle - 6, rect[3], 12}, {radius = 6, color = Immediate.colors.line})
+    graphics2d.drawShape({rect[1], middle - 6, math.max(12, rect[3] * share), 12}, {radius = 6, color = Immediate.colors.accent, layer = 1})
+    graphics2d.drawShape({rect[1] + rect[3] * share - 18, middle - 18, 36, 36}, {kind = 'ellipse', color = self.active == id and Immediate.colors.focus or Immediate.colors.ink, borderWidth = 3, borderColor = Immediate.colors.pressed, layer = 2})
     self:ring(id, rect)
     return value
 end
@@ -236,7 +241,7 @@ function Immediate:list(id, rect, rows, state)
                 picked = index
             end
             if state.selected == index or hit then
-                graphics2d.drawRect(rowRect, state.selected == index and Immediate.colors.pressed or Immediate.colors.hover, {layer = 1})
+                graphics2d.drawShape(rowRect, {radius = 8, color = state.selected == index and Immediate.colors.pressed or Immediate.colors.hover, layer = 1})
             end
             self:label(row, rowRect[1] + 12, rowRect[2] + 6)
         end

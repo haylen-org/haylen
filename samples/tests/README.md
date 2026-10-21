@@ -590,21 +590,21 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-016` | Focus navigation | Directional and explicit neighbours, focus scopes, wrapping, a row that draws its own focus and going back with keys, gamepads and TV remotes. |  |
 | `GUI-017` | UI tweens | Node transforms that move, scale, fade and tint controls with native tweens. |  |
 | `GUI-018` | Text input | The hidden native field behind text fields, the on-screen keyboard and the plain keyboard on every platform. |  |
-| `GUI-019` | Touch controls | Two touch sticks at once, one that follows the finger drawn with images and one fixed drawn with circles, and touch buttons that drive actions of the action map next to keys and gamepads. |  |
-| `GUI-020` | Layouts | Justify, alignItems, growing within size bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and the aspect ratio at any width. |  |
-| `GUI-021` | Recycled lists | Mixed item types in a list with sticky sections, a grid and a horizontal shelf built from recycled cells, with inserts, removals, moves, a shuffle, rows the player drags to another place, a menu on a part of a cell, scrolling to an item and the focus of every device. |  |
+| `GUI-019` | Touch controls | Two touch sticks at once, one that follows the finger and one fixed, and touch buttons that drive actions next to keys and gamepads. |  |
+| `GUI-020` | Layouts | Justify, alignItems, growing within bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and aspect ratios. |  |
+| `GUI-021` | Recycled lists | Recycled cells of mixed types in a list with sticky sections, a grid and a shelf, with inserts, moves, drags, cell menus and scrolling. |  |
 | `GUI-022` | Long lists | A hundred thousand entries loaded in pages with placeholders, and a number field that scrolls to any entry. |  |
-| `GUI-023` | Toast stacks | Toasts at every position of the safe area as lists or decks that never cover themselves, a queue past the limit of a list, the variants, indicators, actions and close buttons of a notice, an upload that a notice follows, the events of every notice and a dialog whose backdrop fades with it. |  |
-| `GUI-024` | Theme overrides | Styles that replace colors, metrics, fonts and surfaces of one subtree, styles that nest, subtrees in other themes in every state and the cursor of each node. |  |
+| `GUI-023` | Toast stacks | Toasts at every position as lists or decks, a queue past the limit, variants, indicators, actions, an upload and the events of a notice. |  |
+| `GUI-024` | Theme overrides | Styles that replace the colors, metrics, fonts and surfaces of a subtree, styles that nest, subtrees in other themes and cursors. |  |
 | `GUI-025` | Node events | The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log. |  |
 | `GUI-026` | UI scale | The design and physical scale modes and the scale factor, with the size of a control in points on the screen. |  |
-| `GUI-027` | Custom GUI in Lua | A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list, focus, the cursor, the safe area and the UI scale. |  |
-| `GUI-028` | Scroll bars | Every component that scrolls side by side, each with its scroll bar in a lane of its own a gap of at least four points away from its content, in the design and physical scales. |  |
-| `GUI-029` | SVG pictures | SVG documents as icons, buttons, list rows, avatars and images that stay sharp at every size and UI scale, buttons and list rows that tint their icons, pictures with rounded corners and theme surfaces drawn from an SVG document. |  |
-| `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet that covers the content of a scroll and a form that keeps its maximum width inside a scroll. |  |
-| `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, next to the pixels of their edges magnified, which fade over one pixel of the screen at every scale. |  |
-| `GUI-032` | Images made at run time | A minimap rendered into a render target every frame, a portrait composed in code and a vector image built in code, shown by images, icons, buttons and list items. |  |
-| `GUI-033` | Image theme | A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, next to the default theme at several UI scales: buttons, chips, badges, choices, switches, fields, dropdowns, bars, sliders, tabs, lists, scroll bars, dialogs, windows, toasts and tooltips. |  |
+| `GUI-027` | Custom GUI in Lua | A small immediate-mode GUI written in Lua with buttons, a check box, a slider, a native text field, a clipped list and the focus. |  |
+| `GUI-028` | Scroll bars | Every component that scrolls, each with its scroll bar in a lane of its own at least four points from its content, at every scale. |  |
+| `GUI-029` | SVG pictures | SVG documents as icons, buttons, list rows and images, sharp at every size and scale, with tinted icons, rounded corners and surfaces. |  |
+| `GUI-030` | Shared focus | A page and a player bar in GUIs of their own that share the focus, a sheet over a scroll and a form that keeps its maximum width. |  |
+| `GUI-031` | Smooth curves | Every curved component and shape in the design and physical scales, beside their magnified edges, which fade over one pixel. |  |
+| `GUI-032` | Images made at run time | A minimap rendered into a render target every frame, a portrait composed on the CPU and a vector image built in code, in components. |  |
+| `GUI-033` | Image theme | A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, beside the default theme at several UI scales. |  |
 
 #### Accessibility (ACC)
 

@@ -58,9 +58,10 @@ function ScrollBars:enter()
     self.started = {mode = ui.scaleMode(), factor = ui.scale()}
     self.immediate = ScrollBars.lines('Immediate line', 40)
     self:frame{
-        hint = 'Pick a scale and look at every bar: its lane runs beside the content, which ends the gap before it. Open the combo, the menu, the popover and the dialog to see their bars, and right click or long press the quest card for its menu. The wheel, a drag of a thumb and a press on a track scroll each one.',
+        hint = 'Pick a scale and look at every bar, whose lane runs beside the content. Open the combo, the menu, the popover, the dialog and the menu of the quest card to see their bars. The wheel, a thumb and a press on a track scroll each one.',
         code = ScrollBars.code,
         focus = 'scale',
+        fixed = true,
         content = {
             ui.row{gap = 24,
                 ui.segmentedControl{id = 'scale', items = ScrollBars.scales, selected = 'design', onChange = function(event) self:applyScale(event.value) end},
@@ -102,15 +103,18 @@ function ScrollBars:cards()
                 tile = {template = ui.card{width = 140, ui.label{part = 'title', bind = {text = 'title'}}}},
             }},
         }),
-        layout.section('List, tree and table in a scroll', {
+        layout.section('Immediate window', {
+            ui.spacer{id = 'immediate', height = 200},
+        }),
+        layout.section('Component "textArea"', {
+            ui.textArea{rows = 5, value = 'A line of the diary long enough to wrap onto the next line of the field\n' .. table.concat(ScrollBars.lines('A line of the diary', 24), '\n')},
+        }),
+        layout.section('Lists in a scroll', {
             ui.scroll{height = 230, ui.column{gap = 12,
                 ui.list{items = ScrollBars.choices('Save slot', 5), selected = 'save-slot-1'},
                 ui.tree{items = {{id = 'tools', text = 'Tools', children = ScrollBars.choices('Tool', 3)}, {id = 'food', text = 'Food', children = ScrollBars.choices('Fruit', 3)}}, expanded = {'tools', 'food'}},
                 ui.table{columns = {{text = 'Player'}, {text = 'Score', width = 120, align = 'end'}}, rows = {{id = 'ana', cells = {'Ana', 1200}}, {id = 'bia', cells = {'Bia', 950}}, {id = 'caio', cells = {'Caio', 870}}}},
             }},
-        }),
-        layout.section('Component "textArea"', {
-            ui.textArea{rows = 5, value = 'A line of the diary long enough to run past the end of the field\n' .. table.concat(ScrollBars.lines('A line of the diary', 24), '\n')},
         }),
         layout.section('Popups and the dialog', {
             ui.combo{id = 'combo', items = ScrollBars.choices('Choice', 80), selected = 'choice-1'},
@@ -120,9 +124,6 @@ function ScrollBars:cards()
                 ui.button{text = 'Dialog', onClick = function(event) event.gui:set('credits', {open = true}) end},
             },
             ui.contextMenu{id = 'actions', items = ScrollBars.choices('Action', 60), ui.card{ui.label{text = 'A quest card with a long context menu'}}},
-        }),
-        layout.section('Immediate window', {
-            ui.spacer{id = 'immediate', height = 200},
         }),
         layout.section('A style that asks for no gap', {
             ui.label{text = 'This scroll asks for a gap of 0, and the engine keeps 4 points.', wrap = true, color = 'textMuted'},
@@ -147,7 +148,7 @@ function ScrollBars:update(dt)
     ScrollBars.super.update(self, dt)
     local factor, scale, points = ui.scale()
     local gap = math.max(ui.themeMetric('scrollbarGap'), ScrollBars.minimumGap / points)
-    self:status(string.format('Mode "%s", factor %.2f, %.2f design units and %.2f points per UI unit.', ui.scaleMode(), factor, scale, points))
+    self:status(string.format('The %s mode at a factor of %.2f draws %.2f design units and %.2f points for each UI unit.', ui.scaleMode(), factor, scale, points))
     self:set('gap', {text = string.format('The gap is %.1f UI units, %.1f points on this screen.', gap, gap * points)})
 end
 

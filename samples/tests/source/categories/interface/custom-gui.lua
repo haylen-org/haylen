@@ -14,11 +14,12 @@ local CustomGui = haylen.class('CustomGui', Test)
 CustomGui.code = [[
 local x, y = input.mousePosition()
 local over = x >= rect[1] and x < rect[1] + rect[3] and y >= rect[2] and y < rect[2] + rect[4]
-graphics2d.drawNineSlice(slice, rect, over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 0.4})
+graphics2d.drawNineSlice(slice, rect, over and '#FFFFE0C0' or '#FFFFFFFF', {borderScale = 0.6})
 if over and input.mouseReleased('left') then sail() end
 window.setCursor(over and 'pointingHand' or 'default')
 input.editText({text = name, selectionStart = caret, x = 40, y = 330, width = 560, height = 72, returnKey = 'done'})]]
 
+CustomGui.focusNames = {play = 'the button "Set sail"', reset = 'the button "Reset"', sound = 'the check box', volume = 'the slider', name = 'the text field', places = 'the list'}
 CustomGui.harbor = {'North pier', 'Fish market', 'Lighthouse', 'Old warehouse', 'Shipyard', 'Customs house', 'Rope maker', 'Sail loft', 'Tavern', 'Watchtower', 'Boat ramp', 'Fuel dock'}
 
 function CustomGui:init(entry)
@@ -50,8 +51,9 @@ end
 function CustomGui:draw(area)
     local gui = self.controls
     gui:begin()
-    local left, top = 40, 40
-    graphics2d.drawRect({left - 20, top - 20, 620, 560}, Immediate.colors.panel, {layer = -1})
+    -- The panel of the GUI stands in the middle of the stage.
+    local left, top = math.max(24, math.floor((area.width - 1132) / 2) + 24), math.max(24, math.floor((area.height - 520) / 2) + 24)
+    graphics2d.drawShape({left - 24, top - 24, 1132, 520}, {radius = 20, color = Immediate.colors.panel, borderWidth = 2, borderColor = Immediate.colors.line, layer = -1})
     if gui:button('play', {left, top, 260, 72}, 'Set sail') then
         self.clicks = self.clicks + 1
     end
@@ -61,7 +63,9 @@ function CustomGui:draw(area)
     self.sound = gui:checkbox('sound', {left, top + 110, 400, 56}, 'Sound effects', self.sound)
     self.volume = gui:slider('volume', {left + 10, top + 200, 540, 56}, self.volume, 0, 1)
     gui:textField('name', {left, top + 290, 560, 72}, self.name)
-    gui:label(string.format('Sailed %d times, volume %d%%, ship "%s".', self.clicks, math.floor(self.volume * 100 + 0.5), self.name.text), left, top + 400, Immediate.colors.muted)
+    local ship = self.name.text == '' and 'a ship without a name' or 'the ' .. self.name.text
+    local times = self.clicks == 1 and 'once' or self.clicks .. ' times'
+    gui:label(string.format('You set sail %s in %s, at %d%% volume.', times, ship, math.floor(self.volume * 100 + 0.5)), left, top + 432, Immediate.colors.muted)
 
     local picked = gui:list('places', {left + 660, top, 420, 400}, CustomGui.harbor, self.places)
     if picked then
@@ -71,9 +75,8 @@ function CustomGui:draw(area)
 
     -- The safe area and the UI scale come from the engine like everything else the GUI reads.
     local safe = viewport.safeRect()
-    local factor, scale = ui.scale()
-    local text = string.format('Safe area %.0f, %.0f, %.0f by %.0f. UI scale %.2f by %.2f. Focus on "%s".', safe.x, safe.y, safe.width, safe.height, factor, scale, tostring(gui.focus))
-    Test.caption(text, left, area.height - 60, {size = 22})
+    local factor = ui.scale()
+    self:status(string.format('The safe area spans %d by %d units, the UI scale is %.2f and the focus is on %s.', math.floor(safe.width + 0.5), math.floor(safe.height + 0.5), factor, CustomGui.focusNames[gui.focus] or 'nothing'))
 end
 
 return CustomGui

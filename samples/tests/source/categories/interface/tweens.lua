@@ -17,6 +17,7 @@ tween.shake(gui:transform('target'), 0.5, 14, {field = 'offset', vibrato = 16})
 tween.to(gui:transform('target'), 0.4, {tint = '#FF80D8FF'})  -- The layout around it never moves.]]
 
 Tweens.tints = {'#FFFFFFFF', '#FFFF8A80', '#FF80D8FF', '#FFFFE57F'}
+Tweens.tintNames = {'no', 'a coral', 'a sky blue', 'a golden'}
 Tweens.icons = {'sword', 'shield', 'potion', 'gem', 'coin'}
 
 function Tweens:init(entry)
@@ -43,9 +44,9 @@ end
 function Tweens:columns()
     local cards = {}
     for index, icon in ipairs(Tweens.icons) do
-        cards[index] = ui.card{id = 'card-' .. index, width = 190, gap = 8, align = 'start',
-            ui.icon{image = layout.icon(icon), size = 64},
-            ui.label{text = 'Item ' .. index},
+        cards[index] = ui.card{id = 'card-' .. index, width = 170, gap = 8, align = 'start', alignItems = 'center',
+            ui.icon{image = layout.icon(icon), size = 72},
+            ui.label{text = icon:sub(1, 1):upper() .. icon:sub(2)},
         }
     end
     return layout.columns{
@@ -54,11 +55,13 @@ function Tweens:columns()
             ui.button{text = 'Shake the panel', align = 'stretch', onClick = function() self:shake() end},
             ui.button{text = 'Fade the panel', align = 'stretch', onClick = function() self:fade() end},
             ui.button{text = 'Tint the panel', align = 'stretch', onClick = function() self:cycleTint() end},
-            ui.button{id = 'pulse', text = 'Pulsing forever', align = 'stretch'},
+            ui.button{id = 'pulse', text = 'Pulsing forever', align = 'stretch', margin = {8, 16}},
         },
         ui.column{grow = 1, gap = 24,
-            ui.label{id = 'title', text = 'Treasure found!', font = 'title'},
-            ui.row{gap = 16, children = cards},
+            ui.card{gap = 20, align = 'start',
+                ui.row{gap = 16, ui.icon{image = layout.icon('star'), size = 56}, ui.label{id = 'title', text = 'Treasure found!', font = 'title'}},
+                ui.row{gap = 16, children = cards},
+            },
             ui.panel{id = 'target', width = 820, gap = 12,
                 ui.label{text = 'A panel with its children', font = 'heading'},
                 ui.label{text = 'Transforms reach every child of the node, and a scroll or a popup keeps its own look.', color = 'textMuted'},
@@ -97,7 +100,7 @@ end
 function Tweens:cycleTint()
     self.tint = self.tint % #Tweens.tints + 1
     tween.to(self.gui:transform('target'), 0.4, {tint = Tweens.tints[self.tint]}, {owner = self})
-    self:report('The panel tints to "' .. Tweens.tints[self.tint] .. '".')
+    self:report('The panel takes ' .. Tweens.tintNames[self.tint] .. ' tint.')
 end
 
 return Tweens

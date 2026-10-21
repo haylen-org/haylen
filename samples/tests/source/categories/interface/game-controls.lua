@@ -41,7 +41,7 @@ function GameControls:enter()
         hint = 'Left and right change a focused stepper, segmented control or range slider, and Enter or the south button moves on or switches the knob. Press a binding field, then a key, a mouse button or a gamepad button to rebind its action, and press the binding on the play area to see the action fire. Escape cancels a capture.',
         code = GameControls.code,
         focus = 'players',
-        panelWidth = 1060,
+        panelWidth = 820,
         controls = self:controls(),
     }
 end
@@ -65,7 +65,7 @@ function GameControls:captureRows()
                 onChange = function(event)
                     input.defineAction({name = binding.action, type = 'button', bindings = {event.value}})
                     self.fired[binding.action].value = event.value
-                    self:set('status', {text = string.format('%s is now "%s".', binding.label, event.value)})
+                    self:set('status', {text = string.format('%s is now bound to %s.', binding.label, GameControls.bindingName(event.value))})
                 end,
                 onCancel = function() self:set('status', {text = 'The capture of ' .. binding.label .. ' was cancelled.'}) end,
             },
@@ -107,18 +107,47 @@ function GameControls:update(dt)
     end
 end
 
--- One lamp per action, lit while the action is down, with its binding and how often it fired.
+-- Names a binding the way a player reads it, such as "Space" for "key:space" or "West button" for "button:west".
+function GameControls.bindingName(value)
+    local source, name = value:match('^(%a+):(.+)$')
+    local words = name:gsub('(%l)(%u)', '%1 %2'):lower()
+    words = words:sub(1, 1):upper() .. words:sub(2)
+    if source == 'button' then
+        return words .. ' button'
+    elseif source == 'mouse' then
+        return words .. ' mouse button'
+    elseif source == 'axis' then
+        return words .. ' axis'
+    end
+    return #words == 1 and words:upper() or words
+end
+
+-- One key cap per action, pressed while the action is down and glowing for a moment after it fires, with the action, its binding and how often it fired.
 function GameControls:draw(area)
-    Test.caption('Actions read on the play area', 32, 28, {size = 26, color = Test.ink})
+    local count = #GameControls.bindings
+    local rowHeight = math.min(150, (area.height - 40) / count)
+    local top = (area.height - rowHeight * count) / 2
+    local now = haylen.elapsed()
     for index, binding in ipairs(GameControls.bindings) do
         local fired = self.fired[binding.action]
-        local y = 120 + (index - 1) * 140
+        local name = GameControls.bindingName(fired.value)
         local down = input.down(binding.action)
-        graphics2d.drawCircle(80, y + 30, 36, down and Test.green or Test.surface)
-        graphics2d.drawRing(80, y + 30, 36, 4, down and Test.ink or Test.line)
-        Test.caption(binding.label, 140, y, {size = 30, color = Test.ink})
-        local last = fired.at and string.format(', last at %.1f s', fired.at) or ''
-        Test.caption(string.format('Bound to "%s", fired %d times%s', fired.value, fired.count, last), 140, y + 40, {size = 21, maxWidth = area.width - 170})
+        local y = top + (index - 1) * rowHeight + rowHeight / 2
+        local width = math.max(110, graphics2d.measureText(nil, name, {size = 30}) + 48)
+        local x = 56
+        local glow = fired.at and math.max(0, 1 - (now - fired.at) / 0.5) or 0
+        local sink = down and 5 or 0
+        if glow > 0 then
+            graphics2d.drawShape({x - 14, y - 50, width + 28, 100}, {radius = 26, color = {0.44, 0.86, 0.63, 0.55 * glow}, softness = 24})
+        end
+        graphics2d.drawShape({x, y - 34 + 8, width, 68}, {radius = 16, color = '#FF141826'})
+        graphics2d.drawShape({x, y - 34 + sink, width, 68}, {radius = 16, color = down and '#FF3DBE7A' or '#FF39405C', borderWidth = 3, borderColor = '#FF15172A'})
+        graphics2d.drawShape({x + 8, y - 28 + sink, width - 16, 24}, {radius = 10, color = down and '#4DFFFFFF' or '#26FFFFFF'})
+        graphics2d.drawText(nil, name, x + width / 2, y + sink, {size = 30, color = Test.ink, anchor = {0.5, 0.5}})
+        local textX = x + width + 32
+        Test.caption(binding.label, textX, y - 38, {size = 32, color = Test.ink})
+        local times = fired.count == 1 and 'once' or (fired.count == 2 and 'twice' or fired.count .. ' times')
+        Test.caption(fired.count == 0 and 'Press ' .. name .. ' to fire it' or 'Fired ' .. times, textX, y + 6, {size = 26, color = fired.count == 0 and Test.muted or Test.green, maxWidth = area.width - textX - 24})
     end
 end
 

@@ -8,7 +8,7 @@ local layout = require('categories.interface.layout')
 local Text = haylen.class('Text', Test)
 
 Text.code = [[
-ui.label{text = 'Outlined', font = 'heading', color = 'onAccent', outline = '#FF000000', outlineWidth = 4}
+ui.label{text = 'Outlined', font = 'heading', color = 'onAccent', outline = '#FF1E1B33', outlineWidth = 4}
 ui.label{text = 'Center', textAlign = 'center', align = 'stretch'}
 ui.pageHeader{title = 'Page header', caption = 'With a banner', banner = true, textAlign = 'center'}
 ui.emptyState{image = 'interface/themes/fantasy/icons/key.png', title = 'Nothing here', message = 'Open a chest to find items.'}
@@ -43,14 +43,17 @@ function Text:enter()
             },
             ui.column{grow = 1, gap = 24,
                 layout.section('Option "textAlign"', {
-                    ui.panel{padding = 8, ui.label{text = 'Start', textAlign = 'start', align = 'stretch'}},
-                    ui.panel{padding = 8, ui.label{text = 'Center', textAlign = 'center', align = 'stretch'}},
-                    ui.panel{padding = 8, ui.label{text = 'End', textAlign = 'end', align = 'stretch'}},
+                    ui.panel{padding = {8, 24}, ui.label{text = 'Start', textAlign = 'start', align = 'stretch'}},
+                    ui.panel{padding = {8, 24}, ui.label{text = 'Center', textAlign = 'center', align = 'stretch'}},
+                    ui.panel{padding = {8, 24}, ui.label{text = 'End', textAlign = 'end', align = 'stretch'}},
                 }),
                 layout.section('Wrap and outline', {
                     ui.label{text = Text.long, width = 480},
                     ui.label{text = Text.long, wrap = false, width = 480},
-                    ui.label{text = 'Outlined over the app', font = 'heading', color = 'onAccent', outline = '#FF000000', outlineWidth = 4},
+                    ui.stack{height = 120,
+                        ui.image{image = 'interface/images/landscape.png', fit = 'cover', align = 'stretch', radius = 12},
+                        ui.label{text = 'Outlined over a picture', font = 'heading', align = 'center', color = 'onAccent', outline = '#FF1E1B33', outlineWidth = 4},
+                    },
                 }),
             },
             ui.column{grow = 1, gap = 24,

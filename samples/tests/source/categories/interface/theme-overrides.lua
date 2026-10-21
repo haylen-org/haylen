@@ -37,7 +37,7 @@ function ThemeOverrides:enter()
         hint = 'The radius slider and the accent control restyle the first group at once, while the buttons around it keep the theme. Hover the cursor buttons with a mouse to see their shapes.',
         code = ThemeOverrides.code,
         focus = 'radius',
-        content = {ui.scroll{grow = 1, height = 0, self:columns()}},
+        content = {self:columns()},
     }
     self:apply()
 end
@@ -54,22 +54,23 @@ function ThemeOverrides:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
             layout.section('A style on a row', {
-                ui.slider{id = 'radius', value = self.radius, min = 0, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event)
+                ui.formField{label = 'Corner radius', ui.slider{id = 'radius', value = self.radius, min = 0, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event)
                     self.radius = event.value
                     self:apply()
-                end},
-                ui.segmentedControl{id = 'accent', items = accents, selected = self.accent.id, onChange = function(event)
+                end}},
+                ui.formField{label = 'Accent', ui.segmentedControl{id = 'accent', items = accents, selected = self.accent.id, onChange = function(event)
                     for _, accent in ipairs(ThemeOverrides.accents) do
                         if accent.id == event.value then
                             self.accent = accent
                         end
                     end
                     self:apply()
-                end},
-                ui.row{wrap = true, gap = 12, ui.button{text = 'Theme'}, ui.button{text = 'Theme', variant = 'primary'}},
+                end}},
+                ui.row{wrap = true, gap = 12, ui.label{text = 'Theme', width = 110, color = 'textMuted'}, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}},
                 ui.row{id = 'styled', gap = 12, wrap = true, lineGap = 12,
-                    ui.button{text = 'Styled'},
-                    ui.button{text = 'Styled', variant = 'primary'},
+                    ui.label{text = 'Style', width = 110, color = 'textMuted'},
+                    ui.button{text = 'Default'},
+                    ui.button{text = 'Primary', variant = 'primary'},
                     ui.toggle{text = 'On', checked = true},
                     ui.checkbox{text = 'Checked', checked = true},
                     ui.button{text = 'Disabled', variant = 'primary', enabled = false},
@@ -111,11 +112,14 @@ end
 -- Applies the radius and the accent to the styled row and reports them.
 function ThemeOverrides:apply()
     local accent = self.accent
+    local colors = {accent = accent.accent, accentHover = accent.hover, accentStrong = accent.strong}
     self:set('styled', {style = {
-        colors = {accent = accent.accent, accentHover = accent.hover, accentStrong = accent.strong},
+        colors = colors,
         metrics = {controlRadius = self.radius, checkRadius = math.min(self.radius, 20), toggleHeight = 44},
     }})
-    self:set('status', {text = string.format('Style "controlRadius" %d, accent %s.', self.radius, accent.accent)})
+    -- The control that picks the accent shows it too.
+    self:set('accent', {style = {colors = colors}})
+    self:set('status', {text = string.format('The style rounds the corners of the row by %d units and paints its accent %s.', self.radius, accent.text:lower())})
 end
 
 return ThemeOverrides

@@ -9,7 +9,7 @@ local Pickers = haylen.class('Pickers', Test)
 
 Pickers.code = [[
 ui.combo{items = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}}, selected = 'en', onChange = function(event) setLanguage(event.value) end}
-ui.colorField{value = '#FF2E7D32', alpha = false, onChange = function(event) gui:set('flag', {tint = event.value}) end}
+ui.colorField{value = '#FF2E7D32', alpha = false, onChange = function(event) gui:set('flag', {tint = event.value}) end}  -- A white flag takes the tint.
 ui.numberField{value = 12.5, min = 0, max = 40, step = 0.5, decimals = 1}
 ui.slider{value = 30, min = 0, max = 100, step = 10, showValue = true, decimals = 0}]]
 
@@ -44,7 +44,7 @@ function Pickers:columns()
             layout.section('Component "colorField"', {
                 ui.row{gap = 16, ui.label{text = 'Flag', width = 160}, ui.colorField{value = '#FF2E7D32', alpha = false, grow = 1, onChange = self:report('flag')}},
                 ui.row{gap = 16, ui.label{text = 'Glass', width = 160}, ui.colorField{value = '#804FC3F7', grow = 1, onChange = self:report('glass')}},
-                ui.row{gap = 16, ui.image{id = 'flag-preview', image = 'interface/icons/flag.png', scale = 3, tint = '#FF2E7D32'}, ui.label{text = 'The flag takes the color of the first field as its tint.', color = 'textMuted', grow = 1}},
+                ui.row{gap = 16, ui.image{id = 'flag-preview', image = 'interface/icons/flag-white.svg', scale = 1.5, tint = '#FF2E7D32'}, ui.label{text = 'The white flag takes the color of the first field as its tint.', color = 'textMuted', grow = 1}},
             }),
         },
         ui.column{grow = 1, gap = 24,
@@ -54,9 +54,9 @@ function Pickers:columns()
                 ui.settingsRow{label = 'Depth', caption = 'A negative minimum types on the text keyboard', ui.numberField{value = -20, min = -200, max = 0, step = 10, width = 320, onChange = self:report('depth')}},
             }),
             layout.section('Component "slider"', {
-                ui.slider{id = 'volume', value = 0.8, showValue = true, onChange = self:report('volume')},
-                ui.slider{value = 30, min = 0, max = 100, step = 10, showValue = true, decimals = 0, onChange = self:report('wind')},
-                ui.slider{value = 0.3, enabled = false},
+                ui.formField{label = 'Volume', ui.slider{id = 'volume', value = 0.8, showValue = true, onChange = self:report('volume')}},
+                ui.formField{label = 'Wind in knots, in steps of 10', ui.slider{value = 30, min = 0, max = 100, step = 10, showValue = true, decimals = 0, onChange = self:report('wind')}},
+                ui.formField{label = 'Disabled', ui.slider{value = 0.3, showValue = true, enabled = false}},
             }),
         },
     }

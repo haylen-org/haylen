@@ -71,6 +71,7 @@ function RecycledLists:enter()
         code = RecycledLists.code,
         focus = 'list',
         content = {self:columns()},
+        fixed = true,
     }
     self.rows = self:buildRows()
     self.tileItems = self:buildTiles()
@@ -95,10 +96,14 @@ function RecycledLists:columns()
             },
             ui.collection{id = 'list', grow = 1, gap = 8, focusAlign = 'nearest', reorderable = true, types = {
                 header = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, sticky = true, interactive = false},
-                note = {template = ui.label{part = 'title', bind = {text = 'title'}}},
-                entry = {template = ui.row{gap = 16,
-                    ui.label{part = 'index', text = '', width = 90, color = 'textMuted'},
-                    ui.column{grow = 1, ui.label{part = 'title', bind = {text = 'title'}}, ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted'}},
+                note = {template = ui.panel{padding = {12, 16},
+                    ui.row{gap = 16, ui.stack{width = 72, ui.icon{image = 'sprites/vector/leaf.svg', size = 36, align = 'center'}}, ui.label{part = 'title', bind = {text = 'title'}, grow = 1}},
+                }},
+                entry = {template = ui.panel{padding = {12, 16},
+                    ui.row{gap = 16,
+                        ui.badge{part = 'index', text = '', tone = 'accent', width = 72},
+                        ui.column{grow = 1, ui.label{part = 'title', bind = {text = 'title'}}, ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted'}},
+                    },
                 }},
                 switch = {template = ui.settingsRow{part = 'row', bind = {label = 'title'}, ui.toggle{part = 'on', bind = {checked = 'on'}}}},
             },
@@ -112,7 +117,7 @@ function RecycledLists:columns()
         }),
         ui.column{grow = 2, gap = 24, align = 'stretch',
             layout.section('Grid with full width headers', {grow = 1,
-                ui.collection{id = 'tiles', grow = 1, layout = 'grid', minCellSize = 150, cellAspect = 0.8, gap = 10, selection = 'multiple', types = {
+                ui.collection{id = 'tiles', grow = 1, layout = 'grid', minCellSize = 150, cellAspect = 2, gap = 10, selection = 'multiple', types = {
                     header = {template = ui.label{part = 'title', bind = {text = 'title'}, font = 'heading'}, span = 'full', sticky = true, interactive = false},
                     tile = {template = ui.card{gap = 4,
                         ui.label{part = 'title', bind = {text = 'title'}},
@@ -124,7 +129,7 @@ function RecycledLists:columns()
                 end},
             }),
             layout.section('Horizontal shelf', {
-                ui.collection{id = 'shelf', axis = 'horizontal', height = 140, gap = 12, snap = 'item', rememberFocus = true, types = {
+                ui.collection{id = 'shelf', axis = 'horizontal', height = 120, gap = 12, snap = 'item', rememberFocus = true, types = {
                     shell = {template = ui.card{width = 180, gap = 4,
                         ui.label{part = 'title', bind = {text = 'title'}},
                         ui.contextMenu{part = 'menu', items = {{id = 'polish', text = 'Polish'}, {id = 'sell', text = 'Sell'}}, ui.button{part = 'more', text = 'More', variant = 'link'}},
@@ -189,14 +194,10 @@ function RecycledLists:update(dt)
     RecycledLists.super.update(self, dt)
     local cells = debug.stats().objects.UiCell or {alive = 0, created = 0}
     local focus = ui.focused() or {}
-    local id, item, part = focus.id, focus.item, focus.part
     local first, last = self.list:visibleRange()
-    local shelf = self.gui:collection('shelf')
-    local card = shelf:cellOf(1) and shelf:cellOf(1):bounds()
-    local place = card and string.format(' The first shell draws at %.0f, %.0f.', card.x, card.y) or ''
-
-    local focus = item and string.format('"%s" of "%s"%s', item, id, part and (' on "' .. part .. '"') or '') or tostring(id)
-    self:status(string.format('Rows %d, in view %s to %s. Cells alive %d, created %d. Focus %s.%s%s', self.list.count, tostring(first), tostring(last), cells.alive, cells.created, focus, place, self.last))
+    local view = first and string.format('shows rows %d to %d', first, last) or 'shows no row yet'
+    local focused = focus.item and string.format(' The focus is on "%s".', focus.item) or ''
+    self:status(string.format('The list holds %d rows and %s, and every list draws with %d recycled cells.%s%s', self.list.count, view, cells.alive, focused, self.last))
 end
 
 return RecycledLists

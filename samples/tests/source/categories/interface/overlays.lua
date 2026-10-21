@@ -1,5 +1,6 @@
 -- Modal dialogs with children, toasts at the top and the bottom of the safe area, tooltips, popovers and context menus.
 local haylen = require('haylen')
+local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
@@ -22,6 +23,8 @@ function Overlays:enter()
         focus = 'delete',
         content = {self:columns()},
     }
+    -- The menu of the save slot opens as the test starts, so an overlay shows from the first frame.
+    timer.after(0.5, function() self.gui:command('slot-menu', 'open') end, {owner = self})
 end
 
 function Overlays:report(text)
@@ -54,13 +57,28 @@ function Overlays:columns()
             layout.section('Component "toast"', {
                 ui.row{gap = 12, children = toneButtons},
                 ui.row{wrap = true, gap = 12,
-                    ui.button{text = 'At the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
-                    ui.button{text = 'Until closed', onClick = self:toast('sticky', 'This toast stays until the button below closes it')},
+                    ui.button{text = 'Toast at the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
+                    ui.button{text = 'Toast until closed', onClick = self:toast('sticky', 'This toast stays until the link closes it')},
                     ui.button{text = 'Close it', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},
                 },
             }),
         },
         ui.column{grow = 1, gap = 24,
+            -- The slot keeps the room under it free, so its menu opens inside the card.
+            layout.section('Component "contextMenu"', {
+                ui.row{gap = 24, align = 'start',
+                    ui.column{height = 270,
+                        ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/icons/flag-white.svg', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/icons/save.svg', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/themes/fantasy/icons/heart.png', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
+                            onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
+                            ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/icons/save.svg'},
+                        },
+                    },
+                    ui.column{grow = 1, gap = 12,
+                        ui.label{text = 'A right click, a long press or the menu key opens the menu of the slot.', color = 'textMuted'},
+                        ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.gui:command('slot-menu', 'open') end},
+                    },
+                },
+            }),
             layout.section('Component "tooltip"', {
                 ui.row{wrap = true, gap = 16,
                     ui.button{text = 'Hover me', tooltip = 'Tooltips show after the pointer rests for half a second.'},
@@ -70,20 +88,13 @@ function Overlays:columns()
                 },
             }),
             layout.section('Component "popover"', {
-                ui.popover{text = 'Wind', icon = 'interface/icons/fish.png', contentWidth = 560,
+                ui.popover{text = 'Wind', icon = 'interface/icons/wind.svg', contentWidth = 560,
                     ui.column{gap = 12,
                         ui.label{text = 'A popover holds any child, such as these controls.'},
                         ui.slider{value = 0.4, showValue = true, onChange = function(event) self:report(string.format('The wind is %.2f.', event.value)) end},
                         ui.toggle{text = 'Gusts', onChange = function(event) self:report(event.checked and 'Gusts are on.' or 'Gusts are off.') end},
                     },
                 },
-            }),
-            layout.section('Component "contextMenu"', {
-                ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/themes/fantasy/icons/key.png', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/themes/fantasy/icons/star.png', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/themes/fantasy/icons/heart.png', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
-                    onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
-                    ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/themes/fantasy/icons/potion.png', align = 'stretch'},
-                },
-                ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.gui:command('slot-menu', 'open') end},
             }),
         },
         ui.dialog{id = 'confirm', title = 'Delete the save?', message = 'The island and everything on it will be gone.',

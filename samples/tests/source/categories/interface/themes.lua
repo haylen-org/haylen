@@ -37,7 +37,7 @@ end
 function Themes:describe()
     local body = ui.themeFont('body')
     local surface = ui.themeSurface('button')
-    self:set('status', {text = string.format('Theme "%s": "controlHeight" %d, body font "%s" at %d, buttons drawn %s.', ui.theme(), ui.themeMetric('controlHeight'), body.font, body.size, surface and 'with a nine-slice' or 'with flat colors')})
+    self:set('status', {text = string.format('The %s theme draws its buttons %s, %d units tall, and its body text in the font "%s" at %d.', ui.theme(), surface and 'from a nine-slice' or 'with flat colors', ui.themeMetric('controlHeight'), body.font, body.size)})
 end
 
 function Themes:nodes()
@@ -52,21 +52,21 @@ function Themes:nodes()
             self:describe()
         end}},
         layout.columns{
-            ui.panel{grow = 1, gap = 16,
+            ui.panel{grow = 1, gap = 16, align = 'stretch',
                 ui.pageHeader{title = 'Harbor', caption = 'A banner header', banner = true},
                 ui.row{wrap = true, gap = 12, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Delete', variant = 'destructive'}},
                 ui.row{gap = 24, ui.checkbox{text = 'Check', checked = true}, ui.checkbox{text = 'Box'}},
                 ui.toggle{text = 'Toggle', checked = true},
                 ui.row{gap = 12, ui.chip{text = 'Chip', selected = true}, ui.chip{text = 'Another'}, ui.badge{text = 'Badge', tone = 'accent'}, ui.badge{text = '3', tone = 'danger', solid = true}},
             },
-            ui.card{grow = 1, gap = 16,
+            ui.card{grow = 1, gap = 16, align = 'stretch',
                 ui.textField{placeholder = 'A text field'},
                 ui.combo{items = {{id = 'one', text = 'A combo'}, {id = 'two', text = 'Second item'}}, selected = 'one'},
                 ui.slider{value = 0.6, showValue = true},
                 ui.progress{value = 0.7, tone = 'success', text = 'Health'},
                 ui.stepper{items = {{id = 'easy', text = 'Easy'}, {id = 'hard', text = 'Hard'}}, selected = 'easy'},
             },
-            ui.card{grow = 1, gap = 16,
+            ui.card{grow = 1, gap = 16, align = 'stretch',
                 ui.tabs{items = {{id = 'bag', text = 'Bag'}, {id = 'map', text = 'Map'}}, selected = 'bag',
                     ui.slotGrid{columns = 4, slotSize = 80, slots = slots, selected = 'a'},
                     ui.label{text = 'The map tab'},

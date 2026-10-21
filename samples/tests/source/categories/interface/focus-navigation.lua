@@ -17,7 +17,6 @@ ui.button{id = 'w1', text = '1', onFocus = function(event) event.gui:set('w1', {
 local focus = ui.focused()  -- The GUI and the id of the focused node.]]
 
 FocusNavigation.help = [==[
-[b]How the focus moves[/b]
 [ul]
 A direction goes to the nearest control that way, preferring controls in line with the focused one.
 The properties [color=gold]focusLeft[/color], [color=gold]focusRight[/color], [color=gold]focusUp[/color] and [color=gold]focusDown[/color] name the neighbour instead.
@@ -27,6 +26,8 @@ The property [color=gold]focusRing[/color] set to false hides the ring, so a nod
 Cancel reaches the innermost scope, and then the root of the GUI, which goes back to the test list.
 The ring shows once the player navigates, and always on a TV, where there is no pointer.
 [/ul]]==]
+
+FocusNavigation.devices = {keyboardMouse = 'the keyboard and mouse', gamepad = 'a gamepad', touch = 'a touch screen'}
 
 function FocusNavigation:init(entry)
     FocusNavigation.super.init(self, entry)
@@ -39,14 +40,14 @@ function FocusNavigation:enter()
         code = FocusNavigation.code,
         focus = 'n5',
         content = {layout.columns{
-            ui.column{grow = 3, gap = 24, layout.columns{self:neighbours(), self:explicit()}, layout.columns{self:scope(), self:wrap()}},
-            ui.card{grow = 2, ui.richText{text = FocusNavigation.help}},
+            ui.column{grow = 3, gap = 24, layout.columns{grow = 0, self:neighbours(), self:explicit()}, layout.columns{grow = 0, self:scope(), self:wrap()}},
+            layout.section('How the focus moves', {grow = 2, ui.richText{text = FocusNavigation.help}}),
         }},
     }
 end
 
 function FocusNavigation:pressed(event)
-    self.last = ' Pressed "' .. event.id .. '".'
+    self.last = ' You pressed ' .. event.id:upper() .. '.'
 end
 
 -- Buttons of different sizes and places, so the nearest control in each direction is easy to follow.
@@ -83,7 +84,7 @@ function FocusNavigation:scope()
         end},
         ui.panel{id = 'scope', focusScope = true, gap = 12, onCancel = function(event)
             event.gui:command('enter-scope', 'focus')
-            self.last = ' Left the scope with cancel.'
+            self.last = ' Cancel left the scope.'
         end,
             ui.label{text = 'Moves stay inside this panel. Cancel leaves it.', color = 'textMuted'},
             ui.row{wrap = true, gap = 12, ui.button{id = 'scoped-1', text = 'Inside 1', onClick = press}, ui.button{id = 'scoped-2', text = 'Inside 2', onClick = press}},
@@ -114,8 +115,9 @@ end
 function FocusNavigation:update(dt)
     FocusNavigation.super.update(self, dt)
     local focus = ui.focused()
-    local device = window.hasPointerDevice() and input.lastDevice() or 'remote'
-    self:status(string.format('Focus on "%s", ring %s, last device "%s".%s', tostring(focus and focus.id), ui.focusRingVisible() and 'shown' or 'hidden', device, self.last))
+    local device = window.hasPointerDevice() and FocusNavigation.devices[input.lastDevice()] or 'a remote'
+    local place = focus and focus.id and focus.id:upper() or 'nothing'
+    self:status(string.format('The focus is on %s, its ring %s, and the last device is %s.%s', place, ui.focusRingVisible() and 'shows' or 'shows once you navigate', device or 'unknown', self.last))
 end
 
 return FocusNavigation

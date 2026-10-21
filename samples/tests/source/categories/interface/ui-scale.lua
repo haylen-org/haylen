@@ -23,13 +23,15 @@ function UiScale:enter()
         hint = 'Pick the scale mode and the factor, then resize the window or run the test on a phone and a tablet. In the physical mode the sample button keeps the same size in points on every screen, and the frame of the test reflows into the room it has.',
         code = UiScale.code,
         focus = 'mode',
-        content = {ui.scroll{grow = 1, height = 0, layout.columns{
+        content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('Scale', {
                     ui.segmentedControl{id = 'mode', items = UiScale.modes, selected = ui.scaleMode(), onChange = function(event) ui.setScaleMode(event.value) end},
-                    ui.slider{id = 'factor', min = 0.5, max = 2, step = 0.25, value = self.started.factor, showValue = true, onChange = function(event) ui.setScale(event.value) end},
+                    ui.formField{label = 'Scale factor, from half to twice the size', ui.slider{id = 'factor', min = 0.5, max = 2, step = 0.25, value = self.started.factor, showValue = true, onChange = function(event) ui.setScale(event.value) end}},
                 }),
-                layout.section('A control of 64 units', {ui.button{id = 'sample', text = 'Sample button', variant = 'primary'}}),
+                layout.section('A control of 64 units', {
+                    ui.row{gap = 16, ui.button{id = 'sample', text = 'Sample button', variant = 'primary'}, ui.divider{vertical = true, height = 64, color = 'accent'}, ui.label{id = 'measure', text = '', color = 'accentText'}},
+                }),
             },
             ui.column{grow = 1, gap = 24,
                 layout.section('Text in every role', {
@@ -39,7 +41,7 @@ function UiScale:enter()
                     ui.label{text = 'A caption', font = 'caption', color = 'textMuted'},
                 }),
             },
-        }}},
+        }},
     }
 end
 
@@ -58,7 +60,8 @@ function UiScale:update(dt)
     local factor, scale = ui.scale()
     local _, pixelsPerUnit = viewport.pixelsPerUnit()
     local points = bounds.height * pixelsPerUnit / window.dpiScale()
-    self:status(string.format('Mode "%s", factor %.2f, %.2f design units per UI unit, %.2f pixels per point. The sample button is %.0f points tall.', ui.scaleMode(), factor, scale, window.dpiScale(), points))
+    self:set('measure', {text = string.format('%.0f points tall', points)})
+    self:status(string.format('The %s mode at a factor of %.2f draws %.2f design units for each UI unit, on a screen of %.2f pixels per point.', ui.scaleMode(), factor, scale, window.dpiScale()))
 end
 
 return UiScale

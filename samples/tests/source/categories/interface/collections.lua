@@ -59,7 +59,7 @@ function Collections:columns()
         {id = 'slot1', text = 'Slot 1', caption = 'Day 12, 3 hours', image = 'interface/themes/fantasy/icons/star.png', iconColor = false},
         {id = 'slot2', text = 'Slot 2', caption = 'Day 4, 40 minutes', image = 'interface/themes/fantasy/icons/heart.png', iconColor = false},
         {id = 'slot3', text = 'Slot 3', caption = 'Corrupted', image = 'interface/themes/fantasy/icons/gear.png', iconColor = false, enabled = false},
-        {id = 'slot4', text = 'New game', caption = 'Empty slot'},
+        {id = 'slot4', text = 'New game', caption = 'Empty slot', image = 'interface/icons/save.svg', iconColor = false},
     }
     local tree = {
         {id = 'tools', text = 'Tools', children = {{id = 'hammer', text = 'Hammer', image = 'interface/icons/hammer.png', iconColor = false}, {id = 'key', text = 'Old key', image = 'interface/themes/fantasy/icons/key.png', iconColor = false}}},
@@ -69,11 +69,6 @@ function Collections:columns()
     return layout.columns{
         layout.section('Component "list"', {grow = 1,
             ui.list{id = 'saves', items = saves, selected = 'slot1', onSelect = function(event) self:report('The list selected "' .. event.item .. '".') end},
-            ui.divider{},
-            ui.label{text = 'Draggable', color = 'textMuted'},
-            ui.scroll{height = 320, ui.list{id = 'quests', draggable = true, items = self:questItems(), onDrop = function(event) self:reorder(event) end, onSelect = function(event)
-                self:report('The draggable list chose "' .. event.item .. '". Press again to pick it up.')
-            end}},
         }),
         layout.section('Component "tree"', {grow = 1,
             ui.tree{items = tree, expanded = {'tools', 'food'}, onSelect = function(event)
@@ -82,19 +77,26 @@ function Collections:columns()
                 self:report(string.format('The node "%s" %s.', event.item, event.expanded and 'opened' or 'closed'))
             end},
         }),
-        layout.section('Component "table"', {grow = 1,
-            ui.table{
-                columns = {{text = 'Captain'}, {text = 'Days', width = 120, align = 'center'}, {text = 'Score', width = 160, align = 'end'}},
-                rows = {
-                    {id = 'ana', cells = {'Ana', 31, 12040}},
-                    {id = 'leo', cells = {'Leo', 27, 9950}},
-                    {id = 'bia', cells = {'Bia', 19, 7300}},
-                    {id = 'kai', cells = {'Kai', 8, 2210}},
+        ui.column{grow = 1, gap = 24,
+            layout.section('Component "table"', {
+                ui.table{
+                    columns = {{text = 'Captain'}, {text = 'Days', width = 120, align = 'center'}, {text = 'Score', width = 160, align = 'end'}},
+                    rows = {
+                        {id = 'ana', cells = {'Ana', 31, 12040}},
+                        {id = 'leo', cells = {'Leo', 27, 9950}},
+                        {id = 'bia', cells = {'Bia', 19, 7300}},
+                        {id = 'kai', cells = {'Kai', 8, 2210}},
+                    },
+                    selected = 'ana',
+                    onSelect = function(event) self:report('The table selected "' .. event.item .. '".') end,
                 },
-                selected = 'ana',
-                onSelect = function(event) self:report('The table selected "' .. event.item .. '".') end,
-            },
-        }),
+            }),
+            layout.section('A draggable list of 200 quests', {
+                ui.scroll{height = 320, ui.list{id = 'quests', draggable = true, items = self:questItems(), onDrop = function(event) self:reorder(event) end, onSelect = function(event)
+                    self:report('The draggable list chose "' .. event.item .. '". Press again to pick it up.')
+                end}},
+            }),
+        },
     }
 end
 

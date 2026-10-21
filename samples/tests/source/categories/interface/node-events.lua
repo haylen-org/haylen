@@ -30,23 +30,23 @@ function NodeEvents:enter()
         code = NodeEvents.code,
         focus = 'hide',
         content = {layout.columns{
-            ui.column{grow = 1, gap = 24,
-                layout.section('The card', {ui.stack{id = 'room', height = 420, self:card()}}),
+            layout.section('The card', {grow = 1, align = 'stretch',
+                ui.stack{id = 'room', height = 380, self:card()},
                 ui.row{wrap = true, gap = 12,
                     ui.button{id = 'hide', text = 'Hide', onClick = function() self:set('box', {visible = false}) end},
                     ui.button{text = 'Show', onClick = function() self:set('box', {visible = true}) end},
                     ui.button{text = 'Replace', onClick = function() self:replace() end},
                     ui.button{text = 'Clear the log', variant = 'link', onClick = function() self:clear() end},
                 },
-            },
-            ui.column{grow = 1, gap = 12, layout.section('Events', {ui.label{id = 'log', text = '', font = 'monospace'}})},
+            }),
+            layout.section('Events in order', {grow = 1, align = 'stretch', ui.label{id = 'log', text = '', font = 'monospace'}}),
         }},
     }
 end
 
 function NodeEvents:card()
     local note = function(event) self:note(event) end
-    return ui.card{id = 'box', width = 320, height = 200, align = 'center', padding = 20,
+    return ui.card{id = 'box', width = 320, height = 200, align = 'center', padding = 20, justify = 'center', style = {colors = {raised = '#FF39405C', border = '#FF8FB0FF'}},
         onMount = note, onUnmount = note, onShow = note, onHide = note, onHover = note, onPress = note, onRelease = note, onScroll = note,
         onDrag = function(event)
             local shape = event.gui:transform('box')
@@ -54,7 +54,7 @@ function NodeEvents:card()
             self:note(event)
         end,
         ui.label{text = string.format('Card %d', self.generation), font = 'heading', textAlign = 'center', align = 'stretch'},
-        ui.label{text = 'Drag me', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+        ui.label{text = 'Drag me around', color = 'textMuted', textAlign = 'center', align = 'stretch'},
     }
 end
 
@@ -93,7 +93,7 @@ function NodeEvents:note(event)
     if self.gui and self.gui:has('log') then
         self:set('log', {text = table.concat(self.lines, '\n')})
     end
-    self:set('status', {text = string.format('Card %d reported "%s".', self.generation, event.name)})
+    self:set('status', {text = string.format('Card %d reported the event "%s".', self.generation, event.name)})
 end
 
 return NodeEvents

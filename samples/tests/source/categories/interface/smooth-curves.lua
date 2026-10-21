@@ -35,7 +35,7 @@ SmoothCurves.zooms = {
     {id = 'radio', text = 'Radio', part = 'side'},
     {id = 'slider', text = 'Slider knob', part = 'side'},
     {id = 'progress', text = 'Progress', part = 'corner'},
-    {id = 'ring', text = 'Circular progress', part = 'round'},
+    {id = 'ring', text = 'Ring', part = 'round'},
     {id = 'avatar', text = 'Avatar', part = 'round'},
     {id = 'field', text = 'Text field', part = 'corner'},
     {id = 'card', text = 'Card', part = 'corner'},
@@ -58,9 +58,10 @@ function SmoothCurves:enter()
         }
     end
     self:frame{
-        hint = 'Pick a scale and compare the edges: every curve fades over about one pixel of the screen, the same at every scale, with no steps and no seams where shapes meet. The crops on the right magnify the top-left corner or the left side of each control.',
+        hint = 'Pick a scale and compare the edges: every curve fades over about one pixel of the screen at every scale, without steps or seams. The crops on the right magnify a corner or a side of each control.',
         code = SmoothCurves.code,
         focus = 'scale',
+        fixed = true,
         content = {
             ui.row{gap = 24,
                 ui.segmentedControl{id = 'scale', items = SmoothCurves.scales, selected = 'design', onChange = function(event) self:applyScale(event.value) end},
@@ -76,6 +77,9 @@ end
 
 function SmoothCurves:cards()
     return {
+        layout.section('Shapes of "graphics2d"', {
+            ui.spacer{id = 'shapes', height = 150},
+        }),
         layout.section('Buttons and badges', {
             ui.row{wrap = true, gap = 12, ui.button{id = 'button', text = 'Default'}, ui.button{id = 'primary', text = 'Primary', variant = 'primary'}},
             ui.row{gap = 12, ui.chip{id = 'chip', text = 'Chip', selected = true, removable = true}, ui.badge{id = 'badge', text = '12', tone = 'danger', solid = true}, ui.badge{text = 'New', tone = 'accent'}},
@@ -96,9 +100,6 @@ function SmoothCurves:cards()
             ui.row{gap = 12, ui.avatar{id = 'avatar', name = 'Ana Souza'}, ui.card{id = 'card', grow = 1, ui.label{text = 'Card'}}},
             ui.alert{id = 'alert', title = 'Alert', message = 'A rounded alert with its tone bar.', tone = 'warning'},
         }),
-        layout.section('Shapes of "graphics2d"', {
-            ui.spacer{id = 'shapes', height = 150},
-        }),
     }
 end
 
@@ -118,7 +119,7 @@ function SmoothCurves:update(dt)
     SmoothCurves.super.update(self, dt)
     local factor, scale, points = ui.scale()
     local pixels = viewport.pixelRect().width / viewport.visibleRect().width * scale
-    self:status(string.format('Mode "%s", factor %.2f, %.2f design units, %.2f points and %.2f pixels per UI unit.', ui.scaleMode(), factor, scale, points, pixels))
+    self:status(string.format('The %s mode at a factor of %.2f draws %.2f design units, %.2f points and %.2f pixels for each UI unit.', ui.scaleMode(), factor, scale, points, pixels))
     self:set('density', {text = string.format('One UI unit covers %.2f pixels of this screen.', pixels)})
 end
 
@@ -186,7 +187,7 @@ function SmoothCurves:cropPoint(zoom)
     return bounds.x, bounds.y + bounds.height * 0.5
 end
 
--- A crop reaches from a corner into its node, or centers on its point, and shows only while its point is in view, since a scroll can hide it.
+-- A crop reaches from a corner into its node, or centers on its point, and shows only while its point is in view, since a scroll can hide it, so the slot of a hidden node asks for a scroll.
 function SmoothCurves:drawCrops(target, visible, pixels)
     local scaleX, scaleY = pixels.width / visible.width, pixels.height / visible.height
     local cards = self.gui:bounds('cards')
@@ -201,6 +202,9 @@ function SmoothCurves:drawCrops(target, visible, pixels)
             local left = centered and math.floor(cx - side * 0.5) or math.floor(cx) - 3
             local top = zoom.part == 'corner' and math.floor(cy) - 3 or math.floor(cy - side * 0.5)
             graphics2d.draw(target.texture, slot.x, slot.y, {source = {left, top, side, side}, width = slot.width, height = slot.height, pivotX = 0, pivotY = 0, blend = 'premultiplied'})
+        elseif slot then
+            graphics2d.drawShape({slot.x, slot.y, slot.width, slot.height}, {radius = 10, color = '#00000000', borderWidth = 2, borderColor = '#33A7B0C8'})
+            graphics2d.drawText(nil, 'Scroll to it', slot.x + slot.width * 0.5, slot.y + slot.height * 0.5, {size = 18, color = '#99A7B0C8', anchor = {0.5, 0.5}})
         end
     end
     graphics2d.popClip()

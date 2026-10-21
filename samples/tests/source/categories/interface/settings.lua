@@ -9,12 +9,12 @@ local Settings = haylen.class('Settings', Test)
 Settings.code = [[
 ui.settingsForm{
     ui.sectionTitle{text = 'Audio and language'},
-    ui.settingsRow{label = 'Music', caption = 'The volume of the songs', ui.slider{id = 'music', value = 0.7, width = 420}},
+    ui.settingsRow{label = 'Music', caption = 'The volume of the songs', ui.slider{id = 'music', value = 70, max = 100, showValue = true, decimals = 0, width = 420}},
     ui.settingsActions{ui.button{text = 'Cancel'}, ui.button{text = 'Save', variant = 'primary', onClick = save}},
 }
-gui:set('music', {value = 0.7})  -- Puts a control back to its saved value.]]
+gui:set('music', {value = 70})  -- Puts a control back to its saved value.]]
 
-Settings.defaults = {subtitles = true, music = 0.7, effects = 0.9, language = 'en', difficulty = 'normal'}
+Settings.defaults = {subtitles = true, music = 70, effects = 90, language = 'en', difficulty = 'normal'}
 
 function Settings:init(entry)
     Settings.super.init(self, entry)
@@ -73,8 +73,8 @@ function Settings:form()
                 ui.settingsRow{label = 'Subtitles', caption = 'Show what the characters say', ui.toggle{id = 'subtitles', checked = values.subtitles, onChange = self:change('subtitles')}},
                 ui.settingsRow{label = 'Difficulty', caption = 'Enemies hit harder on hard', ui.stepper{id = 'difficulty', width = 420, items = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}}, selected = values.difficulty, onChange = self:change('difficulty')}},
                 ui.sectionTitle{text = 'Audio and language'},
-                ui.settingsRow{label = 'Music', ui.slider{id = 'music', value = values.music, width = 420, onChange = self:change('music')}},
-                ui.settingsRow{label = 'Effects', ui.slider{id = 'effects', value = values.effects, width = 420, onChange = self:change('effects')}},
+                ui.settingsRow{label = 'Music', caption = 'The volume of the songs', ui.slider{id = 'music', value = values.music, max = 100, showValue = true, decimals = 0, width = 420, onChange = self:change('music')}},
+                ui.settingsRow{label = 'Effects', caption = 'The volume of steps, waves and hits', ui.slider{id = 'effects', value = values.effects, max = 100, showValue = true, decimals = 0, width = 420, onChange = self:change('effects')}},
                 ui.settingsRow{label = 'Language', caption = 'Changes every text at once', ui.combo{id = 'language', width = 420, items = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}}, selected = values.language, onChange = self:change('language')}},
                 ui.settingsActions{
                     ui.button{id = 'defaults', text = 'Defaults', variant = 'link', onClick = function()
@@ -91,7 +91,7 @@ function Settings:form()
                         end
                         event.gui:set('saved', {open = true})
                         local values = self.values
-                        self:report(string.format('Saved music %.2f, effects %.2f, language "%s" and difficulty "%s".', values.music, values.effects, values.language, values.difficulty))
+                        self:report(string.format('Saved the music at %.0f and the effects at %.0f percent, the language "%s" and the difficulty "%s".', values.music, values.effects, values.language, values.difficulty))
                     end},
                 },
             },

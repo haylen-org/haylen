@@ -55,7 +55,7 @@ end
 function Indicators:fit(fit, tint)
     return ui.column{gap = 4, align = 'center',
         ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape.png', fit = fit, tint = tint, align = 'stretch'}},
-        ui.label{text = tint and 'Fit "' .. fit .. '"\nWith a tint' or 'Fit "' .. fit .. '"', font = 'caption'},
+        ui.label{text = tint and 'Fit "' .. fit .. '", tinted' or 'Fit "' .. fit .. '"', font = 'caption'},
     }
 end
 
@@ -70,6 +70,17 @@ function Indicators:columns()
                 ui.row{gap = 24, ui.statusIndicator{text = 'Online'}, ui.statusIndicator{text = 'Away', tone = 'warning'}, ui.statusIndicator{text = 'Offline', tone = 'danger'}},
                 ui.row{gap = 32, ui.busyIndicator{}, ui.busyIndicator{size = 64, color = 'success'}, ui.busyIndicator{size = 32, color = 'warning'}},
             }),
+        },
+        ui.column{grow = 1, gap = 24,
+            layout.section('Component "circularProgress"', {
+                ui.row{gap = 24,
+                    ui.circularProgress{id = 'ring', size = 96, text = '0%'},
+                    ui.circularProgress{id = 'ring-big', size = 96, thickness = 14, tone = 'success'},
+                    ui.circularProgress{value = 0.6, size = 96, tone = 'danger', text = '3'},
+                    ui.circularProgress{id = 'plain', variant = 'cooldown', image = layout.icon('shield'), size = 96, tone = 'warning'},
+                },
+            }),
+            layout.section('Cooldowns', {ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),
             layout.section('Component "progress"', {
                 ui.progress{id = 'loading', text = 'Loading'},
                 ui.progress{id = 'health', tone = 'success'},
@@ -77,19 +88,8 @@ function Indicators:columns()
             }),
         },
         ui.column{grow = 1, gap = 24,
-            layout.section('Component "circularProgress"', {
-                ui.row{gap = 24,
-                    ui.circularProgress{id = 'ring', text = '0%'},
-                    ui.circularProgress{id = 'ring-big', size = 120, thickness = 16, tone = 'success'},
-                    ui.circularProgress{value = 0.6, tone = 'danger', text = '3'},
-                    ui.circularProgress{id = 'plain', variant = 'cooldown', size = 96, tone = 'warning'},
-                },
-            }),
-            layout.section('Cooldowns', {ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),
-        },
-        ui.column{grow = 1, gap = 24,
             layout.section('Component "icon"', {
-                ui.row{gap = 16, ui.icon{image = 'interface/themes/fantasy/icons/coin.png'}, ui.icon{image = 'interface/themes/fantasy/icons/heart.png', size = 56}, ui.icon{image = 'interface/themes/fantasy/icons/star.png', size = 56, color = 'accent'}, ui.icon{image = 'interface/themes/fantasy/icons/gear.png', size = 72, color = 'textMuted'}},
+                ui.row{gap = 24, ui.icon{image = 'interface/themes/fantasy/icons/coin.png', size = 56}, ui.icon{image = 'interface/themes/fantasy/icons/heart.png', size = 56}, ui.icon{image = 'sprites/vector/bolt.svg', size = 56, color = 'warning'}, ui.icon{image = 'sprites/vector/bolt.svg', size = 56, color = 'accent'}},
             }),
             layout.section('Image fits', {
                 ui.row{gap = 12, self:fit('contain'), self:fit('cover'), self:fit('fill', '#FFFFC080')},

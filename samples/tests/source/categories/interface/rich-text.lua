@@ -32,8 +32,8 @@ Keep the [wave amp=6]fire[/wave] burning
 Light the beacon
 Wait for the ship
 [/ol]
-[hr width=80%]
-[table=2][cell bg=#40000000 padding=6]Wood[/cell][cell padding=6]12[/cell][cell bg=#40000000 padding=6]Stone[/cell][cell padding=6]4[/cell][/table]]==]
+[hr width=100% height=2 color=#3A4058]
+[table=2][cell bg=#33FFFFFF padding=10][b]Item[/b][/cell][cell bg=#33FFFFFF padding=10][b]Count[/b][/cell][cell padding=10]Wood[/cell][cell padding=10]12[/cell][cell bg=#14FFFFFF padding=10]Stone[/cell][cell bg=#14FFFFFF padding=10]4[/cell][cell padding=10]Rope[/cell][cell padding=10]2[/cell][/table]]==]
 
 RichText.effects = '[wave]Wave[/wave]  [shake]Shake[/shake]  [tornado radius=4]Tornado[/tornado]  [rainbow]Rainbow[/rainbow]  [pulse]Pulse[/pulse]  [fade length=6]Fading out[/fade]'
 
@@ -56,7 +56,7 @@ function RichText:enter()
     self:frame{
         hint = 'Click, tap or focus a link and press Enter to follow it, and rest the pointer on FAQ for its hint. Next line reveals the next line of the dialogue, and Skip shows the rest at once.',
         code = RichText.code,
-        focus = 'next',
+        focus = 'styles',
         content = {self:columns()},
     }
 end

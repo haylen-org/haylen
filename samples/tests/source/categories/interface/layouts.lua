@@ -25,10 +25,11 @@ function Layouts:init(entry)
     self.chosenAlign = Layouts.align[2]
 end
 
--- A box that shows where a node lands, with its name on it.
+-- A box that shows where a node lands, with its name in its middle.
 local function box(text, properties)
     local node = properties or {}
     node.padding = node.padding or 8
+    node.justify = 'center'
     node[1] = ui.label{text = text, font = 'caption', textAlign = 'center', align = 'stretch'}
     return ui.card(node)
 end
@@ -78,7 +79,7 @@ function Layouts:columns()
                 ui.row{id = 'line', height = 140, gap = 8, padding = 8, box('Short', {width = 120, height = 50}), box('Tall', {width = 120, height = 110}), box('Own end', {width = 120, height = 50, align = 'end'})},
             }),
             layout.section('Growing within "minWidth" and "maxWidth"', {
-                ui.row{id = 'fill', gap = 8, box('Grows to 220 at most', {grow = 1, maxWidth = 220}), box('Grows, 160 at least', {grow = 1, minWidth = 160}), box('Grows twice', {grow = 2})},
+                ui.row{id = 'fill', gap = 8, box('At most 220', {grow = 1, maxWidth = 220}), box('At least 160', {grow = 1, minWidth = 160}), box('Grows twice', {grow = 2})},
             }),
             layout.section('Margins and padding', {
                 ui.row{id = 'spaced', gap = 0, padding = {12, 24}, box('Margin 0'), box('Margin 24', {margin = 24}), box('Margin 0, 40', {margin = {0, 40}})},
@@ -109,7 +110,7 @@ function Layouts:apply()
     for _, id in ipairs({'fill', 'spaced', 'tags', 'cells'}) do
         self:set(id, {width = width})
     end
-    self:set('status', {text = string.format('Width %d, justify "%s", alignItems "%s".', width, self.chosenJustify, self.chosenAlign)})
+    self:set('status', {text = string.format('The examples are %d units wide, and the first row has justify "%s" and alignItems "%s".', width, self.chosenJustify, self.chosenAlign)})
 end
 
 return Layouts

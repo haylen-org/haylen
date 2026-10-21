@@ -11,10 +11,11 @@ SlotGrid.code = [[
 ui.slotGrid{id = 'bag', columns = 4, slots = {{id = 'bag-1', image = 'interface/themes/fantasy/icons/potion.png', count = 3}, {id = 'bag-2'}},
     onDrop = function(event) move(event.source, event.sourceItem, event.id, event.item) end}  -- The grid only reports the move.
 gui:set('bag', {slots = slots})  -- The app sets the new slots after the drop.
-local hotbar = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', columns = 6, slotSize = 88, slots = slots, onDrop = onDrop}, {owner = self})
+local hotbar = ui.mount(ui.panel{anchor = 'bottom', padding = 12, ui.slotGrid{id = 'hotbar', columns = 6, slotSize = 88, slots = slots, onDrop = onDrop}}, {owner = self})
 ui.list{id = 'chest', draggable = true, items = items, onDrop = onDrop}]]
 
 SlotGrid.bagSize = 12
+SlotGrid.places = {bag = 'inventory', hotbar = 'hotbar', chest = 'chest'}
 SlotGrid.hotbarSize = 6
 
 function SlotGrid:init(entry)
@@ -37,7 +38,7 @@ end
 function SlotGrid:chestItems()
     local items = {}
     for index, item in ipairs(self.chest) do
-        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = item.count and ('Count ' .. item.count) or 'One', image = layout.icon(item.icon), iconColor = false}
+        items[index] = {id = 'chest-' .. index, text = item.icon:sub(1, 1):upper() .. item.icon:sub(2), caption = 'Count ' .. (item.count or 1), image = layout.icon(item.icon), iconColor = false}
     end
     return items
 end
@@ -74,7 +75,7 @@ function SlotGrid:drop(event)
         end
     end
     self:refresh()
-    self:set('status', {text = string.format('Moved the %s from "%s" to "%s".', item.icon, event.sourceItem, event.item)})
+    self:set('status', {text = string.format('Moved the %s from the %s to the %s.', item.icon, SlotGrid.places[source], SlotGrid.places[target])})
 end
 
 function SlotGrid:refresh()
@@ -96,9 +97,11 @@ function SlotGrid:enter()
             justify = 'center',
             layout.section('Inventory', {
                 ui.slotGrid{id = 'bag', columns = 4, slots = slots(self.bag, 'bag', SlotGrid.bagSize), onDrop = onDrop, onSelect = function(event)
-                    self:set('status', {text = 'Selected "' .. event.item .. '".'})
+                    local item = self.bag[event.item]
+                    self:set('status', {text = item and 'Selected the ' .. item.icon .. ' in the inventory.' or 'Selected an empty slot of the inventory.'})
                 end, onDragStart = function(event)
-                    self:set('status', {text = 'Picked up "' .. event.item .. '".'})
+                    local item = self.bag[event.item]
+                    self:set('status', {text = 'Picked up the ' .. (item and item.icon or 'item') .. '.'})
                 end},
             }),
             layout.section('Chest', {width = 460,
@@ -106,10 +109,12 @@ function SlotGrid:enter()
             }),
         }},
     }
-    self.hotbarGui = ui.mount(ui.slotGrid{id = 'hotbar', anchor = 'bottom', columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop, onCancel = function()
+    self.hotbarGui = ui.mount(ui.panel{id = 'hotbar-panel', anchor = 'bottom', padding = 12, onCancel = function()
         self:cancel()
-    end}, {owner = self})
-    self:keepInRegion(self.hotbarGui, 'hotbar', 24)
+    end,
+        ui.slotGrid{id = 'hotbar', columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop},
+    }, {owner = self})
+    self:keepInRegion(self.hotbarGui, 'hotbar-panel', 24)
 end
 
 return SlotGrid

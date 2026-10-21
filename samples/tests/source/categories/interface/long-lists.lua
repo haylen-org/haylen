@@ -33,6 +33,7 @@ function LongLists:enter()
         code = LongLists.code,
         focus = 'target',
         content = {self:columns()},
+        fixed = true,
     }
     self.entries = self.gui:collection('entries')
     self.entries:setPages{count = LongLists.count, pageSize = LongLists.pageSize, load = function(first, count)
@@ -46,7 +47,8 @@ function LongLists:loadPage(first, count)
     return jobs.spawn(function()
         local page = {}
         for index = first, first + count - 1 do
-            page[#page + 1] = {id = 'entry-' .. index, type = 'entry', title = 'Entry ' .. index, seed = string.format('Seed %08X', (index * 2654435761) % 4294967296)}
+            local chests, palms = index * 7 % 5 + 1, index * 13 % 40 + 10
+            page[#page + 1] = {id = 'entry-' .. index, type = 'entry', title = 'Island ' .. index, details = string.format('%d chests and %d palms', chests, palms)}
             jobs.checkpoint()
         end
         return page
@@ -57,13 +59,15 @@ function LongLists:columns()
     return layout.columns{
         layout.section('A hundred thousand entries', {grow = 3, align = 'stretch',
             ui.collection{id = 'entries', grow = 1, gap = 4, placeholder = 'loading', focusAlign = 'center', types = {
-                entry = {template = ui.row{gap = 16,
-                    ui.label{part = 'number', bind = {text = '$index'}, width = 140, color = 'textMuted'},
-                    ui.column{grow = 1, ui.label{part = 'title', bind = {text = 'title'}}, ui.label{part = 'seed', bind = {text = 'seed'}, font = 'caption', color = 'textMuted'}},
-                }, estimatedSize = 76},
-                loading = {template = ui.row{gap = 16, height = 76, ui.busyIndicator{size = 32}, ui.label{text = 'Loading', color = 'textMuted'}}, interactive = false},
+                entry = {template = ui.panel{padding = {10, 16},
+                    ui.row{gap = 16,
+                        ui.label{part = 'number', bind = {text = '$index'}, width = 110, textAlign = 'end', color = 'textMuted'},
+                        ui.column{grow = 1, ui.label{part = 'title', bind = {text = 'title'}}, ui.label{part = 'details', bind = {text = 'details'}, font = 'caption', color = 'textMuted'}},
+                    },
+                }, estimatedSize = 88},
+                loading = {template = ui.panel{padding = {10, 16}, ui.row{gap = 16, height = 64, ui.busyIndicator{size = 32}, ui.label{text = 'Loading', color = 'textMuted'}}}, interactive = false},
             }, onSelect = function(event)
-                self:set('picked', {text = 'Picked entry ' .. event.index .. '.'})
+                self:set('picked', {text = 'You picked island ' .. event.index .. '.'})
             end},
         }),
         layout.section('Scroll to an entry', {grow = 1,
@@ -71,11 +75,11 @@ function LongLists:columns()
             ui.segmentedControl{id = 'align', items = {{id = 'start', text = 'Start'}, {id = 'center', text = 'Center'}, {id = 'end', text = 'End'}}, selected = self.align, onChange = function(event)
                 self.align = event.value
             end},
-            ui.button{id = 'go', text = 'Go', variant = 'primary', onClick = function()
+            ui.button{id = 'go', text = 'Go', variant = 'primary', align = 'stretch', onClick = function()
                 self.entries:scrollTo(math.floor(self.target), {align = self.align})
                 self.entries:focus(math.floor(self.target))
             end},
-            ui.label{id = 'picked', text = 'Press an entry to pick it.', color = 'textMuted'},
+            ui.label{id = 'picked', text = 'Press an island to pick it.', color = 'textMuted'},
         }),
     }
 end
@@ -84,7 +88,8 @@ function LongLists:update(dt)
     LongLists.super.update(self, dt)
     local first, last = self.entries:visibleRange()
     local cells = debug.stats().objects.UiCell or {alive = 0, created = 0}
-    self:status(string.format('Entries %s to %s of %d, pages loaded %d, cells alive %d, created %d, focus on %s.', tostring(first), tostring(last), self.entries.count, self.loads, cells.alive, cells.created, tostring(self.entries.focusedItem)))
+    local view = first and string.format('shows islands %d to %d of %d', first, last, self.entries.count) or 'loads its first page'
+    self:status(string.format('The list %s, with %d %s loaded and %d recycled cells.', view, self.loads, self.loads == 1 and 'page' or 'pages', cells.alive))
 end
 
 return LongLists

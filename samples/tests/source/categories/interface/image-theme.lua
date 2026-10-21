@@ -22,12 +22,14 @@ ImageTheme.icons = {'heart', 'star', 'coin', 'gem', 'gear', 'shield', 'potion', 
 
 function ImageTheme:enter()
     self.started = {theme = ui.theme(), factor = ui.scale()}
-    ui.loadTheme('interface/themes/fantasy/theme.json', 'dark')
+    -- The test opens in the theme it is about, and the default theme stays one press away.
+    ui.setTheme(ui.loadTheme('interface/themes/fantasy/theme.json', 'dark'))
     self:frame{
         hint = 'Pick the theme and the UI scale. Hold a button or a switch to see it pressed, walk the controls with the arrows to see the focus ring, and open the overlays with their buttons.',
         code = ImageTheme.code,
         focus = 'theme',
         content = self:nodes(),
+        fixed = true,
     }
     self:describe()
 end
@@ -39,7 +41,8 @@ function ImageTheme:exit()
 end
 
 function ImageTheme:describe()
-    self:set('status', {text = string.format('Theme "%s" at the scale %.2f, buttons drawn %s.', ui.theme(), ui.scale(), ui.themeSurface('button') and 'from the atlas' or 'with flat colors')})
+    local name = ui.theme() == 'fantasy' and 'fantasy' or 'default'
+    self:set('status', {text = string.format('The %s theme at the scale %.2f draws its buttons %s.', name, ui.scale(), ui.themeSurface('button') and 'from the atlas' or 'with flat colors')})
 end
 
 function ImageTheme:report(text)
@@ -127,7 +130,7 @@ function ImageTheme:nodes()
     return {
         ui.row{gap = 24,
             ui.label{text = 'Theme', font = 'heading'},
-            ui.segmentedControl{id = 'theme', width = 420, items = ImageTheme.themes, selected = 'dark', onChange = function(event)
+            ui.segmentedControl{id = 'theme', width = 420, items = ImageTheme.themes, selected = 'fantasy', onChange = function(event)
                 ui.setTheme(event.value)
                 self:describe()
             end},

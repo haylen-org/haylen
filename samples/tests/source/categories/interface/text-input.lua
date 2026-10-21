@@ -16,16 +16,16 @@ end}  -- It edits through a hidden native field, and the GUIs move above the key
 events.on('keyboardShown', function(frame) log.info('The keyboard starts at ' .. frame.y .. '.') end, {owner = self})
 window.setKeyboardVisible(true)  -- The plain keyboard sends "character" and "keyDown" events.]]
 
-TextInput.platforms = [==[
-[b]Where the hidden field lives[/b]
-[ul]
-[b]Web:[/b] a hidden [code]textarea[/code], or an [code]input[/code] for passwords, over the field, focused inside the tap on iOS.
-[b]Android:[/b] a hidden [code]EditText[/code] with the input connection, suggestions and the keyboard insets.
-[b]iOS and iPadOS:[/b] a hidden [code]UITextField[/code] or [code]UITextView[/code] with marked text, dictation and emoji.
-[b]tvOS:[/b] the same field opens the fullscreen keyboard of the TV.
-[b]macOS:[/b] a hidden [code]NSTextView[/code] with dead keys, the emoji picker and dictation.
-[b]Windows:[/b] the input method window placed at the caret. [b]Linux:[/b] key and character events.
-[/ul]]==]
+TextInput.platforms = '[table=2]'
+    .. '[cell padding=8][b]Web[/b][/cell][cell padding=8]A hidden [code]textarea[/code], or an [code]input[/code] for passwords[/cell]'
+    .. '[cell padding=8][b]Android[/b][/cell][cell padding=8]A hidden [code]EditText[/code] with suggestions and the keyboard insets[/cell]'
+    .. '[cell padding=8][b]iPhone, iPad[/b][/cell][cell padding=8]A hidden [code]UITextField[/code] or [code]UITextView[/code] with dictation[/cell]'
+    .. '[cell padding=8][b]Apple TV[/b][/cell][cell padding=8]The same field opens the fullscreen keyboard[/cell]'
+    .. '[cell padding=8][b]Mac[/b][/cell][cell padding=8]A hidden [code]NSTextView[/code] with dead keys and emoji[/cell]'
+    .. '[cell padding=8][b]Windows, Linux[/b][/cell][cell padding=8]Key and character events, with the input method at the caret[/cell]'
+    .. '[/table]'
+TextInput.platformNames = {web = 'the web', android = 'Android', ios = 'iOS', tvos = 'tvOS', macos = 'macOS', windows = 'Windows', linux = 'Linux', headless = 'the headless host'}
+TextInput.devices = {keyboardMouse = 'the keyboard and mouse', gamepad = 'a gamepad', touch = 'a touch screen'}
 
 TextInput.lineCount = 7
 
@@ -40,7 +40,7 @@ function TextInput:enter()
     self:frame{
         hint = 'Focus the message field: on a phone or a tablet the keyboard opens and every GUI moves up above it. Try an input method such as Japanese, whose composing text shows underlined. The plain keyboard button types into the line above it without a text field.',
         code = TextInput.code,
-        focus = 'message',
+        focus = 'plain',
         content = {self:columns()},
     }
     self:listen('keyboardShown', function(frame)
@@ -67,7 +67,15 @@ end
 function TextInput:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
-            ui.card{ui.richText{text = TextInput.platforms}},
+            layout.section('Fields that edit through the platform', {
+                ui.formField{label = 'Message', help = 'The send key submits, and the field stays above the keyboard.',
+                    ui.textField{id = 'message', placeholder = 'Say hello to the keeper', returnKey = 'send', onSubmit = function(event)
+                        self:record('Submitted "' .. event.value .. '"')
+                        event.gui:set('message', {value = ''})
+                    end},
+                },
+                ui.textArea{rows = 2, placeholder = 'A text area, which wraps its long lines'},
+            }),
             layout.section('Plain keyboard', {
                 ui.label{id = 'typed', text = 'Nothing typed yet', font = 'monospace'},
                 ui.button{id = 'plain', text = 'Show the plain keyboard', onClick = function(event)
@@ -77,16 +85,9 @@ function TextInput:columns()
                 end},
             }),
         },
-        ui.column{grow = 1, gap = 24, align = 'stretch',
+        ui.column{grow = 1, gap = 24,
             layout.section('Events', {ui.label{id = 'events', text = 'Keyboard and text events show here.', font = 'monospace', color = 'textMuted'}}),
-            ui.spacer{grow = 1},
-            ui.formField{label = 'Message', help = 'The send key submits, and the field stays above the keyboard.',
-                ui.textField{id = 'message', placeholder = 'Say hello to the keeper', returnKey = 'send', onSubmit = function(event)
-                    self:record('Submitted "' .. event.value .. '"')
-                    event.gui:set('message', {value = ''})
-                end},
-            },
-            ui.textArea{rows = 2, placeholder = 'A text area at the bottom of the screen'},
+            layout.section('Where the hidden field lives', {ui.richText{text = TextInput.platforms}}),
         },
     }
 end
@@ -109,7 +110,8 @@ end
 
 function TextInput:update(dt)
     TextInput.super.update(self, dt)
-    self:status(string.format('Platform "%s", the UI %s the keyboard, last device "%s".', haylen.platform, ui.usingKeyboard() and 'uses' or 'does not use', input.lastDevice()))
+    local platform = TextInput.platformNames[haylen.platform] or haylen.platform
+    self:status(string.format('On %s the UI %s, and the last device is %s.', platform, ui.usingKeyboard() and 'edits a text field' or 'edits no text field', TextInput.devices[input.lastDevice()] or 'unknown'))
 end
 
 return TextInput

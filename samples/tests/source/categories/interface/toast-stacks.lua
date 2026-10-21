@@ -28,7 +28,7 @@ end
 function ToastStacks:enter()
     local buttons = {}
     for index, position in ipairs(ToastStacks.positions) do
-        buttons[index] = ui.button{id = 'show-' .. position, text = ToastStacks.names[position], grow = 1, onClick = function() self:notify(position) end}
+        buttons[index] = ui.button{id = 'show-' .. position, text = ToastStacks.names[position], width = 200, onClick = function() self:notify(position) end}
     end
     local toasts = {}
     for index, position in ipairs(ToastStacks.positions) do
@@ -45,14 +45,18 @@ function ToastStacks:enter()
             end}
     end
     self:frame{
-        hint = 'Every button adds a notice at its position. A list shows three notices at most while the next ones wait, and a deck puts the newest in front, opens under the pointer or a finger or, as the other deck, keeps its depth while each press takes the front notice away. The time of a stack stops while the pointer or a finger is on it, a press closes a notice, and a sideways drag swipes it away.',
+        hint = 'Every button adds a notice at its place on the screen. A list shows three at most while the others wait, and a deck stacks the newest in front. A stack waits while the pointer or a finger rests on it, a press closes a notice and a sideways drag swipes it away.',
         code = ToastStacks.code,
         focus = 'show-top',
-        content = {ui.scroll{grow = 1, height = 0, layout.columns{
+        content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('Command "show" at every position', {
                     ui.segmentedControl{id = 'arrangement', items = {{id = 'list', text = 'List'}, {id = 'deck', text = 'Deck that opens'}, {id = 'depth', text = 'Deck'}}, selected = 'list', onChange = function(event) self:arrange(event.value) end},
-                    ui.grid{columns = 3, gap = 12, children = buttons},
+                    ui.panel{height = 240, justify = 'spaceBetween', padding = 16,
+                        ui.row{justify = 'spaceBetween', buttons[1], buttons[2], buttons[3]},
+                        ui.label{text = 'The screen', align = 'center', color = 'textMuted'},
+                        ui.row{justify = 'spaceBetween', buttons[4], buttons[5], buttons[6]},
+                    },
                 }),
                 layout.section('Variants, indicators and actions', {
                     ui.grid{columns = 3, gap = 12,
@@ -61,7 +65,6 @@ function ToastStacks:enter()
                         ui.button{id = 'outline', text = 'Action and close', onClick = function() self:show('bottomEnd', {text = 'The map was deleted.', tone = 'danger', variant = 'outline', indicator = 'icon', action = 'Undo', closable = true, duration = 0}) end},
                         ui.button{id = 'busy', text = 'Busy', onClick = function() self:show('bottom', {text = 'Halfway there...', indicator = 'busy'}) end},
                         ui.button{id = 'upload', text = 'Upload with progress', onClick = function() self:upload() end},
-                        ui.button{id = 'clear', text = 'Hide every notice', variant = 'link', onClick = function() self:clear() end},
                     },
                 }),
                 layout.section('A queue', {
@@ -69,6 +72,7 @@ function ToastStacks:enter()
                         ui.button{id = 'burst', text = 'Six at the top', onClick = function() self:burst() end},
                         ui.button{text = 'One that stays', onClick = function(event) event.gui:set('sticky', {open = true}) end},
                         ui.button{text = 'Let it go', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},
+                        ui.button{id = 'clear', text = 'Hide every notice', variant = 'link', onClick = function() self:clear() end},
                     },
                 }),
                 layout.section('A dialog and its backdrop', {
@@ -79,12 +83,15 @@ function ToastStacks:enter()
                 onAnswer = function(event) self:set('status', {text = 'The dialog answered "' .. event.button .. '".'}) end},
             ui.toast{id = 'sticky', text = 'This notice stays until it is let go', tone = 'warning', duration = 0},
             table.unpack(toasts),
-        }}},
+        }},
     }
+    -- A deck of two notices shows as the test opens, so the stacks show from the first frame.
+    self:show('topEnd', {text = 'Wood stored in the camp', tone = 'success', indicator = 'icon', duration = 8})
+    self:show('topEnd', {title = 'Weather', text = 'A storm comes at dusk', tone = 'warning', variant = 'soft', indicator = 'icon', duration = 8})
 end
 
 function ToastStacks:report(event, what)
-    self:set('status', {text = string.format('The notice "%s" at "%s" %s.', event.notice, event.id, what)})
+    self:set('status', {text = string.format('Notice %s at the %s %s.', event.notice:sub(2), (ToastStacks.names[event.id] or event.id):lower(), what)})
 end
 
 function ToastStacks:show(position, notice)
