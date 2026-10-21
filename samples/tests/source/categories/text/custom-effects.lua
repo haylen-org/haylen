@@ -26,11 +26,11 @@ CustomEffects.lines = {
     {'[wave amp=6][ghost]', '[wave amp=6][ghost]A haunted tide[/ghost][/wave]'},
 }
 
--- A ghost fades in and out along the word and floats up as it shows.
+-- A ghost fades along the word between a third and its full opacity and floats up as it shows.
 function CustomEffects.ghost(glyph, attributes)
-    local alpha = 0.5 + 0.5 * math.sin(glyph.time * (attributes.speed or 2) + glyph.index * 0.6)
-    glyph.color = string.format('#%02XE0F0FF', math.floor(alpha * 255))
-    glyph.offsetY = glyph.offsetY - alpha * 8
+    local wave = 0.5 + 0.5 * math.sin(glyph.time * (attributes.speed or 2) + glyph.index * 0.6)
+    glyph.color = string.format('#%02XE0F0FF', math.floor((0.3 + 0.7 * wave) * 255))
+    glyph.offsetY = glyph.offsetY - wave * 8
 end
 
 -- Letters hop one after another, as high as the `height` attribute.
@@ -78,11 +78,13 @@ function CustomEffects:init(entry)
     graphics2d.registerTextIcon('heart', assets.texture('text/heart.png', {filter = 'linear'}))
 
     local family = fonts.family('lilita')
+    self.mono = fonts.load('mono')
     self.samples = {}
     for index, line in ipairs(CustomEffects.lines) do
         self.samples[index] = {label = line[1], text = graphics2d.newRichText(line[2], {family = family, size = 52})}
     end
-    self.names = '"' .. table.concat(graphics2d.textEffectNames(), '", "') .. '"'
+    local names = graphics2d.textEffectNames()
+    self.names = '"' .. table.concat(names, '", "', 1, #names - 1) .. '" and "' .. names[#names] .. '"'
 end
 
 function CustomEffects:enter()
@@ -94,15 +96,19 @@ function CustomEffects:update(dt)
     for _, sample in ipairs(self.samples) do
         sample.text:update(dt)
     end
-    self:status('Registered effects: ' .. self.names)
+    self:status('The registered effects are ' .. self.names .. '.')
 end
 
+-- Draws the effects in two columns, each tag in the mono font above the text it animates.
 function CustomEffects:draw(area)
-    local y = 10
-    for _, sample in ipairs(self.samples) do
-        Test.caption(sample.label, 0, y + 22, {size = 22})
-        sample.text:draw(420, y)
-        y = y + 92
+    local layout = self.layout
+    local rows = math.ceil(#self.samples / 2)
+    local pitch = layout.height / rows
+    for index, sample in ipairs(self.samples) do
+        local column, row = (index - 1) // rows, (index - 1) % rows
+        local x, y = column * layout.width / 2, row * pitch + (pitch - 104) / 2
+        graphics2d.drawText(self.mono, sample.label, x, y, {size = 22, color = Test.accent})
+        sample.text:draw(x, y + 36)
     end
 end
 

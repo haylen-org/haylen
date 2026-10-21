@@ -1,4 +1,5 @@
--- Effects and typewriter: the built-in effects animate their glyphs from the time alone, with the attributes of their tags, and a typewriter reveals a dialogue with `[pause]` and `[speed]` tags.
+-- Effects and typewriter: the built-in effects animate their glyphs from the time alone, with the attributes of their tags, and a typewriter reveals a dialogue with `[pause]` and `[speed]` tags in a dialogue box drawn from the nine-slices of the fantasy theme.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -11,41 +12,50 @@ local Typewriter = haylen.class('Typewriter', TextTest)
 
 Typewriter.code = [[
 local wave = graphics2d.newRichText('[wave amp=8 freq=2]A gentle swell[/wave]', {family = family, size = 44})
-local spoken = graphics2d.newRichText('[b]Keeper:[/b] You made it.[pause=0.6] [speed=0.3]Be careful...[/speed]', {family = family, size = 40, maxWidth = 1300, revealSpeed = 30})
+local spoken = graphics2d.newRichText(line, {family = family, size = 36, maxWidth = 1100, revealSpeed = 30})
 spoken:update(dt)  -- Reveals 30 characters per second.
-spoken.visibleCharacters = -1  -- Skips to the end.]]
+spoken.visibleCharacters = -1  -- Skips to the end.
+graphics2d.drawNineSlice(panel, box, '#FFFFFFFF', {borderScale = 0.5})]]
 
 Typewriter.effects = {
     {'[wave]', '[wave]The sea rolls[/wave]'},
     {'[wave amp=8 freq=2]', '[wave amp=8 freq=2]A gentle swell[/wave]'},
     {'[shake rate=20 level=5]', '[shake rate=20 level=5]Thunder![/shake]'},
     {'[tornado radius=10 freq=1]', '[tornado radius=10 freq=1]A whirlpool[/tornado]'},
-    {'[fade start=4 length=12]', '[fade start=4 length=12]Fading into the fog[/fade]'},
+    {'[fade start=2 length=24]', '[fade start=2 length=24]Fading into the fog[/fade]'},
     {'[rainbow freq=1 sat=0.8 val=0.9]', '[rainbow freq=1 sat=0.8 val=0.9]Northern lights[/rainbow]'},
     {'[pulse freq=2 color=#FFFF8A00 ease=-2]', '[pulse freq=2 color=#FFFF8A00 ease=-2]The beacon burns[/pulse]'},
-    {'[wave][rainbow] nested', '[wave amp=12][rainbow]Treasure![/rainbow][/wave]'},
+    {'[wave amp=12][rainbow]', '[wave amp=12][rainbow]Treasure![/rainbow][/wave]'},
 }
 Typewriter.dialogue = {
-    '[b]Keeper:[/b] You made it through the storm.[pause=0.6] Few ships do.',
-    '[b]Keeper:[/b] The beacon went dark three nights ago.[pause=0.5] [shake]Something[/shake] is out there.',
-    '[b]Keeper:[/b] Take this key [img=text/star.png height=34] and [speed=0.3]be careful...[/speed][pause=0.4] [rainbow]good luck![/rainbow]',
+    'You made it through the storm.[pause=0.6] Few ships do.',
+    'The beacon went dark three nights ago.[pause=0.5] [shake]Something[/shake] is out there.',
+    'Take this key [img=text/star.png height=34] and [speed=0.3]be careful...[/speed][pause=0.4] [rainbow]good luck![/rainbow]',
 }
+Typewriter.speaker = 'Keeper'
+Typewriter.boxHeight = 200
+Typewriter.boxPadding = {44, 40}
 
 function Typewriter:init(entry)
     Typewriter.super.init(self, entry)
     self.line = 1
     self.speed = 30
     self.family = fonts.family('crimson')
+    self.mono = fonts.load('mono')
     self.samples = {}
     for index, effect in ipairs(Typewriter.effects) do
-        self.samples[index] = {label = effect[1], text = graphics2d.newRichText(effect[2], {family = self.family, size = 44})}
+        self.samples[index] = {label = effect[1], text = graphics2d.newRichText(effect[2], {family = self.family, size = 44, color = Test.ink})}
     end
+    local atlas = assets.texture('interface/themes/fantasy/atlas.png', {filter = 'linear'})
+    self.panel = graphics2d.newNineSlice(atlas, {source = {0, 0, 320, 320}, borders = {60, 60, 60, 60}})
+    self.plate = graphics2d.newNineSlice(atlas, {source = {0, 516, 480, 112}, borders = {40, 48, 40, 48}})
+    self.speakerText = graphics2d.newRichText('[b]' .. Typewriter.speaker .. '[/b]', {family = self.family, size = 34, color = '#FFFFFFFF'})
     self:say()
 end
 
 -- Starts the current line of the dialogue with the reveal speed of the slider.
 function Typewriter:say()
-    self.spoken = graphics2d.newRichText(Typewriter.dialogue[self.line], {family = self.family, size = 40, maxWidth = 1300, revealSpeed = self.speed})
+    self.spoken = graphics2d.newRichText(Typewriter.dialogue[self.line], {family = self.family, size = 36, maxWidth = self.textWidth or 1100, revealSpeed = self.speed, color = Test.ink})
 end
 
 function Typewriter:enter()
@@ -65,10 +75,17 @@ function Typewriter:enter()
                 self.speed = event.value
                 self:say()
             end}},
-            ui.progress{id = 'revealed', text = 'Revealed'},
+            ui.formField{label = 'Revealed so far', ui.progress{id = 'revealed'}},
         },
         focus = 'next',
     }
+end
+
+-- The dialogue wraps at the width of its box, which follows the page.
+function Typewriter:resize(area)
+    Typewriter.super.resize(self, area)
+    self.textWidth = self.layout.width - Typewriter.boxPadding[1] * 2
+    self.spoken.maxWidth = self.textWidth
 end
 
 function Typewriter:update(dt)
@@ -79,21 +96,46 @@ function Typewriter:update(dt)
     local spoken = self.spoken
     spoken:update(dt)
     self:set('revealed', {value = spoken.visibleRatio})
-    self:status(string.format('Line %d   Characters %d of %d   %s', self.line, spoken.revealing and spoken.visibleCharacters or spoken.characterCount, spoken.characterCount, spoken.revealing and 'Revealing' or 'Done'))
+    local shown = spoken.revealing and spoken.visibleCharacters or spoken.characterCount
+    self:status(string.format('Line %d of %d shows %d of its %d characters%s', self.line, #Typewriter.dialogue, shown, spoken.characterCount, spoken.revealing and ' and keeps revealing.' or ', all of them.'))
+end
+
+-- Draws the effects in two columns, each tag in the mono font above the text it animates.
+function Typewriter:effectRows(height)
+    local layout = self.layout
+    local rows = #self.samples / 2
+    local pitch = height / rows
+    for index, sample in ipairs(self.samples) do
+        local column, row = (index - 1) // rows, (index - 1) % rows
+        local x, y = column * layout.width / 2, row * pitch
+        graphics2d.drawText(self.mono, sample.label, x, y, {size = 20, color = Test.accent})
+        sample.text:draw(x, y + 30)
+    end
+end
+
+-- The dialogue box: the panel of the theme, the plate with the name of the speaker over its top edge, and a marker that bobs once the line is shown.
+function Typewriter:dialogueBox(box)
+    local padding = Typewriter.boxPadding
+    graphics2d.drawNineSlice(self.panel, box, '#FFFFFFFF', {borderScale = 0.5})
+    self.spoken:draw(box[1] + padding[1], box[2] + padding[2])
+
+    local nameWidth, nameHeight = self.speakerText:size()
+    local plate = {box[1] + 28, box[2] - 30, nameWidth + 64, 58}
+    graphics2d.drawNineSlice(self.plate, plate, '#FFFFFFFF', {borderScale = 0.55, layer = 1})
+    self.speakerText:draw(plate[1] + 32, plate[2] + (plate[4] - nameHeight) / 2 - 2, {layer = 2})
+
+    if not self.spoken.revealing then
+        local bob = math.abs(math.sin(haylen.elapsed() * 4)) * 6
+        local x, y = box[1] + box[3] - 44, box[2] + box[4] - 40 + bob
+        graphics2d.drawPolygon({{x - 14, y - 10}, {x + 14, y - 10}, {x, y + 8}}, '#FFFFC93C', {layer = 1})
+    end
 end
 
 function Typewriter:draw(area)
     local layout = self.layout
-    local y = 0
-    for _, sample in ipairs(self.samples) do
-        Test.caption(sample.label, 0, y + 14, {size = 22})
-        sample.text:draw(520, y)
-        y = y + 64
-    end
-    local box = {0, layout.height - 170, layout.width, 170}
-    graphics2d.drawRect(box, '#E0101828')
-    graphics2d.drawRectOutline(box, 3, Test.accent)
-    self.spoken:draw(box[1] + 30, box[2] + 24)
+    local boxTop = layout.height - Typewriter.boxHeight
+    self:effectRows(boxTop - 50)
+    self:dialogueBox({0, boxTop, layout.width, Typewriter.boxHeight})
 end
 
 return Typewriter
