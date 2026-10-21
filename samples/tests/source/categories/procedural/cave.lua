@@ -1,4 +1,5 @@
--- A cave made from a seed as a distance field: a room inside rounded walls, rocks that grow from its walls, floor and ceiling, and rocks that float in it. The distance of a point to the nearest rock is what climbing creatures read: `normal` points away from the rock, `project` puts a point at a height over it, `walk` moves a point along the surface, `clear` tells whether a straight leap fits, and the rocks draw as polygons.
+-- A cave made from a seed as a distance field: a room inside rounded walls, rocks that grow from its walls, floor and ceiling, and rocks that float in it. The distance of a point to the nearest rock is what climbing creatures read: `normal` points away from the rock, `project` puts a point at a height over it, `walk` moves a point along the surface, `clear` tells whether a straight leap fits, and the rocks draw as meshes of a painted stone texture over the creatures, so a foot that reaches into the stone hides in it.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -9,12 +10,16 @@ Cave.wallRadius = 90
 Cave.blend = 14
 Cave.outlinePoints = 72
 Cave.walkStep = 32
-Cave.colors = {rock = '#FF4C4361', edge = '#FF8A7AA8', air = '#FF121722', glow = '#FF1E2738'}
+Cave.colors = {edge = '#FF1E1B33', rim = '#FF6E5A86', air = '#FF121722', glow = '#FF262F45'}
+-- The world units one copy of the stone texture covers, and the layer the stone draws at, over the creatures.
+Cave.textureSize = 420
+Cave.layer = 20
 
 -- The room spans `width` by `height` around the origin.
 function Cave:init(seed, width, height)
     local random = m.random(seed)
     self.halfWidth, self.halfHeight = width / 2, height / 2
+    self.stone = assets.texture('procedural/cave-rock.png', {filter = 'linear', wrap = 'repeat'})
     self.rocks = {}
     for _ = 1, random:integer(6, 9) do
         local side = random:integer(1, 4)
@@ -48,13 +53,28 @@ function Cave:addRock(random, x, y, radius)
         waves[#waves + 1] = {order, random:range(0, 0.16) / order * 2, random:range(0, math.pi * 2)}
     end
     local rock = {x = x, y = y, radius = radius, waves = waves}
-    rock.points = {}
+    -- The outline is a flat list for its stroke, and the fill a fan of triangles around the center, which every point of a rock sees.
+    rock.outline = {}
+    rock.vertices = {Cave.vertex(x, y)}
+    rock.indices = {}
     for index = 1, Cave.outlinePoints do
         local angle = (index - 1) / Cave.outlinePoints * math.pi * 2
         local reach = Cave.rockRadius(rock, angle)
-        rock.points[index] = {x + math.cos(angle) * reach, y + math.sin(angle) * reach}
+        local px, py = x + math.cos(angle) * reach, y + math.sin(angle) * reach
+        rock.outline[#rock.outline + 1] = px
+        rock.outline[#rock.outline + 1] = py
+        rock.vertices[index + 1] = Cave.vertex(px, py)
+        local nextIndex = index % Cave.outlinePoints + 2
+        rock.indices[#rock.indices + 1] = 1
+        rock.indices[#rock.indices + 1] = index + 1
+        rock.indices[#rock.indices + 1] = nextIndex
     end
     self.rocks[#self.rocks + 1] = rock
+end
+
+-- A vertex of the stone, whose texture repeats every `textureSize` units of the world.
+function Cave.vertex(x, y)
+    return {x = x, y = y, u = x / Cave.textureSize, v = y / Cave.textureSize}
 end
 
 function Cave.rockRadius(rock, angle)
@@ -131,19 +151,31 @@ function Cave:clear(x1, y1, x2, y2, margin)
     return true
 end
 
--- Draws the walls, the open room and the rocks, whose parts that reach into the walls stay hidden behind the mask of the room.
+-- Draws the air of the room under everything, and over the creatures the stone of the walls around the room and of the rocks inside it. Every outline draws before every fill of stone, so outlines show only along the edge of the stone and never inside where rocks meet each other or a wall.
 function Cave:draw()
     local width, height = self.halfWidth * 2, self.halfHeight * 2
     local room = {-self.halfWidth, -self.halfHeight, width, height}
-    graphics2d.drawRect({-width, -height, width * 2, height * 2}, Cave.colors.rock)
+    local colors = Cave.colors
+    graphics2d.drawShape(room, {radius = Cave.wallRadius, color = colors.air, layer = -20})
+    graphics2d.drawShape({-self.halfWidth + 60, -self.halfHeight + 60, width - 120, height - 120}, {radius = Cave.wallRadius, color = colors.glow, softness = 160, layer = -19})
+
+    local bounds = graphics2d.canvasBounds()
+    local left, top, right, bottom = bounds.x, bounds.y, bounds.x + bounds.width, bounds.y + bounds.height
     graphics2d.pushMask(function()
         graphics2d.drawShape(room, {radius = Cave.wallRadius, color = '#FFFFFFFF'})
-    end, {layer = 1})
-    graphics2d.drawShape(room, {radius = Cave.wallRadius, color = Cave.colors.air, borderWidth = 4, borderColor = Cave.colors.edge})
-    graphics2d.drawShape({-self.halfWidth + 60, -self.halfHeight + 60, width - 120, height - 120}, {radius = Cave.wallRadius, color = Cave.colors.glow, softness = 120})
+    end, {mode = 'outside', layer = Cave.layer})
+    graphics2d.drawMesh(self.stone, {Cave.vertex(left, top), Cave.vertex(right, top), Cave.vertex(right, bottom), Cave.vertex(left, bottom)}, {1, 2, 3, 1, 3, 4})
+    graphics2d.popMask()
+
+    graphics2d.pushMask(function()
+        graphics2d.drawShape(room, {radius = Cave.wallRadius, color = '#FFFFFFFF'})
+    end, {layer = Cave.layer + 1})
+    graphics2d.drawShape(room, {radius = Cave.wallRadius, color = '#00000000', borderWidth = 7, borderColor = colors.edge})
     for _, rock in ipairs(self.rocks) do
-        graphics2d.drawPolygon(rock.points, Cave.colors.rock)
-        graphics2d.drawPolyline(rock.points, 4, Cave.colors.edge, true)
+        graphics2d.drawStroke(rock.outline, {width = 14, color = colors.edge, closed = true, join = 'round', layer = 1})
+    end
+    for _, rock in ipairs(self.rocks) do
+        graphics2d.drawMesh(self.stone, rock.vertices, rock.indices, {layer = 2})
     end
     graphics2d.popMask()
 end

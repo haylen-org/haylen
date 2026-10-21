@@ -21,10 +21,12 @@ local road = grid:findPath(townA.x, townA.y, townB.x, townB.y)  -- Water is bloc
 
 WorldMap.columns, WorldMap.rows, WorldMap.cell = 400, 216, 4
 WorldMap.regenerateDelay = 0.25
+-- The view frames the middle band of the map, where the islands lie, so the map fills the width of the play area.
+WorldMap.view = {1600, 680}
 WorldMap.water = {deep = m.color('#FF1B3A5E'), shallow = m.color('#FF3577A3')}
 WorldMap.biomes = {
-    beach = m.color('#FFE6D3A0'), desert = m.color('#FFDCC27C'), grass = m.color('#FF8EC25C'), forest = m.color('#FF4F9A48'), jungle = m.color('#FF2E7A40'),
-    savanna = m.color('#FFB9AA6A'), woods = m.color('#FF3F7A40'), taiga = m.color('#FF3D6A50'), rock = m.color('#FF8D877C'), snow = m.color('#FFF2F4F6'),
+    beach = m.color('#FFF3D58D'), desert = m.color('#FFE3C77E'), grass = m.color('#FF7BC74D'), forest = m.color('#FF4F9A48'), jungle = m.color('#FF2E7A40'),
+    savanna = m.color('#FF9DAF5E'), woods = m.color('#FF3F7A40'), taiga = m.color('#FF3D6A50'), rock = m.color('#FF8D877C'), snow = m.color('#FFF2F4F6'),
 }
 WorldMap.neighbors = {{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}
 
@@ -32,6 +34,7 @@ function WorldMap:enter()
     self.options = {seed = 7, sea = 0, islands = 3, towns = 8, rivers = true, roads = true, names = true}
     self.wait = 0
     self:frame{
+        view = WorldMap.view,
         code = WorldMap.code,
         hint = 'Every change makes a new world in a job that shares each frame with the app, while the old one stays on screen. R or the X button takes a new seed.',
         controls = {
@@ -78,7 +81,7 @@ function WorldMap.build(options)
     local relief, wetness = m.noise(options.seed), m.noise(options.seed + 1000)
     local centers = {}
     for _ = 1, options.islands do
-        centers[#centers + 1] = {random:range(0.2, 0.8) * columns, random:range(0.25, 0.75) * rows, random:range(0.22, 0.38) * columns}
+        centers[#centers + 1] = {random:range(0.22, 0.78) * columns, random:range(0.36, 0.64) * rows, random:range(0.2, 0.32) * columns}
     end
 
     local heights, moistures = {}, {}
@@ -89,8 +92,10 @@ function WorldMap.build(options)
                 local distance = math.sqrt((column - center[1]) ^ 2 + (row - center[2]) ^ 2) / center[3]
                 mask = math.max(mask, 1 - distance)
             end
+            -- The edges of the map, and most of all its top and bottom, which the view leaves out, sink into the sea, so no island is ever cut.
+            local edge = math.max(math.abs(column / columns - 0.5) * 2, math.abs(row / rows - 0.5) * 2.6)
             local index = row * columns + column + 1
-            heights[index] = relief:fractal(column / 120, row / 120, 5) * 0.55 + mask * 0.9 - 0.45 - options.sea
+            heights[index] = relief:fractal(column / 120, row / 120, 5) * 0.55 + mask * 0.9 - 0.45 - options.sea - math.max(0, edge - 0.62) * 2.5
             moistures[index] = wetness:fractal(column / 160, row / 160, 4) * 0.5 + 0.5
         end
         jobs.checkpoint()
@@ -147,12 +152,12 @@ function WorldMap.rivers(heights, moistures, random)
     local columns, rows = WorldMap.columns, WorldMap.rows
     local rivers, wet = {}, {}
     for _ = 1, 800 do
-        if #rivers >= 12 then
+        if #rivers >= 8 then
             break
         end
         local column, row = random:integer(1, columns - 2), random:integer(1, rows - 2)
         local index = row * columns + column + 1
-        if heights[index] > 0.3 and moistures[index] > 0.45 and not wet[index] then
+        if heights[index] > 0.36 and moistures[index] > 0.45 and not wet[index] then
             local river = {}
             while true do
                 river[#river + 1] = {x = column, y = row}
@@ -172,7 +177,7 @@ function WorldMap.rivers(heights, moistures, random)
                 end
                 column, row = nextColumn, nextRow
             end
-            if #river >= 12 then
+            if #river >= 14 then
                 rivers[#rivers + 1] = river
             end
         end
@@ -244,6 +249,37 @@ function WorldMap.points(cells)
     return points
 end
 
+-- Rounds the steps of a river from cell to cell into a winding line: two passes of corner cutting and a gentle sway across the course that grows downstream.
+function WorldMap.meander(points, seed)
+    for _ = 1, 2 do
+        local rounded = {points[1], points[2]}
+        for index = 1, #points - 3, 2 do
+            local x1, y1, x2, y2 = points[index], points[index + 1], points[index + 2], points[index + 3]
+            rounded[#rounded + 1] = x1 * 0.75 + x2 * 0.25
+            rounded[#rounded + 1] = y1 * 0.75 + y2 * 0.25
+            rounded[#rounded + 1] = x1 * 0.25 + x2 * 0.75
+            rounded[#rounded + 1] = y1 * 0.25 + y2 * 0.75
+        end
+        rounded[#rounded + 1] = points[#points - 1]
+        rounded[#rounded + 1] = points[#points]
+        points = rounded
+    end
+    local count = #points // 2
+    for index = 2, count - 1 do
+        local dx, dy = points[index * 2 + 1] - points[index * 2 - 3], points[index * 2 + 2] - points[index * 2 - 2]
+        local length = math.max(1e-4, math.sqrt(dx * dx + dy * dy))
+        local sway = math.sin(index * 0.35 + seed * 1.7) * 5 * (index / count)
+        points[index * 2 - 1] = points[index * 2 - 1] - dy / length * sway
+        points[index * 2] = points[index * 2] + dx / length * sway
+    end
+    return points
+end
+
+-- Counts things by name, such as "1 river" or "3 rivers".
+function WorldMap.count(amount, name)
+    return amount == 1 and '1 ' .. name or amount .. ' ' .. name .. 's'
+end
+
 function WorldMap:update(dt)
     WorldMap.super.update(self, dt)
     if input.pressed('reset') then
@@ -256,7 +292,10 @@ function WorldMap:update(dt)
     end
     local world = self.world
     if world then
-        self:status(string.format('World %d, land %d%%, rivers %d, towns %d, roads %d, ready in %.0f ms', self.options.seed, world.land, #world.rivers, #world.towns, #world.roads, world.milliseconds))
+        local count = WorldMap.count
+        self:status(string.format('World %d is %d%% land, with %s, %s and %s, made in %.0f ms.', self.options.seed, world.land, count(#world.rivers, 'river'), count(#world.towns, 'town'), count(#world.roads, 'road'), world.milliseconds))
+    else
+        self:status('The first world is being made.')
     end
 end
 
@@ -266,11 +305,12 @@ function WorldMap:draw(area)
         return
     end
     local width, height = WorldMap.columns * WorldMap.cell, WorldMap.rows * WorldMap.cell
+    graphics2d.drawRect(graphics2d.canvasBounds(), WorldMap.water.deep, {layer = -1})
     graphics2d.draw(world.texture, -width / 2, -height / 2, {pivotX = 0, pivotY = 0, width = width, height = height})
     if not world.riverPoints then
         world.riverPoints, world.roadPoints = {}, {}
         for _, river in ipairs(world.rivers) do
-            local points = WorldMap.points(river)
+            local points = WorldMap.meander(WorldMap.points(river), #world.riverPoints)
             local widths = {}
             for index = 1, #points // 2 do
                 widths[index] = 1.5 + index / (#points // 2) * 3.5
@@ -283,7 +323,7 @@ function WorldMap:draw(area)
     end
     if self.options.rivers then
         for _, river in ipairs(world.riverPoints) do
-            graphics2d.drawStroke(river.points, {widths = river.widths, color = '#FF3A7CB8', join = 'round', cap = 'round', layer = 1})
+            graphics2d.drawStroke(river.points, {widths = river.widths, color = '#FF2FB3C4', join = 'round', cap = 'round', layer = 1})
         end
     end
     if self.options.roads then

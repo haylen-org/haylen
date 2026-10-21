@@ -8,7 +8,6 @@ local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
-local Test = require('harness.test')
 local Leg = require('categories.procedural.leg')
 local names = require('categories.procedural.names')
 
@@ -20,15 +19,20 @@ local radius = monster.radius * (1 + wave[1] * math.sin(3 * angle + wave[2]))  -
 tentacle:reach(rootX + math.sin(time * 2 + index) * 30, rootY + tentacle.length * 0.9)  -- Hangs and sways.
 pupilX, pupilY = eyeX + clampLength(pointer - eye, eye.radius * 0.4)  -- Every eye watches the pointer.]]
 
-Monsters.ground = 320
-Monsters.outline = '#FF1A1420'
+Monsters.ground = 210
+Monsters.outline = '#FF1E1B33'
 Monsters.bone = '#FFF1E6CC'
+Monsters.horn = '#FFFFC93C'
+Monsters.view = {1300, 620}
+-- The ground, the hills and the sky reach past what any screen shows.
+Monsters.reach = 1400
 
 function Monsters:enter()
     self.seed = 2
     self.count = 4
     self:build()
     self:frame{
+        view = Monsters.view,
         code = Monsters.code,
         hint = 'Every eye watches the pointer. Click or tap a monster to make it roar. R or the X button makes new monsters.',
         controls = {
@@ -47,25 +51,30 @@ end
 function Monsters:build()
     local random = m.random(self.seed)
     self.monsters = {}
+    -- Every third monster floats, so every seed shows monsters that walk and monsters that float on tentacles.
     for index = 1, self.count do
-        local x = (index - (self.count + 1) / 2) * (1400 / self.count)
-        self.monsters[index] = Monsters.make(random, x)
+        local x = (index - (self.count + 1) / 2) * (1150 / self.count)
+        self.monsters[index] = Monsters.make(random, x, index % 3 == 2)
     end
-    self.hills = {}
-    for index = 0, 16 do
-        self.hills[#self.hills + 1] = {-800 + index * 100, Monsters.ground - 60 - random:range(0, 120)}
+    local reach = Monsters.reach
+    self.ranges = {}
+    for layer, height in ipairs({{170, 260}, {70, 150}}) do
+        local hills = {{-reach, Monsters.ground}}
+        for index = 0, 28 do
+            hills[#hills + 1] = {-reach + index * reach * 2 / 28, Monsters.ground - random:range(height[1], height[2]) / layer}
+        end
+        hills[#hills + 1] = {reach, Monsters.ground}
+        self.ranges[layer] = hills
     end
-    self.hills[#self.hills + 1] = {800, Monsters.ground}
-    self.hills[#self.hills + 1] = {-800, Monsters.ground}
     self.stars = {}
-    for _ = 1, 60 do
-        self.stars[#self.stars + 1] = {random:range(-790, 790), random:range(-420, 120), random:range(1, 2.6)}
+    for _ = 1, 120 do
+        self.stars[#self.stars + 1] = {random:range(-reach, reach), random:range(-560, 40), random:range(1, 2.6)}
     end
     self.roars = 0
 end
 
--- Makes one monster standing or floating at `x`.
-function Monsters.make(random, x)
+-- Makes one monster standing at `x`, or floating when `floats` is set.
+function Monsters.make(random, x, floats)
     local monster = {x = x, home = x, name = names.person(random), facing = random:chance(0.5) and 1 or -1}
     monster.width, monster.height = random:range(85, 125), random:range(72, 110)
     monster.hue = random:nextFloat()
@@ -75,7 +84,7 @@ function Monsters.make(random, x)
     for order = 3, 6 do
         monster.waves[#monster.waves + 1] = {order, random:range(0.02, 0.08), random:range(0, math.pi * 2)}
     end
-    monster.floats = random:chance(0.3)
+    monster.floats = floats
     monster.speed = random:range(30, 70)
     monster.phase = random:range(0, math.pi * 2)
     monster.roar = 0
@@ -86,7 +95,7 @@ function Monsters.make(random, x)
         local spread = count == 1 and 0 or (index - 1) / (count - 1) - 0.5
         monster.eyes[index] = {x = spread * monster.width * 1.1, y = -monster.height * random:range(0.25, 0.5), radius = random:range(13, 27), blinkIn = random:range(1, 5)}
     end
-    monster.mouth = {width = monster.width * random:range(0.5, 0.85), teeth = random:integer(2, 7), fangs = random:chance(0.5)}
+    monster.mouth = {width = monster.width * random:range(0.75, 1.05), teeth = random:integer(3, 6), fangs = random:chance(0.5)}
     monster.horns = random:chance(0.5) and random:range(25, 50) or nil
     monster.spikes = random:chance(0.4) and random:integer(5, 9) or 0
 
@@ -99,10 +108,10 @@ function Monsters.make(random, x)
     end
     monster.legs, monster.tentacles = {}, {}
     if monster.floats then
-        monster.altitude = random:range(300, 380)
+        monster.altitude = random:range(250, 300)
         for index = 1, random:integer(3, 6) do
             local tentacle = animation2d.newChain({segments = 7, length = random:range(17, 24), angle = math.pi / 2, maxBend = 0.5})
-            monster.tentacles[index] = {chain = tentacle, reach = {iterations = 6}, buffer = collections.newFloatBuffer(16), stroke = {widths = {20, 18, 15, 12, 10, 7, 5, 3}, color = monster.color, join = 'round', cap = 'round', layer = 2}}
+            monster.tentacles[index] = {chain = tentacle, reach = {iterations = 6}, buffer = collections.newFloatBuffer(16), stroke = {widths = {20, 18, 15, 12, 10, 7, 5, 3}, color = monster.color, join = 'round', cap = 'round', layer = 2}, outline = {widths = {26, 24, 21, 18, 16, 13, 11, 8}, color = Monsters.outline, join = 'round', cap = 'round', layer = 2}}
         end
     else
         local pairs = random:chance(0.6) and 1 or 2
@@ -200,9 +209,21 @@ function Monsters:update(dt)
             end
         end
     end
-    self:status(string.format('Monsters %d, pacing %d, roars %d, seed %d', #self.monsters, walking, self.roars, self.seed))
+    local roars = self.roars == 0 and 'Touch one to make it roar.' or string.format('They roared %d %s.', self.roars, self.roars == 1 and 'time' or 'times')
+    self:status(string.format('%d monsters from the seed %d, %d of them pacing. %s', #self.monsters, self.seed, walking, roars))
 end
 
+-- Returns a flat list of the points of a closed outline, for its stroke.
+function Monsters.flatten(points)
+    local flat = {}
+    for _, point in ipairs(points) do
+        flat[#flat + 1] = point[1]
+        flat[#flat + 1] = point[2]
+    end
+    return flat
+end
+
+-- The body draws with the outline of the art style around everything: spikes and horns behind its edge, the wobbling body with its belly and a soft highlight, the eyes and a big mouth with teeth on both jaws and a tongue.
 function Monsters.drawBody(monster, time)
     local x, y = monster.bodyX, monster.bodyY
     local roaring = monster.roar > 0
@@ -215,33 +236,35 @@ function Monsters.drawBody(monster, time)
     end
     if monster.horns then
         for side = -1, 1, 2 do
-            local baseX, baseY = x + side * monster.width * 0.45, y - monster.height * 0.8
-            local horn = {{baseX - 10, baseY + 6}, {baseX + 10, baseY + 6}, {baseX + side * monster.horns * 0.6, baseY - monster.horns}}
-            graphics2d.drawPolygon(horn, Monsters.bone, {layer = 3})
-            graphics2d.drawPolyline(horn, 3, Monsters.outline, true, {layer = 3})
+            local baseX, baseY = x + side * monster.width * 0.42, y - monster.height * 0.78
+            local horn = {{baseX - 13, baseY + 8}, {baseX + 13, baseY + 8}, {baseX + side * monster.horns * 0.75, baseY - monster.horns}}
+            graphics2d.drawStroke(Monsters.flatten(horn), {width = 7, color = Monsters.outline, join = 'round', closed = true, layer = 2})
+            graphics2d.drawPolygon(horn, Monsters.horn, {layer = 2})
         end
     end
     for spike = 1, monster.spikes do
-        local angle = math.pi * (1.15 + (spike - 1) / math.max(1, monster.spikes - 1) * 0.7)
+        local angle = math.pi * (1.2 + (spike - 1) / math.max(1, monster.spikes - 1) * 0.6)
         local radius = Monsters.radius(monster, angle)
-        local baseX, baseY = x + math.cos(angle) * monster.width * radius * 0.95, y + math.sin(angle) * monster.height * radius * 0.95
-        local tipX, tipY = x + math.cos(angle) * (monster.width * radius + 22), y + math.sin(angle) * (monster.height * radius + 22)
-        local across = {-math.sin(angle) * 9, math.cos(angle) * 9}
+        local baseX, baseY = x + math.cos(angle) * monster.width * radius * 0.92, y + math.sin(angle) * monster.height * radius * 0.92
+        local tipX, tipY = x + math.cos(angle) * (monster.width * radius + 24), y + math.sin(angle) * (monster.height * radius + 24)
+        local across = {-math.sin(angle) * 10, math.cos(angle) * 10}
         local points = {{baseX + across[1], baseY + across[2]}, {baseX - across[1], baseY - across[2]}, {tipX, tipY}}
-        graphics2d.drawPolygon(points, monster.color:lerp(m.color(Monsters.outline), 0.3), {layer = 3})
+        graphics2d.drawStroke(Monsters.flatten(points), {width = 6, color = Monsters.outline, join = 'round', closed = true, layer = 2})
+        graphics2d.drawPolygon(points, monster.color:lerp(m.color(Monsters.outline), 0.35), {layer = 2})
     end
+    graphics2d.drawStroke(Monsters.flatten(outline), {width = 8, color = Monsters.outline, join = 'round', closed = true, layer = 3})
     graphics2d.drawPolygon(outline, monster.color, {layer = 3})
-    graphics2d.drawPolyline(outline, 4, Monsters.outline, true, {layer = 3})
-    graphics2d.drawEllipse(x + monster.facing * monster.width * 0.1, y + monster.height * 0.35, monster.width * 0.6, monster.height * 0.45, monster.belly, {layer = 3})
+    graphics2d.drawEllipse(x + monster.facing * monster.width * 0.1, y + monster.height * 0.35, monster.width * 0.62, monster.height * 0.46, monster.belly, {layer = 3})
+    graphics2d.drawShape({x - monster.width * 0.62, y - monster.height * 0.78, monster.width * 0.5, monster.height * 0.22}, {kind = 'ellipse', rotation = -0.35, color = '#40FFFFFF', layer = 3})
 
     local faceX = x + monster.facing * monster.width * 0.12
     for _, eye in ipairs(monster.eyes) do
         local eyeX, eyeY = faceX + eye.x, y + eye.y
         local radius = eye.radius * (roaring and 1.25 or 1)
-        graphics2d.drawCircle(eyeX, eyeY, radius + 3, Monsters.outline, {layer = 4})
+        graphics2d.drawCircle(eyeX, eyeY, radius + 3.5, Monsters.outline, {layer = 4})
         if eye.blinkIn < 0 then
             graphics2d.drawCircle(eyeX, eyeY, radius, monster.color, {layer = 4})
-            graphics2d.drawLine(eyeX - radius, eyeY, eyeX + radius, eyeY, 3, Monsters.outline, {layer = 4})
+            graphics2d.drawLine(eyeX - radius, eyeY, eyeX + radius, eyeY, 3.5, Monsters.outline, {layer = 4})
         else
             graphics2d.drawCircle(eyeX, eyeY, radius, '#FFFFFFFF', {layer = 4})
             local lookX, lookY = (monster.lookX or eyeX) - eyeX, (monster.lookY or eyeY) - eyeY
@@ -253,28 +276,43 @@ function Monsters.drawBody(monster, time)
     end
 
     local mouth = monster.mouth
-    local open = roaring and 40 or 14 + math.sin(time * 2 + monster.phase) * 4
-    local mouthY = y + monster.height * 0.3
-    graphics2d.drawShape({faceX - mouth.width / 2, mouthY - open / 2, mouth.width, open}, {kind = 'ellipse', color = '#FF3A0E1A', borderWidth = 3, borderColor = Monsters.outline, layer = 4})
+    local open = roaring and 56 or 26 + math.sin(time * 2 + monster.phase) * 5
+    local mouthY = y + monster.height * 0.32
+    local mouthRect = {faceX - mouth.width / 2, mouthY - open / 2, mouth.width, open}
+    graphics2d.drawShape(mouthRect, {kind = 'ellipse', color = '#FF4A1424', borderWidth = 3.5, borderColor = Monsters.outline, layer = 4})
+    graphics2d.drawShape({faceX - mouth.width * 0.24, mouthY + open * 0.08, mouth.width * 0.48, open * 0.36}, {kind = 'ellipse', color = '#FFE8667A', layer = 4})
     for tooth = 1, mouth.teeth do
-        local toothX = faceX - mouth.width * 0.4 + (tooth - 0.5) / mouth.teeth * mouth.width * 0.8
-        local length = (mouth.fangs and (tooth == 1 or tooth == mouth.teeth)) and 22 or 11
-        graphics2d.drawPolygon({{toothX - 7, mouthY - open / 2 + 1}, {toothX + 7, mouthY - open / 2 + 1}, {toothX, mouthY - open / 2 + length}}, Monsters.bone, {layer = 4})
+        local toothX = faceX - mouth.width * 0.36 + (tooth - 0.5) / mouth.teeth * mouth.width * 0.72
+        local length = (mouth.fangs and (tooth == 1 or tooth == mouth.teeth)) and open * 0.55 or open * 0.3
+        graphics2d.drawPolygon({{toothX - 7, mouthY - open / 2 + 3}, {toothX + 7, mouthY - open / 2 + 3}, {toothX, mouthY - open / 2 + 3 + length}}, Monsters.bone, {layer = 4})
+    end
+    for tooth = 1, math.max(1, mouth.teeth - 2) do
+        local toothX = faceX - mouth.width * 0.22 + (tooth - 0.5) / math.max(1, mouth.teeth - 2) * mouth.width * 0.44
+        graphics2d.drawPolygon({{toothX - 6, mouthY + open / 2 - 3}, {toothX + 6, mouthY + open / 2 - 3}, {toothX, mouthY + open / 2 - 3 - open * 0.24}}, Monsters.bone, {layer = 4})
     end
     if roaring then
-        graphics2d.drawText(nil, 'Roar!', x, y - monster.height - 40, {size = 34, color = '#FFFFE08A', outlineWidth = 4, outlineColor = Monsters.outline, anchor = {0.5, 1}, layer = 6})
+        graphics2d.drawText(nil, 'Roar!', x, y - monster.height - 44, {size = 40, color = '#FFFFE08A', outlineWidth = 4, outlineColor = Monsters.outline, anchor = {0.5, 1}, layer = 6})
     end
 end
 
+-- A night over two ranges of hills, the far one lighter than the near one, and ground that fill the whole canvas.
 function Monsters:draw(area)
+    local bounds = graphics2d.canvasBounds()
+    graphics2d.drawRect(bounds, '#FF161B2A', {layer = -3})
     for _, star in ipairs(self.stars) do
-        graphics2d.drawCircle(star[1], star[2], star[3], '#B3E8EAF2')
+        graphics2d.drawCircle(star[1], star[2], star[3], '#B3E8EAF2', {layer = -2})
     end
-    graphics2d.drawCircle(560, -300, 56, '#FFF4EBD0')
-    graphics2d.drawCircle(582, -312, 50, Test.stageColor)
-    graphics2d.drawPolygon(self.hills, '#FF202838')
-    graphics2d.drawRect({-800, Monsters.ground, 1600, 140}, '#FF2C2A3C')
-    graphics2d.drawRect({-800, Monsters.ground, 1600, 5}, '#FF4A4560')
+    -- A crescent moon in its glow: the disc of the moon without the part a smaller disc covers.
+    graphics2d.drawCircle(430, -190, 80, '#1AF4EBD0', {layer = -2})
+    graphics2d.pushMask(function()
+        graphics2d.drawCircle(450, -202, 46, '#FFFFFFFF')
+    end, {mode = 'outside', layer = -2})
+    graphics2d.drawCircle(430, -190, 52, '#FFF4EBD0', {layer = -2})
+    graphics2d.popMask()
+    graphics2d.drawPolygon(self.ranges[1], '#FF2C3552', {layer = -1})
+    graphics2d.drawPolygon(self.ranges[2], '#FF222A40', {layer = -1})
+    graphics2d.drawRect({bounds.x, Monsters.ground, bounds.width, bounds.y + bounds.height - Monsters.ground}, '#FF2C2A3C', {layer = -1})
+    graphics2d.drawRect({bounds.x, Monsters.ground, bounds.width, 5}, '#FF4A4560', {layer = -1})
     local time = haylen.elapsed()
     for _, monster in ipairs(self.monsters) do
         monster.lookX, monster.lookY = self.pointer.worldX, self.pointer.worldY
@@ -284,14 +322,16 @@ function Monsters:draw(area)
         end
         for _, tentacle in ipairs(monster.tentacles) do
             tentacle.chain:writePoints(tentacle.buffer)
+            graphics2d.drawStroke(tentacle.buffer, tentacle.outline)
             graphics2d.drawStroke(tentacle.buffer, tentacle.stroke)
         end
         for _, arm in ipairs(monster.arms) do
             arm:draw()
+            graphics2d.drawCircle(arm.footX, arm.footY, 12, Monsters.outline, {layer = 4})
             graphics2d.drawCircle(arm.footX, arm.footY, 9, monster.color:lerp(m.color(Monsters.outline), 0.3), {layer = 4})
         end
         Monsters.drawBody(monster, time)
-        graphics2d.drawText(nil, monster.name, monster.home, Monsters.ground + 30, {size = 22, color = '#FFE8EAF2', anchor = {0.5, 0}})
+        graphics2d.drawText(nil, monster.name, monster.home, Monsters.ground + 30, {size = 24, color = '#FFE8EAF2', anchor = {0.5, 0}})
     end
 end
 

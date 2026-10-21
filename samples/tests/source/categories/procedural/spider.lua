@@ -23,7 +23,7 @@ Spider.stride = 54
 Spider.swing = 0.45
 Spider.lengths = {60, 66}
 Spider.tarsus = 34
-Spider.view = {1300, 700}
+Spider.view = {1240, 580}
 -- Each leg: where its hip sits along the body and over its middle, where its foot rests along the body, the side it is on and its phase of the gait, so the first and third legs of one side step with the second and fourth of the other.
 Spider.legs = {
     {hip = 24, lift = -8, foot = 128, side = 'near', phase = 0}, {hip = 17, lift = -10, foot = 70, side = 'near', phase = 0.5},
@@ -31,7 +31,7 @@ Spider.legs = {
     {hip = 27, lift = -2, foot = 138, side = 'far', phase = 0.5}, {hip = 20, lift = -4, foot = 84, side = 'far', phase = 0},
     {hip = 12, lift = -4, foot = -22, side = 'far', phase = 0.56}, {hip = 5, lift = -2, foot = -84, side = 'far', phase = 0.06},
 }
-Spider.colors = {near = '#FF8A5A3C', far = '#FF4E3122', joint = '#FF6A4029', body = '#FF7A4E36', abdomen = '#FF5E3A28', outline = '#FF24160F', mark = '#FFF2B23A', eye = '#FF120C0A', shine = '#FFFFF1D6', fang = '#FF2E1C12', silk = '#FFE8EAF2'}
+Spider.colors = {near = '#FF9A6440', far = '#FF4A2E1F', joint = '#FFB7804F', body = '#FF8A5636', light = '#FFB5774A', abdomen = '#FF6B4029', band = '#FFE0A93C', outline = '#FF1E1B33', eye = '#FF15101A', shine = '#FFFFFFFF', fang = '#FF2E1C12', silk = '#FFE8EAF2'}
 
 function Spider:enter()
     self.seed = 3
@@ -44,7 +44,7 @@ function Spider:enter()
         hint = 'Click or tap a point and the spider climbs the shorter way around its rock to the nearest spot, or leaps across on a thread when the point is on another rock. Without a point it wanders. R or the X button makes a new cave.',
         controls = {
             ui.formField{label = 'Speed', ui.slider{id = 'speed', min = 40, max = 420, step = 10, value = self.speed, showValue = true, decimals = 0, onChange = function(event) self.speed = event.value end}},
-            ui.checkbox{id = 'guides', text = 'Show the rest points and the poles', checked = false, onChange = function(event) self.showGuides = event.checked end},
+            ui.checkbox{id = 'guides', text = 'Show the footholds and the knees', checked = false, onChange = function(event) self.showGuides = event.checked end},
             ui.button{id = 'wander', text = 'Let it wander', onClick = function() self:setTarget(nil) end},
             ui.button{id = 'cave', text = 'New cave', variant = 'primary', onClick = function() self:newCave() end},
         },
@@ -61,18 +61,18 @@ function Spider:build()
     self.land = function(leg, lead)
         return self.cave:walk(leg.restX, leg.restY, lead * self.crawler.dir, 0)
     end
-    self.cave = Cave(self.seed, 1240, 640)
+    self.cave = Cave(self.seed, 1200, 540)
     self.crawler = Crawler(self.cave, 0, 400, Spider.height, self.speed, self.seed)
     self.facing = 1
     self.legs = {}
     for _, layout in ipairs(Spider.legs) do
-        local leg = Leg({x = self.crawler.x, y = self.crawler.y, lengths = Spider.lengths, tarsus = Spider.tarsus, phase = layout.phase, lift = 22, widths = {7, 6, 4, 2}})
+        local leg = Leg({x = self.crawler.x, y = self.crawler.y, lengths = Spider.lengths, tarsus = Spider.tarsus, phase = layout.phase, lift = 22, widths = {9, 7, 5, 3}})
         leg.layout = layout
         self.legs[#self.legs + 1] = leg
     end
     self.palps = {}
     for _, side in ipairs({'far', 'near'}) do
-        local palp = Leg({x = self.crawler.x, y = self.crawler.y, lengths = {16, 18}, widths = {6, 5, 3}})
+        local palp = Leg({x = self.crawler.x, y = self.crawler.y, lengths = {16, 18}, widths = {7, 6, 4}})
         palp.side = side
         self.palps[#self.palps + 1] = palp
     end
@@ -181,7 +181,7 @@ function Spider:update(dt)
             self.leapTime = self.leapTime - dt
             if self.leapTime <= 0 then
                 self.leapTime = crawler.random:range(5, 9)
-                self:tryLeap(crawler.random:range(-560, 560), crawler.random:range(-280, 280))
+                self:tryLeap(crawler.random:range(-self.cave.halfWidth, self.cave.halfWidth), crawler.random:range(-self.cave.halfHeight, self.cave.halfHeight))
             end
         end
     end
@@ -210,51 +210,59 @@ function Spider:update(dt)
     elseif self.target then
         state = crawler.arrived and (crawler.unreachable and 'at the nearest spot, with no clear leap' or 'at the point') or 'climbing to the point'
     end
-    self:status(string.format('The spider is %s, legs stepping %d of 8, leaps %d, cave %d', state, stepping, self.leaps, self.seed))
+    local leaps = self.leaps == 1 and 'once' or self.leaps .. ' times'
+    self:status(string.format('In cave %d, the spider is %s. It has %d of its 8 legs in a step and leapt %s.', self.seed, state, stepping, leaps))
 end
 
--- Draws an ellipse centered `along` the body and `lift` over its middle, tilted by `tilt` toward the back of the body, and narrower while the body turns.
-function Spider:ellipse(along, lift, width, height, tilt, color, layer)
+-- Draws an ellipse centered `along` the body and `lift` over its middle, tilted by `tilt` toward the back of the body, and narrower while the body turns, with the outline of the art style unless it is a `plain` patch of light on a part.
+function Spider:ellipse(along, lift, width, height, tilt, color, layer, plain)
     local crawler = self.crawler
     local x, y = self:at(along, lift)
     local dx, dy = math.cos(tilt) * (self.facing >= 0 and 1 or -1), math.sin(tilt)
     local angle = math.atan(crawler.nx * dx + crawler.ny * dy, -crawler.ny * dx + crawler.nx * dy)
     local across = math.max(0.35, math.abs(self.facing))
     local wide = width * across
-    graphics2d.drawShape({x - wide / 2, y - height / 2, wide, height}, {kind = 'ellipse', rotation = angle, color = color, borderWidth = 3, borderColor = Spider.colors.outline, layer = layer})
+    graphics2d.drawShape({x - wide / 2, y - height / 2, wide, height}, {kind = 'ellipse', rotation = angle, color = color, borderWidth = plain and 0 or 3.5, borderColor = Spider.colors.outline, layer = layer})
 end
 
+-- The body draws from the back to the front: the abdomen with a band of chevrons along its back and its spinnerets, the waist, and the cephalothorax with the fangs and two big eyes with shine in front, so the face reads at the head end alone.
 function Spider:drawBody()
     local colors = Spider.colors
     local bob = math.sin(self.crawler.travelled / Spider.stride * math.pi * 4) * 1.5
-
-    -- The abdomen rises behind the waist with the marks along its back, and the spinnerets at its tip.
-    self:ellipse(-48, 14 + bob, 88, 70, 0.3, colors.abdomen, 5)
+    self:ellipse(-90, 4 + bob, 12, 10, 0.3, colors.fang, 5)
+    self:ellipse(-48, 14 + bob, 92, 74, 0.3, colors.abdomen, 5)
+    self:ellipse(-56, 26 + bob, 52, 30, 0.3, colors.body, 5, true)
     for index = 0, 2 do
-        self:ellipse(-34 - index * 16, 38 - index * 5 + bob, 14 - index * 2, 8 - index, 0.3, colors.mark, 5)
+        self:chevron(-30 - index * 18, 44 - index * 6 + bob, 16 - index * 3)
     end
-    self:ellipse(-90, 2 + bob, 10, 8, 0.3, colors.fang, 5)
-    self:ellipse(-10, 4 + bob, 16, 12, 0, colors.body, 5)
+    self:ellipse(-10, 4 + bob, 18, 14, 0, colors.body, 5)
 
-    -- The cephalothorax carries the fangs and the eyes in front.
-    self:ellipse(16, 4 + bob, 60, 42, -0.12, colors.body, 5)
-    self:ellipse(38, -12 + bob, 12, 18, 0.5, colors.fang, 5)
-    local fromX, fromY = self:at(40, -20 + bob)
-    local toX, toY = self:at(35, -27 + bob)
-    graphics2d.drawLine(fromX, fromY, toX, toY, 3, colors.outline, {layer = 5})
-    for _, eye in ipairs({{38, 12, 5}, {31, 18, 3.5}, {24, 21, 2.5}}) do
+    self:ellipse(16, 4 + bob, 62, 44, -0.12, colors.body, 6)
+    self:ellipse(10, 14 + bob, 34, 14, -0.12, colors.light, 6, true)
+    self:ellipse(40, -12 + bob, 12, 18, 0.5, colors.fang, 6)
+    for _, eye in ipairs({{36, 14, 7}, {26, 20, 5}}) do
         local x, y = self:at(eye[1], eye[2] + bob)
-        graphics2d.drawCircle(x, y, eye[3], colors.eye, {layer = 5})
-        local shineX, shineY = self:at(eye[1] - eye[3] * 0.3, eye[2] + eye[3] * 0.35 + bob)
-        graphics2d.drawCircle(shineX, shineY, eye[3] * 0.35, colors.shine, {layer = 5})
+        graphics2d.drawCircle(x, y, eye[3] + 1.5, colors.outline, {layer = 7})
+        graphics2d.drawCircle(x, y, eye[3], colors.eye, {layer = 7})
+        local shineX, shineY = self:at(eye[1] + eye[3] * 0.3, eye[2] + eye[3] * 0.35 + bob)
+        graphics2d.drawCircle(shineX, shineY, eye[3] * 0.38, colors.shine, {layer = 7})
     end
 end
 
+-- A chevron of the band along the back of the abdomen, pointing to the head.
+function Spider:chevron(along, lift, size)
+    local tipX, tipY = self:at(along + size * 0.5 * self.facing, lift)
+    local upperX, upperY = self:at(along - size * 0.4 * self.facing, lift + size * 0.45)
+    local lowerX, lowerY = self:at(along - size * 0.4 * self.facing, lift - size * 0.45)
+    graphics2d.drawStroke({upperX, upperY, tipX, tipY, lowerX, lowerY}, {width = size * 0.36, color = Spider.colors.band, join = 'round', cap = 'round', layer = 5})
+end
+
+-- Every leg grows from under the body: the legs of the far side draw darker behind it, and those of the near side over them and still under the body, so no leg crosses it.
 function Spider:drawLeg(leg, color, layer)
     leg:draw(color, layer)
     for index = 2, leg.chain.count - 1 do
         local x, y = leg.chain:point(index)
-        graphics2d.drawCircle(x, y, 3, Spider.colors.joint, {layer = layer})
+        graphics2d.drawCircle(x, y, 3.5, Spider.colors.joint, {layer = layer})
     end
 end
 
@@ -263,24 +271,24 @@ function Spider:draw(area)
     local colors = Spider.colors
     if self.target then
         local goalX, goalY = self.cave:project(self.target[1], self.target[2], 0)
-        graphics2d.drawRing(goalX, goalY, 14, 3, colors.mark, {layer = 3})
+        graphics2d.drawRing(goalX, goalY, 14, 3, colors.band, {layer = 3})
     end
     if self.thread then
         local color = m.color(colors.silk):withAlpha(0.7 * self.thread.life)
         local tipX, tipY = self:at(-92, 2)
-        graphics2d.drawLine(self.thread.x, self.thread.y, tipX, tipY, 1.5, color, {layer = 4})
+        graphics2d.drawLine(self.thread.x, self.thread.y, tipX, tipY, 1.5, color, {layer = 2})
     end
     for _, leg in ipairs(self.legs) do
         local near = leg.layout.side == 'near'
-        self:drawLeg(leg, near and colors.near or colors.far, near and 6 or 3)
+        self:drawLeg(leg, near and colors.near or colors.far, near and 4 or 2)
         if self.showGuides then
-            graphics2d.drawCircle(leg.restX, leg.restY, 4, '#FF6FDCA0', {layer = 8})
-            graphics2d.drawCircle(leg.poleX, leg.poleY, 3, '#FF8FB0FF', {layer = 8})
+            graphics2d.drawCircle(leg.restX, leg.restY, 4, '#FF6FDCA0', {layer = 30})
+            graphics2d.drawCircle(leg.poleX, leg.poleY, 3, '#FF8FB0FF', {layer = 30})
         end
     end
     for _, palp in ipairs(self.palps) do
         local near = palp.side == 'near'
-        palp:draw(near and colors.near or colors.far, near and 6 or 3)
+        self:drawLeg(palp, near and colors.near or colors.far, near and 4 or 2)
     end
     self:drawBody()
 end

@@ -1,4 +1,4 @@
--- Critters: bugs made from a seed and seen from above, each with its own kind of body, colors and pattern, the six legs of an insect on its thorax, antennae and sometimes wings. Every leg is a chain of two segments that keeps its foot planted until the gait moves it, the legs step in two tripods, the front and back legs of one side with the middle leg of the other, and the antennae reach ahead and sway. The bugs wander, keep apart and run from the pointer, and a press scares the ones near it.
+-- Critters: bugs made from a seed and seen from above, each with its own kind of body, colors and pattern, the six legs of an insect on its thorax, antennae and sometimes wings. Every leg is a chain of three segments that grows from under the thorax and keeps its foot planted until the gait moves it, the legs step in two tripods, the front and back legs of one side with the middle leg of the other, and the antennae reach ahead and sway. The bugs wander, keep apart and run from the pointer, and a press scares the ones near it.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -18,12 +18,16 @@ if distance(bug, pointer) < 220 then bug.heading = angleAwayFrom(pointer) bug.sp
 
 Critters.kinds = {'beetle', 'ant', 'ladybug'}
 Critters.legPairs = 3
-Critters.bounds = {-760, -400, 1520, 800}
-Critters.outline = '#FF141210'
+Critters.outline = '#FF1E1B33'
+-- The spots of a pattern, as shares of the half length and the half width of the wing cases, one of each pair on each side, so no two spots overlap.
+Critters.spotPlaces = {{0.45, 0.45}, {-0.05, 0.62}, {-0.5, 0.42}, {0.1, 0.22}, {-0.65, 0.12}}
+-- The ground spreads past what any screen shows, and the bugs keep to the part of it in view.
+Critters.ground = {-1500, -900, 3000, 1800}
 
 function Critters:enter()
     self.seed = 4
-    self.count = 18
+    self.count = 14
+    self.bounds = {-760, -400, 1520, 800}
     self:build()
     self:frame{
         code = Critters.code,
@@ -44,52 +48,53 @@ end
 -- Scatters pebbles and tufts of grass over the ground, and makes the bugs.
 function Critters:build()
     local random = m.random(self.seed)
+    local ground = Critters.ground
     self.pebbles = {}
-    for _ = 1, 140 do
+    for _ = 1, 360 do
         local shade = random:range(0.42, 0.7)
-        self.pebbles[#self.pebbles + 1] = {random:range(-790, 790), random:range(-420, 420), random:range(3, 11), random:range(2, 7), m.color(shade, shade * 0.9, shade * 0.72, 1)}
+        self.pebbles[#self.pebbles + 1] = {random:range(ground[1], ground[1] + ground[3]), random:range(ground[2], ground[2] + ground[4]), random:range(3, 11), random:range(2, 7), m.color(shade, shade * 0.9, shade * 0.72, 1)}
     end
     self.tufts = {}
-    for _ = 1, 70 do
-        self.tufts[#self.tufts + 1] = {random:range(-790, 790), random:range(-420, 420), random:range(8, 18)}
+    for _ = 1, 180 do
+        self.tufts[#self.tufts + 1] = {random:range(ground[1], ground[1] + ground[3]), random:range(ground[2], ground[2] + ground[4]), random:range(8, 18)}
     end
     self.bugs = {}
     for _ = 1, self.count do
-        self.bugs[#self.bugs + 1] = Critters.make(random)
+        self.bugs[#self.bugs + 1] = Critters.make(random, self.bounds)
     end
     self.scares = 0
 end
 
--- Makes one bug at a random place.
-function Critters.make(random)
-    local bounds = Critters.bounds
+-- Makes one bug at a random place of the bounds.
+function Critters.make(random, bounds)
     local bug = {x = random:range(bounds[1] + 60, bounds[1] + bounds[3] - 60), y = random:range(bounds[2] + 60, bounds[2] + bounds[4] - 60), heading = random:range(0, math.pi * 2)}
-    bug.size = random:range(1.1, 1.8)
+    bug.size = random:range(1.6, 2.3)
     bug.kind = Critters.kinds[random:integer(1, #Critters.kinds)]
     local hue = random:nextFloat()
     bug.shell = m.fromHsv(hue, random:range(0.45, 0.8), random:range(0.55, 0.9))
     bug.dark = m.fromHsv(hue, 0.6, 0.25)
-    bug.spots = bug.kind == 'ladybug' and random:integer(3, 7) or (random:chance(0.3) and random:integer(2, 5) or 0)
+    bug.spots = bug.kind == 'ladybug' and random:integer(2, 5) or (random:chance(0.3) and random:integer(1, 3) or 0)
     bug.wings = random:chance(0.3)
     bug.length = random:range(0.85, 1.5)
-    bug.cruise = random:range(40, 90) * bug.size
+    bug.cruise = random:range(30, 60) * bug.size
     bug.speed = bug.cruise
     bug.turn = random:range(0, 100)
     bug.fear = 0
     local size = bug.size
     bug.legs = {}
+    -- The three pairs grow close together from under the thorax, the front pair reaching ahead and the back pair behind.
     for pair = 1, Critters.legPairs do
-        local along = ((pair - 1) / (Critters.legPairs - 1) - 0.5) * 14 * size
+        local along = 9 - (pair - 1) * 6
         for side = -1, 1, 2 do
-            local leg = Leg({x = bug.x, y = bug.y, lengths = {14 * size, 17 * size}, group = (pair + (side > 0 and 1 or 0)) % 2 + 1, stepTime = 0.09, lift = 3, widths = {3.5 * size, 3 * size, 2 * size}, color = bug.dark, layer = 2})
-            leg.along, leg.side = along, side
-            leg.reach = ((pair - 1) / (Critters.legPairs - 1) - 0.5) * 34 * size
+            local leg = Leg({x = bug.x, y = bug.y, lengths = {9 * size, 10 * size, 8 * size}, group = (pair + (side > 0 and 1 or 0)) % 2 + 1, stepTime = 0.09, lift = 3, widths = {3.2 * size, 2.6 * size, 2 * size, 1.4 * size}, color = bug.dark, outlineWidth = 1.5, layer = 2})
+            leg.along, leg.side = along * size, side
+            leg.reach = (2 - pair) * 18 * size
             bug.legs[#bug.legs + 1] = leg
         end
     end
     bug.antennae = {}
     for side = -1, 1, 2 do
-        local antenna = Leg({x = bug.x, y = bug.y, lengths = {11 * size, 10 * size}, widths = {2 * size, 1.6 * size, 1.2 * size}, color = bug.dark, layer = 2})
+        local antenna = Leg({x = bug.x, y = bug.y, lengths = {9 * size, 8 * size, 6 * size}, widths = {1.3 * size, 1 * size, 0.8 * size, 0.6 * size}, color = bug.dark, outlineWidth = 1, layer = 2})
         antenna.side = side
         bug.antennae[#bug.antennae + 1] = antenna
     end
@@ -104,9 +109,9 @@ function Critters.placeLegs(bug, dt, settle)
     local sx, sy = -fy, fx
     for _, leg in ipairs(bug.legs) do
         local side = leg.side
-        leg.hipX, leg.hipY = bug.x + fx * leg.along + sx * side * 6 * size, bug.y + fy * leg.along + sy * side * 6 * size
-        leg.restX, leg.restY = leg.hipX + sx * side * 24 * size + fx * leg.reach, leg.hipY + sy * side * 24 * size + fy * leg.reach
-        leg.poleX, leg.poleY = leg.hipX + sx * side * 30 * size + fx * (leg.reach >= 0 and 8 or -8), leg.hipY + sy * side * 30 * size + fy * (leg.reach >= 0 and 8 or -8)
+        leg.hipX, leg.hipY = bug.x + fx * leg.along + sx * side * 4 * size, bug.y + fy * leg.along + sy * side * 4 * size
+        leg.restX, leg.restY = leg.hipX + sx * side * 21 * size + fx * leg.reach, leg.hipY + sy * side * 21 * size + fy * leg.reach
+        leg.poleX, leg.poleY = leg.hipX + sx * side * 18 * size + fx * leg.reach * 0.2, leg.hipY + sy * side * 18 * size + fy * leg.reach * 0.2
         leg.liftX, leg.liftY = sx * side, sy * side
         if settle then
             leg:place(leg.restX, leg.restY)
@@ -116,7 +121,7 @@ end
 
 -- Steers a bug: it wanders, turns away from its neighbors and the edges, and runs from the pointer while it is afraid.
 function Critters:steer(bug, dt, pointer, time)
-    local bounds = Critters.bounds
+    local bounds = self.bounds
     local desired = bug.heading + math.sin(time * 0.7 + bug.turn) * 1.6 * dt
     local awayX, awayY = 0, 0
     for _, other in ipairs(self.bugs) do
@@ -157,6 +162,11 @@ function Critters:update(dt)
         self.seed = self.seed + 1
         self:build()
     end
+    -- The bugs keep to the part of the ground the play area shows.
+    local view = self.view
+    local zoom = math.min(self.stage.width / view[1], self.stage.height / view[2])
+    local halfWidth, halfHeight = self.stage.width / zoom / 2 - 40, self.stage.height / zoom / 2 - 40
+    self.bounds = {-halfWidth, -halfHeight, halfWidth * 2, halfHeight * 2}
     local pointer = self.pointer
     local time = haylen.elapsed()
     if pointer.pressed then
@@ -192,9 +202,10 @@ function Critters:update(dt)
         end
         running = running + (bug.fear > 0 and 1 or 0)
     end
-    self:status(string.format('Bugs %d, running %d, legs %d, stepping %d, scares %d', #self.bugs, running, legs, stepping, self.scares))
+    self:status(string.format('%d bugs, %d of them running from the pointer, with %d of their %d legs in a step.', #self.bugs, running, stepping, legs))
 end
 
+-- A bug draws from the ground up: its soft shadow, its legs and antennae from under its body, the abdomen or the wing cases with their pattern, the thorax and the head, every part with the outline and the highlight of the art style.
 function Critters.drawBug(bug, time)
     local size = bug.size
     local angle = bug.heading
@@ -203,28 +214,40 @@ function Critters.drawBug(bug, time)
         local x, y = bug.x + fx * along * size, bug.y + fy * along * size
         graphics2d.drawShape({x - width * size / 2, y - height * size / 2, width * size, height * size}, {kind = 'ellipse', rotation = angle, color = color, borderWidth = 2.5, borderColor = Critters.outline, layer = layer})
     end
-    graphics2d.drawEllipse(bug.x + 4, bug.y + 6, 26 * size * bug.length, 18 * size, '#33000000', {layer = 1})
+    local function shine(along, across, width, height, layer)
+        local x, y = bug.x + (fx * along - fy * across) * size, bug.y + (fy * along + fx * across) * size
+        graphics2d.drawShape({x - width * size / 2, y - height * size / 2, width * size, height * size}, {kind = 'ellipse', rotation = angle, color = '#80FFFFFF', layer = layer})
+    end
+    local abdomen = 30 * bug.length
+    graphics2d.drawShape({bug.x - (abdomen * 0.6 + 14) * size, bug.y - 9 * size + 5, (abdomen * 1.2 + 28) * size, 18 * size}, {kind = 'ellipse', rotation = angle, color = '#40000000', softness = 6 * size, layer = 1})
     for _, leg in ipairs(bug.legs) do
         leg:draw()
     end
     for _, antenna in ipairs(bug.antennae) do
         antenna:draw()
     end
-    local abdomen = 30 * bug.length
     if bug.kind == 'ant' then
-        ellipse(-14 - abdomen * 0.35, abdomen, abdomen * 0.7, bug.dark, 3)
-        ellipse(0, 14, 11, bug.shell, 3)
-        ellipse(13, 15, 14, bug.dark, 3)
+        ellipse(-10 - abdomen * 0.35, abdomen * 0.9, abdomen * 0.65, bug.dark, 3)
+        shine(-6 - abdomen * 0.45, -abdomen * 0.12, abdomen * 0.3, abdomen * 0.14, 3)
+        ellipse(2, 13, 9, bug.shell, 3)
+        ellipse(13, 13, 12, bug.dark, 3)
+        shine(15, -2, 5, 3, 3)
     else
-        ellipse(-abdomen * 0.25, abdomen + 12, 30, bug.shell, 3)
-        ellipse(17, 14, 18, bug.dark, 3)
-        local backX, backY = bug.x - fx * abdomen * 0.25 * size, bug.y - fy * abdomen * 0.25 * size
-        graphics2d.drawLine(backX + fx * (abdomen * 0.5 + 6) * size, backY + fy * (abdomen * 0.5 + 6) * size, backX - fx * (abdomen * 0.5 + 6) * size, backY - fy * (abdomen * 0.5 + 6) * size, 2, Critters.outline, {layer = 3})
+        local back = -abdomen * 0.25
+        ellipse(back, abdomen + 12, 28, bug.shell, 3)
+        local backX, backY = bug.x + fx * back * size, bug.y + fy * back * size
+        local halfLength = (abdomen + 12) * 0.5
+        graphics2d.drawLine(backX + fx * (halfLength - 6) * size, backY + fy * (halfLength - 6) * size, backX - fx * (halfLength - 2) * size, backY - fy * (halfLength - 2) * size, 2, Critters.outline, {layer = 3})
         for spot = 1, bug.spots do
-            local along = ((spot * 0.618) % 1 - 0.5) * abdomen * 0.8
-            local across = (spot % 2 == 0 and 1 or -1) * (6 + (spot * 3) % 6)
-            graphics2d.drawCircle(backX + (fx * along - fy * across) * size, backY + (fy * along + fx * across) * size, 3.5 * size, bug.dark, {layer = 3})
+            local place = Critters.spotPlaces[math.floor((spot - 1) / 2) % #Critters.spotPlaces + 1]
+            local across = (spot % 2 == 0 and 1 or -1) * place[2] * 14
+            local along = place[1] * halfLength
+            graphics2d.drawCircle(backX + (fx * along - fy * across) * size, backY + (fy * along + fx * across) * size, 3.2 * size, bug.dark, {layer = 3})
         end
+        shine(back + halfLength * 0.35, -7, halfLength * 0.6, 4, 3)
+        ellipse(10, 14, 20, bug.dark, 3)
+        ellipse(19, 11, 13, bug.dark, 3)
+        shine(19, -2.5, 4, 2.5, 3)
     end
     if bug.wings then
         local open = bug.fear > 0 and (0.5 + math.sin(time * 60) * 0.3) or 0.15
@@ -236,8 +259,9 @@ function Critters.drawBug(bug, time)
     end
 end
 
+-- The ground of packed earth fills the whole canvas, with pebbles and tufts of grass.
 function Critters:draw(area)
-    graphics2d.drawRect({-800, -430, 1600, 860}, '#FF8C7A58')
+    graphics2d.drawRect(graphics2d.canvasBounds(), '#FF8C7A58')
     for _, pebble in ipairs(self.pebbles) do
         graphics2d.drawEllipse(pebble[1], pebble[2], pebble[3], pebble[4], pebble[5])
     end

@@ -6,7 +6,10 @@ local haylen = require('haylen')
 
 local Leg = haylen.class('Leg')
 
--- Takes the hip `x`, `y`, the `lengths` of its segments from the hip on, the length of a `tarsus` that angles from the foot up and out to the ankle the segments reach, when it has one, the `group` of `Leg.gait` or the `phase` of `Leg.wave` it steps with, the `stepTime` and `lift` of a step and the `widths` of each point and `color` of its stroke.
+Leg.outline = '#FF1E1B33'
+Leg.outlineWidth = 2.5
+
+-- Takes the hip `x`, `y`, the `lengths` of its segments from the hip on, the length of a `tarsus` that angles from the foot up and out to the ankle the segments reach, when it has one, the `group` of `Leg.gait` or the `phase` of `Leg.wave` it steps with, the `stepTime` and `lift` of a step, the `widths` of each point and `color` of its stroke, and the `outline` color of the art style around it, `Leg.outline` by default, `outlineWidth` units wide.
 function Leg:init(options)
     self.chain = animation2d.newChain({x = options.x, y = options.y, lengths = options.lengths, angle = options.angle or math.pi / 2})
     self.footX, self.footY = self.chain:point(self.chain.count)
@@ -20,6 +23,12 @@ function Leg:init(options)
     self.ankleX, self.ankleY = self.footX, self.footY
     self.points = collections.newFloatBuffer((#options.lengths + (self.tarsus and 2 or 1)) * 2)
     self.stroke = {widths = options.widths or {6, 5, 3}, color = options.color or '#FF20242E', join = 'round', cap = 'round', layer = options.layer or 5}
+    local outlineWidth = options.outlineWidth or Leg.outlineWidth
+    local widths = {}
+    for index, width in ipairs(self.stroke.widths) do
+        widths[index] = width + outlineWidth * 2
+    end
+    self.outlineStroke = {widths = widths, color = options.outline or Leg.outline, join = 'round', cap = 'round', layer = self.stroke.layer}
 end
 
 function Leg:stepping()
@@ -76,6 +85,8 @@ function Leg:draw(color, layer)
     end
     self.stroke.color = color or self.stroke.color
     self.stroke.layer = layer or self.stroke.layer
+    self.outlineStroke.layer = self.stroke.layer
+    graphics2d.drawStroke(self.points, self.outlineStroke)
     graphics2d.drawStroke(self.points, self.stroke)
 end
 

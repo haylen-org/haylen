@@ -14,20 +14,20 @@ local Leg = require('categories.procedural.leg')
 local Centipede = haylen.class('Centipede', AlgorithmTest)
 
 Centipede.code = [[
-local body = animation2d.newChain({x = head.x, y = head.y, segments = 26, length = 17, maxBend = 0.45})
+local body = animation2d.newChain({x = head.x, y = head.y, segments = 26, length = 22, maxBend = 0.45})
 body:follow(head.x, head.y)  -- Every point trails the one before it.
 if cave:distance(x, y) < height then body:setPoint(index, cave:project(x, y, height)) end  -- Never into the rock.
 Leg.wave(legs, crawler.travelled, stride, 0.5, crawler.velocity, land)  -- leg.phase = -joint * 0.09: a wave from head to tail.]]
 
-Centipede.height = 20
-Centipede.stride = 18
+Centipede.height = 26
+Centipede.stride = 23
 Centipede.swing = 0.5
-Centipede.segmentLength = 17
+Centipede.segmentLength = 22
 -- The share of a stride between the steps of two joints in a row, which sets how many joints one wave spans.
 Centipede.wavePhase = 0.09
-Centipede.turnRadius = 44
-Centipede.view = {1300, 700}
-Centipede.colors = {light = '#FFC8643F', dark = '#FF94402B', outline = '#FF2A130C', leg = '#FFE0A060', far = '#FF8A5530', eye = '#FF141018', head = '#FF7A3020', fang = '#FF3A1A10', antenna = '#FFE0A060'}
+Centipede.turnRadius = 56
+Centipede.view = {1240, 580}
+Centipede.colors = {light = '#FFC8643F', dark = '#FFA84A2E', plate = '#FFE58A55', outline = '#FF1E1B33', leg = '#FFE7B070', far = '#FF8A5530', eye = '#FF141018', shine = '#FFFFFFFF', head = '#FF8A3322', fang = '#FF3A1A10', antenna = '#FFF2C88A', cercus = '#FF6E2A1C'}
 
 function Centipede:enter()
     self.seed = 11
@@ -62,7 +62,7 @@ function Centipede:build()
     self.land = function(leg, lead)
         return self.cave:project(leg.restX + leg.leadX * lead, leg.restY + leg.leadY * lead, 0)
     end
-    self.cave = Cave(self.seed, 1240, 640)
+    self.cave = Cave(self.seed, 1200, 540)
     self.crawler = Crawler(self.cave, -200, 400, Centipede.height, self.speed, self.seed)
     self.heading = self.crawler.dir
     self.target, self.turn = nil, nil
@@ -86,20 +86,21 @@ function Centipede:buildBody()
     self.legs = {}
     local last = self.body.count - 1
     for index = 2, last do
-        local scale = 1 + (index / last) * 0.3
+        local scale = 1.3 * (1 + (index / last) * 0.3)
         for _, side in ipairs({'near', 'far'}) do
-            local leg = Leg({x = crawler.x, y = crawler.y, lengths = {12 * scale, 14 * scale}, phase = -index * Centipede.wavePhase + (side == 'near' and 0 or 0.5), lift = 8, widths = {4, 3, 2}})
+            local leg = Leg({x = crawler.x, y = crawler.y, lengths = {12 * scale, 14 * scale}, phase = -index * Centipede.wavePhase + (side == 'near' and 0 or 0.5), lift = 10, widths = {5, 4, 2.5}})
             leg.joint, leg.side = index, side
             self.legs[#self.legs + 1] = leg
         end
     end
+    -- Long thin antennae feel the way ahead, and two short, thick cerci at the tail end, so the head and the tail never look alike.
     self.antennae = {}
     for _ = 1, 2 do
-        self.antennae[#self.antennae + 1] = Leg({x = crawler.x, y = crawler.y, lengths = {18, 16, 12}, widths = {3, 2.5, 2, 1.2}, color = Centipede.colors.antenna, layer = 6})
+        self.antennae[#self.antennae + 1] = Leg({x = crawler.x, y = crawler.y, lengths = {24, 22, 18}, widths = {3, 2.5, 2, 1.2}, color = Centipede.colors.antenna, outlineWidth = 1.5, layer = 6})
     end
     self.tails = {}
     for _ = 1, 2 do
-        self.tails[#self.tails + 1] = Leg({x = crawler.x, y = crawler.y, lengths = {16, 18, 14}, widths = {4, 3.5, 2.5, 1.5}, color = Centipede.colors.leg, layer = 6})
+        self.tails[#self.tails + 1] = Leg({x = crawler.x, y = crawler.y, lengths = {12, 9}, widths = {6, 4.5, 2}, color = Centipede.colors.cercus, layer = 4})
     end
     self:placeBody(0)
     for _, leg in ipairs(self.legs) do
@@ -210,7 +211,8 @@ function Centipede:update(dt)
     elseif self.target then
         state = crawler.arrived and (crawler.unreachable and 'as near as it gets, since the point is on another rock' or 'at the point') or 'crawling to the point'
     end
-    self:status(string.format('The centipede is %s, %d segments, legs stepping %d of %d, turns %d, cave %d', state, self.segments, stepping, #self.legs, self.turns, self.seed))
+    local turns = self.turns == 1 and 'once' or self.turns .. ' times'
+    self:status(string.format('In cave %d, the centipede of %d segments is %s. It has %d of its %d legs in a step and turned around %s.', self.seed, self.segments, state, stepping, #self.legs, turns))
 end
 
 -- Sways the antennae ahead of the head, each to its own side, and trails the last pair of legs behind the tail.
@@ -224,10 +226,10 @@ function Centipede:placeFeelers(dt)
     tx, ty = tx / length, ty / length
     local nx, ny = ty * self.heading, -tx * self.heading
     for index, antenna in ipairs(self.antennae) do
-        local spread = (index == 1 and 1 or -1) * 10 + math.sin(time * 5 + index * 2) * 8
-        local hipX, hipY = headX + tx * 10 + nx * 4, headY + ty * 10 + ny * 4
-        antenna:place(hipX + tx * 38 + nx * (12 + spread), hipY + ty * 38 + ny * (12 + spread))
-        antenna:update(dt, hipX, hipY, nx, ny, hipX + tx * 14 + nx * 40, hipY + ty * 14 + ny * 40)
+        local spread = (index == 1 and 1 or -1) * 12 + math.sin(time * 5 + index * 2) * 9
+        local hipX, hipY = headX + tx * 14 + nx * 6, headY + ty * 14 + ny * 6
+        antenna:place(hipX + tx * 54 + nx * (18 + spread), hipY + ty * 54 + ny * (18 + spread))
+        antenna:update(dt, hipX, hipY, nx, ny, hipX + tx * 18 + nx * 56, hipY + ty * 18 + ny * 56)
     end
     local tailX, tailY = body:point(body.count)
     local beforeX, beforeY = body:point(body.count - 1)
@@ -235,9 +237,9 @@ function Centipede:placeFeelers(dt)
     length = math.max(1e-4, math.sqrt(tx * tx + ty * ty))
     tx, ty = tx / length, ty / length
     for index, tail in ipairs(self.tails) do
-        local spread = (index == 1 and 1 or -1) * 6 + math.sin(time * 3 + index) * 3
-        tail:place(tailX + tx * 42 + nx * (spread - 4), tailY + ty * 42 + ny * (spread - 4))
-        tail:update(dt, tailX, tailY, nx, ny, tailX + tx * 20 + nx * 24, tailY + ty * 20 + ny * 24)
+        local spread = (index == 1 and 1 or -1) * 5 + math.sin(time * 3 + index) * 2
+        tail:place(tailX + tx * 20 + nx * (spread - 2), tailY + ty * 20 + ny * (spread - 2))
+        tail:update(dt, tailX, tailY, nx, ny, tailX + tx * 10 + nx * 8, tailY + ty * 10 + ny * 8)
     end
 end
 
@@ -248,28 +250,32 @@ function Centipede:draw(area)
         local goalX, goalY = self.cave:project(self.target[1], self.target[2], 0)
         graphics2d.drawRing(goalX, goalY, 12, 3, '#FFF2B23A', {layer = 3})
     end
+    -- The legs grow from under the body, the far ones darker behind the near ones.
     for _, leg in ipairs(self.legs) do
         local near = leg.side == 'near'
-        leg:draw(near and colors.leg or colors.far, near and 6 or 3)
+        leg:draw(near and colors.leg or colors.far, near and 4 or 2)
     end
     for index, antenna in ipairs(self.antennae) do
-        antenna:draw(index == 1 and colors.antenna or colors.far, index == 1 and 6 or 3)
+        antenna:draw(index == 1 and colors.antenna or colors.far, index == 1 and 7 or 2)
     end
     for index, tail in ipairs(self.tails) do
-        tail:draw(index == 1 and colors.leg or colors.far, index == 1 and 6 or 3)
+        tail:draw(index == 1 and colors.cercus or colors.far, index == 1 and 4 or 2)
     end
 
-    -- The body draws from the tail to the head, so each plate overlaps the one behind it, and the head carries its eyes and fangs.
+    -- The body draws from the tail to the head, so each plate overlaps the one behind it, with the light of its back plate on the side away from the rock, and the head carries its eye and fangs.
     local body = self.body
     for index = body.count, 1, -1 do
         local x, y = body:point(index)
         local angle = body:angle(math.min(index, body.count - 1)) + math.pi
-        local taper = index == 1 and 1.15 or 1 - (index / body.count) * 0.25
-        local width, height = 26 * taper, 20 * taper
+        local taper = index == 1 and 1.2 or 1 - (index / body.count) * 0.3
+        local width, height = 32 * taper, 24 * taper
+        local upX, upY = self.cave:normal(x, y)
         local color = index == 1 and colors.head or (index % 2 == 0 and colors.dark or colors.light)
-        graphics2d.drawShape({x - width / 2, y - height / 2, width, height}, {kind = 'ellipse', rotation = angle, color = color, borderWidth = 2.5, borderColor = colors.outline, layer = 5})
+        graphics2d.drawShape({x - width / 2, y - height / 2, width, height}, {kind = 'ellipse', rotation = angle, color = color, borderWidth = 3, borderColor = colors.outline, layer = 5})
+        local plateX, plateY = x + upX * height * 0.18, y + upY * height * 0.18
+        graphics2d.drawShape({plateX - width * 0.32, plateY - height * 0.2, width * 0.64, height * 0.4}, {kind = 'ellipse', rotation = angle, color = colors.plate, layer = 5})
         if self.showPoints then
-            graphics2d.drawRing(x, y, 4, 1.5, '#FF8FB0FF', {layer = 8})
+            graphics2d.drawRing(x, y, 4, 1.5, '#FF8FB0FF', {layer = 30})
         end
     end
     local headX, headY = body:point(1)
@@ -278,8 +284,10 @@ function Centipede:draw(area)
     local length = math.max(1e-4, math.sqrt(tx * tx + ty * ty))
     tx, ty = tx / length, ty / length
     local nx, ny = ty * self.heading, -tx * self.heading
-    graphics2d.drawLine(headX + tx * 10 - nx * 4, headY + ty * 10 - ny * 4, headX + tx * 16 - nx * 10, headY + ty * 16 - ny * 10, 3, colors.fang, {layer = 5})
-    graphics2d.drawCircle(headX + tx * 6 + nx * 4, headY + ty * 6 + ny * 4, 3.5, colors.eye, {layer = 5})
+    graphics2d.drawStroke({headX + tx * 12 - nx * 5, headY + ty * 12 - ny * 5, headX + tx * 21 - nx * 12, headY + ty * 21 - ny * 12}, {width = 4, color = colors.fang, cap = 'round', layer = 6})
+    graphics2d.drawCircle(headX + tx * 7 + nx * 5, headY + ty * 7 + ny * 5, 5, colors.outline, {layer = 6})
+    graphics2d.drawCircle(headX + tx * 7 + nx * 5, headY + ty * 7 + ny * 5, 3.8, colors.eye, {layer = 6})
+    graphics2d.drawCircle(headX + tx * 8 + nx * 6.5, headY + ty * 8 + ny * 6.5, 1.5, colors.shine, {layer = 6})
 end
 
 return Centipede
