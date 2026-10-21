@@ -1,12 +1,13 @@
 <script>
-    // Runs the WebGPU build when the browser offers a WebGPU adapter and the WebGL2 build otherwise. The `backend` parameter of the address forces either one.
+    // Runs the WebGPU build when the browser offers a WebGPU adapter and the WebGL2 build otherwise. The `graphicsApi` parameter of the address, `webGpu` or `webGl2` as the engine names the graphics APIs, forces either one.
     // The web parts of the plugins of the app, which `plugins.json` next to the page lists in load order, load once the runtime exists and before the app starts, and a plugin that fails keeps the app from starting.
     (async () => {
-        const forced = new URLSearchParams(location.search).get("backend");
-        let backend = forced === "webgpu" || forced === "webgl2" ? forced : null;
-        if (!backend) {
+        const builds = { webGpu: "webgpu", webGl2: "webgl2" };
+        const forced = new URLSearchParams(location.search).get("graphicsApi");
+        let build = Object.hasOwn(builds, forced) ? builds[forced] : null;
+        if (!build) {
             const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
-            backend = adapter ? "webgpu" : "webgl2";
+            build = adapter ? builds.webGpu : builds.webGl2;
         }
         const plugins = await (await fetch("plugins.json")).json();
         const loaded = await Promise.all(
@@ -28,9 +29,9 @@
                 Module.removeRunDependency("haylen-plugins");
             })();
         });
-        Module.locateFile = (path) => backend + "/" + path;
+        Module.locateFile = (path) => build + "/" + path;
         const script = document.createElement("script");
-        script.src = backend + "/{{TARGET}}.js";
+        script.src = build + "/{{TARGET}}.js";
         document.body.appendChild(script);
     })();
 </script>

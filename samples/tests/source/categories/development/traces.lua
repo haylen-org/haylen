@@ -79,7 +79,7 @@ function Traces:report(trace)
     end
     self:note(string.format('Wrote %d spans to "%s": %d frames, %d updates, %d jobs and %d GPU frames, with %d dropped.', trace.spans, trace.path, counts.frame or 0, counts.update or 0, counts.job or 0, counts.gpuFrame or 0, trace.dropped))
     local gpu = debugging.frame().gpuMilliseconds
-    self:set('gpu', {text = gpu and string.format('GPU time of a frame: %.3f ms.', gpu) or 'GPU time of a frame: this backend does not measure it.'})
+    self:set('gpu', {text = gpu and string.format('GPU time of a frame: %.3f ms.', gpu) or 'GPU time of a frame: this graphics API does not measure it.'})
 end
 
 return Traces

@@ -1,4 +1,4 @@
--- What the engine reports about the platform, the graphics backend, the window, the visible and safe areas, the orientation and the pointer, with fullscreen, the on-screen keyboard and a simulated safe area to change, and the window, keyboard and network events as they happen.
+-- What the engine reports about the platform, the graphics API, the window, the visible and safe areas, the orientation and the pointer, with fullscreen, the on-screen keyboard and a simulated safe area to change, and the window, keyboard and network events as they happen.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')

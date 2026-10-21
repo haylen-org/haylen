@@ -11,7 +11,7 @@ local Hdr = haylen.class('Hdr', LightingTest)
 
 Hdr.code = [[
 local lamp = lighting2d.newLight({x = 520, y = -40, radius = 260, color = '#FFFFD8A0', intensity = 4})
-print(graphics2d.hdrLighting())  -- Whether the light map holds light past 1 on this backend.
+print(graphics2d.hdrLighting())  -- Whether the light map holds light past 1 on this graphics API.
 graphics2d.beginWorld(camera, {ambientLight = '#FF202430'})
 graphics2d.drawLight(lamp)]]
 
@@ -41,7 +41,7 @@ end
 function Hdr:update(dt)
     Hdr.super.update(self, dt)
     self.held.x, self.held.y = self.cursorX, self.cursorY
-    local mode = graphics2d.hdrLighting() and 'holds floating point, so light goes past 1' or 'stops at 1 on this backend'
+    local mode = graphics2d.hdrLighting() and 'holds floating point, so light goes past 1' or 'stops at 1 on this graphics API'
     self:status(string.format('The cursor light shines at %.2f, and the light map %s.', self.held.intensity, mode))
 end
 

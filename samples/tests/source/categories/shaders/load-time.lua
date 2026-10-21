@@ -1,4 +1,4 @@
--- Shader load time: every shader of the category loads at once in the background and then draws, in the frame right after the last one arrives. The results show how long the files took and how long that first frame took on the backend of the platform, which the rendering guide compares: Metal compiles the shader sources on worker threads while they load, and the other backends make each program when it first draws.
+-- Shader load time: every shader of the category loads at once in the background and then draws, in the frame right after the last one arrives. The results show how long the files took and how long that first frame took on the graphics API of the platform, which the rendering guide compares: Metal compiles the shader sources on worker threads while they load, and the other backends make each program when it first draws.
 local assets = require('haylen.assets')
 local datetime = require('datetime')
 local debugging = require('haylen.debug')

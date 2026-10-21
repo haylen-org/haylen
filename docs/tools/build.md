@@ -316,13 +316,13 @@ A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and
 
 ```text
 build/cpp/embedding-<hash>/web/
-  index.html              The target's shell, with engine/platform/web/backend-picker.html in place of {{{ SCRIPT }}}.
+  index.html              The target's shell, with engine/platform/web/graphics-api-picker.html in place of {{{ SCRIPT }}}.
   haylen-logo.svg         The icon of the default shell.
   webgpu/                 main.js, main.wasm and main.data built for WebGPU, next to haylen-audio-worklet.js.
   webgl2/                 The same files built for WebGL2.
 ```
 
-The backend picker runs the WebGPU build when `navigator.gpu` returns an adapter and the WebGL2 build otherwise, by pointing `Module.locateFile` at the chosen folder and loading `<backend>/<target>.js`. `?backend=webgpu` or `?backend=webgl2` forces one of them, and `?package=<url>` names a zipped package to download. Because the page is the target's own shell, everything a custom `WEB_SHELL` adds, such as page handlers for the [platform bridge](../platform/platform-bridge.md#web), works in the bundle as well, as do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. The command `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
+The graphics API picker runs the WebGPU build when `navigator.gpu` returns an adapter and the WebGL2 build otherwise, by pointing `Module.locateFile` at the folder of the chosen build, `webgpu` or `webgl2`, and loading `<folder>/<target>.js`. `?graphicsApi=webGpu` or `?graphicsApi=webGl2`, the names that `graphics.apiName()` gives the two APIs, forces one of them, and `?package=<url>` names a zipped package to download. Because the page is the target's own shell, everything a custom `WEB_SHELL` adds, such as page handlers for the [platform bridge](../platform/platform-bridge.md#web), works in the bundle as well, as do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. The command `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
 
 ### Page setup
 
@@ -338,7 +338,7 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback, instantiates `haylen.wasm` itself and passes the instance to the callback, so a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
 | `Module.preRun` | Functions that run before the app starts. Page handlers of the platform bridge are registered here. |
 
-Only a page that sets `Module.haylen.development` runs in development, which the template loader does only for the `development` entry of `config.json` that `haylen.py run --platform web` writes. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the backend picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts, together with what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
+Only a page that sets `Module.haylen.development` runs in development, which the template loader does only for the `development` entry of `config.json` that `haylen.py run --platform web` writes. A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder where Emscripten inserts the runtime script, and where `run-cpp` inserts the graphics API picker. The runtime mounts IndexedDB at `/persistent` for user data and loads it before the app starts, together with what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
 
 ### Runtime API
 

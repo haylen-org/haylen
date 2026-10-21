@@ -314,7 +314,7 @@ Custom fragment shaders compiled into ".shader" files: materials on sprites and 
 | `SHD-004` | Post-processing chain | The built-in vignette followed by custom blur, color grading and tube screen passes over a canvas. |  |
 | `SHD-005` | Shaders on text | Rainbow, dissolve and flash materials on text drawn from its distance field. |  |
 | `SHD-006` | Hot reload | How a desktop run of the player recompiles and reloads a shader while the app keeps running. |  |
-| `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the backend of the platform. |  |
+| `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the graphics API of the platform. |  |
 | `SHD-008` | Shader library | Forty-five material shaders of games by category, from neon trails, lasers and shields to fire, frost, gold, glitches and shockwaves, with their numbers on sliders. |  |
 
 #### Video (VID)
@@ -741,7 +741,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | --- | --- | --- | --- |
 | `PLT-001` | Native events | Checks that the native code of the plugin "platform-sample" sends the ticks of its ticker from the language of the platform and that an event sent from Lua arrives, failing where the project builds the native code and it is missing, next to the events of the platform itself. |  |
 | `PLT-002` | Custom handler | Checks the answer of the method "platform-sample.echo", which Java gives on Android, Objective-C on Apple platforms and JavaScript on the web, and its failure without a text, failing where the project builds the native code and it is missing. |  |
-| `PLT-003` | Window and device | Platform, backend, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
+| `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message with three buttons, the pickers of files to open, of the destination of a save and of a folder, and a message that the app gives up. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |
