@@ -88,7 +88,7 @@ function demo.onBurstDone(listener)
     return handle:on('burstDone', listener)
 end
 
--- Starts the animated pattern that the native part draws 30 times per second into the video stream `pattern`, and answers with `{width, height, fps, format, language}`.
+-- Starts the picture of the island with its waves moving, which the native part draws 30 times per second into the video stream `island`, and answers with `{width, height, fps, format, language}`.
 function demo.startVideo()
     return handle:call('startVideo')
 end
@@ -97,9 +97,9 @@ function demo.stopVideo()
     return handle:call('stopVideo')
 end
 
--- The video stream of the pattern, or `nil` until the native part opened it.
+-- The video stream of the island, or `nil` until the native part opened it.
 function demo.videoStream()
-    return handle:videoStream('pattern')
+    return handle:videoStream('island')
 end
 
 -- Starts a sine wave of the frequency in hertz that the native part synthesizes into the audio stream `tone`, and answers with `{frequency, sampleRate, channels, format, language}`.

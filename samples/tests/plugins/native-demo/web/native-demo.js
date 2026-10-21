@@ -24,26 +24,94 @@ const countPrimes = async (limit) => {
 
 const failure = (message, code, data) => Object.assign(new Error(message), { code, data });
 
-// The pattern of the demo on a canvas: a gradient from red to green with blue stripes that move with the frame.
-const drawPattern = (canvas, frame) => {
+// The picture of the demo, a small island with a palm under the sun in a sea with waves, in fractions of the width and the height of the canvas, the same on every platform. The video moves the waves and floats the sun with the time in seconds.
+const scene = {
+    ink: "#1e1b33",
+    skyTop: "#6cc6f5",
+    skyLow: "#cff1ff",
+    seaTop: "#2fb3c4",
+    seaLow: "#1e8fa6",
+    sun: "#ffc93c",
+    sunLight: "#ffe89a",
+    sand: "#f3d58d",
+    grass: "#7bc74d",
+    trunk: "#a86a3d",
+    leaf: "#5db33c",
+    leafAngles: [-0.45, 0.4, 2.75, 3.55],
+};
+
+// Fills an ellipse over the outline of the art, a stroke twice as wide as the outline whose inner half the fill covers.
+const outlinedEllipse = (context, x, y, radiusX, radiusY, angle, outline, fill) => {
+    context.beginPath();
+    context.ellipse(x, y, radiusX, radiusY, angle, 0, Math.PI * 2);
+    context.lineWidth = outline * 2;
+    context.strokeStyle = scene.ink;
+    context.stroke();
+    context.fillStyle = fill;
+    context.fill();
+};
+
+const drawScene = (canvas, seconds) => {
     const context = canvas.getContext("2d");
-    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
-    gradient.addColorStop(0, "#ff0000");
-    gradient.addColorStop(1, "#00ff00");
-    context.fillStyle = gradient;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "rgba(0, 0, 230, 0.6)";
-    for (let offset = -canvas.height - 32 + ((frame * 4) % 32); offset < canvas.width; offset += 32) {
-        context.beginPath();
-        context.moveTo(offset, 0);
-        context.lineTo(offset + 16, 0);
-        context.lineTo(offset + 16 + canvas.height, canvas.height);
-        context.lineTo(offset + canvas.height, canvas.height);
-        context.fill();
+    const width = canvas.width;
+    const height = canvas.height;
+    const horizon = 0.6 * height;
+    const outline = 0.012 * height;
+    const sky = context.createLinearGradient(0, 0, 0, horizon);
+    sky.addColorStop(0, scene.skyTop);
+    sky.addColorStop(1, scene.skyLow);
+    context.fillStyle = sky;
+    context.fillRect(0, 0, width, horizon);
+    const sea = context.createLinearGradient(0, horizon, 0, height);
+    sea.addColorStop(0, scene.seaTop);
+    sea.addColorStop(1, scene.seaLow);
+    context.fillStyle = sea;
+    context.fillRect(0, horizon, width, height - horizon);
+
+    const sunY = 0.26 * height + 0.02 * height * Math.sin(seconds * 1.2);
+    context.fillStyle = scene.sun;
+    context.beginPath();
+    context.arc(0.8 * width, sunY, 0.12 * height, 0, Math.PI * 2);
+    context.fill();
+    context.fillStyle = scene.sunLight;
+    context.beginPath();
+    context.arc(0.78 * width, sunY - 0.02 * height, 0.07 * height, 0, Math.PI * 2);
+    context.fill();
+
+    const spacing = 0.2 * width;
+    context.strokeStyle = "rgba(255, 255, 255, 0.6)";
+    context.lineWidth = 0.014 * height;
+    context.lineCap = "round";
+    for (let row = 0; row < 3; row++) {
+        const waveY = horizon + (0.12 + 0.12 * row) * height;
+        const shift = (seconds * 0.06 * width * (1 + 0.5 * row) + 0.07 * width * row) % spacing;
+        for (let start = shift - spacing; start < width; start += spacing) {
+            context.beginPath();
+            context.moveTo(start + 0.01 * width, waveY);
+            context.lineTo(start + 0.1 * width, waveY);
+            context.stroke();
+        }
+    }
+
+    outlinedEllipse(context, 0.36 * width, 0.64 * height, 0.22 * width, 0.085 * height, 0, outline, scene.sand);
+    outlinedEllipse(context, 0.36 * width, 0.6 * height, 0.15 * width, 0.05 * height, 0, outline, scene.grass);
+    const crownX = 0.42 * width;
+    const crownY = 0.3 * height;
+    context.beginPath();
+    context.moveTo(0.38 * width, 0.6 * height);
+    context.lineTo(crownX, crownY);
+    context.lineWidth = 0.03 * height + outline * 2;
+    context.strokeStyle = scene.ink;
+    context.stroke();
+    context.lineWidth = 0.03 * height;
+    context.strokeStyle = scene.trunk;
+    context.stroke();
+    for (const angle of scene.leafAngles) {
+        outlinedEllipse(context, crownX + Math.cos(angle) * 0.085 * width, crownY + Math.sin(angle) * 0.085 * width, 0.09 * width, 0.028 * height, angle, outline, scene.leaf);
     }
 };
 
-// Draws the pattern on a canvas and encodes it as a PNG file with `toBlob`.
+// Draws the picture on a canvas and encodes it as a PNG file with `toBlob`.
 const generatedImage = (width, height) =>
     new Promise((resolve, reject) => {
         if (!(width >= 1 && height >= 1 && width <= 2048 && height <= 2048)) {
@@ -53,7 +121,7 @@ const generatedImage = (width, height) =>
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
-        drawPattern(canvas, 0);
+        drawScene(canvas, 0);
         canvas.toBlob(async (blob) => resolve({ png: new Uint8Array(await blob.arrayBuffer()), width, height, drawnWith: 'a canvas and "toBlob"', language }), "image/png");
     });
 
@@ -145,7 +213,7 @@ const pickFile = () =>
     });
 
 export default function load(context) {
-    const video = { stream: context.videoStream("pattern"), canvas: null, timer: null, frame: 0 };
+    const video = { stream: context.videoStream("island"), canvas: null, timer: null, frame: 0 };
     const tone = { stream: context.audioStream("tone", { sampleRate: 44100, channels: 1 }), timer: null };
     let bursts = null;
     let ticker = null;
@@ -189,12 +257,12 @@ export default function load(context) {
 
     context.register("generatedImage", (params) => generatedImage(params.width, params.height));
 
-    // A canvas animates the pattern 30 times per second, and the video stream copies each frame into the texture of the app.
+    // A canvas animates the picture 30 times per second, and the video stream copies each frame into the texture of the app.
     context.register("startVideo", () => {
         stopVideo();
         video.canvas = video.canvas || Object.assign(document.createElement("canvas"), { width: 320, height: 180 });
         video.timer = setInterval(() => {
-            drawPattern(video.canvas, video.frame++);
+            drawScene(video.canvas, video.frame++ / 30);
             video.stream.push(video.canvas);
         }, 1000 / 30);
         return { width: video.canvas.width, height: video.canvas.height, fps: 30, format: "RGBA", thread: "main", language };

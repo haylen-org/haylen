@@ -247,7 +247,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
             let values = params as? [String: Any]
             let width = values?["width"] as? Int ?? 0
             let height = values?["height"] as? Int ?? 0
-            guard (1...2048).contains(width), (1...2048).contains(height), let png = Self.drawPattern(width: width, height: height) else {
+            guard (1...2048).contains(width), (1...2048).contains(height), let png = Self.drawPicture(width: width, height: height) else {
                 reply(false, ["message": "The method \"generatedImage\" needs a width and a height from 1 to 2048.", "code": "invalidParams"])
                 return
             }
@@ -255,11 +255,11 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
 
-    // The pattern pushes BGRA pixel buffers into the video stream `pattern` and the tone pushes floats into the audio stream `tone`, each from a dispatch queue of its own, which the app reads through `handle:videoStream` and `handle:audioStream`.
+    // The picture pushes BGRA pixel buffers into the video stream `island` and the tone pushes floats into the audio stream `tone`, each from a dispatch queue of its own, which the app reads through `handle:videoStream` and `handle:audioStream`.
     private func registerStreams(_ context: HaylenPluginContext) {
         context.register("startVideo") { [unowned self] (_: Empty) async throws -> VideoStarted in
-            guard let stream = context.openVideoStream("pattern", width: NativeDemoVideo.width, height: NativeDemoVideo.height, format: .BGRA8) else {
-                throw HaylenFailure("The video stream \"pattern\" did not open.", code: "streamFailed")
+            guard let stream = context.openVideoStream("island", width: NativeDemoVideo.width, height: NativeDemoVideo.height, format: .BGRA8) else {
+                throw HaylenFailure("The video stream \"island\" did not open.", code: "streamFailed")
             }
             self.video?.stop()
             self.video = NativeDemoVideo(stream: stream)
@@ -612,26 +612,13 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         return CGColor(srgbRed: CGFloat((value >> 16) & 0xFF) / 255, green: CGFloat((value >> 8) & 0xFF) / 255, blue: CGFloat(value & 0xFF) / 255, alpha: 1)
     }
 
-    // Draws the pattern of the demo, a gradient from red to green with blue stripes, with CoreGraphics and encodes it as a PNG file with ImageIO.
-    private static func drawPattern(width: Int, height: Int) -> Data? {
+    // Draws the picture of the demo with CoreGraphics and encodes it as a PNG file with ImageIO.
+    private static func drawPicture(width: Int, height: Int) -> Data? {
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
         guard let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0, space: space, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else {
             return nil
         }
-        let colors = [CGColor(srgbRed: 1, green: 0, blue: 0, alpha: 1), CGColor(srgbRed: 0, green: 1, blue: 0, alpha: 1)] as CFArray
-        let gradient = CGGradient(colorsSpace: space, colors: colors, locations: [0, 1])!
-        context.drawLinearGradient(gradient, start: CGPoint(x: 0, y: height), end: CGPoint(x: width, y: 0), options: [])
-        context.setFillColor(CGColor(srgbRed: 0, green: 0, blue: 0.9, alpha: 0.6))
-        var offset = -CGFloat(height)
-        while offset < CGFloat(width) {
-            context.move(to: CGPoint(x: offset, y: CGFloat(height)))
-            context.addLine(to: CGPoint(x: offset + 16, y: CGFloat(height)))
-            context.addLine(to: CGPoint(x: offset + 16 + CGFloat(height), y: 0))
-            context.addLine(to: CGPoint(x: offset + CGFloat(height), y: 0))
-            context.closePath()
-            offset += 32
-        }
-        context.fillPath()
+        NativeDemoScene.draw(in: context, width: CGFloat(width), height: CGFloat(height), seconds: 0)
         guard let image = context.makeImage() else {
             return nil
         }

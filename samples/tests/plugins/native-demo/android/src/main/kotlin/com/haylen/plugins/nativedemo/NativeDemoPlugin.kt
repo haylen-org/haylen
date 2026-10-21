@@ -7,10 +7,6 @@ import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
-import android.graphics.LinearGradient
-import android.graphics.Paint
-import android.graphics.Path
-import android.graphics.Shader
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -123,7 +119,7 @@ class NativeDemoPlugin : HaylenPlugin() {
             if (width !in 1..2048 || height !in 1..2048) {
                 throw HaylenBridge.Failure("The method \"generatedImage\" needs a width and a height from 1 to 2048.", "invalidParams", null)
             }
-            reply.success(JSONObject().put("png", drawPattern(width, height)).put("width", width).put("height", height).put("drawnWith", "an Android Bitmap and Canvas").put("language", LANGUAGE))
+            reply.success(JSONObject().put("png", drawPicture(width, height)).put("width", width).put("height", height).put("drawnWith", "an Android Bitmap and Canvas").put("language", LANGUAGE))
         }, HaylenBridge.Threading.BACKGROUND)
     }
 
@@ -188,10 +184,10 @@ class NativeDemoPlugin : HaylenPlugin() {
         bursts = null
     }
 
-    // The pattern pushes RGBA bitmaps into the video stream `pattern` and the tone pushes floats into the audio stream `tone`, each from a thread of its own, which the app reads through `handle:videoStream` and `handle:audioStream`.
+    // The picture pushes RGBA bitmaps into the video stream `island` and the tone pushes floats into the audio stream `tone`, each from a thread of its own, which the app reads through `handle:videoStream` and `handle:audioStream`.
     private fun registerStreams() {
         context.register("startVideo") { _, reply ->
-            val stream = context.openVideoStream("pattern", NativeDemoVideo.WIDTH, NativeDemoVideo.HEIGHT, HaylenVideoStream.Format.RGBA8)
+            val stream = context.openVideoStream("island", NativeDemoVideo.WIDTH, NativeDemoVideo.HEIGHT, HaylenVideoStream.Format.RGBA8)
             video?.stop()
             video = NativeDemoVideo(stream)
             reply.success(JSONObject().put("width", NativeDemoVideo.WIDTH).put("height", NativeDemoVideo.HEIGHT).put("fps", NativeDemoVideo.FPS).put("format", "RGBA").put("thread", "a HandlerThread").put("language", LANGUAGE))
@@ -441,23 +437,10 @@ class NativeDemoPlugin : HaylenPlugin() {
 
         fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"
 
-        // Draws the pattern of the demo, a gradient from red to green with blue stripes, into a `Bitmap` and compresses it as a PNG file.
-        fun drawPattern(width: Int, height: Int): ByteArray {
+        // Draws the picture of the demo into a `Bitmap` and compresses it as a PNG file.
+        fun drawPicture(width: Int, height: Int): ByteArray {
             val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
-            val canvas = Canvas(bitmap)
-            canvas.drawPaint(Paint().apply { shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(), Color.RED, Color.GREEN, Shader.TileMode.CLAMP) })
-            val stripe = Paint().apply { color = Color.argb(153, 0, 0, 230) }
-            var offset = -height.toFloat()
-            while (offset < width) {
-                canvas.drawPath(Path().apply {
-                    moveTo(offset, 0f)
-                    lineTo(offset + 16f, 0f)
-                    lineTo(offset + 16f + height, height.toFloat())
-                    lineTo(offset + height, height.toFloat())
-                    close()
-                }, stripe)
-                offset += 32f
-            }
+            NativeDemoScene().draw(Canvas(bitmap), width.toFloat(), height.toFloat(), 0f)
             val png = ByteArrayOutputStream()
             bitmap.compress(Bitmap.CompressFormat.PNG, 100, png)
             bitmap.recycle()

@@ -42,7 +42,7 @@ enum { NATIVE_DEMO_WAITS = 32, NATIVE_DEMO_TEXT = 512 };
 // The work that runs on threads of the library, each with a generation that a new start, or stopping, raises, which ends the older threads when they wake up.
 enum NativeDemoWork { NATIVE_DEMO_TICKS, NATIVE_DEMO_VIDEO, NATIVE_DEMO_TONE, NATIVE_DEMO_BURST, NATIVE_DEMO_WORKS };
 
-// The pattern of the video stream, 30 frames per second of BGRA pixels, and the tone of the audio stream, 16-bit mono samples a tenth of a second ahead of the clock.
+// The picture of the video stream, 30 frames per second of BGRA pixels, and the tone of the audio stream, 16-bit mono samples a tenth of a second ahead of the clock.
 enum { NATIVE_DEMO_VIDEO_WIDTH = 320, NATIVE_DEMO_VIDEO_HEIGHT = 180, NATIVE_DEMO_VIDEO_FPS = 30, NATIVE_DEMO_TONE_RATE = 44100, NATIVE_DEMO_TONE_BLOCK = 441 };
 
 typedef struct NativeDemoWait {
@@ -312,16 +312,111 @@ static void native_demo_echo_bytes(uint64_t call, const HaylenNativeBuffer* buff
     nativeDemoApi->resolve(call, 1, answer, buffers, 1);
 }
 
-// Draws the pattern of the demo: a gradient from red to green with blue stripes that move with the frame, as RGBA or BGRA pixels.
+// The picture of the demo, a small island with a palm under the sun in a sea with waves, in fractions of the width and the height of the picture, the same on every platform. The video moves the waves and floats the sun with the time.
+typedef struct NativeDemoColor {
+    float red, green, blue;
+} NativeDemoColor;
+
+static const NativeDemoColor nativeDemoInk = {30, 27, 51};
+static const NativeDemoColor nativeDemoSkyTop = {108, 198, 245};
+static const NativeDemoColor nativeDemoSkyLow = {207, 241, 255};
+static const NativeDemoColor nativeDemoSeaTop = {47, 179, 196};
+static const NativeDemoColor nativeDemoSeaLow = {30, 143, 166};
+static const NativeDemoColor nativeDemoSun = {255, 201, 60};
+static const NativeDemoColor nativeDemoSunLight = {255, 232, 154};
+static const NativeDemoColor nativeDemoSand = {243, 213, 141};
+static const NativeDemoColor nativeDemoGrass = {123, 199, 77};
+static const NativeDemoColor nativeDemoTrunk = {168, 106, 61};
+static const NativeDemoColor nativeDemoLeaf = {93, 179, 60};
+static const float nativeDemoLeafAngles[4] = {-0.45f, 0.4f, 2.75f, 3.55f};
+
+static NativeDemoColor native_demo_mix(NativeDemoColor from, NativeDemoColor to, float amount) {
+    const NativeDemoColor mixed = {from.red + (to.red - from.red) * amount, from.green + (to.green - from.green) * amount, from.blue + (to.blue - from.blue) * amount};
+    return mixed;
+}
+
+// Whether the point lies inside the ellipse of the center and the radii, turned by the angle in radians.
+static int native_demo_in_ellipse(float x, float y, float centerX, float centerY, float radiusX, float radiusY, float angle) {
+    const float dx = x - centerX;
+    const float dy = y - centerY;
+    const float along = dx * cosf(angle) + dy * sinf(angle);
+    const float across = -dx * sinf(angle) + dy * cosf(angle);
+    return (along / radiusX) * (along / radiusX) + (across / radiusY) * (across / radiusY) <= 1.0f;
+}
+
+// Whether the point lies within the radius of the segment, a line with round ends.
+static int native_demo_in_capsule(float x, float y, float fromX, float fromY, float toX, float toY, float radius) {
+    const float segmentX = toX - fromX;
+    const float segmentY = toY - fromY;
+    float along = ((x - fromX) * segmentX + (y - fromY) * segmentY) / (segmentX * segmentX + segmentY * segmentY);
+    along = along < 0.0f ? 0.0f : (along > 1.0f ? 1.0f : along);
+    const float dx = x - (fromX + segmentX * along);
+    const float dy = y - (fromY + segmentY * along);
+    return dx * dx + dy * dy <= radius * radius;
+}
+
+// Paints an ellipse with the outline of the art around it, which takes the point when it lies on either.
+static void native_demo_outlined(NativeDemoColor* color, float x, float y, float centerX, float centerY, float radiusX, float radiusY, float angle, float outline, NativeDemoColor fill) {
+    if (native_demo_in_ellipse(x, y, centerX, centerY, radiusX, radiusY, angle)) {
+        *color = fill;
+    } else if (native_demo_in_ellipse(x, y, centerX, centerY, radiusX + outline, radiusY + outline, angle)) {
+        *color = nativeDemoInk;
+    }
+}
+
+// The color of one point of the picture at the time in seconds, painted from the back to the front.
+static NativeDemoColor native_demo_scene(float x, float y, float width, float height, float seconds) {
+    const float horizon = 0.6f * height;
+    const float outline = 0.012f * height;
+    NativeDemoColor color = y < horizon ? native_demo_mix(nativeDemoSkyTop, nativeDemoSkyLow, y / horizon) : native_demo_mix(nativeDemoSeaTop, nativeDemoSeaLow, (y - horizon) / (height - horizon));
+
+    const float sunY = 0.26f * height + 0.02f * height * sinf(seconds * 1.2f);
+    if (native_demo_in_ellipse(x, y, 0.8f * width, sunY, 0.12f * height, 0.12f * height, 0.0f)) {
+        color = native_demo_in_ellipse(x, y, 0.78f * width, sunY - 0.02f * height, 0.07f * height, 0.07f * height, 0.0f) ? nativeDemoSunLight : nativeDemoSun;
+    }
+
+    const float spacing = 0.2f * width;
+    for (int row = 0; row < 3; ++row) {
+        const float waveY = horizon + (0.12f + 0.12f * (float)row) * height;
+        const float shift = fmodf(seconds * 0.06f * width * (1.0f + 0.5f * (float)row) + 0.07f * width * (float)row, spacing);
+        const float start = fmodf(x - shift + spacing * 4.0f, spacing);
+        if (native_demo_in_capsule(start, y, 0.01f * width, waveY, 0.1f * width, waveY, 0.007f * height)) {
+            color = native_demo_mix(color, (NativeDemoColor){255, 255, 255}, 0.6f);
+        }
+    }
+
+    native_demo_outlined(&color, x, y, 0.36f * width, 0.64f * height, 0.22f * width, 0.085f * height, 0.0f, outline, nativeDemoSand);
+    native_demo_outlined(&color, x, y, 0.36f * width, 0.6f * height, 0.15f * width, 0.05f * height, 0.0f, outline, nativeDemoGrass);
+    const float crownX = 0.42f * width;
+    const float crownY = 0.3f * height;
+    if (native_demo_in_capsule(x, y, 0.38f * width, 0.6f * height, crownX, crownY, 0.015f * height)) {
+        color = nativeDemoTrunk;
+    } else if (native_demo_in_capsule(x, y, 0.38f * width, 0.6f * height, crownX, crownY, 0.015f * height + outline)) {
+        color = nativeDemoInk;
+    }
+    for (int leaf = 0; leaf < 4; ++leaf) {
+        const float angle = nativeDemoLeafAngles[leaf];
+        native_demo_outlined(&color, x, y, crownX + cosf(angle) * 0.085f * width, crownY + sinf(angle) * 0.085f * width, 0.09f * width, 0.028f * height, angle, outline, nativeDemoLeaf);
+    }
+    return color;
+}
+
+// Draws the picture of the demo at the time of the frame as RGBA or BGRA pixels, with four samples a pixel for smooth edges.
 static void native_demo_draw(uint8_t* pixels, int width, int height, int frame, int bgra) {
+    const float seconds = (float)frame / (float)NATIVE_DEMO_VIDEO_FPS;
     for (int row = 0; row < height; ++row) {
         for (int column = 0; column < width; ++column) {
+            NativeDemoColor sum = {0, 0, 0};
+            for (int sample = 0; sample < 4; ++sample) {
+                const NativeDemoColor color = native_demo_scene((float)column + 0.25f + 0.5f * (float)(sample % 2), (float)row + 0.25f + 0.5f * (float)(sample / 2), (float)width, (float)height, seconds);
+                sum.red += color.red;
+                sum.green += color.green;
+                sum.blue += color.blue;
+            }
             uint8_t* pixel = pixels + ((size_t)row * (size_t)width + (size_t)column) * 4;
-            const uint8_t red = (uint8_t)(column * 255 / (width > 1 ? width - 1 : 1));
-            const uint8_t blue = ((column + row + frame * 4) / 16) % 2 == 0 ? 230 : 40;
-            pixel[bgra ? 2 : 0] = red;
-            pixel[1] = (uint8_t)(row * 255 / (height > 1 ? height - 1 : 1));
-            pixel[bgra ? 0 : 2] = blue;
+            pixel[bgra ? 2 : 0] = (uint8_t)(sum.red / 4.0f + 0.5f);
+            pixel[1] = (uint8_t)(sum.green / 4.0f + 0.5f);
+            pixel[bgra ? 0 : 2] = (uint8_t)(sum.blue / 4.0f + 0.5f);
             pixel[3] = 255;
         }
     }
@@ -398,7 +493,7 @@ static uint8_t* native_demo_png(const uint8_t* pixels, int width, int height, si
     return png;
 }
 
-// Draws the pattern natively and answers with it as the bytes of a PNG file.
+// Draws the picture natively and answers with it as the bytes of a PNG file.
 static void native_demo_generated_image(uint64_t call, const char* paramsJson) {
     const int width = native_demo_number(paramsJson, "width", 0);
     const int height = native_demo_number(paramsJson, "height", 0);
@@ -418,7 +513,7 @@ static void native_demo_generated_image(uint64_t call, const char* paramsJson) {
     free(pixels);
 }
 
-// Pushes a frame of the pattern into the video stream 30 times per second, with the seconds since the start as its timestamp.
+// Pushes a frame of the picture into the video stream 30 times per second, with the seconds since the start as its timestamp.
 static void native_demo_play_video(NativeDemoJob* job) {
     uint8_t* pixels = (uint8_t*)malloc((size_t)NATIVE_DEMO_VIDEO_WIDTH * NATIVE_DEMO_VIDEO_HEIGHT * 4);
     const double start = native_demo_now();
@@ -478,7 +573,7 @@ static void native_demo_send_bursts(NativeDemoJob* job) {
 static void native_demo_start_video(uint64_t call) {
     NativeDemoJob* job = native_demo_job(native_demo_play_video);
     job->generation = native_demo_restart(NATIVE_DEMO_VIDEO);
-    job->video = nativeDemoApi->openVideoStream("native-demo", "pattern", HAYLEN_NATIVE_PIXELS_BGRA8, NATIVE_DEMO_VIDEO_WIDTH, NATIVE_DEMO_VIDEO_HEIGHT);
+    job->video = nativeDemoApi->openVideoStream("native-demo", "island", HAYLEN_NATIVE_PIXELS_BGRA8, NATIVE_DEMO_VIDEO_WIDTH, NATIVE_DEMO_VIDEO_HEIGHT);
     native_demo_spawn(job);
     char answer[NATIVE_DEMO_TEXT];
     snprintf(answer, sizeof(answer), "{\"width\":%d,\"height\":%d,\"fps\":%d,\"format\":\"BGRA\",\"thread\":\"a thread of the library\",\"language\":\"C\"}", NATIVE_DEMO_VIDEO_WIDTH, NATIVE_DEMO_VIDEO_HEIGHT, NATIVE_DEMO_VIDEO_FPS);

@@ -133,7 +133,7 @@ end)
 
 ### demo.generatedImage(width, height)
 
-Draws the pattern of the plugin, a gradient from red to green with blue stripes, in an image of `width` by `height` pixels, from 1 to 2048, and answers with `{png, width, height, drawnWith, language}`, where `png` holds the bytes of a PNG file: drawn with CoreGraphics and written with ImageIO on Apple platforms, drawn in a `Bitmap` and compressed on the background thread on Android, drawn on a `<canvas>` and encoded with `toBlob` on the web, and drawn in memory and encoded by a PNG encoder of the library on the desktops. Another size fails with the code `invalidParams`.
+Draws the picture of the plugin, a small island with a palm under the sun in a sea with waves, in an image of `width` by `height` pixels, from 1 to 2048, and answers with `{png, width, height, drawnWith, language}`, where `png` holds the bytes of a PNG file: drawn with CoreGraphics and written with ImageIO on Apple platforms, drawn in a `Bitmap` and compressed on the background thread on Android, drawn on a `<canvas>` and encoded with `toBlob` on the web, and drawn in memory and encoded by a PNG encoder of the library on the desktops. Another size fails with the code `invalidParams`.
 
 ```lua
 local async = require('async')
@@ -219,7 +219,7 @@ demo.burst(100, 30)
 
 ### demo.startVideo(), demo.stopVideo(), demo.videoStream()
 
-The method `startVideo` opens the video stream `pattern` and draws the pattern into it 30 times per second with its stripes moving, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. The method `stopVideo` stops the frames. The function `videoStream()` returns the [video stream](../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it.
+The method `startVideo` opens the video stream `island` and draws the picture into it 30 times per second with its waves moving and its sun floating, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. The method `stopVideo` stops the frames. The function `videoStream()` returns the [video stream](../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')
@@ -617,7 +617,7 @@ end)
 
 | Stream | Kind | Format |
 | --- | --- | --- |
-| `pattern` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, RGBA bitmaps of the same size from Kotlin, and RGBA frames of the canvas on the web. |
+| `island` | Video | BGRA frames of 320 by 180 pixels, 30 per second, from C, RGBA bitmaps of the same size from Kotlin, and RGBA frames of the canvas on the web. |
 | `tone` | Audio | 16-bit mono samples at 44100 Hz from C, and float mono samples at 44100 Hz from Kotlin and on the web. |
 | `camera` | Video | BGRA pixel buffers of 640 by 480 pixels from Swift, RGBA frames of 640 by 480 pixels from Kotlin, and RGBA frames of the video of the camera on the web. |
 | `microphone` | Audio | Float mono samples at the rate of the input of the device from Swift and on the web, and at 44100 Hz from Kotlin. |

@@ -2,7 +2,7 @@ import CoreGraphics
 import CoreVideo
 import Foundation
 
-// The animated pattern of the video stream: stripes that move over a gradient whose colors turn, which CoreGraphics draws 30 times per second into pixel buffers on a dispatch queue of its own and pushes into the stream, the way a camera or a video decoder delivers its frames.
+// The picture of the demo in the video stream, with its waves moving and its sun floating, which CoreGraphics draws 30 times per second into pixel buffers on a dispatch queue of its own and pushes into the stream, the way a camera or a video decoder delivers its frames.
 final class NativeDemoVideo {
     static let width = 320
     static let height = 180
@@ -38,31 +38,10 @@ final class NativeDemoVideo {
         let space = CGColorSpace(name: CGColorSpace.sRGB)!
         let bitmap = CGImageAlphaInfo.premultipliedFirst.rawValue | CGBitmapInfo.byteOrder32Little.rawValue
         if let context = CGContext(data: CVPixelBufferGetBaseAddress(buffer), width: Self.width, height: Self.height, bitsPerComponent: 8, bytesPerRow: CVPixelBufferGetBytesPerRow(buffer), space: space, bitmapInfo: bitmap) {
-            paint(context)
+            NativeDemoScene.draw(in: context, width: CGFloat(Self.width), height: CGFloat(Self.height), seconds: CGFloat(frame) / CGFloat(Self.fps))
         }
         CVPixelBufferUnlockBaseAddress(buffer, [])
         stream.push(buffer, timestamp: Double(frame) / Double(Self.fps))
         frame += 1
-    }
-
-    private func paint(_ context: CGContext) {
-        let width = CGFloat(Self.width)
-        let height = CGFloat(Self.height)
-        let turn = CGFloat(frame % 180) / 180
-        let colors = [CGColor(srgbRed: turn, green: 0.3, blue: 1 - turn, alpha: 1), CGColor(srgbRed: 1 - turn, green: 0.8, blue: turn, alpha: 1)] as CFArray
-        let gradient = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB), colors: colors, locations: [0, 1])!
-        context.drawLinearGradient(gradient, start: .zero, end: CGPoint(x: width, y: height), options: [])
-
-        context.setFillColor(CGColor(srgbRed: 1, green: 1, blue: 1, alpha: 0.35))
-        var offset = -height + CGFloat(frame % 32) * 2
-        while offset < width {
-            context.move(to: CGPoint(x: offset, y: 0))
-            context.addLine(to: CGPoint(x: offset + 16, y: 0))
-            context.addLine(to: CGPoint(x: offset + 16 + height, y: height))
-            context.addLine(to: CGPoint(x: offset + height, y: height))
-            context.closePath()
-            offset += 64
-        }
-        context.fillPath()
     }
 }
