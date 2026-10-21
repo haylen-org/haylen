@@ -74,6 +74,9 @@ void Emitter::validateMotion(const EmitterConfig& settings) {
     if (!(collision.bounce >= 0.0F && std::isfinite(collision.bounce)) || !(collision.friction >= 0.0F && collision.friction <= 1.0F) || !(collision.lifeLoss >= 0.0F && collision.lifeLoss <= 1.0F)) {
         throw std::invalid_argument("Particle collision needs a bounce of at least 0, and a friction and a life loss from 0 to 1.");
     }
+    if (!(collision.sizeScale >= 0.0F && std::isfinite(collision.sizeScale))) {
+        throw std::invalid_argument("Particle collision needs a finite size scale of at least 0.");
+    }
     if (collision.type == EmitterConfig::Collision::Type::Bounds && !(collision.area.width > 0.0F && collision.area.height > 0.0F)) {
         throw std::invalid_argument("Particle collision with bounds needs an area with a positive width and height.");
     }
@@ -652,12 +655,13 @@ void Emitter::simulate(float deltaSeconds, std::size_t begin, std::size_t end) n
         particles.rotations[index] += particles.spins[index] * (easeDown(config.spinCurve, life) * deltaSeconds);
 
         if (collision.type == EmitterConfig::Collision::Type::Floor) {
-            const float floor = center.y + collision.y * scale;
+            const float floor = center.y + collision.y * scale - getContactRadius(index, life);
             if (point.y > floor) {
                 collide(index, {point.x, floor}, {0.0F, -1.0F});
             }
         } else if (collision.type == EmitterConfig::Collision::Type::Bounds) {
-            const math::Rect area{center.x + collision.area.x * scale, center.y + collision.area.y * scale, collision.area.width * scale, collision.area.height * scale};
+            const float reach = getContactRadius(index, life);
+            const math::Rect area{center.x + collision.area.x * scale + reach, center.y + collision.area.y * scale + reach, collision.area.width * scale - reach * 2.0F, collision.area.height * scale - reach * 2.0F};
             if (point.x < area.getLeft()) {
                 collide(index, {area.getLeft(), point.y}, {1.0F, 0.0F});
             } else if (point.x > area.getRight()) {
@@ -713,20 +717,23 @@ void Emitter::collide(std::size_t index, math::Vec2 contact, math::Vec2 normal) 
     }
 }
 
-// Casts the move of every particle of the step through the physics world, on the job system when it is given.
+// Casts the move of every particle of the step through the physics world, on the job system when it is given. Each ray reaches the contact radius past the move, and a particle that hits stops that far from the surface.
 void Emitter::collideWithWorld(std::size_t begin, core::JobSystem* jobs) {
     const math::Vec2 origin = getOrigin();
     const std::size_t count = getCount();
     rays.resize(count - begin);
     for (std::size_t index = begin; index < count; ++index) {
-        const bool moving = (particles.flags[index] & kStuck) == 0;
-        const math::Vec2 from = previousPositions[index - begin];
-        rays.setRay(index - begin, origin + from, origin + (moving ? particles.positions[index] : from));
+        const math::Vec2 from = origin + previousPositions[index - begin];
+        const math::Vec2 move = particles.positions[index] - previousPositions[index - begin];
+        const bool moving = (particles.flags[index] & kStuck) == 0 && !move.isZero();
+        const float reach = moving ? getContactRadius(index, std::min(particles.ages[index] / particles.lifetimes[index], 1.0F)) : 0.0F;
+        rays.setRay(index - begin, from, moving ? from + move + move.getNormalized() * reach : from);
     }
     physics2d::Raycaster(*collisionWorld).castBatch(rays, collisionFilter, jobs);
     for (std::size_t index = begin; index < count; ++index) {
         if (const std::optional<physics2d::RaycastHit>& hit = rays.getHit(index - begin)) {
-            collide(index, hit->point - origin + hit->normal * 0.01F, hit->normal);
+            const float reach = getContactRadius(index, std::min(particles.ages[index] / particles.lifetimes[index], 1.0F));
+            collide(index, hit->point - origin + hit->normal * (reach + 0.01F), hit->normal);
         }
     }
 }
@@ -949,8 +956,7 @@ math::Rect Emitter::frameAt(std::size_t index, float life) const noexcept {
 // The sprite of a particle: its size along the curve, stretched along its motion, turned with its motion and snapped to the steps and the pixel grid.
 graphics2d::SpriteInstance Emitter::spriteAt(std::size_t index) const noexcept {
     const float life = std::min(particles.ages[index] / particles.lifetimes[index], 1.0F);
-    const float eased = config.sizeCurve.isLinear() ? life : config.sizeCurve.apply(life);
-    const float size = particles.startSizes[index] + (particles.endSizes[index] - particles.startSizes[index]) * eased;
+    const float size = sizeAt(index, life);
     const math::Vec2 heading = particles.velocities[index];
 
     // Particles keep facing their heading while the speed curve slows them, and stretch with the speed they have.
@@ -970,6 +976,15 @@ graphics2d::SpriteInstance Emitter::spriteAt(std::size_t index) const noexcept {
         at = math::Vec2{std::round(at.x / config.pixelSnap), std::round(at.y / config.pixelSnap)} * config.pixelSnap;
     }
     return {.position = at, .size = {width, size}, .source = frameAt(index, life), .rotation = angle, .tilt = config.tilt, .color = particleColor(index)};
+}
+
+float Emitter::sizeAt(std::size_t index, float life) const noexcept {
+    const float eased = config.sizeCurve.isLinear() ? life : config.sizeCurve.apply(life);
+    return particles.startSizes[index] + (particles.endSizes[index] - particles.startSizes[index]) * eased;
+}
+
+float Emitter::getContactRadius(std::size_t index, float life) const noexcept {
+    return sizeAt(index, life) * 0.5F * config.collision.sizeScale;
 }
 
 bool Emitter::castsRays() const noexcept {

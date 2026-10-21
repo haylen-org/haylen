@@ -422,14 +422,16 @@ TEST_F(ParticlesTest, ParticlesCollideWithFloorsBoundsAndWorlds) {
     Emitter bouncing({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {200.0F, 200.0F}, .direction = 1.5707964F, .spread = 0.0F, .collision = {.type = Collision::Type::Floor, .y = 10.0F, .bounce = 0.5F}});
     bouncing.burst(1);
     bouncing.update(0.1F);
-    EXPECT_FLOAT_EQ(bouncing.getPositions().front().y, 10.0F);
+
+    // A particle of 16 units rests on its edge, 8 units above the floor.
+    EXPECT_FLOAT_EQ(bouncing.getPositions().front().y, 2.0F);
     EXPECT_NEAR(bouncing.getParticle(0).velocity.y, -100.0F, 1e-3F);
 
     Emitter sticking({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {200.0F, 200.0F}, .direction = 1.5707964F, .spread = 0.0F, .gravity = {0.0F, 500.0F}, .collision = {.type = Collision::Type::Floor, .y = 10.0F, .result = Collision::Result::Stick}});
     sticking.burst(1);
     sticking.update(0.1F);
     sticking.update(0.5F);
-    EXPECT_FLOAT_EQ(sticking.getPositions().front().y, 10.0F);
+    EXPECT_FLOAT_EQ(sticking.getPositions().front().y, 2.0F);
     EXPECT_TRUE(sticking.getParticle(0).velocity.isZero());
 
     Emitter dying({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {200.0F, 200.0F}, .direction = 0.0F, .spread = 0.0F, .collision = {.type = Collision::Type::Bounds, .area = {-50.0F, -50.0F, 100.0F, 100.0F}, .result = Collision::Result::Die}});
@@ -458,6 +460,34 @@ TEST_F(ParticlesTest, ParticlesCollideWithFloorsBoundsAndWorlds) {
 
     EXPECT_THROW(Emitter({.texture = texture(), .collision = {.type = Collision::Type::Bounds}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .collision = {.friction = 2.0F}}), std::invalid_argument);
+    EXPECT_THROW(Emitter({.texture = texture(), .collision = {.sizeScale = -1.0F}}), std::invalid_argument);
+}
+
+TEST_F(ParticlesTest, ParticlesTouchSurfacesAtTheShareOfTheirSize) {
+    using Collision = EmitterConfig::Collision;
+    // clang-format off
+    const auto rest = [this](Collision collision, float direction, std::shared_ptr<physics2d::World> world) {
+        Emitter emitter({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {300.0F, 300.0F}, .direction = direction, .spread = 0.0F, .collision = collision, .startSize = {20.0F, 20.0F}, .endSize = {20.0F, 20.0F}});
+        emitter.setCollisionWorld(std::move(world));
+        emitter.burst(1);
+        for (int step = 0; step < 20; ++step) {
+            emitter.update(0.05F);
+        }
+        return emitter.getPositions().front();
+    };
+    // clang-format on
+
+    // A particle of 20 units stops 10 units from what it hits, half of that with a scale of 0.5, and at its center with a scale of 0.
+    const float down = 1.5707964F;
+    EXPECT_FLOAT_EQ(rest({.type = Collision::Type::Floor, .y = 50.0F, .result = Collision::Result::Stick}, down, nullptr).y, 40.0F);
+    EXPECT_FLOAT_EQ(rest({.type = Collision::Type::Floor, .y = 50.0F, .result = Collision::Result::Stick, .sizeScale = 0.5F}, down, nullptr).y, 45.0F);
+    EXPECT_FLOAT_EQ(rest({.type = Collision::Type::Floor, .y = 50.0F, .result = Collision::Result::Stick, .sizeScale = 0.0F}, down, nullptr).y, 50.0F);
+    EXPECT_FLOAT_EQ(rest({.type = Collision::Type::Bounds, .area = {-50.0F, -50.0F, 100.0F, 100.0F}, .result = Collision::Result::Stick}, 0.0F, nullptr).x, 40.0F);
+
+    auto world = std::make_shared<physics2d::World>();
+    physics2d::Body wall = world->createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 0.0F}});
+    wall.addBox({20.0F, 400.0F});
+    EXPECT_NEAR(rest({.type = Collision::Type::World, .result = Collision::Result::Stick}, 0.0F, world).x, 80.0F, 0.05F);
 }
 
 TEST_F(ParticlesTest, ParticlesOfTheRateSpreadTheirBirthsOverTheStep) {
@@ -805,7 +835,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
             "rateOverDistance": 0.5, "bursts": [{"time": 0.1, "count": [2, 5], "cycles": 3, "interval": 0.1, "probability": 0.5}], "delay": 0.25, "duration": 1,
             "speedCurve": "quadOut", "directionMode": "outward", "inheritVelocity": 0.3, "turbulence": {"strength": 30, "frequency": 0.02, "speed": 1},
             "attractors": [{"x": 0, "y": -50, "strength": 300, "radius": 100, "killRadius": 4, "space": "world"}],
-            "collision": {"type": "floor", "y": 40, "bounce": 0.3, "friction": 0.2, "result": "bounce", "lifeLoss": 0.1}, "bounds": [-100, -100, 200, 200], "boundsMode": "wrap",
+            "collision": {"type": "floor", "y": 40, "bounce": 0.3, "friction": 0.2, "result": "bounce", "lifeLoss": 0.1, "sizeScale": 0.25}, "bounds": [-100, -100, 200, 200], "boundsMode": "wrap",
             "endSizeScale": [0.5, 1], "sizeCurve": {"curve": "backOut", "overshoot": 3}, "aspect": [1, 2], "stretch": 0.02, "rotation": [0, 6.2832], "rotationStep": 1.5708, "tilt": 1.2,
             "alignToVelocity": true, "spinCurve": {"steps": 4}, "colors": ["#FFFFFFFF", "#80FF8000", "#00FF0000"], "colorTimes": [0, 0.3, 1], "colorBlend": "steps",
             "tints": ["#FFFF0000", "#FF0000FF"], "tintMode": "cycle", "shape": "arc", "shapeSize": [30, 0], "shapeAngle": 0.5, "shapeArc": [0, 3.14], "shapeThickness": 4,
@@ -861,6 +891,7 @@ TEST(EffectTest, LoadsEffectFilesAsAssets) {
     EXPECT_EQ(config.attractors.front().space, EmitterConfig::Attractor::Space::World);
     EXPECT_EQ(config.collision.type, EmitterConfig::Collision::Type::Floor);
     EXPECT_FLOAT_EQ(config.collision.lifeLoss, 0.1F);
+    EXPECT_FLOAT_EQ(config.collision.sizeScale, 0.25F);
     EXPECT_EQ(config.boundsMode, EmitterConfig::BoundsMode::Wrap);
     EXPECT_EQ(config.sizeCurve.getKind(), math::EasingCurve::Kind::Parametric);
     EXPECT_EQ(config.spinCurve->getKind(), math::EasingCurve::Kind::Steps);

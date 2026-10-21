@@ -22,6 +22,8 @@ Every update runs these steps:
 6. The trails record the positions of the particles at fixed moments.
 7. The emitters of the sub-emitters update the same way.
 
+Particles touch floors, walls and the shapes of a physics world at their edge, half their size away from their center, so a ball rests on a floor and stays inside a box. The `sizeScale` of the collision scales that distance for pieces whose texture holds a smaller shape, and a scale of 0 collides at the center, for sparks and drops.
+
 Nothing calls Lua for each particle, which is why particle curves take names and tables and never Lua functions.
 
 ## Drawing

@@ -197,6 +197,10 @@ class Emitter final {
     [[nodiscard]] math::Color colorAt(float life) const noexcept;
     [[nodiscard]] math::Color particleColor(std::size_t index) const noexcept;
     [[nodiscard]] math::Rect frameAt(std::size_t index, float life) const noexcept;
+    [[nodiscard]] float sizeAt(std::size_t index, float life) const noexcept;
+
+    // The distance from the center of a particle at which it touches what it collides with.
+    [[nodiscard]] float getContactRadius(std::size_t index, float life) const noexcept;
     [[nodiscard]] bool castsRays() const noexcept;
     [[nodiscard]] graphics2d::SpriteInstance spriteAt(std::size_t index) const noexcept;
     [[nodiscard]] math::Vec2 getVelocity(std::size_t index) const noexcept;

@@ -378,6 +378,7 @@ void Particles2DLua::readCollision(lua_State* L, EmitterConfig::Collision& colli
     lua::Table::readField(L, table, "friction", collision.friction);
     lua::Table::readField(L, table, "result", collision.result);
     lua::Table::readField(L, table, "lifeLoss", collision.lifeLoss);
+    lua::Table::readField(L, table, "sizeScale", collision.sizeScale);
 }
 
 // Each sub-emitter takes a `ParticleEffect` or an options table as its effect, with overrides on top of an effect.
@@ -564,7 +565,7 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
     }
     lua_setfield(L, -2, "attractors");
     const EmitterConfig::Collision& collision = config.collision;
-    lua_createtable(L, 0, 7);
+    lua_createtable(L, 0, 8);
     setValue(L, "type", collision.type);
     setValue(L, "y", collision.y);
     setValue(L, "area", collision.area);
@@ -572,6 +573,7 @@ void Particles2DLua::pushMotion(lua_State* L, const EmitterConfig& config) {
     setValue(L, "friction", collision.friction);
     setValue(L, "result", collision.result);
     setValue(L, "lifeLoss", collision.lifeLoss);
+    setValue(L, "sizeScale", collision.sizeScale);
     lua_setfield(L, -2, "collision");
     if (config.bounds) {
         setValue(L, "bounds", *config.bounds);

@@ -351,7 +351,7 @@ void Effect::readMotion(const std::string& key, const core::Json& value, Emitter
     static constexpr std::array<std::string_view, 5> kBurstFields{"time", "count", "cycles", "interval", "probability"};
     static constexpr std::array<std::string_view, 3> kTurbulenceFields{"strength", "frequency", "speed"};
     static constexpr std::array<std::string_view, 6> kAttractorFields{"x", "y", "strength", "radius", "killRadius", "space"};
-    static constexpr std::array<std::string_view, 7> kCollisionFields{"type", "y", "area", "bounce", "friction", "result", "lifeLoss"};
+    static constexpr std::array<std::string_view, 8> kCollisionFields{"type", "y", "area", "bounce", "friction", "result", "lifeLoss", "sizeScale"};
     if (key == "rate") {
         config.rate = readNumber(value, key);
     } else if (key == "rateOverDistance") {
@@ -441,8 +441,10 @@ void Effect::readMotion(const std::string& key, const core::Json& value, Emitter
                 made.friction = readNumber(item, name);
             } else if (name == "result") {
                 made.result = readName(item, name, EmitterConfig::kCollisionResultNames);
-            } else {
+            } else if (name == "lifeLoss") {
                 made.lifeLoss = readNumber(item, name);
+            } else {
+                made.sizeScale = readNumber(item, name);
             }
         }
     } else if (key == "bounds") {

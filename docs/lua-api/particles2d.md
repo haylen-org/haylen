@@ -284,6 +284,7 @@ The `collision` table takes these keys:
 | `friction` | number | `0` | Share of the speed along the surface that a hit takes, from 0 to 1. |
 | `result` | string | `'bounce'` | Particles that hit bounce with `'bounce'`, stop where they hit with `'stick'`, or die with `'die'`. |
 | `lifeLoss` | number | `0` | Share of the lifetime each hit takes, from 0 to 1. |
+| `sizeScale` | number | `1` | Share of the size of a particle that touches surfaces: a particle stops at half its size times this scale from what it hits, so `1` rests it on its edge, a smaller scale suits a texture whose shape fills less of it, and `0` collides at its center, for sparks and drops. |
 
 Hits slower than 30 units per second only stop a particle against the surface, so particles that rest on a floor neither bounce nor report hits.
 
@@ -334,6 +335,7 @@ Unknown keys raise `Unknown option "name".`, and an unknown name raises an error
 - `Particle turbulence needs a finite strength and speed and a positive frequency.`
 - `A particle attractor needs a finite strength and a radius and a kill radius of at least 0.`
 - `Particle collision needs a bounce of at least 0, and a friction and a life loss from 0 to 1.`
+- `Particle collision needs a finite size scale of at least 0.`
 - `Particle collision with bounds needs an area with a positive width and height.`
 - `Particle bounds need a positive width and height.`
 - `A particle sub-emitter needs an effect, a count range whose minimum is at most its maximum, a finite rate of at least 0 and a probability from 0 to 1.`

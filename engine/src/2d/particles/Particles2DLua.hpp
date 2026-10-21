@@ -58,7 +58,7 @@ class Particles2DLua final {
     static constexpr std::array<std::string_view, 3> kGridFields{"columns", "rows", "count"};
     static constexpr std::array<std::string_view, 3> kTurbulenceFields{"strength", "frequency", "speed"};
     static constexpr std::array<std::string_view, 6> kAttractorFields{"x", "y", "strength", "radius", "killRadius", "space"};
-    static constexpr std::array<std::string_view, 7> kCollisionFields{"type", "y", "area", "bounce", "friction", "result", "lifeLoss"};
+    static constexpr std::array<std::string_view, 8> kCollisionFields{"type", "y", "area", "bounce", "friction", "result", "lifeLoss", "sizeScale"};
     static constexpr std::array<std::string_view, 8> kSubEmitterFields{"effect", "trigger", "count", "rate", "probability", "inheritVelocity", "inheritColor", "overrides"};
     static constexpr std::array<std::string_view, 6> kTrailFields{"length", "lifetime", "widthStart", "widthEnd", "colors", "texture"};
     static constexpr std::array<std::string_view, 7> kLightFields{"type", "offset", "radius", "color", "intensity", "flicker", "fade"};

@@ -123,7 +123,7 @@ struct EmitterConfig {
         Space space = Space::Emitter;
     };
 
-    // Particles hit a floor at `y` below the emitter, the walls of the area around the emitter, or the shapes of the physics world the app gives the emitter, and then bounce, stick or die. Each hit takes `lifeLoss` of the lifetime.
+    // Particles hit a floor at `y` below the emitter, the walls of the area around the emitter, or the shapes of the physics world the app gives the emitter, and then bounce, stick or die. Each hit takes `lifeLoss` of the lifetime. A particle touches a surface at half its size times `sizeScale` from its center, so it rests on its edge, and a scale of 0 makes it collide at its center.
     struct Collision {
         enum class Type : std::uint8_t {
             None,
@@ -145,6 +145,7 @@ struct EmitterConfig {
         float friction = 0.0F;
         Result result = Result::Bounce;
         float lifeLoss = 0.0F;
+        float sizeScale = 1.0F;
     };
 
     // Spawns the particles of another emitter where particles of this one are born, die, hit something or, at the rate per second, while they live.
