@@ -7,20 +7,24 @@ local ui = require('haylen.ui')
 local ComponentTest = require('categories.components.component-test')
 local Composition = require('categories.components.composition')
 local LabelUp = require('categories.components.label-up')
-local Test = require('harness.test')
 
 local CompositionTest = haylen.class('CompositionTest', ComponentTest)
+
+CompositionTest.meadowTile = 512
 
 CompositionTest.code = [[
 local Composition = require('composition')  -- With health-bar.lua, copied from samples/tests.
 local rock = Composition.entity('Rock', rockTexture, 560, 300, 2)
-rock:add(Composition.shooter({target = knight, interval = 1.2})):add(Composition.health({maximum = 120}))
-bunny:add(Composition.shooter({target = knight}))  bunny:remove('shooter')  -- Behaviors come and go while it runs.
-rock:update(dt)  rock:draw()  rock:hit(15)]]
+rock:add(Composition.shooter({target = knight, interval = 1.2, shot = orbs, source = {0, 0, 64, 64}}))
+rock:add(Composition.health({maximum = 120}))
+bunny:remove('wander')  -- Behaviors come and go while it runs.
+rock:update(dt)
+rock:draw()]]
 
 function CompositionTest:enter()
     CompositionTest.super.enter(self)
-    self.labels = LabelUp.new({size = 30, rise = 80})
+    self.labels = LabelUp.new({font = assets.font('fonts/lilita-one-regular.ttf'), size = 36, rise = 80})
+    self.meadowOptions = {source = {2, 2, 128, 128}, width = CompositionTest.meadowTile, height = CompositionTest.meadowTile, pivotX = 0, pivotY = 0, layer = -2}
     local function picture(name)
         return assets.texture('sprites/images/' .. name .. '.png', {filter = 'linear'})
     end
@@ -28,6 +32,8 @@ function CompositionTest:enter()
         self.labels:spawn(entity.x, entity.y - entity.lift - entity:height() - 40, taken > 0 and ('-' .. math.floor(taken + 0.5)) or 'Down', taken > 0 and 'damage' or 'miss')
     end
     local gems = assets.load('sprites/atlases/gems.json', 'atlas', {filter = 'linear'})
+    self.orbs = picture('bullets')
+    self.meadow = assets.texture('tiled/tiles/terrain.png', {filter = 'linear', mipmaps = true})
 
     self.cursor = {x = 0, y = 300}
     self.knight = Composition.entity('Knight', picture('hero'), -200, 300, 1.2)
@@ -38,7 +44,7 @@ function CompositionTest:enter()
         :add(Composition.bob({height = 24, speed = 1.6}))
         :add(Composition.health({maximum = 40, onHit = onHit}))
     self.rock = Composition.entity('Rock', picture('rock'), 620, 360, 2)
-        :add(Composition.shooter({target = self.knight, interval = 1.4}))
+        :add(Composition.shooter({target = self.knight, interval = 1.4, shot = self.orbs, source = {0, 0, 64, 64}, size = 56}))
         :add(Composition.health({maximum = 200, width = 170, tick = 50, onHit = onHit}))
     self.gem = Composition.entity('Gem', gems.texture, 0, 0, 1, gems:source('gem-blue.png'))
     self.gem:add(Composition.orbit({center = self.knight, radius = 170, speed = 0.35})):add(Composition.bob({height = 10, speed = 2})):add(Composition.health({maximum = 20, width = 80, onHit = onHit}))
@@ -52,8 +58,29 @@ function CompositionTest:enter()
         controls = {
             ui.button{id = 'shooter', text = 'Give the bunny a shooter', variant = 'primary', onClick = function() self:toggleShooter() end},
             ui.button{id = 'follow', text = 'Make the bunny follow the cursor', onClick = function() self:toggleFollow() end},
+            ui.sectionTitle{text = 'What each one is made of'},
+            self:behaviorRow(self.knight),
+            self:behaviorRow(self.bunny),
+            self:behaviorRow(self.rock),
+            self:behaviorRow(self.gem),
         },
     }
+end
+
+-- A row of the panel names an entity and lists its behaviors, which the update keeps in step as they come and go.
+function CompositionTest:behaviorRow(entity)
+    return ui.column{gap = 4,
+        ui.label{text = entity.name, font = 'heading'},
+        ui.label{id = 'made-' .. entity.name, text = CompositionTest.listed(entity), color = 'textMuted'},
+    }
+end
+
+function CompositionTest.listed(entity)
+    local names = {}
+    for index, name in ipairs(entity.names) do
+        names[index] = index == 1 and name:sub(1, 1):upper() .. name:sub(2) or name
+    end
+    return table.concat(names, ', ') .. '.'
 end
 
 function CompositionTest:toggleShooter()
@@ -61,7 +88,7 @@ function CompositionTest:toggleShooter()
         self:set('shooter', {text = 'Give the bunny a shooter'})
         return
     end
-    self.bunny:add(Composition.shooter({target = self.knight, interval = 0.8, color = '#FFFF8A84'}))
+    self.bunny:add(Composition.shooter({target = self.knight, interval = 0.8, shot = self.orbs, source = {128, 0, 64, 64}, size = 44}))
     self:set('shooter', {text = 'Take the shooter from the bunny'})
 end
 
@@ -106,14 +133,30 @@ function CompositionTest:update(dt)
         entity:update(dt)
     end
     self.labels:update(dt)
-    self:status(string.format('Bunny made of %d behaviors, knight %d, rock %d, gem %d', #self.bunny.behaviors, #self.knight.behaviors, #self.rock.behaviors, #self.gem.behaviors))
+    self.made = self.made or {}
+    for _, entity in ipairs(self.entities) do
+        local listed = CompositionTest.listed(entity)
+        if self.made[entity] ~= listed then
+            self.made[entity] = listed
+            self:set('made-' .. entity.name, {text = listed})
+        end
+    end
+    self:status(string.format('The bunny is made of %d behaviors, the knight of %d, the rock of %d and the gem of %d', #self.bunny.behaviors, #self.knight.behaviors, #self.rock.behaviors, #self.gem.behaviors))
 end
 
+-- The entities walk on a meadow seen from above, the seamless grass of the Tiled tests from edge to edge of the play area.
 function CompositionTest:draw(area)
-    graphics2d.drawRect({-960, 0, 1920, 540}, '#FF222A3D')
+    local bounds = graphics2d.canvasBounds()
+    local tile = CompositionTest.meadowTile
+    local options = self.meadowOptions
+    for y = bounds.y - (bounds.y % tile), bounds:bottom(), tile do
+        for x = bounds.x - (bounds.x % tile), bounds:right(), tile do
+            graphics2d.draw(self.meadow, x, y, options)
+        end
+    end
     for _, entity in ipairs(self.entities) do
         entity:draw()
-        Test.caption(entity.name .. ': ' .. table.concat(entity.names, ', '), entity.x, entity.y - entity.lift + 12, {anchor = {0.5, 0}, color = Test.ink, size = 22, layer = 4})
+        ComponentTest.name(entity.name, entity.x, entity.y - entity.lift + 10)
     end
     self.labels:draw()
 end

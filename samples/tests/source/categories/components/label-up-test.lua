@@ -1,23 +1,26 @@
 -- Label up: the component of `label-up.lua` over a knight that takes hits, criticals, heals, gold and misses, from the buttons, from a click or a tap at the cursor and by itself, with labels that stack when they come in quick series and a burst that fills the pool.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local ComponentTest = require('categories.components.component-test')
 local LabelUp = require('categories.components.label-up')
-local Test = require('harness.test')
 
 local LabelUpTest = haylen.class('LabelUpTest', ComponentTest)
 
+LabelUpTest.font = 'fonts/lilita-one-regular.ttf'
+
 LabelUpTest.code = [[
 local LabelUp = require('label-up')  -- One file, copied from samples/tests.
-local labels = LabelUp.new({size = 40, rise = 110, life = 0.9})
+local labels = LabelUp.new({font = assets.font('fonts/lilita-one-regular.ttf'), size = 64, rise = 150})
 labels:spawn(enemy.x, enemy.y - 180, '-' .. damage, 'damage')  -- Or 'critical', 'heal', 'gold', 'miss'.
-labels:update(dt)  labels:draw()]]
+labels:update(dt)
+labels:draw()]]
 
 function LabelUpTest:enter()
     LabelUpTest.super.enter(self)
-    self.labels = LabelUp.new({size = 40, rise = 110, life = 0.9})
+    self.labels = LabelUp.new({font = assets.font(LabelUpTest.font), size = 64, rise = 150, life = 0.9})
     self.knight = ComponentTest.target('hero', 0, 300, 1.6)
     self.automatic = true
     self.wait = 0
@@ -37,6 +40,7 @@ function LabelUpTest:enter()
             }},
             ui.button{id = 'burst', text = 'A burst of 60 labels', onClick = function() self:burst() end},
             ui.toggle{id = 'automatic', text = 'Hits by themselves', checked = true, onChange = function(event) self.automatic = event.checked end},
+            ui.label{text = 'Damage pops in red, criticals large in gold, heals in green, gold in yellow and misses in gray, each with a dark outline that reads over any ground.', color = 'textMuted', font = 'caption'},
         },
     }
 end
@@ -76,14 +80,14 @@ function LabelUpTest:update(dt)
         end
     end
     self.labels:update(dt)
-    self:status(string.format('Live labels %d, pool %d, draw calls %d', self.labels.count, #self.labels.records, graphics2d.stats().drawCalls))
+    self:status(string.format('Labels on screen %d, records in the pool %d, draw calls %d', self.labels.count, #self.labels.records, graphics2d.stats().drawCalls))
 end
 
 function LabelUpTest:draw(area)
-    graphics2d.drawRect({-960, 300, 1920, 240}, '#FF2A3348')
+    self:drawGround()
     self:drawTarget(self.knight, self.dt)
     self.labels:draw()
-    Test.caption('A knight that takes the hits', 0, 360, {anchor = {0.5, 0}})
+    ComponentTest.name('A knight that takes the hits', 0, ComponentTest.groundLine + 36)
 end
 
 return LabelUpTest

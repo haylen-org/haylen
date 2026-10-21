@@ -11,9 +11,10 @@ local ChartsTest = haylen.class('ChartsTest', Test)
 ChartsTest.code = [[
 local Charts = require('charts')  -- One file, copied from samples/tests.
 local sales = Charts.new('bar', {12, -4, 30, 0 / 0, 18}, {labels = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'}})
-local share = Charts.new('donut', {40, 25, 35})  local prices = Charts.new('candles', {{10, 14, 9, 13}, {13, 15, 11, 12}})
+local share = Charts.new('donut', {40, 25, 35}, {labels = {'Quests', 'Shop', 'Arena'}})
 sales:draw({40, 40, 480, 300})  -- Lays out once for each size, then draws without allocating.
-sales:setData(newValues)  sales:check({0, 0, 480, 300})  -- Raises when a shape holds a number that is not finite.]]
+sales:setData(newValues)
+sales:check({0, 0, 480, 300})  -- Raises when a shape holds a number that is not finite.]]
 
 ChartsTest.sets = {'normal', 'empty', 'negative', 'huge', 'missing', 'single', 'flat'}
 ChartsTest.titles = {line = 'Line, two series', area = 'Area', bar = 'Bar', stackedBar = 'Stacked bar', pie = 'Pie', donut = 'Donut', scatter = 'Scatter', radar = 'Radar', histogram = 'Histogram', candles = 'Candles', heatmap = 'Heat map'}
@@ -89,6 +90,8 @@ ChartsTest.options = {
     bar = {labels = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'}},
     stackedBar = {labels = {'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'}},
     radar = {labels = {'Speed', 'Power', 'Range', 'Armor', 'Luck', 'Magic'}},
+    pie = {labels = {'Wood', 'Stone', 'Gold', 'Food', 'Gems'}},
+    donut = {labels = {'Quests', 'Shop', 'Arena', 'Daily', 'Other'}},
 }
 
 function ChartsTest:enter()
@@ -136,10 +139,11 @@ end
 function ChartsTest:update(dt)
     ChartsTest.super.update(self, dt)
     if self.stage then
-        self:status(string.format('Data set "%s", draw calls %d', self.set, graphics2d.stats().drawCalls))
+        self:status(string.format('The data set "%s" draws in %d draw calls', self.set, graphics2d.stats().drawCalls))
     end
 end
 
+-- The charts fill a grid of four columns, and the last one takes the cells left over in its row, so the grid has no hole.
 function ChartsTest:draw(area)
     local columns = 4
     local rows = math.ceil(#self.charts / columns)
@@ -149,9 +153,11 @@ function ChartsTest:draw(area)
     for index, chart in ipairs(self.charts) do
         local column, row = (index - 1) % columns, math.floor((index - 1) / columns)
         local x, y = gap + column * (width + gap), gap + row * (height + gap)
-        graphics2d.drawShape({x, y, width, height}, {radius = 10, color = '#FF1B2430', borderWidth = 2, borderColor = '#FF2A3646'})
-        Test.caption(ChartsTest.titles[chart.kind], x + 12, y + 8, {color = Test.ink})
-        chart:draw({x + 4, y + 30, width - 8, height - 34})
+        local span = index == #self.charts and columns - column or 1
+        local cardWidth = width * span + gap * (span - 1)
+        graphics2d.drawShape({x, y, cardWidth, height}, {radius = 12, color = '#FF1B2430', borderWidth = 2, borderColor = '#FF2A3646'})
+        Test.caption(ChartsTest.titles[chart.kind], x + 14, y + 10, {color = Test.ink, size = 20})
+        chart:draw({x + 6, y + 38, cardWidth - 12, height - 44})
     end
 end
 

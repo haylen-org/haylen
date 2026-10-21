@@ -1,5 +1,6 @@
 -- The base of the component tests: a world of 1920 by 1080 around the origin, a pointer that follows the mouse, a finger, the arrows, WASD, the directional pad and the sticks, and targets drawn from the sprites of the test project that a click, a tap or the fire button hits.
 local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -10,6 +11,11 @@ local Test = require('harness.test')
 local ComponentTest = haylen.class('ComponentTest', Test)
 
 ComponentTest.view = {1920, 1080}
+-- The line the targets stand on, and the painted strip of grass and earth under it, whose grass top sits this share of its height above that line.
+ComponentTest.groundLine = 300
+ComponentTest.groundHeight = 260
+ComponentTest.groundTop = 0.3
+ComponentTest.earth = '#FF813F1E'
 ComponentTest.actions = {actions = {
     {name = 'cursor', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'stick:right'}},
     {name = 'press', type = 'button', bindings = {'axis:rightTrigger+'}},
@@ -20,6 +26,30 @@ function ComponentTest:init(entry)
     ComponentTest.super.init(self, entry)
     self.pointer = Pointer({confined = true})
     self.order = {pivotY = 1, scaleX = 1, scaleY = 1, layer = 1}
+    self.ground = assets.texture('camera/ground.png', {filter = 'linear'})
+    self.groundOptions = {width = 0, height = ComponentTest.groundHeight, pivotX = 0, pivotY = 0, layer = -2}
+    local sky = graphics.newImage(4, 256)
+    sky:fillGradient({angle = math.pi / 2, stops = {{0, '#FF151A28'}, {1, '#FF2B3554'}}})
+    self.sky = graphics.newTexture(sky, {filter = 'linear'})
+end
+
+-- Draws the painted ground from edge to edge of the visible area, with earth below it to the bottom, so the targets stand on grass whatever the shape of the play area.
+function ComponentTest:drawGround()
+    local area = graphics2d.canvasBounds()
+    local height = ComponentTest.groundHeight
+    local width = height * self.ground.width / self.ground.height
+    local top = ComponentTest.groundLine - height * ComponentTest.groundTop
+    self.groundOptions.width = width
+    graphics2d.drawShape({area.x, area.y, area.width, top - area.y + 40}, {texture = self.sky, layer = -4})
+    for x = area.x - (area.x % width), area:right(), width do
+        graphics2d.draw(self.ground, x, top, self.groundOptions)
+    end
+    graphics2d.drawRect({area.x, top + height - 1, area.width, math.max(0, area:bottom() - top - height + 1)}, ComponentTest.earth, {layer = -3})
+end
+
+-- Draws a caption under a target, large enough to read at any size of the play area.
+function ComponentTest.name(text, x, y)
+    graphics2d.drawText(nil, text, x, y, {size = 34, anchor = {0.5, 0}, outlineWidth = 4, outlineColor = '#FF1E1B33', layer = 20})
 end
 
 function ComponentTest:enter()

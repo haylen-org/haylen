@@ -70,6 +70,7 @@ function Entity:hit(amount)
 end
 
 function Entity:draw()
+    graphics2d.drawEllipse(self.x, self.y, self.size[1] * 0.38, self.size[1] * 0.08, '#48000000', {layer = 0})
     graphics2d.draw(self.picture, self.x, self.y - self.lift, self.order)
     for _, behavior in ipairs(self.behaviors) do
         if behavior.draw then
@@ -143,9 +144,11 @@ function Composition.bob(options)
     return behavior
 end
 
--- Fires a shot at `target` every `interval` seconds, and moves and draws its own shots.
+-- Fires a shot at `target` every `interval` seconds, and moves and draws its own shots, which spin as they fly: the region `source` of the texture `shot`, or the whole texture, `size` units across.
 function Composition.shooter(options)
-    local behavior = {name = 'shooter', target = options.target, interval = options.interval or 1.2, speed = options.speed or 520, wait = options.interval or 1.2, shots = {}, color = options.color or '#FFF2B23A'}
+    local behavior = {name = 'shooter', target = options.target, interval = options.interval or 1.2, speed = options.speed or 520, wait = options.interval or 1.2, shots = {}}
+    behavior.order = {source = options.source, width = options.size or 40, height = options.size or 40, rotation = 0, layer = 3}
+    behavior.texture = options.shot
     function behavior.update(entity, dt)
         behavior.wait = behavior.wait - dt
         if behavior.wait <= 0 then
@@ -164,8 +167,10 @@ function Composition.shooter(options)
         end
     end
     function behavior.draw()
+        local order = behavior.order
         for _, shot in ipairs(behavior.shots) do
-            graphics2d.drawCircle(shot.x, shot.y, 10, behavior.color, {layer = 3})
+            order.rotation = shot.life * 9
+            graphics2d.draw(behavior.texture, shot.x, shot.y, order)
         end
     end
     return behavior
@@ -173,7 +178,7 @@ end
 
 -- Gives the entity health with a bar over its head, and hands every hit to `onHit(entity, taken)`, such as to show a label.
 function Composition.health(options)
-    local behavior = {name = 'health', bar = HealthBar.new(options.maximum or 60, {width = options.width or 120, height = 14, tick = options.tick or 0}), onHit = options.onHit}
+    local behavior = {name = 'health', bar = HealthBar.new(options.maximum or 60, {width = options.width or 140, height = 20, tick = options.tick or 0}), onHit = options.onHit}
     function behavior.update(_, dt)
         behavior.bar:update(dt)
     end

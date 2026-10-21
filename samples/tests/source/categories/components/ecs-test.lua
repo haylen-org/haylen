@@ -16,8 +16,12 @@ world:spawn({position = {x = 0, y = 0}, velocity = {x = 120, y = -40}, ball = {r
 world:system('move', {'position', 'velocity'}, function(entity, position, velocity, dt)
     position.x, position.y = position.x + velocity.x * dt, position.y + velocity.y * dt
 end)
-world:update(dt)  world:add(entity, 'gravity', {strength = 900})  world:destroy(entity)]]
+world:add(entity, 'gravity', {strength = 900})  -- Gravity now acts on it.
+world:update(dt)
+world:destroy(entity)]]
 
+-- An aging ball fades no further than this, so it stays visible until it ends.
+EcsTest.faded = 0.35
 EcsTest.colors = {{0.56, 0.69, 1}, {0.44, 0.86, 0.63}, {0.95, 0.7, 0.23}, {0.79, 0.63, 1}, {1, 0.54, 0.52}}
 
 function EcsTest:enter()
@@ -109,15 +113,26 @@ function EcsTest:addSystems()
 
     world:system('age', {'ball', 'lifetime'}, function(entity, ball, lifetime, dt)
         lifetime.left = lifetime.left - dt
-        ball.color[4] = math.max(0, math.min(1, lifetime.left / lifetime.total * 2))
+        ball.color[4] = math.max(EcsTest.faded, math.min(1, lifetime.left / lifetime.total * 2))
         if lifetime.left <= 0 then
             world:destroy(entity)
             self:spawnBall()
         end
     end)
 
+    -- A ball draws as a disc with a darker rim and a soft highlight, in tables the painter fills in place.
+    local rect, rim, shine = {0, 0, 0, 0}, {0, 0, 0, 1}, {1, 1, 1, 0}
+    local disc = {kind = 'ellipse', color = nil, borderWidth = 0, borderColor = rim, layer = 1}
+    local glint = {kind = 'ellipse', color = shine, layer = 2}
     self.painter = world:system('draw', {'position', 'ball'}, function(_, position, ball)
-        graphics2d.drawCircle(position.x, position.y, ball.radius, ball.color)
+        local radius, color = ball.radius, ball.color
+        rim[1], rim[2], rim[3], rim[4] = color[1] * 0.55, color[2] * 0.55, color[3] * 0.6, color[4]
+        rect[1], rect[2], rect[3], rect[4] = position.x - radius, position.y - radius, radius * 2, radius * 2
+        disc.color, disc.borderWidth = color, math.max(2, radius * 0.18)
+        graphics2d.drawShape(rect, disc)
+        shine[4] = color[4] * 0.55
+        rect[1], rect[2], rect[3], rect[4] = position.x - radius * 0.55, position.y - radius * 0.6, radius * 0.5, radius * 0.4
+        graphics2d.drawShape(rect, glint)
     end)
     self.painter.enabled = false
 end
@@ -147,11 +162,11 @@ function EcsTest:update(dt)
     self.world:update(dt)
     local spent = (os.clock() - started) * 1000
     local world = self.world
-    self:status(string.format('Entities %d, with "velocity" %d, "gravity" %d, "seeker" %d, "lifetime" %d, systems took %.2f ms', world.count, world:countOf('velocity'), world:countOf('gravity'), world:countOf('seeker'), world:countOf('lifetime'), spent))
+    self:status(string.format('Entities %d, of which %d have "velocity", %d "gravity", %d "seeker" and %d "lifetime", systems took %.2f ms', world.count, world:countOf('velocity'), world:countOf('gravity'), world:countOf('seeker'), world:countOf('lifetime'), spent))
 end
 
 function EcsTest:draw(area)
-    graphics2d.drawRectOutline({-950, -530, 1900, 1060}, 3, Test.line)
+    graphics2d.drawShape({-954, -534, 1908, 1068}, {radius = 18, color = '#FF181D2A', borderWidth = 4, borderColor = '#FF4A5578', layer = -1})
     self.world:runSystem(self.painter, 0)
     graphics2d.drawRing(self.pointer.worldX, self.pointer.worldY, 26, 3, Test.warm, {layer = 2})
 end

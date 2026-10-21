@@ -9,6 +9,7 @@ Charts.kinds = {'line', 'area', 'bar', 'stackedBar', 'pie', 'donut', 'scatter', 
 Charts.palette = {{0.24, 0.61, 0.88}, {0.21, 0.7, 0.49}, {0.91, 0.66, 0.23}, {0.9, 0.33, 0.29}, {0.66, 0.5, 0.88}, {0.31, 0.79, 0.77}, {0.94, 0.49, 0.3}, {0.61, 0.71, 0.8}}
 Charts.colors = {text = {0.54, 0.6, 0.68, 1}, grid = {0.15, 0.2, 0.26, 1}, axis = {0.3, 0.36, 0.44, 1}, rise = {0.21, 0.7, 0.49, 1}, fall = {0.9, 0.33, 0.29, 1}, empty = {0.2, 0.24, 0.3, 1}}
 Charts.limit = 1e15
+Charts.textSize = 18
 
 local Chart = {}
 Chart.__index = Chart
@@ -33,6 +34,14 @@ function Charts.format(value)
         return string.format('%d', math.floor(value + 0.5))
     end
     return (string.format('%.2f', value):gsub('0+$', ''):gsub('%.$', ''))
+end
+
+-- Writes a value with as many decimals as a span of values needs, so the two ends of an axis read alike: none from a span of 10 on, one from 1 and two below.
+function Charts.formatSpan(value, span)
+    if math.abs(value) >= 1e3 then
+        return Charts.format(value)
+    end
+    return string.format(span >= 10 and '%.0f' or span >= 1 and '%.1f' or '%.2f', value)
 end
 
 -- Returns a scale with round ends and a round step that covers `low` to `high` in about `count` steps, which also works when both are equal or zero.
@@ -77,7 +86,7 @@ function Chart:add(item)
 end
 
 function Chart:text(text, x, y, anchor, color)
-    return self:add({'text', text, x, y, {size = 16, color = color or Charts.colors.text, anchor = anchor or {0.5, 0.5}, layer = 3}})
+    return self:add({'text', text, x, y, {size = Charts.textSize, color = color or Charts.colors.text, anchor = anchor or {0.5, 0.5}, layer = 3}})
 end
 
 function Chart:message(text, rect)
@@ -214,7 +223,9 @@ function Chart:layoutBars(rect)
         local value = Charts.finite(values[index])
         if value then
             local from, to = y(0), y(value)
-            self:add({'shape', {left + slot * (index - 1) + slot * 0.15, math.min(from, to), slot * 0.7, math.max(1, math.abs(to - from))}, {radius = 3, color = value < 0 and Charts.colors.fall or color(1), layer = 2}})
+            -- Only the end away from zero is round, so a bar stands square on the axis.
+            local corners = value < 0 and {0, 0, 3, 3} or {3, 3, 0, 0}
+            self:add({'shape', {left + slot * (index - 1) + slot * 0.15, math.min(from, to), slot * 0.7, math.max(1, math.abs(to - from))}, {radius = corners, color = value < 0 and Charts.colors.fall or color(1), layer = 2}})
         end
     end
     self:categoryLabels(left, width, #values, top, height)
@@ -278,9 +289,14 @@ function Chart:layoutPie(rect, hole)
     if total <= 0 then
         return self:message('No data', rect)
     end
-    local radius = math.min(rect[3], rect[4]) / 2 - 26
-    local centerX, centerY = rect[1] + rect[3] / 2, rect[2] + rect[4] / 2
+    -- With labels and room beside it, the pie moves to the left and a legend names every slice with its share.
+    local labels = self.options.labels
+    local legend = labels and rect[3] > rect[4] * 1.3
+    local pie = legend and {rect[1], rect[2], rect[3] * 0.5, rect[4]} or rect
+    local radius = math.min(pie[3], pie[4]) / 2 - (legend and 10 or 26)
+    local centerX, centerY = pie[1] + pie[3] / 2, pie[2] + pie[4] / 2
     local angle = -math.pi / 2
+    local entries = 0
     for index = 1, #self.data do
         local value = Charts.finite(self.data[index])
         if value and value > 0 then
@@ -290,15 +306,39 @@ function Chart:layoutPie(rect, hole)
             else
                 self:add({'shape', {centerX - radius, centerY - radius, radius * 2, radius * 2}, {kind = 'ellipse', startAngle = angle, sweep = sweep, color = color(index), layer = 2}})
             end
-            local middle = angle + sweep / 2
-            if sweep > 0.4 then
-                self:text(string.format('%d%%', math.floor(value / total * 100 + 0.5)), centerX + math.cos(middle) * (radius + 16), centerY + math.sin(middle) * (radius + 16))
+            local share = string.format('%d%%', math.floor(value / total * 100 + 0.5))
+            if legend then
+                entries = entries + 1
+                self:add({'legend', index, share, labels[index] and tostring(labels[index]) or ''})
+            elseif sweep > 0.4 then
+                local middle = angle + sweep / 2
+                self:text(share, centerX + math.cos(middle) * (radius + 16), centerY + math.sin(middle) * (radius + 16))
             end
             angle = angle + sweep
         end
     end
     if hole then
         self:text(Charts.format(total), centerX, centerY, {0.5, 0.5}, {0.9, 0.92, 0.95, 1})
+    end
+    if legend then
+        self:placeLegend(rect[1] + rect[3] * 0.54, rect[2] + rect[4] / 2, rect[1] + rect[3] - 12, entries)
+    end
+end
+
+-- Turns the legend entries of a pie into a swatch, a name and a share per row, centered on `y` between `x` and `right` beside the pie.
+function Chart:placeLegend(x, y, right, count)
+    local row = Charts.textSize * 1.6
+    local top = y - row * count / 2
+    local line = 0
+    for slot = 1, #self.items do
+        local item = self.items[slot]
+        if item[1] == 'legend' then
+            local rowY = top + row * line + row / 2
+            line = line + 1
+            self.items[slot] = {'shape', {x, rowY - 7, 14, 14}, {radius = 4, color = color(item[2]), layer = 2}}
+            self:text(item[4], x + 24, rowY, {0, 0.5})
+            self:text(item[3], right, rowY, {1, 0.5}, Charts.colors.text)
+        end
     end
 end
 
@@ -342,7 +382,7 @@ function Chart:layoutRadar(rect)
     if maximum <= 0 then
         maximum = 1
     end
-    local radius = math.min(rect[3], rect[4]) / 2 - 30
+    local radius = math.min(rect[3], rect[4]) / 2 - Charts.textSize * 1.3
     local centerX, centerY = rect[1] + rect[3] / 2, rect[2] + rect[4] / 2
     local function corner(index, share)
         local angle = -math.pi / 2 + (index - 1) / count * math.pi * 2
@@ -362,8 +402,10 @@ function Chart:layoutRadar(rect)
         local x, y = corner(index, 1)
         self:add({'line', centerX, centerY, x, y, 1, Charts.colors.grid, {layer = 1}})
         if labels[index] then
-            local labelX, labelY = corner(index, 1.24)
-            self:text(tostring(labels[index]), labelX, labelY)
+            -- A name sits just past the end of its axis and leans away from the center, so it never covers the web.
+            local angle = -math.pi / 2 + (index - 1) / count * math.pi * 2
+            local labelX, labelY = corner(index, 1)
+            self:text(tostring(labels[index]), labelX + math.cos(angle) * 8, labelY + math.sin(angle) * 8, {0.5 - math.cos(angle) * 0.5, 0.5 - math.sin(angle) * 0.5})
         end
         -- Negative and missing values sit at the center, and values past the maximum at the edge.
         local share = math.max(0, math.min(1, (Charts.finite(values[index]) or 0) / maximum))
@@ -404,8 +446,9 @@ function Chart:layoutHistogram(rect)
             self:add({'shape', {left + slot * (index - 1) + 1, plotTop + height - barHeight, slot - 2, barHeight}, {color = color(6), layer = 2}})
         end
     end
-    self:text(Charts.format(low), left, plotTop + height + 16, {0, 0.5})
-    self:text(Charts.format(high), left + width, plotTop + height + 16, {1, 0.5})
+    -- Both ends of the axis show the same number of decimals, chosen by the span between them.
+    self:text(Charts.formatSpan(low, high - low), left, plotTop + height + 16, {0, 0.5})
+    self:text(Charts.formatSpan(high, high - low), left + width, plotTop + height + 16, {1, 0.5})
 end
 
 function Chart:layoutCandles(rect)
