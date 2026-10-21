@@ -62,7 +62,7 @@ function Home:layoutChanged(wide)
                 },
             },
             ui.label{text = 'Good evening, Rosa', font = 'title', style = Style.text('title', Style.type.heading)},
-            ui.button{id = 'whereTo', text = 'Where to?', icon = Shell.icon('search'), iconColor = 'text', justify = 'start', align = 'stretch', height = 72, autofocus = true, style = Home.searchBar, onClick = function()
+            ui.button{id = 'whereTo', text = 'Where are you going?', icon = Shell.icon('search'), iconColor = 'text', justify = 'start', align = 'stretch', height = 72, autofocus = true, style = Home.searchBar, onClick = function()
                 Shell.open(require('screens.search'))
             end},
             ui.row(places),

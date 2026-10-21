@@ -22,7 +22,7 @@ On the headless platform the app runs a tour by itself: it searches a destinatio
 
 | Screen | What it shows |
 | --- | --- |
-| Map | The map with the traffic and the rider, the round buttons of the menu and of the rider's place, and a sheet that asks where to, with the saved places, the recent destinations and the ride in progress. |
+| Map | The map with the traffic and the rider, the round buttons of the menu and of the rider's place, and a sheet that asks where the rider is going, with the saved places, the recent destinations and the ride in progress. |
 | Search | The pickup and the destination joined by a line, and a field that narrows the 565 places of the city in a recycled list as the person types, with the saved places first. |
 | Ride | The route on the map with the pickup and the destination, and a sheet with the six kinds of ride with their prices and times, the payment and the request. |
 | Trip | The radar while the app looks for a driver, the car of the driver coming to the pickup, waiting and riding the route, under a sheet with the stage, the minutes left in large numbers, the progress of the trip, the driver and the plate, the messages, the safety tools, the share and the cancel, and the rating with a tip at the end. |

@@ -27,7 +27,7 @@ function Search:enter()
                     ui.button{id = 'pickup', text = Places.here.name .. ', ' .. Places.here.line, justify = 'start', align = 'stretch', style = {colors = {raised = Style.color.mist, border = Style.color.mist}, fonts = {button = {bold = false}}}, onClick = function()
                         Shell.notify('Your pickup follows where you are.')
                     end},
-                    ui.filterField{id = 'query', placeholder = 'Where to?', returnKey = 'search', style = {colors = {raised = Style.color.mist}, metrics = {borderWidth = 2}}, onChange = function(event)
+                    ui.filterField{id = 'query', placeholder = 'Where are you going?', returnKey = 'search', style = {colors = {raised = Style.color.mist}, metrics = {borderWidth = 2}}, onChange = function(event)
                         self.query = string.lower(event.value)
                         self:refresh()
                     end, onSubmit = function()

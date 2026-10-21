@@ -17,9 +17,9 @@ Rides.speed = 150
 Rides.kinds = {
     {id = 'bike', name = 'Bike', art = 'rides/bike.svg', seats = 1, base = 1.2, perKilometer = 0.55, minutes = 2, note = 'Quick through traffic'},
     {id = 'compact', name = 'Compact', art = 'rides/compact.svg', seats = 4, base = 2.5, perKilometer = 0.95, minutes = 3, note = 'Affordable everyday rides'},
-    {id = 'green', name = 'Green', art = 'rides/green.svg', seats = 4, base = 2.8, perKilometer = 1.0, minutes = 5, note = 'Electric cars only'},
-    {id = 'comfort', name = 'Comfort', art = 'rides/comfort.svg', seats = 4, base = 3.5, perKilometer = 1.25, minutes = 4, note = 'Newer cars with extra legroom'},
-    {id = 'xl', name = 'XL', art = 'rides/xl.svg', seats = 6, base = 4.5, perKilometer = 1.6, minutes = 7, note = 'Room for groups and luggage'},
+    {id = 'electric', name = 'Electric', art = 'rides/electric.svg', seats = 4, base = 2.8, perKilometer = 1.0, minutes = 5, note = 'Quiet electric cars'},
+    {id = 'roomy', name = 'Roomy', art = 'rides/roomy.svg', seats = 4, base = 3.5, perKilometer = 1.25, minutes = 4, note = 'Newer cars with extra legroom'},
+    {id = 'van', name = 'Van', art = 'rides/van.svg', seats = 6, base = 4.5, perKilometer = 1.6, minutes = 7, note = 'Room for groups and luggage'},
     {id = 'premium', name = 'Premium', art = 'rides/premium.svg', seats = 4, base = 7, perKilometer = 2.2, minutes = 6, note = 'Top rated drivers in black cars'},
 }
 

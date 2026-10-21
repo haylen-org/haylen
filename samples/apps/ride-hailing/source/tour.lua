@@ -17,7 +17,7 @@ function Tour.steps()
         {'Search a destination', function() Shell.open(require('screens.search')) end},
         {'Type a place', function() local page = scene.top() page.query = 'museum' page.gui:set('query', {value = 'museum'}) page:refresh() end},
         {'Preview the route', function() scene.top():pick(scene.top().shown[1].id) end},
-        {'Pick a ride', function() local page = scene.top() page.gui:collection('kinds'):focus('comfort') page:pickKind('comfort') end},
+        {'Pick a ride', function() local page = scene.top() page.gui:collection('kinds'):focus('roomy') page:pickKind('roomy') end},
         {'Request the ride', function() scene.top():request() end},
         {'Find a driver', function() end},
         {'Driver on the way', function() Rides.current.elapsed = Rides.stageStart(Rides.current, 2) + 2 end},
