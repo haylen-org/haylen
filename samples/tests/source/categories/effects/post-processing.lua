@@ -75,7 +75,9 @@ end
 function PostProcessing:init(entry)
     PostProcessing.super.init(self, entry)
     self.scenery = Scenery()
-    self.robot = assets.texture('sprites/images/hero.png', {filter = 'linear'})
+    self.knight = assets.texture('sprites/images/hero.png', {filter = 'linear'})
+    self.firewood = assets.texture('effects/campfire.png', {filter = 'linear'})
+    self.torchImage = assets.texture('effects/torch.png', {filter = 'linear'})
     self.luts = {}
     for _, grade in ipairs(PostProcessing.grades) do
         if grade.grade then
@@ -83,7 +85,7 @@ function PostProcessing:init(entry)
         end
     end
     self.campfire = PostProcessing.newSystem('fire/campfire-realistic')
-    self.campfire.position = {-560, Scenery.ground - 30}
+    self.campfire.position = {-560, Scenery.ground - 40}
     self.campfire.scale = 2
     self.neon = PostProcessing.newSystem('fire/neon-flame')
     self.neon.position = {560, Scenery.ground - 30}
@@ -95,11 +97,14 @@ function PostProcessing:init(entry)
     self.systems = {self.campfire, self.neon, self.torch, self.burst}
     self.enabled = true
     self.post = {}
-    self:apply(PostProcessing.presets[1])
+    -- The dream preset is on as the test opens, so the chain shows at once.
+    self.preset = PostProcessing.presets[2]
+    self:apply(self.preset)
 end
 
--- Sets every value to its default and then to the values of the preset.
+-- Sets every value to its default and then to the values of the preset, whose button shows as the chosen one.
 function PostProcessing:apply(preset)
+    self.preset = preset
     for key, value in pairs(PostProcessing.defaults) do
         self.post[key] = value
     end
@@ -111,7 +116,16 @@ function PostProcessing:apply(preset)
     self.post.colorLut = self.luts[self.grade]
 end
 
+-- Shows which preset set the values, or none once a control changes one of them.
+function PostProcessing:markPreset(preset)
+    self.preset = preset
+    for _, each in ipairs(PostProcessing.presets) do
+        self:set(each.id, {variant = each == preset and 'primary' or 'default'})
+    end
+end
+
 function PostProcessing:showValues()
+    self:markPreset(self.preset)
     for _, slider in ipairs(PostProcessing.sliders) do
         self:set(slider[1], {value = self.post[slider[1]]})
     end
@@ -124,7 +138,7 @@ function PostProcessing:enter()
     local presets = {{}, {}}
     for index, preset in ipairs(PostProcessing.presets) do
         local row = presets[(index + 1) // 2]
-        row[#row + 1] = ui.button{id = preset.id, text = preset.text, grow = 1, onClick = function()
+        row[#row + 1] = ui.button{id = preset.id, text = preset.text, grow = 1, variant = preset == self.preset and 'primary' or 'default', onClick = function()
             self:apply(preset)
             self:showValues()
         end}
@@ -138,7 +152,7 @@ function PostProcessing:enter()
         ui.row{gap = 8, children = presets[2]},
         ui.toggle{id = 'enabled', text = 'Post-processing on', checked = self.enabled, onChange = function(event) self.enabled = event.checked end},
         ui.toggle{id = 'dither', text = 'Dither the gradients', checked = self.post.dither, onChange = function(event) self.post.dither = event.checked end},
-        ui.formField{label = 'Color grading', ui.radioGroup{id = 'grade', items = grades, selected = self.grade, onChange = function(event)
+        ui.formField{label = 'Color grading', ui.combo{id = 'grade', items = grades, selected = self.grade, onChange = function(event)
             self.grade = event.value
             self.post.colorLut = self.luts[event.value]
         end}},
@@ -147,10 +161,11 @@ function PostProcessing:enter()
         local key = slider[1]
         controls[#controls + 1] = ui.formField{label = slider[2], ui.slider{id = key, min = slider[3], max = slider[4], value = self.post[key], showValue = true, decimals = slider[5], onChange = function(event)
             self.post[key] = event.value
+            self:markPreset(nil)
         end}}
     end
     self:frame{
-        hint = 'The torch follows the cursor, and a click, a tap, E, Enter, Space or the south button sets off a bright burst there.',
+        hint = 'The torch follows the cursor, and a click, a tap, E, Enter, Space or the south button sets off a bright burst there. The presets set every value at once.',
         code = PostProcessing.code,
         cursor = true,
         controls = controls,
@@ -160,14 +175,14 @@ end
 function PostProcessing:update(dt)
     PostProcessing.super.update(self, dt)
     self.scenery:update(dt)
-    self.torch.position = {self.cursorX, self.cursorY}
+    self.torch.position = {self.cursorX + 8, self.cursorY - 62}
     if self.stage and self:pressed() then
         self.burst.position = {self.cursorX, self.cursorY}
         self.burst:restart()
     end
     ParticleTest.updateAll(self.systems, dt)
     local stats = graphics2d.stats()
-    self:report('Passes %d   Draw calls %d   Grading "%s"   Bloom %.2f   Blur %.1f', stats.passes, stats.drawCalls, self.grade, self.post.bloomStrength, self.post.blur)
+    self:report('Preset "%s", %d passes, %d draw calls, grading "%s", bloom %.2f, blur %.1f', self.preset and self.preset.text or 'custom', stats.passes, stats.drawCalls, self.grade, self.post.bloomStrength, self.post.blur)
 end
 
 function PostProcessing:render()
@@ -181,7 +196,9 @@ end
 
 function PostProcessing:draw(area)
     self.scenery:draw()
-    graphics2d.draw(self.robot, 0, Scenery.ground, {scaleX = 1.3, scaleY = 1.3, pivotY = 1, layer = 1})
+    graphics2d.draw(self.knight, 0, Scenery.ground, {scaleX = 1.3, scaleY = 1.3, pivotY = 1, layer = 1})
+    graphics2d.draw(self.firewood, -560, Scenery.ground + 6, {width = 256, height = 160, pivotY = 1, layer = -1})
+    graphics2d.draw(self.torchImage, self.cursorX, self.cursorY, {width = 72, height = 192, pivotY = 0.3, rotation = 0.12, layer = -1})
     ParticleTest.drawAll(self.systems)
 end
 

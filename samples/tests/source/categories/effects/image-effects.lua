@@ -11,17 +11,21 @@ local ImageEffects = haylen.class('ImageEffects', Test)
 
 ImageEffects.code = [[
 local picture = assets.load('interface/images/landscape.png', 'image')
-local copy = picture:applyAsync({{effect = 'blur', radius = 4}, {effect = 'adjust', brightness = 0.1, contrast = 1.2, saturation = 1.3, hue = 0}, {effect = 'pixelate', size = 6}}):await()
-local outlined = sprite:applyAsync({{effect = 'outline', color = '#FF1E2A44', thickness = 4}}):await()
-texture = graphics.newTexture(copy, {filter = 'linear'})]]
+local copy = picture:applyAsync({
+    {effect = 'blur', radius = 3},
+    {effect = 'adjust', brightness = 0, contrast = 1.15, saturation = 1.4, hue = 0},
+}):await()  -- On the task pool, so the frame never waits.
+texture = graphics.newTexture(copy, {filter = 'linear'})
+local outlined = sprite:applyAsync({{effect = 'outline', color = '#FF1E2A44', thickness = 4}}):await()]]
 
 ImageEffects.view = {1600, 860}
+-- The copy opens with a light blur and livelier colors, so it differs from the picture at once.
 ImageEffects.sliders = {
-    {'blur', 'Blur radius', 0, 16, 0, 1},
+    {'blur', 'Blur radius', 0, 16, 3, 1},
     {'sharpen', 'Sharpen', 0, 3, 0, 0.1},
     {'brightness', 'Brightness', -0.5, 0.5, 0, 0.05},
-    {'contrast', 'Contrast', 0, 2, 1, 0.05},
-    {'saturation', 'Saturation', 0, 2, 1, 0.05},
+    {'contrast', 'Contrast', 0, 2, 1.15, 0.05},
+    {'saturation', 'Saturation', 0, 2, 1.4, 0.05},
     {'hue', 'Hue turns', -0.5, 0.5, 0, 0.01},
     {'pixelate', 'Pixel size', 1, 24, 1, 1},
     {'outline', 'Outline of the sprite', 0, 12, 4, 1},
@@ -52,6 +56,7 @@ function ImageEffects:enter()
     self.picture = assets.load('interface/images/landscape.png', 'image')
     self.sprite = assets.load('sprites/images/hero.png', 'image')
     self.original = graphics.newTexture(self.picture, {filter = 'linear'})
+    self.spriteTexture = graphics.newTexture(self.sprite, {filter = 'linear'})
     self.waiting = 0
     self:apply()
 end
@@ -84,20 +89,26 @@ end
 
 function ImageEffects:update(dt)
     ImageEffects.super.update(self, dt)
-    self:status(string.format('Effects working %d   Request %d', self.waiting, self.request))
+    self:status(string.format('%d copies being made on the task pool, %d asked for so far', self.waiting, self.request))
 end
 
 function ImageEffects:draw(area)
-    local width, height = 620, 349
-    ImageEffects.caption('The picture', -760, -400)
-    graphics2d.draw(self.original, -760, -370, {width = width, height = height, pivotX = 0, pivotY = 0})
-    ImageEffects.caption('Its copy with the effects', -100, -400)
+    local width, height = 700, 394
+    ImageEffects.caption('The picture', -760, -410, {size = 26, color = Test.ink})
+    graphics2d.drawShape({-760, -372, width, height}, {radius = 14, texture = self.original})
+    ImageEffects.caption('Its copy with the effects', 60, -410, {size = 26, color = Test.ink})
     if self.result then
-        graphics2d.draw(self.result, -100, -370, {width = width, height = height, pivotX = 0, pivotY = 0})
+        graphics2d.drawShape({60, -372, width, height}, {radius = 14, texture = self.result})
     end
-    ImageEffects.caption('A sprite with outlines drawn into its image', -760, 30)
+
+    -- The sprite stands beside its copy, whose outlines are pixels of the image and not an effect of the draw.
+    local spriteHeight = 300
+    local spriteWidth = spriteHeight * self.sprite.width / self.sprite.height
+    ImageEffects.caption('The sprite', -760, 62, {size = 26, color = Test.ink})
+    graphics2d.draw(self.spriteTexture, -760 + width / 2, 420, {width = spriteWidth, height = spriteHeight, pivotY = 1})
+    ImageEffects.caption('With outlines drawn into its image', 60, 62, {size = 26, color = Test.ink})
     if self.outlined then
-        graphics2d.draw(self.outlined, -560, 240, {width = self.sprite.width * 2, height = self.sprite.height * 2})
+        graphics2d.draw(self.outlined, 60 + width / 2, 420, {width = spriteWidth * self.outlined.width / self.sprite.width, height = spriteHeight * self.outlined.height / self.sprite.height, pivotY = 1})
     end
 end
 

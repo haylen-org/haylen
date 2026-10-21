@@ -11,14 +11,14 @@ local OutlineGlow = haylen.class('OutlineGlow', ParticleTest)
 
 OutlineGlow.code = [[
 graphics2d.draw(texture, x, y, {pivotY = 1, effect = {outlineWidth = 8, outlineColor = '#FFFFC830'}})
-graphics2d.draw(texture, x, y, {pivotY = 1, effect = {glowSize = 36, glowColor = '#E040E0FF'}})]]
+graphics2d.draw(texture, x, y, {pivotY = 1, effect = {glowSize = 36, glowColor = '#E0FFC040'}})]]
 
 OutlineGlow.subjects = {
-    {name = 'Robot', path = 'sprites/images/hero.png', x = -720, scale = 1.3, glowing = true},
+    {name = 'Knight', path = 'sprites/images/hero.png', x = -720, scale = 1.3, glowing = true},
     {name = 'Bunny', path = 'sprites/images/bunny.png', x = -360, scale = 2.5},
     {name = 'Tree', path = 'sprites/images/tree.png', x = 0, scale = 1.6},
     {name = 'Rock', path = 'sprites/images/rock.png', x = 360, scale = 2.25, glowing = true},
-    {name = 'Planet', path = 'shaders/images/planet.png', x = 720, scale = 0.45, y = 190, pivotY = 0.5},
+    {name = 'Chest', path = 'tiled/tiles/terrain.png', source = {662, 266, 128, 128}, x = 720, scale = 1.5, pivotY = 0.92},
 }
 OutlineGlow.outlineColors = {
     {id = 'white', text = 'White', color = '#FFFFFFFF'},
@@ -66,7 +66,7 @@ function OutlineGlow:init(entry)
             subject = subject,
             texture = assets.texture(subject.path, {filter = 'linear'}),
             glowing = subject.glowing == true,
-            options = {scaleX = subject.scale, scaleY = subject.scale, pivotY = subject.pivotY or 1, layer = 2, effect = {}},
+            options = {source = subject.source, scaleX = subject.scale, scaleY = subject.scale, pivotY = subject.pivotY or 1, layer = 2, effect = {}},
         }
     end
 end
@@ -83,13 +83,13 @@ function OutlineGlow:enter()
             ui.formField{label = 'Outline width in pixels', ui.slider{id = 'outlineWidth', min = 1, max = 24, value = self.outlineWidth, showValue = true, decimals = 1, onChange = function(event)
                 self.outlineWidth = event.value
             end}},
-            ui.formField{label = 'Outline color', ui.radioGroup{id = 'outlineColor', items = OutlineGlow.items(OutlineGlow.outlineColors), selected = OutlineGlow.outlineColors[1].id, onChange = function(event)
+            ui.formField{label = 'Outline color', ui.combo{id = 'outlineColor', items = OutlineGlow.items(OutlineGlow.outlineColors), selected = OutlineGlow.outlineColors[1].id, onChange = function(event)
                 self.outlineColor = OutlineGlow.colorOf(OutlineGlow.outlineColors, event.value)
             end}},
             ui.formField{label = 'Glow size in pixels', ui.slider{id = 'glowSize', min = 2, max = 64, value = self.glowSize, showValue = true, decimals = 0, onChange = function(event)
                 self.glowSize = event.value
             end}},
-            ui.formField{label = 'Glow color', ui.radioGroup{id = 'glowColor', items = OutlineGlow.items(OutlineGlow.glowColors), selected = OutlineGlow.glowColors[1].id, onChange = function(event)
+            ui.formField{label = 'Glow color', ui.combo{id = 'glowColor', items = OutlineGlow.items(OutlineGlow.glowColors), selected = OutlineGlow.glowColors[1].id, onChange = function(event)
                 self.glowColor = OutlineGlow.colorOf(OutlineGlow.glowColors, event.value)
             end}},
         },
@@ -101,7 +101,7 @@ function OutlineGlow:pointed()
     local best, distance = nil, OutlineGlow.reach
     for _, state in ipairs(self.subjectStates) do
         local subject = state.subject
-        local middle = Scenery.ground - (subject.y or state.texture.height * subject.scale / 2)
+        local middle = Scenery.ground - (subject.source and subject.source[4] or state.texture.height) * subject.scale / 2
         local away = math.sqrt((subject.x - self.cursorX) ^ 2 + (middle - self.cursorY) ^ 2)
         if away < distance then
             best, distance = state, away
@@ -132,17 +132,11 @@ function OutlineGlow:update(dt)
             glowing = glowing + 1
         end
     end
-    self:report('Pointed at %s   Glowing %d   Outline %.1f px   Glow %.1f px', self.target and self.target.subject.name or 'nothing', glowing, self.outlineWidth, glow)
+    self:report('Pointed at %s, %d glowing, outline %.1f px, glow %.1f px', self.target and 'the ' .. self.target.subject.name:lower() or 'nothing', glowing, self.outlineWidth, glow)
 end
 
 function OutlineGlow:draw(area)
-    if self.night then
-        local area = graphics2d.canvasBounds()
-        ParticleTest.backdrop({0.03, 0.04, 0.09}, {0.08, 0.08, 0.16})
-        graphics2d.drawRect({area.x, Scenery.ground, area.width, area:bottom() - Scenery.ground}, '#FF15192A', {layer = -4})
-    else
-        self.scenery:draw()
-    end
+    self.scenery:draw(self.night)
     for _, state in ipairs(self.subjectStates) do
         local subject = state.subject
         graphics2d.draw(state.texture, subject.x, Scenery.ground - (subject.y or 0), state.options)

@@ -1,4 +1,4 @@
--- Heat haze and shock rings: draws with a `distortion` bend the image of a canvas with post-processing instead of drawing colors. Small rising blobs of the library effect `heat-haze` shimmer above a campfire, a press sends a ring of `shockwave-distortion` across the landscape from the cursor, the shield of a robot ripples with `shield-ripple-distortion`, and a glass bubble with a sharp rim follows the cursor.
+-- Heat haze and shock rings: draws with a `distortion` bend the image of a canvas with post-processing instead of drawing colors. Small rising blobs of the library effect `heat-haze` shimmer above a campfire, a press sends a ring of `shockwave-distortion` across the landscape from the cursor, the shield of a knight ripples with `shield-ripple-distortion`, and a glass bubble with a sharp rim follows the cursor.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -18,7 +18,7 @@ graphics2d.draw(bubble, x, y, {width = 280, height = 280, distortion = 0.8})]]
 
 Distortion.library = 'particles/library/'
 Distortion.rings = 4
-Distortion.fire = {-520, 360}
+Distortion.fire = {-300, Scenery.ground}
 Distortion.shield = {460, 250}
 Distortion.shieldInterval = 1.4
 
@@ -29,11 +29,12 @@ end
 function Distortion:init(entry)
     Distortion.super.init(self, entry)
     self.scenery = Scenery()
-    self.robot = assets.texture('sprites/images/hero.png', {filter = 'linear'})
+    self.knight = assets.texture('sprites/images/hero.png', {filter = 'linear'})
+    self.firewood = assets.texture('effects/campfire.png', {filter = 'linear'})
     self.bubble = ParticleTest.look('hard-dot', {})
     self.campfire = Distortion.newSystem('fire/campfire-realistic')
     self.haze = Distortion.newSystem('fire/heat-haze')
-    self.campfire.position, self.haze.position = Distortion.fire, {Distortion.fire[1], Distortion.fire[2] - 140}
+    self.campfire.position, self.haze.position = {Distortion.fire[1], Distortion.fire[2] - 40}, {Distortion.fire[1], Distortion.fire[2] - 180}
     self.campfire.scale = 2
     self.shield = Distortion.newSystem('scifi/shield-ripple-distortion')
     self.shield.position = Distortion.shield
@@ -97,7 +98,7 @@ function Distortion:update(dt)
     self.haze:update(dt)
     self.shield:update(dt)
     local rings = ParticleTest.updateAll(self.rings, dt)
-    self:report('Bend distance %.0f   Haze particles %d   Shield rings %d   Shock rings %d', self.post.distortion, self.haze.count, self.shield.count, rings)
+    self:report('Bend distance %.0f, %d particles of haze, %d rings on the shield and %d shock rings', self.post.distortion, self.haze.count, self.shield.count, rings)
 end
 
 function Distortion:render()
@@ -110,7 +111,8 @@ end
 
 function Distortion:draw(area)
     self.scenery:draw()
-    graphics2d.draw(self.robot, Distortion.shield[1], Scenery.ground, {scaleX = 1.2, scaleY = 1.2, pivotY = 1, layer = 1})
+    graphics2d.draw(self.knight, Distortion.shield[1], Scenery.ground, {scaleX = 1.2, scaleY = 1.2, pivotY = 1, layer = 1})
+    graphics2d.draw(self.firewood, Distortion.fire[1], Distortion.fire[2] + 6, {width = 256, height = 160, pivotY = 1, layer = -1})
     ParticleTest.label('Shield', Distortion.shield[1], Scenery.ground + 20)
     ParticleTest.label('Campfire', Distortion.fire[1], Scenery.ground + 20)
     self.campfire:draw()

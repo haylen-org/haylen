@@ -16,10 +16,10 @@ options.effect.dissolve = m.moveToward(options.effect.dissolve, 1, dt / 1.2)  --
 graphics2d.draw(texture, x, y, options)]]
 
 Dissolve.subjects = {
-    {name = 'Robot', path = 'sprites/images/hero.png', x = -600, scale = 1.4},
+    {name = 'Knight', path = 'sprites/images/hero.png', x = -600, scale = 1.4},
     {name = 'Rock', path = 'sprites/images/rock.png', x = -200, scale = 2.25},
     {name = 'Tree', path = 'sprites/images/tree.png', x = 200, scale = 1.7},
-    {name = 'Planet', path = 'shaders/images/planet.png', x = 620, scale = 0.55, y = 200, pivotY = 0.5},
+    {name = 'Chest', path = 'tiled/tiles/terrain.png', source = {662, 266, 128, 128}, x = 600, scale = 1.6, pivotY = 0.92},
 }
 Dissolve.edgeColors = {
     {id = 'embers', text = 'Embers', color = '#FFFF9A30'},
@@ -28,12 +28,16 @@ Dissolve.edgeColors = {
     {id = 'none', text = 'No edge color', color = '#00000000'},
 }
 Dissolve.hold = 0.7
+-- By themselves the sprites take turns, one dissolving and coming back at a time, after a short wait as the test opens.
+Dissolve.firstWait = 0.6
 
 function Dissolve:init(entry)
     Dissolve.super.init(self, entry)
     self.scenery = Scenery()
     self.automatic = true
     self.duration = 1.2
+    self.turn, self.wait = 1, Dissolve.firstWait
+    self.labelStyle = {size = 30, anchor = {0.5, 0}, outlineWidth = 3, color = {1, 1, 1, 1}, outlineColor = {0, 0, 0, 1}, layer = 20}
     self.subjectStates = {}
     for index, subject in ipairs(Dissolve.subjects) do
         local effect = {dissolve = 0, dissolveEdge = 0.08, dissolveSize = 10, dissolveColor = Dissolve.edgeColors[1].color}
@@ -41,8 +45,7 @@ function Dissolve:init(entry)
             subject = subject,
             texture = assets.texture(subject.path, {filter = 'linear'}),
             target = 0,
-            wait = index * 0.35,
-            options = {scaleX = subject.scale, scaleY = subject.scale, pivotY = subject.pivotY or 1, layer = 2, effect = effect},
+            options = {source = subject.source, scaleX = subject.scale, scaleY = subject.scale, pivotY = subject.pivotY or 1, layer = 2, effect = effect},
         }
     end
 end
@@ -75,7 +78,7 @@ function Dissolve:enter()
             ui.formField{label = 'Noise cell size in pixels', ui.slider{id = 'size', min = 1, max = 48, value = first.dissolveSize, showValue = true, decimals = 0, onChange = function(event)
                 self:configure('dissolveSize', event.value)
             end}},
-            ui.formField{label = 'Edge color', ui.radioGroup{id = 'color', items = colors, selected = Dissolve.edgeColors[1].id, onChange = function(event)
+            ui.formField{label = 'Edge color', ui.combo{id = 'color', items = colors, selected = Dissolve.edgeColors[1].id, onChange = function(event)
                 for _, edge in ipairs(Dissolve.edgeColors) do
                     if edge.id == event.value then
                         self:configure('dissolveColor', edge.color)
@@ -103,31 +106,49 @@ function Dissolve:update(dt)
     if self.stage and self:pressed() then
         local state = self:nearest()
         state.target = 1 - state.target
-        state.wait = Dissolve.hold
     end
 
     for _, state in ipairs(self.subjectStates) do
         local effect = state.options.effect
         effect.dissolve = m.moveToward(effect.dissolve, state.target, dt / self.duration)
-        if self.automatic and effect.dissolve == state.target then
-            state.wait = state.wait - dt
-            if state.wait <= 0 then
-                state.target = 1 - state.target
-                state.wait = Dissolve.hold
-            end
-        end
+    end
+    if self.automatic then
+        self:takeTurns(dt)
     end
 
     local states = self.subjectStates
-    self:report('Dissolve %.2f, %.2f, %.2f, %.2f   Edge %.2f   Cell %.0f px', states[1].options.effect.dissolve, states[2].options.effect.dissolve, states[3].options.effect.dissolve, states[4].options.effect.dissolve, states[1].options.effect.dissolveEdge, states[1].options.effect.dissolveSize)
+    self:report('Dissolved %.2f, %.2f, %.2f and %.2f, edge %.2f, cells of %.0f px', states[1].options.effect.dissolve, states[2].options.effect.dissolve, states[3].options.effect.dissolve, states[4].options.effect.dissolve, states[1].options.effect.dissolveEdge, states[1].options.effect.dissolveSize)
 end
 
+-- The sprite whose turn it is dissolves, waits gone, comes back and waits whole, and then the next one takes its turn.
+function Dissolve:takeTurns(dt)
+    local state = self.subjectStates[self.turn]
+    if state.options.effect.dissolve ~= state.target then
+        return
+    end
+    self.wait = self.wait - dt
+    if self.wait > 0 then
+        return
+    end
+    self.wait = Dissolve.hold
+    if state.target == 0 then
+        state.target = 1
+        return
+    end
+    state.target = 0
+    self.turn = self.turn % #self.subjectStates + 1
+end
+
+-- A name fades with its sprite, so no name points at a sprite that is gone.
 function Dissolve:draw(area)
     self.scenery:draw()
+    local style = self.labelStyle
     for _, state in ipairs(self.subjectStates) do
         local subject = state.subject
-        graphics2d.draw(state.texture, subject.x, Scenery.ground - (subject.y or 0), state.options)
-        ParticleTest.label(subject.name, subject.x, Scenery.ground + 20)
+        graphics2d.draw(state.texture, subject.x, Scenery.ground, state.options)
+        local shown = 1 - state.options.effect.dissolve
+        style.color[4], style.outlineColor[4] = shown, shown
+        graphics2d.drawText(nil, subject.name, subject.x, Scenery.ground + 20, style)
     end
 end
 
