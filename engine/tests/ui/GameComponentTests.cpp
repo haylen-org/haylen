@@ -143,6 +143,27 @@ TEST_F(GameComponentTest, DragsAndStepsBothEndsOfARange) {
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"low", 70.0}, {"high", 80.0}}));
 }
 
+// A range that shows its ends leaves at least the value width of the theme for them, so its track lines up with the track of a slider above it.
+TEST_F(GameComponentTest, LinesUpTheTrackOfARangeWithTheTrackOfASlider) {
+    // clang-format off
+    mount(R"({"kind": "column", "style": {"metrics": {"sliderValueWidth": 240}}, "children": [
+        {"kind": "slider", "width": 400, "min": 0, "max": 10, "value": 5, "showValue": true},
+        {"kind": "rangeSlider", "width": 400, "min": 0, "max": 10, "low": 2, "high": 8, "showValue": true}
+    ]})");
+    // clang-format on
+    frames(2);
+    const math::Color groove = getUi().getTheme().getColor(Theme::Color::BorderStrong);
+    std::vector<math::Rect> tracks;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        if (shape.color == groove && shape.bounds.height == getMetric(Theme::Metric::SliderTrackHeight)) {
+            tracks.push_back(shape.bounds);
+        }
+    }
+    ASSERT_EQ(tracks.size(), 2U);
+    EXPECT_FLOAT_EQ(tracks[0].x, tracks[1].x);
+    EXPECT_FLOAT_EQ(tracks[0].width, tracks[1].width);
+}
+
 TEST_F(GameComponentTest, MovesClosesAndCancelsWindows) {
     // clang-format off
     auto gui = mount(R"({"kind": "column", "children": [

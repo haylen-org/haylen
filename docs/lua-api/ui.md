@@ -2134,7 +2134,7 @@ A track with two knobs that pick a range, such as a price filter. The pointer dr
 | `min` | number from -1e15 to 1e15 | `0` | Value at the start of the track. |
 | `max` | number from -1e15 to 1e15 | `1` | Value at the end of the track. |
 | `step` | number, at least 0 | `0` | Snaps both ends to multiples of the step. The value `0` lets them move freely, and left and right then move by a twentieth of the track. |
-| `showValue` | boolean | `false` | Shows the range after the track, in the room the wider of `min` and `max` takes at both ends. |
+| `showValue` | boolean | `false` | Shows the range after the track, in the room the wider of `min` and `max` takes at both ends and at least the theme `sliderValueWidth`, so its track lines up with the tracks of the sliders of its column. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown range. |
 
 A minimum that is not smaller than the maximum raises `The property "min" of a "rangeSlider" must be smaller than "max".`, an end of the track outside its range raises `The property "min" of a "rangeSlider" must be from -1e+15 to 1e+15.` or the same error for `max`, and a `low` above `high` raises `The property "low" of a "rangeSlider" must not be greater than "high".`. A `set` of one end past the other end, where the player moved it, takes that end along.
@@ -3279,7 +3279,7 @@ Both built-in themes share these metrics, in design units.
 | `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
 | `splitterSize` | `10` | Thickness of the handle of splitters. |
 | `scrollLine` | `64` | Distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
-| `sliderValueWidth` | `96` | Least room a slider keeps for the value it shows, so the tracks of the sliders of one column line up whatever their ends. |
+| `sliderValueWidth` | `96` | Least room a slider or a range slider keeps for the value it shows, so the tracks of the sliders of one column line up whatever their ends. |
 | `scrollFade` | `32` | Length of the fade along an edge of a `scroll` or a `collection` where the content continues past the area, 0 to draw none. |
 | `readingWidth` | `880` | Widest line of the title and the message of an empty state, which keeps a long message comfortable to read on a wide screen. |
 | `cellRadius` | `12` | Corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |

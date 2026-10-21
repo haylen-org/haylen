@@ -96,12 +96,13 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
     }
 }
 
-// The shown range takes the room of its widest text, with both ends as wide as the wider end of the track, so the track keeps its length while the knobs move.
+// The shown range takes the room of its widest text, with both ends as wide as the wider end of the track, so the track keeps its length while the knobs move, and at least the value width of the theme, so its track lines up with the tracks of the sliders of its column.
 float RangeSlider::measureLabel(Context& context) const {
     const std::string first = Typography::formatNumber(minimum, decimals);
     const std::string last = Typography::formatNumber(maximum, decimals);
     const std::string& wider = Typography::measure(context, Theme::Font::Body, first).x > Typography::measure(context, Theme::Font::Body, last).x ? first : last;
-    return Typography::measure(context, Theme::Font::Body, wider + " - " + wider).x + context.getMetric(Theme::Metric::ItemSpacing);
+    const float widest = Typography::measure(context, Theme::Font::Body, wider + " - " + wider).x;
+    return std::max(widest, context.getMetric(Theme::Metric::SliderValueWidth)) + context.getMetric(Theme::Metric::ItemSpacing);
 }
 
 // The range grows toward the end of the UI, the left of a right-to-left UI.
