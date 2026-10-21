@@ -66,8 +66,10 @@ function enemy:draw()
     if self.health < self.kind.health then
         local bounds = self:bounds()
         local width = bounds.width * self.health / self.kind.health
-        graphics2d.drawRect({bounds.x, bounds.y - 10, bounds.width, 6}, '#C01A1C2C', {layer = config.layer.enemies})
-        graphics2d.drawRect({bounds.x + 1, bounds.y - 9, math.max(0, width - 2), 4}, '#FFE5534B', {layer = config.layer.enemies})
+        graphics2d.drawShape({bounds.x, bounds.y - 10, bounds.width, 6}, {radius = 3, color = '#C01A1C2C', layer = config.layer.enemies})
+        if width > 0 then
+            graphics2d.drawShape({bounds.x + 1, bounds.y - 9, math.max(4, width - 2), 4}, {radius = 2, color = '#FFE5534B', layer = config.layer.enemies})
+        end
     end
 end
 

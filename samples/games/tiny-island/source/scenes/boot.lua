@@ -44,8 +44,11 @@ function boot:render()
     local progress = self.menu and scene.loadProgress(self.menu) or 0
     graphics2d.drawRect(area, '#FF1E2138')
     graphics2d.draw(self.logo, area.x + area.width / 2, y - 60, {pivotY = 1, scaleX = 0.65, scaleY = 0.65})
-    graphics2d.drawRect({x - 6, y - 6, width + 12, 30}, '#FF15172A')
-    graphics2d.drawRect({x, y, width * progress, 18}, '#FF2F86F6')
+    -- The bar is a pill whose fill keeps round ends from its first dot, inset by the same 6 units on every side.
+    graphics2d.drawShape({x - 6, y - 6, width + 12, 30}, {radius = 15, color = '#FF15172A'})
+    if progress > 0 then
+        graphics2d.drawShape({x, y, math.max(width * progress, 18), 18}, {radius = 9, color = '#FF2F86F6', layer = 1})
+    end
 end
 
 return boot
