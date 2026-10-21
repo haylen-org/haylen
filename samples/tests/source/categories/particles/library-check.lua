@@ -70,10 +70,26 @@ function LibraryCheck:enter()
     end)
 end
 
+-- Groups the failures by their message, so one cause that breaks many files reads as one line with the files it broke.
+function LibraryCheck.group(failures)
+    local groups, byMessage = {}, {}
+    for _, failure in ipairs(failures) do
+        local group = byMessage[failure.message]
+        if not group then
+            group = {message = failure.message, paths = {}}
+            byMessage[failure.message] = group
+            groups[#groups + 1] = group
+        end
+        group.paths[#group.paths + 1] = failure.path
+    end
+    return groups
+end
+
 function LibraryCheck:finish()
     local rows = {}
-    for index, failure in ipairs(self.failures) do
-        rows[index] = ui.label{text = string.format('File "%s": %s', failure.path, failure.message), color = 'dangerText'}
+    for index, group in ipairs(LibraryCheck.group(self.failures)) do
+        local files = #group.paths == 1 and string.format('The file "%s"', group.paths[1]) or string.format('%d files, the first one "%s",', #group.paths, group.paths[1])
+        rows[index] = ui.label{text = string.format('%s failed: %s', files, group.message), color = 'dangerText'}
     end
     self.gui:replaceChildren('failures', rows)
     local summary = string.format('Checked %d effect files, and %d failed.', self.checked, #self.failures)
@@ -86,7 +102,7 @@ end
 
 function LibraryCheck:update(dt)
     LibraryCheck.super.update(self, dt)
-    self:status(string.format('Checked %d of %d   Failed %d', self.checked, #self.paths, #self.failures))
+    self:status(string.format('%d of %d effect files checked, and %d failed.', self.checked, #self.paths, #self.failures))
 end
 
 return LibraryCheck
