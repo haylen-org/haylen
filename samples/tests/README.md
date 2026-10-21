@@ -453,16 +453,16 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-016` | Collision filtering | Categories, masks and groups that decide which bodies collide. |  |
 | `PHY-017` | Stress test | Hundreds of bodies with the body count and the time of every step. |  |
 | `PHY-018` | Debug drawings | The drawings of the debug module switched on and off: physics shapes and joints, sprite bounds with names, a drawer of the test and the overlay. |  |
-| `PHY-019` | Tunneling | Fast balls and crates that pass through thin walls, moving plates and thin floors on one side and stop with continuous collision and bullets on the other. |  |
+| `PHY-019` | Tunneling | Fast balls and crates that pass through thin walls and floors on one side and stop with continuous collision and bullets on the other. |  |
 | `PHY-020` | Tile seams | Boxes that catch on the joints between tiles made of one box each, next to the same tiles merged into one chain where they slide. |  |
 | `PHY-021` | Slopes and steps | A dynamic capsule that slides down slopes and stumbles on stairs next to a mover that stands on slopes and steps up stairs, both on the same input. |  |
 | `PHY-022` | Moving platforms | Platforms that jump to their place every step and lose their loads next to platforms moved by velocity that carry crates, balls and a mover. |  |
-| `PHY-023` | Stretchy joints | A rope that stretches under a heavy weight next to one whose length limit holds, and a heavy ball on a chain of light links next to one with denser links, more sub-steps and stiffer joints. |  |
+| `PHY-023` | Stretchy joints | A rope that stretches under a heavy weight next to one whose length limit holds, and a heavy chain that sags next to a stiffer one. |  |
 | `PHY-024` | Sleeping | A pyramid that keeps the solver busy with sleeping off next to one that falls asleep, wakes where it is touched and costs almost nothing. |  |
 | `PHY-025` | Smooth slow motion | One world drawn where its last step left it, moving in jumps in slow motion, and drawn interpolated between steps, gliding. |  |
 | `PHY-026` | Bounces and hits | Bouncy balls from five heights that stop dead and report no hits under the default thresholds and keep bouncing with low ones. |  |
-| `PHY-027` | Dragging | A ragdoll pulled up the stairs by a mouse joint sized to the limb it holds, which only scrapes it along, next to a grabber sized to the whole figure, which lifts it. |  |
-| `PHY-028` | Top-down car | A car seen from above on a closed track, driven with the keyboard, a gamepad or touch, that grips, slides into drifts with the handbrake and pushes cones while the camera follows it. |  |
+| `PHY-027` | Dragging | A ragdoll dragged up stairs by a mouse joint sized to one limb, which only scrapes it along, next to a grabber sized to the whole figure. |  |
+| `PHY-028` | Top-down car | A car seen from above on a closed track that grips, drifts with the handbrake and pushes cones, driven with keys, a gamepad or touch. |  |
 | `PHY-029` | Center of mass | Tall blocks with the center of mass where their shapes put it, which fall over, next to the same blocks with it moved low, which rock back upright. |  |
 | `PHY-030` | Breaking joints | Shelves, a bridge and lamps whose joints break when their load passes their break force, with the force of each break shown where it happened. |  |
 | `PHY-031` | Platformer | A character that runs, jumps with assists, climbs slopes and steps, passes one-way platforms, rides a lift and pushes crates on its way to the flag. |  |
@@ -484,7 +484,7 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-047` | Peg board | A board of pegs where balls bounce into slots counted by sensors, with a histogram of the slots. |  |
 | `PHY-048` | Magnets | Radial force fields that pull or push only the steel crates by their mask, switched on and off and dragged with the pointer. |  |
 | `PHY-049` | Planets | Planets that pull with inverse square force fields in a world without gravity, moons on orbits and ships launched from the pointer that orbit or crash. |  |
-| `PHY-050` | Wind | Fans as directional force fields that push leaves, balloons and boxes with the same force, gusts that change their strength and a vortex that swirls light bodies. |  |
+| `PHY-050` | Wind | Fans as directional force fields that push leaves, balloons and boxes alike, gusts that change their strength and a vortex for light bodies. |  |
 | `PHY-051` | Water | A pool as a buoyancy force field where boats and logs float, an anvil sinks, crates float by their density and the flow makes currents and waves. |  |
 | `PHY-052` | Soft bodies | Jelly blobs of a ring of small bodies on springy joints around a center, which squash on impact and recover and are dragged with a grabber. |  |
 | `PHY-053` | Cloth | A net of small bodies joined by distance joints and pinned at the top, which catches falling bodies and tears where a joint passes its break force. |  |
@@ -493,14 +493,14 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-056` | Thrusters | A lander whose two thrusters push at points off its center, steered with keys, a gamepad or touch, with fuel, a landing speed and a sensor over the pad. |  |
 | `PHY-057` | Space ship | A ship without gravity that turns, thrusts and fires, wraps around the edges of the stage and breaks drifting rocks into smaller ones. |  |
 | `PHY-058` | Marble run | Marbles rolling down ramps of chains, through a funnel, over a wheel turned by a motor and up a lift back to the top in a loop. |  |
-| `PHY-059` | Water wheel | Particle water released by a dam that pours on a wheel on a revolute joint and turns it, with the speed of the wheel and a pump that brings the water back. |  |
+| `PHY-059` | Water wheel | Particle water released by a dam that turns a wheel on a revolute joint, with the speed of the wheel and a pump that brings the water back. |  |
 | `PHY-060` | Claw machine | A carriage on a prismatic joint and two fingers on motorized revolute joints that pick up prizes by friction, driven with keys, a gamepad or touch. |  |
 | `PHY-061` | Rope cutting | A candy hanging from ropes that a swipe cuts where a ray along the pointer crosses them, so it swings and falls into a basket with a sensor. |  |
 | `PHY-062` | Traps | Spinning blades moved as kinematic bodies, a crusher on a prismatic joint and a rolling boulder that throw ragdolls and crates around. |  |
 | `PHY-063` | Crate pushing | A top-down puzzle where a character driven by a limited force pushes heavy damped crates onto goal sensors with keys, a gamepad or a touch stick. |  |
-| `PHY-064` | Collision report | Balls and crates whose impacts mark their points, the normal they pushed along and the velocity the bodies kept, with how fast they met, from which side and how hard they press, and crates at rest that show their weight as the force of their contacts. |  |
-| `PHY-065` | Playground | A room to try every value of a body and of the world: bodies dropped, grabbed, pushed and shot, a card that reads the mass, material, damping, gravity scale and speed of the chosen body, and sliders that change it as it moves. |  |
-| `PHY-066` | Two worlds | Two planets in space, each a physics world of its own with a bubble of constant pull, where a slingshot on the grassy planet launches shots that fly straight between the bubbles, move to the world of the icy moon with their speed and spin when they enter its bubble, and knock down its slippery towers. |  |
+| `PHY-064` | Collision report | Impacts that mark their points, normal and kept velocity with their speed and force, and crates at rest that show the force of their weight. |  |
+| `PHY-065` | Playground | A room to try every value of a body and the world, with bodies dropped, grabbed, pushed and shot and a card that reads the chosen body. |  |
+| `PHY-066` | Two worlds | Two planets with physics worlds of their own and bubbles of pull, where shots from a slingshot move to the world of the icy moon they reach. |  |
 
 #### Procedural generation (GEN)
 

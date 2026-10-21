@@ -33,7 +33,6 @@ Look.materials = {
     glass = tones('#668FE0F5', '#995FB8D8', '#EEFFFFFF', 'streaks'),
     rubber = tones('#FF3C3F52', '#FF26283A', '#FF6E7390', nil),
     skin = tones('#FFFFCDA2', '#FFE09A72', '#FFFFE8D2', nil),
-    turf = tones('#FFB0703C', '#FF83502A', '#FFD9965A', 'turf', {grass = '#FF7BC74D', grassShade = '#FF4E9A32', grassLight = '#FFB5E880'}),
     tire = tones('#FF3A3D4E', '#FF24263A', '#FF6A6F88', nil, {hub = '#FFC9D3E2', hubShade = '#FF8090A8'}),
 }
 
@@ -284,7 +283,7 @@ local function boxPoint(part, u, v, bx, by, cos, sin)
 end
 
 -- The details of a material on a box, in the space of the box, so they turn with it.
-local function boxDetail(part, material, look, bx, by, cos, sin, angle, ow, layer)
+local function boxDetail(part, material, bx, by, cos, sin, angle, ow, layer)
     local detail = material.detail
     local w, h = part.width, part.height
     local size = part.size
@@ -361,13 +360,6 @@ local function boxDetail(part, material, look, bx, by, cos, sin, angle, ow, laye
         shape.borderColor = material.light
         drawShapeAt('rectangle', x, y, w - frame * 2, h - frame * 2, 2, angle, '#00000000', math.max(1.2, size * 0.045), layer)
         shape.borderColor = Look.ink
-    elseif detail == 'turf' then
-        local cap = math.min(h * 0.45, 22)
-        local x, y = boxPoint(part, 0, -h / 2 + cap / 2, bx, by, cos, sin)
-        drawShapeAt('rectangle', x, y, w, cap, math.min(cap / 2, look.radius + 4), angle, material.grassShade, ow, layer)
-        drawShapeAt('rectangle', x - Look.pixel, y - Look.pixel * 1.5, w - ow * 2.2, cap - ow * 2.4, cap / 3, angle, material.grass, 0, layer)
-        local tx, ty = boxPoint(part, -w / 2 + w * 0.22, -h / 2 + cap * 0.35, bx, by, cos, sin)
-        drawShapeAt('rectangle', tx, ty, w * 0.25, math.max(2, cap * 0.16), cap * 0.1, angle, material.grassLight, 0, layer)
     end
 end
 
@@ -383,10 +375,8 @@ local function drawBox(part, material, look, bx, by, cos, sin, rotation, layer)
     if w > k * 2 and h > k * 2 then
         drawShapeAt('rectangle', x - s, y - s, w - k * 2, h - k * 2, math.max(0, radius - k), angle, material.fill, 0, layer)
     end
-    boxDetail(part, material, look, bx, by, cos, sin, angle, ow, layer)
-    if material.detail ~= 'turf' then
-        boxHighlight(x - s, y - s, w, h, angle, k, material.light, layer)
-    end
+    boxDetail(part, material, bx, by, cos, sin, angle, ow, layer)
+    boxHighlight(x - s, y - s, w, h, angle, k, material.light, layer)
 end
 
 -- A round body is lit the same way however it turns, and only its detail, such as the hub of a wheel or the spots of a ball, turns with it.
