@@ -123,7 +123,7 @@
         "radioSelected": {"image": "interface/themes/fantasy/atlas.png", "source": [972, 600, 96, 96], "filter": "linear"},
         "scrollbar": {"image": "interface/themes/fantasy/atlas.png", "source": [1072, 400, 72, 72], "slice": 32, "scale": 0.28, "colorize": true, "filter": "linear"},
         "scrollbarTrack": {"image": "interface/themes/fantasy/atlas.png", "source": [1072, 476, 72, 72], "slice": 32, "scale": 0.28, "filter": "linear"},
-        "segment": {"image": "interface/themes/fantasy/atlas.png", "source": [260, 708, 200, 56], "slice": 27, "scale": 0.9, "padding": 4, "filter": "linear"},
+        "segment": {"image": "interface/themes/fantasy/atlas.png", "source": [260, 708, 200, 56], "slice": 27, "scale": 0.9, "padding": 8, "filter": "linear"},
         "segmentSelected": {"image": "interface/themes/fantasy/atlas.png", "source": [0, 392, 360, 120], "slice": [44, 56, 40, 56], "scale": 0.45, "filter": "linear"},
         "slot": {"image": "interface/themes/fantasy/atlas.png", "source": [728, 508, 240, 96], "slice": 28, "scale": 0.6, "filter": "linear"},
         "slotHighlighted": {"image": "interface/themes/fantasy/atlas.png", "source": [0, 632, 256, 88], "slice": 30, "scale": 0.5, "filter": "linear"},

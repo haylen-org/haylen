@@ -1977,7 +1977,7 @@ ui.mount(ui.combo{
 
 ### ui.segmentedControl(properties)
 
-A row of joined segments of which one is selected, such as a switch between views. A click or a tap picks a segment and reports `change` with the item id as `value`. It takes the focus as a whole: left and right move the selection, skipping disabled segments, and accept moves it to the next segment, starting over after the last one. Without a selection, accept picks the first segment that can be picked.
+A row of joined segments of which one is selected, such as a switch between views. A click or a tap picks a segment and reports `change` with the item id as `value`. It takes the focus as a whole: left and right move the selection, skipping disabled segments, and accept moves it to the next segment, starting over after the last one. Without a selection, accept picks the first segment that can be picked. The segments share the width equally while every label fits with the theme `tabPaddingX` on both sides. With less room each segment takes the width of its label, the padding shrinks down to the theme `contentSpacing`, and a label longer still ends with an ellipsis inside that padding. The segments sit inside the border of the control, or inside the padding of the theme `segment` surface, so the picked segment never covers the rim of the control.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

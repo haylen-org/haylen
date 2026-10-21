@@ -39,12 +39,16 @@ class SegmentedControl final : public Component {
 
   private:
     [[nodiscard]] ImDrawFlags getCorners(const Context& context, std::size_t index) const noexcept;
+    [[nodiscard]] float layOut(Context& context, float width);
     // Returns the index of the next item that can be picked in a direction, or the current one when there is none.
     [[nodiscard]] int findNext(int from, int direction, bool wrap) const;
     void select(Context& context, int index);
 
     std::vector<ChoiceItem> items;
     std::string selected;
+
+    // The width of every segment in the last layout, kept so a frame reuses the storage.
+    std::vector<float> widths;
 };
 
 } // namespace haylen::ui

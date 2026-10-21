@@ -510,4 +510,37 @@ TEST_F(GameComponentTest, FitsTheLabelOfATouchButtonInsideItsRing) {
     }
 }
 
+// The segments of a cramped control take the widths of their labels, so every label keeps a padding from the edges of its segment, while a roomy control shares its width equally.
+TEST_F(GameComponentTest, KeepsAPaddingAroundTheLabelsOfSegments) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "segmentedControl", "id": "mode", "width": 440, "selected": "floating", "items": [{"id": "fixed", "text": "Fixed"}, {"id": "floating", "text": "Floating"}, {"id": "following", "text": "Following"}]}]})");
+    frames(2);
+    Backend& backend = getUi().getBackend();
+    const float spacing = getUi().getTheme().getMetric(Theme::Metric::ContentSpacing);
+    const math::Rect control = getBounds(*gui, "mode");
+    std::vector<math::Rect> boxes;
+    for (const Backend::Text& text : backend.getTexts()) {
+        const std::shared_ptr<const text::Layout> laid = text.family->layout(backend.getContent(text), text.style);
+        boxes.push_back(laid->lines.front().box.translated(text.origin));
+        EXPECT_EQ(backend.getContent(text).find("\xE2\x80\xA6"), std::string_view::npos);
+    }
+    ASSERT_EQ(boxes.size(), 3U);
+    EXPECT_GE(boxes[0].x, control.x + spacing);
+    EXPECT_GE(boxes[1].x - boxes[0].getRight(), spacing * 2.0F - 1.0F);
+    EXPECT_GE(boxes[2].x - boxes[1].getRight(), spacing * 2.0F - 1.0F);
+    EXPECT_LE(boxes[2].getRight(), control.getRight() - spacing);
+
+    // The picked segment of a flat control stays inside its border.
+    const Theme& theme = getUi().getTheme();
+    const float border = theme.getMetric(Theme::Metric::BorderWidth);
+    bool picked = false;
+    for (const graphics2d::Shape& shape : backend.getShapes()) {
+        if (shape.color == theme.getColor(Theme::Color::Accent)) {
+            picked = true;
+            EXPECT_GE(shape.bounds.y, control.y + border);
+            EXPECT_LE(shape.bounds.getBottom(), control.getBottom() - border);
+        }
+    }
+    EXPECT_TRUE(picked);
+}
+
 } // namespace haylen::ui

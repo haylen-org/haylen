@@ -28,6 +28,32 @@ math::Vec2 SegmentedControl::measureContent(Context& context, float availableWid
     return {std::min(availableWidth, segment * static_cast<float>(items.size())), context.getMetric(Theme::Metric::ControlHeight)};
 }
 
+// Segments share the width equally while every label fits with the tab padding on both sides. With less room each segment takes its label and the padding and the rest is shared equally, and with less still the padding shrinks to the content spacing and the labels share the room left by their widths. Returns the padding the labels keep.
+float SegmentedControl::layOut(Context& context, float width) {
+    widths.clear();
+    float labels = 0.0F;
+    float widest = 0.0F;
+    for (const ChoiceItem& item : items) {
+        widths.push_back(Typography::measure(context, Theme::Font::Button, context.getText(item.text)).x);
+        labels += widths.back();
+        widest = std::max(widest, widths.back());
+    }
+    const auto count = static_cast<float>(items.size());
+    const float tab = context.getMetric(Theme::Metric::TabPaddingX);
+    if ((widest + tab * 2.0F) * count <= width) {
+        std::ranges::fill(widths, width / count);
+        return tab;
+    }
+    const float padding = std::max(context.getMetric(Theme::Metric::ContentSpacing), std::min(tab, (width - labels) / (count * 2.0F)));
+    const float room = width - padding * 2.0F * count;
+    const float share = room > labels ? (room - labels) / count : 0.0F;
+    const float squeeze = room < labels && labels > 0.0F ? std::max(0.0F, room) / labels : 1.0F;
+    for (float& segment : widths) {
+        segment = segment * squeeze + share + padding * 2.0F;
+    }
+    return padding;
+}
+
 // A segment rounds only the corners it shares with the control, with the curve of the control inside its padding, so a picked segment never leaves empty corners in the control around it.
 ImDrawFlags SegmentedControl::getCorners(const Context& context, std::size_t index) const noexcept {
     const bool first = index == 0;
@@ -50,16 +76,19 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
         return;
     }
 
-    // Segments share the width, each picks itself on a click, and the whole control takes the focus on top of them.
+    // Segments share the width as `layOut` divides it, each picks itself on a click, and the whole control takes the focus on top of them. The segments sit inside the border of a flat control, or inside the padding of the image of a themed one, so a picked segment never covers the rim of the control.
     const int current = ChoiceItem::indexOf(items, selected);
-    const math::Insets padding = Surfaces::getPadding(context, Theme::Surface::Segment);
+    const math::Insets padding = context.getSurface(Theme::Surface::Segment) != nullptr ? Surfaces::getPadding(context, Theme::Surface::Segment) : math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth) * 2.0F);
     const math::Rect inner = bounds.inset(padding);
     const float radius = Surfaces::getInnerRadius(outer, std::max(padding.left, padding.top));
+    const float labelPadding = layOut(context, inner.width);
     std::optional<int> clicked;
+    float offset = 0.0F;
     for (std::size_t index = 0; index < items.size(); ++index) {
         const ChoiceItem& item = items[index];
-        const float width = inner.width / static_cast<float>(items.size());
-        const math::Rect segment = context.mirror({std::floor(inner.x + width * static_cast<float>(index)), inner.y, width, inner.height}, inner);
+        const float width = widths[index];
+        const math::Rect segment = context.mirror({std::floor(inner.x + offset), inner.y, std::floor(inner.x + offset + width) - std::floor(inner.x + offset), inner.height}, inner);
+        offset += width;
         const bool chosen = static_cast<int>(index) == current;
         const ImDrawFlags corners = getCorners(context, index);
         ImGui::PushID(item.id.c_str());
@@ -75,7 +104,7 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
             const float edge = (context.isRightToLeft() ? segment.getRight() : segment.x) - thickness * 0.5F;
             Widgets::line(context, {edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, thickness, context.getColor(Theme::Color::Border));
         }
-        Typography::drawAligned(context, Theme::Font::Button, segment, context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text), context.getText(item.text), Alignment::Center);
+        Typography::drawAligned(context, Theme::Font::Button, segment.inset({labelPadding, 0.0F, labelPadding, 0.0F}), context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text), context.getText(item.text), Alignment::Center);
         ImGui::EndDisabled();
         ImGui::PopID();
         if (state.clicked) {
