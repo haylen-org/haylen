@@ -465,7 +465,7 @@ As versões mínimas são macOS 14.0, iOS, iPadOS e tvOS 16.3, Mac Catalyst no m
 
 | Comando | Para que serve |
 | --- | --- |
-| `tools` | Prepara as ferramentas fixadas em `.tools/`: compila o `haylen-shaderc` no commit fixado, baixa o XcodeGen no macOS e, quando pedidos, o emsdk e o Gradle. |
+| `tools` | Prepara as ferramentas fixadas em `.tools/`: baixa o binário do `haylen-shaderc` da release fixada (ou compila o commit dela onde não há binário), o XcodeGen no macOS e, quando pedidos, o emsdk e o Gradle. |
 | `configure` e `build` | Gera e compila uma árvore da engine em `build/<plataforma>-<config>`. |
 | `test` | Compila e roda os testes da engine nesta máquina, com `--sanitizers address` ou `thread` quando pedido. |
 | `engine` | Gera os artefatos prontos em `build/artifacts/`: o `Haylen.xcframework`, o AAR `haylen` e as bibliotecas Android num repositório Maven local com o SDK de cada ABI, os players web WebGPU e WebGL2 com o SDK de cada backend e o player de desktop com o `haylen-content` e o SDK desta máquina. |

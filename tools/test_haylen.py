@@ -18,6 +18,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -877,7 +878,7 @@ class ShaderCompilerTest(unittest.TestCase):
             with self.assertRaisesRegex(haylen.BuildError, haylen.SHADER_COMPILER_VARIABLE):
                 haylen.ensure_shaderc()
 
-    def test_the_pinned_compiler_builds_once_into_a_folder_of_its_commit(self):
+    def test_a_machine_without_a_binary_builds_the_pinned_commit_once_into_a_folder_of_its_commit(self):
         folder = self.scratch / f"haylen-shaderc-{haylen.SHADER_COMPILER_COMMIT[:7]}"
         executable = haylen.executable_name("haylen-shaderc")
 
@@ -888,7 +889,7 @@ class ShaderCompilerTest(unittest.TestCase):
                 built.write_text("compiler")
 
         environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
-        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "run", side_effect=build) as run, mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "SHADER_COMPILER_BINARIES", {}), mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "run", side_effect=build) as run, mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
             self.assertEqual(haylen.ensure_shaderc(), folder / executable)
             fetched = [call.args[0] for call in run.call_args_list if "fetch" in [str(part) for part in call.args[0]]]
             self.assertEqual([str(part) for part in fetched[0]][-2:], [haylen.SHADER_COMPILER_REPOSITORY, haylen.SHADER_COMPILER_COMMIT])
@@ -896,6 +897,50 @@ class ShaderCompilerTest(unittest.TestCase):
             self.assertEqual(haylen.ensure_shaderc(), folder / executable)
             self.assertEqual(run.call_count, calls)
         self.assertEqual((folder / executable).read_text(), "compiler")
+
+    def download_release(self, host: str, arch: str) -> tuple[Path, list[tuple[str, str]]]:
+        """Asks for the compiler as a machine of the given system and processor would, with a download that writes an archive like the ones of the release and records what it fetched."""
+        downloads = []
+
+        def fake_download(url, target, sha256=None):
+            downloads.append((url, sha256))
+            executable = "haylen-shaderc.exe" if url.endswith(".zip") else "haylen-shaderc"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if url.endswith(".zip"):
+                with zipfile.ZipFile(target, "w") as package:
+                    package.writestr(executable, "compiler")
+                    package.writestr("LICENSE", "license")
+            else:
+                with tarfile.open(target, "w:gz") as package:
+                    for name, data in ((executable, b"compiler"), ("LICENSE", b"license")):
+                        info = tarfile.TarInfo(name)
+                        info.size = len(data)
+                        package.addfile(info, io.BytesIO(data))
+
+        environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "host_name", return_value=host), mock.patch.object(haylen, "host_arch", return_value=arch), mock.patch.object(haylen, "download", side_effect=fake_download), mock.patch.object(haylen, "run") as run:
+            compiler = haylen.ensure_shaderc()
+            self.assertEqual(haylen.ensure_shaderc(), compiler)
+        run.assert_not_called()
+        return compiler, downloads
+
+    def test_the_pinned_release_downloads_once_and_checks_its_digest(self):
+        compiler, downloads = self.download_release("linux", "x64")
+        self.assertEqual(compiler, self.scratch / f"haylen-shaderc-{haylen.SHADER_COMPILER_VERSION}" / "haylen-shaderc")
+        self.assertEqual(compiler.read_text(), "compiler")
+        self.assertTrue(os.access(compiler, os.X_OK))
+        name, digest = haylen.SHADER_COMPILER_BINARIES[("linux", "x64")]
+        self.assertEqual(downloads, [(f"{haylen.SHADER_COMPILER_RELEASES}/v{haylen.SHADER_COMPILER_VERSION}/haylen-shaderc-{haylen.SHADER_COMPILER_VERSION}-{name}", digest)])
+        self.assertEqual(sorted(path.name for path in compiler.parent.iterdir()), ["haylen-shaderc"])
+
+    def test_windows_takes_the_compiler_out_of_the_zip_of_its_release(self):
+        compiler, downloads = self.download_release("windows", "x64")
+        self.assertEqual(compiler.name, "haylen-shaderc.exe")
+        self.assertEqual(compiler.read_text(), "compiler")
+        self.assertTrue(downloads[0][0].endswith("-windows-x64.zip"))
+
+    def test_both_apple_processors_share_the_universal_binary(self):
+        self.assertEqual(haylen.SHADER_COMPILER_BINARIES[("macos", "arm64")], haylen.SHADER_COMPILER_BINARIES[("macos", "x64")])
 
 
 class XcodeGenTest(unittest.TestCase):

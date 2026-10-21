@@ -83,8 +83,18 @@ ANDROID_KEY_NAME = "CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR"
 ANDROID_KEY_PASSWORD_LENGTH = 6
 
 # The Haylen shader compiler, which `haylen.py` builds from its pinned commit into the tools folder, and the variable that points at another build of it, such as while the compiler itself is being made.
+# The Haylen shader compiler is pinned to a release, whose prebuilt binaries the hosts below download, and to the commit of that release, which the other hosts build.
 SHADER_COMPILER_REPOSITORY = "https://github.com/haylen-org/haylen-shader-compiler.git"
-SHADER_COMPILER_COMMIT = "0000000000000000000000000000000000000000"
+SHADER_COMPILER_VERSION = "1.0.0"
+SHADER_COMPILER_COMMIT = "5ddc54f6b2e1306f98530385e5f09045db8759b6"
+SHADER_COMPILER_RELEASES = "https://github.com/haylen-org/haylen-shader-compiler/releases/download"
+SHADER_COMPILER_BINARIES = {
+    ("macos", "arm64"): ("macos-universal.tar.gz", "684b14aeee10301c77e4c05e0b345ff6b8abb34bea8b5013db7bc5b54f4f49c1"),
+    ("macos", "x64"): ("macos-universal.tar.gz", "684b14aeee10301c77e4c05e0b345ff6b8abb34bea8b5013db7bc5b54f4f49c1"),
+    ("linux", "x64"): ("linux-x64.tar.gz", "9a3c3981e1ea307c4e001caa6cb385e7b58be6a742f5469150a88e8c397cf252"),
+    ("linux", "arm64"): ("linux-arm64.tar.gz", "c8baf790bfa74730630ba7818cb3d399dd70edcf1687b3199691e269ddfdf078"),
+    ("windows", "x64"): ("windows-x64.zip", "e54549668ef77700d4da3e762c176052715bf821c208a1094967f5cf71bfd32a"),
+}
 SHADER_COMPILER_VARIABLE = "HAYLEN_SHADER_COMPILER"
 # App shaders include the shader library as `haylen/material.glsl`.
 SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
@@ -471,7 +481,7 @@ def download(url: str, target: Path, sha256: str | None = None) -> None:
 
 
 def ensure_shaderc() -> Path:
-    """Returns the Haylen shader compiler: the build that `HAYLEN_SHADER_COMPILER` names, or the pinned commit, which the first call fetches and builds into a folder named after the commit, so a new pin builds its own compiler. The executable moves into place only once it is complete, since tests that compile shaders may ask for it at the same time."""
+    """Returns the Haylen shader compiler: the build that `HAYLEN_SHADER_COMPILER` names, or the pinned release, which the first call downloads into a folder named after its version where the release has a binary for this machine, and builds from the commit of the release into a folder named after the commit elsewhere, so a new pin brings its own compiler. The executable moves into place only once it is complete, since tests that compile shaders may ask for it at the same time."""
     named = os.environ.get(SHADER_COMPILER_VARIABLE)
     if named:
         compiler = Path(named)
@@ -479,6 +489,40 @@ def ensure_shaderc() -> Path:
             raise BuildError(f'The variable "{SHADER_COMPILER_VARIABLE}" names `{named}`, which is not a build of the Haylen shader compiler. Point it at the executable "haylen-shaderc" or unset it.')
         return compiler.resolve()
 
+    binary = SHADER_COMPILER_BINARIES.get((host_name(), host_arch()))
+    return download_shaderc(*binary) if binary else build_shaderc()
+
+
+def download_shaderc(platform_name: str, sha256: str) -> Path:
+    """Downloads the archive of the pinned release for this machine, checks its SHA-256 and takes the executable out of it."""
+    executable = executable_name("haylen-shaderc")
+    folder = TOOLS_DIR / f"haylen-shaderc-{SHADER_COMPILER_VERSION}"
+    target = folder / executable
+    if target.exists():
+        return target
+
+    name = f"haylen-shaderc-{SHADER_COMPILER_VERSION}-{platform_name}"
+    archive = TOOLS_DIR / f"{name}.{os.getpid()}.part"
+    download(f"{SHADER_COMPILER_RELEASES}/v{SHADER_COMPILER_VERSION}/{name}", archive, sha256)
+    folder.mkdir(parents=True, exist_ok=True)
+    partial = target.with_name(f"{executable}.{os.getpid()}.part")
+    if name.endswith(".zip"):
+        with zipfile.ZipFile(archive) as package:
+            partial.write_bytes(package.read(executable))
+    else:
+        with tarfile.open(archive) as package:
+            member = package.extractfile(executable)
+            if member is None:
+                raise BuildError(f'The release `{name}` of the Haylen shader compiler holds no "{executable}".')
+            partial.write_bytes(member.read())
+    archive.unlink()
+    partial.chmod(0o755)
+    partial.replace(target)
+    return target
+
+
+def build_shaderc() -> Path:
+    """Builds the commit of the pinned release, for the machines whose binary the release does not ship."""
     executable = executable_name("haylen-shaderc")
     folder = TOOLS_DIR / f"haylen-shaderc-{SHADER_COMPILER_COMMIT[:7]}"
     target = folder / executable
@@ -486,7 +530,7 @@ def ensure_shaderc() -> Path:
         return target
 
     source = folder / "source"
-    terminal.step(f"Building the Haylen shader compiler at {SHADER_COMPILER_COMMIT[:7]}")
+    terminal.step(f"Building the Haylen shader compiler at {SHADER_COMPILER_COMMIT[:7]}, since its release has no binary for this machine")
     if not (source / ".git").exists():
         source.mkdir(parents=True, exist_ok=True)
         run(["git", "init", "--quiet", source])

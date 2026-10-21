@@ -10,7 +10,7 @@ The script `haylen.py` downloads or builds the remaining tools the first time a 
 
 | Tool | Version | Location | Needed by |
 | --- | --- | --- | --- |
-| `haylen-shaderc` | The commit of [haylen-shader-compiler](https://github.com/haylen-org/haylen-shader-compiler) that `SHADER_COMPILER_COMMIT` of `haylen.py` pins | `.tools/haylen-shaderc-<commit>` | Every build and `haylen.py shaders`. The script fetches that commit with `git` and builds the compiler with CMake, in a folder named after the commit, so a new pin builds its own compiler. The environment variable `HAYLEN_SHADER_COMPILER` names a build of the compiler to use instead. |
+| `haylen-shaderc` | The release of [haylen-shader-compiler](https://github.com/haylen-org/haylen-shader-compiler) that `SHADER_COMPILER_VERSION` of `haylen.py` pins, with the commit of that release in `SHADER_COMPILER_COMMIT` | `.tools/haylen-shaderc-<version>`, or `.tools/haylen-shaderc-<commit>` where it is built | Every build and `haylen.py shaders`. The script downloads the prebuilt binary of the release for macOS (Apple silicon and Intel), Linux (x64 and ARM64, glibc 2.28 or later) and Windows (x64), checks it against the SHA-256 that `SHADER_COMPILER_BINARIES` pins and takes the executable out of the archive. On any other machine it fetches the commit of the release with `git` and builds the compiler with CMake. A new pin brings its own compiler, since each one lives in a folder of its own. The environment variable `HAYLEN_SHADER_COMPILER` names a build of the compiler to use instead. |
 | Emscripten SDK | 6.0.12 | `.tools/emsdk` | Web builds. It is cloned with `git`, and an SDK of another version takes the newest list of releases and installs this one. Every web build tree records the version that configured it, and a tree of another version builds again from nothing, because Emscripten keeps no ABI between versions. |
 | Gradle | 9.8.1 | `.tools/gradle-9.8.1` | The Android library and Android apps. |
 | XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen-2.46.0` | Apple apps whose plugins add to the Apple project, which haylen.py generates again. macOS only. |
@@ -102,7 +102,7 @@ The runtime links the system libraries of the default graphics API of each platf
 haylen tools [--emsdk] [--gradle]
 ```
 
-Builds the shader compiler `haylen-shaderc`, downloads XcodeGen 2.46.0 on macOS, and Emscripten 6.0.12 or Gradle 9.8.1 when asked, and prints where each one lives. Every other command downloads or builds what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
+Downloads the shader compiler `haylen-shaderc`, or builds it where its release has no binary for the machine, downloads XcodeGen 2.46.0 on macOS, and Emscripten 6.0.12 or Gradle 9.8.1 when asked, and prints where each one lives. Every other command downloads or builds what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
 
 ### configure
 
@@ -199,7 +199,7 @@ The script `haylen.py` sets these options for you, and projects that add the eng
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `HAYLEN_SHADERC` | empty | Path to the Haylen shader compiler `haylen-shaderc`, which compiles the engine shaders. Configuring fails without it, and `haylen tools` builds it. |
+| `HAYLEN_SHADERC` | empty | Path to the Haylen shader compiler `haylen-shaderc`, which compiles the engine shaders. Configuring fails without it, and `haylen tools` downloads it. |
 | `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | Folder of the backend that opens the window, runs and draws the frames and holds the entry point, whose `backend.cmake` adds its sources to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. The backend is named after the folder, as `HAYLEN_BACKEND`. |
 | `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. `AUTO` picks Metal on Apple platforms, Direct3D 11 on Windows, GLES3 on Android, WebGPU on the web and OpenGL core on Linux. The engine shaders carry the shader languages of that graphics API alone. |
 | `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Build the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
