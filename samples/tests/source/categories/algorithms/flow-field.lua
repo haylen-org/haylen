@@ -1,5 +1,5 @@
 -- A flow field computed once on a worker thread for the cell under the pointer, and hundreds of units that only read the step of their cell.
-local graphics = require('haylen.graphics')
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -8,6 +8,7 @@ local navigation2d = require('haylen.navigation2d')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 local Board = require('categories.algorithms.board')
 local picture = require('categories.algorithms.picture')
 
@@ -21,6 +22,8 @@ local direction = field:direction(unit.x // 24, unit.y // 24)  -- Each unit read
 unit.x, unit.y = unit.x + direction.x * 150 * dt, unit.y + direction.y * 150 * dt]]
 
 local kColumns, kRows, kCell = 64, 34, 24
+-- The arrow of the effects atlas points up, so it turns a quarter turn more than the angle of its step.
+FlowField.arrowTurn = math.pi / 2
 local kUnits = 800
 local kSpeed = 150
 
@@ -39,24 +42,34 @@ function FlowField:enter()
     self.showArrows = true
     self.random = m.random(53)
     self.board = Board(kColumns, kRows, kCell)
-    self.white = graphics.whiteTexture()
+    self.art = Art()
+    self.orbs = assets.texture('sprites/images/bullets.png', {filter = 'linear', mipmaps = true})
+    self.effects = assets.load('particles/library/textures/effects.json', 'atlas', {filter = 'linear'})
+    self.walls = graphics2d.newSpriteBatch(self.art.terrain)
+    self.arrows = graphics2d.newSpriteBatch(self.effects.texture)
     self:build()
 end
 
 function FlowField:build()
     self.grid = navigation2d.newGrid(kColumns, kRows)
     local noise = m.noise(self.random:integer(1, 999))
-    self.walls = {}
+    self.blocked = {}
+    self.walls:clear()
     for row = 0, kRows - 1 do
         for column = 0, kColumns - 1 do
             local wall = noise:fractal(column / 12, row / 12, 3) > 0.25
-            self.walls[row * kColumns + column] = wall
+            self.blocked[row * kColumns + column] = wall
             self.grid:setWalkable(column, row, not wall)
+            if wall then
+                self.art:addCell(self.walls, 'stone', self.board.left, self.board.top, kCell, column, row)
+            end
         end
     end
-    self.picture = picture.cells(kColumns, kRows, function(column, row)
-        return self.walls[row * kColumns + column] and '#FF546E7A' or '#FF232A36'
+    -- The walls cast a short shadow on the floor, down and to the right.
+    self.shadow = picture.cells(kColumns, kRows, function(column, row)
+        return self.blocked[row * kColumns + column] and '#90000000' or '#00000000'
     end)
+    self.arrows:clear()
     self.field, self.goal, self.wanted = nil, nil, {kColumns // 2, kRows // 2}
     self:scatter()
 end
@@ -65,10 +78,10 @@ function FlowField:scatter()
     self.units, self.sprites = {}, {}
     while #self.units < kUnits do
         local column, row = self.random:integer(0, kColumns - 1), self.random:integer(0, kRows - 1)
-        if not self.walls[row * kColumns + column] then
+        if not self.blocked[row * kColumns + column] then
             local x, y = self.board:center(column, row)
             self.units[#self.units + 1] = {x = x + self.random:range(-8, 8), y = y + self.random:range(-8, 8)}
-            self.sprites[#self.sprites + 1] = {width = 8, height = 8, color = m.fromHsv(self.random:nextFloat() * 0.15 + 0.5, 0.6, 1):toHex()}
+            self.sprites[#self.sprites + 1] = {width = 15, height = 15, source = {64, 0, 64, 64}, color = m.fromHsv(self.random:nextFloat() * 0.12 + 0.52, 0.35, 1):toHex()}
         end
     end
 end
@@ -88,6 +101,7 @@ function FlowField:request()
         end
         self.field, self.goal = field, goal
         self.latency = (haylen.elapsed() - started) * 1000
+        self:pointArrows()
     end)
 end
 
@@ -97,12 +111,12 @@ function FlowField:update(dt)
         self:build()
     end
     local column, row = self.board:cellAt(self.pointer.worldX, self.pointer.worldY)
-    if column and not self.walls[row * kColumns + column] then
+    if column and not self.blocked[row * kColumns + column] then
         self.wanted = {column, row}
     end
     self:request()
     self:move(dt)
-    self:status(string.format('Units %d, cells %d, last field %s, goal %s', #self.units, kColumns * kRows, self.latency and string.format('in %.0f ms', self.latency) or 'pending', self.goal and string.format('%d, %d', self.goal[1], self.goal[2]) or 'none'))
+    self:status(string.format('%d units on %d cells, the last field took %s, toward the cell %s', #self.units, kColumns * kRows, self.latency and string.format('%.0f ms', self.latency) or 'a moment', self.goal and string.format('%d, %d', self.goal[1], self.goal[2]) or 'none yet'))
 end
 
 -- Every unit reads the direction of its cell and slides a little away from walls it touches.
@@ -118,7 +132,7 @@ function FlowField:move(dt)
             local direction = field:direction(column, row)
             local nx, ny = unit.x + direction.x * kSpeed * dt, unit.y + direction.y * kSpeed * dt
             local nextColumn, nextRow = board:cellAt(nx, ny)
-            if nextColumn and not self.walls[nextRow * kColumns + nextColumn] then
+            if nextColumn and not self.blocked[nextRow * kColumns + nextColumn] then
                 unit.x, unit.y = nx, ny
             else
                 local cx, cy = board:center(column, row)
@@ -128,37 +142,49 @@ function FlowField:move(dt)
     end
 end
 
+-- The arrows of a field are one sprite per open cell, turned to the step of the cell, in a batch made once for every new field.
+function FlowField:pointArrows()
+    local field, board, source = self.field, self.board, self.effects:source('arrow')
+    self.arrows:clear()
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            local direction = field:direction(column, row)
+            if not direction:isZero() then
+                local x, y = board:center(column, row)
+                self.arrows:add({x = x, y = y, width = kCell * 0.85, height = kCell * 0.85, rotation = math.atan(direction.y, direction.x) + FlowField.arrowTurn, source = source, color = '#80B4C8F0'})
+            end
+        end
+    end
+end
+
 function FlowField:draw(area)
     local board = self.board
-    board:drawPicture(self.picture)
+    graphics2d.drawRect({board.left, board.top, board.width, board.height}, '#FF2A3448', {layer = -2})
+    board:drawPicture(self.shadow, {layer = -1})
+    graphics2d.draw(self.shadow, board.left + 5, board.top + 6, {pivotX = 0, pivotY = 0, width = board.width, height = board.height, layer = -1})
+    self.walls:draw({layer = 0})
     local field = self.field
-    if field and (self.showArrows or self.showDistance) then
+    if field and self.showDistance then
         for row = 0, kRows - 1 do
             for column = 0, kColumns - 1 do
-                local x, y = board:center(column, row)
-                if self.showDistance then
-                    local distance = field:distance(column, row)
-                    if distance < math.huge then
-                        graphics2d.drawRect(board:cellRect(column, row, 1), picture.heat(distance / 80), {layer = 1})
-                    end
-                end
-                if self.showArrows then
-                    local direction = field:direction(column, row)
-                    if not direction:isZero() then
-                        graphics2d.drawLine(x - direction.x * 6, y - direction.y * 6, x + direction.x * 8, y + direction.y * 8, 2, '#66FFFFFF', {layer = 2})
-                    end
+                local distance = field:distance(column, row)
+                if distance < math.huge then
+                    graphics2d.drawRect(board:cellRect(column, row, 1), picture.heat(distance / 80), {layer = 1})
                 end
             end
         end
+    end
+    if field and self.showArrows then
+        self.arrows:draw({layer = 2})
     end
     for index, unit in ipairs(self.units) do
         local sprite = self.sprites[index]
         sprite.x, sprite.y = unit.x, unit.y
     end
-    graphics2d.drawBatch(self.white, self.sprites, {layer = 3})
+    graphics2d.drawBatch(self.orbs, self.sprites, {layer = 3})
     if self.goal then
         local x, y = board:center(self.goal[1], self.goal[2])
-        graphics2d.drawRing(x, y, 14, 4, '#FFFFD54F', {layer = 4})
+        self.art:goal(x, y + 10, 52, 10)
     end
 end
 

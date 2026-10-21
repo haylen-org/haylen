@@ -8,6 +8,7 @@ local profiler = require('haylen.debug')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 local Board = require('categories.algorithms.board')
 local picture = require('categories.algorithms.picture')
 
@@ -20,13 +21,16 @@ grid:setWalkable(120, 40, false)
 router:update(120, 40)  -- Rebuilds only the cluster of the changed cell.]]
 
 local kSize = 256
-local kCell = 3.3
+local kCell = 3.05
 local kClusterSize = 16
+local kMapX = -362
+-- The paths nest: each search draws thinner over the one before, so a stretch they share shows all three colors and a stretch where they part shows each alone.
 local kSearches = {
-    {name = 'HPA*', scope = 'hpa', color = '#FFFFD54F', width = 5},
-    {name = 'A*', scope = 'aStar', color = '#FF4DD0E1', width = 2},
-    {name = 'Jump point search', scope = 'jumpPoint', color = '#FFF06292', width = 2},
+    {name = 'HPA*', scope = 'hpa', color = '#FFFFC93C', width = 15},
+    {name = 'A*', scope = 'aStar', color = '#FF2FB3C4', width = 8},
+    {name = 'Jump point search', scope = 'jumpPoint', color = '#FFF06292', width = 3},
 }
+local kLegend = {x = 80, y = -400, width = 690, height = 800}
 
 function Hpa:enter()
     self:frame{
@@ -41,7 +45,8 @@ function Hpa:enter()
     }
     self.brush, self.showClusters = 'goal', true
     self.random = m.random(61)
-    self.board = Board(kSize, kSize, kCell, -250, 0)
+    self.art = Art()
+    self.board = Board(kSize, kSize, kCell, kMapX, 0)
     self:build()
 end
 
@@ -58,7 +63,7 @@ function Hpa:build()
     local noise = m.noise(self.random:integer(1, 9999))
     for row = 0, kSize - 1 do
         for column = 0, kSize - 1 do
-            local wall = noise:fractal(column / 24, row / 24, 3) > 0.35
+            local wall = noise:fractal(column / 30, row / 30, 3) > 0.32
             if column % 64 == 32 and not door(row) or row % 64 == 32 and not door(column) then
                 wall = true
             end
@@ -88,7 +93,7 @@ end
 
 function Hpa:repaint()
     self.picture = picture.cells(kSize, kSize, function(column, row)
-        return self.walls[row * kSize + column] and '#FF607D8B' or '#FF1F2530'
+        return self.walls[row * kSize + column] and '#FF7C8AAB' or '#FF262D3D'
     end)
 end
 
@@ -155,36 +160,46 @@ function Hpa:update(dt)
     for index, search in ipairs(kSearches) do
         self.results[index].milliseconds = self:timing(search.scope)
     end
-    self:status(string.format('Entrances %d, build %.2f ms, update %.2f ms', self.router.nodeCount, self:timing('hpaBuild'), self:timing('hpaUpdate')))
+    self:status(string.format('Entrances between clusters %d, built in %.2f ms, last stroke rebuilt in %.2f ms', self.router.nodeCount, self:timing('hpaBuild'), self:timing('hpaUpdate')))
 end
 
 function Hpa:draw(area)
     local board = self.board
+    graphics2d.drawShape({board.left - 8, board.top - 8, board.width + 16, board.height + 16}, {radius = 12, color = '#FF151A24', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
     board:drawPicture(self.picture)
     if self.showClusters then
-        for index = 0, kSize, kClusterSize do
+        for index = kClusterSize, kSize - 1, kClusterSize do
             local offset = index * kCell
-            graphics2d.drawLine(board.left + offset, board.top, board.left + offset, board.top + board.height, 1, '#40FFFFFF', {layer = 1})
-            graphics2d.drawLine(board.left, board.top + offset, board.left + board.width, board.top + offset, 1, '#40FFFFFF', {layer = 1})
+            graphics2d.drawLine(board.left + offset, board.top, board.left + offset, board.top + board.height, 1.5, '#38FFFFFF', {layer = 1})
+            graphics2d.drawLine(board.left, board.top + offset, board.left + board.width, board.top + offset, 1.5, '#38FFFFFF', {layer = 1})
         end
     end
-    for index = #kSearches, 1, -1 do
-        local search = kSearches[index]
+    for index, search in ipairs(kSearches) do
         board:drawPath(self.results[index].path, search.width, search.color, {layer = 2 + index})
     end
-    for _, cell in ipairs({self.start, self.goal}) do
-        local x, y = board:center(cell[1], cell[2])
-        graphics2d.drawCircle(x, y, 10, cell == self.start and '#FF66BB6A' or '#FFEF5350', {layer = 6})
-    end
-    local legendX = board.left + board.width + 40
+    local sx, sy = board:center(self.start[1], self.start[2])
+    local gx, gy = board:center(self.goal[1], self.goal[2])
+    self.art:start(sx, sy + 6, 46, 10)
+    self.art:goal(gx, gy + 6, 46, 10)
+    self:drawLegend()
+end
+
+-- The legend sits on a card beside the map: a sample of each line, its name and what its search found.
+function Hpa:drawLegend()
+    local card = kLegend
+    graphics2d.drawShape({card.x, card.y, card.width, card.height}, {radius = 20, color = '#FF1E2433', borderWidth = 2, borderColor = '#FF343D55'})
+    local left = card.x + 36
+    graphics2d.drawText(nil, 'Three searches, one map', left, card.y + 34, {size = 34})
+    graphics2d.drawText(nil, 'Each line draws thinner over the one before, so where the paths agree all three colors nest, and where they part each shows alone.', left, card.y + 84, {size = 23, color = '#FFAAB4CC', maxWidth = card.width - 72, layer = 1})
     for index, search in ipairs(kSearches) do
         local result = self.results[index]
-        local y = board.top + (index - 1) * 96
-        graphics2d.drawLine(legendX, y + 14, legendX + 40, y + 14, search.width + 2, search.color)
-        graphics2d.drawText(nil, search.name, legendX + 56, y, {size = 26})
-        local summary = result.path and string.format('%d cells, cost %.0f, %.2f ms', #result.path, result.cost, result.milliseconds or 0) or 'No path'
-        graphics2d.drawText(nil, summary, legendX + 56, y + 36, {size = 22, color = '#FFB0BEC5'})
+        local y = card.y + 250 + (index - 1) * 150
+        graphics2d.drawLine(left, y + 22, left + 64, y + 22, search.width, search.color, {layer = 1})
+        graphics2d.drawText(nil, search.name, left + 92, y, {size = 30, layer = 1})
+        local summary = result.path and string.format('%d cells, cost %.0f, %.2f ms', #result.path, result.cost, result.milliseconds or 0) or 'No path between the flags.'
+        graphics2d.drawText(nil, summary, left + 92, y + 44, {size = 24, color = '#FFAAB4CC', layer = 1})
     end
+    graphics2d.drawText(nil, string.format('The map has %d clusters of %d by %d cells.', (kSize // kClusterSize) * (kSize // kClusterSize), kClusterSize, kClusterSize), left, card.y + card.height - 64, {size = 22, color = '#FF7A8099', maxWidth = card.width - 72, layer = 1})
 end
 
 return Hpa

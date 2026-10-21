@@ -7,6 +7,7 @@ local navigation2d = require('haylen.navigation2d')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 
 local HexIso = haylen.class('HexIso', AlgorithmTest)
 
@@ -43,14 +44,15 @@ function HexIso:enter()
         hint = 'Tap or click cells with the selected brush. The path steps through six sides on hexagons and through sides and corners on diamonds. R or the X button places new walls.',
         code = HexIso.code,
         controls = {
-            ui.radioGroup{id = 'layout', items = {{id = 'hexRows', text = 'Hex, shifted rows'}, {id = 'hexColumns', text = 'Hex, shifted columns'}, {id = 'isometric', text = 'Isometric'}, {id = 'staggered', text = 'Staggered isometric'}}, selected = 'hexRows', onChange = function(event) self:build(event.value) end},
-            ui.radioGroup{id = 'brush', items = {{id = 'wall', text = 'Toggle walls'}, {id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}}, selected = 'wall', onChange = function(event) self.brush = event.value end},
+            ui.formField{label = 'Grid', ui.radioGroup{id = 'layout', items = {{id = 'hexRows', text = 'Hex, shifted rows'}, {id = 'hexColumns', text = 'Hex, shifted columns'}, {id = 'isometric', text = 'Isometric'}, {id = 'staggered', text = 'Staggered isometric'}}, selected = 'hexRows', onChange = function(event) self:build(event.value) end}},
+            ui.formField{label = 'Brush', ui.radioGroup{id = 'brush', items = {{id = 'wall', text = 'Toggle walls'}, {id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}}, selected = 'wall', onChange = function(event) self.brush = event.value end}},
             ui.button{id = 'random', text = 'Random walls', onClick = function() self:build(self.name) end},
         },
         focus = 'layout',
     }
     self.brush = 'wall'
     self.random = m.random(46)
+    self.art = Art()
     self:build('hexRows')
 end
 
@@ -78,6 +80,9 @@ function HexIso:build(name)
             left, top, right, bottom = math.min(left, x), math.min(top, y), math.max(right, x), math.max(bottom, y)
         end
     end
+    -- The grid grows to fill the world of the test, with a cell of room around it.
+    local width, height = right - left + kTile * 1.2, bottom - top + kTile * 1.2
+    self.scale = math.min(1500 / width, 780 / height)
     self.offset = {-(left + right) / 2, -(top + bottom) / 2}
     self:search()
 end
@@ -89,11 +94,12 @@ end
 
 function HexIso:center(column, row)
     local x, y = self.shape.center(column, row)
-    return x + self.offset[1], y + self.offset[2]
+    return (x + self.offset[1]) * self.scale, (y + self.offset[2]) * self.scale
 end
 
 function HexIso:cellAt(x, y)
-    local best, bestColumn, bestRow = kPickDistance * kPickDistance, nil, nil
+    local reach = kPickDistance * self.scale
+    local best, bestColumn, bestRow = reach * reach, nil, nil
     for row = 0, self.shape.rows - 1 do
         for column = 0, self.shape.columns - 1 do
             local cx, cy = self:center(column, row)
@@ -127,7 +133,7 @@ function HexIso:update(dt)
             self:search()
         end
     end
-    self:status(string.format('Topology "%s", stagger by %s, %s', self.grid.topology, self.grid.staggerX and 'columns' or 'rows', self.path and string.format('path of %d cells, cost %.1f', #self.path, self.cost) or 'no path'))
+    self:status(string.format('The topology "%s" staggers its %s, %s', self.grid.topology, self.grid.staggerX and 'columns' or 'rows', self.path and string.format('with a path of %d cells and a cost of %.1f', #self.path, self.cost) or 'with no path between the flags'))
 end
 
 function HexIso:drawCell(column, row, color, order)
@@ -135,7 +141,7 @@ function HexIso:drawCell(column, row, color, order)
     local points = {}
     for index = 0, (self.shape.corners or 6) - 1 do
         local dx, dy = self.shape.corner(index)
-        points[#points + 1] = {x + dx * 0.94, y + dy * 0.94}
+        points[#points + 1] = {x + dx * 0.92 * self.scale, y + dy * 0.92 * self.scale}
     end
     graphics2d.drawPolygon(points, color, order)
 end
@@ -148,19 +154,23 @@ function HexIso:draw(area)
     for row = 0, self.shape.rows - 1 do
         for column = 0, self.shape.columns - 1 do
             local index = row * self.shape.columns + column
-            local color = self.walls[index] and '#FF90A4AE' or (onPath[index] and '#FF8D7B2E' or '#FF2B3240')
+            local color = self.walls[index] and '#FF7C8AAB' or (onPath[index] and '#FF5A4E2E' or '#FF2B3448')
             self:drawCell(column, row, color)
         end
     end
-    self:drawCell(self.start[1], self.start[2], '#FF66BB6A', {layer = 1})
-    self:drawCell(self.goal[1], self.goal[2], '#FFEF5350', {layer = 1})
     if self.path then
         local points = {}
-        for index, cell in ipairs(self.path) do
-            points[index] = {self:center(cell.x, cell.y)}
+        for _, cell in ipairs(self.path) do
+            local x, y = self:center(cell.x, cell.y)
+            points[#points + 1] = x
+            points[#points + 1] = y
         end
-        graphics2d.drawPolyline(points, 4, '#FFFFD54F', false, {layer = 2})
+        graphics2d.drawStroke(points, {width = 7, color = '#FFFFC93C', join = 'round', cap = 'round', layer = 2})
     end
+    local sx, sy = self:center(self.start[1], self.start[2])
+    local gx, gy = self:center(self.goal[1], self.goal[2])
+    self.art:start(sx, sy + 8, 48, 10)
+    self.art:goal(gx, gy + 8, 48, 10)
 end
 
 return HexIso

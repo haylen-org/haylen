@@ -96,7 +96,7 @@ function Mazes:draw(area)
     end
     self.board:drawPicture(self.picture)
     if self.solve then
-        self.board:drawPath(self.path, kCell * 0.5, '#FFE53935', {layer = 1})
+        self.board:drawPath(self.path, kCell * 0.45, '#A8F0473E', {layer = 1})
     end
 end
 

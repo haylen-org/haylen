@@ -14,11 +14,14 @@ local lowPass = m.lowPassFilter({cutoff = 1.5})
 local hampel = m.hampelFilter({window = 9, threshold = 3})
 local kalman = m.kalmanFilter({processNoise = 0.002, measurementNoise = 0.05})
 local smooth = lowPass:update(dt, measured)  -- The low-pass filter takes the time step.
-local clean, tracked = hampel:update(measured), kalman:update(measured)]]
+local clean = hampel:update(measured)  -- Replaces a spike with the median around it.
+local tracked = kalman:update(measured)]]
 
 Smoothing.samples = 360
 Smoothing.rate = 60
-Smoothing.width, Smoothing.height = 1500, 300
+-- Every filter has a row of its own in this box of the world, with the plot after its name.
+Smoothing.box = {left = -790, top = -415, width = 1580, height = 830}
+Smoothing.plotLeft, Smoothing.plotWidth = -500, 1270
 Smoothing.filters = {
     {id = 'lowPass', text = 'Low-pass', color = '#FF42A5F5'},
     {id = 'average', text = 'Moving average', color = '#FFFFD54F'},
@@ -41,13 +44,17 @@ function Smoothing:enter()
         controls[#controls + 1] = toggle
     end
     self:frame{
-        hint = 'The gray dots are the measurements of the white wave. Turn the noise and the spikes up and down, and pick the filters to compare their delay, their smoothness and how they handle spikes. R or the X button starts the plot again.',
+        hint = 'Each row draws one filter through the same measurements, the gray dots, of the white wave. Turn the noise and the spikes up and down, and pick the filters to compare their delay, their smoothness and how they handle spikes. R or the X button starts the plot again.',
         code = Smoothing.code,
         controls = controls,
         focus = 'noise',
     }
     self.random = m.random(29)
     self:reset()
+    -- The plot opens full, as if it had been measuring for a while.
+    for _ = 1, Smoothing.samples do
+        self:sample()
+    end
 end
 
 function Smoothing:reset()
@@ -97,35 +104,49 @@ function Smoothing:update(dt)
         self.carry = self.carry - 1 / Smoothing.rate
         self:sample()
     end
-    self:status(string.format('Noise %.2f   Spikes "%s"   Samples %d at %d per second', self.noise, tostring(self.spikes), #self.measured, Smoothing.rate))
+    self:status(string.format('Noise %.2f, spikes %s, %d samples at %d per second', self.noise, self.spikes and 'on' or 'off', #self.measured, Smoothing.rate))
 end
 
-function Smoothing.point(index, value)
-    return {-Smoothing.width / 2 + (index - 1) * Smoothing.width / (Smoothing.samples - 1), -value * Smoothing.height / 2}
-end
-
-function Smoothing.polyline(values)
+-- Turns a history into the flat points of a row whose middle is `middle` and which draws `scale` units for a value of 1.
+function Smoothing.flat(values, middle, scale)
     local points = {}
+    local step = Smoothing.plotWidth / (Smoothing.samples - 1)
     for index, value in ipairs(values) do
-        points[index] = Smoothing.point(index, value)
+        points[#points + 1] = Smoothing.plotLeft + (index - 1) * step
+        points[#points + 1] = middle - value * scale
     end
     return points
 end
 
 function Smoothing:draw(area)
-    graphics2d.drawLine(-Smoothing.width / 2, 0, Smoothing.width / 2, 0, 2, '#30FFFFFF')
-    for index, value in ipairs(self.measured) do
-        local point = Smoothing.point(index, value)
-        graphics2d.drawCircle(point[1], point[2], 3, '#80B0BEC5')
-    end
-    if #self.truth > 1 then
-        graphics2d.drawPolyline(Smoothing.polyline(self.truth), 3, '#C0FFFFFF', false, {layer = 1})
-    end
-    for order, filter in ipairs(Smoothing.filters) do
-        if self.shown[filter.id] and #self.lines[filter.id] > 1 then
-            graphics2d.drawPolyline(Smoothing.polyline(self.lines[filter.id]), 3, filter.color, false, {layer = 1 + order})
+    local shown = {}
+    for _, filter in ipairs(Smoothing.filters) do
+        if self.shown[filter.id] then
+            shown[#shown + 1] = filter
         end
-        Smoothing.caption(filter.text, -Smoothing.width / 2 + (order - 1) * 240, Smoothing.height / 2 + 110, {color = filter.color, size = 26})
+    end
+    local box = Smoothing.box
+    if #shown == 0 then
+        Smoothing.caption('Turn a filter on to see its line through the measurements.', 0, 0, {anchor = {0.5, 0.5}, size = 26})
+        return
+    end
+
+    local gap = 14
+    local rowHeight = (box.height - gap * (#shown - 1)) / #shown
+    for index, filter in ipairs(shown) do
+        local top = box.top + (index - 1) * (rowHeight + gap)
+        local middle, scale = top + rowHeight / 2, rowHeight * 0.3
+        graphics2d.drawShape({box.left, top, box.width, rowHeight}, {radius = 14, color = '#FF1C2230', borderWidth = 2, borderColor = '#FF2C3147'})
+        graphics2d.drawShape({box.left + 22, middle - 5, 26, 10}, {radius = 5, color = filter.color, layer = 1})
+        Smoothing.caption(filter.text, box.left + 60, middle, {anchor = {0, 0.5}, color = '#FFE8EAF2', size = 26})
+        graphics2d.pushClip({Smoothing.plotLeft - 10, top + 4, Smoothing.plotWidth + 20, rowHeight - 8})
+        graphics2d.drawLine(Smoothing.plotLeft, middle, Smoothing.plotLeft + Smoothing.plotWidth, middle, 1.5, '#30FFFFFF')
+        if #self.measured > 1 then
+            graphics2d.drawPoints(Smoothing.flat(self.measured, middle, scale), {radius = 2.5, color = '#70B0BEC5', layer = 1})
+            graphics2d.drawStroke(Smoothing.flat(self.truth, middle, scale), {width = 2, color = '#A0FFFFFF', join = 'round', layer = 2})
+            graphics2d.drawStroke(Smoothing.flat(self.lines[filter.id], middle, scale), {width = 3.5, color = filter.color, join = 'round', layer = 3})
+        end
+        graphics2d.popClip()
     end
 end
 

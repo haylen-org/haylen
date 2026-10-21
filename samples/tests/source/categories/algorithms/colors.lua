@@ -7,12 +7,24 @@ local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Test = require('harness.test')
 
 local Colors = haylen.class('Colors', AlgorithmTest)
 
-Colors.pictures = {{id = 'landscape', text = 'Landscape', path = 'interface/images/landscape.png'}, {id = 'planet', text = 'Planet', path = 'shaders/images/planet.png'}, {id = 'gems', text = 'Gems', path = 'sprites/atlases/gems.png'}}
+Colors.code = [[
+local image = assets.load('interface/images/landscape.png', 'image')
+local palette = image:palette(8)  -- Colors and the share of the picture each stands for, by median cut.
+local swatches = image:swatches()  -- The dominant, vibrant and muted colors an interface takes.
+local code = image:placeholder({columns = 4, rows = 3})  -- A short text that holds a blurred image.
+local blurred = graphics.decodePlaceholder(code, 32, 18)
+local ink = swatches.vibrant:contrastingColor()  -- Black or white, whichever reads better on it.]]
+
+Colors.pictures = {{id = 'landscape', text = 'Island', path = 'interface/images/landscape.png'}, {id = 'planet', text = 'Planet', path = 'shaders/images/planet.png'}, {id = 'gems', text = 'Gems', path = 'sprites/atlases/gems.png'}}
 Colors.swatchNames = {'dominant', 'vibrant', 'darkVibrant', 'lightVibrant', 'muted', 'darkMuted', 'lightMuted'}
-Colors.box = {width = 620, height = 320}
+Colors.box = {width = 740, height = 380}
+Colors.left = -770
+Colors.gap = 60
+Colors.width = 1540
 
 function Colors:enter()
     self.picture, self.columns, self.rows, self.count = 'landscape', 4, 3, 8
@@ -22,6 +34,7 @@ function Colors:enter()
     end
     self:frame{
         hint = 'Pick a picture, and change how many cosines its placeholder keeps and how many colors its palette has. Each swatch writes its name in black or white, whichever reads better on it, with the contrast of the two.',
+        code = Colors.code,
         controls = {
             ui.segmentedControl{id = 'picture', items = items, selected = self.picture, onChange = function(event)
                 self.picture = event.value
@@ -60,7 +73,7 @@ function Colors:analyze()
     self.swatches = image:swatches()
     self.code = image:placeholder({columns = self.columns, rows = self.rows})
     self.blurred = graphics.newTexture(graphics.decodePlaceholder(self.code, 32, math.max(1, math.floor(32 / self.aspect))), {filter = 'linear'})
-    self:status(string.format('Placeholder "%s", %d characters   Palette %d colors', self.code, #self.code, #self.palette))
+    self:status(string.format('The placeholder "%s" holds %d characters, and the palette %d colors', self.code, #self.code, #self.palette))
 end
 
 function Colors:fit(x, y)
@@ -70,37 +83,44 @@ function Colors:fit(x, y)
 end
 
 function Colors:draw(area)
-    local left, top = -790, -385
-    local picture = self:fit(left, top)
-    Colors.caption('The picture', left, top - 30)
-    graphics2d.draw(self.texture, picture[1], picture[2], {width = picture[3], height = picture[4], pivotX = 0, pivotY = 0})
-    local blurred = self:fit(left + 680, top)
-    Colors.caption(string.format('Its placeholder of %d by %d cosines', self.columns, self.rows), left + 680, top - 30)
-    graphics2d.draw(self.blurred, blurred[1], blurred[2], {width = blurred[3], height = blurred[4], pivotX = 0, pivotY = 0})
+    local left, top = Colors.left, -400
+    local picture = self:fit(left, top + 34)
+    Colors.caption('The picture', picture[1], top, {size = 24, color = Test.ink})
+    graphics2d.drawShape(picture, {radius = 14, texture = self.texture})
+    local blurred = self:fit(left + Colors.box.width + Colors.gap, top + 34)
+    Colors.caption(string.format('Its placeholder of %d by %d cosines', self.columns, self.rows), blurred[1], top, {size = 24, color = Test.ink})
+    graphics2d.drawShape(blurred, {radius = 14, texture = self.blurred})
 
-    -- The palette shows each color as wide as the share of the picture it stands for.
-    local y = top + Colors.box.height + 55
-    Colors.caption('Its palette, each color as wide as its share', left, y - 30)
-    local x = left
+    -- The palette shows each color as wide as the share of the picture it stands for, on a strip as wide as the swatches under it.
+    local y = top + Colors.box.height + 92
+    Colors.caption('Its palette, each color as wide as its share', left, y - 36, {size = 22})
+    local x, total = left, 0
     for _, swatch in ipairs(self.palette) do
-        local width = swatch.population * 1300
-        graphics2d.drawRect({x, y, width, 60}, swatch.color)
+        total = total + swatch.population
+    end
+    for index, swatch in ipairs(self.palette) do
+        local width = swatch.population / total * Colors.width
+        local radius = {index == 1 and 12 or 0, index == #self.palette and 12 or 0, index == #self.palette and 12 or 0, index == 1 and 12 or 0}
+        graphics2d.drawShape({x, y, width + (index < #self.palette and 0.5 or 0), 56}, {radius = radius, color = swatch.color})
         x = x + width
     end
 
-    y = y + 110
-    Colors.caption('Its swatches, with text in the color that reads best and its contrast', left, y - 30)
+    y = y + 112
+    Colors.caption('Its swatches, with text in the color that reads best and its contrast', left, y - 36, {size = 22})
+    local gap = 14
+    local cellWidth = (Colors.width - gap * (#Colors.swatchNames - 1)) / #Colors.swatchNames
     for index, name in ipairs(Colors.swatchNames) do
         local color = self.swatches[name]
-        local cell = {left + (index - 1) * 186, y, 176, 150}
+        local cell = {left + (index - 1) * (cellWidth + gap), y, cellWidth, 128}
+        local middle = cell[1] + cellWidth / 2
         if color then
             local text = color:contrastingColor()
-            graphics2d.drawRect(cell, color)
-            graphics2d.drawText(nil, name, cell[1] + 88, cell[2] + 52, {size = 24, color = text, anchor = {0.5, 0.5}})
-            graphics2d.drawText(nil, string.format('%.1f to 1', m.contrast(text, color)), cell[1] + 88, cell[2] + 98, {size = 22, color = text, anchor = {0.5, 0.5}})
+            graphics2d.drawShape(cell, {radius = 12, color = color})
+            graphics2d.drawText(nil, name, middle, cell[2] + 44, {size = 24, color = text, anchor = {0.5, 0.5}, layer = 1})
+            graphics2d.drawText(nil, string.format('%.1f to 1', m.contrast(text, color)), middle, cell[2] + 86, {size = 22, color = text, anchor = {0.5, 0.5}, layer = 1})
         else
-            graphics2d.drawRectOutline(cell, 2, '#FF5A6A8A')
-            graphics2d.drawText(nil, name .. '\nNone', cell[1] + 88, cell[2] + 75, {size = 22, color = '#FF8A9AB8', anchor = {0.5, 0.5}, align = 'center'})
+            graphics2d.drawShape(cell, {radius = 12, color = '#00000000', borderWidth = 2, borderColor = '#FF5A6A8A'})
+            graphics2d.drawText(nil, name .. '\nNone', middle, cell[2] + 64, {size = 22, color = '#FF8A9AB8', anchor = {0.5, 0.5}, align = 'center', layer = 1})
         end
     end
 end

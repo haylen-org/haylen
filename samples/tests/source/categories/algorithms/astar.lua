@@ -8,6 +8,7 @@ local profiler = require('haylen.debug')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 local Board = require('categories.algorithms.board')
 local picture = require('categories.algorithms.picture')
 
@@ -21,7 +22,7 @@ local path, cost = grid:findPath(2, 2, 27, 33, {heuristic = 'octile', diagonal =
 local quick = grid:findPath(2, 2, 27, 33, {weight = 2})  -- Weighted A*.
 local jumped = grid:findPath(2, 2, 27, 33, {jumpPoint = true})  -- Needs grid.uniformCost.]]
 
-local kColumns, kRows, kCell = 30, 36, 14
+local kColumns, kRows, kCell = 30, 36, 16
 local kMudCost = 5
 local kColors = {floor = '#FF2B3240', wall = '#FF90A4AE', mud = '#FF6D4C41'}
 local kPanels = {
@@ -36,23 +37,23 @@ function AStar:enter()
         code = AStar.code,
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'wall', text = 'Paint walls'}, {id = 'mud', text = 'Paint mud that costs 5'}, {id = 'floor', text = 'Erase'}, {id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}}, selected = 'wall', onChange = function(event) self.brush = event.value end},
-            ui.combo{id = 'heuristic', items = {{id = 'octile', text = 'Octile'}, {id = 'manhattan', text = 'Manhattan'}, {id = 'euclidean', text = 'Euclidean'}, {id = 'chebyshev', text = 'Chebyshev'}}, selected = 'octile', onChange = function(event) self:setOption('heuristic', event.value) end},
-            ui.label{text = 'Weight of weighted A*', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'weight', value = 2, min = 1, max = 5, step = 0.25, showValue = true, onChange = function(event) self:setOption('weight', event.value) end},
+            ui.formField{label = 'Heuristic', ui.combo{id = 'heuristic', items = {{id = 'octile', text = 'Octile'}, {id = 'manhattan', text = 'Manhattan'}, {id = 'euclidean', text = 'Euclidean'}, {id = 'chebyshev', text = 'Chebyshev'}}, selected = 'octile', onChange = function(event) self:setOption('heuristic', event.value) end}},
+            ui.formField{label = 'Weight of weighted A*', ui.slider{id = 'weight', value = 2, min = 1, max = 5, step = 0.25, showValue = true, onChange = function(event) self:setOption('weight', event.value) end}},
             ui.checkbox{id = 'diagonal', text = 'Diagonal steps', checked = true, onChange = function(event) self:setOption('diagonal', event.checked) end},
-            ui.row{wrap = true, ui.button{id = 'random', text = 'Random walls', onClick = function() self:randomize() end}, ui.button{id = 'clear', text = 'Clear', onClick = function() self:clear() end}},
+            ui.row{gap = 12, ui.button{id = 'random', text = 'Random walls', grow = 1, onClick = function() self:randomize() end}, ui.button{id = 'clear', text = 'Clear', grow = 1, onClick = function() self:clear() end}},
         },
         focus = 'brush',
     }
     self.brush = 'wall'
     self.options = {heuristic = 'octile', weight = 2, diagonal = true}
     self.random = m.random(41)
+    self.art = Art()
     self.grid = navigation2d.newGrid(kColumns, kRows)
     self.cells = {}
     self.start, self.goal = {2, 2}, {kColumns - 3, kRows - 3}
     self.panels = {}
     for index, panel in ipairs(kPanels) do
-        self.panels[index] = {name = panel.name, scope = panel.scope, x = panel.x, board = Board(kColumns, kRows, kCell, panel.x, 20)}
+        self.panels[index] = {name = panel.name, scope = panel.scope, x = panel.x, board = Board(kColumns, kRows, kCell, panel.x, 0)}
     end
     self:randomize()
 end
@@ -148,19 +149,16 @@ end
 function AStar:draw(area)
     for _, panel in ipairs(self.panels) do
         local board = panel.board
+        graphics2d.drawShape({board.left - 5, board.top - 5, board.width + 10, board.height + 10}, {radius = 8, color = '#FF151A24', borderWidth = 2, borderColor = '#FF3A4560', layer = -1})
         board:drawPicture(self.picture)
-        board:drawPath(panel.path, 5, '#FFFFD54F', {layer = 2})
-        for _, cell in ipairs(panel.path or {}) do
-            local x, y = board:center(cell.x, cell.y)
-            graphics2d.drawCircle(x, y, 3, '#FFFFF59D', {layer = 3})
-        end
+        board:drawPath(panel.path, 6, '#FFFFC93C', {layer = 2})
         local sx, sy = board:center(self.start[1], self.start[2])
         local gx, gy = board:center(self.goal[1], self.goal[2])
-        graphics2d.drawCircle(sx, sy, kCell * 0.6, '#FF66BB6A', {layer = 4})
-        graphics2d.drawCircle(gx, gy, kCell * 0.6, '#FFEF5350', {layer = 4})
-        graphics2d.drawText(nil, panel.name, panel.x, board.top - 16, {size = 30, anchor = {0.5, 1}})
-        local summary = panel.note or (panel.path and string.format('%d cells, cost %.1f\nTime %.3f ms', #panel.path, panel.cost, panel.milliseconds) or 'No path')
-        graphics2d.drawText(nil, summary, panel.x, board.top + board.height + 12, {size = 22, anchor = {0.5, 0}, align = 'center', maxWidth = board.width})
+        self.art:start(sx, sy + kCell * 0.4, 34, 10)
+        self.art:goal(gx, gy + kCell * 0.4, 34, 10)
+        graphics2d.drawText(nil, panel.name, panel.x, board.top - 18, {size = 32, anchor = {0.5, 1}})
+        local summary = panel.note or (panel.path and string.format('%d cells, cost %.1f, %.3f ms', #panel.path, panel.cost, panel.milliseconds) or 'No path between the flags')
+        graphics2d.drawText(nil, summary, panel.x, board.top + board.height + 16, {size = 24, color = '#FFAAB4CC', anchor = {0.5, 0}, align = 'center', maxWidth = board.width + 40})
     end
 end
 

@@ -15,12 +15,14 @@ local Autotile = haylen.class('Autotile', AlgorithmTest)
 Autotile.code = [[
 local sides = procedural2d.autotile4(cells, 1)  -- The 4-bit mask of every cell that holds 1.
 local blobs = procedural2d.autotile8(cells, 1)  -- One of the 47 blob tiles, or -1.
-local set = {kind = 'corner', tiles = {{tileId = 5, wangId = {0, 1, 0, 2, 0, 1, 0, 2}}}}  -- Or a wang set of a Tiled tileset.
+local set = {kind = 'corner', tiles = {{tileId = 5, wangId = {0, 1, 0, 2, 0, 1, 0, 2}}}}  -- Or a set of Tiled.
 local tiles = procedural2d.autotileWang(corners, set, 3)  -- Corners sit on a grid one cell wider and taller.]]
 
 local kColumns, kRows, kCell = 38, 21, 38
-local kWater, kShore, kLand = '#FF1E6091', '#FFE9D8A6', '#FF7CB342'
+local kWater, kShore, kLand = '#FF2FB3C4', '#FFF3D58D', '#FF7BC74D'
 local kInset = 8
+-- The blob tiles round an open corner of the land by this radius.
+local kRound = 16
 
 -- A corner Wang set of sixteen tiles, one per mix of water (1) and grass (2) on the four corners, in the `wangId` order of Tiled.
 local function cornerSet()
@@ -38,16 +40,17 @@ function Autotile:enter()
         hint = 'Paint land on the water with the pointer, starting on water to add land and on land to remove it. The Wang mode paints the corners of the cells. R or the X button raises a new island.',
         code = Autotile.code,
         controls = {
-            ui.radioGroup{id = 'mode', items = {{id = 'mask4', text = '4-bit masks'}, {id = 'blob', text = '47-tile blob masks'}, {id = 'wang', text = 'Corner Wang set'}}, selected = 'blob', onChange = function(event)
+            ui.formField{label = 'Tiles', ui.radioGroup{id = 'mode', items = {{id = 'mask4', text = '4-bit masks'}, {id = 'blob', text = '47-tile blob masks'}, {id = 'wang', text = 'Corner Wang set'}}, selected = 'blob', onChange = function(event)
                 self.mode = event.value
                 self:retile()
-            end},
-            ui.checkbox{id = 'numbers', text = 'Show the tile numbers', onChange = function(event) self.numbers = event.checked end},
+            end}},
+            ui.checkbox{id = 'numbers', text = 'Show the tile numbers', checked = true, onChange = function(event) self.numbers = event.checked end},
+            ui.label{text = 'The 4-bit masks join the sides only, so corners stay square. The blob masks also read the diagonals, so open corners round off and inner corners keep a beach.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'New island', onClick = function() self:build() end},
         },
         focus = 'mode',
     }
-    self.mode = 'blob'
+    self.mode, self.numbers = 'blob', true
     self.random = m.random(97)
     self.set = cornerSet()
     self.board = Board(kColumns, kRows, kCell)
@@ -124,7 +127,7 @@ function Autotile:update(dt)
             end
         end
     end
-    self:status(string.format('Mode "%s", different tiles in use %d', self.mode, count))
+    self:status(string.format('The mode "%s" uses %d different tiles', self.mode, count))
 end
 
 -- A land cell of the side masks draws its middle and an arm toward every side whose neighbor is land too.
@@ -139,15 +142,23 @@ function Autotile:drawSides(x, y, mask)
     end
 end
 
--- A blob cell also fills a corner when both of its sides and the diagonal between them are land.
+-- A blob cell is a beach under the grass, rounded at every corner whose two sides are open, and a land cell whose diagonal is water keeps a curve of beach in that inner corner.
 function Autotile:drawBlob(x, y, column, row)
     local mask = procedural2d.mask8(self.cells, column, row)
-    local sides = (mask & 1 ~= 0 and 1 or 0) | (mask & 4 ~= 0 and 2 or 0) | (mask & 16 ~= 0 and 4 or 0) | (mask & 64 ~= 0 and 8 or 0)
-    self:drawSides(x, y, sides)
-    local corners = {{2, x + kCell - kInset, y}, {8, x + kCell - kInset, y + kCell - kInset}, {32, x, y + kCell - kInset}, {128, x, y}}
-    for _, corner in ipairs(corners) do
-        if mask & corner[1] ~= 0 then
-            graphics2d.drawRect({corner[2], corner[3], kInset, kInset}, kLand)
+    local north, east, south, west = mask & 1 ~= 0, mask & 4 ~= 0, mask & 16 ~= 0, mask & 64 ~= 0
+    local radii = {not north and not west and kRound or 0, not north and not east and kRound or 0, not south and not east and kRound or 0, not south and not west and kRound or 0}
+    graphics2d.drawShape({x, y, kCell, kCell}, {radius = radii, color = kShore})
+    local left, top = west and 0 or kInset, north and 0 or kInset
+    local right, bottom = east and 0 or kInset, south and 0 or kInset
+    local inner = {}
+    for index, radius in ipairs(radii) do
+        inner[index] = radius > 0 and radius - kInset or 0
+    end
+    graphics2d.drawShape({x + left, y + top, kCell - left - right, kCell - top - bottom}, {radius = inner, color = kLand, layer = 1})
+    local notches = {{north and east and mask & 2 == 0, x + kCell, y}, {south and east and mask & 8 == 0, x + kCell, y + kCell}, {south and west and mask & 32 == 0, x, y + kCell}, {north and west and mask & 128 == 0, x, y}}
+    for _, notch in ipairs(notches) do
+        if notch[1] then
+            graphics2d.drawShape({notch[2] - kInset, notch[3] - kInset, kInset * 2, kInset * 2}, {kind = 'ellipse', color = kShore, layer = 2})
         end
     end
 end
@@ -171,8 +182,8 @@ function Autotile:draw(area)
             local tile = self.tiles:get(column, row)
             local x, y = board.left + column * kCell, board.top + row * kCell
             if tile >= 0 then
-                -- Masked cells start as shore, so the sides and corners the mask leaves out show as a beach.
-                if self.mode ~= 'wang' then
+                -- Side masks start as shore, so the sides the mask leaves out show as a beach.
+                if self.mode == 'mask4' then
                     graphics2d.drawRect({x, y, kCell, kCell}, kShore)
                 end
                 if self.mode == 'mask4' then
@@ -183,7 +194,7 @@ function Autotile:draw(area)
                     self:drawWang(x, y, tile)
                 end
                 if self.numbers then
-                    graphics2d.drawText(nil, tostring(tile), x + kCell / 2, y + kCell / 2, {size = 16, anchor = {0.5, 0.5}, color = '#FF1B1E2B', layer = 1})
+                    graphics2d.drawText(nil, tostring(tile), x + kCell / 2, y + kCell / 2, {size = 17, anchor = {0.5, 0.5}, color = '#FF1E3A1A', layer = 3})
                 end
             end
         end

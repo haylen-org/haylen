@@ -19,6 +19,7 @@ Conversation.choiceCount = 3
 function Conversation:enter()
     self.lines = {}
     self.talk = assets.load('algorithms/smith.conversation')
+    ui.setImage('@smith', assets.texture('algorithms/smith.png', {filter = 'linear'}))
     local choices = {}
     for index = 1, Conversation.choiceCount do
         choices[index] = ui.button{id = 'choice' .. index, text = '', align = 'stretch', onClick = function() self:choose(index) end}
@@ -26,24 +27,43 @@ function Conversation:enter()
     self:frame{
         hint = 'Talk to the smith: continue, buy swords while the gold lasts, ask once for news, or save and resume the conversation.',
         code = Conversation.code,
-        content = {ui.row{wrap = true, grow = 1, gap = 24,
-            ui.panel{width = 640, align = 'stretch', gap = 12,
-                ui.label{id = 'speaker', text = '', font = 'heading'},
-                ui.label{id = 'line', text = ''},
+        content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
+            ui.card{grow = 3, minWidth = 520, gap = 20,
+                ui.row{gap = 24, alignItems = 'start',
+                    ui.image{image = '@smith', width = 168, height = 168, radius = 24},
+                    ui.column{grow = 1, gap = 10,
+                        ui.row{gap = 12, alignItems = 'center',
+                            ui.label{id = 'speaker', text = '', font = 'heading', grow = 1},
+                            ui.badge{id = 'gold', text = '', tone = 'warning'},
+                            ui.badge{id = 'swords', text = '', tone = 'accent'},
+                        },
+                        ui.label{id = 'line', text = ''},
+                    },
+                },
                 ui.button{id = 'continue', text = 'Continue', align = 'stretch', variant = 'primary', onClick = function() self:advance() end},
                 ui.column{gap = 8, align = 'stretch', table.unpack(choices)},
+                ui.spacer{grow = 1},
+                ui.divider{},
                 ui.row{wrap = true, gap = 12,
                     ui.button{id = 'save', text = 'Save', onClick = function() self.saved = self.state:save() self:note('Saved the conversation in the node "' .. self.state.node .. '".') end},
                     ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
                     ui.button{id = 'restart', text = 'Start again', onClick = function() self:begin() end},
                 },
             },
-            ui.scroll{grow = 1, ui.label{id = 'log', text = '', grow = 1}},
+            ui.card{grow = 2, minWidth = 360, gap = 12,
+                ui.sectionTitle{text = 'What happened'},
+                ui.scroll{grow = 1, height = 0, ui.label{id = 'log', text = '', color = 'textMuted'}},
+            },
         }},
     }
     self:begin()
     self:advance()
     self:choose(1)
+end
+
+function Conversation:exit()
+    ui.removeImage('@smith')
+    Conversation.super.exit(self)
 end
 
 function Conversation:begin()
@@ -84,8 +104,10 @@ end
 function Conversation:show()
     local line = self.state.line
     local variables = self.state.variables
-    self:set('speaker', {text = self.state.finished and 'The conversation ended' or line and line.speaker or ''})
-    self:set('line', {text = line and line.text or string.format('Gold %d, swords %d.', variables.gold, variables.swords)})
+    self:set('speaker', {text = self.state.finished and 'The conversation ended' or line and line.speaker or 'Smith'})
+    self:set('line', {text = line and line.text or 'The smith waits for you to say something.'})
+    self:set('gold', {text = string.format('Gold %d', variables.gold)})
+    self:set('swords', {text = string.format('Swords %d', variables.swords)})
     local choices = self.state.choices
     self:set('continue', {visible = #choices == 0 and not self.state.finished})
     for index = 1, Conversation.choiceCount do

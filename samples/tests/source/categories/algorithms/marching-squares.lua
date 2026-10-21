@@ -25,12 +25,10 @@ function MarchingSquares:enter()
         hint = 'Hold on the field to raise it, or to lower it with the other brush. The outlines follow the threshold between the samples. R or the X button makes a new field.',
         code = MarchingSquares.code,
         controls = {
-            ui.radioGroup{id = 'brush', horizontal = true, items = {{id = 'raise', text = 'Raise'}, {id = 'lower', text = 'Lower'}}, selected = 'raise', onChange = function(event) self.brush = event.value end},
-            ui.radioGroup{id = 'source', items = {{id = 'field', text = 'Trace the field'}, {id = 'bitmap', text = 'Trace the bitmap'}}, selected = 'field', onChange = function(event) self:change('source', event.value) end},
-            ui.label{text = 'Threshold', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'threshold', value = 0.5, min = 0.2, max = 0.8, step = 0.02, showValue = true, onChange = function(event) self:change('threshold', event.value) end},
-            ui.label{text = 'Simplify tolerance', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'tolerance', value = 0, min = 0, max = 12, step = 0.5, showValue = true, decimals = 1, onChange = function(event) self:change('tolerance', event.value) end},
+            ui.formField{label = 'Brush', ui.segmentedControl{id = 'brush', items = {{id = 'raise', text = 'Raise'}, {id = 'lower', text = 'Lower'}}, selected = 'raise', onChange = function(event) self.brush = event.value end}},
+            ui.formField{label = 'What to trace', ui.radioGroup{id = 'source', items = {{id = 'field', text = 'Trace the field'}, {id = 'bitmap', text = 'Trace the bitmap'}}, selected = 'field', onChange = function(event) self:change('source', event.value) end}},
+            ui.formField{label = 'Threshold', ui.slider{id = 'threshold', value = 0.5, min = 0.2, max = 0.8, step = 0.02, showValue = true, onChange = function(event) self:change('threshold', event.value) end}},
+            ui.formField{label = 'Simplify tolerance', ui.slider{id = 'tolerance', value = 0, min = 0, max = 12, step = 0.5, showValue = true, decimals = 1, onChange = function(event) self:change('tolerance', event.value) end}},
             ui.button{id = 'reset', text = 'New field', onClick = function() self:build() end},
         },
         focus = 'brush',
@@ -86,9 +84,8 @@ function MarchingSquares:trace()
     end
     self.picture = picture.cells(kColumns, kRows, function(column, row)
         local value = self.values[row * kColumns + column + 1]
-        local level = math.floor(value * 12) / 12
-        return m.color(0.1 + level * 0.25, 0.15 + level * 0.35, 0.2 + level * 0.25):toHex()
-    end)
+        return m.color(0.1 + value * 0.25, 0.15 + value * 0.35, 0.2 + value * 0.25):toHex()
+    end, true)
 end
 
 -- The brush raises or lowers the samples around the pointer, most at its center.
@@ -118,13 +115,20 @@ function MarchingSquares:update(dt)
     if self.pointer.down then
         self:paint(dt)
     end
-    self:status(string.format('Samples %d, outlines %d, points %d, trace %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marchingSquares')))
+    self:status(string.format('%d samples traced into %d outlines of %d points in %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marchingSquares')))
 end
 
 function MarchingSquares:draw(area)
     self.board:drawPicture(self.picture)
     for _, outline in ipairs(self.outlines) do
-        graphics2d.drawPolyline(outline, 3, m.polygonSignedArea(outline) >= 0 and '#FFFFD54F' or '#FF4FC3F7', true, {layer = 1})
+        local points = {}
+        for _, point in ipairs(outline) do
+            points[#points + 1] = point.x or point[1]
+            points[#points + 1] = point.y or point[2]
+        end
+        if #points >= 4 then
+            graphics2d.drawStroke(points, {width = 4, color = m.polygonSignedArea(outline) >= 0 and '#FFFFC93C' or '#FF2FB3C4', closed = true, join = 'round', layer = 1})
+        end
     end
 end
 

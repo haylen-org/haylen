@@ -1,4 +1,6 @@
 -- A Dijkstra map from the player, which red monsters walk downhill to chase it, and its flee map, which blue monsters walk downhill to run away along open routes.
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -10,6 +12,7 @@ local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 local Board = require('categories.algorithms.board')
 local picture = require('categories.algorithms.picture')
 
@@ -21,20 +24,20 @@ local flee = grid:dijkstraMap({{x = 10, y = 5}})
 flee:flee()
 local x, y = chase:next(monster.x, monster.y)  -- One step downhill.]]
 
-local kColumns, kRows, kCell = 48, 26, 30
+local kColumns, kRows, kCell = 48, 26, 28
 local kMonsters = 10
 local kStepTime = 0.15
 
 function Dijkstra:enter()
     self:frame{
-        hint = 'The player follows the pointer. Red monsters chase it on the Dijkstra map, blue ones flee it on the flee map, and the gold pulls the chasers when it is on. R or the X button digs new caves.',
+        hint = 'The adventurer follows the pointer. Slimes chase it downhill on the Dijkstra map, bunnies flee it on the flee map, and the coin pulls the slimes when it is on. R or the X button digs new caves.',
         code = Dijkstra.code,
         controls = {
-            ui.radioGroup{id = 'view', items = {{id = 'chase', text = 'Show the chase map'}, {id = 'flee', text = 'Show the flee map'}, {id = 'none', text = 'Show the map only'}}, selected = 'chase', onChange = function(event)
+            ui.formField{label = 'Colors of the floor', ui.radioGroup{id = 'view', items = {{id = 'chase', text = 'Distances of the chase'}, {id = 'flee', text = 'Distances of the flight'}, {id = 'none', text = 'No distances'}}, selected = 'chase', onChange = function(event)
                 self.shownMap = event.value
                 self:paint()
-            end},
-            ui.checkbox{id = 'gold', text = 'Gold pulls the chasers', onChange = function(event)
+            end}},
+            ui.checkbox{id = 'gold', text = 'The coin pulls the slimes', onChange = function(event)
                 self.useGold = event.checked
                 self:plan()
             end},
@@ -44,7 +47,17 @@ function Dijkstra:enter()
     }
     self.shownMap, self.useGold = 'chase', false
     self.random = m.random(59)
-    self.board = Board(kColumns, kRows, kCell)
+    self.board = Board(kColumns, kRows, kCell, 0, -30)
+    self.art = Art()
+    self.slime = assets.load('sprites/atlases/slime.json', 'atlas', {filter = 'linear'})
+    self.bunny = assets.texture('sprites/images/bunny.png', {filter = 'linear'})
+    local ramp = graphics.newImage(256, 4)
+    local stops = {}
+    for step = 0, 4 do
+        stops[#stops + 1] = {step / 4, picture.heat(step / 4)}
+    end
+    ramp:fillGradient({stops = stops})
+    self.ramp = graphics.newTexture(ramp, {filter = 'linear'})
     self:build()
     timer.every(kStepTime, function() self:stepMonsters() end, {owner = self})
 end
@@ -130,21 +143,37 @@ function Dijkstra:update(dt)
         self.player = {column, row}
         self:plan()
     end
-    self:status(string.format('Maps %.3f ms, player at %d, %d, chase value there %.1f', self:timing('dijkstraMaps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
+    self:status(string.format('Both maps in %.3f ms, the adventurer at %d, %d, where the chase map holds %.1f', self:timing('dijkstraMaps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
 end
 
 function Dijkstra:draw(area)
     local board = self.board
+    graphics2d.drawShape({board.left - 6, board.top - 6, board.width + 12, board.height + 12}, {radius = 10, color = '#FF151A24', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
     board:drawPicture(self.picture)
+    local slime = self.slime:source('slime 0')
     for _, monster in ipairs(self.monsters) do
         local x, y = board:center(monster.x, monster.y)
-        graphics2d.drawCircle(x, y, kCell * 0.38, monster.chaser and '#FFEF5350' or '#FF42A5F5', {layer = 2})
+        Art.shadow(x, y + kCell * 0.4, kCell * 0.9, 1)
+        if monster.chaser then
+            graphics2d.draw(self.slime.texture, x, y + kCell * 0.45, {source = slime, width = kCell * 1.8, height = kCell * 1.8, pivotY = 0.95, layer = 2})
+        else
+            graphics2d.draw(self.bunny, x, y + kCell * 0.45, {width = kCell * 1.4, height = kCell * 1.75, pivotY = 1, layer = 2})
+        end
     end
-    local px, py = board:center(self.player[1], self.player[2])
-    graphics2d.drawCircle(px, py, kCell * 0.45, '#FFFFFFFF', {layer = 3})
     if self.useGold then
         local gx, gy = board:center(self.gold[1], self.gold[2])
-        graphics2d.drawCircle(gx, gy, kCell * 0.4, '#FFFFD54F', {layer = 3})
+        self.art:prop('coin', gx, gy + kCell * 0.6, kCell * 1.4, 3)
+    end
+    local px, py = board:center(self.player[1], self.player[2])
+    Art.shadow(px, py + kCell * 0.4, kCell, 3)
+    self.art:character(px, py + kCell * 0.45, kCell * 2.8, 'blue', 4)
+
+    -- The legend under the map reads the colors of the floor from near to far.
+    if self.shownMap ~= 'none' then
+        local y = board.top + board.height + 22
+        graphics2d.drawText(nil, self.shownMap == 'chase' and 'Near the adventurer' or 'Safest from the adventurer', board.left, y, {size = 22, color = '#FFAAB4CC', anchor = {0, 0.5}})
+        graphics2d.drawShape({board.left + 260, y - 8, 360, 16}, {radius = 8, texture = self.ramp})
+        graphics2d.drawText(nil, self.shownMap == 'chase' and 'Far from it' or 'Closest to it', board.left + 640, y, {size = 22, color = '#FFAAB4CC', anchor = {0, 0.5}})
     end
 end
 

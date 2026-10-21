@@ -15,8 +15,8 @@ for step = 0, kHeatSteps - 1 do
     heatRamp[step] = kHeatStops[index + 1]:lerp(kHeatStops[index + 2], scaled - index):toHex()
 end
 
--- Builds a texture where `color(column, row)` gives each pixel as a `Color` or a color string.
-function picture.cells(width, height, color)
+-- Builds a texture where `color(column, row)` gives each pixel as a `Color` or a color string, which blends between the pixels when `smooth` is true, as a field sampled at the centers of the cells does.
+function picture.cells(width, height, color, smooth)
     local bytes = {}
     local char = string.char
     local cache = {}
@@ -32,7 +32,7 @@ function picture.cells(width, height, color)
             bytes[#bytes + 1] = packed
         end
     end
-    return graphics.newTexture(width, height, {pixels = table.concat(bytes)})
+    return graphics.newTexture(width, height, {pixels = table.concat(bytes), filter = smooth and 'linear' or 'nearest'})
 end
 
 -- Returns a heat color from blue at 0 through green and yellow to red at 1, as a color string.

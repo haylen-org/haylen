@@ -15,7 +15,7 @@ local even = track:sampleByDistance(60)  -- A point every 60 units.
 traveled = (traveled + 380 * dt) % track.length
 local position, direction = track:pointAtDistance(traveled), track:tangentAtDistance(traveled)]]
 
-local kPoints = {{-620, 200}, {-420, -260}, {-160, 240}, {60, -300}, {280, 200}, {480, -220}, {640, 180}}
+local kPoints = {{-620, 250}, {-420, -230}, {-160, 280}, {60, -270}, {280, 240}, {480, -190}, {640, 220}}
 local kPickDistance = 40
 local kSpeed = 380
 
@@ -24,10 +24,9 @@ function Splines:enter()
         hint = 'Drag the control points. Bezier curves pass through every third point and bend toward the others, and a closed Bezier uses the first six points.',
         code = Splines.code,
         controls = {
-            ui.radioGroup{id = 'kind', items = {{id = 'catmullRom', text = 'Catmull-Rom'}, {id = 'bezier', text = 'Bezier'}, {id = 'bSpline', text = 'B-spline'}}, selected = 'catmullRom', onChange = function(event) self:change('kind', event.value) end},
+            ui.formField{label = 'Curve', ui.radioGroup{id = 'kind', items = {{id = 'catmullRom', text = 'Catmull-Rom'}, {id = 'bezier', text = 'Bezier'}, {id = 'bSpline', text = 'B-spline'}}, selected = 'catmullRom', onChange = function(event) self:change('kind', event.value) end}},
             ui.checkbox{id = 'closed', text = 'Closed curve', onChange = function(event) self:change('closed', event.checked) end},
-            ui.label{text = 'Sample spacing', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'spacing', value = 60, min = 20, max = 200, step = 5, showValue = true, decimals = 0, onChange = function(event) self:change('spacing', event.value) end},
+            ui.formField{label = 'Sample spacing', ui.slider{id = 'spacing', value = 60, min = 20, max = 200, step = 5, showValue = true, decimals = 0, onChange = function(event) self:change('spacing', event.value) end}},
         },
         focus = 'kind',
     }
@@ -74,24 +73,41 @@ function Splines:update(dt)
         self:rebuild()
     end
     self.traveled = (self.traveled + kSpeed * dt) % self.spline.length
-    self:status(string.format('Kind "%s", segments %d, length %.0f, samples %d', self.spline.kind, self.spline.segmentCount, self.spline.length, #self.samples))
+    self:status(string.format('A "%s" curve of %d segments, %.0f long, with %d even samples', self.spline.kind, self.spline.segmentCount, self.spline.length, #self.samples))
 end
 
 function Splines:draw(area)
-    graphics2d.drawPolyline(self.points, 1.5, '#55FFFFFF', self.options.closed)
-    graphics2d.drawPolyline(self.curve, 4, '#FF4FC3F7', self.options.closed, {layer = 1})
+    graphics2d.drawStroke(Splines.flat(self.points), {width = 2, color = '#66FFFFFF', closed = self.options.closed, dashes = {10, 8}})
+    graphics2d.drawStroke(Splines.flat(self.curve), {width = 5, color = '#FF2FB3C4', closed = self.options.closed, join = 'round', cap = 'round', layer = 1})
+    local samples = {}
     for _, point in ipairs(self.samples) do
-        graphics2d.drawCircle(point.x, point.y, 5, '#FFFFFFFF', {layer = 2})
+        samples[#samples + 1] = point.x
+        samples[#samples + 1] = point.y
+    end
+    if #samples > 0 then
+        graphics2d.drawPoints(samples, {radius = 6, color = '#FFFFFFFF', layer = 2})
     end
     for index, point in ipairs(self.points) do
-        local color = index == self.dragged and '#FFFFD54F' or '#FFEF5350'
-        graphics2d.drawCircle(point[1], point[2], 12, color, {layer = 3})
+        local color = index == self.dragged and '#FFFFC93C' or '#FFF0473E'
+        graphics2d.drawShape({point[1] - 20, point[2] - 20, 40, 40}, {kind = 'ellipse', color = color, borderWidth = 4, borderColor = '#FF15172A', layer = 3})
     end
+    -- The walker is an arrow with a dark rim that keeps a steady speed along the curve.
     local position = self.spline:pointAtDistance(self.traveled)
     local direction = self.spline:tangentAtDistance(self.traveled)
     local side = direction:perpendicular()
-    local tip = position + direction * 30
-    graphics2d.drawPolygon({tip, position - direction * 14 + side * 16, position - direction * 14 - side * 16}, '#FFFFD54F', {layer = 4})
+    local tip, back = position + direction * 44, position - direction * 24
+    local arrow = {tip.x, tip.y, back.x + side.x * 26, back.y + side.y * 26, back.x - side.x * 26, back.y - side.y * 26}
+    graphics2d.drawPolygon({tip, back + side * 26, back - side * 26}, '#FFFFC93C', {layer = 4})
+    graphics2d.drawStroke(arrow, {width = 3, color = '#FF15172A', closed = true, join = 'round', layer = 5})
+end
+
+function Splines.flat(points)
+    local flat = {}
+    for _, point in ipairs(points) do
+        flat[#flat + 1] = point.x or point[1]
+        flat[#flat + 1] = point.y or point[2]
+    end
+    return flat
 end
 
 return Splines

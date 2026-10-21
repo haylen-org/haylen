@@ -53,17 +53,18 @@ function Board:drawLines(color, order)
     end
 end
 
--- Draws a path given as cells, through the centers of its cells.
+-- Draws a path given as cells through the centers of its cells, as one stroke with round joins and ends.
 function Board:drawPath(path, thickness, color, order)
     if path == nil or #path < 2 then
         return
     end
     local points = {}
-    for index, cell in ipairs(path) do
+    for _, cell in ipairs(path) do
         local x, y = self:center(cell.x or cell[1], cell.y or cell[2])
-        points[index] = {x, y}
+        points[#points + 1] = x
+        points[#points + 1] = y
     end
-    graphics2d.drawPolyline(points, thickness, color, false, order)
+    graphics2d.drawStroke(points, {width = thickness, color = color, join = 'round', cap = 'round', layer = order and order.layer})
 end
 
 -- Calls `visit(column, row, first)` for every cell a pointer drag crosses, with no gaps however fast it moves. The argument `first` is `true` for the cell the press started on.

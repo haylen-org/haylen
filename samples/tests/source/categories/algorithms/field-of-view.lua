@@ -8,6 +8,7 @@ local spatial2d = require('haylen.spatial2d')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 local Board = require('categories.algorithms.board')
 
 local FieldOfView = haylen.class('FieldOfView', AlgorithmTest)
@@ -24,12 +25,11 @@ local kBounds = {-740, -400, 1480, 800}
 
 function FieldOfView:enter()
     self:frame{
-        hint = 'Move the pointer to look around. The grid remembers the cells it saw, and the guard sees you exactly when you see it. R or the X button builds a new map.',
+        hint = 'Move the pointer to look around. The grid remembers the cells it saw, and the guard sees you exactly when you see it. The yellow cells are the Bresenham circle of the sight radius and the red ones the Bresenham line to the guard. R or the X button builds a new map.',
         code = FieldOfView.code,
         controls = {
-            ui.radioGroup{id = 'mode', items = {{id = 'grid', text = 'Shadowcasting on a grid'}, {id = 'polygon', text = 'Visibility polygon'}}, selected = 'grid', onChange = function(event) self.mode = event.value end},
-            ui.label{text = 'Sight radius in cells', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'radius', value = 10, min = 2, max = 30, step = 1, showValue = true, decimals = 0, onChange = function(event) self.radius = event.value end},
+            ui.formField{label = 'Sight', ui.radioGroup{id = 'mode', items = {{id = 'grid', text = 'Shadowcasting on a grid'}, {id = 'polygon', text = 'Visibility polygon'}}, selected = 'grid', onChange = function(event) self.mode = event.value end}},
+            ui.formField{label = 'Sight radius in cells', ui.slider{id = 'radius', value = 10, min = 2, max = 30, step = 1, showValue = true, decimals = 0, onChange = function(event) self.radius = event.value end}},
             ui.button{id = 'forget', text = 'Forget what was seen', onClick = function() self.seen = {} end},
             ui.button{id = 'reset', text = 'New map', onClick = function() self:build() end},
         },
@@ -38,6 +38,7 @@ function FieldOfView:enter()
     self.mode, self.radius = 'grid', 10
     self.random = m.random(79)
     self.board = Board(kColumns, kRows, kCell)
+    self.art = Art()
     self:build()
 end
 
@@ -82,7 +83,7 @@ function FieldOfView:update(dt)
         self:build()
     end
     if self.mode == 'grid' then
-        local column, row = self.board:cellAt(self.pointer.worldX, self.pointer.worldY)
+        local column, row = self.board:cellAt(self:aim(-120, 40))
         if column and self.grid:get(column, row) == 0 then
             self.viewer = {column, row}
         end
@@ -98,58 +99,66 @@ function FieldOfView:update(dt)
         self.sightLine = spatial2d.line(self.viewer[1], self.viewer[2], self.guard[1], self.guard[2])
         self.ring = spatial2d.circle(self.viewer[1], self.viewer[2], self.radius)
         local spotted = self.visibleSet[self.guard[2] * kColumns + self.guard[1]]
-        self:status(string.format('Visible cells %d, shadowcasting %.3f ms, the guard %s', #self.visible, self:timing('fieldOfView'), spotted and 'sees you' or 'does not see you'))
+        self:status(string.format('%d cells in sight, shadowcast in %.3f ms, and the guard %s', #self.visible, self:timing('fieldOfView'), spotted and 'sees you' or 'does not see you'))
     else
-        local x, y = self.pointer.worldX, self.pointer.worldY
+        local x, y = self:aim(-200, -60)
+        self.eye = {x, y}
         local bounds = m.rect(kBounds)
         if bounds:contains({x, y}) then
             profiler.beginScope('visibilityPolygon')
             self.polygon = spatial2d.visibilityPolygon({x, y}, self.segments, kBounds)
             profiler.endScope()
         end
-        self:status(string.format('Walls %d, polygon corners %d, visibility %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibilityPolygon')))
+        self:status(string.format('%d walls, a polygon of %d corners in %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibilityPolygon')))
     end
 end
 
 function FieldOfView:renderGrid()
     local board = self.board
+    graphics2d.drawShape({board.left - 6, board.top - 6, board.width + 12, board.height + 12}, {radius = 10, color = '#FF0E1118', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
     for row = 0, kRows - 1 do
         for column = 0, kColumns - 1 do
             local key = row * kColumns + column
             local wall = self.grid:get(column, row) == 1
             local color
+            -- Cells in sight are lit, cells seen before keep a dim memory, and the rest of the map shows only faintly.
             if self.visibleSet[key] then
-                color = wall and '#FFB0BEC5' or '#FF5D6B3F'
+                color = wall and '#FFB4BED2' or '#FF56704C'
             elseif self.seen[key] then
-                color = wall and '#FF4A545E' or '#FF2A3138'
+                color = wall and '#FF465066' or '#FF262E3D'
+            else
+                color = wall and '#FF232A39' or '#FF141923'
             end
-            if color then
-                graphics2d.drawRect(board:cellRect(column, row), color)
-            end
+            graphics2d.drawRect(board:cellRect(column, row), color)
         end
     end
     for _, cell in ipairs(self.ring) do
         if board:contains(cell.x, cell.y) then
-            graphics2d.drawRectOutline(board:cellRect(cell.x, cell.y, 4), 2, '#66FFD54F', {layer = 1})
+            graphics2d.drawShape(board:cellRect(cell.x, cell.y, 3), {radius = 4, color = '#70FFC93C', layer = 1})
         end
     end
     for _, cell in ipairs(self.sightLine) do
-        graphics2d.drawRect(board:cellRect(cell.x, cell.y, 9), '#AAEF5350', {layer = 2})
+        graphics2d.drawShape(board:cellRect(cell.x, cell.y, 6), {radius = 4, color = '#B0F0473E', layer = 2})
     end
     local vx, vy = board:center(self.viewer[1], self.viewer[2])
     local gx, gy = board:center(self.guard[1], self.guard[2])
-    graphics2d.drawCircle(vx, vy, kCell * 0.4, '#FFFFFFFF', {layer = 3})
-    graphics2d.drawCircle(gx, gy, kCell * 0.4, '#FFEF5350', {layer = 3})
+    Art.shadow(vx, vy + kCell * 0.4, kCell, 3)
+    self.art:character(vx, vy + kCell * 0.45, kCell * 2, 'blue', 4)
+    Art.shadow(gx, gy + kCell * 0.4, kCell, 3)
+    self.art:character(gx, gy + kCell * 0.45, kCell * 2, 'red', 4, true)
 end
 
 function FieldOfView:renderPolygon()
-    graphics2d.drawRect(kBounds, '#FF141920')
+    graphics2d.drawShape(kBounds, {radius = 10, color = '#FF141920', borderWidth = 3, borderColor = '#FF3A4560'})
     if self.polygon then
         graphics2d.drawPolygon(self.polygon, '#55FFE082', {layer = 1})
-        graphics2d.drawCircle(self.pointer.worldX, self.pointer.worldY, 8, '#FFFFFFFF', {layer = 3})
     end
     for _, segment in ipairs(self.segments) do
-        graphics2d.drawLine(segment[1][1], segment[1][2], segment[2][1], segment[2][2], 4, '#FFB0BEC5', {layer = 2})
+        graphics2d.drawStroke({segment[1][1], segment[1][2], segment[2][1], segment[2][2]}, {width = 6, color = '#FFB4BED2', cap = 'round', layer = 2})
+    end
+    if self.eye then
+        Art.shadow(self.eye[1], self.eye[2] + 12, 30, 3)
+        self.art:character(self.eye[1], self.eye[2] + 14, 56, 'blue', 4)
     end
 end
 

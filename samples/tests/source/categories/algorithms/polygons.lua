@@ -9,6 +9,8 @@ local AlgorithmTest = require('categories.algorithms.algorithm-test')
 
 local Polygons = haylen.class('Polygons', AlgorithmTest)
 
+Polygons.fill = '#FF2F86F6'
+
 Polygons.code = [[
 local ring = {outside, inside}  -- An outline and a hole wound the other way.
 local result = m.polygon.subtract(star, ring)  -- Or unite, intersect and exclude.
@@ -24,7 +26,7 @@ local function star(x, y, points, outer, inner)
     for index = 0, points * 2 - 1 do
         local radius = index % 2 == 0 and outer or inner
         local angle = index * math.pi / points - math.pi / 2
-        outline[#outline + 1] = {x + math.cos(angle) * radius, y + math.sin(angle) * radius}
+        outline[#outline + 1] = m.vec2(x + math.cos(angle) * radius, y + math.sin(angle) * radius)
     end
     return outline
 end
@@ -34,27 +36,27 @@ local function ring(x, y, outer, inner)
     local outside, inside = {}, {}
     for index = 0, 47 do
         local angle = index / 48 * math.pi * 2
-        outside[#outside + 1] = {x + math.cos(angle) * outer, y + math.sin(angle) * outer}
-        inside[#inside + 1] = {x + math.cos(-angle) * inner, y + math.sin(-angle) * inner}
+        outside[#outside + 1] = m.vec2(x + math.cos(angle) * outer, y + math.sin(angle) * outer)
+        inside[#inside + 1] = m.vec2(x + math.cos(-angle) * inner, y + math.sin(-angle) * inner)
     end
     return {outside, inside}
 end
 
 function Polygons:enter()
     self:frame{
-        hint = 'Drag with the pointer to move the ring over the star. The offset grows the result or shrinks it, and shrinking can split it apart.',
+        hint = 'Drag with the pointer to move the ring over the star, whose outlines show dashed. The result fills blue, with white outlines around it and yellow ones around its holes. The offset grows it or shrinks it, and shrinking can split it apart.',
         code = Polygons.code,
         controls = {
-            ui.radioGroup{id = 'operation', items = kOperations, selected = 'subtract', onChange = function(event) self:change('operation', event.value) end},
-            ui.label{text = 'Offset', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'offset', value = 0, min = -40, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event) self:change('offset', event.value) end},
-            ui.combo{id = 'join', items = kJoins, selected = 'round', onChange = function(event) self:change('join', event.value) end},
+            ui.formField{label = 'Operation', ui.radioGroup{id = 'operation', items = kOperations, selected = 'subtract', onChange = function(event) self:change('operation', event.value) end}},
+            ui.formField{label = 'Offset', ui.slider{id = 'offset', value = 0, min = -40, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event) self:change('offset', event.value) end}},
+            ui.formField{label = 'Corners of the offset', ui.combo{id = 'join', items = kJoins, selected = 'round', onChange = function(event) self:change('join', event.value) end}},
             ui.checkbox{id = 'pieces', text = 'Convex pieces', onChange = function(event) self:change('pieces', event.checked) end},
         },
         focus = 'operation',
     }
     self.options = {operation = 'subtract', offset = 0, join = 'round', pieces = false}
     self.star = star(-120, 0, 7, 320, 150)
+    self.starStroke = Polygons.flat(self.star)
     self.center = {180, 40}
     self:combine()
 end
@@ -67,6 +69,7 @@ end
 function Polygons:combine()
     local options = self.options
     self.ring = ring(self.center[1], self.center[2], 220, 110)
+    self.ringStrokes = {Polygons.flat(self.ring[1]), Polygons.flat(self.ring[2])}
     profiler.beginScope('polygonBooleans')
     local result = m.polygon[options.operation](self.star, self.ring)
     if options.offset ~= 0 then
@@ -75,6 +78,39 @@ function Polygons:combine()
     self.result = result
     self.pieces = #result > 0 and m.polygon.decompose(result) or {}
     profiler.endScope()
+    self:shapeMesh()
+    self.outlines = {}
+    for index, outline in ipairs(self.result) do
+        self.outlines[index] = {points = Polygons.flat(outline), hole = m.polygonSignedArea(outline) < 0}
+    end
+end
+
+-- The convex pieces fill the result as one mesh of triangles, whose inner edges meet without a seam, and the outline of the result covers its outer edge.
+function Polygons:shapeMesh()
+    local vertices, indices = {}, {}
+    for index, piece in ipairs(self.pieces) do
+        local color = self.options.pieces and m.fromHsv((index * 0.618) % 1, 0.45, 0.9):toHex() or Polygons.fill
+        local first = #vertices + 1
+        for _, point in ipairs(piece) do
+            vertices[#vertices + 1] = {x = point.x, y = point.y, color = color}
+        end
+        for corner = 2, #piece - 1 do
+            indices[#indices + 1] = first
+            indices[#indices + 1] = first + corner - 1
+            indices[#indices + 1] = first + corner
+        end
+    end
+    self.mesh = {vertices = vertices, indices = indices}
+end
+
+-- Turns a list of points into the flat list of coordinates that strokes take.
+function Polygons.flat(points)
+    local flat = {}
+    for _, point in ipairs(points) do
+        flat[#flat + 1] = point.x
+        flat[#flat + 1] = point.y
+    end
+    return flat
 end
 
 function Polygons:update(dt)
@@ -83,23 +119,23 @@ function Polygons:update(dt)
         self.center = {self.pointer.worldX, self.pointer.worldY}
         self:combine()
     end
-    self:status(string.format('Outlines %d, area %.0f, convex pieces %d, booleans %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('polygonBooleans')))
+    self:status(string.format('Outlines %d, area %.0f square units, convex pieces %d, combined in %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('polygonBooleans')))
 end
 
 function Polygons:draw(area)
-    graphics2d.drawPolyline(self.star, 2, '#66FFFFFF', true)
-    for _, outline in ipairs(self.ring) do
-        graphics2d.drawPolyline(outline, 2, '#66FFFFFF', true)
+    local dashed = {width = 3, color = '#99FFFFFF', closed = true, join = 'round', cap = 'round', dashes = {14, 10}, layer = 4}
+    graphics2d.drawStroke(self.starStroke, dashed)
+    for _, outline in ipairs(self.ringStrokes) do
+        graphics2d.drawStroke(outline, dashed)
     end
-    for index, piece in ipairs(self.pieces) do
-        local color = self.options.pieces and m.fromHsv((index * 0.618) % 1, 0.5, 0.85) or '#FF4FC3F7'
-        graphics2d.drawPolygon(piece, color, {layer = 1})
-        if self.options.pieces then
-            graphics2d.drawPolyline(piece, 1.5, '#AA1A2029', true, {layer = 2})
+    graphics2d.drawMesh(nil, self.mesh.vertices, self.mesh.indices, {layer = 1})
+    if self.options.pieces then
+        for _, piece in ipairs(self.pieces) do
+            graphics2d.drawStroke(Polygons.flat(piece), {width = 2, color = '#CC15172A', closed = true, join = 'round', layer = 2})
         end
     end
-    for _, outline in ipairs(self.result) do
-        graphics2d.drawPolyline(outline, 3, m.polygonSignedArea(outline) >= 0 and '#FFFFFFFF' or '#FFFFD54F', true, {layer = 3})
+    for _, outline in ipairs(self.outlines) do
+        graphics2d.drawStroke(outline.points, {width = 4, color = outline.hole and '#FFFFC93C' or '#FFF2F3FF', closed = true, join = 'round', layer = 3})
     end
 end
 

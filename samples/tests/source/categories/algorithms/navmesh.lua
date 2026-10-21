@@ -8,6 +8,7 @@ local profiler = require('haylen.debug')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 
 local NavMesh = haylen.class('NavMesh', AlgorithmTest)
 
@@ -20,18 +21,19 @@ mesh:removeObstacle(crate)]]
 
 local kBoundary = {{-740, -400}, {740, -400}, {740, 400}, {140, 400}, {140, 300}, {-140, 300}, {-140, 400}, {-740, 400}}
 local kSpeed = 260
+-- The dashed ring of the agent radius, whose points the draw moves in place.
+NavMesh.ringSteps = 48
 
 function NavMesh:enter()
     self:frame{
         hint = 'Tap or click to send the agent there, or to add and remove crates with the other brushes. The rocks come from the first build on a worker thread. Paths turn only at corners and skip gaps narrower than the agent. R or the X button places new obstacles.',
         code = NavMesh.code,
         controls = {
-            ui.radioGroup{id = 'brush', items = {{id = 'walk', text = 'Walk there'}, {id = 'add', text = 'Add a crate'}, {id = 'remove', text = 'Remove a crate'}}, selected = 'walk', onChange = function(event) self.brush = event.value end},
-            ui.label{text = 'Agent radius', font = 'caption', color = 'textMuted'},
-            ui.slider{id = 'radius', value = 20, min = 0, max = 60, step = 2, showValue = true, decimals = 0, onChange = function(event)
+            ui.formField{label = 'Brush', ui.radioGroup{id = 'brush', items = {{id = 'walk', text = 'Walk there'}, {id = 'add', text = 'Add a crate'}, {id = 'remove', text = 'Remove a crate'}}, selected = 'walk', onChange = function(event) self.brush = event.value end}},
+            ui.formField{label = 'Agent radius', ui.slider{id = 'radius', value = 20, min = 0, max = 60, step = 2, showValue = true, decimals = 0, onChange = function(event)
                 self.radius = event.value
                 self:route()
-            end},
+            end}},
             ui.checkbox{id = 'triangles', text = 'Show the triangles', checked = true, onChange = function(event) self.showTriangles = event.checked end},
             ui.button{id = 'reset', text = 'New obstacles', onClick = function() self:build() end},
         },
@@ -39,7 +41,9 @@ function NavMesh:enter()
     }
     self.brush, self.radius, self.showTriangles = 'walk', 20, true
     self.random = m.random(67)
-    self.agent = {x = -680, y = -340}
+    self.art = Art()
+    self.agent = {x = -680, y = -340, facing = 1}
+    self.ring = {}
     self:build()
 end
 
@@ -57,8 +61,18 @@ end
 -- The rocks build into the first mesh on a worker thread, and later crates rebuild it on the next query.
 function NavMesh:build()
     self.rocks, self.crates = {}, {}
-    for index = 1, 14 do
-        self.rocks[index] = self:randomObstacle(self.random:range(-600, 600), self.random:range(-300, 250))
+    -- Rocks keep apart from each other and from the corner where the agent starts, so none overlap.
+    local centers = {}
+    while #self.rocks < 14 do
+        local x, y = self.random:range(-600, 600), self.random:range(-300, 250)
+        local clear = math.abs(x + 680) + math.abs(y + 340) > 220
+        for _, center in ipairs(centers) do
+            clear = clear and (center[1] - x) ^ 2 + (center[2] - y) ^ 2 > 190 * 190
+        end
+        if clear then
+            centers[#centers + 1] = {x, y}
+            self.rocks[#self.rocks + 1] = self:randomObstacle(x, y)
+        end
     end
     self.mesh, self.path = nil, nil
     local rocks, started = self.rocks, haylen.elapsed()
@@ -69,6 +83,9 @@ function NavMesh:build()
         end
         self.mesh = mesh
         self.buildLatency = (haylen.elapsed() - started) * 1000
+        -- The agent sets off for the far corner as soon as the mesh is ready, so the funnel shows at once.
+        local x, y = mesh:closestPoint(660, 330)
+        self.goal = {x, y}
         self:route()
     end)
 end
@@ -119,7 +136,7 @@ function NavMesh:update(dt)
         self:apply(self.pointer.worldX, self.pointer.worldY)
     end
     self:walk(dt)
-    self:status(string.format('Triangles %d, obstacles %d, first build %.0f ms, query %.3f ms, %s', self.mesh.triangleCount, self.mesh.obstacleCount, self.buildLatency or 0, self:timing('navmesh'), self.path and string.format('path of %d corners, %.0f long', #self.path, self.length) or 'no path'))
+    self:status(string.format('%d triangles, %d obstacles, built first in %.0f ms, a query of %.3f ms, %s', self.mesh.triangleCount, self.mesh.obstacleCount, self.buildLatency or 0, self:timing('navmesh'), self.path and string.format('a path of %d corners, %.0f long', #self.path, self.length) or 'no path'))
 end
 
 function NavMesh:walk(dt)
@@ -136,28 +153,54 @@ function NavMesh:walk(dt)
     else
         self.agent.x, self.agent.y = self.agent.x + dx / distance * step, self.agent.y + dy / distance * step
     end
+    if math.abs(dx) > 1 then
+        self.agent.facing = dx < 0 and -1 or 1
+    end
 end
 
+-- The walls around the boundary are dark rock, the floor inside it lighter, and the obstacles stand on it with a dark rim.
 function NavMesh:draw(area)
-    graphics2d.drawPolygon(kBoundary, '#FF263040')
+    graphics2d.drawShape({-790, -450, 1580, 900}, {radius = 18, color = '#FF1A1F2C', layer = -2})
+    graphics2d.drawPolygon(kBoundary, '#FF2E3A52', {layer = -1})
     for _, rock in ipairs(self.rocks) do
-        graphics2d.drawPolygon(rock, '#FF78909C', {layer = 2})
+        graphics2d.drawPolygon(rock, '#FF7C86A3', {layer = 2})
+        graphics2d.drawStroke(NavMesh.flat(rock), {width = 4, color = '#FF15172A', closed = true, join = 'round', layer = 2})
     end
     for _, crate in ipairs(self.crates) do
-        graphics2d.drawPolygon(crate.points, '#FFA1887F', {layer = 2})
+        graphics2d.drawPolygon(crate.points, '#FFB07A44', {layer = 2})
+        graphics2d.drawStroke(NavMesh.flat(crate.points), {width = 4, color = '#FF5A3A20', closed = true, join = 'round', layer = 2})
     end
     if self.mesh and self.showTriangles then
         for _, triangle in ipairs(self.mesh:triangles()) do
-            graphics2d.drawPolyline(triangle, 1, '#50FFFFFF', true, {layer = 1})
+            graphics2d.drawStroke(NavMesh.flat(triangle), {width = 2, color = '#38FFFFFF', closed = true, layer = 1})
         end
     end
     if self.path then
-        graphics2d.drawPolyline(self.path, 4, '#FFFFD54F', false, {layer = 3})
+        graphics2d.drawStroke(NavMesh.flat(self.path), {width = 6, color = '#FFFFC93C', join = 'round', cap = 'round', layer = 3})
     end
-    graphics2d.drawCircle(self.agent.x, self.agent.y, math.max(self.radius, 6), '#AA4DD0E1', {layer = 4})
     if self.goal then
-        graphics2d.drawRing(self.goal[1], self.goal[2], 12, 3, '#FFEF5350', {layer = 4})
+        self.art:goal(self.goal[1], self.goal[2] + 6, 44, 4)
     end
+    local agent = self.agent
+    if self.radius > 0 then
+        local ring = self.ring
+        for step = 0, NavMesh.ringSteps - 1 do
+            local angle = step / NavMesh.ringSteps * math.pi * 2
+            ring[step * 2 + 1], ring[step * 2 + 2] = agent.x + math.cos(angle) * self.radius, agent.y + math.sin(angle) * self.radius
+        end
+        graphics2d.drawStroke(ring, {width = 3, color = '#FF2FB3C4', closed = true, dashes = {10, 8}, layer = 5})
+    end
+    Art.shadow(agent.x, agent.y, 36, 5)
+    self.art:character(agent.x, agent.y + 4, 86, 'teal', 6, agent.facing < 0)
+end
+
+function NavMesh.flat(points)
+    local flat = {}
+    for _, point in ipairs(points) do
+        flat[#flat + 1] = point.x or point[1]
+        flat[#flat + 1] = point.y or point[2]
+    end
+    return flat
 end
 
 return NavMesh

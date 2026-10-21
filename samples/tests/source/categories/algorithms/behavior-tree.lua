@@ -1,5 +1,7 @@
 -- Guards run by behavior trees: they chase the player when they see it past the walls, rest when their energy runs low and patrol their posts otherwise.
 local ai = require('haylen.ai')
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -7,13 +9,14 @@ local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 
 local BehaviorTree = haylen.class('BehaviorTree', AlgorithmTest)
 
 BehaviorTree.code = [[
 local guard = ai.newBehaviorTree(ai.selector({
-    ai.sequence({ai.condition(function(board) return board.seesPlayer end), ai.action(chase), ai.succeeder(ai.cooldown(ai.action(shout), 2))}),
-    ai.sequence({ai.condition(function(board) return board.energy < 0.3 end), ai.action(rest)}),
+    ai.sequence({ai.condition(seesPlayer), ai.action(chase), ai.succeeder(ai.cooldown(ai.action(shout), 2))}),
+    ai.sequence({ai.condition(tired), ai.action(rest)}),
     ai.action(patrol),
 }), {energy = 1, shouts = 0})
 guard:tick(dt)  -- Starts over from the root once a branch finishes.]]
@@ -22,6 +25,7 @@ local kSight = 300
 local kSpeed = 150
 local kWalls = {{{-300, -250}, {-300, 100}}, {{100, -100}, {400, -100}}, {{0, 150}, {0, 380}}, {{-600, 0}, {-420, 0}}, {{450, 100}, {650, 250}}}
 local kRest = {{-650, -330}, {650, 330}}
+local kArena = {-780, -410, 1560, 820}
 
 local function moveToward(board, target, dt, speed)
     local offset = m.vec2(target[1], target[2]) - board.position
@@ -93,15 +97,20 @@ end
 
 function BehaviorTree:enter()
     self:frame{
-        hint = 'The white dot follows the pointer and plays the intruder. Each guard ticks its own tree, and a guard that chases shouts at most every two seconds. R or the X button resets the trees.',
+        hint = 'The intruder in red follows the pointer. Each guard ticks its own tree, patrols its posts, chases the intruder it sees past the walls, shouting at most every two seconds, and rests at a campfire when its energy runs low. R or the X button resets the trees.',
         code = BehaviorTree.code,
         controls = {
             ui.button{id = 'tired', text = 'Tire every guard', onClick = function() self:tire() end},
             ui.button{id = 'reset', text = 'Reset the trees', onClick = function() self:build() end},
-            ui.label{id = 'states', text = '', font = 'caption', color = 'textMuted'},
+            ui.formField{label = 'What each guard does', ui.label{id = 'states', text = '', font = 'monospace'}},
         },
         focus = 'tired',
     }
+    self.art = Art()
+    self.campfire = assets.texture('effects/campfire.png', {filter = 'linear'})
+    local glow = graphics.newImage(128, 128)
+    glow:fillGradient({kind = 'radial', stops = {{0, '#FFFFFFFF'}, {1, '#00FFFFFF'}}})
+    self.glow = graphics.newTexture(glow, {filter = 'linear'})
     self:build()
 end
 
@@ -130,39 +139,60 @@ function BehaviorTree:update(dt)
     if input.pressed('reset') then
         self:build()
     end
-    local player = m.vec2(self.pointer.worldX, self.pointer.worldY)
-    local lines = {}
+    -- The intruder waits in the middle until the pointer comes over the play area.
+    self.intruder = m.vec2(self:aim(-60, 20))
+    local lines = {'Guard  State           Energy  Shouts'}
     for index, guard in ipairs(self.guards) do
-        guard.blackboard.player = player
+        guard.blackboard.player = self.intruder
         guard:tick(dt)
         local board = guard.blackboard
-        lines[index] = string.format('Guard %d: %s, energy %d%%, shouts %d', index, board.state, math.floor(board.energy * 100), board.shouts)
+        lines[index + 1] = string.format('%-6d %-15s %5d%%  %6d', index, board.state, math.floor(board.energy * 100), board.shouts)
     end
     local states = table.concat(lines, '\n')
     if states ~= self.states then
         self.states = states
         self:set('states', {text = states})
     end
-    self:status(string.format('Trees %d, nodes per tree %d', #self.guards, self.guards[1].nodeCount))
+    self:status(string.format('%d trees of %d nodes each', #self.guards, self.guards[1].nodeCount))
 end
 
+-- The guards walk a courtyard with walls and two campfires to rest at, each with a cone of sight that fades with distance and turns red while it chases.
 function BehaviorTree:draw(area)
+    graphics2d.drawShape(kArena, {radius = 18, color = '#FF26303F', borderWidth = 4, borderColor = '#FF3A4560', layer = -2})
     for _, wall in ipairs(kWalls) do
-        graphics2d.drawLine(wall[1][1], wall[1][2], wall[2][1], wall[2][2], 8, '#FF78909C')
+        graphics2d.drawStroke({wall[1][1], wall[1][2], wall[2][1], wall[2][2]}, {width = 16, color = '#FF15172A', cap = 'round', layer = 1})
+        graphics2d.drawStroke({wall[1][1], wall[1][2], wall[2][1], wall[2][2]}, {width = 10, color = '#FF8D97B5', cap = 'round', layer = 1})
     end
     for _, bed in ipairs(kRest) do
-        graphics2d.drawRect({bed[1] - 40, bed[2] - 25, 80, 50}, '#FF5D4037')
+        graphics2d.draw(self.campfire, bed[1], bed[2] + 24, {width = 120, height = 75, pivotY = 1, layer = BehaviorTree.depth(bed[2])})
+        self.art:label('Rest spot', bed[1], bed[2] + 44, 18, '#FFE8EAF2', 1000)
     end
+    graphics2d.pushClip(kArena)
     for _, guard in ipairs(self.guards) do
         local board = guard.blackboard
         local x, y = board.position.x, board.position.y
         local chasing = board.state == 'Chasing'
-        graphics2d.drawArc(x, y, kSight / 2, kSight, board.heading - 0.6, board.heading + 0.6, chasing and '#22EF5350' or '#16FFFFFF')
-        graphics2d.drawCircle(x, y, 18, chasing and '#FFEF5350' or (board.state == 'Resting' and '#FF7E57C2' or '#FF42A5F5'), {layer = 1})
-        graphics2d.drawRect({x - 20, y - 34, 40 * board.energy, 6}, '#FF66BB6A', {layer = 1})
-        graphics2d.drawText(nil, board.state, x, y + 24, {size = 20, anchor = {0.5, 0}, layer = 2})
+        graphics2d.drawShape({x - kSight, y - kSight, kSight * 2, kSight * 2}, {kind = 'ellipse', startAngle = board.heading - 0.6, sweep = 1.2, texture = self.glow, color = chasing and '#70F0473E' or '#38FFFFFF', layer = 0})
     end
-    graphics2d.drawCircle(self.pointer.worldX, self.pointer.worldY, 10, '#FFFFFFFF', {layer = 3})
+    graphics2d.popClip()
+    for _, guard in ipairs(self.guards) do
+        local board = guard.blackboard
+        local x, y = board.position.x, board.position.y
+        local depth = BehaviorTree.depth(y)
+        Art.shadow(x, y, 46, depth - 1)
+        self.art:character(x, y + 6, 104, board.state == 'Resting' and 'violet' or 'blue', depth, math.cos(board.heading) < 0)
+        graphics2d.drawShape({x - 30, y + 14, 60, 9}, {radius = 4.5, color = '#D0151824', layer = 1001})
+        graphics2d.drawShape({x - 30, y + 14, math.max(9, 60 * board.energy), 9}, {radius = 4.5, color = '#FF6FDCA0', layer = 1002})
+        self.art:label(board.state, x, y + 44, 18, board.state == 'Chasing' and '#FFFF8A84' or '#FFE8EAF2', 1003)
+    end
+    local intruder = self.intruder
+    Art.shadow(intruder.x, intruder.y, 46, BehaviorTree.depth(intruder.y) - 1)
+    self.art:character(intruder.x, intruder.y + 6, 104, 'red', BehaviorTree.depth(intruder.y))
+end
+
+-- Things lower in the courtyard draw in front of the ones behind them.
+function BehaviorTree.depth(y)
+    return math.floor(y + 500)
 end
 
 return BehaviorTree

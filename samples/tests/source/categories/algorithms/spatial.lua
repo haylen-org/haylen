@@ -48,6 +48,10 @@ function Spatial:enter()
     }
     self.query, self.moving = 'rect', true
     self.random = m.random(73)
+    self.queryX, self.queryY = 0, 0
+    self.rect = {0, 0, 0, 0}
+    self.plainBox = {radius = 4, color = '#FF2E3A52', borderWidth = 2, borderColor = '#FF6B7A99', layer = 1}
+    self.litBox = {radius = 4, color = '#FFFFC93C', borderWidth = 2, borderColor = '#FF15172A', layer = 2}
     self.entities = {}
     for index = 1, kCount do
         local size = self.random:range(8, 50)
@@ -149,11 +153,13 @@ function Spatial:update(dt)
     end
     self.hits = nil
     profiler.beginScope('spatialQuery')
-    self.found = self:ask(self.pointer.worldX, self.pointer.worldY)
+    -- The query sits in the middle until the pointer comes over the play area.
+    self.queryX, self.queryY = self:aim(0, 0)
+    self.found = self:ask(self.queryX, self.queryY)
     profiler.endScope()
 
     local structure = self.structure
-    self:status(string.format('Stored %d, %s, found %d, update %.3f ms, query %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatialUpdate'), self:timing('spatialQuery')))
+    self:status(string.format('%d boxes stored, %s, %d found, updated in %.3f ms and asked in %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatialUpdate'), self:timing('spatialQuery')))
 end
 
 function Spatial:draw(area)
@@ -161,39 +167,44 @@ function Spatial:draw(area)
     for _, entity in ipairs(self.found) do
         found[entity] = true
     end
+    graphics2d.drawShape({kArea[1] - 10, kArea[2] - 10, kArea[3] + 20, kArea[4] + 20}, {radius = 14, color = '#FF1B2130', borderWidth = 2, borderColor = '#FF3A4560', layer = -1})
     if self.kind == 'hash' then
-        for x = -800, 800, kHashCell do
-            graphics2d.drawLine(x, -430, x, 430, 1, '#22FFFFFF')
+        for x = kArea[1], kArea[1] + kArea[3], kHashCell do
+            graphics2d.drawLine(x, kArea[2], x, kArea[2] + kArea[4], 1.5, '#40FFFFFF')
         end
-        for y = -400, 400, kHashCell do
-            graphics2d.drawLine(-800, y, 800, y, 1, '#22FFFFFF')
+        for y = kArea[2], kArea[2] + kArea[4], kHashCell do
+            graphics2d.drawLine(kArea[1], y, kArea[1] + kArea[3], y, 1.5, '#40FFFFFF')
         end
     end
+    local plain, lit = self.plainBox, self.litBox
     for _, entity in ipairs(self.entities) do
-        local rect = {entity.x - entity.width / 2, entity.y - entity.height / 2, entity.width, entity.height}
-        if found[entity] then
-            graphics2d.drawRect(rect, '#FFFFB74D', {layer = 2})
-        else
-            graphics2d.drawRectOutline(rect, 2, '#FF78909C', {layer = 1})
-        end
+        local rect = self.rect
+        rect[1], rect[2], rect[3], rect[4] = entity.x - entity.width / 2, entity.y - entity.height / 2, entity.width, entity.height
+        graphics2d.drawShape(rect, found[entity] and lit or plain)
     end
-    local x, y = self.pointer.worldX, self.pointer.worldY
+    local x, y = self.queryX, self.queryY
     local order = {layer = 3}
+    local edge = {width = 3, color = '#FFFFFFFF', closed = true, dashes = {12, 8}, layer = 3}
     if self.query == 'rect' then
-        graphics2d.drawRectOutline({x - 150, y - 100, 300, 200}, 3, '#FFFFFFFF', order)
+        graphics2d.drawStroke({x - 150, y - 100, x + 150, y - 100, x + 150, y + 100, x - 150, y + 100}, edge)
     elseif self.query == 'circle' then
-        graphics2d.drawRing(x, y, 150, 3, '#FFFFFFFF', order)
+        local ring = {}
+        for step = 0, 47 do
+            ring[#ring + 1] = x + math.cos(step / 48 * math.pi * 2) * 150
+            ring[#ring + 1] = y + math.sin(step / 48 * math.pi * 2) * 150
+        end
+        graphics2d.drawStroke(ring, edge)
     elseif self.query == 'ray' then
-        graphics2d.drawLine(-760, 0, x, y, 3, '#FFFFFFFF', order)
+        graphics2d.drawStroke({-760, 0, x, y}, {width = 3, color = '#FFFFFFFF', cap = 'round', layer = 3})
         for _, hit in ipairs(self.hits or {}) do
-            graphics2d.drawCircle(hit.x, hit.y, 7, '#FFFF5252', order)
+            graphics2d.drawShape({hit.x - 8, hit.y - 8, 16, 16}, {kind = 'ellipse', color = '#FFFF6B5E', borderWidth = 2, borderColor = '#FF15172A', layer = 4})
         end
     elseif self.query == 'nearest' then
         for _, entity in ipairs(self.found) do
-            graphics2d.drawLine(x, y, entity.x, entity.y, 2, '#AAFFFFFF', order)
+            graphics2d.drawStroke({x, y, entity.x, entity.y}, {width = 2, color = '#CCFFFFFF', cap = 'round', layer = 3})
         end
     end
-    graphics2d.drawCircle(x, y, 5, '#FFFFFFFF', order)
+    graphics2d.drawShape({x - 7, y - 7, 14, 14}, {kind = 'ellipse', color = '#FFFFFFFF', borderWidth = 2, borderColor = '#FF15172A', layer = 4})
 end
 
 return Spatial

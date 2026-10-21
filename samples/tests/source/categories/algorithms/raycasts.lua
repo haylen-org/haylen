@@ -8,6 +8,7 @@ local spatial2d = require('haylen.spatial2d')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Art = require('categories.algorithms.art')
 
 local Raycasts = haylen.class('Raycasts', AlgorithmTest)
 
@@ -25,7 +26,10 @@ local kRect = {-420, -300, 140, 90}
 local kCircle = {center = {-180, 200}, radius = 80}
 local kPolygon = {{-40, -220}, {60, -120}, {10, 0}, {-100, -60}}
 local kChain = {{100, 380}, {200, 250}, {300, 330}, {400, 220}}
-local kWalls = {{{-500, -420}, {-500, -120}}, {{-300, 100}, {-60, 360}}, {{150, -380}, {300, -150}}}
+local kWalls = {{{-500, -400}, {-500, -120}}, {{-300, 100}, {-60, 360}}, {{150, -380}, {300, -150}}}
+local kFrame = {-780, -420, 1560, 840}
+-- Where the ray aims while the pointer is away from the play area: at the circle, past the rectangle.
+local kAim = {-180, 200}
 local kGrid = {columns = 12, rows = 16, cell = 32, x = 380, y = -256}
 local kModes = {
     {id = 'closest', text = 'Closest of every shape'},
@@ -45,11 +49,12 @@ end
 
 local function allSegments()
     local segments = {}
-    outline({{-780, -420}, {780, -420}, {780, 420}, {-780, 420}}, true, segments)
+    local x, y, w, h = kFrame[1], kFrame[2], kFrame[3], kFrame[4]
+    outline({{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}, true, segments)
     for _, wall in ipairs(kWalls) do
         segments[#segments + 1] = wall
     end
-    local x, y, w, h = kRect[1], kRect[2], kRect[3], kRect[4]
+    x, y, w, h = kRect[1], kRect[2], kRect[3], kRect[4]
     outline({{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}, true, segments)
     local circle = {}
     for index = 0, 23 do
@@ -73,6 +78,9 @@ function Raycasts:enter()
     }
     self.mode = 'closest'
     self.segments = allSegments()
+    self.frameSegments = {}
+    local x, y, w, h = kFrame[1], kFrame[2], kFrame[3], kFrame[4]
+    outline({{x, y}, {x + w, y}, {x + w, y + h}, {x, y + h}}, true, self.frameSegments)
     self.random = m.random(109)
     self.cells = spatial2d.newCellGrid(kGrid.columns, kGrid.rows)
     for _ = 1, 50 do
@@ -84,12 +92,26 @@ function Raycasts:enter()
         self.tree:set({id = index, box = box}, box)
     end
     self.cast = {rays = {}}
+    self.art = Art()
+    self.polygonStroke, self.chainStroke = Raycasts.flat(kPolygon), Raycasts.flat(kChain)
+end
+
+function Raycasts.flat(points)
+    local flat = {}
+    for _, point in ipairs(points) do
+        flat[#flat + 1] = point[1]
+        flat[#flat + 1] = point[2]
+    end
+    return flat
 end
 
 function Raycasts:ends()
-    local dx, dy = self.pointer.worldX - kOrigin[1], self.pointer.worldY - kOrigin[2]
+    local x, y = self:aim(kAim[1], kAim[2])
+    local dx, dy = x - kOrigin[1], y - kOrigin[2]
     local length = math.max(math.sqrt(dx * dx + dy * dy), 1)
-    return kOrigin, {kOrigin[1] + dx / length * kLength, kOrigin[2] + dy / length * kLength}, {dx / length, dy / length}
+    local to = {kOrigin[1] + dx / length * kLength, kOrigin[2] + dy / length * kLength}
+    local edge = m.raycastSegments(kOrigin, to, self.frameSegments)
+    return kOrigin, edge and {edge.x, edge.y} or to, {dx / length, dy / length}
 end
 
 -- Each mode returns the rays to draw, as a start, an end and an optional hit, the hit points and a summary.
@@ -97,19 +119,20 @@ local casts = {}
 
 function casts.closest(test)
     local from, to = test:ends()
-    local best
-    for _, hit in ipairs({m.raycastRect(from, to, kRect), m.raycastCircle(from, to, kCircle), m.raycastPolygon(from, to, kPolygon), m.raycastChain(from, to, kChain), m.raycastSegments(from, to, kWalls)}) do
+    local best, name
+    local hits = {rectangle = m.raycastRect(from, to, kRect), circle = m.raycastCircle(from, to, kCircle), polygon = m.raycastPolygon(from, to, kPolygon), chain = m.raycastChain(from, to, kChain), wall = m.raycastSegments(from, to, kWalls)}
+    for shape, hit in pairs(hits) do
         if best == nil or hit.distance < best.distance then
-            best = hit
+            best, name = hit, shape
         end
     end
-    return {rays = {{from, to, best}}, summary = best and string.format('Hit at distance %.0f', best.distance) or 'No hit'}
+    return {rays = {{from, to, best}}, summary = best and string.format('The ray hits the %s %.0f units away', name, best.distance) or 'The ray reaches the frame without a hit'}
 end
 
 function casts.pierce(test)
     local from, to = test:ends()
     local hits = m.raycastSegmentsAll(from, to, test.segments, 4)
-    return {rays = {{from, to}}, points = hits, summary = string.format('Pierced %d segments', #hits)}
+    return {rays = {{from, to}}, points = hits, summary = string.format('The ray pierces %d segments', #hits)}
 end
 
 function casts.bounce(test)
@@ -121,7 +144,7 @@ function casts.bounce(test)
         start = {hit.x, hit.y}
     end
     rays[#rays + 1] = {start, {endX, endY}}
-    return {rays = rays, summary = string.format('Bounces %d', #hits)}
+    return {rays = rays, summary = string.format('The ray bounces %d times', #hits)}
 end
 
 function casts.fan(test)
@@ -134,23 +157,24 @@ function casts.fan(test)
         rays[index] = {kOrigin, {kOrigin[1] + math.cos(rayAngle) * 1200, kOrigin[2] + math.sin(rayAngle) * 1200}, hit or nil}
         count = count + (hit and 1 or 0)
     end
-    return {rays = rays, summary = string.format('Rays that hit %d of 41', count)}
+    return {rays = rays, summary = string.format('%d of the 41 rays hit something', count)}
 end
 
 -- The grid cast walks the cells from the pointer toward the lower right, in the coordinates of the grid.
 function casts.grid(test)
-    local from = {test.pointer.worldX - kGrid.x, test.pointer.worldY - kGrid.y}
+    local x, y = test:aim(kGrid.x - 120, kGrid.y + 40)
+    local from = {x - kGrid.x, y - kGrid.y}
     local to = {from[1] + 900, from[2] + 300}
     local hit = spatial2d.raycastGrid(test.cells, from, to, kGrid.cell)
     local start, finish = {from[1] + kGrid.x, from[2] + kGrid.y}, {to[1] + kGrid.x, to[2] + kGrid.y}
     local drawn = hit and {x = hit.x + kGrid.x, y = hit.y + kGrid.y, normalX = hit.normalX, normalY = hit.normalY}
-    return {rays = {{start, finish, drawn}}, summary = hit and string.format('Cell %d, %d', hit.column, hit.row) or 'Left the grid'}
+    return {rays = {{start, finish, drawn}}, summary = hit and string.format('The ray stops in the cell of column %d and row %d', hit.column, hit.row) or 'The ray leaves the grid without a hit'}
 end
 
 function casts.tree(test)
     local from, to = test:ends()
     local hits = test.tree:raycast(from[1], from[2], to[1], to[2], 3)
-    return {rays = {{from, to}}, points = hits, summary = string.format('Boxes hit %d of %d', #hits, test.tree.size)}
+    return {rays = {{from, to}}, points = hits, summary = string.format('The ray crosses %d of the %d boxes', #hits, test.tree.size)}
 end
 
 function Raycasts:update(dt)
@@ -168,42 +192,45 @@ function Raycasts:update(dt)
     profiler.beginScope('mathCasts')
     self.cast = casts[self.mode](self)
     profiler.endScope()
-    self:status(string.format('%s, cast %.3f ms', self.cast.summary, self:timing('mathCasts')))
+    self:status(string.format('%s, cast in %.3f ms', self.cast.summary, self:timing('mathCasts')))
 end
 
 function Raycasts:draw(area)
-    local shape = '#FF5C6BC0'
-    graphics2d.drawRectOutline({-780, -420, 1560, 840}, 3, shape)
-    graphics2d.drawRect(kRect, shape)
-    graphics2d.drawCircle(kCircle.center[1], kCircle.center[2], kCircle.radius, shape)
-    graphics2d.drawPolygon(kPolygon, shape)
-    graphics2d.drawPolyline(kChain, 5, shape)
+    local fill, edge = '#FF2E3A58', '#FF8FA4E8'
+    graphics2d.drawShape(kFrame, {radius = 6, color = '#FF181D28', borderWidth = 4, borderColor = '#FF4A5578', layer = -1})
+    graphics2d.drawShape(kRect, {radius = 6, color = fill, borderWidth = 4, borderColor = edge})
+    graphics2d.drawShape({kCircle.center[1] - kCircle.radius, kCircle.center[2] - kCircle.radius, kCircle.radius * 2, kCircle.radius * 2}, {kind = 'ellipse', color = fill, borderWidth = 4, borderColor = edge})
+    graphics2d.drawPolygon(kPolygon, fill)
+    graphics2d.drawStroke(self.polygonStroke, {width = 4, color = edge, closed = true, join = 'round', layer = 1})
+    graphics2d.drawStroke(self.chainStroke, {width = 6, color = edge, join = 'round', cap = 'round'})
     for _, wall in ipairs(kWalls) do
-        graphics2d.drawLine(wall[1][1], wall[1][2], wall[2][1], wall[2][2], 5, shape)
+        graphics2d.drawStroke({wall[1][1], wall[1][2], wall[2][1], wall[2][2]}, {width = 6, color = edge, cap = 'round'})
     end
     for row = 0, kGrid.rows - 1 do
         for column = 0, kGrid.columns - 1 do
             local blocked = self.cells:get(column, row) == 1
-            graphics2d.drawRect({kGrid.x + column * kGrid.cell + 1, kGrid.y + row * kGrid.cell + 1, kGrid.cell - 2, kGrid.cell - 2}, blocked and '#FF78909C' or '#FF242B36')
+            graphics2d.drawShape({kGrid.x + column * kGrid.cell + 2, kGrid.y + row * kGrid.cell + 2, kGrid.cell - 4, kGrid.cell - 4}, {radius = 4, color = blocked and '#FF8FA4E8' or '#FF232B3D'})
         end
     end
     for _, value in ipairs(self.tree:query({-2000, -2000, 4000, 4000})) do
-        graphics2d.drawRectOutline(value.box, 2, '#FFFFB74D')
+        graphics2d.drawShape(value.box, {radius = 4, color = '#33FFC93C', borderWidth = 2, borderColor = '#FFFFC93C'})
     end
-    graphics2d.drawCircle(kOrigin[1], kOrigin[2], 12, '#FFFFFFFF', {layer = 5})
+
+    -- The ray runs faint to its end and bright to its hit, where the normal points away from the surface.
     for _, ray in ipairs(self.cast.rays) do
-        graphics2d.drawLine(ray[1][1], ray[1][2], ray[2][1], ray[2][2], 1.5, '#66FF8A80', {layer = 4})
+        graphics2d.drawStroke({ray[1][1], ray[1][2], ray[2][1], ray[2][2]}, {width = 3, color = '#66FF8A80', cap = 'round', layer = 4})
         local hit = ray[3]
         if hit then
-            graphics2d.drawLine(ray[1][1], ray[1][2], hit.x, hit.y, 3, '#FFFF5252', {layer = 5})
-            graphics2d.drawCircle(hit.x, hit.y, 6, '#FFFFFFFF', {layer = 6})
-            graphics2d.drawLine(hit.x, hit.y, hit.x + hit.normalX * 30, hit.y + hit.normalY * 30, 2, '#FF69F0AE', {layer = 6})
+            graphics2d.drawStroke({ray[1][1], ray[1][2], hit.x, hit.y}, {width = 5, color = '#FFFF6B5E', cap = 'round', layer = 5})
+            graphics2d.drawStroke({hit.x, hit.y, hit.x + hit.normalX * 44, hit.y + hit.normalY * 44}, {width = 4, color = '#FF6FDCA0', cap = 'round', layer = 6})
+            graphics2d.drawShape({hit.x - 10, hit.y - 10, 20, 20}, {kind = 'ellipse', color = '#FFFFFFFF', borderWidth = 3, borderColor = '#FFFF6B5E', layer = 7})
         end
     end
     for index, hit in ipairs(self.cast.points or {}) do
-        graphics2d.drawCircle(hit.x, hit.y, 8, '#FFFFD54F', {layer = 6})
-        graphics2d.drawText(nil, tostring(index), hit.x + 10, hit.y - 28, {size = 22, layer = 6})
+        graphics2d.drawShape({hit.x - 10, hit.y - 10, 20, 20}, {kind = 'ellipse', color = '#FFFFC93C', borderWidth = 3, borderColor = '#FF15172A', layer = 7})
+        self.art:label(tostring(index), hit.x + 22, hit.y - 22, 22, '#FFFFFFFF', 8)
     end
+    graphics2d.drawShape({kOrigin[1] - 16, kOrigin[2] - 16, 32, 32}, {kind = 'ellipse', color = '#FFF2F3FF', borderWidth = 4, borderColor = '#FF15172A', layer = 8})
 end
 
 return Raycasts

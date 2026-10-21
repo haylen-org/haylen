@@ -42,6 +42,15 @@ function AlgorithmTest:update(dt)
     self.pointer:update(dt, self)
 end
 
+-- Returns where the pointer is in the world while it is over the play area, and `x`, `y` otherwise, so a test that aims at the pointer shows something before the player reaches it.
+function AlgorithmTest:aim(x, y)
+    local pointer, stage = self.pointer, self.stage
+    if stage and (pointer.down or stage:contains({pointer.x, pointer.y})) then
+        return pointer.worldX, pointer.worldY
+    end
+    return x, y
+end
+
 function AlgorithmTest:renderUi()
     self.pointer:draw()
 end
