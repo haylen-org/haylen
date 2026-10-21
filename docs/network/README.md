@@ -6,10 +6,10 @@ Network reaches servers and peers from every platform, with every result on the 
 
 | Name | Description | Link |
 | --- | --- | --- |
-| Networking | What each platform offers, WebSocket clients, HTTP, raw sockets, timeouts, cancellation, owners, backpressure and errors. | [`networking.md`](networking.md) |
+| Networking | How an app reaches servers and peers: when to use HTTP, WebSockets, raw TCP and UDP or a server inside the app, with examples, what each platform allows, timeouts, owners, backpressure and errors. | [`networking.md`](networking.md) |
 
 ## Lua API
 
 | Name | Description | Link |
 | --- | --- | --- |
-| `haylen.net` | WebSocket connections with reconnection and pings. | [`lua-api/net.md`](../lua-api/net.md) |
+| `haylen.net` | WebSocket connections with reconnection, pings, owners and backpressure, and MessagePack. | [`lua-api/net.md`](../lua-api/net.md) |
