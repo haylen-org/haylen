@@ -689,7 +689,7 @@ A ribbon from `particles2d.newTrail` that follows its position. It adds a point 
 | `alive` | boolean | read | The value is `true` while the trail emits or keeps points. |
 | `config` | table | read | The options of the trail as a table that `particles2d.newTrail` accepts. |
 
-The methods are `trail:update(dt)`, which ages the points and adds one when the position moved far enough, `trail:draw()`, which draws the ribbon as one mesh in the active canvas, `trail:clear()`, which drops every point, and `trail:configure(options)`, which changes only the options it names, with the same validation.
+The methods are `trail:update(dt)`, which ages the points and adds one when the position moved far enough, `trail:draw()`, which draws the ribbon in the active canvas as a stroke with round ends whose edges fade over one pixel, `trail:clear()`, which drops every point, and `trail:configure(options)`, which changes only the options it names, with the same validation.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
