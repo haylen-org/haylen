@@ -1,10 +1,13 @@
 -- JSON with Varn's "json" module: tables to text and back, with the way Lua values map to JSON values and back, the sentinel that keeps nulls, the marks of arrays and objects, and the errors that name the line or the key.
 local haylen = require('haylen')
 local json = require('json')
+local ui = require('haylen.ui')
 
 local VarnTest = require('categories.varn.varn-test')
 
 local Json = haylen.class('Json', VarnTest)
+
+Json.showcaseWidth = 440
 
 Json.excerpts = {
     {'Encode', [[
@@ -37,6 +40,36 @@ node.self = node
 local ok, cycle = pcall(json.encode, node)]]},
 }
 
+-- The pretty text of the lesson in the monospace font, whose indentation the run fills in.
+-- How the values of Lua become JSON, each encoded by the lesson when the card is built.
+Json.mappings = {
+    {'true', true},
+    {'3', 3},
+    {'1.5', 1.5},
+    {"'Ana'", 'Ana'},
+    {'{1, 2}', {1, 2}},
+    {'{hp = 12}', {hp = 12}},
+    {'{}', {}},
+    {'0 / 0', 0 / 0},
+}
+
+function Json:showcase()
+    local rows = {}
+    for index, mapping in ipairs(Json.mappings) do
+        rows[index] = {id = 'mapping-' .. index, cells = {mapping[1], json.encode(mapping[2])}}
+    end
+    return {
+        ui.card{align = 'stretch', gap = 8,
+            ui.label{text = 'The pretty text', font = 'heading'},
+            ui.label{id = 'pretty', text = '', font = 'monospace'},
+        },
+        ui.card{grow = 1, align = 'stretch', gap = 8,
+            ui.label{text = 'Lua values as JSON', font = 'heading'},
+            ui.scroll{grow = 1, height = 0, ui.table{columns = {{text = 'Lua'}, {text = 'JSON'}}, rows = rows, style = {metrics = {listRowHeight = 40}}}},
+        },
+    }
+end
+
 function Json:run()
     local text = json.encode({
         name = 'Ana', level = 3, items = {'rope', 'lamp'},
@@ -47,7 +80,8 @@ function Json:run()
     local pretty = json.encode({hp = 12, pos = {3, 4}}, {
         pretty = true,
     })
-    self:check('pretty', 'Pretty text', pretty:find('\n  "hp": 12', 1, true) ~= nil, 'Indented by two spaces, with the keys in order:\n' .. pretty)
+    self:set('pretty', {text = pretty})
+    self:check('pretty', 'Pretty text', pretty:find('\n  "hp": 12', 1, true) ~= nil, 'Indented by two spaces, with the keys in order, as the card beside the checks shows.')
 
     local save = json.decode('{"hp": 12, "speed": 1.5, '
         .. '"pos": [3, 4], "boss": null}')

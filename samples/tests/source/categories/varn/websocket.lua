@@ -10,6 +10,8 @@ local VarnTest = require('categories.varn.varn-test')
 
 local WebSocket = haylen.class('WebSocket', VarnTest)
 
+WebSocket.stageWidth = 560
+
 WebSocket.hint = 'The server runs inside the app on 127.0.0.1, and nothing leaves the device. Run again opens a new connection.'
 WebSocket.wait = 3000
 
@@ -156,8 +158,7 @@ function WebSocket:closeSocket(socket)
 end
 
 function WebSocket:draw(area)
-    local y = self.results:draw(area)
-    self.exchange:draw(24, area.width - 24, y)
+    self.exchange:draw(24, area.width - 24, 24)
 end
 
 return WebSocket

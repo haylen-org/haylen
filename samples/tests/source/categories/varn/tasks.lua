@@ -45,7 +45,7 @@ end)
 local route = async.promise(function()
     error('The bridge is out.', 0)
 end):catch(function(failure)
-    return 'The ferry, since ' .. failure
+    return 'Take the ferry. ' .. failure
 end):await()]]},
     {'Handing the frame back', [[
 local sum = 0
@@ -127,9 +127,9 @@ function Tasks:caught()
     local route = async.promise(function()
         error('The bridge is out.', 0)
     end):catch(function(failure)
-        return 'The ferry, since ' .. failure
+        return 'Take the ferry. ' .. failure
     end):await()
-    self:check('catch', 'Catching a failure', route == 'The ferry, since The bridge is out.', string.format('The function of "catch" turned the rejection into "%s".', tostring(route)))
+    self:check('catch', 'Catching a failure', route == 'Take the ferry. The bridge is out.', string.format('The function of "catch" turned the rejection into "%s".', tostring(route)))
 end
 
 -- A long loop awaits "async.yield" now and then, so other tasks and timers take their turns, and the work goes on in the next frame once the event loop spent the budget of the frame.

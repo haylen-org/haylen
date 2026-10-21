@@ -9,6 +9,8 @@ local VarnTest = require('categories.varn.varn-test')
 
 local Sockets = haylen.class('Sockets', VarnTest)
 
+Sockets.stageWidth = 560
+
 Sockets.host = '127.0.0.1'
 Sockets.burst = 8
 Sockets.hint = 'The server and the client both run in the app, on 127.0.0.1, on free ports the system picks. Run again opens new sockets.'
@@ -194,8 +196,7 @@ function Sockets:burstOfDatagrams(a, b)
 end
 
 function Sockets:draw(area)
-    local y = self.results:draw(area)
-    self.exchange:draw(24, area.width - 24, y)
+    self.exchange:draw(24, area.width - 24, 24)
 end
 
 return Sockets

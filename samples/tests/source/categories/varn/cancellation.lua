@@ -10,8 +10,14 @@ local VarnTest = require('categories.varn.varn-test')
 
 local Cancellation = haylen.class('Cancellation', VarnTest)
 
-Cancellation.hint = 'Each bar is the planned work, filled while it runs, green when it ends and red where it stopped, and the white mark is the deadline or the moment of the cancel. Run again repeats the lesson.'
+Cancellation.hint = 'Each bar is the planned work, green when it ends and red where it stopped, and the blue mark is the deadline or the cancel. Run again repeats the lesson.'
 Cancellation.span = 1000
+Cancellation.stageWidth = 580
+Cancellation.bar = 20
+-- The height of a lane, its name over its bar and the name of its mark, which the lanes spread out from to share the stage.
+Cancellation.laneHeight = 96
+Cancellation.margin = 24
+Cancellation.legend = {{'Running', Test.warm}, {'Ended', Test.green}, {'Stopped', Test.red}, {'Deadline or cancel', Test.accent}}
 
 Cancellation.excerpts = {
     {'Deadlines', [[
@@ -98,7 +104,7 @@ function Cancellation:cancelTask()
 
     self.results:set('cancel', 'waiting', 'Cancel a task', 'Waiting past the end of its sleep.')
     async.sleep(450):await()
-    self:check('cancel', 'Cancel a task', closedAtOnce and not finished, string.format('Closed at once: %s. Resumed after its sleep: %s. A cancelled task never runs again.', tostring(closedAtOnce), tostring(finished)))
+    self:check('cancel', 'Cancel a task', closedAtOnce and not finished, (closedAtOnce and 'The task closed its variables at once' or 'The task kept its variables open') .. (finished and ', and it still resumed after its sleep.' or ', and it never resumed after its sleep, since a cancelled task never runs again.'))
 end
 
 -- A plain table owner ends when the garbage collector frees it, and the task it held never resumes.
@@ -116,23 +122,46 @@ function Cancellation:owner()
 
     self.results:set('owner', 'waiting', 'A task with an owner', 'Waiting past the end of its sleep.')
     async.sleep(350):await()
-    self:check('owner', 'A task with an owner', not resumed, string.format('Resumed after its owner was gone: %s. The tasks of a test end the same way when the test exits.', tostring(resumed)))
+    self:check('owner', 'A task with an owner', not resumed, resumed and 'The task resumed after its owner was gone.' or 'The task never resumed once its owner was gone, the way the tasks of a test end when the test exits.')
 end
 
+-- Draws the legend, then every lane as its name over a groove of its planned work, filled with round ends as far as the work went, with the deadline or the cancel marked across it and named, over the lines of every 250 ms.
 function Cancellation:draw(area)
-    local y = self.results:draw(area) + 8
-    local left, right = 560, area.width - 24
+    local margin, bar = Cancellation.margin, Cancellation.bar
+    local left, right = margin, area.width - margin
     local scale = (right - left) / Cancellation.span
+    local x = margin
+    for _, entry in ipairs(Cancellation.legend) do
+        local style = {size = 18, color = Test.muted, anchor = {0, 0.5}, layer = 2}
+        graphics2d.drawCircle(x + 8, margin + 12, 8, entry[2])
+        graphics2d.drawText(nil, entry[1], x + 24, margin + 12, style)
+        x = x + 48 + graphics2d.measureText(nil, entry[1], style)
+    end
+
+    local axis = area.height - margin - 20
+    for step = 0, Cancellation.span, 250 do
+        local tick = left + step * scale
+        graphics2d.drawLine(tick, margin + 44, tick, axis - 8, 1, Test.line)
+        graphics2d.drawText(nil, step == Cancellation.span and step .. ' ms' or tostring(step), tick, axis, {size = 18, color = Test.muted, anchor = {step == 0 and 0 or step == Cancellation.span and 1 or 0.5, 0}, layer = 2})
+    end
+
     local now = datetime.now():millis()
-    for _, lane in ipairs(self.lanes or {}) do
+    local lanes = self.lanes or {}
+    local first = margin + 56
+    local step = math.max(Cancellation.laneHeight, (axis - 8 - first) / math.max(1, #lanes))
+    local y = first + (step - Cancellation.laneHeight) / 2
+    for _, lane in ipairs(lanes) do
         local ended = lane.stopped or lane.finish
         local reached = math.min(lane.length, (ended or now) - lane.start)
         local color = lane.stopped and Test.red or (lane.finish and Test.green or Test.warm)
-        Test.caption(lane.label, 24, y)
-        graphics2d.drawRect({left, y, lane.length * scale, 22}, Test.surface)
-        graphics2d.drawRect({left, y, math.max(2, reached * scale), 22}, color, {layer = 1})
-        graphics2d.drawLine(left + lane.limit * scale, y - 6, left + lane.limit * scale, y + 28, 3, Test.ink, {layer = 2})
-        y = y + 44
+        graphics2d.drawText(nil, lane.label, left, y, {size = 19, color = Test.ink, maxWidth = right - left, layer = 2})
+        local top = y + 30
+        graphics2d.drawShape({left, top, lane.length * scale, bar}, {radius = bar / 2, color = Test.line, layer = 1})
+        graphics2d.drawShape({left, top, math.max(bar, reached * scale), bar}, {radius = bar / 2, color = color, layer = 2})
+        local mark = left + lane.limit * scale
+        graphics2d.drawShape({mark - 3, top - 8, 6, bar + 16}, {radius = 3, color = Test.accent, layer = 3})
+        graphics2d.drawText(nil, string.format('%d ms', lane.limit), mark + 8, top + bar + 6, {size = 16, color = Test.accent, layer = 3})
+        y = y + step
     end
 end
 

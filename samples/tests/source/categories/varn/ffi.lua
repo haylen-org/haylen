@@ -10,19 +10,26 @@ local Ffi = haylen.class('Ffi', VarnTest)
 
 Ffi.hint = 'The bars show the scores before and after the C function "qsort" ordered them with the Lua comparator. Run again repeats the lesson.'
 Ffi.scores = {50, 10, 40, 20, 30}
+Ffi.stageWidth = 520
+Ffi.margin = 24
+Ffi.barWidth = 52
 
--- Declarations and metatypes belong to the Lua state, which raises on a second declaration of a name, so the test makes them once, when its module loads.
-ffi.cdef[[
-    unsigned long strlen(const char *s);
-    void qsort(void *base, unsigned long count, unsigned long size, int (*compare)(const void *, const void *));
-    typedef struct { float x, y; int16_t hp; } VarnUnit;
-]]
-
-Ffi.Unit = ffi.metatype(ffi.typeof('VarnUnit'), {__index = {
-    distance = function(unit)
-        return math.sqrt(unit.x * unit.x + unit.y * unit.y)
-    end,
-}})
+-- Declarations and metatypes belong to the Lua state, which raises on a second declaration of a name, so the test makes them once, on its first run, and the unsupported page of the browser can still read the excerpts of the module.
+function Ffi.declare()
+    if Ffi.Unit then
+        return
+    end
+    ffi.cdef[[
+        unsigned long strlen(const char *s);
+        void qsort(void *base, unsigned long count, unsigned long size, int (*compare)(const void *, const void *));
+        typedef struct { float x, y; int16_t hp; } VarnUnit;
+    ]]
+    Ffi.Unit = ffi.metatype(ffi.typeof('VarnUnit'), {__index = {
+        distance = function(unit)
+            return math.sqrt(unit.x * unit.x + unit.y * unit.y)
+        end,
+    }})
+end
 
 Ffi.excerpts = {
     {'Declare and call', [=[
@@ -50,6 +57,7 @@ ffi.C.qsort(scores, 5, ffi.sizeof('int32_t'), compare)]]},
 }
 
 function Ffi:run()
+    Ffi.declare()
     local length = ffi.C.strlen('Haylen')
     self:check('call', 'Call a C function', length == 6, string.format('The C function "strlen" counted %d bytes in "Haylen".', length))
 
@@ -91,20 +99,26 @@ function Ffi:sort()
     self:check('pointer', 'Pointers', pointer[2] == 30 and pointer ~= ffi.nullptr and ffi.cast('void *', nil) == ffi.nullptr, string.format('A pointer to the scores reads %d at index 2, and a null pointer equals "ffi.nullptr".', pointer[2]))
 end
 
+-- Draws the scores before the sort in the upper half of the stage and after it in the lower half, each a column with round ends as tall as its score.
 function Ffi:draw(area)
-    local top = self.results:draw(area)
-    self:drawScores(Ffi.scores, 'Before', top)
+    local half = (area.height - Ffi.margin * 2) / 2
+    self:drawScores(Ffi.scores, 'Before "qsort"', Ffi.margin, half, area.width)
     if self.sorted then
-        self:drawScores(self.sorted, 'After', top + 70)
+        self:drawScores(self.sorted, 'After "qsort"', Ffi.margin + half, half, area.width)
     end
 end
 
-function Ffi:drawScores(scores, label, y)
-    Test.caption(label, 24, y + 20)
+function Ffi:drawScores(scores, label, top, height, width)
+    local margin = Ffi.margin
+    graphics2d.drawText(nil, label, margin, top, {size = 20, color = Test.ink, layer = 2})
+    local floor = top + height - 12
+    local tallest = height - 80
+    local step = (width - margin * 2) / #scores
     for index, score in ipairs(scores) do
-        local x = 140 + (index - 1) * 90
-        graphics2d.drawRect({x, y + 50 - score, 60, score}, Test.accent)
-        Test.caption(tostring(score), x + 30, y + 50 - score - 2, {size = 16, color = Test.ink, anchor = {0.5, 1}})
+        local x = margin + (index - 1) * step + (step - Ffi.barWidth) / 2
+        local barHeight = tallest * score / 50
+        graphics2d.drawShape({x, floor - barHeight, Ffi.barWidth, barHeight}, {radius = Ffi.barWidth / 2, color = Test.accent, layer = 1})
+        graphics2d.drawText(nil, tostring(score), x + Ffi.barWidth / 2, floor - barHeight - 6, {size = 18, color = Test.ink, anchor = {0.5, 1}, layer = 2})
     end
 end
 

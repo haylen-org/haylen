@@ -4,10 +4,10 @@ return {
     title = 'Varn',
     description = 'The modules of Varn, the Lua runtime of the engine, each lesson with its code and its live result.',
     tests = {
-        {code = 'VRN-001', title = 'Tasks and promises', description = 'Tasks that await promises, sleeps that never block a frame, rejections, failures caught, long loops that hand the frame back and callbacks turned into promises.', module = 'tasks'},
+        {code = 'VRN-001', title = 'Tasks and promises', description = 'Tasks that await promises, sleeps that never block a frame, rejections, caught failures, long loops that yield and callbacks as promises.', module = 'tasks'},
         {code = 'VRN-002', title = 'Combinators', description = 'All, race, any, every outcome and a few at a time, on a timeline of the jobs they wait on.', module = 'combinators'},
         {code = 'VRN-003', title = 'Deadlines and cancellation', description = 'Deadlines that give up waiting, tasks cancelled for good and tasks that end with their owner.', module = 'cancellation'},
-        {code = 'VRN-004', title = 'HTTP requests', description = 'GET with a query, POST with JSON, other methods, error statuses and timeouts against a server inside the app, and a server that the test opens on a free port and closes.', module = 'http-requests',
+        {code = 'VRN-004', title = 'HTTP requests', description = 'GET with a query, POST with JSON, other methods, error statuses and timeouts against a local server, and a server opened and closed.', module = 'http-requests',
             platforms = {'macos', 'windows', 'linux', 'ios', 'tvos', 'headless'},
             unsupported = {
                 web = 'A browser page cannot accept connections, so the browser build of Varn has no HTTP server for these requests, and the tests of this category never reach the internet.',

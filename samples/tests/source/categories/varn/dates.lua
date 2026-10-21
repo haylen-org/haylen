@@ -1,13 +1,14 @@
 -- Dates and times with Varn's "datetime" module: the current instant, ISO-8601 text with offsets, calendar arithmetic, differences, boundaries, fixed offsets and Unix time.
 local datetime = require('datetime')
 local haylen = require('haylen')
+local ui = require('haylen.ui')
 
-local Test = require('harness.test')
 local VarnTest = require('categories.varn.varn-test')
 
 local Dates = haylen.class('Dates', VarnTest)
 
-Dates.hint = 'The clock under the checks reads "datetime.now()" every frame, in UTC, since the module knows fixed offsets and no time zones. Run again repeats the lesson.'
+Dates.hint = 'The clock reads "datetime.now()" every frame, in UTC, since the module knows fixed offsets and no time zones. Run again repeats the lesson.'
+Dates.clockSize = 76
 
 Dates.excerpts = {
     {'Now', [[
@@ -24,8 +25,16 @@ print(launch:startOf('week'):iso(), launch:endOf('week'):iso())
 print(launch:iso(330), launch:format('%H:%M', -180))]]},
 }
 
+-- A clock in the monospace font, whose digits keep their width as they change, over the day and the ISO text of the instant.
+function Dates:showcase()
+    return {ui.card{align = 'stretch', gap = 6, padding = {20, 28},
+        ui.label{id = 'clock', text = '', font = 'monospace', style = {fonts = {monospace = {size = Dates.clockSize}}}, textAlign = 'center', align = 'stretch'},
+        ui.label{id = 'day', text = '', font = 'heading', textAlign = 'center', align = 'stretch'},
+        ui.label{id = 'iso', text = '', font = 'monospace', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+    }}
+end
+
 function Dates:run()
-    self:showNow()
 
     local launch = datetime.parse('2026-06-21T09:30:00-03:00')
     self:check('parse', 'Parse with an offset', launch:iso() == '2026-06-21T12:30:00Z' and launch:weekdayName() == 'Sunday' and launch:yearday() == 172, string.format('The text "2026-06-21T09:30:00-03:00" is %s in UTC, a %s, day %d of the year.', launch:iso(), launch:weekdayName(), launch:yearday()))
@@ -51,22 +60,16 @@ function Dates:run()
     self:check('invalid', 'Invalid text', not ok and failure ~= nil, 'The call raised, and "pcall" caught it: ' .. tostring(failure))
 end
 
-function Dates:showNow()
-    local now = datetime.now()
-    self.results:set('now', 'info', 'Now', string.format('%s, %s.', now:iso(), now:format('%A %d %B %Y')))
-end
-
 function Dates:update(dt)
     Dates.super.update(self, dt)
-    if self.results.byKey.now then
-        self:showNow()
-    end
-end
-
-function Dates:draw(area)
-    local top = self.results:draw(area)
     local now = datetime.now()
-    Test.caption(string.format('%s.%03d UTC', now:format('%H:%M:%S'), now:millis() % 1000), 24, top, {size = 72, color = Test.ink})
+    self:set('clock', {text = string.format('%s.%03d UTC', now:format('%H:%M:%S'), now:millis() % 1000)})
+    local day = now:format('%A %d %B %Y')
+    if day ~= self.day then
+        self.day = day
+        self:set('day', {text = day})
+    end
+    self:set('iso', {text = now:iso()})
 end
 
 return Dates

@@ -4,13 +4,13 @@ local engineLog = require('haylen.log')
 local haylen = require('haylen')
 local log = require('log')
 local platform = require('platform')
+local ui = require('haylen.ui')
 
-local Test = require('harness.test')
 local VarnTest = require('categories.varn.varn-test')
 
 local LogPlatform = haylen.class('LogPlatform', VarnTest)
 
-LogPlatform.colors = {info = Test.ink, warning = Test.warm, error = Test.red}
+LogPlatform.tones = {debug = 'neutral', info = 'information', warning = 'warning', error = 'danger'}
 
 LogPlatform.hint = 'The lesson reads its own lines back from "debug.recentLog", which keeps the recent lines of the app, the engine and Varn. Run again repeats the lesson.'
 
@@ -32,6 +32,32 @@ print(platform.endianness(), platform.hostVersion())
 print(platform.libraryFilename('native_test'))]]},
 }
 
+-- The lines of the lesson as the engine log keeps them, which the run fills in.
+function LogPlatform:showcase()
+    return {ui.card{align = 'stretch', gap = 10,
+        ui.label{text = 'The lines of the lesson in the engine log', font = 'heading'},
+        ui.column{id = 'logLines', gap = 8, align = 'stretch'},
+    }}
+end
+
+-- The text of a line of the log without the time and the level that the log puts in front of it.
+function LogPlatform.plain(text)
+    local tags = 1
+    while tags > 0 do
+        text, tags = text:gsub('^%b[]%s*', '', 1)
+    end
+    return text
+end
+
+-- Shows each line with its level once, as a badge, and its text without the tags the log puts in front of it.
+function LogPlatform:showLines()
+    local rows = {}
+    for index, line in ipairs(self.lines) do
+        rows[index] = ui.row{gap = 12, ui.badge{text = line.level:sub(1, 1):upper() .. line.level:sub(2), tone = LogPlatform.tones[line.level] or 'neutral', width = 130}, ui.label{text = LogPlatform.plain(line.text), font = 'monospace', grow = 1}}
+    end
+    self.gui:replaceChildren('logLines', rows)
+end
+
 function LogPlatform:run()
     self:logLines()
     self:system()
@@ -52,7 +78,8 @@ function LogPlatform:logLines()
 
     local opened, tide = self:find('Chest opened'), self:find('Low tide')
     self.lines = {opened, tide, self:find('Written again at the level')}
-    self:check('fields', 'Structured fields', opened ~= nil and opened.text:find('Chest opened gold=12', 1, true) ~= nil, string.format('The engine log got "%s".', opened and opened.text or 'nothing'))
+    self:showLines()
+    self:check('fields', 'Structured fields', opened ~= nil and opened.text:find('Chest opened gold=12', 1, true) ~= nil, string.format('The engine log got "%s".', opened and LogPlatform.plain(opened.text) or 'nothing'))
     self:check('levels', 'Levels', tide ~= nil and tide.level == 'warning' and tide.text:find('depth=2', 1, true) ~= nil, string.format('The line of "log.warn" arrived at the level "%s" of the engine.', tide and tide.level or 'none'))
     self:check('debug', 'Below the level', self:find('Below the level, so dropped.') == nil, 'The function "log.debug" wrote nothing, since the level was "info".')
     self:check('raised', 'Raising the level', self:find('Dropped while the level is') == nil and self:find('Written again at the level') ~= nil, 'The function "log.info" wrote nothing while the level was "warn", and wrote again once it was back at "info".')
@@ -78,16 +105,6 @@ function LogPlatform:system()
 
     self.results:set('library', 'info', 'Library names', string.format('A library named "native_test" is the file "%s" here, from the prefix "%s" and the suffix "%s".', platform.libraryFilename('native_test'), platform.libPrefix(), platform.shlibSuffix()))
     self.results:set('names', 'info', 'Two names for the platform', string.format('Varn says "%s" and "haylen.platform" says "%s", because the engine gives its own names to platforms such as the headless host and the browser.', platform.os(), haylen.platform))
-end
-
--- Draws the lines of the lesson the way the engine log keeps them.
-function LogPlatform:draw(area)
-    local y = self.results:draw(area)
-    Test.caption('The lines of the lesson in the engine log', 24, y)
-    for _, line in ipairs(self.lines or {}) do
-        y = y + 30
-        Test.caption(string.format('%s%s  %s', line.level:sub(1, 1):upper(), line.level:sub(2), line.text), 24, y, {size = 17, color = LogPlatform.colors[line.level] or Test.ink, maxWidth = area.width - 48})
-    end
 end
 
 return LogPlatform

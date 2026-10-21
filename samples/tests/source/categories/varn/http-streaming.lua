@@ -10,8 +10,11 @@ local VarnTest = require('categories.varn.varn-test')
 
 local HttpStreaming = haylen.class('HttpStreaming', VarnTest)
 
-HttpStreaming.hint = 'The dots mark when each event reached the app, on a line of one second with marks 100 ms apart. Run again streams again.'
+HttpStreaming.hint = 'The dots mark when each event reached the app, on a line of one second with marks 100 ms apart, and the bar fills with the download. Run again streams again.'
 HttpStreaming.span = 1000
+HttpStreaming.stageHeight = 230
+HttpStreaming.margin = 24
+HttpStreaming.bar = 22
 
 HttpStreaming.excerpts = {
     {'Server', [[
@@ -25,9 +28,11 @@ app:get('/events', function(ctx)
 end)]]},
     {'Writing in parts', [[
 app:get('/parts', function(ctx)
-    ctx:type('text/plain'):header('X-Content-Type-Options', 'nosniff')
+    ctx:type('text/plain')
+    ctx:header('X-Content-Type-Options', 'nosniff')
     for part = 1, 4 do
-        if not ctx:write('Part ' .. part .. '\n'):await() then
+        local line = 'Part ' .. part .. '\n'
+        if not ctx:write(line):await() then
             return
         end
         async.sleep(100):await()
@@ -131,42 +136,47 @@ function HttpStreaming:largeDownload(url)
 end
 
 function HttpStreaming:draw(area)
-    local y = self.results:draw(area) + 8
-    local left, right = 24, area.width - 24
+    local margin = HttpStreaming.margin
+    local left, right = margin, area.width - margin
     if self.events then
-        self:drawEvents(left, right, y)
-        y = y + 90
+        self:drawEvents(left, right, margin)
     end
     if self.download then
-        self:drawDownload(left, right, y)
+        self:drawDownload(left, right, margin + 116)
     end
 end
 
+-- Draws the second of the events as a groove with a mark every 100 ms, the moment the stream reached as a fill and every event as a numbered dot where it arrived.
 function HttpStreaming:drawEvents(left, right, y)
     local events = self.events
+    local bar = HttpStreaming.bar
     local scale = (right - left) / HttpStreaming.span
-    local line = y + 50
-    Test.caption('Arrival of the events', left, y)
-    graphics2d.drawLine(left, line, right, line, 2, Test.line)
-    for step = 0, HttpStreaming.span, 100 do
-        graphics2d.drawLine(left + step * scale, line - 8, left + step * scale, line + 8, 2, Test.line)
+    local line = y + 60
+    graphics2d.drawText(nil, 'Arrival of the events', left, y, {size = 20, color = Test.ink, layer = 2})
+    graphics2d.drawShape({left, line - bar / 2, right - left, bar}, {radius = bar / 2, color = Test.line})
+    for step = 100, HttpStreaming.span - 100, 100 do
+        graphics2d.drawCircle(left + step * scale, line, 3, Test.muted, {layer = 1})
     end
-
     local now = events.finished or datetime.now():millis() - events.started
-    graphics2d.drawLine(left + math.min(now, HttpStreaming.span) * scale, line - 16, left + math.min(now, HttpStreaming.span) * scale, line + 16, 2, Test.warm)
+    graphics2d.drawShape({left, line - bar / 2, math.max(bar, math.min(now, HttpStreaming.span) * scale), bar}, {radius = bar / 2, color = '#664C7DFF', layer = 1})
     for _, event in ipairs(events) do
         local x = left + math.min(event.at, HttpStreaming.span) * scale
-        graphics2d.drawCircle(x, line, 15, Test.green, {layer = 1})
-        Test.caption(tostring(event.tick), x, line, {size = 17, color = '#FF101418', anchor = {0.5, 0.5}})
+        graphics2d.drawCircle(x, line, 16, Test.green, {layer = 2})
+        graphics2d.drawText(nil, tostring(event.tick), x, line, {size = 17, color = '#FF101418', anchor = {0.5, 0.5}, layer = 3})
     end
 end
 
+-- Draws the download as a groove that fills with round ends as its pieces arrive.
 function HttpStreaming:drawDownload(left, right, y)
     local download = self.download
+    local bar = HttpStreaming.bar
     local fraction = download.expected and download.received / download.expected or 0
-    Test.caption(string.format('Downloaded %d of %s bytes', download.received, download.expected or 'unknown'), left, y)
-    graphics2d.drawRect({left, y + 32, right - left, 20}, Test.surface)
-    graphics2d.drawRect({left, y + 32, (right - left) * math.min(1, fraction), 20}, Test.accent, {layer = 1})
+    local text = download.expected and string.format('Downloaded %.1f of %.1f MB in %d pieces', download.received / 1048576, download.expected / 1048576, download.pieces) or string.format('Downloaded %.1f MB in %d pieces', download.received / 1048576, download.pieces)
+    graphics2d.drawText(nil, text, left, y, {size = 20, color = Test.ink, layer = 2})
+    graphics2d.drawShape({left, y + 34, right - left, bar}, {radius = bar / 2, color = Test.line})
+    if fraction > 0 then
+        graphics2d.drawShape({left, y + 34, math.max(bar, (right - left) * math.min(1, fraction)), bar}, {radius = bar / 2, color = Test.accent, layer = 1})
+    end
 end
 
 return HttpStreaming
