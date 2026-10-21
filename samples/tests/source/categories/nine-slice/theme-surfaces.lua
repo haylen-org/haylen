@@ -11,10 +11,11 @@ local ThemeSurfaces = haylen.class('ThemeSurfaces', Test)
 ThemeSurfaces.demoWidth = 640
 ThemeSurfaces.tones = {'accent', 'success', 'warning', 'danger'}
 ThemeSurfaces.code = [[
-ui.setTheme(ui.addTheme({name = 'workshop', surfaces = {
-    button = {image = 'nine-slice/theme.png', source = {0, 0, 96, 96}, slice = 32, scale = 0.5, padding = {0, 0, 4, 0}, colorize = true},
-    trackFill = {image = 'nine-slice/theme.png', source = {324, 184, 48, 36}, slice = 14, scale = 0.5, colorize = true},
-}}, 'light'))  -- One near white fill becomes the accent, success, warning and danger bars.]]
+local atlas = 'nine-slice/theme.png'
+local button = {image = atlas, source = {0, 0, 96, 96}, slice = 32, scale = 0.5, colorize = true}
+local fill = {image = atlas, source = {324, 184, 48, 36}, slice = 18, scale = 0.5, colorize = true}
+local theme = ui.addTheme({name = 'workshop', surfaces = {button = button, trackFill = fill}}, 'light')
+ui.setTheme(theme)  -- One near white fill becomes the accent, success, warning and danger bars.]]
 
 -- The regions of the pieces in the atlas.
 ThemeSurfaces.atlas = 'nine-slice/theme.png'
@@ -38,15 +39,15 @@ function ThemeSurfaces.theme(colorize)
         surfaces = {
             panel = {image = atlas, source = regions.panel, slice = 40, scale = 0.5, padding = 10, tint = '#FFFFF3DC'},
             card = {image = atlas, source = regions.panel, slice = 40, scale = 0.5, padding = 10, tint = '#FFFFF8EC'},
-            banner = {image = atlas, source = regions.banner, slice = {20, 80}, scale = 0.5, padding = {8, 44}, colorize = colorize},
+            banner = {image = atlas, source = regions.banner, slice = {0, 80}, scale = 0.5, padding = {16, 44, 46, 44}, colorize = colorize},
             button = button(regions.button, {0, 0, 4, 0}),
             buttonPressed = button(regions.buttonPressed, {4, 0, 0, 0}),
             buttonPrimary = button(regions.button, {0, 0, 4, 0}),
             buttonPrimaryPressed = button(regions.buttonPressed, {4, 0, 0, 0}),
             buttonDestructive = button(regions.button, {0, 0, 4, 0}),
             buttonDestructivePressed = button(regions.buttonPressed, {4, 0, 0, 0}),
-            track = {image = atlas, source = regions.track, slice = 22, scale = 0.5, padding = 5},
-            trackFill = {image = atlas, source = regions.fill, slice = 14, scale = 0.5, colorize = colorize},
+            track = {image = atlas, source = regions.track, slice = 24, scale = 0.5, padding = 5},
+            trackFill = {image = atlas, source = regions.fill, slice = 18, scale = 0.5, colorize = colorize},
             knob = {image = atlas, source = regions.knob, scale = 0.5},
         },
     }
@@ -68,7 +69,7 @@ function ThemeSurfaces:enter()
 
     local bars = {}
     for index, tone in ipairs(ThemeSurfaces.tones) do
-        bars[index] = ui.progress{id = tone, value = 0.6, tone = tone, text = 'Tone "' .. tone .. '"'}
+        bars[index] = ui.row{gap = 12, alignItems = 'center', ui.label{text = tone:sub(1, 1):upper() .. tone:sub(2), width = 130}, ui.progress{id = tone, value = 0.6, tone = tone, grow = 1}}
     end
     self.demo = ui.mount(ui.column{id = 'demo', anchor = 'topLeft', width = ThemeSurfaces.demoWidth, gap = 16, onCancel = function() self:cancel() end,
         ui.pageHeader{title = 'Workshop', caption = 'Every surface is a nine-slice', banner = true, textAlign = 'center'},
@@ -104,7 +105,7 @@ end
 function ThemeSurfaces:update(dt)
     ThemeSurfaces.super.update(self, dt)
     local fill = ui.themeSurface('trackFill')
-    self:status(string.format('Theme "%s"   Borders of "trackFill" %s   Property "colorize" is "%s"', ui.theme(), table.concat(fill.slice.borders, ', '), fill.colorize))
+    self:status(string.format('The theme "%s" draws its fills with borders of %g pixels, %s.', ui.theme(), fill.slice.borders[1], fill.colorize and 'colored by each component' or 'as they are painted'))
 end
 
 -- The theme writes dark text, so the page behind the frame is light while the test runs.
@@ -114,19 +115,24 @@ function ThemeSurfaces:render()
     ThemeSurfaces.super.render(self)
 end
 
--- Draws the fill of the theme once per tone, multiplied by the color of the tone as `colorize` does, with the borders at the scale of the surface.
+-- Draws the fill of the theme once per tone, multiplied by the color of the tone as "colorize" does, with its round ends kept round at the height it draws at, and the button once per role with the name of the role on it, all on the paper of the theme.
 function ThemeSurfaces:draw(area)
+    graphics2d.drawRect(area, ui.themeColor('window'), {layer = -1})
     local left = ThemeSurfaces.demoWidth + 70
     local fill, button = ui.themeSurface('trackFill'), ui.themeSurface('button')
     local width = area.width - left - 40
-    Test.caption('The fill of "nine-slice/theme.png" times each tone', left, 30, {size = 24, color = Test.ink, maxWidth = width})
+    local ink = ui.themeColor('text')
+    Test.caption('The fill of "nine-slice/theme.png" times each tone', left, 30, {size = 24, color = ink, maxWidth = width})
+    local height = 30
     for index, tone in ipairs(ThemeSurfaces.tones) do
-        graphics2d.drawNineSlice(fill.slice, {left, 50 + index * 46, width, 30}, ui.themeColor(tone), {borderScale = fill.scale})
+        graphics2d.drawNineSlice(fill.slice, {left, 50 + index * 50, width, height}, ui.themeColor(tone), {borderScale = height / 36})
     end
-    Test.caption('The button of "nine-slice/theme.png" times "raised", "accent" and "danger"', left, 300, {size = 24, color = Test.ink, maxWidth = width})
+    Test.caption('The button of "nine-slice/theme.png" times "raised", "accent" and "danger"', left, 330, {size = 24, color = ink, maxWidth = width})
     local third = (width - 20) / 3
     for index, role in ipairs({'raised', 'accent', 'danger'}) do
-        graphics2d.drawNineSlice(button.slice, {left + (index - 1) * (third + 10), 370, third, 64}, ui.themeColor(role), {borderScale = button.scale})
+        local x = left + (index - 1) * (third + 10)
+        graphics2d.drawNineSlice(button.slice, {x, 400, third, 64}, ui.themeColor(role), {borderScale = button.scale})
+        graphics2d.drawText(nil, role:sub(1, 1):upper() .. role:sub(2), x + third / 2, 428, {size = 24, color = role == 'raised' and ink or '#FFFFFFFF', anchor = {0.5, 0.5}, layer = 2})
     end
 end
 

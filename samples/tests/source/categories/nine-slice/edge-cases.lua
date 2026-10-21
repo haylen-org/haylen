@@ -1,4 +1,4 @@
--- Edge cases: frames cut from a sheet whose gaps are magenta, so any texel read outside a piece shows as a pink seam. They draw with linear filtering at fractional places and border scales, tiled at sizes that are not a multiple of their tiles, smaller than their own borders, and from a sheet of twice the resolution at half the border scale, which must look the same. The layout of each case is checked to cover its rectangle exactly with quads that stay inside their pieces.
+-- Edge cases: small wooden frames cut from a sheet whose gaps are magenta, so any texel read outside a piece shows as a pink seam. They draw with linear filtering at fractional places and border scales, tiled at sizes that are not a multiple of their tiles, smaller than their own borders, and from a sheet of twice the resolution at half the border scale, which must look the same. The layout of each case is checked to cover its rectangle exactly with quads that stay inside their pieces.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -10,14 +10,13 @@ local Test = require('harness.test')
 local EdgeCases = haylen.class('EdgeCases', Test)
 
 EdgeCases.borderScale = 2.7
-EdgeCases.view = {1500, 860}
 EdgeCases.tiny = {{24, 18}, {12, 60}, {90, 10}, {6, 6}}
 EdgeCases.code = [[
 local frame = graphics2d.newNineSlice(sheet, {pieces = pieces, fill = 'tile'})
 graphics2d.drawNineSlice(frame, {10.3, 20.6, 203.3, 131.9}, nil, {borderScale = 2.7})
 local quads = frame:layout({0, 0, 24, 18}, 2.7)  -- Borders shrink until they meet.]]
 
--- Builds a sheet of three by three pieces of `size` texels with magenta gaps of `gap` texels: a blue center and yellow borders that darken toward their outer side, so stretched and tiled pieces look different. Returns the texture and the nine regions row by row.
+-- Builds a sheet of three by three pieces of `size` texels with magenta gaps of `gap` texels: a cream middle and borders of wood that darken toward their outer side, with a dark outline on that side, so stretched and tiled pieces look different. Returns the texture and the nine regions row by row.
 function EdgeCases.sheet(size, gap)
     local width = size * 3 + gap * 2
     local bytes = {}
@@ -28,11 +27,15 @@ function EdgeCases.sheet(size, gap)
             if u >= size or v >= size then
                 bytes[#bytes + 1] = string.char(255, 0, 255, 255)
             elseif column == 1 and row == 1 then
-                bytes[#bytes + 1] = string.char(70, 140, 220, 255)
+                bytes[#bytes + 1] = string.char(243, 230, 196, 255)
             else
                 local across = (column == 1) and (row == 0 and size - 1 - v or v) or (column == 0 and size - 1 - u or u)
-                local shade = math.floor(140 + 110 * across / (size - 1))
-                bytes[#bytes + 1] = string.char(shade, math.floor(shade * 0.8), 40, 255)
+                if across < size / 8 then
+                    bytes[#bytes + 1] = string.char(30, 27, 51, 255)
+                else
+                    local shade = across / (size - 1)
+                    bytes[#bytes + 1] = string.char(math.floor(120 + 90 * shade), math.floor(70 + 70 * shade), math.floor(36 + 40 * shade), 255)
+                end
             end
         end
     end
@@ -55,9 +58,11 @@ function EdgeCases:enter()
     self.time = 0
     self.results = Results(self.entry.code)
     self:check()
-    self:frame{code = EdgeCases.code, view = EdgeCases.view, hint = 'No pink seam may show anywhere, the tiled frame ends every edge on a whole or partial tile without slivers, the small frames shrink their borders until they meet, and the two lower frames look alike.'}
-    self.camera.position = {EdgeCases.view[1] / 2, EdgeCases.view[2] / 2}
-    self.layout = m.rect(0, 0, EdgeCases.view[1], EdgeCases.view[2])
+    self.resultsCamera = graphics2d.newCamera()
+    self.resultsCamera.anchor = 'topLeft'
+    self.tinyCamera = graphics2d.newCamera()
+    self.tinyCamera.anchor = 'topLeft'
+    self:frame{code = EdgeCases.code, hint = 'No pink seam may show anywhere, the tiled frame ends every edge on a whole or partial tile, the small frames shrink their borders until they meet, and the two lower frames look alike.'}
 end
 
 -- Lays out each case and checks that its quads cover the rectangle exactly and read only the pixels of their own piece.
@@ -101,33 +106,64 @@ function EdgeCases:update(dt)
     self:status(self.results:summary())
 end
 
+-- Draws a case in a card with its title and what it must show, and returns the rectangle left for its frames.
+function EdgeCases.card(rect, title, text)
+    graphics2d.drawShape(rect, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+    graphics2d.drawText(nil, title, rect[1] + 20, rect[2] + 18, {size = 26, color = Test.ink, layer = 2})
+    graphics2d.drawText(nil, text, rect[1] + 20, rect[2] + 56, {size = 20, color = Test.muted, maxWidth = rect[3] - 40, layer = 2})
+    return {rect[1] + 20, rect[2] + 112, rect[3] - 40, rect[4] - 132}
+end
+
+-- Looks at a part of the stage through a camera of its own whose view starts at the corner of `rect`, so what follows draws there at `zoom` times its size.
+function EdgeCases:look(camera, rect, zoom)
+    camera.zoom = {zoom, zoom}
+    camera.viewport = m.rect(self.stage.x + rect[1], self.stage.y + rect[2], rect[3], rect[4])
+    graphics2d.beginWorld(camera)
+end
+
 -- Every frame drifts by a fraction of a pixel, so its edges cross texel boundaries while it draws.
-function EdgeCases:draw()
-    local layout = self.layout
+function EdgeCases:draw(area)
     local scale = EdgeCases.borderScale
     local drift = (self.time * 0.37) % 1
-    local column = 480
-    local x, y = 30 + drift, 30 + drift
+    local margin, gap = 24, 24
+    local width = (area.width - margin * 2 - gap * 2) / 3
+    local height = math.max(260, (area.height - margin * 2 - gap) * 0.5)
 
-    graphics2d.drawNineSlice(self.stretched, {x, y, 151.7 + 40 * math.sin(self.time), 77.2 + 30 * math.cos(self.time * 0.8)}, nil, {borderScale = scale})
-    Test.caption('Stretched at a border scale of 2.7', 30, y + 130, {color = Test.ink})
+    local room = EdgeCases.card({margin, margin, width, height}, 'Stretched', 'At a border scale of 2.7 and a size that changes, at fractions of a pixel.')
+    graphics2d.drawNineSlice(self.stretched, {room[1] + drift, room[2] + drift, room[3] * (0.75 + 0.25 * math.sin(self.time)), room[4] * (0.8 + 0.2 * math.cos(self.time * 0.8))}, nil, {borderScale = scale})
 
-    graphics2d.drawNineSlice(self.tiled, {x + column, y, 203.3 + 50 * math.sin(self.time * 0.7), 131.9}, nil, {borderScale = scale})
-    Test.caption('Tiled at sizes off the tile grid', 30 + column, y + 150, {color = Test.ink})
+    room = EdgeCases.card({margin + width + gap, margin, width, height}, 'Tiled', 'At sizes off the grid of its tiles, ending each edge on a part of a tile.')
+    graphics2d.drawNineSlice(self.tiled, {room[1] + drift, room[2] + drift, room[3] * (0.8 + 0.2 * math.sin(self.time * 0.7)), room[4]}, nil, {borderScale = scale})
 
-    local left = x + column * 2
+    local tinyRoom = EdgeCases.card({margin + (width + gap) * 2, margin, width, height}, 'Smaller than their borders', 'The borders shrink together until they meet, shown magnified.')
+
+    local lower = margin + height + gap
+    local lowerHeight = area.height - lower - margin
+    room = EdgeCases.card({margin, lower, width, lowerHeight}, 'Two resolutions', 'A sheet of 8 texel pieces, and one of 16 at half the border scale, which must look alike.')
+    local frameWidth = (room[3] - 24) / 2
+    local frameHeight = math.min(110, room[4])
+    graphics2d.drawNineSlice(self.stretched, {room[1] + drift, room[2] + drift, frameWidth, frameHeight}, nil, {borderScale = scale})
+    graphics2d.drawNineSlice(self.sharp, {room[1] + frameWidth + 24 + drift, room[2] + drift, frameWidth, frameHeight}, nil, {borderScale = scale / 2})
+
+    local checks = {margin + width + gap, lower, width * 2 + gap, lowerHeight}
+    graphics2d.drawShape(checks, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+
+    -- The small frames draw magnified, so their shrunk borders show, and the checks draw in their card, each through a camera of its own.
+    local spacing = 12
+    local span, tallest = (#EdgeCases.tiny - 1) * spacing + 2, 2
     for _, size in ipairs(EdgeCases.tiny) do
-        graphics2d.drawNineSlice(self.tiled, {left, y, size[1], size[2]}, nil, {borderScale = scale})
-        left = left + size[1] + 24
+        span, tallest = span + size[1], math.max(tallest, size[2] + 2)
     end
-    Test.caption('Smaller than their borders', 30 + column * 2, y + 150, {color = Test.ink})
-
-    local lower = y + 210
-    graphics2d.drawNineSlice(self.stretched, {x, lower, 240, 120}, nil, {borderScale = scale})
-    graphics2d.drawNineSlice(self.sharp, {x + 270, lower, 240, 120}, nil, {borderScale = scale / 2})
-    Test.caption('A sheet of 8 texel pieces and one of 16 at half the border scale', 30, lower + 130, {color = Test.ink})
-
-    self.results:draw(layout, lower + 180)
+    local zoom = math.min(3, tinyRoom[3] / span, tinyRoom[4] / tallest)
+    local viewWidth, viewHeight = span * zoom, tallest * zoom
+    self:look(self.tinyCamera, {tinyRoom[1] + (tinyRoom[3] - viewWidth) / 2, tinyRoom[2] + (tinyRoom[4] - viewHeight) / 2, viewWidth, viewHeight}, zoom)
+    local left = drift
+    for _, size in ipairs(EdgeCases.tiny) do
+        graphics2d.drawNineSlice(self.tiled, {left, drift, size[1], size[2]}, nil, {borderScale = scale})
+        left = left + size[1] + spacing
+    end
+    self:look(self.resultsCamera, checks, 1)
+    self.results:draw(m.rect(0, 0, checks[3], checks[4]), 12)
 end
 
 return EdgeCases

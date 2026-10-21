@@ -1,4 +1,4 @@
--- Resizable panel: a nine-slice window that the mouse, a finger or the gamepad cursor moves by its middle and resizes by its edges and corners, while its text wraps inside the borders. The arrows, WASD, the directional pad and the left stick resize it too.
+-- Resizable panel: a wooden nine-slice window that the mouse, a finger or the gamepad cursor moves by its middle and resizes by its edges and corners, while its text wraps inside the borders. The arrows, WASD, the directional pad and the left stick resize it too.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -10,7 +10,7 @@ local Test = require('harness.test')
 
 local Resizable = haylen.class('Resizable', Test)
 
-Resizable.border = 28
+Resizable.border = 50
 Resizable.grabReach = 22
 Resizable.fills = {{id = 'stretch', text = 'Stretch'}, {id = 'tile', text = 'Tile'}}
 Resizable.text = 'Drag the middle to move the panel and the edges or corners to resize it. The corners keep their size, the edges and the center follow, and this text wraps inside the borders.'
@@ -20,19 +20,21 @@ Resizable.actions = {actions = {
     Pointer.actions[2],
 }}
 Resizable.code = [[
-graphics2d.drawNineSlice(frame, panel, '#FFFFFFFF', {borderScale = scale})  -- The variable "panel" is the rectangle the pointer edits.
-graphics2d.pushClip(inner)  graphics2d.drawText(nil, text, inner.x, inner.y, {maxWidth = inner.width})  graphics2d.popClip()]]
+local frame = graphics2d.newNineSlice(texture, {borders = {50, 50, 50, 50}})
+graphics2d.drawNineSlice(frame, panel, '#FFFFFFFF', {borderScale = scale})  -- The rectangle the pointer edits.
+graphics2d.pushClip(inner)
+graphics2d.drawText(nil, text, inner.x, inner.y, {maxWidth = inner.width})
+graphics2d.popClip()]]
 
 function Resizable:init(entry)
     Resizable.super.init(self, entry)
     self.pointer = Pointer()
     self.scale = 1
-    self.panel = {x = 80, y = 60, width = 560, height = 340}
 end
 
 function Resizable:enter()
     local border = Resizable.border
-    self.slice = graphics2d.newNineSlice(assets.texture('nine-slice/panel.png', {filter = 'linear'}), {borders = {border, border, border, border}})
+    self.slice = graphics2d.newNineSlice(assets.texture('nine-slice/parchment.png', {filter = 'linear'}), {borders = {border, border, border, border}})
     self:loadActions(Resizable.actions)
     self:frame{
         code = Resizable.code,
@@ -41,9 +43,21 @@ function Resizable:enter()
         controls = {
             ui.formField{label = 'Fill', ui.segmentedControl{id = 'fill', items = Resizable.fills, selected = 'stretch', onChange = function(event) self.slice.fill = event.value end}},
             ui.formField{label = 'Border scale', ui.slider{id = 'scale', min = 0.5, max = 2, value = 1, step = 0.1, showValue = true, onChange = function(event) self.scale = event.value end}},
-            ui.button{id = 'reset', text = 'Reset', onClick = function() self.panel = {x = 80, y = 60, width = 560, height = 340} end},
+            ui.button{id = 'reset', text = 'Reset', onClick = function() self:center() end},
         },
     }
+end
+
+-- Puts the panel back in the middle of the play area at its first size.
+function Resizable:center()
+    local width, height = math.min(620, self.area.width - 80), math.min(380, self.area.height - 80)
+    self.panel = {x = (self.area.width - width) / 2, y = (self.area.height - height) / 2, width = width, height = height}
+end
+
+function Resizable:resize(area)
+    if not self.panel then
+        self:center()
+    end
 end
 
 function Resizable:minimum()
@@ -88,6 +102,9 @@ end
 
 function Resizable:update(dt)
     Resizable.super.update(self, dt)
+    if not self.panel then
+        return
+    end
     local pointer = self.pointer
     pointer:update(dt, self)
     local x, y = pointer.worldX, pointer.worldY
@@ -108,7 +125,7 @@ function Resizable:update(dt)
     local minimum = self:minimum()
     self.panel.width = math.max(minimum, self.panel.width + growX * 400 * dt)
     self.panel.height = math.max(minimum, self.panel.height + growY * 400 * dt)
-    self:status(string.format('Panel %.0f, %.0f   Size %.0f x %.0f   %s', self.panel.x, self.panel.y, self.panel.width, self.panel.height, self.dragging and 'Dragging' or 'Released'))
+    self:status(string.format('The panel is at %.0f, %.0f and %.0f by %.0f units%s.', self.panel.x, self.panel.y, self.panel.width, self.panel.height, self.dragging and ', and the pointer drags it' or ''))
 end
 
 function Resizable:draw(area)
@@ -119,7 +136,7 @@ function Resizable:draw(area)
     local inner = {x = panel.x + inset, y = panel.y + inset, width = panel.width - inset * 2, height = panel.height - inset * 2}
     if inner.width > 0 and inner.height > 0 then
         graphics2d.pushClip(inner)
-        graphics2d.drawText(nil, Resizable.text, inner.x + 10, inner.y + 8, {size = 26, color = '#FF3A2A1E', maxWidth = inner.width - 20, layer = 1})
+        graphics2d.drawText(nil, Resizable.text, inner.x + 6, inner.y + 4, {size = 26, color = '#FF3A2A1E', maxWidth = inner.width - 12, layer = 1})
         graphics2d.popClip()
     end
 
@@ -133,7 +150,9 @@ function Resizable:draw(area)
     }
     for _, handle in ipairs(handles) do
         local lit = hover and hover[handle[3]] and (handle[4] == nil or hover[handle[4]])
-        graphics2d.drawRect({handle[1] - 8, handle[2] - 8, 16, 16}, lit and Test.warm or '#C0FFFFFF', {layer = 2})
+        local radius = lit and 13 or 10
+        graphics2d.drawShape({handle[1] - radius, handle[2] - radius + 3, radius * 2, radius * 2}, {kind = 'ellipse', color = '#66000000', softness = 4, layer = 2})
+        graphics2d.drawShape({handle[1] - radius, handle[2] - radius, radius * 2, radius * 2}, {kind = 'ellipse', color = lit and Test.warm or '#FFF2F3FF', borderWidth = 3, borderColor = '#FF15172A', layer = 3})
     end
 end
 
