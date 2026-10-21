@@ -6,6 +6,7 @@ local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
 
 local ParticleTest = require('categories.particles.particle-test')
+local Town = require('categories.lighting.town')
 
 local Snow = haylen.class('Snow', ParticleTest)
 
@@ -97,11 +98,7 @@ end
 function Snow:draw(area)
     ParticleTest.backdrop({0.04, 0.06, 0.15}, {0.24, 0.3, 0.46})
     local canvas = graphics2d.canvasBounds()
-    local height = 460
-    local width = self.mountains.width * height / self.mountains.height
-    local first = math.floor(canvas.x / width) * width
-    local copies = math.ceil((canvas:right() - first) / width)
-    graphics2d.draw(self.mountains, first, 300 - height, {source = {0, 0, self.mountains.width * copies, self.mountains.height}, width = width * copies, height = height, pivotX = 0, pivotY = 0, color = '#FF8C98C8', layer = 0})
+    Town.strip(self.mountains, 300, 460, 0, '#FF8C98C8')
     Snow.slope(canvas, 260, 50, 0.4, 1, '#FFB8C8E4')
     for _, pine in ipairs(Snow.pines) do
         graphics2d.draw(self.trees, pine[1], pine[2] + 30, {source = {134, 2, 128, 256}, width = 128 * pine[3], height = 256 * pine[3], pivotY = 1, color = '#FFA8B8D8', layer = 2})

@@ -19,6 +19,7 @@ torch.intensity = 1.2 * wave  -- Each torch has a seed of its own.
 graphics2d.drawLight(torch)]]
 
 Flicker.wall = -300
+Flicker.brick = 112
 Flicker.torchScale = 0.62
 Flicker.campfire = {x = -60, y = 90}
 Flicker.props = 'particles/props.json'
@@ -37,7 +38,7 @@ function Flicker:init(entry)
     Flicker.super.init(self, entry)
     self.room = Room()
     self.town = Town()
-    self.bricks = Room.bricks()
+    self.tiles = assets.texture(Room.tileset, {filter = 'linear'})
     self.props = assets.load(Flicker.props, 'atlas', {filter = 'linear'})
     local effects = assets.load(Flicker.effects, 'atlas', {filter = 'linear'})
     self.ambientLight = '#FF0E1016'
@@ -95,11 +96,15 @@ function Flicker:update(dt)
     self:status(string.format('The flames waver %s, and the campfire burns at %.0f percent now.', together, self.fire.wave * 100))
 end
 
--- The wall at the top of the courtyard, with the torches fixed to it.
+-- The wall of brick tiles at the top of the courtyard, laid from its foot upward, with the torches fixed to it.
 function Flicker:drawWall()
     local canvas = graphics2d.canvasBounds()
-    local size = 128
-    graphics2d.draw(self.bricks, canvas.x, canvas.y, {source = {0, 0, canvas.width / size * 128, (Flicker.wall - canvas.y) / size * 128}, width = canvas.width, height = Flicker.wall - canvas.y, pivotX = 0, pivotY = 0, layer = 1})
+    local size = Flicker.brick
+    for y = Flicker.wall - size, canvas.y - size, -size do
+        for x = math.floor(canvas.x / size) * size, canvas:right(), size do
+            graphics2d.draw(self.tiles, x, y, {source = Room.sources.bricks, width = size, height = size, pivotX = 0, pivotY = 0, layer = 1})
+        end
+    end
     graphics2d.drawRect({canvas.x, Flicker.wall - 6, canvas.width, 16}, '#FF1E1B33', {layer = 2})
     for _, torch in ipairs(self.torches) do
         self.town:piece('wall-torch', torch.light.x, Flicker.wall - 10, Flicker.torchScale, {pivotY = 1, layer = 3})
