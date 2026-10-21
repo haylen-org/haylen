@@ -74,7 +74,7 @@ function SlopesSteps:enter()
             flat[#flat + 1] = {origin + point[1], point[2]}
         end
         local wall = Look.newShape({{origin + 300, 200}, {origin + 380, 60}, {origin + 380, SlopesSteps.bottom}, {origin + 300, SlopesSteps.bottom}}, 'stone')
-        self.scenery[index] = {origin = origin, fill = fill, hill = Scenery.newGrass(hill), flat = Scenery.newGrass(flat), wall = wall}
+        self.scenery[index] = {origin = origin, fill = fill, hill = Scenery.newTerrain(hill, SlopesSteps.bottom), flat = Scenery.newTerrain(flat, SlopesSteps.bottom), wall = wall}
     end
     self.dirt = {layer = -10}
     self:build()
@@ -169,8 +169,8 @@ function SlopesSteps:draw(area)
     for _, scenery in ipairs(self.scenery) do
         local origin = scenery.origin
         graphics2d.drawPolygon(scenery.fill, Scenery.dirt, self.dirt)
-        Scenery.drawGrass(scenery.hill, -9)
-        Scenery.drawGrass(scenery.flat, -9)
+        Scenery.drawTerrain(scenery.hill, -10)
+        Scenery.drawTerrain(scenery.flat, -10)
         for _, step in ipairs(SlopesSteps.steps) do
             Look.block(origin + step[1] + 20, (step[2] + 200) / 2 + 2, 40, 200 - step[2] + 4, 'stone', -8)
         end
