@@ -17,5 +17,5 @@ Tools build, test, debug and ship the engine and its apps.
 
 | Name | Description | Link |
 | --- | --- | --- |
-| `haylen.debug` | The debug statistics, object counts, monitors, the frame profiler and the recent log. | [`lua-api/debug.md`](../lua-api/debug.md) |
+| `haylen.debug` | The debug statistics and drawings, object counts, monitors, the frame profiler, the recent log, traces, breadcrumbs and native crash reports, the developer console and the inspector. | [`lua-api/debug.md`](../lua-api/debug.md) |
 | `haylen.hotReload` | Whether the app runs in development, how changed modules reload in place, values a module keeps across its reloads and the `reloaded` hook. | [`lua-api/hotReload.md`](../lua-api/hotReload.md) |

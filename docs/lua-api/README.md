@@ -15,7 +15,7 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.collections` | Object pools that recycle Lua values, ring buffers of the newest values and float buffers shared with C++. | [`collections.md`](collections.md) |
 | `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, the packs that stores install, and the updates of the content. | [`content.md`](content.md) |
 | `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`conversation.md`](conversation.md) |
-| `haylen.debug` | The debug statistics, object counts, monitors, the frame profiler and the recent log. | [`debug.md`](debug.md) |
+| `haylen.debug` | The debug statistics and drawings, object counts, monitors, the frame profiler, the recent log, traces, breadcrumbs and native crash reports, the developer console and the inspector. | [`debug.md`](debug.md) |
 | `haylen.dialogs` | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. | [`dialogs.md`](dialogs.md) |
 | `haylen.events` | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. | [`events.md`](events.md) |
 | `haylen.graphics` | Textures from pixels, colors, images or the bytes of image files, with mipmaps, images on the CPU that decode and blit off the frame thread, render targets and whole frames read back without waiting for the GPU, PNG files, render targets, TrueType and bitmap fonts, font families, custom shaders and the graphics API. | [`graphics.md`](graphics.md) |
