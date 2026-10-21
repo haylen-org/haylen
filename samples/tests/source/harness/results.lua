@@ -11,6 +11,14 @@ local Results = haylen.class('Results')
 Results.colors = {waiting = Test.warm, pass = Test.green, fail = Test.red, info = Test.accent, skip = Test.muted}
 Results.marks = {waiting = 'Waiting', pass = 'Pass', fail = 'Fail', info = 'Info', skip = 'N/A'}
 
+-- The layout of the rows: the margin around them, the gap between two columns, where names and details start after the state, the height of a name line, the space after a row and the size of the details.
+Results.margin = 24
+Results.gap = 32
+Results.indent = 140
+Results.line = 32
+Results.spacing = 24
+Results.detailSize = 19
+
 function Results:init(code)
     self.code = code
     self.rows = {}
@@ -64,17 +72,60 @@ function Results:summary()
     return string.format('Passed %d, failed %d, not applicable %d, waiting %d', self:count('pass'), self:count('fail'), self:count('skip'), self:count('waiting'))
 end
 
+-- Draws every row below `top` and returns where the rows end. Rows that do not fit the height of the area in one column take two, and when they still do not fit, every row keeps an equal share of the height, where its detail draws smaller down to three quarters of its size and is cut at the end of its share, so every check always shows.
 function Results:draw(area, top)
-    local width = area.width - 170
-    local y = top or 24
-    for _, row in ipairs(self.rows) do
-        Test.caption(Results.marks[row.state], 24, y, {size = 24, color = Results.colors[row.state]})
-        Test.caption(row.name, 140, y, {size = 24, color = Test.ink})
-        Test.caption(row.detail, 140, y + 32, {size = 19, maxWidth = width})
-        local _, height = graphics2d.measureText(nil, row.detail, {size = 19, maxWidth = width})
-        y = y + 32 + height + 24
+    top = top or Results.margin
+    local available = area.height - top - Results.margin
+    local columns = #self.rows > 1 and self:measure(area.width - Results.indent - Results.margin) > available and 2 or 1
+    local width = (area.width - Results.margin - Results.gap * (columns - 1)) / columns
+    local perColumn = math.ceil(#self.rows / columns)
+    local share = nil
+    for column = 1, columns do
+        local first = (column - 1) * perColumn + 1
+        if self:measure(width - Results.indent, first, first + perColumn - 1) > available then
+            share = available / perColumn
+        end
     end
-    return y
+
+    local bottom = top
+    for column = 1, columns do
+        local x = Results.margin + (column - 1) * (width + Results.gap)
+        local y = top
+        for index = (column - 1) * perColumn + 1, math.min(#self.rows, column * perColumn) do
+            y = self:drawRow(self.rows[index], x, y, width, share)
+        end
+        bottom = math.max(bottom, y)
+    end
+    return bottom
+end
+
+-- The height the rows from `first` to `last` take in one column of the width.
+function Results:measure(width, first, last)
+    local height = 0
+    for index = first or 1, math.min(last or #self.rows, #self.rows) do
+        local _, detail = graphics2d.measureText(nil, self.rows[index].detail, {size = Results.detailSize, maxWidth = width})
+        height = height + Results.line + detail + Results.spacing
+    end
+    return height
+end
+
+function Results:drawRow(row, x, y, width, share)
+    local room = width - Results.indent
+    Test.caption(Results.marks[row.state], x, y, {size = 24, color = Results.colors[row.state]})
+    graphics2d.drawText(nil, row.name, x + Results.indent - Results.margin, y, {size = 24, color = Test.ink, maxWidth = room, wrap = false, minScale = 0.6, layer = 2})
+    local style = {size = Results.detailSize, color = Test.muted, maxWidth = room, layer = 2}
+    if not share then
+        graphics2d.drawText(nil, row.detail, x + Results.indent - Results.margin, y + Results.line, style)
+        local _, height = graphics2d.measureText(nil, row.detail, style)
+        return y + Results.line + height + Results.spacing
+    end
+    local height = share - Results.line - Results.spacing
+    style.maxHeight = height
+    style.minScale = 0.75
+    graphics2d.pushClip({x, y + Results.line, width, height})
+    graphics2d.drawText(nil, row.detail, x + Results.indent - Results.margin, y + Results.line, style)
+    graphics2d.popClip()
+    return y + share
 end
 
 return Results
