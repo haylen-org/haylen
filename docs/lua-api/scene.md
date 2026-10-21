@@ -89,7 +89,7 @@ Every change takes an optional table of options. The functions `pop`, `popTo` an
 | `ease` | curve | `'linear'` | The easing of the progress of the transition, in any form of the [easing curves of `haylen.tween`](tween.md#easing). |
 | `effect` | string or table | `'fade'` | The name of a [built-in effect](#built-in-effects), or a table that draws its own effect, as [custom effects](#custom-effects) describes. |
 | `direction` | string | `'left'` | Where the motion, wipe, wave or page turn of a built-in effect goes: `'left'`, `'right'`, `'up'`, `'down'`, `'upLeft'`, `'upRight'`, `'downLeft'` or `'downRight'`. |
-| `color` | Color | `'#FF000000'` | The color that fades and irises pass through. It also shows behind the effects that uncover the screen. It takes any of the [accepted forms](math.md#accepted-forms) of a color. |
+| `color` | Color | `'#FF000000'` | The color that fades and irises pass through. It also shows behind the effects that uncover the screen. It takes any of the [accepted forms](math.md#passing-values) of a color. |
 | `reducedMotion` | string | `'keep'` | What the transition does when it starts while the system asks for [reduced motion](accessibility.md). The value `'keep'` plays it as it is, `'shorten'` plays it in a quarter of its time, and `'skip'` switches at once without its effect. |
 | `blockInput` | boolean | `true` | Holds input back until the change ends, the load included. The `event` hook of the scenes, the action map and the focus navigation of the UI see no key, button or touch. An action whose bindings are still held when the change ends stays up until they are released. |
 | `onComplete` | function | none | Called with `true` once the change ended, or with `false` when it was dropped or failed. |
