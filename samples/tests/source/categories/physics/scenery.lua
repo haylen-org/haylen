@@ -1,4 +1,4 @@
--- The scenery of the physics tests, painted in the style of the project: a day sky with drifting clouds, misty mountains and green hills behind the stage, a grassy ground strip whose surface is where bodies rest, terrain of any outline with grass along its top, and water. Every layer reaches the edges of what the camera shows, so a stage never shows the void around it at any size of the play area.
+-- The scenery of the physics tests, painted in the style of the project: a day sky with drifting clouds, misty mountains and green hills behind the stage, a grassy ground strip whose surface is where bodies rest, terrain of any outline with grass along its top, water, and a starry sky for the tests in space. Every layer reaches the edges of what the camera shows, so a stage never shows the void around it at any size of the play area.
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -197,6 +197,54 @@ function Scenery.water(left, right, y, settings)
     graphics2d.drawStroke(wave, foam)
     foam.width, foam.color = 3 * unit, '#E6FFFFFF'
     graphics2d.drawStroke(wave, foam)
+end
+
+-- Returns a white glow that fades from its middle to its edge, which tints and additive blending turn into lamps, air around planets and nebulae.
+function Scenery.glow()
+    if not textures.glow then
+        local image = graphics.newImage(128, 128)
+        image:fillGradient({kind = 'radial', stops = {{0, '#FFFFFFFF'}, {1, '#00FFFFFF'}}})
+        textures.glow = graphics.newTexture(image, {filter = 'linear'})
+    end
+    return textures.glow
+end
+
+local starOrder = {layer = 0, blend = 'alpha'}
+local starColor = {1, 1, 1, 1}
+local nebulae = {{0.2, 0.25, 900, '#33A070FF'}, {0.8, 0.7, 1100, '#2A40A0FF'}, {0.55, 0.1, 700, '#26FF7AC8'}}
+
+-- Draws a deep night sky with soft nebulae and twinkling stars behind a stage in space.
+function Scenery.space(layer)
+    layer = layer or -900
+    local bounds = graphics2d.canvasBounds()
+    drawImage(gradient('space', {{0, '#FF121430'}, {0.6, '#FF1B1E4A'}, {1, '#FF28235A'}}), bounds.x, bounds.y, bounds.width, bounds.height, nil, layer)
+    for _, nebula in ipairs(nebulae) do
+        local size = nebula[3]
+        drawImage(Scenery.glow(), bounds.x + bounds.width * nebula[1] - size / 2, bounds.y + bounds.height * nebula[2] - size / 2, size, size, nebula[4], layer + 1)
+    end
+
+    local time = haylen.elapsed()
+    local spacing = 140
+    local firstX = math.floor(bounds.x / spacing) * spacing
+    local firstY = math.floor(bounds.y / spacing) * spacing
+    for gx = firstX, bounds.x + bounds.width, spacing do
+        for gy = firstY, bounds.y + bounds.height, spacing do
+            local seed = math.sin(gx * 12.9898 + gy * 78.233) * 43758.5453
+            seed = seed - math.floor(seed)
+            local sx = gx + seed * spacing
+            local sy = gy + ((seed * 7.31) % 1) * spacing
+            local twinkle = 0.55 + 0.45 * math.sin(time * (1 + seed * 2) + seed * 40)
+            local size = 1.2 + seed * 2.6
+            starOrder.layer, starOrder.blend = layer + 2, 'alpha'
+            starColor[1], starColor[2], starColor[3], starColor[4] = 1, 1, 1, 0.35 + 0.5 * twinkle
+            graphics2d.drawCircle(sx, sy, size, starColor, starOrder)
+            if seed > 0.86 then
+                starOrder.blend = 'additive'
+                starColor[1], starColor[2], starColor[3], starColor[4] = 0.7, 0.8, 1, 0.14 * twinkle
+                graphics2d.drawCircle(sx, sy, size * 3.5, starColor, starOrder)
+            end
+        end
+    end
 end
 
 return Scenery

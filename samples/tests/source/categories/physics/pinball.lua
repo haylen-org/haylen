@@ -1,5 +1,4 @@
 -- A pinball table in its wooden cabinet: flippers on revolute joints with motors and limits, mushroom bumpers that kick the ball and light up when it touches them, rubber kickers, a plunger on a spring, steel rails from a chain and a one-way gate at the top of the launch lane, with the score on a board beside the table.
-local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -8,6 +7,7 @@ local ui = require('haylen.ui')
 
 local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local Pinball = haylen.class('Pinball', PhysicsTest)
 
@@ -67,9 +67,7 @@ function Pinball:enter()
     }
     self.camera.position = {25, 0}
     self.best = 0
-    local glow = graphics.newImage(128, 128)
-    glow:fillGradient({kind = 'radial', stops = {{0, '#FFFFFFFF'}, {1, '#00FFFFFF'}}})
-    self.glow = graphics.newTexture(glow, {filter = 'linear'})
+    self.glow = Scenery.glow()
     self:build()
     self.autoPull = Pinball.pullTime
 end
