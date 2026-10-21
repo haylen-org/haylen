@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
-<rect x="3" y="3" width="58" height="58" rx="16" fill="#F2545B" stroke="#1E1B33" stroke-width="3"/>
-<path d="M8 22 Q8 7 23 7 H40 Q20 10 8 22z" fill="#FFFFFF" opacity=".25"/>
-<path d="M16 26h32l-3 26H19z" fill="#FFF8F0" stroke="#1E1B33" stroke-width="3" stroke-linejoin="round"/>
-<path d="M24 28v-4a8 8 0 0 1 16 0v4" fill="none" stroke="#1E1B33" stroke-width="3" stroke-linecap="round"/>
-<path d="M27 38l4 4 7-8" fill="none" stroke="#3E5A96" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<rect x="3" y="3" width="58" height="58" rx="16" fill="#2D6A4F" stroke="#1E1B33" stroke-width="3"/>
+<path d="M8 22 Q8 7 23 7 H40 Q20 10 8 22z" fill="#FFFFFF" opacity=".22"/>
+<path d="M16 25h32l-2.6 27H18.6z" fill="#FBF3E6" stroke="#1E1B33" stroke-width="3" stroke-linejoin="round"/>
+<path d="M17.5 41h29" stroke="#E9DCC6" stroke-width="5"/>
+<path d="M24 27v-4a8 8 0 0 1 16 0v4" fill="none" stroke="#1E1B33" stroke-width="3" stroke-linecap="round"/>
+<path d="M37 33h7l3 3-3 3h-7z" fill="#C2452D" stroke="#1E1B33" stroke-width="2.6" stroke-linejoin="round"/>
+<circle cx="39.6" cy="36" r="1.2" fill="#1E1B33"/>
 </svg>

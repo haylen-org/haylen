@@ -1,4 +1,4 @@
--- The base of every screen: it paints the background of the theme, mounts the GUI of the screen and follows the width of the window.
+-- The base of every screen: it paints the background of the theme, mounts the GUI of the screen, shows the count of its bag buttons and follows the width of the window.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
@@ -17,6 +17,7 @@ end
 function Page:mountGui(tree)
     self.gui = ui.mount(tree, {owner = self, sharedFocus = true})
     self.wide = nil
+    Shell.showBag(self)
     Shell.adapt(self)
 end
 

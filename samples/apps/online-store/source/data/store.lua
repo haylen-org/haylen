@@ -48,10 +48,15 @@ Store.reviewTexts = {
 }
 Store.reviewers = {'Ana C.', 'Bruno R.', 'Clara M.', 'Diego S.', 'Elena K.', 'Felix N.', 'Gabi T.', 'Hugo L.', 'Ines P.', 'Jonas W.'}
 
-Store.me = {name = 'Rosa Almeida', email = 'rosa@example.com', address = {name = 'Rosa Almeida', street = '12 Harbor Lane', city = 'Riverside', zip = '20450'}, corner = {3, 13}}
+Store.me = {name = 'Rosa Almeida', email = 'rosa@example.com', address = {name = 'Rosa Almeida', street = '12 Harbor Lane', city = 'Riverside', zip = '20450'}}
 
 function Store.money(amount)
     return string.format('$%.2f', amount)
+end
+
+function Store.thousands(number)
+    local text = tostring(number):reverse():gsub('(%d%d%d)', '%1,'):reverse():gsub('^,', '')
+    return text
 end
 
 function Store.category(id)
@@ -111,9 +116,9 @@ function Store.describe(product)
     product.tint = Store.colorById[product.colors[1]].value
     product.priceText = Store.money(product.price)
     product.hasSale = product.oldPrice ~= nil
-    product.priceMarkup = product.oldPrice and string.format('[b]%s[/b]  [color=#9A8F9A][s]%s[/s][/color]', product.priceText, Store.money(product.oldPrice)) or '[b]' .. product.priceText .. '[/b]'
+    product.priceMarkup = product.oldPrice and string.format('[color=#C2452D][b]%s[/b][/color]  [color=#9A9189][s]%s[/s][/color]', product.priceText, Store.money(product.oldPrice)) or '[b]' .. product.priceText .. '[/b]'
     product.saleText = product.oldPrice and string.format('%d%% off', math.floor((1 - product.price / product.oldPrice) * 100 + 0.5)) or ''
-    product.ratingText = string.format('%.1f · %d reviews', product.rating, product.reviews)
+    product.ratingText = string.format('%.1f · %s reviews', product.rating, Store.thousands(product.reviews))
     product.colorsText = #product.colors == 1 and '1 color' or #product.colors .. ' colors'
     product.searchText = string.lower(product.name .. ' ' .. Store.categoryById[product.category].name)
 end

@@ -1,4 +1,4 @@
--- The bag: the products with their color, size and quantity, a promo code and the costs, beside the products on wide windows.
+-- The bag: the products with their color, size and quantity, a promo code and the costs, which stand in a card beside the products on wide windows and at the bottom of a phone.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -6,7 +6,7 @@ local ui = require('haylen.ui')
 local Bag = require('bag')
 local Page = require('page')
 local Shell = require('shell')
-local Store = require('data.store')
+local Style = require('style')
 local Widgets = require('widgets')
 
 local BagPage = haylen.class('BagPage', Page)
@@ -28,25 +28,26 @@ function BagPage:layoutChanged(wide)
 end
 
 function BagPage:body(wide)
-    local list = ui.collection{id = 'lines', grow = 1, align = 'stretch', gap = 6, padding = {4, 12, 16, 12},
-        types = {line = {template = ui.row{gap = 14, padding = {8, 8},
-            Widgets.picture({parts = true, width = 100, height = 110, radius = 14, inset = 10, image = 'products/tee.svg', backdrop = 'products/backdrops/peach.svg'}),
-            ui.column{gap = 2, grow = 1,
+    local space = Style.space
+    local list = ui.collection{id = 'lines', grow = 1, align = 'stretch', gap = space.xs, padding = wide and {space.l, 0, space.l, 0} or {space.s, space.l}, rememberFocus = true,
+        types = {line = {template = ui.row{gap = space.m, padding = {space.s, 0}, alignItems = 'start',
+            Widgets.picture({parts = true, width = 112, height = 132, inset = space.s}),
+            ui.column{gap = space.xxs, grow = 1,
                 ui.label{part = 'name', bind = {text = 'name'}, font = 'button'},
                 ui.label{part = 'options', bind = {text = 'options'}, font = 'caption', color = 'textMuted'},
-                ui.label{part = 'total', bind = {text = 'total'}, font = 'button', color = 'accentText'},
-                ui.stepper{part = 'quantity', bind = {value = 'quantity'}, value = 1, min = 0, max = 10, width = 190},
+                ui.label{part = 'total', bind = {text = 'total'}, margin = {space.xxs, 0, space.xs, 0}},
+                ui.stepper{part = 'quantity', bind = {value = 'quantity'}, value = 1, min = 0, max = 10, width = 180, accessibilityLabel = 'Quantity'},
             },
-        }, estimatedSize = 130}},
+        }, interactive = false, estimatedSize = 164}},
         onChange = function(event)
             if event.part == 'quantity' then
                 Bag.setQuantity(event.cell.item, event.value)
             end
         end,
-        ui.emptyState{image = 'images/hero.png', imageSize = 220, title = 'Your bag is empty', message = 'Products you add show here.'},
+        ui.emptyState{image = 'images/hero.png', imageSize = 240, title = 'Your bag is empty', message = 'The products you add show here.'},
     }
-    local summary = {id = 'summary', gap = 10, padding = {16, 20, 16, 20},
-        ui.row{gap = 10,
+    local summary = ui.column{id = 'summary', gap = space.s,
+        ui.row{gap = space.xs,
             ui.textField{id = 'code', placeholder = 'Promo code', grow = 1, autocapitalize = 'characters', returnKey = 'done', onChange = function(event)
                 self.code = event.value
             end, onSubmit = function()
@@ -56,31 +57,27 @@ function BagPage:body(wide)
                 self:applyCode()
             end},
         },
-        self:costRow('subtotal', 'Subtotal'),
-        self:costRow('discount', 'Discount'),
-        self:costRow('shipping', 'Shipping'),
+        Widgets.costRow('subtotal', 'Subtotal'),
+        Widgets.costRow('discount', 'Discount'),
+        Widgets.costRow('shipping', 'Shipping'),
         ui.divider{},
-        self:costRow('total', 'Total', 'heading'),
-        ui.button{id = 'checkout', text = 'Checkout', variant = 'primary', align = 'stretch', onClick = function()
+        Widgets.costRow('total', 'Total', true),
+        ui.button{id = 'checkout', text = 'Checkout', variant = 'primary', align = 'stretch', margin = {space.xs, 0, 0, 0}, onClick = function()
             Shell.open(require('screens.checkout'))
         end},
     }
     if wide then
-        summary.width = 440
-        summary.align = 'start'
-        return ui.row{grow = 1, gap = 16, padding = {0, 20, 16, 8}, align = 'stretch', list, ui.card(summary)}
+        return Shell.centered(Style.size.page, ui.row{gap = space.xl, padding = {0, space.xl}, align = 'stretch',
+            list,
+            ui.column{width = 440, padding = {space.l, 0}, align = 'start', ui.card{id = 'summaryCard', padding = space.l, style = {colors = {raised = Style.color.sand, border = Style.color.sand}}, summary}},
+        }, 1)
     end
-    summary.style = Shell.flatBar
-    return ui.column{grow = 1, gap = 0, list, ui.divider{}, ui.panel(summary)}
-end
-
-function BagPage:costRow(id, text, font)
-    return ui.row{gap = 8, ui.label{text = text, font = font or 'body', color = font and 'text' or 'textMuted', grow = 1}, ui.label{id = id, text = '', font = font or 'body'}}
+    return ui.column{grow = 1, gap = 0, list, ui.column{id = 'summaryCard', gap = 0, ui.divider{}, ui.column{padding = {space.m, space.l}, summary}}}
 end
 
 function BagPage:applyCode()
     if Bag.apply(self.code or '') then
-        Shell.notify('The code ' .. Bag.code .. ' takes ' .. math.floor(Bag.codes[Bag.code] * 100) .. '% off.')
+        Shell.notify('The code ' .. Bag.code .. ' takes ' .. math.floor(Bag.codes[Bag.code] * 100) .. '% off.', 'success')
     else
         Shell.notify('That code does not exist. Try WELCOME10.', 'warning')
     end
@@ -88,17 +85,11 @@ end
 
 function BagPage:showLines()
     self.lines:setItems(Bag.lines)
-    local totals = Bag.totals()
     local empty = #Bag.lines == 0
-    local gui = self.gui
-    gui:set('summary', {visible = not empty})
-    if empty then
-        return
+    self.gui:set('summaryCard', {visible = not empty})
+    if not empty then
+        Widgets.showCosts(self.gui, Bag.totals())
     end
-    gui:set('subtotal', {text = Store.money(totals.subtotal)})
-    gui:set('discount', {text = totals.discount > 0 and '-' .. Store.money(totals.discount) or 'None'})
-    gui:set('shipping', {text = totals.shipping == 0 and 'Free' or Store.money(totals.shipping)})
-    gui:set('total', {text = Store.money(totals.total)})
 end
 
 return BagPage

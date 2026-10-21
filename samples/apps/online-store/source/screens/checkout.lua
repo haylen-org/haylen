@@ -1,4 +1,4 @@
--- The checkout: the shipping address in a form that checks its fields, the delivery, the payment and the total on the button that places the order.
+-- The checkout: the shipping address in a form that marks every empty field, the delivery, the payment and the total on the button that places the order, with the costs in a card beside the form on wide windows.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
@@ -7,6 +7,8 @@ local Orders = require('orders')
 local Page = require('page')
 local Shell = require('shell')
 local Store = require('data.store')
+local Style = require('style')
+local Widgets = require('widgets')
 
 local Checkout = haylen.class('Checkout', Page)
 
@@ -19,35 +21,49 @@ function Checkout:enter()
     self.express = false
     self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
         Shell.header('Checkout'),
-        ui.scroll{grow = 1, height = 0,
-            ui.column{maxWidth = 760, align = 'center', gap = 14, padding = {4, 20, 28, 20},
-                ui.sectionTitle{text = 'Shipping address'},
-                ui.card{gap = 10,
-                    self:field('name', 'Full name', 'words'),
-                    self:field('street', 'Street and number', 'words'),
-                    ui.row{gap = 12, align = 'stretch', ui.column{grow = 2, self:field('city', 'City', 'words')}, ui.column{grow = 1, self:field('zip', 'Postal code', 'none', 'number')}},
-                },
-                ui.sectionTitle{text = 'Delivery'},
-                ui.card{ui.radioGroup{id = 'delivery', items = Checkout.deliveries, selected = 'standard', onChange = function(event)
-                    self.express = event.value == 'express'
-                    self:showTotal()
-                end}},
-                ui.sectionTitle{text = 'Payment'},
-                ui.card{ui.radioGroup{id = 'payment', items = Checkout.payments, selected = 'card'}},
-                ui.card{gap = 8,
-                    self:costRow('subtotal', 'Subtotal'),
-                    self:costRow('discount', 'Discount'),
-                    self:costRow('shipping', 'Shipping'),
-                    ui.divider{},
-                    self:costRow('total', 'Total', 'heading'),
-                },
-                ui.button{id = 'place', text = '', variant = 'primary', align = 'stretch', onClick = function()
-                    self:place()
-                end},
-            },
-        },
+        ui.scroll{grow = 1, height = 0, ui.column{id = 'body', gap = 0}},
     })
+end
+
+function Checkout:layoutChanged(wide)
+    local space = Style.space
+    local form = ui.column{gap = space.l, grow = 1,
+        self:section('Shipping address', ui.column{gap = space.s,
+            self:field('name', 'Full name', 'words'),
+            self:field('street', 'Street and number', 'words'),
+            ui.row{gap = space.s, align = 'stretch', ui.column{grow = 2, self:field('city', 'City', 'words')}, ui.column{grow = 1, self:field('zip', 'Postal code', 'none', 'number')}},
+        }),
+        self:section('Delivery', ui.radioGroup{id = 'delivery', items = Checkout.deliveries, selected = self.express and 'express' or 'standard', onChange = function(event)
+            self.express = event.value == 'express'
+            self:showTotal()
+        end}),
+        self:section('Payment', ui.radioGroup{id = 'payment', items = Checkout.payments, selected = 'card'}),
+    }
+    local summary = ui.card{gap = space.s, padding = space.l, style = {colors = {raised = Style.color.sand, border = Style.color.sand}},
+        ui.label{text = 'Summary', font = 'heading'},
+        Widgets.costRow('subtotal', 'Subtotal'),
+        Widgets.costRow('discount', 'Discount'),
+        Widgets.costRow('shipping', 'Shipping'),
+        ui.divider{},
+        Widgets.costRow('total', 'Total', true),
+        ui.button{id = 'place', text = '', variant = 'primary', align = 'stretch', margin = {space.xs, 0, 0, 0}, onClick = function()
+            self:place()
+        end},
+    }
+    local body
+    if wide then
+        summary.width = 420
+        summary.align = 'start'
+        body = Shell.centered(1100, ui.row{gap = space.xl, padding = {space.l, space.xl, space.xxl, space.xl}, align = 'start', form, summary})
+    else
+        body = ui.column{gap = space.l, padding = {space.l, space.l, space.xxl, space.l}, form, summary}
+    end
+    self.gui:replaceChildren('body', {body})
     self:showTotal()
+end
+
+function Checkout:section(title, content)
+    return ui.column{gap = Style.space.s, ui.label{text = title, font = 'heading'}, content}
 end
 
 function Checkout:field(id, label, capitalize, keyboard)
@@ -58,18 +74,10 @@ function Checkout:field(id, label, capitalize, keyboard)
     }
 end
 
-function Checkout:costRow(id, text, font)
-    return ui.row{gap = 8, ui.label{text = text, font = font or 'body', color = font and 'text' or 'textMuted', grow = 1}, ui.label{id = id, text = '', font = font or 'body'}}
-end
-
 function Checkout:showTotal()
     local totals = Bag.totals(self.express)
-    local gui = self.gui
-    gui:set('subtotal', {text = Store.money(totals.subtotal)})
-    gui:set('discount', {text = totals.discount > 0 and '-' .. Store.money(totals.discount) or 'None'})
-    gui:set('shipping', {text = totals.shipping == 0 and 'Free' or Store.money(totals.shipping)})
-    gui:set('total', {text = Store.money(totals.total)})
-    gui:set('place', {text = 'Place order · ' .. Store.money(totals.total)})
+    Widgets.showCosts(self.gui, totals)
+    self.gui:set('place', {text = 'Place order, ' .. Store.money(totals.total)})
 end
 
 -- Checks the address, marks every empty field, and places the order when nothing is missing.

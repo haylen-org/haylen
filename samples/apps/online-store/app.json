@@ -19,10 +19,9 @@
         "scaleMode": "physical"
     },
     "splash": {
-        "background": "#FFFBF8F4",
-        "darkBackground": "#FF14151C"
+        "background": "#FFFAF7F2"
     },
-    "clearColor": "#FFFBF8F4",
+    "clearColor": "#FFFAF7F2",
     "autoload": [
         "orders"
     ]
