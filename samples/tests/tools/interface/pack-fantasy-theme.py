@@ -42,6 +42,8 @@ PIECES: dict[str, dict[str, dict]] = {
         "menu": {**PANEL, "scale": 0.35, "padding": 10},
         "toast": {**PANEL, "scale": 0.35, "padding": [12, 16, 14, 16]},
     },
+    "close": {"close": {"filter": "linear"}, "closeHover": {"filter": "linear", "tint": "#FFFFE8E6"}},
+    "close-pressed": {"closePressed": {"filter": "linear"}},
     "title-bar": {"titleBar": {"slice": [40, 48, 40, 48], "scale": 0.55, "padding": [8, 26, 12, 26], "filter": "linear"}},
     "banner": {"banner": {"slice": [0, 150, 0, 150], "scale": 0.55, "padding": [10, 90, 26, 90], "filter": "linear"}},
     "tooltip": {"tooltip": {"slice": 30, "scale": 0.5, "padding": [10, 14, 12, 14], "filter": "linear"}},

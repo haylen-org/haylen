@@ -89,8 +89,12 @@ void Window::render(Context& context, const math::Rect&) {
     if (shown) {
         context.pushPlainReshape();
         const math::Rect frame{placed.x, placed.y, size.x, size.y};
-        Surfaces::drawShadow(context, frame, context.getMetric(Theme::Metric::PanelRadius));
-        Surfaces::draw(context, Theme::Surface::Window, frame, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
+
+        // An image of the title bar caps the window, so the body starts behind the middle of the bar and no corner of it shows around the ends of the bar.
+        const float cap = context.getSurface(Theme::Surface::TitleBar) != nullptr ? std::min(header * 0.5F, frame.height) : 0.0F;
+        const math::Rect body{frame.x, frame.y + cap, frame.width, frame.height - cap};
+        Surfaces::drawShadow(context, body, context.getMetric(Theme::Metric::PanelRadius));
+        Surfaces::draw(context, Theme::Surface::Window, body, context.getColor(Theme::Color::Panel), context.getColor(Theme::Color::Border), context.getMetric(Theme::Metric::PanelRadius));
         drawTitle(context, {frame.x, frame.y, frame.width, header});
         Linear::render(context, {frame.x, frame.y + header, frame.width, std::max(0.0F, frame.height - header)});
         if (open && closable && context.getFocus().answerCancel(ImGui::GetCurrentWindow())) {
@@ -122,10 +126,12 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     if (closable) {
         const math::Rect cross = context.mirror({bar.getRight() - side, bar.y, side, side}, bar).expanded(-side * 0.15F);
         const Widgets::Interaction state = Widgets::interact(context, cross, radius, "##close");
-        if (state.hovered) {
-            Surfaces::fill(context, cross, context.getColor(Theme::Color::Hover), radius);
+        if (!Widgets::closeImage(context, cross, state)) {
+            if (state.hovered) {
+                Surfaces::fill(context, cross, context.getColor(Theme::Color::Hover), radius);
+            }
+            Widgets::cross(context, cross.getCenter(), cross.width * 0.2F, context.getMetric(Theme::Metric::StrokeWidth), context.getColor(state.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
         }
-        Widgets::cross(context, cross.getCenter(), cross.width * 0.2F, context.getMetric(Theme::Metric::StrokeWidth), context.getColor(state.hovered ? Theme::Color::DangerText : Theme::Color::TextMuted));
         if (state.clicked) {
             close(context);
         }

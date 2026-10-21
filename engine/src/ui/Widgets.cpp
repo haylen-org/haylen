@@ -463,6 +463,15 @@ void Widgets::cross(Context& context, math::Vec2 center, float arm, float width,
     line(context, {center.x - arm, center.y + arm}, {center.x + arm, center.y - arm}, width, color);
 }
 
+bool Widgets::closeImage(Context& context, const math::Rect& area, const Interaction& state) {
+    const Theme::Image* image = getStateImage(context, {Theme::Surface::Close, Theme::Surface::CloseHover, Theme::Surface::ClosePressed}, state);
+    if (image == nullptr) {
+        return false;
+    }
+    Surfaces::drawNineSlice(context, *image, area, context.getColor(Theme::Color::Danger));
+    return true;
+}
+
 ImGuiDir Widgets::mirror(const Context& context, ImGuiDir direction) noexcept {
     if (!context.isRightToLeft() || (direction != ImGuiDir_Left && direction != ImGuiDir_Right)) {
         return direction;

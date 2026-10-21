@@ -3313,8 +3313,9 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `badge` | Badges. |
 | `segment`, `segmentSelected` | The strip of segmented controls and their selected segment. |
 | `menu` | The popups of combos, menu buttons, context menus, popovers and color fields. |
-| `window` | Windows. |
+| `window` | Windows. With a `titleBar` image the window starts behind the middle of its title bar, so the bar caps it and no corner of the window shows around the ends of the bar. |
 | `titleBar` | The title bar of windows, across the top of the window, and the band behind the title of dialogs, across the content of the dialog, which only an image draws. The title stays inside the `padding` of the surface. |
+| `close`, `closeHover`, `closePressed` | The close button of windows and toasts, in place of the cross, drawn over the whole button. The `danger` color fills it with `colorize`. |
 | `slot`, `slotHighlighted` | Slots of slot grids, and the selected or hovered slot. |
 | `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. The state surfaces also mark the rows of lists, trees, tables, accordions and popups. Without images the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
 | `scrollbar`, `scrollbarHover` | The thumb of [scroll bars](#scroll-bars), and the thumb while hovered or held, which falls back to `scrollbar`. |

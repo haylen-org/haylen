@@ -1227,8 +1227,12 @@ class ComponentAssetTest : public ComponentTest {
               {"content/ui/row.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
               {"content/ui/hover.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
               {"content/ui/bar.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/body.png", toText(test::TestFiles::pngImage(24, 24, 0xFFFFFFFFU))},
+              {"content/ui/close.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
+              {"content/ui/closing.png", toText(test::TestFiles::pngImage(16, 16, 0xFF0000FFU))},
               {"content/themes/plates.json", R"({"name": "plates", "surfaces": {"radio": {"image": "ui/mark.png"}, "radioSelected": {"image": "ui/dot.png"}, "cellSelected": {"image": "ui/row.png", "slice": 8},
-                  "cellHover": {"image": "ui/hover.png", "slice": 8}, "titleBar": {"image": "ui/bar.png", "slice": 8, "padding": [10, 16, 12, 16]}, "toast": {"image": "ui/panel.png", "slice": 8, "padding": 20}}})"},
+                  "cellHover": {"image": "ui/hover.png", "slice": 8}, "titleBar": {"image": "ui/bar.png", "slice": 8, "padding": [10, 16, 12, 16]}, "toast": {"image": "ui/panel.png", "slice": 8, "padding": 20},
+                  "window": {"image": "ui/body.png", "slice": 8}, "close": {"image": "ui/close.png"}, "closeHover": {"image": "ui/closing.png"}}})"},
               {"content/themes/broken.json", R"({"name": "broken", "fonts": {"body": {"font": "missing"}}})"},
               {"content/themes/smooth.json", R"({"name": "smooth", "imageFilter": "linear"})"},
               {"content/i18n/en.json", R"({"menu": {"play": "Play {n}"}})"},
@@ -1476,6 +1480,25 @@ TEST_F(ComponentAssetTest, FramesTheTitlesOfWindowsAndDialogsWithTheTitleBar) {
     const float padding = getUi().getTheme().getMetric(Theme::Metric::PanelPadding);
     const float title = Typography::measureParagraph(getUi().getContext(), Theme::Font::Heading, "Quit?", dialog.width).y;
     EXPECT_EQ(drawFrame().at("ui/bar.png"), math::Rect(dialog.x + padding, dialog.y + padding, dialog.width - padding * 2.0F, title + 22.0F));
+}
+
+TEST_F(ComponentAssetTest, CapsWindowsWithTheTitleBarAndTheirCloseButtonOfTheTheme) {
+    getUi().setTheme(getUi().loadTheme(getEngine(), "themes/plates.json"));
+    auto gui = mount(R"({"kind": "window", "id": "bag", "title": "Bag", "x": 100, "y": 100, "width": 500, "height": 400, "closable": true})");
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/close.png"); }));
+    const math::Rect window = getBounds(*gui, "bag");
+    const float header = getUi().getTheme().getMetric(Theme::Metric::WindowTitleHeight);
+    const math::Rect button = math::Rect(window.getRight() - header, window.y, header, header).expanded(-header * 0.15F);
+    const auto covers = [&button](const math::Rect& drawn) { return (drawn.getMin() - button.getMin()).getLength() + (drawn.getMax() - button.getMax()).getLength() < 0.01F; };
+    EXPECT_EQ(drawFrame().at("ui/body.png"), math::Rect(window.x, window.y + header * 0.5F, window.width, window.height - header * 0.5F));
+    EXPECT_TRUE(covers(drawFrame().at("ui/close.png")));
+
+    pointer(platform::Event::Type::MouseMove, button.getCenter());
+    ASSERT_TRUE(fixture.frameUntil([&] { return drawFrame().contains("ui/closing.png"); }));
+    EXPECT_TRUE(covers(drawFrame().at("ui/closing.png")));
+    EXPECT_FALSE(drawFrame().contains("ui/close.png"));
+    click(button.getCenter());
+    EXPECT_EQ(getEventNames(), (std::vector<std::string>{"bag:close"}));
 }
 
 TEST_F(ComponentAssetTest, KeepsTheTextOfToastsInsideThePaddingOfTheirSurface) {

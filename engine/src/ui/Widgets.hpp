@@ -133,6 +133,9 @@ class Widgets final {
     // Draws a cross of two strokes through a point, each reaching the arm away from it along both axes, such as the close button of a chip or a window.
     static void cross(Context& context, math::Vec2 center, float arm, float width, math::Color color);
 
+    // Draws the close button of the theme over the area in the state of the press and returns whether the theme has one, so a theme without it gets the cross of the caller.
+    static bool closeImage(Context& context, const math::Rect& area, const Interaction& state);
+
     // Draws a filled triangle pointing in a direction, sized in design units and centered on a point.
     static void arrow(Context& context, math::Vec2 center, float size, ImGuiDir direction, math::Color color);
 

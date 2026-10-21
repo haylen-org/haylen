@@ -399,7 +399,9 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
             Widgets::line(context, {divider, area.y}, {divider, area.getBottom()}, context.getMetric(Theme::Metric::BorderWidth), colors.ink.withAlpha(colors.ink.a * 0.3F));
         }
         const Widgets::Interaction pressed = Widgets::interact(context, area, area.height * 0.5F, "##close", ImGuiButtonFlags_NoNavFocus);
-        Widgets::cross(context, area.getCenter(), area.height * 0.28F, context.getMetric(Theme::Metric::StrokeWidth), colors.ink.withAlpha(colors.ink.a * (pressed.hovered ? 1.0F : 0.75F)));
+        if (!Widgets::closeImage(context, area, pressed)) {
+            Widgets::cross(context, area.getCenter(), area.height * 0.28F, context.getMetric(Theme::Metric::StrokeWidth), colors.ink.withAlpha(colors.ink.a * (pressed.hovered ? 1.0F : 0.75F)));
+        }
         if (pressed.clicked && !notice.leaving) {
             notice.leaving = true;
             notice.reason = Reason::Closed;

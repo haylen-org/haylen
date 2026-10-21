@@ -431,7 +431,7 @@ Metrics size the controls. The metric `controlHeight` sets the height of buttons
 
 ### Surfaces
 
-A surface paints part of a component with a nine-slice image instead of flat colors, such as the paper panels and wooden dialogs of a textured game. The built-in themes have none. The reference lists [which component uses which surface](../lua-api/ui.md#theme-surfaces), from `panel`, `card`, `dialog`, `window`, `titleBar`, `toast` and `banner` to the three states of each button variant, `field`, `check`, `radio`, `track`, `trackFill`, `knob`, `tab`, `chip`, `badge`, the scroll bars, the rows and cells that are hovered or selected, and the touch control surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed`.
+A surface paints part of a component with a nine-slice image instead of flat colors, such as the paper panels and wooden dialogs of a textured game. The built-in themes have none. The reference lists [which component uses which surface](../lua-api/ui.md#theme-surfaces), from `panel`, `card`, `dialog`, `window`, `titleBar`, `close`, `toast` and `banner` to the three states of each button variant, `field`, `check`, `radio`, `track`, `trackFill`, `knob`, `tab`, `chip`, `badge`, the scroll bars, the rows and cells that are hovered or selected, and the touch control surfaces `stickBase`, `stickKnob`, `touchButton` and `touchButtonPressed`.
 
 A surface image is an object with these keys.
 
@@ -507,9 +507,9 @@ The folder `samples/tests/content/interface/themes/fantasy/` holds an image them
 ui.setTheme(ui.loadTheme('interface/themes/fantasy/theme.json', 'dark'))
 ```
 
-- Every surface names the atlas in `image` and its piece in `source`, so the whole theme is one texture of 1152 by 724 pixels and its draws batch together. The tool `samples/tests/tools/interface/pack-fantasy-theme.py` packs the painted pieces into the atlas, writes the theme file and cuts the sheet of icons.
+- Every surface names the atlas in `image` and its piece in `source`, so the whole theme is one texture of 1152 by 764 pixels and its draws batch together. The tool `samples/tests/tools/interface/pack-fantasy-theme.py` packs the painted pieces into the atlas, writes the theme file and cuts the sheet of icons.
 - The buttons of the three variants have a normal and a pressed piece, and the hover states tint the normal piece. Chips reuse the slate button at a smaller scale, the selected chip the focused field, and the selected segment the blue button.
-- One panel piece draws `panel`, `card`, `dialog`, `window`, `menu` and `toast` at different scales and paddings, and `titleBar`, a blue plate, gives windows their title bar and dialog titles their band.
+- One panel piece draws `panel`, `card`, `dialog`, `window`, `menu` and `toast` at different scales and paddings, and `titleBar`, a blue plate, gives windows their title bar, which caps the window, and dialog titles their band. The red round `close` button closes windows and toasts, with a pressed piece and a tint for the hover.
 - Fields, check boxes and radio marks have an empty and a focused, checked or selected piece, and the slots of slot grids reuse the field.
 - Switches, sliders and progress bars share the dark groove of `track`, the light pill of `trackFill` and the light `knob`, both with `colorize`, so the accent and every tone color them: green health, blue mana and loading.
 - Tabs have a slate and a blue piece. The rows of lists, trees, tables and popups and the cells of collections take the blue selection plate of `cellSelected`, which `cellHover` and `cellPressed` tint.
