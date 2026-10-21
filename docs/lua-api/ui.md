@@ -2972,9 +2972,15 @@ ui.mount(ui.contextMenu{
 
 ### ui.playArea(properties)
 
-The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and has no properties of its own, so it uses `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the GUI and Tab and `uiFocus` move the focus to the controls of the GUI and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `gui:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input/input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
+The part of a screen where the game shows, as a place the focus can go, such as the space a level leaves between its controls. It draws nothing but the focus ring and, when it has a radius, its rounded corners, and it takes its size from `width`, `height` or `grow`. While it has the focus, the directions, accept and menu of the keyboard, gamepads and TV remotes reach the action map of the app instead of moving the focus or pressing a control, while cancel still reaches the `onCancel` handlers of the GUI and Tab and `uiFocus` move the focus to the controls of the GUI and back. It never takes the pointer: a click or a touch on it gives it the focus and reaches the game too, which reads `mouse:` bindings and touches as usual, unless a control drawn over it, such as a touch button, takes the press. It reports `focus` and `blur` like every node, and `gui:bounds(id)` tells where it lies, so a camera can draw the world inside it. The [input guide](../input/input.md#who-owns-the-keyboard-and-the-gamepad) explains the whole model.
+
+| Property | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `radius` | number from 0 to 10000 | `0` | Rounds the corners of the area and of its focus ring. Since the game draws below every GUI, the area covers the corners of the game outside the curve with `cornerColor`. |
+| `cornerColor` | color | the theme `window` color | The color around the area, which its rounded corners take, such as the `clearColor` of the app or the fill of the card it sits in. |
 
 ```lua
+local haylen = require('haylen')
 local input = require('haylen.input')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
@@ -2984,7 +2990,7 @@ input.defineAction({name = 'move', type = 'vector', up = {'key:up'}, down = {'ke
 scene.push({
     enter = function(self)
         self.gui = ui.mount(ui.row{
-            ui.playArea{id = 'world', grow = 1, autofocus = true, onFocus = function()
+            ui.playArea{id = 'world', grow = 1, radius = 16, cornerColor = haylen.config.clearColor, autofocus = true, onFocus = function()
                 print('the arrows move the hero')
             end},
             ui.column{width = 360, ui.button{id = 'map', text = 'Map'}},

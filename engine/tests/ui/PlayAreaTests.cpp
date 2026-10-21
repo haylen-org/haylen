@@ -3,10 +3,12 @@
 #include <string>
 #include <vector>
 
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/input/ActionMap.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/input/Input.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/UiFixture.hpp"
@@ -248,6 +250,29 @@ TEST_F(PlayAreaTest, ReportsTheOwnerOfTheFocusToLua) {
     stick({1.0F, 0.0F});
     EXPECT_EQ(getFixture().lua("return tostring(require('haylen.input').gamepadAxisCaptured('leftX'))"), "true");
     stick({});
+}
+
+// A rounded play area covers the corners of the game outside its curve with the color around it, and only inside its bounds.
+TEST_F(PlayAreaTest, CoversTheCornersOfARoundedPlayArea) {
+    getUi().unmount(*gui);
+    auto rounded = mount(R"({"kind": "column", "padding": 40, "children": [{"kind": "playArea", "id": "stage", "width": 600, "height": 400, "radius": 16, "cornerColor": "#FF101418"}]})");
+    frames();
+    const math::Rect stage = getBounds(*rounded, "stage");
+    const math::Color corner = *math::Color::parse("#FF101418");
+    bool covered = false;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        if (shape.borderColor == corner) {
+            covered = true;
+            const math::Rect inner = shape.bounds.inset(math::Insets::uniform(shape.borderWidth));
+            EXPECT_NEAR(inner.x, stage.x, 0.01F);
+            EXPECT_NEAR(inner.y, stage.y, 0.01F);
+            EXPECT_NEAR(inner.width, stage.width, 0.01F);
+            EXPECT_NEAR(inner.height, stage.height, 0.01F);
+            EXPECT_FLOAT_EQ(shape.radii[0] - shape.borderWidth, 16.0F);
+            EXPECT_EQ(shape.color.a, 0.0F);
+        }
+    }
+    EXPECT_TRUE(covered);
 }
 
 } // namespace haylen::ui
