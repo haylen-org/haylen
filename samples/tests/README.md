@@ -174,7 +174,7 @@ The 2D camera following, framing, shaking, turning and splitting the view, with 
 
 #### Text and fonts (TXT)
 
-TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wrapping, fitting text in a box, rich text, effects and measuring. The tests are in `source/categories/text/`.
+TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wrapping, fitting text in a box, rich text, effects and measuring. The tests are in `source/categories/text/`. Each test draws on a page that fills its play area with a margin around it, at the zoom that fits the smallest size of the page, and spreads its content over the room the area adds, so every screen shows the same page at its own scale. Bitmap fonts draw at sizes where each pixel of the font covers whole pixels of the screen.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -184,7 +184,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 | `TXT-004` | Fallback fonts | Japanese, Chinese and symbols drawn by fallback fonts that the family resolves character by character. |  |
 | `TXT-005` | Bitmap fonts | A bitmap font in the text format, a colored bitmap font in the binary format and a grid font of LCD digits. |  |
 | `TXT-006` | Alignment | Left, center, right and fill alignment, and the anchor point of a text block. |  |
-| `TXT-007` | Complex scripts and right-to-left text | Arabic, Persian, Urdu, Hebrew, Hindi and Thai, right-to-left paragraphs with English and numbers inside, wrapping in every script and a right-to-left typewriter. |  |
+| `TXT-007` | Complex scripts and right-to-left text | Arabic, Persian, Urdu, Hebrew, Hindi and Thai, right-to-left text with English and numbers inside and a typewriter. |  |
 | `TXT-008` | Wrapping | Words that wrap at a width, lines that break between Chinese and Japanese characters, long words and line spacing. |  |
 | `TXT-009` | Rich text tags | Every tag of the markup: styles, colors, sizes, outlines, links, hints, images, icons, paragraphs, lists, rules, tables and drop caps. |  |
 | `TXT-010` | Effects and typewriter | The built-in effects with their attributes, and a dialogue revealed like a typewriter with pauses and speed changes. |  |
