@@ -262,6 +262,14 @@ TEST_F(RichTextLayoutTest, HangsTheWrappedLinesOfAParagraph) {
     EXPECT_THROW((void)make("[p hang=wide]x[/p]"), std::invalid_argument);
 }
 
+// The default family draws mono text with the monospace font of the engine, so code in rich text keeps every character at one width and shows no ligature.
+TEST_F(RichTextLayoutTest, DrawsCodeInTheMonospaceFontOfTheDefaultFamily) {
+    RichText narrow = make("[code]iiiiffi[/code]", {.size = 20.0F});
+    RichText wide = make("[code]MMMMMMM[/code]", {.size = 20.0F});
+    EXPECT_FLOAT_EQ(narrow.getLayout().size.x, wide.getLayout().size.x);
+    EXPECT_EQ(narrow.getLayout().glyphs.size(), 7U);
+}
+
 // A table stands at the indent of the block around it, like the paragraphs and rules there.
 TEST_F(RichTextLayoutTest, IndentsTablesWithTheirBlock) {
     RichText plain = make("[table=1][cell]x[/cell][/table]");

@@ -86,7 +86,7 @@ Markup is text with tags in square brackets. Inline tags open with `[name]` or `
 | Tag | Meaning |
 | --- | --- |
 | `[b]`, `[i]`, `[u]`, `[s]` | Bold, italic, underline and strike. |
-| `[code]` | The mono face of the family. |
+| `[code]` | The mono face of the family, which in the default family of the engine is Space Mono, a monospace font without ligatures. |
 | `[color=c]`, `[bgcolor=c]` | Text color and a background behind the text. |
 | `[font=name]` | A font family that the host names: the `fonts` option in 2D and the fonts of `ui.addFont` in the UI. |
 | `[size=24]`, `[size=150%]` | An absolute size, or a size relative to the text around it. |

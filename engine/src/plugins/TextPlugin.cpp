@@ -1,12 +1,16 @@
 #include "haylen/plugins/TextPlugin.hpp"
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
+#include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
+#include "core/EmbeddedFiles.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
@@ -20,6 +24,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/plugins/AssetsPlugin.hpp"
 #include "haylen/text/FontFamily.hpp"
+#include "haylen/text/TrueTypeFont.hpp"
 
 namespace haylen::plugins {
 
@@ -83,8 +88,11 @@ core::Json TextPlugin::normalizeGrid(const core::Json& options) {
     return normalized;
 }
 
+// The default family draws with the default font of the engine and draws mono text, such as the `[code]` of rich text, with the monospace font the engine embeds.
 void TextPlugin::start(core::Engine& engine) {
-    registry = std::make_shared<text::RichTextRegistry>(std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getDefaultFont()}));
+    const std::span<const std::uint8_t> monospace = core::EmbeddedFiles::getMonospaceFont();
+    std::shared_ptr<text::Font> mono = std::make_shared<text::TrueTypeFont>(engine.getGraphics(), std::vector<std::uint8_t>(monospace.begin(), monospace.end()));
+    registry = std::make_shared<text::RichTextRegistry>(std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getDefaultFont(), .mono = std::move(mono)}));
     assets::Manager& manager = engine.getAssets();
     graphics::Device& device = engine.getGraphics();
 
