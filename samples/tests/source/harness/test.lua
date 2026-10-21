@@ -41,7 +41,7 @@ function Test:init(entry)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. The table `options` takes the `hint`, the `controls` of the panel and its `panelWidth`, `stage = false` for tests without a play area, `content`, nodes that take the place of the play area in a region that scrolls once they are taller than it, `code`, the Lua code the test runs, shown in a card under the play area or the content, `play = true` for tests that read the keyboard, gamepads or remotes as game input, which gives the play area the first focus, the id of another control to `focus` first, `view`, the width and height of a world centered on the origin that the camera fits into the play area, and `overlay`, nodes such as touch controls drawn over the region, which anchor to it with `anchorTo = 'parent'`.
+-- Mounts the frame. The table `options` takes the `hint`, the `controls` of the panel and its `panelWidth`, `stage = false` for tests without a play area, `content`, nodes that take the place of the play area in a region that scrolls once they are taller than it, `fixed = true` for content that fills the region as it is and scrolls inside itself, such as a long collection, `code`, the Lua code the test runs, shown in a card under the play area or the content, `play = true` for tests that read the keyboard, gamepads or remotes as game input, which gives the play area the first focus, the id of another control to `focus` first, `view`, the width and height of a world centered on the origin that the camera fits into the play area, and `overlay`, nodes such as touch controls drawn over the region, which anchor to it with `anchorTo = 'parent'`.
 function Test:frame(options)
     options = options or {}
     local entry = self.entry
@@ -67,12 +67,12 @@ function Test:frame(options)
         ui.row{gap = 24, alignItems = 'start',
             ui.button{id = 'back', text = 'Back', onClick = function() self:cancel() end},
             ui.column{grow = 1, gap = 4,
-                ui.row{gap = 16, ui.badge{text = entry.code, tone = 'accent', solid = true}, ui.label{text = entry.title, font = 'heading', grow = 1}},
+                ui.row{gap = 16, minHeight = ui.themeMetric('controlHeight'), ui.badge{text = entry.code, tone = 'accent', solid = true}, ui.label{text = entry.title, font = 'heading', grow = 1}},
                 ui.label{text = entry.description, color = 'textMuted'},
             },
         },
         ui.row{grow = 1, gap = 16, children = middle},
-        ui.label{id = 'status', text = '', visible = false, font = 'monospace', color = 'accentText'},
+        ui.label{id = 'status', text = '', visible = false, color = 'accentText'},
         self:footer(options.hint, stage and options.controls ~= nil),
     }
     self.gui = ui.mount(ui.column{id = 'frame', padding = 24, gap = 12, onCancel = function() self:cancel() end, children = children}, {owner = self})
@@ -80,11 +80,13 @@ function Test:frame(options)
     log.info(string.format('[%s] Started.', entry.code))
 end
 
--- The region of the test fills the room between the header and the code card: the play area with the overlays anchored to it, or the content in a scroll that fills the region and scrolls once the content is taller, so nothing of the test ever runs under the card.
+-- The region of the test fills the room between the header and the code card: the play area, rounded like the cards around it, with the overlays anchored to it, or the content in a scroll that fills the region and scrolls once the content is taller, or fixed content that fills it and scrolls inside itself, so nothing of the test ever runs under the card.
 function Test:region(stage, options)
     local layers = {}
     if stage then
-        layers[1] = ui.playArea{id = 'stage', align = 'stretch'}
+        layers[1] = ui.playArea{id = 'stage', align = 'stretch', radius = ui.themeMetric('panelRadius'), cornerColor = haylen.config.clearColor}
+    elseif options.content and options.fixed then
+        layers[1] = ui.column{id = 'content', gap = 12, align = 'stretch', children = options.content}
     elseif options.content then
         layers[1] = ui.scroll{id = 'content', fill = true, align = 'stretch', ui.column{gap = 12, children = options.content}}
     end
