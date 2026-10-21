@@ -612,8 +612,8 @@ The accessibility settings of the system and what follows them, the elements tha
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
-| `ACC-001` | Accessibility settings | The text scale, reduced motion, high contrast, reduced transparency and screen reader of the system, live, with the UI and the motion that follow them. |  |
-| `ACC-002` | Screen reader elements | The elements a screen reader reads of a form, with their roles, labels, values and states, actions performed the way a screen reader asks for them, and announcements. |  |
+| `ACC-001` | Accessibility settings | The text scale, reduced motion, high contrast, reduced transparency and screen reader of the system, live, with the UI that follows. |  |
+| `ACC-002` | Screen reader elements | The elements a screen reader reads of a form, with their roles, labels, values and states, the actions it performs and announcements. |  |
 | `ACC-003` | Color vision | Colors that tell things apart, as protanopia, deuteranopia and tritanopia see them, and corrected for each. |  |
 
 #### Orientation (ORI)
