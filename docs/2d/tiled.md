@@ -168,6 +168,23 @@ The method `map:objects()` returns the raw coordinates of the map file, without 
 
 The properties of the map are in `map.properties`, and its class is `map.type`. Tiny Island stores the seed that generated its island as the map property `seed`.
 
+```lua
+local assets = require('haylen.assets')
+local tiled = require('haylen.tiled')
+
+local map = tiled.newMapRenderer(assets.load('maps/island.tmj'))
+print('Seed ' .. tostring(map.properties.seed))
+
+-- Finds what lies under a world point: the cell, its tile and the class of that tile.
+local column, row = map:worldToCell(900, 640)
+local info = map:tileInfo(map:tile('grass', column, row))
+print(column, row, info and info.tileset, info and info.type)
+
+for _, layer in ipairs(map:layers()) do
+    print(layer.name, layer.kind, layer.visible)
+end
+```
+
 ## Collision
 
 The method [`map:buildCollision(world)`](../lua-api/tiled.md#mapbuildcollisionworld) creates static bodies in a [`haylen.physics2d`](../lua-api/physics2d.md) world for the collision of the map, and returns them. A tile layer collides through the collision shapes that its tiles have in the collision editor of the tileset. An object layer collides through its objects of class `collision`. A layer whose `collision` property is `false` adds nothing, so a layer of art does not collide.

@@ -64,9 +64,36 @@ Body, shape and joint handles keep their world alive. A world goes away once no 
 
 Some helpers own bodies or act in every step: vehicles, movers, grabbers, force fields, terrains and fluids. Each one lives while a Lua value refers to it. When the garbage collector takes it, it leaves the world and takes with it what it added. So keep these helpers in a variable or in the table of their scene.
 
+```lua
+local physics2d = require('haylen.physics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    enter = function(self)
+        self.world = physics2d.newWorld()
+        -- The scene keeps the wind, so it blows until the scene goes.
+        self.wind = physics2d.newForceField(self.world, {kind = 'directional', width = 800, height = 600, strength = 300})
+    end,
+    fixedUpdate = function(self, step)
+        self.world:step(step)
+    end,
+})
+```
+
 ### Moving a body to another world
 
 A body can move to another world with [`body:moveToWorld`](../lua-api/physics2d.md#bodymovetoworldworld). The engine rebuilds the body in the new world with its state, its shapes and its data. Then it destroys the body in the first world, together with its joints. From the next step the body obeys the world it landed in. Use this for an object that passes a portal, or that leaves one level for another.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local planet = physics2d.newWorld({gravity = {0, 980}})
+local moon = physics2d.newWorld({gravity = {0, 160}})
+local shot = planet:createBody({x = 0, y = 0, vx = 300})
+shot:addCircle(6)
+-- The handle of the first world is no longer valid, so keep the one that comes back.
+shot = shot:moveToWorld(moon)
+```
 
 ## Units and scale
 
@@ -97,6 +124,16 @@ A body much smaller than a tenth of a meter collides poorly. A body of many mete
 
 If your sprites are much smaller or larger, pick the scale that makes your characters about one or two meters tall. For example, a game of 16-pixel tiles works well at 32 units per meter. The scale also changes how heavy a shape is, because density is per square meter. It also changes the default speeds of the world, which follow the scale.
 
+```lua
+local physics2d = require('haylen.physics2d')
+
+-- A game of 16-pixel tiles, whose hero of 24 units stands about 0.75 meters tall.
+local world = physics2d.newWorld({pixelsPerMeter = 32})
+local hero = world:createBody({x = 0, y = 0, fixedRotation = true})
+hero:addCapsule(0, -6, 0, 6, 6)
+print(world.maxSpeed) -- 12800.0, which is 400 meters per second at this scale.
+```
+
 ## Stepping
 
 A world advances only when [`world:step(seconds)`](../lua-api/physics2d.md#worldstepdeltaseconds) runs. Call it in the `fixedUpdate` callback of a scene. The engine calls `fixedUpdate` at the fixed rate of `fixedRate` in `app.json`, 60 times per second by default, with the same step length every time.
@@ -122,6 +159,14 @@ Vehicles, force fields and fluids act through the step hooks of the world. So th
 Box2D solves each step in several sub-steps, 4 by default. It finds contacts only once per step. More sub-steps make stacks, ragdolls, chains and suspensions stiffer, and they settle faster. The cost grows with them. The physics benchmark steps a pyramid of 820 boxes in 0.27 milliseconds with 2 sub-steps, 0.36 with 4 and 0.54 with 8.
 
 Box2D also caps how stiff contacts and joints can be. Contacts reach at most an eighth of the sub-step rate, and joints a quarter of it. So at 60 steps per second with 4 sub-steps, contacts reach at most 30 hertz and joints 60 hertz. Stiffer settings need more sub-steps. The property `world.subSteps` changes them while the world runs.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld({subSteps = 8})
+-- A calm scene goes back to the default and saves the work.
+world.subSteps = 4
+```
 
 ### Smooth drawing between fixed steps
 
@@ -176,6 +221,26 @@ Threads never change the result. Box2D solves in the same order on any number of
 
 Fluids run their passes with `JobSystem::parallelFor`, and ray batches spread their rays the same way, whatever the threads of the world.
 
+```lua
+local physics2d = require('haylen.physics2d')
+
+-- Two worlds with the same bodies step to the same state on one thread and on four.
+local function run(threads)
+    local world = physics2d.newWorld({threads = threads})
+    local bodies = {}
+    for index = 1, 50 do
+        bodies[index] = world:createBody({x = index * 3, y = -index * 20})
+        bodies[index]:addBox(10, 10)
+    end
+    for _ = 1, 120 do
+        world:step(1 / 60)
+    end
+    return world:stateHash(bodies)
+end
+
+print(run(1) == run(4)) -- true
+```
+
 ## Sleeping
 
 Bodies that touch, or that a joint connects, form an island. An island falls asleep once every body in it has moved slower than its sleep threshold for half a second. Sleeping bodies cost nothing. The physics benchmark steps a settled pile of 4000 boxes in less than a thousandth of a millisecond while it sleeps, and in about 1.6 milliseconds with sleeping off.
@@ -191,6 +256,20 @@ A sleeping body wakes in these cases:
 The sleep threshold is 0.05 meters per second by default, which is 3.2 units per second at the default scale. The body option `sleepThreshold` changes it for one body. A body that should never sleep sets `sleepEnabled = false`, such as a player character driven by forces. Setting `world.sleepEnabled = false` keeps every body of the world awake, for a level that must keep moving.
 
 Force fields never wake a body when they push it. Fluid particles wake a body only when they change its speed by more than 0.05 meters per second. So crates that float in still water fall asleep. When a rule of your game changes something the solver cannot see, such as making resting bodies fall again, call `world:wakeAll()`.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld()
+-- The player is driven by forces, so it must never fall asleep.
+local player = world:createBody({sleepEnabled = false})
+player:addCapsule(0, -16, 0, 16, 12)
+-- A slow crate falls asleep only below 1 unit per second.
+local crate = world:createBody({x = 100, sleepThreshold = 1})
+crate:addBox(32, 32)
+world:wakeAll()
+print(crate.awake, world.awakeBodyCount)
+```
 
 ## Collisions and events
 
@@ -209,6 +288,25 @@ A world reports what happened in a step through callbacks that the app sets on i
 
 Each shape has switches for its events: `contactEvents`, `hitEvents` and `sensorEvents`. Shapes that nobody listens to, such as debris, turn them off, which also saves the cost of the events reaching Lua. The [reference](../lua-api/physics2d.md#contacts-and-events) lists the arguments of each callback.
 
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld()
+local coin = world:createBody({type = 'static', x = 200, y = 0})
+coin:addCircle(10, {sensor = true})
+coin.data = {kind = 'coin'}
+
+world.onSensorBegin = function(sensor, visitor, shapes)
+    if sensor.data and sensor.data.kind == 'coin' then
+        print('Coin taken.')
+        sensor:destroy()
+    end
+end
+world.onHit = function(a, b, contact)
+    print('Impact at ' .. math.floor(contact.speed) .. ' units per second.')
+end
+```
+
 ### What a contact tells
 
 Every contact tells what happened in the step that solved it. The tables of `onContactBegin` and `onHit`, and the list of [`body:contacts()`](../lua-api/physics2d.md#bodycontacts), hold these facts, as the [contact tables](../lua-api/physics2d.md#contact-tables) list:
@@ -223,7 +321,19 @@ Box2D records the manifold of a new contact, its points and normal, before it so
 
 ### Who collides with whom
 
-Every shape has a category, a mask and a group. Two shapes collide when the category of each one shares a bit with the mask of the other. A shared group overrides both: shapes with the same positive group always collide, and shapes with the same negative group never do. The parts of a ragdoll or a vehicle share a negative group, so they never hit each other. The [reference](../lua-api/physics2d.md#collision-filtering) shows the rule with an example.
+Every shape has a category, a mask and a group. Two shapes collide when the category of each one shares a bit with the mask of the other. A shared group overrides both: shapes with the same positive group always collide, and shapes with the same negative group never do. The parts of a ragdoll or a vehicle share a negative group, so they never hit each other. The [reference](../lua-api/physics2d.md#collision-filtering) states the rule exactly.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local kWorld, kPlayer, kShots = 1, 2, 4
+local world = physics2d.newWorld()
+local hero = world:createBody()
+hero:addBox(24, 40, {category = kPlayer, mask = kWorld})
+-- The shots of the player hit the walls but pass through the player.
+local shot = world:createBody({x = 30, vx = 900, bullet = true})
+shot:addCircle(3, {category = kShots, mask = kWorld})
+```
 
 ## Finding bodies
 
@@ -242,6 +352,18 @@ Besides events, the app can ask the world what lies somewhere. These questions n
 | See the rays while you tune them | `world.debugRays` and `world:debugDrawRays` |
 
 Ray casts take filters with a category, a mask and a group, like shapes, and an `accept` function that can skip a hit. So a bullet can pass through glass, or a ragdoll can look past its own limbs.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld({gravity = {0, 0}})
+local wall = world:createBody({type = 'static', x = 300, y = 0})
+wall:addBox(20, 400)
+
+local hit = world:raycast(0, 0, 600, 0)
+local nearby = world:queryCircle(280, 0, 40)
+print(hit and hit.distance, #nearby)
+```
 
 ## Helpers
 
