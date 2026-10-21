@@ -1,9 +1,8 @@
--- UI node tweens: a reward card whose nodes slide, pulse, tint, fade and shake through their transforms, which the engine animates without running Lua each frame.
+-- UI node tweens: a reward card in the middle of the play area whose nodes slide, pulse, tint, fade and shake through their transforms, which the engine animates without running Lua each frame.
 local haylen = require('haylen')
 local m = require('haylen.math')
 local tween = require('haylen.tween')
 local ui = require('haylen.ui')
-local viewport = require('haylen.viewport')
 
 local TweenTest = require('categories.tween.tween-test')
 
@@ -27,23 +26,26 @@ function UiNodes:enter()
         },
         focus = 'slide',
     })
-    self.card = ui.mount(ui.card{id = 'card', anchor = 'topLeft', width = 560, gap = 16, onCancel = function() self:cancel() end,
-        ui.label{id = 'title', text = 'Treasure found', font = 'title'},
-        ui.label{id = 'reward', text = '+250 coins', font = 'heading', color = 'accentText'},
-        ui.progress{id = 'bar', value = 0.6, tone = 'success', text = 'Level 3'},
-        ui.row{wrap = true, gap = 12,
+    self.card = ui.mount(ui.card{id = 'card', anchor = 'center', width = 600, gap = 24, padding = 32, onCancel = function() self:cancel() end,
+        ui.row{gap = 24, alignItems = 'center',
+            ui.image{image = 'interface/themes/fantasy/icons/coin.png', scale = 0.875},
+            ui.column{gap = 6, grow = 1,
+                ui.label{id = 'title', text = 'Treasure found', font = 'title'},
+                ui.label{id = 'reward', text = '+250 coins', font = 'heading', color = 'accentText'},
+            },
+        },
+        ui.row{gap = 16, alignItems = 'center',
+            ui.label{text = 'Level 3', font = 'button'},
+            ui.progress{id = 'bar', value = 0.6, tone = 'success', grow = 1},
+        },
+        ui.row{gap = 16,
             ui.button{id = 'claim', text = 'Claim', variant = 'primary', grow = 1},
             ui.button{id = 'later', text = 'Later', grow = 1},
         },
     }, {owner = self, layer = 1})
+    self:keepInRegion(self.card, 'card')
     tween.to(self.card:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self:slideIn()
-end
-
--- Places the card in the stage, which the safe area and the frame decide.
-function UiNodes:resize(area)
-    local stage, safe = self.gui:bounds('stage'), viewport.safeRect()
-    self.card:set('card', {margin = {stage.y - safe.y + 60, 0, 0, stage.x - safe.x + (stage.width - 560) / 2}})
 end
 
 function UiNodes:slideIn()
@@ -65,7 +67,7 @@ end
 function UiNodes:update(dt)
     UiNodes.super.update(self, dt)
     local card = self.card:transform('card')
-    self:status(string.format('Card offset %.0f, %.0f, opacity %.2f, claim scale %.2f', card.offset.x, card.offset.y, card.opacity, self.card:transform('claim').scale.x))
+    self:status(string.format('The card is offset by %.0f, %.0f at an opacity of %.2f, and the claim button pulses at %.2f times its size.', card.offset.x, card.offset.y, card.opacity, self.card:transform('claim').scale.x))
 end
 
 return UiNodes
