@@ -696,12 +696,12 @@ Translated text in six languages with arguments, plurals, nested keys, a fallbac
 | --- | --- | --- | --- |
 | `LOC-001` | Switching languages | A title screen whose every text changes the moment the language does. |  |
 | `LOC-002` | Arguments | Names, numbers and booleans in placeholders, and escaped braces. |  |
-| `LOC-003` | Plurals | The "zero", "one" and "other" forms picked by count, with the rules of each language. |  |
+| `LOC-003` | Plurals | Forms picked by count with the rules of each language, up to the "few" and "many" of Arabic. |  |
 | `LOC-004` | Nested keys | Groups of keys in the language files, read with dotted keys. |  |
 | `LOC-005` | Fallback language | Keys a language lacks, taken from the fallback language, and keys no language has. |  |
 | `LOC-006` | Best match | The device language and other tags matched to the languages of the app. |  |
 | `LOC-007` | Fonts per language | One font family whose fallbacks draw Japanese in every component. |  |
-| `LOC-008` | Layout follows the text | Buttons and paragraphs that measure again when the language changes, a pseudo translation that shows where texts would overflow, and a title that shrinks to fit. |  |
+| `LOC-008` | Layout follows the text | Buttons and paragraphs that measure again for each language, a pseudo translation that finds overflows and a title that shrinks to fit. |  |
 | `LOC-009` | Right-to-left interface | Arabic mirrors the whole interface, and nodes with a direction of their own keep it. |  |
 | `LOC-010` | Numbers, dates and lists | Decimals, percentages, amounts, compact numbers, dates in every style, lists and the plural and ordinal categories of ten languages. |  |
 

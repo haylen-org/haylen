@@ -16,7 +16,6 @@ if match then
 end]]
 
 BestMatch.hint = 'Use the language of the device, type any tag and press Enter, or pick a row of the table to switch to its match.'
-BestMatch.focus = 'tag'
 BestMatch.tags = {'pt-BR', 'pt-PT', 'pt', 'PT_br', 'es-MX', 'es-419', 'en-GB', 'EN-us', 'ja-JP', 'fr-FR', 'zh-Hans-CN'}
 
 -- Tells how a tag matched: the same tag, the same base language or nothing.
@@ -42,31 +41,33 @@ function BestMatch:content()
         rows[index] = {id = tag, cells = {tag, match or 'None', reason(tag, match)}}
     end
     return {
-        ui.panel{width = 640, align = 'stretch', gap = 12,
-            ui.sectionTitle{text = 'This device'},
-            ui.label{id = 'locale', text = ''},
-            ui.button{id = 'device', text = 'Use the language of the device', enabled = false, onClick = function()
-                localization.setLanguage(self.deviceMatch)
-            end},
-            ui.sectionTitle{text = 'Any tag'},
-            ui.textField{id = 'tag', value = self.typed, maxLength = 35, autocorrect = false, autocapitalize = 'none', returnKey = 'done', onChange = function(event)
-                self:typeTag(event.value)
-            end, onSubmit = function(event)
-                local match = localization.findBestMatch(event.value)
-                if match then
-                    localization.setLanguage(match)
-                end
-            end},
-            ui.label{id = 'typed', text = '', font = 'monospace'},
+        ui.panel{width = 640, align = 'stretch',
+            ui.scroll{grow = 1, height = 0, ui.column{gap = 12,
+                ui.sectionTitle{text = 'This device'},
+                ui.label{id = 'locale', text = ''},
+                ui.button{id = 'device', text = 'Use the language of the device', enabled = false, align = 'stretch', onClick = function()
+                    localization.setLanguage(self.deviceMatch)
+                end},
+                ui.sectionTitle{text = 'Any tag'},
+                ui.textField{id = 'tag', value = self.typed, maxLength = 35, autocorrect = false, autocapitalize = 'none', returnKey = 'done', onChange = function(event)
+                    self:typeTag(event.value)
+                end, onSubmit = function(event)
+                    local match = localization.findBestMatch(event.value)
+                    if match then
+                        localization.setLanguage(match)
+                    end
+                end},
+                ui.label{id = 'typed', text = '', color = 'textMuted'},
+            }},
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.label{text = 'The app has "' .. table.concat(localization.languages(), '", "') .. '".', color = 'textMuted'},
-            ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'Result of "findBestMatch"', width = 360}, {text = 'Why'}}, rows = rows, onSelect = function(event)
+            ui.scroll{grow = 1, height = 0, ui.table{id = 'tags', columns = {{text = 'Tag', width = 220}, {text = 'Best match', width = 220}, {text = 'Why'}}, rows = rows, onSelect = function(event)
                 local match = localization.findBestMatch(event.item)
                 if match then
                     localization.setLanguage(match)
                 end
-            end},
+            end}},
         },
     }
 end
@@ -88,7 +89,8 @@ end
 function BestMatch:typeTag(tag)
     self.typed = tag
     local match = tag ~= '' and localization.findBestMatch(tag) or nil
-    self:set('typed', {text = string.format('The call "localization.findBestMatch(\'%s\')"\nReturns %s.\n%s.', tag, match and '"' .. match .. '"' or '"nil"', reason(tag, match))})
+    local why = match and reason(tag, match):lower() or 'since no language of the app is close'
+    self:set('typed', {text = string.format('The call "localization.findBestMatch(\'%s\')" returns %s, %s.', tag, match and '"' .. match .. '"' or '"nil"', why)})
 end
 
 return BestMatch

@@ -33,7 +33,7 @@ function LanguageTest:enter()
         hint = self.hint .. ' ' .. LanguageTest.keysHint,
         focus = self.focus,
         content = {
-            ui.segmentedControl{id = 'language', width = 1080, align = 'start', items = language.items(), selected = self.language, onChange = function(event)
+            ui.segmentedControl{id = 'language', align = 'stretch', items = language.items(), selected = self.language, onChange = function(event)
                 localization.setLanguage(event.value)
             end},
             ui.row{grow = 1, gap = 24, children = self:content()},

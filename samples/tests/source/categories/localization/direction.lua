@@ -14,52 +14,61 @@ localization.direction()
 ui.column{direction = 'rightToLeft', language = 'ar', gap = 12, children = nodes}
 ui.column{direction = 'leftToRight', language = 'hi', gap = 12, children = nodes}]]
 
-Direction.hint = 'Pick Arabic to mirror the settings card and the frame of the test, and type into the fields of the other panel, which keep their own direction in every language.'
+Direction.hint = 'The test opens in Arabic, which mirrors the settings card and the frame of the test. Pick another language to turn it back, and type into the fields of the other panel, which keep their own direction in every language.'
 
 function Direction:content()
     return {
-        ui.card{width = 760, align = 'start', gap = 18,
-            ui.sectionTitle{text = {key = 'direction.settings'}},
-            ui.row{gap = 24,
-                ui.checkbox{id = 'music', text = {key = 'direction.music'}, checked = true},
-                ui.toggle{id = 'vibration', text = {key = 'direction.vibration'}, checked = true},
-            },
-            ui.row{gap = 16,
-                ui.label{text = {key = 'direction.volume'}, width = 200},
-                ui.slider{id = 'volume', min = 0, max = 100, step = 1, value = 70, showValue = true, decimals = 0, grow = 1},
-            },
-            ui.formField{label = {key = 'direction.name'},
-                ui.textField{id = 'name', placeholder = {key = 'direction.placeholder'}},
-            },
-            ui.list{id = 'inbox', items = {
-                {id = 'inbox', text = {key = 'direction.inbox'}, caption = {key = 'direction.inboxCaption'}},
-                {id = 'profile', text = {key = 'direction.profile'}, caption = {key = 'direction.profileCaption'}},
-            }, selected = 'inbox'},
-            ui.row{wrap = true, gap = 12,
-                ui.button{id = 'save', text = {key = 'direction.save'}, variant = 'primary'},
-                ui.button{id = 'cancel', text = {key = 'direction.cancel'}},
-            },
-            ui.label{text = {key = 'direction.note'}, color = 'textMuted'},
-        },
-        ui.panel{grow = 1, align = 'stretch', gap = 16,
-            ui.sectionTitle{text = 'Directions of their own'},
-            ui.label{id = 'state', text = '', font = 'monospace', color = 'accentText'},
-            ui.label{text = "A column with \"direction = 'rightToLeft'\"", font = 'caption', color = 'textMuted'},
-            ui.column{direction = 'rightToLeft', language = 'ar', gap = 12,
-                ui.label{text = 'مرحبًا بك في الجزيرة! رقم الغرفة 42، والمفتاح (A-7).'},
-                ui.textField{id = 'arabic', value = 'مرحبا 123 abc'},
-                ui.row{gap = 12,
-                    ui.checkbox{text = 'تذكرني', checked = true},
-                    ui.button{text = 'دخول', variant = 'primary'},
+        ui.card{width = 760, align = 'stretch',
+            ui.scroll{grow = 1, height = 0, ui.column{gap = 18,
+                ui.sectionTitle{text = {key = 'direction.settings'}},
+                ui.row{gap = 24,
+                    ui.checkbox{id = 'music', text = {key = 'direction.music'}, checked = true},
+                    ui.toggle{id = 'vibration', text = {key = 'direction.vibration'}, checked = true},
                 },
-            },
-            ui.label{text = "A column with \"direction = 'leftToRight'\" and \"language = 'hi'\"", font = 'caption', color = 'textMuted'},
-            ui.column{direction = 'leftToRight', language = 'hi', gap = 12,
-                ui.label{text = 'नमस्ते! क्षत्रिय, कृष्ण और हिन्दी के संयुक्ताक्षर।'},
-                ui.textField{id = 'hindi', value = 'नमस्ते दुनिया'},
-            },
+                ui.row{gap = 16,
+                    ui.label{text = {key = 'direction.volume'}, width = 200},
+                    ui.slider{id = 'volume', min = 0, max = 100, step = 1, value = 70, showValue = true, decimals = 0, grow = 1},
+                },
+                ui.formField{label = {key = 'direction.name'},
+                    ui.textField{id = 'name', placeholder = {key = 'direction.placeholder'}},
+                },
+                ui.list{id = 'inbox', items = {
+                    {id = 'inbox', text = {key = 'direction.inbox'}, caption = {key = 'direction.inboxCaption'}},
+                    {id = 'profile', text = {key = 'direction.profile'}, caption = {key = 'direction.profileCaption'}},
+                }, selected = 'inbox'},
+                ui.row{wrap = true, gap = 12,
+                    ui.button{id = 'save', text = {key = 'direction.save'}, variant = 'primary'},
+                    ui.button{id = 'cancel', text = {key = 'direction.cancel'}},
+                },
+                ui.label{text = {key = 'direction.note'}, color = 'textMuted'},
+            }},
+        },
+        ui.panel{grow = 1, align = 'stretch',
+            ui.scroll{grow = 1, height = 0, ui.column{gap = 16,
+                ui.sectionTitle{text = 'Directions of their own'},
+                ui.label{id = 'state', text = '', font = 'monospace', color = 'accentText'},
+                ui.label{text = "A column with \"direction = 'rightToLeft'\"", font = 'caption', color = 'textMuted'},
+                ui.column{direction = 'rightToLeft', language = 'ar', gap = 12,
+                    ui.label{text = 'مرحبًا بك في الجزيرة! رقم الغرفة 42، والمفتاح (A-7).'},
+                    ui.textField{id = 'arabic', value = 'مرحبا 123 abc'},
+                    ui.row{gap = 12,
+                        ui.checkbox{text = 'تذكرني', checked = true},
+                        ui.button{text = 'دخول', variant = 'primary'},
+                    },
+                },
+                ui.label{text = "A column with \"direction = 'leftToRight'\" and \"language = 'hi'\"", font = 'caption', color = 'textMuted'},
+                ui.column{direction = 'leftToRight', language = 'hi', gap = 12,
+                    ui.label{text = 'नमस्ते! क्षत्रिय, कृष्ण और हिन्दी के संयुक्ताक्षर।'},
+                    ui.textField{id = 'hindi', value = 'नमस्ते दुनिया'},
+                },
+            }},
         },
     }
+end
+
+function Direction:enter()
+    Direction.super.enter(self)
+    localization.setLanguage('ar')
 end
 
 -- The direction the UI draws in follows the language from the frame after it changes, so the state line reads it every frame and changes when it does.

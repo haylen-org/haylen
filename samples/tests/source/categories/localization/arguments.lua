@@ -13,7 +13,7 @@ localization.text('hud.accuracy', {ratio = 0.75})
 localization.text('hud.sound', {sound = true})
 ui.label{id = 'hud.braces', text = {key = 'hud.braces'}}  -- Escaped braces stay braces.]]
 
-Arguments.hint = 'Change the name, the day, the score, the accuracy and the sound, and watch every result follow. The grey line of each key is its template.'
+Arguments.hint = 'Change the name, the day, the score, the accuracy and the sound, and watch every text follow. The grey line of each key is its template.'
 Arguments.focus = 'day'
 Arguments.keys = {'hud.greeting', 'hud.score', 'hud.accuracy', 'hud.sound', 'hud.braces', 'hud.missing'}
 
@@ -23,36 +23,38 @@ function Arguments:init(entry)
 end
 
 function Arguments:content()
-    local lines = {}
+    local cards = {}
     for _, key in ipairs(Arguments.keys) do
-        lines[#lines + 1] = ui.label{text = 'Key "' .. key .. '"', font = 'caption', color = 'accentText'}
-        lines[#lines + 1] = ui.label{text = {key = key}, font = 'monospace', color = 'textMuted'}
-        lines[#lines + 1] = ui.label{id = key, text = ''}
+        cards[#cards + 1] = ui.card{align = 'stretch', gap = 6, padding = {14, 20},
+            ui.label{text = 'Key "' .. key .. '"', font = 'caption', color = 'accentText'},
+            ui.label{text = {key = key}, font = 'monospace', color = 'textMuted'},
+            ui.label{id = key, text = '', font = 'heading'},
+        }
     end
     local values = self.values
     return {
-        ui.panel{width = 620, align = 'stretch', gap = 12,
-            ui.formField{label = 'Argument "name"', ui.textField{id = 'name', value = values.name, maxLength = 20, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
-                self:change('name', event.value)
-            end}},
-            ui.formField{label = 'Argument "day"', ui.stepper{id = 'day', value = values.day, min = 1, max = 30, onChange = function(event)
-                self:change('day', event.value)
-            end}},
-            ui.formField{label = 'Argument "score"', ui.numberField{id = 'score', value = values.score, min = 0, max = 99999, step = 250, onChange = function(event)
-                self:change('score', event.value)
-            end}},
-            ui.formField{label = 'Argument "ratio"', ui.slider{id = 'ratio', value = values.ratio, showValue = true, onChange = function(event)
-                self:change('ratio', math.floor(event.value * 100 + 0.5) / 100)
-            end}},
-            ui.row{gap = 16,
-                ui.label{text = 'Argument "sound"', grow = 1},
-                ui.toggle{id = 'sound', checked = values.sound, onChange = function(event)
+        ui.panel{width = 620, align = 'stretch',
+            ui.scroll{grow = 1, height = 0, ui.column{gap = 12,
+                ui.formField{label = 'Argument "name"', ui.textField{id = 'name', value = values.name, maxLength = 20, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
+                    self:change('name', event.value)
+                end}},
+                ui.formField{label = 'Argument "day"', ui.stepper{id = 'day', value = values.day, min = 1, max = 30, onChange = function(event)
+                    self:change('day', event.value)
+                end}},
+                ui.formField{label = 'Argument "score"', ui.numberField{id = 'score', value = values.score, min = 0, max = 99999, step = 250, onChange = function(event)
+                    self:change('score', event.value)
+                end}},
+                ui.formField{label = 'Argument "ratio"', ui.slider{id = 'ratio', value = values.ratio, showValue = true, onChange = function(event)
+                    self:change('ratio', math.floor(event.value * 100 + 0.5) / 100)
+                end}},
+                ui.formField{label = 'Argument "sound"', ui.toggle{id = 'sound', checked = values.sound, onChange = function(event)
                     self:change('sound', event.checked)
-                end},
-            },
+                end}},
+            }},
         },
-        ui.panel{grow = 1, align = 'stretch', gap = 4,
-            ui.scroll{grow = 1, ui.column{gap = 6, padding = {0, 24, 0, 0}, children = lines}},
+        ui.panel{grow = 1, align = 'stretch', gap = 12,
+            ui.sectionTitle{text = 'Each key, its template and its text'},
+            ui.scroll{grow = 1, height = 0, ui.column{gap = 12, children = cards}},
         },
     }
 end
