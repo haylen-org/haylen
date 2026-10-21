@@ -8,7 +8,7 @@ The 2D block holds the modules that build 2D games and apps: retained node trees
 | --- | --- | --- |
 | Animation | Frame animations, sprite atlases and frame data, animators, fixed steps, animated batches, state graphs, skeletons, procedural chains, atlases packed at run time and performance. | [`animation.md`](animation.md) |
 | Lighting | Lit canvases, light types and blend modes, masks and layers, how surfaces take light, shadows and occluders from bodies and maps, light queries for gameplay, flicker and performance. | [`lighting.md`](lighting.md) |
-| Navigation | Path finding on grids, graphs and navigation meshes, flow fields, Dijkstra maps, steering and crowds, and which to choose. | [`navigation.md`](navigation.md) |
+| Navigation | Planning and moving: paths on grids, waypoint graphs and navigation meshes, flow fields and Dijkstra maps for many units, steering, crowds that follow a path, work off the frame, which method to choose and what each costs. | [`navigation.md`](navigation.md) |
 | Nodes | Retained trees of objects made of parts: what nodes pass to their children, updating and drawing, handles, prefabs, nodes with physics, tweens, animation and particles, and performance. | [`nodes.md`](nodes.md) |
 | Particles | Emitters and effect files, how particles are born, move, collide and look, composite effects, sub-emitters, trails, lights, the effect library and performance. | [`particles.md`](particles.md) |
 | Physics | Worlds, bodies, shapes and joints, units, stepping on several threads, sleeping, collisions and queries, the helpers, the common problems of physics games with their solutions, and performance. | [`physics.md`](physics.md) |
