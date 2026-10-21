@@ -7,13 +7,16 @@ local ShaderTest = require('categories.shaders.shader-test')
 local TextShader = haylen.class('TextShader', ShaderTest)
 
 TextShader.code = [[
-local dissolve = graphics2d.newMaterial(assets.shader('shaders/dissolve.shader'), {edge_color = '#FFFF7020', edge_width = 0.05, noise_scale = 6, noise_texture = noise})
+local dissolve = graphics2d.newMaterial(assets.shader('shaders/dissolve.shader'), {edge_width = 0.05, noise_scale = 6})
+dissolve:set('edge_color', '#FFFF7020')
+dissolve:set('noise_texture', noise)
 dissolve:set('amount', 0.5 + 0.5 * math.sin(haylen.elapsed() * 0.8))
-graphics2d.drawText(nil, 'Words that burn away and come back', 670, 400, {size = 64, anchor = {0.5, 0.5}, material = dissolve})]]
+graphics2d.drawText(nil, 'Words that burn away and come back', x, y, {size = 64, material = dissolve})
+graphics2d.drawText(font, 'Isle of Tests', x, y, {size = 170, outlineWidth = 8, material = rainbow})]]
 
 function TextShader:init(entry)
     TextShader.super.init(self, entry)
-    self.rainbow = ShaderTest.material('rainbow', {spread = 0.0015})
+    self.rainbow = ShaderTest.material('rainbow', {spread = 0.0012})
     self.dissolve = ShaderTest.material('dissolve', {edge_color = '#FFFF7020', edge_width = 0.05, noise_scale = 6, noise_texture = ShaderTest.noise()})
     self.flash = ShaderTest.material('flash', {flash_color = '#FFFFFFFF'})
     self.hit = 0
@@ -32,14 +35,17 @@ function TextShader:update(dt)
     self.rainbow:set('time', haylen.elapsed())
     self.dissolve:set('amount', 0.5 + 0.5 * math.sin(haylen.elapsed() * 0.8))
     self.flash:set('amount', self.hit)
-    self:status(string.format('Dissolve amount %.2f   Flash %.2f', self.dissolve:get('amount'), self.hit))
+    self:status(string.format('The words are %d%% burned away, and the flash is at %.2f.', math.floor(self.dissolve:get('amount') * 100), self.hit))
 end
 
+-- The text stands on a title screen at night, on a card that fills the layout.
 function TextShader:draw(area)
-    local x = ShaderTest.layout[1] / 2
-    graphics2d.drawText(nil, 'Haylen', x, 180, {size = 200, anchor = {0.5, 0.5}, outlineWidth = 6, outlineColor = '#FF101018', material = self.rainbow})
-    graphics2d.drawText(nil, 'Words that burn away and come back', x, 400, {size = 64, anchor = {0.5, 0.5}, color = '#FFFFE0B0', material = self.dissolve})
-    graphics2d.drawText(nil, 'Hit flash on text', x, 580, {size = 72, anchor = {0.5, 0.5}, color = '#FFE05040', outlineWidth = 4, outlineColor = '#FF200808', material = self.flash})
+    local layout = ShaderTest.layout
+    self:drawCard({rect = {24, 24, layout[1] - 48, layout[2] - 48}}, 'Three materials on text', true)
+    local x = layout[1] / 2
+    graphics2d.drawText(self:font(), 'Isle of Tests', x, 190, {size = 170, anchor = {0.5, 0.5}, outlineWidth = 8, outlineColor = '#FF15172A', material = self.rainbow, layer = 5})
+    graphics2d.drawText(nil, 'Words that burn away and come back', x, 380, {size = 64, anchor = {0.5, 0.5}, color = '#FFFFE0B0', material = self.dissolve, layer = 5})
+    graphics2d.drawText(self:font(), 'Hit flash on text', x, 530, {size = 84, anchor = {0.5, 0.5}, color = '#FFF0473E', outlineWidth = 5, outlineColor = '#FF200808', material = self.flash, layer = 5})
 end
 
 return TextShader
