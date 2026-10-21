@@ -1,4 +1,4 @@
--- Magic: particles born on a ring swirl around the orb with tangential acceleration and fall into it with negative radial acceleration, while stars twinkle through their frames.
+-- Magic: particles born on a ring swirl around the orb with tangential acceleration and fall into it with negative radial acceleration, stretched along their motion, an attractor at its heart swallows them, and stars twinkle through their frames.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -10,20 +10,25 @@ local ParticleTest = require('categories.particles.particle-test')
 local Magic = haylen.class('Magic', ParticleTest)
 
 Magic.code = [[
-local vortex = particles2d.newEmitter({texture = dot, rate = 160, speed = {0, 20}, spread = 6.2832, shape = 'ring', shapeSize = {220, 0}, blend = 'additive'})
-vortex:configure({tangentialAcceleration = 260, radialAcceleration = -180})  -- Swirls around the orb and falls into it.
-local stars = particles2d.newEmitter({texture = atlas.texture, frames = twinkle, rate = 14, shape = 'circle', shapeSize = {260, 0}, blend = 'additive'})  -- Each star plays its frames over its life.
+local vortex = particles2d.newEmitter({texture = dot, rate = 180, shape = 'ring', shapeSize = {240, 0}})
+vortex:configure({tangentialAcceleration = 240, radialAcceleration = -380})  -- Swirls and falls.
+vortex:configure({alignToVelocity = true, stretch = 0.05, blend = 'additive'})
+vortex:configure({attractors = {{strength = 320, radius = 170, killRadius = 26}}})  -- Swallowed.
 vortex.position = {orb.x, orb.y}]]
+
+-- The orb hovers above the cursor, like the light at the tip of a wand.
+Magic.hover = 170
 
 function Magic:init(entry)
     Magic.super.init(self, entry)
-    self.orb = {x = 0, y = 0}
-    self.swirl = 260
-    self.pull = 180
-    local sparkle = 'sparkle'
-    self.vortex = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 160, lifetime = {1.2, 1.6}, speed = {0, 20}, spread = 6.2832, startSize = {22, 30}, endSize = 4, colors = {'#00A060FF', '#FFB070FF', '#FF60E0FF', '#0040C0FF'}, shape = 'ring', shapeSize = {220, 0}, blend = 'additive', maxParticles = 512, layer = 2, seed = 13}))
-    self.stars = particles2d.newEmitter(ParticleTest.look(sparkle, {rate = 14, lifetime = {0.8, 1.2}, speed = {10, 40}, spread = 6.2832, startSize = {30, 46}, endSize = {30, 46}, colors = {'#FFFFFFFF', '#FFA0E8FF', '#00A0E8FF'}, shape = 'circle', shapeSize = {260, 0}, blend = 'additive', layer = 3, seed = 14}))
-    self.core = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 40, lifetime = 0.5, speed = 0, startSize = {120, 150}, endSize = {170, 200}, colors = {'#00FFFFFF', '#80C090FF', '#00A060FF'}, blend = 'additive', layer = 1, seed = 15}))
+    self.orb = {x = 0, y = -Magic.hover}
+    self.swirl = 240
+    self.pull = 380
+    self.vortex = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 180, lifetime = {1.4, 1.8}, speed = {0, 20}, spread = 6.2832, startSize = {16, 22}, endSize = 6, alignToVelocity = true, stretch = 0.05, colors = {'#00A060FF', '#E0B070FF', '#C060E0FF', '#0040C0FF'}, shape = 'ring', shapeSize = {240, 0}, attractors = {{strength = 320, radius = 170, killRadius = 26}}, blend = 'additive', maxParticles = 512, layer = 2, seed = 13}))
+    self.stars = particles2d.newEmitter(ParticleTest.look('sparkle', {rate = 14, lifetime = {0.8, 1.2}, speed = {10, 40}, spread = 6.2832, startSize = {30, 46}, endSize = {30, 46}, colors = {'#FFFFFFFF', '#FFA0E8FF', '#00A0E8FF'}, shape = 'circle', shapeSize = {280, 0}, blend = 'additive', layer = 3, seed = 14}))
+    self.core = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 40, lifetime = 0.5, speed = 0, startSize = {150, 170}, endSize = {190, 220}, colors = {'#00FFFFFF', '#70C090FF', '#00A060FF'}, blend = 'additive', layer = 1, seed = 15}))
+    self.orbLook, self.swirlLook = ParticleTest.look('orb', {}), ParticleTest.look('swirl', {})
+    self.pointer.origin = {0.5, 0.6}
     self:shape()
 end
 
@@ -52,21 +57,28 @@ end
 function Magic:update(dt)
     Magic.super.update(self, dt)
     local follow = m.dampFactor(3, dt)
-    self.orb.x, self.orb.y = m.lerp(self.orb.x, self.cursorX, follow), m.lerp(self.orb.y, self.cursorY, follow)
+    self.orb.x, self.orb.y = m.lerp(self.orb.x, self.cursorX, follow), m.lerp(self.orb.y, self.cursorY - Magic.hover, follow)
     for _, emitter in ipairs({self.vortex, self.stars, self.core}) do
         emitter.position = {self.orb.x, self.orb.y}
         emitter:update(dt)
     end
-    self:status(string.format('Emitter with "tangentialAcceleration" %.0f and "radialAcceleration" %.0f   Particles %d', self.swirl, -self.pull, self.vortex.count + self.stars.count))
+    self:report('%d particles swirl into the orb with a swirl of %.0f and a pull of %.0f.', self.vortex.count + self.stars.count, self.swirl, self.pull)
+end
+
+-- The orb: a glass sphere of light with a swirl that turns inside it.
+function Magic:drawOrb()
+    local time = haylen.elapsed()
+    local orb, swirl = self.orbLook, self.swirlLook
+    graphics2d.draw(orb.texture, self.orb.x, self.orb.y, {source = orb.frames[1], width = 96, height = 96, color = '#FFE8F0FF', layer = 4})
+    graphics2d.draw(swirl.texture, self.orb.x, self.orb.y, {source = swirl.frames[1], width = 76, height = 76, rotation = time * 3, color = '#C0B080FF', blend = 'additive', layer = 5})
 end
 
 function Magic:draw(area)
-    ParticleTest.backdrop({0.04, 0.02, 0.1}, {0.1, 0.04, 0.18})
-    graphics2d.drawRing(self.orb.x, self.orb.y, 230, 3, '#40B090FF')
-    graphics2d.drawCircle(self.orb.x, self.orb.y, 40, '#FFE8F0FF', {layer = 4})
+    ParticleTest.backdrop({0.05, 0.03, 0.12}, {0.12, 0.05, 0.2})
     for _, emitter in ipairs({self.core, self.vortex, self.stars}) do
         emitter:draw()
     end
+    self:drawOrb()
 end
 
 return Magic

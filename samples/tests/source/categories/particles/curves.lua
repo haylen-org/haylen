@@ -9,10 +9,12 @@ local ParticleTest = require('categories.particles.particle-test')
 local Curves = haylen.class('Curves', ParticleTest)
 
 Curves.code = [[
-pops:configure({sizeCurve = {curve = 'backOut', overshoot = 3}})  -- Or {points = {0, 1.45, 0.85, 1}}.
-local stars = particles2d.newEmitter({texture = star, startSize = {12, 70}, endSizeScale = 1})  -- Each star keeps its own size.
+pops:configure({sizeCurve = {curve = 'backOut', overshoot = 3}})  -- Grows past its end size.
+local stars = particles2d.newEmitter({texture = star, startSize = {12, 70}})
+stars:configure({endSizeScale = 1})  -- Each star keeps its own size.
 dust:configure({speedCurve = 'expoOut'})  -- The dust stops early.
-coins:configure({spinCurve = 'quadOut'})  -- The coins spin down, and "false" removes the curve.]]
+coins:configure({spinCurve = 'quadOut'})  -- The coins spin down.
+coins:configure({spinCurve = false})  -- And keep spinning without it.]]
 
 Curves.sizeCurves = {
     linear = 'linear',
@@ -33,29 +35,29 @@ function Curves:init(entry)
     self.coinsSpinDown = true
 
     self.pops = particles2d.newEmitter(ParticleTest.look('bubble', {rate = 3, lifetime = 1.6, speed = 0, startSize = 0, endSize = 130, sizeCurve = Curves.sizeCurves[self.sizeCurve], colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.75, 1}, shape = 'circle', shapeSize = {110, 0}, layer = 2, seed = 201}))
-    self.pops.x, self.pops.y = -760, -60
+    self.pops.x, self.pops.y = -800, 160
 
     local kept = ParticleTest.look('star-5point', {rate = 5, lifetime = 3, speed = {120, 140}, spread = 0.15, startSize = {12, 70}, colors = {'#00FFD860', '#FFFFD860', '#FFFFD860', '#00FFD860'}, colorTimes = {0, 0.1, 0.85, 1}, layer = 2})
     kept.endSize, kept.seed = 40, 202
     self.converge = particles2d.newEmitter(kept)
     kept.endSize, kept.endSizeScale, kept.seed = nil, 1, 203
     self.keep = particles2d.newEmitter(kept)
-    self.converge.x, self.converge.y = -380, Curves.ground - 40
-    self.keep.x, self.keep.y = 0, Curves.ground - 40
+    self.converge.x, self.converge.y = -420, Curves.ground - 40
+    self.keep.x, self.keep.y = -60, Curves.ground - 40
 
-    self.dust = particles2d.newEmitter(ParticleTest.look('smoke-puff', {rate = 26, lifetime = {1.4, 2}, speed = {350, 600}, spread = 2.6, speedCurve = Curves.stop, startSize = {30, 50}, endSize = {110, 150}, rotation = {0, m.tau}, spin = {-1, 1}, colors = {'#00C0A080', '#C0A08060', '#00806040'}, layer = 2, seed = 204}))
-    self.dust.x, self.dust.y = 380, Curves.ground - 10
+    self.dust = particles2d.newEmitter(ParticleTest.look('puff', {frameMode = 'random', rate = 22, lifetime = {1.4, 2}, speed = {320, 520}, spread = 2.2, speedCurve = Curves.stop, startSize = {40, 60}, endSize = {110, 150}, rotation = {0, m.tau}, spin = {-1, 1}, colors = {'#00F0D8B8', '#E0E8D0B0', '#00D8C0A0'}, layer = 2, seed = 204}))
+    self.dust.x, self.dust.y = 300, Curves.ground - 10
 
     self.coins = particles2d.newEmitter(ParticleTest.look('coin-1', {rate = 3, lifetime = 2.6, speed = {760, 860}, spread = 0.3, gravity = {0, 640}, startSize = 64, endSize = 64, rotation = {0, m.tau}, spin = {12, 18}, spinCurve = Curves.spinDown, colors = {'#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.85, 1}, layer = 3, seed = 205}))
-    self.coins.x, self.coins.y = 760, Curves.ground - 10
+    self.coins.x, self.coins.y = 820, Curves.ground - 10
 
     self.emitters = {self.pops, self.converge, self.keep, self.dust, self.coins}
     self.labels = {
-        {text = 'Pops with "sizeCurve"', emitter = self.pops, y = 200},
-        {text = 'End size 40', emitter = self.converge, y = Curves.ground + 20},
-        {text = 'With "endSizeScale = 1"', emitter = self.keep, y = Curves.ground + 20},
-        {text = 'Dust with "speedCurve"', emitter = self.dust, y = Curves.ground + 20},
-        {text = 'Coins with "spinCurve"', emitter = self.coins, y = Curves.ground + 20},
+        {text = 'Pops', option = 'sizeCurve', emitter = self.pops},
+        {text = 'All end at 40', option = 'endSize = 40', emitter = self.converge},
+        {text = 'Keep their size', option = 'endSizeScale = 1', emitter = self.keep},
+        {text = 'Dust stops', option = 'speedCurve', emitter = self.dust},
+        {text = 'Coins spin down', option = 'spinCurve', emitter = self.coins},
     }
 end
 
@@ -84,14 +86,17 @@ end
 function Curves:update(dt)
     Curves.super.update(self, dt)
     local count = ParticleTest.updateAll(self.emitters, dt)
-    self:report('Size curve "%s"   Dust stops "%s"   Coins spin down "%s"   Particles %d', self.sizeCurve, self.dustStops, self.coinsSpinDown, count)
+    local dust = self.dustStops and 'stops early' or 'keeps its speed'
+    local coins = self.coinsSpinDown and 'spin down' or 'keep spinning'
+    self:report('The pops grow along "%s", the dust %s and the coins %s, with %d particles.', self.sizeCurve, dust, coins, count)
 end
 
 function Curves:draw(area)
     ParticleTest.backdrop({0.05, 0.07, 0.12}, {0.16, 0.12, 0.1})
+    ParticleTest.paveFloor('dirt', Curves.ground, 140, '#FF8A7868')
     ParticleTest.drawAll(self.emitters)
     for _, label in ipairs(self.labels) do
-        ParticleTest.label(label.text, label.emitter.x, label.y)
+        ParticleTest.label(label.text, label.emitter.x, Curves.ground + 24, label.option)
     end
 end
 

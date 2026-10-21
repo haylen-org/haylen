@@ -197,7 +197,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 
 #### Lighting (LIT)
 
-Lit canvases with ambient, point, spot and directional lights, shadows, normal maps, emission, masks and many lights at once. The tests are in `source/categories/lighting/`, and the village of the street scenes, with its houses, lamp posts, sky and hills, is drawn by `source/categories/lighting/town.lua`.
+Lit canvases with ambient, point, spot and directional lights, shadows, normal maps, emission, masks and many lights at once. The tests are in `source/categories/lighting/`, and the village of the street scenes, with its houses, lamp posts, sky and hills, is drawn by `source/categories/lighting/town.lua`, which the particle tests share.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -242,7 +242,7 @@ Particle emitters from Lua tables, effect files and composite effects: weather, 
 | `PRT-003` | Explosion | A flash, fireballs, debris, a shock ring and smoke in one burst. |  |
 | `PRT-004` | Rain | Streaks across the whole view and splashes on the ground. |  |
 | `PRT-005` | Snow | Two layers of flakes that drift and spin in the wind. |  |
-| `PRT-006` | Sparks | Welding sparks from a cone with gravity and damping. |  |
+| `PRT-006` | Sparks | Sparks from the disc of a grinder at the cursor, thrown from a cone with gravity and damping, stretched along their motion and bouncing on the floor of a physics world. |  |
 | `PRT-007` | Trails | Trails in world space that follow the cursor and a comet. |  |
 | `PRT-008` | Magic | A swirling orb with radial and tangential acceleration and twinkling stars. |  |
 | `PRT-009` | Confetti | Colored confetti that flips through frames as it falls. |  |

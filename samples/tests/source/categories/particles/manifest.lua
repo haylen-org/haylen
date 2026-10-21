@@ -9,7 +9,7 @@ return {
         {code = 'PRT-003', title = 'Explosion', description = 'A flash, fireballs, debris, a shock ring and smoke in one burst.', module = 'explosion'},
         {code = 'PRT-004', title = 'Rain', description = 'Streaks across the whole view and splashes on the ground.', module = 'rain'},
         {code = 'PRT-005', title = 'Snow', description = 'Two layers of flakes that drift and spin in the wind.', module = 'snow'},
-        {code = 'PRT-006', title = 'Sparks', description = 'Welding sparks from a cone with gravity and damping.', module = 'sparks'},
+        {code = 'PRT-006', title = 'Sparks', description = 'Sparks from the disc of a grinder, stretched along their motion, that bounce on the floor.', module = 'sparks'},
         {code = 'PRT-007', title = 'Trails', description = 'Trails in world space that follow the cursor and a comet.', module = 'trail'},
         {code = 'PRT-008', title = 'Magic', description = 'A swirling orb with radial and tangential acceleration and twinkling stars.', module = 'magic'},
         {code = 'PRT-009', title = 'Confetti', description = 'Colored confetti that flips through frames as it falls.', module = 'confetti'},

@@ -1,17 +1,19 @@
--- Smoke: slow puffs that grow, spin and fade, prewarmed so the plumes are fully grown on the first frame, and pushed by the wind through gravity.
-local graphics2d = require('haylen.graphics2d')
+-- Smoke: slow puffs that grow, spin and fade from the chimneys of a village, prewarmed so the plumes are fully grown on the first frame, and pushed by the wind through gravity.
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
 
 local ParticleTest = require('categories.particles.particle-test')
+local Town = require('categories.lighting.town')
 
 local Smoke = haylen.class('Smoke', ParticleTest)
 
 Smoke.code = [[
-local chimney = particles2d.newEmitter({texture = puff, rate = 10, prewarm = 6, lifetime = {4, 6}, speed = {50, 80}, gravity = {40, -8}, damping = 0.2, startSize = {50, 70}, endSize = {220, 300}, spin = {-0.4, 0.4}, colors = {'#00202020', '#C0303034', '#00101010'}})
-chimney:configure({gravity = {wind, -8}})  -- The wind pushes the plume.
-chimney:configure({colors = {'#00FFFFFF', '#A0E8ECF0', '#00FFFFFF'}})  -- Steam.]]
+local chimney = particles2d.newEmitter({texture = puff, rate = 10, prewarm = 6, lifetime = {4, 6}})
+chimney:configure({speed = {50, 80}, gravity = {40, -8}, damping = 0.2, spin = {-0.4, 0.4}})
+chimney:configure({startSize = {50, 70}, endSize = {220, 300}})
+chimney:configure({colors = {'#00202020', '#C0303034', '#00101010'}})
+chimney:configure({gravity = {wind, -8}})  -- The wind pushes the plume.]]
 
 Smoke.kinds = {
     steam = {'#00FFFFFF', '#A0E8ECF0', '#00FFFFFF'},
@@ -19,14 +21,19 @@ Smoke.kinds = {
     toxic = {'#0040FF40', '#A060D040', '#00204010'},
 }
 
+Smoke.houses = {{name = 'cottage', x = -640}, {name = 'stone-house', x = 0}, {name = 'cottage', x = 640}}
+Smoke.scale = 0.75
+Smoke.ground = 400
+
 function Smoke:init(entry)
     Smoke.super.init(self, entry)
     self.wind = 40
     local texture = 'smoke'
+    self.town = Town()
     self.chimneys = {}
-    for index = 1, 3 do
-        local emitter = particles2d.newEmitter(ParticleTest.look(texture, {rate = 10, prewarm = 6, lifetime = {4, 6}, speed = {50, 80}, spread = 0.3, gravity = {self.wind, -8}, damping = 0.2, startSize = {50, 70}, endSize = {220, 300}, spin = {-0.4, 0.4}, colors = Smoke.kinds.smoke, shape = 'circle', shapeSize = {16, 0}, maxParticles = 128, layer = 1, seed = index}))
-        emitter.position = {-620 + (index - 1) * 560, 180}
+    for index, house in ipairs(Smoke.houses) do
+        local emitter = particles2d.newEmitter(ParticleTest.look(texture, {rate = 10, prewarm = 6, lifetime = {4, 6}, speed = {50, 80}, spread = 0.3, gravity = {self.wind, -8}, damping = 0.2, startSize = {50, 70}, endSize = {220, 300}, spin = {-0.4, 0.4}, colors = Smoke.kinds.smoke, shape = 'circle', shapeSize = {16, 0}, maxParticles = 128, layer = 3, seed = index}))
+        emitter.position = {self.town:chimney(house.name, house.x, Smoke.ground, Smoke.scale)}
         self.chimneys[index] = emitter
     end
 end
@@ -59,16 +66,15 @@ function Smoke:update(dt)
         emitter:update(dt)
         count = count + emitter.count
     end
-    self:status(string.format('Puffs %d   Wind %.0f', count, self.wind))
+    self:report('%d puffs rise from the chimneys, and the wind blows at %.0f.', count, self.wind)
 end
 
 function Smoke:draw(area)
-    ParticleTest.backdrop({0.35, 0.45, 0.6}, {0.75, 0.7, 0.6})
-    graphics2d.drawRect({-1600, 300, 3200, 700}, '#FF3A4A3A')
-    for _, emitter in ipairs(self.chimneys) do
-        graphics2d.drawRect({emitter.x - 90, emitter.y + 60, 180, 240}, '#FF6A4A3A')
-        graphics2d.drawRect({emitter.x - 30, emitter.y, 60, 80}, '#FF4A3A30')
-        emitter:draw()
+    ParticleTest.backdrop({0.36, 0.56, 0.84}, {0.86, 0.84, 0.76})
+    ParticleTest.paveFloor('grass', Smoke.ground - 10, 140)
+    for index, house in ipairs(Smoke.houses) do
+        self.town:house(house.name, house.x, Smoke.ground, Smoke.scale, 1, 0)
+        self.chimneys[index]:draw()
     end
 end
 

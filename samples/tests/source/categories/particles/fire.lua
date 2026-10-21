@@ -1,4 +1,4 @@
--- Fire: three emitters make one fire, additive flames that shrink as they rise, embers that fly higher and smoke above them.
+-- Fire: three emitters make the flame of a torch, painted flame frames that lick upward and shrink, embers that fly higher and smoke above them, and the torch follows the cursor.
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
@@ -8,27 +8,29 @@ local ParticleTest = require('categories.particles.particle-test')
 local Fire = haylen.class('Fire', ParticleTest)
 
 Fire.code = [[
-local flames = particles2d.newEmitter({texture = dot, rate = 90, lifetime = {0.5, 0.9}, speed = {90, 170}, gravity = {0, -120}, startSize = {100, 140}, endSize = {14, 24}, colors = {'#FFFFF0B0', '#FFFFA030', '#C0FF4010', '#00801000'}, shape = 'circle', shapeSize = {24, 0}, blend = 'additive', layer = 2})
-local smoke = particles2d.newEmitter({texture = puff, rate = 14, gravity = {0, -30}, startSize = {40, 60}, endSize = {140, 180}, colors = {'#00303030', '#60404040', '#00202020'}, layer = 1})
-flames.x, flames.y = x, y  -- Live particles stay in the world, so the flames lean.
-flames:configure({rate = 90 * strength})]]
+local flames = particles2d.newEmitter({texture = atlas.texture, frames = flame, rate = 44})
+flames:configure({lifetime = {0.55, 0.85}, speed = {160, 240}, frameMode = 'loopRandomStart'})
+flames:configure({startSize = {150, 190}, endSize = {30, 44}, sizeCurve = 'quadIn'})
+flames:configure({colors = {'#00FFE7A8', '#C0FFC24A', '#A0FF7A1F', '#00801010'}, blend = 'additive'})
+flames.x, flames.y = x, y  -- Live flames stay in the world, so they lean.
+flames:configure({rate = 44 * strength})]]
 
-Fire.rates = {smoke = 14, flames = 90, embers = 18}
+Fire.rates = {smoke = 10, flames = 44, embers = 14}
+Fire.torchScale = 0.9
 
 function Fire:init(entry)
     Fire.super.init(self, entry)
     self.strength = 1
-    local smoke = 'smoke'
     self.emitters = {
-        smoke = particles2d.newEmitter(ParticleTest.look(smoke, {rate = 14, lifetime = {1.6, 2.4}, speed = {60, 110}, spread = 0.5, gravity = {0, -30}, startSize = {40, 60}, endSize = {140, 180}, spin = {-0.6, 0.6}, colors = {'#00303030', '#60404040', '#00202020'}, shape = 'circle', shapeSize = {20, 0}, layer = 1, seed = 1})),
-        flames = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 90, lifetime = {0.5, 0.9}, speed = {90, 170}, spread = 0.35, gravity = {0, -120}, startSize = {100, 140}, endSize = {14, 24}, colors = {'#FFFFF0B0', '#FFFFA030', '#C0FF4010', '#00801000'}, shape = 'circle', shapeSize = {24, 0}, blend = 'additive', layer = 2, seed = 2})),
-        embers = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = 18, lifetime = {1, 2}, speed = {120, 260}, spread = 0.9, gravity = {0, 60}, damping = 0.4, tangentialAcceleration = {-40, 40}, startSize = {6, 10}, endSize = 2, colors = {'#FFFFE080', '#FFFF6020', '#00FF2000'}, shape = 'circle', shapeSize = {20, 0}, blend = 'additive', layer = 3, seed = 3})),
+        smoke = particles2d.newEmitter(ParticleTest.look('smoke-puff', {rate = 10, lifetime = {1.8, 2.6}, speed = {80, 130}, spread = 0.4, gravity = {0, -30}, startSize = {70, 90}, endSize = {220, 280}, spin = {-0.6, 0.6}, colors = {'#00505058', '#70606068', '#30505058', '#00404048'}, shape = 'circle', shapeSize = {16, 0}, layer = 1, seed = 1})),
+        flames = particles2d.newEmitter(ParticleTest.look('flame', {frameMode = 'loopRandomStart', frameRate = 14, rate = 44, lifetime = {0.55, 0.85}, speed = {160, 240}, spread = 0.2, startSize = {150, 190}, endSize = {30, 44}, sizeCurve = 'quadIn', colors = {'#00FFE7A8', '#C0FFC24A', '#A0FF7A1F', '#50D8381F', '#00801010'}, colorTimes = {0, 0.12, 0.45, 0.8, 1}, shape = 'ellipse', shapeSize = {34, 10}, blend = 'additive', layer = 3, seed = 2})),
+        embers = particles2d.newEmitter(ParticleTest.look('ember', {rate = 14, lifetime = {1, 2}, speed = {160, 300}, spread = 0.7, gravity = {0, 40}, damping = 0.5, tangentialAcceleration = {-60, 60}, startSize = {10, 16}, endSize = 4, colors = {'#FFFFE080', '#FFFF7A20', '#00FF2000'}, shape = 'circle', shapeSize = {20, 0}, blend = 'additive', layer = 4, seed = 3})),
     }
 end
 
 function Fire:enter()
     self:frame{
-        hint = 'The fire follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. The flames lean as it moves because particles stay in world space.',
+        hint = 'The torch follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick. Its flames lean as it moves, because live particles stay in the world.',
         code = Fire.code,
         cursor = true,
         controls = {ui.formField{label = 'Strength', ui.slider{id = 'strength', min = 0.2, max = 3, value = self.strength, showValue = true, onChange = function(event)
@@ -44,15 +46,17 @@ function Fire:update(dt)
     Fire.super.update(self, dt)
     local count = 0
     for _, emitter in pairs(self.emitters) do
-        emitter.x, emitter.y = self.cursorX, self.cursorY
+        emitter.x, emitter.y = self.cursorX, self.cursorY - 16
         emitter:update(dt)
         count = count + emitter.count
     end
-    self:status(string.format('Particles %d   Strength %.2f', count, self.strength))
+    self:report('The torch burns with %d particles at %.0f percent of its strength.', count, self.strength * 100)
 end
 
 function Fire:draw(area)
-    ParticleTest.backdrop({0.03, 0.03, 0.08}, {0.12, 0.06, 0.05})
+    ParticleTest.backdrop({0.05, 0.05, 0.12}, {0.16, 0.08, 0.08})
+    ParticleTest.paveFloor('stone', 360, 160, '#FF6A6070')
+    ParticleTest.prop('wall-torch', self.cursorX, self.cursorY - 40, Fire.torchScale, {pivotY = 0, layer = 2})
     for _, emitter in pairs(self.emitters) do
         emitter:draw()
     end

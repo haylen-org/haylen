@@ -1,4 +1,5 @@
--- Bursts and prewarm: bursts fire at their times in the emission cycle, a cycle without `loop` stops the emitter, and prewarm simulates seconds on the first update so an effect starts grown.
+-- Bursts and prewarm: bursts fire at their times in the emission cycle, a cycle without `loop` stops the emitter, and prewarm simulates seconds on the first update so an effect starts grown. The test replays the one-shot cycle and restarts the plumes on its own, so the comparisons keep repeating.
+local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
@@ -8,10 +9,15 @@ local ParticleTest = require('categories.particles.particle-test')
 local Bursts = haylen.class('Bursts', ParticleTest)
 
 Bursts.code = [[
-local pops = particles2d.newEmitter({texture = dot, rate = 0, bursts = {{time = 0, count = 40}, {time = 0.5, count = 12}, {time = 1.2, count = 60}}, duration = 2, loop = true})
-local plume = particles2d.newEmitter({texture = smoke, rate = 10, lifetime = {3, 4}, prewarm = 4})  -- Starts four seconds grown.
-local once = particles2d.newEmitter({texture = dot, rate = 80, duration = 1.2})  -- Without "loop" it stops after 1.2 seconds.
-once:restart()  log.info(once.emitting, once.alive, pops.cycleTime)]]
+local bursts = {{time = 0, count = 40}, {time = 0.5, count = 12}, {time = 0.8, count = 12}, {time = 1.2, count = 60}}
+local pops = particles2d.newEmitter({texture = dot, rate = 0, bursts = bursts, duration = 2, loop = true})
+local plume = particles2d.newEmitter({texture = smoke, rate = 10, lifetime = {3, 4}, prewarm = 4})
+local once = particles2d.newEmitter({texture = dot, rate = 80, duration = 1.2})  -- Then stops.
+once:restart()  -- Plays the cycle again.]]
+
+Bursts.replayEvery = 3
+Bursts.restartEvery = 6
+Bursts.vents = {-150, 150}
 
 function Bursts:init(entry)
     Bursts.super.init(self, entry)
@@ -21,49 +27,78 @@ function Bursts:init(entry)
     self.scheduled.position = {-640, -40}
     plume.prewarm, plume.seed = 4, 41
     self.warm = particles2d.newEmitter(plume)
-    self.warm.position = {-120, 260}
+    self.warm.position = {Bursts.vents[1], 260}
     plume.prewarm, plume.seed = 0, 42
     self.cold = particles2d.newEmitter(plume)
-    self.cold.position = {120, 260}
+    self.cold.position = {Bursts.vents[2], 260}
     self.once = particles2d.newEmitter(ParticleTest.look(soft, {rate = 80, duration = 1.2, lifetime = {0.8, 1.2}, speed = {80, 160}, spread = 0.8, gravity = {0, 200}, startSize = 20, endSize = 4, colors = {'#FF80FFA0', '#0040C060'}, blend = 'additive', layer = 2, seed = 43}))
     self.once.position = {640, 0}
     self.emitters = {self.scheduled, self.warm, self.cold, self.once}
+    self.sinceReplay, self.sinceRestart = 0, 0
 end
 
 function Bursts:enter()
     self:frame{
-        hint = 'Restart the emitters to compare a prewarmed plume with a cold one and to replay the one-shot cycle.',
+        hint = 'The one shot plays again every 3 seconds and the plumes restart every 6, or restart them yourself, to compare a prewarmed plume with a cold one.',
         code = Bursts.code,
         controls = {
             ui.button{id = 'plumes', text = 'Restart the plumes', onClick = function()
-                self.warm:restart()
-                self.cold:restart()
+                self:restartPlumes()
             end},
             ui.button{id = 'once', text = 'Replay the one shot', onClick = function()
-                self.once:restart()
+                self:replay()
             end},
         },
         focus = 'plumes',
     }
 end
 
+function Bursts:restartPlumes()
+    self.warm:restart()
+    self.cold:restart()
+    self.sinceRestart = 0
+end
+
+function Bursts:replay()
+    self.once:restart()
+    self.sinceReplay = 0
+end
+
 function Bursts:update(dt)
     Bursts.super.update(self, dt)
+    self.sinceReplay = self.sinceReplay + dt
+    self.sinceRestart = self.sinceRestart + dt
+    if self.sinceReplay > Bursts.replayEvery then
+        self:replay()
+    end
+    if self.sinceRestart > Bursts.restartEvery then
+        self:restartPlumes()
+    end
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end
-    self:status(string.format('Burst cycle %.2f s   One shot emitting "%s" and alive "%s"', self.scheduled.cycleTime, self.once.emitting, self.once.alive))
+    local once = self.once.emitting and 'emits' or self.once.alive and 'fades out' or 'waits'
+    self:report('The burst cycle is at %.1f seconds, the plumes restarted %.1f seconds ago, and the one shot %s.', self.scheduled.cycleTime, self.sinceRestart, once)
+end
+
+-- Draws the iron vent a plume rises from.
+function Bursts.drawVent(x, y)
+    graphics2d.drawShape({x - 34, y - 10, 68, 90}, {radius = 8, color = '#FF5A6080', borderWidth = 5, borderColor = '#FF1E1B33', layer = 3})
+    graphics2d.drawShape({x - 44, y - 22, 88, 26}, {radius = 8, color = '#FF7A82A4', borderWidth = 5, borderColor = '#FF1E1B33', layer = 3})
 end
 
 function Bursts:draw(area)
     ParticleTest.backdrop({0.05, 0.06, 0.1}, {0.1, 0.12, 0.2})
+    for _, x in ipairs(Bursts.vents) do
+        Bursts.drawVent(x, 270)
+    end
     for _, emitter in ipairs(self.emitters) do
         emitter:draw()
     end
-    ParticleTest.label('Bursts at 0, 0.5, 0.8 and 1.2 s', -640, 280)
-    ParticleTest.label('Prewarm 4 s', -120, 330)
-    ParticleTest.label('No prewarm', 120, 330)
-    ParticleTest.label('One shot of 1.2 s', 640, 280)
+    ParticleTest.label('Bursts', -640, 380, 'At 0, 0.5, 0.8 and 1.2 seconds')
+    ParticleTest.label('Prewarmed', -150, 380, 'prewarm = 4')
+    ParticleTest.label('Cold', 150, 380, 'No prewarm')
+    ParticleTest.label('One shot', 640, 380, 'duration = 1.2')
 end
 
 return Bursts

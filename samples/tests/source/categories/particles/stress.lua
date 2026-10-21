@@ -10,7 +10,8 @@ local ParticleTest = require('categories.particles.particle-test')
 local Stress = haylen.class('Stress', ParticleTest)
 
 Stress.code = [[
-local fountain = particles2d.newEmitter({texture = dot, rate = 2000, lifetime = {2.2, 2.8}, speed = {500, 900}, gravity = {0, 600}, blend = 'additive', maxParticles = 25000})
+local fountain = particles2d.newEmitter({texture = dot, rate = 2000, lifetime = {2.2, 2.8}})
+fountain:configure({speed = {500, 900}, gravity = {0, 600}, maxParticles = 25000})
 fountain:update(dt)  -- Large emitters simulate on worker threads.
 fountain:draw()  -- One batch for the whole emitter.
 log.info(fountain.count, graphics2d.stats().drawCalls)]]
@@ -23,7 +24,7 @@ function Stress:init(entry)
     self.frameTime = 1 / 60
     self.emitters = {}
     for index = 1, Stress.fountains do
-        local emitter = particles2d.newEmitter(ParticleTest.look('hard-dot', {rate = self.rate / Stress.fountains, lifetime = {2.2, 2.8}, speed = {500, 900}, direction = -1.5708, spread = 0.9, gravity = {0, 600}, startSize = {5, 8}, endSize = 2, colors = {m.fromHsv(index / Stress.fountains, 0.6, 1), m.fromHsv(index / Stress.fountains + 0.2, 0.8, 1):withAlpha(0)}, blend = 'additive', maxParticles = 25000, layer = 2, seed = 90 + index}))
+        local emitter = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = self.rate / Stress.fountains, lifetime = {2.2, 2.8}, speed = {500, 900}, direction = -1.5708, spread = 0.9, gravity = {0, 600}, startSize = {10, 14}, endSize = 4, colors = {m.fromHsv(index / Stress.fountains, 0.6, 1):withAlpha(0.8), m.fromHsv(index / Stress.fountains + 0.2, 0.8, 1):withAlpha(0)}, blend = 'additive', maxParticles = 25000, layer = 2, seed = 90 + index}))
         emitter.position = {(index - 2.5) * 420, 460}
         self.emitters[index] = emitter
     end
@@ -52,7 +53,7 @@ function Stress:update(dt)
     end
     self.frameTime = m.lerp(self.frameTime, haylen.unscaledDelta(), 0.05)
     local stats = graphics2d.stats()
-    self:status(string.format('Particles %d   Sprites last frame %d   Draw calls %d   %.0f frames per second', count, stats.sprites, stats.drawCalls, 1 / math.max(self.frameTime, 0.0001)))
+    self:report('%d particles drew as %d sprites in %d draw calls, at %.0f frames per second.', count, stats.sprites, stats.drawCalls, 1 / math.max(self.frameTime, 0.0001))
 end
 
 function Stress:draw(area)
