@@ -115,8 +115,13 @@ void UpdateScreen::render() {
     const ContentManager::Progress& progress = content.getProgress();
     const float fraction = progress.totalBytes == 0 ? 0.0F : static_cast<float>(progress.receivedBytes) / static_cast<float>(progress.totalBytes);
     if (!hasFailed()) {
-        renderer.drawRect(bar, kTrackColor);
-        renderer.drawRect({bar.x, bar.y, bar.width * std::clamp(fraction, 0.0F, 1.0F), bar.height}, kBarColor);
+        // The bar is a pill, and its fill starts as a dot as wide as the bar is tall, so both keep round ends.
+        const float radius = bar.height * 0.5F;
+        renderer.drawShape({.bounds = bar, .radii = {radius, radius, radius, radius}, .color = kTrackColor});
+        if (fraction > 0.0F) {
+            const float filled = std::max(bar.width * std::min(fraction, 1.0F), bar.height);
+            renderer.drawShape({.bounds = {bar.x, bar.y, filled, bar.height}, .radii = {radius, radius, radius, radius}, .color = kBarColor});
+        }
     }
     y = bar.getBottom() + kGap * unit;
 
@@ -141,10 +146,8 @@ math::Rect UpdateScreen::drawButton(graphics2d::Renderer& renderer, text::Font& 
     const math::Vec2 size = font.measure(label, style);
     const float width = std::max(size.x + kGap * 2.0F * unit, 140.0F * unit);
     const math::Rect button{center.x - width * 0.5F, center.y, width, kButtonHeight * unit};
-    renderer.drawRect(button, kButtonColor);
-    if (action == focused) {
-        renderer.drawRectOutline(button, std::max(2.0F, 2.0F * unit), kBarColor);
-    }
+    const float radius = kButtonRadius * unit;
+    renderer.drawShape({.bounds = button, .radii = {radius, radius, radius, radius}, .color = kButtonColor, .borderWidth = action == focused ? std::max(2.0F, 2.0F * unit) : 0.0F, .borderColor = kBarColor});
     renderer.drawText(font, label, {button.x + (width - size.x) * 0.5F, button.y + (button.height - size.y) * 0.5F}, style);
     return button;
 }

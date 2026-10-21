@@ -58,6 +58,7 @@ class UpdateScreen final {
     static constexpr float kTitleSize = 30.0F;
     static constexpr float kBodySize = 18.0F;
     static constexpr float kButtonHeight = 46.0F;
+    static constexpr float kButtonRadius = 12.0F;
     static constexpr float kBarHeight = 10.0F;
     static constexpr float kBarWidth = 520.0F;
     static constexpr float kLogoSize = 128.0F;
