@@ -1,4 +1,4 @@
--- A cave made from a seed as a distance field: a room inside rounded walls, rocks that grow from its walls, floor and ceiling, and rocks that float in it. The distance of a point to the nearest rock is what climbing creatures read: `normal` points away from the rock, `project` puts a point at a height over it, `clear` tells whether a straight leap fits, and the rocks draw as polygons.
+-- A cave made from a seed as a distance field: a room inside rounded walls, rocks that grow from its walls, floor and ceiling, and rocks that float in it. The distance of a point to the nearest rock is what climbing creatures read: `normal` points away from the rock, `project` puts a point at a height over it, `walk` moves a point along the surface, `clear` tells whether a straight leap fits, and the rocks draw as polygons.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
@@ -8,6 +8,7 @@ local Cave = haylen.class('Cave')
 Cave.wallRadius = 90
 Cave.blend = 14
 Cave.outlinePoints = 72
+Cave.walkStep = 32
 Cave.colors = {rock = '#FF4C4361', edge = '#FF8A7AA8', air = '#FF121722', glow = '#FF1E2738'}
 
 -- The room spans `width` by `height` around the origin.
@@ -101,6 +102,18 @@ function Cave:project(x, y, height)
         local distance = self:distance(x, y) - height
         local nx, ny = self:normal(x, y)
         x, y = x - nx * distance, y - ny * distance
+    end
+    return x, y
+end
+
+-- Walks from a point along the surface under it by `distance`, forward along the direction that has the rock on its right for a positive distance, and returns where it ends `height` over the rock, so a point ahead of a creature stays on the rock it stands on even past a bump or a corner.
+function Cave:walk(x, y, distance, height)
+    local steps = math.max(1, math.ceil(math.abs(distance) / Cave.walkStep))
+    local step = distance / steps
+    x, y = self:project(x, y, height)
+    for _ = 1, steps do
+        local nx, ny = self:normal(x, y)
+        x, y = self:project(x - ny * step, y + nx * step, height)
     end
     return x, y
 end

@@ -506,8 +506,8 @@ Worlds, people, critters, monsters and climbing creatures made from a seed and d
 | `GEN-002` | Characters | A crowd of people built from a seed, with their build, skin, hair, face, clothes and accessories, whose arms bend on chains to wave at the pointer. |  |
 | `GEN-003` | Critters | Bugs built from a seed with their bodies, colors, legs, antennae and wings, which scurry on legs that step in turns and flee the pointer. |  |
 | `GEN-004` | Monsters | Monsters built from a seed with their bodies, eyes, mouths, horns, spikes, legs and tentacles, which walk or float and roar when touched. |  |
-| `GEN-005` | Spider | A spider with eight legs on chains that climbs the floor, walls, ceiling and rocks of a generated cave and leaps between rocks on a thread. |  |
-| `GEN-006` | Centipede | A centipede whose body follows its head on a chain around the rocks of a generated cave, up walls and across the ceiling, on dozens of stepping legs. |  |
+| `GEN-005` | Spider | A spider seen from the side, with eight high-kneed legs that grow from its cephalothorax and step in an alternating wave, that climbs the floor, walls, ceiling and rocks of a generated cave the shorter way around and leaps between rocks on a thread. |  |
+| `GEN-006` | Centipede | A centipede whose body follows its head on a chain the shorter way around the rocks of a generated cave, up walls and across the ceiling, turning around over its own body, on dozens of legs that step in a wave from head to tail. |  |
 
 #### Tiled (TLD)
 

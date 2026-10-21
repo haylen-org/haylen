@@ -1,4 +1,4 @@
--- Critters: bugs made from a seed and seen from above, each with its own kind of body, colors and pattern, four, six or eight legs, antennae and sometimes wings. Every leg is a chain of two segments that keeps its foot planted until the gait moves it, the legs of each side alternate between two groups, and the antennae reach ahead and sway. The bugs wander, keep apart and run from the pointer, and a press scares the ones near it.
+-- Critters: bugs made from a seed and seen from above, each with its own kind of body, colors and pattern, the six legs of an insect on its thorax, antennae and sometimes wings. Every leg is a chain of two segments that keeps its foot planted until the gait moves it, the legs step in two tripods, the front and back legs of one side with the middle leg of the other, and the antennae reach ahead and sway. The bugs wander, keep apart and run from the pointer, and a press scares the ones near it.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -11,12 +11,13 @@ local Leg = require('categories.procedural.leg')
 local Critters = haylen.class('Critters', AlgorithmTest)
 
 Critters.code = [[
-local bug = {kind = pick({'beetle', 'ant', 'ladybug'}), pairs = random:integer(2, 4), hue = random:nextFloat(), wings = random:chance(0.3)}
+local bug = {kind = pick({'beetle', 'ant', 'ladybug'}), hue = random:nextFloat(), wings = random:chance(0.3)}  -- Six legs on the thorax.
 leg.restX, leg.restY = hipX + sideX * 26 * size + forwardX * reach, hipY + sideY * 26 * size + forwardY * reach
-Leg.gait(bug.legs, 10 * size, velocityX * 0.08, velocityY * 0.08)  -- Left and right legs take turns.
+Leg.gait(bug.legs, 10 * size, velocityX * 0.08, velocityY * 0.08)  -- Two tripods of legs take turns.
 if distance(bug, pointer) < 220 then bug.heading = angleAwayFrom(pointer) bug.speed = 260 end]]
 
 Critters.kinds = {'beetle', 'ant', 'ladybug'}
+Critters.legPairs = 3
 Critters.bounds = {-760, -400, 1520, 800}
 Critters.outline = '#FF141210'
 
@@ -65,7 +66,6 @@ function Critters.make(random)
     local bug = {x = random:range(bounds[1] + 60, bounds[1] + bounds[3] - 60), y = random:range(bounds[2] + 60, bounds[2] + bounds[4] - 60), heading = random:range(0, math.pi * 2)}
     bug.size = random:range(1.1, 1.8)
     bug.kind = Critters.kinds[random:integer(1, #Critters.kinds)]
-    bug.pairs = bug.kind == 'ant' and 3 or random:integer(2, 4)
     local hue = random:nextFloat()
     bug.shell = m.fromHsv(hue, random:range(0.45, 0.8), random:range(0.55, 0.9))
     bug.dark = m.fromHsv(hue, 0.6, 0.25)
@@ -78,12 +78,12 @@ function Critters.make(random)
     bug.fear = 0
     local size = bug.size
     bug.legs = {}
-    for pair = 1, bug.pairs do
-        local along = ((pair - 1) / math.max(1, bug.pairs - 1) - 0.5) * 14 * size
+    for pair = 1, Critters.legPairs do
+        local along = ((pair - 1) / (Critters.legPairs - 1) - 0.5) * 14 * size
         for side = -1, 1, 2 do
             local leg = Leg({x = bug.x, y = bug.y, lengths = {14 * size, 17 * size}, group = (pair + (side > 0 and 1 or 0)) % 2 + 1, stepTime = 0.09, lift = 3, widths = {3.5 * size, 3 * size, 2 * size}, color = bug.dark, layer = 2})
             leg.along, leg.side = along, side
-            leg.reach = ((pair - 1) / math.max(1, bug.pairs - 1) - 0.5) * 34 * size
+            leg.reach = ((pair - 1) / (Critters.legPairs - 1) - 0.5) * 34 * size
             bug.legs[#bug.legs + 1] = leg
         end
     end
