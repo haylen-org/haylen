@@ -28,7 +28,7 @@ function Counters:enter()
     self.lineIndex = 0
     self.coin = TweenTest.icon('coin')
     self.portrait = assets.texture('interface/images/avatar-ana.png', {filter = 'linear'})
-    self.panel = graphics2d.newNineSlice(assets.texture('nine-slice/panel.png', {filter = 'linear'}), {borders = {28, 28, 28, 28}})
+    self.panel = graphics2d.newNineSlice(assets.texture('nine-slice/parchment.png', {filter = 'linear'}), {borders = {50, 50, 50, 50}})
     self:frame({
         hint = 'Add points with the button, R or the X button, and show the next line with the second button.',
         code = kCode,
