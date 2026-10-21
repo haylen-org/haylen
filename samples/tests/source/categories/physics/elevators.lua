@@ -1,4 +1,4 @@
--- Lifts on prismatic joints whose motors carry crates and a character from `physics2d.newMover` between three floors, called with the buttons beside their doors, from inside them or from the panel.
+-- Lifts on prismatic joints whose motors carry crates and a hero from `physics2d.newMover` between three floors of a building, called with the buttons beside their doors, from inside them or from the panel.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -6,15 +6,17 @@ local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
-local parts = require('categories.physics.parts')
+local Hero = require('categories.physics.hero')
+local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local Elevators = haylen.class('Elevators', PhysicsTest)
 
 Elevators.code = [[
-local lift = world:createJoint('prismatic', rail, platform, {ax = -300, ay = 400, axisX = 0, axisY = 1, enableLimit = true, lower = -560, upper = 0, enableMotor = true, maxMotorForce = 2e6})
-lift.motorSpeed = m.clamp((floorTop - 390 - lift.translation) * 5, -220, 220)  -- Slows down at the floor.
-local hero = physics2d.newMover(world, {x = -650, y = 353, radius = 18, height = 72, stepHeight = 12, snapDistance = 10, pushForce = 30000})
+local lift = world:createJoint('prismatic', rail, platform, {ax = -300, ay = 370, axisY = 1, enableLimit = true, lower = -560, upper = 0, enableMotor = true, maxMotorForce = 2e6})
+lift.motorSpeed = m.clamp((floorTop - 360 - lift.translation) * 5, -220, 220)  -- Slows down at the floor.
+local hero = physics2d.newMover(world, {x = -650, y = 323, radius = 18, height = 72, stepHeight = 12, snapDistance = 10, pushForce = 30000})
 local velocity = hero:clip(moveX * 320, fall + 1800 * step)
 hero:move(velocity.x * step, velocity.y * step)
 local riding = hero.groundBody == platform]]
@@ -24,14 +26,16 @@ Elevators.actions = {
     {name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
 }
 
-local kFloors = {390, 110, -170}
-local kShafts = {-300, 300}
-local kShaftWidth = 160
-local kLiftSpeed = 220
-local kWalkSpeed = 320
-local kJumpSpeed = 640
-local kGravity = 1800
-local kWait = 2
+Elevators.floors = {360, 80, -200}
+Elevators.shafts = {-300, 300}
+Elevators.shaftWidth = 160
+Elevators.liftSpeed = 220
+Elevators.walkSpeed = 320
+Elevators.jumpSpeed = 640
+Elevators.gravity = 1800
+Elevators.wait = 2
+Elevators.heroHeight = 72
+Elevators.names = {'the left lift', 'the right lift'}
 
 function Elevators:enter()
     self:frame{
@@ -54,57 +58,62 @@ function Elevators:enter()
         },
     }
     self.auto = true
+    self.heroArt = Hero(Elevators.heroHeight)
     self:build()
 end
 
 function Elevators:build()
     self.world = physics2d.newWorld()
     local building = self.world:createBody({type = 'static'})
-    local half = kShaftWidth / 2
-    for index, top in ipairs(kFloors) do
-        local thickness = index == 1 and 40 or 20
-        for _, span in ipairs({{-780, kShafts[1] - half}, {kShafts[1] + half, kShafts[2] - half}, {kShafts[2] + half, 780}}) do
-            parts.box(building, span[2] - span[1], thickness, {offsetX = (span[1] + span[2]) / 2, offsetY = top + thickness / 2})
+    local half = Elevators.shaftWidth / 2
+    local shafts, floors = Elevators.shafts, Elevators.floors
+    self.slabs = {}
+    for index, top in ipairs(floors) do
+        local thickness = index == 1 and 60 or 24
+        for _, span in ipairs({{-780, shafts[1] - half}, {shafts[1] + half, shafts[2] - half}, {shafts[2] + half, 780}}) do
+            building:addBox(span[2] - span[1], thickness, {offsetX = (span[1] + span[2]) / 2, offsetY = top + thickness / 2})
+            self.slabs[#self.slabs + 1] = {(span[1] + span[2]) / 2, top + thickness / 2, span[2] - span[1], thickness}
         end
     end
-    for _, x in ipairs(kShafts) do
-        parts.box(building, kShaftWidth, 10, {offsetX = x, offsetY = 425})
+    for _, x in ipairs(shafts) do
+        building:addBox(Elevators.shaftWidth, 10, {offsetX = x, offsetY = floors[1] + 30})
     end
-    parts.box(building, 20, 860, {offsetX = -790})
-    parts.box(building, 20, 860, {offsetX = 790})
+    building:addBox(24, 800, {offsetX = -792, offsetY = floors[1] - 380})
+    building:addBox(24, 800, {offsetX = 792, offsetY = floors[1] - 380})
     local rail = self.world:createBody({type = 'static', y = -420})
-    self.statics = {building}
 
     self.lifts = {}
-    for _, x in ipairs(kShafts) do
-        local platform = self.world:createBody({x = x, y = kFloors[1] + 10})
-        parts.box(platform, kShaftWidth - 10, 20, {friction = 1})
-        parts.paint(platform, '#FFFFB74D')
-        local joint = self.world:createJoint('prismatic', rail, platform, {ax = x, ay = kFloors[1] + 10, axisX = 0, axisY = 1, enableLimit = true, lower = kFloors[3] - kFloors[1], upper = 0, enableMotor = true, maxMotorForce = 2e6})
-        self.lifts[#self.lifts + 1] = {body = platform, joint = joint, x = x, target = 1, wait = kWait}
+    for _, x in ipairs(shafts) do
+        local platform = self.world:createBody({x = x, y = floors[1] + 10})
+        platform:addBox(Elevators.shaftWidth - 10, 20, {friction = 1})
+        Look.dress(platform, 'steel')
+        local joint = self.world:createJoint('prismatic', rail, platform, {ax = x, ay = floors[1] + 10, axisX = 0, axisY = 1, enableLimit = true, lower = floors[3] - floors[1], upper = 0, enableMotor = true, maxMotorForce = 2e6})
+        self.lifts[#self.lifts + 1] = {body = platform, joint = joint, x = x, target = 1, wait = Elevators.wait}
     end
 
     self.crates = {}
-    for _, spot in ipairs({{-300, kFloors[1]}, {300, kFloors[1]}, {-560, kFloors[1]}, {0, kFloors[2]}, {560, kFloors[3]}}) do
+    for _, spot in ipairs({{-300, floors[1]}, {300, floors[1]}, {-560, floors[1]}, {0, floors[2]}, {560, floors[3]}}) do
         local crate = self.world:createBody({x = spot[1], y = spot[2] - 26})
-        parts.box(crate, 50, 50, {friction = 0.8})
+        crate:addBox(50, 50, {friction = 0.8})
+        Look.dress(crate, 'woodCrate')
         self.crates[#self.crates + 1] = crate
     end
 
-    self.hero = physics2d.newMover(self.world, {x = -650, y = kFloors[1] - 37, radius = 18, height = 72, stepHeight = 12, snapDistance = 10, pushForce = 30000})
+    self.hero = physics2d.newMover(self.world, {x = -650, y = floors[1] - 37, radius = 18, height = Elevators.heroHeight, stepHeight = 12, snapDistance = 10, pushForce = 30000})
     self.fall, self.jump, self.lastMoveY = 0, false, 0
 end
 
 function Elevators:send(index, direction)
     local lift = self.lifts[index]
-    lift.target = m.clamp(lift.target + direction, 1, #kFloors)
+    lift.target = m.clamp(lift.target + direction, 1, #Elevators.floors)
 end
 
--- Returns the floor whose top is nearest to `y`, such as the top of a lift or the feet of the character.
+-- Returns the floor whose top is nearest to `y`, such as the top of a lift or the feet of the hero.
 function Elevators.nearestFloor(y)
+    local floors = Elevators.floors
     local best = 1
-    for index, top in ipairs(kFloors) do
-        if math.abs(top - y) < math.abs(kFloors[best] - y) then
+    for index, top in ipairs(floors) do
+        if math.abs(top - y) < math.abs(floors[best] - y) then
             best = index
         end
     end
@@ -112,14 +121,14 @@ function Elevators.nearestFloor(y)
 end
 
 function Elevators:liftFloor(lift)
-    return Elevators.nearestFloor(kFloors[1] + lift.joint.translation)
+    return Elevators.nearestFloor(Elevators.floors[1] + lift.joint.translation)
 end
 
 function Elevators:heroFloor()
     return Elevators.nearestFloor(self.hero.y + self.hero.height / 2)
 end
 
--- Up or down inside a lift sends it a floor, and up beside a door calls the lift of that shaft to the floor of the character.
+-- Up or down inside a lift sends it a floor, and up beside a door calls the lift of that shaft to the floor of the hero.
 function Elevators:press(direction)
     for index, lift in ipairs(self.lifts) do
         if self.hero.groundBody == lift.body then
@@ -128,7 +137,7 @@ function Elevators:press(direction)
         end
     end
     for _, lift in ipairs(self.lifts) do
-        if direction > 0 and math.abs(self.hero.x - lift.x) < kShaftWidth then
+        if direction > 0 and math.abs(self.hero.x - lift.x) < Elevators.shaftWidth then
             lift.target = self:heroFloor()
         end
     end
@@ -139,12 +148,21 @@ function Elevators:exit()
     input.clearVirtual()
 end
 
+function Elevators:describe(index)
+    local lift = self.lifts[index]
+    local floor = self:liftFloor(lift)
+    if floor == lift.target then
+        return string.format('%s waits on floor %d', Elevators.names[index], floor)
+    end
+    return string.format('%s rides to floor %d', Elevators.names[index], lift.target)
+end
+
 function Elevators:update(dt)
     Elevators.super.update(self, dt)
     if input.pressed('reset') then
         self:build()
     end
-    local _, moveY = input.vector('move')
+    local moveX, moveY = input.vector('move')
     if moveY < -0.6 and self.lastMoveY >= -0.6 then
         self:press(1)
     elseif moveY > 0.6 and self.lastMoveY <= 0.6 then
@@ -154,21 +172,28 @@ function Elevators:update(dt)
     if input.pressed('jump') then
         self.jump = true
     end
-    local left, right = self.lifts[1], self.lifts[2]
-    local riding = (self.hero.groundBody == left.body and ', riding the left lift') or (self.hero.groundBody == right.body and ', riding the right lift') or ''
-    self:status(string.format('Left lift at floor %d going to %d, right lift at floor %d going to %d, character on floor %d%s, step %.2f ms', self:liftFloor(left), left.target, self:liftFloor(right), right.target, self:heroFloor(), riding, self:stepTime()))
+    self.heroArt:update(dt, moveX * Elevators.walkSpeed, self.hero.grounded)
+    local riding = ''
+    for index, lift in ipairs(self.lifts) do
+        if self.hero.groundBody == lift.body then
+            riding = string.format(' and rides %s', Elevators.names[index])
+        end
+    end
+    local left = self:describe(1)
+    self:status(string.format('%s%s, %s, and the hero stands on floor %d%s.', left:sub(1, 1):upper(), left:sub(2), self:describe(2), self:heroFloor(), riding))
 end
 
--- Each motor runs toward the translation of its target floor and slows down as it gets there, and the character moves before the world steps.
+-- Each motor runs toward the translation of its target floor and slows down as it gets there, and the hero moves before the world steps.
 function Elevators:fixedUpdate(step)
+    local floors = Elevators.floors
     for index, lift in ipairs(self.lifts) do
-        local offset = kFloors[lift.target] - kFloors[1] - lift.joint.translation
-        lift.joint.motorSpeed = m.clamp(offset * 5, -kLiftSpeed, kLiftSpeed)
+        local offset = floors[lift.target] - floors[1] - lift.joint.translation
+        lift.joint.motorSpeed = m.clamp(offset * 5, -Elevators.liftSpeed, Elevators.liftSpeed)
         if index == 2 and self.auto and math.abs(offset) < 2 then
             lift.wait = lift.wait - step
             if lift.wait <= 0 then
-                lift.wait = kWait
-                lift.direction = (lift.target == #kFloors and -1) or (lift.target == 1 and 1) or lift.direction or 1
+                lift.wait = Elevators.wait
+                lift.direction = (lift.target == #floors and -1) or (lift.target == 1 and 1) or lift.direction or 1
                 lift.target = lift.target + lift.direction
             end
         end
@@ -176,43 +201,63 @@ function Elevators:fixedUpdate(step)
 
     local hero = self.hero
     local moveX = input.vector('move')
-    local fall = self.fall + kGravity * step
+    local fall = self.fall + Elevators.gravity * step
     if self.jump and hero.grounded then
-        fall = -kJumpSpeed
+        fall = -Elevators.jumpSpeed
     end
     self.jump = false
-    local velocity = hero:clip(moveX * kWalkSpeed, fall)
+    local velocity = hero:clip(moveX * Elevators.walkSpeed, fall)
     hero:move(velocity.x * step, velocity.y * step)
     self.fall = velocity.y
     self:simulate(self.world, step)
 end
 
-function Elevators:draw(area)
-    local half = kShaftWidth / 2
+-- The building: a papered back wall with the shafts dark behind it, concrete floors, a cage around each lift on its cables and a call panel beside every door with an arrow that lights while the lift comes.
+function Elevators:drawBuilding()
+    local unit = Look.pixel
+    local half = Elevators.shaftWidth / 2
+    local floors = Elevators.floors
+    graphics2d.drawRect({-780, floors[3] - 220, 1560, floors[1] - floors[3] + 260}, '#FFF3E3C4', {layer = -20})
+    for x = -780, 780, 120 do
+        graphics2d.drawLine(x, floors[3] - 220, x, floors[1], 3 * unit, '#FFE6D2AE', {layer = -19})
+    end
+    for _, slab in ipairs(self.slabs) do
+        Look.block(slab[1], slab[2], slab[3], slab[4], 'slate', -8)
+    end
+    for _, x in ipairs({-792, 792}) do
+        Look.block(x, floors[1] - 380, 24, 800, 'brick', -7)
+    end
     for _, lift in ipairs(self.lifts) do
-        graphics2d.drawRect({lift.x - half, -430, kShaftWidth, 860}, '#FF1F2430', {layer = -2})
-        graphics2d.drawLine(lift.x, -430, lift.x, lift.body.y - 10, 3, '#FF90A4AE', {layer = -1})
-        for floor, top in ipairs(kFloors) do
-            local lit = lift.target == floor and self:liftFloor(lift) ~= floor
-            local side = lift.x < 0 and -half - 30 or half + 30
-            graphics2d.drawRect({lift.x + side - 10, top - 70, 20, 28}, '#FF37474F', {layer = -1})
-            graphics2d.drawCircle(lift.x + side, top - 56, 6, lit and '#FFFFD54F' or '#FF607D8B', {layer = -1})
+        graphics2d.drawRect({lift.x - half, floors[3] - 220, Elevators.shaftWidth, floors[1] - floors[3] + 260}, '#FF3A3F5E', {layer = -18})
+        local top = lift.body.y - 10
+        for _, side in ipairs({-half + 14, half - 14}) do
+            Look.line(lift.x + side, floors[3] - 220, lift.x + side, top - 110, 3 * unit, '#FF9AA5BE', -6)
+        end
+        Look.block(lift.x, top - 110, Elevators.shaftWidth - 6, 14, 'iron', 1)
+        for _, side in ipairs({-half + 4, half - 4}) do
+            Look.block(lift.x + side, top - 55, 8, 110, 'iron', 1)
+        end
+        for floor, level in ipairs(floors) do
+            local calling = lift.target == floor and self:liftFloor(lift) ~= floor
+            local side = lift.x < 0 and -half - 34 or half + 34
+            Look.block(lift.x + side, level - 64, 26, 40, 'iron', -5)
+            graphics2d.drawCircle(lift.x + side, level - 64, 8, calling and '#FFFFC93C' or '#FF5A6070', {layer = -4})
         end
     end
-    for floor, top in ipairs(kFloors) do
-        Elevators.caption(string.format('Floor %d', floor), -770, top - 40)
+end
+
+function Elevators:draw(area)
+    Scenery.sky(self.camera, Elevators.floors[1])
+    Scenery.ground(Elevators.floors[1])
+    self:drawBuilding()
+    for floor, top in ipairs(Elevators.floors) do
+        self:label(string.format('Floor %d', floor), -700, top - 40, {size = 20})
     end
-    parts.drawAll(self.statics)
     for _, lift in ipairs(self.lifts) do
-        parts.draw(lift.body, {layer = 1})
+        Look.draw(lift.body, {layer = 1})
     end
-    parts.drawAll(self.crates, {layer = 1})
-    local hero = self.hero
-    local reach = hero.height / 2 - hero.radius
-    graphics2d.drawRect({hero.x - hero.radius, hero.y - reach, hero.radius * 2, reach * 2}, '#FF4DD0E1', {layer = 2})
-    graphics2d.drawCircle(hero.x, hero.y - reach, hero.radius, '#FF4DD0E1', {layer = 2})
-    graphics2d.drawCircle(hero.x, hero.y + reach, hero.radius, '#FF4DD0E1', {layer = 2})
-    graphics2d.drawCircle(hero.x + 6, hero.y - reach, 4, '#FF263238', {layer = 3})
+    Look.drawAll(self.crates, {layer = 1})
+    self.heroArt:draw(self.hero.x, self.hero.y + Elevators.heroHeight / 2, 2)
 end
 
 return Elevators
