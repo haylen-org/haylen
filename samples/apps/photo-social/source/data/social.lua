@@ -191,9 +191,10 @@ function Social.describe(post)
     post.authorName = author.handle
     post.avatar = author.avatar
     post.captionMarkup = '[b]' .. author.handle .. '[/b]  ' .. post.text
-    post.likesText = post.likes == 1 and '1 like' or Social.thousands(post.likes) .. ' likes'
-    post.commentsText = post.commentCount == 0 and 'Add a comment' or (post.commentCount == 1 and 'View the comment' or 'View all ' .. post.commentCount .. ' comments')
     post.ageText = post.age == 'Now' and 'Now' or post.age .. ' ago'
+    post.metaText = post.place .. ' · ' .. post.ageText
+    post.likeCountText = post.likes == 0 and 'Like' or Social.thousands(post.likes)
+    post.commentCountText = post.commentCount == 0 and 'Comment' or Social.thousands(post.commentCount)
     post.likeIcon = post.liked and 'icons/heart-filled.svg' or 'icons/heart.svg'
     post.likeColor = post.liked and 'danger' or 'text'
     post.saveIcon = Social.saved[post.id] and 'icons/bookmark-filled.svg' or 'icons/bookmark.svg'

@@ -19,8 +19,8 @@ function Profile:enter()
     self.person = person
     self.section = 'posts'
     local space = Style.space
-    local list = ui.collection{id = 'grid', grow = 1, layout = 'grid', lanes = 3, cellAspect = 1, gap = space.xxs, padding = {0, 0, space.xl, 0}, rememberFocus = true,
-        types = {head = {template = self:headTemplate(), span = 'full', interactive = false, estimatedSize = 470}, tile = Widgets.tile()},
+    local list = ui.collection{id = 'grid', grow = 1, layout = 'grid', lanes = 3, cellAspect = 1, gap = space.xs, padding = {0, space.s, space.xl, space.s}, rememberFocus = true,
+        types = {head = {template = self:headTemplate(), span = 'full', interactive = false, estimatedSize = 560}, tile = Widgets.tile()},
         onClick = function(event)
             self:headAction(event.part)
         end,
@@ -60,7 +60,7 @@ function Profile:layoutChanged(wide)
     end
 end
 
--- The head of the profile, the first cell of the grid, across all three columns.
+-- The head of the profile, the first cell of the grid, across all three columns: the face inside the ring of the app, the name and the bio in the middle, and the counts on a soft card.
 function Profile:headTemplate()
     local space = Style.space
     local function count(part, text)
@@ -69,14 +69,17 @@ function Profile:headTemplate()
             ui.label{text = text, font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'},
         }
     end
-    return ui.column{gap = space.m, padding = {space.l, space.m, space.l, space.m},
-        ui.row{gap = space.l,
-            ui.avatar{part = 'avatar', bind = {image = 'avatar'}, size = 132},
-            ui.row{gap = space.xs, grow = 1, count('posts', 'Posts'), count('followers', 'Followers'), count('following', 'Following')},
+    return ui.column{gap = space.m, padding = {space.l, space.xxs, space.l, space.xxs},
+        ui.stack{width = 156, height = 156, align = 'center',
+            ui.image{image = 'images/ring.svg', align = 'stretch', accessibilityHidden = true},
+            ui.avatar{part = 'avatar', bind = {image = 'avatar'}, size = 132, align = 'center'},
         },
-        ui.column{gap = space.xxs,
-            ui.label{part = 'name', bind = {text = 'name'}, text = '', font = 'button'},
-            ui.label{part = 'bio', bind = {text = 'bio'}, text = ''},
+        ui.column{gap = space.xxs, align = 'stretch',
+            ui.label{part = 'name', bind = {text = 'name'}, text = '', font = 'heading', textAlign = 'center', align = 'stretch'},
+            ui.label{part = 'bio', bind = {text = 'bio'}, text = '', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+        },
+        ui.panel{padding = {space.s, space.xs}, align = 'stretch', style = {colors = {panel = Style.color.mist}, metrics = {panelRadius = Style.radius.card}},
+            ui.row{gap = space.xs, align = 'stretch', count('posts', 'Posts'), count('followers', 'Followers'), count('following', 'Following')},
         },
         ui.row{gap = space.s,
             ui.button{part = 'primary', bind = {text = 'primaryText', variant = 'primaryVariant'}, text = '', grow = 1},

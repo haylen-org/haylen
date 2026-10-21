@@ -21,7 +21,7 @@ function Explore:enter()
             end}},
         }),
         Shell.centered(980, ui.column{gap = 0,
-            ui.collection{id = 'grid', grow = 1, layout = 'grid', lanes = 3, cellAspect = 1, gap = space.xxs, padding = {0, 0, space.xl, 0}, rememberFocus = true, types = {tile = Widgets.tile()},
+            ui.collection{id = 'grid', grow = 1, layout = 'grid', lanes = 3, cellAspect = 1, gap = space.xs, padding = {0, space.s, space.xl, space.s}, rememberFocus = true, types = {tile = Widgets.tile()},
                 onSelect = function(event)
                     Shell.open(require('screens.post'), {post = event.item})
                 end,

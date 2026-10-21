@@ -16,15 +16,17 @@ Widgets.placeholder = Photos.look('lake-sunrise', 'full')
 Widgets.faceSize = 120
 Widgets.postMenu = {
     {id = 'profile', text = 'Go to the profile', image = Shell.icon('home')},
-    {id = 'send', text = 'Send to a friend', image = Shell.icon('send')},
+    {id = 'send', text = 'Send to a friend', image = Shell.icon('share')},
     {id = 'save', text = 'Save or unsave', image = Shell.icon('bookmark')},
 }
+-- The buttons under a picture: an icon with its count, flat and close together.
+Widgets.countButton = {metrics = {controlPaddingX = Style.space.s, contentSpacing = Style.space.xs}}
 
--- The template of a post: the author, the picture or the pages of pictures, the buttons, the likes, the caption and the way to the comments. A post on a wide window sits in a card with rounded pictures, and on a phone the picture runs from edge to edge.
+-- The template of a post: the author with the place and the time, the caption, the picture or the pages of pictures as rounded prints, and the buttons with the counts of likes and comments. A post on a wide window sits in a card.
 function Widgets.post(wide, gallery)
     local space = Style.space
     local gutter = wide and space.l or space.m
-    local radius = wide and Style.radius.photo or 0
+    local radius = Style.radius.photo
     local picture
     if gallery then
         picture = ui.carousel{part = 'gallery', aspectRatio = 1, align = 'stretch', arrows = wide, accessibilityLabel = 'Pictures of the post',
@@ -38,36 +40,30 @@ function Widgets.post(wide, gallery)
             ui.icon{part = 'pop', image = Shell.icon('heart-filled'), size = 168, color = 'onAccent', align = 'center', accessibilityHidden = true},
         }
     end
-    local body = ui.column{gap = 0, padding = wide and {0, 0, space.m, 0} or {0, 0, space.xl, 0},
-        ui.row{gap = space.s, padding = {space.s, gutter - space.xs, space.s, gutter},
+    local body = ui.column{gap = 0, padding = wide and {0, 0, space.xs, 0} or {0, 0, space.l, 0},
+        ui.row{gap = space.s, padding = {space.s, gutter - space.xs, space.xs, gutter},
             ui.imageButton{part = 'face', bind = {image = 'avatar'}, image = Social.me.avatar, scale = Style.size.avatar / Widgets.faceSize, accessibilityLabel = 'Profile of the author'},
             ui.column{gap = 0, grow = 1,
                 ui.button{part = 'author', bind = {text = 'authorName'}, text = '', variant = 'link', align = 'start', height = 40, style = Widgets.nameLink},
-                ui.label{part = 'place', bind = {text = 'place'}, font = 'caption', color = 'textMuted', wrap = false},
+                ui.label{part = 'meta', bind = {text = 'metaText'}, font = 'caption', color = 'textMuted', wrap = false},
             },
             ui.menuButton{part = 'more', icon = Shell.icon('more'), iconColor = 'text', variant = 'icon', items = Widgets.postMenu, accessibilityLabel = 'More'},
         },
-        wide and ui.column{padding = {0, gutter}, picture} or picture,
+        ui.label{part = 'caption', bind = {text = 'text'}, text = '', margin = {0, gutter, space.s, gutter}},
+        ui.column{padding = {0, gutter}, picture},
         ui.row{gap = 0, padding = {space.xs, gutter - space.s, 0, gutter - space.s},
-            ui.button{part = 'like', bind = {icon = 'likeIcon', iconColor = 'likeColor'}, icon = Shell.icon('heart'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Like'},
-            ui.button{part = 'comment', icon = Shell.icon('comment'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Comment'},
-            ui.button{part = 'send', icon = Shell.icon('send'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Send to a friend'},
+            ui.button{part = 'like', bind = {icon = 'likeIcon', iconColor = 'likeColor', text = 'likeCountText'}, text = '', icon = Shell.icon('heart'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Like'},
+            ui.button{part = 'comment', bind = {text = 'commentCountText'}, text = '', icon = Shell.icon('comment'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Comments'},
+            ui.button{part = 'send', text = 'Share', icon = Shell.icon('share'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Send to a friend'},
             ui.spacer{grow = 1},
             ui.button{part = 'save', bind = {icon = 'saveIcon'}, icon = Shell.icon('bookmark'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Save'},
         },
-        ui.column{gap = space.xxs, padding = {0, gutter},
-            ui.label{part = 'likes', bind = {text = 'likesText'}, font = 'button'},
-            ui.richText{part = 'caption', bind = {text = 'captionMarkup'}, text = ''},
-            ui.button{part = 'comments', bind = {text = 'commentsText'}, text = '', variant = 'link', align = 'start', style = Widgets.quietLink},
-            ui.label{part = 'age', bind = {text = 'ageText'}, font = 'caption', color = 'textMuted'},
-        },
     }
     local template = wide and ui.card{padding = {space.s, 0, 0, 0}, body} or body
-    return {template = template, estimatedSize = wide and 980 or 860}
+    return {template = template, estimatedSize = wide and 900 or 820}
 end
 
--- A link in the muted color of the theme, and the name of a person as a link in the color of the text, both without the padding of buttons.
-Widgets.quietLink = {colors = {accentText = 'textMuted', accentHover = 'text'}, metrics = {controlPaddingX = 0}}
+-- The name of a person as a link in the color of the text, without the padding of buttons.
 Widgets.nameLink = {colors = {accentText = 'text', accentHover = 'text'}, metrics = {controlPaddingX = 0}}
 
 -- Hides the heart that pops over the picture of a post, which `Widgets.popHeart` shows for a moment.
@@ -98,7 +94,7 @@ function Widgets.onPostEvent(page, list, event)
     elseif part == 'save' then
         Shell.notify(Social.toggleSave(post) and 'Saved to your collection.' or 'Removed from your collection.')
         list:reload(post.id)
-    elseif part == 'comment' or part == 'comments' then
+    elseif part == 'comment' then
         Shell.open(require('screens.post'), {post = post.id})
     elseif part == 'send' then
         Widgets.askFriend(page, post)
@@ -195,10 +191,10 @@ function Widgets.story()
     }}
 end
 
--- The template of a picture in a grid, with a mark on posts of several pictures.
+-- The template of a picture in a grid, a small rounded print with a mark on posts of several pictures.
 function Widgets.tile()
     return {template = ui.stack{align = 'stretch',
-        ui.image{part = 'photo', bind = {image = 'photo'}, image = Widgets.placeholder, fit = 'cover', align = 'stretch'},
+        ui.image{part = 'photo', bind = {image = 'photo'}, image = Widgets.placeholder, fit = 'cover', align = 'stretch', radius = Style.radius.tile},
         ui.row{align = 'stretch', alignItems = 'start', padding = Style.space.xs, ui.spacer{grow = 1}, ui.icon{part = 'pages', bind = {visible = 'hasPages'}, image = Shell.icon('image'), size = 28, color = 'onAccent', visible = false}},
     }}
 end

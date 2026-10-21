@@ -30,8 +30,8 @@ end
 -- The spacing scale, in steps of four units, for every gap and padding.
 Style.space = {xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48}
 
--- The shapes: photos keep soft corners on wide windows and none on phones, controls are rounded squares and fields and bubbles are rounder.
-Style.radius = {photo = 16, control = 14, field = 26, bubble = 26, card = 24}
+-- The shapes: photos are prints with soft corners, the tiles of a grid a little less round, controls are rounded squares and fields and bubbles are rounder.
+Style.radius = {photo = 16, tile = 10, control = 14, field = 26, bubble = 26, card = 24}
 
 -- The sizes of the parts the screens repeat.
 Style.size = {

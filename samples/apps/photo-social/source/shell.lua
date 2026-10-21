@@ -12,7 +12,7 @@ local Shell = {}
 Shell.tabs = {
     {id = 'home', text = 'Home', icon = 'home', screen = 'screens.home'},
     {id = 'explore', text = 'Explore', icon = 'explore', screen = 'screens.explore'},
-    {id = 'create', text = 'New post', icon = 'add', screen = 'screens.compose-pick', push = true},
+    {id = 'create', text = 'New post', image = 'images/create.svg', screen = 'screens.compose-pick', push = true},
     {id = 'messages', text = 'Messages', icon = 'messages', screen = 'screens.inbox'},
     {id = 'profile', text = 'Profile', screen = 'screens.profile'},
 }
@@ -100,11 +100,14 @@ function Shell.adapt(page)
     end
 end
 
--- The picture of a tab: its icon, filled while it shows, or the face of the person for the profile.
+-- The picture of a tab: its icon, filled while it shows, the round button of a new post in the colors of the app, or the face of the person for the profile.
 function Shell.tabIcon(tab, selected)
     if tab.id == 'profile' then
         local me = require('data.social').me
         return selected and me.avatarRing or me.avatar
+    end
+    if tab.image then
+        return tab.image
     end
     return Shell.icon(tab.icon .. (selected and '-filled' or ''))
 end
@@ -112,10 +115,14 @@ end
 function Shell.tabButton(tab, current, placement)
     local selected = tab.id == current
     local rail = placement == 'rail'
-    -- The face of the profile keeps its colors, and the icons take the color of the text.
+    -- The face of the profile and the button of a new post keep their colors, and the icons take the color of the text. The button of a new post stands out in the bar.
     local iconColor = 'text'
+    local iconSize = 32
     if tab.id == 'profile' then
         iconColor = false
+    elseif tab.image then
+        iconColor = false
+        iconSize = rail and 32 or 48
     end
     local button = ui.button{
         id = placement .. '-' .. tab.id,
@@ -129,7 +136,7 @@ function Shell.tabButton(tab, current, placement)
         height = rail and 64 or Style.size.tabBar - Style.space.s,
         accessibilityLabel = tab.text,
         tooltip = not rail and tab.text or nil,
-        style = {fonts = {button = {size = Style.type.body, bold = selected}}, metrics = {iconSize = 32, controlPaddingX = Style.space.m, contentSpacing = Style.space.m}},
+        style = {fonts = {button = {size = Style.type.body, bold = selected}}, metrics = {iconSize = iconSize, controlPaddingX = Style.space.m, contentSpacing = Style.space.m}},
         onClick = function()
             if not selected or tab.push then
                 Shell.showTab(tab.id)

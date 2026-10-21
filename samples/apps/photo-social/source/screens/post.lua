@@ -41,7 +41,7 @@ function Post:phoneBody()
         ui.collection{id = 'items', grow = 1, gap = 0, padding = {0, 0, Style.space.m, 0},
             types = {post = Widgets.post(false), gallery = Widgets.post(false, true), comment = Widgets.comment()},
             onClick = function(event)
-                if event.part == 'comment' or event.part == 'comments' then
+                if event.part == 'comment' then
                     self.gui:command('draft', 'focus')
                 else
                     Widgets.onPostEvent(self, self.list, event)
@@ -81,30 +81,26 @@ function Post:wideBody()
                     ui.button{id = 'author', text = post.authorName, variant = 'link', align = 'start', height = 40, style = Widgets.nameLink, onClick = function()
                         Widgets.openPerson(post.author)
                     end},
-                    ui.label{text = post.place, font = 'caption', color = 'textMuted', wrap = false},
+                    ui.label{text = post.metaText, font = 'caption', color = 'textMuted', wrap = false},
                 },
             },
             ui.divider{},
             ui.collection{id = 'items', grow = 1, gap = 0, padding = {space.xs, 0}, types = {comment = Widgets.comment()}},
             ui.divider{},
-            ui.row{gap = 0, padding = {space.xs, space.xs, 0, space.xs},
-                ui.button{id = 'like', icon = Shell.icon('heart'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Like', onClick = function()
+            ui.row{gap = 0, padding = {space.xs, space.xs},
+                ui.button{id = 'like', text = '', icon = Shell.icon('heart'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Like', onClick = function()
                     Social.toggleLike(post)
                 end},
-                ui.button{id = 'comment', icon = Shell.icon('comment'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Comment', onClick = function()
+                ui.button{id = 'comment', text = '', icon = Shell.icon('comment'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Comments', onClick = function()
                     self.gui:command('draft', 'focus')
                 end},
-                ui.button{id = 'send', icon = Shell.icon('send'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Send to a friend', onClick = function()
+                ui.button{id = 'send', text = 'Share', icon = Shell.icon('share'), iconColor = 'text', variant = 'toolbar', style = Widgets.countButton, accessibilityLabel = 'Send to a friend', onClick = function()
                     Widgets.askFriend(self, post)
                 end},
                 ui.spacer{grow = 1},
                 ui.button{id = 'save', icon = Shell.icon('bookmark'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Save', onClick = function()
                     Shell.notify(Social.toggleSave(post) and 'Saved to your collection.' or 'Removed from your collection.')
                 end},
-            },
-            ui.column{gap = space.xxs, padding = {0, space.m, space.s, space.m},
-                ui.label{id = 'likes', text = '', font = 'button'},
-                ui.label{id = 'age', text = '', font = 'caption', color = 'textMuted'},
             },
             ui.divider{},
             self:commentBar(),
@@ -151,10 +147,9 @@ function Post:showPost()
     self.list:setItems(self:items())
     self.list:reload(self:items()[1].id)
     if self.wide then
-        self.gui:set('like', {icon = post.likeIcon, iconColor = post.likeColor})
+        self.gui:set('like', {icon = post.likeIcon, iconColor = post.likeColor, text = post.likeCountText})
+        self.gui:set('comment', {text = post.commentCountText})
         self.gui:set('save', {icon = post.saveIcon})
-        self.gui:set('likes', {text = post.likesText})
-        self.gui:set('age', {text = post.ageText})
     end
 end
 
