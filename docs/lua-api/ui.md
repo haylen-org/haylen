@@ -3011,7 +3011,7 @@ On-screen controls drive the virtual buttons and sticks of the action layer, whi
 
 ### ui.touchStick(properties)
 
-A virtual analog stick that sets the virtual stick `action` to a vector of length 0 to 1 while a finger drags it, drawn with the `stickBase` and `stickKnob` surfaces of its theme or [style](#styles) when they have images, and with circles in the theme colors otherwise. Several sticks work at once, each with its own finger. It reports only [the events of every kind](#the-events-of-every-kind).
+A virtual analog stick that sets the virtual stick `action` to a vector of length 0 to 1 while a finger drags it, drawn with the `stickBase` and `stickKnob` surfaces of its theme or [style](#styles) when they have images, and otherwise as a ring in the theme colors around a guide ring where the knob turns, with a knob raised over a soft shadow and rimmed in the accent color. Several sticks work at once, each with its own finger. It reports only [the events of every kind](#the-events-of-every-kind).
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

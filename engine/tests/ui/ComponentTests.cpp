@@ -16,6 +16,7 @@
 
 #include "core/EmbeddedFiles.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Viewport.hpp"
@@ -646,6 +647,21 @@ TEST_F(ComponentTest, DrawsOnlyTheRowsOfAScrolledListInView) {
     };
     // clang-format on
     EXPECT_EQ(count(20), count(200));
+}
+
+// A theme without pictures of the stick draws its base as a ring around a guide ring, and its knob raised with a rim in the accent color.
+TEST_F(ComponentTest, DrawsAFlatStickWithARaisedKnob) {
+    mount(R"({"kind": "column", "children": [{"kind": "touchStick", "id": "stick", "action": "move", "radius": 100}]})");
+    frames();
+    const Theme& theme = getUi().getTheme();
+    int rims = 0;
+    int rings = 0;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        rims += shape.borderColor == theme.getColor(Theme::Color::Accent) && shape.bounds.width == 90.0F ? 1 : 0;
+        rings += shape.borderWidth > 0.0F && shape.bounds.width == 110.0F ? 1 : 0;
+    }
+    EXPECT_EQ(rims, 1);
+    EXPECT_EQ(rings, 1);
 }
 
 TEST_F(ComponentTest, TouchControlsIgnoreFingersWhileDisabled) {

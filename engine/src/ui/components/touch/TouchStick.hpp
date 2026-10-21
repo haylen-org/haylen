@@ -47,6 +47,8 @@ class TouchStick final : public Component {
     }};
 
     [[nodiscard]] math::Vec2 placeCenter(const math::Rect& bounds, math::Vec2 pointer);
+    void drawBase(Context& context, math::Vec2 center, bool pressed) const;
+    void drawKnob(Context& context, math::Vec2 center, float knob, bool pressed) const;
 
     std::string action;
     float radius = 110.0F;
