@@ -123,7 +123,8 @@ class Widgets final {
 
     // Returns the value inside the range, on the nearest multiple of the step from the minimum when the step is above zero.
     [[nodiscard]] static double snap(double value, double minimum, double maximum, double step) noexcept;
-    static void progress(Context& context, const math::Rect& bounds, float value, Tone tone);
+    // Draws a bar filled up to the value and returns the part of the bounds the fill covers, empty while the value is 0.
+    static math::Rect progress(Context& context, const math::Rect& bounds, float value, Tone tone);
     static void spinner(Context& context, math::Vec2 center, float radius, math::Color color);
 
     // Draws the check mark of a check box inside a box of the size, with square ends and a sharp corner.

@@ -428,17 +428,18 @@ double Widgets::snap(double value, double minimum, double maximum, double step) 
     return std::clamp(minimum + std::round((value - minimum) / step) * step, minimum, maximum);
 }
 
-void Widgets::progress(Context& context, const math::Rect& bounds, float value, Tone tone) {
+math::Rect Widgets::progress(Context& context, const math::Rect& bounds, float value, Tone tone) {
     const float amount = std::clamp(value, 0.0F, 1.0F);
     Surfaces::draw(context, Theme::Surface::Track, bounds, context.getColor(Theme::Color::Border), std::nullopt, bounds.height * 0.5F);
     if (amount <= 0.0F) {
-        return;
+        return {};
     }
 
     // The fill stays inside the padding of the track surface, so a framed bar image keeps its frame visible.
     const math::Rect groove = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Track));
     const math::Rect filled = context.mirror({groove.x, groove.y, std::max(groove.width * amount, context.getSurface(Theme::Surface::TrackFill) != nullptr ? 0.0F : groove.height), groove.height}, groove);
     Surfaces::draw(context, Theme::Surface::TrackFill, filled, context.getColor(getToneColors(tone == Tone::Neutral ? Tone::Accent : tone).fill), std::nullopt, groove.height * 0.5F);
+    return filled;
 }
 
 // The stroke is a band along the edge of a circle that reaches half its width past the radius, cut to three quarters of a turn.

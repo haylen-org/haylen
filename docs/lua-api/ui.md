@@ -2283,7 +2283,7 @@ A bar filled up to a value between 0 and 1, drawn with the theme `track` and `tr
 | --- | --- | --- | --- |
 | `value` | number from 0 to 1 | `0` | Filled share of the bar. |
 | `tone` | tone | `'accent'` | Color of the fill. The tone `'neutral'` draws like `'accent'`. |
-| `text` | text | none | Text centered on the bar. |
+| `text` | text | none | Text centered on the bar, in the ink of the tone over the fill and in the `text` color over the empty track, so every letter keeps its contrast wherever the fill ends. |
 
 ```lua
 local ui = require('haylen.ui')

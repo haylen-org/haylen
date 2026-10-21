@@ -453,4 +453,25 @@ TEST_F(LayoutTest, LinesUpTheTracksOfSlidersThatShowTheirValues) {
     EXPECT_EQ(tracks[1], tracks[2]);
 }
 
+// The label of a progress bar draws in the ink of its tone over the fill and in the text color over the empty track, each cut at the edge of the fill, so it reads on both.
+TEST_F(LayoutTest, DrawsTheLabelOfAProgressBarInTwoColorsAtTheEdgeOfItsFill) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "progress", "id": "bar", "width": 600, "value": 0.5, "tone": "success", "text": "Health 50"}]})");
+    frames(2);
+    const Theme& theme = getUi().getTheme();
+    Backend& backend = getUi().getBackend();
+    std::vector<math::Color> colors;
+    for (const Backend::Text& text : backend.getTexts()) {
+        if (backend.getContent(text) == "Health 50") {
+            colors.push_back(text.style.color);
+        }
+    }
+    ASSERT_EQ(colors.size(), 2U);
+    EXPECT_EQ(colors[0], theme.getColor(Theme::Color::OnSuccess));
+    EXPECT_EQ(colors[1], theme.getColor(Theme::Color::Text));
+    getUi().getBackend().makeCurrent();
+    const math::Rect bar = getBounds(*gui, "bar");
+    EXPECT_TRUE(hasClip(math::Rect::fromMinMax(bar.getMin(), {bar.getCenter().x, bar.getBottom()})));
+    EXPECT_TRUE(hasClip(math::Rect::fromMinMax({bar.getCenter().x, bar.y}, bar.getMax())));
+}
+
 } // namespace haylen::ui
