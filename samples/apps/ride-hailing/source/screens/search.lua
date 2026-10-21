@@ -18,7 +18,7 @@ function Search:enter()
         Shell.header('Plan your ride'),
         Shell.centered(Style.size.reading, ui.column{gap = 0, padding = {space.m, space.l, space.s, space.l},
             ui.row{gap = space.m, align = 'stretch',
-                ui.column{gap = 0, width = 28, padding = {22, 0},
+                ui.column{gap = 0, width = 28, padding = {22, 0}, align = 'stretch',
                     ui.icon{image = Shell.icon('dot'), size = 28, color = 'text', align = 'center'},
                     ui.divider{vertical = true, grow = 1, width = 4, align = 'center', color = 'borderStrong', style = {metrics = {borderWidth = 2.5}}},
                     ui.icon{image = Shell.icon('square'), size = 28, color = 'text', align = 'center'},

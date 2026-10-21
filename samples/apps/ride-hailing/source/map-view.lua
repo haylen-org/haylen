@@ -16,7 +16,7 @@ local MapView = haylen.class('MapView')
 MapView.margin = 96
 MapView.minZoom = 0.2
 -- The most points of the screen a block of the city spans, so a short route never fills a large window with a few blocks.
-MapView.maxBlockPoints = 200
+MapView.maxBlockPoints = 110
 
 function MapView:init()
     self.camera = graphics2d.newCamera()

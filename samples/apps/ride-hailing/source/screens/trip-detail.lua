@@ -33,12 +33,7 @@ function TripDetail:enter()
     local bounds = MapView.bounds(self.route, 600)
     local zoom = math.min((TripDetail.mapSize[1] - 160) / bounds.width, (TripDetail.mapSize[2] - 160) / bounds.height)
     self.map.camera.zoom = {zoom, zoom}
-    -- The view keeps inside the city, so the edge of the map never shows beside a route near it.
-    local city = Rides.city
-    local halfWidth, halfHeight = TripDetail.mapSize[1] / zoom / 2, TripDetail.mapSize[2] / zoom / 2
-    local x = math.max(halfWidth, math.min(city.width - halfWidth, bounds.x + bounds.width / 2))
-    local y = math.max(halfHeight, math.min(city.height - halfHeight, bounds.y + bounds.height / 2))
-    self.map.camera.position = {x, y}
+    self.map.camera.position = {TripDetail.center(bounds.x + bounds.width / 2, TripDetail.mapSize[1] / zoom / 2, Rides.city.width), TripDetail.center(bounds.y + bounds.height / 2, TripDetail.mapSize[2] / zoom / 2, Rides.city.height)}
     local kind = Rides.kind(trip.kind)
     local service = trip.cancelled and 0 or trip.fare * 0.08
     self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
@@ -47,7 +42,7 @@ function TripDetail:enter()
             Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
                 ui.image{image = self.mapName, align = 'stretch', aspectRatio = TripDetail.mapSize[1] / TripDetail.mapSize[2], radius = Style.radius.sheet, fit = 'cover', accessibilityLabel = 'Map of the route'},
                 ui.row{gap = space.m, align = 'stretch',
-                    ui.column{gap = 0, width = 28, padding = {14, 0},
+                    ui.column{gap = 0, width = 28, padding = {14, 0}, align = 'stretch',
                         ui.icon{image = Shell.icon('dot'), size = 28, color = 'text', align = 'center'},
                         ui.divider{vertical = true, grow = 1, width = 4, align = 'center', color = 'borderStrong', style = {metrics = {borderWidth = 2.5}}},
                         ui.icon{image = Shell.icon('square'), size = 28, color = 'text', align = 'center'},
@@ -82,6 +77,14 @@ function TripDetail:enter()
             }),
         },
     })
+end
+
+-- The center of the view along one axis: around the route, kept inside the city so its edge never shows beside a route near it, or in the middle of the city when the view is wider than the city.
+function TripDetail.center(route, half, size)
+    if half * 2 >= size then
+        return size / 2
+    end
+    return math.max(half, math.min(size - half, route))
 end
 
 function TripDetail:costRow(text, value, font)
