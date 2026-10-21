@@ -113,7 +113,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-002` | Atlases and sheets | A hash atlas with trimmed frames, an array atlas with tags and a slice, and a grid sheet. |  |
 | `SPR-003` | Animation | Clips, loop modes, frame and finish events and a queue of clips on an animator. |  |
 | `SPR-004` | Sprite batches | Many sprites of one texture kept in C++ and drawn in one batch, added, changed and removed. |  |
-| `SPR-005` | Static batches | A painted map of meadows, lakes, beaches and dirt roads baked once to the GPU and drawn every frame without uploads, under clouds that drift with parallax offsets. |  |
+| `SPR-005` | Static batches | A painted map baked once to the GPU and drawn every frame without uploads, under clouds that drift with parallax offsets. |  |
 | `SPR-006` | Layers and y-sort | Heroes among trees sorted by the y they stand on, a selected hero raised above every layer, and a row that sort ids keep in place. |  |
 | `SPR-007` | Pooled bullets | A bullet hell whose projectiles come from an object pool and draw in one batch. |  |
 | `SPR-008` | Bouncing bunnies | From a few to many thousands of sprites with float buffers or one table each, with the frame rate. |  |
@@ -122,7 +122,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes and text of 
 | `SPR-011` | Text | Sizes, colors, outlines, shadows, alignment, wrapping, anchors, rotation and measuring. |  |
 | `SPR-012` | Vector images | SVG icons in many sizes, a swarm of hundreds that turn and an icon that grows, rasterized on worker threads into an atlas. |  |
 | `SPR-013` | Recoloring by parts | One adventurer in many outfits from a base image and a mask of four parts, and a crowd of a sprite batch in one draw call. |  |
-| `SPR-014` | Tile layers | An endless painted world kept by chunks of tile layers that stream in around the camera and bake only when their cells change, with dirt paths painted by their corners. |  |
+| `SPR-014` | Tile layers | An endless painted world in chunks of tile layers that stream in around the camera and bake only when their cells change. |  |
 | `SPR-015` | Strokes and meshes | Lines drawn with the pointer and stroked with joins, caps, widths, colors, dashes and a tiled texture, and a kept mesh that waves in place. |  |
 | `SPR-016` | Groups and masks | A round portrait and a shaped card drawn through masks, fog of war cut open around the pointer and shapes that fade as one group. |  |
 | `SPR-017` | Images and runtime atlases | A badge composed from images off the frame thread, sprites drawn from separate textures or one atlas packed at run time, and mipmaps. |  |

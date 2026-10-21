@@ -33,9 +33,10 @@ end
 
 -- Returns the grass tile of a cell, mostly plain with some flowers scattered without a pattern, the same for a cell every time.
 function Terrain.grassAt(column, row)
-    local hash = column * 374761393 + row * 668265263
-    hash = (hash ~ (hash >> 13)) * 1274126177
-    hash = (hash ~ (hash >> 16)) & 0xFFFF
+    local hash = column * 0x9E3779B97F4A7C15 + row * 0xC2B2AE3D27D4EB4F
+    hash = (hash ~ (hash >> 30)) * 0xBF58476D1CE4E5B9
+    hash = (hash ~ (hash >> 27)) * 0x94D049BB133111EB
+    hash = ((hash ~ (hash >> 31)) >> 40) & 0xFFFF
     return hash < Terrain.flowers * 0x10000 and 1 or 0
 end
 
