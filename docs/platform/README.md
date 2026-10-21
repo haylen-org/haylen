@@ -9,7 +9,7 @@ Platform covers the window and the device, the services every platform offers an
 | Desktop | Frameless, transparent, always-on-top and click-through windows, their placement and monitors, menus and quitting. | [`desktop.md`](desktop.md) |
 | Native code | Native libraries called from Lua, their callbacks and threads, packaging them with an app and integrating SDKs with a C API. | [`native.md`](native.md) |
 | Platform bridge | The JSON bridge between Lua and native code: calls, events, bytes, timeouts, screens and the native side on every platform. | [`platform-bridge.md`](platform-bridge.md) |
-| Plugins | Native plugins: the package, `plugin.json`, their Lua API, requirements, the Apple, Android and web parts and the demo plugin. | [`plugins.md`](plugins.md) |
+| Plugins | Native plugins from `haylen.py plugin new` to publishing: `plugin.json`, the Lua API, the services of the engine, screens, requirements, the Apple, Android, web and desktop parts and the demo plugin. | [`plugins.md`](plugins.md) |
 
 ## Lua API
 
