@@ -11,10 +11,9 @@ local ImageEffects = haylen.class('ImageEffects', Test)
 
 ImageEffects.code = [[
 local picture = assets.load('interface/images/landscape.png', 'image')
-local copy = picture:applyAsync({
-    {effect = 'blur', radius = 3},
-    {effect = 'adjust', brightness = 0, contrast = 1.15, saturation = 1.4, hue = 0},
-}):await()  -- On the task pool, so the frame never waits.
+local copy = picture:applyAsync({  -- On the task pool, so the frame never waits.
+    {effect = 'blur', radius = 3}, {effect = 'adjust', brightness = 0, contrast = 1.15, saturation = 1.4, hue = 0},
+}):await()
 texture = graphics.newTexture(copy, {filter = 'linear'})
 local outlined = sprite:applyAsync({{effect = 'outline', color = '#FF1E2A44', thickness = 4}}):await()]]
 

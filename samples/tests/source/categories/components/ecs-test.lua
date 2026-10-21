@@ -10,14 +10,11 @@ local Test = require('harness.test')
 local EcsTest = haylen.class('EcsTest', ComponentTest)
 
 EcsTest.code = [[
-local Ecs = require('ecs')  -- One file, copied from samples/tests.
-local world = Ecs.new()
-world:spawn({position = {x = 0, y = 0}, velocity = {x = 120, y = -40}, ball = {radius = 12}})
-world:system('move', {'position', 'velocity'}, function(entity, position, velocity, dt)
-    position.x, position.y = position.x + velocity.x * dt, position.y + velocity.y * dt
-end)
+local world = require('ecs').new()  -- One file, copied from samples/tests.
+local entity = world:spawn({position = {x = 0, y = 0}, velocity = {x = 120, y = -40}, ball = {radius = 12}})
+world:system('move', {'position', 'velocity'}, function(_, p, v, dt) p.x, p.y = p.x + v.x * dt, p.y + v.y * dt end)
 world:add(entity, 'gravity', {strength = 900})  -- Gravity now acts on it.
-world:update(dt)
+world:update(dt)  -- Runs every system over the entities that hold what it needs.
 world:destroy(entity)]]
 
 -- An aging ball fades no further than this, so it stays visible until it ends.

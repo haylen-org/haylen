@@ -18,9 +18,8 @@ HealthBarTest.code = [[
 local HealthBar = require('health-bar')  -- One file, copied from samples/tests.
 local bar = HealthBar.new(100, {width = 210, height = 26, tick = 25, shield = 0, hideWhenFull = false})
 bar:damage(18)  -- The shield takes it first, then the health.
-bar:heal(10)
-bar:setShield(40)
-bar:update(dt)
+bar:heal(10); bar:setShield(40)
+bar:update(dt)  -- Eases the fill and the trail toward the health.
 bar:draw(enemy.x, enemy.y - 220)]]
 
 function HealthBarTest:enter()

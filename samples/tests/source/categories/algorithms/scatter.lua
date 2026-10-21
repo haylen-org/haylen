@@ -13,10 +13,9 @@ local Scatter = haylen.class('Scatter', AlgorithmTest)
 
 Scatter.code = [[
 local points = procedural2d.scatterAsync({  -- Points of x, y and a type from 1.
-    region = {polygon = island}, method = 'poisson', spacing = 22, maximumSpacing = 90,
-    densityMap = {seed = 1, frequency = 0.004}, weights = {3, 2, 1, 2},
+    region = {polygon = island}, method = 'poisson', spacing = 22, maximumSpacing = 90, weights = {3, 2, 1, 2},
+    densityMap = {seed = 1, frequency = 0.004}, biome = {seed = 8, frequency = 0.003},
     exclude = {{center = {-300, -60}, radius = 110}, {60, -200, 220, 150}},
-    biome = {seed = 8, frequency = 0.003},
     layers = {{minimum = -1, maximum = 0, weights = {5, 3, 0, 0}}, {minimum = 0, maximum = 1, weights = {0, 1, 2, 4}}},
 }):await()]]
 
