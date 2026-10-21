@@ -43,12 +43,12 @@ ui.setTheme(ui.addTheme({
         cellRadius = 8,
     },
     fonts = {
-        body = {size = 22},
-        caption = {size = 18},
-        button = {size = 22},
-        heading = {size = 28},
-        title = {size = 36},
-        monospace = {size = 20},
+        body = {size = 19},
+        caption = {size = 15},
+        button = {size = 19},
+        heading = {size = 24},
+        title = {size = 31},
+        monospace = {size = 14},
     },
 }, 'dark'))
 

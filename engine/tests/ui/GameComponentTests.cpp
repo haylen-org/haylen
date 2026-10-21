@@ -606,7 +606,7 @@ TEST_F(GameComponentTest, ShrinksTheLabelsOfACrampedSegmentedControl) {
         const math::Rect box = laid->lines.front().box.translated(text.origin);
         EXPECT_GE(box.x, right) << content;
         EXPECT_LE(box.getRight(), control.getRight()) << content;
-        EXPECT_LT(text.style.size, getUi().getContext().getEmSize(Theme::Font::Button)) << content;
+        EXPECT_LT(text.style.size, getUi().getContext().getFontSize(Theme::Font::Button)) << content;
         right = box.getRight();
     }
 }

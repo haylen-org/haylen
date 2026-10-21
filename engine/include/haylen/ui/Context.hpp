@@ -152,7 +152,7 @@ class Context final {
     void carryItem() noexcept;
     [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
     [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
-    // The size of a font role in UI units, which the text scale multiplies.
+    // The size of the em square of a font role in UI units, which the text scale multiplies.
     [[nodiscard]] float getFontSize(Theme::Font role) const noexcept;
 
     // How much larger the text of the UI draws than the sizes of the theme and the styles, such as the text size the user set in the system.
@@ -166,8 +166,8 @@ class Context final {
     [[nodiscard]] bool isFontItalic(Theme::Font role) const noexcept;
     [[nodiscard]] ImFont* getFont(Theme::Font role) const;
 
-    // The size of the em square of a font role, for text that draws beside ImGui at the size of its widgets, such as rich text.
-    [[nodiscard]] float getEmSize(Theme::Font role) const;
+    // The height of the face of a font role from its ascent to its descent at the size of the role, which is the size ImGui draws the role at.
+    [[nodiscard]] float getFontHeight(Theme::Font role) const;
 
     // Returns the text a value shows: its literal, or its key translated into the current language, which the context keeps until the next frame begins.
     [[nodiscard]] std::string_view getText(const TextValue& value);

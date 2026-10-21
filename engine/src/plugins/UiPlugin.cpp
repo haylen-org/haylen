@@ -571,7 +571,11 @@ void UiPlugin::applyTheme(bool highContrast, bool reducedTransparency) {
     backend->makeCurrent();
     styledPoints = backend->getPointsPerUnit();
     theme.applyTo(ImGui::GetStyle(), styledPoints);
-    ImGui::GetIO().FontDefault = backend->getFont(theme.getFont(ui::Theme::Font::Body).font);
+
+    // The windows of ImGui draw in the body font at the size of its em square, which ImGui measures from the ascent to the descent of the face.
+    const ui::Theme::FontStyle& body = theme.getFont(ui::Theme::Font::Body);
+    ImGui::GetIO().FontDefault = backend->getFont(body.font);
+    ImGui::GetStyle().FontSizeBase = backend->getFontHeight(body.font, body.size);
     context->setTheme(theme);
 }
 

@@ -18,6 +18,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -433,7 +434,7 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     test::EngineFixture fixture({{"content/ui/panel.png", std::string(panel.begin(), panel.end())}});
     fixture.runLua("ui = require('haylen.ui')");
     EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeMetric('caretWidth')"), "#FF4C7DFF 64.0 2.0");
-    EXPECT_EQ(fixture.lua("local font = ui.themeFont('title') return font.font .. ' ' .. font.size .. ' ' .. tostring(ui.themeSurface('panel')) .. ' ' .. ui.themeImageFilter()"), "default 56.0 nil nearest");
+    EXPECT_EQ(fixture.lua("local font = ui.themeFont('title') return font.font .. ' ' .. font.size .. ' ' .. tostring(ui.themeSurface('panel')) .. ' ' .. ui.themeImageFilter()"), "default 48.0 nil nearest");
 
     // clang-format off
     EXPECT_EQ(fixture.lua(R"(
@@ -541,8 +542,8 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     EXPECT_EQ(fixture.lua("local role = ui.themeFont('heading') return role.font .. ' ' .. tostring(role.bold) .. ' ' .. tostring(role.italic)"), "story true false");
     EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('plain').width - screen:bounds('rich').width")), 0.0F, 2.0F);
 
-    // A Japanese character comes from the fallback and advances by one em of the default font, 2048 units of its 2400 from ascent to descent.
-    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('japanese').width")), 3.0F * 30.0F * 2048.0F / 2400.0F, 1.0F);
+    // A Japanese character comes from the fallback and advances by one em, the size of the body.
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('japanese').width")), 3.0F * 26.0F, 1.0F);
 
     // The bold face of the heading is another font, so the same text takes another width than in the regular face.
     const std::string bold = fixture.lua("return screen:bounds('heading').width");
@@ -555,6 +556,43 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
     EXPECT_NE(plugin.getFontFamily(fixture.engine(), "story"), nullptr);
     EXPECT_EQ(plugin.getFontFamily(fixture.engine(), "missing"), nullptr);
+}
+
+// A size names the em square of every font, so a Japanese character that falls back advances by the size of its role whatever the ascent and descent of the face, and the lines of a face that reaches higher and lower grow taller instead.
+TEST_F(UiLuaFontTest, SizesFontRolesByTheirEmSquare) {
+    test::EngineFixture fixture({{"content/fonts/cjk.ttf", readTestFont("mplus-1p-regular.ttf")}, {"content/fonts/serif.ttf", readTestFont("crimson-text-regular.ttf")}});
+    // clang-format off
+    fixture.runLua(R"(
+        assets = require('haylen.assets')
+        graphics = require('haylen.graphics')
+        graphics2d = require('haylen.graphics2d')
+        ui = require('haylen.ui')
+        local cjk = assets.font('fonts/cjk.ttf')
+        ui.addFont('sans', graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {cjk}}))
+        ui.addFont('serif', graphics.newFontFamily({regular = assets.font('fonts/serif.ttf'), fallbacks = {cjk}}))
+        ui.setTheme(ui.addTheme({name = 'pair', fonts = {body = {font = 'sans', size = 24}, caption = {font = 'serif', size = 24}}}))
+        screen = ui.mount(ui.column{
+            ui.label{id = 'sansJapanese', text = '日本語', align = 'start'},
+            ui.label{id = 'serifJapanese', text = '日本語', font = 'caption', align = 'start'},
+            ui.label{id = 'sans', text = 'Harbor', align = 'start'},
+            ui.label{id = 'serif', text = 'Harbor', font = 'caption', align = 'start'},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('sansJapanese').width")), 72.0F, 1.0F);
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('serifJapanese').width")), 72.0F, 1.0F);
+
+    // The default font spans 2400 of its 2048 units to the em from ascent to descent, and Crimson Text 1331 of its 1024, both without a line gap.
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('sans').height")), 24.0F * 2400.0F / 2048.0F, 0.01F);
+    EXPECT_NEAR(std::stof(fixture.lua("return screen:bounds('serif').height")), 24.0F * 1331.0F / 1024.0F, 0.01F);
+    EXPECT_NEAR(std::stof(fixture.lua("return ui.themeFont('caption').lineHeight")), 24.0F * 1331.0F / 1024.0F, 0.01F);
+    EXPECT_EQ(fixture.lua("return ui.themeFont('caption').size"), "24.0");
+
+    // The windows of ImGui draw the body at its size too, which ImGui measures from ascent to descent.
+    ui::Backend& backend = fixture.engine().getPlugin<plugins::UiPlugin>().getBackend();
+    backend.makeCurrent();
+    EXPECT_NEAR(ImGui::GetStyle().FontSizeBase, 24.0F * 2400.0F / 2048.0F, 0.01F);
 }
 
 TEST_F(UiLuaTest, DrawsImmediateWindowsInsideScenes) {

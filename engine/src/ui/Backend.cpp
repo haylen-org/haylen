@@ -347,13 +347,13 @@ math::Rect Backend::getLiftedSafeRect() const noexcept {
 }
 
 // ImGui only parses a font when it first draws with it, so broken data is caught here while the caller can still hear about it.
-float Backend::getEmRatio(const std::string& name, std::span<const std::uint8_t> data) {
+float Backend::readHeight(const std::string& name, std::span<const std::uint8_t> data) {
     stbtt_fontinfo info;
     const int offset = data.size() < kFontHeaderSize ? -1 : stbtt_GetFontOffsetForIndex(data.data(), 0);
     if (offset < 0 || stbtt_InitFont(&info, data.data(), offset) == 0) {
         throw std::runtime_error("The font \"" + name + "\" is not a TrueType or OpenType font.");
     }
-    return stbtt_ScaleForPixelHeight(&info, 1.0F) / stbtt_ScaleForMappingEmToPixels(&info, 1.0F);
+    return stbtt_ScaleForMappingEmToPixels(&info, 1.0F) / stbtt_ScaleForPixelHeight(&info, 1.0F);
 }
 
 ImFont* Backend::addFont(const std::string& name, FontFiles files) {
@@ -363,14 +363,14 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
     }
 
     // Every file is checked before any reaches ImGui, so a broken one registers nothing.
-    Typeface typeface{.emRatio = getEmRatio(name, files.regular)};
+    (void)readHeight(name, files.regular);
     for (const std::vector<std::uint8_t>* face : {&files.bold, &files.italic, &files.boldItalic}) {
         if (!face->empty()) {
-            (void)getEmRatio(name, *face);
+            (void)readHeight(name, *face);
         }
     }
     for (const std::vector<std::uint8_t>& fallback : files.fallbacks) {
-        (void)getEmRatio(name, fallback);
+        (void)readHeight(name, fallback);
     }
 
     // ImGui reads the font data for as long as the atlas lives, so the bytes stay owned here, and every face shares the fallbacks.
@@ -378,18 +378,24 @@ ImFont* Backend::addFont(const std::string& name, FontFiles files) {
     for (std::vector<std::uint8_t>& fallback : files.fallbacks) {
         fallbacks.emplace_back(fontData.emplace_back(std::move(fallback)));
     }
-    typeface.regular = addFace(name, std::move(files.regular), fallbacks);
-    typeface.bold = files.bold.empty() ? nullptr : addFace(name, std::move(files.bold), fallbacks);
-    typeface.italic = files.italic.empty() ? nullptr : addFace(name, std::move(files.italic), fallbacks);
-    typeface.boldItalic = files.boldItalic.empty() ? nullptr : addFace(name, std::move(files.boldItalic), fallbacks);
+    Typeface typeface{.regular = addFace(name, std::move(files.regular), fallbacks)};
+    if (!files.bold.empty()) {
+        typeface.bold = addFace(name, std::move(files.bold), fallbacks);
+    }
+    if (!files.italic.empty()) {
+        typeface.italic = addFace(name, std::move(files.italic), fallbacks);
+    }
+    if (!files.boldItalic.empty()) {
+        typeface.boldItalic = addFace(name, std::move(files.boldItalic), fallbacks);
+    }
     fonts.emplace(name, typeface);
-    return typeface.regular;
+    return typeface.regular.font;
 }
 
 // ImGui draws each fallback at the size of the face it merges into, measured from ascent to descent, so a fallback scales by how much its em square differs from the em square of the face.
-ImFont* Backend::addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks) {
+Backend::Face Backend::addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks) {
     std::vector<std::uint8_t>& data = fontData.emplace_back(std::move(bytes));
-    const float faceRatio = getEmRatio(name, data);
+    const float height = readHeight(name, data);
     ImFontConfig config;
     config.FontDataOwnedByAtlas = false;
     ImFont* font = ImGui::GetIO().Fonts->AddFontFromMemoryTTF(data.data(), static_cast<int>(data.size()), kBaseFontSize, &config);
@@ -398,36 +404,36 @@ ImFont* Backend::addFace(const std::string& name, std::vector<std::uint8_t> byte
         merged.FontDataOwnedByAtlas = false;
         merged.MergeMode = true;
         merged.DstFont = font;
-        merged.ExtraSizeScale = faceRatio / getEmRatio(name, fallback);
+        merged.ExtraSizeScale = readHeight(name, fallback) / height;
         ImGui::GetIO().Fonts->AddFontFromMemoryTTF(fallback.data(), static_cast<int>(fallback.size()), kBaseFontSize, &merged);
     }
-    return font;
+    return {.font = font, .height = height};
 }
 
-ImFont* Backend::getFont(std::string_view name, bool bold, bool italic) const {
+const Backend::Face& Backend::findFace(std::string_view name, bool bold, bool italic) const {
     const auto found = fonts.find(name);
     if (found == fonts.end()) {
         throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
     }
     const Typeface& typeface = found->second;
-    if (bold && italic && typeface.boldItalic != nullptr) {
+    if (bold && italic && typeface.boldItalic.font != nullptr) {
         return typeface.boldItalic;
     }
-    if (bold && typeface.bold != nullptr) {
+    if (bold && typeface.bold.font != nullptr) {
         return typeface.bold;
     }
-    if (italic && typeface.italic != nullptr) {
+    if (italic && typeface.italic.font != nullptr) {
         return typeface.italic;
     }
     return typeface.regular;
 }
 
-float Backend::getEmSize(std::string_view name, float size) const {
-    const auto found = fonts.find(name);
-    if (found == fonts.end()) {
-        throw std::invalid_argument("The UI has no font named \"" + std::string(name) + "\".");
-    }
-    return size * found->second.emRatio;
+ImFont* Backend::getFont(std::string_view name, bool bold, bool italic) const {
+    return findFace(name, bold, italic).font;
+}
+
+float Backend::getFontHeight(std::string_view name, float size, bool bold, bool italic) const {
+    return size * findFace(name, bold, italic).height;
 }
 
 void Backend::handleEvent(const platform::Event& event, const graphics::Viewport& viewport) {

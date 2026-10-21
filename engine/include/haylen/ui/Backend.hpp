@@ -201,8 +201,8 @@ class Backend final {
     // Returns the face of a font for a style, which is the regular face for a style the font has no face for.
     [[nodiscard]] ImFont* getFont(std::string_view name, bool bold = false, bool italic = false) const;
 
-    // ImGui sizes a font by its height from ascent to descent, so this returns the size of the em square of the regular face at a UI size, which text drawn beside ImGui, such as rich text, takes to match it.
-    [[nodiscard]] float getEmSize(std::string_view name, float size) const;
+    // ImGui sizes a font by the height of a face from its ascent to its descent, so this returns that height for the face of a style at the size of its em square, which is the size ImGui draws it at.
+    [[nodiscard]] float getFontHeight(std::string_view name, float size, bool bold = false, bool italic = false) const;
     [[nodiscard]] bool hasFont(std::string_view name) const {
         return fonts.contains(name);
     }
@@ -225,13 +225,18 @@ class Backend final {
   private:
     struct Recovery;
 
-    // The faces of a UI font, null for a style it has no face for, and how many times its em square fits in the height of its regular face.
+    // A face of a UI font and its height from ascent to descent in em squares.
+    struct Face {
+        ImFont* font = nullptr;
+        float height = 1.0F;
+    };
+
+    // The faces of a UI font, without a font for a style it has no face for.
     struct Typeface {
-        ImFont* regular = nullptr;
-        ImFont* bold = nullptr;
-        ImFont* italic = nullptr;
-        ImFont* boldItalic = nullptr;
-        float emRatio = 1.0F;
+        Face regular;
+        Face bold;
+        Face italic;
+        Face boldItalic;
     };
 
     // ImGui copies the data of a callback command into the draw list byte by byte, so a command carries the index of its function instead of the function.
@@ -288,7 +293,7 @@ class Backend final {
     [[nodiscard]] static platform::Window::Cursor toCursor(ImGuiMouseCursor value) noexcept;
     [[nodiscard]] static graphics::Image toImage(ImTextureData& texture);
     [[nodiscard]] static math::Color toColor(ImU32 value) noexcept;
-    [[nodiscard]] static float getEmRatio(const std::string& name, std::span<const std::uint8_t> data);
+    [[nodiscard]] static float readHeight(const std::string& name, std::span<const std::uint8_t> data);
     [[nodiscard]] static Backend& getOwner(ImGuiContext* context);
     [[nodiscard]] static const char* getClipboardText(ImGuiContext* context);
     static void setClipboardText(ImGuiContext* context, const char* text);
@@ -297,7 +302,8 @@ class Backend final {
     static void runChildCall(const ImDrawList* list, const ImDrawCmd* command);
     static void runDraws(const ImDrawList* list, const ImDrawCmd* command);
 
-    ImFont* addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
+    [[nodiscard]] Face addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
+    [[nodiscard]] const Face& findFace(std::string_view name, bool bold, bool italic) const;
     void handlePointer(const platform::Event& event, const graphics::Viewport& viewport);
     void handleTextAction(const platform::Event& event);
     void feedGamepad(const input::Input& input, const NavigationInput& navigation);

@@ -152,7 +152,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const math::Rect whole = context.mirror(math::Rect::fromMinMax({padded.x + options.reserveStart, padded.y}, {std::max(padded.x + options.reserveStart, padded.getRight() - options.reserveEnd), padded.getBottom()}), padded);
     const math::Rect inner = barShown ? Scrollbar::getContentBox(context, barArea, whole, false) : whole;
     const float paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 0.5F;
-    const float fontSize = context.getFontSize(Theme::Font::Body);
+    const float fontSize = context.getFontHeight(Theme::Font::Body);
     const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
     const math::Rect spaced = multiline ? whole.inset({paddingX, paddingY, paddingX, paddingY}) : whole.inset({paddingX, 0.0F, paddingX, 0.0F});
     const math::Rect area = barShown ? Scrollbar::getContentBox(context, barArea, spaced, false) : spaced;

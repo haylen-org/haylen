@@ -58,7 +58,7 @@ The screens are scenes of `source/screens/` built on the base of `source/page.lu
 | Part | Rule |
 | --- | --- |
 | Palette | Night `#0B0A12` with surfaces `#17151F` and `#221F2D`, text `#F5F3FF` and `#A19DB5`, violet `#8B5CFF` for the buttons and the low bars of the visualizer, pink `#FF4D9D` for its high bars, a yellow `#FFD24A` focus ring, and the colors of the genres in the covers, the tiles of the search and the glow behind each screen. |
-| Type scale | Kanit, in its regular and semibold faces. Captions 13.5 points, body 16.5, labels 16 in semibold, headings 23, titles 32 and the names of a collection or an artist 44 on wide windows, in points of the em square, which `source/style.lua` turns into the heights the theme takes. |
+| Type scale | Kanit, in its regular and semibold faces. Captions 18 units, body 22, labels 21 in semibold, headings 31, titles 43 and the names of a collection or an artist 59 on wide windows, sizes of the em square, which the theme takes as they are, about 13.5, 16.5, 16, 23, 32 and 44 points. |
 | Spacing scale | Steps of 4, 8, 12, 16, 24, 32 and 48 UI units. Shelves keep 8 between their covers, pages keep 16 at their sides on a phone and 32 on a wide window, and sections keep 24 above their titles. |
 | Shapes | Round controls and pills, round play buttons of 56 to 92, artists in circles, covers with small corners of 8 and cards of 14. |
 | Sizes | Covers of 200 in the shelves and up to 560 on the now playing screen, controls 60 tall, the bar of tabs 88 tall, the sidebar 300 wide and the player bar of a desktop 112 tall. |

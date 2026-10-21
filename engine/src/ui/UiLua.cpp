@@ -30,7 +30,10 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/text/Font.hpp"
+#include "haylen/text/FontFamily.hpp"
 #include "haylen/ui/Collection.hpp"
+#include "haylen/ui/Context.hpp"
 #include "haylen/ui/FocusNavigator.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Scaling.hpp"
@@ -708,19 +711,23 @@ int UiLua::removeImage(lua_State* L) {
     return 0;
 }
 
-// Returns a font role of the active theme as `{font, size, bold, italic}`.
+// Returns a font role of the active theme as `{font, size, lineHeight, bold, italic}`, where a line is as tall as one the face of the role lays out at its size.
 int UiLua::themeFont(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Font> role = Theme::fontFromName(name);
     if (!role) {
         return luaL_error(L, "The theme has no font role named \"%s\".", name.c_str());
     }
-    const Theme::FontStyle& style = getPlugin(L).getTheme().getFont(*role);
-    lua_createtable(L, 0, 4);
+    plugins::UiPlugin& plugin = getPlugin(L);
+    const Theme::FontStyle& style = plugin.getTheme().getFont(*role);
+    const text::Font& face = *plugin.getContext().getFontFamily(style.font)->select(style.bold, style.italic, false).font;
+    lua_createtable(L, 0, 5);
     lua::Stack::push(L, style.font);
     lua_setfield(L, -2, "font");
     lua::Stack::push(L, style.size);
     lua_setfield(L, -2, "size");
+    lua::Stack::push(L, face.getLineHeight(style.size));
+    lua_setfield(L, -2, "lineHeight");
     lua::Stack::push(L, style.bold);
     lua_setfield(L, -2, "bold");
     lua::Stack::push(L, style.italic);

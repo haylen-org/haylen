@@ -457,10 +457,11 @@ int ImGuiLua::popId(lua_State* L) {
     return 0;
 }
 
-// Uses a font the UI knows for the next widgets with `pushFont(name, size)`.
+// Uses a font the UI knows for the next widgets with `pushFont(name, size)`, where the size is the size of its em square.
 int ImGuiLua::pushFont(lua_State* L) {
     Backend& backend = requireFrame(L);
-    ImGui::PushFont(backend.getFont(lua::Stack::read<std::string_view>(L, 1)), lua::Stack::read<float>(L, 2));
+    const auto name = lua::Stack::read<std::string_view>(L, 1);
+    ImGui::PushFont(backend.getFont(name), backend.getFontHeight(name, lua::Stack::read<float>(L, 2)));
     return 0;
 }
 

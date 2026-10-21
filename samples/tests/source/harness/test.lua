@@ -101,7 +101,7 @@ function Test:codeCard(source)
     self.codeSource = source
     self.codeTheme = ui.theme()
     local padding = Test.codePadding
-    local height = math.ceil(ui.themeFont('monospace').size * Test.codeLineSpacing * Test.codeLines) + padding[1] * 2
+    local height = math.ceil(ui.themeFont('monospace').lineHeight * Test.codeLineSpacing * Test.codeLines) + padding[1] * 2
     return ui.card{id = 'code-card', height = height, padding = padding, direction = 'leftToRight', ui.scroll{grow = 1, height = 0, ui.richText{id = 'code', text = code.markup(source), font = 'monospace'}}}
 end
 

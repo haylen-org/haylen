@@ -346,7 +346,6 @@ void Theme::setSurface(Surface role, std::optional<Image> value) {
 void Theme::applyTo(ImGuiStyle& style, float pointsPerUnit) const {
     const float barSize = getMetric(Metric::ScrollbarSize);
     const float barPadding = std::ceil(std::max(Scrollbar::getGap(getMetric(Metric::ScrollbarGap), pointsPerUnit), getMetric(Metric::ScrollbarInset)));
-    style.FontSizeBase = getFont(Font::Body).size;
     style.WindowRounding = getMetric(Metric::PanelRadius);
     style.ChildRounding = getMetric(Metric::ControlRadius);
     style.PopupRounding = getMetric(Metric::PanelRadius);

@@ -276,14 +276,17 @@ TEST_F(BackendTest, DrawsMissingCharactersFromFallbacksAtTheEmSize) {
     EXPECT_EQ(backend.getFont("story", true, true), backend.getFont("story", true));
     EXPECT_EQ(backend.getFont("story", false, true), regular);
 
-    // The default font is 2048 units to the em and 2400 from ascent to descent, Crimson Text 1024 to the em and 1331 from ascent to descent, and a Japanese character advances by one em.
-    EXPECT_NEAR(backend.getEmSize("story", 30.0F), 30.0F * 2048.0F / 2400.0F, 0.001F);
+    // ImGui sizes a face by its height from ascent to descent, which spans 2400 of the 2048 units to the em of the default font and 1331 of the 1024 of Crimson Text, and a Japanese character advances by one em in both.
+    EXPECT_NEAR(backend.getFontHeight("story", 24.0F), 24.0F * 2400.0F / 2048.0F, 0.001F);
+    EXPECT_NEAR(backend.getFontHeight("story", 24.0F, true), 24.0F * 1331.0F / 1024.0F, 0.001F);
+    EXPECT_NEAR(backend.getFontHeight("story", 24.0F, false, true), backend.getFontHeight("story", 24.0F), 0.001F);
     // clang-format off
     frame([&] {
-        for (const auto& [face, em] : {std::pair{regular, 30.0F * 2048.0F / 2400.0F}, std::pair{backend.getFont("story", true), 30.0F * 1024.0F / 1331.0F}}) {
+        for (const bool bold : {false, true}) {
+            ImFont* face = backend.getFont("story", bold);
             EXPECT_TRUE(face->IsGlyphInFont(U'日'));
             EXPECT_TRUE(face->IsGlyphInFont(U'☀'));
-            EXPECT_NEAR(face->GetFontBaked(30.0F)->GetCharAdvance(U'日'), em, 0.5F);
+            EXPECT_NEAR(face->GetFontBaked(backend.getFontHeight("story", 24.0F, bold))->GetCharAdvance(U'日'), 24.0F, 0.5F);
         }
         EXPECT_FALSE(backend.getFont(Backend::kDefaultFontName)->IsGlyphInFont(U'日'));
     });

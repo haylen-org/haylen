@@ -74,11 +74,11 @@ DOCUMENT = {
     "imageFilter": "linear",
     "fontFiles": {"lilitaOne": "fonts/lilita-one-regular.ttf"},
     "fonts": {
-        "body": {"font": "lilitaOne", "size": 28},
-        "caption": {"font": "lilitaOne", "size": 22},
-        "button": {"font": "lilitaOne", "size": 30},
-        "heading": {"font": "lilitaOne", "size": 36},
-        "title": {"font": "lilitaOne", "size": 56},
+        "body": {"font": "lilitaOne", "size": 24},
+        "caption": {"font": "lilitaOne", "size": 19},
+        "button": {"font": "lilitaOne", "size": 26},
+        "heading": {"font": "lilitaOne", "size": 31},
+        "title": {"font": "lilitaOne", "size": 49},
     },
     "colors": {
         "window": "#FF1E2138", "panel": "#FF2F3352", "raised": "#FF3A4066", "tooltip": "#F21E2138", "onTooltip": "#FFFFFFFF",

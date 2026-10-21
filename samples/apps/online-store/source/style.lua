@@ -18,17 +18,8 @@ Style.color = {
     star = '#FFE0A526',
 }
 
--- The type scale, in points of the em square, the size people mean by a font size. Titles and prices are set in Crimson Text, a serif, and everything else in Hind, each step about a quarter larger than the one below it.
-Style.points = {caption = 13.5, body = 16.5, label = 15.5, heading = 22, title = 30, display = 40}
--- A UI unit spans three quarters of a point, and the UI sizes a font by its height from ascent to descent, which Hind draws in 1.6 em and Crimson Text in 1.3 em, so the sizes of the theme are the points of the scale turned into that height.
-Style.pointsPerUnit = 0.75
-Style.fontHeight = {sans = 1.601, serif = 1.3}
-Style.serifRoles = {heading = true, title = true, display = true}
-Style.type = {}
-for name, points in pairs(Style.points) do
-    local height = Style.serifRoles[name] and Style.fontHeight.serif or Style.fontHeight.sans
-    Style.type[name] = math.floor(points / Style.pointsPerUnit * height + 0.5)
-end
+-- The type scale, the sizes of the em square that the UI sizes every font by. Titles and prices are set in Crimson Text, a serif, and everything else in Hind, each step about a quarter larger than the one below it.
+Style.type = {caption = 18, body = 22, label = 21, heading = 29, title = 40, display = 53}
 
 -- The spacing scale, in steps of four units, for every gap and padding. The store breathes, so its pages keep wide margins.
 Style.space = {xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48, xxxl = 64}

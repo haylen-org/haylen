@@ -170,8 +170,8 @@ ImFont* Context::getFont(Theme::Font role) const {
     return backend.getFont(getFontName(role), isFontBold(role), isFontItalic(role));
 }
 
-float Context::getEmSize(Theme::Font role) const {
-    return backend.getEmSize(getFontName(role), getFontSize(role));
+float Context::getFontHeight(Theme::Font role) const {
+    return backend.getFontHeight(getFontName(role), getFontSize(role), isFontBold(role), isFontItalic(role));
 }
 
 std::string_view Context::getText(const TextValue& value) {

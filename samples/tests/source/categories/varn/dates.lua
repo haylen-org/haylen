@@ -8,7 +8,7 @@ local VarnTest = require('categories.varn.varn-test')
 local Dates = haylen.class('Dates', VarnTest)
 
 Dates.hint = 'The clock reads "datetime.now()" every frame, in UTC, since the module knows fixed offsets and no time zones. Run again repeats the lesson.'
-Dates.clockSize = 76
+Dates.clockSize = 51
 
 Dates.excerpts = {
     {'Now', [[

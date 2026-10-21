@@ -19,15 +19,8 @@ Style.color = {
     yellow = '#FFFFD24A',
 }
 
--- The type scale, in points of the em square, the size people mean by a font size: large and heavy headings over a quieter body, each step about a third larger than the one below it.
-Style.points = {caption = 13.5, body = 16.5, label = 16, heading = 23, title = 32, display = 44}
--- A UI unit spans three quarters of a point, and the UI sizes a font by its height from ascent to descent, which Kanit draws in 1.5 em, so the sizes of the theme are the points of the scale turned into that height.
-Style.pointsPerUnit = 0.75
-Style.fontHeight = 1.495
-Style.type = {}
-for name, points in pairs(Style.points) do
-    Style.type[name] = math.floor(points / Style.pointsPerUnit * Style.fontHeight + 0.5)
-end
+-- The type scale, the sizes of the em square that the UI sizes every font by: large and heavy headings over a quieter body, each step about a third larger than the one below it.
+Style.type = {caption = 18, body = 22, label = 21, heading = 31, title = 43, display = 59}
 
 -- The spacing scale, in steps of four units, for every gap and padding.
 Style.space = {xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48}

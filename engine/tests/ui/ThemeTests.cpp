@@ -58,7 +58,7 @@ TEST(ThemeTest, ShipsDarkAndLightThemes) {
     EXPECT_EQ(light.getName(), "light");
     EXPECT_NE(dark.getColor(Theme::Color::Window), light.getColor(Theme::Color::Window));
     EXPECT_EQ(dark.getMetric(Theme::Metric::ControlHeight), light.getMetric(Theme::Metric::ControlHeight));
-    EXPECT_EQ(dark.getFont(Theme::Font::Title).size, 56.0F);
+    EXPECT_EQ(dark.getFont(Theme::Font::Title).size, 48.0F);
     EXPECT_EQ(dark.getFont(Theme::Font::Body).font, "default");
     EXPECT_EQ(dark.getSurface(Theme::Surface::Button), nullptr);
     EXPECT_EQ(light.getImageFilter(), graphics::Texture::Filter::Nearest);
@@ -186,7 +186,6 @@ TEST(ThemeTest, SyncsTheImGuiStyle) {
     EXPECT_EQ(style.Colors[ImGuiCol_Text].x, text.r);
     EXPECT_EQ(style.Colors[ImGuiCol_Text].w, text.a);
     EXPECT_EQ(style.Colors[ImGuiCol_CheckMark].z, theme.getColor(Theme::Color::Accent).b);
-    EXPECT_EQ(style.FontSizeBase, theme.getFont(Theme::Font::Body).size);
     EXPECT_EQ(style.WindowRounding, theme.getMetric(Theme::Metric::PanelRadius));
     EXPECT_EQ(style.DisabledAlpha, theme.getMetric(Theme::Metric::DisabledOpacity));
     EXPECT_EQ(style.InputTextCursorSize, theme.getMetric(Theme::Metric::CaretWidth));

@@ -198,10 +198,10 @@ class Theme final {
         FocusRing,
     };
 
-    // The font a role draws with, its size and the style of its face, where a font without a face for the style draws with its regular face.
+    // The font a role draws with, the size of its em square and the style of its face, where a font without a face for the style draws with its regular face.
     struct FontStyle {
         std::string font = "default";
-        float size = 30.0F;
+        float size = 26.0F;
         bool bold = false;
         bool italic = false;
     };
@@ -471,7 +471,7 @@ class Theme final {
         "focusRing",
     };
     // clang-format on
-    static constexpr std::array<float, kFontCount> kFontSizes{30.0F, 24.0F, 30.0F, 38.0F, 56.0F, 26.0F};
+    static constexpr std::array<float, kFontCount> kFontSizes{26.0F, 20.0F, 26.0F, 32.0F, 48.0F, 18.0F};
 
     // The edges and the center of a nine-slice, the pieces a tiled image repeats, and the smallest size a copy of them may have.
     static constexpr std::array<std::size_t, 5> kTiledPieces{1, 3, 4, 5, 7};

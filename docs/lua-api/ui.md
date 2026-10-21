@@ -2143,7 +2143,7 @@ A theme file is a JSON object in the package assets. It starts from a base theme
 | `name` | string | The name of the theme. It is required and not empty. |
 | `colors` | object | [Color roles](#theme-colors) mapped to colors. |
 | `metrics` | object | [Metrics](#theme-metrics) mapped to non-negative numbers in design units. |
-| `fonts` | object | [Font roles](#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional. |
+| `fonts` | object | [Font roles](#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional and the size is the size of the em square. |
 | `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets. The function `ui.loadTheme` registers them, unless a font with that name already exists. |
 | `surfaces` | object | [Surfaces](#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
 | `imageFilter` | string | The texture filter of the pictures components show: `'nearest'`, the default, for pixel art, or `'linear'` for painted art that the screen scales. It covers the pictures of `image`, `icon`, `imageButton`, `avatar`, `circularProgress` and the touch controls. A switch to a theme with another filter loads the pictures again. |
@@ -2388,16 +2388,18 @@ ui.mount(ui.list{height = rowHeight * 5, items = {{id = 'first', text = 'First'}
 
 A font role names a registered font and a size. Every role starts with the built-in font `default` in its regular style. The role `monospace` starts with the built-in font `monospace`, Space Mono, whose characters all take the same width. So code, tables of numbers and clocks line up in columns and keep their width as their digits change. Fonts are sized when drawn, so one registered font serves every role and size.
 
-A role that sets `bold` or `italic` draws with that face of its font, when the font is a family that has it, and with its regular face otherwise. A [`richText`](#uirichtextproperties) of that role starts in that style, as if inside `[b]` or `[i]`. The size of a role is the height of its regular face from ascent to descent. A `richText` draws at the em size that makes it match the other components.
+A role that sets `bold` or `italic` draws with that face of its font, when the font is a family that has it, and with its regular face otherwise. A [`richText`](#uirichtextproperties) of that role starts in that style, as if inside `[b]` or `[i]`.
+
+The size of a role is the size of its em square in UI units. The em square is the square that the designer of a font draws every letter in, and it is what a font size means in every module of the engine and in design tools. So two fonts at one size draw their letters at one scale, whatever their ascents and descents, and a type scale works with any font without converting its sizes. A line of a role is as tall as its face from ascent to descent at that size, plus the line gap of the font. So a font with tall ascenders or deep descenders gets taller lines, not smaller letters. The function [`ui.themeFont`](#uithemefontrole) reports that height as `lineHeight`. The components and the `richText` of a role draw at that size, and the windows of [`haylen.imgui`](imgui.md) take the size of `body`.
 
 | Role | Size | Used for |
 | --- | --- | --- |
-| `body` | `30` | Labels, fields, list rows and most text. |
-| `caption` | `24` | Captions, badges, chips, tooltips and form field labels. |
-| `button` | `30` | Button and tab labels, alert titles and avatar initials. |
-| `heading` | `38` | Section titles, dialog titles and empty state titles. |
-| `title` | `56` | Page header titles. |
-| `monospace` | `26` | The text of color fields, code and columns of numbers. |
+| `body` | `26` | Labels, fields, list rows and most text. |
+| `caption` | `20` | Captions, badges, chips, tooltips and form field labels. |
+| `button` | `26` | Button and tab labels, alert titles and avatar initials. |
+| `heading` | `32` | Section titles, dialog titles and empty state titles. |
+| `title` | `48` | Page header titles. |
+| `monospace` | `18` | The text of color fields, code and columns of numbers. |
 
 A font role with an empty font name or a size of zero raises `A theme font needs a font name and a positive size.`. A font name that is neither registered nor listed in `fontFiles` makes `ui.loadTheme` fail.
 
@@ -2431,13 +2433,13 @@ ui.mount(ui.column{ui.label{text = 'Chapter 1', font = 'heading'}, ui.label{text
 
 ### ui.themeFont(role)
 
-Returns a [font role](#theme-fonts) of the active theme as a table. The field `font` is the registered font name and `size` is the size in design units. The fields `bold` and `italic` are the style of the face the role draws with. An unknown role raises `The theme has no font role named "<role>".`.
+Returns a [font role](#theme-fonts) of the active theme as a table. The field `font` is the registered font name, and `size` is the size of its em square in UI units. The field `lineHeight` is the height of a line of the role at that size. The fields `bold` and `italic` are the style of the face the role draws with. An unknown role raises `The theme has no font role named "<role>".`.
 
 ```lua
 local ui = require('haylen.ui')
 
 local title = ui.themeFont('title')
-print(title.font, title.size, title.bold, title.italic)
+print(title.font, title.size, title.lineHeight, title.bold, title.italic)
 ```
 
 ### Theme surfaces

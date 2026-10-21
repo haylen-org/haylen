@@ -21,9 +21,9 @@
         "tooltipWidth": 360
     },
     "fonts": {
-        "body": {"size": 22},
-        "caption": {"size": 18},
-        "button": {"size": 22},
-        "heading": {"size": 26}
+        "body": {"size": 19},
+        "caption": {"size": 15},
+        "button": {"size": 19},
+        "heading": {"size": 22}
     }
 }

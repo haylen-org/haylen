@@ -450,7 +450,7 @@ scene.push({
 
 ## Rich text in the UI
 
-A `ui.richText` node draws markup in the family of its theme font role. The function `ui.addFont(name, family)` registers a family under a name. When a theme role names it, the node gets real bold, italic and mono faces and fallbacks. The labels and other components of the role draw with the same faces and fallbacks. The node starts in the style of its role, bold or italic when the role asks for it. It draws at the em size that lines its letters up with the labels of the role, since the widgets size a font by its height from ascent to descent.
+A `ui.richText` node draws markup in the family of its theme font role. The function `ui.addFont(name, family)` registers a family under a name. When a theme role names it, the node gets real bold, italic and mono faces and fallbacks. The labels and other components of the role draw with the same faces and fallbacks. The node starts in the style of its role, bold or italic when the role asks for it. It draws at the size of the role, the size of its em square, like the labels of the role.
 
 - Its links are items that take the focus. The pointer, the keyboard and gamepads move to them and activate them, each link is one stop even when it wraps, and the node reports `link` and `linkHover`.
 - Its hints show as tooltips, and its images load through the UI like `ui.image`.

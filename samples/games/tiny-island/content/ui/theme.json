@@ -5,11 +5,11 @@
         "lilita": "fonts/lilita-one-regular.ttf"
     },
     "fonts": {
-        "body": {"font": "lilita", "size": 30},
-        "caption": {"font": "lilita", "size": 24},
-        "button": {"font": "lilita", "size": 34},
-        "heading": {"font": "lilita", "size": 42},
-        "title": {"font": "lilita", "size": 64}
+        "body": {"font": "lilita", "size": 26},
+        "caption": {"font": "lilita", "size": 21},
+        "button": {"font": "lilita", "size": 30},
+        "heading": {"font": "lilita", "size": 37},
+        "title": {"font": "lilita", "size": 56}
     },
     "colors": {
         "window": "#FF1E2138",

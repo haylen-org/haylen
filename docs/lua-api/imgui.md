@@ -1126,7 +1126,7 @@ scene.push({
 
 ### imgui.pushFont(name, size)
 
-Uses the font registered under `name` at `size` for the widgets that follow until `imgui.popFont`. Fonts are registered with `ui.addFont` or listed in the `fontFiles` of a theme, and the built-in fonts are `default` and `monospace`. An unknown name raises `The UI has no font named "<name>".`.
+Uses the font registered under `name` at `size`, the size of its em square in UI units like every font size of the UI, for the widgets that follow until `imgui.popFont`. Fonts are registered with `ui.addFont` or listed in the `fontFiles` of a theme, and the built-in fonts are `default` and `monospace`. An unknown name raises `The UI has no font named "<name>".`.
 
 ```lua
 local imgui = require('haylen.imgui')

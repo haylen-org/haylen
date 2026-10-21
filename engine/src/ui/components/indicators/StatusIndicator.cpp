@@ -28,7 +28,7 @@ void StatusIndicator::render(Context& context, const math::Rect& bounds) {
 }
 
 float StatusIndicator::getDotSize(Context& context) {
-    return context.getFontSize(Theme::Font::Caption) * 0.5F;
+    return Typography::getLineHeight(context, Theme::Font::Caption) * 0.5F;
 }
 
 bool StatusIndicator::describe(Context& context, platform::AccessibilityElement& element) const {

@@ -168,7 +168,7 @@ Toast::Layout Toast::layOut(Context& context, const Content& shown, float width,
     const std::string_view text = context.getText(shown.text);
     const std::string_view action = context.getText(shown.action);
 
-    const float indicator = shown.indicator == Indicator::None ? 0.0F : std::round(context.getFontSize(Theme::Font::Body) * 1.5F);
+    const float indicator = shown.indicator == Indicator::None ? 0.0F : std::round(line * 1.5F);
     const float close = shown.closable ? line : 0.0F;
     const math::Vec2 actionSize = action.empty() ? math::Vec2{} : Typography::measure(context, Theme::Font::Button, action) + math::Vec2{padding, paddingY};
     const float fixed = padding * 2.0F + edge.getHorizontal() + (indicator > 0.0F ? indicator + gap : 0.0F) + (actionSize.x > 0.0F ? actionSize.x + gap : 0.0F) + (close > 0.0F ? close + gap : 0.0F);

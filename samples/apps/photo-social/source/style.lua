@@ -17,15 +17,8 @@ Style.color = {
     heart = '#FFFF3358',
 }
 
--- The type scale, in points of the em square, the size people mean by a font size: each step is about a quarter larger than the one below it, from the captions of times and counts up to the wordmark.
-Style.points = {caption = 13.5, body = 16, label = 15.5, heading = 20, title = 26, display = 32}
--- A UI unit spans three quarters of a point, and the UI sizes a font by its height from ascent to descent, which Poppins draws in 1.4 em, so the sizes of the theme are the points of the scale turned into that height.
-Style.pointsPerUnit = 0.75
-Style.fontHeight = 1.4
-Style.type = {}
-for name, points in pairs(Style.points) do
-    Style.type[name] = math.floor(points / Style.pointsPerUnit * Style.fontHeight + 0.5)
-end
+-- The type scale, the sizes of the em square that the UI sizes every font by: each step is about a quarter larger than the one below it, from the captions of times and counts up to the wordmark.
+Style.type = {caption = 18, body = 21, label = 21, heading = 26, title = 35, display = 43}
 
 -- The spacing scale, in steps of four units, for every gap and padding.
 Style.space = {xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48}

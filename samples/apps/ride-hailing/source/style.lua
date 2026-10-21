@@ -35,15 +35,8 @@ Style.map = {
     bridge = '#FFFFFFFF',
 }
 
--- The type scale, in points of the em square, the size people mean by a font size: clear and compact, with large numbers for times and prices, each step about a third larger than the one below it.
-Style.points = {caption = 14, body = 17, label = 17, heading = 24, title = 32, display = 48}
--- A UI unit spans three quarters of a point, and the UI sizes a font by its height from ascent to descent, which Barlow draws in 1.2 em, so the sizes of the theme are the points of the scale turned into that height.
-Style.pointsPerUnit = 0.75
-Style.fontHeight = 1.2
-Style.type = {}
-for name, points in pairs(Style.points) do
-    Style.type[name] = math.floor(points / Style.pointsPerUnit * Style.fontHeight + 0.5)
-end
+-- The type scale, the sizes of the em square that the UI sizes every font by: clear and compact, with large numbers for times and prices, each step about a third larger than the one below it.
+Style.type = {caption = 19, body = 23, label = 23, heading = 32, title = 43, display = 64}
 
 -- The spacing scale, in steps of four units, for every gap and padding.
 Style.space = {xxs = 4, xs = 8, s = 12, m = 16, l = 24, xl = 32, xxl = 48}

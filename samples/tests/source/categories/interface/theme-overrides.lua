@@ -9,7 +9,7 @@ local ThemeOverrides = haylen.class('ThemeOverrides', Test)
 
 ThemeOverrides.code = [[
 ui.row{style = {colors = {accent = '#FF2E9E62', accentHover = '#FF3DBE7A'}, metrics = {controlRadius = 36}}, ui.button{text = 'Styled', variant = 'primary'}}
-ui.column{style = {fonts = {button = {size = 34, bold = true}}}, ui.row{style = {metrics = {controlHeight = 56}}, ui.button{text = 'Short and bold'}}}
+ui.column{style = {fonts = {button = {size = 29, bold = true}}}, ui.row{style = {metrics = {controlHeight = 56}}, ui.button{text = 'Short and bold'}}}
 ui.button{text = 'Painted', style = {surfaces = {button = {image = 'interface/themes/fantasy/atlas.png', source = {0, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6}}}}
 ui.card{theme = 'light', ui.button{text = 'Button'}}
 ui.button{text = 'Resize', cursor = 'resizeHorizontal'}]]
@@ -77,7 +77,7 @@ function ThemeOverrides:columns()
                 },
             }),
             layout.section('Styles that nest', {
-                ui.column{gap = 12, style = {fonts = {button = {size = 34, bold = true}}, metrics = {controlHeight = 84}},
+                ui.column{gap = 12, style = {fonts = {button = {size = 29, bold = true}}, metrics = {controlHeight = 84}},
                     ui.row{gap = 12, ui.button{text = 'Large and bold'}, ui.progress{value = 0.6, grow = 1, tone = 'success'}},
                     ui.row{gap = 12, style = {colors = {success = '#FFF2B23A'}, metrics = {controlHeight = 56, progressHeight = 24}},
                         ui.button{text = 'Short and bold'},
