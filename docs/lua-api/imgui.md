@@ -1,6 +1,6 @@
 # 📖 `haylen.imgui`
 
-The module `haylen.imgui` exposes Dear ImGui immediate mode windows and widgets to Lua. The app calls it every frame to rebuild windows from its current state, and the widgets return what the player changed. Use it for debug panels, cheat menus, level tweaking and tools. For the interface players see, use the retained, themed components of [`haylen.ui`](ui.md).
+The module `haylen.imgui` gives Lua the windows and widgets of Dear ImGui, in immediate mode. Your app calls it every frame to build its windows again from its current state, and the widgets return what the player changed. Use it for debug panels, cheat menus, level tweaking and tools. For the interface that players see, use the retained, themed components of [`haylen.ui`](ui.md). The [UI guide](../ui/ui.md#immediate-mode-ui-with-haylenimgui) compares the two.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -8,17 +8,19 @@ local imgui = require('haylen.imgui')
 
 ## Frames and windows
 
-Every call must happen while a frame is running, which covers the `update`, `fixedUpdate`, `render` and `renderUi` callbacks of scenes, timer and tween callbacks and [`haylen.ui`](ui.md) handlers. A call anywhere else, such as at the top level of `source/main.lua` or in a callback of [`haylen.platform`](platform.md), raises `The module "haylen.imgui" can only be used while a frame is running.`. The `renderUi` callback of a scene is the usual place.
+Every call must happen while a frame runs. That covers the `update`, `fixedUpdate`, `render` and `renderUi` callbacks of scenes, the callbacks of timers and tweens, and the handlers of [`haylen.ui`](ui.md). The `renderUi` callback of a scene is the usual place. A call anywhere else, such as at the top level of `source/main.lua` or in a callback of [`haylen.platform`](platform.md), raises `The module "haylen.imgui" can only be used while a frame is running.`.
 
-Positions and sizes are design units, with the origin at the top left of the visible area. Windows are drawn over the app and use the colors, metrics and body font of the active [`haylen.ui`](ui.md) theme, and their scroll bars keep the [gap](ui.md#scroll-bars) of the theme from their content. While the pointer is over a window, `ui.usingPointer()` returns `true`.
+Positions and sizes are design units, with the origin at the top left of the visible area. Windows draw over the app. They use the colors, metrics and body font of the active [`haylen.ui`](ui.md) theme, and their scroll bars keep the [gap](ui.md#scroll-bars) of the theme from their content. While the pointer is over a window, `ui.usingPointer()` returns `true`.
 
-Widgets are identified by their label within the current window. Text after `##` in a label is part of the identity but is not shown, so `'Delete##slot1'` and `'Delete##slot2'` are two buttons that both read `Delete`. The function `imgui.pushId` scopes the identities of the widgets of a loop.
-
-Misuse that Dear ImGui detects, such as an `endWindow` without a `beginWindow`, raises `The Dear ImGui check "<check>" failed at "<file>:<line>".` in the call that caused it. The functions `imgui.tableNextRow` outside a table and `imgui.treePop` without an open tree node raise errors of their own, listed with those functions. An error inside a scene callback shows the error screen, and the next frame closes whatever the failed script left open.
-
-A `beginWindow` whose `endWindow` never comes is found only when the frame draws the interface, after every script of the frame has run. It stops the app with `The Dear ImGui check "(0) && "Missing End()"" failed at "<file>:<line>".`, where `Missing EndChild()` or `Missing EndTable()` takes the place of `Missing End()` when a region or a table inside that window was left open too. That error carries no Lua stack trace, so the code to look at is a path that begins a window without ending it. A `beginChild`, `beginTable`, `beginTabBar`, `treeNode` or `pushId` left open inside a window that does end is reported by its `endWindow` instead, with the stack trace of the script.
+A widget is known by its label within the current window. Text after `##` in a label is part of that identity, but it does not show. So `'Delete##slot1'` and `'Delete##slot2'` are two buttons that both read `Delete`. The function `imgui.pushId` keeps apart the widgets of a loop.
 
 Functions that edit a value take the current value and return two values: `true` when the player changed it this frame, and the new value. The app keeps the value and passes it back on the next frame.
+
+## Errors
+
+Misuse that Dear ImGui detects, such as an `endWindow` without a `beginWindow`, raises `The Dear ImGui check "<check>" failed at "<file>:<line>".` in the call that caused it. The functions `imgui.tableNextRow` outside a table and `imgui.treePop` without an open tree node raise errors of their own, which their sections list. An error inside a scene callback shows the error screen, and the next frame closes whatever the failed script left open.
+
+A `beginWindow` whose `endWindow` never comes shows up only when the frame draws the interface, after every script of the frame has run. It stops the app with `The Dear ImGui check "(0) && "Missing End()"" failed at "<file>:<line>".`. When a region or a table inside that window was left open too, `Missing EndChild()` or `Missing EndTable()` takes the place of `Missing End()`. That error carries no Lua stack trace, so look for a path of your code that begins a window without ending it. A `beginChild`, `beginTable`, `beginTabBar`, `treeNode` or `pushId` left open inside a window that does end is different. Its `endWindow` reports it, with the stack trace of the script.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -194,7 +196,7 @@ scene.push({
 
 ### imgui.textColored(color, text)
 
-Shows text in a color, given as a `haylen.Color`, a `'#RRGGBB'` or `'#AARRGGBB'` string, or a table with `r`, `g`, `b` and optional `a` from 0 to 1.
+Shows text in a color. The color is a `haylen.Color`, a `'#RRGGBB'` or `'#AARRGGBB'` string, or a table with `r`, `g`, `b` and an optional `a`, each from 0 to 1.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -272,7 +274,7 @@ scene.push({
 
 ### imgui.sliderFloat(label, value, min, max, format)
 
-Shows a slider for a number between `min` and `max` and returns `changed, value`. The argument `format` is a `printf` format for the shown number and defaults to `'%.3f'`. It converts the number at most once, with a conversion such as `%.1f` or `%e`, and writes a percent sign as `%%`. Any other format raises an error, because it would make `printf` read values that do not exist.
+Shows a slider for a number between `min` and `max` and returns `changed, value`. The argument `format` is a `printf` format for the shown number, `'%.3f'` by default. It converts the number at most once, with a conversion such as `%.1f` or `%e`, and writes a percent sign as `%%`. Any other format would make `printf` read values that do not exist, so it raises `bad argument #5 to 'sliderFloat' (the format may convert the number once, as in '%.1f', and writes a percent sign as '%%')`.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -389,7 +391,7 @@ scene.push({
 
 ### imgui.colorEdit(label, color)
 
-Shows a color editor with a swatch that opens a picker and returns `changed, color`. The argument `color` is a `haylen.Color`, a `'#RRGGBB'` or `'#AARRGGBB'` string or a table with `r`, `g`, `b` and optional `a`, and the result is a `haylen.Color`.
+Shows a color editor with a swatch that opens a picker, and returns `changed, color`. The argument `color` takes the forms of `imgui.textColored`, and the result is a `haylen.Color`.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -458,7 +460,7 @@ scene.push({
 
 ### imgui.progressBar(fraction, width, height, overlay)
 
-Shows a bar filled to `fraction`, from 0 to 1. The argument `width` defaults to `-1`, which fills the width of the window, and `height` defaults to `0`, which uses the height of a line. The argument `overlay` is text drawn on the bar, and without it the bar shows the percentage.
+Shows a bar filled to `fraction`, from 0 to 1. The argument `width` is `-1` by default, which fills the width of the window. The argument `height` is `0` by default, which uses the height of a line. The argument `overlay` is text drawn on the bar, and without it the bar shows the percentage.
 
 ```lua
 local imgui = require('haylen.imgui')
@@ -1076,7 +1078,7 @@ scene.push({
 
 ### imgui.pushId(id)
 
-Adds `id` to the identity of the widgets that follow until `imgui.popId`, so widgets with the same label in a loop stay apart.
+Adds `id` to the identity of the widgets that follow, until `imgui.popId`. So widgets with the same label in a loop stay apart.
 
 ```lua
 local imgui = require('haylen.imgui')
