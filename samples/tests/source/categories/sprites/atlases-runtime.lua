@@ -23,7 +23,7 @@ RuntimeAtlases.medal = {0, 0, 324, 277}
 RuntimeAtlases.ribbon = {328, 0, 324, 99}
 RuntimeAtlases.layouts = {
     landscape = {view = {1700, 800}, cards = {meadow = {-830, -380, 980, 760}, badge = {170, -380, 660, 410}, mipmaps = {170, 50, 660, 330}}},
-    portrait = {view = {900, 1700}, cards = {meadow = {-430, -830, 860, 1000}, badge = {-430, 190, 420, 640}, mipmaps = {10, 190, 420, 640}}},
+    portrait = {view = {900, 1700}, cards = {meadow = {-430, -830, 860, 980}, badge = {-430, 170, 860, 340}, mipmaps = {-430, 530, 860, 300}}},
 }
 
 RuntimeAtlases.code = [[
