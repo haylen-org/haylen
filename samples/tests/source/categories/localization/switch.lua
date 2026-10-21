@@ -9,6 +9,13 @@ local language = require('categories.localization.language')
 
 local Switch = haylen.class('Switch', LanguageTest)
 
+Switch.code = [[
+localization.loadFolder('localization/locale')
+localization.setLanguage('pt-BR')  -- Every text given as a key changes at once.
+ui.label{text = {key = 'menu.title'}, font = 'title'}
+ui.button{id = 'play', text = {key = 'menu.play'}, variant = 'primary'}
+localization.language()]]
+
 Switch.hint = 'Pick a language above, or turn on the cycle to watch every text change on its own.'
 Switch.cycleSeconds = 2
 

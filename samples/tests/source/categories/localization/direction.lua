@@ -7,6 +7,13 @@ local LanguageTest = require('categories.localization.language-test')
 
 local Direction = haylen.class('Direction', LanguageTest)
 
+Direction.code = [[
+ui.setDirection('auto')  -- The UI follows the direction of the language.
+localization.setLanguage('ar')
+localization.direction()
+ui.column{direction = 'rightToLeft', language = 'ar', gap = 12, children = nodes}
+ui.column{direction = 'leftToRight', language = 'hi', gap = 12, children = nodes}]]
+
 Direction.hint = 'Pick Arabic to mirror the settings card and the frame of the test, and type into the fields of the other panel, which keep their own direction in every language.'
 
 function Direction:content()

@@ -9,6 +9,12 @@ local language = require('categories.localization.language')
 
 local Relayout = haylen.class('Relayout', LanguageTest)
 
+Relayout.code = [[
+ui.button{id = 'play', text = {key = 'menu.play'}}  -- Measures again when the language changes.
+ui.badge{id = 'hard', text = {key = 'layout.hard'}, tone = 'danger'}
+localization.setPseudo(true)  -- Longer texts with accents, to test the room of every text.
+local bounds = self.gui:bounds('play')]]
+
 Relayout.hint = 'Pick another language, turn on the cycle or the pseudo translation, and watch the buttons and the paragraph take their new sizes.'
 Relayout.measured = {'title', 'save', 'cancel', 'options', 'intro', 'hard'}
 Relayout.cycleSeconds = 1.5

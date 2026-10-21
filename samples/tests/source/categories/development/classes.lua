@@ -7,6 +7,14 @@ local Walker = require('categories.development.edit.walker')
 
 local Classes = haylen.class('Classes', DevelopmentTest)
 
+Classes.code = [[
+local Walker = haylen.class('Walker')  -- The class of edit/walker.lua keeps its identity.
+function Walker:speed()
+    return 140  -- Every walker takes a new value where it stands.
+end
+self.walkers[index] = Walker(x, y, heading)
+walker:step(dt, self.area)]]
+
 Classes.file = 'source/categories/development/edit/walker.lua'
 Classes.steps = {'Change what "Walker:speed", "Walker:color" or "Walker:radius" returns.', 'Save the file.', 'Every walker takes the new method where it stands, because the class and its instances keep their identity.'}
 Classes.count = 12

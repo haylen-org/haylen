@@ -8,6 +8,13 @@ local LanguageTest = require('categories.localization.language-test')
 
 local BestMatch = haylen.class('BestMatch', LanguageTest)
 
+BestMatch.code = [[
+local tag = system.info().locale  -- Such as "pt-BR", nil where the platform does not tell.
+local match = localization.findBestMatch(tag)  -- The tag itself, the same base language or nil.
+if match then
+    localization.setLanguage(match)
+end]]
+
 BestMatch.hint = 'Use the language of the device, type any tag and press Enter, or pick a row of the table to switch to its match.'
 BestMatch.focus = 'tag'
 BestMatch.tags = {'pt-BR', 'pt-PT', 'pt', 'PT_br', 'es-MX', 'es-419', 'en-GB', 'EN-us', 'ja-JP', 'fr-FR', 'zh-Hans-CN'}

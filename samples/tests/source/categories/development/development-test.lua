@@ -27,7 +27,7 @@ function DevelopmentTest:enter()
     for _, control in ipairs(self:controls()) do
         controls[#controls + 1] = control
     end
-    self:frame{hint = hotReload.active() and 'Edit the file, save it and watch the test change while it runs.' or DevelopmentTest.off, controls = controls, focus = self.firstControl}
+    self:frame{code = self.code, hint = hotReload.active() and 'Edit the file, save it and watch the test change while it runs.' or DevelopmentTest.off, controls = controls, focus = self.firstControl}
     events.on('moduleReloaded', function(event)
         self.reloads = self.reloads + 1
         self.last = event.path

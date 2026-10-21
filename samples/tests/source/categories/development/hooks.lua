@@ -8,6 +8,14 @@ local hud = require('categories.development.edit.hud')
 
 local Hooks = haylen.class('Hooks', DevelopmentTest)
 
+Hooks.code = [[
+local hud = hotReload.keep('hud', function()
+    return {pressed = signal.new('development.hud'), presses = 0, loads = 0}
+end)
+function Hooks:reloaded(info)
+    self:set('title', {text = hud.title()})  -- The modules that reloaded are in info.modules.
+end]]
+
 Hooks.file = 'source/categories/development/edit/hud.lua'
 Hooks.steps = {'Change the text that "hud.title" returns.', 'Save the file.', 'The title changes through the "reloaded" hook, "Loads of the module" grows, and one press of "Press" still counts once, because the signal has one listener.'}
 

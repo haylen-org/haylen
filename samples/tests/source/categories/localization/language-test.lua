@@ -29,6 +29,7 @@ function LanguageTest:enter()
     self.language = localization.language()
     self:loadActions(LanguageTest.actions)
     self:frame{
+        code = self.code,
         hint = self.hint .. ' ' .. LanguageTest.keysHint,
         focus = self.focus,
         content = {

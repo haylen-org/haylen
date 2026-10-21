@@ -9,6 +9,13 @@ local ticks = require('categories.development.edit.ticks')
 
 local Callbacks = haylen.class('Callbacks', DevelopmentTest)
 
+Callbacks.code = [[
+timer.every(0.5, ticks.record, {owner = self})  -- The module function takes the new code.
+timer.every(0.5, function()
+    self.throughTable = ticks.label()  -- A call through the table takes it too.
+end, {owner = self})
+self.closureTimer = timer.every(0.5, ticks.makeClosure(self), {owner = self})  -- A closure keeps its code.]]
+
 Callbacks.file = 'source/categories/development/edit/ticks.lua'
 Callbacks.steps = {'Change "first" to "second" in the three functions.', 'Save the file.', 'The module function and the call through the table show "second" within half a second, and the closure keeps "first" until "Make the closure again" makes a new one.'}
 Callbacks.interval = 0.5

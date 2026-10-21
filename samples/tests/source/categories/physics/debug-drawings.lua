@@ -37,6 +37,7 @@ function DebugDrawings:enter()
         end
     end, {owner = self})
     self:frame{
+        code = DebugDrawings.code,
         hint = 'Drag any body. F4 switches every drawing on desktops, and F3 cycles the statistics.',
         controls = {
             ui.checkbox{id = 'physics', text = 'Drawing "physics"', checked = debugging.drawing('physics'), onChange = function(event) debugging.setDrawing('physics', event.checked) end},

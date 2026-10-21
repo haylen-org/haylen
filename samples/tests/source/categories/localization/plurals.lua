@@ -8,6 +8,13 @@ local language = require('categories.localization.language')
 
 local Plurals = haylen.class('Plurals', LanguageTest)
 
+Plurals.code = [[
+localization.text('items.apples', {count = 5})  -- The form picked by the count.
+localization.pluralCategory(21)  -- The rule of the language for the count.
+ui.table{id = 'table', columns = columns, rows = {
+    {id = 'count-2', cells = {2, {key = 'items.apples', args = {count = 2}}}},
+}}]]
+
 Plurals.hint = 'Change the count with the stepper, or pick another language to see its plural rules in the table.'
 Plurals.focus = 'count'
 Plurals.keys = {'apples', 'messages', 'lives'}

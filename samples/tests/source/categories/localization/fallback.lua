@@ -8,6 +8,13 @@ local language = require('categories.localization.language')
 
 local Fallback = haylen.class('Fallback', LanguageTest)
 
+Fallback.code = [[
+localization.setFallback('en')  -- Keys the language lacks come from it.
+localization.setLanguage('ja')
+localization.text('menu.quit')
+localization.has('menu.quit')
+localization.fallback()]]
+
 Fallback.hint = 'Pick the current language above and the fallback language on the left. Spanish and Japanese lack the tip, only English has the pirate and only Portuguese has the secret.'
 Fallback.focus = 'fallback'
 Fallback.keys = {'extras.credits', 'extras.tip', 'extras.pirate', 'extras.secret', 'extras.nowhere'}

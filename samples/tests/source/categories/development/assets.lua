@@ -9,6 +9,14 @@ local Test = require('harness.test')
 
 local Assets = haylen.class('Assets', DevelopmentTest)
 
+Assets.code = [[
+self.values = assets.json('development/settings.json')
+localization.loadFolder('development/texts')
+events.on('assetReloaded', function(event)
+    self.values = assets.json('development/settings.json')  -- Saved JSON reloads in place.
+end, {owner = self})
+localization.text('development.greeting')]]
+
 Assets.file = 'content/development/settings.json and content/development/texts/en.json'
 Assets.steps = {'Change the "label" or the "speed" of "settings.json", or the text of "texts/en.json".', 'Save the file.', 'The value changes at once, and the list shows the asset events of the save.'}
 Assets.settings = 'development/settings.json'

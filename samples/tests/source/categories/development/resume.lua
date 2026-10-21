@@ -8,6 +8,14 @@ local fault = require('categories.development.edit.fault')
 
 local Resume = haylen.class('Resume', DevelopmentTest)
 
+Resume.code = [[
+function fault.step(armed)
+    if armed then
+        error('Delete this line and save the file to resume the app.')
+    end
+end
+fault.step(self.armed)  -- The update raises until a saved fix reloads the module.]]
+
 Resume.file = 'source/categories/development/edit/fault.lua'
 Resume.steps = {'Press "Arm the error". The update of the test calls "fault.step", which raises, and the error screen says "Save a fix to resume the app."', 'Delete the line of "fault.step" that raises, and save the file.', 'The app leaves the error screen by itself, and the counter goes on from where it stopped.'}
 

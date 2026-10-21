@@ -8,6 +8,12 @@ local language = require('categories.localization.language')
 
 local Nested = haylen.class('Nested', LanguageTest)
 
+Nested.code = [[
+localization.text('story.chapters.first.title')  -- Groups read with dotted keys.
+localization.text('items.apples', {count = 3})
+localization.has('story.chapters')  -- A group is not a key.
+ui.tree{id = 'tree', items = items, expanded = {'story', 'story.chapters'}}]]
+
 Nested.hint = 'Open the groups of the tree and pick a key or a group to read it with "localization.text" and "localization.has".'
 Nested.focus = 'tree'
 Nested.pluralParts = {zero = true, one = true, other = true}

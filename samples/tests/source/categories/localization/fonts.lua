@@ -8,6 +8,13 @@ local language = require('categories.localization.language')
 
 local Fonts = haylen.class('Fonts', LanguageTest)
 
+Fonts.code = [[
+local family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {japanese, arabic, devanagari}})
+ui.addFont('text', family)
+ui.setTheme(ui.addTheme({name = 'localized', fonts = {body = {font = 'text'}, title = {font = 'text'}}}, 'dark'))
+ui.richText{text = '[b]日本語[/b] こんにちは', font = 'heading'}
+family:resolve(utf8.codepoint('語'))]]
+
 Fonts.hint = 'Pick Japanese to see labels, buttons and rich text draw it through the fallback of one family, next to the same line without the fallback.'
 Fonts.mixed = '[b]English[/b] Hello [b]Português[/b] Olá [b]Español[/b] ¡Hola! [b]日本語[/b] こんにちは'
 

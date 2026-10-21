@@ -6,6 +6,13 @@ local LanguageTest = require('categories.localization.language-test')
 
 local Arguments = haylen.class('Arguments', LanguageTest)
 
+Arguments.code = [[
+localization.text('hud.greeting', {name = 'Ana', day = 3})
+localization.text('hud.score', {score = 1250})
+localization.text('hud.accuracy', {ratio = 0.75})
+localization.text('hud.sound', {sound = true})
+ui.label{id = 'hud.braces', text = {key = 'hud.braces'}}  -- Escaped braces stay braces.]]
+
 Arguments.hint = 'Change the name, the day, the score, the accuracy and the sound, and watch every result follow. The grey line of each key is its template.'
 Arguments.focus = 'day'
 Arguments.keys = {'hud.greeting', 'hud.score', 'hud.accuracy', 'hud.sound', 'hud.braces', 'hud.missing'}

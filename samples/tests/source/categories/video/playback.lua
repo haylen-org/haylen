@@ -8,6 +8,14 @@ local Test = require('harness.test')
 
 local Playback = haylen.class('Playback', Test)
 
+Playback.code = [[
+self.clip = video.load('video/clip.mp4', {autoplay = true, loop = true, owner = self})
+self.clip:on('ready', function()
+    ui.setImage('@clip', self.clip.texture)  -- The video as an image of the UI.
+end, {owner = self})
+graphics2d.draw(self.clip.texture, x, y, {width = width, height = height})
+self.clip:seek(0)]]
+
 function Playback:enter()
     self.events = {}
     self.clip = video.load('video/clip.mp4', {autoplay = true, loop = true, owner = self})
@@ -19,6 +27,7 @@ function Playback:enter()
     self.clip:on('ended', function() self:note('Event "ended"') end, {owner = self})
     self.clip:on('error', function(error) self:note('Event "error" with the code "' .. error.code .. '": ' .. error.message) end, {owner = self})
     self:frame{
+        code = Playback.code,
         hint = 'The square crosses the screen once a second and the tone rises with it.',
         controls = {
             ui.sectionTitle{text = 'Playback'},

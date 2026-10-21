@@ -2101,7 +2101,7 @@ Moldura dos testes:
 - [x] Painéis laterais que cabem ou rolam, mostrando um degradê na borda onde o conteúdo continua, com os botões na largura do painel e listas que não empurram os controles para fora da vista. Feito na moldura: o painel rola com o degradê novo da engine e estica os controles na largura dele. As listas longas de testes como o `PRT-034` ainda pedem uma caixa de altura fixa no próprio teste.
 - [x] A dica traz só o que o teste explica, e as teclas de navegação aparecem uma vez, de forma compacta e igual em todo teste.
 - [x] As verificações de `harness/results.lua` rolam, então nenhuma fica escondida. Feito: as linhas que não cabem numa coluna passam a duas, e as que ainda não cabem dividem a altura por igual, com o detalhe diminuindo até três quartos e cortado no fim da sua parte, então toda verificação aparece.
-- [ ] Todo teste mostra o cartão de código, também os de desenvolvimento, de idiomas, de desenhos de debug e de vídeo, e a página de não suportado mostra um ícone, o motivo numa largura de leitura, as plataformas onde o teste roda e o código.
+- [x] Todo teste mostra o cartão de código, também os de desenvolvimento, de idiomas, de desenhos de debug e de vídeo, e a página de não suportado mostra um ícone, o motivo numa largura de leitura, as plataformas onde o teste roda e o código.
 
 Componentes e layout da UI:
 
