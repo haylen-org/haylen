@@ -75,7 +75,7 @@ function Touch:update(dt)
         trail.lifted = touch.phase == 'ended' or touch.phase == 'cancelled'
     end
     self.most = math.max(self.most, #touches)
-    self:status(string.format('Fingers %d, most at once %d, touch events %d', #touches, self.most, self.events))
+    self:status(string.format('%d fingers down, %d at most at once, and %d touch events so far.', #touches, self.most, self.events))
 end
 
 function Touch:draw(area)
@@ -91,10 +91,17 @@ function Touch:draw(area)
         graphics2d.drawRing(trail.startX, trail.startY, 20, 3, color, {layer = 1})
         graphics2d.drawLine(trail.startX, trail.startY, trail.x, trail.y, 2, '#40FFFFFF', {layer = 1})
         graphics2d.drawCircle(trail.x, trail.y, 56 * (0.4 + 0.6 * alpha), trail.lifted and '#40FFFFFF' or color, {layer = 2})
-        Test.caption(string.format('Touch %d, phase "%s", %.1f s', id, trail.phase, trail.duration), trail.x, trail.y - 70, {anchor = {0.5, 1}, color = Test.ink})
+        Test.caption(string.format('Finger %d, phase "%s", %.1f s', id, trail.phase, trail.duration), trail.x, trail.y - 70, {anchor = {0.5, 1}, color = Test.ink, size = 24})
     end
+    -- Until a finger lands, rings ripple out from the middle where a touch would show.
     if count == 0 then
-        Test.caption('Touch the stage with up to ten fingers', area.width / 2, area.height / 2, {anchor = {0.5, 0.5}, size = 34})
+        local x, y = area.width / 2, area.height / 2 - 40
+        for ring = 0, 2 do
+            local t = (haylen.elapsed() * 0.6 + ring / 3) % 1
+            graphics2d.drawRing(x, y, 30 + t * 90, 4, {0.56, 0.69, 1, 0.8 * (1 - t)}, {layer = 1})
+        end
+        graphics2d.drawCircle(x, y, 26, Test.accent, {layer = 2})
+        graphics2d.drawText(nil, 'Touch the play area with up to ten fingers', x, y + 140, {size = 32, color = Test.ink, anchor = {0.5, 0.5}, layer = 2})
     end
 end
 

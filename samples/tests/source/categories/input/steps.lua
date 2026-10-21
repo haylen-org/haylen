@@ -1,16 +1,19 @@
 -- Fixed steps: the presses of the jump action counted in update, in fixedUpdate through the frame edges and in fixedUpdate through the step edges, at a time scale that makes frames run no fixed step or several, and a hopper whose jump buffer catches a press made just before it lands.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 
+local Backdrop = require('categories.animation.backdrop')
 local controls = require('categories.input.controls')
 local Test = require('harness.test')
 
 local Steps = haylen.class('Steps', Test)
 
 Steps.code = [[
-input.loadActions({actions = {{name = 'jump', type = 'button', bindings = {'key:space', 'button:south'}, buffer = 0.15}}})
+local jump = {name = 'jump', type = 'button', bindings = {'key:space', 'button:south'}, buffer = 0.15}
+input.loadActions({actions = {jump}})
 if input.stepPressed('jump') then presses = presses + 1 end  -- In `fixedUpdate`, each press counts once.
 if grounded and input.consumePress('jump') then velocity = -1100 end  -- A press stays in the buffer for 0.15 seconds.]]
 
@@ -18,6 +21,11 @@ local kScales = {{id = '0.25', text = '0.25'}, {id = '0.5', text = '0.5'}, {id =
 local kGravity = 2600
 local kJumpSpeed = 1100
 local kBuffer = 0.15
+-- The walker sheet has cells of 256 pixels in eight columns, with the idle frames first and a frame of the run with the legs apart for the air.
+local kIdleFrames = {0, 1, 2, 3}
+local kAir = 10
+local kFeet = 248 / 256
+local kHeroSize = 150
 
 function Steps:enter()
     local actions = controls.actions()
@@ -29,6 +37,9 @@ function Steps:enter()
     self:loadActions(actions)
     self.counts = {frame = 0, fixedFrame = 0, fixedStep = 0}
     self.hopper = {y = 0, velocity = 0, jumps = 0}
+    self.walker = assets.texture('sprites/sheets/walker.png', {filter = 'linear'})
+    self.backdrop = Backdrop()
+    self.meadowShape = function() graphics2d.drawShape(self.meadow, {radius = 18}) end
     self:frame({
         code = Steps.code,
         hint = 'Press jump many times at each time scale: the step edges count every press once, while frame edges read in fixed steps miss presses below 1 and double them above it.',
@@ -59,7 +70,7 @@ function Steps:update(dt)
     if input.pressed('jump') then
         self.counts.frame = self.counts.frame + 1
     end
-    self:status(string.format('Time scale %.2f, fixed step %.4f s, jump %s', haylen.timeScale(), haylen.fixedStep(), input.down('jump') and 'down' or 'up'))
+    self:status(string.format('Time runs at %.2f times its speed, with fixed steps of %.4f seconds, and jump is %s.', haylen.timeScale(), haylen.fixedStep(), input.down('jump') and 'down' or 'up'))
 end
 
 -- The hopper lands every half second or so and jumps again only with a press that the buffer still holds when it touches the ground.
@@ -83,22 +94,35 @@ function Steps:fixedUpdate(step)
     end
 end
 
-function Steps:drawCount(title, value, x, y, color)
-    graphics2d.drawRect({x, y, 300, 150}, Test.surface)
-    Test.caption(title, x + 20, y + 16, {maxWidth = 260})
-    Test.caption(tostring(value), x + 20, y + 70, {size = 56, color = color})
+function Steps:drawCount(title, value, rect, color)
+    graphics2d.drawShape(rect, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+    graphics2d.drawText(nil, title, rect[1] + 24, rect[2] + 20, {size = 24, color = Test.muted, maxWidth = rect[3] - 48, layer = 2})
+    graphics2d.drawText(nil, tostring(value), rect[1] + 24, rect[2] + rect[4] - 20, {size = 64, color = color, anchor = {0, 1}, layer = 2})
 end
 
 function Steps:draw(area)
-    self:drawCount('Presses read in update', self.counts.frame, 24, 24, Test.ink)
-    self:drawCount('Frame edges read in fixedUpdate', self.counts.fixedFrame, 340, 24, Test.red)
-    self:drawCount('Step edges read in fixedUpdate', self.counts.fixedStep, 656, 24, Test.green)
+    local margin, gap = 24, 16
+    local width = (area.width - margin * 2 - gap * 2) / 3
+    local height = math.min(170, area.height * 0.3)
+    self:drawCount('Presses read in "update"', self.counts.frame, {margin, margin, width, height}, Test.ink)
+    self:drawCount('Frame edges read in "fixedUpdate"', self.counts.fixedFrame, {margin + width + gap, margin, width, height}, Test.red)
+    self:drawCount('Step edges read in "fixedUpdate"', self.counts.fixedStep, {margin + (width + gap) * 2, margin, width, height}, Test.green)
 
-    local ground = area.height - 80
+    -- The hopper stands on a meadow under the counters and jumps only with a press that the buffer still holds when it lands.
+    local meadow = {margin, margin + height + gap, area.width - margin * 2, area.height - height - gap - margin * 2}
+    local ground = meadow[2] + meadow[4] - 40
+    self.meadow = meadow
+    graphics2d.pushMask(self.meadowShape)
+    self.backdrop:draw(graphics2d.canvasBounds(), ground, 150, 0)
     local x = area.width * 0.5
-    graphics2d.drawRect({24, ground, area.width - 48, 4}, Test.line)
-    graphics2d.drawCircle(x, ground - 40 + self.hopper.y, 40, Test.warm, {layer = 1})
-    Test.caption(string.format('Jumps from the buffer of %.2f s: %d', kBuffer, self.hopper.jumps), 24, ground + 16, {color = Test.ink})
+    local frame = self.hopper.y < 0 and kAir or kIdleFrames[math.floor(haylen.elapsed() * 6) % #kIdleFrames + 1]
+    Backdrop.shadow(x, ground, 90 + self.hopper.y * 0.1, 3)
+    graphics2d.draw(self.walker, x, ground + self.hopper.y, {source = {frame % 8 * 256, frame // 8 * 256, 256, 256}, width = kHeroSize, height = kHeroSize, pivotY = kFeet, layer = 4})
+    graphics2d.popMask()
+    local text = string.format('Jumps from the buffer of %.2f seconds: %d', kBuffer, self.hopper.jumps)
+    local plate = graphics2d.measureText(nil, text, {size = 24}) + 48
+    graphics2d.drawShape({meadow[1] + 20, meadow[2] + 20, plate, 48}, {radius = 24, color = '#CC151A2A', layer = 5})
+    graphics2d.drawText(nil, text, meadow[1] + 44, meadow[2] + 44, {size = 24, color = Test.ink, anchor = {0, 0.5}, layer = 6})
 end
 
 return Steps

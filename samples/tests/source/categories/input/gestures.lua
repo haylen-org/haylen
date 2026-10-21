@@ -1,4 +1,5 @@
--- Gestures: taps, double taps, long presses, swipes and pinches marked where they happen, a card that two fingers zoom, turn and move and that a double tap resets, a count of each gesture and the thresholds of the recognizer.
+-- Gestures: taps, double taps, long presses, swipes and pinches marked where they happen, a picture that two fingers zoom, turn and move and that a double tap resets, a count of each gesture and the thresholds of the recognizer.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -12,13 +13,15 @@ local Gestures = haylen.class('Gestures', Test)
 Gestures.code = [[
 input.setGestureSettings({longPressDuration = 0.5, swipeMinDistance = 120, mouse = true})
 for _, gesture in ipairs(input.gestures()) do
-    if gesture.type == 'pinch' then card.scale, card.angle = baseScale * gesture.scale, baseAngle + gesture.rotation end
-    if gesture.type == 'doubleTap' then card.scale, card.angle = 1, 0 end
+    if gesture.type == 'pinch' then
+        picture.scale, picture.angle = baseScale * gesture.scale, baseAngle + gesture.rotation
+    end
 end]]
 
 local kTypes = {'tap', 'doubleTap', 'longPress', 'swipe', 'pinch'}
 local kColors = {tap = Test.accent, doubleTap = Test.warm, longPress = Test.violet, swipe = Test.green, pinch = Test.red}
 local kLife = 0.9
+Gestures.names = {tap = 'Tap', doubleTap = 'Double tap', longPress = 'Long press', swipe = 'Swipe', pinch = 'Pinch'}
 local kSettings = {
     {key = 'longPressDuration', label = 'Long press seconds', min = 0.2, max = 1.5, step = 0.05},
     {key = 'doubleTapInterval', label = 'Double tap seconds', min = 0.15, max = 0.8, step = 0.05},
@@ -37,6 +40,7 @@ function Gestures:enter()
     self.angle, self.baseAngle = 0, 0
     self.offsetX, self.offsetY, self.baseX, self.baseY = 0, 0, 0, 0
     self.journal = Journal(30)
+    self.picture = assets.texture('interface/images/landscape.png', {filter = 'linear'})
 
     local controls = {}
     for _, setting in ipairs(kSettings) do
@@ -48,7 +52,7 @@ function Gestures:enter()
         input.setGestureSettings({mouse = event.checked})
     end}
     controls[#controls + 1] = ui.button{id = 'reset', text = 'Reset the thresholds', onClick = function() self:reset() end}
-    self:frame({code = Gestures.code, hint = 'Tap, double tap, hold, swipe or pinch the stage. The left mouse button acts as a finger.', controls = controls, focus = 'longPressDuration'})
+    self:frame({code = Gestures.code, hint = 'Tap, double tap, hold, swipe or pinch the play area. The left mouse button acts as a finger.', controls = controls, focus = 'longPressDuration'})
 end
 
 function Gestures:exit()
@@ -66,11 +70,11 @@ end
 
 function Gestures:describe(gesture)
     if gesture.type == 'swipe' then
-        return string.format('Swipe %+.0f, %+.0f', gesture.dx, gesture.dy)
+        return string.format('Swipe by %+.0f, %+.0f', gesture.dx, gesture.dy)
     elseif gesture.type == 'pinch' then
-        return string.format('Pinch scale %.2f, turn %.0f degrees, move %+.0f, %+.0f', gesture.scale, math.deg(gesture.rotation), gesture.dx, gesture.dy)
+        return string.format('Pinch to a scale of %.2f, turned %.0f degrees and moved %+.0f, %+.0f', gesture.scale, math.deg(gesture.rotation), gesture.dx, gesture.dy)
     end
-    return string.format('Gesture "%s" at %.0f, %.0f', gesture.type, gesture.x, gesture.y)
+    return string.format('%s at %.0f, %.0f', Gestures.names[gesture.type], gesture.x, gesture.y)
 end
 
 function Gestures:update(dt)
@@ -110,9 +114,9 @@ function Gestures:update(dt)
 
     local counts = {}
     for _, name in ipairs(kTypes) do
-        counts[#counts + 1] = '"' .. name .. '" ' .. self.counts[name]
+        counts[#counts + 1] = Gestures.names[name] .. ' ' .. self.counts[name]
     end
-    self:status('Gestures ' .. table.concat(counts, ', ') .. string.format(', card scale %.2f, turn %.0f degrees', self.scale, math.deg(self.angle)))
+    self:status(table.concat(counts, ', ') .. string.format('. The picture is at %.2f times its size, turned %.0f degrees.', self.scale, math.deg(self.angle)))
 end
 
 function Gestures:drawMarker(marker)
@@ -130,22 +134,33 @@ function Gestures:drawMarker(marker)
             graphics2d.drawRing(marker.x, marker.y, 10 + 40 * t, 4, color, {layer = 3})
         end
     end
-    Test.caption('Gesture "' .. marker.type .. '"', marker.x, marker.y + 40, {anchor = {0.5, 0}, color = color})
+    graphics2d.drawText(nil, Gestures.names[marker.type], marker.x, marker.y + 40, {size = 24, color = color, anchor = {0.5, 0}, outlineWidth = 3, outlineColor = '#FF15172A', layer = 4})
 end
 
+-- Draws the picture the pinch moves as a photo with a white border, turned and scaled around its middle, with its shadow under it.
 function Gestures:draw(area)
-    local cx, cy = area.width * 0.38 + self.offsetX, area.height * 0.5 + self.offsetY
-    local half = 150 * self.scale
-    graphics2d.drawShape({cx - half, cy - half * 0.66, half * 2, half * 1.32}, {radius = 12, rotation = self.angle, color = Test.surface, borderWidth = 3, borderColor = Test.line})
-    Test.caption('Pinch to zoom, turn and move, double tap to reset', cx, cy, {anchor = {0.5, 0.5}, color = Test.ink, size = 17 * math.max(0.6, self.scale)})
+    local logWidth = math.max(320, area.width * 0.28)
+    local room = area.width - logWidth - 48
+    local cx, cy = 24 + room / 2 + self.offsetX, area.height * 0.46 + self.offsetY
+    local width = math.min(room * 0.6, area.height * 0.9) * self.scale
+    local height = width * self.picture.height / self.picture.width
+    local frame = {cx - width / 2 - 12, cy - height / 2 - 12, width + 24, height + 24}
+    graphics2d.pushClip({0, 0, room + 36, area.height})
+    graphics2d.drawShape({frame[1] + 10, frame[2] + 14, frame[3], frame[4]}, {radius = 18, rotation = self.angle, color = '#66000000', softness = 18})
+    graphics2d.drawShape(frame, {radius = 18, rotation = self.angle, color = '#FFF2F3FF', layer = 1})
+    graphics2d.drawShape({cx - width / 2, cy - height / 2, width, height}, {radius = 10, rotation = self.angle, texture = self.picture, layer = 2})
+    graphics2d.popClip()
+    graphics2d.drawText(nil, 'Pinch the picture to zoom, turn and move it, and double tap to reset it.', 24 + room / 2, area.height - 36, {size = 24, color = Test.ink, anchor = {0.5, 0.5}, maxWidth = room - 24, layer = 6})
 
     for _, marker in ipairs(self.markers) do
         self:drawMarker(marker)
     end
 
-    local logLeft = area.width * 0.72
-    Test.caption('Recognized gestures', logLeft, 20)
-    self.journal:draw(logLeft, 56, area.height - 80, 19)
+    local logLeft = area.width - logWidth - 24
+    local log = {logLeft, 24, logWidth, area.height - 48}
+    graphics2d.drawShape(log, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+    graphics2d.drawText(nil, 'Recognized gestures', logLeft + 20, 40, {size = 24, color = Test.muted, layer = 2})
+    self.journal:draw(logLeft + 4, 80, log[4] - 72, 20, logWidth - 16)
 end
 
 return Gestures

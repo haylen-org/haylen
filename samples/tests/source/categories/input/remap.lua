@@ -1,25 +1,32 @@
 -- Remapping: a key capture for the keyboard or mouse binding and one for the gamepad binding of every gameplay action, which defines the action again and keeps the actions in the preferences, so every input test loads them, also after the next launch.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local ui = require('haylen.ui')
 
 local controls = require('categories.input.controls')
+local prompts = require('categories.input.prompts')
 local Test = require('harness.test')
 
 local Remap = haylen.class('Remap', Test)
 
 Remap.code = [[
-ui.keyCapture{value = 'key:space', sources = {'key', 'mouse'}, prompt = 'Press a key or button', onChange = function(event)
+ui.keyCapture{value = 'key:space', sources = {'key'}, onChange = function(event)
     local definition = input.actionDefinition('jump')
     definition.bindings = {event.value, 'button:south'}
     input.defineAction(definition)
-end}
-preferences.set('controls', input.saveActions())]]
+    preferences.set('controls', input.saveActions())  -- Kept for the next launch.
+end}]]
 
 local kGroups = {key = 'keyboard', mouse = 'keyboard', button = 'gamepad', axis = 'gamepad'}
 local kSources = {keyboard = {'key', 'mouse'}, gamepad = {'button', 'axis'}}
 local kSpeed = 420
+-- The walker sheet has cells of 256 pixels in eight columns, the idle frames in the first row and the run in the second, with the feet on this line of the cells.
+local kIdle = {0, 1, 2, 3}
+local kRun = {8, 9, 10, 11, 12, 13, 14, 15}
+local kFeet = 248 / 256
+local kHeroSize = 200
 
 -- Returns the first binding of the list that belongs to the group, the keyboard and mouse or the gamepad.
 local function bindingOf(entry, group)
@@ -34,12 +41,13 @@ end
 
 function Remap:enter()
     self:loadActions(controls.actions())
-    self.x, self.y, self.hop = nil, nil, 0
-    local rows = {ui.row{gap = 16, ui.spacer{width = 200}, ui.label{text = 'Keyboard or mouse', width = 280, color = 'textMuted'}, ui.label{text = 'Gamepad', width = 280, color = 'textMuted'}}}
+    self.x, self.y, self.hop, self.facing, self.time = nil, nil, 0, 1, 0
+    self.walker = assets.texture('sprites/sheets/walker.png', {filter = 'linear'})
+    local rows = {ui.row{gap = 16, ui.spacer{width = 200}, ui.label{text = 'Keyboard or mouse', width = 260, color = 'textMuted'}, ui.label{text = 'Gamepad', width = 260, color = 'textMuted'}}}
     for index, entry in ipairs(controls.remappable) do
         local row = {gap = 16, ui.label{text = entry.title, width = 200}}
         for _, group in ipairs({'keyboard', 'gamepad'}) do
-            row[#row + 1] = ui.keyCapture{id = group .. index, value = bindingOf(entry, group), placeholder = 'None', prompt = 'Press a ' .. (group == 'keyboard' and 'key or button' or 'gamepad control'), sources = kSources[group], cancelWith = group == 'gamepad' and {'key:escape', 'button:start'} or nil, width = 280, onChange = function(event)
+            row[#row + 1] = ui.keyCapture{id = group .. index, value = bindingOf(entry, group), placeholder = 'None', prompt = 'Press a ' .. (group == 'keyboard' and 'key or button' or 'gamepad control'), sources = kSources[group], cancelWith = group == 'gamepad' and {'key:escape', 'button:start'} or nil, width = 260, onChange = function(event)
                 self:rebind(entry, group, event.value)
             end}
         end
@@ -50,11 +58,11 @@ function Remap:enter()
         ui.label{id = 'saved', text = self:savedText(), color = 'textMuted', grow = 1},
     }
     rows[#rows + 1] = ui.label{text = 'Press a field, then the key, mouse button or gamepad control to bind. Escape stops listening, and so does Start for a gamepad field. Each field replaces every binding of its device in that list, and the stick and touch bindings stay.', color = 'textMuted', font = 'caption'}
-    self:frame({code = Remap.code, hint = 'Rebind the controls, then click the stage or press Tab and move the hero with them.', focus = 'keyboard1', panelWidth = 860, controls = rows})
+    self:frame({code = Remap.code, hint = 'Rebind the controls, then click the play area or press Tab and move the hero with them.', focus = 'keyboard1', panelWidth = 860, controls = rows})
 end
 
 function Remap:savedText()
-    return controls.saved() and 'Saved in the preferences under "' .. controls.preference .. '"' or 'Using the defaults, nothing saved yet'
+    return controls.saved() and 'Saved in the preferences under "' .. controls.preference .. '".' or 'The defaults, with nothing saved yet.'
 end
 
 -- Replaces every binding of the device group in the list with the new one, keeping the bindings of other devices, sticks and touch controls.
@@ -94,23 +102,36 @@ function Remap:update(dt)
     end
     local mx, my = input.vector('move')
     local speed = input.down('dash') and kSpeed * 2.2 or kSpeed
-    self.x = math.max(40, math.min(self.area.width - 40, self.x + mx * speed * dt))
-    self.y = math.max(40, math.min(self.area.height - 40, self.y + my * speed * dt))
+    self.x = math.max(80, math.min(self.area.width - 80, self.x + mx * speed * dt))
+    self.y = math.max(kHeroSize, math.min(self.area.height - 64 - #controls.remappable * 42, self.y + my * speed * dt))
     self.hop = input.pressed('jump') and 0.4 or math.max(0, self.hop - dt)
-    self:status(string.format('Move %+.2f, %+.2f, jump %s, dash %s, bindings %s', mx, my, input.down('jump') and 'down' or 'up', input.down('dash') and 'down' or 'up', controls.saved() and 'stored' or 'from the defaults'))
+    self.moving = math.abs(mx) + math.abs(my) > 0.1
+    self.time = self.time + dt * (input.down('dash') and 1.8 or 1)
+    if math.abs(mx) > 0.1 then
+        self.facing = mx > 0 and 1 or -1
+    end
+    self:status(string.format('Move %+.2f, %+.2f, jump %s and dash %s, with %s.', mx, my, input.down('jump') and 'down' or 'up', input.down('dash') and 'down' or 'up', controls.saved() and 'the stored bindings' or 'the default bindings'))
 end
 
 function Remap:draw(area)
-    local lift = math.sin(self.hop / 0.4 * math.pi) * 60
-    graphics2d.drawCircle(self.x, self.y + 30, 30, '#40000000')
-    graphics2d.drawCircle(self.x, self.y - lift, 34, input.down('dash') and Test.warm or Test.accent, {layer = 1})
-    Test.caption('Move, jump and dash with your bindings', area.width / 2, 24, {anchor = {0.5, 0}})
+    local lift = math.sin(self.hop / 0.4 * math.pi) * 70
+    local frames = self.moving and kRun or kIdle
+    local frame = frames[math.floor(self.time * (self.moving and 14 or 6)) % #frames + 1]
+    local dashing = input.down('dash')
+    graphics2d.drawShape({self.x - 60, self.y - 12, 120, 24}, {kind = 'ellipse', color = '#55000000', softness = 8})
+    graphics2d.draw(self.walker, self.x, self.y - lift, {source = {frame % 8 * 256, frame // 8 * 256, 256, 256}, width = kHeroSize, height = kHeroSize, pivotY = kFeet, flipHorizontal = self.facing < 0, flash = dashing and '#55FFC93C' or nil, layer = 1})
+    graphics2d.drawText(nil, 'Move, jump and dash with your bindings', area.width / 2, 24, {size = 24, color = Test.ink, anchor = {0.5, 0}, layer = 2})
 
-    local lines = {}
-    for _, entry in ipairs(controls.remappable) do
-        lines[#lines + 1] = entry.title .. ': "' .. table.concat(input.actionDefinition(entry.action)[entry.list] or {}, '", "') .. '"'
+    -- The bindings of every action, as chips of what the player presses.
+    local margin, size = 24, 34
+    local rows = #controls.remappable
+    local top = area.height - margin - rows * (size + 8)
+    graphics2d.drawShape({margin, top - 16, area.width - margin * 2, area.height - top - margin + 16}, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+    for index, entry in ipairs(controls.remappable) do
+        local y = top + (index - 1) * (size + 8) + size / 2
+        graphics2d.drawText(nil, entry.title, margin + 20, y, {size = 22, color = Test.muted, anchor = {0, 0.5}, layer = 2})
+        prompts.chips(input.actionDefinition(entry.action)[entry.list] or {}, margin + 180, y, size, area.width - margin * 2, 3)
     end
-    graphics2d.drawText(nil, table.concat(lines, '\n'), 24, area.height - 24, {size = 17, color = Test.muted, anchor = {0, 1}, maxWidth = area.width - 48, layer = 2})
 end
 
 return Remap
