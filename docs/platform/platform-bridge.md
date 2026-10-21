@@ -1,8 +1,31 @@
 # 🌉 Platform bridge
 
-The platform bridge connects an app to native code. An app calls a named method with JSON parameters and receives its JSON result asynchronously, or a typed error with a message, a code and data, and native code sends named events with JSON payloads that the app listens to. Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text, and events can arrive retained for a later listener or batched into one list per frame. Calls time out and cancel, and the native handler hears about it. Every result and every event reaches the app on the frame thread, at the start of a frame. Plugins open screens through it as well, native UI that covers the app until it ends with one result. The bridge covers everything the engine does not wrap itself, such as sign-in, purchases, sharing, deep links or system settings, while what the device is, opening urls, vibrating and native dialogs are engine services of [haylen.system](../lua-api/system.md) and [haylen.dialogs](../lua-api/dialogs.md). Handlers written in Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries, and C++ or Lua anywhere.
+This guide explains the platform bridge, the road between a Lua app and native code. It is for developers who write native code for an app or a plugin: Java or Kotlin on Android, Objective-C or Swift on Apple platforms, JavaScript on the web, C in native libraries and C++ in apps that compile the engine. It shows how a call travels, how events, bytes, timeouts and cancellation work, and how each platform registers its handlers. The [`haylen.platform` reference](../lua-api/platform.md) lists the Lua functions, and the [native code guide](native.md) compares the bridge with native libraries and C++ plugins.
 
-This guide explains how the bridge works and how each platform implements methods. The Lua functions are documented in the [haylen.platform reference](../lua-api/platform.md), the [native code guide](native.md) compares the bridge with native libraries called through FFI and with C++ plugins, and the [architecture guide](../core/architecture.md) places the bridge among the other engine systems.
+## What the bridge carries
+
+The bridge carries two things:
+
+- **Calls.** The app calls a named method with JSON parameters. A handler answers once with a JSON result, or with a typed error that has a message, a code and data. The answer arrives later, so a call never blocks the app. A call can time out, and the app can cancel it. The handler hears both.
+- **Events.** Native code sends a named event with a JSON payload, and the app listens to it. An event can be retained for a listener that comes later, or batched into one list per frame.
+
+Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text. Every result and every event reaches the app on the frame thread, at the start of a frame. Plugins also open screens through the bridge: native UI that covers the app until it ends with one result.
+
+The bridge covers what the engine does not wrap, such as sign-in, purchases, sharing, deep links or system settings. The engine wraps some services itself, and they never go through the bridge: what the device is, opening urls and vibrating in [`haylen.system`](../lua-api/system.md), and native dialogs in [`haylen.dialogs`](../lua-api/dialogs.md). The bridge has no methods of its own, so every method name and event name is a contract between an app and its native code.
+
+```lua
+local async = require('async')
+local platform = require('haylen.platform')
+
+platform.on('app.link', function(payload)
+    print('Opened from ' .. payload.url .. '.')
+end)
+
+async.spawn(function()
+    local answer, err = platform.call('app.greet', {name = 'Ana'}, {timeout = 5}):await()
+    print(answer and answer.message or err)
+end)
+```
 
 ## How a call travels
 
@@ -16,17 +39,37 @@ next frame: Engine::frame ─► Bridge::pump ─► callback or Lua call, on th
 
 Every step carries the JSON text of the payload together with its byte buffers, as [byte buffers](#byte-buffers) describes.
 
-1. The function `platform.call(method, params, options)` reaches `platform::Bridge::call` (`engine/src/platform/Bridge.cpp`), which gives the call a numeric id, keeps its callback and, with a timeout, its deadline.
-2. A handler registered inside the engine answers first. Those are C++ handlers added with `Bridge::registerHandler` and Lua handlers added with `platform.registerHandler`. The handler runs during the call itself.
-3. Otherwise the bridge serializes the parameters and hands `(id, method, paramsJson, buffers)` to the dispatcher of the engine. A handler that a native library registered through `HaylenNativeApi` (`engine/src/platform/native/NativeApi.cpp`) answers next, and the host gets the call otherwise, through `Host::dispatchPlatformCall`. The native host, `platform::NativeHost`, forwards it to `platform::Services::dispatch`, which each platform folder under `engine/src/platform` implements.
-4. Native code answers once, from any thread, with success and a JSON value or with failure and a message, a code and data. The answer goes through `platform::BridgeRelay::resolve` in `engine/src/platform/BridgeRelay.cpp` to the bridge of the running engine, which the platform plugin attaches when the app starts, and the bridge parses it and queues it.
-5. At the start of every frame, `Engine::frame` calls `Bridge::pump`, which runs the queued callbacks, events and the work native callbacks posted, on the frame thread, and then polls the Varn event loop, before the fixed update and the update. In Lua, the call returned by `platform.call` settles in the pump, and a coroutine that awaits it resumes in the poll of the same frame, so an awaited round trip takes one frame when the native code answers before the next one starts.
+1. The function `platform.call(method, params, options)` reaches `platform::Bridge::call` in `engine/src/platform/Bridge.cpp`. The bridge gives the call a numeric id and keeps its callback. With a timeout it also keeps the deadline.
+2. A handler registered inside the engine answers first. That is a C++ handler of `Bridge::registerHandler` or a Lua handler of `platform.registerHandler`. It runs during the call itself.
+3. Otherwise the bridge serializes the parameters and hands `(id, method, paramsJson, buffers)` to the dispatcher of the engine. A handler that a native library registered through `HaylenNativeApi`, in `engine/src/platform/native/NativeApi.cpp`, answers next.
+4. Otherwise the host gets the call through `Host::dispatchPlatformCall`. The native host, `platform::NativeHost`, forwards it to `platform::Services::dispatch`, which each platform folder under `engine/src/platform` implements: `HaylenBridge` on Android and Apple platforms and `Module.haylen` on the web. Windows and Linux have no registry of their own, as [desktop](#desktop) explains.
+5. Native code answers once, from any thread. The answer goes through `platform::BridgeRelay::resolve` in `engine/src/platform/BridgeRelay.cpp` to the bridge of the running engine, which the platform plugin attaches when the app starts. The bridge parses the answer and queues it.
+6. At the start of every frame, `Engine::frame` calls `Bridge::pump`. The pump runs the queued callbacks, the events and the work that native callbacks posted, on the frame thread. Then it polls the event loop of Varn, before the fixed update and the update.
 
-Native events take the same road: `BridgeRelay::emit(event, payloadJson, buffers, options)` queues the event, and `pump` delivers it to every listener connected with `on`. An event with invalid JSON, or whose JSON refers to a buffer it lacks, is logged and dropped. Events that arrive while no app is running are dropped too, and so are events that nothing listens to, unless they are retained.
+A method that no handler answers fails with the code `noHandler`. The headless host of the engine tests and of `haylen-headless` has no native side. It records each call that no engine handler answers and leaves it pending, so a test answers it or the call waits, as [testing bridge code](#testing-bridge-code) shows.
+
+### One frame per round trip
+
+In Lua, the call that `platform.call` returns settles in the pump. A coroutine that awaits it resumes in the poll of the same frame. So an awaited round trip takes one frame when native code answers before the next frame starts. A result never arrives during the `platform.call` that asked for it, even when an engine handler answers at once.
+
+Code that waits on many calls in a row pays one frame for each. Send them together and await them with `async.all` instead.
+
+```lua
+local async = require('async')
+local platform = require('haylen.platform')
+
+async.spawn(function()
+    -- Both calls travel in the same frame, so the answers arrive together.
+    local both = async.all({platform.call('profile.load', {id = 'me'}).promise, platform.call('store.products').promise}):await()
+    print(both[1].name, #both[2])
+end)
+```
+
+Every call gets an id that is unique in the whole process. So a native answer that arrives after the app restarted, for example after a hot reload, never answers a call of the new app, and the bridge drops it.
 
 ## Performance
 
-The test `PLG-022` of the test project measures the bridge to the native part of the demo plugin: the round trip of one call awaited after the other, the calls per second of 2000 calls sent at once, the work of a frame that sends N calls, and the work of the frames that receive N batched events 30 times per second. It logs every number with its code, so a run on a device, a simulator or a browser records them. These are the numbers of the Debug build of the test project:
+The test `PLG-022` of the test project measures the bridge to the native part of the demo plugin. It measures four things: the round trip of one call awaited after the other, the calls per second of 2000 calls sent at once, the work of a frame that sends N calls, and the work of the frames that receive N batched events 30 times per second. It logs every number with its code, so a run on a device, a simulator or a browser records them. These are the numbers of the Debug build of the test project:
 
 | Measure | iOS simulator, Swift | Android emulator `Pixel_10a`, Kotlin | Chrome without a window, JavaScript |
 | --- | --- | --- | --- |
@@ -36,34 +79,78 @@ The test `PLG-022` of the test project measures the bridge to the native part of
 | Frame work with 0, 10, 100 and 1000 calls | 0.56, 0.73, 0.78 and 2.16 ms | 0.70, 0.81, 1.00 and 4.80 ms | 0.90, 1.02, 1.36 and 2.49 ms |
 | Frame work with 10, 100 and 1000 batched events 30 times per second | 0.33, 0.55 and 0.31 ms | 0.77, 0.91 and 1.37 ms | 0.65, 0.90 and 1.51 ms |
 
-An awaited call costs one frame of the platform, since the reply settles in the pump of the next frame and the coroutine resumes in the poll that follows it, so code that waits on many calls in a row sends them together and awaits them with `async.all` instead. The emulator draws without a window at about 30 frames per second, which makes its round trip twice as long, while the calls per second and the work of a frame measure the bridge itself. Batched events cost little whatever their number, because a name of events reaches its listener as one list per frame.
+An awaited call costs one frame of the platform. The emulator draws without a window at about 30 frames per second, so its round trip is twice as long. The calls per second and the work of a frame measure the bridge itself. Batched events cost little whatever their number, because the events of one name reach their listener as one list per frame.
 
-## Retained events
+## Events
 
-Some events come before the app listens: the deep link or the notification that opened the app, a purchase that finished while it was closed, or the result of a sign-in that restores itself at launch. Native code sends them retained. A retained event that nothing listens to waits in the bridge, up to `Bridge::kRetainedLimit`, 32, per name with the oldest dropped first, and the first `on` of its name receives the waiting events in order at the next pump, before any newer event of that name. The events wait in the bridge of the running app, so a restarted app starts with none, and an event that reaches the engine while no app runs is dropped even when it is retained. The Android library and the Apple runtime keep the events that native code sends while no app runs, such as while the app launches, and hand them to the next app in order, so an event sent retained before any app ran still reaches its first listener. Every entry point takes the flag: the `retain` field of `Bridge::EmitOptions` for `Bridge::emit` and `BridgeRelay::emit` in C++, `HAYLEN_NATIVE_EMIT_RETAIN` in the flags of `emit` of `HaylenNativeApi` in native libraries, `HaylenBridge.emit(event, payload, retain)`, `emitRetained` and `emit(event, payload, retain, batched)` of plugin contexts on Android, `+emit:payload:retain:` of `HaylenBridge`, `emitRetained:payload:` and `emit:payload:retain:batched:` of plugin contexts on Apple platforms, `Module.haylen.emit(event, payload, {retain: true})` and `context.emit` of plugin modules on the web, and `platform.emit(event, payload, {retain = true})` in Lua tests.
+Native code sends events with `emit` and the app listens with `platform.on`. Events take the same road as answers: `BridgeRelay::emit(event, payloadJson, buffers, options)` queues the event, and `pump` delivers it to every listener of its name. An event with invalid JSON, or whose JSON refers to a buffer it lacks, is logged and dropped. An event that arrives while no app runs is dropped, and so is an event that nothing listens to, unless it is retained.
 
-## Batched events
+### Retained events
 
-Native code that reports something many times per frame, such as a sensor, a location or the progress of a download, marks its events batched. The batched events of one name that reach the bridge before a pump arrive at the listeners once, as one event whose payload lists their payloads in order, placed where the first of them came. In Lua the listener receives a list of payloads, and in C++ a `Bridge::Payload` whose JSON is an array, whose buffers are the buffers of the events in order and whose references point at them. Events of the same name without the flag arrive on their own, as always. A batch is retained when any of its events is, and it waits as the list of its frame, up to 32 lists per name, each of which the first listener receives in order. The flag goes next to the retain flag on every platform: the `batched` field of `Bridge::EmitOptions` in C++, `HAYLEN_NATIVE_EMIT_BATCHED` in the flags of `emit` of `HaylenNativeApi`, `HaylenBridge.emit(event, payload, retain, batched)` and `emit(event, payload, retain, batched)` of plugin contexts on Android, `+emit:payload:retain:batched:` of `HaylenBridge` and `emit:payload:retain:batched:` of plugin contexts on Apple platforms, `{batched: true}` in the options of `Module.haylen.emit` and `context.emit` on the web, and `{batched = true}` in the options of `platform.emit` in Lua.
+Some events come before the app listens: the deep link or the notification that opened the app, a purchase that finished while it was closed, or the result of a sign-in that restores itself at launch. Native code sends such events retained.
+
+A retained event that nothing listens to waits in the bridge, up to `Bridge::kRetainedLimit`, which is 32, per name. The oldest is dropped first. The first `on` of its name receives the waiting events in order at the next pump, before any newer event of that name. The events wait in the bridge of the running app, so a restarted app starts with none. The bridge itself drops an event that reaches the engine while no app runs, even a retained one. So the Android library and the Apple runtime keep the events that native code sends while no app runs, such as while the app launches. They hand them to the next app in order, and an event sent retained before any app ran still reaches its first listener.
+
+### Batched events
+
+Native code that reports something many times per frame, such as a sensor, a location or the progress of a download, marks its events batched. The batched events of one name that reach the bridge before a pump arrive at the listeners once. They arrive as one event whose payload lists their payloads in order, at the place of the first of them.
+
+- In Lua the listener receives a list of payloads.
+- In C++ the listener receives a `Bridge::Payload` whose JSON is an array. Its buffers are the buffers of the events in order, and its references point at them.
+
+Events of the same name without the flag still arrive on their own. A batch is retained when any of its events is. It waits as the list of its frame, up to 32 lists per name, and the first listener receives each list in order.
+
+### Where the flags go
+
+Every way to send an event takes both flags:
+
+| Who sends | Retained | Batched |
+| --- | --- | --- |
+| C++ | The `retain` field of `Bridge::EmitOptions` for `Bridge::emit` and `BridgeRelay::emit`. | The `batched` field of `Bridge::EmitOptions`. |
+| A native library, C | `HAYLEN_NATIVE_EMIT_RETAIN` in the flags of `emit` of `HaylenNativeApi`. | `HAYLEN_NATIVE_EMIT_BATCHED` in the same flags. |
+| Android | `HaylenBridge.emit(event, payload, retain)`, and `emitRetained` of a plugin context. | `HaylenBridge.emit(event, payload, retain, batched)`, and `emit(event, payload, retain, batched)` of a plugin context. |
+| Apple, Objective-C | `+emit:payload:retain:` of `HaylenBridge`, and `emitRetained:payload:` of a plugin context. | `+emit:payload:retain:batched:` of `HaylenBridge` and of a plugin context. |
+| Apple, Swift | `try HaylenBridge.emit(event, payload, retain: true)`, and `try context.emit(event, payload, retain: true)`. | The argument `batched: true` of the same functions. |
+| Web | `Module.haylen.emit(event, payload, {retain: true})`, and `context.emit` of a plugin module. | `{batched: true}` in the same options. |
+| Lua, in tests | `platform.emit(event, payload, {retain = true})`. | `{batched = true}` in the same options. |
 
 ## Byte buffers
 
-A payload is JSON with an ordered list of byte buffers next to it, and the JSON refers to buffer N as the object `{"$bytes": N}`, an object whose only key is `$bytes` with an integer of 0 or more. A buffer can appear in any place of the JSON and more than once. Binary data such as a photo, a recording or a file therefore crosses the bridge as bytes, never as base64 text, in the parameters of a call, in its result and in an event, retained and batched ones included. Every entry point is thread-safe, and each copies the bytes once, into the engine or out of it:
+A payload is JSON with an ordered list of byte buffers next to it. The JSON refers to buffer N with the object `{"$bytes": N}`, an object whose only key is `$bytes` with an integer of 0 or more. A buffer can appear anywhere in the JSON, and more than once. So binary data, such as a photo, a recording or a file, crosses the bridge as bytes, never as base64 text. This works in the parameters of a call, in its result and in an event, retained and batched ones included.
 
-| Where | Bytes of the app | Bytes of native code |
+Every entry point is safe from any thread, and each copies the bytes once, into the engine or out of it. Each language uses its own byte type:
+
+| Where | Bytes that the app sends | Bytes that native code sends |
 | --- | --- | --- |
 | Lua | A string marked with [`platform.bytes(data)`](../lua-api/platform.md#platformbytesdata), since plain strings cross as text. | A Lua string in the place of the reference. |
-| C++ | `Bridge::Payload{json, buffers}`, whose buffers are `std::vector<std::byte>`, for `call`, `send`, handlers and listeners. | The buffers of `Bridge::resolve` and `Bridge::emit`. |
-| C | A `const HaylenNativeBuffer*` array that handlers receive, valid while they run. | `HaylenNativeBuffer` arrays of `resolve` and `emit` of `HaylenNativeApi`. |
-| Java and Kotlin | A `byte[]` value in the `JSONObject` or `JSONArray` of the parameters. | `byte[]` and `ByteBuffer` values anywhere in the value of `reply.success` and `emit`, where a direct `ByteBuffer` crosses JNI without a copy in Java. |
+| C++ | The buffers of `Bridge::Payload{json, buffers}`, which are `std::vector<std::byte>`, for `call`, `send`, handlers and listeners. | The buffers of `Bridge::resolve` and `Bridge::emit`. |
+| C | A `const HaylenNativeBuffer*` array that a handler receives, valid while it runs. | The `HaylenNativeBuffer` arrays of `resolve` and `emit` of `HaylenNativeApi`. |
+| Java and Kotlin | A `byte[]` value, `ByteArray` in Kotlin, in the `JSONObject` or `JSONArray` of the parameters. | `byte[]` and `ByteBuffer` values anywhere in the value of `reply.success` and of `emit`. A direct `ByteBuffer` crosses JNI without a copy in Java. |
 | Objective-C and Swift | An `NSData` value, `Data` in Swift, in the parameters. | `NSData` and `Data` values anywhere in the value of a reply and of `emit`. |
-| JavaScript | A `Uint8Array` value in the parameters. | `ArrayBuffer`, `Uint8Array` and every other `ArrayBuffer` view anywhere in the value of a handler and of `emit`, copied into wasm memory. |
+| JavaScript | A `Uint8Array` value in the parameters. | `ArrayBuffer`, `Uint8Array` and every other `ArrayBuffer` view anywhere in the value of a handler and of `emit`. They are copied into wasm memory. |
 
-JSON that refers to a buffer it lacks fails a call with the code `invalidBytes` and a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`, drops an event with an error in the log, and makes `Bridge::call` and `Bridge::send` throw `std::invalid_argument`. Failures carry JSON alone, so the buffers of a failure are dropped. The Swift helpers for `Codable` values carry JSON alone as well, so Swift handlers that take or return bytes use `registerHandler` with dictionaries.
+JSON that refers to a buffer it lacks fails a call with the code `invalidBytes` and a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. The same JSON drops an event with an error in the log, and it makes `Bridge::call` and `Bridge::send` throw `std::invalid_argument`. A failure carries JSON alone, so the buffers of a failure are dropped. The Swift helpers for `Codable` values carry JSON alone too, so a Swift handler that takes or returns bytes uses `registerHandler` with dictionaries.
+
+```lua
+local async = require('async')
+local platform = require('haylen.platform')
+
+async.spawn(function()
+    -- The string goes out as a buffer, and the buffer that comes back is a Lua string.
+    local echoed = platform.call('photos.echo', {image = platform.bytes('\137PNG')}):await()
+    print(#echoed.image)
+end)
+```
 
 ## Timeouts and cancellation
 
-A call with a `timeout` fails with the code `timeout` at the first pump after its deadline, and `call:cancel()` fails a pending call with the code `cancelled` at the next pump. In both cases the bridge tells the native side that the app gave the call up, through `Bridge::Canceller`: a handler of a native library hears it through its `HaylenNativeCancel` function, and a platform handler through `Host::cancelPlatformCall` and `Services::cancel`, which reach `HaylenBridge.cancel` on Android, the cancel block of a cancellable handler on Apple platforms and the `AbortSignal` of the handler on the web. Windows and Linux fail the calls that reach them during the call itself, so no call of theirs is ever pending. An answer that comes after a call timed out or was cancelled is dropped, like a second answer to the same call. A call without a timeout waits for its answer as long as the app runs, so every handler answers exactly once, and when the app stops or restarts, the bridge tells the native side of every call still pending that it was given up, the way `call:cancel()` does, so native work such as a watch that streams events stops with the app that started it.
+A call with a `timeout` fails with the code `timeout` at the first pump after its deadline. The method `call:cancel()` fails a pending call with the code `cancelled` at the next pump. In both cases the bridge tells the native side that the app gave the call up, through `Bridge::Canceller`:
+
+- A handler of a native library hears it through its `HaylenNativeCancel` function.
+- A platform handler hears it through `Host::cancelPlatformCall` and `Services::cancel`. These reach `HaylenBridge.cancel` on Android, the cancel block of a cancellable handler on Apple platforms and the `AbortSignal` of the handler on the web.
+- Windows and Linux fail the calls that reach them during the call itself, so no call of theirs is ever pending.
+
+An answer that comes after a call timed out or was cancelled is dropped, like a second answer to the same call. A call without a timeout waits for its answer as long as the app runs, so every handler answers exactly once. When the app stops or restarts, the bridge tells the native side of every call that is still pending that it was given up, the way `call:cancel()` does. So native work, such as a watch that streams events, stops with the app that started it.
 
 ## Screens
 
@@ -77,66 +164,119 @@ native end (any thread) ─► ScreenRelay::finish ─► queue
 next pump: Screens::pump ─► the call, or <plugin>.screenRestored for the next app
 ```
 
-The engine covers the app before the platform shows the screen and keeps it covered until the screen ends, however it ends, and it draws nothing while an opaque screen shows. The screen that shows belongs to the process, so an app that restarts under it starts covered and receives its end as the retained event `<plugin>.screenRestored`, with the state that the earlier app gave. The platform keeps the pending screen where it survives the end of the process, such as the session storage of a page that leaves for a redirect, and hands its end to `ScreenRelay::restore` when the app starts again. A cancel or a timeout fails the call at once and asks the platform through `Host::cancelScreen` to dismiss the screen, whose end then reaches no app. The [plugin guide](plugins.md#plugin-screens) describes the model, the Lua API and the native contract on each platform, and the [haylen.platform reference](../lua-api/platform.md#screens) the options and the codes.
+The engine covers the app before the platform shows the screen, and keeps it covered until the screen ends, however it ends. It draws nothing while an opaque screen shows. The screen that shows belongs to the process. So an app that restarts under it starts covered and receives its end as the retained event `<plugin>.screenRestored`, with the state that the earlier app gave. The platform keeps the pending screen where it survives the end of the process, such as the session storage of a page that leaves for a redirect. It hands the end to `ScreenRelay::restore` when the app starts again. A cancel or a timeout fails the call at once and asks the platform through `Host::cancelScreen` to dismiss the screen, whose end then reaches no app. The [plugin guide](plugins.md#plugin-screens) describes how screens work and how each platform opens them, and the [reference](../lua-api/platform.md#screens) lists the options and the codes.
 
 ## The JSON contract
 
-- Parameters are a JSON value with its byte buffers, an empty object when Lua passes none. Lua tables become JSON as the [reference](../lua-api/platform.md#how-calls-travel) describes.
-- A successful result is any JSON value with its byte buffers, and `null` reaches Lua as `nil`.
-- A failure carries either a JSON string, which becomes the error message, or an object with a `message` string and optional `code` and `data` values, which Lua receives as the fields of the error. Any other failure payload, such as `null`, a number or an object without a string `message`, fails with `The native platform call failed without a message.` and keeps the code and data of an object, and text that is not JSON fails with the code `invalidJson` and `The platform returned invalid JSON.`
-- The engine and the platform sides fail calls with these codes: `timeout` and `cancelled` from the bridge, `noHandler` when nothing answers the method, `invalidJson`, `invalidBytes` for JSON that refers to a buffer it lacks, and `exception` when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own instead of answering, with the class of the exception or the type of the error in `data.type`.
-- Method and event names are free-form strings, usually dotted names such as `auth.signIn`. [Plugins](plugins.md) put their id in front of their method and event names, with the names in camelCase, such as `ads.showBanner` and `ads.closed`: the plugin handle of Lua and the plugin contexts of native code and the web add the prefix, so neither side writes it.
+- Parameters are a JSON value with its byte buffers. When Lua passes none, they are an empty object. The [reference](../lua-api/platform.md#values-that-cross-the-bridge) lists how Lua values become JSON.
+- A successful result is any JSON value with its byte buffers. A JSON `null` reaches Lua as `nil`.
+- A failure carries a JSON string, which becomes the error message, or an object with a `message` string and optional `code` and `data` values, which Lua receives as the fields of the error.
+- Any other failure payload, such as `null`, a number or an object without a string `message`, fails with `The native platform call failed without a message.`. It keeps the code and the data of an object.
+- An answer that is not JSON at all fails with the code `invalidJson` and `The platform returned invalid JSON.`.
+- The bridge and the platforms fail calls with their own codes: `timeout` and `cancelled` from the bridge, `noHandler` when nothing answers the method, `invalidJson`, `invalidBytes` for JSON that refers to a buffer it lacks, and `exception` when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The [reference](../lua-api/platform.md#platformerror) describes each one.
+- Method and event names are free-form strings, usually dotted names such as `auth.signIn`. [Plugins](plugins.md) put their id in front of their method and event names, which use camelCase, such as `ads.showBanner` and `ads.closed`. The plugin handle of Lua and the plugin contexts of native code add the prefix, so neither side writes it.
 
-## The Lua side
+## Stand-ins in Lua
 
-| Function | Purpose |
-| --- | --- |
-| `platform.call(method, params, options)` | Calls a method and returns a call. `call:await()` inside a coroutine returns the result, or `nil` and the error, a table with `message`, `code` and `data` that reads as its message. `options.timeout` gives up after that many seconds, and `call:cancel()` gives up at once. |
-| `platform.send(method, params)` | Calls a method whose answer nobody needs. It creates no call and drops the answer. |
-| `platform.on(event, listener, options)` | Calls `listener(payload)` for every native event of that name, or once per frame with the list of the batched ones, and returns a connection with `disconnect()`. The listener ends with the `owner` of the options, or with the module that registered it at its top level when it reloads. The first listener of a name also receives the retained events that wait for it. |
-| `platform.bytes(data)` | Marks a string that crosses the bridge as bytes. |
-| `platform.plugin(id)` | Returns the handle of a plugin of the app, whose `call`, `send` and `on` put the id of the plugin in front of the name, and whose `openScreen` opens a [screen](#screens) of the plugin. |
-| `platform.screenShowing()` | Returns whether the screen of a plugin shows, whichever app of the process opened it. |
-| `platform.registerHandler(method, handler)` | Answers a method with a Lua function inside the engine, which takes precedence over native handlers. |
-| `platform.hasHandler(method)` | Returns whether an engine handler answers the method. Native handlers are invisible to it. |
-
-Because `hasHandler` cannot see native handlers, an app that provides Lua stand-ins for methods implemented natively on some platforms decides by `haylen.platform`, as the [complete example](#complete-example) does. Registering a stand-in unconditionally would hide the native handler on every platform.
+The function `platform.registerHandler` answers a method with a Lua function inside the engine, which goes before every native handler. Desktop builds and tests use it to stand in for a method that a phone answers natively. The function `platform.hasHandler` cannot see native handlers. So an app decides by `haylen.platform` where to register a stand-in, as the [complete example](#complete-example) does. A stand-in registered on every platform would hide the native handler everywhere.
 
 ## Android
 
-The engine's Android library module `engine/platform/android/haylen` holds `dev.haylen.HaylenActivity`, the GameActivity that runs the app, and `dev.haylen.HaylenBridge`, the handler registry:
+The Android library module `engine/platform/android/haylen` holds `dev.haylen.HaylenActivity`, the GameActivity that runs the app, and `dev.haylen.HaylenBridge`, the registry of handlers.
 
 | Member | Meaning |
 | --- | --- |
-| `HaylenBridge.register(String method, MethodHandler handler)` | Adds or replaces the handler of a method, which runs on the main thread. |
+| `HaylenBridge.register(String method, MethodHandler handler)` | Adds or replaces the handler of a method. The handler runs on the main thread. |
 | `HaylenBridge.register(String method, MethodHandler handler, HaylenBridge.Threading threading)` | The same, with the thread the handler runs on: `MAIN` or `BACKGROUND`. |
 | `HaylenBridge.unregister(String method)` | Removes a handler. |
-| `HaylenBridge.emit(String event, Object payload)`, `HaylenBridge.emit(String event, Object payload, boolean retain)`, `HaylenBridge.emit(String event, Object payload, boolean retain, boolean batched)` | Sends an event to the app, retained for the first listener of its name when `retain` is `true`, and in the list of its frame when `batched` is `true`. |
+| `HaylenBridge.emit(String event, Object payload)` | Sends an event to the app. The forms with `boolean retain` and `boolean retain, boolean batched` send it [retained](#retained-events) or [batched](#batched-events). |
 | `HaylenBridge.activity()` | The running `HaylenActivity`, an `AppCompatActivity` and so a `ComponentActivity`, or `null` when there is none. |
-| `MethodHandler.handle(Object params, Reply reply) throws Exception` | The handler interface, usable as a lambda. |
-| `Reply.success(Object value)` | Answers the call, with `byte[]` and `ByteBuffer` values as bytes. |
-| `Reply.failure(String message)`, `Reply.failure(String message, String code, Object data)`, `Reply.failure(Throwable error)` | Fail the call, with a code and data, or with a thrown error: a `HaylenBridge.Failure` keeps its code and data, and any other error fails with the code `exception`. |
-| `Reply.isCancelled()`, `Reply.onCancel(Runnable listener)` | Whether the app gave the call up, and a listener that runs on the main thread when it does. |
+| `MethodHandler.handle(Object params, Reply reply) throws Exception` | The interface of a handler, usable as a lambda. |
+| `Reply.success(Object value)` | Answers the call. |
+| `Reply.failure(String message)` | Fails the call with a message. |
+| `Reply.failure(String message, String code, Object data)` | Fails the call with a code and data, both optional. |
+| `Reply.failure(Throwable error)` | Fails the call with a thrown error. A `HaylenBridge.Failure` keeps its code and data, and any other error fails with the code `exception`. |
+| `Reply.isCancelled()` | Whether the app cancelled the call or its timeout passed. |
+| `Reply.onCancel(Runnable listener)` | Runs the listener on the main thread when the app gives the call up, or at once when that already happened. |
 | `HaylenBridge.Failure(String message, String code, Object data)` | An exception that a handler throws to fail its call with a code and data. |
-| `HaylenCoroutines.register(String method, suspend (Any?) -> Any?)` | Adds a Kotlin handler written as a suspending function, which runs in a coroutine on the main thread and is cancelled when the app gives the call up. It comes with the `dev.haylen:haylen-coroutines` library. |
+| `HaylenCoroutines.register(String method, suspend (Any?) -> Any?)` | Adds a Kotlin handler written as a suspending function. It comes with the `dev.haylen:haylen-coroutines` library. |
 
-How a call runs:
+### How a call runs on Android
 
-1. The engine calls the static `HaylenBridge.dispatch(long, byte[], byte[], byte[][])` through JNI on the frame thread, with the method name and the parameters as UTF-8 bytes and the byte buffers of the parameters. Every text crosses JNI as UTF-8 bytes in both directions, because the JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji. A method without a handler fails with the code `noHandler` and `No native handler is registered for "<method>".`. Otherwise the frame thread only posts the call to the thread of the handler and goes on. The native side attaches each of its threads to the Java VM the first time it calls Java and detaches it when the thread ends, so no call pays for an attachment. An exception that a method of Java throws into any call of the engine, `dispatch` included, never stays pending on the frame thread: the engine describes it to logcat, clears it and logs an error that names the method, and a `dispatch` that threw fails its call with the code `exception`.
-2. The handler runs on the main thread, or on the one background thread that every handler registered with `HaylenBridge.Threading.BACKGROUND` shares, in the order the calls arrive. A main thread handler whose activity was destroyed in the meantime fails its call with `The activity was destroyed before "<method>" ran.`, while background handlers run without an activity.
-3. The parameters are parsed with `org.json.JSONTokener` on the thread of the handler, so an object arrives as a `JSONObject`, and every reference to a buffer becomes a `byte[]` value in its place. Parameters that do not parse fail the call.
-4. The handler replies at once or later, from any thread. The method `success` accepts `null`, strings, numbers, booleans, `JSONObject`, `JSONArray`, maps, collections and arrays, converted with `JSONObject.wrap`, with `byte[]` and `ByteBuffer` values anywhere inside, which cross JNI as buffers. A direct `ByteBuffer` crosses with its remaining bytes without a copy in Java, and a value that is not JSON, such as a `NaN`, fails the call. The first answer counts, and later ones are dropped.
-5. When the app cancels the call or its timeout passes, the engine calls the static `HaylenBridge.cancel(long)` through JNI, which marks the reply cancelled, drops the answer that may still come and runs the `onCancel` listeners on the main thread. A call cancelled before its handler ran never runs it.
+1. The engine calls the static `HaylenBridge.dispatch(long, byte[], byte[], byte[][])` through JNI on the frame thread. It passes the method name and the parameters as UTF-8 bytes, and the byte buffers of the parameters. Every text crosses JNI as UTF-8 bytes in both directions. The JNI string functions use a modified UTF-8 that breaks characters outside the Basic Multilingual Plane, such as emoji.
+2. A method without a handler fails with the code `noHandler` and `No native handler is registered for "<method>".`. Otherwise the frame thread only posts the call to the thread of the handler and goes on.
+3. The handler runs on the main thread, or on the one background thread that every handler of `HaylenBridge.Threading.BACKGROUND` shares, in the order the calls arrive. A main thread handler whose activity was destroyed in the meantime fails its call with `The activity was destroyed before "<method>" ran.`. Background handlers run without an activity.
+4. The parameters are parsed with `org.json.JSONTokener` on the thread of the handler. So an object arrives as a `JSONObject`, and every reference to a buffer becomes a `byte[]` value in its place. Parameters that do not parse fail the call.
+5. The handler replies at once or later, from any thread. The method `success` takes `null`, strings, numbers, booleans, `JSONObject`, `JSONArray`, maps, collections and arrays, which it converts with `JSONObject.wrap`. It takes `byte[]` and `ByteBuffer` values anywhere inside, which cross JNI as buffers. A direct `ByteBuffer` crosses with its remaining bytes without a copy in Java. A value that is not JSON, such as `NaN`, fails the call. The first answer counts, and later ones are dropped.
+6. When the app cancels the call or its timeout passes, the engine calls the static `HaylenBridge.cancel(long)` through JNI. It marks the reply cancelled, drops the answer that may still come and runs the `onCancel` listeners on the main thread. A call cancelled before its handler ran never runs it.
 
-A handler that throws, a checked exception included, fails its call through `reply.failure(Throwable)` instead of crashing the app, so an unexpected `NullPointerException` becomes a failed call with the code `exception` and the class name in `data.type`. Errors of the virtual machine, such as `OutOfMemoryError`, still end the app. `HaylenBridge.emit` works from any thread at any time and converts its payload like `success`, logging and dropping one that is not JSON: while no app runs, such as before the first activity loads the native library, while an app restarts or between two activities, the library keeps the events, up to 32 per name with the oldest dropped first, and hands them to the next app in order once it starts.
+The native side attaches each of its threads to the Java VM the first time the thread calls Java, and detaches it when the thread ends, so no call pays for an attachment. An exception that a Java method throws into any call of the engine never stays pending on the frame thread. The engine describes it to logcat, clears it and logs an error that names the method. A `dispatch` that threw fails its call with the code `exception`.
 
-`HaylenCoroutines` in `engine/platform/android/haylen-coroutines/src/main/kotlin/dev/haylen/HaylenCoroutines.kt` registers Kotlin handlers written as suspending functions. It launches each call in a coroutine of a scope on `Dispatchers.Main.immediate`, answers with the return value, fails the call with what the function throws, and cancels the coroutine from `onCancel`. It lives in the `dev.haylen:haylen-coroutines` library, which depends on `kotlinx-coroutines-android` as an API, so only apps and plugins that depend on that library get coroutines. The [reference](../lua-api/platform.md#android-handlers) has examples in Java and Kotlin.
+A handler that throws, a checked exception included, fails its call through `reply.failure(Throwable)` instead of crashing the app. So an unexpected `NullPointerException` becomes a failed call with the code `exception` and the class name in `data.type`. Errors of the virtual machine, such as `OutOfMemoryError`, still end the app.
 
-[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name, and apps register theirs once, in `Application.onCreate` of the application class that the `<application>` of the manifest of their [Android project](../tools/distribution.md#the-android-project) names, before the first activity starts. The Android template gives that class, `App` in `app/src/main/kotlin/dev/haylen/app/App.kt`, so every project made from it has the place where its handlers register and its native code sends events, as `source/main.mm` of the Apple template and `app.js` of the web template have, and each of them holds the handler of the [bridge example](../tools/distribution.md#the-bridge-example) of the templates. The sign-in of Tiny Island is a local plugin, `samples/games/tiny-island/plugins/sign-in`, whose `SignInPlugin` answers `sign-in.signIn` with Credential Manager: it builds the credential option of the identity service with the web client id that the service gives the game from the `clientId` parameter of the plugin, calls `getCredentialAsync` on the activity's main executor and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `app.json` to set. R8 keeps the classes the engine reaches by name through the module's `consumer-rules.pro`, so handlers need no rules of their own.
+The method `HaylenBridge.emit` works from any thread at any time. It converts its payload like `success`, and it logs and drops a payload that is not JSON. While no app runs, the library keeps the events, up to 32 per name with the oldest dropped first, and hands them to the next app in order once it starts. That covers the time before the first activity loads the native library, while an app restarts and between two activities.
+
+R8 keeps the classes that the engine reaches by name through the `consumer-rules.pro` of the module, so handlers need no rules of their own.
+
+### Where Android handlers register
+
+[Plugins](plugins.md#the-android-part) register their handlers through their context, which puts the id of the plugin in front of the name. Apps register theirs once, in `Application.onCreate` of the application class, before the first activity starts. The `<application>` of the manifest of the [Android project](../tools/distribution.md#the-android-project) names that class. The Android template gives it as `App` in `app/src/main/kotlin/com/haylen/app/App.kt`, with the handler of the [bridge example](../tools/distribution.md#the-bridge-example) of the templates.
+
+```java
+import dev.haylen.HaylenBridge;
+import org.json.JSONObject;
+
+public final class StorePlugin {
+    private StorePlugin() {}
+
+    // Called from Application.onCreate, before the first activity starts.
+    public static void register() {
+        HaylenBridge.register("store.buy", (params, reply) -> {
+            String item = params instanceof JSONObject ? ((JSONObject) params).optString("item", "") : "";
+            if (item.isEmpty()) {
+                throw new HaylenBridge.Failure("The method store.buy needs an item.", "missingItem", null);
+            }
+            reply.success(new JSONObject().put("item", item).put("receipt", "play-store-token"));
+        });
+    }
+
+    public static void onDeepLink(String url) throws Exception {
+        HaylenBridge.emit("app.link", new JSONObject().put("url", url), true);
+    }
+}
+```
+
+The sign-in of Tiny Island is a real handler of this kind. The local plugin `samples/games/tiny-island/plugins/sign-in` has a `SignInPlugin` that answers `sign-in.signIn` with Credential Manager. It builds the credential option of the identity service with the web client id from the `clientId` parameter of the plugin. It calls `getCredentialAsync` on the main executor of the activity and replies with `idToken`, `email`, `name` and `picture`. Without a client id it fails with a message that names the key of `app.json` to set.
+
+### Kotlin coroutines
+
+`HaylenCoroutines.register(method) { params -> result }` registers a Kotlin handler written as a suspending function. Each call runs in a coroutine of a scope on `Dispatchers.Main.immediate`, so it runs on the main thread. The return value answers the call. A thrown exception fails it like `failure(throwable)`. The coroutine is cancelled when the app cancels the call or its timeout passes.
+
+`HaylenCoroutines` lives in `engine/platform/android/haylen-coroutines/src/main/kotlin/dev/haylen/HaylenCoroutines.kt`, in the `dev.haylen:haylen-coroutines` library. That library depends on `kotlinx-coroutines-android` as an API, so only apps and plugins that depend on it get coroutines. An app with such handlers depends on it in `app/build.gradle.kts` of its Android project, and a plugin in its own module, as the local plugin [`native-sample`](../../samples/tests/plugins/native-sample) of the test project does.
+
+```kotlin
+import dev.haylen.HaylenBridge
+import dev.haylen.HaylenCoroutines
+import kotlinx.coroutines.delay
+import org.json.JSONObject
+
+object ProfilePlugin {
+    fun register() {
+        HaylenCoroutines.register("profile.load") { params ->
+            val id = (params as? JSONObject)?.optString("id").orEmpty()
+            if (id.isEmpty()) {
+                throw HaylenBridge.Failure("The method profile.load needs an id.", "missingId", null)
+            }
+            delay(100)
+            mapOf("id" to id, "name" to "Player")
+        }
+    }
+}
+```
 
 ## Apple platforms
 
-The file `engine/include/haylen/platform/apple/HaylenBridge.h` declares the registry for macOS, iOS and tvOS, and `engine/src/platform/apple/HaylenBridge.mm` implements it on top of `AppleBridge`, the handler table of `engine/src/platform/apple/AppleBridge.mm`:
+The file `engine/include/haylen/platform/apple/HaylenBridge.h` declares the registry for macOS, iOS and tvOS. The file `engine/src/platform/apple/HaylenBridge.mm` implements it on top of `AppleBridge`, the table of handlers of `engine/src/platform/apple/AppleBridge.mm`.
 
 ```objc
 typedef void (^HaylenReply)(BOOL ok, id _Nullable result);
@@ -154,58 +294,152 @@ typedef HaylenCancel _Nullable (^HaylenCancellableHandler)(id params, HaylenRepl
 @end
 ```
 
-- The parameters are parsed with `NSJSONSerialization`, so an object arrives as an `NSDictionary`, every reference to a buffer becomes an `NSData` value in its place, and parameters that do not parse arrive as an empty dictionary.
-- Handlers run on the main queue and may reply later from any thread. The function `reply(YES, result)` succeeds with any value `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as buffers, or `nil`. The function `reply(NO, failure)` fails with a message string or a dictionary with a `message` string and optional `code` and `data`. The first answer counts, and later ones are dropped.
-- A cancellable handler returns a block, or `nil`, that runs on the main queue when the app cancels the call or its timeout passes, after which an answer is dropped. A call cancelled before its handler ran never runs it.
-- A method without a handler fails with the code `noHandler` and `No native handler is registered for "<method>".`
-- The method `emit:payload:` sends an event from any thread, with `NSData` values as buffers, `emit:payload:retain:` with `YES` sends it [retained](#retained-events), and `emit:payload:retain:batched:` with `batched` set to `YES` sends it [batched](#batched-events). An event whose payload `NSJSONSerialization` rejects is logged and dropped. Events sent while no app runs, such as while the app launches, before its first frame, or while it restarts, wait in the runtime and reach the next app in order once it starts, so the link or the notification that opened the app is never lost.
-- The context of a [plugin](plugins.md#the-context) registers and emits under the id of the plugin, so `[context registerHandler:@"show" ...]` of the plugin `ads` answers `ads.show`, and `[context emitRetained:@"closed" payload:nil]` sends `ads.closed`.
+- **Parameters.** They are parsed with `NSJSONSerialization`. So an object arrives as an `NSDictionary`, and every reference to a buffer becomes an `NSData` value in its place. Parameters that do not parse arrive as an empty dictionary.
+- **Threads.** Handlers run on the main queue and may reply later from any thread. The table of handlers exists from the first registration, so native code may register at any time, even before the app starts.
+- **Success.** The call `reply(YES, result)` succeeds with `nil` or any value that `NSJSONSerialization` accepts, with `NSData` values anywhere inside, which cross as buffers. A value that it rejects fails the call with `The native handler for "<method>" returned a value that is not JSON.`.
+- **Failure.** The call `reply(NO, failure)` fails with a message string, or a dictionary with a `message` string and optional `code` and `data`. Anything else fails with `The native handler for "<method>" failed.`. The first answer counts, and later ones are dropped.
+- **Cancellation.** A cancellable handler returns a block, or `nil`. The block runs on the main queue when the app cancels the call or its timeout passes, and an answer after that is dropped. A call cancelled before its handler ran never runs it.
+- **No handler.** A method without a handler fails with the code `noHandler` and `No native handler is registered for "<method>".`.
+- **Events.** The method `emit:payload:` sends an event from any thread, with `NSData` values as buffers. A payload that `NSJSONSerialization` rejects is logged as an error and dropped. Events sent while no app runs, such as while the app launches, before its first frame or while it restarts, wait in the runtime and reach the next app in order once it starts. So the link or the notification that opened the app is never lost.
+- **Plugins.** The context of a [plugin](plugins.md#the-apple-context) registers and emits under the id of the plugin. So `[context registerHandler:@"show" ...]` of the plugin `ads` answers `ads.show`, and `[context emitRetained:@"closed" payload:nil]` sends `ads.closed`.
 
-Swift handlers use `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift` of the engine, which decodes the parameters with `JSONDecoder`, encodes the result with `JSONEncoder`, fails the call with the code and data of a thrown `HaylenFailure` or with the code `exception` for any other error, and cancels the task of the call when the app gives it up. The call `try HaylenBridge.emit(event, payload, retain: true)` sends an event with an `Encodable` payload, and plugin contexts have the same helpers, `context.register` and `context.emit`, as the [plugin guide](plugins.md#swift-helpers) describes. The engine ships `HaylenBridgeAsync.swift` as a source file, which `haylen.py` writes into `haylen/` of the project and the target templates compile, because the engine artifact is a static library of C, C++ and Objective-C whose headers Swift reaches through `source/HaylenBridging.h`, and a Swift module in the artifact would have to match the Swift compiler of each app. The target names its module `HaylenApp`, so Objective-C++ code such as `main.mm` calls Swift classes through `#import "HaylenApp-Swift.h"`.
+```objc
+#import "haylen/platform/apple/HaylenBridge.h"
 
-The handler table exists from the first registration, so native code may register at any time. Apps made from the Apple template register in the `main` function of `source/main.m`, before it calls `haylen_main`, with their Objective-C, C++ and Swift files next to it in `platform/apple/source/` of the app, whose files all build into every target, as the [distribution guide](../tools/distribution.md#the-apple-project) describes. Apps built with `haylen_add_app` add the Objective-C file with its `SOURCES` argument, compile it with `-fobjc-arc` as the engine compiles its Apple sources, and register from `+load` or once the app has launched, as `src/AppBridge.mm` of the C++ template does. The [reference](../lua-api/platform.md#apple-handlers) has a complete handler.
+@interface StorePlugin : NSObject
+@end
+
+@implementation StorePlugin
+
++ (void)load {
+    [HaylenBridge registerHandler:@"store.buy" handler:^(id params, HaylenReply reply) {
+        NSString* item = [params isKindOfClass:NSDictionary.class] ? params[@"item"] : nil;
+        if (item == nil) {
+            reply(NO, @{@"message" : @"The method store.buy needs an item.", @"code" : @"missingItem"});
+            return;
+        }
+        reply(YES, @{@"item" : item, @"receipt" : @"app-store-token"});
+    }];
+}
+
+@end
+```
+
+```objc
+// The link that opened the app arrives before the app listens, so it waits for the first listener of app.link.
+[HaylenBridge emit:@"app.link" payload:@{@"url" : url.absoluteString} retain:YES];
+```
+
+### Swift
+
+Swift handlers use `HaylenBridge.register(method) { (params: Params) async throws -> Result in ... }` from `HaylenBridgeAsync.swift` of the engine. `Params` is `Decodable`, and the helper decodes the parameters with `JSONDecoder`. `Result` is `Encodable`, and the helper encodes it with `JSONEncoder`. The handler runs on the main actor. A thrown `HaylenFailure(message, code:, data:)` fails the call with its code and data, and any other error fails it with the code `exception`. The task of the call is cancelled when the app gives the call up. The call `try HaylenBridge.emit(event, payload, retain: false)` sends an event with an `Encodable` payload. Plugin contexts have the same helpers, as the [plugin guide](plugins.md#swift-helpers) describes.
+
+```swift
+import Foundation
+
+@objc final class ProfileHandlers: NSObject {
+    struct Request: Decodable {
+        let id: String
+    }
+
+    struct Profile: Encodable {
+        let id: String
+        let name: String
+    }
+
+    @objc static func registerHandlers() {
+        HaylenBridge.register("profile.load") { (request: Request) async throws -> Profile in
+            if request.id.isEmpty {
+                throw HaylenFailure("The method profile.load needs an id.", code: "missingId")
+            }
+            try await Task.sleep(nanoseconds: 100_000_000)
+            return Profile(id: request.id, name: "Player")
+        }
+    }
+}
+```
+
+The engine ships `HaylenBridgeAsync.swift` as a source file. The tool `haylen.py` writes it into `haylen/` of the project, and the target templates compile it. The engine artifact is a static library of C, C++ and Objective-C, whose headers Swift reaches through `source/HaylenBridging.h`. A Swift module inside the artifact would have to match the Swift compiler of each app, so the helpers stay a source file. The target names its module `HaylenApp`, so Objective-C code such as `main.m` calls Swift classes through `#import "HaylenApp-Swift.h"`.
+
+### Where Apple handlers register
+
+Apps made from the Apple template register in the `main` function of `source/main.m`, before it calls `haylen_main`. Their Objective-C, C++ and Swift files sit next to it in `platform/apple/source/` of the app, and every file there builds into every target, as the [distribution guide](../tools/distribution.md#the-apple-project) describes. The template registers its Swift handlers of `AppBridge.swift` from there.
+
+Apps built with `haylen_add_app` add their Objective-C file with the `SOURCES` argument. They compile it with `-fobjc-arc`, as the engine compiles its Apple sources, and register from `+load` or once the app has launched, as `src/AppBridge.mm` of the C++ template does.
 
 ## Web
 
-The page side of the bridge lives in `engine/platform/web/haylen-runtime.js`, which every web target links with `--pre-js` and which fills `Module.haylen`:
+The page side of the bridge lives in `engine/platform/web/haylen-runtime.js`. Every web target links it with `--pre-js`, and it fills `Module.haylen`:
 
 | Function | Meaning |
 | --- | --- |
 | `Module.haylen.register(method, handler)` | Adds or replaces the handler of a method. |
 | `Module.haylen.unregister(method)` | Removes a handler. |
-| `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, with `ArrayBuffer` and `Uint8Array` values as bytes, `options.retain` keeps the event for the first listener of its name, and `options.batched` sends it in the list of its frame. Events sent before the first app starts reach it once it starts. |
-| `Module.haylen.createPluginContext(id, config)` | Makes the context that the web module of a plugin receives, whose `register` and `emit` put the id of the plugin in front of the name, as the [plugin guide](plugins.md#web-modules) describes. |
+| `Module.haylen.emit(event, payload, options)` | Sends an event to the app. The payload is converted with `JSON.stringify`, with `ArrayBuffer` and `Uint8Array` values as bytes. The option `retain` keeps the event for the first listener of its name, and `batched` sends it in the list of its frame. Events sent before the first app starts reach it once it starts. |
+| `Module.haylen.createPluginContext(id, config)` | Makes the context that the web module of a plugin receives. Its `register` and `emit` put the id of the plugin in front of the name, as the [plugin guide](plugins.md#web-modules) describes. |
 
-The runtime calls the handler after the frame that made the call, with the parsed parameters, where bytes of the app arrive as `Uint8Array` values, and a context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes. A call cancelled in the frame that made it never runs its handler. The handler returns the result or a promise for it, whose `ArrayBuffer` and `Uint8Array` values cross as bytes, and a thrown error or a rejected promise fails the call with the error message and the `code` and `data` properties of the error, or with the code `exception` and the `name` of the error in `data.type` when the error has no code. The first answer counts, and an answer after a cancel is dropped. A method without a handler fails with the code `noHandler` and `No page handler is registered for "<method>".`
+The runtime calls a handler after the frame that made the call. The handler receives two arguments:
 
-The web build is single-threaded, so handlers run on the browser's main thread between frames. An asynchronous handler, such as one that waits for `fetch` or for a sign-in popup, never blocks the app while it waits.
+- The parsed parameters, where bytes of the app arrive as `Uint8Array` values.
+- A context with the `call` id and a `signal`, an `AbortSignal` that aborts when the app cancels the call or its timeout passes.
 
-The function `register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and a C++ app made from the C++ template links the same file into its runtime script with `--pre-js`, and plugins register theirs with `context.register` of their web module, such as `sign-in.signIn` of the local plugin of Tiny Island. It loads the script of the identity service only when the player first signs in, reads the client id from the parameters of the plugin, and resolves with `idToken`, `email`, `name` and `picture` decoded from the returned credential. The development server sends no embedder policy, so the script loads, and a site that serves the page with `Cross-Origin-Embedder-Policy: require-corp` blocks it, as the [distribution guide](../tools/distribution.md#serve) explains.
+The handler returns the result or a promise of it. `ArrayBuffer` and `Uint8Array` values in the result cross as bytes. A thrown error or a rejected promise fails the call with the message of the error and its `code` and `data` properties. An error without a code fails with the code `exception` and the `name` of the error in `data.type`. The first answer counts, and an answer after a cancel is dropped. A call cancelled in the frame that made it never runs its handler. A method without a handler fails with the code `noHandler` and `No page handler is registered for "<method>".`.
+
+The web build has one thread, so handlers run on the main thread of the browser between frames. An asynchronous handler, such as one that waits for `fetch` or for a sign-in popup, never blocks the app while it waits.
+
+The function `register` exists once the runtime script has run, so a page registers its handlers in `Module.preRun`. The web template runs the `app.js` of an app for that, and a C++ app made from the C++ template links the same file into its runtime script with `--pre-js`. Plugins register theirs with `context.register` of their web module. One such module is the sign-in of Tiny Island, which answers `sign-in.signIn`. It loads the script of the identity service only when the player first signs in and reads the client id from the parameters of the plugin. It resolves with `idToken`, `email`, `name` and `picture`, decoded from the credential that comes back. The development server sends no embedder policy, so the script loads. A site that serves the page with `Cross-Origin-Embedder-Policy: require-corp` blocks it, as the [distribution guide](../tools/distribution.md#serve) explains.
+
+```html
+<script>
+    var Module = {
+        canvas: document.getElementById("canvas"),
+        preRun: [function () {
+            Module.haylen.register("store.buy", async (params, context) => {
+                if (!params.item) {
+                    throw Object.assign(new Error("The method store.buy needs an item."), { code: "missingItem" });
+                }
+                const response = await fetch("/api/buy", { method: "POST", body: JSON.stringify(params), signal: context.signal });
+                return await response.json();
+            });
+            window.addEventListener("hashchange", () => Module.haylen.emit("app.link", { url: location.href }));
+        }],
+    };
+</script>
+```
 
 ## Desktop
 
-macOS uses the Apple registry above. Windows and Linux have no registry in the language of the platform, so their services fail every call that reaches them with the code `noHandler`, synchronously on the frame thread, and the failure still reaches the app at the start of the next frame. Apps add methods on these platforms with handlers of native libraries, which a Lua app loads without compiling the engine, or with C++ or Lua handlers.
+macOS uses the Apple registry above. Windows and Linux have no registry in the language of the platform. So their services fail every call that reaches them with the code `noHandler`, at once on the frame thread, and the failure still reaches the app at the start of the next frame. Apps add methods on these platforms with the handlers of [native libraries](#native-library-handlers), which a Lua app loads without compiling the engine, or with C++ or Lua handlers.
 
 ## Native library handlers
 
-A native library answers methods in C on every platform that loads native libraries. The function `native.load(name, {init = 'symbol'})` hands its init function the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`, whose `registerHandler` adds a handler with an optional cancel function, which receives the parameters with their byte buffers, `resolve` answers a call from any thread with buffers, `emit` sends an event with buffers from any thread, retained or batched, `log` writes to the engine log, `registerPlugin` declares the library the native part of a plugin, `registerErrorHandler` hands it the errors that stop the app, `openVideoStream`, `pushVideoFrame`, `openAudioStream` and `pushAudioFrames` feed the [streams](plugins.md#streams) of a plugin, `registerScreen` and `finishScreen` open and end the [screens](plugins.md#desktop-screens) of a plugin, `getWindow` hands the library the window of the app, and `coverApp` and `uncoverApp` cover the app. The handlers belong to the process and answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [reference](../lua-api/native.md#library-handlers) lists the entries.
+A native library answers methods in C on every platform that loads native libraries. The function `native.load(name, {init = 'symbol'})` hands the init function of the library the `HaylenNativeApi` of `haylen/platform/native/HaylenNative.h`. Through it the library can:
+
+- register handlers with an optional cancel function, which receive the parameters with their byte buffers, and answer them from any thread with `resolve`;
+- send events from any thread with `emit`, retained or batched;
+- write to the engine log, declare itself the native part of a plugin and hear the errors that stop the app;
+- feed the [streams](plugins.md#streams) of a plugin, open the [screens](plugins.md#desktop-screens) of a plugin over the window of the app and cover the app.
+
+The handlers belong to the process. They answer after the engine handlers and before the platform handlers. The [native code guide](native.md#libraries-that-talk-to-the-app) shows a library, and the [`haylen.native` reference](../lua-api/native.md#the-c-interface-of-the-engine) lists every entry.
 
 ## C++ handlers and calls
 
-The class `haylen::platform::Bridge` in `engine/include/haylen/platform/Bridge.hpp` is the whole bridge, and `engine.getPlatform()` returns the running one:
+The class `haylen::platform::Bridge` in `engine/include/haylen/platform/Bridge.hpp` is the whole bridge, and `engine.getPlatform()` returns the running one.
 
 | Member | Meaning |
 | --- | --- |
-| `registerHandler(std::string method, Bridge::Handler handler)` | Answers a method inside the engine. The handler receives the `const Bridge::Payload& params`, JSON with its `std::vector<std::byte>` buffers, and a `Bridge::Reply`, which takes a `Bridge::Result{ok, value, error}` whose `value` is a `Bridge::Payload` and whose `Bridge::Error` has a `message`, a `code` and `data`. |
+| `registerHandler(std::string method, Bridge::Handler handler)` | Answers a method inside the engine. The handler receives the `const Bridge::Payload& params`, JSON with its `std::vector<std::byte>` buffers, and a `Bridge::Reply`. The reply takes a `Bridge::Result{ok, value, error}`, whose `value` is a `Bridge::Payload` and whose `Bridge::Error` has a `message`, a `code` and `data`. An empty method name throws `A platform handler needs a method name and a function.`. |
 | `hasHandler(std::string_view method)` | Whether an engine handler answers the method. |
-| `call(std::string_view method, const Bridge::Payload& params, Bridge::Callback callback, timeout)` | Calls a method and returns the call id. The callback receives the `Bridge::Result` on the frame thread, and an optional `std::chrono::steady_clock::duration` fails the call with the code `timeout` once it passes. |
-| `cancel(std::uint64_t id)` | Fails a pending call with the code `cancelled` at the next pump and tells native code, and returns whether the call was pending. |
-| `getMailbox()` | A `Bridge::Mailbox` whose `post` queues work for the frame thread from any thread, until the bridge is gone. Native callbacks deliver their calls through it. |
+| `call(std::string_view method, const Bridge::Payload& params, Bridge::Callback callback, timeout)` | Calls a method and returns the id of the call. The callback receives the `Bridge::Result` on the frame thread. An optional `std::chrono::steady_clock::duration` fails the call with the code `timeout` once it passes. |
+| `cancel(std::uint64_t id)` | Fails a pending call with the code `cancelled` at the next pump, tells native code, and returns whether the call was pending. |
+| `getMailbox()` | A `Bridge::Mailbox`, whose `post` queues work for the frame thread from any thread until the bridge is gone. Native callbacks deliver their calls through it. |
 | `on(const std::string& event, std::function<void(const Bridge::Payload&)> listener)` | Listens to native events and returns a `Connection`. |
 | `send(std::string_view method, const Bridge::Payload& params)` | Calls a method whose answer nobody needs, without a pending call. |
-| `resolve(std::uint64_t id, bool ok, std::string_view resultJson, buffers = {})` | Answers a call with the byte buffers of its JSON. Safe from any thread. |
-| `emit(std::string_view event, std::string_view payloadJson, buffers = {}, const Bridge::EmitOptions& options = {})` | Sends an event with the byte buffers of its JSON, which waits for the first listener of its name when `options.retain` is set and arrives in the list of its frame when `options.batched` is set. Safe from any thread. |
-| `getPendingCallCount()` | Calls still waiting for an answer. |
+| `resolve(std::uint64_t id, bool ok, std::string_view resultJson, buffers = {})` | Answers a call with the byte buffers of its JSON. It is safe from any thread. |
+| `emit(std::string_view event, std::string_view payloadJson, buffers = {}, const Bridge::EmitOptions& options = {})` | Sends an event with the byte buffers of its JSON, from any thread. With `options.retain` it waits for the first listener of its name, and with `options.batched` it arrives in the list of its frame. |
+| `getPendingCallCount()` | The calls that still wait for an answer. |
+
+The engine gives C++ code two more services next to the bridge. The function `engine.getAppPlugins()` returns the plugins of `app.json` as `haylen::platform::AppPlugin` records with `id`, `version`, `config` and `native`. The function `engine.getScreens()` returns the `haylen::platform::Screens` that open the screens of plugins, as the [plugin guide](plugins.md#screens-in-c) describes.
 
 A plugin is the usual home for C++ handlers, because its `start` runs with every new engine:
 
@@ -218,25 +452,31 @@ class CloudSavePlugin final : public haylen::plugins::Plugin {
 
     void start(haylen::core::Engine& engine) override {
         engine.getPlatform().registerHandler("save.cloudSync", [](const haylen::platform::Bridge::Payload& params, haylen::platform::Bridge::Reply reply) {
-            reply({.ok = true, .value = {.json = {{"synced", params.json.value("slot", 0)}}}});
+            if (!params.json.contains("slot")) {
+                reply({.error = {.message = "The method save.cloudSync needs a slot.", .code = "missingSlot"}});
+                return;
+            }
+            reply({.ok = true, .value = {.json = {{"synced", params.json.at("slot")}}}});
         });
     }
 };
 ```
 
-A C++ application adds it with `engine.addPlugin(std::make_unique<CloudSavePlugin>())`, and Lua then calls `platform.call('save.cloudSync', {slot = 2})`. A handler may keep the reply and answer later from another thread, but it must answer before the engine stops, because the reply belongs to that engine's bridge. C++ code calls methods the same way Lua does:
+A C++ application adds it with `engine.addPlugin(std::make_unique<CloudSavePlugin>())`, and Lua then calls `platform.call('save.cloudSync', {slot = 2})`. A handler may keep the reply and answer later from another thread. It must answer before the engine stops, because the reply belongs to the bridge of that engine. C++ code sends events and calls methods the same way Lua does:
 
 ```cpp
+engine.getPlatform().emit("app.link", R"({"url": "island://beach"})");
+engine.getPlatform().emit("motion.reading", R"({"x": 1, "y": 2})", {}, {.batched = true});
 engine.getPlatform().call("profile.load", {.json = {{"id", "me"}}}, [](haylen::platform::Bridge::Result result) {
     if (!result.ok) {
-        haylen::core::Log::warning("profile.load failed: {}", result.error.message);
+        haylen::core::Log::warning("The method profile.load failed: {}", result.error.message);
         return;
     }
     haylen::core::Log::info("Playing as {}", result.value.json.value("name", std::string("a guest")));
 });
 ```
 
-Bytes travel next to the JSON, which refers to each buffer with `haylen::core::JsonBytes::makeReference(index)`, and `JsonBytes::findReference` reads a reference back:
+Bytes travel next to the JSON, which refers to each buffer with `haylen::core::JsonBytes::makeReference(index)`. The function `JsonBytes::findReference` reads a reference back:
 
 ```cpp
 #include "haylen/core/JsonBytes.hpp"
@@ -253,11 +493,11 @@ engine.getPlatform().call("gallery.save", {.json = {{"image", haylen::core::Json
 
 ## Complete example
 
-This example adds `accessibility.reducedMotion`, which tells the app whether the player asked the system for less motion, and an `accessibility.reducedMotionChanged` event, implemented natively on Android and on the web. The app turns its camera shake off when the answer says so and uses a Lua stand-in on the other platforms.
+This example adds the method `accessibility.reducedMotion`, which tells the app whether the player asked the system for less motion, and the event `accessibility.reducedMotionChanged`. Android and the web answer natively. The app turns its camera shake off when the answer says so, and a Lua stand-in answers on the other platforms.
 
 ### Android
 
-The file `app/src/main/java/dev/haylen/app/MotionPlugin.java` in the [Android project](../tools/distribution.md#the-android-project) of the app:
+The file `app/src/main/java/com/haylen/app/MotionPlugin.java` in the [Android project](../tools/distribution.md#the-android-project) of the app:
 
 ```java
 package com.haylen.app;
@@ -290,7 +530,7 @@ final class MotionPlugin {
 }
 ```
 
-The application class of the Android template, `app/src/main/kotlin/dev/haylen/app/App.kt`, which the `<application>` of the manifest names, registers it:
+The application class of the Android template, `app/src/main/kotlin/com/haylen/app/App.kt`, registers it:
 
 ```kotlin
 package com.haylen.app
@@ -305,11 +545,11 @@ class App : Application() {
 }
 ```
 
-The handler reads a setting and touches no view, so it runs on the background thread of the bridge. The observer and `Collections.singletonMap` work from API 27, the engine's minimum, and the event reaches the app even when the player changes the setting while the app is in the background.
+The handler reads a setting and touches no view, so it runs on the background thread of the bridge. The observer and `Collections.singletonMap` work from API 27, the minimum of the engine. The event reaches the app even when the player changes the setting while the app is in the background.
 
 ### Web
 
-The app's shell, passed to `haylen_add_app` as `WEB_SHELL`, registers the handler in `preRun`:
+The shell of the app, which `haylen_add_app` takes as `WEB_SHELL`, registers the handler in `preRun`:
 
 ```html
 <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
@@ -358,7 +598,7 @@ async.spawn(function()
     if answer then
         applyMotion(answer)
     else
-        print('accessibility.reducedMotion failed: ' .. err)
+        print('The method accessibility.reducedMotion failed: ' .. err)
     end
 end)
 
@@ -367,11 +607,11 @@ platform.on('accessibility.reducedMotionChanged', applyMotion)
 
 ## Testing bridge code
 
-The headless host used by the engine tests records every call that reaches native code, and a test answers it through the bridge:
+The headless host of the engine tests records every call that reaches native code, and a test answers it through the bridge:
 
 ```cpp
 ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().size() == 1; }));
 fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, R"({"model": "phone"})");
 ```
 
-The function `platform::HeadlessHost::getPlatformCalls()` returns the id, method, JSON parameters and byte buffers of each call, and `getCancelledCalls()` the ids of the calls the bridge gave up through a timeout or a cancel. A test answers with buffers the way native code does, such as `resolve(id, true, R"({"png": {"$bytes": 0}})", {pngBytes})`, and sends batched events with `emit(event, json, {}, {.batched = true})`. Lua code under test can also stand in for native methods with `platform.registerHandler`, and the native interop tests load `engine/tests/native/NativeTest.c`, whose init function registers handlers through `HaylenNativeApi`. See the [testing guide](../tools/testing.md).
+The function `platform::HeadlessHost::getPlatformCalls()` returns the id, the method, the JSON parameters and the byte buffers of each call. The function `getCancelledCalls()` returns the ids of the calls that the bridge gave up through a timeout or a cancel. A test answers with buffers the way native code does, such as `resolve(id, true, R"({"png": {"$bytes": 0}})", {pngBytes})`, and sends batched events with `emit(event, json, {}, {.batched = true})`. Lua code under test can stand in for native methods with `platform.registerHandler`. The native interop tests load `engine/tests/native/NativeTest.c`, whose init function registers handlers through `HaylenNativeApi`. The [testing guide](../tools/testing.md) describes the whole test support.

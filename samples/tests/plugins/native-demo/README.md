@@ -50,7 +50,7 @@ The Lua API loads the C library with `native.load('native-demo', {init = 'native
 local demo = require('native-demo')
 ```
 
-Every function that talks to the native part returns a call of [haylen.platform](../../../../docs/lua-api/platform.md#calls), whose `await` inside a coroutine gives the answer, or `nil` and the error, a table with `message`, `code` and `data`. Every `on` function returns the connection of the listener, whose `disconnect()` stops it. Without the native part, as in the headless host of the engine tests, calls fail with the code `noHandler`.
+Every function that talks to the native part returns a call of [haylen.platform](../../../../docs/lua-api/platform.md#platformcall), whose `await` inside a coroutine gives the answer, or `nil` and the error, a table with `message`, `code` and `data`. Every `on` function returns the connection of the listener, whose `disconnect()` stops it. Without the native part, as in the headless host of the engine tests, calls fail with the code `noHandler`.
 
 ### demo.available()
 
@@ -219,7 +219,7 @@ demo.burst(100, 30)
 
 ### demo.startVideo(), demo.stopVideo(), demo.videoStream()
 
-The method `startVideo` opens the video stream `island` and draws the picture into it 30 times per second with its waves moving and its sun floating, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. The method `stopVideo` stops the frames. The function `videoStream()` returns the [video stream](../../../../docs/lua-api/platform.md#video-streams), or `nil` until the native part opened it.
+The method `startVideo` opens the video stream `island` and draws the picture into it 30 times per second with its waves moving and its sun floating, and answers with `{width, height, fps, format, language}`: BGRA frames of 320 by 180 pixels from a thread of the library on the desktops, BGRA `CVPixelBuffer`s of 320 by 180 pixels drawn with CoreGraphics on a dispatch queue on Apple platforms, RGBA `Bitmap`s of 320 by 180 pixels drawn with a `Canvas` on a `HandlerThread` on Android, and a `<canvas>` of 320 by 180 pixels that `context.videoStream` copies on the web. The method `stopVideo` stops the frames. The function `videoStream()` returns the [video stream](../../../../docs/lua-api/platform.md#videostream), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')
@@ -249,7 +249,7 @@ scene.push({
 
 ### demo.startTone(frequency), demo.stopTone(), demo.audioStream()
 
-The method `startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, mono floats at 44100 Hz from a dispatch queue on Apple platforms and from a `HandlerThread` on Android, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. The method `stopTone` stops the samples. The function `audioStream()` returns the [audio stream](../../../../docs/lua-api/platform.md#audio-streams), or `nil` until the native part opened it.
+The method `startTone` opens the audio stream `tone` and synthesizes a sine wave of `frequency` hertz into it a tenth of a second ahead of the clock, and answers with `{frequency, sampleRate, channels, format, language}`: 16-bit mono samples at 44100 Hz from a thread of the library on the desktops, mono floats at 44100 Hz from a dispatch queue on Apple platforms and from a `HandlerThread` on Android, and `Float32Array` blocks at 44100 Hz from a timer of the page on the web. The method `stopTone` stops the samples. The function `audioStream()` returns the [audio stream](../../../../docs/lua-api/platform.md#audiostream), or `nil` until the native part opened it.
 
 ```lua
 local async = require('async')

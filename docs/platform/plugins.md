@@ -235,7 +235,7 @@ The option `--with` starts a plugin with working code for a common kind of nativ
 The features that ask for a permission check the usage description of Apple platforms and the manifest of Android first, ask with the prompt of the system through the Activity Result API on Android, whose launcher the shared file `<Name>Permissions.kt` registers for every activity, and fail with the code `permissionDenied` when the person refuses. The usage descriptions are parameters of the plugin, `cameraUsage`, `microphoneUsage` and `locationUsage`, and `macDevices` signs the macOS app with the entitlements of the hardened runtime. The desktop library answers the methods of every feature with the code `unsupported`, since the desktops lack the devices of phones, tablets and browsers, and Apple TV, which has no camera, gives apps no microphone and gives one fix of the location without updates, answers those calls with the same code.
 
 
-## Lua API of plugins
+## The Lua API of a plugin
 
 ### Modules
 
@@ -245,7 +245,7 @@ A module of the app whose first name part is the id of a plugin could never load
 
 ### The plugin handle
 
-The function `platform.plugin(id)` of [haylen.platform](../lua-api/platform.md#plugin-handles) returns the handle of a plugin, which its Lua modules use to reach its native part:
+The function `platform.plugin(id)` of [haylen.platform](../lua-api/platform.md#appplugin) returns the handle of a plugin, which its Lua modules use to reach its native part:
 
 | Member | Meaning |
 | --- | --- |
@@ -312,7 +312,7 @@ Native UI that covers the app, such as a full screen ad, a consent form, a sign-
 
 ### Errors of the app
 
-Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it, on Apple platforms the `appDidFailWithError:` method of the plugin class, and on Android the `onAppError(JSONObject)` method of the plugin class, on the main thread. A native library receives it as JSON text in the handler it gives `registerErrorHandler` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers), on the frame thread, which is how the native part of a plugin hears errors on the desktops.
+Every error that stops the app, the one its error screen shows, reaches the native parts of plugins as `{message, file, line, traceback, frames}`, where `frames` lists `{source, line, function, kind}` from the innermost call outward with the kind `lua`, `c` or `main`, the shape the web page receives in `onError`. A crash reporter records it as a non-fatal error with the stack of the Lua code. On the web, `context.onAppError(listener)` receives it, on Apple platforms the `appDidFailWithError:` method of the plugin class, and on Android the `onAppError(JSONObject)` method of the plugin class, on the main thread. A native library receives it as JSON text in the handler it gives `registerErrorHandler` of [`HaylenNativeApi`](../lua-api/native.md#the-c-interface-of-the-engine), on the frame thread, which is how the native part of a plugin hears errors on the desktops.
 
 ### Retained events
 
@@ -354,7 +354,7 @@ Opening a stream again returns the same stream, whose handle stays valid for goo
 
 ### The native plugin list
 
-The field `handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context, on Apple platforms the plugins whose class the runtime created, and on Android the plugins whose class the engine library created and loaded. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers), which is how the `native` part of a plugin counts on the desktops.
+The field `handle.native` and the `native` field of `platform.plugins()` come from the platform, which reports the plugins whose native part it loaded: on the web, the plugins whose module received a context, on Apple platforms the plugins whose class the runtime created, and on Android the plugins whose class the engine library created and loaded. A native library of the app declares itself the native part of a plugin with `registerPlugin(id)` of [`HaylenNativeApi`](../lua-api/native.md#the-c-interface-of-the-engine), which is how the `native` part of a plugin counts on the desktops.
 
 ### Web modules
 
@@ -570,7 +570,7 @@ The rules of browsers apply to every page screen.
 
 #### Desktop screens
 
-A native library registers a screen with `registerScreen(plugin, name, open, cancel, user)` of [`HaylenNativeApi`](../lua-api/native.md#library-handlers). The engine calls `open(user, screen, paramsJson, buffers, bufferCount)` on the frame thread once it covered the app, and the library opens a window of its own over the window of the app, which `getWindow` hands it, and ends the screen with `finishScreen(screen, ok, resultJson, buffers, bufferCount)` from any thread when the window closes. The function `cancel(user, screen)` asks it to close the window of a screen that the app gave up, and the library still calls `finishScreen` then. The methods `coverApp` and `uncoverApp` cover the app for other native UI of a library, such as the overlay of an SDK.
+A native library registers a screen with `registerScreen(plugin, name, open, cancel, user)` of [`HaylenNativeApi`](../lua-api/native.md#the-c-interface-of-the-engine). The engine calls `open(user, screen, paramsJson, buffers, bufferCount)` on the frame thread once it covered the app, and the library opens a window of its own over the window of the app, which `getWindow` hands it, and ends the screen with `finishScreen(screen, ok, resultJson, buffers, bufferCount)` from any thread when the window closes. The function `cancel(user, screen)` asks it to close the window of a screen that the app gave up, and the library still calls `finishScreen` then. The methods `coverApp` and `uncoverApp` cover the app for other native UI of a library, such as the overlay of an SDK.
 
 | Desktop | Window of the app | Window of a screen |
 | --- | --- | --- |
@@ -656,7 +656,7 @@ override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bun
 
 While another activity covers the app, the app keeps ticking in the background without drawing, as [the lifecycle guide](../core/lifecycle.md#app-states) describes, so a cancel or a timeout that the app asks for reaches the screen while it shows, whether the screen is an activity or UI in the activity of the app, such as a dialog or a view of the overlay. `HaylenActivity` hands the request code of every activity that it starts for a result to the contract screen whose launcher starts it, and a cancel finishes that activity with `finishActivity`. The prompt of a contract that asks for permissions is no such activity, so it stays until the person answers it.
 
-### C++
+### Screens in C++
 
 C++ apps and engine plugins open screens through `platform::Screens`, which `engine.getScreens()` returns.
 
@@ -901,7 +901,7 @@ The same plugin in Objective-C:
 @end
 ```
 
-### The context
+### The Apple context
 
 `HaylenPluginContext` is the part of the runtime that a plugin sees. Registering, emitting, covering, checking requirements and opening streams work from any thread, and handlers run on the main queue, while the window, the view controller and the overlay belong to the main thread, which Swift enforces with the main actor.
 
