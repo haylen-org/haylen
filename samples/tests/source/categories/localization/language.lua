@@ -1,4 +1,4 @@
--- The languages of the tests and the font they draw with: the default font in a family that falls back to fonts of Japanese, Arabic and Devanagari, so every text component draws every language alike. Arabic declares that it reads right to left, and the UI follows the language while a test shows, so the whole interface mirrors in Arabic.
+-- The languages of the tests and the fonts they draw with: the default font and, for the monospace role, Space Mono, each in a family that falls back to fonts of Japanese, Arabic and Devanagari, so every text component draws every language alike. Arabic declares that it reads right to left, and the UI follows the language while a test shows, so the whole interface mirrors in Arabic.
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -10,7 +10,7 @@ local language = {}
 language.tags = {'en', 'pt-BR', 'es', 'ja', 'ar', 'hi'}
 language.folder = 'localization/locale'
 
--- Loads the translations, gives every theme font role the family, lets the UI take the direction of the language and starts in English. Returns what the app used before, which `restore` puts back.
+-- Loads the translations, gives every theme font role its family, lets the UI take the direction of the language and starts in English. Returns what the app used before, which `restore` puts back.
 function language.setup()
     local previous = {language = localization.language(), fallback = localization.fallback(), theme = ui.theme(), direction = ui.direction()}
     localization.loadFolder(language.folder)
@@ -20,10 +20,12 @@ function language.setup()
         local arabic = assets.font('fonts/noto-sans-arabic-regular.ttf')
         local devanagari = assets.font('fonts/noto-sans-devanagari-regular.ttf')
         language.family = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {japanese, arabic, devanagari}})
+        language.codeFamily = graphics.newFontFamily({regular = assets.font('fonts/space-mono-regular.ttf'), fallbacks = {japanese, arabic, devanagari}})
         ui.addFont('text', language.family)
+        ui.addFont('code', language.codeFamily)
     end
     local role = {font = 'text'}
-    ui.setTheme(ui.addTheme({name = 'localized', fonts = {body = role, caption = role, button = role, heading = role, title = role, monospace = role}}, 'dark'))
+    ui.setTheme(ui.addTheme({name = 'localized', fonts = {body = role, caption = role, button = role, heading = role, title = role, monospace = {font = 'code'}}}, 'dark'))
     ui.setDirection('auto')
     localization.setLanguage('en')
     return previous

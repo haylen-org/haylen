@@ -11,6 +11,7 @@
 #include <imgui.h>
 
 #include "haylen/core/JsonValidator.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImageLibrary.hpp"
 #include "ui/Scrollbar.hpp"
@@ -184,6 +185,7 @@ Theme Theme::dark() {
     for (std::size_t index = 0; index < kFontCount; ++index) {
         theme.fonts[index].size = kFontSizes[index];
     }
+    theme.fonts[static_cast<std::size_t>(Font::Monospace)].font = Backend::kMonospaceFontName;
     return theme;
 }
 

@@ -9,6 +9,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "support/UiFixture.hpp"
@@ -102,6 +103,20 @@ TEST_F(LabelTest, ShrinksWrappedLinesThatAreTallerThanTheLabel) {
     const std::vector<math::Rect> full = drawText();
     ASSERT_EQ(full.size(), 1U);
     EXPECT_GT(full.front().height, box.height + spread * 2.0F);
+}
+
+// The monospace role of the built-in themes draws with a monospace font, so every character takes the same width and columns of code and numbers line up.
+TEST_F(LabelTest, DrawsTheMonospaceRoleWithAMonospaceFont) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [
+        {"kind": "label", "id": "narrow", "font": "monospace", "text": "iiiiiiii"},
+        {"kind": "label", "id": "wide", "font": "monospace", "text": "MMMMMMMM"},
+        {"kind": "label", "id": "digits", "font": "monospace", "text": "11111111"}
+    ]})");
+    // clang-format on
+    EXPECT_EQ(getUi().getTheme().getFont(Theme::Font::Monospace).font, Backend::kMonospaceFontName);
+    EXPECT_EQ(getBounds(*gui, "narrow").width, getBounds(*gui, "wide").width);
+    EXPECT_EQ(getBounds(*gui, "digits").width, getBounds(*gui, "wide").width);
 }
 
 } // namespace haylen::ui

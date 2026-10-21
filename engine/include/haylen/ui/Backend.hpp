@@ -60,8 +60,9 @@ class TextSession;
 // Runs one Dear ImGui context in design coordinates. It feeds input, keeps the ImGui textures on the GPU and turns the draw lists into meshes of a screen canvas drawn over the app.
 class Backend final {
   public:
-    // The name of the font the UI starts with, the default font of the engine.
+    // The names of the fonts the UI starts with: the default font of the engine and the monospace font that code and other text with columns draw with.
     static constexpr std::string_view kDefaultFontName = "default";
+    static constexpr std::string_view kMonospaceFontName = "monospace";
 
     // The TrueType or OpenType files of a UI font: its regular face, the bold, italic and bold italic faces it may add, left empty when it has none, and the fallback fonts that draw the characters its faces lack, in order.
     struct FontFiles {
@@ -72,7 +73,7 @@ class Backend final {
         std::vector<std::vector<std::uint8_t>> fallbacks;
     };
 
-    Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData);
+    Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData);
     ~Backend();
 
     Backend(const Backend&) = delete;

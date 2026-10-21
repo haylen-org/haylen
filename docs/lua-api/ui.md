@@ -274,7 +274,7 @@ scene.push({
 
 ### ui.addFont(name, source)
 
-Registers a font under `name`, from a TrueType or OpenType file of the package assets, or from a `FontFamily` or a `Font` of [`haylen.graphics`](graphics.md). Theme font roles, `imgui.pushFont` and the `[font=name]` tags of `ui.richText` refer to fonts by this name. Fonts are sized when drawn, so one registered font serves every size. The built-in font is named `default`.
+Registers a font under `name`, from a TrueType or OpenType file of the package assets, or from a `FontFamily` or a `Font` of [`haylen.graphics`](graphics.md). Theme font roles, `imgui.pushFont` and the `[font=name]` tags of `ui.richText` refer to fonts by this name. Fonts are sized when drawn, so one registered font serves every size. The built-in fonts are named `default`, the default font of the engine, and `monospace`, Space Mono, whose characters all take the same width.
 
 A family gives every text component of the roles that name it its faces and fallback fonts. Labels, buttons and the other components draw with its regular face, or with its bold, italic or bold italic face when the role asks for that style and the family has the face, and draw every character a face lacks from the fallback fonts, such as Japanese text from a CJK fallback, at the size of the em square of the face. The component `ui.richText` draws with every face and fallback of the family, mono faces included. A theme role can name a family whose regular face is a TrueType or OpenType font, and those components take the TrueType faces and fallbacks of the family. A bitmap font or a family with a bitmap regular face serves `ui.richText` and `[font=name]` tags only.
 
@@ -3280,7 +3280,7 @@ Both built-in themes share these metrics, in design units.
 
 ## Theme fonts
 
-Every role starts with the built-in font `default` in its regular style. A role that sets `bold` or `italic` draws with that face of its font when the font is a family that has it, and with its regular face otherwise, and `ui.richText` of the role starts in that style as if inside `[b]` or `[i]`. The size of a role is the height of its regular face from ascent to descent, and `ui.richText` draws at the em size that makes it match the other components.
+Every role starts with the built-in font `default` in its regular style, except `monospace`, which starts with the built-in font `monospace`, so code, tables of numbers and clocks line up in columns and keep their width as their digits change. A role that sets `bold` or `italic` draws with that face of its font when the font is a family that has it, and with its regular face otherwise, and `ui.richText` of the role starts in that style as if inside `[b]` or `[i]`. The size of a role is the height of its regular face from ascent to descent, and `ui.richText` draws at the em size that makes it match the other components.
 
 | Role | Size | Used for |
 | --- | --- | --- |
@@ -3289,7 +3289,7 @@ Every role starts with the built-in font `default` in its regular style. A role 
 | `button` | `30` | Button and tab labels, alert titles and avatar initials. |
 | `heading` | `38` | Section titles, dialog titles and empty state titles. |
 | `title` | `56` | Page header titles. |
-| `monospace` | `26` | The color field text. |
+| `monospace` | `26` | The color field text, and code and columns of numbers. |
 
 A font role with an empty font name or a size of zero raises `A theme font needs a font name and a positive size.`, and a font name that is neither registered nor listed in `fontFiles` makes `ui.loadTheme` fail.
 

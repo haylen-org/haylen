@@ -284,7 +284,7 @@ void Backend::runDraw(const Draw& draw) {
     }
 }
 
-Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())), scrollArbiter(std::make_unique<ScrollArbiter>()) {
+Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())), scrollArbiter(std::make_unique<ScrollArbiter>()) {
     imguiContext = ImGui::CreateContext();
     makeCurrent();
 
@@ -316,6 +316,7 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
 
     ImGui::GetStyle().FontSizeBase = kBaseFontSize;
     addFont(std::string(kDefaultFontName), {.regular = {defaultFontData.begin(), defaultFontData.end()}});
+    addFont(std::string(kMonospaceFontName), {.regular = {monospaceFontData.begin(), monospaceFontData.end()}});
 }
 
 Backend::~Backend() {

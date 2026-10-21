@@ -772,6 +772,7 @@ haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/effect.glsl" MODULE ef
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/effect.glsl" MODULE effect_lit DEFINES HAYLEN_LIT)
 haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/light.glsl" MODULE light)
 haylen_embed_file(haylen_engine "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" getDefaultFont)
+haylen_embed_file(haylen_engine "${CMAKE_CURRENT_SOURCE_DIR}/fonts/space-mono-regular.ttf" getMonospaceFont)
 haylen_embed_file(haylen_engine "${budoux_SOURCE_DIR}/budoux/models/th.json" getThaiPhraseModel)
 
 haylen_enable_warnings(haylen_engine)

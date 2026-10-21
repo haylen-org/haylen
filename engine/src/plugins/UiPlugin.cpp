@@ -4,9 +4,12 @@
 #include <array>
 #include <exception>
 #include <format>
+#include <memory>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <imgui.h>
 #include <imgui_internal.h>
@@ -33,6 +36,7 @@
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
+#include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
@@ -55,7 +59,7 @@ UiPlugin::~UiPlugin() = default;
 
 void UiPlugin::start(core::Engine& engine) {
     owner = &engine;
-    backend = std::make_unique<ui::Backend>(engine.getGraphics(), engine.getWindow(), core::EmbeddedFiles::getDefaultFont());
+    backend = std::make_unique<ui::Backend>(engine.getGraphics(), engine.getWindow(), core::EmbeddedFiles::getDefaultFont(), core::EmbeddedFiles::getMonospaceFont());
     safeAreaVisible = engine.getConfig().debug.showSafeArea;
     scaling = engine.getConfig().uiScaling;
     // clang-format off
@@ -642,7 +646,7 @@ void UiPlugin::addFontFamily(const std::string& name, std::shared_ptr<text::Font
     fontFamilies.emplace(name, std::move(family));
 }
 
-// A font registered from a file becomes a family with that font as its regular face the first time rich text asks for it.
+// A font registered from a file, and the built-in monospace font, become a family with that font as its regular face the first time text asks for it.
 std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, std::string_view name) {
     if (const auto found = fontFamilies.find(name); found != fontFamilies.end()) {
         return found->second;
@@ -652,6 +656,9 @@ std::shared_ptr<text::FontFamily> UiPlugin::getFontFamily(core::Engine& engine, 
         family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = engine.getAssets().font(path->second)});
     } else if (name == ui::Backend::kDefaultFontName) {
         family = engine.getPlugin<TextPlugin>().getRegistry()->getDefaultFamily();
+    } else if (name == ui::Backend::kMonospaceFontName) {
+        const std::span<const std::uint8_t> data = core::EmbeddedFiles::getMonospaceFont();
+        family = std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = std::make_shared<text::TrueTypeFont>(engine.getGraphics(), std::vector<std::uint8_t>(data.begin(), data.end()))});
     } else {
         return nullptr;
     }

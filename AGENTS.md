@@ -138,6 +138,7 @@ PROJECT.md                Master plan, owner's requests and feature checklist (P
 CONTRIBUTING.md           The terms of contributions, which become part of Haylen under its MIT License, and the promise that Haylen is free forever.
 engine/
   CMakeLists.txt          Standalone engine project, consumable by other projects.
+  fonts/                  Space Mono, the monospace font that the engine embeds for the UI, with its license.
   cmake/                  Engine CMake modules: CPM bootstrap, dependencies and their patches, the compile settings of release binaries, haylen_add_app, content deployment and protected releases, embedded files, shaders, SDK install, the merge of static libraries, warnings, coverage, the xcframework slice merge and the Mac Catalyst toolchain.
   include/haylen/         Public C++ API. Dimension-agnostic contexts: core, math, io, assets, graphics, text, input, audio, ui, platform, localization, conversation, storage, ai, debug, net, content, lua and plugins.
   include/haylen/2d/      Public 2D API: graphics, animation, particles, lighting, physics, tiled, navigation, spatial, procedural, nodes.

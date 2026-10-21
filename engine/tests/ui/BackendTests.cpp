@@ -33,7 +33,7 @@ namespace {
 
 class BackendTest : public ::testing::Test {
   protected:
-    BackendTest() : backend(getEngine().getGraphics(), getEngine().getWindow(), core::EmbeddedFiles::getDefaultFont()) {}
+    BackendTest() : backend(getEngine().getGraphics(), getEngine().getWindow(), core::EmbeddedFiles::getDefaultFont(), core::EmbeddedFiles::getMonospaceFont()) {}
 
     core::Engine& getEngine() {
         return fixture.engine();
