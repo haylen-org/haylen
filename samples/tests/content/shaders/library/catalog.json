@@ -9,7 +9,7 @@
      "name": "Neon glow",
      "target": "bullet",
      "blend": "additive",
-     "description": "Turns a shape into a neon light: a white core and a halo of the glow color around it that pulses, for bullets, arrows and pickups drawn with the additive blend.",
+     "description": "Turns a shape into a neon light: a white-hot core, a saturated rim and a soft halo of the glow color that spreads around it like the bloom of a bright light and pulses, for bullets, arrows and pickups drawn with the additive blend.",
      "floats": [
       {
        "name": "radius",
@@ -45,7 +45,7 @@
      "name": "Neon trail",
      "target": "stroke",
      "blend": "additive",
-     "description": "Shades a stroke as a neon trail: a white core along its middle, a glow that fades toward its sides and a tail that fades toward its start, with a flicker that runs along it.",
+     "description": "Shades a stroke as a neon trail: a white-hot core, a saturated glow that falls off toward its sides, a body that thins and fades toward its tail, pulses of light that run back along it and a bright head.",
      "floats": [
       {
        "name": "core_width",
@@ -79,16 +79,16 @@
     {
      "id": "laser-beam",
      "name": "Laser beam",
-     "target": "stroke",
+     "target": "beam",
      "blend": "additive",
-     "description": "Shades a stroke as a laser beam: a hard white core, a halo of the beam color and ripples that run along it.",
+     "description": "Shades a stroke as a laser beam: a hard white core, a saturated band of the beam color, a wide soft halo and streaks of energy that race along it, with ends that fade in.",
      "floats": [
       {
        "name": "width",
        "label": "Core width",
        "min": 0.1,
        "max": 1,
-       "value": 0.5
+       "value": 0.3
       },
       {
        "name": "speed",
@@ -109,8 +109,8 @@
      "id": "plasma-bolt",
      "name": "Plasma bolt",
      "target": "bullet",
-     "blend": "alpha",
-     "description": "Fills a shape with swirling plasma between two colors, for magic projectiles and power cores.",
+     "blend": "additive",
+     "description": "Turns a shape into a ball of plasma: turbulent energy that churns and streams back from its front, a white-hot heart, a rim of the outer color and a flickering halo, for magic projectiles and charged shots drawn with the additive blend.",
      "floats": [
       {
        "name": "speed",
@@ -121,33 +121,33 @@
       }
      ],
      "colors": {
-      "inner_color": "#FFFFF0A0",
-      "outer_color": "#FF8A2BE2"
+      "inner_color": "#FFFFA8F0",
+      "outer_color": "#FF7A2CFF"
      },
      "vectors": {},
-     "texel": false,
+     "texel": true,
      "time": true
     },
     {
      "id": "electric-arc",
      "name": "Electric arc",
-     "target": "stroke",
+     "target": "beam",
      "blend": "additive",
-     "description": "Shades a stroke as a jagged electric arc that jumps to a new shape many times a second, with a white core and a glow.",
+     "description": "Shades a stroke as lightning pinned at both ends: a jagged bolt that jumps to a new shape many times a second, a thinner fork that flashes beside it, a white core, a glow and a flicker of brightness.",
      "floats": [
       {
        "name": "jitter",
        "label": "Jitter",
        "min": 0,
        "max": 0.8,
-       "value": 0.45
+       "value": 0.6
       },
       {
        "name": "thickness",
        "label": "Thickness",
        "min": 0.01,
        "max": 0.2,
-       "value": 0.07
+       "value": 0.05
       }
      ],
      "colors": {
@@ -191,7 +191,7 @@
      "name": "Charge fill",
      "target": "sprite",
      "blend": "alpha",
-     "description": "Fills a sprite clockwise from the top up to a share, with a glowing edge, and grays the rest, for cooldowns and charging abilities.",
+     "description": "Fills a sprite clockwise from the top up to a share, for cooldowns and charging abilities: the charged part shimmers with energy, the rest sinks into a dark cool shade, and the edge of the charge is a bright line with a glow that trails behind it.",
      "floats": [
       {
        "name": "progress",
@@ -220,7 +220,7 @@
      "name": "Neon sign",
      "target": "sprite",
      "blend": "additive",
-     "description": "Keeps only a glowing tube along the edges of a sprite, like a neon sign, which flickers now and then.",
+     "description": "Turns the outline of a sprite into a neon sign: a thin glass tube with a nearly white core, a halo of the neon color on both sides of it, a buzz and an occasional flicker.",
      "floats": [
       {
        "name": "thickness",
@@ -242,7 +242,7 @@
      "name": "Teleport",
      "target": "sprite",
      "blend": "alpha",
-     "description": "Builds a sprite from the bottom up behind a bright scan line with digital noise, as it teleports in, and takes it apart as the progress falls.",
+     "description": "Teleports a sprite in from the bottom up behind a bright scan line: whole below the line with a charge of the beam color under it, a hologram of fragments that stream up above it, and a column of light over it, which takes the sprite apart as the progress falls.",
      "floats": [
       {
        "name": "progress",
@@ -270,7 +270,7 @@
      "name": "Fire",
      "target": "quad",
      "blend": "additive",
-     "description": "Draws a flame that rises over a rectangle from noise, hot at its core and cooler toward its tips.",
+     "description": "Draws a flame over a rectangle: tongues of fire that lick upward from a round base, shaped by noise that streams up and sways, white-hot at the root and cooling to the tips, with sparks that break off near the top.",
      "floats": [
       {
        "name": "speed",

@@ -249,11 +249,11 @@ scene.push({
 
 ## Game shaders
 
-The test project keeps a library of forty-five material shaders of games under `samples/tests/content/shaders/library/`, which test `SHD-008` shows by category with a slider for each of their numbers. Each one is an ordinary source that an app copies into its own `content/shaders/` with `common.glsl`, the hashes, noise and helpers they share, and compiles with `haylen.py shaders`:
+The test project keeps a library of forty-five material shaders of games under `samples/tests/content/shaders/library/`, which test `SHD-008` shows by category with a slider for each of their numbers. Each one is an ordinary source that an app copies into its own `content/shaders/` with `common.glsl`, the hashes, noise and helpers they share, among them `library_glow`, which spreads the coverage of a shape like the bloom of a bright light for the glows of neon, plasma and teleports, and compiles with `haylen.py shaders`:
 
 | Category | Shaders | Drawn on |
 | --- | --- | --- |
-| Neon and energy | Neon glow, neon trail, laser beam, plasma bolt, electric arc, energy shield, charge fill, neon sign, teleport | Bullets with a transparent margin for their glow, strokes, a square for the shield, and sprites. |
+| Neon and energy | Neon glow, neon trail, laser beam, plasma bolt, electric arc, energy shield, charge fill, neon sign, teleport | Bullets with a transparent margin for their glow, a trail for the neon trail, a straight beam that sweeps for the laser and the lightning, a square for the shield, and sprites. |
 | Elements | Fire, water ripple, lava, frozen, poison, burn away | Rectangles of the white texture for fire and lava, a picture, and sprites. |
 | Status and looks | Stone, gold, shine sweep, ghost, invisibility, silhouette, damage blink, drop shadow, inner glow, rim light, spectrum, gradient map | Sprites. |
 | Styles | Posterize, sepia, night vision, thermal, X-ray, dither, halftone, sketch, emboss, color split, glitch, VHS | Pictures. |

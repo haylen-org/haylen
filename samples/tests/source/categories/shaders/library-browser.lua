@@ -1,4 +1,4 @@
--- Shader library: every material shader of `content/shaders/library`, listed by category from its `catalog.json`, drawn on what it is made for: the hero for sprite effects, flying bullets for neon, a trail for strokes, a shield over the hero, a rectangle for fire and lava, and a picture for styles and deformations. The sliders set the numbers of the selected shader live.
+-- Shader library: every material shader of `content/shaders/library`, listed by category from its `catalog.json`, drawn on what it is made for: the hero for sprite effects, flying bullets for neon and plasma, a trail for strokes, a sweeping beam for lasers and lightning, a shield over the hero, a rectangle for fire and lava, and a picture for styles and deformations. The sliders set the numbers of the selected shader live.
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -14,11 +14,12 @@ local fire = graphics2d.newMaterial(assets.shader('shaders/library/fire.shader')
 fire:set('time', haylen.elapsed())
 graphics2d.draw(graphics.whiteTexture(), 670, 380, {width = 520, height = 560, material = fire, blend = 'additive'})
 local glow = graphics2d.newMaterial(assets.shader('shaders/library/neon-glow.shader'), {radius = 20, glow_color = '#FF40E0FF', texel = {1 / bullet.width, 1 / bullet.height}})
-graphics2d.draw(bullet, 400, 320, {width = 240, height = 108, material = glow, blend = 'additive'})]]
+graphics2d.draw(bullet, 400, 320, {width = 288, height = 144, material = glow, blend = 'additive'})]]
 
 LibraryBrowser.folder = 'shaders/library/'
-LibraryBrowser.targets = {sprite = 'on a sprite', bullet = 'on bullets', stroke = 'on a trail', disc = 'on a shield', quad = 'on a rectangle', picture = 'on a picture'}
-LibraryBrowser.trailPoints = 48
+LibraryBrowser.targets = {sprite = 'on a sprite', bullet = 'on bullets', stroke = 'on a trail', beam = 'on a beam', disc = 'on a shield', quad = 'on a rectangle', picture = 'on a picture'}
+-- The trail keeps the points of its last second, however many frames that is.
+LibraryBrowser.trailSeconds = 1
 -- The hero keeps its size on screen inside the margin its image gains.
 LibraryBrowser.heroMargin = 24
 LibraryBrowser.heroSize = 460 * (192 + 2 * 24) / 192
@@ -43,15 +44,15 @@ function LibraryBrowser.makeHero()
     return image
 end
 
--- A bright capsule with a wide transparent margin, which the glow of neon shaders fills.
+-- A bright capsule with a wide transparent margin, which the glow of neon and plasma shaders fills.
 function LibraryBrowser.makeBullet()
-    local image = graphics.newImage(160, 72)
-    for y = 0, 71 do
-        for x = 0, 159 do
-            local dx = math.max(math.abs(x - 79.5) - 30, 0)
-            local dy = math.abs(y - 35.5)
+    local image = graphics.newImage(192, 96)
+    for y = 0, 95 do
+        for x = 0, 191 do
+            local dx = math.max(math.abs(x - 95.5) - 34, 0)
+            local dy = math.abs(y - 47.5)
             local distance = math.sqrt(dx * dx + dy * dy)
-            local alpha = math.max(0, math.min(1, 8.5 - distance))
+            local alpha = math.max(0, math.min(1, 16.5 - distance))
             if alpha > 0 then
                 image:setPixel(x, y, {1, 1, 1, alpha})
             end
@@ -166,9 +167,11 @@ function LibraryBrowser:update(dt)
     if self.shader.time then
         self.material:set('time', time)
     end
-    -- The head of the trail draws a figure eight, and the trail keeps its last points.
-    table.insert(self.trail, 1, {670 + math.sin(time * 1.3) * 420, 380 + math.sin(time * 2.6) * 200})
-    self.trail[LibraryBrowser.trailPoints + 1] = nil
+    -- The head of the trail draws a figure eight, and the trail keeps the points of its last second.
+    table.insert(self.trail, 1, {670 + math.sin(time * 1.3) * 420, 380 + math.sin(time * 2.6) * 200, time})
+    while #self.trail > 2 and time - self.trail[#self.trail][3] > LibraryBrowser.trailSeconds do
+        self.trail[#self.trail] = nil
+    end
     self:status(string.format('%s, "%s%s.shader"', self.shader.name, LibraryBrowser.folder, self.shader.id))
 end
 
@@ -185,7 +188,7 @@ function LibraryBrowser:draw(area)
         local time = haylen.elapsed()
         for index = 1, 3 do
             local x = (time * 420 + index * 460) % (width + 320) - 160
-            graphics2d.draw(self.bullet, x, 180 + index * 140, {width = 240, height = 108, material = order.material, blend = order.blend})
+            graphics2d.draw(self.bullet, x, 180 + index * 140, {width = 288, height = 144, material = order.material, blend = order.blend})
         end
     elseif target == 'stroke' then
         local points = {}
@@ -196,6 +199,10 @@ function LibraryBrowser:draw(area)
         if #points >= 4 then
             graphics2d.drawStroke(points, {width = 64, join = 'round', material = order.material, blend = order.blend})
         end
+    elseif target == 'beam' then
+        -- The beam runs from an emitter on the left to a point that sweeps slowly up and down.
+        local angle = math.sin(haylen.elapsed() * 0.7) * 0.32
+        graphics2d.drawStroke({170, 380, 170 + math.cos(angle) * 1000, 380 + math.sin(angle) * 1000}, {width = 150, material = order.material, blend = order.blend})
     elseif target == 'quad' then
         graphics2d.draw(graphics.whiteTexture(), width / 2, height / 2, {width = 520, height = 560, material = order.material, blend = order.blend})
     else

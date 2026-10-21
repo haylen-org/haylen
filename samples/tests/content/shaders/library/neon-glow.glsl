@@ -1,4 +1,4 @@
-// Turns a shape into a neon light: a white core and a halo of the glow color around it that pulses, for bullets, arrows and pickups drawn with the additive blend.
+// Turns a shape into a neon light: a white-hot core, a saturated rim and a soft halo of the glow color that spreads around it like the bloom of a bright light and pulses, for bullets, arrows and pickups drawn with the additive blend.
 @include haylen/material.glsl
 @include common.glsl
 
@@ -15,21 +15,19 @@ layout(binding=1) uniform neonGlow_params {
 };
 
 void main() {
-    vec4 base = haylen_base(uv);
-    float halo = 0.0;
-    for (int ring = 1; ring <= 5; ring++) {
-        float distance = radius * float(ring) / 5.0;
-        float weight = 1.0 - float(ring - 1) / 5.0;
-        for (int index = 0; index < 16; index++) {
-            float angle = (float(index) + float(ring) * 0.5) * 0.3926991;
-            halo += haylen_texture(haylen_inside(uv + vec2(cos(angle), sin(angle)) * texel * distance)).a * weight;
-        }
-    }
-    halo /= 48.0;
-    float beat = 1.0 + pulse * sin(time * 6.0);
-    vec3 core = mix(glow_color.rgb, vec3(1.0), base.a * 0.85);
-    vec3 shade = mix(glow_color.rgb * beat, core, base.a);
-    haylen_output(vec4(shade, clamp(base.a + halo * intensity * beat, 0.0, 1.0) * glow_color.a));
+    float shape = haylen_base(uv).a;
+    float beat = 1.0 + pulse * sin(time * 7.0);
+
+    // A tight glow hugs the shape and a wide one spreads far, as the bloom of a bright light does.
+    float near = library_glow(uv, texel, radius * 0.45);
+    float far = library_glow(uv, texel, radius * 1.6);
+    float halo = (pow(near, 0.8) * 0.9 + pow(far, 0.6) * 1.5) * intensity * 0.45 * beat;
+
+    // The core burns white where the shape is thickest and keeps the glow color at its edge.
+    float heat = smoothstep(0.7, 1.0, near) * shape;
+    vec3 light = glow_color.rgb * halo + mix(glow_color.rgb, vec3(1.0), 0.3 + 0.7 * heat) * shape * 1.4;
+    float amount = clamp(max(max(light.r, light.g), light.b), 0.0, 1.0);
+    haylen_output(vec4(light / max(amount, 0.0001), amount * glow_color.a));
 }
 @end
 

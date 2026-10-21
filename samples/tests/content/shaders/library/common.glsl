@@ -1,4 +1,4 @@
-// The functions that the shaders of the library share: hashes and value noise for patterns that move, the luminance of a color and a hue turned into a color.
+// The functions that the shaders of the library share: hashes and value noise for patterns that move, the luminance of a color, a hue turned into a color and the glow of a shape.
 @block library_common
 float library_hash(vec2 point) {
     return fract(sin(dot(point, vec2(127.1, 311.7))) * 43758.5453);
@@ -32,6 +32,21 @@ float library_luminance(vec3 color) {
 
 vec3 library_hue(float hue) {
     return clamp(abs(fract(hue + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
+}
+
+// The coverage of the shape that the alpha of the texture draws around a point, averaged over a disc of `reach` texels on a spiral of samples whose weights fall off like a bell, which glows add as light, the way a bloom spreads a bright shape. Each pixel turns the spiral by its own angle, so the samples leave a fine grain instead of copies of the shape.
+float library_glow(vec2 point, vec2 texel, float reach) {
+    float sum = 0.0;
+    float total = 0.0;
+    float spin = library_hash(point * 4096.0) * 6.28318531;
+    for (int index = 0; index < 48; index++) {
+        float share = (float(index) + 0.5) / 48.0;
+        float angle = float(index) * 2.39996323 + spin;
+        float weight = exp(-3.0 * share);
+        sum += haylen_texture(haylen_inside(point + vec2(cos(angle), sin(angle)) * sqrt(share) * reach * texel)).a * weight;
+        total += weight;
+    }
+    return sum / total;
 }
 
 // The point inside the source rectangle of the draw as a share from 0 to 1 on each axis.

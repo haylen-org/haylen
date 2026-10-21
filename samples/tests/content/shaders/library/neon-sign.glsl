@@ -1,4 +1,4 @@
-// Keeps only a glowing tube along the edges of a sprite, like a neon sign, which flickers now and then.
+// Turns the outline of a sprite into a neon sign: a thin glass tube along its edge with a nearly white core, a halo of the neon color that glows on both sides of the tube, and a buzz that dims it and an occasional flicker, drawn with the additive blend.
 @include haylen/material.glsl
 @include common.glsl
 
@@ -13,17 +13,23 @@ layout(binding=1) uniform neonSign_params {
 };
 
 void main() {
-    float low = 1.0;
-    float high = 0.0;
-    for (int index = 0; index < 16; index++) {
-        float angle = float(index) * 0.3926991;
-        float alpha = haylen_texture(haylen_inside(uv + vec2(cos(angle), sin(angle)) * texel * thickness)).a;
-        low = min(low, alpha);
-        high = max(high, alpha);
-    }
-    float tube = high * (1.0 - low);
-    float flicker = 0.75 + 0.25 * step(0.08, library_noise(vec2(floor(time * 20.0), 3.0)));
-    haylen_output(vec4(mix(neon_color.rgb, vec3(1.0), tube * 0.5) * flicker, tube * neon_color.a * flicker));
+    // The edge of the sprite lies where its blurred coverage crosses one half, so the tube follows it smoothly.
+    float edge = library_glow(uv, texel, thickness * 2.0);
+    float tube = exp(-pow((edge - 0.5) / 0.12, 2.0));
+    float core = exp(-pow((edge - 0.5) / 0.05, 2.0));
+
+    // The halo fades away from the outline on both sides.
+    float spread = library_glow(uv, texel, thickness * 9.0);
+    float halo = pow(4.0 * spread * (1.0 - spread), 1.6) * 0.75;
+
+    // The sign buzzes a little all the time and now and then flickers off for a moment.
+    float moment = floor(time * 9.0);
+    float flicker = step(0.93, library_hash(vec2(moment, 5.0))) * step(fract(time * 9.0), 0.6);
+    float power = (0.9 + 0.1 * sin(time * 120.0)) * (1.0 - flicker * 0.75);
+
+    vec3 light = (neon_color.rgb * (tube * 1.3 + halo) + vec3(1.0) * core * 0.9) * power;
+    float amount = clamp(max(max(light.r, light.g), light.b), 0.0, 1.0);
+    haylen_output(vec4(light / max(amount, 0.0001), amount * neon_color.a));
 }
 @end
 
