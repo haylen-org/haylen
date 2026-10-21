@@ -1,8 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <array>
+#include <cmath>
 #include <string>
 #include <utility>
+
+#include <imgui.h>
 
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -14,7 +17,21 @@ namespace haylen::ui {
 
 namespace {
 
-class LayoutTest : public ::testing::Test, public test::UiFixture {};
+class LayoutTest : public ::testing::Test, public test::UiFixture {
+  protected:
+    // Whether a draw of the last frame is cut to the area.
+    [[nodiscard]] static bool hasClip(const math::Rect& area) {
+        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+            for (const ImDrawCmd& command : list->CmdBuffer) {
+                const math::Rect clip = math::Rect::fromMinMax({command.ClipRect.x, command.ClipRect.y}, {command.ClipRect.z, command.ClipRect.w});
+                if (command.UserCallback != nullptr && clip == area) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+};
 
 } // namespace
 
@@ -148,6 +165,57 @@ TEST_F(LayoutTest, WrapsRowsIntoLines) {
     EXPECT_EQ(getBounds(*gui, "e").getMin(), math::Vec2(255.0F, 60.0F));
     EXPECT_EQ(getBounds(*gui, "row").height, 40.0F + 20.0F + 60.0F);
     EXPECT_THROW(gui->set("row", {{"wrap", "yes"}}), std::invalid_argument);
+}
+
+// A child that grows stays on its line while its minimum width fits, however wide its content is, and takes the room the line leaves.
+TEST_F(LayoutTest, WrapsAGrowingChildOnlyWhenItsMinimumWidthDoesNotFit) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "row", "id": "row", "width": 1000, "wrap": true, "gap": 20, "children": [
+        {"kind": "spacer", "id": "fixed", "width": 400, "height": 100},
+        {"kind": "column", "id": "growing", "grow": 1, "children": [{"kind": "label", "wrap": false, "text": "A line of text far wider than the room the first child leaves on the row, which would push it to a line of its own"}]}
+    ]}]})");
+    // clang-format on
+    EXPECT_EQ(getBounds(*gui, "growing").x, 420.0F);
+    EXPECT_EQ(getBounds(*gui, "growing").width, 580.0F);
+    EXPECT_LT(getBounds(*gui, "growing").y, 100.0F);
+
+    gui->set("growing", {{"minWidth", 700}});
+    frames();
+    EXPECT_EQ(getBounds(*gui, "growing").getMin(), math::Vec2(0.0F, 100.0F + 20.0F));
+    EXPECT_EQ(getBounds(*gui, "growing").width, 1000.0F);
+}
+
+// The lines of a wrapped row share the height the row has beyond their own, so children that stretch fill it.
+TEST_F(LayoutTest, StretchesTheLinesOfAWrappedRowOverItsHeight) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "row", "id": "row", "width": 500, "height": 400, "wrap": true, "gap": 10, "lineGap": 20, "children": [
+        {"kind": "spacer", "id": "a", "width": 300, "height": 40, "align": "stretch"},
+        {"kind": "spacer", "id": "b", "width": 300, "height": 60},
+        {"kind": "column", "id": "c", "width": 300, "align": "stretch", "children": [{"kind": "spacer", "height": 20}]}
+    ]}]})");
+    // clang-format on
+    const float extra = (400.0F - 40.0F - 60.0F - 20.0F - 20.0F * 2.0F) / 3.0F;
+    EXPECT_EQ(getBounds(*gui, "a"), (math::Rect{0.0F, 0.0F, 300.0F, 40.0F}));
+    EXPECT_EQ(getBounds(*gui, "b").height, 60.0F);
+    EXPECT_EQ(getBounds(*gui, "c").y, std::floor(40.0F + extra + 20.0F + 60.0F + extra + 20.0F));
+    EXPECT_NEAR(getBounds(*gui, "c").height, 20.0F + extra, 1.0F);
+}
+
+// Lines taller than their row and children taller than their panel are cut at its edges instead of drawing over what lies around it.
+TEST_F(LayoutTest, ClipsWhatOverflowsPanelsAndWrappedRows) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "padding": 40, "gap": 40, "children": [
+        {"kind": "panel", "id": "panel", "height": 150, "children": [{"kind": "label", "text": "Top"}, {"kind": "spacer", "height": 200}, {"kind": "label", "text": "Past the edge"}]},
+        {"kind": "row", "id": "row", "width": 400, "height": 100, "wrap": true, "children": [
+            {"kind": "label", "width": 300, "text": "First"}, {"kind": "spacer", "width": 300, "height": 120}, {"kind": "label", "width": 300, "text": "Third"}
+        ]}
+    ]})");
+    // clang-format on
+    frames(2);
+    getUi().getBackend().makeCurrent();
+    const float reach = getUi().getTheme().getMetric(Theme::Metric::FocusGap) + getUi().getTheme().getMetric(Theme::Metric::FocusWidth);
+    EXPECT_TRUE(hasClip(getBounds(*gui, "panel")));
+    EXPECT_TRUE(hasClip(getBounds(*gui, "row").expanded(reach)));
 }
 
 TEST_F(LayoutTest, PlacesGridCellsAndAlignsChildrenInBothDirections) {

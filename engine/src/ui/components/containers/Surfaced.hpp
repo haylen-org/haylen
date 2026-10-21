@@ -7,13 +7,16 @@
 
 namespace haylen::ui {
 
-// A column on a themed surface that keeps the pointer from reaching the app behind it.
+// A column on a themed surface that keeps the pointer from reaching the app behind it and cuts its children at its edges.
 class Surfaced : public Linear {
   public:
     Surfaced(Theme::Surface role, Theme::Color fillColor, bool hasBorder) : Linear(false), surface(role), fill(fillColor), bordered(hasBorder) {}
 
   protected:
     [[nodiscard]] math::Insets getPadding(Context& context) const override;
+    [[nodiscard]] bool clipsChildren() const noexcept override {
+        return true;
+    }
     void paint(Context& context, const math::Rect& bounds) override;
     void render(Context& context, const math::Rect& bounds) override;
 

@@ -1323,7 +1323,7 @@ ui.mount(ui.column{
 
 Lays out any number of children from left to right, or from right to left in a [right-to-left](#right-to-left-interfaces) node. It takes the properties of `column`. Children with `grow` share the width the others leave, so wide content never pushes the row past its bounds. Each child sits across the height by its `align`, which defaults to `center` in a row.
 
-A row with `wrap = true` breaks its children into lines that each take as many children as fit at their natural width, and a child wider than the row takes a line of its own. Every line is as tall as its tallest child, places its children by `justify`, and shares its free width among its children that grow.
+A row with `wrap = true` breaks its children into lines that each take as many children as fit, a child that grows at its `minWidth` and every other child at its natural width, and a child wider than the row takes a line of its own. Every line is at least as tall as its tallest child, places its children by `justify`, and shares its free width among its children that grow, so a child that grows moves to a line of its own only when its `minWidth` does not fit. The lines share the height the row has beyond their own, so children with `align = 'stretch'` fill it, and lines taller than the row are cut at its edges.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1419,7 +1419,7 @@ ui.mount(ui.scroll{axis = 'horizontal', snap = true, width = 1200, height = 240,
 
 ### ui.card(properties)
 
-A column on a raised surface with a border, drawn with the theme `card` surface when the theme has one. It takes the properties of `column`. When `padding` is zero the theme `panelPadding` metric pads the content. A card keeps the pointer from reaching the app behind it.
+A column on a raised surface with a border, drawn with the theme `card` surface when the theme has one. It takes the properties of `column`. When `padding` is zero the theme `panelPadding` metric pads the content. A card keeps the pointer from reaching the app behind it and cuts its children at its edges, so content taller than the card never draws over what lies around it. Put content that may run long in a `scroll` to let the player reach all of it.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1434,7 +1434,7 @@ ui.mount(ui.card{
 
 ### ui.panel(properties)
 
-A column on the panel color without a border, drawn with the theme `panel` surface when the theme has one. It takes the properties of `column`, pads like a card and keeps the pointer from reaching the app behind it.
+A column on the panel color without a border, drawn with the theme `panel` surface when the theme has one. It takes the properties of `column`, pads like a card, keeps the pointer from reaching the app behind it and cuts its children at its edges like a card.
 
 ```lua
 local ui = require('haylen.ui')

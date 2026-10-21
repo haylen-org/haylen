@@ -3,8 +3,11 @@
 #include <algorithm>
 #include <cmath>
 
+#include <imgui.h>
+
 #include "haylen/math/Insets.hpp"
 #include "haylen/ui/Context.hpp"
+#include "ui/ImGuiConverter.hpp"
 
 namespace haylen::ui {
 
@@ -105,7 +108,7 @@ math::Vec2 Linear::measureContent(Context& context, float availableWidth) {
     return horizontal ? math::Vec2{length + insets.getHorizontal(), breadth + insets.getVertical()} : math::Vec2{breadth + insets.getHorizontal(), length + insets.getVertical()};
 }
 
-// Lines take children while they fit at their natural width, and a child wider than the whole row takes a line of its own.
+// The width of a line is the natural width of its children, where a child that grows counts the width its content takes at the length it grows to.
 math::Vec2 Linear::measureWrapped(Context& context, float inner) {
     breakLines(context, inner);
     const float spacing = getGap(context);
@@ -113,34 +116,50 @@ math::Vec2 Linear::measureWrapped(Context& context, float inner) {
     float height = 0.0F;
     for (std::size_t line = 0; line < lineStarts.size(); ++line) {
         const std::size_t first = lineStarts[line];
-        const std::size_t last = line + 1 < lineStarts.size() ? lineStarts[line + 1] : slots.size();
+        const std::size_t last = getLineEnd(line);
         float used = spacing * static_cast<float>(last - first - 1);
-        float tallest = 0.0F;
         for (std::size_t index = first; index < last; ++index) {
-            used += slots[index].length;
-            tallest = std::max(tallest, slots[index].child->measure(context, slots[index].length).y);
+            const Slot& slot = slots[index];
+            used += slot.child->getCommon().grow > 0.0F ? slot.child->measure(context, slot.length).x : slot.length;
         }
         width = std::max(width, used);
-        height += tallest + (line > 0 ? getLineGap(context) : 0.0F);
+        height += measureLine(context, first, last) + (line > 0 ? getLineGap(context) : 0.0F);
     }
     return {width, height};
 }
 
+// Lines take children while they fit, a child that grows at its minimum width and every other child at its natural width, and a child wider than the whole row takes a line of its own. The children that grow then share the room their line leaves.
 void Linear::breakLines(Context& context, float inner) {
     slots.clear();
     lineStarts.clear();
     const float spacing = getGap(context);
     float used = 0.0F;
     for (Component* child : getLayoutChildren()) {
-        const float length = child->measure(context, inner).x;
+        const bool growing = child->getCommon().grow > 0.0F;
+        const float length = growing ? child->boundWidth(child->getCommon().margin.getHorizontal()) : child->measure(context, inner).x;
         if (slots.empty() || used + spacing + length > inner) {
             lineStarts.push_back(slots.size());
             used = length;
         } else {
             used += spacing + length;
         }
-        slots.push_back({.child = child, .base = length, .length = length, .growing = child->getCommon().grow > 0.0F});
+        slots.push_back({.child = child, .base = length, .length = length, .growing = growing});
     }
+    for (std::size_t line = 0; line < lineStarts.size(); ++line) {
+        grow(lineStarts[line], getLineEnd(line), inner, spacing);
+    }
+}
+
+float Linear::measureLine(Context& context, std::size_t first, std::size_t last) const {
+    float height = 0.0F;
+    for (std::size_t index = first; index < last; ++index) {
+        height = std::max(height, slots[index].child->measure(context, slots[index].length).y);
+    }
+    return height;
+}
+
+std::size_t Linear::getLineEnd(std::size_t line) const noexcept {
+    return line + 1 < lineStarts.size() ? lineStarts[line + 1] : slots.size();
 }
 
 // Growing children share the free length by their factors from the length they start from, and a child that its minimum or maximum size stops keeps that size and leaves the rest to the others.
@@ -225,28 +244,58 @@ void Linear::place(Context& context, const math::Rect& line, std::size_t first, 
     }
 }
 
+// Lines share the height the row has beyond what they take, so the children that stretch fill it, and lines taller than the row are cut at its edges, a little past them so the focus rings of the children still show.
+void Linear::renderLines(Context& context, const math::Rect& bounds, const math::Rect& inner) {
+    breakLines(context, inner.width);
+    lineHeights.clear();
+    float total = getLineGap(context) * static_cast<float>(lineStarts.size() - 1);
+    for (std::size_t line = 0; line < lineStarts.size(); ++line) {
+        lineHeights.push_back(measureLine(context, lineStarts[line], getLineEnd(line)));
+        total += lineHeights.back();
+    }
+    const float extra = std::max(0.0F, inner.height - total) / static_cast<float>(lineStarts.size());
+    const bool overflowing = total > inner.height;
+    if (overflowing) {
+        const float reach = context.getMetric(Theme::Metric::FocusGap) + context.getMetric(Theme::Metric::FocusWidth);
+        const math::Rect clip = context.getReshape().apply(bounds.expanded(reach));
+        ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+    }
+
+    const float spacing = getGap(context);
+    float y = inner.y;
+    for (std::size_t line = 0; line < lineStarts.size(); ++line) {
+        const float height = lineHeights[line] + extra;
+        place(context, {inner.x, std::floor(y), inner.width, height}, lineStarts[line], getLineEnd(line), spacing);
+        y += height + getLineGap(context);
+    }
+    if (overflowing) {
+        ImGui::PopClipRect();
+    }
+}
+
+// A container that clips its children, such as a panel, cuts them at its edges, so content taller than the container never draws over what lies around it.
 void Linear::render(Context& context, const math::Rect& bounds) {
     paint(context, bounds);
+    const bool clipped = clipsChildren();
+    if (clipped) {
+        const math::Rect clip = context.getReshape().apply(bounds);
+        ImGui::PushClipRect(ImGuiConverter::toImVec2(clip.getMin()), ImGuiConverter::toImVec2(clip.getMax()), true);
+    }
+    layOut(context, bounds);
+    if (clipped) {
+        ImGui::PopClipRect();
+    }
+}
+
+// Children that grow start from nothing but their margin and share the room the others leave along the main axis, so their content never pushes the container past its bounds, and a scroll that grows scrolls inside that room.
+void Linear::layOut(Context& context, const math::Rect& bounds) {
     const math::Rect inner = bounds.inset(getPadding(context));
-    const float spacing = getGap(context);
     if (horizontal && wrap) {
-        breakLines(context, inner.width);
-        float y = inner.y;
-        for (std::size_t line = 0; line < lineStarts.size(); ++line) {
-            const std::size_t first = lineStarts[line];
-            const std::size_t last = line + 1 < lineStarts.size() ? lineStarts[line + 1] : slots.size();
-            grow(first, last, inner.width, spacing);
-            float height = 0.0F;
-            for (std::size_t index = first; index < last; ++index) {
-                height = std::max(height, slots[index].child->measure(context, slots[index].length).y);
-            }
-            place(context, {inner.x, y, inner.width, height}, first, last, spacing);
-            y += height + getLineGap(context);
+        if (!getLayoutChildren().empty()) {
+            renderLines(context, bounds, inner);
         }
         return;
     }
-
-    // Children that grow start from nothing but their margin and share the room the others leave along the main axis, so their content never pushes the container past its bounds, and a scroll that grows scrolls inside that room.
     slots.clear();
     for (Component* child : getLayoutChildren()) {
         const bool growing = child->getCommon().grow > 0.0F;
@@ -257,6 +306,7 @@ void Linear::render(Context& context, const math::Rect& bounds) {
     if (slots.empty()) {
         return;
     }
+    const float spacing = getGap(context);
     grow(0, slots.size(), horizontal ? inner.width : inner.height, spacing);
     place(context, inner, 0, slots.size(), spacing);
 }

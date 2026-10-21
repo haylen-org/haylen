@@ -170,7 +170,7 @@ Columns and rows share these properties.
 - The properties `width`, `height`, `minWidth`, `maxWidth`, `minHeight` and `maxHeight` fix or bound the size, also of a node that stretches or grows. The value `'auto'` lets the content decide.
 - The property `aspectRatio` keeps the width divided by the height of a node, such as `16 / 9` for a video frame.
 
-A row with `wrap = true` breaks its children into lines, as a row of tags or of shop items does, with `lineGap` between the lines, and a grid with `minColumnWidth` fits as many columns as the width allows, so both follow the size of the screen.
+A row with `wrap = true` breaks its children into lines, as a row of tags or of shop items does, with `lineGap` between the lines, where a child that grows moves to a line of its own only when its `minWidth` does not fit and the lines share the height of the row, and a grid with `minColumnWidth` fits as many columns as the width allows, so both follow the size of the screen.
 
 ### Scroll bars
 

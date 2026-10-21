@@ -16,7 +16,7 @@
 
 namespace haylen::ui {
 
-// Lays children out in a line, down a column or across a row, sharing extra space among children that grow within their size bounds and placing the rest by `justify`. A row that wraps breaks its children into lines.
+// Lays children out in a line, down a column or across a row, sharing extra space among children that grow within their size bounds and placing the rest by `justify`. A row that wraps breaks its children into lines, which share the height of the row.
 class Linear : public Component {
   public:
     explicit Linear(bool isHorizontal) : horizontal(isHorizontal) {}
@@ -30,6 +30,9 @@ class Linear : public Component {
     virtual void readMore(PropertyReader&) {}
     virtual void paint(Context&, const math::Rect&) {}
     [[nodiscard]] virtual math::Insets getPadding(Context&) const;
+    [[nodiscard]] virtual bool clipsChildren() const noexcept {
+        return false;
+    }
     [[nodiscard]] float getGap(Context& context) const;
     [[nodiscard]] math::Vec2 measureContent(Context& context, float availableWidth) override;
     void render(Context& context, const math::Rect& bounds) override;
@@ -73,6 +76,10 @@ class Linear : public Component {
     [[nodiscard]] float boundLength(const Component& child, float length) const noexcept;
     [[nodiscard]] math::Vec2 measureWrapped(Context& context, float inner);
     void breakLines(Context& context, float inner);
+    [[nodiscard]] float measureLine(Context& context, std::size_t first, std::size_t last) const;
+    [[nodiscard]] std::size_t getLineEnd(std::size_t line) const noexcept;
+    void renderLines(Context& context, const math::Rect& bounds, const math::Rect& inner);
+    void layOut(Context& context, const math::Rect& bounds);
     void grow(std::size_t first, std::size_t last, float available, float gap);
     void place(Context& context, const math::Rect& line, std::size_t first, std::size_t last, float gap);
 
@@ -84,9 +91,10 @@ class Linear : public Component {
     Justify justify = Justify::Start;
     std::optional<Alignment> alignItems;
 
-    // The children of the last layout and where each wrapped line starts, kept so a frame reuses their storage.
+    // The children of the last layout, where each wrapped line starts and how tall each line is, kept so a frame reuses their storage.
     std::vector<Slot> slots;
     std::vector<std::size_t> lineStarts;
+    std::vector<float> lineHeights;
 };
 
 } // namespace haylen::ui
