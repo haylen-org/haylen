@@ -242,44 +242,44 @@ if(HAYLEN_BUILD_TESTS AND HAYLEN_DESKTOP)
   )
 endif()
 
-add_library(haylen_sokol_headers INTERFACE)
-target_include_directories(haylen_sokol_headers SYSTEM INTERFACE "${sokol_SOURCE_DIR}" "${sokol_SOURCE_DIR}/util")
+add_library(haylen-sokol-headers INTERFACE)
+target_include_directories(haylen-sokol-headers SYSTEM INTERFACE "${sokol_SOURCE_DIR}" "${sokol_SOURCE_DIR}/util")
 
 if(ANDROID)
   set(game_activity_dir "${games_activity_SOURCE_DIR}/prefab/modules/game-activity_static")
-  add_library(haylen_game_activity STATIC IMPORTED)
-  set_target_properties(haylen_game_activity PROPERTIES IMPORTED_LOCATION "${game_activity_dir}/libs/android.${ANDROID_ABI}/libgame-activity_static.a")
-  target_include_directories(haylen_game_activity SYSTEM INTERFACE "${game_activity_dir}/include")
+  add_library(haylen-game-activity STATIC IMPORTED)
+  set_target_properties(haylen-game-activity PROPERTIES IMPORTED_LOCATION "${game_activity_dir}/libs/android.${ANDROID_ABI}/libgame-activity_static.a")
+  target_include_directories(haylen-game-activity SYSTEM INTERFACE "${game_activity_dir}/include")
 endif()
 
-add_library(haylen_stb INTERFACE)
-target_include_directories(haylen_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
+add_library(haylen-stb INTERFACE)
+target_include_directories(haylen-stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
 
 # The SVG reader and rasterizer compile in a library of their own, which keeps the warnings of the engine off their code.
-add_library(haylen_nanosvg STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/graphics/NanoSvgImpl.c")
-target_include_directories(haylen_nanosvg SYSTEM PUBLIC "${nanosvg_SOURCE_DIR}/src")
+add_library(haylen-nanosvg STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/graphics/NanoSvgImpl.c")
+target_include_directories(haylen-nanosvg SYSTEM PUBLIC "${nanosvg_SOURCE_DIR}/src")
 
-add_library(haylen_fast_float INTERFACE)
-target_include_directories(haylen_fast_float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
+add_library(haylen-fast-float INTERFACE)
+target_include_directories(haylen-fast-float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
 
 # The amalgamated source of HarfBuzz builds its OpenType shaper alone, without the shapers of legacy and AAT fonts.
-add_library(haylen_harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc")
-target_include_directories(haylen_harfbuzz SYSTEM PUBLIC "${harfbuzz_SOURCE_DIR}/src")
-target_compile_definitions(haylen_harfbuzz PRIVATE HB_MINI)
+add_library(haylen-harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc")
+target_include_directories(haylen-harfbuzz SYSTEM PUBLIC "${harfbuzz_SOURCE_DIR}/src")
+target_compile_definitions(haylen-harfbuzz PRIVATE HB_MINI)
 
-add_library(haylen_sheenbidi STATIC "${sheenbidi_SOURCE_DIR}/Source/SheenBidi.c")
-target_include_directories(haylen_sheenbidi SYSTEM PUBLIC "${sheenbidi_SOURCE_DIR}/Headers" PRIVATE "${sheenbidi_SOURCE_DIR}/Source")
-target_compile_definitions(haylen_sheenbidi PRIVATE SB_CONFIG_UNITY)
+add_library(haylen-sheenbidi STATIC "${sheenbidi_SOURCE_DIR}/Source/SheenBidi.c")
+target_include_directories(haylen-sheenbidi SYSTEM PUBLIC "${sheenbidi_SOURCE_DIR}/Headers" PRIVATE "${sheenbidi_SOURCE_DIR}/Source")
+target_compile_definitions(haylen-sheenbidi PRIVATE SB_CONFIG_UNITY)
 
 set(unibreak_dir "${libunibreak_SOURCE_DIR}/src")
-add_library(haylen_unibreak STATIC "${unibreak_dir}/unibreakbase.c" "${unibreak_dir}/unibreakdef.c" "${unibreak_dir}/linebreak.c" "${unibreak_dir}/linebreakdata.c" "${unibreak_dir}/linebreakdef.c" "${unibreak_dir}/eastasianwidthdef.c" "${unibreak_dir}/emojidef.c" "${unibreak_dir}/graphemebreak.c")
-target_include_directories(haylen_unibreak SYSTEM PUBLIC "${unibreak_dir}")
+add_library(haylen-unibreak STATIC "${unibreak_dir}/unibreakbase.c" "${unibreak_dir}/unibreakdef.c" "${unibreak_dir}/linebreak.c" "${unibreak_dir}/linebreakdata.c" "${unibreak_dir}/linebreakdef.c" "${unibreak_dir}/eastasianwidthdef.c" "${unibreak_dir}/emojidef.c" "${unibreak_dir}/graphemebreak.c")
+target_include_directories(haylen-unibreak SYSTEM PUBLIC "${unibreak_dir}")
 
 # The optional file of Monocypher holds Ed25519 with SHA-512, the signature scheme of manifests.
-add_library(haylen_monocypher STATIC "${monocypher_SOURCE_DIR}/src/monocypher.c" "${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c")
-target_include_directories(haylen_monocypher SYSTEM PUBLIC "${monocypher_SOURCE_DIR}/src" "${monocypher_SOURCE_DIR}/src/optional")
+add_library(haylen-monocypher STATIC "${monocypher_SOURCE_DIR}/src/monocypher.c" "${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c")
+target_include_directories(haylen-monocypher SYSTEM PUBLIC "${monocypher_SOURCE_DIR}/src" "${monocypher_SOURCE_DIR}/src/optional")
 
-add_library(haylen_imgui STATIC
+add_library(haylen-imgui STATIC
   "${imgui_SOURCE_DIR}/imgui.cpp"
   "${imgui_SOURCE_DIR}/imgui_demo.cpp"
   "${imgui_SOURCE_DIR}/imgui_draw.cpp"
@@ -288,26 +288,26 @@ add_library(haylen_imgui STATIC
   "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/../src/ui/ImGuiAssert.cpp"
 )
-target_include_directories(haylen_imgui SYSTEM PUBLIC "${imgui_SOURCE_DIR}" "${imgui_SOURCE_DIR}/misc/cpp")
-target_include_directories(haylen_imgui PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../src")
-target_compile_definitions(haylen_imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DEFINE_MATH_OPERATORS IMGUI_USE_WCHAR32 "IMGUI_USER_CONFIG=\"${CMAKE_CURRENT_LIST_DIR}/../src/ui/ImGuiConfig.hpp\"")
+target_include_directories(haylen-imgui SYSTEM PUBLIC "${imgui_SOURCE_DIR}" "${imgui_SOURCE_DIR}/misc/cpp")
+target_include_directories(haylen-imgui PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../src")
+target_compile_definitions(haylen-imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DEFINE_MATH_OPERATORS IMGUI_USE_WCHAR32 "IMGUI_USER_CONFIG=\"${CMAKE_CURRENT_LIST_DIR}/../src/ui/ImGuiConfig.hpp\"")
 
-add_library(haylen_miniaudio STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c")
-target_include_directories(haylen_miniaudio SYSTEM PUBLIC "${miniaudio_SOURCE_DIR}")
-target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_GENERATION MA_NO_ENCODING MA_NO_RESOURCE_MANAGER)
+add_library(haylen-miniaudio STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c")
+target_include_directories(haylen-miniaudio SYSTEM PUBLIC "${miniaudio_SOURCE_DIR}")
+target_compile_definitions(haylen-miniaudio PUBLIC MA_NO_GENERATION MA_NO_ENCODING MA_NO_RESOURCE_MANAGER)
 if(ANDROID)
-  target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_OPENSL)
-  target_link_libraries(haylen_miniaudio PUBLIC log)
+  target_compile_definitions(haylen-miniaudio PUBLIC MA_NO_OPENSL)
+  target_link_libraries(haylen-miniaudio PUBLIC log)
 elseif(APPLE)
-  target_link_libraries(haylen_miniaudio PUBLIC "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")
+  target_link_libraries(haylen-miniaudio PUBLIC "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")
   if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
     # The miniaudio library manages the `AVAudioSession` on iOS and tvOS, so its implementation compiles as Objective-C there.
     set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c" PROPERTIES LANGUAGE OBJC)
-    target_link_libraries(haylen_miniaudio PUBLIC "-framework AVFoundation")
+    target_link_libraries(haylen-miniaudio PUBLIC "-framework AVFoundation")
   endif()
 elseif(HAYLEN_PLATFORM STREQUAL "web")
   # Browsers play through the AudioWorklet output of the engine, `src/platform/web/BrowserAudioOutput`, so miniaudio keeps only its custom backend there.
-  target_compile_definitions(haylen_miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
+  target_compile_definitions(haylen-miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
 elseif(HAYLEN_PLATFORM STREQUAL "linux")
-  target_link_libraries(haylen_miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
+  target_link_libraries(haylen-miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
 endif()

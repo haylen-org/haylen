@@ -237,37 +237,37 @@ set(HAYLEN_TEST_SOURCES
 )
 
 # The backend of the build brings its own tests with it.
-add_executable(haylen_tests ${HAYLEN_TEST_SOURCES} ${HAYLEN_BACKEND_TEST_SOURCES})
-set_target_properties(haylen_tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_link_libraries(haylen_tests PRIVATE haylen::engine haylen::headless haylen_content_tool ${HAYLEN_BACKEND_TEST_LIBRARIES} haylen_miniaudio haylen_stb haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
+add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} ${HAYLEN_BACKEND_TEST_SOURCES})
+set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen-content-tool ${HAYLEN_BACKEND_TEST_LIBRARIES} haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
-target_include_directories(haylen_tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
+target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
 # The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.
 find_package(Python3 REQUIRED COMPONENTS Interpreter)
-target_compile_definitions(haylen_tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_TOOL_SCRIPT="${HAYLEN_ENGINE_DIR}/../haylen.py" HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video")
+target_compile_definitions(haylen-tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_TOOL_SCRIPT="${HAYLEN_ENGINE_DIR}/../haylen.py" HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video")
 # On Windows the tests also run the decoder of Media Foundation and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)
-  target_sources(haylen_tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
-  target_link_libraries(haylen_tests PRIVATE advapi32 ole32 oleaut32 mfplat mfreadwrite mfuuid uiautomationcore)
+  target_sources(haylen-tests PRIVATE platform/WindowsAccessibilityTests.cpp platform/WindowsSettingsTests.cpp platform/WindowsVideoDecoderTests.cpp "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityElement.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityRoot.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsAccessibilityTree.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsSettings.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsVideoDecoder.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/windows/WindowsPackageStream.cpp")
+  target_link_libraries(haylen-tests PRIVATE advapi32 ole32 oleaut32 mfplat mfreadwrite mfuuid uiautomationcore)
 endif()
-haylen_enable_warnings(haylen_tests)
-haylen_enable_coverage(haylen_tests)
+haylen_enable_warnings(haylen-tests)
+haylen_enable_coverage(haylen-tests)
 
 # The native library that the native interop tests call. It sits next to the test executable, where `native.load` finds it by its exact name, which the Debug postfix that Poco forces would change.
-add_library(haylen_native_test SHARED native/NativeTest.c)
-set_target_properties(haylen_native_test PROPERTIES OUTPUT_NAME native_test DEBUG_POSTFIX "" C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_include_directories(haylen_native_test PRIVATE "${HAYLEN_ENGINE_DIR}/include")
+add_library(haylen-native-test SHARED native/NativeTest.c)
+set_target_properties(haylen-native-test PROPERTIES OUTPUT_NAME native-test DEBUG_POSTFIX "" C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+target_include_directories(haylen-native-test PRIVATE "${HAYLEN_ENGINE_DIR}/include")
 if(NOT WIN32)
   find_package(Threads REQUIRED)
-  target_link_libraries(haylen_native_test PRIVATE Threads::Threads)
+  target_link_libraries(haylen-native-test PRIVATE Threads::Threads)
 endif()
-haylen_enable_warnings(haylen_native_test)
-add_dependencies(haylen_tests haylen_native_test)
-target_compile_definitions(haylen_tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen_native_test>")
+haylen_enable_warnings(haylen-native-test)
+add_dependencies(haylen-tests haylen-native-test)
+target_compile_definitions(haylen-tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>")
 
 # Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs.
 include(GoogleTest)
-gtest_discover_tests(haylen_tests
+gtest_discover_tests(haylen-tests
   WORKING_DIRECTORY "${CMAKE_CURRENT_LIST_DIR}"
   DISCOVERY_TIMEOUT 60
   PROPERTIES TIMEOUT 120
@@ -275,28 +275,28 @@ gtest_discover_tests(haylen_tests
 
 # The fuzzers of the content formats, of input recordings, of MessagePack and of image placeholders run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
-  add_executable(haylen_content_fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
-  set_target_properties(haylen_content_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-  target_include_directories(haylen_content_fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
-  target_link_libraries(haylen_content_fuzzer PRIVATE haylen_content_writer haylen::headless haylen_stb haylen_monocypher)
-  target_link_options(haylen_content_fuzzer PRIVATE -fsanitize=fuzzer)
-  haylen_enable_warnings(haylen_content_fuzzer)
+  add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
+  set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_include_directories(haylen-content-fuzzer PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
+  target_link_libraries(haylen-content-fuzzer PRIVATE haylen-content-writer haylen::headless haylen-stb haylen-monocypher)
+  target_link_options(haylen-content-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-content-fuzzer)
 
-  add_executable(haylen_input_fuzzer fuzz/InputRecordingFuzzer.cpp)
-  set_target_properties(haylen_input_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-  target_link_libraries(haylen_input_fuzzer PRIVATE haylen::engine)
-  target_link_options(haylen_input_fuzzer PRIVATE -fsanitize=fuzzer)
-  haylen_enable_warnings(haylen_input_fuzzer)
+  add_executable(haylen-input-fuzzer fuzz/InputRecordingFuzzer.cpp)
+  set_target_properties(haylen-input-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen-input-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-input-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-input-fuzzer)
 
-  add_executable(haylen_messagepack_fuzzer fuzz/MessagePackFuzzer.cpp)
-  set_target_properties(haylen_messagepack_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-  target_link_libraries(haylen_messagepack_fuzzer PRIVATE haylen::engine)
-  target_link_options(haylen_messagepack_fuzzer PRIVATE -fsanitize=fuzzer)
-  haylen_enable_warnings(haylen_messagepack_fuzzer)
+  add_executable(haylen-messagepack-fuzzer fuzz/MessagePackFuzzer.cpp)
+  set_target_properties(haylen-messagepack-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen-messagepack-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-messagepack-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-messagepack-fuzzer)
 
-  add_executable(haylen_placeholder_fuzzer fuzz/ImagePlaceholderFuzzer.cpp)
-  set_target_properties(haylen_placeholder_fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-  target_link_libraries(haylen_placeholder_fuzzer PRIVATE haylen::engine)
-  target_link_options(haylen_placeholder_fuzzer PRIVATE -fsanitize=fuzzer)
-  haylen_enable_warnings(haylen_placeholder_fuzzer)
+  add_executable(haylen-placeholder-fuzzer fuzz/ImagePlaceholderFuzzer.cpp)
+  set_target_properties(haylen-placeholder-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen-placeholder-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-placeholder-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-placeholder-fuzzer)
 endif()

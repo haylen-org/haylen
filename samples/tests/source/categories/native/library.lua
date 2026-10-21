@@ -23,7 +23,7 @@ if native.available() then
 end
 
 function library.load()
-    library.loaded = library.loaded or native.load('native_test')
+    library.loaded = library.loaded or native.load('native-test')
     return library.loaded
 end
 

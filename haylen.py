@@ -118,7 +118,7 @@ ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
 # The library that the activity of a release build loads instead of the Lua player of the `haylen` library: the Lua player with the bootstrap of the app.
-ANDROID_RELEASE_LIBRARY = "haylen_app"
+ANDROID_RELEASE_LIBRARY = "haylen-app"
 # The file in the assets of an Android project that names the plugins whose classes the runtime loads, written by `prepare`.
 ANDROID_PLUGINS_FILE = "haylen-plugins.json"
 # The Android libraries that `haylen.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
@@ -832,7 +832,7 @@ def command_test(args: argparse.Namespace) -> None:
         command_test_web(args)
         return
     args.platform = host_name()
-    args.target = "haylen_tests"
+    args.target = "haylen-tests"
     command_build(args)
     terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
@@ -840,7 +840,7 @@ def command_test(args: argparse.Namespace) -> None:
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
-FUZZERS = ("haylen_content_fuzzer", "haylen_input_fuzzer", "haylen_messagepack_fuzzer", "haylen_placeholder_fuzzer")
+FUZZERS = ("haylen-content-fuzzer", "haylen-input-fuzzer", "haylen-messagepack-fuzzer", "haylen-placeholder-fuzzer")
 FUZZ_MAX_LENGTH = 65536
 FUZZ_LLVM_FOLDERS = ("/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin", "/usr/lib/llvm-20/bin", "/usr/lib/llvm-19/bin", "/usr/lib/llvm-18/bin")
 
@@ -893,7 +893,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     command[command.index("-B") + 1] = str(directory)
     terminal.step(f"Building the engine tests with coverage in `{shown_path(directory)}`")
     run(command, env=env)
-    run(["cmake", "--build", directory, "--target", "haylen_tests", "--parallel", str(args.jobs)])
+    run(["cmake", "--build", directory, "--target", "haylen-tests", "--parallel", str(args.jobs)])
 
     profiles = directory / "coverage"
     shutil.rmtree(profiles, ignore_errors=True)
@@ -907,7 +907,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     merged = profiles / "haylen.profdata"
     run([llvm_tool("llvm-profdata"), "merge", "-sparse", *raw, "-o", merged])
 
-    binary = directory / "bin" / "haylen_tests"
+    binary = directory / "bin" / "haylen-tests"
     ignore = r"(_deps|\.cache|engine/tests|engine/src/platform/(apple|android|web|windows|linux)|generated)"
     report = [llvm_tool("llvm-cov"), "report", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}"]
     run(report, stream=True)
@@ -1019,9 +1019,9 @@ def command_sdk(args: argparse.Namespace) -> None:
     command += ["-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
     terminal.step(f'Building the SDK of the engine for "{args.platform}" in the "{args.config}" configuration')
     run(command, env=env)
-    run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen_sdk", "--parallel", str(args.jobs)])
+    run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen-sdk", "--parallel", str(args.jobs)])
     prefix = Path(args.output).resolve() if args.output else sdk_dir(args.platform, args.config)
-    run(["cmake", "--install", directory, "--config", args.config, "--component", "haylen_sdk", "--prefix", prefix])
+    run(["cmake", "--install", directory, "--config", args.config, "--component", "haylen-sdk", "--prefix", prefix])
     terminal.success(f"Installed the SDK into `{shown_path(prefix)}`.")
     for mode in modes:
         check_consumer(mode, args.config, args.jobs, prefix)
@@ -1113,11 +1113,11 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
             directory = ENGINE_BUILDS_DIR / f"apple-{slice_name}-{arch}-{config.lower()}"
             if not (directory / "CMakeCache.txt").exists():
                 run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)])
-            run(["cmake", "--build", directory, "--target", "haylen_framework", "--parallel", str(jobs)])
-            run(["cmake", "--install", directory, "--component", "haylen_framework", "--prefix", directory / "framework"])
+            run(["cmake", "--build", directory, "--target", "haylen-framework", "--parallel", str(jobs)])
+            run(["cmake", "--install", directory, "--component", "haylen-framework", "--prefix", directory / "framework"])
             archives.append(directory / "framework" / "lib" / "libhaylen.a")
             if headers is None:
-                run(["cmake", "--install", directory, "--component", "haylen_sdk", "--prefix", directory / "sdk"])
+                run(["cmake", "--install", directory, "--component", "haylen-sdk", "--prefix", directory / "sdk"])
                 headers = directory / "sdk" / "include"
         if len(archives) > 1:
             library = apple_slice_library(slice_name, config)
@@ -1150,10 +1150,10 @@ def build_android_players(config: str, jobs: int) -> Path:
     for abi in ANDROID_ABIS:
         directory = ENGINE_BUILDS_DIR / f"android-{abi}-{config.lower()}"
         run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
-        run(["cmake", "--build", directory, "--target", "haylen", "haylen_sdk", "--parallel", str(jobs)])
+        run(["cmake", "--build", directory, "--target", "haylen", "haylen-sdk", "--parallel", str(jobs)])
         copy_into(directory / "lib" / "libhaylen.so", libraries / abi)
         shutil.rmtree(android_engine_sdk(abi), ignore_errors=True)
-        run(["cmake", "--install", directory, "--component", "haylen_sdk", "--prefix", android_engine_sdk(abi)])
+        run(["cmake", "--install", directory, "--component", "haylen-sdk", "--prefix", android_engine_sdk(abi)])
     return libraries
 
 
@@ -1184,9 +1184,9 @@ def build_web_artifacts(config: str, jobs: int) -> None:
         for name in WEB_RUNTIME_FILES:
             shutil.copy2(built / name, destination)
         run(["cmake", "-B", directory, "-DHAYLEN_BUILD_SDK=ON"])
-        run(["cmake", "--build", directory, "--target", "haylen_sdk", "--parallel", str(jobs)])
+        run(["cmake", "--build", directory, "--target", "haylen-sdk", "--parallel", str(jobs)])
         shutil.rmtree(web_sdk(api), ignore_errors=True)
-        run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", web_sdk(api)])
+        run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", web_sdk(api)])
 
 
 def desktop_artifact(name: str = "haylen") -> Path:
@@ -1210,13 +1210,13 @@ def build_desktop_artifacts(config: str, jobs: int) -> None:
     if host_name() == "macos":
         command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
     run(command)
-    run(["cmake", "--build", directory, "--config", config, "--target", "haylen", CONTENT_TOOL, "haylen_sdk", "--parallel", str(jobs)])
+    run(["cmake", "--build", directory, "--config", config, "--target", "haylen", CONTENT_TOOL, "haylen-sdk", "--parallel", str(jobs)])
     destination = desktop_artifact().parent
     shutil.rmtree(destination, ignore_errors=True)
     destination.mkdir(parents=True)
     shutil.copy2(directory / "bin" / "haylen" / executable_name("haylen"), desktop_artifact())
     shutil.copy2(directory / "bin" / executable_name(CONTENT_TOOL), desktop_artifact(CONTENT_TOOL))
-    run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", desktop_sdk()])
+    run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", desktop_sdk()])
 
 
 ARTIFACT_BUILDERS = {"android": build_android_artifacts, "web": build_web_artifacts, "desktop": build_desktop_artifacts}
@@ -1440,8 +1440,8 @@ class NativeLibrary:
     def parse(folder: Path, name: str, entry: object, source: Path) -> "NativeLibrary":
         """Reads an entry of the `native` section of `app.json`, or the `native` section of a plugin, whose paths are relative to the folder of the file."""
         where = f'The native library "{name}" in `{shown_path(source)}`'
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or not isinstance(entry, dict):
-            raise BuildError(f"{where} needs a name of letters, digits and underscores and an object with its files or its CMake project.")
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", name) or not isinstance(entry, dict):
+            raise BuildError(f"{where} needs a name that starts with a letter and holds letters, digits, dashes and underscores, and an object with its files or its CMake project.")
         unknown = set(entry) - {"files", "cmake", "platforms", "link", "symbols"}
         if unknown:
             raise BuildError(f"{where} has unknown keys: {quoted_names(sorted(unknown))}.")
@@ -1724,7 +1724,7 @@ class Plugin:
         problems = PluginManifestCheck.problems_of(folder, manifest)
         if problems:
             raise BuildError("\n".join([f"The plugin manifest `{shown_path(path)}` has these problems:", *(f"  {problem}" for problem in problems)]))
-        native = NativeLibrary.parse(folder, manifest["id"].replace("-", "_"), manifest["native"], path) if "native" in manifest else None
+        native = NativeLibrary.parse(folder, manifest["id"], manifest["native"], path) if "native" in manifest else None
         return Plugin(folder, manifest, native)
 
 
@@ -2015,7 +2015,7 @@ class PluginManifestCheck:
         if "native" not in self.manifest or not isinstance(self.identifier, str) or not PLUGIN_ID.fullmatch(self.identifier):
             return
         try:
-            library = NativeLibrary.parse(self.folder, self.identifier.replace("-", "_"), self.manifest["native"], self.folder / "plugin.json")
+            library = NativeLibrary.parse(self.folder, self.identifier, self.manifest["native"], self.folder / "plugin.json")
         except BuildError as error:
             self.problems.append(str(error))
             return
@@ -3505,7 +3505,7 @@ def read_zip_entry(archive: Path, name: str) -> bytes:
 
 RELEASE_LIBRARY_PROJECT = """# Written by haylen.py for the release build of the app: the library that HaylenActivity loads, the Lua player with the bootstrap of the app linked against the SDK of the prebuilt engine, which exports only the entry points of Java and GameActivity and ships no symbols, while its symbols stay in a file next to the build for crash reports.
 cmake_minimum_required(VERSION 3.28)
-project(haylen_release LANGUAGES C CXX)
+project(haylen-release LANGUAGES C CXX)
 find_package(haylen REQUIRED CONFIG)
 add_library({name} SHARED {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/LuaPlayer.cpp")
 target_link_libraries({name} PRIVATE haylen::runtime)
@@ -3611,13 +3611,13 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
 
 RELEASE_WEB_PROJECT = """# Written by haylen.py for the release build of the app: the runtime of the page with the bootstrap of the app, linked against the web SDK of the prebuilt engine.
 cmake_minimum_required(VERSION 3.28)
-project(haylen_release LANGUAGES C CXX)
+project(haylen-release LANGUAGES C CXX)
 find_package(haylen REQUIRED CONFIG)
-add_executable(haylen_release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/LuaPlayer.cpp")
-target_link_libraries(haylen_release PRIVATE haylen::runtime)
-set_target_properties(haylen_release PROPERTIES OUTPUT_NAME "haylen")
+add_executable(haylen-release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/LuaPlayer.cpp")
+target_link_libraries(haylen-release PRIVATE haylen::runtime)
+set_target_properties(haylen-release PROPERTIES OUTPUT_NAME "haylen")
 # The names of the functions stay in a symbol map next to the build for crash reports, and the site gets none.
-target_link_options(haylen_release PRIVATE --emit-symbol-map)
+target_link_options(haylen-release PRIVATE --emit-symbol-map)
 """
 
 
@@ -3862,7 +3862,7 @@ def desktop_cmake(platform: str, engine_config: str, values: dict[str, str]) -> 
             '  elseif(NOT EXISTS "${package}")',
             '    file(CREATE_LINK "${HAYLEN_PACKAGE_DIR}" "${package}" SYMBOLIC)',
             "  endif()",
-            '  add_custom_target(${target}_native ALL COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin" VERBATIM)',
+            '  add_custom_target(${target}-native ALL COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin" VERBATIM)',
             "  # A release keeps the public symbols of the executable in a PDB next to the build for crash reports, which the install leaves out, and drops the code nothing calls.",
             '  target_link_options(${target} PRIVATE "$<$<CONFIG:Release>:/DEBUG>" "$<$<CONFIG:Release>:/OPT:REF>" "$<$<CONFIG:Release>:/OPT:ICF>")',
         ]

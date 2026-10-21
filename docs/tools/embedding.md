@@ -18,7 +18,7 @@ When the engine is not the top-level project, its player, tests and benchmarks a
 | `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | Folder of the backend, whose `backend.cmake` adds the window, the frames, the GPU device and the entry point to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. |
 | `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
-| `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen_sdk` target and the install rules of the SDK. |
+| `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen-sdk` target and the install rules of the SDK. |
 
 The engine needs CMake 3.28 or newer and a C++20 compiler, and it downloads its dependencies with CPM. When the engine bootstraps CPM itself, as it does under `add_subdirectory`, it keeps the sources in `CPM_SOURCE_CACHE` when that variable is set and in `.cache/cpm` of the top-level project otherwise.
 
@@ -82,11 +82,11 @@ haylen sdk --platform macos --config Release
 | `--output` | `build/sdk/haylen-<platform>-<config>` | Install prefix of the SDK. |
 | `--jobs` | The processor count minus one | Parallel build jobs. |
 
-The command configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen_sdk` target and installs the `haylen_sdk` component. Every static library the engine links, such as Varn, Lua and Box2D, is merged into one `haylen` library, and the runtime into `haylen_runtime`.
+The command configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen-sdk` target and installs the `haylen-sdk` component. Every static library the engine links, such as Varn, Lua and Box2D, is merged into one `haylen` library, and the runtime into `haylen-runtime`.
 
 | Installed path | Contents |
 | --- | --- |
-| `lib/` | The `haylen` and `haylen_runtime` static libraries, such as `libhaylen.a` and `libhaylen_runtime.a`. Linux distributions where `GNUInstallDirs` picks `lib64/` use that folder instead. |
+| `lib/` | The `haylen` and `haylen-runtime` static libraries, such as `libhaylen.a` and `libhaylen-runtime.a`. Linux distributions where `GNUInstallDirs` picks `lib64/` use that folder instead. |
 | `lib/cmake/haylen/` | `haylen-config.cmake` and `haylen-config-version.cmake`. |
 | `include/` | The public engine headers, the generated `haylen/core/Version.hpp`, the nlohmann/json, Dear ImGui and Lua headers that they include, and the Dear ImGui configuration of the engine in `haylen/ui/ImGuiConfig.hpp` with the `haylen/ui/ImGuiAssert.hpp` it includes. |
 | `share/haylen/` | The function `haylen_add_app` and its helper script, the web shell and runtime script, the Apple templates, `LuaPlayer.cpp` and, in Apple SDKs, `AppleMain.cpp`. |
@@ -132,7 +132,7 @@ The function links `haylen::runtime`, which brings the system libraries of the p
 
 | Platform | Result |
 | --- | --- |
-| Windows and Linux | An executable in `bin/<target>/` of the build tree, and a `SYNC_PACKAGE-<target>` target that creates an `app` folder next to it with links to `app.json`, `source/` and `content/` of the package folder, so edited files show up without a rebuild. Windows builds are GUI apps whose Visual Studio debugger starts in that folder. |
+| Windows and Linux | An executable in `bin/<target>/` of the build tree, and a `<target>-package` target that creates an `app` folder next to it with links to `app.json`, `source/` and `content/` of the package folder, so edited files show up without a rebuild. Windows builds are GUI apps whose Visual Studio debugger starts in that folder. |
 | macOS, iOS, tvOS and Mac Catalyst | An app bundle in `bin/<target>/`, or in `bin/` with the Xcode generator, with the package files under `Resources/app` and the privacy manifest of `APPLE_PROJECT` among its resources. Apps for iOS and tvOS target version 16.3, like the engine. |
 | Web | The page `<target>.html` with the shell, and the package preloaded at `/app` in the virtual file system. |
 | Android | The shared library `bin/<target>/lib<target>.so`, which `HaylenActivity` loads, and `bin/<target>/package.txt` with the absolute path of the package folder, which the Gradle project of the app copies into the APK assets. The command `haylen.py run-cpp --platform android` prepares that project, `platform/android` of the package folder or a copy of the Android template, as the [distribution guide](distribution.md#the-android-project) describes. |

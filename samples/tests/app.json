@@ -27,7 +27,7 @@
         ]
     },
     "native": {
-        "native_test": {
+        "native-test": {
             "cmake": "plugins/native-test/native",
             "platforms": [
                 "macos",
@@ -38,7 +38,7 @@
                 "linux"
             ]
         },
-        "native_test_static": {
+        "native-test-static": {
             "cmake": "plugins/native-test/native",
             "platforms": [
                 "ios",

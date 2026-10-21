@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.28...4.4)
 
-project(cpp_embedding LANGUAGES C CXX)
+project(cpp-embedding LANGUAGES C CXX)
 
 # An app project of its own that reaches the engine the way another repository would, through `add_subdirectory` by default, through CPM or through an installed SDK.
 set(HAYLEN_ENGINE_SOURCE "${CMAKE_CURRENT_LIST_DIR}/../../../engine" CACHE PATH "The engine folder of a Haylen checkout.")

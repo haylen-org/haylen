@@ -77,17 +77,17 @@ function(haylen_mark_resources)
 endfunction()
 
 function(haylen_link_package target folder plugins)
-  set(sync_target "SYNC_PACKAGE-${target}")
+  set(package_target "${target}-package")
   set(entries app.json source content ${plugins})
   list(JOIN entries "|" entries)
-  add_custom_target(${sync_target} ALL
+  add_custom_target(${package_target} ALL
     COMMAND "${CMAKE_COMMAND}" -D "SOURCE=${folder}" -D "DESTINATION=$<TARGET_FILE_DIR:${target}>/app" -D "ENTRIES=${entries}"
             -P "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake"
     COMMENT "Linking the app package of ${target}"
     VERBATIM
   )
-  add_dependencies(${sync_target} ${target})
-  set_target_properties(${sync_target} PROPERTIES FOLDER Utils)
+  add_dependencies(${package_target} ${target})
+  set_target_properties(${package_target} PROPERTIES FOLDER Utils)
 endfunction()
 
 function(haylen_setup_web_page target shell)
@@ -420,8 +420,8 @@ function(haylen_add_release target package apple_project web_shell)
     COMMENT "Writing the bootstrap of ${target}."
     VERBATIM
   )
-  add_custom_target(${target}_release DEPENDS "${stamp}")
-  add_dependencies(${target} ${target}_release)
+  add_custom_target(${target}-release DEPENDS "${stamp}")
+  add_dependencies(${target} ${target}-release)
   target_sources(${target} PRIVATE "${bootstrap}")
 
   if(APPLE)

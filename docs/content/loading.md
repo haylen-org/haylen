@@ -380,7 +380,7 @@ Every platform ships the same protected release, built for its profile, and the 
 | Platform | What ships | How content arrives later |
 | --- | --- | --- |
 | Apple | The release in `app/` of the bundle resources, and the bootstrap compiled into the app. | From the server of `updates.baseUrl`, on macOS from `packs/` next to the bundle, and on iOS and tvOS 26 and later the named packs from the asset packs of Background Assets that the App Store hosts, through a plugin such as `background-assets`. |
-| Android | The release in the assets of the APK or the App Bundle, with its shards uncompressed, a release too large for the base module of Google Play in install-time asset packs, and `libhaylen_app.so` with the bootstrap for every ABI. | From the server of `updates.baseUrl`, and the named packs from `fast-follow` and `on-demand` asset packs of Google Play, through a plugin such as `play-asset-delivery`. |
+| Android | The release in the assets of the APK or the App Bundle, with its shards uncompressed, a release too large for the base module of Google Play in install-time asset packs, and `libhaylen-app.so` with the bootstrap for every ABI. | From the server of `updates.baseUrl`, and the named packs from `fast-follow` and `on-demand` asset packs of Google Play, through a plugin such as `play-asset-delivery`. |
 | Steam | The depot of the app with the executable or the bundle and its release, and a depot per pack. | Through SteamPipe, which updates changed files, and from the server of `updates.baseUrl` when the app names one. |
 | Web | The runtime of the app for WebGPU and WebGL2 and the whole release in `app/` of the site. | By byte range from `app/` of the site, into the browser store. |
 
@@ -428,7 +428,7 @@ assets/app/app.hmanifest       The signed manifest of the app domain.
 assets/app/content.hmanifest   The signed manifest of the content domain.
 assets/app/<id>.hpak           The shards that ship, stored uncompressed, which the runtime reads in place.
 assets/haylen-plugins.json     The plugins with an Android part and their values.
-lib/<abi>/libhaylen_app.so     The Lua player with the bootstrap of the app, without symbols.
+lib/<abi>/libhaylen-app.so     The Lua player with the bootstrap of the app, without symbols.
 ```
 
 The template keeps `noCompress` of `hpak`, which `check --config Release` verifies, and downloads stay in `no_backup/<identifier>-content` of the data folder of the app. Haylen picks the asset packs on its own, so the developer never splits the release by hand:

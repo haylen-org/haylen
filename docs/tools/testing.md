@@ -4,7 +4,7 @@ Every engine capability that can run without a real graphics device or platform 
 
 ## Layout
 
-The suite lives in `engine/tests/` and builds into one executable, `haylen_tests`.
+The suite lives in `engine/tests/` and builds into one executable, `haylen-tests`.
 
 | Path | Contents |
 | --- | --- |
@@ -16,11 +16,11 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen_tests
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
 | `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, MP3, with and without the header that tells its length, and FLAC, which the streaming tests decode. CMake passes the folder to the tests as `HAYLEN_TEST_AUDIO`. |
 | `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation. CMake passes the folder to the tests as `HAYLEN_TEST_VIDEO`. |
-| `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native_test` next to `haylen_tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
+| `engine/tests/native/` | The file `NativeTest.c`, the plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. CMake builds it as `native-test` next to `haylen-tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
 | `engine/tests/backends/<backend>/` | The tests of a backend, which its `backend.cmake` names in `HAYLEN_BACKEND_TEST_SOURCES`, such as `backends/sokol/EventsTests.cpp`, which tests the translation of the events of `sokol_app`. |
-| `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen_tests` target, which also compiles the tests of the backend of the build. |
+| `engine/tests/CMakeLists.txt` | The `HAYLEN_TEST_SOURCES` list, which names every test file, and the `haylen-tests` target, which also compiles the tests of the backend of the build. |
 
-The target `haylen_tests` links `haylen::engine`, `haylen::headless`, the libraries of the tests of the backend in `HAYLEN_BACKEND_TEST_LIBRARIES` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory and a timeout of 120 seconds, far above the few seconds the slowest test takes, so a test that hangs fails on its own and the rest of the suite still runs. On Windows the target also compiles `WindowsVideoDecoder` and `WindowsSettings` from the runtime, which need no window, so `WindowsVideoDecoderTest` decodes the clip of `data/video` with Media Foundation and `WindowsSettingsTest` reads the accessibility settings of the user. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
+The target `haylen-tests` links `haylen::engine`, `haylen::headless`, the libraries of the tests of the backend in `HAYLEN_BACKEND_TEST_LIBRARIES` and GoogleTest's `gtest_main`, and it includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private. The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory and a timeout of 120 seconds, far above the few seconds the slowest test takes, so a test that hangs fails on its own and the rest of the suite still runs. On Windows the target also compiles `WindowsVideoDecoder` and `WindowsSettings` from the runtime, which need no window, so `WindowsVideoDecoderTest` decodes the clip of `data/video` with Media Foundation and `WindowsSettingsTest` reads the accessibility settings of the user. The suite is built only on desktop platforms, and only when `HAYLEN_BUILD_TESTS` is on, which is the default when the engine or the repository root is the top-level project.
 
 Every test file lives in the namespace of the context it tests, such as `haylen::input`, `haylen::storage` or `haylen::ui`, and the shared helpers live in `haylen::test`, one class per file. A test file has no free functions or namespace-scope variables: its helpers and constants are members of its fixtures, and suites that share them derive from the fixture that holds them. Test suites are named after the subject with a `Test` suffix, such as `SceneManagerTest` or `SpatialLuaTest`, and test names state the behavior they verify, such as `RequiresModulesFromThePackageOnly`.
 
@@ -148,7 +148,7 @@ To add a test for a new binding:
 haylen test
 ```
 
-The command configures `build/<host>-<config>` when needed, builds `haylen_tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
+The command configures `build/<host>-<config>` when needed, builds `haylen-tests` and runs CTest with `--output-on-failure` in parallel. It accepts `--config` (`Debug` by default), `--jobs` and `--sanitizers`.
 
 ## The memory check of the web
 
@@ -162,11 +162,11 @@ The page of the web reads content through a worker and keeps records in memory w
 
 The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop, and its menu runs one test at a time or every test one after the other.
 
-The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen_native_test` builds next to the player:
+The headless player runs it without a window, the same way every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen-native-test` builds next to the player:
 
 ```sh
 haylen build --target haylen-headless
-haylen build --target haylen_native_test
+haylen build --target haylen-native-test
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
@@ -192,7 +192,7 @@ One suite or test runs through CTest or through the executable.
 
 ```sh
 ctest --test-dir build/macos-debug -R SpatialLuaTest --output-on-failure
-build/macos-debug/bin/haylen_tests --gtest_filter='SpatialLuaTest.*'
+build/macos-debug/bin/haylen-tests --gtest_filter='SpatialLuaTest.*'
 ```
 
 ## Fuzzing
@@ -204,7 +204,7 @@ haylen fuzz --seconds 600 --llvm /opt/homebrew/opt/llvm/bin
 
 The command configures `build/fuzz` with the Clang of the LLVM folder that `--llvm` or `HAYLEN_LLVM` names, or else of the LLVM of a package manager, with `HAYLEN_BUILD_FUZZERS`, builds the four fuzzers and runs each for the seconds of `--seconds`, 60 by default, on inputs of at most 64 KiB, from a corpus of its own in `build/fuzz/corpus/<fuzzer>` that keeps the inputs that reached new code for the next run. A crash stops it with the input that caused it.
 
-The parsers of the content formats treat every file as hostile, and the fuzzer `haylen_content_fuzzer` feeds them the inputs libFuzzer generates: the first byte of an input picks the chunk record, the shard header, the shard index, the catalog, the manifest or the channel descriptor, and the parser may reject the rest only with a content error. The option `HAYLEN_BUILD_FUZZERS` instruments every target for libFuzzer and AddressSanitizer, and it needs a Clang that links libFuzzer, such as the LLVM of a package manager, since Apple Clang does not ship it. The hostile input tests in `engine/tests/content/HostileInputTests.cpp` drive the same parsers with random bytes and damaged copies of valid files in every test run. The fuzzer `haylen_input_fuzzer` feeds the reader of input recordings the same way, which may reject an input only as a malformed recording, and `InputRecordingTest` checks truncated, trailing and oversized inputs. The fuzzer `haylen_messagepack_fuzzer` decodes each input with `core::MessagePack` and encodes the result again, which may fail only as bytes that are not valid MessagePack, and `MessagePackTest` checks truncated, trailing, deeply nested and oversized messages. The fuzzer `haylen_placeholder_fuzzer` decodes each input as an image placeholder of `graphics::ImagePlaceholder`, which may fail only as a text that is not a placeholder, and `ImagePlaceholderTest` checks empty, cut, padded, foreign and oversized texts.
+The parsers of the content formats treat every file as hostile, and the fuzzer `haylen-content-fuzzer` feeds them the inputs libFuzzer generates: the first byte of an input picks the chunk record, the shard header, the shard index, the catalog, the manifest or the channel descriptor, and the parser may reject the rest only with a content error. The option `HAYLEN_BUILD_FUZZERS` instruments every target for libFuzzer and AddressSanitizer, and it needs a Clang that links libFuzzer, such as the LLVM of a package manager, since Apple Clang does not ship it. The hostile input tests in `engine/tests/content/HostileInputTests.cpp` drive the same parsers with random bytes and damaged copies of valid files in every test run. The fuzzer `haylen-input-fuzzer` feeds the reader of input recordings the same way, which may reject an input only as a malformed recording, and `InputRecordingTest` checks truncated, trailing and oversized inputs. The fuzzer `haylen-messagepack-fuzzer` decodes each input with `core::MessagePack` and encodes the result again, which may fail only as bytes that are not valid MessagePack, and `MessagePackTest` checks truncated, trailing, deeply nested and oversized messages. The fuzzer `haylen-placeholder-fuzzer` decodes each input as an image placeholder of `graphics::ImagePlaceholder`, which may fail only as a text that is not a placeholder, and `ImagePlaceholderTest` checks empty, cut, padded, foreign and oversized texts.
 
 ## Coverage
 
@@ -212,7 +212,7 @@ The parsers of the content formats treat every file as hostile, and the fuzzer `
 haylen coverage
 ```
 
-Coverage uses LLVM source-based coverage and needs Clang. The command configures `build/coverage` with `HAYLEN_ENABLE_COVERAGE=ON` and without the samples and the player, builds `haylen_tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`. Then it merges the profiles with `llvm-profdata`, prints the `llvm-cov` report and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need a platform SDK (`apple`, `android`, `web`, `windows` and `linux`). On macOS the LLVM tools come from `xcrun`, and elsewhere they must be on `PATH`. Engine coverage stays as close to 100 percent as the code allows.
+Coverage uses LLVM source-based coverage and needs Clang. The command configures `build/coverage` with `HAYLEN_ENABLE_COVERAGE=ON` and without the samples and the player, builds `haylen-tests` and runs every test, which writes one profile per process into `build/coverage/coverage/`. Then it merges the profiles with `llvm-profdata`, prints the `llvm-cov` report and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, the tests themselves, generated files and the platform folders in `engine/src/platform/` that need a platform SDK (`apple`, `android`, `web`, `windows` and `linux`). On macOS the LLVM tools come from `xcrun`, and elsewhere they must be on `PATH`. Engine coverage stays as close to 100 percent as the code allows.
 
 ## Formatting
 
@@ -229,7 +229,7 @@ The command `format` applies `.clang-format` to every `.h`, `.hpp`, `.c`, `.cpp`
 python3 -m unittest discover -s tools -p "test_*.py"
 ```
 
-The module `tools/test_haylen.py` tests the rules of `haylen.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation, how its terminal output marks reserved expressions, paths and URLs with and without color, how `run` reads the app folder it names, how `sdk --check-consumers` and `android-key` read their options, and that every tracked file and folder of the repository uses dashes where nothing requires an underscore.
+The module `tools/test_haylen.py` tests the rules of `haylen.py` that need no build with the `unittest` module of Python: how it merges the `Info.plist` keys, the entitlements and the privacy manifests of the developer, the plugins and `app.json`, how `check` decides that a built app holds what a plugin needs, how it escapes the values of `haylen.properties`, when `run` generates `App.xcodeproj` again, keeps it or compares it with a trial generation, how its terminal output marks reserved expressions, paths and URLs with and without color, how `run` reads the app folder it names, how `sdk --check-consumers` and `android-key` read their options, and that every tracked file and folder of the repository, and every target, project and install component of its CMake files and of the CMake text that `haylen.py` writes, uses dashes where nothing requires an underscore.
 
 ## Continuous integration
 
@@ -247,6 +247,6 @@ The workflow `.github/workflows/ci.yml` runs on every push to a branch and every
 | `fuzz` | Ubuntu | Installs Clang with its runtime libraries and runs `python haylen.py fuzz --seconds 60`, which builds the fuzzers and runs each for a minute. |
 | `desktop-apps` | Ubuntu and Windows | Installs Ninja with the X11 and OpenGL development packages, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and Ninja with the MSVC environment on Windows. Creates the starter app with `python haylen.py new build/starter`, adds to it a plugin that `python haylen.py plugin new build/echo-check` creates from the plugin template, and runs `python haylen.py dist build/starter` for the platform, which builds the desktop artifacts, the C library of the plugin, the starter app from the Linux or Windows template in the Release configuration and its `.deb` and AppImage or its installer, then checks the installed app and validates its desktop entry on Linux. Then it creates the starter C++ app with `python haylen.py new build/starter-cpp --kind cpp` and builds it with `python haylen.py run-cpp build/starter-cpp --build-only`, which compiles the engine with the app, and again with `--config Release`, which ships and checks its protected release. |
 | `release` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, which the desktop artifacts with the content tool need, caches the Emscripten SDK and builds the protected release of the test project for the web with `prepare --config Release`, with keys made for the job and thrown away with it, and inspects the site with `check --config Release`, which fails when it holds Lua text, a file of the package as it is, a zipped package, symbol files or a key in any form. |
-| `tests-project` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, builds `haylen-headless` with the test library `haylen_native_test` and runs every test of [the test project](#the-test-project) on it, which fails when a test raises an error or its scene fails to load. |
+| `tests-project` | Ubuntu | Installs Ninja with the X11 and OpenGL development packages, builds `haylen-headless` with the test library `haylen-native-test` and runs every test of [the test project](#the-test-project) on it, which fails when a test raises an error or its scene fails to load. |
 
 The engine tests run only in the `desktop` job, the web, Android and Apple jobs check that the engine artifacts of those platforms build, the `desktop-apps` job checks the desktop artifacts with the Windows and Linux templates and builds the C++ template on both systems, and the `release` job checks a protected web release. The [build guide](build.md) explains the platform builds, and the [embedding guide](embedding.md) explains the SDK.

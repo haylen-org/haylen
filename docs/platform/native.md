@@ -39,7 +39,7 @@ ffi.cdef[[
     uint32_t native_test_checksum(const uint8_t* buffer, size_t size);
 ]]
 
-local lib = native.load('native_test')
+local lib = native.load('native-test')
 print(lib.native_test_add(20, 22), lib.native_test_scale(1.5, 4), ffi.string(lib.native_test_origin()))
 
 local rect = ffi.new('NativeTestRect', {origin = {5, 5}, width = 10, height = 4})
@@ -124,7 +124,7 @@ This is also the way Windows and Linux apps, which have no native handler regist
 
 ## Packaging libraries with an app
 
-The `native` section of `app.json` lists the libraries an app ships, by the name it loads them with. A library is either prebuilt files per platform or a CMake project that `haylen.py` builds for each platform it lists.
+The `native` section of `app.json` lists the libraries an app ships, by the name it loads them with. A library is either prebuilt files per platform or a CMake project that `haylen.py` builds for each platform it lists. A name starts with a letter and holds letters, digits, dashes and underscores: a library that the app builds takes dashes, such as `native-test`, a prebuilt library keeps the name of its files, such as `game_platform`, and the `init` function of a library takes underscores, such as `native_test_haylen_init`, because a C function is named with an identifier.
 
 ```json
 {
@@ -136,11 +136,11 @@ The `native` section of `app.json` lists the libraries an app ships, by the name
                 "linux": "platform/linux/libgame_platform.so"
             }
         },
-        "native_test": {
+        "native-test": {
             "cmake": "native",
             "platforms": ["macos", "ios", "tvos", "android", "windows", "linux"]
         },
-        "native_test_static": {
+        "native-test-static": {
             "cmake": "native",
             "platforms": ["ios", "tvos"],
             "link": "static",
@@ -174,7 +174,7 @@ The file `project.yml` of the app never changes for its libraries: `haylen.py` w
 
 ### Static libraries on iOS and tvOS
 
-An iOS or tvOS app, and the Mac Catalyst build of the iOS app, may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `haylen.py` writes `haylen/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native_test_static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
+An iOS or tvOS app, and the Mac Catalyst build of the iOS app, may link a library statically instead of embedding a framework, which some SDKs require. Dead code stripping would then remove every function the app never calls from native code, so `haylen.py` writes `haylen/HaylenNativeSymbols.mm`, whose `+load` registers the listed symbols with `haylen::platform::NativeLibraries::registerLinked`. The references keep the functions in the app, and every Lua state the engine creates gets the table through `varn::runtime::Runtime::addSymbol`, so `native.load('native-test-static')` returns `ffi.C`, which finds the listed functions by name without the app exporting them, and `native.findSymbol` finds them too. The `symbols` list names the functions Lua calls, including an `init` function.
 
 ### Development
 

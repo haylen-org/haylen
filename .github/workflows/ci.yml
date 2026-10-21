@@ -239,7 +239,7 @@ jobs:
       - name: Build the headless player and the test library that the native tests load next to it
         run: |
           python haylen.py --verbose build --config Debug --target haylen-headless
-          python haylen.py --verbose build --config Debug --target haylen_native_test
+          python haylen.py --verbose build --config Debug --target haylen-native-test
       - name: Run every test of the test project
         run: build/linux-debug/bin/haylen-headless samples/tests --frames 60000
 

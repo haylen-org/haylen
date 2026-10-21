@@ -19,7 +19,7 @@ option(HAYLEN_BUILD_PLAYER "Build the haylen player: the executable on desktop a
 option(HAYLEN_BUILD_TESTS "Build the engine tests." ${PROJECT_IS_TOP_LEVEL})
 option(HAYLEN_BUILD_BENCHMARKS "Build the engine benchmarks." ${PROJECT_IS_TOP_LEVEL})
 option(HAYLEN_BUILD_TOOLS "Build the content tool haylen-content, which builds and publishes the protected releases of apps on desktop hosts." ${PROJECT_IS_TOP_LEVEL})
-option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --component haylen_sdk installs for find_package(haylen)." OFF)
+option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --component haylen-sdk installs for find_package(haylen)." OFF)
 option(HAYLEN_BUILD_FRAMEWORK "Merge the SDK and the player into the static library of one Haylen.xcframework slice. Apple platforms only." OFF)
 option(HAYLEN_ENABLE_COVERAGE "Instrument the engine and its tests for code coverage." OFF)
 option(HAYLEN_BUILD_FUZZERS "Build the fuzzer of the content formats with the tests, which needs a Clang that links libFuzzer." OFF)
@@ -694,74 +694,74 @@ endif()
 set(HAYLEN_GENERATED_INCLUDE_DIR "${CMAKE_CURRENT_BINARY_DIR}/generated/include")
 configure_file("${CMAKE_CURRENT_LIST_DIR}/include/haylen/core/Version.hpp.in" "${HAYLEN_GENERATED_INCLUDE_DIR}/haylen/core/Version.hpp" @ONLY)
 
-add_library(haylen_engine STATIC ${HAYLEN_ENGINE_SOURCES})
-add_library(haylen::engine ALIAS haylen_engine)
+add_library(haylen-engine STATIC ${HAYLEN_ENGINE_SOURCES})
+add_library(haylen::engine ALIAS haylen-engine)
 
 # Public headers use C++20, so projects that link the engine compile with it too.
-target_compile_features(haylen_engine PUBLIC cxx_std_20)
+target_compile_features(haylen-engine PUBLIC cxx_std_20)
 # Apps live in folders of their own, so the exception and `longjmp` support of the browser build travels with the engine target instead of the engine folder.
 if(EMSCRIPTEN)
-  target_compile_options(haylen_engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
-  target_link_options(haylen_engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
+  target_compile_options(haylen-engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
+  target_link_options(haylen-engine INTERFACE -fwasm-exceptions "SHELL:-s SUPPORT_LONGJMP=wasm")
 endif()
-target_include_directories(haylen_engine
+target_include_directories(haylen-engine
   PUBLIC "${CMAKE_CURRENT_LIST_DIR}/include" "${HAYLEN_GENERATED_INCLUDE_DIR}"
   PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src"
 )
 
-target_link_libraries(haylen_engine
-  PUBLIC nlohmann_json::nlohmann_json varn_core haylen_imgui
-  PRIVATE box2d::box2d Clipper2 msdfgen::msdfgen-core haylen_harfbuzz haylen_sheenbidi haylen_unibreak haylen_miniaudio haylen_stb haylen_nanosvg haylen_fast_float haylen_monocypher libzip::zip ZLIB::ZLIB libzstd_static
+target_link_libraries(haylen-engine
+  PUBLIC nlohmann_json::nlohmann_json varn_core haylen-imgui
+  PRIVATE box2d::box2d Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
 if(WIN32)
-  target_link_libraries(haylen_engine PRIVATE Poco::NetSSLWin)
+  target_link_libraries(haylen-engine PRIVATE Poco::NetSSLWin)
 elseif(NOT EMSCRIPTEN)
-  target_link_libraries(haylen_engine PRIVATE Poco::NetSSL)
+  target_link_libraries(haylen-engine PRIVATE Poco::NetSSL)
 endif()
 
 # Native libraries load through the dynamic linker, which Linux keeps in its own library.
-target_link_libraries(haylen_engine PRIVATE ${CMAKE_DL_LIBS})
+target_link_libraries(haylen-engine PRIVATE ${CMAKE_DL_LIBS})
 
 # Apple platforms reach Foundation through Objective-C.
 if(APPLE)
-  target_link_libraries(haylen_engine PRIVATE "-framework Foundation")
+  target_link_libraries(haylen-engine PRIVATE "-framework Foundation")
 endif()
 
 # Programs that draw into lit canvases also compile with HAYLEN_LIT, which writes the images the light pass reads, and the sprite program compiles once more with HAYLEN_BATCH for the sprite batches with several textures or sprite data.
 set(shader_dir "${CMAKE_CURRENT_LIST_DIR}/shaders")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/sprite.glsl" SYMBOL getSpriteShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/text.glsl" SYMBOL getTextShader VARIANTS "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/mesh.glsl" SYMBOL getMeshShader VARIANTS "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/shape.glsl" SYMBOL getShapeShader VARIANTS "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/blend.glsl" SYMBOL getBlendShader VARIANTS "blend=" "blend_lit=HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/backdrop.glsl" SYMBOL getBackdropShader)
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/metaball.glsl" SYMBOL getMetaballShader VARIANTS "metaball=" "metaball_lit=HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/recolor.glsl" SYMBOL getRecolorShader VARIANTS "recolor=" "recolor_lit=HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/composite.glsl" SYMBOL getCompositeShader)
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/effect.glsl" SYMBOL getEffectShader VARIANTS "effect=" "effect_lit=HAYLEN_LIT")
-haylen_compile_shader(haylen_engine SOURCE "${shader_dir}/light.glsl" SYMBOL getLightShader)
-haylen_embed_file(haylen_engine "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" getDefaultFont)
-haylen_embed_file(haylen_engine "${CMAKE_CURRENT_SOURCE_DIR}/fonts/space-mono-regular.ttf" getMonospaceFont)
-haylen_embed_file(haylen_engine "${budoux_SOURCE_DIR}/budoux/models/th.json" getThaiPhraseModel)
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/sprite.glsl" SYMBOL getSpriteShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/text.glsl" SYMBOL getTextShader VARIANTS "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/mesh.glsl" SYMBOL getMeshShader VARIANTS "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/shape.glsl" SYMBOL getShapeShader VARIANTS "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/blend.glsl" SYMBOL getBlendShader VARIANTS "blend=" "blend_lit=HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/backdrop.glsl" SYMBOL getBackdropShader)
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/metaball.glsl" SYMBOL getMetaballShader VARIANTS "metaball=" "metaball_lit=HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/recolor.glsl" SYMBOL getRecolorShader VARIANTS "recolor=" "recolor_lit=HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/composite.glsl" SYMBOL getCompositeShader)
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/effect.glsl" SYMBOL getEffectShader VARIANTS "effect=" "effect_lit=HAYLEN_LIT")
+haylen_compile_shader(haylen-engine SOURCE "${shader_dir}/light.glsl" SYMBOL getLightShader)
+haylen_embed_file(haylen-engine "${imgui_SOURCE_DIR}/misc/fonts/Roboto-Medium.ttf" getDefaultFont)
+haylen_embed_file(haylen-engine "${CMAKE_CURRENT_SOURCE_DIR}/fonts/space-mono-regular.ttf" getMonospaceFont)
+haylen_embed_file(haylen-engine "${budoux_SOURCE_DIR}/budoux/models/th.json" getThaiPhraseModel)
 
-haylen_enable_warnings(haylen_engine)
-haylen_enable_coverage(haylen_engine)
+haylen_enable_warnings(haylen-engine)
+haylen_enable_coverage(haylen-engine)
 
 # GCC and MSVC link the intermediate code of a Release build only when the link asks for it, so every program that links the engine asks, whatever its own configuration, which a Debug app that links the prebuilt SDK has. GCC repeats its checks of string bounds at that link on code that it inlines from other files and reports bounds that no call reaches, while every file of the engine passes those checks where it compiles, so the link leaves them to the compile.
 if(HAYLEN_LINK_TIME_OPTIMIZATION AND CMAKE_BUILD_TYPE STREQUAL "Release")
   if(MSVC)
-    target_link_options(haylen_engine INTERFACE /LTCG /INCREMENTAL:NO)
+    target_link_options(haylen-engine INTERFACE /LTCG /INCREMENTAL:NO)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    target_link_options(haylen_engine INTERFACE -flto=auto -Wno-stringop-overflow -Wno-stringop-overread)
+    target_link_options(haylen-engine INTERFACE -flto=auto -Wno-stringop-overflow -Wno-stringop-overread)
   elseif(ANDROID AND ANDROID_PLATFORM_LEVEL LESS 29)
     # Android before API 29 keeps thread-local variables in emulated storage, which the compile uses, so the code that the link generates from the intermediate code uses it too.
-    target_link_options(haylen_engine INTERFACE "LINKER:-plugin-opt=-emulated-tls")
+    target_link_options(haylen-engine INTERFACE "LINKER:-plugin-opt=-emulated-tls")
   endif()
 endif()
 
 # The writing side of the content format, which builds, seals, signs and compiles releases on the machines that make them: the content tool, the tests and the benchmarks link it, while apps link only the reading side of the engine, so it builds only for them.
-add_library(haylen_content_writer STATIC EXCLUDE_FROM_ALL
+add_library(haylen-content-writer STATIC EXCLUDE_FROM_ALL
   src/content/ContentBuilder.cpp
   src/content/crypto/SigningKey.cpp
   src/content/format/CatalogWriter.cpp
@@ -775,13 +775,13 @@ add_library(haylen_content_writer STATIC EXCLUDE_FROM_ALL
   src/content/ReleaseBuilder.cpp
   src/content/ShardWriter.cpp
 )
-target_include_directories(haylen_content_writer PUBLIC "${CMAKE_CURRENT_LIST_DIR}/src")
-target_link_libraries(haylen_content_writer PUBLIC haylen_engine PRIVATE haylen_monocypher libzstd_static)
-haylen_enable_warnings(haylen_content_writer)
-haylen_enable_coverage(haylen_content_writer)
+target_include_directories(haylen-content-writer PUBLIC "${CMAKE_CURRENT_LIST_DIR}/src")
+target_link_libraries(haylen-content-writer PUBLIC haylen-engine PRIVATE haylen-monocypher libzstd_static)
+haylen_enable_warnings(haylen-content-writer)
+haylen_enable_coverage(haylen-content-writer)
 
 # Portable pieces of the runtime, which the tests link without an app entry point. The readers of the platform folders compile everywhere, so every host tests them.
-add_library(haylen_platform STATIC
+add_library(haylen-platform STATIC
   src/platform/CrashGuard.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
@@ -800,12 +800,12 @@ add_library(haylen_platform STATIC
   src/platform/web/WebDialogJson.cpp
   src/platform/windows/WindowsPowerStatus.cpp
 )
-add_library(haylen::platform ALIAS haylen_platform)
+add_library(haylen::platform ALIAS haylen-platform)
 # Apps see only the public API, so the private headers stay private to the engine libraries.
-target_include_directories(haylen_platform PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-target_link_libraries(haylen_platform PUBLIC haylen_engine)
-haylen_enable_warnings(haylen_platform)
-haylen_enable_coverage(haylen_platform)
+target_include_directories(haylen-platform PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+target_link_libraries(haylen-platform PUBLIC haylen-engine)
+haylen_enable_warnings(haylen-platform)
+haylen_enable_coverage(haylen-platform)
 
 # The runtime turns the engine into an app: the player, the native host and the services of the platform, with the backend that opens the window, runs the frames, draws them and holds the entry point. It is an object library so entry points always reach the final binary.
 set(HAYLEN_RUNTIME_SOURCES
@@ -877,21 +877,21 @@ else()
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
 
-add_library(haylen_runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
-add_library(haylen::runtime ALIAS haylen_runtime)
-target_include_directories(haylen_runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-target_link_libraries(haylen_runtime PUBLIC haylen_platform)
+add_library(haylen-runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
+add_library(haylen::runtime ALIAS haylen-runtime)
+target_include_directories(haylen-runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+target_link_libraries(haylen-runtime PUBLIC haylen-platform)
 include("${HAYLEN_BACKEND_DIR}/backend.cmake")
 # The web host gives the mixer the audio output of the page, a backend of miniaudio.
 if(EMSCRIPTEN)
-  target_link_libraries(haylen_runtime PRIVATE haylen_miniaudio)
+  target_link_libraries(haylen-runtime PRIVATE haylen-miniaudio)
 endif()
 # The Android host is GameActivity, whose static library holds the native side of the activity, and its video decoder resamples the sound of codecs whose rate differs from their track with miniaudio.
 if(ANDROID)
-  target_link_libraries(haylen_runtime PRIVATE haylen_game_activity haylen_miniaudio)
+  target_link_libraries(haylen-runtime PRIVATE haylen-game-activity haylen-miniaudio)
 endif()
-haylen_enable_warnings(haylen_runtime)
-haylen_link_runtime_platform(haylen_runtime PUBLIC)
+haylen_enable_warnings(haylen-runtime)
+haylen_link_runtime_platform(haylen-runtime PUBLIC)
 
 if(HAYLEN_BUILD_SDK)
   include(haylen-install)
@@ -899,15 +899,15 @@ endif()
 
 # The headless host draws through the null GPU device, which checks every call of the engine against the contract of the device and draws nothing.
 if(HAYLEN_DESKTOP)
-  add_library(haylen_headless OBJECT
+  add_library(haylen-headless-host OBJECT
     src/gpu/NullDevice.cpp
     src/platform/headless/HeadlessHost.cpp
     src/platform/headless/HeadlessPlayer.cpp
   )
-  add_library(haylen::headless ALIAS haylen_headless)
-  target_include_directories(haylen_headless PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen_headless PUBLIC haylen_platform)
-  haylen_enable_warnings(haylen_headless)
+  add_library(haylen::headless ALIAS haylen-headless-host)
+  target_include_directories(haylen-headless-host PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
+  target_link_libraries(haylen-headless-host PUBLIC haylen-platform)
+  haylen_enable_warnings(haylen-headless-host)
 endif()
 
 # The player runs any package: a folder or zip from the command line on desktop, or what the page loads through Module.haylen on the web.
@@ -1028,7 +1028,7 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   # The content benchmark times building, opening and reading a protected release, catalog lookups, the planning of update ranges and the local store, with the largest allocation of each.
   add_executable(haylen-content-benchmark bench/ContentBenchmark.cpp)
   target_include_directories(haylen-content-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-content-benchmark PRIVATE haylen_content_writer haylen::headless)
+  target_link_libraries(haylen-content-benchmark PRIVATE haylen-content-writer haylen::headless)
   set_target_properties(haylen-content-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-content-benchmark)
 endif()

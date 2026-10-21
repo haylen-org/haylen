@@ -10,7 +10,7 @@ local kDesktops = {macos = true, windows = true, linux = true}
 
 -- Apple platforms, Android and the web load their native parts before any Lua runs. The desktop player and the Windows and Linux apps run the C library of `native/`, which `haylen.py` places next to them and which declares itself the native part of the plugin in its init function, once per process.
 if not handle.native and kDesktops[haylen.platform] then
-    native.load('{{SYMBOL}}', {init = '{{SYMBOL}}_haylen_init'})
+    native.load('{{ID}}', {init = '{{SYMBOL}}_haylen_init'})
 end
 
 -- Sends a message to the native part, which answers with the same message. Returns a platform call, whose `await` gives `{message = message}`.

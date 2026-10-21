@@ -10,7 +10,7 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 ```sh
 haylen build --target haylen-headless
-haylen build --target haylen_native_test
+haylen build --target haylen-native-test
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 

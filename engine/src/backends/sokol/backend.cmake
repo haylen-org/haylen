@@ -1,5 +1,5 @@
 # The Sokol backend: `sokol_app` opens the window, runs the frames and holds the entry point, and `sokol_gfx` draws the frames through the graphics API of the build.
-target_sources(haylen_runtime PRIVATE
+target_sources(haylen-runtime PRIVATE
   "${CMAKE_CURRENT_LIST_DIR}/Events.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/GpuDevice.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Host.cpp"
@@ -18,9 +18,9 @@ if(APPLE)
     "${CMAKE_CURRENT_LIST_DIR}/apple/HaylenSceneDelegate.mm"
   )
   set_source_files_properties(${haylen_sokol_apple_sources} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
-  target_sources(haylen_runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/Implementation.m" ${haylen_sokol_apple_sources})
+  target_sources(haylen-runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/Implementation.m" ${haylen_sokol_apple_sources})
 else()
-  target_sources(haylen_runtime PRIVATE
+  target_sources(haylen-runtime PRIVATE
     "${CMAKE_CURRENT_LIST_DIR}/Adapter.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/ImageReadback.cpp"
     "${CMAKE_CURRENT_LIST_DIR}/Implementation.c"
@@ -32,19 +32,19 @@ else()
   endif()
 endif()
 
-target_compile_definitions(haylen_runtime PRIVATE SOKOL_${HAYLEN_GRAPHICS})
-target_link_libraries(haylen_runtime PRIVATE haylen_sokol_headers)
+target_compile_definitions(haylen-runtime PRIVATE SOKOL_${HAYLEN_GRAPHICS})
+target_link_libraries(haylen-runtime PRIVATE haylen-sokol-headers)
 
 # The name of the GPU comes from the OpenGL library where the build draws with OpenGL.
 if(HAYLEN_GRAPHICS STREQUAL "GLES3" AND ANDROID)
-  target_link_libraries(haylen_runtime PRIVATE GLESv3)
+  target_link_libraries(haylen-runtime PRIVATE GLESv3)
 elseif(HAYLEN_GRAPHICS STREQUAL "GLCORE" AND WIN32)
-  target_link_libraries(haylen_runtime PRIVATE opengl32)
+  target_link_libraries(haylen-runtime PRIVATE opengl32)
 elseif(HAYLEN_GRAPHICS STREQUAL "GLCORE")
   find_package(OpenGL REQUIRED)
-  target_link_libraries(haylen_runtime PRIVATE OpenGL::GL)
+  target_link_libraries(haylen-runtime PRIVATE OpenGL::GL)
 endif()
 
 # The tests of the backend, which the test suite of the engine runs: the translation of the events of `sokol_app`, which reads only their fields.
 set(HAYLEN_BACKEND_TEST_SOURCES "${CMAKE_CURRENT_LIST_DIR}/Events.cpp" "${HAYLEN_ENGINE_DIR}/tests/backends/sokol/EventsTests.cpp" CACHE INTERNAL "Sources of the tests of the backend.")
-set(HAYLEN_BACKEND_TEST_LIBRARIES haylen_sokol_headers CACHE INTERNAL "Libraries the tests of the backend link.")
+set(HAYLEN_BACKEND_TEST_LIBRARIES haylen-sokol-headers CACHE INTERNAL "Libraries the tests of the backend link.")

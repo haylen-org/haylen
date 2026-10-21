@@ -125,7 +125,7 @@ haylen build
 haylen build --platform web-webgl2 --config Release --target haylen
 ```
 
-Configures the tree when needed and runs `cmake --build`. Without `--target` it builds everything the tree defines: the engine, the `haylen` player on desktop, web and Android, and the tests and the sprite benchmark on desktop. Useful targets are `haylen`, `haylen_tests` and `haylen-sprite-benchmark`. Apps are not part of the workspace: `haylen.py run` runs Lua apps from their folders and `haylen.py run-cpp` builds C++ app projects, as the [distribution guide](distribution.md) describes.
+Configures the tree when needed and runs `cmake --build`. Without `--target` it builds everything the tree defines: the engine, the `haylen` player on desktop, web and Android, and the tests and the sprite benchmark on desktop. Useful targets are `haylen`, `haylen-tests` and `haylen-sprite-benchmark`. Apps are not part of the workspace: `haylen.py run` runs Lua apps from their folders and `haylen.py run-cpp` builds C++ app projects, as the [distribution guide](distribution.md) describes.
 
 ### test
 
@@ -134,7 +134,7 @@ haylen test
 haylen test --config Release --sanitizers address
 ```
 
-Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on-failure` in parallel. See the [testing guide](testing.md).
+Builds `haylen-tests` for the host and runs it through `ctest` with `--output-on-failure` in parallel. See the [testing guide](testing.md).
 
 ### coverage
 
@@ -179,7 +179,7 @@ haylen sdk --check-consumers
 haylen sdk --config Release --check-consumers package
 ```
 
-Configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen_sdk` target and installs the `haylen_sdk` component to `build/sdk/haylen-<platform>-<config>` or to `--output`. The option `--platform` accepts `macos`, `linux`, `windows`, `web` and `web-webgl2`, and `--config` defaults to `Release`. The [embedding guide](embedding.md) explains what the SDK contains and how a project finds it.
+Configures `engine/` on its own in `build/sdk-build-<platform>-<config>` with `HAYLEN_BUILD_SDK=ON`, builds the `haylen-sdk` target and installs the `haylen-sdk` component to `build/sdk/haylen-<platform>-<config>` or to `--output`. The option `--platform` accepts `macos`, `linux`, `windows`, `web` and `web-webgl2`, and `--config` defaults to `Release`. The [embedding guide](embedding.md) explains what the SDK contains and how a project finds it.
 
 The option `--check-consumers` then builds `engine/tests/consumer`, a CMake project of its own with a small C++ app, the way another repository consumes the engine, once for every way it lists: `subdirectory` adds the engine with `add_subdirectory`, `cpm` with `CPMAddPackage` and `package` finds the installed SDK with `find_package`. Without a list it builds all three. Each way builds in `build/consumers/<mode>-<config>` with the dependency cache of the engine, and the option checks the host only, so it takes no other `--platform`.
 
@@ -205,12 +205,12 @@ The script `haylen.py` sets these options for you, and projects that add the eng
 | `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Build the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
 | `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Build the tests on desktop. |
 | `HAYLEN_BUILD_BENCHMARKS` | on when the engine is the top-level project | Build the benchmarks of `haylen.py bench` on desktop: the sprite benchmark and the algorithm, procedural, physics, UI, render, particle and Lua benchmarks. |
-| `HAYLEN_BUILD_SDK` | off | Merge the engine into the SDK that `cmake --install --component haylen_sdk` installs. |
-| `HAYLEN_BUILD_FRAMEWORK` | off | Apple only, with `HAYLEN_BUILD_SDK`: merge the SDK and the player into the `libhaylen.a` of one `Haylen.xcframework` slice, installed by the `haylen_framework` component. |
+| `HAYLEN_BUILD_SDK` | off | Merge the engine into the SDK that `cmake --install --component haylen-sdk` installs. |
+| `HAYLEN_BUILD_FRAMEWORK` | off | Apple only, with `HAYLEN_BUILD_SDK`: merge the SDK and the player into the `libhaylen.a` of one `Haylen.xcframework` slice, installed by the `haylen-framework` component. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instrument the engine and tests with LLVM coverage. Requires Clang. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the engine targets, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
-| `HAYLEN_BUILD_TOOLS` | on at the top level | Desktop hosts only: build the content tool `haylen-content` and its library `haylen_content_tool`, which the tests link too. |
-| `HAYLEN_BUILD_FUZZERS` | off | Build `haylen_content_fuzzer`, `haylen_input_fuzzer` and `haylen_messagepack_fuzzer`, the libFuzzer targets of the parsers of the content formats, of input recordings and of MessagePack, and instrument every target for it with AddressSanitizer. Requires a Clang that links libFuzzer, which Apple Clang does not ship. |
+| `HAYLEN_BUILD_TOOLS` | on at the top level | Desktop hosts only: build the content tool `haylen-content` and its library `haylen-content-tool`, which the tests link too. |
+| `HAYLEN_BUILD_FUZZERS` | off | Build `haylen-content-fuzzer`, `haylen-input-fuzzer` and `haylen-messagepack-fuzzer`, the libFuzzer targets of the parsers of the content formats, of input recordings and of MessagePack, and instrument every target for it with AddressSanitizer. Requires a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 Every target of the engine and its dependencies compiles with the settings of `engine/cmake/haylen-release.cmake`: Clang and GCC map the source trees of the engine, its build folder and the CPM cache to `engine/`, `build/` and `deps/` in the file names that `__FILE__` writes into binaries, such as the ones that assertions keep, so no binary names a folder of the machine that built it, and they place every function and object in a section of its own, which `--gc-sections` drops when nothing calls it, outside Apple platforms, whose linker strips dead code by atom. MSVC has no such mapping, so a Windows build keeps the full paths of the files whose assertions it compiles. On Apple platforms they also compile with hidden symbols, since an Apple executable exports every global symbol it holds, so an app exports only the symbols of its own code, which [`native.findSymbol`](../lua-api/native.md#nativefindsymbolname) finds. A Release build compiles them with link-time optimization wherever the compiler supports it, `CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE`, which is thin LTO with Clang on Apple platforms, Android and the web, LTO with GCC on Linux and whole program optimization with MSVC on Windows, so the libraries and the SDKs of the artifacts hold the intermediate code of the compiler and the link of each app optimizes the engine, its dependencies and the app as one program and drops what the app never reaches. The SDK of Windows is the exception: the intermediate code of MSVC would make its one library larger than the 4 GB that a library of Windows holds, so it compiles to machine code, while a C++ app that compiles the engine with MSVC keeps whole program optimization. GCC and MSVC link that code only when the link asks for it, so `haylen::engine` carries `-flto=auto` or `/LTCG /INCREMENTAL:NO` to every program that links it, a Debug app that links the prebuilt SDK included, while Clang links it on its own. An SDK holds code for the compiler that built it, so an app links it with the same compiler, which is how `haylen.py` builds both on one machine. The slices of `Haylen.xcframework` hold machine code instead, because `xcodebuild -create-xcframework` and `lipo` refuse libraries of LLVM bitcode since Xcode stopped taking bitcode, so a Lua app on Apple platforms links the engine with dead code stripping alone, while a C++ app compiles the engine with the rest of its code and links it with LTO there too.
 
@@ -229,16 +229,16 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | stb | commit `2c980bb` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images, and publishes no releases, so it is pinned to a commit of its default branch. |
 | msdfgen | v1.13 | Only its core, which builds the distance fields of font glyphs from their whole outlines. |
-| HarfBuzz | 14.6.0 | Old MIT license. The amalgamated source compiles as `haylen_harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers. |
-| SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen_sheenbidi`. |
-| libunibreak | 8.0 | zlib license. Line breaking and grapheme clusters of Unicode 17, compiled as `haylen_unibreak`. |
+| HarfBuzz | 14.6.0 | Old MIT license. The amalgamated source compiles as `haylen-harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers. |
+| SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen-sheenbidi`. |
+| libunibreak | 8.0 | zlib license. Line breaking and grapheme clusters of Unicode 17, compiled as `haylen-unibreak`. |
 | BudouX | v0.9.3 | Apache 2.0. Only its Thai phrase model, a JSON file the engine embeds for breaking Thai lines. |
 | fast_float | v8.3.2 | Headers only. Parses floating point numbers on every platform, where `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
-| Dear ImGui | v1.92.9b | Compiled as `haylen_imgui` with the engine's ImGui configuration. |
-| miniaudio | 0.11.25 | Compiled as `haylen_miniaudio`. |
+| Dear ImGui | v1.92.9b | Compiled as `haylen-imgui` with the engine's ImGui configuration. |
+| miniaudio | 0.11.25 | Compiled as `haylen-miniaudio`. |
 | Box2D | v3.1.1 | |
 | zstd | v1.5.7 | Static library for compressed Tiled layers and for the chunks of protected content. |
-| Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), hashing and key derivation (BLAKE2b) and manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen_monocypher`. It is audited, has no dependencies and builds the same on every target, the web included, and this release fixes a timing leak of its signatures. |
+| Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), hashing and key derivation (BLAKE2b) and manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen-monocypher`. It is audited, has no dependencies and builds the same on every target, the web included, and this release fixes a timing leak of its signatures. |
 | GoogleTest | v1.18.0 | Only when desktop tests are built. |
 
 Every package is pinned by the URL of a release archive, or of a commit archive for projects without releases, together with its hash:
@@ -253,7 +253,7 @@ CPMAddPackage(
 )
 ```
 
-To add or update a package, point `URL` at the latest release archive (Varn is pinned by the archive of one commit, whose contents never change), compute the hash of that archive (for example with `curl -L <url> | shasum -a 256`), and adopt the new API everywhere the engine uses it. A package that Varn also uses goes before the Varn block, so it is resolved once for the whole build. Header-only sources use `DOWNLOAD_ONLY YES` and an interface library, like `haylen_sokol_headers` and `haylen_stb`.
+To add or update a package, point `URL` at the latest release archive (Varn is pinned by the archive of one commit, whose contents never change), compute the hash of that archive (for example with `curl -L <url> | shasum -a 256`), and adopt the new API everywhere the engine uses it. A package that Varn also uses goes before the Varn block, so it is resolved once for the whole build. Header-only sources use `DOWNLOAD_ONLY YES` and an interface library, like `haylen-sokol-headers` and `haylen-stb`.
 
 ## C++ apps
 
@@ -284,7 +284,7 @@ How each platform carries the package, and where the runtime opens it:
 
 | Platform | Deployment | Opened from |
 | --- | --- | --- |
-| Windows, Linux | The `SYNC_PACKAGE-<target>` target creates `bin/<target>/app` after every build and links its `app.json`, `source` and `content` to the package folder, with directory junctions and a hard link on Windows and symbolic links elsewhere. Edited files show up without a rebuild. | `app/` next to the executable, or `app.zip` next to it. |
+| Windows, Linux | The `<target>-package` target creates `bin/<target>/app` after every build and links its `app.json`, `source` and `content` to the package folder, with directory junctions and a hard link on Windows and symbolic links elsewhere. Edited files show up without a rebuild. | `app/` next to the executable, or `app.zip` next to it. |
 | macOS, iOS, tvOS | `app.json` and every file under `source/` and `content/` become bundle resources under `Resources/app/<subfolder>` through `MACOSX_PACKAGE_LOCATION`, except `.DS_Store`. The file list is globbed with `CONFIGURE_DEPENDS`, so new files are picked up by the next build. The app enters the runtime through `engine/src/platform/apple/AppleMain.cpp`, which calls `haylen_main`. | `Resources/app` of the bundle, or `Resources/app.zip`. |
 | Web | `--preload-file` options pack `app.json`, `source/` and `content/` into `<target>.data` under `/app`. | `/app` in the virtual file system, unless the page hands over another package. |
 | Android | `haylen_add_app` builds the shared library `bin/<target>/lib<target>.so` and writes the absolute path of the package folder to `bin/<target>/package.txt`. The Gradle project of the app packages both: `haylen.py run-cpp --platform android` prepares the [Android project](distribution.md#the-android-project) of the package, with the library in `haylen/jniLibs`, `HaylenActivity` loading it and the package under `haylen/assets/app` with `haylen-package-index.json`. | The `app/` folder of the APK assets. |
@@ -402,7 +402,7 @@ Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file
 
 ## iOS, tvOS and Mac Catalyst
 
-The command `haylen configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen_workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/lua/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
+The command `haylen configure --platform ios` or `--platform tvos` generates an Xcode project of the engine at `build/<platform>-<config>/haylen-workspace.xcodeproj`, and `haylen.py build` compiles it through `cmake --build`. Apps for iOS, iPadOS, Mac Catalyst, tvOS and macOS come from the XcodeGen project of the app, which starts from `templates/lua/platform/apple` and links the prebuilt `Haylen.xcframework` through the target templates of its generated folder, as the [distribution guide](distribution.md#the-apple-project) describes.
 
 C++ apps built with `haylen_add_app` target iOS 16.3 on iPhone and iPad and tvOS 16.3, with automatic code signing, because the engine needs the C++ library of those releases, and macOS apps macOS 14.0, the first release with the display link of `NSView` that `sokol_app` draws with. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources. The iOS template lists the supported orientations through `@HAYLEN_ORIENTATIONS@` and `@HAYLEN_ORIENTATIONS_IPAD@`, which `haylen_add_app` fills from `orientation` in `app.json`: `landscape` allows both landscape sides, `portrait` allows portrait (and upside down on iPad) and `any` allows all of them. The iOS template also launches the app with the status bar of `window.statusBar` in `app.json` through `@HAYLEN_STATUS_BAR_HIDDEN@` and `@HAYLEN_STATUS_BAR_STYLE@`. The macOS template ends its dictionary with `@HAYLEN_UI_ELEMENT@`, which `haylen_add_app` fills with `LSUIElement` when `window.showInTaskbar` is `false` in `app.json`, so the app never shows a Dock icon. Pass `APPLE_PROJECT` to `haylen_add_app` to use templates of your own with the same layout and placeholders. macOS apps use the same mechanism with `engine/platform/apple/mac/Info.plist.in`.
 

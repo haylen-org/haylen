@@ -19,9 +19,9 @@ function Calls:enter()
         focus = 'run',
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'The function "native.load" finds "native_test" next to the app, loads it and hands it to Varn "ffi", which calls the functions that "ffi.cdef" declares with the C types of their parameters and results.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The function "native.load" finds "native-test" next to the app, loads it and hands it to Varn "ffi", which calls the functions that "ffi.cdef" declares with the C types of their parameters and results.', color = 'textMuted', font = 'caption'},
         },
-        code = "local lib = native.load('native_test')\nprint(lib.native_test_add(20, 22))",
+        code = "local lib = native.load('native-test')\nprint(lib.native_test_add(20, 22))",
     }
     self:run()
 end
