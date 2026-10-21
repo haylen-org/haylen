@@ -6,7 +6,7 @@ The UI draws the interface players see and the tools developers use, in design u
 
 | Name | Description | Link |
 | --- | --- | --- |
-| Text input | How text fields edit through the native text input of each platform, with input methods, composition and on-screen keyboards. | [`text-input.md`](text-input.md) |
+| Text input | How text fields edit through the native text input of each platform, with input methods, composition and on-screen keyboards, and what each platform does. | [`text-input.md`](text-input.md) |
 | UI | GUIs, scale, placement, layout, components, events, long lists, text and translations, right-to-left interfaces, themes, touch controls, immediate mode UI and GUIs written in Lua. | [`ui.md`](ui.md) |
 
 ## Lua API
