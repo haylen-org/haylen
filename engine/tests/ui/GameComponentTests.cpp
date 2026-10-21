@@ -1,10 +1,12 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <format>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -17,6 +19,7 @@
 #include "haylen/ui/FocusNavigator.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/UiFixture.hpp"
+#include "ui/Typography.hpp"
 #include "ui/components/inputs/KeyCapture.hpp"
 
 namespace haylen::ui {
@@ -644,6 +647,26 @@ TEST_F(GameComponentTest, RoundsChipsWithTheChipRadius) {
     ASSERT_EQ(radii.size(), 2U);
     EXPECT_FLOAT_EQ(radii[0], pill.height * 0.5F);
     EXPECT_FLOAT_EQ(radii[1], 8.0F);
+}
+
+// Segments whose labels fit with less than the tab padding start on whole units, and the unit a segment may lose to that comes out of the padding, so no label loses a letter wherever the control lands.
+TEST_F(GameComponentTest, KeepsTheLabelsOfSnugSegmentsWhole) {
+    frames();
+    const Theme& theme = getUi().getTheme();
+    float labels = 0.0F;
+    for (const std::string_view text : {"Fixed", "Floating", "Following"}) {
+        labels += Typography::measure(getUi().getContext(), Theme::Font::Button, text).x;
+    }
+    const float padding = (theme.getMetric(Theme::Metric::ContentSpacing) + theme.getMetric(Theme::Metric::TabPaddingX)) * 3.0F;
+    const float border = theme.getMetric(Theme::Metric::BorderWidth) * 4.0F;
+    for (float offset = 0.0F; offset < 1.0F; offset += 0.125F) {
+        const float width = labels + padding + border + offset * 3.0F;
+        auto gui = mount(std::format(R"({{"kind": "column", "padding": {}, "children": [{{"kind": "segmentedControl", "width": {}, "selected": "floating", "items": [{{"id": "fixed", "text": "Fixed"}}, {{"id": "floating", "text": "Floating"}}, {{"id": "following", "text": "Following"}}]}}]}})", 20.0F + offset, width));
+        frames(2);
+        for (const Backend::Text& text : getUi().getBackend().getTexts()) {
+            EXPECT_EQ(getUi().getBackend().getContent(text).find("\xE2\x80\xA6"), std::string_view::npos) << width;
+        }
+    }
 }
 
 } // namespace haylen::ui
