@@ -7,103 +7,108 @@
         {
             "name": "hip",
             "parent": "root",
-            "y": -74
+            "y": -84.84
         },
         {
             "name": "torso",
             "parent": "hip",
-            "length": 64
+            "length": 46.32
         },
         {
             "name": "head",
             "parent": "torso",
-            "y": -62
+            "x": -0.83,
+            "y": -46.32
         },
         {
             "name": "backUpper",
             "parent": "torso",
-            "x": -2,
-            "y": -52,
-            "rotation": 90,
-            "length": 30
+            "x": -20.13,
+            "y": -33.09,
+            "rotation": 98,
+            "length": 20.51
         },
         {
             "name": "backFore",
             "parent": "backUpper",
-            "x": 30,
-            "length": 28
+            "x": 20.51,
+            "rotation": -10,
+            "length": 36.56
         },
         {
             "name": "frontUpper",
             "parent": "torso",
-            "x": 2,
-            "y": -52,
-            "rotation": 90,
-            "length": 30
+            "x": 15.72,
+            "y": -33.09,
+            "rotation": 82,
+            "length": 20.51
         },
         {
             "name": "frontFore",
             "parent": "frontUpper",
-            "x": 30,
-            "length": 28
+            "x": 20.51,
+            "rotation": -14,
+            "length": 36.56
         },
         {
             "name": "backThigh",
             "parent": "hip",
-            "x": -4,
-            "rotation": 90,
-            "length": 36
+            "x": -6.07,
+            "rotation": 95,
+            "length": 31.52
         },
         {
             "name": "backShin",
             "parent": "backThigh",
-            "x": 36,
-            "length": 34
+            "x": 31.52,
+            "rotation": -5,
+            "length": 53.32
         },
         {
             "name": "frontThigh",
             "parent": "hip",
-            "x": 4,
-            "rotation": 90,
-            "length": 36
+            "x": 6.07,
+            "rotation": 86,
+            "length": 31.52
         },
         {
             "name": "frontShin",
             "parent": "frontThigh",
-            "x": 36,
-            "length": 34
+            "x": 31.52,
+            "rotation": 4,
+            "length": 53.32
         },
         {
             "name": "aim",
             "parent": "root",
-            "x": 80,
-            "y": -60
+            "x": 110,
+            "y": -150
         }
     ],
     "slots": [
         {
-            "name": "backUpper",
-            "bone": "backUpper",
-            "attachment": "upperArm",
-            "color": "#FFC8C8C8"
-        },
-        {
             "name": "backFore",
             "bone": "backFore",
             "attachment": "forearm",
-            "color": "#FFC8C8C8"
+            "color": "#FFBDBDCC"
         },
         {
-            "name": "backThigh",
-            "bone": "backThigh",
-            "attachment": "thigh",
-            "color": "#FFC8C8C8"
+            "name": "backUpper",
+            "bone": "backUpper",
+            "attachment": "upperArm",
+            "color": "#FFBDBDCC"
         },
         {
             "name": "backShin",
             "bone": "backShin",
             "attachment": "shin",
-            "color": "#FFC8C8C8"
+            "color": "#FFBDBDCC"
+        },
+        {
+            "name": "backThigh",
+            "bone": "backThigh",
+            "attachment": "thigh",
+            "color": "#FFBDBDCC"
         },
         {
             "name": "cape",
@@ -111,14 +116,14 @@
             "attachment": "cape"
         },
         {
-            "name": "frontThigh",
-            "bone": "frontThigh",
-            "attachment": "thigh"
-        },
-        {
             "name": "frontShin",
             "bone": "frontShin",
             "attachment": "shin"
+        },
+        {
+            "name": "frontThigh",
+            "bone": "frontThigh",
+            "attachment": "thigh"
         },
         {
             "name": "torso",
@@ -136,14 +141,14 @@
             "attachment": "hat"
         },
         {
-            "name": "frontUpper",
-            "bone": "frontUpper",
-            "attachment": "upperArm"
-        },
-        {
             "name": "frontFore",
             "bone": "frontFore",
             "attachment": "forearm"
+        },
+        {
+            "name": "frontUpper",
+            "bone": "frontUpper",
+            "attachment": "upperArm"
         },
         {
             "name": "hand",
@@ -156,72 +161,108 @@
             "backUpper": {
                 "upperArm": {
                     "frame": "upperArm",
-                    "x": 15
-                }
-            },
-            "backFore": {
-                "forearm": {
-                    "frame": "forearm",
-                    "x": 14
+                    "x": 9.26,
+                    "y": -0.12,
+                    "rotation": -90,
+                    "width": 22.0,
+                    "height": 39.6
                 }
             },
             "frontUpper": {
                 "upperArm": {
                     "frame": "upperArm",
-                    "x": 15
+                    "x": 9.26,
+                    "y": -0.12,
+                    "rotation": -90,
+                    "width": 22.0,
+                    "height": 39.6
+                }
+            },
+            "backFore": {
+                "forearm": {
+                    "frame": "forearm",
+                    "x": 18.4,
+                    "y": -1.52,
+                    "rotation": -90,
+                    "width": 20.8,
+                    "height": 52.4
                 }
             },
             "frontFore": {
                 "forearm": {
                     "frame": "forearm",
-                    "x": 14
+                    "x": 18.4,
+                    "y": -1.52,
+                    "rotation": -90,
+                    "width": 20.8,
+                    "height": 52.4
                 }
             },
             "backThigh": {
                 "thigh": {
                     "frame": "thigh",
-                    "x": 18,
-                    "rotation": -90
-                }
-            },
-            "backShin": {
-                "shin": {
-                    "frame": "shin",
-                    "x": 17,
-                    "rotation": -90
+                    "x": 15.82,
+                    "y": -0.59,
+                    "rotation": -90,
+                    "width": 22.8,
+                    "height": 54.0
                 }
             },
             "frontThigh": {
                 "thigh": {
                     "frame": "thigh",
-                    "x": 18,
-                    "rotation": -90
+                    "x": 15.82,
+                    "y": -0.59,
+                    "rotation": -90,
+                    "width": 22.8,
+                    "height": 54.0
+                }
+            },
+            "backShin": {
+                "shin": {
+                    "frame": "shin",
+                    "x": 21.91,
+                    "y": -4.8,
+                    "rotation": -90,
+                    "width": 34.8,
+                    "height": 64.0
                 }
             },
             "frontShin": {
                 "shin": {
                     "frame": "shin",
-                    "x": 17,
-                    "rotation": -90
+                    "x": 21.91,
+                    "y": -4.8,
+                    "rotation": -90,
+                    "width": 34.8,
+                    "height": 64.0
                 }
             },
             "torso": {
                 "torso": {
                     "frame": "torso",
-                    "y": -30
+                    "x": -1.93,
+                    "y": -17.65,
+                    "width": 52.0,
+                    "height": 66.8
                 }
             },
             "head": {
                 "head": {
                     "frame": "head",
-                    "y": -18
+                    "x": -2.87,
+                    "y": -34.77,
+                    "width": 86.8,
+                    "height": 79.2
                 }
             },
             "hat": {
                 "hat": {
                     "frame": "cap",
-                    "x": 2,
-                    "y": -38
+                    "x": 3.59,
+                    "y": -73.84,
+                    "width": 84.0,
+                    "height": 54.0
                 }
             },
             "cape": {
@@ -229,30 +270,30 @@
                     "type": "mesh",
                     "frame": "cape",
                     "vertices": [
-                        -12.0,
-                        -60.0,
-                        -6.0,
-                        -60.0,
-                        0.0,
-                        -60.0,
-                        -18.0,
-                        -40.66666666666667,
-                        -9.0,
-                        -40.66666666666667,
-                        0.0,
-                        -40.66666666666667,
-                        -22.0,
-                        -21.333333333333336,
-                        -11.0,
-                        -21.333333333333336,
-                        0.0,
-                        -21.333333333333336,
-                        -24.0,
-                        -2.0,
-                        -12.0,
-                        -2.0,
-                        0.0,
-                        -2.0
+                        -34.47,
+                        -45.77,
+                        -8.55,
+                        -45.77,
+                        17.37,
+                        -45.77,
+                        -34.47,
+                        -21.87,
+                        -8.55,
+                        -21.87,
+                        17.37,
+                        -21.87,
+                        -34.47,
+                        2.02,
+                        -8.55,
+                        2.02,
+                        17.37,
+                        2.02,
+                        -34.47,
+                        25.92,
+                        -8.55,
+                        25.92,
+                        17.37,
+                        25.92
                     ],
                     "uvs": [
                         0.0,
@@ -323,7 +364,7 @@
             "hand": {
                 "hand": {
                     "type": "point",
-                    "x": 28
+                    "x": 36.56
                 }
             }
         },
@@ -331,7 +372,10 @@
             "hat": {
                 "hat": {
                     "frame": "crown",
-                    "y": -40
+                    "x": -2.15,
+                    "y": -82.08,
+                    "width": 50.4,
+                    "height": 37.6
                 }
             }
         }
@@ -356,17 +400,17 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": 25,
+                            "value": 24,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.4,
-                            "value": -25,
+                            "value": -24,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.8,
-                            "value": 25,
+                            "value": 24,
                             "curve": "sineInOut"
                         }
                     ]
@@ -375,17 +419,17 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": -25,
+                            "value": -24,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.4,
-                            "value": 25,
+                            "value": 24,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.8,
-                            "value": -25,
+                            "value": -24,
                             "curve": "sineInOut"
                         }
                     ]
@@ -399,7 +443,7 @@
                         },
                         {
                             "time": 0.2,
-                            "value": -35,
+                            "value": -36,
                             "curve": "sineInOut"
                         },
                         {
@@ -428,7 +472,7 @@
                         },
                         {
                             "time": 0.6,
-                            "value": -35,
+                            "value": -36,
                             "curve": "sineInOut"
                         },
                         {
@@ -442,17 +486,17 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": -20,
+                            "value": -22,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.4,
-                            "value": 20,
+                            "value": 22,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.8,
-                            "value": -20,
+                            "value": -22,
                             "curve": "sineInOut"
                         }
                     ]
@@ -461,17 +505,84 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": 20,
+                            "value": 22,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.4,
-                            "value": -20,
+                            "value": -22,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.8,
-                            "value": 20,
+                            "value": 22,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "frontFore": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": -18,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": -18,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "backFore": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": -18,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "head": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.2,
+                            "value": 2,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.4,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.6,
+                            "value": 2,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 0.8,
+                            "value": 0,
                             "curve": "sineInOut"
                         }
                     ]
@@ -525,7 +636,7 @@
             ]
         },
         "idle": {
-            "duration": 1.6,
+            "duration": 2.4,
             "bones": {
                 "torso": {
                     "translate": [
@@ -536,15 +647,51 @@
                             "curve": "sineInOut"
                         },
                         {
-                            "time": 0.8,
+                            "time": 1.2,
                             "x": 0,
-                            "y": 2,
+                            "y": 1.5,
                             "curve": "sineInOut"
                         },
                         {
-                            "time": 1.6,
+                            "time": 2.4,
                             "x": 0,
                             "y": 0,
+                            "curve": "sineInOut"
+                        }
+                    ],
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.2,
+                            "value": -1.5,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 2.4,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "head": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.2,
+                            "value": 3,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 2.4,
+                            "value": 0,
                             "curve": "sineInOut"
                         }
                     ]
@@ -553,17 +700,17 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": -5,
+                            "value": -3,
                             "curve": "sineInOut"
                         },
                         {
-                            "time": 0.8,
-                            "value": 5,
+                            "time": 1.2,
+                            "value": 4,
                             "curve": "sineInOut"
                         },
                         {
-                            "time": 1.6,
-                            "value": -5,
+                            "time": 2.4,
+                            "value": -3,
                             "curve": "sineInOut"
                         }
                     ]
@@ -572,17 +719,36 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": 5,
+                            "value": 3,
                             "curve": "sineInOut"
                         },
                         {
-                            "time": 0.8,
+                            "time": 1.2,
+                            "value": -4,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 2.4,
+                            "value": 3,
+                            "curve": "sineInOut"
+                        }
+                    ]
+                },
+                "frontFore": {
+                    "rotate": [
+                        {
+                            "time": 0,
+                            "value": 0,
+                            "curve": "sineInOut"
+                        },
+                        {
+                            "time": 1.2,
                             "value": -5,
                             "curve": "sineInOut"
                         },
                         {
-                            "time": 1.6,
-                            "value": 5,
+                            "time": 2.4,
+                            "value": 0,
                             "curve": "sineInOut"
                         }
                     ]
@@ -596,12 +762,12 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": -160,
+                            "value": 112,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.8,
-                            "value": -160,
+                            "value": 112,
                             "curve": "sineInOut"
                         }
                     ]
@@ -610,17 +776,17 @@
                     "rotate": [
                         {
                             "time": 0,
-                            "value": -30,
+                            "value": 15,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.4,
-                            "value": 30,
+                            "value": 60,
                             "curve": "sineInOut"
                         },
                         {
                             "time": 0.8,
-                            "value": -30,
+                            "value": 15,
                             "curve": "sineInOut"
                         }
                     ]
@@ -671,23 +837,23 @@
                                 0,
                                 -0.0,
                                 0,
-                                -2.0,
+                                -1.78,
                                 0,
-                                -2.0,
+                                -1.78,
                                 0,
-                                -2.0,
+                                -1.78,
                                 0,
-                                -8.0,
+                                -7.11,
                                 0,
-                                -8.0,
+                                -7.11,
                                 0,
-                                -8.0,
+                                -7.11,
                                 0,
-                                -18.0,
+                                -16.0,
                                 0,
-                                -18.0,
+                                -16.0,
                                 0,
-                                -18.0,
+                                -16.0,
                                 0
                             ],
                             "curve": "sineInOut"
