@@ -129,14 +129,6 @@ Some limits remain:
 - Backspace deletes one code point, which removes the last mark of a letter before the letter itself.
 - A caret at the boundary between a left-to-right and a right-to-left run has two places on screen. It stands on one of them: the side of the character it follows.
 
-## What else the hosts follow
-
-The hosts that edit text also follow other parts of the platform:
-
-- On the web, a hidden tab, through `visibilitychange`, sends the app to the background, and a visible one brings it back. The event `pagehide` starts saving the user data once more, which the browser finishes when it lets the page go. Browsers keep audio suspended until the user interacts, and Safari on iOS suspends it again after interruptions. So every `pointerdown`, `touchend` and `keydown` resumes the audio contexts of miniaudio that the app keeps playing, unless the app is in the background or the page paused it. The events `online` and `offline` report the network. The Screen Orientation API reads and locks the orientation where the browser allows it, which usually means a fullscreen page on a phone.
-- On Android, the activity holds the audio focus in the foreground and abandons it in the background. Another app that takes it, for a phone call or an alarm, interrupts the app. The engine then makes the app inactive, and the audio plugin pauses every voice until the focus comes back. A loss that lets the app play more quietly needs nothing, since the system lowers the volume itself. `HaylenNetwork` follows the default network with a `ConnectivityManager` callback. The function `window.lockOrientation` calls `setRequestedOrientation`. The function `window.setStatusBar` shows or hides the status bars of `WindowInsetsControllerCompat` and sets their light or dark look. The activity reports the height of the status bar with the safe area.
-- On iPhone and iPad, `window.lockOrientation` asks UIKit for the new orientations through the application delegate, and turns the screen with `requestGeometryUpdate`. The function `window.setStatusBar` asks UIKit to update the status bar, which `HaylenViewController`, the view controller of the window, answers with `prefersStatusBarHidden` and `preferredStatusBarStyle`. `NWPathMonitor` reports the network on every Apple platform.
-
 ## From C++
 
 The class `haylen::platform::TextInput` (`haylen/platform/TextInput.hpp`) is the protocol, and `Window::getTextInput()` returns the text input of the platform.
