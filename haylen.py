@@ -745,7 +745,7 @@ def command_test_web(args: argparse.Namespace) -> None:
     site = target.prepare(app, args)
 
     handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(site))
-    server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), handler)
+    server = LocalServer(("127.0.0.1", 0), handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
     try:
         reports = {store: run_web_memory_page(f"http://127.0.0.1:{server.server_address[1]}/", store) for store in ("files", "memory")}
@@ -3852,10 +3852,9 @@ def device_development(app: App, package: Path, args: argparse.Namespace, device
     listen, address = development_address(args.platform, args.host, args.port, development.token)
     handler = type("Handler", (DevelopmentHandler,), {"development": development})
     try:
-        server = http.server.ThreadingHTTPServer((listen, args.port), handler)
+        server = LocalServer((listen, args.port), handler)
     except OSError as error:
         raise BuildError(f'The development server cannot listen on port {args.port} of "{listen}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
-    server.daemon_threads = True
     threading.Thread(target=server.serve_forever, daemon=True).start()
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
@@ -5330,6 +5329,13 @@ def command_package(args: argparse.Namespace) -> None:
     terminal.success(f"Packaged `{shown_path(app)}` into `{shown_path(output)}`.")
 
 
+class LocalServer(http.server.ThreadingHTTPServer):
+    """A threaded server whose listen queue holds every connection a page opens at once, since the queue of five that servers take by default resets the connections beyond it on macOS while a page downloads its files side by side."""
+
+    request_queue_size = 128
+    daemon_threads = True
+
+
 class WebHandler(http.server.SimpleHTTPRequestHandler):
     """Serves a folder with the headers WebAssembly pages need: explicit MIME types, no caching and precompressed files. The web runtime is single-threaded, so the page stays in one browsing context group with the popups it opens, such as sign-in and payment pages, unless a page asks for cross-origin isolation with the opener policy `same-origin`."""
 
@@ -5425,7 +5431,7 @@ class FileRange:
 def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None) -> None:
     handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop, "development": development}), directory=str(directory))
     try:
-        server = http.server.ThreadingHTTPServer((host, port), handler)
+        server = LocalServer((host, port), handler)
     except OSError as error:
         raise BuildError(f'The web server cannot listen on port {port} of "{host}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
     with server:

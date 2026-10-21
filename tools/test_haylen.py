@@ -15,8 +15,8 @@ import os
 import plistlib
 import re
 import shutil
-import subprocess
 import socket
+import subprocess
 import sys
 import tempfile
 import threading
@@ -1676,6 +1676,37 @@ class SiteServerTest(unittest.TestCase):
         connection.request("GET", "/app/shard.hpak", headers=headers)
         response = connection.getresponse()
         return response, response.read()
+
+    def test_serves_every_connection_that_a_page_opens_at_once(self):
+        site = Path(self.scratch.name)
+        (site / "app.zip").write_bytes(b"z" * 200_000)
+        handler = functools.partial(type("Handler", (haylen.WebHandler,), {"log_message": lambda *arguments: None}), directory=self.scratch.name)
+        server = haylen.LocalServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+        clients = 48
+        start = threading.Barrier(clients)
+        statuses = []
+
+        def fetch():
+            start.wait()
+            try:
+                with socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=10) as connection:
+                    connection.sendall(b"GET /app.zip HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                    response = b""
+                    while chunk := connection.recv(1 << 16):
+                        response += chunk
+                statuses.append(response.split(b"\r\n", 1)[0])
+            except OSError as error:
+                statuses.append(type(error).__name__.encode())
+
+        threads = [threading.Thread(target=fetch) for _ in range(clients)]
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.assertEqual(statuses, [b"HTTP/1.0 200 OK"] * clients)
 
     def test_serves_ranges_and_the_whole_file_when_the_file_changed(self):
         whole, body = self.get({})
