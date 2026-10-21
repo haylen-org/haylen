@@ -543,4 +543,44 @@ TEST_F(GameComponentTest, KeepsAPaddingAroundTheLabelsOfSegments) {
     EXPECT_TRUE(picked);
 }
 
+// The labels of a control too narrow for them draw smaller, whole and inside their segments, instead of ending with an ellipsis, and a label of one word never breaks.
+TEST_F(GameComponentTest, ShrinksTheLabelsOfACrampedSegmentedControl) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "segmentedControl", "id": "tint", "width": 300, "selected": "gold", "items": [{"id": "off", "text": "Off"}, {"id": "red", "text": "Red"}, {"id": "gold", "text": "Gold"}, {"id": "ghost", "text": "Ghost"}, {"id": "blue", "text": "Blue"}]}]})");
+    frames(2);
+    Backend& backend = getUi().getBackend();
+    const math::Rect control = getBounds(*gui, "tint");
+    EXPECT_EQ(control.height, getMetric(Theme::Metric::ControlHeight));
+    ASSERT_EQ(backend.getTexts().size(), 5U);
+    float right = control.x;
+    for (const Backend::Text& text : backend.getTexts()) {
+        const std::string_view content = backend.getContent(text);
+        EXPECT_EQ(content.find("\xE2\x80\xA6"), std::string_view::npos) << content;
+        const std::shared_ptr<const text::Layout> laid = text.family->layout(content, text.style);
+        ASSERT_EQ(laid->lines.size(), 1U) << content;
+        const math::Rect box = laid->lines.front().box.translated(text.origin);
+        EXPECT_GE(box.x, right) << content;
+        EXPECT_LE(box.getRight(), control.getRight()) << content;
+        EXPECT_LT(text.style.size, getUi().getContext().getEmSize(Theme::Font::Button)) << content;
+        right = box.getRight();
+    }
+}
+
+// Labels that do not fit even at the least scale wrap between their words, and the control grows taller to hold their lines.
+TEST_F(GameComponentTest, WrapsTheLabelsOfAVeryNarrowSegmentedControl) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "segmentedControl", "id": "light", "width": 260, "items": [{"id": "dawn", "text": "Early dawn"}, {"id": "noon", "text": "High noon"}, {"id": "dusk", "text": "Late dusk"}]}]})");
+    frames(2);
+    Backend& backend = getUi().getBackend();
+    const math::Rect control = getBounds(*gui, "light");
+    EXPECT_GT(control.height, getMetric(Theme::Metric::ControlHeight));
+    ASSERT_EQ(backend.getTexts().size(), 3U);
+    for (const Backend::Text& text : backend.getTexts()) {
+        const std::string_view content = backend.getContent(text);
+        EXPECT_EQ(content.find("\xE2\x80\xA6"), std::string_view::npos) << content;
+        const std::shared_ptr<const text::Layout> laid = text.family->layout(content, text.style);
+        ASSERT_EQ(laid->lines.size(), 2U) << content;
+        EXPECT_GE(text.origin.y, control.y) << content;
+        EXPECT_LE(text.origin.y + laid->size.y, control.getBottom()) << content;
+    }
+}
+
 } // namespace haylen::ui

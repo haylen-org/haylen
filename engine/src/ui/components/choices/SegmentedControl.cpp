@@ -19,18 +19,38 @@ void SegmentedControl::readProperties(PropertyReader& reader) {
     reader.read("selected", selected);
 }
 
+// The control is as wide as its segments with every label at full size, and grows taller when its labels wrap in less room.
 math::Vec2 SegmentedControl::measureContent(Context& context, float availableWidth) {
     float widest = 0.0F;
     for (const ChoiceItem& item : items) {
         widest = std::max(widest, Typography::measure(context, Theme::Font::Button, context.getText(item.text)).x);
     }
+    const math::Insets padding = getPadding(context);
     const float segment = widest + context.getMetric(Theme::Metric::TabPaddingX) * 2.0F;
-    return {std::min(availableWidth, segment * static_cast<float>(items.size())), context.getMetric(Theme::Metric::ControlHeight)};
+    const float width = std::min(availableWidth, segment * static_cast<float>(items.size()) + padding.getHorizontal());
+    const float labelPadding = layOut(context, std::max(0.0F, width - padding.getHorizontal()));
+    float tallest = 0.0F;
+    for (std::size_t index = 0; index < items.size(); ++index) {
+        const float room = std::max(1.0F, widths[index] - labelPadding * 2.0F);
+        tallest = std::max(tallest, Typography::layout(context, Theme::Font::Button, context.getText(items[index].text), getLabelStyle(context, room))->size.y);
+    }
+    const float height = std::max(context.getMetric(Theme::Metric::ControlHeight), tallest + context.getMetric(Theme::Metric::ControlPaddingY) + padding.getVertical());
+    return {width, height};
 }
 
-// Segments share the width equally while every label fits with the tab padding on both sides. With less room each segment takes its label and the padding and the rest is shared equally, and with less still the padding shrinks to the content spacing and the labels share the room left by their widths. Returns the padding the labels keep.
+// The segments sit inside the border of a flat control, or inside the padding of the image of a themed one.
+math::Insets SegmentedControl::getPadding(Context& context) const {
+    if (context.getSurface(Theme::Surface::Segment) != nullptr) {
+        return Surfaces::getPadding(context, Theme::Surface::Segment);
+    }
+    return math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth) * 2.0F);
+}
+
+// Segments share the width equally while every label fits with the tab padding on both sides. With less room each segment takes its label and the padding and the rest is shared equally, and with less still the padding shrinks to the content spacing and the labels draw smaller, down to the least scale. Below it the labels wrap between their words at that scale, or smaller when their longest words do not fit side by side, and each segment takes its longest word and a share of the room left in proportion to the rest of its label, so no word ever breaks. Returns the padding the labels keep.
 float SegmentedControl::layOut(Context& context, float width) {
     widths.clear();
+    labelScale = 1.0F;
+    labelsWrap = false;
     float labels = 0.0F;
     float widest = 0.0F;
     for (const ChoiceItem& item : items) {
@@ -45,13 +65,54 @@ float SegmentedControl::layOut(Context& context, float width) {
         return tab;
     }
     const float padding = std::max(context.getMetric(Theme::Metric::ContentSpacing), std::min(tab, (width - labels) / (count * 2.0F)));
-    const float room = width - padding * 2.0F * count;
-    const float share = room > labels ? (room - labels) / count : 0.0F;
-    const float squeeze = room < labels && labels > 0.0F ? std::max(0.0F, room) / labels : 1.0F;
-    for (float& segment : widths) {
-        segment = segment * squeeze + share + padding * 2.0F;
+    const float room = std::max(0.0F, width - padding * 2.0F * count);
+    if (labels <= room) {
+        for (float& segment : widths) {
+            segment += (room - labels) / count + padding * 2.0F;
+        }
+        return padding;
+    }
+    if (room >= labels * kMinLabelScale) {
+        labelScale = room / labels;
+        for (float& segment : widths) {
+            segment = segment * labelScale + padding * 2.0F;
+        }
+        return padding;
+    }
+
+    words.clear();
+    float longest = 0.0F;
+    for (const ChoiceItem& item : items) {
+        words.push_back(getLongestWord(context, context.getText(item.text)));
+        longest += words.back();
+    }
+    labelScale = longest > 0.0F ? std::min(kMinLabelScale, room / longest) : kMinLabelScale;
+    labelsWrap = true;
+    const float spare = std::max(0.0F, room - longest * labelScale);
+    const float rest = labels - longest;
+    for (std::size_t index = 0; index < widths.size(); ++index) {
+        const float share = rest > 0.0F ? (widths[index] - words[index]) / rest : 1.0F / count;
+        widths[index] = words[index] * labelScale + spare * share + padding * 2.0F;
     }
     return padding;
+}
+
+// The longest run of a label between its spaces at the full size of its font, which its segment keeps room for so the word never breaks.
+float SegmentedControl::getLongestWord(Context& context, std::string_view label) {
+    float longest = 0.0F;
+    while (!label.empty()) {
+        const std::size_t end = label.find(' ');
+        longest = std::max(longest, Typography::measure(context, Theme::Font::Button, label.substr(0, end)).x);
+        label = end == std::string_view::npos ? std::string_view() : label.substr(end + 1);
+    }
+    return longest + 1.0F;
+}
+
+// A label takes the scale of the layout and wraps in the room of its segment only once the labels are at their least scale, so a label that fits never wraps on the rounding of its width.
+text::Style SegmentedControl::getLabelStyle(Context& context, float width) const {
+    text::Style style = Typography::getStyle(context, Theme::Font::Button, labelsWrap ? width : -1.0F, labelsWrap ? text::Alignment::Center : text::Alignment::Start);
+    style.size *= labelScale;
+    return style;
 }
 
 // A segment rounds only the corners it shares with the control, with the curve of the control inside its padding, so a picked segment never leaves empty corners in the control around it.
@@ -78,7 +139,7 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
 
     // Segments share the width as `layOut` divides it, each picks itself on a click, and the whole control takes the focus on top of them. The segments sit inside the border of a flat control, or inside the padding of the image of a themed one, so a picked segment never covers the rim of the control.
     const int current = ChoiceItem::indexOf(items, selected);
-    const math::Insets padding = context.getSurface(Theme::Surface::Segment) != nullptr ? Surfaces::getPadding(context, Theme::Surface::Segment) : math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth) * 2.0F);
+    const math::Insets padding = getPadding(context);
     const math::Rect inner = bounds.inset(padding);
     const float radius = Surfaces::getInnerRadius(outer, std::max(padding.left, padding.top));
     const float labelPadding = layOut(context, inner.width);
@@ -104,7 +165,7 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
             const float edge = (context.isRightToLeft() ? segment.getRight() : segment.x) - thickness * 0.5F;
             Widgets::line(context, {edge, segment.y + segment.height * 0.25F}, {edge, segment.getBottom() - segment.height * 0.25F}, thickness, context.getColor(Theme::Color::Border));
         }
-        Typography::drawAligned(context, Theme::Font::Button, segment.inset({labelPadding, 0.0F, labelPadding, 0.0F}), context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text), context.getText(item.text), Alignment::Center);
+        drawLabel(context, segment.inset({labelPadding, 0.0F, labelPadding, 0.0F}), context.getText(item.text), context.getColor(chosen ? Theme::Color::OnAccent : Theme::Color::Text));
         ImGui::EndDisabled();
         ImGui::PopID();
         if (state.clicked) {
@@ -124,6 +185,15 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
     } else if (body.clicked) {
         select(context, findNext(current, 1, true));
     }
+}
+
+// Wrapped lines center themselves in the room of the label, and a single line centers as a whole.
+void SegmentedControl::drawLabel(Context& context, const math::Rect& area, std::string_view label, math::Color color) const {
+    text::Style style = getLabelStyle(context, std::max(1.0F, area.width));
+    style.color = color;
+    const math::Vec2 size = Typography::layout(context, Theme::Font::Button, label, style)->size;
+    const float x = style.maxWidth > 0.0F ? area.x : area.x + (area.width - size.x) * 0.5F;
+    Typography::drawLayout(context, Theme::Font::Button, label, style, {x, area.y + (area.height - size.y) * 0.5F});
 }
 
 // Without a selection the search starts just outside the end it moves away from, so it can reach every segment.

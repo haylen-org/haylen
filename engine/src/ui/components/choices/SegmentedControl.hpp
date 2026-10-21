@@ -7,8 +7,11 @@
 
 #include <imgui.h>
 
+#include "haylen/math/Color.hpp"
+#include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/text/Style.hpp"
 #include "haylen/ui/Component.hpp"
 #include "ui/components/ChoiceItem.hpp"
 
@@ -38,8 +41,15 @@ class SegmentedControl final : public Component {
     }
 
   private:
+    // Labels too wide for their segments draw smaller, down to this share of the size of their font, and wrap onto more lines below it.
+    static constexpr float kMinLabelScale = 0.75F;
+
     [[nodiscard]] ImDrawFlags getCorners(const Context& context, std::size_t index) const noexcept;
+    [[nodiscard]] math::Insets getPadding(Context& context) const;
     [[nodiscard]] float layOut(Context& context, float width);
+    [[nodiscard]] static float getLongestWord(Context& context, std::string_view label);
+    [[nodiscard]] text::Style getLabelStyle(Context& context, float width) const;
+    void drawLabel(Context& context, const math::Rect& area, std::string_view label, math::Color color) const;
     // Returns the index of the next item that can be picked in a direction, or the current one when there is none.
     [[nodiscard]] int findNext(int from, int direction, bool wrap) const;
     void select(Context& context, int index);
@@ -47,8 +57,11 @@ class SegmentedControl final : public Component {
     std::vector<ChoiceItem> items;
     std::string selected;
 
-    // The width of every segment in the last layout, kept so a frame reuses the storage.
+    // The width of every segment and of the longest word of its label in the last layout, kept so a frame reuses the storage, the share of the size of their font the labels draw at and whether they wrap.
     std::vector<float> widths;
+    std::vector<float> words;
+    float labelScale = 1.0F;
+    bool labelsWrap = false;
 };
 
 } // namespace haylen::ui
