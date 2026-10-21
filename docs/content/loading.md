@@ -249,7 +249,7 @@ end
 return map
 ```
 
-A failed download in a scene load fails the load like any asset that fails. The scene unloads, `sceneLoadFailed` is published, and the `onError` of the change receives the message. So a scene that needs content shows its own message, such as an offline device, and offers to try again. The [scene reference](../lua-api/scene.md#load-context) and the [lifecycle guide](../core/lifecycle.md#loading-preloading-and-errors) describe loads, preloads and their errors.
+A failed download in a scene load fails the load like any asset that fails. The scene unloads, `sceneLoadFailed` is published, and the `onError` of the change receives the message. So a scene that needs content shows its own message, such as an offline device, and offers to try again. The [scene reference](../lua-api/scene.md#sceneload) and the [lifecycle guide](../core/lifecycle.md#loading-preloading-and-errors) describe loads, preloads and their errors.
 
 ## Delivery
 
