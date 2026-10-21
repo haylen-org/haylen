@@ -191,12 +191,38 @@ in vec4 haylen_shape_form;
 in vec4 haylen_shape_radii;
 in vec4 haylen_shape_border;
 
-// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, from the value of the implicit ellipse over its gradient, which is exact at the edge and close to it across the border.
+// The signed distance from a point in the frame of the shape to the edge of its ellipse, negative inside, exact at any ratio of its radii. With the longer radius along x and the point in the first quarter, the nearest point of the edge is `(r x / (t + r - 1), y / t)` for the ratio `r` of the squared radii and the root `t` of the equation of the edge, which the bisection finds between bounds that always hold it, while a point on the long axis has the nearest point in closed form.
 float haylen_shape_ellipse(vec2 point) {
-    vec2 radii = haylen_shape_frame.zw;
-    float scaled = length(point / radii);
-    float slope = length(point / (radii * radii));
-    return slope > 0.000001 ? scaled * (scaled - 1.0) / slope : -min(radii.x, radii.y);
+    bool tall = haylen_shape_frame.w > haylen_shape_frame.z;
+    vec2 radii = tall ? haylen_shape_frame.wz : haylen_shape_frame.zw;
+    vec2 at = abs(tall ? point.yx : point);
+    vec2 scaled = at / radii;
+    float level = dot(scaled, scaled) - 1.0;
+    if (scaled.y <= 0.0) {
+        float spread = radii.x * radii.x - radii.y * radii.y;
+        if (radii.x * at.x >= spread) {
+            return at.x - radii.x;
+        }
+        float share = radii.x * at.x / spread;
+        return -length(vec2(radii.x * share - at.x, radii.y * sqrt(1.0 - share * share)));
+    }
+
+    float ratio = radii.x * radii.x / (radii.y * radii.y);
+    float pull = ratio * scaled.x;
+    float low = scaled.y;
+    float high = level < 0.0 ? 1.0 : length(vec2(pull, scaled.y));
+    float root = high;
+    for (int iteration = 0; iteration < 32; iteration++) {
+        root = 0.5 * (low + high);
+        vec2 part = vec2(pull / (root + ratio - 1.0), scaled.y / root);
+        if (dot(part, part) > 1.0) {
+            low = root;
+        } else {
+            high = root;
+        }
+    }
+    float gap = length(vec2(ratio * at.x / (root + ratio - 1.0), at.y / root) - at);
+    return level < 0.0 ? -gap : gap;
 }
 
 // The signed distance from a point in the frame of the shape to the edge of its rounded rectangle, negative inside, with the radius of the corner of the quarter the point lies in, or to the edge of its ellipse.
