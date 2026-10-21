@@ -783,7 +783,7 @@ scene.push({
 
 ### graphics2d.measureRichText(markup, options)
 
-Returns the width and height of the block `graphics2d.drawRichText` would draw with the same markup and options.
+Returns the width and height of the block `graphics2d.drawRichText` would draw with the same markup and options. A block that wraps at a `maxWidth` is as wide as `maxWidth`, so its paragraphs align inside it, and the boxes of its lines in [`text:frame()`](#textframe) end where their text ends.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
