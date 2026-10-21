@@ -11,7 +11,7 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.ai` | Finite state machines, behavior trees, utility selectors and influence maps. | [`ai.md`](ai.md) |
 | `haylen.animation2d` | Frame animations from grids and atlases with frame data, animators, animated sprite batches, state graphs, skeletal and cutout animation, chains for procedural motion and atlases packed at run time. | [`animation2d.md`](animation2d.md) |
 | `haylen.assets` | Loading the files of the package at once or in the background, preload groups, the cache, the upload budget and the hot reload of assets. | [`assets.md`](assets.md) |
-| `haylen.audio` | Sounds from files, bytes or raw samples, music, buses, effects, pause modes, interruptions and positional audio. | [`audio.md`](audio.md) |
+| `haylen.audio` | Sounds from files, bytes or raw samples, voices, music, buses, effects, pause modes, positional audio, and the state of the output with its interruptions. | [`audio.md`](audio.md) |
 | `haylen.collections` | Object pools that recycle Lua values, ring buffers of the newest values and float buffers shared with C++. | [`collections.md`](collections.md) |
 | `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, the packs that stores install, and the updates of the content. | [`content.md`](content.md) |
 | `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`conversation.md`](conversation.md) |

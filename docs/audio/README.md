@@ -6,10 +6,10 @@ Audio mixes sounds and music through buses with effects, follows the pause and t
 
 | Name | Description | Link |
 | --- | --- | --- |
-| Audio | Sounds, streams, voices, buses, music, process modes, effects, loudness, positional audio, sessions and interruptions. | [`audio.md`](audio.md) |
+| Audio | Sounds and how they stream, voices, buses, music, the game pause, effects, loudness, positional audio, the sessions and interruptions of each platform, and apps without an audio output. | [`audio.md`](audio.md) |
 
 ## Lua API
 
 | Name | Description | Link |
 | --- | --- | --- |
-| `haylen.audio` | Sounds from files, bytes or raw samples, music, buses, effects, pause modes, interruptions and positional audio. | [`lua-api/audio.md`](../lua-api/audio.md) |
+| `haylen.audio` | Sounds from files, bytes or raw samples, voices, music, buses, effects, pause modes, positional audio, and the state of the output with its interruptions. | [`lua-api/audio.md`](../lua-api/audio.md) |
