@@ -7,7 +7,10 @@ local Test = require('harness.test')
 local Exchange = haylen.class('Exchange')
 
 Exchange.limit = 6
-Exchange.rowHeight = 40
+-- The rows of the messages share the height of the stage, from this height up to the most.
+Exchange.rowHeight = {40, 72}
+-- A binary message shows its size and this many of its first bytes.
+Exchange.shownBytes = 6
 Exchange.colors = {Test.accent, Test.green}
 
 -- Takes the names of the left and the right side.
@@ -28,22 +31,22 @@ function Exchange:clear()
     self.messages = {}
 end
 
--- Returns `data` as it is when it is printable text, and as hexadecimal bytes otherwise.
+-- Returns `data` as it is when it is printable text, and otherwise its size and its first bytes in hexadecimal.
 function Exchange.printable(data)
     if data:match('^[%g ]*$') then
         return data
     end
-    return (data:gsub('.', function(byte) return string.format('%02X ', byte:byte()) end))
+    local bytes = {}
+    for index = 1, math.min(#data, Exchange.shownBytes) do
+        bytes[index] = string.format('%02X', data:byte(index))
+    end
+    return string.format('%d bytes, %s%s', #data, table.concat(bytes, ' '), #data > Exchange.shownBytes and ' …' or '')
 end
 
-function Exchange:height()
-    return 40 + Exchange.limit * Exchange.rowHeight
-end
-
--- Draws the two sides as named pills over their lifelines and every message as an arrow from its side to the other, with its text over it.
-function Exchange:draw(left, right, top)
+-- Draws the two sides as named pills over their lifelines from `top` to `bottom`, and every message as an arrow from its side to the other, with its text over it.
+function Exchange:draw(left, right, top, bottom)
     local xs = {left + 90, right - 90}
-    local bottom = top + self:height()
+    local rowHeight = math.max(Exchange.rowHeight[1], math.min(Exchange.rowHeight[2], (bottom - top - 72) / Exchange.limit))
     for side = 1, 2 do
         local name = self.sides[side]
         local width = graphics2d.measureText(nil, name, {size = 20}) + 32
@@ -54,7 +57,7 @@ function Exchange:draw(left, right, top)
 
     local y = top + 32
     for _, message in ipairs(self.messages) do
-        y = y + Exchange.rowHeight
+        y = y + rowHeight
         local from, to = xs[message.from], xs[3 - message.from]
         local direction = to > from and 1 or -1
         local color = Exchange.colors[message.from]

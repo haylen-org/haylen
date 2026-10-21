@@ -196,7 +196,7 @@ function Sockets:burstOfDatagrams(a, b)
 end
 
 function Sockets:draw(area)
-    self.exchange:draw(24, area.width - 24, 24)
+    self.exchange:draw(24, area.width - 24, 24, area.height - 24)
 end
 
 return Sockets
