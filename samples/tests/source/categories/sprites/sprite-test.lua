@@ -37,13 +37,14 @@ end
 -- Returns the pointer in stage coordinates, whether it went down on the stage this frame and whether it is held there, from the first finger or the mouse, leaving out the interface.
 function SpriteTest:pointer()
     local touch = input.touches()[1]
-    local x, y
+    local screenX, screenY
     if touch then
-        x, y = self:toStage(touch.x, touch.y)
+        screenX, screenY = touch.x, touch.y
     else
-        x, y = self:toStage(input.mousePosition())
+        screenX, screenY = input.mousePosition()
     end
-    local free = self.area ~= nil and self.area:contains({x, y}) and not ui.usingPointer()
+    local x, y = self:toStage(screenX, screenY)
+    local free = self.stage ~= nil and self.stage:contains({screenX, screenY}) and not ui.usingPointer()
     if touch then
         local held = free and touch.phase ~= 'ended' and touch.phase ~= 'cancelled'
         return x, y, held and touch.phase == 'began', held
