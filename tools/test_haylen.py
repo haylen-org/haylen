@@ -3,6 +3,7 @@
 import argparse
 import ast
 import base64
+import collections
 import dataclasses
 import contextlib
 import functools
@@ -24,9 +25,11 @@ import tempfile
 import threading
 import time
 import tokenize
+import unicodedata
 import unittest
 import urllib.parse
 import zipfile
+from collections.abc import Iterator
 from pathlib import Path
 from unittest import mock
 
@@ -379,6 +382,176 @@ class WritingTest(unittest.TestCase):
         names = re.compile(b"|".join(re.escape(word) for word in words), re.IGNORECASE)
         found = [name for name in self.tracked() if name != "PROJECT.md" and (self.root / name).is_file() and names.search((self.root / name).read_bytes())]
         self.assertEqual(found, [], "These files name another engine, a third-party SDK or the author or tool of third-party art.")
+
+
+class DocsTest(unittest.TestCase):
+    root = Path(__file__).resolve().parent.parent
+    link = re.compile(r"(?<!!)\[([^\]]*)\]\(([^)\s]+)\)")
+    header = "| Name | Description | Link |"
+
+    def pages(self, *patterns: str) -> list[Path]:
+        names = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard", "--", *(patterns or ("*.md",))], cwd=self.root, capture_output=True, text=True, check=True).stdout.splitlines()
+        return [self.root / name for name in sorted(set(names)) if (self.root / name).is_file()]
+
+    @staticmethod
+    def prose(path: Path) -> Iterator[tuple[int, str]]:
+        """Yields the numbered lines of a page outside its code blocks."""
+        inside = False
+        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+            if line.lstrip().startswith("```"):
+                inside = not inside
+                continue
+            if not inside:
+                yield number, line
+
+    @classmethod
+    def anchors(cls, path: Path) -> set[str]:
+        """The anchors of the headings of a page, made the way GitHub makes them."""
+        found, seen = set(), collections.Counter()
+        for _, line in cls.prose(path):
+            heading = re.match(r"^#{1,6} (.+)$", line)
+            if heading:
+                text = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", heading.group(1)).strip().lower()
+                slug = re.sub(r"[^\w\- ]", "", text).replace(" ", "-")
+                found.add(slug if seen[slug] == 0 else f"{slug}-{seen[slug]}")
+                seen[slug] += 1
+        return found
+
+    def links(self, path: Path) -> Iterator[tuple[int, str, str]]:
+        """Yields the number, text and target of every link of a page outside code."""
+        for number, line in self.prose(path):
+            for match in self.link.finditer(re.sub(r"`[^`]*`(?!\])", "", line)):
+                yield number, match.group(1), match.group(2)
+
+    @classmethod
+    def tables(cls, path: Path) -> Iterator[tuple[str, list[str]]]:
+        """Yields every table of a page with the section it sits in, as its lines."""
+        section, rows = "", []
+        for _, line in [*cls.prose(path), (0, "")]:
+            if line.startswith("|"):
+                rows.append(line)
+                continue
+            if rows:
+                yield section, rows
+                rows = []
+            if line.startswith("## "):
+                section = line[3:]
+
+    def indexes(self) -> list[Path]:
+        return [self.root / "docs" / "README.md", *sorted((self.root / "docs").glob("*/README.md"))]
+
+    def test_every_page_starts_with_a_title_that_starts_with_an_emoji(self):
+        # The main page opens with the logo, and the features of the plugin template are parts of the page of a new plugin.
+        wrong = []
+        for path in self.pages():
+            name = path.relative_to(self.root).as_posix()
+            if name == "README.md" or name.startswith("templates/plugin-features/"):
+                continue
+            title = path.read_text(encoding="utf-8").split("\n", 1)[0]
+            if not title.startswith("# ") or unicodedata.category(title[2:3]) != "So":
+                wrong.append(f"{name}: {title}")
+        self.assertEqual(wrong, [], "These pages do not start with a title like \"# 🎨 Rendering\".")
+
+    def test_every_code_block_names_its_language(self):
+        wrong = []
+        for path in self.pages():
+            inside = False
+            for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+                if not line.lstrip().startswith("```"):
+                    continue
+                if not inside and line.strip() == "```":
+                    wrong.append(f"{path.relative_to(self.root).as_posix()}:{number}")
+                inside = not inside
+        self.assertEqual(wrong, [], "These code blocks name no language, such as \"```lua\".")
+
+    def test_every_paragraph_is_one_line(self):
+        wrong = []
+        for path in self.pages():
+            previous = False
+            for number, line in self.prose(path):
+                text = bool(line.strip()) and not re.match(r"^\s*([|#>*+-]|\d+\.|<)", line)
+                if text and previous:
+                    wrong.append(f"{path.relative_to(self.root).as_posix()}:{number}")
+                previous = text
+        self.assertEqual(wrong, [], "These lines continue the paragraph above them. Write each paragraph on one line.")
+
+    def test_relative_links_reach_their_pages_and_headings(self):
+        anchors, wrong = {}, []
+        for path in self.pages():
+            for number, _, target in self.links(path):
+                if re.match(r"^[a-z]+:", target):
+                    continue
+                file, _, anchor = target.partition("#")
+                destination = (path.parent / file).resolve() if file else path.resolve()
+                where = f"{path.relative_to(self.root).as_posix()}:{number}: {target}"
+                if not destination.exists():
+                    wrong.append(f"{where} names no file")
+                elif anchor and destination.suffix == ".md":
+                    if destination not in anchors:
+                        anchors[destination] = self.anchors(destination)
+                    if anchor not in anchors[destination]:
+                        wrong.append(f"{where} names no heading")
+        self.assertEqual(wrong, [], "These links lead nowhere.")
+
+    def test_the_main_page_links_the_documentation_only_through_its_index(self):
+        targets = [target for _, _, target in self.links(self.root / "README.md") if target.startswith(("docs/", "./docs/"))]
+        self.assertEqual(targets, ["docs/README.md"], "The main page links the documentation once, through \"docs/README.md\".")
+
+    def test_every_page_of_the_documentation_is_reached_from_the_index_through_its_block(self):
+        docs = self.root / "docs"
+        blocks = {(docs / target).resolve() for _, rows in self.tables(docs / "README.md") for row in rows for _, _, target in self.links_of(row)}
+        self.assertEqual(blocks, {path.resolve() for path in docs.glob("*/README.md")}, "The tables of the index link the index of every block and nothing else.")
+        reached = {(path.parent / target).resolve() for path in docs.glob("*/README.md") for _, rows in self.tables(path) for row in rows for _, _, target in self.links_of(row)}
+        pages = {path.resolve() for path in docs.rglob("*.md") if path.name != "README.md"}
+        self.assertEqual(sorted(path.relative_to(self.root).as_posix() for path in pages - reached), [], "The index of no block lists these pages.")
+        self.assertEqual(sorted(path.relative_to(docs).as_posix() for path in docs.rglob("*.md") if path.parent.parent != docs and path.parent != docs), [], "Pages live in the folder of their block, one level under the docs.")
+
+    def test_index_tables_list_name_description_and_link_in_alphabetical_order(self):
+        wrong = []
+        for path in self.indexes():
+            name = path.relative_to(self.root).as_posix()
+            for section, rows in self.tables(path):
+                if rows[0] != self.header or len(rows) < 3:
+                    wrong.append(f"{name}, {section}: the table needs the header \"{self.header}\" and rows")
+                    continue
+                names = []
+                for row in rows[2:]:
+                    cells = [cell.strip() for cell in row.strip("|").split(" | ")]
+                    if len(cells) != 3 or not re.fullmatch(r"\[`[^`]+`\]\([^)\s]+\)", cells[2]):
+                        wrong.append(f"{name}, {section}: {row}")
+                        continue
+                    names.append(re.sub(r"[^\w .]", "", cells[0].replace("`", "")).strip().casefold())
+                if names != sorted(names):
+                    wrong.append(f"{name}, {section}: the rows are out of alphabetical order")
+        self.assertEqual(wrong, [], "These tables of the indexes break the form \"| Name | Description | Link |\" in alphabetical order.")
+
+    def test_no_table_of_an_index_mixes_guides_with_the_lua_reference(self):
+        wrong = []
+        reference = (self.root / "docs" / "lua-api").resolve()
+        for path in self.indexes():
+            for section, rows in self.tables(path):
+                kinds = {(path.parent / target).resolve().parent == reference for row in rows for _, _, target in self.links_of(row)}
+                if len(kinds) > 1:
+                    wrong.append(f"{path.relative_to(self.root).as_posix()}, {section}")
+        self.assertEqual(wrong, [], "These tables list guides and reference pages together.")
+
+    def links_of(self, row: str) -> Iterator[tuple[int, str, str]]:
+        for match in self.link.finditer(row):
+            yield 0, match.group(1), match.group(2)
+
+    def test_no_long_sentence_repeats_in_another_page_of_the_documentation(self):
+        # A subject lives in one page, and the other pages link to it. Reference pages share the sentences that describe the same rule of every module, such as how options are checked.
+        seen, wrong = {}, []
+        for path in [self.root / "README.md", *self.pages("docs/*.md")]:
+            name = path.relative_to(self.root).as_posix()
+            for _, line in self.prose(path):
+                if line.startswith(("|", "#")):
+                    continue
+                for sentence in re.split(r"(?<=\.)\s+(?=[A-Z])", line.strip()):
+                    first = seen.setdefault(sentence, name) if len(sentence) >= 100 else name
+                    if first != name and not (first.startswith("docs/lua-api/") and name.startswith("docs/lua-api/")):
+                        wrong.append(f"{first} and {name}: {sentence}")
+        self.assertEqual(wrong, [], "These sentences repeat in two pages. Keep the subject in one page and link to it.")
 
 
 class SpriteSheetTest(unittest.TestCase):

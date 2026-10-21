@@ -1,4 +1,4 @@
-# Online Store
+# 🛍️ Online Store
 
 Online Store is an app sample of a shop of clothes, shoes, bags and things for the home: three thousand products in sixteen categories, the edit of the season, product pages with a gallery in every color, sizes and reviews, a bag with promo codes, the checkout with a form that checks the address, orders that move from the warehouse to the door and saved products. It looks like a product of its kind in a bright and airy look of warm paper, ink and a serif, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every product, review and order is fake data made from a seed, so the same store shows on every run.
 

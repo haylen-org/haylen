@@ -1,4 +1,4 @@
-# Music Streaming
+# 🎵 Music Streaming
 
 Music Streaming is an app sample of a music service with a made-up library: 120 artists, 360 albums with covers drawn from shapes, more than 3,000 songs that the app makes with its own synthesizer, 2,400 favorite songs, playlists, a mix of every genre, search, genres, a player that follows every screen, the now playing screen with a visualizer, seeking, shuffle, repeat and a sleep timer, and a queue to reorder. It looks like a product of its kind in a dark and immersive look lit by the colors of the music, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every artist, album and song is fake data made from a seed, and every song is music made for the project by the code of the app, so the same library shows and sounds the same on every run.
 

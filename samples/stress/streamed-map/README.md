@@ -1,4 +1,4 @@
-# Streamed Map
+# 🏋️ Streamed Map
 
 Streamed Map is a stress sample of a large world: a map of 16,384 by 16,384 tiles, more than 268 million, made from a seed and streamed in chunks of 64 by 64 tiles around a camera that flies over it by itself or that the player drives. Chunks build in the background as the camera nears them, bake into static batches that draw with one call each, and unload once the camera leaves them far behind. Zooming out to see more than a million tiles at once shows the streaming at work, with the chunks that build lit in amber at the edge of the view.
 

@@ -1,4 +1,4 @@
-# haylen.preferences
+# 📖 `haylen.preferences`
 
 Player preferences that persist between sessions, such as volumes, language, difficulty and rebound controls. Use it for values that belong to the player rather than to one playthrough, and use the save slots of [`haylen.storage`](storage.md) for app progress.
 

@@ -1,4 +1,4 @@
-# Lighting
+# 💡 Lighting
 
 The module `haylen.lighting2d` lights 2D scenes: point, spot and directional lights, the occluders that cast their shadows, and the questions gameplay asks about light, such as whether a guard can see the player in the dark. This guide explains how a lit scene is set up, how lights choose what they reach, how shadows come from physics bodies and maps, and what lighting costs. The [`haylen.lighting2d` reference](../lua-api/lighting2d.md) lists the complete API, and the [rendering guide](../graphics/rendering.md#lighting) describes the passes on the GPU.
 

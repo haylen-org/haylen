@@ -1,4 +1,4 @@
-# Physics
+# 🎱 Physics
 
 Haylen simulates 2D rigid bodies with Box2D behind its own API, `haylen.physics2d` in Lua and `haylen::physics2d` in C++. A world holds bodies, the shapes that give them collision and the joints that connect them, and on top of them the engine builds ropes, bridges, ragdolls, vehicles, character movers, grabbers, force fields, one-way platforms, conveyors, explosions, destructible terrain, fractures and particle fluids. This guide explains how the simulation works and how to tune it: units and scale, stepping, smooth drawing, threads, sleeping, the solutions to the problems that physics games meet most often and what each part costs. The [`haylen.physics2d` reference](../lua-api/physics2d.md) lists every function, option, default and error with an example of each.
 

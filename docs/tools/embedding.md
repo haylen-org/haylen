@@ -1,4 +1,4 @@
-# Embedding the engine
+# 📎 Embedding the engine
 
 The `engine/` folder is a standalone CMake project that other projects consume as a library. A project adds it with `add_subdirectory`, with CPM or with `find_package(haylen)` against a prebuilt SDK, and all three ways give it the same targets and the same CMake function. This guide covers the three ways, `haylen_add_app` and an app written only in C++. The [build guide](build.md) covers the platform toolchains, and the [Lua guide](../core/lua.md#extending-the-engine-from-c) shows how a C++ project adds Lua modules.
 

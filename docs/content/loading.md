@@ -1,4 +1,4 @@
-# Loading and delivering content
+# 📥 Loading and delivering content
 
 This guide explains, from the side of an app, how its Lua code and its assets reach the device and memory: what happens to `source/` and `content/` in development and in a release, when autoloads run, how assets load synchronously, asynchronously and in preload groups, how scenes load and preload them, when the encrypted bytes of an asset are on the device, which caches hold what, how each platform and store packages the same content, how updates are published, and what the protection costs and guarantees. The [content guide](content.md) describes the formats, the cryptography, the tools and the local store in depth, and this guide links to it instead of repeating it.
 

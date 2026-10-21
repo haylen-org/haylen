@@ -1,4 +1,4 @@
-# Spatial
+# 📍 Spatial
 
 The module `haylen.spatial2d` finds things in space without testing every entity: spatial structures that answer area, circle, point, ray and nearest queries, the grid algorithms of 2D games, screen picking, and overlap worlds that report which boxes reach each other. This guide explains which structure to choose, how the grid algorithms fit with maps and generators, and when an overlap world replaces physics. The [`haylen.spatial2d` reference](../lua-api/spatial2d.md) lists the complete API.
 

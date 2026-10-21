@@ -1,4 +1,4 @@
-# haylen.accessibility
+# 📖 `haylen.accessibility`
 
 The module `haylen.accessibility` follows the accessibility settings of the system, how large the user wants text, whether they want less motion, higher contrast or less transparency and whether a screen reader runs, and opens the UI to screen readers, which read the elements of every GUI aloud and act on them. Use it to calm the motion of an app, to pick a theme with stronger colors, to announce what changed and to check what a screen reader reads.
 

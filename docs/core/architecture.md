@@ -1,4 +1,4 @@
-# Architecture
+# 🏛️ Architecture
 
 This guide explains how Haylen is put together: the libraries it builds, where each module lives, how built-in subsystems plug into the engine, how a backend plugs in under it, how a frame runs, which thread owns what, how GPU resources and Lua values are released, what an app package is and what the web runtime offers to a browser editor. It is written for engine contributors and for C++ developers who extend the engine. App developers who only write Lua can start with the [Lua guide](lua.md) and the [Lua API reference](../README.md).
 

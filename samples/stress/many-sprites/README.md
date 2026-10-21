@@ -1,4 +1,4 @@
-# Many Sprites
+# 🏋️ Many Sprites
 
 Many Sprites is a stress sample of sprite drawing: a pond where a school of tens to hundreds of thousands of fish swims around a bait. Every fish is a sprite with its own position, heading and animation frame, all of them move every frame, and the whole school draws in one call. The panel adds and removes fish ten thousand at a time and switches how many fish move each frame and how their sprites reach the renderer, so the cost of each part shows in the readout while the school swims.
 

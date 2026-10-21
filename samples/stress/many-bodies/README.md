@@ -1,4 +1,4 @@
-# Many Bodies
+# 🏋️ Many Bodies
 
 Many Bodies is a stress sample of physics: a toy bin that three chutes pour thousands of toys into, blocks, balls, gems and pills, every one a Box2D body of its own shape. A blast throws the toys apart, the bin shakes like a table in an earthquake, and the whole pile draws from one sprite batch that two calls move each frame. The panel pours and removes toys a thousand at a time and shows the bodies, the awake bodies, the contacts and the time of every physics step.
 

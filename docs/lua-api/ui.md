@@ -1,4 +1,4 @@
-# haylen.ui
+# 📖 `haylen.ui`
 
 The module `haylen.ui` builds the app interface, such as menus, HUDs, settings screens, dialogs and on-screen touch controls, as retained trees of themed components. An app mounts a tree once, changes nodes by id later and reacts to the player with `onX` handlers. Use it for every interface the player sees. For debug windows rebuilt every frame, use [`haylen.imgui`](imgui.md) instead.
 
@@ -3105,7 +3105,7 @@ ui.mount(ui.scroll{height = 400, style = {metrics = {scrollbarGap = 12, scrollba
 
 ## Themes
 
-A theme holds every color, metric, font and surface the components use, so no component draws a literal color. The engine ships `dark` and `light`, and an app adds its own with a JSON file in the package assets loaded by `ui.loadTheme`, or with the same definition as a Lua table passed to `ui.addTheme`. A theme file starts from a base theme and lists only what it changes. The active theme also styles [`haylen.imgui`](imgui.md) windows.
+The engine ships `dark` and `light`, and an app adds its own with a JSON file in the package assets loaded by `ui.loadTheme`, or with the same definition as a Lua table passed to `ui.addTheme`. A theme file starts from a base theme and lists only what it changes. The active theme also styles [`haylen.imgui`](imgui.md) windows.
 
 | Key | Type | Meaning |
 | --- | --- | --- |

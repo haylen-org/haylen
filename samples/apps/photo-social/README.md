@@ -1,4 +1,4 @@
-# Photo Social
+# 📷 Photo Social
 
 Photo Social is an app sample of a photo sharing network: a feed of posts with pictures, likes, comments and captions, stories that play full screen, profiles with a grid of pictures and a follow button, a post with its comments, a new post with a picture, a crop, a filter and a caption, and direct messages with a real chat. It looks like a product of its kind in a bright white look of rounded prints, with a ring that runs from blue to teal around the stories and a blue accent, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every person, post, comment and message is fake data made from a seed, so the same feed shows on every run.
 

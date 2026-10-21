@@ -1,4 +1,4 @@
-# haylen.input
+# 📖 `haylen.input`
 
 Keyboard, mouse, touch, gesture and gamepad state, and the action map that turns all of them into named gameplay actions. Gameplay reads actions such as `jump` or `move` so that every device and on-screen control works without extra code, and menus or tools read the raw devices when they need them.
 

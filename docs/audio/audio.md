@@ -1,4 +1,4 @@
-# Audio
+# 🔊 Audio
 
 Haylen mixes sound with [miniaudio](https://miniaud.io). Apps load sounds as assets, play them as voices, route voices through buses for volume sliders and effects, crossfade music tracks, place sounds in the world so they fade, pan and shift with distance and motion, and let the game pause stop the sounds it should stop. This guide explains those pieces, how the engine shares the audio output with the system and other apps, and how the Tiny Island sample uses them. The [`haylen.audio` reference](../lua-api/audio.md) lists every function, option and error.
 
@@ -241,7 +241,7 @@ audio.play(assets.load('sfx/shout.wav'), {effects = {echo}})
 - Effects on one bus or voice run in the order they were added, and `audio.busEffects(bus)` and `audio.effects(voice)` list them in that order.
 - Parameters are properties that change at any time, such as `muffle.cutoff = 400`. The audio thread applies them from the next block it mixes, and tweens animate them natively, without running Lua on every frame.
 - An effect processes one bus or one voice at a time, and adding it to a second one raises an error until it leaves the first. Effects that many sounds share belong on a bus, and each voice that needs its own effect gets its own.
-- A voice lets its echo and its reverb ring out after it ends, for as long as they take to fall silent, and the effect is free for another voice afterwards. An effect that moves to another bus or voice starts there without the echoes or reverb it held before.
+- A voice lets its echo and its reverb ring out after it ends, for as long as they take to fall silent, and the effect is free for another voice afterwards.
 
 ```lua
 local audio = require('haylen.audio')

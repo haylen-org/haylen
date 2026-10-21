@@ -1,4 +1,4 @@
-# Rendering
+# 🖌️ Rendering
 
 Haylen draws everything through `graphics2d::Renderer` (`engine/include/haylen/2d/graphics/Renderer.hpp`), which sits on `graphics::Device` and the GPU device of the backend. Apps record draw commands into canvases while the engine renders a frame, and the renderer sorts them, merges them into as few draw calls as possible, uploads the frame's data once and submits the whole frame at the end. This guide explains that model, what each kind of draw costs, the limits of the GPU object pools and how to keep millions of sprites fast. The Lua functions are documented in the [`haylen.graphics2d` reference](../lua-api/graphics2d.md) and the [`haylen.graphics` reference](../lua-api/graphics.md), and the UI built on top of the renderer is covered in the [UI guide](../ui/ui.md).
 

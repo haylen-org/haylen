@@ -1,4 +1,4 @@
-# Lua guide
+# 🌙 Lua guide
 
 Apps for Haylen are written in Lua 5.5, which the engine runs through the [Varn](https://github.com/varn-org/varn) runtime. This guide explains the model an app is built on: the package layout, `app.json`, how modules and assets are found, scenes, autoloads, classes, disk access, asynchronous code, errors, hot reload and the fast paths for performance. The last section shows how a C++ project adds its own Lua modules. Every engine module has a reference page listed in the [Lua API reference](../README.md), and the [architecture guide](architecture.md) explains what happens underneath.
 

@@ -1,4 +1,4 @@
-# Contributing to Haylen
+# 🤝 Contributing to Haylen
 
 Haylen is free for everyone, for personal and commercial work, forever. The engine, its tools, its templates, its samples and all of their art, sounds and documentation are released under the [MIT License](LICENSE), and no part of Haylen will ever ask for a fee, a royalty, a revenue share or a paid tier.
 

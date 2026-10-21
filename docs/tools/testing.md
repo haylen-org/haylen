@@ -1,4 +1,4 @@
-# Testing
+# 🧪 Testing
 
 Every engine capability that can run without a real graphics device or platform runtime has GoogleTest tests, and every Lua binding is tested by running Lua through a headless engine. This guide explains how the suite is organized, how the headless host and the engine fixture work, how to run the tests, coverage and the formatter, what the CI workflow checks and how to test a new binding.
 

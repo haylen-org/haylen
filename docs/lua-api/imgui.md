@@ -1,4 +1,4 @@
-# haylen.imgui
+# 📖 `haylen.imgui`
 
 The module `haylen.imgui` exposes Dear ImGui immediate mode windows and widgets to Lua. The app calls it every frame to rebuild windows from its current state, and the widgets return what the player changed. Use it for debug panels, cheat menus, level tweaking and tools. For the interface players see, use the retained, themed components of [`haylen.ui`](ui.md).
 

@@ -1,4 +1,4 @@
-# haylen.dialogs
+# 📖 `haylen.dialogs`
 
 The module `haylen.dialogs` shows the native dialogs of the system: message boxes with up to three buttons, and pickers of files to open, of the destination of data to save and of a folder. They look and behave like the dialogs of every other app of the platform, which suits desktop tools, editors and settings that import or export files. Menus and messages drawn in the style of the app belong to [haylen.ui](ui.md) instead.
 

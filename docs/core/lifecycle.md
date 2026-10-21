@@ -1,4 +1,4 @@
-# Lifecycle
+# 🔄 Lifecycle
 
 This guide explains what happens to an app from start to stop: the order in which the engine calls scenes, autoloads and plugins, the states the app goes through with the platform, how the game pause and the process modes decide what runs, how autoloads live next to the scenes and how listeners, timers and tweens end together with the thing that owns them. The engine publishes the moments of this lifecycle as events on [haylen.events](../lua-api/events.md), with the same names in C++ and Lua, and the [events reference](../lua-api/events.md#engine-events) lists them with their values.
 

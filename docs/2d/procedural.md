@@ -1,4 +1,4 @@
-# Procedural generation
+# 🎲 Procedural generation
 
 The module `haylen.procedural2d` generates 2D content: it scatters objects over regions, grows caves and dungeons, carves mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tile variants by their neighbors. This guide explains how generation stays reproducible, how generated maps reach the other modules and how generation stays off the frame. The [`haylen.procedural2d` reference](../lua-api/procedural2d.md) lists the complete API.
 

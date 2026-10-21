@@ -1,4 +1,4 @@
-# Shaders
+# ✨ Shaders
 
 Apps shade their draws with their own fragment shaders, written in the [Haylen shader language](#the-haylen-shader-language), annotated GLSL, under `content/shaders/`. The command `haylen.py shaders` compiles every source ahead of time with the Haylen shader compiler into a `.shader` package with the code of every shader language the engine runs, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, circles, shapes, polygons, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
 

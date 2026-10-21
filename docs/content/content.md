@@ -1,4 +1,4 @@
-# Protected content
+# 🔐 Protected content
 
 The content system stores the files of an app in a form that no archive tool opens and that no one changes unnoticed: the files are split into chunks, each chunk is compressed and encrypted on its own, the chunks live in immutable shards, and signed manifests with encrypted catalogs say which chunks make which file. The same format serves an app of a few megabytes and one of hundreds of gigabytes, since only the number of shards and chunks grows, and an update adds new shards next to the old ones instead of rewriting them. The engine reads such content through the same `io::Package` interface as a folder, so asset loading, `require` and `app.json` work the same on it.
 

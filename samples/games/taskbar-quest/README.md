@@ -1,4 +1,4 @@
-# Taskbar Quest
+# 🗡️ Taskbar Quest
 
 Taskbar Quest is a small game written in Lua on top of Haylen that lives on the desktop. A tiny hero walks along a transparent strip just above the taskbar, or the Dock on macOS, and fights the slimes and mushrooms that sprout ahead of it. Defeated enemies drop coins that fly to the gold counter, and the gold buys a sharper sword and healing potions. When the hero falls, it rests for a moment and gets up again.
 

@@ -1,4 +1,4 @@
-# haylen.graphics
+# 📖 `haylen.graphics`
 
 The module `haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts, font families and vector images, and names the graphics API and its texture size limit. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily`, `Shader` and `VectorImage` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md).
 

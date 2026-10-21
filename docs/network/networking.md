@@ -1,4 +1,4 @@
-# Networking
+# 🌐 Networking
 
 Apps reach the network through [`haylen.net`](../lua-api/net.md) for WebSocket clients and through the `http` and `socket` modules of Varn for HTTP clients, HTTP and WebSocket servers and raw TCP and UDP. Every result, event and failure reaches Lua on the frame thread, during the poll of the event loop at the start of a frame or with the events of the frame, so app code never runs on another thread. This guide tells what each platform offers, what the browser and the mobile systems refuse and why, and how timeouts, owners, large data and errors work.
 

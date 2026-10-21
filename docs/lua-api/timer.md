@@ -1,4 +1,4 @@
-# haylen.timer
+# 📖 `haylen.timer`
 
 The module `haylen.timer` runs functions after a delay or at a fixed interval. Timers advance once per frame, after the fixed steps and before tweens and the scene update. By default they count scaled time, so `haylen.setTimeScale(0)` freezes them together with the rest of the app, and they stop while the game is paused. Use timers for cooldowns, delayed effects and periodic checks. For animated values use [`haylen.tween`](tween.md), and for code that reads best as a sequence of waits use Varn's `async.sleep` inside `async.spawn`.
 

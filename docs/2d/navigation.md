@@ -1,4 +1,4 @@
-# Navigation
+# 🧭 Navigation
 
 The module `haylen.navigation2d` moves characters through the world: it plans routes over tile grids, waypoint graphs and navigation meshes, guides many units at once with Dijkstra maps and flow fields, and moves agents smoothly with steering and crowds that never overlap. This guide explains how to pick a method, how navigation fits with maps and physics, and how to keep it off the frame. The [`haylen.navigation2d` reference](../lua-api/navigation2d.md) lists the complete API.
 

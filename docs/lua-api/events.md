@@ -1,4 +1,4 @@
-# haylen.events
+# 📖 `haylen.events`
 
 The module `haylen.events` is the event bus of the app. Any part of the app publishes an event by name and any other part listens to it, without either side knowing the other. The engine publishes its own lifecycle events on the same bus, such as `appBackground`, `sceneEntered` or `gamepadConnected`, so app events and engine events are heard the same way. Use events for announcements that the whole app may care about, and use [`haylen.signal`](signal.md) when one object owns the announcement. The [lifecycle guide](../core/lifecycle.md) explains when the engine events happen.
 

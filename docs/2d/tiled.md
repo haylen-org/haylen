@@ -1,4 +1,4 @@
-# Tiled maps
+# 🗺️ Tiled maps
 
 Haylen loads maps made with the [Tiled](https://www.mapeditor.org) editor and turns them into playable levels. A map draws its tile, object and image layers with culling, parallax, tints and blend modes, animates its tiles, answers questions about cells, layers, objects and tiles, spawns app entities from objects through factories and builds physics collision from tile and object shapes. This guide covers how to author maps for the engine, how the runtime uses them and the conventions of the Tiny Island map. The [`haylen.tiled` reference](../lua-api/tiled.md) lists every function, field and error.
 
@@ -62,7 +62,7 @@ The method `map:draw(camera, options)` draws every visible layer in map order in
 - The `options` table holds a [draw order](../lua-api/graphics2d.md#draw-order) with `layer` and `depth`, where each map layer replaces `blend` with its own blend mode, and `x` and `y`, the world position of the map origin, so the maps of a `.world` file draw at their places through one camera.
 - Tile layers are baked into static GPU batches in regions of 32 by 32 cells the first time they draw, and only the regions the camera sees are submitted. The method `map:setTile` bakes only the region of its cell again, on the next draw. Animated tiles are drawn every frame with the frame that matches the map time.
 - Object layers draw their visible tile objects and text objects. Other shapes are data for the app and for collision. Objects sort by their y position unless the layer draw order is `index`, and tile objects are placed by the tileset object alignment.
-- A layer with a parallax factor other than 1 shifts by the distance between the camera position and the map parallax origin, times one minus the factor. A factor below 1 makes a distant background, and a factor above 1 makes a foreground that moves faster than the camera.
+- A factor below 1 makes a distant background, and a factor above 1 makes a foreground that moves faster than the camera.
 - The method `map:update(dt)` advances animated tiles and belongs in the scene `update`.
 
 Tiny Island draws its ground layers under everything and its clouds over everything, with the game's own sprites in between. The world canvas sorts by depth, the ground layers go on a low layer with increasing depths, entities go on a middle layer with their y position as depth, and the clouds go on the highest layer. The code below is trimmed from `systems/island.lua` and `systems/game.lua`.

@@ -1,4 +1,4 @@
-# Ride Hailing
+# 🚕 Ride Hailing
 
 Ride Hailing is an app sample of a ride service in a made-up city: a day map of the city that fills the screen with live traffic, the search among 565 places, six kinds of ride with their prices and times, the whole trip from the search for a driver to the rating, 520 past trips, a wallet and an account behind a menu. It looks like a product of its kind in a sunny look of white sheets, ink and yellow over the map, and it works with a mouse, touch, a keyboard, gamepads and TV remotes on phones, tablets, desktops and televisions. Every place, driver and trip is fake data made from a seed, so the same city shows on every run.
 

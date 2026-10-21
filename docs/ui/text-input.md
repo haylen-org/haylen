@@ -1,4 +1,4 @@
-# Text input
+# ⌨️ Text input
 
 Text fields of the UI type through the native text input of each platform. A hidden native field sits over the focused field of the UI and edits its text, so phones, tablets and TVs open their software keyboard, and every platform but Linux brings its input methods for languages such as Japanese and Chinese, autocorrection, dictation, the emoji picker and native paste, copy and undo. The UI still draws the field, its text, its selection and its caret. This guide explains how the two sides stay in step and what each platform does. The [UI guide](ui.md#text-entry) shows how apps use text fields, and the [haylen.ui reference](../lua-api/ui.md#inputs) lists their keyboard options.
 

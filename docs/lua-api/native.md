@@ -1,4 +1,4 @@
-# haylen.native
+# 📖 `haylen.native`
 
 The module `haylen.native` loads native libraries for the `ffi` module of Varn, finds their symbols and creates callbacks that native code may call from any thread. Varn's `ffi` declares the C functions and types and calls them, and this module finds the file of a library where the app ships it, hands the library the interface of the engine, and brings the calls of native code back to the frame thread. The [native code guide](../platform/native.md) explains when to use it, how to package libraries with an app and how to integrate SDKs with a C API.
 

@@ -1,4 +1,4 @@
-# Particles
+# 🎆 Particles
 
 Haylen draws fire, smoke, sparks, weather, magic and every other particle effect with `particles2d::Emitter` (`engine/include/haylen/2d/particles/Emitter.hpp`), which `haylen.particles2d` exposes to Lua. This guide explains how emitters simulate and draw their particles, how effects of several emitters, trails and lights fit together, and what they cost. The [`haylen.particles2d` reference](../lua-api/particles2d.md) describes every option and the Lua API.
 

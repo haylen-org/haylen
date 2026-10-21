@@ -1,4 +1,4 @@
-# haylen.navigation2d
+# 📖 `haylen.navigation2d`
 
 The module `haylen.navigation2d` moves characters through the world. Navigation grids plan routes over square, isometric, staggered and hexagonal tile maps with A*, weighted A*, jump point search and hierarchical path finding, and build Dijkstra maps and flow fields that guide any number of units at once. Waypoint graphs find routes between hand-placed points, and navigation meshes find smooth routes through open levels for agents of any size. Steering agents move one character at a time with seek, flee, arrive, flocking, obstacle avoidance and wander, and crowds move thousands of agents together without collisions using optimal reciprocal collision avoidance. Long searches can run in the background and return promises. The [navigation guide](../2d/navigation.md) explains how to pick a method and keep searches off the frame.
 

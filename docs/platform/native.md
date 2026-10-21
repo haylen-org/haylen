@@ -1,4 +1,4 @@
-# Native code
+# 🔌 Native code
 
 An app reaches anything native, from the APIs of the platform to native libraries and SDKs with a C API, in three ways. This guide explains them, how to choose between them, how native libraries are called from Lua and how their callbacks reach it, how an app ships its libraries on every platform, and how to integrate SDKs with a C API, such as a game platform SDK with a flat C API or an online services SDK with peer-to-peer connections through NAT. The [`haylen.native` reference](../lua-api/native.md) and the [`haylen.platform` reference](../lua-api/platform.md) list every function, and the [platform bridge guide](platform-bridge.md) describes how bridge calls travel.
 

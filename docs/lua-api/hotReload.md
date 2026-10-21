@@ -1,4 +1,4 @@
-# haylen.hotReload
+# 📖 `haylen.hotReload`
 
 The module `haylen.hotReload` tells whether the app runs in development, where a saved file reaches the running app, and lets modules shape how they reload: a value a module keeps across its reloads, and a module that restarts the app instead of reloading. Every app has the module, so code that uses it runs unchanged in apps that ship, where nothing reloads. The [Lua guide](../core/lua.md#hot-reload) explains what a reload keeps and what it replaces.
 

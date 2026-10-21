@@ -1,4 +1,4 @@
-# Plugins
+# 🧩 Plugins
 
 A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. It is a folder with a manifest, `plugin.json`, a Lua API under `source/` and a native part for each platform it supports: Swift or Objective-C sources with Swift packages for Apple platforms, a Gradle library module for Android, ES modules for the web and a CMake library for desktops. The Lua API is the same on every platform. An app lists the plugins it uses in its `app.json`, and haylen.py checks them, puts their Lua code into the package and brings their native parts into the project of each platform through its generated folder `haylen/`, so an app still never compiles the engine.
 

@@ -1,4 +1,4 @@
-# haylen.collections
+# 📖 `haylen.collections`
 
 The module `haylen.collections` provides object pools that recycle Lua values, such as sprites, bullets and particles, so hot paths stop creating garbage, ring buffers that keep the newest values of a history, such as recent positions for a trail or frame times for a graph, and float buffers that Lua and C++ share, so thousands of sprites or bodies change without a table for each one.
 

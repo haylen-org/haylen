@@ -1,0 +1,55 @@
+# 📖 Lua API
+
+The reference lists every Lua module of Haylen: each function, type, method, property, option, default, event and error message, with an example. The guides of each block explain the ideas behind the modules.
+
+## Modules
+
+| Name | Description | Link |
+| --- | --- | --- |
+| `haylen` | Engine version, platform, graphics API, the resolved `app.json`, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. | [`haylen.md`](haylen.md) |
+| `haylen.accessibility` | The accessibility settings of the system with their changes: text scale, reduced motion, high contrast, reduced transparency and screen readers. | [`accessibility.md`](accessibility.md) |
+| `haylen.ai` | Finite state machines, behavior trees, utility selectors and influence maps. | [`ai.md`](ai.md) |
+| `haylen.animation2d` | Frame animations from grids and atlases with frame data, animators, animated sprite batches, state graphs, skeletal and cutout animation, and atlases packed at run time. | [`animation2d.md`](animation2d.md) |
+| `haylen.assets` | Loading package files now or in the background, and preload groups. | [`assets.md`](assets.md) |
+| `haylen.audio` | Sounds from files, bytes or raw samples, music, buses, effects, pause modes, interruptions and positional audio. | [`audio.md`](audio.md) |
+| `haylen.collections` | Object pools that recycle Lua values, ring buffers of the newest values and float buffers shared with C++. | [`collections.md`](collections.md) |
+| `haylen.content` | Which content plays and which assets are on the device, assets brought down ahead of time, and the updates of the content. | [`content.md`](content.md) |
+| `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`conversation.md`](conversation.md) |
+| `haylen.debug` | The debug statistics, object counts, monitors, the frame profiler and the recent log. | [`debug.md`](debug.md) |
+| `haylen.dialogs` | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. | [`dialogs.md`](dialogs.md) |
+| `haylen.events` | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. | [`events.md`](events.md) |
+| `haylen.graphics` | Textures from pixels, colors, images or the bytes of image files, with mipmaps, images on the CPU that decode and blit off the frame thread, render targets and whole frames read back without waiting for the GPU, PNG files, render targets, TrueType and bitmap fonts, font families, custom shaders and the graphics API. | [`graphics.md`](graphics.md) |
+| `haylen.graphics2d` | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, camera rigs with zones and rails, pixel canvases that scroll smoothly, parallax layers, sprites, sprite batches, tile layers baked by chunks, strokes with joins, caps, textures, widths and dashes, kept meshes that deform in place, groups that fade as one image, masks of any shape, shapes, meshes, text shaped in every script and ordered in both directions, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. | [`graphics2d.md`](graphics2d.md) |
+| `haylen.hotReload` | Whether the app runs in development, how changed modules reload in place, values a module keeps across its reloads and the `reloaded` hook. | [`hotReload.md`](hotReload.md) |
+| `haylen.imgui` | Dear ImGui windows for debug panels and tools. | [`imgui.md`](imgui.md) |
+| `haylen.input` | Keyboard, mouse, touch, gestures, gamepads and the action map. | [`input.md`](input.md) |
+| `haylen.jobs` | Long Lua work spread over several frames under a time budget. | [`jobs.md`](jobs.md) |
+| `haylen.lighting2d` | Point, spot and directional lights with blend modes, masks and shadows, occluders from outlines, physics bodies and Tiled maps, light queries and flame flicker. | [`lighting2d.md`](lighting2d.md) |
+| `haylen.localization` | Translated text with placeholders, plural forms and the direction of each language. | [`localization.md`](localization.md) |
+| `haylen.log` | Messages with a severity in the engine log. | [`log.md`](log.md) |
+| `haylen.math` | The types `Vec2`, `Rect`, `Color` and `Transform2D`, random numbers, noise, easing, geometry, ray casts against shapes, polygon booleans, marching squares, splines, springs, shuffle bags, weighted choices and Poisson disk sampling. | [`math.md`](math.md) |
+| `haylen.native` | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. | [`native.md`](native.md) |
+| `haylen.navigation2d` | A\*, weighted A\*, jump point search and hierarchical path finding on square, isometric, staggered and hexagonal grids, Dijkstra maps, flow fields, waypoint graphs, navigation meshes with agent radius, steering agents and ORCA crowds, with asynchronous versions. | [`navigation2d.md`](navigation2d.md) |
+| `haylen.net` | WebSocket connections with reconnection and pings. | [`net.md`](net.md) |
+| `haylen.nodes2d` | Retained trees of 2D nodes with transforms, colors, visibility and layers that subtrees inherit, culled drawing in one call, prefabs, saving to descriptions, nodes that follow bodies and native properties for tweens. | [`nodes2d.md`](nodes2d.md) |
+| `haylen.particles2d` | Particle emitters, composite systems, trails and `.particles` effect files. | [`particles2d.md`](particles2d.md) |
+| `haylen.physics2d` | Box2D worlds stepped on several threads with interpolation between fixed steps, bodies, shapes with their materials, geometry and outlines for drawing, joints that change while they run and break under load, contacts, sensors, ray casts with filters, piercing, bounces and fans, shape casts, batched ray casts on the job system, screen picking with a radius, path prediction, ray debug drawing and queries, with ropes, bridges, ragdolls, side and top-down vehicles, character movers, grabbers, force fields, one-way platforms, conveyors, explosions, destructible terrain, fractures and fluids. | [`physics2d.md`](physics2d.md) |
+| `haylen.platform` | The JSON bridge to native code, such as sign-in and purchases, with bytes next to the JSON, typed errors, timeouts, cancellation, calls without answers, retained and batched events, the handles of the plugins of the app and the video and audio streams of their native parts. | [`platform.md`](platform.md) |
+| `haylen.preferences` | Player preferences that persist between sessions. | [`preferences.md`](preferences.md) |
+| `haylen.procedural2d` | Scattering over regions, caves, dungeons, mazes, Wave Function Collapse, Delaunay and Voronoi, and autotiling, all deterministic by seed and with asynchronous versions. | [`procedural2d.md`](procedural2d.md) |
+| `haylen.scene` | The stack of scenes and their lifecycle: asynchronous loads with progress, preloads, loading views, transitions that cover, hold and reveal or keep both scenes alive with built-in and custom effects, completion promises, tasks and listeners that end with their scene, process modes and platform events. | [`scene.md`](scene.md) |
+| `haylen.signal` | Signals with priorities, one-shot, deferred and owned listeners, and the `Connection` of every listener. | [`signal.md`](signal.md) |
+| `haylen.spatial2d` | Spatial hashes, quadtrees, dynamic AABB trees and k-d trees with area, circle, point, ray and nearest queries, screen picking, and grid algorithms: ray casts, Bresenham lines and circles, field of view, visibility polygons, flood fills, connected regions and union-find. | [`spatial2d.md`](spatial2d.md) |
+| `haylen.storage` | Private files of the player, the folder Varn's `fs` shares with them, and named save slots with summaries, on the frame thread or asynchronously on the I/O pool. | [`storage.md`](storage.md) |
+| `haylen.system` | What the device and its operating system are, the theme and the battery with their changes, opening urls and vibrating. | [`system.md`](system.md) |
+| `haylen.tiled` | Tiled maps and worlds: drawing with y sorting, maps built at run time with terrain painting and saved as Tiled JSON, collision, objects and spawning, ray casts against tiles and objects, and object outlines for navigation meshes. | [`tiled.md`](tiled.md) |
+| `haylen.timer` | Functions that run after a delay or at an interval, with owners and process modes. | [`timer.md`](timer.md) |
+| `haylen.tween` | Tweens of fields and engine properties, ready-made motions, timelines, staggers and full playback control. | [`tween.md`](tween.md) |
+| `haylen.ui` | Themed menus, HUDs, dialogs and touch controls, mirrored for right-to-left languages, with images made at run time from textures, render targets and vector images. | [`ui.md`](ui.md) |
+| `haylen.video` | Video files of the package played into a texture with the decoder of each platform, with play, pause, seek, loop, rate, sound through a bus of the mixer, events and asynchronous loads. | [`video.md`](video.md) |
+| `haylen.viewport` | The design resolution and scaling policy, which change while the app runs, the visible area, the safe area and the edges that native views reserve. | [`viewport.md`](viewport.md) |
+| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard and clipboard, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. | [`window.md`](window.md) |
+
+## Varn modules
+
+The engine runs on the [Varn](https://github.com/varn-org/varn) runtime, so its modules are available to apps too: `async` for coroutines and promises, `http`, `socket`, `json`, `fs`, `zip`, `crypto`, `log`, `platform`, `process`, `datetime`, `xml` and `ffi`, which calls C functions of native libraries that `haylen.native` loads. Their reference lives in the Varn repository. Engine functions that finish later return Varn promises, which a coroutine started with `async.spawn` waits for with `:await()`.

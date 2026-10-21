@@ -1,4 +1,4 @@
-# haylen.conversation
+# 📖 `haylen.conversation`
 
 The module `haylen.conversation` runs branching conversations: nodes of lines with a speaker and tags, choices that conditions allow, variables, jumps, commands that reach the app, visit counts, variants that a seeded generator picks, and saves that resume a conversation where it stood. Use it for dialogue, tutorials, onboarding and any script of lines and answers. The writing lives in `.conversation` files of the app, and the runtime only walks them.
 

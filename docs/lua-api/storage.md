@@ -1,4 +1,4 @@
-# haylen.storage
+# 📖 `haylen.storage`
 
 The module `haylen.storage` reads and writes private files of the current player and app, such as caches and exported data, and keeps named save slots for app progress among them. Every app gets its own folder, named after the `identifier` in `app.json`, so two apps never see each other's files. Use it whenever the app needs to keep data between sessions. Player preferences such as volume or controls belong in [`haylen.preferences`](preferences.md) instead.
 

@@ -1,4 +1,4 @@
-# Text
+# 🔤 Text
 
 Haylen draws text from fonts of two kinds and styles it with BBCode markup. This guide explains fonts, font families and bitmap fonts, how text in every script is shaped, ordered in its direction and broken into lines, the markup of rich text with its effects and typewriter reveal, and how 2D drawing and the UI show it. The [`haylen.graphics` reference](../lua-api/graphics.md#font) lists the font API, the [`haylen.graphics2d` reference](../lua-api/graphics2d.md#richtext) the rich text API, and the [`haylen.ui` reference](../lua-api/ui.md#uirichtextproperties) the `richText` component.
 

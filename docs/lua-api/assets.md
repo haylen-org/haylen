@@ -1,4 +1,4 @@
-# haylen.assets
+# 📖 `haylen.assets`
 
 Loads the files of the app package: textures, fonts, shaders, sounds, JSON data, sprite atlases, particle effects and Tiled maps. Use it to load an asset right away, to load one in the background with a promise, and to preload named groups of assets behind a loading screen. The [loading guide](../content/loading.md) explains how these loads work with autoloads, scenes, the delivery of content that downloads and the caches of a release.
 

@@ -1,4 +1,4 @@
-# haylen
+# 📖 `haylen`
 
 The root `haylen` module holds information about the running engine and the app clock. It exposes the engine version, the platform, the graphics API and the resolved `app.json` configuration, and it reads frame times, scales app time, quits the app or stops it with an error screen. Use it to adapt to the platform, to pause or slow down gameplay and to read timing outside scene callbacks.
 

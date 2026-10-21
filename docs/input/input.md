@@ -1,4 +1,4 @@
-# Input
+# 🎮 Input
 
 [haylen.input](../lua-api/input.md) gives apps two levels of input. The raw level reports keyboards, mice, touch screens, gestures and gamepads directly. The action map on top of it gives names to gameplay actions such as `move` or `attack` and binds each one to any number of keys, mouse buttons, gamepad controls and on-screen touch controls, so gameplay code reads `input.pressed('attack')` and works on every device without extra code. All gameplay input goes through the action map. Menus, tools and text entry read the raw devices when they need them.
 
@@ -191,7 +191,7 @@ Values written during a frame reach the actions at the start of the next frame, 
 
 ## Last device and touch-only controls
 
-The function `input.lastDevice()` returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Key presses and mouse button presses select `'keyboardMouse'`, touches select `'touch'`, and a gamepad button going down or an axis leaving the dead zone selects `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
+The function `input.lastDevice()` returns the kind of device the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Moving the mouse alone does not change it, and neither do key repeats or a gamepad button or stick that stays held, so a player who holds a trigger and then presses a key gets keyboard prompts. Use it to show matching button prompts.
 
 ```lua
 local prompts = {keyboardMouse = 'Press Space', touch = 'Tap the screen', gamepad = 'Press A'}

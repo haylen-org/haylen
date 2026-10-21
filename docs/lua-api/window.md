@@ -1,4 +1,4 @@
-# haylen.window
+# 📖 `haylen.window`
 
 The module `haylen.window` controls the native window, or the canvas on the web, that the app runs in: its size, fullscreen state, title, mouse cursor, on-screen keyboard, screen orientation, the fold of foldable and dual-screen devices and clipboard, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and the clicks that pass through it. The initial window settings come from the `window` section of `app.json`. Use this module for options menus, text entry, mouse capture and apps that live on the desktop. Drawing sizes are in design units, so layout code normally uses `haylen.viewport` instead of the window size.
 
@@ -398,7 +398,7 @@ C++ code reads the fold in framebuffer pixels with `core::Engine::getFold()`, a 
 
 Windows, macOS and Linux run apps in windows that can drop their title bar, float above other windows, stay out of the taskbar, refuse the focus, let clicks through and move with the mouse, which suits games that live on the desktop, such as a strip above the taskbar. The [desktop guide](../platform/desktop.md) shows how they fit together and what each system allows. Phones, tablets, TVs and browsers run apps in a window that fills the screen or the page: there the setters keep and report their values without changing anything, `frame()` returns the screen in points and `monitors()` returns the screen as the only monitor.
 
-Frames and monitors are in desktop points, with the origin at the top left corner of the primary monitor and y growing down. A desktop point is a point of macOS, and on Windows and Linux a pixel divided by the scale of the primary monitor, so a window of 1280 by 720 points in `app.json` has a frame of 1280 by 720 points.
+Frames and monitors use the desktop points that the [desktop guide](../platform/desktop.md) explains, from the top left corner of the primary monitor. A desktop point is a point of macOS, and on Windows and Linux a pixel divided by the scale of the primary monitor, so a window of 1280 by 720 points in `app.json` has a frame of 1280 by 720 points.
 
 ### window.canBeTransparent()
 

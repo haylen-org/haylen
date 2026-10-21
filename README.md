@@ -41,7 +41,7 @@ Haylen is built so that coding agents write correct apps and extend the engine w
 | 🌐 | Web | WebGPU, or WebGL2 where the browser lacks it |
 | 🥽 | visionOS | Metal, running the iPad app |
 
-The [distribution guide](docs/tools/distribution.md#platform-support) lists the minimum versions and how each platform runs.
+The guide to distribution in the documentation lists the minimum versions and how each platform runs.
 
 ## Features
 
@@ -97,18 +97,7 @@ scene.push({
 
 ## Documentation
 
-The [documentation index](docs/README.md) follows the modules of the engine, with the guides and the Lua reference of each one:
-
-| Module | Start here |
-| --- | --- |
-| Core | [Architecture](docs/core/architecture.md), [lifecycle](docs/core/lifecycle.md) and [Lua](docs/core/lua.md) |
-| Graphics | [Graphics and text](docs/README.md#graphics) |
-| 2D | [Animation, particles, lighting, physics, Tiled maps, navigation and procedural generation](docs/README.md#2d) |
-| UI | [Components, themes and focus](docs/README.md#ui) |
-| Audio and input | [Audio](docs/README.md#audio) and [input](docs/README.md#input) |
-| Platform | [Hosts, plugins and services](docs/README.md#platform) |
-| Network and content | [Network](docs/README.md#network) and [content](docs/README.md#content) |
-| Tools | [Building, distribution, testing](docs/README.md#tools) and the [API policy](docs/api-policy.md) |
+The [documentation](docs/README.md) explains how every block of Haylen works, from the architecture to building and shipping apps, and lists the whole Lua API with an example for each capability.
 
 ## License
 

@@ -1,4 +1,4 @@
-# haylen.nodes2d
+# 📖 `haylen.nodes2d`
 
 The module `haylen.nodes2d` keeps a retained tree of 2D nodes. Each node has a local transform relative to its parent, so children follow their parents, such as a turret on a tank, a sword in a hand or a bar over a unit, and a color, a visibility and a layer that its descendants inherit. A node shows at most one thing: a sprite, a block of text, a nine-slice frame or particles. The tree updates every world transform in one pass and draws every node in one call, leaving out the nodes outside the view, so a scene of thousands of composed objects costs two calls from Lua per frame. Subtrees load from `.prefab` files and from descriptions, and save back to descriptions. The [nodes guide](../2d/nodes.md) explains when to use a tree and how it works with the other modules.
 

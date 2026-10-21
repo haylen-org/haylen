@@ -1,4 +1,4 @@
-# Haylen — project guide
+# 🧭 Haylen — project guide
 
 Haylen is a reusable engine for games, multimedia apps and applications. It is 2D and organized so that 3D can grow next to it without renaming anything. Its core is C++20, and its whole API is exported to Lua through [Varn](https://github.com/varn-org/varn). Lua is the primary way to write apps, and every capability stays fully usable from C++. The repository holds the engine, the platform templates, the tools and the sample apps.
 
@@ -119,7 +119,7 @@ This file is binding for every change. It describes the project as it is and the
 ## Lua bindings
 
 - Each context keeps its Lua binding class next to it, such as `engine/src/2d/physics/Physics2DLua.cpp`, built with the public toolkit in `engine/include/haylen/lua/` (`Binding`, `ClassBuilder`, `Userdata`, `Stack`, `Converter`, `EnumNames`, `Table`, `Promise`, `Reference`, `TypeConverter` and `Runtime`). Projects that extend the engine use the same toolkit.
-- Every public C++ and Lua API follows `docs/api-policy.md`, which says what is public and stable and how an API grows without breaking apps: options in a trailing table, returns that describe something as tables, event payloads as one table or at most two values in a fixed order, the same words for the same ideas across modules, and an `owner` on everything that registers a callback, a task or a job.
+- Every public C++ and Lua API follows `docs/tools/api-policy.md`, which says what is public and stable and how an API grows without breaking apps: options in a trailing table, returns that describe something as tables, event payloads as one table or at most two values in a fixed order, the same words for the same ideas across modules, and an `owner` on everything that registers a callback, a task or a job.
 - The Lua API is the same on every backend and platform. A Lua binding never includes a backend, a host or a platform folder, which `tools/test_haylen.py` checks, so what a script sees never depends on what draws the app.
 - Options are passed as tables whose unknown keys raise `Unknown option "<key>".`, and enums are passed as their string names.
 - Option tables read on every draw or for every item go through `Table::readFields`, which reads the keys a table holds in one pass with `Table::readValue`, instead of one `Table::readField` per known option.
@@ -169,7 +169,7 @@ templates/
   plugin/                 The skeleton of a native plugin that haylen.py plugin new copies, with a working part for every platform in apple/, android/, web/ and native/, and the .gitignore, .editorconfig and .clang-format of a plugin repository.
   plugin-features/        The features that haylen.py plugin new --with adds to that skeleton, the camera, the microphone, the location and a native banner, each with its files and the code it adds to the parts of the skeleton, and the parts they share.
 tools/                    The PNG reader and writer of the tools that draw sample art, the checkers of the pivots of the animated sheets and of the edges of the images of the samples with what they declare, the tool that joins the ends of a painted strip of scenery so it repeats without a seam, and test_haylen.py, the tests of the rules of haylen.py and the repository.
-docs/                     The index of the docs, the guides in one folder per engine module, the Lua API reference in lua-api/, the API policy and the guide to installers in CI.
+docs/                     The index of the docs, one folder per block with its index and guides, and the Lua API reference with its index in lua-api/.
 extras/images/            Brand images: the vertical and horizontal logos, the symbol, and the logo variants with a white wordmark for dark backgrounds.
 ```
 
@@ -302,8 +302,12 @@ These rules apply to every text the project writes: code comments, documentation
 ## Documentation
 
 - Every change updates the docs it affects in the same change.
-- The docs are organized by engine module. The file `docs/README.md` is their one index, with a section per module that lists its guides and its reference pages. Guides live in the folder of their module, `docs/core/`, `docs/graphics/`, `docs/2d/`, `docs/ui/`, `docs/audio/`, `docs/input/`, `docs/platform/`, `docs/network/`, `docs/content/` and `docs/tools/`, and every module of `docs/2d/` has its own guide, so a 3D module gets its own folder next to them. The pages that span modules, `docs/api-policy.md` and `docs/ci-installers.md`, stay at the root of `docs/`.
-- Every Lua module has a reference page in `docs/lua-api/<module>.md` with the complete API, the options, defaults and error messages, and a runnable example of every capability, which the section of its module in `docs/README.md` lists.
-- The guides explain the architecture, the lifecycle, the build, distribution, embedding, testing and each system in depth. The file `docs/tools/testing.md` describes the test support, `docs/tools/distribution.md` the commands, templates and platform support, `docs/core/architecture.md` the libraries, source layout, plugins, frame and threads, and `docs/2d/physics.md` the physics system, its common problems and its performance.
+- The docs form one tree that a reader walks from the top: the main `README.md`, which presents Haylen, gives the quick start and links the documentation once, through `docs/README.md`, the index of the blocks, whose tables lead to the index of each block, `docs/<block>/README.md`, whose tables list its pages. The blocks of guides follow the contexts of the engine, `core`, `graphics`, `2d`, `ui`, `audio`, `input`, `platform`, `network`, `content` and `tools`, and every module of `docs/2d/` has its own guide, so a 3D block gets its own folder next to them. The block `lua-api` holds the reference.
+- The tables of the indexes have three columns, `Name`, `Description` and `Link`, with the rows in alphabetical order of their names and the path of the page as the text of its link. A table never mixes guides with reference pages: the index lists the blocks of guides and the reference in sections of their own, and a block index lists its guides and the reference pages of its modules in separate tables.
+- Guides explain concepts: what a system is, how it works, when to use what and how its parts fit together. Reference pages list the API of one Lua module: every function, type, method, property, option, default, event and error message. A subject lives in one page, so a guide links to the reference instead of repeating its options, and a reference links to the guide instead of explaining its concepts.
+- Every Lua module has a reference page in `docs/lua-api/<module>.md`, which `docs/lua-api/README.md` and the index of its block list.
+- The guides explain the architecture, the lifecycle, the build, distribution, embedding, testing and each system in depth. The file `docs/tools/testing.md` describes the test support, `docs/tools/distribution.md` the commands, templates and platform support, `docs/core/architecture.md` the libraries, source layout, plugins, frame and threads, `docs/2d/physics.md` the physics system, its common problems and its performance, `docs/tools/api-policy.md` what is public and stable, and `docs/tools/ci-installers.md` the installers that CI builds.
+- Every page follows one pattern. Its title starts with one emoji, such as `# 🎨 Rendering` or ``# 📖 `haylen.timer` ``, its first paragraph says what the page covers, its sections carry no emoji, so their anchors stay plain, code, names, paths, keys and values are in backticks, and every code block names its language.
+- The docs are written in easy English: short sentences, common words, one idea per sentence and every term explained where it first appears. Every capability has a code example.
 - Markdown prose is never hard-wrapped. One paragraph is one line.
-- The main `README.md` is presentation and quick start only.
+- The tests `DocsTest` of `tools/test_haylen.py` check the tree, the tables of the indexes, the titles, the code blocks, the paragraphs, every relative link and its heading, and that no long sentence of a guide repeats in another page.

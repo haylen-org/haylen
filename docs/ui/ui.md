@@ -1,4 +1,4 @@
-# UI
+# 🪟 UI
 
 Haylen has two interface modules, and both draw over the app in design units with the active theme. The module [`haylen.ui`](../lua-api/ui.md) builds the interface players see, such as menus, HUDs, settings screens, dialogs and on-screen touch controls, as retained trees of themed components. The module [`haylen.imgui`](../lua-api/imgui.md) exposes Dear ImGui immediate mode windows for debug panels, cheat menus and tools. This guide explains how the retained UI is organized, how themes work and when to reach for each module. The reference pages, indexed in the [Lua API reference](../README.md), list every property, event and error.
 
@@ -33,7 +33,7 @@ function pause:enter()
 end
 ```
 
-Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. A GUI holds at most 64 levels, the root included, and 20000 nodes, and `gui:replaceChildren` keeps it within them. A node table that holds itself, such as `c[1] = c`, raises the same error instead of nesting without end.
+Every property is checked when the tree is built, so a misspelled key or a wrong value raises an error that names the kind and the key, such as `The property "width" of a "label" must be a non-negative number or "auto".`, and nothing is mounted. A GUI holds at most 64 levels, the root included, and 20000 nodes, and `gui:replaceChildren` keeps it within them.
 
 ### Screens in JSON
 
@@ -109,7 +109,7 @@ The function `ui.mount` takes four options.
 | `sharedFocus` | `false` | GUIs mounted with `sharedFocus = true` form one navigation space, so a remote moves the focus from a page to a tab bar or a player bar that is a GUI of its own. |
 | `owner` | none | A table or userdata, such as a scene, that owns the GUI. The GUI unmounts when the owner is released, as a scene is when it unloads, so a scene that mounts with `owner = self` needs no `unmount` of its own. |
 
-The root fills the whole area when its `align` is `stretch`, which is the default of containers. With `start`, `center` or `end` the root keeps its measured size and sits at the top left, the center or the bottom right of the area.
+The root fills the whole area when its `align` is `stretch`, which is the default of containers.
 
 Inside a GUI, nodes draw in the order of the tree, and a scroll draws its content at the place of its node, so the nodes after it, such as an anchored bottom sheet, cover what scrolls.
 
@@ -251,9 +251,9 @@ ui.settingsRow{label = widgets.text('settings.music'), ui.slider{value = prefere
 end}}
 ```
 
-Events are collected while the GUI draws and handed to the handlers once per frame, in the engine update of the next frame, before the scenes update. An error inside a handler stops the app and shows the error screen with the message and its Lua stack trace. A node with handlers and no `id` gets an engine id such as `#1`. The method `set` adds or replaces handlers, and handlers leave with their node.
+An error inside a handler stops the app and shows the error screen with the message and its Lua stack trace. A node with handlers and no `id` gets an engine id such as `#1`. The method `set` adds or replaces handlers, and handlers leave with their node.
 
-The [event table](../lua-api/ui.md#events-and-handlers) of the reference lists which kind reports which event. Event values never use the names `id`, `name` and `gui`, so the item of a `select` arrives as `event.item` and the button of an `answer` as `event.button`, next to the node id in `event.id`. Every node also reports `focus` and `blur` as the focus comes and goes, and focus scopes and GUI roots hear `cancel`. Every node can also report its lifecycle and the pointer: `mount` and `unmount` when it joins and leaves its GUI, `show` and `hide` when it starts and stops drawing, and `hover`, `press`, `drag`, `release` and `scroll` with positions and scroll distances, which a custom control or a draggable card builds on. Each of these reports only while the node has a handler for it, since watching them costs a check every frame, and `unmount` runs at once, before the change that removes the node returns, as [the events of every kind](../lua-api/ui.md#the-events-of-every-kind) describes.
+The [event table](../lua-api/ui.md#events-and-handlers) of the reference lists which kind reports which event. Every node also reports `focus` and `blur` as the focus comes and goes, and focus scopes and GUI roots hear `cancel`. Every node can also report its lifecycle and the pointer: `mount` and `unmount` when it joins and leaves its GUI, `show` and `hide` when it starts and stops drawing, and `hover`, `press`, `drag`, `release` and `scroll` with positions and scroll distances, which a custom control or a draggable card builds on. Each of these reports only while the node has a handler for it, since watching them costs a check every frame, and `unmount` runs at once, before the change that removes the node returns, as [the events of every kind](../lua-api/ui.md#the-events-of-every-kind) describes.
 
 ### Pointer, keyboard and gamepad
 

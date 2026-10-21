@@ -1,4 +1,4 @@
-# haylen.scene
+# 📖 `haylen.scene`
 
 The module `haylen.scene` manages the stack of scenes that make up the app, such as the title screen, a level, a pause menu or a dialog. A scene is a Lua table with optional hooks. Every scene loads before it enters, asynchronously when it needs to, and unloads after it exits, and every change of the stack runs through one pipeline: the transition covers the current scene, the next scene loads, optionally behind a loading view, enters, and the transition reveals it. Only the top scene receives input and updates, when its process mode lets it run, while scenes below a transparent scene keep rendering, which is how overlays such as pause menus work. The [lifecycle guide](../core/lifecycle.md) explains the whole pipeline with its order of hooks and events, the pause and the process modes.
 

@@ -1,4 +1,4 @@
-# haylen.localization
+# 📖 `haylen.localization`
 
 Translated text by key, with placeholders, plural forms by the rules of each language, a fallback language, and numbers, dates and lists written the way each language writes them. Use it for every piece of text the player reads, so the app can ship in several languages and switch between them at runtime.
 

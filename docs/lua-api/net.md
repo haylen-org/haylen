@@ -1,4 +1,4 @@
-# haylen.net
+# 📖 `haylen.net`
 
 The module `haylen.net` opens WebSocket connections to `ws://` and `wss://` servers and encodes and decodes MessagePack. Use it for real-time multiplayer, chat, live events and any server that pushes messages to the app. For plain HTTP requests use Varn's `http` module, whose timeouts the [Lua guide](../core/lua.md#asynchronous-code) explains, and for raw TCP use Varn's `socket` module. The [networking guide](../network/networking.md) tells what each platform offers and what the browser refuses.
 

@@ -1,4 +1,4 @@
-# haylen.viewport
+# 📖 `haylen.viewport`
 
 The module `haylen.viewport` describes how the fixed design resolution from `app.json` maps onto the real framebuffer. Apps draw and lay out in design units, and the viewport scales them to any screen according to the scaling policy. Use this module to place the HUD inside the visible and safe areas and to convert between design units and framebuffer pixels. Positions in input events and in `haylen.input` are already in design units.
 

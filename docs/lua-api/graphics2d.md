@@ -1,4 +1,4 @@
-# haylen.graphics2d
+# 📖 `haylen.graphics2d`
 
 The module `haylen.graphics2d` draws everything a 2D app shows: sprites, sprite batches, shapes, meshes, text, rich text, nine-slice frames, metaballs, lights, occluders and parallax layers, into world, screen and offscreen canvases, shades them with custom shader materials, and captures whole frames into render targets. Use it inside the `render` and `renderUi` callbacks of a scene, and use its cameras, sprites, batches and materials anywhere. Textures, render targets, fonts and shaders come from [`haylen.graphics`](graphics.md), and lights and occluders from [`haylen.lighting2d`](lighting2d.md).
 

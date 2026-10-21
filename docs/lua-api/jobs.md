@@ -1,4 +1,4 @@
-# haylen.jobs
+# 📖 `haylen.jobs`
 
 The module `haylen.jobs` spreads long Lua work across several frames so the app keeps its frame rate. The Lua state belongs to the frame thread, so jobs run there as coroutines that share a time budget each frame, and a job pauses at `jobs.checkpoint()` once the budget is spent. Use jobs for heavy work written in Lua, such as generating a map, precomputing paths or processing a large save. Engine work written in C++, such as image and audio decoding, already runs on worker threads and does not need jobs.
 

@@ -1,4 +1,4 @@
-# Desktop apps
+# 🖥️ Desktop apps
 
 On Windows, macOS and Linux a Haylen app runs in a window of the desktop, which can be much more than a rectangle with a title bar. A window can drop its decorations, let the desktop show through its transparent pixels, float above the other windows, stay out of the taskbar and the Dock, refuse the keyboard focus, let clicks pass through to the windows behind it, and move when the player drags its content. Together these make games that live on the desktop, such as a strip above the taskbar where a little hero walks and fights while the player works, a pet that walks along the bottom of the screen, or an overlay that shows information over other apps.
 

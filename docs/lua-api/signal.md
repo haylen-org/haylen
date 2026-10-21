@@ -1,4 +1,4 @@
-# haylen.signal
+# 📖 `haylen.signal`
 
 The module `haylen.signal` creates signals. A signal lets one object announce that something happened without knowing who listens, and emitting it calls every connected function with the emitted values. Use a signal when one object owns the announcement, such as a player that announces its health, and use [`haylen.events`](events.md) for announcements by name that the whole app may care about.
 

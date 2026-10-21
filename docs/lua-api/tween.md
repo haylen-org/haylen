@@ -1,4 +1,4 @@
-# haylen.tween
+# 📖 `haylen.tween`
 
 The module `haylen.tween` animates values over time. A tween moves fields of tables and properties of engine objects toward target values with an easing curve, and it can repeat, yoyo, run backwards, seek and be awaited. Ready-made tweens move, scale, rotate, fade, tint, jump, follow paths and Bézier curves, blink, shake and punch. Timelines play tweens, pauses and calls at their places in time and nest into each other, and staggers start the same tween on many targets one after another. Use tweens for UI motion, camera moves, fades, juice such as hits and pickups, and scripted cutscenes.
 

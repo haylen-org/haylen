@@ -1,4 +1,4 @@
-# Haylen Tests
+# 🧪 Haylen Tests
 
 Haylen Tests is the test project of the engine: one app with a test of every engine feature, from sprites to native plugins, grouped in categories. Every test has a code, such as `PHY-004`, which the menu, the header of the test and every log line of the test show, so a failing test is reported by its code. Codes never change and are never reused, and a new test takes the next number of its category.
 

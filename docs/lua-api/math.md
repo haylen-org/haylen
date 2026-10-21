@@ -1,4 +1,4 @@
-# haylen.math
+# 📖 `haylen.math`
 
 The module `haylen.math` provides the math types that the rest of the engine uses, `Vec2`, `Rect`, `Color` and `Transform2D`, together with a seeded random generator, gradient and cellular noise, easing curves, scalar helpers, circle and segment tests, ray casts against shapes, polygon utilities, signal filters, polygon booleans and offsets, marching squares, splines, critically damped springs, shuffle bags, weighted choices and Poisson disk sampling. Use it for gameplay math, procedural generation and anything that passes positions, areas or colors to other modules. Lua's standard `math` library stays available for everything else.
 

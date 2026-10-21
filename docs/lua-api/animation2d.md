@@ -1,4 +1,4 @@
-# haylen.animation2d
+# 📖 `haylen.animation2d`
 
 The module `haylen.animation2d` plays frame animations on sprites, and skeletal and cutout animation on skeletons. It cuts animations from sprite sheet grids or from lists of frames, reads sprite atlas JSON files with their frame tags, nine-slices and frame data, and drives named animations with an animator that reports frame changes, frame events and finished animations. Frames carry the data action games read at them: a pivot, named boxes such as hitboxes and hurtboxes, named points such as a hand or a muzzle, named events, and a length in ticks for animations that advance by fixed steps. Its chains bend legs, bodies and tails for procedural animation. Use it for characters, effects and animated UI. The [animation guide](../2d/animation.md) explains which player suits which need.
 

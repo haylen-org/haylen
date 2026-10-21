@@ -1,4 +1,4 @@
-# haylen.content
+# 📖 `haylen.content`
 
 The module `haylen.content` tells which content the app plays and which of its assets are on the device, brings assets down ahead of time without loading them, and checks, downloads and applies the updates of the content. Most apps never need it: assets load with [`haylen.assets`](assets.md), which brings assets that are not on the device before it reads them, and the engine downloads the content an app needs to start, the prefetched content and its updates by itself. The module serves apps that show the state of their content, bring a region of their world down while the player is elsewhere, or decide themselves when to update.
 

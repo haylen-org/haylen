@@ -1,4 +1,4 @@
-# Tiny Island
+# 🏝️ Tiny Island
 
 Tiny Island is a survival game written in Lua on top of Haylen. A survivor lives on an island with a campfire. During the day they chop trees, carry the wood to the fire and hunt sheep for food. At night raiders land on the shores, and only the light of the fire keeps them out. Every piece of wood makes the safe circle larger, the fire burns faster at night and loses fuel with every new day, and an empty belly costs health. The game ends when the survivor falls, and the longest run is saved as the record.
 

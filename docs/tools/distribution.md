@@ -1,4 +1,4 @@
-# Distributing apps
+# 🚚 Distributing apps
 
 A Haylen app is a package: `app.json`, the Lua modules under `source/` and the assets under `content/`. The engine is compiled once into prebuilt artifacts for every platform, and the project of each platform, which starts as a copy of the template of its platform, belongs to the developer. The script `haylen.py` writes the name, identifier, version, orientation and splash screen of `app.json`, the package and the plugins of the app into one generated folder of that project, builds the project where it is and launches it. A Lua app never compiles the engine, and the same package runs on every platform.
 
@@ -240,7 +240,7 @@ steps:
   - run: echo "${{ secrets.ANDROID_KEYSTORE }}" | base64 --decode > "$HAYLEN_RELEASE_STORE_FILE"
 ```
 
-The command `base64 < platform/android/keystore/release.jks` prints the text of the `ANDROID_KEYSTORE` secret, the [installers in CI](../ci-installers.md) guide builds the App Bundle with these secrets, and `apksigner verify --print-certs` of the build tools of the Android SDK shows the certificate that signed an APK.
+The command `base64 < platform/android/keystore/release.jks` prints the text of the `ANDROID_KEYSTORE` secret, the [installers in CI](ci-installers.md) guide builds the App Bundle with these secrets, and `apksigner verify --print-certs` of the build tools of the Android SDK shows the certificate that signed an APK.
 
 ### dist
 
@@ -291,7 +291,7 @@ steps:
 | `WINDOWS_CERTIFICATE_PWD` | The password of the PFX file. |
 | `WINDOWS_TIMESTAMP_URL` | The time stamp server of the authority that issued the certificate. |
 
-The [installers in CI](../ci-installers.md) guide gives the whole workflow of every platform. The content keys of the app reach the workflow through `HAYLEN_KEYS_DIR` as [the content guide](../content/content.md) describes, since every release of an app needs the keys of its earlier releases. The command `signtool verify /pa /v my-game-1.0.0-setup.exe` shows the signature of an installer.
+The [installers in CI](ci-installers.md) guide gives the whole workflow of every platform. The content keys of the app reach the workflow through `HAYLEN_KEYS_DIR` as [the content guide](../content/content.md) describes, since every release of an app needs the keys of its earlier releases. The command `signtool verify /pa /v my-game-1.0.0-setup.exe` shows the signature of an installer.
 
 Linux packages carry no signature of their own: the repositories that publish `.deb` packages sign their indexes, and the AppImage takes a GnuPG signature from `CPACK_APPIMAGE_SIGN` and `CPACK_APPIMAGE_SIGN_KEY` in the project.
 

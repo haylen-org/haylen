@@ -1,4 +1,4 @@
-# haylen.video
+# 📖 `haylen.video`
 
 The module `haylen.video` plays video files of the package into a texture, which sprites, UI images, materials and anything else that draws a texture show, with its sound through the mixer and a bus of [`haylen.audio`](audio.md). Use it for intros, cutscenes, tutorials, animated backgrounds and menus.
 

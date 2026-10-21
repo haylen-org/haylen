@@ -1,4 +1,4 @@
-# Nodes
+# 🌳 Nodes
 
 The module `haylen.nodes2d` keeps composed 2D objects as retained trees, such as a tank with its turret, a character with a sword in its hand or a unit with a bar over its head. This guide explains when a tree is the right tool, how a tree updates and draws, how nodes work with the other modules, and how to keep large trees fast. The [`haylen.nodes2d` reference](../lua-api/nodes2d.md) lists the complete API.
 

@@ -1,4 +1,4 @@
-# Animation
+# 🎞️ Animation
 
 The module `haylen.animation2d` moves the images of an app: frame animations cut from sprite sheets and atlases, the animators that play them on sprites, batches that animate whole crowds in C++, state graphs that pick the animation of a character from its parameters, skeletons that animate characters made of parts, and atlases packed while the app runs. This guide explains how the pieces fit together and which one to use. The [`haylen.animation2d` reference](../lua-api/animation2d.md) lists the complete API.
 

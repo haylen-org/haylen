@@ -1,4 +1,4 @@
-# Busy Interface
+# 🏋️ Busy Interface
 
 Busy Interface is a stress sample of the UI: one dense screen of a made-up container port in operation, the way an operations dashboard looks. Live cards show metrics that change every frame, charts drawn with `haylen.graphics2d` sit next to the UI, recycled lists and grids hold tens of thousands of vessels and containers, a table follows the berths and a feed of events grows at the bottom of its list. The panel raises and lowers the load, so the cost of a heavy interface shows in the readout while it runs.
 

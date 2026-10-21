@@ -1,4 +1,4 @@
-# haylen.log
+# 📖 `haylen.log`
 
 The module `haylen.log` writes messages to the engine log. Lines from scripts and from the engine go through the same logger, so they appear together in the same console on every platform. Every line carries its time and level, such as `[2026-01-02 10:00:00.123] [info] Ready`, and on Android it goes to logcat with the tag `haylen` and on the Apple platforms to the unified log with the bundle identifier of the app as the subsystem and `haylen` as the category. Use it for diagnostics that should carry a severity. Use `haylen.reportError` from the root module when the app must stop and show an error screen.
 

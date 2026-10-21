@@ -1,4 +1,4 @@
-# haylen.tiled
+# 📖 `haylen.tiled`
 
 The module `haylen.tiled` turns maps made with the [Tiled](https://www.mapeditor.org) editor into playable levels. A loaded map draws its tile, object and image layers with culling, parallax, tints and blend modes, animates its tiles, answers questions about cells, layers, objects and tiles, spawns app entities from objects through factories, builds physics collision from tile and object shapes, casts rays against tiles and objects without a physics world and lists object outlines for navigation meshes. Use it whenever a level is designed in Tiled.
 

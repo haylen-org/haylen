@@ -1,4 +1,4 @@
-# haylen.physics2d
+# 📖 `haylen.physics2d`
 
 Rigid body physics built on Box2D. Use it for anything that must collide, bounce, stack, hang from joints or be found with ray casts, shape casts and area queries, from platformer characters to falling crates and trigger zones. On top of bodies and joints it builds ropes, bridges, ragdolls, vehicles seen from the side and from above, character movers that climb slopes and steps, grabbers that drag bodies with a mouse or a finger, force fields, one-way platforms and conveyors, explosions, destructible terrain, fractures and particle fluids. Worlds step on several threads of the job system, draw their bodies smoothly between fixed steps and predict the flight of thrown bodies. The [physics guide](../2d/physics.md) explains units, stepping, threads, sleeping and tuning in depth, with the solutions to common problems.
 

@@ -1,4 +1,4 @@
-# haylen.system
+# 📖 `haylen.system`
 
 The module `haylen.system` tells what the device and its operating system are, follows the theme of the system and the battery, and offers the services every system has for apps: opening a url with the app that handles it, vibrating the device and showing what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to lower the work of the app on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [haylen.dialogs](dialogs.md), and the methods of the app and its plugins in [haylen.platform](platform.md).
 

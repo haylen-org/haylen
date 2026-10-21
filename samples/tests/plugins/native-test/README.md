@@ -1,4 +1,4 @@
-# Native Test
+# 🔌 Native Test
 
 A local plugin of the [test project](../../README.md) that stands in for the test library of the engine, `engine/tests/native/NativeTest.c`, in the browser. The browser loads no native libraries, so the web part of this plugin answers the functions of the library, its handlers and its events in the page, and the checks of the tests `NAT-001`, `NAT-002` and `NAT-003` run against these answers. On every other platform the project loads the library itself, which registers its handlers as `native_test.<name>`. The folder `native/` holds the CMake project that builds that library, `native-test`, and its static copy for iOS and tvOS, `native-test-static`, from the source of the engine tests, which the `native` section of the `app.json` of the project names. The project lists the plugin in its `app.json` with no parameters.
 

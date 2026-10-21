@@ -1,4 +1,4 @@
-# haylen.ai
+# 📖 `haylen.ai`
 
 The module `haylen.ai` provides finite state machines, behavior trees with a blackboard, utility AI with response curves and influence maps. A machine is in one named state at a time, and each state has optional functions that run when the state is entered, updated and left. Use state machines for enemy behavior, player states such as idle, running and jumping, and flows such as a boss fight with phases. Use behavior trees for layered decisions that react each tick, utility selectors for agents that weigh several needs, and influence maps to read the threat or pull of every spot of a map.
 

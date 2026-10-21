@@ -1,4 +1,4 @@
-# haylen.lighting2d
+# 📖 `haylen.lighting2d`
 
 The module `haylen.lighting2d` holds the lights and occluders of lit 2D canvases: point, spot and directional lights with blend modes, masks, layer ranges and shadows, the occluders that cast those shadows and helpers that build them from physics bodies and Tiled maps. It also answers how lit a point is, for stealth and visibility gameplay, gives the falloff curve of its lights and makes torches waver with its flicker function. Canvases, draws and the draw options that shade them come from [`haylen.graphics2d`](graphics2d.md). The [lighting guide](../2d/lighting.md) explains how a lit scene is set up and what it costs.
 

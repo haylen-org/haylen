@@ -1,4 +1,4 @@
-# haylen.debug
+# 📖 `haylen.debug`
 
 The module `haylen.debug` shows the debug statistics and reads them, switches the debug drawings, counts objects, samples monitors, reads the frame profiler and the recent log, records traces, keeps breadcrumbs, reads the report of the last native crash, and runs the developer console and the inspector. Use it to measure where frame time goes, to see what the app draws and simulates, to profile app code with named scopes and to show performance numbers in debug tools.
 
