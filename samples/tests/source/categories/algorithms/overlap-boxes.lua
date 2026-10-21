@@ -24,7 +24,7 @@ local kMaxContacts = 256
 local kRest = 20
 local kTeams = {{layers = 1, mask = 2, sheet = 'animation/fighter.png'}, {layers = 2, mask = 1, sheet = 'algorithms/fighter-red.png'}}
 -- The frames of the fighter sheets: standing guard and the punch at full reach.
-local kStanding, kPunching = {96, 0, 96, 96}, {192, 0, 96, 96}
+local kStanding, kPunching = {491, 0, 491, 408}, {982, 0, 491, 408}
 local kBelt = {top = -340, bottom = 380, row = 40}
 
 function OverlapBoxes:enter()
@@ -42,7 +42,7 @@ function OverlapBoxes:enter()
     for team, rule in ipairs(kTeams) do
         self.sheets[team] = assets.texture(rule.sheet, {filter = 'linear'})
     end
-    self.order = {source = nil, width = 104, height = 104, pivotY = 0.97, flipHorizontal = false, flash = {1, 1, 1, 0}, layer = 0}
+    self.order = {source = nil, width = 117, height = 97, pivotY = 0.988, flipHorizontal = false, flash = {1, 1, 1, 0}, layer = 0}
     self.world = spatial2d.newOverlapWorld({kinds = {'body', 'hit'}, cellSize = 160})
     self.placements = collections.newFloatBuffer(kFighters * 6)
     self.contacts = collections.newFloatBuffer(kMaxContacts * 8)

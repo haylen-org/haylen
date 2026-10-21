@@ -12,7 +12,7 @@
         {"tileset": "samples/games/tiny-island/content/maps/foam.tsj", "pivot": "center", "free": {"0": "The foam swells and breaks into irregular blobs around the shore."}},
         {"atlas": "samples/games/taskbar-quest/content/images/quest.json", "pivot": "base", "pivots": {"coin spin": "center"}, "free": {"hero attack": "The hero lunges with the sword.", "decorations": "A set of props drawn one at a time, not an animation."}},
         {"atlas": "samples/tests/content/animation/fighter.json", "pivot": "base", "free": {"punch": "The punch throws the body forward."}},
-        {"grid": "samples/tests/content/algorithms/fighter-red.png", "frame": [96, 96], "pivot": "base", "clips": {"punch": [1, 2, 3, 4]}, "free": {"punch": "The punch throws the body forward."}},
+        {"grid": "samples/tests/content/algorithms/fighter-red.png", "frame": [491, 408], "pivot": "base", "clips": {"punch": [1, 2, 3, 4]}, "free": {"punch": "The punch throws the body forward."}},
         {"atlas": "samples/tests/content/sprites/atlases/slime.json", "pivot": "base", "free": {"hop": "The slime leaves the ground.", "splat": "The slime squashes flat."}},
         {"atlas": "samples/tests/content/sprites/atlases/gems.json", "pivot": "center"},
         {"grid": "samples/tests/content/camera/knight.png", "frame": [16, 16], "pivot": "base", "clips": {"step": [1, 2]}},
