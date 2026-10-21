@@ -26,11 +26,6 @@ function Music:enter()
         controls = {
             ui.button{id = 'calm', text = 'Play the ' .. sounds.tracks[1].text:lower(), variant = 'primary', onClick = function() self:play(sounds.tracks[1]) end},
             ui.button{id = 'lively', text = 'Play the ' .. sounds.tracks[2].text:lower(), variant = 'primary', onClick = function() self:play(sounds.tracks[2]) end},
-            ui.formField{label = 'Crossfade and stop seconds', ui.slider{id = 'fade', min = 0, max = 5, step = 0.25, value = self.fade, showValue = true, onChange = function(event) self.fade = event.value end}},
-            ui.toggle{id = 'loop', text = 'Loop the next track', checked = true, onChange = function(event) self.loop = event.checked end},
-            ui.formField{label = 'Repeat the next track from seconds', ui.slider{id = 'loopStart', min = 0, max = 20, step = 1, value = self.loopStart, showValue = true, onChange = function(event) self.loopStart = event.value end}},
-            ui.formField{label = 'Start the next track at seconds', ui.slider{id = 'startAt', min = 0, max = 20, step = 1, value = self.startAt, showValue = true, onChange = function(event) self.startAt = event.value end}},
-            ui.formField{label = 'Track volume', ui.slider{id = 'volume', min = 0, max = 1, step = 0.05, value = self.volume, showValue = true, onChange = function(event) self:setVolume(event.value) end}},
             ui.row{wrap = true, gap = 12,
                 ui.button{id = 'pause', text = 'Pause', onClick = function() self:pause() end},
                 ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
@@ -40,9 +35,16 @@ function Music:enter()
                 ui.button{id = 'rewind', text = 'Back 10 seconds', onClick = function() self:seek(-10) end},
                 ui.button{id = 'forward', text = 'Forward 10 seconds', onClick = function() self:seek(10) end},
             },
+            ui.formField{label = 'Crossfade and stop seconds', ui.slider{id = 'fade', min = 0, max = 5, step = 0.25, value = self.fade, showValue = true, onChange = function(event) self.fade = event.value end}},
+            ui.toggle{id = 'loop', text = 'Loop the next track', checked = true, onChange = function(event) self.loop = event.checked end},
+            ui.formField{label = 'Repeat the next track from seconds', ui.slider{id = 'loopStart', min = 0, max = 20, step = 1, decimals = 0, value = self.loopStart, showValue = true, onChange = function(event) self.loopStart = event.value end}},
+            ui.formField{label = 'Start the next track at seconds', ui.slider{id = 'startAt', min = 0, max = 20, step = 1, decimals = 0, value = self.startAt, showValue = true, onChange = function(event) self.startAt = event.value end}},
+            ui.formField{label = 'Track volume', ui.slider{id = 'volume', min = 0, max = 1, step = 0.05, value = self.volume, showValue = true, onChange = function(event) self:setVolume(event.value) end}},
             ui.label{text = 'Asking for the track that already plays keeps it going on the same voice and only changes its volume, which the volume slider uses. Pause and Resume hold only the music, through the voice that "playMusic" returns.', color = 'textMuted', font = 'caption'},
         },
     })
+    -- The calm track fades in as the test opens, so the graph shows a fade at once.
+    self:play(sounds.tracks[1])
 end
 
 function Music:exit()

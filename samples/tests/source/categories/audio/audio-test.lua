@@ -15,10 +15,13 @@ function AudioTest:load(context)
     context:preload('audio'):await()
 end
 
--- Draws a horizontal bar filled to `value` from 0 to 1.
+-- Draws a horizontal pill filled to `value` from 0 to 1, whose fill starts as a dot as wide as the bar is tall, so both keep round ends.
 function AudioTest.bar(x, y, width, height, value, color)
-    graphics2d.drawRect({x, y, width, height}, AudioTest.idle, {layer = 1})
-    graphics2d.drawRect({x, y, width * math.max(0, math.min(1, value)), height}, color or Test.accent, {layer = 2})
+    local radius = height / 2
+    graphics2d.drawShape({x, y, width, height}, {radius = radius, color = AudioTest.idle, layer = 1})
+    if value > 0 then
+        graphics2d.drawShape({x, y, math.max(height, width * math.min(1, value)), height}, {radius = radius, color = color or Test.accent, layer = 2})
+    end
 end
 
 return AudioTest

@@ -11,7 +11,11 @@ local Test = require('harness.test')
 
 local OneShots = haylen.class('OneShots', AudioTest)
 
-local kCode = "audio.setLimit(sound, {voices = 4})\naudio.play(sound, {volume = 0.8, pitch = 1, pitchVariation = 0.1,\n  pan = -0.5, fadeIn = 0.2, loop = false})\naudio.stop(voice, 0.3)\naudio.seedVariation(7)"
+local kCode = [[
+audio.setLimit(sound, {voices = 4})  -- A fifth voice stops the oldest one.
+local voice = audio.play(sound, {volume = 0.8, pitch = 1, pitchVariation = 0.1, pan = -0.5, fadeIn = 0.2})
+audio.stop(voice, 0.3)  -- Fades out over 0.3 seconds.
+audio.seedVariation(7)  -- The variations repeat from here.]]
 
 function OneShots:enter()
     self.sound = sounds.effects[1]
@@ -102,30 +106,43 @@ function OneShots:update(dt)
         self:play(math.max(-1, math.min(1, self.pointer.worldX / self.area.width * 2 - 1)))
     end
     local last = self.voices[#self.voices]
-    self:status(string.format('Voices of the test %d, engine voices %d, stopped by the limit %d, last pitch %.3f', #self.voices, audio.voiceCount(), self.stolen, last and audio.pitch(last.id) or 0))
+    self:status(string.format('%d voices of the test, %d in the engine, %d stopped by the limit, the last at a pitch of %.3f', #self.voices, audio.voiceCount(), self.stolen, last and audio.pitch(last.id) or 0))
 end
 
 function OneShots:renderUi()
     self.pointer:draw()
 end
 
+-- Every voice is a row with the pitch it got, a bar of its cursor and a dot at its pan, over the pan field that a click plays on.
 function OneShots:draw(area)
     local left, width = 40, area.width - 80
-    local panLeft, panRight = left + 420 + width * 0.4, left + width - 20
-    Test.caption('Every voice: the pitch it got, its playback cursor and its pan', left, 20, {size = 22})
+    local panLeft, panRight = left + width * 0.58, left + width - 16
+    local axis = area.height - 70
+    Test.caption('Every voice: the pitch it got, its playback cursor and its pan', left, 20, {size = 22, color = Test.ink})
+    if #self.voices == 0 then
+        Test.caption('No voice plays. Click or tap anywhere on the stage to play the sound at the pan of that spot, from the left to the right.', left, 64, {size = 21, maxWidth = width})
+    end
     for index, voice in ipairs(self.voices) do
-        local y = 60 + (index - 1) * 48
-        if y > area.height - 80 then
+        local y = 64 + (index - 1) * 44
+        if y > axis - 60 then
             break
         end
         local progress = voice.duration > 0 and (audio.cursor(voice.id) % voice.duration) / voice.duration or 0
         Test.caption(string.format('Voice %d, %s, pitch %.3f', voice.id, voice.sound.text:lower(), audio.pitch(voice.id)), left, y, {color = Test.ink, size = 20})
-        AudioTest.bar(left + 380, y + 4, width * 0.4, 16, progress, Test.accent)
+        AudioTest.bar(left + 330, y + 5, panLeft - left - 370, 14, progress, Test.accent)
         graphics2d.drawLine(panLeft, y + 12, panRight, y + 12, 2, Test.line, {layer = 1})
-        graphics2d.drawCircle(panLeft + (panRight - panLeft) * (voice.pan + 1) / 2, y + 12, 9, Test.green, {layer = 2})
+        graphics2d.drawShape({panLeft + (panRight - panLeft) * (voice.pan + 1) / 2 - 9, y + 3, 18, 18}, {kind = 'ellipse', color = Test.green, borderWidth = 2, borderColor = '#FF15172A', layer = 2})
     end
-    Test.caption('Left', panLeft, area.height - 40, {size = 18})
-    Test.caption('Right', panRight, area.height - 40, {size = 18, anchor = {1, 0}})
+
+    -- The pan field runs along the bottom of the stage, from the left speaker to the right one.
+    graphics2d.drawShape({left, axis, width, 12}, {radius = 6, color = Test.surface, borderWidth = 1, borderColor = Test.line})
+    for index = 0, 4 do
+        local x = left + width * index / 4
+        graphics2d.drawLine(x, axis - 6, x, axis + 18, 2, Test.line, {layer = 1})
+    end
+    Test.caption('Left', left, axis + 24, {size = 19})
+    Test.caption('Center', left + width / 2, axis + 24, {size = 19, anchor = {0.5, 0}})
+    Test.caption('Right', left + width, axis + 24, {size = 19, anchor = {1, 0}})
 end
 
 return OneShots

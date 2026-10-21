@@ -72,12 +72,17 @@ function Stress:update(dt)
     end
     self.history:push(audio.voiceCount())
     self.stats = audio.busStats()
-    self:status(string.format('Voices %d of %d, started %d, music %s, frame %.1f ms', audio.voiceCount(), kLimit, self.started, audio.music() and 'playing' or 'stopped', haylen.unscaledDelta() * 1000))
+    self:status(string.format('%d voices of %d, %d started, the music %s, a frame of %.1f ms', audio.voiceCount(), kLimit, self.started, audio.music() and 'plays' or 'is stopped', haylen.unscaledDelta() * 1000))
 end
 
 function Stress:draw(area)
     local left, top, width, height = 70, 60, area.width - 110, area.height * 0.46
-    graphics2d.drawRect({left, top, width, height}, Test.surface)
+    graphics2d.drawShape({left, top, width, height}, {radius = 10, color = Test.surface})
+    for count = 0, 160, 32 do
+        local y = top + height * (1 - count / 160)
+        graphics2d.drawLine(left, y, left + width, y, 1, Test.line, {layer = 1})
+        Test.caption(tostring(count), left - 10, y, {anchor = {1, 0.5}, size = 17})
+    end
     local limitY = top + height * (1 - kLimit / 160)
     graphics2d.drawLine(left, limitY, left + width, limitY, 2, Test.red, {layer = 1})
     Test.caption('Limit 128', left + width - 8, limitY - 6, {anchor = {1, 1}, color = Test.red, size = 18})
@@ -86,10 +91,11 @@ function Stress:draw(area)
     local values = self.history:values()
     local points = {}
     for index, count in ipairs(values) do
-        points[index] = {left + width * (index - 1) / 359, top + height * (1 - math.min(count, 160) / 160)}
+        points[#points + 1] = left + width * (index - 1) / 359
+        points[#points + 1] = top + height * (1 - math.min(count, 160) / 160)
     end
-    if #points > 1 then
-        graphics2d.drawPolyline(points, 3, Test.accent, false, {layer = 2})
+    if #points >= 4 then
+        graphics2d.drawStroke(points, {width = 3, color = Test.accent, join = 'round', layer = 2})
     end
 
     local y = top + height + 60
@@ -98,7 +104,7 @@ function Stress:draw(area)
         local rowY = y + (index - 1) * 40
         Test.caption('Bus "' .. bus.name .. '"', left, rowY, {color = Test.ink, size = 20})
         AudioTest.bar(left + 160, rowY + 4, width * 0.45, 16, bus.voices / kLimit, bus.processing and Test.accent or Test.red)
-        Test.caption(string.format('Voices %d, playing %d, paused %d, %s', bus.voices, bus.playing, bus.paused, bus.processing and 'processing' or 'held'), left + 180 + width * 0.45, rowY, {size = 18})
+        Test.caption(string.format('%d voices, %d playing and %d paused%s', bus.voices, bus.playing, bus.paused, bus.processing and '' or ', held by the pause'), left + 180 + width * 0.45, rowY, {size = 18})
     end
 end
 

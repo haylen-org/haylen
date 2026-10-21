@@ -2,6 +2,7 @@
 local audio = require('haylen.audio')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
 local AudioTest = require('categories.audio.audio-test')
@@ -11,14 +12,29 @@ local Test = require('harness.test')
 local Output = haylen.class('Output', AudioTest)
 
 local kExplosions = 30
-local kCode = "audio.busEffects('master')[1].threshold = 0.9\naudio.outputState()\naudio.outputLatency()\nevents.on('audioUnlocked', fn)"
+local kCode = [[
+local limiter = audio.busEffects('master')[1]
+limiter.threshold = 0.9
+print(limiter.reduction)  -- The share of the gain it takes away now.
+print(audio.outputState(), audio.outputLatency())
+events.on('audioUnlocked', function() print('The browser lets the sound play.') end, {owner = self})]]
+-- The graph keeps this many seconds of the gain taken away, and its scale goes down to this many decibels.
+local kHistory = 6
+local kSamples = 180
+local kFloor = -12
 
 function Output:enter()
     self.limiter = audio.busEffects('master')[1]
     self.threshold = self.limiter and self.limiter.threshold or 0.9
     self.limited = self.limiter ~= nil
     self.reduction, self.unlocks = 0, 0
+    self.history, self.sampleTime = {}, 0
+    for index = 1, kSamples do
+        self.history[index] = 0
+    end
     self:listen('audioUnlocked', function() self.unlocks = self.unlocks + 1 end)
+    -- A first burst goes off a moment after the test opens, so the graph shows what the limiter takes away.
+    timer.after(0.8, function() self:explode() end, {owner = self})
     self:frame({
         code = kCode,
         hint = 'Play thirty explosions at once with the limiter on and off, and listen for the crackle it removes.',
@@ -66,16 +82,53 @@ function Output:update(dt)
     Output.super.update(self, dt)
     local reduction = self.limiter and self.limiter.attached and self.limiter.reduction or 0
     self.reduction = math.max(reduction, self.reduction - dt)
-    self:status(string.format('Output "%s", latency %.1f ms, unlocked %d times, voices %d', audio.outputState(), audio.outputLatency() * 1000, self.unlocks, audio.voiceCount()))
+    self.sampleTime = self.sampleTime + dt
+    while self.sampleTime >= kHistory / kSamples do
+        self.sampleTime = self.sampleTime - kHistory / kSamples
+        table.remove(self.history, 1)
+        self.history[kSamples] = reduction
+    end
+    self:status(string.format('The output is "%s" with a latency of %.1f ms, unlocked %d times, %d voices', audio.outputState(), audio.outputLatency() * 1000, self.unlocks, audio.voiceCount()))
+end
+
+-- The gain a reduction leaves, in decibels, within the floor of the scale.
+function Output.decibels(reduction)
+    return math.max(kFloor, 20 * math.log(math.max(1 - reduction, 1e-4), 10))
 end
 
 function Output:draw(area)
-    Test.caption('Gain the limiter takes away', 40, 40, {size = 24, color = Test.ink})
-    AudioTest.bar(40, 80, area.width - 80, 28, self.reduction, Test.red)
-    Test.caption(self.limited and string.format('Limiter on, threshold %.2f', self.threshold) or 'Limiter off, the sum may clip', 40, 120, {color = self.limited and Test.green or Test.red})
+    -- The graph of the gain the limiter takes away, on a scale of decibels.
+    local left, top = 96, 64
+    local width, height = area.width - left - 360, area.height - top - 64
+    Test.caption('Gain the limiter takes away, over the last 6 seconds', left, 20, {size = 24, color = Test.ink})
+    graphics2d.drawShape({left, top, width, height}, {radius = 12, color = Test.surface, borderWidth = 1, borderColor = Test.line})
+    for decibels = 0, kFloor, -3 do
+        local y = top + height * decibels / kFloor
+        graphics2d.drawLine(left, y, left + width, y, 1, Test.line, {layer = 1})
+        Test.caption(string.format('%d dB', decibels), left - 14, y, {size = 18, anchor = {1, 0.5}})
+    end
+    local points = {}
+    for index, reduction in ipairs(self.history) do
+        points[#points + 1] = left + width * (index - 1) / (kSamples - 1)
+        points[#points + 1] = top + height * Output.decibels(reduction) / kFloor
+    end
+    graphics2d.drawStroke(points, {width = 4, color = Test.red, join = 'round', cap = 'round', layer = 2})
+    Test.caption(self.limited and string.format('Limiter on, threshold %.2f', self.threshold) or 'Limiter off, the sum may clip', left, top + height + 14, {size = 20, color = self.limited and Test.green or Test.red})
+
+    -- The state of the output, with a padlock while the browser holds the sound back.
+    local cardX = area.width - 320
     local state = audio.outputState()
-    graphics2d.drawCircle(70, 220, 24, state == 'running' and Test.green or (state == 'locked' and Test.warm or AudioTest.idle), {layer = 1})
-    Test.caption(state == 'locked' and 'Locked until the first tap, click or key' or 'Output ' .. state, 110, 208, {color = Test.ink})
+    local color = state == 'running' and Test.green or (state == 'locked' and Test.warm or Test.muted)
+    graphics2d.drawShape({cardX, top, 296, 220}, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = color})
+    if state == 'locked' then
+        graphics2d.drawArc(cardX + 60, top + 62, 18, 7, math.pi, math.pi * 2, color, {layer = 1})
+        graphics2d.drawShape({cardX + 34, top + 60, 52, 42}, {radius = 8, color = color, layer = 1})
+        graphics2d.drawCircle(cardX + 60, top + 79, 5, Test.surface, {layer = 2})
+    else
+        graphics2d.drawCircle(cardX + 60, top + 72, 16, color, {layer = 1})
+    end
+    Test.caption(state == 'locked' and 'Locked' or 'Output ' .. state, cardX + 104, top + 52, {size = 28, color = Test.ink, layer = 1})
+    Test.caption(state == 'locked' and 'The first tap, click or key on the page lets the sound play.' or string.format('Latency %.1f ms, unlocked %d times.', audio.outputLatency() * 1000, self.unlocks), cardX + 28, top + 124, {size = 19, maxWidth = 240, layer = 1})
 end
 
 return Output

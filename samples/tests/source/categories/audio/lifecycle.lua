@@ -43,7 +43,7 @@ function Lifecycle:enter()
         self.counts[name] = 0
         self:listen(name, function()
             self.counts[name] = self.counts[name] + 1
-            self.journal:add(string.format('Event "%s" at %.1f s, %s, app state "%s"', name, self.clock, audio.interrupted() and 'interrupted' or 'not interrupted', haylen.appState()), kEvents[name])
+            self.journal:add(string.format('The event "%s" at %.1f seconds, %s, in the app state "%s".', name, self.clock, audio.interrupted() and 'interrupted' or 'not interrupted', haylen.appState()), kEvents[name])
         end)
     end
     audio.playMusic(sounds.track(sounds.tracks[1].path), {fade = 1, volume = 0.7})
@@ -69,7 +69,7 @@ end
 -- The platform reports interruptions as events of the scene too, before the engine turns them into audio events.
 function Lifecycle:event(event)
     if event.type == 'interruptionBegan' or event.type == 'interruptionEnded' or event.type == 'suspended' or event.type == 'resumed' then
-        self.journal:add('Platform event "' .. event.type .. '"', Test.muted)
+        self.journal:add('The platform sent "' .. event.type .. '".', Test.muted)
     end
 end
 
@@ -81,21 +81,29 @@ end
 
 function Lifecycle:draw(area)
     local interrupted = audio.interrupted()
-    graphics2d.drawRect({24, 24, 360, 90}, interrupted and '#FF4A2630' or '#FF1F3A2E')
-    Test.caption(interrupted and 'Interrupted' or 'Audio running', 44, 44, {size = 34, color = interrupted and Test.red or Test.green})
-    Test.caption('The call "audio.interrupted()" returns "' .. tostring(interrupted) .. '"', 24, 126, {size = 18})
+    local state = interrupted and Test.red or Test.green
+    graphics2d.drawShape({24, 24, 360, 132}, {radius = 18, color = interrupted and '#FF3A2430' or '#FF1D3329', borderWidth = 2, borderColor = state})
+    graphics2d.drawCircle(56, 64, 10, state, {layer = 1})
+    Test.caption(interrupted and 'Interrupted' or 'Audio running', 78, 44, {size = 32, color = state, layer = 1})
+    Test.caption('The call "audio.interrupted()" returns "' .. tostring(interrupted) .. '".', 44, 100, {size = 19, maxWidth = 320, layer = 1})
 
-    local left = 420
+    -- The counters fill the width beside the state, three to a row, each with its count under its name.
+    local left, gap = 408, 16
+    local width = (area.width - left - 24 - gap * 2) / 3
     for index, name in ipairs(kOrder) do
-        local x = left + ((index - 1) % 3) * 290
-        local y = 24 + ((index - 1) // 3) * 64
-        graphics2d.drawRect({x, y, 274, 54}, Test.surface)
-        Test.caption('Event "' .. name .. '"', x + 12, y + 8, {size = 18, color = kEvents[name]})
-        Test.caption(tostring(self.counts[name]), x + 262, y + 27, {size = 26, color = Test.ink, anchor = {1, 0.5}})
+        local x = left + ((index - 1) % 3) * (width + gap)
+        local y = 24 + ((index - 1) // 3) * 66
+        graphics2d.drawShape({x, y, width, 58}, {radius = 14, color = Test.surface, borderWidth = 1, borderColor = Test.line})
+        graphics2d.drawCircle(x + 20, y + 29, 6, kEvents[name], {layer = 1})
+        Test.caption('"' .. name .. '"', x + 36, y + 17, {size = 19, color = Test.ink, maxWidth = width - 100, layer = 1})
+        Test.caption(tostring(self.counts[name]), x + width - 18, y + 29, {size = 28, color = Test.ink, anchor = {1, 0.5}, layer = 1})
     end
 
-    Test.caption('Events as they happen', 24, 176, {size = 22})
-    self.journal:draw(24, 212, area.height - 236, 20)
+    Test.caption('Events as they happen', 24, 186, {size = 24, color = Test.ink})
+    if self.journal.lines.size == 0 then
+        Test.caption('No event yet. Switch to another app or tab, take a call or unplug headphones while the music plays.', 24, 226, {size = 21, maxWidth = area.width - 48})
+    end
+    self.journal:draw(24, 226, area.height - 250, 20)
 end
 
 return Lifecycle

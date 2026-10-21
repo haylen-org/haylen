@@ -36,7 +36,11 @@ local kParams = {
     width = {label = 'Width', min = 0, max = 1, step = 0.05},
 }
 local kTargets = {{id = 'bus', text = 'Music bus'}, {id = 'voice', text = 'Looping voice'}}
-local kCode = "local muffle = audio.newEffect('lowpass', {cutoff = 800})\naudio.addBusEffect('music', muffle)\naudio.play(loop, {loop = true, effects = {echo}})\ntween.to(muffle, 2, {cutoff = 8000}, {repeatCount = -1, loopMode = 'yoyo'})"
+local kCode = [[
+local muffle = audio.newEffect('lowpass', {cutoff = 800})
+audio.addBusEffect('music', muffle)
+audio.play(loop, {loop = true, effects = {echo}})  -- Effects of one voice.
+tween.to(muffle, 2, {cutoff = 8000}, {repeatCount = -1, loopMode = 'yoyo'})  -- Parameters tween like any field.]]
 
 function Effects:enter()
     self.kind = kKinds[1]
@@ -145,13 +149,22 @@ function Effects:setSweep(on)
     end
 end
 
+function Effects.cutoffLabel(frequency)
+    return string.format('Cutoff, %.0f Hz', frequency)
+end
+
 function Effects:showParams()
     local nodes = {}
     for _, param in ipairs(self.kind.params) do
         local info = kParams[param]
         local value = param == 'cutoff' and response.position(self.effect.cutoff) or self.effect[param]
-        nodes[#nodes + 1] = ui.formField{label = info.label, ui.slider{id = param, min = info.min, max = info.max, step = info.step, value = value, showValue = param ~= 'cutoff', onChange = function(event)
-            self.effect[param] = param == 'cutoff' and response.frequency(event.value) or event.value
+        -- The cutoff slider moves along octaves, so its field names the frequency in hertz instead of the position of the slider.
+        local cutoff = param == 'cutoff'
+        nodes[#nodes + 1] = ui.formField{id = param .. 'Field', label = cutoff and Effects.cutoffLabel(self.effect.cutoff) or info.label, ui.slider{id = param, min = info.min, max = info.max, step = info.step, value = value, showValue = not cutoff, onChange = function(event)
+            self.effect[param] = cutoff and response.frequency(event.value) or event.value
+            if cutoff then
+                self:set('cutoffField', {label = Effects.cutoffLabel(self.effect.cutoff)})
+            end
         end}}
     end
     self.gui:replaceChildren('params', nodes)
@@ -161,15 +174,15 @@ function Effects:update(dt)
     Effects.super.update(self, dt)
     local chain = self.target == 'bus' and audio.busEffects('music') or audio.effects(self.voice)
     local where = self.target == 'bus' and 'the music bus' or 'voice ' .. self.voice
-    self:status(string.format('Effect "%s" on %s, %s, tail %.2f s, chain of %d with this effect %s', self.kind.id, where, self.effect.attached and 'attached' or 'detached', self.effect.tail, #chain, chain[1] == self.effect and 'first' or 'not first'))
+    self:status(string.format('The effect "%s" is %s on %s, with a tail of %.2f s, %s of a chain of %d', self.kind.id, self.effect.attached and 'attached' or 'detached', where, self.effect.tail, chain[1] == self.effect and 'first' or 'not first', #chain))
 end
 
 function Effects:drawFilter(left, top, width, height)
-    local low, high = -30, 24
+    local low, high = -48, 24
     local function y(decibels)
         return top + height * (high - math.max(low, math.min(high, decibels))) / (high - low)
     end
-    for _, decibels in ipairs({-24, -12, 0, 12}) do
+    for _, decibels in ipairs({-36, -24, -12, 0, 12}) do
         graphics2d.drawLine(left, y(decibels), left + width, y(decibels), decibels == 0 and 2 or 1, Test.line, {layer = 1})
         Test.caption(decibels .. ' dB', left - 10, y(decibels), {anchor = {1, 0.5}, size = 16})
     end
@@ -181,12 +194,21 @@ function Effects:drawFilter(left, top, width, height)
 
     local effect = self.effect
     local gain = (effect.kind == 'peak' or effect.kind == 'lowShelf' or effect.kind == 'highShelf') and effect.gain or 0
+    -- The curve ends where it falls under the floor of the graph instead of running along it.
     local points = {}
     for step = 0, 160 do
         local frequency = response.frequency(step / 160)
-        points[#points + 1] = {left + width * step / 160, y(response.decibels(effect.kind, effect.cutoff, effect.q, gain, frequency))}
+        local decibels = response.decibels(effect.kind, effect.cutoff, effect.q, gain, frequency)
+        if decibels >= low then
+            points[#points + 1] = left + width * step / 160
+            points[#points + 1] = y(decibels)
+        elseif #points >= 4 then
+            break
+        end
     end
-    graphics2d.drawPolyline(points, 4, Test.accent, false, {layer = 2})
+    if #points >= 4 then
+        graphics2d.drawStroke(points, {width = 4, color = Test.accent, join = 'round', cap = 'round', layer = 2})
+    end
     local cutoffX = left + width * response.position(effect.cutoff)
     graphics2d.drawLine(cutoffX, top, cutoffX, top + height, 2, Test.warm, {layer = 2})
     Test.caption(string.format('%.0f Hz', effect.cutoff), cutoffX + 8, top + 8, {color = Test.warm})
@@ -206,7 +228,7 @@ function Effects:drawDelay(left, top, width, height)
         level = level * effect.feedback
         time = time + effect.time
     end
-    Test.caption('Dry input in green, then each repeat after ' .. string.format('%.2f', effect.time) .. ' seconds, over 2.5 seconds', left, top - 36)
+    Test.caption('Dry input in green, then each repeat after ' .. string.format('%.2f', effect.time) .. ' seconds, over 2.5 seconds', left + 16, top + 12, {size = 20})
 end
 
 function Effects:drawReverb(left, top, width, height)
@@ -221,12 +243,12 @@ function Effects:drawReverb(left, top, width, height)
     points[#points + 1] = {left + width, top + height}
     graphics2d.drawPolygon(points, '#608FB0FF', {layer = 1})
     graphics2d.drawRect({left, top + height * (1 - math.min(1, effect.dry)), 10, height * math.min(1, effect.dry)}, Test.green, {layer = 2})
-    Test.caption(string.format('Decay to -60 dB in %.2f seconds, drawn over %.1f seconds', effect.tail, seconds), left, top - 36)
+    Test.caption(string.format('Decay to -60 dB in %.2f seconds, drawn over %.1f seconds', effect.tail, seconds), left + 16, top + 12, {size = 20})
 end
 
 function Effects:draw(area)
-    local left, top, width, height = 90, 90, area.width - 140, area.height * 0.6
-    graphics2d.drawRect({left, top, width, height}, Test.surface)
+    local left, top, width, height = 90, 80, area.width - 130, area.height - 160
+    graphics2d.drawShape({left, top, width, height}, {radius = 12, color = Test.surface})
     Test.caption(self.kind.text .. ' on the ' .. (self.target == 'bus' and 'music bus' or 'looping voice'), left, 24, {size = 28, color = Test.ink})
     if self.kind.id == 'delay' then
         self:drawDelay(left, top, width, height)
@@ -238,9 +260,9 @@ function Effects:draw(area)
 
     local lines = {}
     for _, param in ipairs(self.kind.params) do
-        lines[#lines + 1] = string.format('"%s" %.2f', param, self.effect[param])
+        lines[#lines + 1] = param == 'cutoff' and string.format('%s %.0f Hz', kParams[param].label, self.effect.cutoff) or string.format('%s %.2f', kParams[param].label, self.effect[param])
     end
-    Test.caption('Parameters ' .. table.concat(lines, ', '), left, top + height + 50, {size = 22, color = Test.ink})
+    Test.caption(table.concat(lines, ', '), left, top + height + 40, {size = 22, color = Test.ink})
 end
 
 return Effects

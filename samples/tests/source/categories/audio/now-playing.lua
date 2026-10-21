@@ -2,6 +2,7 @@
 local assets = require('haylen.assets')
 local audio = require('haylen.audio')
 local events = require('haylen.events')
+local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
@@ -15,11 +16,18 @@ local NowPlaying = haylen.class('NowPlaying', AudioTest)
 
 NowPlaying.length = 32
 NowPlaying.artwork = 'audio/cover.png'
+NowPlaying.code = [[
+system.setNowPlaying({
+    title = 'Calm loop', artist = 'Haylen tests', duration = 32, position = audio.cursor(voice), playing = true,
+    artwork = assets.bytes('audio/cover.png'),
+})
+events.on('mediaCommand', function(event) print(event.command, event.position) end, {owner = self})]]
 
 function NowPlaying:enter()
     self.journal = Journal(16)
     self.index = 1
     self.artwork = assets.bytes(NowPlaying.artwork)
+    self.cover = assets.texture(NowPlaying.artwork, {filter = 'linear', mipmaps = true})
     self:frame{
         hint = 'Use the lock screen, the control center, the media notification, the media flyout or the media keys of the keyboard to play, pause, skip and seek.',
         focus = 'start',
@@ -28,9 +36,11 @@ function NowPlaying:enter()
             ui.button{id = 'clear', text = 'Leave the controls', onClick = function() self:leave() end},
             ui.label{text = 'iOS shows the lock screen only for an audio session that plays, which this test project leaves as ambient. Linux has no controls the engine reaches.', color = 'textMuted', font = 'caption'},
         },
-        code = "system.setNowPlaying({title = 'Calm loop', artist = 'Haylen', duration = 32, position = audio.cursor(voice), playing = true, artwork = assets.bytes('audio/cover.png')})\nevents.on('mediaCommand', function(event) print(event.command, event.position) end)",
+        code = NowPlaying.code,
     }
     events.on('mediaCommand', function(event) self:command(event) end, {owner = self})
+    -- The calm track starts as the test opens, so the controls of the system show it at once.
+    self:start()
 end
 
 function NowPlaying:exit()
@@ -57,7 +67,7 @@ end
 
 -- Every command changes what plays and shows the new state in the controls.
 function NowPlaying:command(event)
-    self.journal:add(string.format('Command "%s"%s', event.command, event.position and string.format(' at %.1f seconds', event.position) or ''), Test.green)
+    self.journal:add(string.format('The command "%s"%s arrived.', event.command, event.position and string.format(' at %.1f seconds', event.position) or ''), Test.green)
     if not self.voice then
         self:start()
         return
@@ -85,12 +95,36 @@ end
 function NowPlaying:update(dt)
     NowPlaying.super.update(self, dt)
     local state = self.voice and (audio.paused(self.voice) and 'paused' or 'playing') or 'stopped'
-    self:status(string.format('Track "%s", %s, at %.1f seconds', sounds.tracks[self.index].text, state, self.voice and audio.cursor(self.voice) or 0))
+    self:status(string.format('The track "%s" is %s at %.1f seconds', sounds.tracks[self.index].text, state, self.voice and audio.cursor(self.voice) or 0))
 end
 
+-- The card of what plays: the artwork, the title, the artist, the state and a bar of the position, beside the commands as they arrive.
 function NowPlaying:draw(area)
-    Test.caption('Commands from the system', 24, 20, {size = 24, color = Test.ink})
-    self.journal:draw(24, 64, area.height - 88, 20)
+    local margin = 24
+    local size = math.max(120, math.min(area.height - margin * 2 - 180, area.width * 0.32))
+    local cardWidth = math.min(area.width - margin * 2, size + 48)
+    graphics2d.drawShape({margin, margin, cardWidth, area.height - margin * 2}, {radius = 22, color = Test.surface, borderWidth = 2, borderColor = Test.line})
+    local left, top = margin + 24, margin + 24
+    graphics2d.drawShape({left, top, size, size}, {radius = 16, texture = self.cover, layer = 1})
+
+    local track = sounds.tracks[self.index]
+    local playing = self.voice ~= nil and not audio.paused(self.voice)
+    local position = self.voice and audio.cursor(self.voice) % NowPlaying.length or 0
+    local y = top + size + 14
+    Test.caption(track.text, left, y, {size = 28, color = Test.ink, maxWidth = size, layer = 1})
+    Test.caption(self.voice and (playing and 'Haylen tests, playing' or 'Haylen tests, paused') or 'Haylen tests, stopped', left, y + 38, {size = 20, layer = 1})
+    AudioTest.bar(left, y + 74, size, 10, position / NowPlaying.length, playing and Test.accent or Test.muted)
+    Test.caption(string.format('%d:%02d', math.floor(position / 60), math.floor(position % 60)), left, y + 92, {size = 18, layer = 1})
+    Test.caption(string.format('%d:%02d', NowPlaying.length // 60, NowPlaying.length % 60), left + size, y + 92, {size = 18, anchor = {1, 0}, layer = 1})
+
+    local logLeft = margin * 2 + cardWidth
+    if area.width - logLeft > 200 then
+        Test.caption('Commands from the system', logLeft, margin + 4, {size = 26, color = Test.ink})
+        if self.journal.lines.size == 0 then
+            Test.caption('No command yet. Play, pause, skip or seek from the controls of the system or the media keys.', logLeft, margin + 52, {size = 21, maxWidth = area.width - logLeft - margin})
+        end
+        self.journal:draw(logLeft, margin + 52, area.height - margin * 2 - 52, 21)
+    end
 end
 
 return NowPlaying
