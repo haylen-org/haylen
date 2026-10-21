@@ -1,4 +1,5 @@
 -- Two worlds: two planets in space, each in a physics world of its own without gravity, whose pull is a radial force field of constant strength inside a bubble around it, so a body falls toward the planet whose bubble holds it and flies in a straight line between the bubbles. The near planet is grassy with a slingshot on top, and the far one is an icy moon with a stronger pull, a thin atmosphere that slows what flies in and slippery towers of ice with critters on them. A shot that enters the bubble of the other planet moves to its world with `body:moveToWorld`, keeping its speed and spin, and hits what stands there.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -6,8 +7,10 @@ local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
-local parts = require('categories.physics.parts')
+local Burst = require('categories.physics.burst')
+local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local TwoWorlds = haylen.class('TwoWorlds', PhysicsTest)
 
@@ -22,11 +25,15 @@ TwoWorlds.actions = {
     {name = 'launch', type = 'button', bindings = {'key:space', 'button:south', 'virtual:launch'}},
 }
 
--- Each planet: its center, its radius, the reach of its bubble, its pull, the drag of its air, the friction of what stands on it and its colors.
+-- Each planet: its center, its radius, the reach of its bubble, its pull, the drag of its air, the friction of what stands on it, its picture and the color of its bubble.
 TwoWorlds.planets = {
-    home = {x = -470, y = 120, radius = 110, reach = 310, pull = 520, drag = 0, friction = 0.8, ground = '#FF4E9A4A', rim = '#FF7BC86A', name = 'Home'},
-    moon = {x = 430, y = -30, radius = 120, reach = 330, pull = 820, drag = 0.35, friction = 0.08, ground = '#FF8FB8D8', rim = '#FFD8ECFA', name = 'Ice moon'},
+    home = {x = -470, y = 120, radius = 110, reach = 310, pull = 520, drag = 0, friction = 0.8, picture = 'physics/planet-grass.png', rim = '#FF7BC86A', name = 'Home'},
+    moon = {x = 430, y = -30, radius = 120, reach = 330, pull = 820, drag = 0.35, friction = 0.08, picture = 'physics/planet-ice.png', rim = '#FFD8ECFA', name = 'Ice moon'},
 }
+-- The share of each picture of a planet that its disc covers.
+TwoWorlds.cover = 376 / 384
+-- The slingshot starts pulled back so its predicted flight crosses to the moon and lands among its towers.
+TwoWorlds.firstPull = {-100, 46}
 -- The towers on the moon: the angle around it where each stands and the blocks it stacks from the ground up, as width and height.
 TwoWorlds.towers = {
     {angle = math.pi, blocks = {{24, 70}, {90, 20}, {24, 50}}},
@@ -41,7 +48,7 @@ TwoWorlds.maxShots = 6
 TwoWorlds.popSpeed = 180
 TwoWorlds.lostDistance = 1400
 TwoWorlds.predictSteps = 150
-TwoWorlds.puffLife = 0.5
+TwoWorlds.trailLength = 240
 
 function TwoWorlds:enter()
     self:frame{
@@ -58,17 +65,20 @@ function TwoWorlds:enter()
         },
         play = true,
         actions = TwoWorlds.actions,
+        view = {1900, 880},
         overlay = {
             ui.touchStick{action = 'aim', radius = 110, mode = 'floating', touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 360, height = 300},
             ui.touchButton{action = 'launch', text = 'Launch', size = 150, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
         },
     }
+    self.camera.position = {0, 35}
     self.showPath = true
-    local random = m.random(66)
-    self.stars = {}
-    for index = 1, 150 do
-        self.stars[index] = {random:range(-800, 800), random:range(-430, 430), random:range(1, 2.5)}
-    end
+    self.pictures = {home = assets.texture(TwoWorlds.planets.home.picture, {filter = 'linear'}), moon = assets.texture(TwoWorlds.planets.moon.picture, {filter = 'linear'})}
+    self.poofs = Burst('explosions/poof', {count = 4, scale = 0.6, layer = 30})
+    self.dots = {}
+    self.trailStroke = {width = 1, color = '#66FFFFFF', join = 'round', cap = 'round', layer = 1}
+    self.band = {0, 0, 0, 0, 0, 0}
+    self.bandStroke = {width = 1, color = '#FF5D3A22', join = 'round', cap = 'round', layer = 3}
     self:build()
 end
 
@@ -77,8 +87,7 @@ function TwoWorlds.makePlanet(spec)
     local planet = {spec = spec, pull = spec.pull}
     planet.world = physics2d.newWorld({gravity = {0, 0}})
     planet.body = planet.world:createBody({type = 'static', x = spec.x, y = spec.y})
-    parts.circle(planet.body, spec.radius, {friction = spec.friction})
-    parts.paint(planet.body, spec.ground)
+    planet.body:addCircle(spec.radius, {friction = spec.friction})
     planet.field = physics2d.newForceField(planet.world, {kind = 'radial', x = spec.x, y = spec.y, radius = spec.reach, strength = spec.pull, linearDrag = spec.drag})
     return planet
 end
@@ -86,7 +95,7 @@ end
 function TwoWorlds:build()
     self.home = TwoWorlds.makePlanet(TwoWorlds.planets.home)
     self.moon = TwoWorlds.makePlanet(TwoWorlds.planets.moon)
-    self.bodies, self.shots, self.puffs = {}, {}, {}
+    self.bodies, self.shots = {}, {}
     self.critters, self.popped, self.launched, self.crossings = 0, 0, 0, 0
 
     -- The towers stand on the moon square to its surface, so its pull holds them up.
@@ -97,15 +106,14 @@ function TwoWorlds:build()
         for _, block in ipairs(tower.blocks) do
             height = height + block[2] / 2
             local body = self.moon.world:createBody({x = moon.x + cos * height, y = moon.y + sin * height, rotation = tower.angle + math.pi / 2})
-            parts.box(body, block[1], block[2], {friction = moon.friction, density = 0.6})
-            parts.paint(body, '#FFBFE3F5')
+            body:addBox(block[1], block[2], {friction = moon.friction, density = 0.6})
+            Look.dress(body, 'ice')
             self.bodies[#self.bodies + 1] = body
             height = height + block[2] / 2
         end
         local critter = self.moon.world:createBody({x = moon.x + cos * (height + 18), y = moon.y + sin * (height + 18)})
-        parts.circle(critter, 18, {friction = moon.friction, density = 0.4})
-        parts.paint(critter, '#FF7CCB5C')
-        critter.data.critter = true
+        critter:addCircle(18, {friction = moon.friction, density = 0.4})
+        critter.data = {critter = true}
         self.bodies[#self.bodies + 1] = critter
         self.critters = self.critters + 1
     end
@@ -119,7 +127,7 @@ function TwoWorlds:build()
             end
         end
     end
-    self.pull = m.vec2(-70, 40)
+    self.pull = m.vec2(TwoWorlds.firstPull[1], TwoWorlds.firstPull[2])
     self:loadShot()
 end
 
@@ -132,8 +140,8 @@ end
 function TwoWorlds:loadShot()
     local x, y = self:pouch()
     self.shot = self.home.world:createBody({type = 'kinematic', x = x + self.pull.x, y = y + self.pull.y})
-    parts.circle(self.shot, TwoWorlds.shotRadius, {density = 3, restitution = 0.2, friction = 0.6})
-    parts.paint(self.shot, '#FFE5534B')
+    self.shot:addCircle(TwoWorlds.shotRadius, {density = 3, restitution = 0.2, friction = 0.6})
+    Look.dress(self.shot, 'red', {spin = true})
     self.shot.data.shot = true
 end
 
@@ -157,7 +165,7 @@ end
 
 function TwoWorlds:pop(body)
     if body and body.valid and body.data.critter then
-        self.puffs[#self.puffs + 1] = {x = body.x, y = body.y, life = TwoWorlds.puffLife}
+        self.poofs:fire(body.x, body.y)
         self.popped = self.popped + 1
         self:remove(body)
     end
@@ -268,12 +276,7 @@ function TwoWorlds:update(dt)
     if input.pressed('launch') then
         self:launch()
     end
-    for index = #self.puffs, 1, -1 do
-        self.puffs[index].life = self.puffs[index].life - dt
-        if self.puffs[index].life <= 0 then
-            table.remove(self.puffs, index)
-        end
-    end
+    self.poofs:update(dt)
 
     local velocity = self.pull * -TwoWorlds.power
     self:predict(pouchX + self.pull.x, pouchY + self.pull.y, velocity.x, velocity.y)
@@ -281,7 +284,7 @@ function TwoWorlds:update(dt)
     for _, body in ipairs(self.bodies) do
         onMoon = onMoon + (body.world == self.moon.world and 1 or 0)
     end
-    self:status(string.format('Shots %d, critters popped %d of %d, bodies in the home world %d and in the moon world %d, crossings %d, step %.2f ms', self.launched, self.popped, self.critters, #self.bodies - onMoon, onMoon, self.crossings, self:stepTime()))
+    self:status(string.format('%d shots launched and %d of %d critters popped. %d bodies are in the home world and %d in the moon world, after %d crossings.', self.launched, self.popped, self.critters, #self.bodies - onMoon, onMoon, self.crossings))
 end
 
 function TwoWorlds:fixedUpdate(step)
@@ -301,59 +304,92 @@ function TwoWorlds:fixedUpdate(step)
     self:cross()
     for _, shot in ipairs(self.shots) do
         local trail = shot.data.trail
-        trail[#trail + 1] = {shot.x, shot.y}
-        if #trail > 240 then
+        trail[#trail + 1] = shot.x
+        trail[#trail + 1] = shot.y
+        if #trail > TwoWorlds.trailLength * 2 then
+            table.remove(trail, 1)
             table.remove(trail, 1)
         end
     end
 end
 
-function TwoWorlds:drawPlanet(planet)
+-- A planet is its painted picture inside the soft bubble of its pull, with its name on a plate at the bottom of the bubble.
+function TwoWorlds:drawPlanet(planet, picture)
     local spec = planet.spec
     local color = m.color(spec.rim)
-    graphics2d.drawCircle(spec.x, spec.y, spec.reach, color:withAlpha(0.06), {layer = -1})
-    graphics2d.drawRing(spec.x, spec.y, spec.reach, 2, color:withAlpha(0.35), {layer = -1})
-    graphics2d.drawRing(spec.x, spec.y, spec.radius + 6, 12, color:withAlpha(0.5), {layer = 1})
-    parts.draw(planet.body, {layer = 1})
-    TwoWorlds.caption(spec.name, spec.x, spec.y + spec.radius + 22, {anchor = {0.5, 0}})
+    graphics2d.drawCircle(spec.x, spec.y, spec.reach, color:withAlpha(0.08), {layer = -20})
+    graphics2d.drawRing(spec.x, spec.y, spec.reach, 3 * Look.pixel, color:withAlpha(0.45), {layer = -20})
+    local size = spec.radius * 2 / TwoWorlds.cover
+    graphics2d.draw(picture, spec.x, spec.y, {width = size, height = size, layer = 0})
+    self:label(spec.name, spec.x, spec.y + spec.reach - 34, {size = 24})
+end
+
+-- A critter is a round green slime with eyes that look out from its planet.
+function TwoWorlds:drawCritter(critter)
+    local unit = Look.pixel
+    local moon = self.moon.spec
+    local x, y = critter.x, critter.y
+    local dx, dy = x - moon.x, y - moon.y
+    local length = math.max(math.sqrt(dx * dx + dy * dy), 1)
+    local ux, uy = dx / length, dy / length
+    graphics2d.drawShape({x - 20, y - 19, 40, 38}, {kind = 'ellipse', color = '#FF7BC74D', borderWidth = Look.outlinePixels * unit, borderColor = Look.ink, layer = 2})
+    for _, side in ipairs({-1, 1}) do
+        local ex, ey = x + ux * 5 - uy * side * 7, y + uy * 5 + ux * side * 7
+        graphics2d.drawCircle(ex, ey, 5, '#FFFFFFFF', {layer = 2})
+        graphics2d.drawCircle(ex + ux * 1.5, ey + uy * 1.5, 2.5, Look.ink, {layer = 2})
+    end
+end
+
+-- The slingshot is a wooden fork on the top of the near planet, with its band around the shot.
+function TwoWorlds:drawSlingshot()
+    local pouchX, pouchY = self:pouch()
+    local home = self.home.spec
+    local wood = '#FFA86B3C'
+    Look.line(pouchX, home.y - home.radius + 6, pouchX, pouchY + 14, 10, wood, 2)
+    Look.line(pouchX - 26, pouchY - 6, pouchX, pouchY + 14, 8, wood, 2)
+    Look.line(pouchX + 26, pouchY - 6, pouchX, pouchY + 14, 8, wood, 2)
+    local band, stroke = self.band, self.bandStroke
+    local bx, by = pouchX, pouchY - 6
+    if self.shot then
+        bx, by = self.shot.x, self.shot.y
+    end
+    band[1], band[2], band[3], band[4], band[5], band[6] = pouchX - 26, pouchY - 6, bx, by, pouchX + 26, pouchY - 6
+    stroke.width = 5
+    graphics2d.drawStroke(band, stroke)
 end
 
 function TwoWorlds:draw(area)
-    for _, star in ipairs(self.stars) do
-        graphics2d.drawCircle(star[1], star[2], star[3], '#88FFFFFF', {layer = -2})
-    end
-    self:drawPlanet(self.home)
-    self:drawPlanet(self.moon)
+    Scenery.space()
+    self:drawPlanet(self.home, self.pictures.home)
+    self:drawPlanet(self.moon, self.pictures.moon)
+    local stroke = self.trailStroke
+    stroke.width = 3 * Look.pixel
     for _, shot in ipairs(self.shots) do
-        if #shot.data.trail > 1 then
-            graphics2d.drawPolyline(shot.data.trail, 2, '#66FFFFFF', false)
+        if #shot.data.trail > 3 then
+            graphics2d.drawStroke(shot.data.trail, stroke)
         end
     end
-    parts.drawAll(self.bodies, {layer = 2})
-
-    -- The slingshot stands on the top of the near planet, with its band around the shot.
-    local pouchX, pouchY = self:pouch()
-    local home = self.home.spec
-    graphics2d.drawLine(pouchX, home.y - home.radius + 4, pouchX, pouchY + 10, 10, '#FF8D6E63', {layer = 2})
-    local prongs = {{pouchX - 26, pouchY - 4}, {pouchX + 26, pouchY - 4}}
-    graphics2d.drawLine(prongs[1][1], prongs[1][2], pouchX, pouchY + 12, 8, '#FF8D6E63', {layer = 2})
-    graphics2d.drawLine(prongs[2][1], prongs[2][2], pouchX, pouchY + 12, 8, '#FF8D6E63', {layer = 2})
-    local band = self.shot and {self.shot.x, self.shot.y} or {pouchX, pouchY - 4}
-    for _, prong in ipairs(prongs) do
-        graphics2d.drawLine(prong[1], prong[2], band[1], band[2], 5, '#FF5D4037', {layer = 3})
+    for _, body in ipairs(self.bodies) do
+        if body.valid and body.data.critter then
+            self:drawCritter(body)
+        end
     end
+    Look.drawAll(self.bodies, {layer = 2})
+    self:drawSlingshot()
     if self.shot then
-        parts.draw(self.shot, {layer = 4})
+        Look.draw(self.shot, {layer = 4})
         if self.showPath then
+            local dots, count = self.dots, 0
             for index = 4, self.pathCount, 4 do
-                graphics2d.drawCircle(self.path[index][1], self.path[index][2], 3.5, '#CCFFFFFF', {layer = 4})
+                dots[count * 2 + 1], dots[count * 2 + 2] = self.path[index][1], self.path[index][2]
+                count = count + 1
+            end
+            if count > 0 then
+                graphics2d.drawPoints(dots, {radius = 4 * Look.pixel, color = '#CCFFFFFF', count = count, layer = 4})
             end
         end
     end
-    for _, puff in ipairs(self.puffs) do
-        local age = 1 - puff.life / TwoWorlds.puffLife
-        graphics2d.drawRing(puff.x, puff.y, 20 + age * 44, 4, m.color(0.5, 0.9, 0.5, 1 - age), {layer = 5})
-    end
+    self.poofs:draw()
 end
 
 return TwoWorlds

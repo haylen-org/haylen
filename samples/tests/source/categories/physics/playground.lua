@@ -1,4 +1,5 @@
 -- Playground: a room to try every value of a body and of the world, with a card beside the chosen body that reads its mass, material, damping, gravity scale and speed. A click or a tap drops a body with the values of the panel, grabs it, pushes it with an impulse dragged from it or fires a shot at it, and the panel changes the chosen body as it moves.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -6,8 +7,9 @@ local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
 local Grab = require('categories.physics.grab')
-local parts = require('categories.physics.parts')
+local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
+local Scenery = require('categories.physics.scenery')
 
 local Playground = haylen.class('Playground', PhysicsTest)
 
@@ -20,13 +22,24 @@ body:applyImpulse(dragX * strength, dragY * strength)  print(body.mass, body.vel
 
 Playground.tools = {{id = 'drop', text = 'Drop'}, {id = 'grab', text = 'Grab'}, {id = 'push', text = 'Push'}, {id = 'shoot', text = 'Shoot'}}
 Playground.kinds = {{id = 'box', text = 'Box'}, {id = 'ball', text = 'Ball'}, {id = 'triangle', text = 'Triangle'}}
-Playground.card = {radius = 10, color = '#E61B2430', borderWidth = 2, borderColor = '#FF2A3646', layer = 30}
-Playground.cardText = {size = 22, color = '#FFE8EAF2', anchor = {0, 0}, layer = 31}
-Playground.cannon = {-740, 300}
+Playground.ground = 400
+Playground.ramp = {{200, 400}, {780, 160}, {780, 400}}
+Playground.materials = {box = 'blue', ball = 'yellow', triangle = 'green'}
+-- The cannon in the corner turns its barrel around the trunnion toward the pointer, and its picture reaches the muzzle the length of the barrel ahead.
+Playground.cannon = {-720, 340}
+Playground.barrelLength = 90
+Playground.picture = {width = 320, height = 166, pivot = 0.425, muzzle = 180}
+Playground.cardLines = 7
 
 function Playground:enter()
     self.tool = 'drop'
     self.kind = 'box'
+    self.barrel = assets.texture('physics/cannon.png', {filter = 'linear'})
+    self.aim = -0.3
+    self.rampShape = Look.newShape(Playground.ramp, 'stone')
+    self.cardShape = {radius = 10, color = '#EE2F3352', borderWidth = 2, borderColor = '#FF15172A', layer = 30}
+    self.cardRect = {0, 0, 0, 0}
+    self.cardText = {size = 1, color = '#FFFFFFFF', anchor = {0, 0}, layer = 31}
     self.values = {density = 1, friction = 0.6, restitution = 0.3, linearDamping = 0, angularDamping = 0.1, gravityScale = 1, gravityX = 0, gravityY = 980, push = 6, shot = 1400}
     self:build()
 
@@ -56,25 +69,24 @@ function Playground:enter()
             ui.button{id = 'empty', text = 'Empty the room', onClick = function() self:build() end},
         },
     }
+    self.camera.position = {0, 30}
 end
 
 -- Builds the room: a floor, walls and a ceiling, so bodies that fall up stay inside, a ramp and a row of pegs, and two bodies to start with.
 function Playground:build()
     self.world = physics2d.newWorld({gravity = {self.values.gravityX, self.values.gravityY}})
     self.grab = Grab(self.world)
-    self.statics, self.bodies, self.shots = {}, {}, {}
-    for _, wall in ipairs({{0, 420, 1600, 40}, {0, -440, 1600, 40}, {-800, 0, 40, 900}, {800, 0, 40, 900}}) do
-        local body = self.world:createBody({type = 'static', x = wall[1], y = wall[2]})
-        parts.box(body, wall[3], wall[4])
-        self.statics[#self.statics + 1] = body
+    self.bodies, self.shots = {}, {}
+    local room = self.world:createBody({type = 'static'})
+    for _, wall in ipairs({{0, Playground.ground + 20, 1600, 40}, {0, -440, 1600, 40}, {-800, 0, 40, 900}, {800, 0, 40, 900}}) do
+        room:addBox(wall[3], wall[4], {offsetX = wall[1], offsetY = wall[2]})
     end
-    local ramp = self.world:createBody({type = 'static'})
-    parts.polygon(ramp, {{200, 400}, {780, 160}, {780, 400}})
-    self.statics[#self.statics + 1] = ramp
+    room:addPolygon(Playground.ramp)
+    self.pegs = {}
     for index = 0, 5 do
-        local peg = self.world:createBody({type = 'static', x = -300 + index * 90, y = -60 + (index % 2) * 40})
-        parts.circle(peg, 12)
-        self.statics[#self.statics + 1] = peg
+        local x, y = -300 + index * 90, -60 + (index % 2) * 40
+        room:addCircle(12, {offsetX = x, offsetY = y})
+        self.pegs[#self.pegs + 1] = {x, y}
     end
     self.chosen = nil
     self:drop(-200, -300)
@@ -93,13 +105,13 @@ function Playground:drop(x, y)
     local body = self.world:createBody({x = x, y = y, linearDamping = values.linearDamping, angularDamping = values.angularDamping, gravityScale = values.gravityScale})
     local material = {density = values.density, friction = values.friction, restitution = values.restitution}
     if self.kind == 'ball' then
-        parts.circle(body, 32, material)
+        body:addCircle(32, material)
     elseif self.kind == 'triangle' then
-        parts.polygon(body, {{0, -40}, {40, 30}, {-40, 30}}, material)
+        body:addPolygon({{0, -40}, {40, 30}, {-40, 30}}, material)
     else
-        parts.box(body, 64, 64, material)
+        body:addBox(64, 64, material)
     end
-    parts.paint(body, ({box = '#FF3C9BE0', ball = '#FFE8A93A', triangle = '#FF35B37E'})[self.kind])
+    Look.dress(body, Playground.materials[self.kind], {spin = self.kind == 'ball'})
     self.bodies[#self.bodies + 1] = body
     self.chosen = body
 end
@@ -134,18 +146,20 @@ function Playground:change(id, value)
     body.awake = true
 end
 
--- Fires a fast ball from the cannon in the corner toward the pointer, as a bullet that never passes through a thin body.
-function Playground:shoot(x, y)
-    local fromX, fromY = Playground.cannon[1], Playground.cannon[2]
-    local dx, dy = x - fromX, y - fromY
-    local length = math.sqrt(dx * dx + dy * dy)
-    if length < 1 then
-        return
-    end
+-- Returns the trunnion of the cannon and the direction its barrel points.
+function Playground:muzzle()
+    local cannon = Playground.cannon
+    return cannon[1], cannon[2], math.cos(self.aim), math.sin(self.aim)
+end
+
+-- Fires a fast iron ball from the muzzle of the cannon toward the pointer, as a bullet that never passes through a thin body.
+function Playground:shoot()
+    local x, y, dx, dy = self:muzzle()
     local speed = self.values.shot
-    local ball = self.world:createBody({x = fromX, y = fromY, bullet = true, vx = dx / length * speed, vy = dy / length * speed})
-    parts.circle(ball, 12, {density = 4, restitution = 0.2})
-    parts.paint(ball, '#FFE5534B')
+    local length = Playground.barrelLength
+    local ball = self.world:createBody({x = x + dx * length, y = y + dy * length, bullet = true, vx = dx * speed, vy = dy * speed})
+    ball:addCircle(12, {density = 4, restitution = 0.2})
+    Look.dress(ball, 'iron')
     self.shots[#self.shots + 1] = ball
     -- The oldest shots leave, so a long stream of them never fills the room.
     if #self.shots > 30 then
@@ -164,16 +178,18 @@ function Playground:update(dt)
 
     local pointer = self.pointer
     local x, y = pointer.worldX, pointer.worldY
+    local cannon = Playground.cannon
+    self.aim = math.max(-1.45, math.min(0.3, math.atan(y - cannon[2], math.max(x - cannon[1], 1))))
     if self.tool == 'grab' then
         if pointer.pressed then
             self.chosen = self:bodyAt(x, y) or self.chosen
         end
         self.grab:update(pointer, self.camera)
-    elseif pointer.pressed then
+    elseif pointer.pressed and not ui.usingPointer() then
         if self.tool == 'drop' then
             self:drop(x, y)
         elseif self.tool == 'shoot' then
-            self:shoot(x, y)
+            self:shoot()
         elseif self.tool == 'push' then
             local body = self:bodyAt(x, y)
             if body then
@@ -192,34 +208,56 @@ function Playground:update(dt)
     end
 
     self:simulate(self.world, dt)
-    self:status(string.format('Bodies %d, shots %d, gravity %d across and %d down, step %.2f ms', #self.bodies, #self.shots, self.values.gravityX, self.values.gravityY, self:stepTime()))
+    self:status(string.format('%d bodies and %d shots are in the room, under a gravity of %d across and %d down.', #self.bodies, #self.shots, self.values.gravityX, self.values.gravityY))
 end
 
--- Draws the card of the chosen body beside it, with the values it holds now.
+-- Draws the card of the chosen body beside it, with the values it holds now, inside what the camera shows.
 function Playground:drawCard(body)
+    local unit = Look.pixel
+    local bounds = graphics2d.canvasBounds()
     local shape = body:shapes()[1]
-    local velocity = body.velocity
-    local lines = string.format('Mass %.2f kg\nDensity %.1f\nFriction %.2f\nRestitution %.2f\nDamping %.1f, spin %.1f\nGravity scale %.1f\nSpeed %.0f, spin %.1f', body.mass, shape.density, shape.friction, shape.restitution, body.linearDamping, body.angularDamping, body.gravityScale, math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y), body.angularVelocity)
-    local x = math.min(560, body.x + 60)
-    local y = math.max(-410, math.min(200, body.y - 90))
-    graphics2d.drawShape({x, y, 270, 232}, Playground.card)
-    graphics2d.drawText(nil, lines, x + 14, y + 12, Playground.cardText)
-    graphics2d.drawLine(body.x, body.y, x, y + 116, 2, '#80FFFFFF', {layer = 29})
+    local lines = string.format('Mass %.2f kg\nDensity %.1f, friction %.2f\nRestitution %.2f\nDamping %.1f, spin damping %.1f\nGravity scale %.1f\nSpeed %d units a second\nSpin %.1f radians a second', body.mass, shape.density, shape.friction, shape.restitution, body.linearDamping, body.angularDamping, body.gravityScale, PhysicsTest.round(body.velocity:length()), body.angularVelocity)
+    local width, height = 330 * unit, (Playground.cardLines * 27 + 24) * unit
+    local x = math.min(bounds.x + bounds.width - width - 16 * unit, body.x + 70)
+    local y = math.max(bounds.y + 16 * unit, math.min(bounds.y + bounds.height - height - 16 * unit, body.y - height / 2))
+    local rect = self.cardRect
+    rect[1], rect[2], rect[3], rect[4] = x, y, width, height
+    self.cardShape.borderWidth = 2 * unit
+    graphics2d.drawShape(rect, self.cardShape)
+    self.cardText.size = 20 * unit
+    graphics2d.drawText(nil, lines, x + 14 * unit, y + 12 * unit, self.cardText)
+    Look.dashed(body.x, body.y, x, y + height / 2, '#CCFFFFFF', 29)
 end
 
 function Playground:draw(area)
-    parts.drawAll(self.statics)
-    parts.drawAll(self.bodies)
-    parts.drawAll(self.shots)
-    graphics2d.drawCircle(Playground.cannon[1], Playground.cannon[2], 22, '#FF6B7A8F', {layer = 2})
+    local bounds = graphics2d.canvasBounds()
+    Scenery.sky(self.camera, Playground.ground)
+    Scenery.ground(Playground.ground)
+    for _, x in ipairs({-800, 800}) do
+        Look.block(x, (bounds.y + Playground.ground) / 2, 40, Playground.ground - bounds.y + 20, 'stone', -12)
+    end
+    Look.drawShape(self.rampShape, 0)
+    for _, peg in ipairs(self.pegs) do
+        Look.disc(peg[1], peg[2], 12, 'steel', 0)
+    end
+    Look.drawAll(self.bodies, {layer = 1})
+    Look.drawAll(self.shots, {layer = 1})
+
+    -- The cannon is a barrel that turns toward the pointer on a wooden wheel.
+    local x, y, dx, dy = self:muzzle()
+    local picture = Playground.picture
+    local scale = Playground.barrelLength / picture.muzzle
+    graphics2d.draw(self.barrel, x, y, {width = picture.width * scale, height = picture.height * scale, pivotX = picture.pivot, pivotY = 0.5, rotation = self.aim, layer = 2})
+    Look.disc(x, y + 30, 30, 'wheel', 3)
     if self.tool == 'shoot' then
-        graphics2d.drawLine(Playground.cannon[1], Playground.cannon[2], self.pointer.worldX, self.pointer.worldY, 2, '#60E5534B', {layer = 2})
+        local length = Playground.barrelLength
+        Look.dashed(x + dx * length, y + dy * length, self.pointer.worldX, self.pointer.worldY, '#B3F0473E', 2)
     end
     if self.pushing then
-        graphics2d.drawLine(self.pushing[1], self.pushing[2], self.pointer.worldX, self.pointer.worldY, 4, '#FFE8A93A', {layer = 20})
+        Look.line(self.pushing[1], self.pushing[2], self.pointer.worldX, self.pointer.worldY, 6, '#FFFFC93C', 20)
     end
     if self.chosen and self.chosen.valid then
-        graphics2d.drawRing(self.chosen.x, self.chosen.y, 52, 3, '#FFFFFFFF', {layer = 20})
+        graphics2d.drawRing(self.chosen.x, self.chosen.y, 54, 3 * Look.pixel, '#FFFFFFFF', {layer = 20})
         self:drawCard(self.chosen)
     end
     self.grab:draw()

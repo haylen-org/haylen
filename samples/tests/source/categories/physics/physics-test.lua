@@ -22,6 +22,7 @@ PhysicsTest.actions = {
 
 -- Labels are plates of the slate of the interface with white text in the font of the art, this many pixels of the screen tall.
 PhysicsTest.labelSize = 22
+PhysicsTest.middle = {0.5, 0.5}
 PhysicsTest.plate = '#EE2F3352'
 PhysicsTest.plateEdge = '#FF15172A'
 -- The plates over the two sides of a test that shows a problem next to its solution.
@@ -89,11 +90,12 @@ function PhysicsTest:label(text, x, y, options)
     graphics2d.drawText(self.labelFont, text, left + plateWidth / 2, top + plateHeight / 2, style)
 end
 
--- Draws a short text with the bold outline of the art at `x`, `y` of the world, such as the value written on a body, which keeps its size on the screen at any zoom. The table `options` takes the `size` in pixels of the screen, a `color` and the `layer`.
+-- Draws a short text with the bold outline of the art at `x`, `y` of the world, such as the value written on a body, which keeps its size on the screen at any zoom. The table `options` takes the `anchor` of the text, `{0.5, 0.5}` by default, the `size` in pixels of the screen, a `color` and the `layer`.
 function PhysicsTest:tag(text, x, y, options)
     options = options or {}
     local unit = Look.pixel
     local style = self.tagText
+    style.anchor = options.anchor or PhysicsTest.middle
     style.size = (options.size or 18) * unit
     style.outlineWidth = 3.5 * unit
     style.color = options.color or '#FFFFFFFF'
@@ -135,10 +137,15 @@ function PhysicsTest:stepTime()
     return self:timing(PhysicsTest.scope)
 end
 
+-- Rounds a value to a whole number, without the sign of a zero.
+function PhysicsTest.round(value)
+    local whole = math.floor(value + 0.5)
+    return whole == 0 and 0 or whole
+end
+
 -- Formats an angle in radians as whole degrees, without the sign of a zero.
 function PhysicsTest.degrees(radians)
-    local value = math.floor(math.deg(radians) + 0.5)
-    return value == 0 and 0 or value
+    return PhysicsTest.round(math.deg(radians))
 end
 
 return PhysicsTest
