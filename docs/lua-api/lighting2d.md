@@ -207,6 +207,20 @@ A `Light` holds every setting of one light. Create it once with `lighting2d.newL
 | `shadowSmoothness` | number | `0` | Spreads the filter samples wider, in shadow map texels beyond the first. It must be zero or positive. |
 | `shadowMask` | integer | `1` | The bits of the masks of the occluders that cast the shadows of the light. |
 
+```lua
+local assets = require('haylen.assets')
+local lighting2d = require('haylen.lighting2d')
+
+local window = lighting2d.newLight({texture = assets.texture('lights/window.png'), radius = 240, scaleX = 1.5, scaleY = 0.8, height = 30})
+window.position = {320, 180}
+window.layerMax = 4
+window.shadows = true
+window.shadowSmoothness = 2
+window.shadowMask = 3
+window.enabled = false
+print(window.type, window.texture, window.layerMin)
+```
+
 ### Errors
 
 The function `graphics2d.drawLight` checks a light before it draws it, and so do `light:strengthAt`, `light:apply`, `light:shadowedAt` and `lighting2d.illuminate`. A value out of its range raises one of these errors:
@@ -279,6 +293,16 @@ An `Occluder` is an outline that blocks the lights with shadows. Its points are 
 | `x`, `y`, `position` | number, Vec2 | `0` | Where the points go. |
 | `rotation` | number | `0` | Turns the points, in radians. |
 | `scaleX`, `scaleY` | number | `1` | Scale the points. |
+
+```lua
+local lighting2d = require('haylen.lighting2d')
+
+local gate = lighting2d.newOccluder({points = {{0, 0}, {60, 0}, {60, 10}, {0, 10}}, mask = 2})
+gate.position = {200, 100}
+gate.scaleX, gate.scaleY = 2, 1
+gate.cull = 'clockwise'
+print(#gate.points, gate.closed, gate.mask)
+```
 
 ### occluder:worldPoints()
 

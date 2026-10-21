@@ -353,6 +353,14 @@ local tween = require('haylen.tween')
 local tree = nodes2d.newTree()
 local door = tree:add({name = 'door', text = 'Door'})
 door.data.locked = true
+local hinge = door:add({name = 'hinge', x = -20, depth = 1, sortOffset = 4})
+hinge.position = {-24, 0}
+hinge.scaleX, hinge.scaleY = 1, 2
+hinge.layer = 1
+hinge.visible = true
+hinge.parent = nil
+tree:update(0)
+print(hinge.worldColor, hinge.worldLayer, hinge.worldVisible, hinge.body)
 tween.to(door, 0.5, {x = 120, color = '#FFFFC040'})
 print(door.content, door.data.locked, door.valid, door.key)
 ```

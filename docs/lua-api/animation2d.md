@@ -573,6 +573,7 @@ local warrior = graphics2d.newSprite(sheet, {x = 400, y = 400})
 local animator = animation2d.newAnimator()
 animator:add('idle', animation2d.fromGrid(sheet, {frameWidth = 192, frameHeight = 192}))
 animator:play('idle')
+animator.pivotX = 0.5
 animator.pivotY = 0.75
 animator.speed = 1.5
 
@@ -749,6 +750,7 @@ Draws every sprite in one call, with the [draw order](graphics2d.md#draw-order) 
 ```lua
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
+local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')
 
@@ -759,6 +761,13 @@ for index = 1, 500 do
     army:add({x = (index % 25) * 40, y = (index // 25) * 40, animation = 'march'})
 end
 print(army:size(), army:animation(7), army:frame(7), #army:animationNames())
+local places = collections.newFloatBuffer(500 * 2)
+army:readFields(places, {'x', 'y'})
+for index = 1, 500 do
+    places[index * 2] = places[index * 2] + 100
+end
+army:writeFields(places, {'x', 'y'})
+army:remove(500)
 
 scene.push({
     enter = function(self)
@@ -772,6 +781,9 @@ scene.push({
     update = function(self, dt)
         army:update(dt)
         print(#army:finished(), army:get(7).time)
+    end,
+    exit = function(self)
+        army:clear()
     end,
     render = function(self)
         graphics2d.beginScreen()
@@ -861,6 +873,7 @@ scene.push({
     enter = function(self)
         villager:on('stateChanged', function(from, to) print(from .. ' to ' .. to) end, {owner = self})
         villager:set('moving', true)
+        villager:trigger('wave')
         print(villager:get('moving'))
     end,
     update = function(self, dt)
@@ -992,6 +1005,9 @@ puppet:play('wave', {track = 2, fade = 0.2})
 puppet:setTrackWeight(2, 0.5)
 puppet:setAttachment('hat', 'crown')
 puppet:setIkMix('aim', 0.8)
+puppet.x = 420
+puppet.rotation, puppet.scaleX, puppet.scaleY = 0.1, -1, 1
+puppet:pose()
 
 scene.push({
     update = function(self, dt)
