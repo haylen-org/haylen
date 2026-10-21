@@ -2109,7 +2109,7 @@ Componentes e layout da UI:
 - [x] Painéis e cartões recortam os filhos nas suas bordas. Feito: todo contêiner com superfície (`panel` e `card`) recorta os filhos na borda, com o recorte acompanhando as transformações do nó.
 - [x] O papel `monospace` dos temas da engine usa uma fonte monoespaçada embutida, com a licença dela, sem ligaduras e sem quebrar a linha dentro de identificadores, com algarismos de largura igual. Feito: a engine embute a Space Mono de `engine/fonts/` (com a licença OFL), registrada na UI como a fonte `monospace` que o papel `monospace` dos temas embutidos usa, sem ligaduras padrão e com todos os caracteres da mesma largura, e o tema `localized` do projeto de testes passou a usá-la. A quebra de linha nunca parte um nome no hífen (identificadores, arquivos e datas), em todo texto.
 - [x] Rótulos de checkbox, toggle, rádio e botão quebram a linha como os rótulos, em vez de cortar com reticências. Feito: os controles medem o rótulo na largura que recebem, quebram as linhas que não cabem e crescem em altura, com o texto centrado ao lado da marca, e os rádios de um grupo vertical quebram na largura do grupo.
-- [ ] Os sliders de uma mesma coluna têm trilhos do mesmo comprimento.
+- [x] Os sliders de uma mesma coluna têm trilhos do mesmo comprimento. Feito: o slider que mostra o valor guarda para ele no mínimo a métrica de tema `sliderValueWidth`, então os trilhos de uma coluna terminam juntos, seja qual for `min` e `max`.
 - [ ] O rótulo da barra de progresso fica legível sobre a parte cheia e sobre a vazia.
 - [ ] Os rótulos dos botões de toque guardam margem do anel e diminuem para caber.
 - [ ] Os segmentos do controle segmentado guardam um padding mínimo, e o segmento escolhido fica dentro do trilho em todo tema.

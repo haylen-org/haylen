@@ -2110,7 +2110,7 @@ A track with a knob the player drags. A change reports `change` with the number 
 | `min` | number from -1e15 to 1e15 | `0` | Value at the start of the track. |
 | `max` | number from -1e15 to 1e15 | `1` | Value at the end of the track. |
 | `step` | number, at least 0 | `0` | Snaps the value to multiples of the step once the player moves it, with the pointer or with left and right. The value `0` lets it move freely. |
-| `showValue` | boolean | `false` | Shows the value after the track, in the room the wider of `min` and `max` takes. |
+| `showValue` | boolean | `false` | Shows the value after the track, in the room the wider of `min` and `max` takes and at least the theme `sliderValueWidth`, so the tracks of the sliders of one column line up. |
 | `decimals` | integer from 0 to 6 | `2` | Decimals of the shown value. |
 
 Only the player changes the value, so a slider reports `change` only when the player moves it, and a `value` given off its step stays as it was given until then. A minimum that is not smaller than the maximum raises `The property "min" of a "slider" must be smaller than "max".`, and an end outside the range raises `The property "min" of a "slider" must be from -1e+15 to 1e+15.` or the same error for `max`.
@@ -3278,6 +3278,7 @@ Both built-in themes share these metrics, in design units.
 | `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
 | `splitterSize` | `10` | Thickness of the handle of splitters. |
 | `scrollLine` | `64` | Distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
+| `sliderValueWidth` | `96` | Least room a slider keeps for the value it shows, so the tracks of the sliders of one column line up whatever their ends. |
 | `scrollFade` | `32` | Length of the fade along an edge of a `scroll` or a `collection` where the content continues past the area, 0 to draw none. |
 | `readingWidth` | `880` | Widest line of the title and the message of an empty state, which keeps a long message comfortable to read on a wide screen. |
 | `cellRadius` | `12` | Corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |

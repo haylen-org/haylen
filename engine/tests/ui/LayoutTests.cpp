@@ -4,9 +4,11 @@
 #include <cmath>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include <imgui.h>
 
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -427,6 +429,28 @@ TEST_F(LayoutTest, WrapsTheTextOfAnEmptyStateAtTheReadingWidth) {
         }
     }
     EXPECT_TRUE(found);
+}
+
+// The sliders of a column that show their values keep tracks of one length whatever their ends, since each keeps at least the value width of the theme for its value.
+TEST_F(LayoutTest, LinesUpTheTracksOfSlidersThatShowTheirValues) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "column", "width": 600, "alignItems": "stretch", "children": [
+        {"kind": "slider", "value": 0.2, "showValue": true},
+        {"kind": "slider", "value": 30, "min": 0, "max": 300, "decimals": 0, "showValue": true},
+        {"kind": "slider", "value": 3, "min": 1, "max": 9, "decimals": 0, "showValue": true}
+    ]}]})");
+    // clang-format on
+    frames(2);
+    const Theme& theme = getUi().getTheme();
+    std::vector<float> tracks;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        if (shape.color == theme.getColor(Theme::Color::BorderStrong) && shape.bounds.height == theme.getMetric(Theme::Metric::SliderTrackHeight)) {
+            tracks.push_back(shape.bounds.width);
+        }
+    }
+    ASSERT_EQ(tracks.size(), 3U);
+    EXPECT_EQ(tracks[0], tracks[1]);
+    EXPECT_EQ(tracks[1], tracks[2]);
 }
 
 } // namespace haylen::ui

@@ -130,6 +130,7 @@ class Theme final {
         ScrollLine,
         ReadingWidth,
         ScrollFade,
+        SliderValueWidth,
     };
 
     enum class Font : std::uint8_t {
@@ -220,7 +221,7 @@ class Theme final {
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
     static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::ScrollFade) + 1;
-    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ScrollFade) + 1;
+    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::SliderValueWidth) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::FocusRing) + 1;
 
@@ -411,6 +412,7 @@ class Theme final {
         {"scrollLine", 64.0F},
         {"readingWidth", 880.0F},
         {"scrollFade", 32.0F},
+        {"sliderValueWidth", 96.0F},
     }};
     static constexpr std::array<std::string_view, kFontCount> kFontNames{"body", "caption", "button", "heading", "title", "monospace"};
     static constexpr std::array<std::string_view, kSurfaceCount> kSurfaceNames{

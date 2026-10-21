@@ -31,9 +31,10 @@ math::Vec2 Slider::measureContent(Context& context, float availableWidth) {
     return {std::min(availableWidth, 360.0F), context.getMetric(Theme::Metric::ControlHeight)};
 }
 
-// The shown value takes the room of the wider end of the track, so the track keeps its length while the value changes.
+// The shown value takes the room of the wider end of the track, so the track keeps its length while the value changes, and at least the value width of the theme, so the tracks of the sliders of a column line up whatever their ends.
 void Slider::render(Context& context, const math::Rect& bounds) {
-    const float label = showValue ? std::max(Typography::measure(context, Theme::Font::Body, Typography::formatNumber(minimum, decimals)).x, Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x) + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
+    const float widest = std::max(Typography::measure(context, Theme::Font::Body, Typography::formatNumber(minimum, decimals)).x, Typography::measure(context, Theme::Font::Body, Typography::formatNumber(maximum, decimals)).x);
+    const float label = showValue ? std::max(widest, context.getMetric(Theme::Metric::SliderValueWidth)) + context.getMetric(Theme::Metric::ItemSpacing) : 0.0F;
     const math::Rect track = context.mirror({bounds.x, bounds.y, std::max(0.0F, bounds.width - label), bounds.height}, bounds);
     bool changed = Widgets::slider(context, track, value, minimum, maximum, step);
     if (const std::optional<FocusDirection> direction = takeFocusDirection(context)) {
