@@ -28,6 +28,9 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/LocalizationPlugin.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/text/FontFamily.hpp"
+#include "haylen/text/Layout.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
@@ -587,6 +590,30 @@ TEST_F(ComponentTest, MeasuresSplitterChildrenAtTheirShares) {
     EXPECT_GE(getBounds(*gui, "split").height, Typography::measureParagraph(context, Theme::Font::Body, text, getBounds(*gui, "left").width).y);
     EXPECT_GE(getBounds(*gui, "top").height, line);
     EXPECT_GE(getBounds(*gui, "bottom").height, line);
+}
+
+// A text area wraps a line longer than its width between its words, and every line draws inside the field.
+TEST_F(ComponentTest, WrapsTheLinesOfATextArea) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": "The tide rose over the harbor wall and the boats drifted toward the lighthouse at dusk."}]})");
+    frames();
+    const math::Rect field = getBounds(*gui, "notes");
+    Backend& backend = getUi().getBackend();
+    bool drawn = false;
+    for (const Backend::Text& text : backend.getTexts()) {
+        const std::string_view content = backend.getContent(text);
+        if (!content.starts_with("The tide")) {
+            continue;
+        }
+        drawn = true;
+        const std::shared_ptr<const text::Layout> laid = text.family->layout(content, text.style);
+        EXPECT_GT(laid->lines.size(), 2U);
+        for (const text::Layout::Line& line : laid->lines) {
+            const math::Rect box = line.box.translated(text.origin);
+            EXPECT_GE(box.x, field.x);
+            EXPECT_LE(box.getRight(), field.getRight());
+        }
+    }
+    EXPECT_TRUE(drawn);
 }
 
 // Only the rows in view draw their content, while every row still takes the focus and the pointer.

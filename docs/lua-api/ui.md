@@ -2051,7 +2051,7 @@ end})
 
 ### ui.textArea(properties)
 
-A text entry of several lines, where Enter, and the return key of the on-screen keyboard, starts a new line. It takes the properties of `textField` except `keyboard`, plus `rows`, reports `change` and can take the focus. It never reports `submit`, and it shows its `placeholder` while it is empty. Text taller than the field scrolls with the wheel, with the caret and with a [scroll bar](#scroll-bars) inside the border of the field, which shows from the frame after the text grew taller.
+A text entry of several lines, where Enter, and the return key of the on-screen keyboard, starts a new line. It takes the properties of `textField` except `keyboard`, plus `rows`, reports `change` and can take the focus. It never reports `submit`, and it shows its `placeholder` while it is empty. A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways, and text taller than the field scrolls with the wheel, with the caret and with a [scroll bar](#scroll-bars) inside the border of the field, which shows from the frame after the text grew taller and narrows the lines it wraps.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

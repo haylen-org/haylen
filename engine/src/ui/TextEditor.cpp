@@ -42,25 +42,25 @@ math::Vec2 TextEditor::getOrigin(const text::Layout& laid, const math::Rect& are
     return {x + scroll.x, y - scroll.y};
 }
 
-// A left-to-right text scrolls to the left and a right-to-left one to the right, and neither scrolls further than its overflow.
+// The lines of an editor of many lines wrap at the width of its area, so its text only scrolls down, while a field of one line scrolls to the left for left-to-right text and to the right for right-to-left text, and never further than its overflow.
 void TextEditor::follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline) {
+    const math::Vec2 size = field.getLayout().size;
+    if (multiline) {
+        if (caret.y < area.y) {
+            scroll.y -= area.y - caret.y;
+        } else if (caret.getBottom() > area.getBottom()) {
+            scroll.y += caret.getBottom() - area.getBottom();
+        }
+        scroll = {0.0F, std::clamp(scroll.y, 0.0F, std::max(0.0F, size.y - area.height))};
+        return;
+    }
     if (caret.x > area.getRight() - kCaretMargin) {
         scroll.x -= caret.x - (area.getRight() - kCaretMargin);
     } else if (caret.x < area.x + kCaretMargin) {
         scroll.x += area.x + kCaretMargin - caret.x;
     }
-    const math::Vec2 size = field.getLayout().size;
     const float overflow = std::max(0.0F, size.x + kCaretMargin * 2.0F - area.width);
     scroll.x = rightToLeft ? std::clamp(scroll.x, 0.0F, overflow) : std::clamp(scroll.x, -overflow, 0.0F);
-    if (!multiline) {
-        return;
-    }
-    if (caret.y < area.y) {
-        scroll.y -= area.y - caret.y;
-    } else if (caret.getBottom() > area.getBottom()) {
-        scroll.y += caret.getBottom() - area.getBottom();
-    }
-    scroll.y = std::clamp(scroll.y, 0.0F, std::max(0.0F, size.y - area.height));
 }
 
 int TextEditor::callback(ImGuiInputTextCallbackData* data) {
@@ -156,7 +156,7 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
     const math::Rect spaced = multiline ? whole.inset({paddingX, paddingY, paddingX, paddingY}) : whole.inset({paddingX, 0.0F, paddingX, 0.0F});
     const math::Rect area = barShown ? Scrollbar::getContentBox(context, barArea, spaced, false) : spaced;
-    const text::Style style = Typography::getStyle(context, Theme::Font::Body);
+    const text::Style style = Typography::getStyle(context, Theme::Font::Body, multiline ? std::max(1.0F, area.width) : -1.0F);
 
     // The caret and the selection the field had start the frame.
     Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = area, .scroll = {storage.GetFloat(scrollX), storage.GetFloat(scrollY)}, .rightToLeft = rightToLeft, .password = password, .multiline = multiline};
