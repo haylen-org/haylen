@@ -93,11 +93,11 @@ TEST_F(NativeLibrariesTest, NamesTheFilesOfALibraryOnThePlatform) {
     EXPECT_EQ(NativeLibraries::getFileNames("game_platform.dll"), (std::vector<std::string>{"game_platform.dll"}));
     EXPECT_EQ(NativeLibraries::getFileNames("libgame_platform.so.1"), (std::vector<std::string>{"libgame_platform.so.1"}));
 #if defined(_WIN32)
-    EXPECT_EQ(NativeLibraries::getFileNames("native_test"), (std::vector<std::string>{"native_test.dll"}));
+    EXPECT_EQ(NativeLibraries::getFileNames("native-test"), (std::vector<std::string>{"native-test.dll"}));
 #elif defined(__APPLE__)
-    EXPECT_EQ(NativeLibraries::getFileNames("native_test"), (std::vector<std::string>{"libnative_test.dylib", "native_test.framework/native_test"}));
+    EXPECT_EQ(NativeLibraries::getFileNames("native-test"), (std::vector<std::string>{"libnative-test.dylib", "native-test.framework/native-test"}));
 #else
-    EXPECT_EQ(NativeLibraries::getFileNames("native_test"), (std::vector<std::string>{"libnative_test.so"}));
+    EXPECT_EQ(NativeLibraries::getFileNames("native-test"), (std::vector<std::string>{"libnative-test.so"}));
 #endif
     EXPECT_TRUE(NativeLibraries::isAvailable());
 }
@@ -112,7 +112,7 @@ TEST_F(NativeLibrariesTest, LoadsByPathAndByNameNextToTheExecutable) {
     EXPECT_EQ(NativeLibraries::findSymbol(byPath, "native_test_missing"), nullptr);
 
     // The tests run next to the library, which is where a packaged app keeps its libraries on desktop platforms.
-    const NativeLibraries::Library byName = NativeLibraries::open("native_test");
+    const NativeLibraries::Library byName = NativeLibraries::open("native-test");
     EXPECT_EQ(byName.handle, byPath.handle);
     EXPECT_EQ(std::filesystem::path(byName.path).filename(), std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).filename());
     EXPECT_EQ(NativeLibraries::findSymbol("native_test_add"), reinterpret_cast<void*>(add));

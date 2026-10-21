@@ -10,8 +10,8 @@
 
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/Event.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 
 // Xlib defines macros such as `None` and `Bool`, so it comes after the engine headers that use those names.
 #include <X11/Xatom.h>
@@ -32,11 +32,11 @@ std::vector<math::Polygon::Outline>& LinuxDesktop::regions = *new std::vector<ma
 bool LinuxDesktop::dragging = false;
 
 Display* LinuxDesktop::getDisplay() {
-    return static_cast<Display*>(const_cast<void*>(sapp_x11_get_display()));
+    return static_cast<Display*>(NativeWindow::getDisplay());
 }
 
 ::Window LinuxDesktop::getWindow() {
-    return static_cast<::Window>(reinterpret_cast<std::uintptr_t>(sapp_x11_get_window()));
+    return static_cast<::Window>(reinterpret_cast<std::uintptr_t>(NativeWindow::getHandle()));
 }
 
 // Desktop points follow `Xft.dpi`, the scale that the toolkits of the desktop share, and a desktop without it has the standard 96 DPI.
@@ -118,7 +118,7 @@ std::vector<Monitor> LinuxDesktop::readMonitors(Display* display) {
     return monitors;
 }
 
-// The runtime places the window before `sokol_app` connects to the display, so it reads the monitors through a connection of its own then.
+// The player places the window before the backend connects to the display, so it reads the monitors through a connection of its own then.
 std::vector<Monitor> LinuxDesktop::getMonitors() {
     if (Display* display = getDisplay()) {
         return readMonitors(display);
@@ -169,7 +169,8 @@ void LinuxDesktop::setStyle(const WindowStyle& value) {
     changeState(display, window, "_NET_WM_STATE_ABOVE", value.alwaysOnTop);
     changeState(display, window, "_NET_WM_STATE_SKIP_TASKBAR", !value.shownInTaskbar);
     changeState(display, window, "_NET_WM_STATE_SKIP_PAGER", !value.shownInTaskbar);
-    applySizeHints(display, window, sapp_width(), sapp_height());
+    const math::Vec2 size = NativeWindow::getFramebufferSize();
+    applySizeHints(display, window, static_cast<int>(size.x), static_cast<int>(size.y));
     XFlush(display);
 }
 
@@ -181,7 +182,7 @@ math::Rect LinuxDesktop::getFrame() {
     ::Window child = 0;
     XTranslateCoordinates(display, getWindow(), DefaultRootWindow(display), 0, 0, &x, &y, &child);
     const float scale = getDesktopScale(display);
-    return {static_cast<float>(x) / scale, static_cast<float>(y) / scale, sapp_widthf() / scale, sapp_heightf() / scale};
+    return {static_cast<float>(x) / scale, static_cast<float>(y) / scale, NativeWindow::getFramebufferSize().x / scale, NativeWindow::getFramebufferSize().y / scale};
 }
 
 std::string LinuxDesktop::getTitle() {
@@ -282,7 +283,7 @@ void LinuxDesktop::startDrag() {
     dragging = true;
 }
 
-// The event loop of `sokol_app` drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
+// The event loop of the backend drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
 void LinuxDesktop::watch() {
     watcher = XOpenDisplay(nullptr);
     if (watcher == nullptr) {
@@ -322,7 +323,7 @@ void LinuxDesktop::followDrag(Display* display) {
         return;
     }
     dragging = false;
-    SokolRuntime::handleEvent({.type = Event::Type::MouseUp, .mouseButton = input::MouseButton::Left, .position = {static_cast<float>(x), static_cast<float>(y)}});
+    Player::handleEvent({.type = Event::Type::MouseUp, .mouseButton = input::MouseButton::Left, .position = {static_cast<float>(x), static_cast<float>(y)}});
 }
 
 void LinuxDesktop::readEvents() {
@@ -334,9 +335,9 @@ void LinuxDesktop::readEvents() {
             XRRUpdateConfiguration(&event);
         }
         if (event.type == ConfigureNotify) {
-            SokolRuntime::handleEvent({.type = Event::Type::WindowMoved});
+            Player::handleEvent({.type = Event::Type::WindowMoved});
         } else if (randr || (event.type == PropertyNotify && event.xproperty.atom == workAreaAtom)) {
-            SokolRuntime::handleEvent({.type = Event::Type::MonitorsChanged});
+            Player::handleEvent({.type = Event::Type::MonitorsChanged});
         }
     }
 }

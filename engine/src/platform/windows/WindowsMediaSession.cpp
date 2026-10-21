@@ -11,7 +11,7 @@
 
 #include <cmath>
 
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
@@ -80,7 +80,7 @@ ISystemMediaTransportControls* WindowsMediaSession::getControls() {
         return nullptr;
     }
     ComPtr<ISystemMediaTransportControlsInterop> interop;
-    const auto window = static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()));
+    const auto window = static_cast<HWND>(NativeWindow::getHandle());
     if (FAILED(RoGetActivationFactory(HStringReference(RuntimeClass_Windows_Media_SystemMediaTransportControls).Get(), IID_PPV_ARGS(&interop))) || FAILED(interop->GetForWindow(window, IID_PPV_ARGS(&controls)))) {
         controls.Reset();
         return nullptr;

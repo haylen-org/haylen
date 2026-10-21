@@ -7,13 +7,12 @@
 #include <unordered_map>
 #include <vector>
 
-#include "graphics/GpuReadback.hpp"
 #include "graphics/ResourceGraveyard.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
-#include "sokol_gfx.h"
 
 namespace haylen::graphics {
 
@@ -21,66 +20,56 @@ struct TextureResource;
 
 // The GPU state of a device, which the renderers and the resources it creates share.
 struct DeviceState {
-    struct ImageViews {
-        sg_image image{};
-        sg_view view{};
-    };
+    explicit DeviceState(std::unique_ptr<gpu::Device> device) : gpu(std::move(device)) {}
 
+    std::unique_ptr<gpu::Device> gpu;
     std::shared_ptr<ResourceGraveyard> graveyard = std::make_shared<ResourceGraveyard>();
-    std::unordered_map<std::uint8_t, sg_sampler> samplers;
+    std::unordered_map<std::uint8_t, gpu::Device::Sampler> samplers;
     Texture white;
     std::uint32_t nextTextureId = 1;
-    sg_pixel_format offscreenFormat = SG_PIXELFORMAT_RGBA8;
+    gpu::Device::PixelFormat offscreenFormat = gpu::Device::PixelFormat::Rgba8;
 
-    // The dynamic textures whose pixels changed since the last upload, the ones the last upload sent, and the list an upload walks, which the uploads swap so none of them allocates once they have grown.
+    // The dynamic textures whose pixels changed since the last upload, the ones the last upload sent, the list an upload walks and the writes it hands the device, which the uploads reuse so none of them allocates once they have grown.
     std::vector<std::weak_ptr<TextureResource>> changedTextures;
     std::vector<std::weak_ptr<TextureResource>> uploadedTextures;
     std::vector<std::weak_ptr<TextureResource>> uploadingTextures;
+    std::vector<std::shared_ptr<TextureResource>> uploading;
+    std::vector<gpu::Device::ImageWrite> writes;
     std::uint64_t uploads = 0;
-    // The buffer that carries the pixels of the changed dynamic textures to their images, which grows to the largest upload of a frame.
-    sg_buffer staging{};
-    std::size_t stagingSize = 0;
 
     // A render target whose pixels a caller asked for, and the copy of them once the frame that asked was submitted.
     struct PendingRead {
         RenderTarget target;
         Device::ReadCallback done;
-        std::unique_ptr<GpuReadback> copy;
+        std::unique_ptr<gpu::Device::Readback> copy;
     };
 
     std::vector<PendingRead> reads;
 
     // Returns the sampler that every texture with the options shares, creating it on first use.
-    [[nodiscard]] sg_sampler getSampler(Texture::Options options);
+    [[nodiscard]] gpu::Device::Sampler getSampler(Texture::Options options);
 
     // Creates the image of a texture, with its mipmaps when asked for, and counts the bytes they hold.
-    [[nodiscard]] static ImageViews createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes);
+    [[nodiscard]] gpu::Device::Image createTextureImage(const Image& image, bool mipmaps, std::size_t& bytes);
 
-    // Creates an immutable image with its pixels and, when given, the pixels of its smaller mip levels.
-    [[nodiscard]] static ImageViews createImage(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, const char* label, std::span<const Image> mipmaps = {});
+    // Creates an image whose pixels change in place. Its pixels arrive with the next upload.
+    [[nodiscard]] gpu::Device::Image createDynamicImage(int width, int height, gpu::Device::PixelFormat format);
 
-    // Creates an image whose pixels change in place and the view that samples it. Its pixels arrive with the next upload.
-    [[nodiscard]] static ImageViews createDynamicImage(int width, int height, sg_pixel_format format);
-
-    // Estimates the GPU memory an image of the size and pixel format takes, for the debug statistics.
-    [[nodiscard]] static std::size_t getImageBytes(int width, int height, sg_pixel_format format);
+    // Returns the bytes an image of the size and pixel format holds, for the debug statistics.
+    [[nodiscard]] static std::size_t getImageBytes(int width, int height, gpu::Device::PixelFormat format);
 
     // Creates a render target of a pixel format, such as the floating-point light maps of the 2D renderer.
-    [[nodiscard]] RenderTarget createRenderTarget(int width, int height, sg_pixel_format format, Texture::Options options);
+    [[nodiscard]] RenderTarget createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options);
 
     // Creates a texture whose pixels change in place, and keeps its first pixels for the next upload.
-    [[nodiscard]] Texture createDynamicTexture(int width, int height, sg_pixel_format format, std::span<const std::uint8_t> pixels, Texture::Options options);
+    [[nodiscard]] Texture createDynamicTexture(int width, int height, gpu::Device::PixelFormat format, std::span<const std::uint8_t> pixels, Texture::Options options);
 
     // Keeps the pixels of a dynamic texture for the next upload, replacing the ones it kept before.
     void stagePixels(const std::shared_ptr<TextureResource>& resource, std::span<const std::uint8_t> pixels);
-    // Makes the staging buffer hold at least the bytes, burying the smaller one it replaces.
-    void reserveStaging(std::size_t bytes);
-    // Returns the bytes that the pixels of a texture take in the staging buffer, where every texture starts at a multiple of four bytes.
-    [[nodiscard]] static std::size_t getStagingBytes(const TextureResource& resource) noexcept;
 
   private:
     [[nodiscard]] static std::uint8_t samplerKey(Texture::Options options) noexcept;
-    [[nodiscard]] static sg_wrap toWrap(Texture::Wrap wrap) noexcept;
+    [[nodiscard]] static gpu::Device::Wrap toWrap(Texture::Wrap wrap) noexcept;
 };
 
 } // namespace haylen::graphics

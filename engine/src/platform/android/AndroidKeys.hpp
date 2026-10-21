@@ -2,7 +2,7 @@
 
 namespace haylen::platform {
 
-// The back button of Android, which reaches the app through the back callback of the activity while the app captures back or edits a text field, and leaves the app with the back animation of the system otherwise. Every other key arrives through the key table of `sokol_app`, where the play and pause key of TV remotes is the pause key.
+// The back button of Android, which reaches the app through the back callback of the activity while the app captures back or edits a text field, and leaves the app with the back animation of the system otherwise. Every other key arrives through the backend, which reads the play and pause key of TV remotes as the pause key.
 class AndroidKeys final {
   public:
     // Hands a press of back to the runtime for the back callback of the activity, which Android calls from its UI thread once the back gesture completes. The app hears it as escape, which the UI reads as `uiCancel`, and a launched app that does not take back quits to the app that launched it.

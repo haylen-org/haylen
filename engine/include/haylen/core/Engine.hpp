@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -304,6 +305,18 @@ class Engine final {
     Signal<> lowMemory;
 
   private:
+    // Holds the one engine of the process while it lives, because the GPU device, the renderer and the interface keep state of the process that one engine at a time owns.
+    class Claim final {
+      public:
+        Claim();
+        ~Claim();
+        Claim(const Claim&) = delete;
+        Claim& operator=(const Claim&) = delete;
+
+      private:
+        [[nodiscard]] static std::atomic<bool>& getClaimed() noexcept;
+    };
+
     // The event loop takes a share of the time of a frame, within bounds, so its tasks and sockets advance every frame without ever holding one up.
     static constexpr double kPollBudgetShare = 0.25;
     static constexpr std::chrono::nanoseconds kMinimumPollBudget = std::chrono::milliseconds(1);
@@ -333,6 +346,7 @@ class Engine final {
     void remapViewport();
     [[nodiscard]] math::Insets getSafeAreaInsets() const;
 
+    Claim claim;
     std::unique_ptr<EngineState> state;
 };
 

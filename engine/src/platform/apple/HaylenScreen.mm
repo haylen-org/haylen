@@ -4,10 +4,10 @@
 #include <utility>
 
 #include "haylen/core/Log.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/ScreenRelay.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleScreens.hpp"
-#include "sokol_app.h"
 
 #if !TARGET_OS_OSX
 #import "platform/apple/ApplePresenter.hpp"
@@ -162,7 +162,7 @@ using haylen::platform::ScreenRelay;
 
 #if TARGET_OS_OSX
 - (NSWindow*)window {
-    return sapp_isvalid() ? (__bridge NSWindow*)sapp_macos_get_window() : nil;
+    return haylen::platform::NativeWindow::isOpen() ? (__bridge NSWindow*)haylen::platform::NativeWindow::getHandle() : nil;
 }
 
 - (void)presentSheet:(NSViewController*)controller {

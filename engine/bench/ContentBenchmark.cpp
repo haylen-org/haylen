@@ -199,9 +199,9 @@ class ContentBenchmark final {
         for (int y = 0; y < kImageSize; ++y) {
             for (int x = 0; x < kImageSize; ++x) {
                 const std::size_t pixel = (static_cast<std::size_t>(y) * kImageSize + static_cast<std::size_t>(x)) * 4;
-                pixels[pixel] = static_cast<std::uint8_t>(x / 4 + grain() % 6);
-                pixels[pixel + 1] = static_cast<std::uint8_t>(y / 4 + grain() % 6);
-                pixels[pixel + 2] = static_cast<std::uint8_t>((x + y) / 8 + grain() % 6);
+                pixels[pixel] = static_cast<std::uint8_t>(static_cast<unsigned>(x / 4) + grain() % 6U);
+                pixels[pixel + 1] = static_cast<std::uint8_t>(static_cast<unsigned>(y / 4) + grain() % 6U);
+                pixels[pixel + 2] = static_cast<std::uint8_t>(static_cast<unsigned>((x + y) / 8) + grain() % 6U);
                 pixels[pixel + 3] = 255;
             }
         }
@@ -232,10 +232,10 @@ class ContentBenchmark final {
 
     static void readOnThreads(const io::Package& package, const std::string& path) {
         std::vector<std::jthread> readers;
-        const std::uint64_t quarter = kLargeFile / 4;
+        constexpr std::uint64_t quarter = kLargeFile / 4;
         for (std::uint64_t part = 0; part < 4; ++part) {
             // clang-format off
-            readers.emplace_back([&package, &path, part, quarter] {
+            readers.emplace_back([&package, &path, part] {
                 const std::unique_ptr<io::PackageReader> reader = package.openReader(path);
                 std::vector<std::uint8_t> buffer(1024 * 1024);
                 for (std::uint64_t offset = part * quarter; offset < (part + 1) * quarter; offset += buffer.size()) {

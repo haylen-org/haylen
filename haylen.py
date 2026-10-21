@@ -82,15 +82,13 @@ ANDROID_KEY_NAME = "CN=Upload, OU=Upload, O=Upload, L=Upload, ST=Upload, C=BR"
 # The command `keytool` refuses passwords shorter than this.
 ANDROID_KEY_PASSWORD_LENGTH = 6
 
-SHDC_COMMIT = "b975d5642093d62e76a1e088bdae945d6d8b8ff2"
-# App shaders include the shader library as `haylen/material.glsl`, which sokol-shdc finds from its working directory.
+# The script that provides the Haylen shader compiler that `engine/cmake/haylen-shader-compiler.json` pins, and the variable that points at another build of it, such as while the compiler itself is being made.
+SHADER_COMPILER_SCRIPT = ENGINE_DIR / "cmake" / "haylen-shader-compiler.cmake"
+SHADER_COMPILER_VARIABLE = "HAYLEN_SHADER_COMPILER"
+# App shaders include the shader library as `haylen/material.glsl`.
 SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
-SHADER_SLANGS = "glsl430:glsl300es:hlsl5:metal_macos:metal_ios:metal_sim:wgsl"
 # Every material compiles once per kind of draw and once more for lit canvases, and the engine picks the program of a draw by these names.
 SHADER_PROGRAMS = {"sprite": [], "sprite_lit": ["HAYLEN_LIT"], "batch": ["HAYLEN_BATCH"], "batch_lit": ["HAYLEN_BATCH", "HAYLEN_LIT"], "text": ["HAYLEN_TEXT"], "text_lit": ["HAYLEN_TEXT", "HAYLEN_LIT"], "mesh": ["HAYLEN_MESH"], "mesh_lit": ["HAYLEN_MESH", "HAYLEN_LIT"], "shape": ["HAYLEN_SHAPE"], "shape_lit": ["HAYLEN_SHAPE", "HAYLEN_LIT"]}
-# The uniform blocks and textures of the shader library, which the engine fills itself.
-SHADER_ENGINE_BLOCKS = {"haylen_vs_params", "haylen_lit_params"}
-SHADER_ENGINE_TEXTURES = {"sprite_texture", *(f"sprite_texture_{index}" for index in range(1, 8))}
 SHADER_WATCH_SECONDS = 0.5
 GRADLE_VERSION = "9.8.1"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.
@@ -119,7 +117,7 @@ ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
 ANDROID_ABIS = ("arm64-v8a", "armeabi-v7a", "x86_64")
 # The library that the activity of a release build loads instead of the Lua player of the `haylen` library: the Lua player with the bootstrap of the app.
-ANDROID_RELEASE_LIBRARY = "haylen_app"
+ANDROID_RELEASE_LIBRARY = "haylen-app"
 # The file in the assets of an Android project that names the plugins whose classes the runtime loads, written by `prepare`.
 ANDROID_PLUGINS_FILE = "haylen-plugins.json"
 # The Android libraries that `haylen.py engine` publishes as `dev.haylen:<module>`, each a module of the Gradle project of the engine.
@@ -168,7 +166,7 @@ STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store acce
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
 RELEASE_MATCH_MINIMUM = 16
-# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and `sokol_app` draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
+# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and the `sokol_app` of the Sokol backend draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
 APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "14.0"}
 
@@ -427,6 +425,11 @@ def capture(command: list, *, cwd: Path = ROOT) -> str:
         raise BuildError(f'The command "{Path(parts[0]).name}" failed with exit code {error.returncode}.', (error.stderr or error.stdout).strip()) from error
 
 
+def cpm_cache() -> str:
+    """Returns the folder where CPM keeps the sources of dependencies, which builds share."""
+    return os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
+
+
 def default_jobs() -> int:
     return max(1, (os.cpu_count() or 2) - 1)
 
@@ -466,23 +469,20 @@ def download(url: str, target: Path, sha256: str | None = None) -> None:
         raise BuildError(f'The download of `{url}` does not match its pinned SHA-256 "{sha256}", so it was deleted. Try again, and if it still differs, the file on the server changed.')
 
 
-def ensure_shdc() -> Path:
-    """Returns the pinned sokol-shdc, kept in a folder named after its commit, so a new pin downloads its own binary. The binary moves into place only once it is complete and executable, since tests that compile shaders may ask for it at the same time."""
-    executable = executable_name("sokol-shdc")
-    target = TOOLS_DIR / f"sokol-shdc-{SHDC_COMMIT[:7]}" / executable
-    if target.exists():
-        return target
+@functools.cache
+def ensure_shaderc() -> Path:
+    """Returns the Haylen shader compiler: the build that `HAYLEN_SHADER_COMPILER` names, or the pinned one, which the script of the engine downloads into the tools folder where its release has a binary for this machine and builds from the commit of the release elsewhere."""
+    named = os.environ.get(SHADER_COMPILER_VARIABLE)
+    if named:
+        compiler = Path(named)
+        if not compiler.is_file():
+            raise BuildError(f'The variable "{SHADER_COMPILER_VARIABLE}" names `{named}`, which is not a build of the Haylen shader compiler. Point it at the executable "haylen-shaderc" or unset it.')
+        return compiler.resolve()
 
-    folders = {("macos", "arm64"): "osx_arm64", ("macos", "x64"): "osx", ("linux", "arm64"): "linux_arm64", ("linux", "x64"): "linux", ("windows", "x64"): "win32"}
-    folder = folders.get((host_name(), host_arch()))
-    if folder is None:
-        raise BuildError(f'The shader compiler "sokol-shdc" has no prebuilt binary for "{host_name()}" on "{host_arch()}". Use a host with a prebuilt binary, as the build guide lists.')
-
-    partial = target.with_name(f"{executable}.{os.getpid()}.part")
-    download(f"https://raw.githubusercontent.com/floooh/sokol-tools-bin/{SHDC_COMMIT}/bin/{folder}/{executable}", partial)
-    partial.chmod(0o755)
-    partial.replace(target)
-    return target
+    with tempfile.TemporaryDirectory() as folder:
+        result = Path(folder) / "compiler"
+        run(["cmake", f"-DHAYLEN_SHADERC_CACHE={TOOLS_DIR.as_posix()}", f"-DHAYLEN_SHADERC_RESULT={result.as_posix()}", f"-DCPM_SOURCE_CACHE={Path(cpm_cache()).as_posix()}", "-P", SHADER_COMPILER_SCRIPT])
+        return Path(result.read_text(encoding="utf-8"))
 
 
 def ensure_gradle() -> Path:
@@ -610,11 +610,11 @@ def build_folder_name(folder: Path) -> str:
     return f"{folder.name}-{hashlib.sha256(str(folder).encode()).hexdigest()[:8]}"
 
 
-def requested_backend(args: argparse.Namespace) -> str:
-    """Returns the `HAYLEN_RENDER_BACKEND` a build asks for. Each web platform always uses its own backend."""
+def requested_graphics_api(args: argparse.Namespace) -> str:
+    """Returns the `HAYLEN_GRAPHICS_API` a build asks for. Each web platform always uses its own graphics API."""
     if args.platform in WEB_PLATFORMS:
         return "WGPU" if args.platform == "web" else "GLES3"
-    return args.backend or "AUTO"
+    return args.graphics_api or "AUTO"
 
 
 def requested_sanitizers(args: argparse.Namespace) -> str:
@@ -623,14 +623,14 @@ def requested_sanitizers(args: argparse.Namespace) -> str:
 
 
 def build_options(platform_name: str, config: str, target: str | None = None, jobs: int | None = None) -> argparse.Namespace:
-    return argparse.Namespace(platform=platform_name, config=config, backend=None, xcode=False, sanitizers=None, coverage=False, target=target, jobs=jobs or default_jobs())
+    return argparse.Namespace(platform=platform_name, config=config, graphics_api=None, xcode=False, sanitizers=None, coverage=False, target=target, jobs=jobs or default_jobs())
 
 
 def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
     require_host(args.platform)
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    command = ["cmake", "-S", ROOT, "-B", directory, f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
-    command += [f"-DHAYLEN_RENDER_BACKEND={requested_backend(args)}", f"-DHAYLEN_SANITIZERS={requested_sanitizers(args)}"]
+    command = ["cmake", "-S", ROOT, "-B", directory, f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
+    command += [f"-DHAYLEN_GRAPHICS_API={requested_graphics_api(args)}", f"-DHAYLEN_SANITIZERS={requested_sanitizers(args)}"]
     env = os.environ.copy()
 
     if args.platform == "macos":
@@ -654,7 +654,7 @@ def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
 
 
 def command_tools(args: argparse.Namespace) -> None:
-    tools = {"sokol-shdc": ensure_shdc}
+    tools = {"haylen-shaderc": ensure_shaderc}
     if host_name() == "macos":
         tools["XcodeGen"] = ensure_xcodegen
     if args.emsdk:
@@ -684,9 +684,9 @@ def cmake_cache_value(directory: Path, name: str) -> str:
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
-    """Configures the build tree when it does not exist yet, when the requested backend differs from the one it was configured with, when the pinned shader compiler changed or when another version of Emscripten configured a web tree."""
+    """Configures the build tree when it does not exist yet, when the requested graphics API differs from the one it was configured with, when the shader compiler changed or when another version of Emscripten configured a web tree."""
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_RENDER_BACKEND") != requested_backend(args) or Path(cmake_cache_value(directory, "HAYLEN_SOKOL_SHDC")) != ensure_shdc() or (args.platform in WEB_PLATFORMS and is_stale_web_tree(directory)):
+    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_GRAPHICS_API") != requested_graphics_api(args) or Path(cmake_cache_value(directory, "HAYLEN_SHADERC")) != ensure_shaderc() or (args.platform in WEB_PLATFORMS and is_stale_web_tree(directory)):
         command_configure(args)
     return directory
 
@@ -813,7 +813,7 @@ def command_test(args: argparse.Namespace) -> None:
         command_test_web(args)
         return
     args.platform = host_name()
-    args.target = "haylen_tests"
+    args.target = "haylen-tests"
     command_build(args)
     terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
@@ -821,7 +821,7 @@ def command_test(args: argparse.Namespace) -> None:
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
-FUZZERS = ("haylen_content_fuzzer", "haylen_input_fuzzer", "haylen_messagepack_fuzzer", "haylen_placeholder_fuzzer")
+FUZZERS = ("haylen-content-fuzzer", "haylen-input-fuzzer", "haylen-messagepack-fuzzer", "haylen-placeholder-fuzzer")
 FUZZ_MAX_LENGTH = 65536
 FUZZ_LLVM_FOLDERS = ("/opt/homebrew/opt/llvm/bin", "/usr/local/opt/llvm/bin", "/usr/lib/llvm-20/bin", "/usr/lib/llvm-19/bin", "/usr/lib/llvm-18/bin")
 
@@ -841,7 +841,7 @@ def command_fuzz(args: argparse.Namespace) -> None:
     directory = BUILD_ROOT / "fuzz"
     terminal.step(f"Building the fuzzers with `{shown_path(clangxx)}` in `{shown_path(directory)}`")
     # The engine uses no C++ modules, so the build skips the scan for them, which would need the "clang-scan-deps" of the same LLVM.
-    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}"])
+    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SHADERC={ensure_shaderc()}"])
     run(["cmake", "--build", directory, "--target", *FUZZERS, "--parallel", str(args.jobs)])
 
     # Each fuzzer keeps the inputs that reached new code in a corpus of its own, which the next run starts from.
@@ -866,7 +866,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     args.platform = host_name()
     args.config = "Debug"
     args.coverage = True
-    args.backend = None
+    args.graphics_api = None
     args.xcode = False
     directory = BUILD_ROOT / "coverage"
 
@@ -874,7 +874,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     command[command.index("-B") + 1] = str(directory)
     terminal.step(f"Building the engine tests with coverage in `{shown_path(directory)}`")
     run(command, env=env)
-    run(["cmake", "--build", directory, "--target", "haylen_tests", "--parallel", str(args.jobs)])
+    run(["cmake", "--build", directory, "--target", "haylen-tests", "--parallel", str(args.jobs)])
 
     profiles = directory / "coverage"
     shutil.rmtree(profiles, ignore_errors=True)
@@ -888,8 +888,8 @@ def command_coverage(args: argparse.Namespace) -> None:
     merged = profiles / "haylen.profdata"
     run([llvm_tool("llvm-profdata"), "merge", "-sparse", *raw, "-o", merged])
 
-    binary = directory / "bin" / "haylen_tests"
-    ignore = r"(_deps|\.cache|engine/tests|engine/src/platform/(apple|android|web|windows|linux|sokol)|generated)"
+    binary = directory / "bin" / "haylen-tests"
+    ignore = r"(_deps|\.cache|engine/tests|engine/src/platform/(apple|android|web|windows|linux)|generated)"
     report = [llvm_tool("llvm-cov"), "report", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}"]
     run(report, stream=True)
     run([llvm_tool("llvm-cov"), "show", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}", "-format=html", f"-output-dir={profiles / 'html'}"])
@@ -1000,9 +1000,9 @@ def command_sdk(args: argparse.Namespace) -> None:
     command += ["-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
     terminal.step(f'Building the SDK of the engine for "{args.platform}" in the "{args.config}" configuration')
     run(command, env=env)
-    run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen_sdk", "--parallel", str(args.jobs)])
+    run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen-sdk", "--parallel", str(args.jobs)])
     prefix = Path(args.output).resolve() if args.output else sdk_dir(args.platform, args.config)
-    run(["cmake", "--install", directory, "--config", args.config, "--component", "haylen_sdk", "--prefix", prefix])
+    run(["cmake", "--install", directory, "--config", args.config, "--component", "haylen-sdk", "--prefix", prefix])
     terminal.success(f"Installed the SDK into `{shown_path(prefix)}`.")
     for mode in modes:
         check_consumer(mode, args.config, args.jobs, prefix)
@@ -1014,8 +1014,7 @@ def check_consumer(mode: str, config: str, jobs: int, sdk: Path) -> None:
     command = ["cmake", "-S", CONSUMER_PROJECT, "-B", directory, f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_CONSUMER_MODE={mode}"]
     # A project that builds the engine from its sources shares the dependency cache of the build trees of the engine, instead of downloading every dependency into its own folder, and the installed SDK needs neither.
     if mode != "package":
-        cache = os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
-        command += [f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCPM_SOURCE_CACHE={cache}"]
+        command += [f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCPM_SOURCE_CACHE={cpm_cache()}"]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
     if host_name() == "macos":
@@ -1094,12 +1093,12 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
         for arch in APPLE_SLICES[slice_name]:
             directory = ENGINE_BUILDS_DIR / f"apple-{slice_name}-{arch}-{config.lower()}"
             if not (directory / "CMakeCache.txt").exists():
-                run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)])
-            run(["cmake", "--build", directory, "--target", "haylen_framework", "--parallel", str(jobs)])
-            run(["cmake", "--install", directory, "--component", "haylen_framework", "--prefix", directory / "framework"])
+                run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)])
+            run(["cmake", "--build", directory, "--target", "haylen-framework", "--parallel", str(jobs)])
+            run(["cmake", "--install", directory, "--component", "haylen-framework", "--prefix", directory / "framework"])
             archives.append(directory / "framework" / "lib" / "libhaylen.a")
             if headers is None:
-                run(["cmake", "--install", directory, "--component", "haylen_sdk", "--prefix", directory / "sdk"])
+                run(["cmake", "--install", directory, "--component", "haylen-sdk", "--prefix", directory / "sdk"])
                 headers = directory / "sdk" / "include"
         if len(archives) > 1:
             library = apple_slice_library(slice_name, config)
@@ -1131,11 +1130,11 @@ def build_android_players(config: str, jobs: int) -> Path:
     shutil.rmtree(libraries, ignore_errors=True)
     for abi in ANDROID_ABIS:
         directory = ENGINE_BUILDS_DIR / f"android-{abi}-{config.lower()}"
-        run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
-        run(["cmake", "--build", directory, "--target", "haylen", "haylen_sdk", "--parallel", str(jobs)])
+        run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *android_options(abi)])
+        run(["cmake", "--build", directory, "--target", "haylen", "haylen-sdk", "--parallel", str(jobs)])
         copy_into(directory / "lib" / "libhaylen.so", libraries / abi)
         shutil.rmtree(android_engine_sdk(abi), ignore_errors=True)
-        run(["cmake", "--install", directory, "--component", "haylen_sdk", "--prefix", android_engine_sdk(abi)])
+        run(["cmake", "--install", directory, "--component", "haylen-sdk", "--prefix", android_engine_sdk(abi)])
     return libraries
 
 
@@ -1149,26 +1148,26 @@ def build_android_artifacts(config: str, jobs: int) -> None:
     run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, *tasks, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
 
 
-def web_sdk(backend: str) -> Path:
-    """The SDK of the engine for the web with one backend, which links the release runtime of each app."""
-    return ARTIFACTS_DIR / "web" / f"sdk-{backend}"
+def web_sdk(api: str) -> Path:
+    """The SDK of the engine for the web with one graphics API, which links the release runtime of each app."""
+    return ARTIFACTS_DIR / "web" / f"sdk-{api}"
 
 
 def build_web_artifacts(config: str, jobs: int) -> None:
-    """Builds the player for WebGPU and for WebGL2, each next to the processor of its audio output and the worker of its content store, and the SDK of each backend. The player loads the app package at runtime, so one build serves every app in development, and a release links a runtime of its own against the SDK."""
-    for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
+    """Builds the player for WebGPU and for WebGL2, each next to the processor of its audio output and the worker of its content store, and the SDK of each graphics API. The player loads the app package at runtime, so one build serves every app in development, and a release links a runtime of its own against the SDK."""
+    for platform_name, api in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         command_build(build_options(platform_name, config, "haylen", jobs))
         directory = build_dir(platform_name, config)
         built = directory / "bin" / "haylen"
-        destination = ARTIFACTS_DIR / "web" / backend
+        destination = ARTIFACTS_DIR / "web" / api
         shutil.rmtree(destination, ignore_errors=True)
         destination.mkdir(parents=True)
         for name in WEB_RUNTIME_FILES:
             shutil.copy2(built / name, destination)
         run(["cmake", "-B", directory, "-DHAYLEN_BUILD_SDK=ON"])
-        run(["cmake", "--build", directory, "--target", "haylen_sdk", "--parallel", str(jobs)])
-        shutil.rmtree(web_sdk(backend), ignore_errors=True)
-        run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", web_sdk(backend)])
+        run(["cmake", "--build", directory, "--target", "haylen-sdk", "--parallel", str(jobs)])
+        shutil.rmtree(web_sdk(api), ignore_errors=True)
+        run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", web_sdk(api)])
 
 
 def desktop_artifact(name: str = "haylen") -> Path:
@@ -1188,17 +1187,17 @@ def cmake_generator() -> list[str]:
 def build_desktop_artifacts(config: str, jobs: int) -> None:
     """Builds the player, the content tool and the SDK of this machine in one build tree of the engine, and installs the SDK next to them."""
     directory = ENGINE_BUILDS_DIR / f"desktop-{config.lower()}"
-    command = ["cmake", "-S", ENGINE_DIR, "-B", directory, *cmake_generator(), f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_TOOLS=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+    command = ["cmake", "-S", ENGINE_DIR, "-B", directory, *cmake_generator(), f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_PLAYER=ON", "-DHAYLEN_BUILD_TOOLS=ON", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
     if host_name() == "macos":
         command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
     run(command)
-    run(["cmake", "--build", directory, "--config", config, "--target", "haylen", CONTENT_TOOL, "haylen_sdk", "--parallel", str(jobs)])
+    run(["cmake", "--build", directory, "--config", config, "--target", "haylen", CONTENT_TOOL, "haylen-sdk", "--parallel", str(jobs)])
     destination = desktop_artifact().parent
     shutil.rmtree(destination, ignore_errors=True)
     destination.mkdir(parents=True)
     shutil.copy2(directory / "bin" / "haylen" / executable_name("haylen"), desktop_artifact())
     shutil.copy2(directory / "bin" / executable_name(CONTENT_TOOL), desktop_artifact(CONTENT_TOOL))
-    run(["cmake", "--install", directory, "--config", config, "--component", "haylen_sdk", "--prefix", desktop_sdk()])
+    run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", desktop_sdk()])
 
 
 ARTIFACT_BUILDERS = {"android": build_android_artifacts, "web": build_web_artifacts, "desktop": build_desktop_artifacts}
@@ -1422,8 +1421,8 @@ class NativeLibrary:
     def parse(folder: Path, name: str, entry: object, source: Path) -> "NativeLibrary":
         """Reads an entry of the `native` section of `app.json`, or the `native` section of a plugin, whose paths are relative to the folder of the file."""
         where = f'The native library "{name}" in `{shown_path(source)}`'
-        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", name) or not isinstance(entry, dict):
-            raise BuildError(f"{where} needs a name of letters, digits and underscores and an object with its files or its CMake project.")
+        if not re.fullmatch(r"[A-Za-z][A-Za-z0-9_-]*", name) or not isinstance(entry, dict):
+            raise BuildError(f"{where} needs a name that starts with a letter and holds letters, digits, dashes and underscores, and an object with its files or its CMake project.")
         unknown = set(entry) - {"files", "cmake", "platforms", "link", "symbols"}
         if unknown:
             raise BuildError(f"{where} has unknown keys: {quoted_names(sorted(unknown))}.")
@@ -1706,7 +1705,7 @@ class Plugin:
         problems = PluginManifestCheck.problems_of(folder, manifest)
         if problems:
             raise BuildError("\n".join([f"The plugin manifest `{shown_path(path)}` has these problems:", *(f"  {problem}" for problem in problems)]))
-        native = NativeLibrary.parse(folder, manifest["id"].replace("-", "_"), manifest["native"], path) if "native" in manifest else None
+        native = NativeLibrary.parse(folder, manifest["id"], manifest["native"], path) if "native" in manifest else None
         return Plugin(folder, manifest, native)
 
 
@@ -1997,7 +1996,7 @@ class PluginManifestCheck:
         if "native" not in self.manifest or not isinstance(self.identifier, str) or not PLUGIN_ID.fullmatch(self.identifier):
             return
         try:
-            library = NativeLibrary.parse(self.folder, self.identifier.replace("-", "_"), self.manifest["native"], self.folder / "plugin.json")
+            library = NativeLibrary.parse(self.folder, self.identifier, self.manifest["native"], self.folder / "plugin.json")
         except BuildError as error:
             self.problems.append(str(error))
             return
@@ -2123,117 +2122,16 @@ def plugin_file(app: App, plugin: Plugin, value: str) -> Path | None:
 # Shaders: annotated GLSL under `content/shaders` compiled ahead of time into one `.shader` file per source, because no platform, the web editor included, compiles shaders at runtime.
 
 
-def parse_shdc_yaml(text: str) -> dict:
-    """Reads the reflection YAML that sokol-shdc writes with `--format bare_yaml`, whose maps and lists nest by two spaces and whose lists put every item under a lone dash."""
-    lines = [(len(line) - len(line.lstrip(" ")), line.strip()) for line in text.splitlines() if line.strip()]
-
-    def scalar(value: str):
-        if value in ("true", "false"):
-            return value == "true"
-        return int(value) if re.fullmatch(r"-?\d+", value) else value
-
-    def block(index: int, indent: int) -> tuple[object, int]:
-        if lines[index][1] == "-":
-            items = []
-            while index < len(lines) and lines[index] == (indent, "-"):
-                item, index = block(index + 1, lines[index + 1][0])
-                items.append(item)
-            return items, index
-        mapping = {}
-        while index < len(lines) and lines[index][0] == indent:
-            key, _, rest = lines[index][1].partition(":")
-            if rest.strip():
-                mapping[key] = scalar(rest.strip())
-                index += 1
-            else:
-                mapping[key], index = block(index + 1, lines[index + 1][0])
-        return mapping, index
-
-    return block(0, 0)[0]
-
-
-def reflect_uniform_members(header: str, program: str) -> dict[str, list[dict]]:
-    """Reads the names, types, element counts and offsets of the uniform block members from the reflection functions of a sokol-shdc C header."""
-    types = {"FLOAT": "float", "FLOAT2": "vec2", "FLOAT3": "vec3", "FLOAT4": "vec4", "INT": "int", "INT2": "ivec2", "INT3": "ivec3", "INT4": "ivec4", "MAT4": "mat4"}
-    members: dict[str, dict[str, dict]] = {}
-    for function in ("uniform_offset", "uniform_desc"):
-        start = header.index(f"{program}_{function}(")
-        block = member = None
-        for line in header[start : header.index("\n}\n", start)].splitlines():
-            if found := re.search(r'strcmp\(ub_name, "(\w+)"\)', line):
-                block = found[1]
-            elif found := re.search(r'strcmp\(u_name, "(\w+)"\)', line):
-                member = found[1]
-                members.setdefault(block, {}).setdefault(member, {"name": member})
-            elif found := re.search(r"return (\d+);", line):
-                members[block][member]["offset"] = int(found[1])
-            elif found := re.search(r"res\.type = SG_UNIFORMTYPE_(\w+);", line):
-                members[block][member]["type"] = types[found[1]]
-            elif found := re.search(r"res\.array_count = (\d+);", line):
-                members[block][member]["count"] = max(1, int(found[1]))
-    return {block: list(entries.values()) for block, entries in members.items()}
-
-
-def describe_shader_program(program: dict, sources: list[str], known: dict[str, int]) -> dict:
-    """Turns the reflection of one program for one shader language into the description the engine builds its GPU program from, with the sources in a shared list."""
-
-    def stage(function: dict) -> dict:
-        text = Path(function["path"]).read_text(encoding="utf-8")
-        if text not in known:
-            known[text] = len(sources)
-            sources.append(text)
-        described = {"source": known[text], "entry": function["entry_point"]}
-        if "d3d11_target" in function:
-            described["d3d11_target"] = function["d3d11_target"]
-        return described
-
-    def pick(entry: dict, keys: tuple[str, ...]) -> dict:
-        return {key: entry[key] for key in keys if key in entry}
-
-    bindings = ("hlsl_register_b_n", "msl_buffer_n", "wgsl_group0_binding_n", "hlsl_register_t_n", "msl_texture_n", "wgsl_group1_binding_n", "hlsl_register_s_n", "msl_sampler_n")
-    return {
-        "vertex": stage(program["vertex_func"]),
-        "fragment": stage(program["fragment_func"]),
-        "attrs": [{**pick(attr, ("slot", "glsl_name", "hlsl_sem_name", "hlsl_sem_index")), "base_type": {"Float": "float", "Int": "sint", "UInt": "uint"}[attr["base_type"]]} for attr in program.get("attrs", [])],
-        "uniform_blocks": [{**pick(block, ("slot", "stage", "size", *bindings)), "glsl_uniforms": [pick(uniform, ("type", "array_count", "glsl_name")) for uniform in block.get("glsl_uniforms", [])]} for block in program.get("uniform_blocks", [])],
-        "views": [{**pick(view["texture"], ("slot", "stage", "sample_type", "multisampled", *bindings)), "image_type": view["texture"]["type"]} for view in program.get("views", [])],
-        "samplers": [pick(sampler, ("slot", "stage", "sampler_type", *bindings)) for sampler in program.get("samplers", [])],
-        "texture_sampler_pairs": [pick(pair, ("slot", "stage", "view_slot", "sampler_slot", "glsl_name")) for pair in program.get("texture_sampler_pairs", [])],
-    }
-
-
 def compile_shader(source: Path, output: Path) -> None:
-    """Compiles one annotated GLSL source into a `.shader` file with every program the engine draws with, for every shader language it supports, and the reflection of the uniforms and textures of the source."""
+    """Compiles one shader source of an app into a `.shader` package with every program the engine draws with, for every shader language the engine runs."""
     text = source.read_text(encoding="utf-8")
     declared = re.findall(r"^\s*@program\s+(\w+)\s+(\w+)\s+(\w+)", text, re.MULTILINE)
     if len(declared) != 1 or declared[0][1] != "haylen_vs":
         raise BuildError(f'The shader `{shown_path(source)}` must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".')
-    name = declared[0][0]
-
-    def shdc(arguments: list, program: str) -> None:
-        compiled = subprocess.run([str(part) for part in [ensure_shdc(), "--input", source.resolve(), *arguments]], cwd=SHADER_LIBRARY_DIR, capture_output=True, text=True)
-        if compiled.returncode != 0:
-            raise BuildError(f'The shader `{shown_path(source)}` does not compile as the "{program}" program, and "sokol-shdc" names the lines below.', f"{compiled.stdout}{compiled.stderr}".strip())
-
-    sources: list[str] = []
-    known: dict[str, int] = {}
-    programs: dict[str, dict] = {}
-    with tempfile.TemporaryDirectory() as temporary:
-        folder = Path(temporary)
-        for program, defines in SHADER_PROGRAMS.items():
-            shdc(["--output", folder / program, "--slang", SHADER_SLANGS, "--format", "bare_yaml", *([f"--defines={':'.join(defines)}"] if defines else [])], program)
-            reflection = parse_shdc_yaml((folder / f"{program}_reflection.yaml").read_text(encoding="utf-8"))
-            programs[program] = {shader["slang"]: describe_shader_program(shader["programs"][0], sources, known) for shader in reflection["shaders"]}
-
-        # The C header of one language holds the members of every uniform block, which the reflection YAML leaves out.
-        shdc(["--output", folder / "reflection.h", "--slang", "glsl430", "--reflection"], "sprite")
-        members = reflect_uniform_members((folder / "reflection.h").read_text(encoding="utf-8"), name)
-        reflection = parse_shdc_yaml((folder / "sprite_reflection.yaml").read_text(encoding="utf-8"))["shaders"][0]["programs"][0]
-
-    blocks = [{"name": block["struct_name"], "slot": block["slot"], "size": block["size"], "uniforms": members.get(block["struct_name"], [])} for block in reflection.get("uniform_blocks", []) if block["stage"] == "fragment" and block["struct_name"] not in SHADER_ENGINE_BLOCKS]
-    textures = [{"name": view["texture"]["name"], "slot": view["texture"]["slot"]} for view in reflection.get("views", []) if view["texture"]["name"] not in SHADER_ENGINE_TEXTURES]
-    document = {"format": "haylen-shader", "version": 1, "name": name, "blocks": blocks, "textures": textures, "sources": sources, "programs": programs}
-    output.write_text(json.dumps(document, separators=(",", ":")), encoding="utf-8")
+    variants = [part for program, defines in SHADER_PROGRAMS.items() for part in ("--variant", f"{program}={','.join(defines)}")]
+    compiled = subprocess.run([str(part) for part in [ensure_shaderc(), source.resolve(), "--output", output.resolve(), "--include", SHADER_LIBRARY_DIR, *variants]], capture_output=True, text=True)
+    if compiled.returncode != 0:
+        raise BuildError(f"The shader `{shown_path(source)}` does not compile, and the Haylen shader compiler names the lines below.", f"{compiled.stdout}{compiled.stderr}".strip())
     terminal.success(f"Compiled `{shown_path(source)}` into `{shown_path(output)}`.")
 
 
@@ -3588,9 +3486,9 @@ def read_zip_entry(archive: Path, name: str) -> bytes:
 
 RELEASE_LIBRARY_PROJECT = """# Written by haylen.py for the release build of the app: the library that HaylenActivity loads, the Lua player with the bootstrap of the app linked against the SDK of the prebuilt engine, which exports only the entry points of Java and GameActivity and ships no symbols, while its symbols stay in a file next to the build for crash reports.
 cmake_minimum_required(VERSION 3.28)
-project(haylen_release LANGUAGES C CXX)
+project(haylen-release LANGUAGES C CXX)
 find_package(haylen REQUIRED CONFIG)
-add_library({name} SHARED {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
+add_library({name} SHARED {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/LuaPlayer.cpp")
 target_link_libraries({name} PRIVATE haylen::runtime)
 set_target_properties({name} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON)
 target_link_options({name} PRIVATE "LINKER:--version-script=${{CMAKE_CURRENT_SOURCE_DIR}}/exports.map" "LINKER:--gc-sections")
@@ -3694,18 +3592,18 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
 
 RELEASE_WEB_PROJECT = """# Written by haylen.py for the release build of the app: the runtime of the page with the bootstrap of the app, linked against the web SDK of the prebuilt engine.
 cmake_minimum_required(VERSION 3.28)
-project(haylen_release LANGUAGES C CXX)
+project(haylen-release LANGUAGES C CXX)
 find_package(haylen REQUIRED CONFIG)
-add_executable(haylen_release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/sokol/LuaPlayer.cpp")
-target_link_libraries(haylen_release PRIVATE haylen::runtime)
-set_target_properties(haylen_release PROPERTIES OUTPUT_NAME "haylen")
+add_executable(haylen-release {bootstrap} "${{HAYLEN_ENGINE_DIR}}/src/platform/LuaPlayer.cpp")
+target_link_libraries(haylen-release PRIVATE haylen::runtime)
+set_target_properties(haylen-release PROPERTIES OUTPUT_NAME "haylen")
 # The names of the functions stay in a symbol map next to the build for crash reports, and the site gets none.
-target_link_options(haylen_release PRIVATE --emit-symbol-map)
+target_link_options(haylen-release PRIVATE --emit-symbol-map)
 """
 
 
 def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[str]:
-    """Places the protected release of an app in `app/` of its site with a runtime of its own for each backend, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
+    """Places the protected release of an app in `app/` of its site with a runtime of its own for each graphics API, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
     release = build_release(app, CONTENT_PROFILES["web"], args.engine_config, args.jobs, args.previous_release)
     shutil.copytree(release_folder(app, CONTENT_PROFILES["web"]), site / "app")
     files = release_app_files(app, release_folder(app, CONTENT_PROFILES["web"]), args.engine_config, args.jobs)
@@ -3714,18 +3612,18 @@ def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[st
     project.mkdir(parents=True, exist_ok=True)
     write_bootstrap(app, CONTENT_PROFILES["web"], project / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
     write_if_changed(project / "CMakeLists.txt", RELEASE_WEB_PROJECT.format(bootstrap=BOOTSTRAP_SOURCE))
-    for backend in ("webgpu", "webgl2"):
-        build = project / f"build-{backend}"
-        terminal.step(f'Linking the release runtime of `{shown_path(app.folder)}` for "{backend}"')
-        configure_web_tree([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk(backend) / 'lib' / 'cmake' / 'haylen'}"], build)
+    for api in ("webgpu", "webgl2"):
+        build = project / f"build-{api}"
+        terminal.step(f'Linking the release runtime of `{shown_path(app.folder)}` for "{api}"')
+        configure_web_tree([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk(api) / 'lib' / 'cmake' / 'haylen'}"], build)
         run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
-        destination = site / backend
+        destination = site / api
         shutil.rmtree(destination, ignore_errors=True)
         destination.mkdir()
         for name in ("haylen.js", "haylen.wasm"):
             shutil.copy2(build / name, destination)
         for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
-            shutil.copy2(web_sdk(backend) / "share" / "haylen" / "platform" / "web" / name, destination)
+            shutil.copy2(web_sdk(api) / "share" / "haylen" / "platform" / "web" / name, destination)
     return files
 
 
@@ -3740,8 +3638,8 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
     if args.config == "Release":
         release = build_release_web(app, site, args)
     else:
-        for backend in ("webgpu", "webgl2"):
-            shutil.copytree(ARTIFACTS_DIR / "web" / backend, site / backend)
+        for api in ("webgpu", "webgl2"):
+            shutil.copytree(ARTIFACTS_DIR / "web" / api, site / api)
     write_web_settings(app, site, release)
     if args.config == "Release":
         minify_web_scripts(site)
@@ -3926,7 +3824,7 @@ def desktop_cmake(platform: str, engine_config: str, values: dict[str, str]) -> 
         "",
         "# Makes a target the executable of the app, the Lua player of the engine with the bootstrap of the app. The executable of the build tree plays the package and loads the native libraries next to it, as the installed app does.",
         "function(haylen_app target)",
-        '  target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/src/platform/sokol/LuaPlayer.cpp" "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/HaylenBootstrap.cpp")',
+        '  target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp" "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/HaylenBootstrap.cpp")',
         "  target_link_libraries(${target} PRIVATE haylen::runtime)",
         '  set_target_properties(${target} PROPERTIES CXX_VISIBILITY_PRESET hidden VISIBILITY_INLINES_HIDDEN ON RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")',
         '  set(package "${CMAKE_BINARY_DIR}/bin/app")',
@@ -3945,7 +3843,7 @@ def desktop_cmake(platform: str, engine_config: str, values: dict[str, str]) -> 
             '  elseif(NOT EXISTS "${package}")',
             '    file(CREATE_LINK "${HAYLEN_PACKAGE_DIR}" "${package}" SYMBOLIC)',
             "  endif()",
-            '  add_custom_target(${target}_native ALL COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin" VERBATIM)',
+            '  add_custom_target(${target}-native ALL COMMAND "${CMAKE_COMMAND}" -E copy_directory_if_different "${HAYLEN_NATIVE_DIR}" "${CMAKE_BINARY_DIR}/bin" VERBATIM)',
             "  # A release keeps the public symbols of the executable in a PDB next to the build for crash reports, which the install leaves out, and drops the code nothing calls.",
             '  target_link_options(${target} PRIVATE "$<$<CONFIG:Release>:/DEBUG>" "$<$<CONFIG:Release>:/OPT:REF>" "$<$<CONFIG:Release>:/OPT:ICF>")',
         ]
@@ -4797,8 +4695,7 @@ CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES 
 
 def cpp_engine_options() -> list[str]:
     """The options that hand a C++ app project the engine of this checkout, which the project adds from "HAYLEN_ENGINE_SOURCE", with the compiler of its shaders and the dependency cache of the engine builds, instead of a download of every dependency into the folder of the project."""
-    cache = os.environ.get("CPM_SOURCE_CACHE", str(ROOT / ".cache" / "cpm"))
-    return [f"-DHAYLEN_ENGINE_SOURCE={ENGINE_DIR.as_posix()}", f"-DHAYLEN_SOKOL_SHDC={ensure_shdc()}", f"-DCPM_SOURCE_CACHE={cache}"]
+    return [f"-DHAYLEN_ENGINE_SOURCE={ENGINE_DIR.as_posix()}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCPM_SOURCE_CACHE={cpm_cache()}"]
 
 
 def command_run_cpp(args: argparse.Namespace) -> None:
@@ -4970,19 +4867,19 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
-    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder with the web parts of the plugins of its app, whose page runs the backend the browser supports, and returns that folder. A protected release, which both builds make byte for byte the same, goes once into `app/` of the site, where its content streams by range."""
+    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder with the web parts of the plugins of its app, whose page runs the graphics API the browser supports, and returns that folder. A protected release, which both builds make byte for byte the same, goes once into `app/` of the site, where its content streams by range."""
     output = folder / "web"
     shutil.rmtree(output, ignore_errors=True)
     releases = []
-    for platform_name, backend in (("web", "webgpu"), ("web-webgl2", "webgl2")):
+    for platform_name, api in (("web", "webgpu"), ("web-webgl2", "webgl2")):
         directory = folder / f"{platform_name}-{config.lower()}"
         terminal.step(f'Building the target "{target}" for "{platform_name}" in `{shown_path(directory)}`')
         if options is not None or not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
             renderer = "WGPU" if platform_name == "web" else "GLES3"
-            configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_RENDER_BACKEND={renderer}", *(options or [])], directory)
+            configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_GRAPHICS_API={renderer}", *(options or [])], directory)
         run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
         built = directory / "bin" / target
-        destination = output / backend
+        destination = output / api
         destination.mkdir(parents=True)
         for suffix in (".js", ".wasm", ".data"):
             if (built / f"{target}{suffix}").is_file():
@@ -5000,9 +4897,9 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
     package = Path((built / "package.txt").read_text(encoding="utf-8").strip())
     (output / CPP_WEB_PLUGINS).write_text(json.dumps(write_web_plugins(App(package, "web"), output), indent=4) + "\n", encoding="utf-8")
 
-    # The page is the shell of the target, with the script that picks the backend where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
+    # The page is the shell of the target, with the script that picks the graphics API where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text(encoding="utf-8")
-    picker = (ENGINE_DIR / "platform" / "web" / "backend-picker.html").read_text(encoding="utf-8").replace("{{TARGET}}", target)
+    picker = (ENGINE_DIR / "platform" / "web" / "graphics-api-picker.html").read_text(encoding="utf-8").replace("{{TARGET}}", target)
     if "{{{ SCRIPT }}}" not in shell:
         raise BuildError(f'The web shell of "{target}" has no "{{{{{{ SCRIPT }}}}}}" placeholder, where the page loads the runtime. Add it to the shell that "WEB_SHELL" names.')
     (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()), encoding="utf-8")
@@ -5787,7 +5684,7 @@ def add_jobs_option(parser: argparse.ArgumentParser) -> None:
 def add_build_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--platform", default=host_name(), choices=PLATFORMS, help="Platform of the build tree, this machine by default.")
     parser.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the build tree, "Debug" by default.')
-    parser.add_argument("--backend", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics backend, the default of the platform otherwise.")
+    parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics API the backend draws through, the default of the platform otherwise.")
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)
     parser.add_argument("--target", help="CMake target to build, every target by default.")
@@ -6009,7 +5906,7 @@ def build_parser() -> argparse.ArgumentParser:
     package.add_argument("-o", "--output", default="app.zip", help="Zip file to write, app.zip in the current folder by default.")
     package.set_defaults(handler=command_package)
 
-    shaders = commands.add_parser("shaders", parents=[common], help='Compile the shaders under "content/shaders" of an app into ".shader" files for every backend.')
+    shaders = commands.add_parser("shaders", parents=[common], help='Compile the shaders under "content/shaders" of an app into ".shader" files for every shader language of the engine.')
     add_app_argument(shaders)
     shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
     shaders.set_defaults(handler=command_shaders)

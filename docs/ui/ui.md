@@ -86,7 +86,7 @@ A GUI lays out in UI units. With the default scale mode `'design'`, a UI unit is
 
 ## Smooth edges
 
-Every curve of the components fades over one pixel of the screen, in both scale modes, at any scale factor, screen density and backend. The components draw their rounded surfaces, borders, focus rings, shadows, circles, rings, arcs, pills, check marks, arrows, crosses, lines, selections and carets as [shapes](../graphics/rendering.md#shapes-and-smooth-edges) of the 2D renderer, whose shader covers them exactly from the distance to their edges, so they stay smooth however large the UI or the transform of a node scales them and inside the image of a transition:
+Every curve of the components fades over one pixel of the screen, in both scale modes, at any scale factor, screen density and graphics API. The components draw their rounded surfaces, borders, focus rings, shadows, circles, rings, arcs, pills, check marks, arrows, crosses, lines, selections and carets as [shapes](../graphics/rendering.md#shapes-and-smooth-edges) of the 2D renderer, whose shader covers them exactly from the distance to their edges, so they stay smooth however large the UI or the transform of a node scales them and inside the image of a transition:
 
 - A surface paints its fill and its border in one shape, so the border runs inside the same edge, follows its corners and meets the fill without a seam.
 - The focus ring is the border of a shape the `focusGap` away from its control, with corners concentric to the corners of the control.

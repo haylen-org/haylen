@@ -3,10 +3,10 @@
 #include <string>
 
 #include "haylen/core/Json.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/ScreenRelay.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/HaylenScreen+Runtime.h"
-#include "sokol_app.h"
 
 #if !TARGET_OS_OSX
 #import "platform/apple/ApplePresenter.hpp"
@@ -39,7 +39,7 @@ void AppleScreens::open(const ScreenRequest& request) {
         return;
     }
 #if TARGET_OS_OSX
-    const bool windowed = sapp_isvalid();
+    const bool windowed = NativeWindow::isOpen();
 #else
     const bool windowed = ApplePresenter::getTopmost() != nil;
 #endif

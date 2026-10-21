@@ -13,9 +13,9 @@
 #include <thread>
 #include <utility>
 
+#include "platform/NativeHost.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/linux/LinuxSystemReader.hpp"
-#include "platform/sokol/SokolHost.hpp"
 
 namespace haylen::platform {
 
@@ -56,12 +56,12 @@ void LinuxSystem::openUrl(const std::string& url, std::function<void(bool opened
 }
 
 void LinuxSystem::watchBattery() {
-    SokolHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
+    NativeHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
     // clang-format off
     std::thread([] {
         for (;;) {
             std::this_thread::sleep_for(kBatteryInterval);
-            SokolHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
+            NativeHost::getSystemState().setBattery(LinuxSystemReader::readBattery(kPowerSupplies));
         }
     }).detach();
     // clang-format on

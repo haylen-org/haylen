@@ -20,12 +20,12 @@
 #include "haylen/io/Package.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/GamepadVendors.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
 #include "platform/web/WebTextInput.hpp"
 #include "platform/web/WebVideoDecoder.hpp"
-#include "sokol_app.h"
 
 // The page side lives in `platform/web/haylen-runtime.js`, which defines `Module.haylen` before the runtime starts.
 
@@ -189,14 +189,14 @@ void Services::setWindowStyle(const WindowStyle&) {}
 
 // The canvas is the window, and the page gives it no desktop, so the canvas is also the only monitor.
 math::Rect Services::getWindowFrame() {
-    return {0.0F, 0.0F, sapp_widthf() / sapp_dpi_scale(), sapp_heightf() / sapp_dpi_scale()};
+    return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 }
 
 void Services::setWindowFrame(const math::Rect&) {}
 
 std::vector<Monitor> Services::getMonitors() {
     const math::Rect screen = getWindowFrame();
-    return {{.name = "canvas", .bounds = screen, .workArea = screen, .scale = sapp_dpi_scale(), .primary = true}};
+    return {{.name = "canvas", .bounds = screen, .workArea = screen, .scale = NativeWindow::getScale(), .primary = true}};
 }
 
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}

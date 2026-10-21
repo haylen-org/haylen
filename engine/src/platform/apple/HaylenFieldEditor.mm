@@ -4,8 +4,8 @@
 #include <algorithm>
 #include <cstdint>
 
+#include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleTextInput.hpp"
-#include "sokol_app.h"
 
 using haylen::platform::AppleTextInput;
 using haylen::platform::TextInput;
@@ -45,7 +45,7 @@ using haylen::platform::TextInput;
 }
 
 - (void)edit:(const TextInput::Field&)value {
-    NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
+    NSWindow* window = (__bridge NSWindow*)haylen::platform::NativeWindow::getHandle();
     NSView* host = window.contentView;
     if (self.superview != host) {
         [host addSubview:self];
@@ -79,7 +79,7 @@ using haylen::platform::TextInput;
 }
 
 - (void)finish {
-    NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
+    NSWindow* window = (__bridge NSWindow*)haylen::platform::NativeWindow::getHandle();
     if (window.firstResponder == self) {
         [window makeFirstResponder:window.contentView];
     }

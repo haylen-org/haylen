@@ -1,7 +1,7 @@
 #import "platform/apple/HaylenAccessibilityView.h"
 
+#include "platform/NativeWindow.hpp"
 #import "platform/apple/HaylenAccessibilityElement.h"
-#include "sokol_app.h"
 
 using haylen::platform::AccessibilityElement;
 
@@ -53,7 +53,7 @@ using haylen::platform::AccessibilityElement;
 
 // The elements keep their objects by id, and a change of the ids or of the focus tells the screen reader that the layout changed, with the element to move to when the focus moved.
 - (void)updateElements:(std::span<const AccessibilityElement>)elements focused:(std::uint64_t)focused {
-    const CGFloat scale = sapp_dpi_scale();
+    const CGFloat scale = haylen::platform::NativeWindow::getScale();
     NSMutableDictionary<NSNumber*, HaylenAccessibilityElement*>* kept = [NSMutableDictionary dictionaryWithCapacity:elements.size()];
     NSMutableArray<HaylenAccessibilityElement*>* ordered = [NSMutableArray arrayWithCapacity:elements.size()];
     BOOL moved = elements.size() != shown.count;

@@ -2,9 +2,9 @@
 
 #if TARGET_OS_MACCATALYST
 #include "haylen/platform/Event.hpp"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 #import "platform/apple/HaylenPointer.h"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -18,7 +18,7 @@ void CatalystInput::observe() {
                         object:nil
                          queue:NSOperationQueue.mainQueue
                     usingBlock:^(NSNotification* notification) {
-                      if (!sapp_isvalid() || notification.object != (__bridge UIWindow*)sapp_ios_get_window()) {
+                      if (!NativeWindow::isOpen() || notification.object != (__bridge UIWindow*)NativeWindow::getHandle()) {
                           return;
                       }
                       UIView* view = ((UIWindow*)notification.object).rootViewController.view;
@@ -36,10 +36,10 @@ void CatalystInput::observe() {
 
 void CatalystInput::trackPointer(UIHoverGestureRecognizer* recognizer) {
     const CGPoint location = [recognizer locationInView:recognizer.view];
-    const float scale = sapp_dpi_scale();
+    const float scale = NativeWindow::getScale();
     pointer = {static_cast<float>(location.x) * scale, static_cast<float>(location.y) * scale};
     const bool inside = recognizer.state == UIGestureRecognizerStateBegan || recognizer.state == UIGestureRecognizerStateChanged;
-    SokolRuntime::handleEvent({.type = inside ? Event::Type::MouseMove : Event::Type::MouseLeave, .position = pointer});
+    Player::handleEvent({.type = inside ? Event::Type::MouseMove : Event::Type::MouseLeave, .position = pointer});
 }
 
 void CatalystInput::observeMouse(GCMouse* mouse) {
@@ -50,11 +50,11 @@ void CatalystInput::observeMouse(GCMouse* mouse) {
     if (state.middleButton != nil) {
         observeMouseButton(state.middleButton, input::MouseButton::Middle);
     }
-    state.scroll.valueChangedHandler = ^(GCControllerDirectionPad*, float x, float y) { SokolRuntime::handleEvent({.type = Event::Type::MouseScroll, .scroll = {x, y}}); };
+    state.scroll.valueChangedHandler = ^(GCControllerDirectionPad*, float x, float y) { Player::handleEvent({.type = Event::Type::MouseScroll, .scroll = {x, y}}); };
 }
 
 void CatalystInput::observeMouseButton(GCControllerButtonInput* button, input::MouseButton which) {
-    button.pressedChangedHandler = ^(GCControllerButtonInput*, float, BOOL pressed) { SokolRuntime::handleEvent({.type = pressed ? Event::Type::MouseDown : Event::Type::MouseUp, .mouseButton = which, .position = pointer}); };
+    button.pressedChangedHandler = ^(GCControllerButtonInput*, float, BOOL pressed) { Player::handleEvent({.type = pressed ? Event::Type::MouseDown : Event::Type::MouseUp, .mouseButton = which, .position = pointer}); };
 }
 
 } // namespace haylen::platform

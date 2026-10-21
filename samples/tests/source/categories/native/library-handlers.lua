@@ -27,7 +27,7 @@ function LibraryHandlers:enter()
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = 'The function "native.load" calls "native_test_haylen_init" with the interface of the engine. The library registers "native_test.echo", "native_test.fail" and "native_test.wait" with it, answers from its own threads, sends "native_test.ready" and hears when the app gives up a call.', color = 'textMuted', font = 'caption'},
         },
-        code = "native.load('native_test', {init = 'native_test_haylen_init'})\nlocal call = platform.call('native_test.wait', nil, {timeout = 0.2})\nlocal _, err = call:await()\nprint(err.code)",
+        code = "native.load('native-test', {init = 'native_test_haylen_init'})\nlocal call = platform.call('native_test.wait', nil, {timeout = 0.2})\nlocal _, err = call:await()\nprint(err.code)",
     }
     self.checks:show(self.gui)
     self:run()
@@ -51,7 +51,7 @@ function LibraryHandlers:run()
         local started
         if native.available() then
             started = checks:run('The init function', function()
-                native.load('native_test', {init = 'native_test_haylen_init'})
+                native.load('native-test', {init = 'native_test_haylen_init'})
                 return 'The function "native_test_haylen_init" registered the handlers of the library.'
             end)
         else

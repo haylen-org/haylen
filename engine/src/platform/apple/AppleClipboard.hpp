@@ -8,7 +8,7 @@
 
 namespace haylen::platform {
 
-// The general pasteboard of iPhone, iPad and Mac Catalyst apps, which `sokol_app` leaves out. Reading it shows the notice of iOS that the app pasted.
+// The general pasteboard of iPhone, iPad and Mac Catalyst apps, which hosts whose window keeps a clipboard of its own read and write instead. Reading it shows the notice of iOS that the app pasted.
 class AppleClipboard final {
   public:
     static void set(std::string_view text);

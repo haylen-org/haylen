@@ -15,7 +15,6 @@
 #include "2d/graphics/TextPainter.hpp"
 #include "2d/lighting/ShadowMap.hpp"
 #include "graphics/DeviceState.hpp"
-#include "graphics/Gpu.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/graphics/SpriteBatch.hpp"
 #include "haylen/2d/lighting/Light.hpp"
@@ -106,50 +105,38 @@ float Renderer::lowestPoint(std::span<const math::Vec2> points) noexcept {
 
 Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std::make_unique<RendererState>(device, jobs)) {
     constexpr std::array<float, 8> kCorners = {0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 1.0F, 1.0F, 1.0F};
-    sg_buffer_desc quadDesc{};
-    quadDesc.data = SG_RANGE(kCorners);
-    quadDesc.label = "haylen-quad";
-    state->quad = graphics::Gpu::makeBuffer(quadDesc);
+    state->quad = device.getGpu().makeBuffer({.data = std::as_bytes(std::span(kCorners)), .label = "haylen-quad"});
 
     constexpr std::uint16_t kFull = 65535;
     const std::array<GpuInstance, 2> screen{
         GpuInstance{.position = {0.0F, 0.0F}, .size = {1.0F, 1.0F}, .uv = {0, 0, kFull, kFull}, .color = 0xFFFFFFFFU, .flash = 0, .rotation = 0.0F, .parameters = {0, 0, 0, 0}, .pivot = {0.0F, 0.0F}},
         GpuInstance{.position = {0.0F, 0.0F}, .size = {1.0F, 1.0F}, .uv = {0, kFull, kFull, 0}, .color = 0xFFFFFFFFU, .flash = 0, .rotation = 0.0F, .parameters = {0, 0, 0, 0}, .pivot = {0.0F, 0.0F}},
     };
-    sg_buffer_desc screenDesc{};
-    screenDesc.data = SG_RANGE(screen);
-    screenDesc.label = "haylen-screen";
-    state->screen = graphics::Gpu::makeBuffer(screenDesc);
+    state->screen = device.getGpu().makeBuffer({.data = std::as_bytes(std::span(screen)), .label = "haylen-screen"});
+    state->loadPrograms();
 
-    state->precompilePrograms();
-
-    // Light maps hold light in floating point where the backend renders and blends it, so lights can brighten the scene beyond its unlit colors.
-    const sg_pixelformat_info hdr = sg_query_pixelformat(SG_PIXELFORMAT_RGBA16F);
-    state->lightFormat = hdr.render && hdr.blend ? SG_PIXELFORMAT_RGBA16F : device.getState().offscreenFormat;
+    // Light maps hold light in floating point where the device renders and blends it, so lights can brighten the scene beyond its unlit colors.
+    state->lightFormat = device.getGpu().canBlendInto(gpu::Device::PixelFormat::Rgba16Float) ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
 
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});
     state->metaball = device.createTexture(graphics::Image(RendererState::kMetaballTextureSize, RendererState::kMetaballTextureSize, metaballKernel(RendererState::kMetaballTextureSize)), {.filter = graphics::Texture::Filter::Linear});
 }
 
+// The programs of the packages go to the device graveyard with the packages, and the objects of the renderer go at once.
 Renderer::~Renderer() {
+    gpu::Device& gpu = state->getGpu();
     for (const auto& [key, pipeline] : state->pipelines) {
-        sg_destroy_pipeline(pipeline);
+        gpu.destroy(pipeline);
     }
-    for (const std::array<sg_shader, RendererState::kProgramCount>* made : {&state->shaders, &state->litShaders}) {
-        for (const sg_shader shader : *made) {
-            if (shader.id != SG_INVALID_ID) {
-                sg_destroy_shader(shader);
-            }
-        }
+    for (graphics::Shader& package : state->packages) {
+        package.getResource()->release();
     }
-    if (state->shadowImage.id != SG_INVALID_ID) {
-        sg_destroy_view(state->shadowView);
-        sg_destroy_image(state->shadowImage);
+    if (state->shadowImage.isValid()) {
+        gpu.destroy(state->shadowImage);
     }
-
-    for (sg_buffer buffer : {state->quad, state->screen, state->instanceBuffer, state->vertexBuffer, state->indexBuffer, state->lightBuffer}) {
-        if (buffer.id != SG_INVALID_ID) {
-            sg_destroy_buffer(buffer);
+    for (const gpu::Device::Buffer buffer : {state->quad, state->screen, state->instanceBuffer, state->vertexBuffer, state->indexBuffer, state->lightBuffer}) {
+        if (buffer.isValid()) {
+            gpu.destroy(buffer);
         }
     }
 }
@@ -1052,12 +1039,8 @@ StaticSpriteBatch Renderer::createStaticBatch(const graphics::Texture& texture, 
         bounds = bounds.merged(math::Rect{topLeft.x, topLeft.y, sprite.size.x, sprite.size.y});
     }
 
-    sg_buffer_desc desc{};
-    desc.data = {.ptr = packed.data(), .size = packed.size() * sizeof(GpuInstance)};
-    desc.label = "haylen-static-batch";
-
     auto resource = std::make_shared<StaticBatchResource>();
-    resource->buffer = graphics::Gpu::makeBuffer(desc);
+    resource->buffer = state->getGpu().makeBuffer({.data = std::as_bytes(std::span(packed)), .label = "haylen-static-batch"});
     resource->count = sprites.size();
     resource->tracked.setBytes(packed.size() * sizeof(GpuInstance));
     resource->texture = texture;
@@ -1071,7 +1054,7 @@ const graphics::Texture& Renderer::getLightTexture() const noexcept {
 }
 
 bool Renderer::isHdrLighting() const noexcept {
-    return state->lightFormat == SG_PIXELFORMAT_RGBA16F;
+    return state->lightFormat == gpu::Device::PixelFormat::Rgba16Float;
 }
 
 const Renderer::Stats& Renderer::getStats() const noexcept {
@@ -1096,13 +1079,13 @@ bool Renderer::isCapturing() const noexcept {
 }
 
 // A failure on the way, such as a group left open that cannot close, still drops what the frame drew, so the next frame starts clean.
-void Renderer::endFrame(const graphics::FrameTarget& target) {
+void Renderer::endFrame(bool transparent) {
     try {
         finishCanvas();
         while (!state->openCaptures.empty()) {
             state->closeCapture();
         }
-        FrameSubmitter(*state, target).submit();
+        FrameSubmitter(*state, transparent).submit();
     } catch (...) {
         state->resetFrame();
         throw;

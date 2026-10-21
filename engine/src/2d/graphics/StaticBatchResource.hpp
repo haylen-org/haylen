@@ -7,9 +7,9 @@
 #include "graphics/ResourceGraveyard.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/TrackedObject.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"
-#include "sokol_gfx.h"
 
 namespace haylen::graphics2d {
 
@@ -17,7 +17,7 @@ namespace haylen::graphics2d {
 struct StaticBatchResource {
     static debug::ObjectCounter& counter;
 
-    sg_buffer buffer{};
+    gpu::Device::Buffer buffer;
     std::size_t count = 0;
     graphics::Texture texture;
     math::Rect bounds{};

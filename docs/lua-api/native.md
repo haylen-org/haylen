@@ -29,7 +29,7 @@ Loads a library and returns the namespace of Varn's `ffi` whose fields are the f
 
 - A path, which is any name with a folder in it, such as `/opt/sdk/libsdk.so` or `./libsdk.dylib`. It loads as given.
 - A file name with an extension, such as `game_platform.dll` or `libgame_platform.so`, which is looked up in the folders below.
-- A library name without prefix and extension, such as `native_test`, which becomes the file names of the platform: `libnative_test.dylib` and `native_test.framework/native_test` on macOS and Mac Catalyst, `native_test.framework/native_test` on iOS and tvOS, `native_test.dll` on Windows, and `libnative_test.so` on Linux and Android.
+- A library name without prefix and extension, such as `native-test`, which becomes the file names of the platform: `libnative-test.dylib` and `native-test.framework/native-test` on macOS and Mac Catalyst, `native-test.framework/native-test` on iOS and tvOS, `native-test.dll` on Windows, and `libnative-test.so` on Linux and Android.
 
 A name is looked up in this order, and the first file that loads wins:
 
@@ -59,7 +59,7 @@ ffi.cdef[[
     uint32_t native_test_checksum(const uint8_t* buffer, size_t size);
 ]]
 
-local lib = native.load('native_test')
+local lib = native.load('native-test')
 print(lib.native_test_add(20, 22))
 print(ffi.string(lib.native_test_origin()))
 
@@ -79,7 +79,7 @@ Returns the address of the symbol `name` as a light userdata, or `nil`. The look
 local ffi = require('ffi')
 local native = require('haylen.native')
 
-native.load('native_test')
+native.load('native-test')
 local address = native.findSymbol('native_test_add')
 local add = ffi.cast('int32_t (*)(int32_t, int32_t)', address)
 print(address ~= nil, add(20, 22))
@@ -119,7 +119,7 @@ ffi.cdef[[
     void native_test_report_later(NativeTestReporter reporter, int32_t value);
     int32_t native_test_visit(int32_t count, NativeTestVisitor visitor);
 ]]
-local lib = native.load('native_test')
+local lib = native.load('native-test')
 
 -- The library calls it from a thread of its own, and the function runs at the start of the next frame.
 local reporter = native.callback('void (int32_t value, const uint8_t data[size], size_t size)', function(value, data, size)
@@ -213,7 +213,7 @@ local async = require('async')
 local native = require('haylen.native')
 local platform = require('haylen.platform')
 
-native.load('my_library', {init = 'my_library_haylen_init'})
+native.load('my-library', {init = 'my_library_haylen_init'})
 
 -- The library sent `ready` retained, so this listener receives it although it connects after the load.
 platform.on('my_library.ready', function(payload)

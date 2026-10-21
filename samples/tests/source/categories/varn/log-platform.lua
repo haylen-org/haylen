@@ -29,7 +29,7 @@ end]]},
 print(platform.os(), platform.arch())
 print(platform.cpuCount(), platform.pointerSize())
 print(platform.endianness(), platform.hostVersion())
-print(platform.libraryFilename('native_test'))]]},
+print(platform.libraryFilename('native-test'))]]},
 }
 
 -- The lines of the lesson as the engine log keeps them, which the run fills in.
@@ -103,7 +103,7 @@ function LogPlatform:system()
     local version = platform.version
     self:check('version', 'The version of Varn', platform.hostVersion() == version.string, string.format('Varn %s, which "platform.version" splits into %d, %d and %d.', platform.hostVersion(), version.major, version.minor, version.patch))
 
-    self.results:set('library', 'info', 'Library names', string.format('A library named "native_test" is the file "%s" here, from the prefix "%s" and the suffix "%s".', platform.libraryFilename('native_test'), platform.libPrefix(), platform.shlibSuffix()))
+    self.results:set('library', 'info', 'Library names', string.format('A library named "native-test" is the file "%s" here, from the prefix "%s" and the suffix "%s".', platform.libraryFilename('native-test'), platform.libPrefix(), platform.shlibSuffix()))
     self.results:set('names', 'info', 'Two names for the platform', string.format('Varn says "%s" and "haylen.platform" says "%s", because the engine gives its own names to platforms such as the headless host and the browser.', platform.os(), haylen.platform))
 end
 

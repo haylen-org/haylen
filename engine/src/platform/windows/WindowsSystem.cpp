@@ -10,8 +10,8 @@
 #include <cstddef>
 #include <string_view>
 
+#include "platform/NativeHost.hpp"
 #include "platform/SystemState.hpp"
-#include "platform/sokol/SokolHost.hpp"
 #include "platform/windows/WindowsPowerStatus.hpp"
 #include "platform/windows/WindowsSettings.hpp"
 #include "platform/windows/WindowsText.hpp"
@@ -39,17 +39,17 @@ void WindowsSystem::openUrl(const std::string& url, std::function<void(bool open
 }
 
 void WindowsSystem::reportTheme() {
-    SokolHost::getSystemState().setTheme(WindowsSettings::readTheme());
+    NativeHost::getSystemState().setTheme(WindowsSettings::readTheme());
 }
 
 void WindowsSystem::reportAccessibility() {
-    SokolHost::getSystemState().setAccessibility(WindowsSettings::readAccessibility());
+    NativeHost::getSystemState().setAccessibility(WindowsSettings::readAccessibility());
 }
 
 void WindowsSystem::reportBattery() {
     SYSTEM_POWER_STATUS status{};
     if (GetSystemPowerStatus(&status)) {
-        SokolHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
+        NativeHost::getSystemState().setBattery(WindowsPowerStatus::toBattery(status.ACLineStatus, status.BatteryFlag, status.BatteryLifePercent));
     }
 }
 

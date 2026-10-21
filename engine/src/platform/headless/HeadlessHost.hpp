@@ -10,6 +10,7 @@
 #include <utility>
 #include <vector>
 
+#include "gpu/NullDevice.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/math/Insets.hpp"
 #include "platform/DevelopmentSession.hpp"
@@ -20,7 +21,7 @@
 
 namespace haylen::platform {
 
-// Host without a window or GPU. It drives the engine with the Sokol dummy backend so rendering, Lua and the frame loop run in tests.
+// Host without a window or GPU. It drives the engine with the null GPU device so rendering, Lua and the frame loop run in tests.
 class HeadlessHost final : public Host {
   public:
     struct PlatformCall {
@@ -192,7 +193,12 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::string_view getPlatformName() const noexcept override {
         return "headless";
     }
-    [[nodiscard]] graphics::DeviceSetup getGraphicsSetup() override;
+    [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
+
+    // The null device of the app that runs, which tests read what the frames did from.
+    [[nodiscard]] gpu::NullDevice& getGpu() const {
+        return *gpu;
+    }
     // Without an output backend the mixer has no device and mixes only when a test asks it to.
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override {
         return {.device = audioOutput != nullptr, .keepsTime = true, .backend = audioOutput};
@@ -202,7 +208,7 @@ class HeadlessHost final : public Host {
     void setAudioOutput(const audio::OutputBackend* value) noexcept {
         audioOutput = value;
     }
-    [[nodiscard]] graphics::FrameTarget getFrameTarget() override;
+    [[nodiscard]] bool isFrameTransparent() const noexcept override;
     [[nodiscard]] std::filesystem::path getUserDataDirectory(std::string_view identifier) override;
     void persistUserData() override {
         ++persistCount;
@@ -464,6 +470,7 @@ class HeadlessHost final : public Host {
     }
 
   private:
+    gpu::NullDevice* gpu = nullptr;
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
     float dpiScale = 1.0F;

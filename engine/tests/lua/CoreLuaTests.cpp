@@ -19,7 +19,7 @@ TEST(CoreLuaTest, ExposesEngineInformationAndClock) {
     test::EngineFixture fixture;
     fixture.runLua("haylen = require('haylen')");
 
-    EXPECT_EQ(fixture.lua("return haylen.platform .. ' ' .. haylen.backend"), "headless dummy");
+    EXPECT_EQ(fixture.lua("return haylen.platform .. ' ' .. haylen.graphicsApi"), "headless none");
     EXPECT_EQ(fixture.lua("return haylen.config.name .. ' ' .. haylen.config.design.width"), "Test App 1920.0");
     EXPECT_EQ(fixture.lua("return type(haylen.version)"), "string");
 

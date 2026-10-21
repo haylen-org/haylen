@@ -90,7 +90,7 @@ function LoadTime:update(dt)
     LoadTime.super.update(self, dt)
     if self.drawnFrame and not self.measured and haylen.frameIndex() > self.drawnFrame then
         self.measured = true
-        self.results:set('first', 'info', 'First frame with every shader', string.format('%.1f ms on "%s".', debugging.frame().milliseconds, graphics.backendName()))
+        self.results:set('first', 'info', 'First frame with every shader', string.format('%.1f ms on "%s".', debugging.frame().milliseconds, graphics.apiName()))
     end
     local time = haylen.elapsed()
     for _, material in ipairs(self.materials) do
@@ -100,7 +100,7 @@ function LoadTime:update(dt)
             end
         end
     end
-    self:status(string.format('%d of %d shaders on the backend "%s", with frames of %.1f ms.', #self.materials, #LoadTime.shaders, graphics.backendName(), debugging.frame().milliseconds))
+    self:status(string.format('%d of %d shaders on the graphics API "%s", with frames of %.1f ms.', #self.materials, #LoadTime.shaders, graphics.apiName(), debugging.frame().milliseconds))
 end
 
 -- Draws each picture on a dark plate with its name under it, in rows whose last one sits in the middle.

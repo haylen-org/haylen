@@ -3,17 +3,18 @@
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
 #import <objc/runtime.h>
 
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
 UIInterfaceOrientationMask AppleOrientation::mask = 0;
 
 Orientation AppleOrientation::get() {
-    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     const UIInterfaceOrientation orientation = window.windowScene.interfaceOrientation;
     if (orientation == UIInterfaceOrientationUnknown) {
-        return sapp_height() > sapp_width() ? Orientation::Portrait : Orientation::Landscape;
+        const math::Vec2 size = NativeWindow::getFramebufferSize();
+        return size.y > size.x ? Orientation::Portrait : Orientation::Landscape;
     }
     return UIInterfaceOrientationIsPortrait(orientation) ? Orientation::Portrait : Orientation::Landscape;
 }
@@ -31,7 +32,7 @@ UIInterfaceOrientationMask AppleOrientation::toMask(Orientation value) {
     return UIInterfaceOrientationMaskAll;
 }
 
-// UIKit asks the application delegate for the allowed orientations whenever it rotates, so the lock holds after the geometry update turns the screen. The delegate of sokol_app does not answer that question, so the first lock gives it the answer.
+// UIKit asks the application delegate for the allowed orientations whenever it rotates, so the lock holds after the geometry update turns the screen. The delegate of the backend may not answer that question, so the first lock gives it the answer.
 void AppleOrientation::lock(Orientation value) {
     const bool installed = mask != 0;
     mask = toMask(value);
@@ -40,7 +41,7 @@ void AppleOrientation::lock(Orientation value) {
         class_addMethod(object_getClass(UIApplication.sharedApplication.delegate), @selector(application:supportedInterfaceOrientationsForWindow:), answer, "Q@:@@");
     }
 
-    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     [window.rootViewController setNeedsUpdateOfSupportedInterfaceOrientations];
     UIWindowSceneGeometryPreferencesIOS* preferences = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask];
     [window.windowScene requestGeometryUpdateWithPreferences:preferences errorHandler:nil];

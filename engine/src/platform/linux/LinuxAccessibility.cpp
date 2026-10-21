@@ -8,10 +8,10 @@
 #include "haylen/core/Utf8.hpp"
 #include "haylen/core/Version.hpp"
 #include "platform/AccessibilityRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxSettings.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -676,7 +676,7 @@ std::array<std::uint32_t, 2> LinuxAccessibility::getStates(const AccessibilityEl
 // The screen takes the corner of the window on it, and a parent is the element around, or the window for the elements at the top.
 math::Rect LinuxAccessibility::getBounds(const Object& object, std::uint32_t coordinates) {
     const AccessibilityElement* element = object.kind == Object::Kind::Element ? findElement(object.id) : nullptr;
-    math::Rect area = element != nullptr ? element->bounds : math::Rect{0.0F, 0.0F, sapp_widthf(), sapp_heightf()};
+    math::Rect area = element != nullptr ? element->bounds : math::Rect{0.0F, 0.0F, NativeWindow::getFramebufferSize().x, NativeWindow::getFramebufferSize().y};
     if (coordinates == 0) {
         const math::Vec2 origin = LinuxDesktop::getOrigin();
         area.x += origin.x;

@@ -67,7 +67,7 @@ class NativeLuaTest : public ::testing::Test {
                 int32_t native_test_visit(int32_t count, NativeTestVisitor visitor);
                 void native_test_report_later(NativeTestReporter reporter, int32_t value);
             ]]
-            lib = native.load('native_test')
+            lib = native.load('native-test')
         )");
     }
 
@@ -276,7 +276,7 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     fixture.runLua(R"(
         cancelled = {}
         platform.on('native_test.cancelled', function(payload) cancelled[#cancelled + 1] = payload.call end)
-        native.load('native_test', {init = 'native_test_haylen_init'})
+        native.load('native-test', {init = 'native_test_haylen_init'})
         async.spawn(function()
             echo = platform.call('native_test.echo', {word = 'hi'}):await()
             local _, failure = platform.call('native_test.fail'):await()
@@ -338,7 +338,7 @@ TEST_F(NativeLuaTest, ExchangesBytesBatchesAndStreamsWithLibraries) {
             int32_t native_test_reopen_refused(void);
         ]]
         collections = require('haylen.collections')
-        native.load('native_test', {init = 'native_test_haylen_init'})
+        native.load('native-test', {init = 'native_test_haylen_init'})
         test = platform.plugin('native-test')
         missing = test:videoStream('pattern') == nil and test:audioStream('tone') == nil
         bursts = {}
@@ -379,7 +379,7 @@ TEST_F(NativeLuaTest, OpensTheScreensOfLibrariesAndCoversTheApp) {
             void native_test_cover(int32_t covered);
         ]]
         haylen = require('haylen')
-        native.load('native_test', {init = 'native_test_haylen_init'})
+        native.load('native-test', {init = 'native_test_haylen_init'})
         test = platform.plugin('native-test')
         opened = {}
         platform.on('native_test.screenOpened', function(payload) opened[#opened + 1] = payload end)
@@ -421,7 +421,7 @@ TEST_F(NativeLuaTest, HandsTheErrorsThatStopAppsToLibraries) {
     {
         test::EngineFixture fixture;
         prepare(fixture);
-        fixture.runLua("native.load('native_test', {init = 'native_test_haylen_init'}) native.load('native_test', {init = 'native_test_haylen_init'}) " + declarations);
+        fixture.runLua("native.load('native-test', {init = 'native_test_haylen_init'}) native.load('native-test', {init = 'native_test_haylen_init'}) " + declarations);
         fixture.runLua("require('haylen').reportError('the first app failed')");
         ASSERT_NE(fixture.engine().getError(), nullptr);
         EXPECT_EQ(fixture.lua("return lib.native_test_error_count() - before"), "1") << "A handler that registered twice hears an error once.";
@@ -441,10 +441,10 @@ TEST_F(NativeLuaTest, ExplainsWhyALibraryDidNotLoad) {
     test::EngineFixture fixture;
     prepare(fixture);
     EXPECT_NE(fixture.lua("native.load('native_nowhere')").find("The native library \"native_nowhere\" could not be loaded. These are the places it searched:"), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_absent'})").find("The native library \"native_test\" has no function \"native_test_absent\"."), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {init = 'native_test_failing_init'})").find("The function \"native_test_failing_init\" of the native library \"native_test\" failed with code 7."), std::string::npos);
-    EXPECT_NE(fixture.lua("native.load('native_test', {inti = 'x'})").find("inti"), std::string::npos);
-    EXPECT_EQ(fixture.lua("return ffi.istype('NativeTestPoint', ffi.new('NativeTestPoint')) and native.load('native_test', {global = true}) ~= nil"), "true");
+    EXPECT_NE(fixture.lua("native.load('native-test', {init = 'native_test_absent'})").find("The native library \"native-test\" has no function \"native_test_absent\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native-test', {init = 'native_test_failing_init'})").find("The function \"native_test_failing_init\" of the native library \"native-test\" failed with code 7."), std::string::npos);
+    EXPECT_NE(fixture.lua("native.load('native-test', {inti = 'x'})").find("inti"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return ffi.istype('NativeTestPoint', ffi.new('NativeTestPoint')) and native.load('native-test', {global = true}) ~= nil"), "true");
 }
 
 class AppPluginTest : public ::testing::Test {

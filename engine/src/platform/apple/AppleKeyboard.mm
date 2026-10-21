@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "haylen/platform/Event.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
+#include "platform/Player.hpp"
 
 namespace haylen::platform {
 
@@ -37,7 +37,7 @@ void AppleKeyboard::observeKeyboard(GCKeyboard* keyboard) {
 #endif
       const input::Key key = toKey(code);
       if (key != input::Key::Unknown) {
-          SokolRuntime::handleEvent({.type = pressed ? Event::Type::KeyDown : Event::Type::KeyUp, .key = key, .modifiers = toModifiers(state)});
+          Player::handleEvent({.type = pressed ? Event::Type::KeyDown : Event::Type::KeyUp, .key = key, .modifiers = toModifiers(state)});
       }
     };
 }

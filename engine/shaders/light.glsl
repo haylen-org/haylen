@@ -69,7 +69,7 @@ layout(binding=3) uniform texture2D shadow_texture;
 layout(binding=0) uniform sampler shape_sampler;
 layout(binding=1) uniform sampler surface_sampler;
 layout(binding=2) uniform sampler shadow_sampler;
-@image_sample_type shadow_texture unfilterable_float
+@sample_type shadow_texture unfilterable_float
 @sampler_type shadow_sampler nonfiltering
 
 out vec4 frag_color;

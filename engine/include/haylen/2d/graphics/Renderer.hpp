@@ -42,7 +42,6 @@ class JobSystem;
 namespace haylen::graphics {
 class Device;
 class Viewport;
-struct FrameTarget;
 } // namespace haylen::graphics
 
 namespace haylen::lighting2d {
@@ -264,9 +263,9 @@ class Renderer final {
     [[nodiscard]] bool isCanvasLit() const;
     [[nodiscard]] bool isCapturing() const noexcept;
 
-    // The engine begins and ends every frame, and submits everything drawn in between at its end.
+    // The engine begins and ends every frame, and submits everything drawn in between at its end into the swapchain, whose alpha a transparent window composes with the desktop.
     void beginFrame(const graphics::Viewport& viewport, math::Color clearColor);
-    void endFrame(const graphics::FrameTarget& target);
+    void endFrame(bool transparent);
 
   private:
     static const CanvasOptions kDefaultCanvas;

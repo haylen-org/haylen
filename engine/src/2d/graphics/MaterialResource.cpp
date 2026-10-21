@@ -19,21 +19,23 @@ void MaterialResource::pack(std::vector<std::uint8_t>& bytes) const {
             continue;
         }
 
-        // The blocks lie one after another, and integer uniforms hold 32-bit integers while every other uniform holds 32-bit floats.
+        // The blocks lie one after another, the elements of an array lie a stride apart, and integer uniforms hold 32-bit integers while every other uniform holds 32-bit floats.
         std::size_t start = first;
         for (std::size_t block = 0; block < uniform.block; ++block) {
             start += blocks[block].size;
         }
-        std::uint8_t* target = bytes.data() + start + uniform.offset;
+        const auto components = static_cast<std::size_t>(graphics::Shader::getComponentCount(uniform.type));
+        const std::size_t stride = graphics::Shader::getArrayStride(uniform.type);
         const bool integer = uniform.type == Type::Int || uniform.type == Type::IVec2 || uniform.type == Type::IVec3 || uniform.type == Type::IVec4;
-        for (const float value : found->second) {
+        for (std::size_t index = 0; index < found->second.size(); ++index) {
+            std::uint8_t* target = bytes.data() + start + uniform.offset + (index / components) * stride + (index % components) * sizeof(float);
+            const float value = found->second[index];
             if (integer) {
                 const auto number = static_cast<std::int32_t>(std::lround(value));
                 std::memcpy(target, &number, sizeof(number));
             } else {
                 std::memcpy(target, &value, sizeof(value));
             }
-            target += sizeof(float);
         }
     }
 }

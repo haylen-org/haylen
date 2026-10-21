@@ -8,9 +8,9 @@
 #include <variant>
 
 #include "platform/DialogRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/linux/LinuxFilePattern.hpp"
 #include "platform/linux/LinuxGlib.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -103,7 +103,7 @@ void LinuxDialogs::showMessage(std::uint64_t id, const DialogRequest::Message& m
     shown.emplace(id, Shown{.dialog = dialog});
 
     if (parent == nullptr) {
-        parent = gtk.newForeignWindow(gtk.getDefaultDisplay(), static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(sapp_x11_get_window())));
+        parent = gtk.newForeignWindow(gtk.getDefaultDisplay(), static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(NativeWindow::getHandle())));
     }
     gtk.realize(dialog);
     if (parent != nullptr) {

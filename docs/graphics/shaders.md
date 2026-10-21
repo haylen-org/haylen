@@ -1,6 +1,6 @@
 # Shaders
 
-Apps shade their draws with their own fragment shaders, written in the annotated GLSL of [sokol-shdc](https://github.com/floooh/sokol-tools/blob/master/docs/sokol-shdc.md) under `content/shaders/`. The command `haylen.py shaders` compiles every source ahead of time into a `.shader` file for every backend the engine runs on, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, circles, shapes, polygons, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
+Apps shade their draws with their own fragment shaders, written in the [Haylen shader language](#the-haylen-shader-language), annotated GLSL, under `content/shaders/`. The command `haylen.py shaders` compiles every source ahead of time with the Haylen shader compiler into a `.shader` package with the code of every shader language the engine runs, and the engine loads the file as a `Shader` and draws with it through a `Material`, which holds the values of its uniforms and textures. A material shades sprites, batches, nine-slices, rectangles, lines, circles, shapes, polygons, meshes and text in every canvas, and runs over the whole image of a world or render target canvas as a post-processing pass.
 
 ## A first shader
 
@@ -50,11 +50,26 @@ scene.push({
 })
 ```
 
+## The Haylen shader language
+
+A source is GLSL 4.50 in the dialect that SPIR-V compilers read, with separate `texture2D` and `sampler` objects and a `layout(binding=N)` on every uniform block, texture and sampler, and a few tags that split it into stages, pair the stages into programs and share code between stages and files. A tag is a line whose first word starts with `@`:
+
+| Tag | What it does |
+| --- | --- |
+| `@vs <name>`, `@fs <name>` | Starts a vertex stage or a fragment stage, whose GLSL ends at `@end` and has a `void main()` as its entry point. |
+| `@block <name>` | Starts a block of code, closed by `@end`, which stages and other blocks paste in with `@include_block <name>`. |
+| `@include <path>` | Reads the stages, blocks and programs of another file, once however many files include it. |
+| `@program <name> <vertex stage> <fragment stage>` | Pairs a vertex stage and a fragment stage into a program. |
+| `@sample_type <texture> <type>` | Gives a texture that holds floats the sample type `unfilterable_float` or `depth`. |
+| `@sampler_type <sampler> <type>` | Gives a sampler the type `nonfiltering`. |
+
+The compiler gives inputs and outputs their locations, so a stage declares them without `layout(location=N)`, and every input of the fragment stage reads the output of the vertex stage with the same name. A texture and a sampler combine where the stage samples, such as `texture(sampler2D(sprite_texture, sprite_sampler), uv)`. The repository of the compiler, [haylen-shader-compiler](https://github.com/haylen-org/haylen-shader-compiler), holds the complete reference of the [language](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/language.md), its errors and its command line, and of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md).
+
 ## Compiling
 
-The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`, and leaves the others, which the sources include, alone. It runs `sokol-shdc` from `.tools/` with `engine/shaders/include` as its working directory, which is how `@include haylen/material.glsl` finds the shader library, and writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. The app's own `@include` paths are relative to the folder of the source being compiled.
+The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`, and leaves the others, which the sources include, alone. It runs `haylen-shaderc`, the Haylen shader compiler, which `haylen.py` builds from its repository at the commit it pins into `.tools/haylen-shaderc-<commit>`, or the build that the environment variable `HAYLEN_SHADER_COMPILER` names. It passes `engine/shaders/include` with `--include`, which is how `@include haylen/material.glsl` finds the shader library, and writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or the shader library, and `--force` compiles them all. An `@include` path of the app resolves against the folder of the file that includes it first, and then against the shader library.
 
-Every source compiles ten times, once for each kind of draw and once more of each for lit canvases:
+A source declares exactly one `@program`, whose vertex shader is `haylen_vs`, or the command stops with `The shader <path> must declare exactly one "@program" whose vertex shader is "haylen_vs" from "haylen/material.glsl".`. That program compiles ten times, as variants with the defines of each kind of draw and once more of each for lit canvases:
 
 | Program | Defines | Draws |
 | --- | --- | --- |
@@ -64,14 +79,14 @@ Every source compiles ten times, once for each kind of draw and once more of eac
 | `mesh`, `mesh_lit` | `HAYLEN_MESH`, `HAYLEN_MESH HAYLEN_LIT` | Meshes and polygons. |
 | `shape`, `shape_lit` | `HAYLEN_SHAPE`, `HAYLEN_SHAPE HAYLEN_LIT` | Circles, rings, arcs and shapes, whose `uv` goes from 0 to 1 across the rectangle of the shape. |
 
-Each program compiles for Metal on macOS, iOS and the iOS simulator, HLSL 5 for Direct3D 11, GLSL 4.30 for desktop OpenGL, GLSL 3.00 ES for Android and WebGL2, and WGSL for WebGPU. A compile error stops the command with the file, the line and the program it happened in:
+Each program compiles for every target of the compiler, `msl-macos`, `msl-ios` and `msl-ios-simulator` for Metal on macOS, iOS and the iOS simulator, `hlsl5` for Direct3D 11, `glsl430` for desktop OpenGL, `glsl300es` for Android and WebGL2, and `wgsl` for WebGPU, so one package runs on every graphics API. A compile error stops the command with the file, the line and the column of every error:
 
 ```text
-Error: The shader content/shaders/ripple.glsl does not compile as the "sprite" program, and "sokol-shdc" names the lines below.
-content/shaders/ripple.glsl:13:0: error: 'wave' : undeclared identifier
+Error: The shader my-game/content/shaders/ripple.glsl does not compile, and the Haylen shader compiler names the lines below.
+/home/me/my-game/content/shaders/ripple.glsl:14:34: error: Undeclared identifier ("wave").
 ```
 
-Browsers cannot run `sokol-shdc`, so the web editor and the web runtime never compile shaders. An app compiles its shaders on a machine with `haylen.py` and ships the `.shader` files in its package, and an edited source reaches the browser once its `.shader` file is compiled again.
+Browsers cannot run the shader compiler, so the web editor and the web runtime never compile shaders. An app compiles its shaders on a machine with `haylen.py` and ships the `.shader` files in its package, and an edited source reaches the browser once its `.shader` file is compiled again.
 
 In development, `haylen.py run` keeps compiling the sources that change while the desktop player runs with `--dev`, and the player reloads every changed `.shader` file in place, so the materials that use it draw with the new programs from the next frame and keep the values that still fit its uniforms. A source with an error prints the error and leaves the last good shader running.
 
@@ -96,7 +111,7 @@ The file `haylen/material.glsl` holds what every material shares. It defines the
 | `haylen_output_surface(vec4 color, vec2 normal, float specular, float shininess)` | function | Only with `HAYLEN_LIT`: writes the result with a world normal, a specular strength and a shininess divided by 255, for materials that light their own surface. |
 | `haylen_surface`, `haylen_info` | `vec4` uniforms | Only with `HAYLEN_LIT`: the lighting of the draw, which `haylen_output` applies. |
 
-A material reads its colors through `haylen_base`, so the same source shades sprites, meshes, shapes and text, and it rarely needs to tell the programs apart. Code that only makes sense in one of them checks the defines, such as `#ifdef HAYLEN_LIT`. Lit canvases light a material's draws like any other draw, with its `unshaded`, `emission`, `lightMask` and layer, and with a flat normal unless the material writes its own with `haylen_output_surface`. The library keeps names that start with `haylen_`, `uv`, `color` and the outputs `frag_color`, `frag_emission`, `frag_surface` and `frag_info`, and sokol-shdc rejects a uniform or texture that repeats a name of the program.
+A material reads its colors through `haylen_base`, so the same source shades sprites, meshes, shapes and text, and it rarely needs to tell the programs apart. Code that only makes sense in one of them checks the defines, such as `#ifdef HAYLEN_LIT`. Lit canvases light a material's draws like any other draw, with its `unshaded`, `emission`, `lightMask` and layer, and with a flat normal unless the material writes its own with `haylen_output_surface`. The library keeps names that start with `haylen_`, `uv`, `color` and the outputs `frag_color`, `frag_emission`, `frag_surface` and `frag_info`, and the compiler rejects a uniform or texture that repeats a name of the program.
 
 The engine's own shaders in `engine/shaders` include the same library, so a material draws exactly where the engine's program would.
 
@@ -151,7 +166,8 @@ scene.push({
 A material fills the uniform blocks and textures that the fragment shader declares:
 
 - Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, and binding 7 the lighting of lit canvases. The renderer fills both with the layout of the shader library it was built with, so a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` when a draw first uses it.
-- Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of `vec4`, `ivec4` and `mat4`, the types sokol-shdc allows, laid out with std140 rules.
+- Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of any of them. The std140 rules give every element of an array a whole vector of 16 bytes, so an array of `float` takes 16 bytes an element, and the engine places the numbers a material sets for an array at those strides.
+- A block holds floats or integers, not both, because the GLSL targets read each block as one array of `vec4` or `ivec4`, so integer uniforms go in a block of their own.
 - Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first in the `batch` programs. The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
 - A texture that a material leaves unset draws as white.
 
@@ -166,6 +182,8 @@ The method `material:set(name, value)` takes the value that fits the type, as th
 layout(binding=1) uniform palette_params {
     vec4 colors[4];
     mat4 warp;
+};
+layout(binding=2) uniform palette_steps {
     int steps;
 };
 layout(binding=1) uniform texture2D noise_texture;
@@ -263,32 +281,30 @@ The shaders measure the draw through `haylen_source`, as a share from 0 to 1 of 
 
 ## The .shader file
 
-A `.shader` file is JSON that `haylen.py shaders` writes and nothing else edits:
+A `.shader` file is a Haylen shader package, compact JSON that `haylen-shaderc` writes and nothing else edits, in version 2 of the [package format](https://github.com/haylen-org/haylen-shader-compiler/blob/main/docs/format.md):
 
 | Key | Meaning |
 | --- | --- |
-| `format`, `version` | `"haylen-shader"` and `1`. |
-| `name` | The name of the program. |
-| `blocks` | The uniform blocks of the shader's own, each with its name, binding slot, size and members, whose names, types, element counts and byte offsets come from the reflection of sokol-shdc. |
-| `textures` | The textures of the shader's own, each with its name and binding slot. |
-| `sources` | The source of every stage of every program for every language, each text once. |
-| `programs` | For each of the eight programs and each language, the entry points, the source of each stage and the bindings of its attributes, uniform blocks, textures and samplers, as the shader description of Sokol names them. |
+| `format`, `version` | `"haylen-shader"` and `2`. |
+| `name` | The name of the source file without its folder and its extension. |
+| `sources` | The source of every stage of every program for every target, each text once. |
+| `programs` | Each of the ten programs under its name, with its `attributes`, its uniform `blocks` with their `members`, whose names, types, element counts and byte offsets follow the std140 rules, its `textures`, its `samplers`, the texture sampler `pairs` that its stages sample with, the number of color `outputs`, and its `targets`: for each of `msl-macos`, `msl-ios`, `msl-ios-simulator`, `hlsl5`, `glsl430`, `glsl300es` and `wgsl`, the source and entry point of each stage and the binding of each uniform block, texture and sampler in that language. |
 
-The engine reads the file on a worker thread, and on the frame thread creates the GPU program of the active backend the first time a draw uses it, and the pipelines for each blend mode and kind of target. On Metal, reading the file also starts compiling the sources of the active backend of every program on the I/O pool, as [load time](#load-time) explains.
+The engine reads the file on a worker thread, and on the frame thread creates the GPU program for the shader language of the GPU device the first time a draw uses it, and the pipelines for each blend mode and kind of target. As it reads the file, the engine hands the sources of that language of every program to the GPU device, which on Metal starts compiling them on the I/O pool, as [load time](#load-time) explains. The shaders of the engine are packages of the same format, which the engine compiles when it builds and embeds with the shader languages of the graphics API of the build alone, while the shaders of apps carry all seven targets, so one package runs on every platform.
 
-Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. Every attribute, uniform block, block member, texture, sampler and texture sampler pair must fit the binding slots of the GPU, every stage must name a source of the file, every pair must name a texture and a sampler its program declares, the names of stages, texture types, sample types, sampler types and attribute types must be ones `sokol-shdc` writes, the GLSL members of a block must fill it exactly, every uniform of `blocks` must fit inside its block, and every program must read each block with the size `blocks` gives it. A file that breaks a rule raises `The shader file is malformed: ` followed by the problem, such as `The texture slot 40 is out of range.` or `The uniform "tint" does not fit in the block "params".`, from `assets.shader` or from the hot reload, which keeps the last good shader. A GPU program the backend rejects raises `The graphics device could not create the shader "<name>/<program>".` when a draw first uses it.
+Reading the file also checks it, so a damaged or hand-edited file fails at once instead of when a draw uses it. The file must be a version 2 package, every attribute, uniform block, texture and sampler must fit the binding slots of every GPU device, no two uniform blocks, textures or samplers of a program may share a slot, every uniform block must take a multiple of 16 bytes, every stage must name a source of the file, every pair must name a texture and a sampler its program declares, a program must write one to four colors, the names of stages, texture types, sample types, sampler types and targets must be ones the compiler writes, every binding number must be in range, the GLSL targets must read each block as an array of `vec4` or `ivec4` that fills it exactly, every uniform of a block must fit inside it, and every program must read each block of the material with the slot and size the file gives it. A file that breaks a rule raises `The shader file is malformed: ` followed by the problem, such as `It is not a version 2 Haylen shader package. Compile its source again with the Haylen shader compiler.`, `The texture slot 40 is out of range.` or `The uniform "tint" does not fit in the block "params".`, from `assets.shader` or from the hot reload, which keeps the last good shader. A program without code for the language of the GPU device raises `The program "<name>/<program>" has no code for the "<language>" language of this GPU device. Compile its shader again with the Haylen shader compiler.` when a draw first uses it, and a GPU program that the graphics API rejects raises `The graphics device could not create the shader "<name>/<program>".`.
 
 ## Load time
 
-A shader costs time three times: reading its `.shader` file, compiling the program of the active backend, and making a pipeline for each blend mode and kind of target it draws with. Reading a file of the shader samples took about 2 ms in a Release build, 7 ms for the first one, on a worker thread when the shader loads asynchronously. The debug log names every program and pipeline with the milliseconds it took, such as `The graphics device made the shader "ripple/sprite" in 0.10 ms.`, once `log.setLevel('debug')` shows debug lines. These are the costs measured with the seven materials of the shader samples on an Apple M5 Pro:
+A shader costs time three times: reading its `.shader` file, compiling the program for the shader language of the GPU device, and making a pipeline for each blend mode and kind of target it draws with. Reading a file of the shader samples took about 2 ms in a Release build, 7 ms for the first one, on a worker thread when the shader loads asynchronously. The debug log names every program and pipeline with the milliseconds it took, such as `The graphics device made the shader "ripple/sprite" in 0.10 ms.`, once `log.setLevel('debug')` shows debug lines. These are the costs measured with the seven materials of the shader samples on an Apple M5 Pro:
 
-| Backend | Compiling a program the first time | Compiling it again | Making a pipeline |
+| Graphics API | Compiling a program the first time | Compiling it again | Making a pipeline |
 | --- | --- | --- | --- |
 | Metal (macOS, iOS, tvOS) | 220 ms, 110 ms per stage, which the system keeps in its compiler cache across runs | 0.1 ms | 5 to 8 ms the first time, 43 ms for the very first pipeline of the process |
 | WebGPU (Chrome) | Under 0.1 ms on the frame thread, since the browser compiles in its GPU process | Under 0.1 ms | Under 0.6 ms |
 | WebGL2 (Chrome on Metal) | 15 to 60 ms, compiled and linked on the frame thread when the program is made | The same | None, since WebGL2 links the program with its state |
 
-Metal compiles the source of a program when the program is made, and seven programs made one after another wait 2.3 seconds in all. The engine therefore starts compiling every source of the active backend on the I/O pool as soon as a `.shader` file is read, on whatever thread reads it, and the renderer does the same for its own programs when it starts and makes each one the first time a draw needs it. The system compiles the requests side by side and keeps each result, and a program made while its sources still compile waits only for what is left: making the seven programs right after their files were read takes 315 ms, and the compile overlaps whatever the app does until its first draw, such as the rest of its loading. A scene that loads its shaders in its `load` hook, with `assets.load`, `assets.loadAsync` or a [preload group](../lua-api/assets.md), lets them compile while it loads and its transition plays. On WebGL2 a program compiles when the first draw needs it, 15 to 60 ms each in Chrome, 224 ms for the 13 shaders of the test project, so a scene with many materials draws them once while it loads, such as behind its transition, to compile them before it shows.
+Metal compiles the source of a program when the program is made, and seven programs made one after another wait 2.3 seconds in all. The engine therefore starts compiling every source of the language of the GPU device on the I/O pool as soon as a `.shader` file is read, on whatever thread reads it, and the renderer does the same for its own programs when it starts and makes each one the first time a draw needs it. The system compiles the requests side by side and keeps each result, and a program made while its sources still compile waits only for what is left: making the seven programs right after their files were read takes 315 ms, and the compile overlaps whatever the app does until its first draw, such as the rest of its loading. A scene that loads its shaders in its `load` hook, with `assets.load`, `assets.loadAsync` or a [preload group](../lua-api/assets.md), lets them compile while it loads and its transition plays. On WebGL2 a program compiles when the first draw needs it, 15 to 60 ms each in Chrome, 224 ms for the 13 shaders of the test project, so a scene with many materials draws them once while it loads, such as behind its transition, to compile them before it shows.
 
 ## C++
 

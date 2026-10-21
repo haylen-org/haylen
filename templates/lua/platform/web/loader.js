@@ -25,19 +25,22 @@ var Module = {
         }
     };
 
-    // Returns the WebGPU or WebGL2 build this browser can run, or the one `?backend=` forces when the browser supports it.
-    const pickBackend = async () => {
+    // The folders of the builds of each graphics API, by the names the engine gives them, which `?graphicsApi=` takes.
+    const builds = { webGpu: "webgpu", webGl2: "webgl2" };
+
+    // Returns the folder of the WebGPU or WebGL2 build this browser can run, or of the one `?graphicsApi=` forces when the browser supports it.
+    const pickBuild = async () => {
         const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
-        const supported = { webgpu: adapter !== null, webgl2: document.createElement("canvas").getContext("webgl2") !== null };
-        const forced = new URLSearchParams(location.search).get("backend");
-        if (forced === "webgpu" || forced === "webgl2") {
+        const supported = { webGpu: adapter !== null, webGl2: document.createElement("canvas").getContext("webgl2") !== null };
+        const forced = new URLSearchParams(location.search).get("graphicsApi");
+        if (Object.hasOwn(builds, forced)) {
             if (!supported[forced]) {
-                throw new Error("This browser cannot run the " + (forced === "webgpu" ? "WebGPU" : "WebGL2") + " build that the address asks for.");
+                throw new Error("This browser cannot run the " + (forced === "webGpu" ? "WebGPU" : "WebGL2") + " build that the address asks for.");
             }
-            return forced;
+            return builds[forced];
         }
-        if (supported.webgpu || supported.webgl2) {
-            return supported.webgpu ? "webgpu" : "webgl2";
+        if (supported.webGpu || supported.webGl2) {
+            return supported.webGpu ? builds.webGpu : builds.webGl2;
         }
         throw new Error("This browser supports neither WebGPU nor WebGL2. Update it or turn on hardware acceleration to run this app.");
     };
@@ -179,11 +182,11 @@ var Module = {
     };
 
     try {
-        const backend = await pickBackend();
+        const build = await pickBuild();
         status.textContent = "Loading " + config.name;
         // A protected release downloads only its manifests and its app domain before the app starts, and the content streams in as the app needs it, while development downloads the zipped package.
         const files = config.release ? config.release.files.map((name) => ({ url: "app/" + name, size: config.sizes["app/" + name] })) : [{ url: "app.zip", size: config.sizes["app.zip"] }];
-        const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: backend + "/haylen.wasm", size: config.sizes[backend + "/haylen.wasm"] }, ...files])]);
+        const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: build + "/haylen.wasm", size: config.sizes[build + "/haylen.wasm"] }, ...files])]);
         status.textContent = "Starting " + config.name;
         // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once.
         Module.instantiateWasm = (imports, receive) => {
@@ -203,7 +206,7 @@ var Module = {
             Module.haylen.developmentServer = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + config.development.path + "?token=" + encodeURIComponent(config.development.token);
         }
         loadPlugins(plugins);
-        await loadScript(backend + "/haylen.js");
+        await loadScript(build + "/haylen.js");
     } catch (error) {
         fail("The app could not be loaded.", String(error.message || error));
     }

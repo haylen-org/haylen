@@ -1,0 +1,449 @@
+#pragma once
+
+#include <array>
+#include <cstddef>
+#include <cstdint>
+#include <memory>
+#include <optional>
+#include <span>
+#include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
+
+#include "haylen/math/Color.hpp"
+#include "haylen/math/Rect.hpp"
+
+namespace haylen::core {
+class JobSystem;
+}
+
+namespace haylen::gpu {
+
+// The graphics device of a backend: the buffers, images, samplers, programs and pipelines that the renderers of the engine create, and the passes and draws they record, with no type of the library behind it. The host of a backend creates the one device of an app, and every method runs on the frame thread. Methods that create an object throw `std::runtime_error` with a clear sentence when the device has no room for it or rejects it.
+class Device {
+  public:
+    // The shader language that the device runs, which picks the code of a program in a shader package. The device of the headless host runs none.
+    enum class Language : std::uint8_t {
+        None,
+        MetalMacos,
+        MetalIos,
+        MetalIosSimulator,
+        Hlsl5,
+        Glsl430,
+        Glsl300es,
+        Wgsl,
+    };
+
+    // The graphics API that the device draws through, which every backend names the same way. The device of the headless host draws through none.
+    enum class Api : std::uint8_t {
+        None,
+        Metal,
+        Direct3D11,
+        OpenGl,
+        OpenGlEs,
+        WebGl2,
+        WebGpu,
+    };
+
+    static constexpr std::array<std::pair<std::string_view, Api>, 7> kApiNames{{
+        {"none", Api::None},
+        {"metal", Api::Metal},
+        {"direct3D11", Api::Direct3D11},
+        {"openGl", Api::OpenGl},
+        {"openGlEs", Api::OpenGlEs},
+        {"webGl2", Api::WebGl2},
+        {"webGpu", Api::WebGpu},
+    }};
+
+    enum class PixelFormat : std::uint8_t {
+        R8,
+        Rgba8,
+        R32Float,
+        Rgba16Float,
+    };
+
+    enum class VertexFormat : std::uint8_t {
+        Float,
+        Float2,
+        Float3,
+        Float4,
+        Half2,
+        UByte4Normalized,
+        UShort4Normalized,
+    };
+
+    enum class Primitive : std::uint8_t {
+        Triangles,
+        TriangleStrip,
+    };
+
+    enum class IndexType : std::uint8_t {
+        None,
+        UInt16,
+        UInt32,
+    };
+
+    enum class BlendFactor : std::uint8_t {
+        Zero,
+        One,
+        SourceColor,
+        OneMinusSourceColor,
+        SourceAlpha,
+        OneMinusSourceAlpha,
+        DestinationColor,
+        OneMinusDestinationColor,
+        DestinationAlpha,
+        OneMinusDestinationAlpha,
+    };
+
+    enum class BlendOperation : std::uint8_t {
+        Add,
+        Subtract,
+        ReverseSubtract,
+        Minimum,
+        Maximum,
+    };
+
+    // The channels a pipeline writes into a color target, as bits.
+    enum class ColorMask : std::uint8_t {
+        None = 0,
+        Red = 1,
+        Green = 2,
+        Blue = 4,
+        Alpha = 8,
+        Rgb = 7,
+        All = 15,
+    };
+
+    enum class Filter : std::uint8_t {
+        Nearest,
+        Linear,
+    };
+
+    enum class Wrap : std::uint8_t {
+        ClampToEdge,
+        Repeat,
+        MirroredRepeat,
+    };
+
+    enum class Stage : std::uint8_t {
+        Vertex,
+        Fragment,
+    };
+
+    enum class TextureType : std::uint8_t {
+        Flat,
+        Array,
+        Volume,
+        Cube,
+    };
+
+    enum class SampleType : std::uint8_t {
+        Float,
+        UnfilterableFloat,
+        Depth,
+        SignedInteger,
+        UnsignedInteger,
+    };
+
+    enum class SamplerType : std::uint8_t {
+        Filtering,
+        NonFiltering,
+        Comparison,
+    };
+
+    // A dynamic buffer takes new contents every frame through `writeBuffer`, and an immutable one keeps the data it was made with.
+    enum class Usage : std::uint8_t {
+        Immutable,
+        Dynamic,
+    };
+
+    // A texture keeps the pixels it was made with, a dynamic image takes new pixels through `writeImages`, and a render target is the color attachment of offscreen passes that draws sample later.
+    enum class ImageKind : std::uint8_t {
+        Texture,
+        Dynamic,
+        RenderTarget,
+    };
+
+    enum class Load : std::uint8_t {
+        Clear,
+        Keep,
+    };
+
+    // The handles of the objects of a device, whose id 0 names nothing.
+    struct Buffer {
+        std::uint32_t id = 0;
+        [[nodiscard]] bool isValid() const noexcept {
+            return id != 0;
+        }
+        friend bool operator==(Buffer, Buffer) = default;
+    };
+
+    struct Image {
+        std::uint32_t id = 0;
+        [[nodiscard]] bool isValid() const noexcept {
+            return id != 0;
+        }
+        friend bool operator==(Image, Image) = default;
+    };
+
+    struct Sampler {
+        std::uint32_t id = 0;
+        [[nodiscard]] bool isValid() const noexcept {
+            return id != 0;
+        }
+        friend bool operator==(Sampler, Sampler) = default;
+    };
+
+    struct Program {
+        std::uint32_t id = 0;
+        [[nodiscard]] bool isValid() const noexcept {
+            return id != 0;
+        }
+        friend bool operator==(Program, Program) = default;
+    };
+
+    struct Pipeline {
+        std::uint32_t id = 0;
+        [[nodiscard]] bool isValid() const noexcept {
+            return id != 0;
+        }
+        friend bool operator==(Pipeline, Pipeline) = default;
+    };
+
+    static constexpr std::size_t kMaxVertexBuffers = 4;
+    static constexpr std::size_t kMaxColorTargets = 4;
+    static constexpr std::size_t kMaxBlocks = 8;
+    static constexpr std::size_t kMaxTextures = 32;
+    static constexpr std::size_t kMaxSamplers = 12;
+    static constexpr std::size_t kMaxAttributes = 16;
+
+    struct BufferDesc {
+        std::size_t size = 0;
+        std::span<const std::byte> data;
+        Usage usage = Usage::Immutable;
+        bool index = false;
+        std::string_view label;
+    };
+
+    // The pixels of a texture come with the image, one span per mip level from the largest, and the other kinds start without pixels.
+    struct ImageDesc {
+        int width = 0;
+        int height = 0;
+        PixelFormat format = PixelFormat::Rgba8;
+        ImageKind kind = ImageKind::Texture;
+        std::span<const std::span<const std::byte>> levels;
+        std::string_view label;
+    };
+
+    struct SamplerDesc {
+        Filter minification = Filter::Linear;
+        Filter magnification = Filter::Linear;
+        Filter mipmap = Filter::Nearest;
+        Wrap wrapU = Wrap::ClampToEdge;
+        Wrap wrapV = Wrap::ClampToEdge;
+    };
+
+    // One stage of a program in the language of the device, with the source it runs and its entry point, and the profile that HLSL compiles it for.
+    struct StageCode {
+        std::string_view source;
+        std::string_view entry;
+        std::string_view profile;
+    };
+
+    // A uniform block of a program at its bind slot, with the binding number that the language of the device gives it. The OpenGL languages read a block as one array of vectors, which `glslName`, `glslType` and `glslCount` describe.
+    struct BlockBinding {
+        int slot = 0;
+        Stage stage = Stage::Vertex;
+        std::uint32_t size = 0;
+        int binding = 0;
+        std::string_view glslName;
+        bool glslIntegers = false;
+        int glslCount = 0;
+    };
+
+    struct TextureBinding {
+        int slot = 0;
+        Stage stage = Stage::Fragment;
+        TextureType type = TextureType::Flat;
+        SampleType sampleType = SampleType::Float;
+        int binding = 0;
+    };
+
+    struct SamplerBinding {
+        int slot = 0;
+        Stage stage = Stage::Fragment;
+        SamplerType type = SamplerType::Filtering;
+        int binding = 0;
+    };
+
+    // A texture and a sampler that the OpenGL languages combine into one sampler object under the name.
+    struct TexturePair {
+        Stage stage = Stage::Fragment;
+        int texture = 0;
+        int sampler = 0;
+        std::string_view glslName;
+    };
+
+    // A vertex input of a program, which HLSL reads through the semantic `TEXCOORD` with the location as its index and OpenGL by its name.
+    struct Attribute {
+        int location = 0;
+        std::string_view name;
+    };
+
+    struct ProgramDesc {
+        StageCode vertex;
+        StageCode fragment;
+        std::span<const Attribute> attributes;
+        std::span<const BlockBinding> blocks;
+        std::span<const TextureBinding> textures;
+        std::span<const SamplerBinding> samplers;
+        std::span<const TexturePair> pairs;
+        std::string_view label;
+    };
+
+    struct VertexBufferLayout {
+        int stride = 0;
+        bool perInstance = false;
+    };
+
+    struct VertexAttribute {
+        int location = 0;
+        int buffer = 0;
+        int offset = 0;
+        VertexFormat format = VertexFormat::Float;
+    };
+
+    struct Blend {
+        bool enabled = false;
+        BlendFactor sourceColor = BlendFactor::One;
+        BlendFactor destinationColor = BlendFactor::Zero;
+        BlendOperation colorOperation = BlendOperation::Add;
+        BlendFactor sourceAlpha = BlendFactor::One;
+        BlendFactor destinationAlpha = BlendFactor::Zero;
+        BlendOperation alphaOperation = BlendOperation::Add;
+    };
+
+    struct ColorTarget {
+        PixelFormat format = PixelFormat::Rgba8;
+        ColorMask writeMask = ColorMask::All;
+        Blend blend;
+    };
+
+    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its color target names, and the others draw into render targets of one sample without depth.
+    struct PipelineDesc {
+        Program program;
+        std::span<const VertexBufferLayout> buffers;
+        std::span<const VertexAttribute> attributes;
+        Primitive primitive = Primitive::Triangles;
+        IndexType indexType = IndexType::None;
+        std::span<const ColorTarget> colors;
+        bool swapchain = false;
+        std::string_view label;
+    };
+
+    struct ColorAttachment {
+        Image image;
+        Load load = Load::Clear;
+        math::Color clear = math::Color::transparent();
+    };
+
+    // A pass draws into the swapchain of the frame when it names no attachment.
+    struct PassDesc {
+        std::span<const ColorAttachment> colors;
+        Load load = Load::Clear;
+        math::Color clear = math::Color::transparent();
+        std::string_view label;
+    };
+
+    struct Bindings {
+        std::array<Buffer, kMaxVertexBuffers> vertexBuffers{};
+        std::array<int, kMaxVertexBuffers> vertexOffsets{};
+        Buffer indexBuffer;
+        int indexOffset = 0;
+        std::array<Image, kMaxTextures> textures{};
+        std::array<Sampler, kMaxSamplers> samplers{};
+    };
+
+    // New pixels for a dynamic image, which replace all of its pixels.
+    struct ImageWrite {
+        Image image;
+        std::span<const std::byte> pixels;
+    };
+
+    // How many objects of one kind exist, out of the room the device holds for them.
+    struct Pool {
+        std::string_view name;
+        int used = 0;
+        int size = 0;
+    };
+
+    // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, four bytes a pixel from the first row the device stores.
+    class Readback {
+      public:
+        virtual ~Readback() = default;
+        [[nodiscard]] virtual std::optional<std::vector<std::uint8_t>> poll() = 0;
+    };
+
+    Device() = default;
+    Device(const Device&) = delete;
+    Device& operator=(const Device&) = delete;
+    virtual ~Device() = default;
+
+    [[nodiscard]] virtual Language getLanguage() const noexcept = 0;
+
+    [[nodiscard]] virtual Api getApi() const noexcept = 0;
+
+    // The name of the GPU as its API reports it, or an empty text where it reports none.
+    [[nodiscard]] virtual std::string getAdapterName() const = 0;
+    [[nodiscard]] virtual int getMaxImageSize() const noexcept = 0;
+
+    // Whether the first row of a render target is its top row, as on Metal, Direct3D and WebGPU, rather than its bottom row, as on OpenGL.
+    [[nodiscard]] virtual bool isOriginTopLeft() const noexcept = 0;
+
+    // Whether a render target of the format can be drawn into with blending.
+    [[nodiscard]] virtual bool canBlendInto(PixelFormat format) const noexcept = 0;
+
+    // The seconds the GPU took for the last frame it finished, where the API measures it.
+    [[nodiscard]] virtual std::optional<double> getGpuFrameSeconds() const noexcept = 0;
+    [[nodiscard]] virtual std::vector<Pool> getPools() const = 0;
+
+    [[nodiscard]] virtual Buffer makeBuffer(const BufferDesc& desc) = 0;
+    [[nodiscard]] virtual Image makeImage(const ImageDesc& desc) = 0;
+    [[nodiscard]] virtual Sampler makeSampler(const SamplerDesc& desc) = 0;
+    [[nodiscard]] virtual Program makeProgram(const ProgramDesc& desc) = 0;
+    [[nodiscard]] virtual Pipeline makePipeline(const PipelineDesc& desc) = 0;
+
+    // Starts compiling the stages of a program on the I/O pool where the API compiles them when the program is made, so making it later waits less. It may run on any thread, and copies what it needs from the description.
+    virtual void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) = 0;
+
+    virtual void destroy(Buffer buffer) noexcept = 0;
+    virtual void destroy(Image image) noexcept = 0;
+    virtual void destroy(Sampler sampler) noexcept = 0;
+    virtual void destroy(Program program) noexcept = 0;
+    virtual void destroy(Pipeline pipeline) noexcept = 0;
+
+    // Writes data into a dynamic buffer at the offset, before the passes of the frame that read it. A frame may write several parts of one buffer, each at most once.
+    virtual void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) = 0;
+
+    // Replaces the pixels of dynamic images, every image of a frame in one call before its first pass, so a device stages them all before it copies any of them.
+    virtual void writeImages(std::span<const ImageWrite> writes) = 0;
+
+    virtual void beginPass(const PassDesc& desc) = 0;
+    virtual void applyViewport(const math::Rect& pixels) = 0;
+    virtual void applyScissor(const math::Rect& pixels) = 0;
+    virtual void applyPipeline(Pipeline pipeline) = 0;
+    virtual void applyBindings(const Bindings& bindings) = 0;
+    virtual void applyUniforms(int slot, std::span<const std::byte> data) = 0;
+    virtual void draw(int first, int count, int instances) = 0;
+    virtual void endPass() = 0;
+
+    // Submits the passes of the frame.
+    virtual void commit() = 0;
+
+    // Starts copying the pixels of a render target, which must come after the frame that renders it was committed.
+    [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;
+};
+
+} // namespace haylen::gpu

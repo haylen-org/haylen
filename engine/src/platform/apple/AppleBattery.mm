@@ -9,21 +9,21 @@
 #import <UIKit/UIKit.h>
 #endif
 
+#include "platform/NativeHost.hpp"
 #include "platform/SystemState.hpp"
-#include "platform/sokol/SokolHost.hpp"
 
 namespace haylen::platform {
 
 #if TARGET_OS_OSX || TARGET_OS_MACCATALYST
 void AppleBattery::observe() {
-    SokolHost::getSystemState().setBattery(readPowerSources());
+    NativeHost::getSystemState().setBattery(readPowerSources());
     CFRunLoopSourceRef source = IOPSNotificationCreateRunLoopSource(&powerSourcesChanged, nullptr);
     CFRunLoopAddSource(CFRunLoopGetMain(), source, kCFRunLoopDefaultMode);
     CFRelease(source);
 }
 
 void AppleBattery::powerSourcesChanged(void*) {
-    SokolHost::getSystemState().setBattery(readPowerSources());
+    NativeHost::getSystemState().setBattery(readPowerSources());
 }
 
 // A Mac on mains power that holds its battery below full, as optimized charging does, neither charges nor discharges, which counts as full.
@@ -58,10 +58,10 @@ Battery AppleBattery::readPowerSources() {
 // The class `UIDevice` reports the level in steps of 5 percent and posts its notifications about once a minute.
 void AppleBattery::observe() {
     UIDevice.currentDevice.batteryMonitoringEnabled = YES;
-    SokolHost::getSystemState().setBattery(readDevice());
+    NativeHost::getSystemState().setBattery(readDevice());
     NSNotificationCenter* center = NSNotificationCenter.defaultCenter;
     for (NSNotificationName name in @[ UIDeviceBatteryLevelDidChangeNotification, UIDeviceBatteryStateDidChangeNotification ]) {
-        [center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification*) { SokolHost::getSystemState().setBattery(readDevice()); }];
+        [center addObserverForName:name object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification*) { NativeHost::getSystemState().setBattery(readDevice()); }];
     }
 }
 
@@ -90,7 +90,7 @@ Battery AppleBattery::readDevice() {
 }
 #else
 void AppleBattery::observe() {
-    SokolHost::getSystemState().setBattery({.state = Battery::State::None});
+    NativeHost::getSystemState().setBattery({.state = Battery::State::None});
 }
 #endif
 

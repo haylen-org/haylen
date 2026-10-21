@@ -7,7 +7,7 @@ debug::ObjectCounter& TextureResource::targets = *new debug::ObjectCounter("Rend
 
 TextureResource::~TextureResource() {
     if (const auto owner = graveyard.lock()) {
-        owner->bury(image, view);
+        owner->bury(image);
     }
 }
 

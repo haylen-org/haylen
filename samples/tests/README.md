@@ -10,7 +10,7 @@ Haylen Tests is the test project of the engine: one app with a test of every eng
 
 ```sh
 haylen build --target haylen-headless
-haylen build --target haylen_native_test
+haylen build --target haylen-native-test
 build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 ```
 
@@ -316,7 +316,7 @@ Custom fragment shaders compiled into ".shader" files: materials on sprites and 
 | `SHD-004` | Post-processing chain | The built-in vignette followed by custom blur, color grading and tube screen passes over a canvas. |  |
 | `SHD-005` | Shaders on text | Rainbow, dissolve and flash materials on text drawn from its distance field. |  |
 | `SHD-006` | Hot reload | How a desktop run of the player recompiles and reloads a shader while the app keeps running. |  |
-| `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the backend of the platform. |  |
+| `SHD-007` | Shader load time | Every shader of the category loaded in the background and drawn at once, with the time of the files and of the first frame on the graphics API of the platform. |  |
 | `SHD-008` | Shader library | Forty-five material shaders of games by category, from neon trails, lasers and shields to fire, frost, gold, glitches and shockwaves, with their numbers on sliders. |  |
 
 #### Video (VID)
@@ -743,7 +743,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | --- | --- | --- | --- |
 | `PLT-001` | Native events | The ticks of a native ticker and an event sent from Lua through the plugin "platform-sample", next to the events of the platform. |  |
 | `PLT-002` | Custom handler | The method "platform-sample.echo", answered by Java, Objective-C or JavaScript, and its failure without a text. |  |
-| `PLT-003` | Window and device | Platform, backend, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
+| `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message, the pickers of files, of a place to save and of a folder, and a message that the app gives up. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |

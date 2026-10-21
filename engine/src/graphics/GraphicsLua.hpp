@@ -24,7 +24,7 @@ class GraphicsLua final {
     static int updateTexture(lua_State* L);
     static int maxTextureSize(lua_State* L);
     static int whiteTexture(lua_State* L);
-    static int backendName(lua_State* L);
+    static int apiName(lua_State* L);
 
     static int textureWidth(lua_State* L);
     static int textureHeight(lua_State* L);

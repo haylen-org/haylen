@@ -1,6 +1,6 @@
 # haylen
 
-The root `haylen` module holds information about the running engine and the app clock. It exposes the engine version, the platform, the graphics backend and the resolved `app.json` configuration, and it reads frame times, scales app time, quits the app or stops it with an error screen. Use it to adapt to the platform, to pause or slow down gameplay and to read timing outside scene callbacks.
+The root `haylen` module holds information about the running engine and the app clock. It exposes the engine version, the platform, the graphics API and the resolved `app.json` configuration, and it reads frame times, scales app time, quits the app or stops it with an error screen. Use it to adapt to the platform, to pause or slow down gameplay and to read timing outside scene callbacks.
 
 ```lua
 local haylen = require('haylen')
@@ -29,14 +29,16 @@ local touchFirst = haylen.platform == 'ios' or haylen.platform == 'android'
 print('show touch controls:', touchFirst)
 ```
 
-### haylen.backend
+### haylen.graphicsApi
 
-The graphics backend in use, one of `'metal'`, `'d3d11'`, `'glcore'`, `'gles3'`, `'webgpu'` or `'dummy'`. WebGL2 and Android report `'gles3'`, and the headless host reports `'dummy'`.
+The graphics API that the GPU device draws through, one of `'metal'`, `'direct3D11'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'` or `'none'`. Builds with the default graphics API of their platform report `'metal'` on Apple platforms, `'direct3D11'` on Windows, `'openGl'` on Linux, `'openGlEs'` on Android, and `'webGpu'` or `'webGl2'` on the web, whichever the page picked. The headless host reports `'none'`, since nothing draws there. The name is the same on every backend, and [`graphics.apiName()`](graphics.md#graphicsapiname) returns it too.
 
 ```lua
 local haylen = require('haylen')
 
-print('graphics backend: ' .. haylen.backend)
+print('Graphics API: ' .. haylen.graphicsApi)
+local web = haylen.graphicsApi == 'webGpu' or haylen.graphicsApi == 'webGl2'
+print('Runs in a browser:', web)
 ```
 
 ### haylen.config

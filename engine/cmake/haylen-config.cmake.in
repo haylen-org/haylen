@@ -1,9 +1,10 @@
-# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the `@HAYLEN_BACKEND@` backend, and defines `haylen::engine`, `haylen::runtime` and `haylen_add_app`.
+# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the `@HAYLEN_BACKEND@` backend drawing through `@HAYLEN_GRAPHICS@`, and defines `haylen::engine`, `haylen::runtime` and `haylen_add_app`.
 
 get_filename_component(_haylen_prefix "${CMAKE_CURRENT_LIST_DIR}/@HAYLEN_SDK_PREFIX_FROM_CONFIG@" ABSOLUTE)
 
 set(HAYLEN_PLATFORM "@HAYLEN_PLATFORM@")
 set(HAYLEN_BACKEND "@HAYLEN_BACKEND@")
+set(HAYLEN_GRAPHICS "@HAYLEN_GRAPHICS@")
 set(HAYLEN_DESKTOP @HAYLEN_DESKTOP@)
 set(HAYLEN_ENGINE_DIR "${_haylen_prefix}/@HAYLEN_SDK_SHARE_DIR@")
 set(HAYLEN_CMAKE_DIR "${HAYLEN_ENGINE_DIR}/cmake")

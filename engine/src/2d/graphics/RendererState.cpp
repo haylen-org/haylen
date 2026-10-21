@@ -9,42 +9,131 @@
 #include <vector>
 
 #include "2d/graphics/MaterialResource.hpp"
+#include "core/EmbeddedFiles.hpp"
 #include "graphics/DeviceState.hpp"
-#include "graphics/Gpu.hpp"
-#include "graphics/ShaderPrecompiler.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/graphics/Device.hpp"
-#include "shaders/backdrop.glsl.h"
-#include "shaders/batch.glsl.h"
-#include "shaders/batch_lit.glsl.h"
-#include "shaders/blend.glsl.h"
-#include "shaders/blend_lit.glsl.h"
-#include "shaders/composite.glsl.h"
-#include "shaders/effect.glsl.h"
-#include "shaders/effect_lit.glsl.h"
-#include "shaders/light.glsl.h"
-#include "shaders/mesh.glsl.h"
-#include "shaders/mesh_lit.glsl.h"
-#include "shaders/metaball.glsl.h"
-#include "shaders/metaball_lit.glsl.h"
-#include "shaders/recolor.glsl.h"
-#include "shaders/recolor_lit.glsl.h"
-#include "shaders/shape.glsl.h"
-#include "shaders/shape_lit.glsl.h"
-#include "shaders/sprite.glsl.h"
-#include "shaders/sprite_lit.glsl.h"
-#include "shaders/text.glsl.h"
-#include "shaders/text_lit.glsl.h"
 
 namespace haylen::graphics2d {
 
 debug::ObjectCounter& RendererState::bufferCounter = *new debug::ObjectCounter("RendererBuffers", debug::ObjectCounter::Kind::Native);
 
 std::uint64_t RendererState::submissions = 0;
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kPrograms{sprite_sprite_shader_desc, text_text_shader_desc, mesh_mesh_shader_desc, blend_blend_shader_desc, composite_composite_shader_desc, light_light_shader_desc, metaball_metaball_shader_desc, recolor_recolor_shader_desc, composite_filter_shader_desc, effect_effect_shader_desc, shape_shape_shader_desc, batch_sprite_shader_desc, backdrop_backdrop_shader_desc};
-const std::array<RendererState::Description, RendererState::kProgramCount> RendererState::kLitPrograms{sprite_lit_sprite_shader_desc, text_lit_text_shader_desc, mesh_lit_mesh_shader_desc, blend_lit_blend_shader_desc, nullptr, nullptr, metaball_lit_metaball_shader_desc, recolor_lit_recolor_shader_desc, nullptr, effect_lit_effect_shader_desc, shape_lit_shape_shader_desc, batch_lit_sprite_shader_desc, nullptr};
+const std::array<RendererState::ProgramSource, RendererState::kProgramCount> RendererState::kPrograms{{
+    {.package = 0, .program = "sprite", .lit = "sprite_lit"},
+    {.package = 1, .program = "text", .lit = "text_lit"},
+    {.package = 2, .program = "mesh", .lit = "mesh_lit"},
+    {.package = 3, .program = "blend", .lit = "blend_lit"},
+    {.package = 4, .program = "composite", .lit = ""},
+    {.package = 5, .program = "light", .lit = ""},
+    {.package = 6, .program = "metaball", .lit = "metaball_lit"},
+    {.package = 7, .program = "recolor", .lit = "recolor_lit"},
+    {.package = 4, .program = "filter", .lit = ""},
+    {.package = 8, .program = "effect", .lit = "effect_lit"},
+    {.package = 9, .program = "shape", .lit = "shape_lit"},
+    {.package = 0, .program = "batch", .lit = "batch_lit"},
+    {.package = 10, .program = "backdrop", .lit = ""},
+}};
+
+// The vertex layouts below read these records at fixed offsets.
+static_assert(sizeof(GpuInstance) == 48 && sizeof(GpuVertex) == 20 && sizeof(LightInstance) == 144);
+
+const std::array<RendererState::Input, 9> RendererState::kSpriteInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_position", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_size", .buffer = 1, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_uv", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::UShort4Normalized},
+    {.name = "instance_color", .buffer = 1, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_flash", .buffer = 1, .offset = 28, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_rotation", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::Float},
+    {.name = "instance_parameters", .buffer = 1, .offset = 36, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_pivot", .buffer = 1, .offset = 40, .format = gpu::Device::VertexFormat::Float2},
+}};
+
+const std::array<RendererState::Input, 11> RendererState::kBatchInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_position", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_size", .buffer = 1, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_uv", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::UShort4Normalized},
+    {.name = "instance_color", .buffer = 1, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_flash", .buffer = 1, .offset = 28, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_rotation", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::Float},
+    {.name = "instance_parameters", .buffer = 1, .offset = 36, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_pivot", .buffer = 1, .offset = 40, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_data", .buffer = 2, .offset = 0, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_texture", .buffer = 2, .offset = 16, .format = gpu::Device::VertexFormat::Float},
+}};
+
+const std::array<RendererState::Input, 13> RendererState::kRecolorInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_position", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_size", .buffer = 1, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_uv", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::UShort4Normalized},
+    {.name = "instance_color", .buffer = 1, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_flash", .buffer = 1, .offset = 28, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_rotation", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::Float},
+    {.name = "instance_parameters", .buffer = 1, .offset = 36, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_pivot", .buffer = 1, .offset = 40, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_red", .buffer = 2, .offset = 0, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_green", .buffer = 2, .offset = 4, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_blue", .buffer = 2, .offset = 8, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_yellow", .buffer = 2, .offset = 12, .format = gpu::Device::VertexFormat::UByte4Normalized},
+}};
+
+const std::array<RendererState::Input, 15> RendererState::kEffectInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_position", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_size", .buffer = 1, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_uv", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::UShort4Normalized},
+    {.name = "instance_color", .buffer = 1, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_flash", .buffer = 1, .offset = 28, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_rotation", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::Float},
+    {.name = "instance_parameters", .buffer = 1, .offset = 36, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "instance_pivot", .buffer = 1, .offset = 40, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "effect_dissolve_color", .buffer = 2, .offset = 0, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "effect_outline_color", .buffer = 2, .offset = 4, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "effect_glow_color", .buffer = 2, .offset = 8, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "effect_amounts", .buffer = 2, .offset = 12, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "effect_reach", .buffer = 2, .offset = 16, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "effect_widths", .buffer = 2, .offset = 24, .format = gpu::Device::VertexFormat::Float2},
+}};
+
+const std::array<RendererState::Input, 9> RendererState::kShapeInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "shape_center", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "shape_half_size", .buffer = 1, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "shape_rotation", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::Float},
+    {.name = "shape_reach", .buffer = 1, .offset = 20, .format = gpu::Device::VertexFormat::Half2},
+    {.name = "shape_color", .buffer = 1, .offset = 24, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "shape_border_color", .buffer = 1, .offset = 28, .format = gpu::Device::VertexFormat::UByte4Normalized},
+    {.name = "shape_form", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::UShort4Normalized},
+    {.name = "shape_radii", .buffer = 1, .offset = 40, .format = gpu::Device::VertexFormat::UShort4Normalized},
+}};
+
+const std::array<RendererState::Input, 10> RendererState::kLightInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "instance_area", .buffer = 1, .offset = 0, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_color", .buffer = 1, .offset = 16, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_shape", .buffer = 1, .offset = 32, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_cone", .buffer = 1, .offset = 48, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_origin", .buffer = 1, .offset = 64, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_range", .buffer = 1, .offset = 80, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_shadow_color", .buffer = 1, .offset = 96, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_shadow_map", .buffer = 1, .offset = 112, .format = gpu::Device::VertexFormat::Float4},
+    {.name = "instance_shadow_axis", .buffer = 1, .offset = 128, .format = gpu::Device::VertexFormat::Float4},
+}};
+
+const std::array<RendererState::Input, 3> RendererState::kMeshInputs{{
+    {.name = "position", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "texcoord", .buffer = 0, .offset = 8, .format = gpu::Device::VertexFormat::Float2},
+    {.name = "color0", .buffer = 0, .offset = 16, .format = gpu::Device::VertexFormat::UByte4Normalized},
+}};
+
+const std::array<RendererState::Input, 1> RendererState::kQuadInputs{{
+    {.name = "corner", .buffer = 0, .offset = 0, .format = gpu::Device::VertexFormat::Float2},
+}};
 
 Canvas& RendererState::getCanvas() {
     if (!canvasOpen) {
@@ -424,19 +513,20 @@ bool RendererState::expectsPremultiplied(graphics::BlendMode::Type mode) noexcep
     return mode == graphics::BlendMode::Type::Multiply || mode == graphics::BlendMode::Type::Screen;
 }
 
-sg_blend_state RendererState::blendState(graphics::BlendMode::Type mode) noexcept {
+gpu::Device::Blend RendererState::blendState(graphics::BlendMode::Type mode) noexcept {
     using Mode = graphics::BlendMode::Type;
+    using Factor = gpu::Device::BlendFactor;
     switch (mode) {
     case Mode::Alpha:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+        return {.enabled = true, .sourceColor = Factor::SourceAlpha, .destinationColor = Factor::OneMinusSourceAlpha, .sourceAlpha = Factor::One, .destinationAlpha = Factor::OneMinusSourceAlpha};
     case Mode::Additive:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA, .dst_factor_rgb = SG_BLENDFACTOR_ONE, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE};
+        return {.enabled = true, .sourceColor = Factor::SourceAlpha, .destinationColor = Factor::One, .sourceAlpha = Factor::One, .destinationAlpha = Factor::One};
     case Mode::Multiply:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_DST_COLOR, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+        return {.enabled = true, .sourceColor = Factor::DestinationColor, .destinationColor = Factor::OneMinusSourceAlpha, .sourceAlpha = Factor::One, .destinationAlpha = Factor::OneMinusSourceAlpha};
     case Mode::Screen:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_COLOR, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+        return {.enabled = true, .sourceColor = Factor::One, .destinationColor = Factor::OneMinusSourceColor, .sourceAlpha = Factor::One, .destinationAlpha = Factor::OneMinusSourceAlpha};
     case Mode::Premultiplied:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, .src_factor_alpha = SG_BLENDFACTOR_ONE, .dst_factor_alpha = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+        return {.enabled = true, .sourceColor = Factor::One, .destinationColor = Factor::OneMinusSourceAlpha, .sourceAlpha = Factor::One, .destinationAlpha = Factor::OneMinusSourceAlpha};
     // The modes that mix with what lies below replace the pixels with what the backdrop program computed.
     case Mode::Opaque:
     case Mode::Overlay:
@@ -453,268 +543,161 @@ sg_blend_state RendererState::blendState(graphics::BlendMode::Type mode) noexcep
     return {};
 }
 
-sg_blend_state RendererState::lightBlend(std::uint8_t blend) noexcept {
+gpu::Device::Blend RendererState::lightBlend(std::uint8_t blend) noexcept {
+    using Factor = gpu::Device::BlendFactor;
     switch (static_cast<lighting2d::Light::Blend>(blend)) {
     case lighting2d::Light::Blend::Add:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE};
+        return {.enabled = true, .sourceColor = Factor::One, .destinationColor = Factor::One};
     case lighting2d::Light::Blend::Subtract:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE, .op_rgb = SG_BLENDOP_REVERSE_SUBTRACT};
+        return {.enabled = true, .sourceColor = Factor::One, .destinationColor = Factor::One, .colorOperation = gpu::Device::BlendOperation::ReverseSubtract};
     case lighting2d::Light::Blend::Mix:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_SRC_ALPHA, .dst_factor_rgb = SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA};
+        return {.enabled = true, .sourceColor = Factor::SourceAlpha, .destinationColor = Factor::OneMinusSourceAlpha};
     case lighting2d::Light::Blend::Max:
-        return {.enabled = true, .src_factor_rgb = SG_BLENDFACTOR_ONE, .dst_factor_rgb = SG_BLENDFACTOR_ONE, .op_rgb = SG_BLENDOP_MAX};
+        return {.enabled = true, .sourceColor = Factor::One, .destinationColor = Factor::One, .colorOperation = gpu::Device::BlendOperation::Maximum};
     }
     return {};
 }
 
-void RendererState::describeLayout(sg_pipeline_desc& desc, Program program) const {
-    // The vertex layouts below read these records at fixed offsets.
-    static_assert(sizeof(GpuInstance) == 48);
-    static_assert(sizeof(GpuVertex) == 20);
-
+// A recolored sprite, a sprite with an effect and a sprite of a batch take two records of the instance stream, the sprite and then its part colors, its effect or its data, which two buffers read at the same instance.
+RendererState::Layout RendererState::describeLayout(Program program) {
+    constexpr int kCorner = 8;
+    constexpr int kInstance = static_cast<int>(sizeof(GpuInstance));
+    constexpr int kPaired = 2 * kInstance;
+    Layout layout;
     switch (program) {
     case Program::Mesh:
-        desc.layout.attrs[ATTR_mesh_mesh_position] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-        desc.layout.attrs[ATTR_mesh_mesh_texcoord] = {.buffer_index = 0, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
-        desc.layout.attrs[ATTR_mesh_mesh_color0] = {.buffer_index = 0, .offset = 16, .format = SG_VERTEXFORMAT_UBYTE4N};
-        desc.layout.buffers[0].stride = sizeof(GpuVertex);
-        desc.index_type = SG_INDEXTYPE_UINT32;
-        desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLES;
-        return;
+        layout.buffers[0] = {.stride = static_cast<int>(sizeof(GpuVertex))};
+        layout.bufferCount = 1;
+        layout.inputs = kMeshInputs;
+        layout.primitive = gpu::Device::Primitive::Triangles;
+        layout.indexType = gpu::Device::IndexType::UInt32;
+        return layout;
     case Program::ImageBlend:
     case Program::Backdrop:
     case Program::Metaball:
-        // Each of these draws one quad whose corner is the only attribute.
-        desc.layout.buffers[0].stride = 8;
-        desc.layout.attrs[0] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-        desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-        return;
+        layout.buffers[0] = {.stride = kCorner};
+        layout.bufferCount = 1;
+        layout.inputs = kQuadInputs;
+        return layout;
     case Program::Light:
-        describeLightLayout(desc);
-        return;
+        layout.buffers[0] = {.stride = kCorner};
+        layout.buffers[1] = {.stride = static_cast<int>(sizeof(LightInstance)), .perInstance = true};
+        layout.bufferCount = 2;
+        layout.inputs = kLightInputs;
+        return layout;
     case Program::Composite:
     case Program::Filter:
-        return;
+        layout.primitive = gpu::Device::Primitive::Triangles;
+        return layout;
     case Program::Recolor:
-        describeRecolorLayout(desc);
-        return;
     case Program::Effect:
-        describeEffectLayout(desc);
-        return;
-    case Program::Shape:
-        describeShapeLayout(desc);
-        return;
     case Program::Batch:
-        describeBatchLayout(desc);
-        return;
+        layout.buffers[0] = {.stride = kCorner};
+        layout.buffers[1] = {.stride = kPaired, .perInstance = true};
+        layout.buffers[2] = {.stride = kPaired, .perInstance = true};
+        layout.bufferCount = 3;
+        layout.inputs = program == Program::Recolor ? std::span<const Input>(kRecolorInputs) : (program == Program::Effect ? std::span<const Input>(kEffectInputs) : std::span<const Input>(kBatchInputs));
+        return layout;
+    case Program::Shape:
     case Program::Sprite:
     case Program::Text:
         break;
     }
-
-    desc.layout.buffers[0].stride = 8;
-    desc.layout.buffers[1].stride = sizeof(GpuInstance);
-    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.attrs[ATTR_sprite_sprite_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_sprite_sprite_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+    layout.buffers[0] = {.stride = kCorner};
+    layout.buffers[1] = {.stride = kInstance, .perInstance = true};
+    layout.bufferCount = 2;
+    layout.inputs = program == Program::Shape ? std::span<const Input>(kShapeInputs) : std::span<const Input>(kSpriteInputs);
+    return layout;
 }
 
-// A recolored sprite takes two records of the instance stream, its sprite and then its part colors, which two buffers read at the same instance.
-void RendererState::describeRecolorLayout(sg_pipeline_desc& desc) {
-    constexpr int kStride = 2 * static_cast<int>(sizeof(GpuInstance));
-    desc.layout.buffers[0].stride = 8;
-    desc.layout.buffers[1].stride = kStride;
-    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.buffers[2].stride = kStride;
-    desc.layout.buffers[2].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.attrs[ATTR_recolor_recolor_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_red] = {.buffer_index = 2, .offset = 0, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_green] = {.buffer_index = 2, .offset = 4, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_blue] = {.buffer_index = 2, .offset = 8, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_recolor_recolor_instance_yellow] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-}
-
-// A sprite with an effect takes two records of the instance stream, its sprite and then its effect, which two buffers read at the same instance.
-void RendererState::describeEffectLayout(sg_pipeline_desc& desc) {
-    constexpr int kStride = 2 * static_cast<int>(sizeof(GpuInstance));
-    desc.layout.buffers[0].stride = 8;
-    desc.layout.buffers[1].stride = kStride;
-    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.buffers[2].stride = kStride;
-    desc.layout.buffers[2].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.attrs[ATTR_effect_effect_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_effect_effect_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_effect_effect_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_effect_effect_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
-    desc.layout.attrs[ATTR_effect_effect_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
-    desc.layout.attrs[ATTR_effect_effect_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_effect_effect_effect_dissolve_color] = {.buffer_index = 2, .offset = 0, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_effect_outline_color] = {.buffer_index = 2, .offset = 4, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_effect_glow_color] = {.buffer_index = 2, .offset = 8, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_effect_amounts] = {.buffer_index = 2, .offset = 12, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_effect_effect_effect_reach] = {.buffer_index = 2, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_effect_effect_effect_widths] = {.buffer_index = 2, .offset = 24, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-}
-
-// A sprite of a batch is its own record followed by the record of its data, which the second buffer binding reads at the same instance.
-void RendererState::describeBatchLayout(sg_pipeline_desc& desc) {
-    constexpr int kStride = static_cast<int>(sizeof(GpuInstance) * 2);
-    desc.layout.buffers[0].stride = 8;
-    desc.layout.buffers[1].stride = kStride;
-    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.buffers[2].stride = kStride;
-    desc.layout.buffers[2].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.attrs[ATTR_batch_sprite_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_batch_sprite_instance_position] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_batch_sprite_instance_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_batch_sprite_instance_uv] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_USHORT4N};
-    desc.layout.attrs[ATTR_batch_sprite_instance_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_batch_sprite_instance_flash] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_batch_sprite_instance_rotation] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_FLOAT};
-    desc.layout.attrs[ATTR_batch_sprite_instance_parameters] = {.buffer_index = 1, .offset = 36, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_batch_sprite_instance_pivot] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_batch_sprite_instance_data] = {.buffer_index = 2, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT4};
-    desc.layout.attrs[ATTR_batch_sprite_instance_texture] = {.buffer_index = 2, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT};
-    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-}
-
-// A shape is one record of the instance stream with fields of its own, around the corner of the shared quad.
-void RendererState::describeShapeLayout(sg_pipeline_desc& desc) {
-    desc.layout.buffers[0].stride = 8;
-    desc.layout.buffers[1].stride = sizeof(GpuInstance);
-    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.attrs[ATTR_shape_shape_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_shape_shape_shape_center] = {.buffer_index = 1, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_shape_shape_shape_half_size] = {.buffer_index = 1, .offset = 8, .format = SG_VERTEXFORMAT_FLOAT2};
-    desc.layout.attrs[ATTR_shape_shape_shape_rotation] = {.buffer_index = 1, .offset = 16, .format = SG_VERTEXFORMAT_FLOAT};
-    desc.layout.attrs[ATTR_shape_shape_shape_reach] = {.buffer_index = 1, .offset = 20, .format = SG_VERTEXFORMAT_HALF2};
-    desc.layout.attrs[ATTR_shape_shape_shape_color] = {.buffer_index = 1, .offset = 24, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_shape_shape_shape_border_color] = {.buffer_index = 1, .offset = 28, .format = SG_VERTEXFORMAT_UBYTE4N};
-    desc.layout.attrs[ATTR_shape_shape_shape_form] = {.buffer_index = 1, .offset = 32, .format = SG_VERTEXFORMAT_USHORT4N};
-    desc.layout.attrs[ATTR_shape_shape_shape_radii] = {.buffer_index = 1, .offset = 40, .format = SG_VERTEXFORMAT_USHORT4N};
-    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-}
-
-void RendererState::describeLightLayout(sg_pipeline_desc& desc) {
-    static_assert(sizeof(LightInstance) == 144);
-    desc.layout.buffers[0].stride = 8;
-    desc.layout.buffers[1].stride = sizeof(LightInstance);
-    desc.layout.buffers[1].step_func = SG_VERTEXSTEP_PER_INSTANCE;
-    desc.layout.attrs[ATTR_light_light_corner] = {.buffer_index = 0, .offset = 0, .format = SG_VERTEXFORMAT_FLOAT2};
-    const std::array<int, 9> attributes{ATTR_light_light_instance_area, ATTR_light_light_instance_color, ATTR_light_light_instance_shape, ATTR_light_light_instance_cone, ATTR_light_light_instance_origin, ATTR_light_light_instance_range, ATTR_light_light_instance_shadow_color, ATTR_light_light_instance_shadow_map, ATTR_light_light_instance_shadow_axis};
-    for (std::size_t index = 0; index < attributes.size(); ++index) {
-        desc.layout.attrs[attributes[index]] = {.buffer_index = 1, .offset = static_cast<int>(index * 16), .format = SG_VERTEXFORMAT_FLOAT4};
-    }
-    desc.primitive_type = SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-}
-
-void RendererState::describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const {
+RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphics::PassTarget target) const {
     using Mode = graphics::BlendMode::Type;
     const auto mode = static_cast<Mode>(blend);
-    const sg_pixel_format offscreen = device.getState().offscreenFormat;
-    if (target != graphics::PassTarget::Swapchain && target != graphics::PassTarget::TransparentSwapchain) {
-        desc.depth.pixel_format = SG_PIXELFORMAT_NONE;
-        desc.sample_count = 1;
-    }
-
+    const gpu::Device::PixelFormat offscreen = device.getState().offscreenFormat;
+    Targets targets;
     switch (target) {
     case graphics::PassTarget::Swapchain:
         // The swapchain of an opaque window keeps the alpha of its clear, so no blend can let the desktop through.
-        desc.colors[0].blend = blendState(mode);
-        desc.colors[0].write_mask = SG_COLORMASK_RGB;
-        return;
+        targets.colors[0] = {.writeMask = gpu::Device::ColorMask::Rgb, .blend = blendState(mode)};
+        return targets;
     case graphics::PassTarget::TransparentSwapchain:
-        desc.colors[0].blend = blendState(mode);
-        return;
+        targets.colors[0] = {.blend = blendState(mode)};
+        return targets;
     case graphics::PassTarget::Offscreen:
-        desc.colors[0].pixel_format = offscreen;
-        desc.colors[0].blend = blendState(mode);
-        return;
+        targets.colors[0] = {.format = offscreen, .blend = blendState(mode)};
+        return targets;
     case graphics::PassTarget::LightMap:
-        desc.colors[0].pixel_format = lightFormat;
-        desc.colors[0].blend = lightBlend(blend);
-        desc.colors[0].write_mask = SG_COLORMASK_RGB;
-        return;
+        targets.colors[0] = {.format = lightFormat, .writeMask = gpu::Device::ColorMask::Rgb, .blend = lightBlend(blend)};
+        return targets;
     case graphics::PassTarget::LitScene:
         break;
     }
 
     // The emission follows the blend of the draw, except that multiplying draws leave it alone, and only draws that cover what is below write the surface and the info.
-    desc.color_count = 4;
-    for (int index = 0; index < 4; ++index) {
-        desc.colors[index].pixel_format = offscreen;
-    }
-    desc.colors[0].blend = blendState(mode);
-    desc.colors[1].blend = blendState(mode);
-    if (mode == Mode::Multiply) {
-        desc.colors[1].write_mask = SG_COLORMASK_NONE;
-    }
+    targets.count = 4;
     const bool covers = mode == Mode::Alpha || mode == Mode::Premultiplied || mode == Mode::Opaque;
-    for (int index = 2; index < 4; ++index) {
-        desc.colors[index].blend = mode == Mode::Opaque ? sg_blend_state{} : blendState(Mode::Alpha);
-        if (!covers) {
-            desc.colors[index].write_mask = SG_COLORMASK_NONE;
+    targets.colors[0] = {.format = offscreen, .blend = blendState(mode)};
+    targets.colors[1] = {.format = offscreen, .writeMask = mode == Mode::Multiply ? gpu::Device::ColorMask::None : gpu::Device::ColorMask::All, .blend = blendState(mode)};
+    for (std::size_t index = 2; index < 4; ++index) {
+        targets.colors[index] = {.format = offscreen, .writeMask = covers ? gpu::Device::ColorMask::All : gpu::Device::ColorMask::None, .blend = mode == Mode::Opaque ? gpu::Device::Blend{} : blendState(Mode::Alpha)};
+    }
+    return targets;
+}
+
+// Every input of the layout reads the vertex attribute of the program that has its name, wherever the compiler placed it.
+gpu::Device::Pipeline RendererState::makePipeline(const graphics::ShaderResource& package, std::string_view programName, gpu::Device::Program made, Program program, std::uint8_t blend, graphics::PassTarget target, std::string_view label) {
+    const Layout layout = describeLayout(program);
+    const Targets targets = describeTargets(blend, target);
+    const graphics::ShaderResource::ProgramInfo& info = package.getInfo(programName);
+    std::array<gpu::Device::VertexAttribute, gpu::Device::kMaxAttributes> attributes{};
+    std::size_t count = 0;
+    for (const Input& input : layout.inputs) {
+        const graphics::ShaderResource::Attribute* attribute = info.findAttribute(input.name);
+        if (attribute == nullptr) {
+            throw std::invalid_argument(std::format("The program \"{}/{}\" has no vertex input \"{}\". Compile it again with the shader library of this engine.", package.name, programName, input.name));
         }
+        attributes[count++] = {.location = attribute->location, .buffer = input.buffer, .offset = input.offset, .format = input.format};
+    }
+    const bool swapchain = target == graphics::PassTarget::Swapchain || target == graphics::PassTarget::TransparentSwapchain;
+    return getGpu().makePipeline({
+        .program = made,
+        .buffers = std::span(layout.buffers.data(), layout.bufferCount),
+        .attributes = std::span(attributes.data(), count),
+        .primitive = layout.primitive,
+        .indexType = layout.indexType,
+        .colors = std::span(targets.colors.data(), targets.count),
+        .swapchain = swapchain,
+        .label = label,
+    });
+}
+
+void RendererState::loadPrograms() {
+    packages.clear();
+    for (const auto bytes : kPackages) {
+        graphics::Shader package = graphics::Shader::parse(bytes());
+        package.getResource()->graveyard = device.getState().graveyard;
+        package.getResource()->prepare(getGpu(), jobs);
+        packages.push_back(std::move(package));
     }
 }
 
-void RendererState::precompilePrograms() {
-    std::vector<std::string> sources;
-    for (const std::array<Description, kProgramCount>* table : {&kPrograms, &kLitPrograms}) {
-        for (const Description description : *table) {
-            if (description != nullptr) {
-                const sg_shader_desc& desc = *graphics::Gpu::selectShader(description);
-                sources.emplace_back(desc.vertex_func.source);
-                sources.emplace_back(desc.fragment_func.source);
-            }
-        }
+const graphics::ShaderResource::Compiled& RendererState::getProgram(Program program, bool lit) {
+    const ProgramSource& source = kPrograms[static_cast<std::size_t>(program)];
+    if (lit && source.lit.empty()) {
+        throw std::logic_error("The program has no version for lit canvases.");
     }
-    graphics::ShaderPrecompiler::start(jobs, std::move(sources));
+    return packages[source.package].getResource()->getProgram(getGpu(), lit ? source.lit : source.program);
 }
 
-sg_shader RendererState::getShader(Program program, bool lit) {
-    const auto index = static_cast<std::size_t>(program);
-    sg_shader& shader = lit ? litShaders[index] : shaders[index];
-    if (shader.id == SG_INVALID_ID) {
-        shader = graphics::Gpu::makeShader(*graphics::Gpu::selectShader(lit ? kLitPrograms[index] : kPrograms[index]));
-    }
-    return shader;
-}
-
-sg_pipeline RendererState::getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target) {
+gpu::Device::Pipeline RendererState::getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target) {
     const std::uint32_t key = pipelineKey(program, blend, target);
     if (const auto found = pipelines.find(key); found != pipelines.end()) {
         return found->second;
     }
-
-    sg_pipeline_desc desc{};
-    describeLayout(desc, program);
-    describeTargets(desc, blend, target);
-    desc.shader = getShader(program, target == graphics::PassTarget::LitScene);
-    desc.label = "haylen-pipeline";
-
-    const sg_pipeline created = graphics::Gpu::makePipeline(desc);
+    const bool lit = target == graphics::PassTarget::LitScene;
+    const ProgramSource& source = kPrograms[static_cast<std::size_t>(program)];
+    const graphics::ShaderResource::Compiled& made = getProgram(program, lit);
+    const gpu::Device::Pipeline created = makePipeline(*packages[source.package].getResource(), lit ? source.lit : source.program, made.program, program, blend, target, "haylen-pipeline");
     pipelines.emplace(key, created);
     return created;
 }
@@ -745,61 +728,50 @@ const char* RendererState::materialProgramName(Program program, graphics::PassTa
     throw std::logic_error("Materials only replace the sprite, batch, text, mesh and shape programs.");
 }
 
-const graphics::ShaderResource::Program& RendererState::getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target) {
+const graphics::ShaderResource::Compiled& RendererState::getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target) {
     // The shader hands its GPU objects to the device graveyard once it changes or goes away.
     graphics::ShaderResource& shader = *material.shader.getResource();
     if (shader.graveyard.expired()) {
         shader.graveyard = device.getState().graveyard;
     }
-    const graphics::ShaderResource::Program& made = shader.getProgram(materialProgramName(program, target));
+    const graphics::ShaderResource::Compiled& made = shader.getProgram(getGpu(), materialProgramName(program, target));
 
     // The renderer fills the blocks of the shader library itself, so a shader compiled with another version of the library cannot draw.
     const bool lit = target == graphics::PassTarget::LitScene;
-    if (made.blockSizes[UB_sprite_haylen_vs_params] != sizeof(sprite_haylen_vs_params_t) || (lit && made.blockSizes[UB_sprite_lit_haylen_lit_params] != sizeof(sprite_lit_haylen_lit_params_t))) {
+    if (made.blockSizes[kVertexBlock] != kVertexBlockSize || (lit && made.blockSizes[kLitBlock] != kLitBlockSize)) {
         throw std::invalid_argument(std::format("The shader \"{}\" was compiled with another version of the shader library. Compile it again with \"haylen.py shaders\".", shader.name));
     }
     return made;
 }
 
-sg_pipeline RendererState::getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target) {
+gpu::Device::Pipeline RendererState::getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target) {
     graphics::ShaderResource& shader = *material.shader.getResource();
     const std::uint32_t key = pipelineKey(program, blend, target);
     if (const auto found = shader.pipelines.find(key); found != shader.pipelines.end()) {
         return found->second;
     }
-
-    sg_pipeline_desc desc{};
-    describeLayout(desc, program);
-    describeTargets(desc, blend, target);
-    desc.shader = getMaterialProgram(material, program, target).shader;
-    const std::string label = std::format("{}/{}", shader.name, materialProgramName(program, target));
-    desc.label = label.c_str();
-
-    const sg_pipeline created = graphics::Gpu::makePipeline(desc);
+    const char* programName = materialProgramName(program, target);
+    const graphics::ShaderResource::Compiled& made = getMaterialProgram(material, program, target);
+    const std::string label = std::format("{}/{}", shader.name, programName);
+    const gpu::Device::Pipeline created = makePipeline(shader, programName, made.program, program, blend, target, label);
     shader.pipelines.emplace(key, created);
     return created;
 }
 
-void RendererState::ensureBuffer(sg_buffer& buffer, std::size_t& capacity, std::size_t needed, std::size_t elementSize, bool isIndexBuffer) {
+void RendererState::ensureBuffer(gpu::Device::Buffer& buffer, std::size_t& capacity, std::size_t needed, std::size_t elementSize, bool isIndexBuffer) {
     if (needed <= capacity) {
         return;
     }
-
-    if (buffer.id != SG_INVALID_ID) {
-        device.getState().graveyard->buryBuffer(buffer);
+    if (buffer.isValid()) {
+        device.getState().graveyard->bury(buffer);
     }
     const std::size_t grown = std::max<std::size_t>(needed + needed / 2, 1024);
     bufferBytes += (grown - capacity) * elementSize;
     buffersTracked.setBytes(bufferBytes);
     capacity = grown;
-
-    sg_buffer_desc desc{};
-    desc.size = capacity * elementSize;
-    desc.usage.write_transient = true;
-    desc.usage.vertex_buffer = !isIndexBuffer;
-    desc.usage.index_buffer = isIndexBuffer;
-    desc.label = isIndexBuffer ? "haylen-index-buffer" : "haylen-vertex-buffer";
-    buffer = graphics::Gpu::makeBuffer(desc);
+    buffer = getGpu().makeBuffer({.size = capacity * elementSize, .usage = gpu::Device::Usage::Dynamic, .index = isIndexBuffer, .label = isIndexBuffer ? "haylen-index-buffer" : "haylen-vertex-buffer"});
 }
+
+const std::array<std::span<const std::uint8_t> (*)(), 11> RendererState::kPackages{&core::EmbeddedFiles::getSpriteShader, &core::EmbeddedFiles::getTextShader, &core::EmbeddedFiles::getMeshShader, &core::EmbeddedFiles::getBlendShader, &core::EmbeddedFiles::getCompositeShader, &core::EmbeddedFiles::getLightShader, &core::EmbeddedFiles::getMetaballShader, &core::EmbeddedFiles::getRecolorShader, &core::EmbeddedFiles::getEffectShader, &core::EmbeddedFiles::getShapeShader, &core::EmbeddedFiles::getBackdropShader};
 
 } // namespace haylen::graphics2d

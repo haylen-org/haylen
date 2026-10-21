@@ -1,6 +1,6 @@
 #include "platform/android/AndroidActivity.hpp"
 
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
@@ -15,7 +15,7 @@ std::atomic<float> AndroidActivity::statusBarHeight = 0.0F;
 std::atomic<Orientation> AndroidActivity::orientation = Orientation::Landscape;
 
 const GameActivity& AndroidActivity::getNative() {
-    return *static_cast<const GameActivity*>(sapp_android_get_native_activity());
+    return *static_cast<const GameActivity*>(NativeWindow::getActivity());
 }
 
 void AndroidActivity::setSafeAreaInsets(const math::Insets& value) {
@@ -24,12 +24,12 @@ void AndroidActivity::setSafeAreaInsets(const math::Insets& value) {
 }
 
 math::Insets AndroidActivity::toFramebuffer(const math::Insets& value) noexcept {
-    const float scale = sapp_dpi_scale();
+    const float scale = NativeWindow::getScale();
     return {.left = value.left * scale, .top = value.top * scale, .right = value.right * scale, .bottom = value.bottom * scale};
 }
 
 math::Rect AndroidActivity::toFramebuffer(const math::Rect& value) noexcept {
-    const float scale = sapp_dpi_scale();
+    const float scale = NativeWindow::getScale();
     return {value.x * scale, value.y * scale, value.width * scale, value.height * scale};
 }
 

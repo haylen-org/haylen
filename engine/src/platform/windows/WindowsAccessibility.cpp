@@ -4,9 +4,9 @@
 #include <uiautomation.h>
 
 #include "platform/AccessibilityRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/windows/WindowsAccessibilityRoot.hpp"
 #include "platform/windows/WindowsAccessibilityTree.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -28,11 +28,11 @@ bool WindowsAccessibility::isWanted() noexcept {
 }
 
 void WindowsAccessibility::update(std::span<const AccessibilityElement> elements, std::uint64_t focused) {
-    getTree(static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()))).update(elements, focused, {sapp_widthf(), sapp_heightf()});
+    getTree(static_cast<HWND>(NativeWindow::getHandle())).update(elements, focused, {NativeWindow::getFramebufferSize().x, NativeWindow::getFramebufferSize().y});
 }
 
 void WindowsAccessibility::announce(std::string_view text, bool interrupt) {
-    getTree(static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()))).announce(text, interrupt);
+    getTree(static_cast<HWND>(NativeWindow::getHandle())).announce(text, interrupt);
 }
 
 void WindowsAccessibility::release() noexcept {

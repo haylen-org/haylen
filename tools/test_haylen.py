@@ -6,6 +6,7 @@ import base64
 import dataclasses
 import contextlib
 import functools
+import hashlib
 import http.client
 import importlib.util
 import http.server
@@ -18,6 +19,7 @@ import shutil
 import socket
 import subprocess
 import sys
+import tarfile
 import tempfile
 import threading
 import time
@@ -279,6 +281,53 @@ class FileNameTest(unittest.TestCase):
             return path.suffix == ".py" and "_" not in path.parent.as_posix() and (path.stem in imported or path.name.startswith("test_"))
 
         self.assertEqual([name for name in files if "_" in name and not allowed(name)], [], "These tracked files and folders use underscores where their names take dashes.")
+
+
+class CMakeNameTest(unittest.TestCase):
+    # The first argument of these commands names a target or a project, also in the CMake text that haylen.py writes inside its strings, and the word after "COMPONENT" names an install component.
+    DEFINITION = re.compile(r"^[\s'\"]*(?:add_library|add_executable|add_custom_target|haylen_add_app|project)\s*\(\s*([^\s)]+)")
+    COMPONENT = re.compile(r"\bCOMPONENT\s+([^\s)]+)")
+
+    def test_targets_projects_and_components_use_dashes(self):
+        root = Path(__file__).resolve().parent.parent
+        files = subprocess.run(["git", "ls-files", "*CMakeLists.txt", "*.cmake", "*.cmake.in", "haylen.py"], cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
+        underscored = []
+        for name in files:
+            for line in (root / name).read_text(encoding="utf-8").splitlines():
+                if line.lstrip().startswith("#"):
+                    continue
+                for match in [*self.DEFINITION.finditer(line), *self.COMPONENT.finditer(line)]:
+                    # A variable names nothing by itself, and the tokens of the plugin template that become identifiers count as underscores.
+                    named = re.sub(r"\$\{[^}]*\}", "", match.group(1))
+                    if "_" in named or "{{SYMBOL}}" in named or "{{MACRO}}" in named:
+                        underscored.append(f"{name}: {match.group(1)}")
+        self.assertEqual(underscored, [], "These CMake targets, projects and install components use underscores where their names take dashes.")
+
+
+class BackendIsolationTest(unittest.TestCase):
+    """The engine reaches its backend only through its interfaces, so a backend swaps without touching the engine and the Lua API never changes with it."""
+
+    SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}
+
+    def sources(self) -> dict[str, str]:
+        root = Path(__file__).resolve().parent.parent
+        files = subprocess.run(["git", "ls-files", "engine"], cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
+        return {name: (root / name).read_text(encoding="utf-8") for name in files if Path(name).suffix in self.SOURCE_SUFFIXES}
+
+    def test_only_the_folder_of_a_backend_reaches_its_libraries(self):
+        library = re.compile(r'#\s*(include|import)\s*[<"](sokol_\w+\.h)[>"]|\b(sapp|sg|sglue|slog)_\w+\s*\(')
+        reaching = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/backends/", name) and library.search(text)]
+        self.assertEqual(reaching, [], "These files outside the folder of a backend include its headers or call its library.")
+
+    def test_only_the_folder_of_a_backend_includes_its_headers(self):
+        including = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/backends/", name) and re.search(r'#\s*(include|import)\s*"backends/', text)]
+        self.assertEqual(including, [], "These files include the headers of a backend, which only the backend itself and its tests include.")
+
+    def test_the_lua_bindings_know_no_backend_and_no_host(self):
+        binding = re.compile(r"engine/src/(lua/|.*Lua\.(cpp|hpp)$)")
+        host = re.compile(r'#\s*include\s*"(backends/|gpu/NullDevice|platform/(NativeHost|NativeWindow|Player|Services)\.hpp|platform/(apple|android|web|windows|linux|headless)/)')
+        knowing = [name for name, text in self.sources().items() if binding.match(name) and host.search(text)]
+        self.assertEqual(knowing, [], "These Lua bindings include a backend, a host or a platform folder, while the Lua API stays the same on every backend and platform.")
 
 
 class WritingTest(unittest.TestCase):
@@ -575,12 +624,12 @@ class PluginTemplateTest(unittest.TestCase):
             self.assertEqual(manifest["platforms"], ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"])
             self.assertEqual(manifest["native"], {"cmake": "native", "platforms": ["macos", "windows", "linux"]})
 
-            # The desktop library and its init function take the id with underscores, the name that "native.load" finds.
+            # The desktop library takes the id, the name that "native.load" finds, and its init function takes the id with underscores, since a C function is named with an identifier.
             source = (folder / "native" / "CameraScanner.c").read_text()
             self.assertIn("CAMERA_SCANNER_EXPORT int camera_scanner_haylen_init(const HaylenNativeApi* api)", source)
             self.assertIn('api->registerHandler("camera-scanner.echo"', source)
-            self.assertIn("add_library(camera_scanner CameraScanner.c)", (folder / "native" / "CMakeLists.txt").read_text())
-            self.assertIn("native.load('camera_scanner', {init = 'camera_scanner_haylen_init'})", (folder / "source" / "init.lua").read_text())
+            self.assertIn("add_library(camera-scanner CameraScanner.c)", (folder / "native" / "CMakeLists.txt").read_text())
+            self.assertIn("native.load('camera-scanner', {init = 'camera_scanner_haylen_init'})", (folder / "source" / "init.lua").read_text())
             self.assertFalse([path for path in folder.rglob("*") if "{{" in path.name or (path.is_file() and "{{" in path.read_text())])
 
     def test_a_plain_plugin_keeps_the_manifest_of_the_template_as_it_reads(self):
@@ -691,26 +740,26 @@ class NativeLibrariesTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.scratch)
-        self.library = haylen.NativeLibrary("native_test_static", {}, self.scratch, ("ios", "tvos"), True, ("native_test_add",))
+        self.library = haylen.NativeLibrary("native-test-static", {}, self.scratch, ("ios", "tvos"), True, ("native_test_add",))
         self.app = mock.Mock(native=[self.library], build_folder=self.scratch / "build")
 
     def prepare(self, run_platform):
-        archive = self.scratch / "libnative_test_static.a"
+        archive = self.scratch / "libnative-test-static.a"
         archive.write_bytes(b"")
         with mock.patch.object(haylen, "build_apple_native", return_value=archive):
             return haylen.prepare_apple_native(self.app, self.scratch / "generated", run_platform, 1)
 
     def test_static_libraries_link_only_into_the_mac_catalyst_build_of_the_ios_target(self):
         settings = self.prepare("catalyst")
-        self.assertEqual(settings, ['HAYLEN_NATIVE_LDFLAGS_MACCATALYST_YES = "$(PROJECT_DIR)/haylen/native/ios-macosx/libnative_test_static.a"', "HAYLEN_NATIVE_LDFLAGS[sdk=macosx*] = $(HAYLEN_NATIVE_LDFLAGS_MACCATALYST_$(IS_MACCATALYST))"])
-        self.assertTrue((self.scratch / "generated" / "native" / "ios-macosx" / "libnative_test_static.a").is_file())
-        self.assertEqual(self.prepare("ios-simulator"), ['HAYLEN_NATIVE_LDFLAGS[sdk=iphonesimulator*] = "$(PROJECT_DIR)/haylen/native/ios-iphonesimulator/libnative_test_static.a"'])
+        self.assertEqual(settings, ['HAYLEN_NATIVE_LDFLAGS_MACCATALYST_YES = "$(PROJECT_DIR)/haylen/native/ios-macosx/libnative-test-static.a"', "HAYLEN_NATIVE_LDFLAGS[sdk=macosx*] = $(HAYLEN_NATIVE_LDFLAGS_MACCATALYST_$(IS_MACCATALYST))"])
+        self.assertTrue((self.scratch / "generated" / "native" / "ios-macosx" / "libnative-test-static.a").is_file())
+        self.assertEqual(self.prepare("ios-simulator"), ['HAYLEN_NATIVE_LDFLAGS[sdk=iphonesimulator*] = "$(PROJECT_DIR)/haylen/native/ios-iphonesimulator/libnative-test-static.a"'])
 
     def test_the_symbols_of_ios_libraries_register_on_mac_catalyst_too(self):
         self.assertTrue(haylen.write_apple_native_symbols(self.app, self.scratch))
         table = (self.scratch / "HaylenNativeSymbols.mm").read_text()
         self.assertIn("#if TARGET_OS_IOS || TARGET_OS_TV\n", table)
-        self.assertIn('registerLinked("native_test_static", {{"native_test_add", reinterpret_cast<void*>(&native_test_add)}});', table)
+        self.assertIn('registerLinked("native-test-static", {{"native_test_add", reinterpret_cast<void*>(&native_test_add)}});', table)
 
 
 class RunCppTest(unittest.TestCase):
@@ -724,7 +773,7 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "ios-simulator-debug" / "bin" / "game" / "package.txt").write_text(str(self.scratch / "package"))
         args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "ios-simulator"])
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
-        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
+        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
         self.assertEqual(launch.call_args.args[2:], (simulator, []))
 
@@ -759,7 +808,7 @@ class RunCppTest(unittest.TestCase):
             mock.patch.object(haylen, "android_device", return_value="emulator-5554"),
             mock.patch.object(haylen, "capture", return_value="arm64-v8a"),
             mock.patch.object(haylen, "run"),
-            mock.patch.object(haylen, "ensure_shdc", return_value="shdc"),
+            mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"),
             mock.patch.object(haylen, "android_options", return_value=[]),
             mock.patch.object(haylen, "App"),
             mock.patch.object(haylen, "ensure_artifacts"),
@@ -782,7 +831,7 @@ class RunCppTest(unittest.TestCase):
         executable = self.scratch / "app"
         for options, launched in (([], True), (["--build-only"], False)):
             args = haylen.build_parser().parse_args(["run-cpp", str(self.scratch / "project"), *options])
-            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
                 haylen.command_run_cpp(args)
             self.assertEqual([executable] in [call.args[0] for call in run.call_args_list], launched)
             self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
@@ -806,32 +855,122 @@ class ShaderCompilerTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.scratch)
+        haylen.ensure_shaderc.cache_clear()
+        self.addCleanup(haylen.ensure_shaderc.cache_clear)
 
-    def test_a_new_pin_of_the_shader_compiler_configures_the_build_tree_again(self):
-        compiler = self.scratch / "tools" / "sokol-shdc-new" / "sokol-shdc"
+    def test_another_shader_compiler_configures_the_build_tree_again(self):
+        compiler = self.scratch / "tools" / "haylen-shaderc-new" / "haylen-shaderc"
         tree = self.scratch / "build" / "macos-debug"
         tree.mkdir(parents=True)
-        arguments = argparse.Namespace(platform="macos", config="Debug", backend=None, sanitizers=None)
-        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shdc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_RENDER_BACKEND:STRING=AUTO\nHAYLEN_SOKOL_SHDC:FILEPATH={(self.scratch / 'tools' / 'sokol-shdc').as_posix()}\n")
+        arguments = argparse.Namespace(platform="macos", config="Debug", graphics_api=None, sanitizers=None)
+        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_RENDER_BACKEND:STRING=AUTO\nHAYLEN_SOKOL_SHDC:FILEPATH={compiler.as_posix()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
 
-    def test_the_shader_compiler_appears_only_once_it_is_complete_and_executable(self):
-        target = self.scratch / f"sokol-shdc-{haylen.SHDC_COMMIT[:7]}" / haylen.executable_name("sokol-shdc")
+    def test_the_variable_names_a_build_of_the_compiler_to_use_instead_of_the_pinned_one(self):
+        compiler = self.scratch / "haylen-shaderc"
+        compiler.write_text("compiler")
+        with mock.patch.dict(os.environ, {haylen.SHADER_COMPILER_VARIABLE: str(compiler)}), mock.patch.object(haylen, "run") as run:
+            self.assertEqual(haylen.ensure_shaderc(), compiler.resolve())
+        run.assert_not_called()
+        haylen.ensure_shaderc.cache_clear()
+        with mock.patch.dict(os.environ, {haylen.SHADER_COMPILER_VARIABLE: str(self.scratch / "missing")}):
+            with self.assertRaisesRegex(haylen.BuildError, haylen.SHADER_COMPILER_VARIABLE):
+                haylen.ensure_shaderc()
 
-        def download(url: str, partial: Path, sha256: str | None = None) -> None:
-            self.assertFalse(target.exists())
-            partial.parent.mkdir(parents=True, exist_ok=True)
-            partial.write_bytes(b"compiler")
+    def archive(self, name: str, files: dict[str, str]) -> tuple[str, str]:
+        """Writes an archive like the ones of the releases, a zip or a gzipped tar after its name, and returns its URL and SHA-256."""
+        target = self.scratch / "server" / name
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if name.endswith(".zip"):
+            with zipfile.ZipFile(target, "w") as package:
+                for path, text in files.items():
+                    package.writestr(path, text)
+        else:
+            with tarfile.open(target, "w:gz") as package:
+                for path, text in files.items():
+                    info = tarfile.TarInfo(path)
+                    info.size = len(text.encode())
+                    info.mode = 0o755
+                    package.addfile(info, io.BytesIO(text.encode()))
+        return target.as_uri(), hashlib.sha256(target.read_bytes()).hexdigest()
 
-        with mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "download", side_effect=download):
-            self.assertEqual(haylen.ensure_shdc(), target)
-        self.assertTrue(os.access(target, os.X_OK))
-        self.assertEqual([path.name for path in target.parent.iterdir()], [target.name])
+    def provide(self, pins: dict, environment: dict[str, str] | None = None) -> tuple[subprocess.CompletedProcess, Path]:
+        """Runs the script of the engine with the pins as a machine would, and returns the run and the compiler it named."""
+        (self.scratch / "pins.json").write_text(json.dumps(pins))
+        result = self.scratch / "result"
+        result.unlink(missing_ok=True)
+        command = ["cmake", f"-DHAYLEN_SHADERC_CACHE={(self.scratch / 'cache').as_posix()}", f"-DHAYLEN_SHADERC_RESULT={result.as_posix()}", f"-DHAYLEN_SHADERC_PINS={(self.scratch / 'pins.json').as_posix()}", "-P", haylen.SHADER_COMPILER_SCRIPT]
+        run = subprocess.run(command, capture_output=True, text=True, env={**os.environ, **(environment or {})})
+        return run, Path(result.read_text()) if result.exists() else None
+
+    def host(self) -> str:
+        return f"{haylen.host_name()}-{haylen.host_arch()}"
+
+    def test_the_release_binary_of_the_machine_downloads_once_into_a_folder_of_its_version(self):
+        executable = haylen.executable_name("haylen-shaderc")
+        url, digest = self.archive("haylen-shaderc-9.9.9-host.zip" if haylen.host_name() == "windows" else "haylen-shaderc-9.9.9-host.tar.gz", {executable: "compiler", "LICENSE": "license"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": "file:///missing.tar.gz", "sha256": "0" * 64}, "binaries": {self.host(): {"url": url, "sha256": digest}}}
+        run, compiler = self.provide(pins)
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(compiler, self.scratch / "cache" / "haylen-shaderc-9.9.9" / executable)
+        self.assertEqual(compiler.read_text(), "compiler")
+        self.assertTrue(os.access(compiler, os.X_OK))
+        self.assertEqual([path.name for path in compiler.parent.iterdir()], [executable])
+
+        (self.scratch / "server").rename(self.scratch / "gone")
+        run, again = self.provide(pins)
+        self.assertEqual((run.returncode, again), (0, compiler))
+
+    def test_a_download_that_differs_from_its_digest_fails_and_keeps_nothing(self):
+        url, digest = self.archive("haylen-shaderc-9.9.9-host.tar.gz", {"haylen-shaderc": "compiler"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": url, "sha256": digest}, "binaries": {self.host(): {"url": url, "sha256": "0" * 64}}}
+        run, compiler = self.provide(pins)
+        self.assertNotEqual(run.returncode, 0)
+        self.assertIn("haylen-shaderc-9.9.9-host.tar.gz", run.stderr)
+        self.assertIsNone(compiler)
+        self.assertEqual(list((self.scratch / "cache" / "haylen-shaderc-9.9.9").iterdir()), [])
+
+    def test_a_machine_without_a_binary_builds_the_commit_without_the_toolchain_of_a_cross_build(self):
+        executable = haylen.executable_name("haylen-shaderc")
+        project = f"""cmake_minimum_required(VERSION 3.28)
+project(compiler LANGUAGES NONE)
+if(HAYLEN_SHADERC_BUILD_TESTS)
+  message(FATAL_ERROR "The tests of the compiler are on.")
+endif()
+add_custom_target(haylen-shaderc ALL COMMAND ${{CMAKE_COMMAND}} -E copy ${{CMAKE_CURRENT_SOURCE_DIR}}/compiler ${{CMAKE_BINARY_DIR}}/bin/{executable})
+"""
+        url, digest = self.archive("abcdef0123456789.tar.gz", {"haylen-shader-compiler-abcdef0123456789/CMakeLists.txt": project, "haylen-shader-compiler-abcdef0123456789/compiler": "built"})
+        pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": url, "sha256": digest}, "binaries": {"other-host": {"url": "file:///missing.tar.gz", "sha256": "0" * 64}}}
+        run, compiler = self.provide(pins, {"CMAKE_TOOLCHAIN_FILE": str(self.scratch / "missing-toolchain.cmake")})
+        self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+        self.assertEqual(compiler, self.scratch / "cache" / "haylen-shaderc-abcdef0" / executable)
+        self.assertEqual(compiler.read_text(), "built")
+        self.assertEqual([path.name for path in compiler.parent.iterdir()], [executable])
+
+    def test_haylen_py_takes_the_compiler_that_the_script_of_the_engine_provides(self):
+        script = self.scratch / "cmake" / "haylen-shader-compiler.cmake"
+        script.parent.mkdir()
+        shutil.copy2(haylen.SHADER_COMPILER_SCRIPT, script)
+        executable = haylen.executable_name("haylen-shaderc")
+        url, digest = self.archive("haylen-shaderc-9.9.9-host.zip", {executable: "compiler"})
+        (script.parent / "haylen-shader-compiler.json").write_text(json.dumps({"version": "9.9.9", "commit": "abcdef0123456789", "binaries": {self.host(): {"url": url, "sha256": digest}}}))
+        environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "SHADER_COMPILER_SCRIPT", script), mock.patch.object(haylen, "TOOLS_DIR", self.scratch / "tools"), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            self.assertEqual(haylen.ensure_shaderc(), self.scratch / "tools" / "haylen-shaderc-9.9.9" / executable)
+
+    def test_the_pins_name_the_archives_of_their_release_and_the_source_of_their_commit(self):
+        pins = json.loads((haylen.SHADER_COMPILER_SCRIPT.parent / "haylen-shader-compiler.json").read_text())
+        version, commit = pins["version"], pins["commit"]
+        self.assertTrue(pins["source"]["url"].endswith(f"/archive/{commit}.tar.gz"))
+        for host, binary in pins["binaries"].items():
+            self.assertIn(f"/releases/download/v{version}/haylen-shaderc-{version}-", binary["url"], host)
+            self.assertRegex(binary["sha256"], "^[0-9a-f]{64}$", host)
+        self.assertEqual(pins["binaries"]["macos-arm64"], pins["binaries"]["macos-x64"])
 
 
 class XcodeGenTest(unittest.TestCase):
@@ -878,7 +1017,7 @@ class EmscriptenTest(unittest.TestCase):
     def test_a_web_tree_of_another_version_builds_again_from_nothing(self):
         tree = self.scratch / "build" / "web-release"
         tree.mkdir(parents=True)
-        (tree / "CMakeCache.txt").write_text("HAYLEN_RENDER_BACKEND:STRING=WGPU\n")
+        (tree / "CMakeCache.txt").write_text("HAYLEN_GRAPHICS_API:STRING=WGPU\n")
         (tree / "object.o").write_bytes(b"object")
         (tree / haylen.EMSCRIPTEN_MARKER).write_text("1.0.0")
         self.assertTrue(haylen.is_stale_web_tree(tree))
@@ -886,7 +1025,7 @@ class EmscriptenTest(unittest.TestCase):
             haylen.configure_web_tree(["emcmake", "cmake"], tree)
         run.assert_called_once()
         self.assertFalse((tree / "object.o").exists())
-        (tree / "CMakeCache.txt").write_text("HAYLEN_RENDER_BACKEND:STRING=WGPU\n")
+        (tree / "CMakeCache.txt").write_text("HAYLEN_GRAPHICS_API:STRING=WGPU\n")
         self.assertFalse(haylen.is_stale_web_tree(tree))
 
 

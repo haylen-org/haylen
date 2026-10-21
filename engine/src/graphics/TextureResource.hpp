@@ -8,8 +8,8 @@
 #include "graphics/ResourceGraveyard.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/TrackedObject.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/Texture.hpp"
-#include "sokol_gfx.h"
 
 namespace haylen::graphics {
 
@@ -18,13 +18,13 @@ struct TextureResource {
     static debug::ObjectCounter& textures;
     static debug::ObjectCounter& targets;
 
-    sg_image image{};
-    sg_view view{};
-    sg_sampler sampler{};
+    gpu::Device::Image image;
+    gpu::Device::Sampler sampler;
     int width = 0;
     int height = 0;
     std::uint32_t id = 0;
     Texture::Options options{};
+    gpu::Device::PixelFormat format = gpu::Device::PixelFormat::Rgba8;
     bool flipped = false;
 
     // The path of a texture the assets loaded from the package, which debug drawings name it by.

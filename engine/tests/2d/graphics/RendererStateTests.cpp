@@ -2,10 +2,10 @@
 
 #include "2d/graphics/Canvas.hpp"
 #include "2d/graphics/RendererState.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
-#include "sokol_gfx.h"
 
 namespace haylen::graphics2d {
 
@@ -13,11 +13,12 @@ namespace haylen::graphics2d {
 class RendererStateTest : public ::testing::Test {
   protected:
     using Mode = graphics::BlendMode::Type;
+    using Factor = gpu::Device::BlendFactor;
 
     [[nodiscard]] static math::Color blend(Mode mode, math::Color color, math::Color target) {
         const float written = RendererState::expectsPremultiplied(mode) ? color.a : 1.0F;
         const math::Color source{color.r * written, color.g * written, color.b * written, color.a};
-        const sg_blend_state state = RendererState::blendState(mode);
+        const gpu::Device::Blend state = RendererState::blendState(mode);
         if (!state.enabled) {
             return source;
         }
@@ -25,29 +26,27 @@ class RendererStateTest : public ::testing::Test {
     }
 
   private:
-    [[nodiscard]] static float mix(const sg_blend_state& state, float source, float sourceAlpha, float target) {
-        return source * factor(state.src_factor_rgb, true, source, sourceAlpha, target) + target * factor(state.dst_factor_rgb, false, source, sourceAlpha, target);
+    [[nodiscard]] static float mix(const gpu::Device::Blend& state, float source, float sourceAlpha, float target) {
+        return source * factor(state.sourceColor, source, sourceAlpha, target) + target * factor(state.destinationColor, source, sourceAlpha, target);
     }
 
-    [[nodiscard]] static float factor(sg_blend_factor value, bool isSource, float source, float sourceAlpha, float target) {
+    [[nodiscard]] static float factor(Factor value, float source, float sourceAlpha, float target) {
         switch (value) {
-        case _SG_BLENDFACTOR_DEFAULT:
-            return isSource ? 1.0F : 0.0F;
-        case SG_BLENDFACTOR_ZERO:
+        case Factor::Zero:
             return 0.0F;
-        case SG_BLENDFACTOR_ONE:
+        case Factor::One:
             return 1.0F;
-        case SG_BLENDFACTOR_SRC_COLOR:
+        case Factor::SourceColor:
             return source;
-        case SG_BLENDFACTOR_ONE_MINUS_SRC_COLOR:
+        case Factor::OneMinusSourceColor:
             return 1.0F - source;
-        case SG_BLENDFACTOR_SRC_ALPHA:
+        case Factor::SourceAlpha:
             return sourceAlpha;
-        case SG_BLENDFACTOR_ONE_MINUS_SRC_ALPHA:
+        case Factor::OneMinusSourceAlpha:
             return 1.0F - sourceAlpha;
-        case SG_BLENDFACTOR_DST_COLOR:
+        case Factor::DestinationColor:
             return target;
-        case SG_BLENDFACTOR_ONE_MINUS_DST_COLOR:
+        case Factor::OneMinusDestinationColor:
             return 1.0F - target;
         default:
             ADD_FAILURE() << "The blend factor " << static_cast<int>(value) << " is not emulated.";

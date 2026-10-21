@@ -9,29 +9,23 @@
 
 #include "haylen/math/Geometry.hpp"
 #include "haylen/platform/Event.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 #include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsText.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
-WNDPROC WindowsDesktop::sokolProcedure = nullptr;
+WNDPROC WindowsDesktop::backendProcedure = nullptr;
 Window::Passthrough WindowsDesktop::passthrough = Window::Passthrough::Off;
 std::vector<math::Polygon::Outline>& WindowsDesktop::regions = *new std::vector<math::Polygon::Outline>();
 math::Vec2 WindowsDesktop::pointer{};
 bool WindowsDesktop::pointerInside = false;
 bool WindowsDesktop::clickThrough = false;
 
-void WindowsDesktop::initialize() {
-#if defined(SOKOL_D3D11)
-    SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-#endif
-}
-
 HWND WindowsDesktop::getWindow() {
-    return static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()));
+    return static_cast<HWND>(NativeWindow::getHandle());
 }
 
 float WindowsDesktop::getScale(HMONITOR monitor) {
@@ -149,14 +143,14 @@ void WindowsDesktop::setClickThrough(bool value) {
     SetWindowLongPtrW(window, GWL_EXSTYLE, value ? exStyle | WS_EX_TRANSPARENT : exStyle & ~WS_EX_TRANSPARENT);
 }
 
-// The move loop of the system runs the frames of the app from a timer of `sokol_app`, so the drag starts from the window procedure between frames.
+// The move loop of the system runs the frames of the app from a timer of the backend, so the drag starts from the window procedure between frames.
 void WindowsDesktop::startDrag() {
     PostMessageW(getWindow(), kStartDragMessage, 0, 0);
 }
 
 void WindowsDesktop::watch() {
     const HWND window = getWindow();
-    sokolProcedure = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&windowProcedure)));
+    backendProcedure = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&windowProcedure)));
 }
 
 void WindowsDesktop::update() {
@@ -170,7 +164,7 @@ void WindowsDesktop::update() {
     RECT client{};
     GetClientRect(window, &client);
     const bool inside = PtInRect(&client, cursor) != FALSE;
-    const float scale = client.right > 0 ? sapp_widthf() / static_cast<float>(client.right) : 1.0F;
+    const float scale = client.right > 0 ? NativeWindow::getFramebufferSize().x / static_cast<float>(client.right) : 1.0F;
     const math::Vec2 pixel{static_cast<float>(cursor.x) * scale, static_cast<float>(cursor.y) * scale};
 
     // The window keeps the mouse it has while a button is down, so a press that starts over the app also ends there.
@@ -191,9 +185,9 @@ bool WindowsDesktop::isOverRegion(math::Vec2 pixel) {
 
 void WindowsDesktop::followPointer(math::Vec2 pixel, bool inside) {
     if (inside && (!pointerInside || pixel != pointer)) {
-        SokolRuntime::handleEvent({.type = Event::Type::MouseMove, .position = pixel});
+        Player::handleEvent({.type = Event::Type::MouseMove, .position = pixel});
     } else if (!inside && pointerInside) {
-        SokolRuntime::handleEvent({.type = Event::Type::MouseLeave, .position = pixel});
+        Player::handleEvent({.type = Event::Type::MouseLeave, .position = pixel});
     }
     pointer = pixel;
     pointerInside = inside;
@@ -208,7 +202,7 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         ReleaseCapture();
         SendMessageW(window, WM_SYSCOMMAND, SC_MOVE | HTCAPTION, 0);
 
-        // The move loop keeps the release of the button, which `sokol_app` and the app still need to hear.
+        // The move loop keeps the release of the button, which the backend and the app still need to hear.
         POINT cursor{};
         GetCursorPos(&cursor);
         ScreenToClient(window, &cursor);
@@ -216,15 +210,15 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         return 0;
     }
     case WM_MOVE:
-        SokolRuntime::postEvent({.type = Event::Type::WindowMoved});
+        Player::postEvent({.type = Event::Type::WindowMoved});
         break;
     case WM_DISPLAYCHANGE:
     case WM_DPICHANGED:
-        SokolRuntime::postEvent({.type = Event::Type::MonitorsChanged});
+        Player::postEvent({.type = Event::Type::MonitorsChanged});
         break;
     case WM_SETTINGCHANGE:
         if (wParam == SPI_SETWORKAREA) {
-            SokolRuntime::postEvent({.type = Event::Type::MonitorsChanged});
+            Player::postEvent({.type = Event::Type::MonitorsChanged});
         }
         // Windows names the colors of the personalization settings, the app theme among them, as the immersive color set.
         if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"ImmersiveColorSet") {
@@ -246,7 +240,7 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
     default:
         break;
     }
-    return CallWindowProcW(sokolProcedure, window, message, wParam, lParam);
+    return CallWindowProcW(backendProcedure, window, message, wParam, lParam);
 }
 
 } // namespace haylen::platform

@@ -1,4 +1,4 @@
--- What the engine reports about the platform, the graphics backend, the window, the visible and safe areas, the orientation and the pointer, with fullscreen, the on-screen keyboard and a simulated safe area to change, a picture of the screen with its safe area and keyboard, and the window, keyboard and network events as they happen.
+-- What the engine reports about the platform, the graphics API, the window, the visible and safe areas, the orientation and the pointer, with fullscreen, the on-screen keyboard and a simulated safe area to change, a picture of the screen with its safe area and keyboard, and the window, keyboard and network events as they happen.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -11,7 +11,7 @@ local Test = require('harness.test')
 local Window = haylen.class('Window', Test)
 
 Window.code = [[
-print(haylen.platform, haylen.backend, window.orientation(), window.hasPointerDevice(), haylen.appState())
+print(haylen.platform, haylen.graphicsApi, window.orientation(), window.hasPointerDevice(), haylen.appState())
 local safe = viewport.safeRect()  -- The visible area minus notches, bars and rounded corners.
 window.setFullscreen(true)
 window.setKeyboardVisible(true)
@@ -28,7 +28,7 @@ Window.simulations = {
     {id = 'ipad', text = 'iPad'}, {id = 'androidGestureBar', text = 'Android gesture bar'}, {id = 'television', text = 'Television'},
 }
 Window.properties = {
-    {'platform', 'Platform'}, {'backend', 'Graphics backend'}, {'version', 'Engine version'}, {'app', 'App'},
+    {'platform', 'Platform'}, {'graphicsApi', 'Graphics API'}, {'version', 'Engine version'}, {'app', 'App'},
     {'framebuffer', 'Framebuffer'}, {'design', 'Design size'}, {'visible', 'Visible area'}, {'safe', 'Safe area'},
     {'orientation', 'Orientation'}, {'pointer', 'Pointer device'}, {'fullscreen', 'Fullscreen'}, {'state', 'App state'},
     {'keyboard', 'On-screen keyboard'}, {'network', 'Network'},
@@ -159,7 +159,7 @@ function Window:values()
     local simulation = viewport.safeAreaSimulation()
     return {
         platform = haylen.platform,
-        backend = haylen.backend,
+        graphicsApi = haylen.graphicsApi,
         version = haylen.version,
         app = string.format('%s %s, %s', haylen.config.name, haylen.config.version, haylen.config.identifier),
         framebuffer = string.format('%.0f by %.0f pixels at a scale of %.2f', width, height, window.dpiScale()),

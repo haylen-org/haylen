@@ -8,14 +8,14 @@
 
 #include "haylen/core/Log.hpp"
 #include "haylen/platform/PluginStreams.hpp"
+#include "platform/NativeHost.hpp"
+#include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/HaylenAudioStream+Runtime.h"
 #import "platform/apple/HaylenOverlay+Runtime.h"
 #import "platform/apple/HaylenRequirements+Runtime.h"
 #import "platform/apple/HaylenVideoStream+Runtime.h"
-#include "platform/sokol/SokolHost.hpp"
-#include "sokol_app.h"
 
 #if !TARGET_OS_OSX
 #import "platform/apple/ApplePresenter.hpp"
@@ -25,8 +25,8 @@ using haylen::core::Log;
 using haylen::platform::AppleBridge;
 using haylen::platform::AppleScreens;
 using haylen::platform::AudioStream;
+using haylen::platform::NativeHost;
 using haylen::platform::PluginStreams;
-using haylen::platform::SokolHost;
 using haylen::platform::VideoStream;
 
 @interface HaylenPluginContext ()
@@ -53,7 +53,7 @@ using haylen::platform::VideoStream;
 
 #if TARGET_OS_OSX
 - (NSWindow*)window {
-    return sapp_isvalid() ? (__bridge NSWindow*)sapp_macos_get_window() : nil;
+    return haylen::platform::NativeWindow::isOpen() ? (__bridge NSWindow*)haylen::platform::NativeWindow::getHandle() : nil;
 }
 #else
 - (UIViewController*)viewController {
@@ -61,7 +61,7 @@ using haylen::platform::VideoStream;
 }
 
 - (UIWindowScene*)windowScene {
-    return sapp_isvalid() ? ((__bridge UIWindow*)sapp_ios_get_window()).windowScene : nil;
+    return haylen::platform::NativeWindow::isOpen() ? ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).windowScene : nil;
 }
 #endif
 
@@ -125,7 +125,7 @@ using haylen::platform::VideoStream;
     @synchronized(self) {
         ++covers;
     }
-    SokolHost::getNativeViews().coverApp();
+    NativeHost::getNativeViews().coverApp();
 }
 
 - (void)uncoverApp {
@@ -136,7 +136,7 @@ using haylen::platform::VideoStream;
         }
         --covers;
     }
-    SokolHost::getNativeViews().uncoverApp();
+    NativeHost::getNativeViews().uncoverApp();
 }
 
 - (void)closeCovers {
@@ -146,7 +146,7 @@ using haylen::platform::VideoStream;
         covers = 0;
     }
     for (NSInteger index = 0; index < open; ++index) {
-        SokolHost::getNativeViews().uncoverApp();
+        NativeHost::getNativeViews().uncoverApp();
     }
 }
 

@@ -10,7 +10,6 @@
 
 #include "platform/GamepadVendors.hpp"
 #include "platform/android/JavaBridge.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -23,22 +22,16 @@ void AndroidGamepads::enableAxes() {
     }
 }
 
-bool AndroidGamepads::takesKey(const void* keyEvent) {
-    const auto& event = *static_cast<const GameActivityKeyEvent*>(keyEvent);
+bool AndroidGamepads::takesKey(const GameActivityKeyEvent& event) {
     input::GamepadButton button{};
     return isController(event.source) && toButton(event.keyCode, button);
 }
 
-bool AndroidGamepads::handleEvent(const void* source) {
-    const auto& event = *static_cast<const sapp_android_native_event*>(source);
-    if (event.type == SAPP_ANDROID_NATIVE_EVENT_KEY) {
-        return handleKey(*static_cast<const GameActivityKeyEvent*>(event.event));
-    }
-    const auto& motion = *static_cast<const GameActivityMotionEvent*>(event.event);
-    if (!isController(motion.source)) {
+bool AndroidGamepads::handleMotion(const GameActivityMotionEvent& event) {
+    if (!isController(event.source)) {
         return false;
     }
-    handleMotion(motion);
+    readMotion(event);
     return true;
 }
 
@@ -89,7 +82,7 @@ bool AndroidGamepads::handleKey(const GameActivityKeyEvent& event) {
     return true;
 }
 
-void AndroidGamepads::handleMotion(const GameActivityMotionEvent& event) {
+void AndroidGamepads::readMotion(const GameActivityMotionEvent& event) {
     const GameActivityPointerAxes& axes = event.pointers[0];
     const auto value = [&axes](std::int32_t axis) { return GameActivityPointerAxes_getAxisValue(&axes, axis); };
     const AndroidGamepadStates::Motion motion{

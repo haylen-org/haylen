@@ -26,7 +26,7 @@ Returns a new table that describes the device. A value that the platform does no
 | `architecture` | string | The processor architecture the app runs on: `'arm64'`, `'arm'`, `'x64'`, `'x86'`, `'wasm32'` or `'wasm64'`. It is the architecture of the build of the app, so a 32-bit Android library on a 64-bit phone reports `'arm'`, and a Mac app that Rosetta translates reports `'x64'`. |
 | `bits` | integer | The width of the pointers of the app, `32` or `64`. |
 | `memoryBytes` | integer or `nil` | The total memory of the device in bytes. |
-| `gpuName` | string or `nil` | The GPU the graphics device of the engine runs on, as its backend names it: the Metal device, the adapter of Direct3D 11, the `GL_RENDERER` string of OpenGL, the renderer that `WEBGL_debug_renderer_info` unmasks on WebGL 2 where the browser offers it, and the adapter info of WebGPU, whose description the vendor and the architecture replace where the browser leaves it empty. |
+| `gpuName` | string or `nil` | The GPU the graphics device of the engine runs on, as its graphics API names it: the Metal device, the adapter of Direct3D 11, the `GL_RENDERER` string of OpenGL, the renderer that `WEBGL_debug_renderer_info` unmasks on WebGL 2 where the browser offers it, and the adapter info of WebGPU, whose description the vendor and the architecture replace where the browser leaves it empty. |
 | `locale` | string or `nil` | The language of the user as a BCP 47 tag, such as `'pt-BR'`. |
 | `languages` | table | Every language the user prefers, most preferred first, as BCP 47 tags. It is empty where the platform does not report them. |
 | `timeZone` | string or `nil` | The IANA name of the time zone, such as `'America/Sao_Paulo'`. |

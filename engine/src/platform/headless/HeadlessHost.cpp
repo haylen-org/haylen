@@ -18,12 +18,10 @@ HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : d
     systemInfo.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
 }
 
-graphics::DeviceSetup HeadlessHost::getGraphicsSetup() {
-    graphics::DeviceSetup setup;
-    setup.environment.defaults.color_format = SG_PIXELFORMAT_RGBA8;
-    setup.environment.defaults.depth_format = SG_PIXELFORMAT_NONE;
-    setup.environment.defaults.sample_count = 1;
-    return setup;
+std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {
+    auto device = std::make_unique<gpu::NullDevice>();
+    gpu = device.get();
+    return device;
 }
 
 void HeadlessHost::setTransparent(bool value) {
@@ -33,15 +31,8 @@ void HeadlessHost::setTransparent(bool value) {
     transparent = value;
 }
 
-graphics::FrameTarget HeadlessHost::getFrameTarget() {
-    graphics::FrameTarget target;
-    target.transparent = transparent;
-    target.swapchain.width = static_cast<int>(framebufferSize.x);
-    target.swapchain.height = static_cast<int>(framebufferSize.y);
-    target.swapchain.sample_count = 1;
-    target.swapchain.color_format = SG_PIXELFORMAT_RGBA8;
-    target.swapchain.depth_format = SG_PIXELFORMAT_NONE;
-    return target;
+bool HeadlessHost::isFrameTransparent() const noexcept {
+    return transparent;
 }
 
 std::filesystem::path HeadlessHost::getUserDataDirectory(std::string_view identifier) {

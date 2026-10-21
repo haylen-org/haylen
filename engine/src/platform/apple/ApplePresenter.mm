@@ -1,15 +1,15 @@
 #import "platform/apple/ApplePresenter.hpp"
 
 #if !TARGET_OS_OSX
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
 UIViewController* ApplePresenter::getTopmost() {
-    if (!sapp_isvalid()) {
+    if (!NativeWindow::isOpen()) {
         return nil;
     }
-    UIViewController* top = ((__bridge UIWindow*)sapp_ios_get_window()).rootViewController;
+    UIViewController* top = ((__bridge UIWindow*)NativeWindow::getHandle()).rootViewController;
     while (top.presentedViewController != nil && !top.presentedViewController.isBeingDismissed) {
         top = top.presentedViewController;
     }

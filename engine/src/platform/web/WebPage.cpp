@@ -30,10 +30,10 @@
 #include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/NativeHost.hpp"
+#include "platform/Player.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/Services.hpp"
-#include "platform/sokol/SokolHost.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
 #include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebEntry.hpp"
 #include "platform/web/WebTextInput.hpp"
@@ -127,7 +127,7 @@ int WebPage::loadZip(const std::uint8_t* bytes, int size) {
     return answer([&] {
         requireEditable();
         std::vector<std::uint8_t> archive(bytes, bytes + size);
-        SokolRuntime::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
+        Player::restart([&archive] { return io::Package::openZip(std::move(archive), "app.zip"); });
         return 1;
     });
     // clang-format on
@@ -139,7 +139,7 @@ int WebPage::clearFiles() {
     return answer([] {
         requireEditable();
         touched.clear();
-        SokolRuntime::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
+        Player::stage(std::make_shared<io::OverlayPackage>(std::make_shared<io::MemoryPackage>("editor")));
         return 1;
     });
     // clang-format on
@@ -150,7 +150,7 @@ int WebPage::setFile(const char* path, const std::uint8_t* bytes, int size) {
     return answer([&] {
         requireEditable();
         std::string entry = io::Path::normalize(path);
-        SokolRuntime::getOverlay().setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
+        Player::getOverlay().setFile(entry, std::vector<std::uint8_t>(bytes, bytes + size));
         touched.push_back(std::move(entry));
         return 1;
     });
@@ -162,7 +162,7 @@ int WebPage::removeFile(const char* path) {
     return answer([&] {
         requireEditable();
         std::string entry = io::Path::normalize(path);
-        const bool removed = SokolRuntime::getOverlay().removeFile(entry);
+        const bool removed = Player::getOverlay().removeFile(entry);
         touched.push_back(std::move(entry));
         return removed ? 1 : 0;
     });
@@ -174,7 +174,7 @@ int WebPage::runFiles() {
     return answer([] {
         requireEditable();
         touched.clear();
-        SokolRuntime::restart();
+        Player::restart();
         return 1;
     });
     // clang-format on
@@ -186,11 +186,11 @@ int WebPage::applyChanges() {
     return answer([] {
         requireEditable();
         const std::vector<std::string> changed = std::exchange(touched, {});
-        if (DevelopmentSession* session = SokolRuntime::getDevelopmentSession()) {
+        if (DevelopmentSession* session = Player::getDevelopmentSession()) {
             session->addChanges(changed);
             return 1;
         }
-        SokolRuntime::restart();
+        Player::restart();
         return 1;
     });
     // clang-format on
@@ -201,21 +201,21 @@ void WebPage::reportReloaded(const core::Json& report) {
 }
 
 void WebPage::setVisible(bool visible) {
-    SokolRuntime::handleEvent({.type = visible ? Event::Type::Resumed : Event::Type::Suspended});
+    Player::handleEvent({.type = visible ? Event::Type::Resumed : Event::Type::Suspended});
 }
 
 // The page usually hides before it goes away, which already sent the app to the background, so its files are persisted once more in case anything changed since.
 void WebPage::hide() {
-    SokolRuntime::handleEvent({.type = Event::Type::Suspended});
+    Player::handleEvent({.type = Event::Type::Suspended});
     Services::persistUserData();
 }
 
 void WebPage::setOnline(bool online) {
-    SokolRuntime::handleEvent({.type = Event::Type::NetworkChanged, .online = online});
+    Player::handleEvent({.type = Event::Type::NetworkChanged, .online = online});
 }
 
 void WebPage::setTheme(bool dark) {
-    SokolHost::getSystemState().setTheme(dark ? Theme::Dark : Theme::Light);
+    NativeHost::getSystemState().setTheme(dark ? Theme::Dark : Theme::Light);
 }
 
 // A full battery on mains power does not charge, as on the other platforms.
@@ -229,12 +229,12 @@ void WebPage::setBattery(double level, bool charging, bool full) {
     } else {
         battery.state = Battery::State::Discharging;
     }
-    SokolHost::getSystemState().setBattery(battery);
+    NativeHost::getSystemState().setBattery(battery);
 }
 
 // The browser tells nothing about screen readers, so the page never reports one.
 void WebPage::setAccessibility(double textScale, bool reducedMotion, bool highContrast, bool reducedTransparency) {
-    SokolHost::getSystemState().setAccessibility({.textScale = static_cast<float>(textScale), .reducedMotion = reducedMotion, .highContrast = highContrast, .reducedTransparency = reducedTransparency, .screenReader = false});
+    NativeHost::getSystemState().setAccessibility({.textScale = static_cast<float>(textScale), .reducedMotion = reducedMotion, .highContrast = highContrast, .reducedTransparency = reducedTransparency, .screenReader = false});
 }
 
 void WebPage::resolveDialog(double id, const char* json) {
@@ -379,19 +379,19 @@ EMSCRIPTEN_KEEPALIVE int haylen_web_push_audio_frames(void* stream, const float*
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_reserve_insets(const char* key, float left, float top, float right, float bottom) {
-    haylen::platform::WebEntry::guard("haylen_web_reserve_insets", [&] { haylen::platform::SokolHost::getNativeViews().reserveInsets(key, {.left = left, .top = top, .right = right, .bottom = bottom}); });
+    haylen::platform::WebEntry::guard("haylen_web_reserve_insets", [&] { haylen::platform::NativeHost::getNativeViews().reserveInsets(key, {.left = left, .top = top, .right = right, .bottom = bottom}); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_release_insets(const char* key) {
-    haylen::platform::WebEntry::guard("haylen_web_release_insets", [&] { haylen::platform::SokolHost::getNativeViews().releaseInsets(key); });
+    haylen::platform::WebEntry::guard("haylen_web_release_insets", [&] { haylen::platform::NativeHost::getNativeViews().releaseInsets(key); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_cover_app() {
-    haylen::platform::WebEntry::guard("haylen_web_cover_app", [&] { haylen::platform::SokolHost::getNativeViews().coverApp(); });
+    haylen::platform::WebEntry::guard("haylen_web_cover_app", [&] { haylen::platform::NativeHost::getNativeViews().coverApp(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_uncover_app() {
-    haylen::platform::WebEntry::guard("haylen_web_uncover_app", [&] { haylen::platform::SokolHost::getNativeViews().uncoverApp(); });
+    haylen::platform::WebEntry::guard("haylen_web_uncover_app", [&] { haylen::platform::NativeHost::getNativeViews().uncoverApp(); });
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_load_zip(const std::uint8_t* bytes, int size) {
@@ -419,19 +419,19 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_console(double id, const char* line) {
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_restart() {
-    haylen::platform::WebEntry::guard("haylen_web_restart", [&] { haylen::platform::SokolRuntime::restart(); });
+    haylen::platform::WebEntry::guard("haylen_web_restart", [&] { haylen::platform::Player::restart(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_stop() {
-    haylen::platform::WebEntry::guard("haylen_web_stop", [&] { haylen::platform::SokolRuntime::stop(); });
+    haylen::platform::WebEntry::guard("haylen_web_stop", [&] { haylen::platform::Player::stop(); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_set_paused(int paused) {
-    haylen::platform::WebEntry::guard("haylen_web_set_paused", [&] { haylen::platform::SokolRuntime::setPaused(paused != 0); });
+    haylen::platform::WebEntry::guard("haylen_web_set_paused", [&] { haylen::platform::Player::setPaused(paused != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_paused() {
-    return haylen::platform::SokolRuntime::isPaused() ? 1 : 0;
+    return haylen::platform::Player::isPaused() ? 1 : 0;
 }
 
 EMSCRIPTEN_KEEPALIVE int haylen_web_apply_changes() {

@@ -11,10 +11,9 @@
 #include <string_view>
 #include <vector>
 
-#include "graphics/DeviceSetup.hpp"
-#include "graphics/FrameTarget.hpp"
 #include "haylen/audio/Mixer.hpp"
 #include "haylen/core/Json.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/AccessibilityElement.hpp"
@@ -36,13 +35,16 @@ namespace haylen::platform {
 
 class DevelopmentSession;
 
-// Boundary between the portable engine and a platform. The Sokol runtime implements it for real devices and the headless host implements it for tests.
+// Boundary between the portable engine and a platform. The host of a backend implements it for real devices, such as the host of the Sokol backend, and the headless host implements it for tests.
 class Host : public Window {
   public:
     [[nodiscard]] virtual std::string_view getPlatformName() const noexcept = 0;
-    [[nodiscard]] virtual graphics::DeviceSetup getGraphicsSetup() = 0;
+    // Creates the GPU device of the backend, which draws into the window of the host. One exists while an app runs.
+    [[nodiscard]] virtual std::unique_ptr<gpu::Device> createGpuDevice() = 0;
     [[nodiscard]] virtual audio::Mixer::Setup getAudioSetup() const = 0;
-    [[nodiscard]] virtual graphics::FrameTarget getFrameTarget() = 0;
+
+    // Whether the window composes the alpha of every frame with the desktop.
+    [[nodiscard]] virtual bool isFrameTransparent() const noexcept = 0;
     [[nodiscard]] virtual std::filesystem::path getUserDataDirectory(std::string_view identifier) = 0;
     virtual void persistUserData() = 0;
     [[nodiscard]] virtual math::Insets getSafeAreaInsets() const = 0;

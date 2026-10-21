@@ -5,12 +5,10 @@
 #include <stdexcept>
 #include <utility>
 
-#include "graphics/DeviceSetup.hpp"
 #include "graphics/DeviceState.hpp"
-#include "graphics/Gpu.hpp"
-#include "graphics/GpuAdapter.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/JobSystem.hpp"
+#include "haylen/gpu/Device.hpp"
 
 namespace haylen::graphics {
 
@@ -30,39 +28,21 @@ void Device::validateAlpha(int width, int height, std::span<const std::uint8_t> 
     }
 }
 
-Device::Device(const DeviceSetup& setup) : state(std::make_unique<DeviceState>()) {
-    // Sokol keeps one global device, so a process can run only one engine at a time.
-    if (sg_isvalid()) {
-        throw std::logic_error("Only one graphics device can exist at a time.");
-    }
-
-    sg_desc desc{};
-    desc.environment = setup.environment;
-    desc.logger = setup.logger;
-    desc.disable_validation = !setup.validation;
-    desc.image_pool_size = Gpu::kImagePoolSize;
-    desc.view_pool_size = Gpu::kViewPoolSize;
-    desc.buffer_pool_size = Gpu::kBufferPoolSize;
-    desc.shader_pool_size = Gpu::kShaderPoolSize;
-    desc.pipeline_pool_size = Gpu::kPipelinePoolSize;
-    sg_setup(&desc);
-    if (!sg_isvalid()) {
-        throw std::runtime_error("The graphics device could not be initialized.");
-    }
+Device::Device(std::unique_ptr<gpu::Device> device) : state(std::make_unique<DeviceState>(std::move(device))) {
     state->white = createTexture(Image(1, 1, math::Color::white()));
 }
 
 Device::~Device() {
     state->white = {};
-    if (state->staging.id != SG_INVALID_ID) {
-        state->graveyard->buryBuffer(state->staging);
-    }
-    state->graveyard->collect();
+    state->graveyard->collect(*state->gpu);
     state->graveyard.reset();
     for (const auto& [key, sampler] : state->samplers) {
-        sg_destroy_sampler(sampler);
+        state->gpu->destroy(sampler);
     }
-    sg_shutdown();
+}
+
+gpu::Device& Device::getGpu() noexcept {
+    return *state->gpu;
 }
 
 Texture Device::createTexture(const Image& image, Texture::Options options) {
@@ -70,9 +50,7 @@ Texture Device::createTexture(const Image& image, Texture::Options options) {
 
     auto resource = std::make_shared<TextureResource>();
     std::size_t bytes = 0;
-    const DeviceState::ImageViews created = DeviceState::createTextureImage(image, options.mipmaps, bytes);
-    resource->image = created.image;
-    resource->view = created.view;
+    resource->image = state->createTextureImage(image, options.mipmaps, bytes);
     resource->tracked.setBytes(bytes);
     resource->sampler = state->getSampler(options);
     resource->width = image.getWidth();
@@ -105,11 +83,11 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
     const std::shared_ptr<TextureResource>& resource = texture.getResource();
 
     // The old image is released only once the new one exists, so a failed creation leaves the texture intact. A dynamic texture stays dynamic, and its new pixels reach the GPU with the next upload.
-    std::size_t bytes = DeviceState::getImageBytes(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8);
-    const DeviceState::ImageViews created = resource->dynamic ? DeviceState::createDynamicImage(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8) : DeviceState::createTextureImage(image, resource->options.mipmaps, bytes);
-    state->graveyard->bury(resource->image, resource->view);
-    resource->image = created.image;
-    resource->view = created.view;
+    std::size_t bytes = DeviceState::getImageBytes(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8);
+    const gpu::Device::Image created = resource->dynamic ? state->createDynamicImage(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8) : state->createTextureImage(image, resource->options.mipmaps, bytes);
+    state->graveyard->bury(resource->image);
+    resource->image = created;
+    resource->format = gpu::Device::PixelFormat::Rgba8;
     resource->width = image.getWidth();
     resource->height = image.getHeight();
     resource->tracked.setBytes(bytes);
@@ -133,7 +111,7 @@ void Device::processReads(core::JobSystem& jobs) {
         const TextureResource& resource = *read.target.getTexture().getResource();
         if (!read.copy) {
             try {
-                read.copy = std::make_unique<GpuReadback>(resource.image, resource.width, resource.height);
+                read.copy = state->gpu->readImage(resource.image, resource.width, resource.height);
             } catch (const std::exception& error) {
                 failed.emplace_back(std::move(read.done), error.what());
                 state->reads.erase(state->reads.begin() + static_cast<std::ptrdiff_t>(index));
@@ -186,7 +164,7 @@ Texture Device::createDynamicTexture(const Image& image, Texture::Options option
     if (options.mipmaps) {
         throw std::invalid_argument("A texture that changes in place has no mipmaps.");
     }
-    return state->createDynamicTexture(image.getWidth(), image.getHeight(), SG_PIXELFORMAT_RGBA8, image.getPixels(), options);
+    return state->createDynamicTexture(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8, image.getPixels(), options);
 }
 
 Texture Device::createDynamicTexture(int width, int height, math::Color fill, Texture::Options options) {
@@ -196,7 +174,7 @@ Texture Device::createDynamicTexture(int width, int height, math::Color fill, Te
 
 Texture Device::createDynamicAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options) {
     validateAlpha(width, height, alpha, getMaxTextureSize());
-    return state->createDynamicTexture(width, height, SG_PIXELFORMAT_R8, alpha, options);
+    return state->createDynamicTexture(width, height, gpu::Device::PixelFormat::R8, alpha, options);
 }
 
 void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels) {
@@ -204,55 +182,34 @@ void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t>
     if (!resource || !resource->dynamic) {
         throw std::logic_error("Only a dynamic texture changes its pixels in place.");
     }
-    if (pixels.size() != DeviceState::getImageBytes(resource->width, resource->height, sg_query_image_desc(resource->image).pixel_format)) {
+    if (pixels.size() != DeviceState::getImageBytes(resource->width, resource->height, resource->format)) {
         throw std::invalid_argument("The pixels do not match the size of the dynamic texture.");
     }
     state->stagePixels(resource, pixels);
 }
 
-// Every texture uploads the last pixels it received. Sokol takes every write into the staging buffer before the first copy out of it in a frame, so the pixels of all the textures go in before any of them is copied into its image.
-std::size_t Device::uploadTextures() {
+// Every texture uploads the last pixels it received, all of them in one hand-over to the GPU device before the passes of the frame.
+std::size_t Device::uploadTextures(std::span<const gpu::Device::ImageWrite> frameImages) {
     ++state->uploads;
     std::swap(state->changedTextures, state->uploadingTextures);
-    std::size_t staged = 0;
-    for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
-        if (const std::shared_ptr<TextureResource> resource = changed.lock()) {
-            staged += DeviceState::getStagingBytes(*resource);
-        }
-    }
-    state->reserveStaging(staged);
-
-    std::size_t offset = 0;
-    for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
-        if (const std::shared_ptr<TextureResource> resource = changed.lock()) {
-            sg_write_buffer_desc write{};
-            write.src.data = {.ptr = resource->staged.data(), .size = resource->staged.size()};
-            write.dst = {.buffer = state->staging, .offset = offset};
-            sg_write_buffer_transient(&write);
-            offset += DeviceState::getStagingBytes(*resource);
-        }
-    }
-
+    state->uploading.clear();
+    state->writes.clear();
     std::size_t bytes = 0;
-    offset = 0;
     for (const std::weak_ptr<TextureResource>& changed : state->uploadingTextures) {
-        const std::shared_ptr<TextureResource> resource = changed.lock();
-        if (!resource) {
-            continue;
+        if (std::shared_ptr<TextureResource> resource = changed.lock()) {
+            state->writes.push_back({.image = resource->image, .pixels = std::as_bytes(std::span(resource->staged))});
+            bytes += resource->staged.size();
+            resource->pending = false;
+            resource->uploadedAt = state->uploads;
+            state->uploading.push_back(std::move(resource));
         }
-        sg_copy_buffer_to_image_desc copy{};
-        copy.src.buffer = state->staging;
-        copy.src.offset = offset;
-        copy.src.bytes_per_row = static_cast<int>(resource->staged.size()) / resource->height;
-        copy.src.bytes_per_slice = static_cast<int>(resource->staged.size());
-        copy.dst.image = resource->image;
-        copy.size = {.width = resource->width, .height = resource->height, .num_slices = 1};
-        sg_copy_buffer_to_image(&copy);
-        offset += DeviceState::getStagingBytes(*resource);
-        bytes += resource->staged.size();
-        resource->pending = false;
-        resource->uploadedAt = state->uploads;
     }
+    state->writes.insert(state->writes.end(), frameImages.begin(), frameImages.end());
+    if (!state->writes.empty()) {
+        state->gpu->writeImages(state->writes);
+    }
+    state->writes.clear();
+    state->uploading.clear();
 
     // A texture that changed for the upload before but not for this one gives its staging memory back.
     for (const std::weak_ptr<TextureResource>& uploaded : state->uploadedTextures) {
@@ -266,55 +223,38 @@ std::size_t Device::uploadTextures() {
     return bytes;
 }
 
-std::string_view Device::getBackendName() const noexcept {
-    switch (sg_query_backend()) {
-    case SG_BACKEND_GLCORE:
-        return "glcore";
-    case SG_BACKEND_GLES3:
-        return "gles3";
-    case SG_BACKEND_D3D11:
-        return "d3d11";
-    case SG_BACKEND_METAL_IOS:
-    case SG_BACKEND_METAL_MACOS:
-    case SG_BACKEND_METAL_SIMULATOR:
-        return "metal";
-    case SG_BACKEND_WGPU:
-        return "webgpu";
-    case SG_BACKEND_VULKAN:
-        return "vulkan";
-    case SG_BACKEND_DUMMY:
-        return "dummy";
+std::string_view Device::getApiName() const noexcept {
+    const gpu::Device::Api api = state->gpu->getApi();
+    for (const auto& [name, value] : gpu::Device::kApiNames) {
+        if (value == api) {
+            return name;
+        }
     }
-    return "unknown";
+    return gpu::Device::kApiNames.front().first;
 }
 
 std::optional<double> Device::getGpuFrameSeconds() const noexcept {
-    const sg_backend backend = sg_query_backend();
-    if (backend != SG_BACKEND_METAL_MACOS && backend != SG_BACKEND_METAL_IOS && backend != SG_BACKEND_METAL_SIMULATOR) {
-        return std::nullopt;
-    }
-    const std::uint64_t nanoseconds = sg_mtl_gpu_frame_nanoseconds();
-    return nanoseconds == 0 ? std::nullopt : std::optional<double>(static_cast<double>(nanoseconds) * 1e-9);
+    return state->gpu->getGpuFrameSeconds();
 }
 
 std::string Device::getAdapterName() const {
-    return GpuAdapter::getName();
+    return state->gpu->getAdapterName();
 }
 
 int Device::getMaxTextureSize() const noexcept {
-    return sg_query_limits().max_image_size_2d;
+    return state->gpu->getMaxImageSize();
 }
 
 std::vector<Device::Pool> Device::getPools() const {
-    const sg_stats stats = sg_query_stats();
-    const sg_desc desc = sg_query_desc();
-    return {
-        {.name = "images", .used = static_cast<int>(stats.total.images.alive), .size = desc.image_pool_size}, {.name = "views", .used = static_cast<int>(stats.total.views.alive), .size = desc.view_pool_size}, {.name = "buffers", .used = static_cast<int>(stats.total.buffers.alive), .size = desc.buffer_pool_size}, {.name = "samplers", .used = static_cast<int>(stats.total.samplers.alive), .size = desc.sampler_pool_size}, {.name = "shaders", .used = static_cast<int>(stats.total.shaders.alive), .size = desc.shader_pool_size}, {.name = "pipelines", .used = static_cast<int>(stats.total.pipelines.alive), .size = desc.pipeline_pool_size},
-    };
+    std::vector<Pool> pools;
+    for (const gpu::Device::Pool& pool : state->gpu->getPools()) {
+        pools.push_back({.name = pool.name, .used = pool.used, .size = pool.size});
+    }
+    return pools;
 }
 
 void Device::collectGarbage() {
-    state->graveyard->collect();
+    state->graveyard->collect(*state->gpu);
 }
 
 } // namespace haylen::graphics

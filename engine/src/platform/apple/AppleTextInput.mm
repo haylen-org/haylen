@@ -4,8 +4,8 @@
 #include <string>
 
 #include "haylen/platform/Event.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 
 #if TARGET_OS_OSX
 #import "platform/apple/HaylenFieldEditor.h"
@@ -53,20 +53,20 @@ void AppleTextInput::report(std::uint64_t field, std::uint64_t revision, NSStrin
         edit.compositionStart = toCodePoints(text, marked.location);
         edit.compositionEnd = toCodePoints(text, NSMaxRange(marked));
     }
-    SokolRuntime::postEvent({.type = Event::Type::TextEdited, .textEdit = std::move(edit)});
+    Player::postEvent({.type = Event::Type::TextEdited, .textEdit = std::move(edit)});
 }
 
 void AppleTextInput::act(std::uint64_t field, Action action) {
-    SokolRuntime::postEvent({.type = Event::Type::TextAction, .textEdit = {.field = field}, .textAction = action});
+    Player::postEvent({.type = Event::Type::TextAction, .textEdit = {.field = field}, .textAction = action});
 }
 
 CGRect AppleTextInput::toPoints(const math::Rect& rect) {
-    const CGFloat scale = sapp_dpi_scale();
+    const CGFloat scale = NativeWindow::getScale();
     return CGRectMake(rect.x / scale, rect.y / scale, rect.width / scale, rect.height / scale);
 }
 
 math::Rect AppleTextInput::toPixels(CGRect rect) {
-    const auto scale = static_cast<CGFloat>(sapp_dpi_scale());
+    const auto scale = static_cast<CGFloat>(NativeWindow::getScale());
     return {static_cast<float>(rect.origin.x * scale), static_cast<float>(rect.origin.y * scale), static_cast<float>(rect.size.width * scale), static_cast<float>(rect.size.height * scale)};
 }
 

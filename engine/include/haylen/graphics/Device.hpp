@@ -10,6 +10,7 @@
 #include <string_view>
 #include <vector>
 
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -18,12 +19,15 @@ namespace haylen::core {
 class JobSystem;
 }
 
+namespace haylen::gpu {
+class Device;
+}
+
 namespace haylen::graphics {
 
-struct DeviceSetup;
 struct DeviceState;
 
-// Owns the GPU context and creates textures and render targets. Every method must be called on the frame thread.
+// Creates textures and render targets on the GPU device of the backend, which it owns. Every method must be called on the frame thread.
 class Device final {
   public:
     // Receives the pixels of a render target, or the reason they could not be read.
@@ -36,7 +40,7 @@ class Device final {
         int size = 0;
     };
 
-    explicit Device(const DeviceSetup& setup);
+    explicit Device(std::unique_ptr<gpu::Device> device);
     ~Device();
 
     Device(const Device&) = delete;
@@ -62,25 +66,26 @@ class Device final {
     // Replaces every pixel of a dynamic texture, keeping its size. The GPU only takes whole textures, so the device keeps the last pixels a texture received and sends each changed texture once per frame, however many updates it had.
     void updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels);
 
-    // Sends the pixels of the dynamic textures that changed since the last upload and returns how many bytes they took. The renderer calls it once per frame, before its passes.
-    std::size_t uploadTextures();
+    // Sends the pixels of the dynamic textures that changed since the last upload and returns how many bytes they took, together with the images that the frame fills itself, such as the shadow atlas of the lights, since the GPU device takes the images of a frame in one call. The renderer calls it once per frame, before its passes.
+    std::size_t uploadTextures(std::span<const gpu::Device::ImageWrite> frameImages = {});
 
-    [[nodiscard]] std::string_view getBackendName() const noexcept;
+    // The name of the graphics API the device draws through, from `gpu::Device::kApiNames`: `metal`, `direct3D11`, `openGl`, `openGlEs`, `webGl2`, `webGpu`, or `none` where nothing draws, such as the headless host of tests.
+    [[nodiscard]] std::string_view getApiName() const noexcept;
 
-    // The seconds the GPU took for the last frame that it finished, which lags the frame that runs by a frame or two, or nothing where the backend does not measure it. Metal measures it, and the other backends do not.
+    // The seconds the GPU took for the last frame that it finished, which lags the frame that runs by a frame or two, or nothing where the graphics API does not measure it. Metal measures it, and the other APIs do not.
     [[nodiscard]] std::optional<double> getGpuFrameSeconds() const noexcept;
 
-    // The name of the GPU the device runs on, as its backend reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the `GL_RENDERER` string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the backend reports none, such as the dummy backend of tests.
+    // The name of the GPU the device runs on, as its graphics API reports it: the name of the Metal device, the description of the DXGI adapter behind Direct3D 11, the `GL_RENDERER` string of OpenGL and WebGL 2, and the adapter info of WebGPU. It is empty where the API reports none, such as on the headless host of tests.
     [[nodiscard]] std::string getAdapterName() const;
     [[nodiscard]] int getMaxTextureSize() const noexcept;
 
-    // Lists the pools of images, views, buffers, samplers, shaders and pipelines.
+    // Lists how many images, buffers, samplers, programs and pipelines exist, out of the room the GPU device holds for them.
     [[nodiscard]] std::vector<Pool> getPools() const;
 
     // Destroys GPU resources whose last handle was released, at a point where no pending draw can use them.
     void collectGarbage();
 
-    // Reads the pixels of a render target as the frame that asks for them renders it, with straight colors and the top row first. The copy starts once that frame is submitted and the GPU finishes it without the frame thread waiting, where the backend allows, and the callback receives the image on the frame thread in a later frame, after the task pool turned the copy into straight colors.
+    // Reads the pixels of a render target as the frame that asks for them renders it, with straight colors and the top row first. The copy starts once that frame is submitted and the GPU finishes it without the frame thread waiting, where the graphics API allows, and the callback receives the image on the frame thread in a later frame, after the task pool turned the copy into straight colors.
     void readTarget(const RenderTarget& target, ReadCallback done);
 
     // Starts the copies the frame asked for and hands over the finished ones. The engine calls it once per frame, after the frame was submitted.
@@ -91,6 +96,8 @@ class Device final {
 
     // Returns how many reads have not reached their callback yet.
     [[nodiscard]] std::size_t getPendingReadCount() const noexcept;
+
+    [[nodiscard]] gpu::Device& getGpu() noexcept;
 
     [[nodiscard]] DeviceState& getState() noexcept {
         return *state;

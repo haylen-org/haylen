@@ -19,6 +19,7 @@
 #include "haylen/io/Package.hpp"
 #include "io/CompositePackage.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
@@ -28,7 +29,6 @@
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
 #include "platform/windows/WindowsVideoDecoder.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -37,7 +37,6 @@ std::string_view Services::getName() noexcept {
 }
 
 void Services::initialize() {
-    WindowsDesktop::initialize();
     WindowsSystem::reportTheme();
     WindowsSystem::reportAccessibility();
     WindowsSystem::reportBattery();
@@ -274,7 +273,7 @@ void Services::openScreen(const ScreenRequest& request) {
 void Services::cancelScreen(std::uint64_t) {}
 
 HaylenNativeWindow Services::getNativeWindow() {
-    return {.handle = const_cast<void*>(sapp_win32_get_hwnd()), .display = nullptr};
+    return {.handle = NativeWindow::getHandle(), .display = nullptr};
 }
 
 } // namespace haylen::platform

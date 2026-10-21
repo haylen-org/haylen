@@ -5,8 +5,8 @@
 
 #include "haylen/math/Geometry.hpp"
 #include "haylen/platform/Event.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 
 namespace haylen::platform {
 
@@ -18,7 +18,7 @@ bool AppleDesktop::pointerInside = false;
 bool AppleDesktop::dragging = false;
 
 NSWindow* AppleDesktop::getWindow() {
-    return (__bridge NSWindow*)sapp_macos_get_window();
+    return (__bridge NSWindow*)NativeWindow::getHandle();
 }
 
 // The primary screen is the first screen, the one whose bottom left corner is the origin of AppKit.
@@ -109,9 +109,9 @@ void AppleDesktop::watch() {
     NSWindow* window = getWindow();
     NSNotificationCenter* center = NSNotificationCenter.defaultCenter;
     // AppKit places windows by their bottom left corner, so a window that grows or shrinks at its top also moves in desktop points.
-    [center addObserverForName:NSWindowDidMoveNotification object:window queue:nil usingBlock:^(NSNotification*) { SokolRuntime::postEvent({.type = Event::Type::WindowMoved}); }];
-    [center addObserverForName:NSWindowDidResizeNotification object:window queue:nil usingBlock:^(NSNotification*) { SokolRuntime::postEvent({.type = Event::Type::WindowMoved}); }];
-    [center addObserverForName:NSApplicationDidChangeScreenParametersNotification object:nil queue:nil usingBlock:^(NSNotification*) { SokolRuntime::postEvent({.type = Event::Type::MonitorsChanged}); }];
+    [center addObserverForName:NSWindowDidMoveNotification object:window queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::WindowMoved}); }];
+    [center addObserverForName:NSWindowDidResizeNotification object:window queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::WindowMoved}); }];
+    [center addObserverForName:NSApplicationDidChangeScreenParametersNotification object:nil queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::MonitorsChanged}); }];
 
     // A drag of the window starts from the press that is still down, and a release that reaches the app ends it the usual way.
     // clang-format off
@@ -131,7 +131,7 @@ void AppleDesktop::update() {
     const NSRect content = [window contentRectForFrameRect:window.frame];
     const NSPoint mouse = NSEvent.mouseLocation;
     const bool inside = NSPointInRect(mouse, content);
-    const CGFloat scale = sapp_widthf() / content.size.width;
+    const CGFloat scale = NativeWindow::getFramebufferSize().x / content.size.width;
     const math::Vec2 pixel{static_cast<float>((mouse.x - content.origin.x) * scale), static_cast<float>((NSMaxY(content) - mouse.y) * scale)};
     const bool pressed = NSEvent.pressedMouseButtons != 0;
 
@@ -156,9 +156,9 @@ bool AppleDesktop::isOverRegion(math::Vec2 pixel) {
 
 void AppleDesktop::followPointer(math::Vec2 pixel, bool inside) {
     if (inside && (!pointerInside || pixel != pointer)) {
-        SokolRuntime::handleEvent({.type = Event::Type::MouseMove, .position = pixel});
+        Player::handleEvent({.type = Event::Type::MouseMove, .position = pixel});
     } else if (!inside && pointerInside) {
-        SokolRuntime::handleEvent({.type = Event::Type::MouseLeave, .position = pixel});
+        Player::handleEvent({.type = Event::Type::MouseLeave, .position = pixel});
     }
     pointer = pixel;
     pointerInside = inside;
@@ -166,7 +166,7 @@ void AppleDesktop::followPointer(math::Vec2 pixel, bool inside) {
 
 void AppleDesktop::finishDrag(math::Vec2 pixel) {
     dragging = false;
-    SokolRuntime::handleEvent({.type = Event::Type::MouseUp, .mouseButton = input::MouseButton::Left, .position = pixel});
+    Player::handleEvent({.type = Event::Type::MouseUp, .mouseButton = input::MouseButton::Left, .position = pixel});
 }
 
 } // namespace haylen::platform

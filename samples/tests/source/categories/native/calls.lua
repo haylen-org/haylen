@@ -21,9 +21,9 @@ function Calls:enter()
         content = {self.checks:view()},
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'The function "native.load" finds "native_test" next to the app, loads it and hands it to Varn "ffi", which calls the functions that "ffi.cdef" declares with the C types of their parameters and results.', color = 'textMuted', font = 'caption'},
+            ui.label{text = 'The function "native.load" finds "native-test" next to the app, loads it and hands it to Varn "ffi", which calls the functions that "ffi.cdef" declares with the C types of their parameters and results.', color = 'textMuted', font = 'caption'},
         },
-        code = "local lib = native.load('native_test')\nprint(lib.native_test_add(20, 22))\nlocal sum = lib.native_test_point_add(ffi.new('NativeTestPoint', {1, 2}), other)\nlib.native_test_rect_grow(rect, 2)  -- Changes the struct through its pointer.\nlocal buffer = ffi.new('uint8_t[?]', 8)\nlib.native_test_fill(buffer, 8, 250)",
+        code = "local lib = native.load('native-test')\nprint(lib.native_test_add(20, 22))\nlocal sum = lib.native_test_point_add(ffi.new('NativeTestPoint', {1, 2}), other)\nlib.native_test_rect_grow(rect, 2)  -- Changes the struct through its pointer.\nlocal buffer = ffi.new('uint8_t[?]', 8)\nlib.native_test_fill(buffer, 8, 250)",
     }
     self.checks:show(self.gui)
     self:run()

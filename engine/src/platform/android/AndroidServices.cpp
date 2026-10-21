@@ -17,6 +17,10 @@
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
+#include "platform/MemoryWarning.hpp"
+#include "platform/NativeHost.hpp"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidAssetPackage.hpp"
@@ -30,10 +34,6 @@
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/AndroidVideoDecoder.hpp"
 #include "platform/android/JavaBridge.hpp"
-#include "platform/sokol/MemoryWarning.hpp"
-#include "platform/sokol/SokolHost.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -88,14 +88,14 @@ void Services::setWindowStyle(const WindowStyle&) {}
 
 // The window of the activity fills the screen, which is its only monitor.
 math::Rect Services::getWindowFrame() {
-    return {0.0F, 0.0F, sapp_widthf() / sapp_dpi_scale(), sapp_heightf() / sapp_dpi_scale()};
+    return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 }
 
 void Services::setWindowFrame(const math::Rect&) {}
 
 std::vector<Monitor> Services::getMonitors() {
     const math::Rect screen = getWindowFrame();
-    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = sapp_dpi_scale(), .primary = true}};
+    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = NativeWindow::getScale(), .primary = true}};
 }
 
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
@@ -131,7 +131,7 @@ void Services::setStatusBar(Window::StatusBar value) {
 }
 
 float Services::getStatusBarHeight() {
-    return AndroidActivity::getStatusBarHeight() * sapp_dpi_scale();
+    return AndroidActivity::getStatusBarHeight() * NativeWindow::getScale();
 }
 
 std::optional<Fold> Services::getFold() {
@@ -251,19 +251,19 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenBridge_nativeEmit(JNIEnv* env, jcla
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenOverlayLayer_nativeReserveInsets(JNIEnv* env, jclass, jbyteArray key, jint left, jint top, jint right, jint bottom) {
-    haylen::platform::SokolHost::getNativeViews().reserveInsets(haylen::platform::JavaBridge::toString(*env, key), {.left = static_cast<float>(left), .top = static_cast<float>(top), .right = static_cast<float>(right), .bottom = static_cast<float>(bottom)});
+    haylen::platform::NativeHost::getNativeViews().reserveInsets(haylen::platform::JavaBridge::toString(*env, key), {.left = static_cast<float>(left), .top = static_cast<float>(top), .right = static_cast<float>(right), .bottom = static_cast<float>(bottom)});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenOverlayLayer_nativeReleaseInsets(JNIEnv* env, jclass, jbyteArray key) {
-    haylen::platform::SokolHost::getNativeViews().releaseInsets(haylen::platform::JavaBridge::toString(*env, key));
+    haylen::platform::NativeHost::getNativeViews().releaseInsets(haylen::platform::JavaBridge::toString(*env, key));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenPluginContext_nativeCoverApp(JNIEnv*, jclass) {
-    haylen::platform::SokolHost::getNativeViews().coverApp();
+    haylen::platform::NativeHost::getNativeViews().coverApp();
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenPluginContext_nativeUncoverApp(JNIEnv*, jclass) {
-    haylen::platform::SokolHost::getNativeViews().uncoverApp();
+    haylen::platform::NativeHost::getNativeViews().uncoverApp();
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jclass, jint left, jint top, jint right, jint bottom, jint statusBar) {
@@ -308,11 +308,11 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenEditText_nativeTextAction(JNIEnv*, 
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenAudioFocus_nativeInterruption(JNIEnv*, jclass, jboolean began) {
-    haylen::platform::SokolRuntime::postEvent({.type = began == JNI_TRUE ? haylen::platform::Event::Type::InterruptionBegan : haylen::platform::Event::Type::InterruptionEnded});
+    haylen::platform::Player::postEvent({.type = began == JNI_TRUE ? haylen::platform::Event::Type::InterruptionBegan : haylen::platform::Event::Type::InterruptionEnded});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenNetwork_nativeNetwork(JNIEnv*, jclass, jboolean online) {
-    haylen::platform::SokolRuntime::postEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = online == JNI_TRUE});
+    haylen::platform::Player::postEvent({.type = haylen::platform::Event::Type::NetworkChanged, .online = online == JNI_TRUE});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerAdded(JNIEnv* env, jclass, jint device, jbyteArray name, jint vendor) {
@@ -332,11 +332,11 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeUrlOpened(JNIEnv*, j
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclass, jboolean dark) {
-    haylen::platform::SokolHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
+    haylen::platform::NativeHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibility_nativeAccessibility(JNIEnv*, jclass, jfloat textScale, jboolean reducedMotion, jboolean highContrast, jboolean screenReader) {
-    haylen::platform::SokolHost::getSystemState().setAccessibility({.textScale = textScale, .reducedMotion = reducedMotion == JNI_TRUE, .highContrast = highContrast == JNI_TRUE, .reducedTransparency = false, .screenReader = screenReader == JNI_TRUE});
+    haylen::platform::NativeHost::getSystemState().setAccessibility({.textScale = textScale, .reducedMotion = reducedMotion == JNI_TRUE, .highContrast = highContrast == JNI_TRUE, .reducedTransparency = false, .screenReader = screenReader == JNI_TRUE});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativeWanted(JNIEnv*, jclass, jboolean wanted) {
@@ -356,7 +356,7 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenMediaSession_nativeCommand(JNIEnv*,
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenBattery_nativeBattery(JNIEnv*, jclass, jboolean present, jint level, jint scale, jint status) {
-    haylen::platform::SokolHost::getSystemState().setBattery(haylen::platform::AndroidBatteryStatus::toBattery(present == JNI_TRUE, level, scale, status));
+    haylen::platform::NativeHost::getSystemState().setBattery(haylen::platform::AndroidBatteryStatus::toBattery(present == JNI_TRUE, level, scale, status));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeButton(JNIEnv*, jclass, jlong id, jint button) {

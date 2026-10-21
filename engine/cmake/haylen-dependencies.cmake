@@ -61,10 +61,9 @@ if(MSVC AND TARGET Poco::Foundation)
 endif()
 
 # The `sokol_app` module sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
-# The dummy backend of the headless host caps textures at 1024 pixels, below every real GPU, so the second patch gives it the limits of desktop GPUs and headless runs load full-size art.
-# Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the third patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals. It also gives X11 windows the class by which desktops find the desktop entry of the app, and Windows windows the icon of the executable, since `sokol_app` gives them the logo of the system.
-# The `sokol_app` module ends a destroyed Android activity with `exit()`, which aborts the process in the rendering threads of Android, so the fourth patch stops the app through its cleanup callback and lets the activity finish normally, and makes `sapp_quit()` finish the activity.
-# Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of `sokol_app` sees, and the app shows and styles the status bar, which UIKit asks the view controller of the window about, so the fifth patch lets the runtime name a subclass of that delegate and of that view controller.
+# Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the second patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals. It also gives X11 windows the class by which desktops find the desktop entry of the app, and Windows windows the icon of the executable, since `sokol_app` gives them the logo of the system.
+# The `sokol_app` module ends a destroyed Android activity with `exit()`, which aborts the process in the rendering threads of Android, so the third patch stops the app through its cleanup callback and lets the activity finish normally, and makes `sapp_quit()` finish the activity.
+# Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of `sokol_app` sees, and the app shows and styles the status bar, which UIKit asks the view controller of the window about, so the fourth patch lets the runtime name a subclass of that delegate and of that view controller.
 # The `sokol_app` module hosts Android apps in `NativeActivity`, which can never be the `ComponentActivity` that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in `GameActivity`, with input through a queue from the UI thread, a key table and the `Choreographer` frame loop chosen at run time.
 # The `sokol_app` module also runs Android frames only while the window of the activity has the focus, which stops timers, cancels and timeouts under every dialog and leaves the surface black when the app comes back under one, so the last patch runs them while the activity is resumed and has a surface, reports the focus as focus events and swaps only the frames that drew, so a covered app keeps its last picture.
 # The `sokol_app` module suspends iOS, tvOS and Mac Catalyst apps whenever their scene resigns active, such as under the app switcher, Control Center, a phone call or another app in front of a Mac Catalyst window, so the last patch reports that as the loss of the focus, with the frames going on, and suspends the app only when its scene enters the background.
@@ -75,7 +74,7 @@ endif()
 # The `sokol_gfx` module declares the `copy_src` usage of images without using it yet, so WebGPU textures never allow the copies out of them that the readback of render targets needs, and the next patch gives that usage to the textures that ask for it.
 # The `sokol_gfx` module measures no time on the GPU, which the traces of the profiler show, so the next patch reads it from the completed command buffer of every Metal frame.
 # The validation of `sokol_gfx` sets the bit of a view slot by shifting a signed 1, which overflows for the last of its 32 slots, so the last patch shifts an unsigned 1.
-set(sokol_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-dummy-limits.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-classes.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-scene-states.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-scroll-units.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-web-page-events.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-keyboard-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-webgpu-copy-source.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-metal-gpu-time.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-validation-shifts.patch")
+set(sokol_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-classes.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-scene-states.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-scroll-units.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-web-page-events.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-keyboard-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-webgpu-copy-source.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-metal-gpu-time.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-validation-shifts.patch")
 set(sokol_hash 8ddf2d37017e9029caca91bf6417d2c7fe0d4f52f35793864fbff70e52d23a97)
 haylen_patched_package_key(sokol_cache_key ${sokol_hash} ${sokol_patches})
 CPMAddPackage(
@@ -243,44 +242,44 @@ if(HAYLEN_BUILD_TESTS AND HAYLEN_DESKTOP)
   )
 endif()
 
-add_library(haylen_sokol_headers INTERFACE)
-target_include_directories(haylen_sokol_headers SYSTEM INTERFACE "${sokol_SOURCE_DIR}" "${sokol_SOURCE_DIR}/util")
+add_library(haylen-sokol-headers INTERFACE)
+target_include_directories(haylen-sokol-headers SYSTEM INTERFACE "${sokol_SOURCE_DIR}" "${sokol_SOURCE_DIR}/util")
 
 if(ANDROID)
   set(game_activity_dir "${games_activity_SOURCE_DIR}/prefab/modules/game-activity_static")
-  add_library(haylen_game_activity STATIC IMPORTED)
-  set_target_properties(haylen_game_activity PROPERTIES IMPORTED_LOCATION "${game_activity_dir}/libs/android.${ANDROID_ABI}/libgame-activity_static.a")
-  target_include_directories(haylen_game_activity SYSTEM INTERFACE "${game_activity_dir}/include")
+  add_library(haylen-game-activity STATIC IMPORTED)
+  set_target_properties(haylen-game-activity PROPERTIES IMPORTED_LOCATION "${game_activity_dir}/libs/android.${ANDROID_ABI}/libgame-activity_static.a")
+  target_include_directories(haylen-game-activity SYSTEM INTERFACE "${game_activity_dir}/include")
 endif()
 
-add_library(haylen_stb INTERFACE)
-target_include_directories(haylen_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
+add_library(haylen-stb INTERFACE)
+target_include_directories(haylen-stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
 
 # The SVG reader and rasterizer compile in a library of their own, which keeps the warnings of the engine off their code.
-add_library(haylen_nanosvg STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/graphics/NanoSvgImpl.c")
-target_include_directories(haylen_nanosvg SYSTEM PUBLIC "${nanosvg_SOURCE_DIR}/src")
+add_library(haylen-nanosvg STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/graphics/NanoSvgImpl.c")
+target_include_directories(haylen-nanosvg SYSTEM PUBLIC "${nanosvg_SOURCE_DIR}/src")
 
-add_library(haylen_fast_float INTERFACE)
-target_include_directories(haylen_fast_float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
+add_library(haylen-fast-float INTERFACE)
+target_include_directories(haylen-fast-float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
 
 # The amalgamated source of HarfBuzz builds its OpenType shaper alone, without the shapers of legacy and AAT fonts.
-add_library(haylen_harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc")
-target_include_directories(haylen_harfbuzz SYSTEM PUBLIC "${harfbuzz_SOURCE_DIR}/src")
-target_compile_definitions(haylen_harfbuzz PRIVATE HB_MINI)
+add_library(haylen-harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc")
+target_include_directories(haylen-harfbuzz SYSTEM PUBLIC "${harfbuzz_SOURCE_DIR}/src")
+target_compile_definitions(haylen-harfbuzz PRIVATE HB_MINI)
 
-add_library(haylen_sheenbidi STATIC "${sheenbidi_SOURCE_DIR}/Source/SheenBidi.c")
-target_include_directories(haylen_sheenbidi SYSTEM PUBLIC "${sheenbidi_SOURCE_DIR}/Headers" PRIVATE "${sheenbidi_SOURCE_DIR}/Source")
-target_compile_definitions(haylen_sheenbidi PRIVATE SB_CONFIG_UNITY)
+add_library(haylen-sheenbidi STATIC "${sheenbidi_SOURCE_DIR}/Source/SheenBidi.c")
+target_include_directories(haylen-sheenbidi SYSTEM PUBLIC "${sheenbidi_SOURCE_DIR}/Headers" PRIVATE "${sheenbidi_SOURCE_DIR}/Source")
+target_compile_definitions(haylen-sheenbidi PRIVATE SB_CONFIG_UNITY)
 
 set(unibreak_dir "${libunibreak_SOURCE_DIR}/src")
-add_library(haylen_unibreak STATIC "${unibreak_dir}/unibreakbase.c" "${unibreak_dir}/unibreakdef.c" "${unibreak_dir}/linebreak.c" "${unibreak_dir}/linebreakdata.c" "${unibreak_dir}/linebreakdef.c" "${unibreak_dir}/eastasianwidthdef.c" "${unibreak_dir}/emojidef.c" "${unibreak_dir}/graphemebreak.c")
-target_include_directories(haylen_unibreak SYSTEM PUBLIC "${unibreak_dir}")
+add_library(haylen-unibreak STATIC "${unibreak_dir}/unibreakbase.c" "${unibreak_dir}/unibreakdef.c" "${unibreak_dir}/linebreak.c" "${unibreak_dir}/linebreakdata.c" "${unibreak_dir}/linebreakdef.c" "${unibreak_dir}/eastasianwidthdef.c" "${unibreak_dir}/emojidef.c" "${unibreak_dir}/graphemebreak.c")
+target_include_directories(haylen-unibreak SYSTEM PUBLIC "${unibreak_dir}")
 
 # The optional file of Monocypher holds Ed25519 with SHA-512, the signature scheme of manifests.
-add_library(haylen_monocypher STATIC "${monocypher_SOURCE_DIR}/src/monocypher.c" "${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c")
-target_include_directories(haylen_monocypher SYSTEM PUBLIC "${monocypher_SOURCE_DIR}/src" "${monocypher_SOURCE_DIR}/src/optional")
+add_library(haylen-monocypher STATIC "${monocypher_SOURCE_DIR}/src/monocypher.c" "${monocypher_SOURCE_DIR}/src/optional/monocypher-ed25519.c")
+target_include_directories(haylen-monocypher SYSTEM PUBLIC "${monocypher_SOURCE_DIR}/src" "${monocypher_SOURCE_DIR}/src/optional")
 
-add_library(haylen_imgui STATIC
+add_library(haylen-imgui STATIC
   "${imgui_SOURCE_DIR}/imgui.cpp"
   "${imgui_SOURCE_DIR}/imgui_demo.cpp"
   "${imgui_SOURCE_DIR}/imgui_draw.cpp"
@@ -289,26 +288,26 @@ add_library(haylen_imgui STATIC
   "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/../src/ui/ImGuiAssert.cpp"
 )
-target_include_directories(haylen_imgui SYSTEM PUBLIC "${imgui_SOURCE_DIR}" "${imgui_SOURCE_DIR}/misc/cpp")
-target_include_directories(haylen_imgui PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../src")
-target_compile_definitions(haylen_imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DEFINE_MATH_OPERATORS IMGUI_USE_WCHAR32 "IMGUI_USER_CONFIG=\"${CMAKE_CURRENT_LIST_DIR}/../src/ui/ImGuiConfig.hpp\"")
+target_include_directories(haylen-imgui SYSTEM PUBLIC "${imgui_SOURCE_DIR}" "${imgui_SOURCE_DIR}/misc/cpp")
+target_include_directories(haylen-imgui PRIVATE "${CMAKE_CURRENT_LIST_DIR}/../src")
+target_compile_definitions(haylen-imgui PUBLIC IMGUI_DISABLE_OBSOLETE_FUNCTIONS IMGUI_DEFINE_MATH_OPERATORS IMGUI_USE_WCHAR32 "IMGUI_USER_CONFIG=\"${CMAKE_CURRENT_LIST_DIR}/../src/ui/ImGuiConfig.hpp\"")
 
-add_library(haylen_miniaudio STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c")
-target_include_directories(haylen_miniaudio SYSTEM PUBLIC "${miniaudio_SOURCE_DIR}")
-target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_GENERATION MA_NO_ENCODING MA_NO_RESOURCE_MANAGER)
+add_library(haylen-miniaudio STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c")
+target_include_directories(haylen-miniaudio SYSTEM PUBLIC "${miniaudio_SOURCE_DIR}")
+target_compile_definitions(haylen-miniaudio PUBLIC MA_NO_GENERATION MA_NO_ENCODING MA_NO_RESOURCE_MANAGER)
 if(ANDROID)
-  target_compile_definitions(haylen_miniaudio PUBLIC MA_NO_OPENSL)
-  target_link_libraries(haylen_miniaudio PUBLIC log)
+  target_compile_definitions(haylen-miniaudio PUBLIC MA_NO_OPENSL)
+  target_link_libraries(haylen-miniaudio PUBLIC log)
 elseif(APPLE)
-  target_link_libraries(haylen_miniaudio PUBLIC "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")
+  target_link_libraries(haylen-miniaudio PUBLIC "-framework CoreFoundation" "-framework CoreAudio" "-framework AudioToolbox")
   if(HAYLEN_PLATFORM STREQUAL "ios" OR HAYLEN_PLATFORM STREQUAL "tvos")
     # The miniaudio library manages the `AVAudioSession` on iOS and tvOS, so its implementation compiles as Objective-C there.
     set_source_files_properties("${CMAKE_CURRENT_LIST_DIR}/../src/audio/MiniaudioImpl.c" PROPERTIES LANGUAGE OBJC)
-    target_link_libraries(haylen_miniaudio PUBLIC "-framework AVFoundation")
+    target_link_libraries(haylen-miniaudio PUBLIC "-framework AVFoundation")
   endif()
 elseif(HAYLEN_PLATFORM STREQUAL "web")
   # Browsers play through the AudioWorklet output of the engine, `src/platform/web/BrowserAudioOutput`, so miniaudio keeps only its custom backend there.
-  target_compile_definitions(haylen_miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
+  target_compile_definitions(haylen-miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
 elseif(HAYLEN_PLATFORM STREQUAL "linux")
-  target_link_libraries(haylen_miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
+  target_link_libraries(haylen-miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
 endif()

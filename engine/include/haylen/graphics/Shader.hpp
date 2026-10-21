@@ -14,7 +14,7 @@ namespace haylen::graphics {
 
 struct ShaderResource;
 
-// Shared handle to a custom shader: a `.shader` file that `haylen.py shaders` compiles from annotated GLSL for every backend, with the reflection of the uniforms and textures of its own. The engine creates the GPU program of the active backend the first time a draw needs it, and a reloaded file updates every handle.
+// Shared handle to a custom shader: a `.shader` package that the Haylen shader compiler writes from a source in the Haylen shader language, with the code of every program for every shader language and the reflection of the uniforms and textures of its own. The engine creates the GPU program for the language of the device the first time a draw needs it, and a reloaded file updates every handle.
 class Shader final {
   public:
     enum class UniformType : std::uint8_t {
@@ -53,15 +53,16 @@ class Shader final {
     Shader() = default;
     explicit Shader(std::shared_ptr<ShaderResource> value) noexcept : resource(std::move(value)) {}
 
-    // Reads a `.shader` file and checks its programs against the binding limits of the GPU. Throws `std::invalid_argument` when the bytes are not a valid shader file.
+    // Reads a `.shader` package and checks its programs against themselves and the binding limits of every GPU device. Throws `std::invalid_argument` when the bytes are not a valid shader package.
     [[nodiscard]] static Shader parse(std::span<const std::uint8_t> bytes);
 
     // Resolves the GLSL names `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`.
     [[nodiscard]] static std::optional<UniformType> uniformTypeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view uniformTypeName(UniformType type) noexcept;
 
-    // Returns how many numbers one element of the type holds.
+    // Returns how many numbers one element of the type holds, and the bytes from one element of an array of the type to the next, which the std140 layout rounds up to whole vectors of four numbers.
     [[nodiscard]] static int getComponentCount(UniformType type) noexcept;
+    [[nodiscard]] static std::uint32_t getArrayStride(UniformType type) noexcept;
 
     [[nodiscard]] bool isValid() const noexcept {
         return resource != nullptr;

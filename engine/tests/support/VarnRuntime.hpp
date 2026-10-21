@@ -12,7 +12,7 @@ namespace haylen::test {
 // Owns a Varn runtime for tests and pumps its event loop the way the engine does once per frame.
 class VarnRuntime final {
   public:
-    VarnRuntime() : runtime(std::make_unique<varn::runtime::Runtime>(std::vector<std::string>{"haylen_tests"}, 0)) {}
+    VarnRuntime() : runtime(std::make_unique<varn::runtime::Runtime>(std::vector<std::string>{"haylen-tests"}, 0)) {}
 
     [[nodiscard]] varn::runtime::Runtime& getRuntime() noexcept {
         return *runtime;

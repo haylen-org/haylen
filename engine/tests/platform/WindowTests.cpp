@@ -2,12 +2,12 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <map>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+#include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
@@ -17,7 +17,6 @@
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
 #include "platform/headless/HeadlessHost.hpp"
-#include "sokol_gfx.h"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
@@ -46,56 +45,26 @@ class WindowPlacementTest : public MonitorLayoutTest {};
 
 class WindowTest : public MonitorLayoutTest {};
 
-// Records what the renderer asks of `sokol_gfx` while a frame reaches the swapchain: the alpha it clears to and the channels its pipelines write.
-class SwapchainTrace final {
+// The passes of the last frame that reached the swapchain, with the alpha they cleared to and the channels their pipelines wrote.
+class SwapchainPasses final {
   public:
-    SwapchainTrace() {
-        sg_trace_hooks hooks{};
-        hooks.user_data = this;
-        hooks.make_pipeline = &onMakePipeline;
-        hooks.begin_pass = &onBeginPass;
-        hooks.apply_pipeline = &onApplyPipeline;
-        hooks.end_pass = &onEndPass;
-        previous = sg_install_trace_hooks(&hooks);
-    }
-    ~SwapchainTrace() {
-        sg_install_trace_hooks(&previous);
-    }
-    SwapchainTrace(const SwapchainTrace&) = delete;
-    SwapchainTrace& operator=(const SwapchainTrace&) = delete;
-
-    void clear() {
-        clearAlphas.clear();
-        writtenMasks.clear();
-    }
-
-    std::vector<float> clearAlphas;
-    std::vector<sg_color_mask> writtenMasks;
-
-  private:
-    static void onMakePipeline(const sg_pipeline_desc* desc, sg_pipeline result, void* data) {
-        static_cast<SwapchainTrace*>(data)->masks[result.id] = desc->colors[0].write_mask;
-    }
-    static void onBeginPass(const sg_pass* pass, void* data) {
-        auto& trace = *static_cast<SwapchainTrace*>(data);
-        trace.swapchain = pass->attachments.colors[0].id == SG_INVALID_ID;
-        if (trace.swapchain) {
-            trace.clearAlphas.push_back(pass->action.colors[0].clear_value.a);
+    [[nodiscard]] static std::vector<gpu::NullDevice::PassRecord> of(test::EngineFixture& fixture) {
+        std::vector<gpu::NullDevice::PassRecord> passes;
+        for (const gpu::NullDevice::PassRecord& pass : fixture.host().getGpu().getLastFrame().passes) {
+            if (pass.swapchain) {
+                passes.push_back(pass);
+            }
         }
-    }
-    static void onApplyPipeline(sg_pipeline pipeline, void* data) {
-        auto& trace = *static_cast<SwapchainTrace*>(data);
-        if (trace.swapchain) {
-            trace.writtenMasks.push_back(trace.masks.at(pipeline.id));
-        }
-    }
-    static void onEndPass(void* data) {
-        static_cast<SwapchainTrace*>(data)->swapchain = false;
+        return passes;
     }
 
-    sg_trace_hooks previous{};
-    std::map<std::uint32_t, sg_color_mask> masks;
-    bool swapchain = false;
+    [[nodiscard]] static std::vector<gpu::Device::ColorMask> getMasks(const std::vector<gpu::NullDevice::PassRecord>& passes) {
+        std::vector<gpu::Device::ColorMask> masks;
+        for (const gpu::NullDevice::PassRecord& pass : passes) {
+            masks.insert(masks.end(), pass.masks.begin(), pass.masks.end());
+        }
+        return masks;
+    }
 };
 
 } // namespace
@@ -259,13 +228,13 @@ TEST(WindowEngineTest, TurnsTransparencyOffAndOnAgain) {
     test::EngineFixture fixture({{"app.json", R"({"window": {"transparent": true}})"}});
     EXPECT_TRUE(fixture.host().canBeTransparent());
     EXPECT_TRUE(fixture.host().isTransparent());
-    EXPECT_TRUE(fixture.host().getFrameTarget().transparent);
+    EXPECT_TRUE(fixture.host().isFrameTransparent());
 
     fixture.host().setTransparent(false);
     EXPECT_FALSE(fixture.host().isTransparent());
-    EXPECT_FALSE(fixture.host().getFrameTarget().transparent);
+    EXPECT_FALSE(fixture.host().isFrameTransparent());
     fixture.host().setTransparent(true);
-    EXPECT_TRUE(fixture.host().getFrameTarget().transparent);
+    EXPECT_TRUE(fixture.host().isFrameTransparent());
 }
 
 TEST(WindowEngineTest, KeepsAWindowThatOpenedOpaqueOpaque) {
@@ -285,23 +254,25 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
                             "graphics2d.beginWorld(camera, {ambientLight = '#FF808080', postProcess = {fade = '#40FFFFFF'}}) graphics2d.drawRect({0, 0, 100, 100}, '#80FF0000') "
                             "graphics2d.beginScreen() graphics2d.drawRect({0, 0, 50, 50}, '#40FFFFFF', {blend = 'additive'}) graphics2d.drawText(nil, 'Gold', 10, 10) end})"},
     });
-    SwapchainTrace trace;
     fixture.frames(2);
-    ASSERT_FALSE(trace.clearAlphas.empty());
-    EXPECT_EQ(trace.clearAlphas.back(), 0.0F);
-    ASSERT_FALSE(trace.writtenMasks.empty());
-    for (const sg_color_mask mask : trace.writtenMasks) {
-        EXPECT_EQ(mask, SG_COLORMASK_RGBA);
+    std::vector<gpu::NullDevice::PassRecord> passes = SwapchainPasses::of(fixture);
+    ASSERT_FALSE(passes.empty());
+    EXPECT_EQ(passes.front().clear.a, 0.0F);
+    std::vector<gpu::Device::ColorMask> masks = SwapchainPasses::getMasks(passes);
+    ASSERT_FALSE(masks.empty());
+    for (const gpu::Device::ColorMask mask : masks) {
+        EXPECT_EQ(mask, gpu::Device::ColorMask::All);
     }
 
     fixture.host().setTransparent(false);
-    trace.clear();
     fixture.frames(2);
-    ASSERT_FALSE(trace.clearAlphas.empty());
-    EXPECT_EQ(trace.clearAlphas.back(), 1.0F);
-    ASSERT_GE(trace.writtenMasks.size(), 3U);
-    for (const sg_color_mask mask : trace.writtenMasks) {
-        EXPECT_EQ(mask, SG_COLORMASK_RGB);
+    passes = SwapchainPasses::of(fixture);
+    ASSERT_FALSE(passes.empty());
+    EXPECT_EQ(passes.front().clear.a, 1.0F);
+    masks = SwapchainPasses::getMasks(passes);
+    ASSERT_GE(masks.size(), 3U);
+    for (const gpu::Device::ColorMask mask : masks) {
+        EXPECT_EQ(mask, gpu::Device::ColorMask::Rgb);
     }
 }
 

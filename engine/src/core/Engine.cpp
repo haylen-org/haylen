@@ -29,6 +29,21 @@
 
 namespace haylen::core {
 
+Engine::Claim::Claim() {
+    if (getClaimed().exchange(true)) {
+        throw std::logic_error("Only one engine can run at a time. Destroy the engine that runs before creating another.");
+    }
+}
+
+Engine::Claim::~Claim() {
+    getClaimed().store(false);
+}
+
+std::atomic<bool>& Engine::Claim::getClaimed() noexcept {
+    static std::atomic<bool>& claimed = *new std::atomic<bool>(false);
+    return claimed;
+}
+
 Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppConfig config, std::unique_ptr<Application> application) {
     if (!package || !application) {
         throw std::invalid_argument("The engine needs a package and an application.");
@@ -40,7 +55,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     // The Varn runtime comes first because the job system, asset loading and Lua all run on it.
     current.runtime = std::make_unique<varn::runtime::Runtime>(std::vector<std::string>{"haylen", std::string(current.package->getName())}, 1);
     current.jobs = std::make_unique<JobSystem>(*current.runtime, [this](const std::string& message) { reportError(message); });
-    current.graphics = std::make_unique<graphics::Device>(host.getGraphicsSetup());
+    current.graphics = std::make_unique<graphics::Device>(host.createGpuDevice());
     audio::Mixer::Setup audioSetup = host.getAudioSetup();
     audioSetup.session = current.config.audioSession;
     audioSetup.latency = current.config.audioOutput.latency;
@@ -455,7 +470,7 @@ void Engine::render(std::size_t plugins) {
     }
     try {
         const debug::ProfileScope scope(profiler, "submit");
-        current.renderer->endFrame(current.host.getFrameTarget());
+        current.renderer->endFrame(current.host.isFrameTransparent());
     } catch (const std::exception& exception) {
         reportError(exception);
     }

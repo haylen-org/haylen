@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "sokol_gfx.h"
+#include "gpu/NullDevice.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -32,7 +32,7 @@ TEST(GraphicsLuaTest, CreatesTexturesAndRenderTargets) {
     EXPECT_EQ(fixture.lua("local target = graphics.newRenderTarget(64, 32, {wrap = 'repeat'}) return target.width .. 'x' .. target.height .. ' ' .. target.texture.width"), "64x32 64");
     EXPECT_NE(fixture.lua("return graphics.newRenderTarget(0, 32)").find("error: "), std::string::npos);
     EXPECT_NE(fixture.lua("return graphics.newRenderTarget(4, 4, {filter = 'blurry'})").find("error: "), std::string::npos);
-    EXPECT_EQ(fixture.lua("return graphics.backendName()"), "dummy");
+    EXPECT_EQ(fixture.lua("return graphics.apiName()"), "none");
 }
 
 // The bytes of an image file, such as a PNG that a plugin returns, become a texture.
@@ -57,8 +57,8 @@ TEST(GraphicsLuaTest, UpdatesDynamicTextures) {
 
     fixture.runLua("minimap:update(string.rep(string.char(0, 0, 0, 255), 2)) minimap:update(string.rep(string.char(255, 255, 255, 255), 2))");
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 8U);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, 8U);
     EXPECT_EQ(fixture.lua("return require('haylen.graphics2d').stats().uploadedBytes"), "8");
     EXPECT_EQ(fixture.lua("local t = graphics.newTexture(1, 1, {dynamic = true, pixels = string.char(1, 2, 3, 4)}) return t.width"), "1");
     EXPECT_NE(fixture.lua("minimap:update('short')").find("The pixels do not match the size of the dynamic texture."), std::string::npos);
