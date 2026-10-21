@@ -8,11 +8,15 @@ local Results = require('harness.results')
 
 local Checks = haylen.class('Checks', Results)
 
--- Runs `body` inside the task of the caller, so it may wait on promises.
+-- Runs `body` inside the task of the caller, so it may wait on promises. A failure shows its message without the place in the source that raised it.
 function Checks:run(name, body)
     self:set(name, 'waiting', name, '')
     local ok, result = pcall(body)
-    self:set(name, ok and 'pass' or 'fail', name, tostring(result or ''))
+    local detail = tostring(result or '')
+    if not ok then
+        detail = detail:gsub('^[%w%./%-]+:%d+: ', '')
+    end
+    self:set(name, ok and 'pass' or 'fail', name, detail)
 end
 
 function Checks:skip(name, reason)

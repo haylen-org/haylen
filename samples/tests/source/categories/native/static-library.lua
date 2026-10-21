@@ -14,20 +14,23 @@ local StaticLibrary = haylen.class('StaticLibrary', Test)
 local expect = Checks.expect
 
 function StaticLibrary:enter()
+    self.checks = Checks(self.entry.code)
     self:frame{
         hint = 'Run the checks again to see that they hold.',
         focus = 'run',
+        content = {self.checks:view()},
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = 'The "native" section of "app.json" links "native_test_static" into iOS and tvOS apps and lists the symbols Lua reaches, which the generated "HaylenNativeSymbols.mm" keeps and registers. The function "native.load" returns "ffi.C" for a linked library, because its symbols are part of the app.', color = 'textMuted', font = 'caption'},
         },
         code = "local lib = native.load('native_test_static')\nprint(ffi.string(lib.native_test_origin()))",
     }
+    self.checks:show(self.gui)
     self:run()
 end
 
 function StaticLibrary:run()
-    self.checks = Checks(self.entry.code)
+    self.checks:clear()
     self:spawn(function()
         local checks = self.checks
         local lib
@@ -55,10 +58,6 @@ end
 function StaticLibrary:update(dt)
     StaticLibrary.super.update(self, dt)
     self:status(self.checks:summary())
-end
-
-function StaticLibrary:draw(area)
-    self.checks:draw(area)
 end
 
 return StaticLibrary

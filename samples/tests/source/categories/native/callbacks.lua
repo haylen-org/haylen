@@ -17,22 +17,25 @@ Callbacks.report = 'void (int32_t value, const uint8_t data[size], size_t size)'
 local expect = Checks.expect
 
 function Callbacks:enter()
+    self.checks = Checks(self.entry.code)
     self:frame{
         hint = 'Run the checks again to see that they hold.',
         focus = 'run',
+        content = {self.checks:view()},
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = "A \"native.callback\" copies its arguments and runs the Lua function on the frame thread: during the call with \"thread = 'frame'\", or at the next frame, which is always the case for a call from another thread. Varn \"ffi.cast\" callbacks run at once, and only native code on the frame thread may call them.", color = 'textMuted', font = 'caption'},
+            ui.label{text = 'A callback of "native.callback" copies its arguments and runs the Lua function on the frame thread, during the call or at the next frame. A callback of "ffi.cast" runs at once, so only native code on the frame thread may call it.', color = 'textMuted', font = 'caption'},
         },
         code = "local report = native.callback(\n  'void (int32_t value, const uint8_t data[size], size_t size)',\n  function(value, data, size) print(value, #data) end)\nlib.native_test_report_later(report.pointer, 42)",
     }
+    self.checks:show(self.gui)
     self:run()
 end
 
 -- Callbacks live until they are freed, so the ones of the previous run go before new ones take their place.
 function Callbacks:run()
     self:free()
-    self.checks = Checks(self.entry.code)
+    self.checks:clear()
     self:spawn(function()
         if native.available() then
             self:runLibrary()
@@ -95,9 +98,6 @@ end
 
 function Callbacks:runPage()
     local checks = self.checks
-    checks:skip('A callback of "ffi.cast" during the call', 'The browser has no native callbacks.')
-    checks:skip('A frame callback during the call', 'The browser has no native callbacks.')
-    checks:skip('A callback at the next frame', 'The browser has no native callbacks.')
     local report
     checks:run('A report from the page', function()
         local connection = platform.on(nativeTest.name('report'), function(payload) report = payload end)
@@ -112,6 +112,7 @@ function Callbacks:runPage()
     checks:run('The bytes of the report', function()
         return 'Received the bytes ' .. expect(table.concat(report.data, ' '), '1 2 3 4', 'the bytes') .. '.'
     end)
+    checks:skip('Callbacks of the library', 'The browser has no native callbacks, so the callbacks of "ffi.cast", during the call and at the next frame, run only where native libraries load.')
 end
 
 function Callbacks:free()
@@ -131,10 +132,6 @@ end
 function Callbacks:update(dt)
     Callbacks.super.update(self, dt)
     self:status(self.checks:summary())
-end
-
-function Callbacks:draw(area)
-    self.checks:draw(area)
 end
 
 return Callbacks

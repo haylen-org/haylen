@@ -14,20 +14,23 @@ local Calls = haylen.class('Calls', Test)
 local expect = Checks.expect
 
 function Calls:enter()
+    self.checks = Checks(self.entry.code)
     self:frame{
         hint = 'Run the checks again to see that they hold.',
         focus = 'run',
+        content = {self.checks:view()},
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = 'The function "native.load" finds "native_test" next to the app, loads it and hands it to Varn "ffi", which calls the functions that "ffi.cdef" declares with the C types of their parameters and results.', color = 'textMuted', font = 'caption'},
         },
-        code = "local lib = native.load('native_test')\nprint(lib.native_test_add(20, 22))",
+        code = "local lib = native.load('native_test')\nprint(lib.native_test_add(20, 22))\nlocal sum = lib.native_test_point_add(ffi.new('NativeTestPoint', {1, 2}), other)\nlib.native_test_rect_grow(rect, 2)  -- Changes the struct through its pointer.\nlocal buffer = ffi.new('uint8_t[?]', 8)\nlib.native_test_fill(buffer, 8, 250)",
     }
+    self.checks:show(self.gui)
     self:run()
 end
 
 function Calls:run()
-    self.checks = Checks(self.entry.code)
+    self.checks:clear()
     self:spawn(function()
         if native.available() then
             self:runLibrary()
@@ -37,6 +40,9 @@ function Calls:run()
     end)
 end
 
+-- The checks that call into the library, which have nothing to call when it did not load.
+Calls.libraryChecks = {'Integers', 'Doubles', 'Text', 'Struct by value', 'Struct by pointer', 'Buffer', 'Symbol'}
+
 function Calls:runLibrary()
     local checks = self.checks
     local lib
@@ -44,6 +50,12 @@ function Calls:runLibrary()
         lib = library.load()
         return 'The function "native.load" returned ' .. tostring(lib) .. '.'
     end)
+    if not lib then
+        for _, name in ipairs(Calls.libraryChecks) do
+            checks:set(name, 'fail', name, 'The library did not load, so this call did not run.')
+        end
+        return
+    end
     checks:run('Integers', function() return 'The call "native_test_add(20, 22)" returned ' .. expect(lib.native_test_add(20, 22), 42, 'the sum') .. '.' end)
     checks:run('Doubles', function() return 'The call "native_test_scale(1.5, 4)" returned ' .. expect(lib.native_test_scale(1.5, 4), 6.0, 'the product') .. '.' end)
     checks:run('Text', function() return 'The call "native_test_origin()" returned "' .. expect(ffi.string(lib.native_test_origin()), 'dynamic', 'the origin') .. '".' end)
@@ -76,7 +88,6 @@ end
 
 function Calls:runPage()
     local checks = self.checks
-    checks:skip('Load by name', 'The browser loads no native libraries, so the web part of the plugin "native-test" answers the same functions through the bridge.')
     checks:run('Integers', function() return 'The method "native-test.add" returned ' .. expect(Checks.await(nativeTest.call('add', {a = 20, b = 22})), 42, 'the sum') .. '.' end)
     checks:run('Doubles', function() return 'The method "native-test.scale" returned ' .. expect(Checks.await(nativeTest.call('scale', {value = 1.5, factor = 4})), 6, 'the product') .. '.' end)
     checks:run('Text', function() return 'The method "native-test.origin" returned "' .. expect(Checks.await(nativeTest.call('origin')), 'javascript', 'the origin') .. '".' end)
@@ -93,16 +104,12 @@ function Calls:runPage()
         local bytes = string.char(table.unpack(filled))
         return string.format('Filled %d bytes with the checksum %08x.', #bytes, expect(Checks.await(nativeTest.call('checksum', {bytes = filled})), library.checksum(bytes), 'the checksum'))
     end)
-    checks:skip('Symbol', 'The browser has no symbols to look up.')
+    checks:skip('Loading and symbols', 'The browser loads no native libraries and has no symbols to look up, so the web part of the plugin "native-test" answers the same functions through the bridge.')
 end
 
 function Calls:update(dt)
     Calls.super.update(self, dt)
     self:status(self.checks:summary())
-end
-
-function Calls:draw(area)
-    self.checks:draw(area)
 end
 
 return Calls

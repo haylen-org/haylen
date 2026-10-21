@@ -13,6 +13,7 @@ local LibraryHandlers = haylen.class('LibraryHandlers', Test)
 local expect = Checks.expect
 
 function LibraryHandlers:enter()
+    self.checks = Checks(self.entry.code)
     self.cancelled = {}
     self.connections = {
         platform.on(nativeTest.name('ready'), function(payload) self.ready = payload end),
@@ -21,12 +22,14 @@ function LibraryHandlers:enter()
     self:frame{
         hint = 'Run the checks again to see that they hold.',
         focus = 'run',
+        content = {self.checks:view()},
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = 'The function "native.load" calls "native_test_haylen_init" with the interface of the engine. The library registers "native_test.echo", "native_test.fail" and "native_test.wait" with it, answers from its own threads, sends "native_test.ready" and hears when the app gives up a call.', color = 'textMuted', font = 'caption'},
         },
         code = "native.load('native_test', {init = 'native_test_haylen_init'})\nlocal call = platform.call('native_test.wait', nil, {timeout = 0.2})\nlocal _, err = call:await()\nprint(err.code)",
     }
+    self.checks:show(self.gui)
     self:run()
 end
 
@@ -39,7 +42,7 @@ end
 
 function LibraryHandlers:run()
     self.ready = nil
-    self.checks = Checks(self.entry.code)
+    self.checks:clear()
     self:spawn(function()
         local checks = self.checks
         if native.available() then
@@ -58,7 +61,7 @@ function LibraryHandlers:run()
             if not Checks.waitFor(function() return self.ready ~= nil end, 2) then
                 error('The event "' .. nativeTest.name('ready') .. '" did not arrive within two seconds.', 0)
             end
-            return 'The event "' .. nativeTest.name('ready') .. '" arrived with ' .. Checks.json(self.ready) .. '.'
+            return 'The event "' .. nativeTest.name('ready') .. '" arrived from the library.'
         end)
         checks:run('An answer from a thread of the library', function()
             local echo = Checks.call(nativeTest.name('echo'), {word = 'hello'})
@@ -69,7 +72,7 @@ function LibraryHandlers:run()
             local ok, err = pcall(Checks.call, nativeTest.name('fail'))
             expect(ok, false, 'the success of "' .. nativeTest.name('fail') .. '"')
             expect(err.data.reason, 'requested', 'the reason')
-            return string.format('The call failed with the code "%s": %s', expect(err.code, 'native_test_failure', 'the code'), err.message)
+            return string.format('The call failed with the code "%s" and the reason "%s".', expect(err.code, 'native_test_failure', 'the code'), err.data.reason)
         end)
         checks:run('A timeout', function()
             local call = platform.call(nativeTest.name('wait'), nil, {timeout = 0.2})
@@ -89,18 +92,15 @@ function LibraryHandlers:run()
             if not Checks.waitFor(function() return self.cancelled[call.id] end, 2) then
                 error('The library heard nothing about the cancel.', 0)
             end
-            return 'The method "call:cancel()" failed the call with "' .. tostring(err) .. '", and the library heard of it.'
+            return 'The cancel failed the call with the code "cancelled", and the library heard of it.'
         end)
     end)
 end
 
 function LibraryHandlers:update(dt)
     LibraryHandlers.super.update(self, dt)
-    self:status(string.format('%s, pending calls %d', self.checks:summary(), platform.pendingCallCount()))
-end
-
-function LibraryHandlers:draw(area)
-    self.checks:draw(area)
+    local pending = platform.pendingCallCount()
+    self:status(pending == 0 and 'No call waits for an answer.' or string.format('%d %s for an answer.', pending, pending == 1 and 'call waits' or 'calls wait'))
 end
 
 return LibraryHandlers
