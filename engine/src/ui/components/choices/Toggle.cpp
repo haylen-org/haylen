@@ -10,8 +10,8 @@ void Toggle::readProperties(PropertyReader& reader) {
     reader.read("checked", checked);
 }
 
-math::Vec2 Toggle::measureContent(Context& context, float) {
-    return Widgets::measureToggle(context, context.getText(text));
+math::Vec2 Toggle::measureContent(Context& context, float availableWidth) {
+    return Widgets::measureToggle(context, context.getText(text), availableWidth);
 }
 
 void Toggle::render(Context& context, const math::Rect& bounds) {

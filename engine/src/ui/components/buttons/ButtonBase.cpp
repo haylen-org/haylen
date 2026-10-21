@@ -18,8 +18,8 @@ void ButtonBase::readProperties(PropertyReader& reader) {
     readMore(reader);
 }
 
-math::Vec2 ButtonBase::measureContent(Context& context, float) {
-    return Widgets::measureButton(context, context.getText(text), !icon.empty(), variant, content);
+math::Vec2 ButtonBase::measureContent(Context& context, float availableWidth) {
+    return Widgets::measureButton(context, context.getText(text), !icon.empty(), variant, content, availableWidth);
 }
 
 bool ButtonBase::drawButton(Context& context, const math::Rect& bounds, bool checked) {

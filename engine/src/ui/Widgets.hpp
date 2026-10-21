@@ -12,6 +12,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Alignment.hpp"
+#include "haylen/ui/Component.hpp"
 #include "haylen/ui/FocusDirection.hpp"
 #include "haylen/ui/Theme.hpp"
 #include "ui/IconColor.hpp"
@@ -105,16 +106,17 @@ class Widgets final {
     // Gives the focus to the last item, which lets a menu start with its first button selected. The ring keeps its visibility, and shows at once when the player last used a gamepad or has no pointer device.
     static void focusItem(Context& context);
 
-    [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content);
+    // A label wider than the room the width leaves wraps onto more lines, and the button grows taller to hold them.
+    [[nodiscard]] static math::Vec2 measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content, float availableWidth = Component::CommonProperties::kUnbounded);
     // Draws a button with its label and icon, which takes the icon color when it sets one and otherwise the color of the label in toolbar and icon buttons and its own colors in the others.
     [[nodiscard]] static bool button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, const IconColor& iconColor, const ButtonContent& content);
 
-    // Check boxes, radio buttons and toggles take at least the height of a control, so their rows are touch targets as large as buttons.
-    [[nodiscard]] static math::Vec2 measureChoice(Context& context, std::string_view label);
+    // Check boxes, radio buttons and toggles take at least the height of a control, so their rows are touch targets as large as buttons, and a label wider than the room the width leaves wraps onto more lines, like a label.
+    [[nodiscard]] static math::Vec2 measureChoice(Context& context, std::string_view label, float availableWidth = Component::CommonProperties::kUnbounded);
     static bool checkbox(Context& context, const math::Rect& bounds, bool& value, std::string_view label);
     static bool radio(Context& context, const math::Rect& bounds, bool selected, std::string_view label, std::string_view idLabel);
 
-    [[nodiscard]] static math::Vec2 measureToggle(Context& context, std::string_view label);
+    [[nodiscard]] static math::Vec2 measureToggle(Context& context, std::string_view label, float availableWidth = Component::CommonProperties::kUnbounded);
     static bool toggle(Context& context, const math::Rect& bounds, bool& value, std::string_view label);
 
     static bool slider(Context& context, const math::Rect& bounds, double& value, double minimum, double maximum, double step);
@@ -158,6 +160,12 @@ class Widgets final {
 
     // A theme may leave out the hover or pressed image of a surface, and then the normal image stands in for it.
     [[nodiscard]] static const Theme::Image* getStateImage(Context& context, const SurfaceSet& set, const Interaction& state);
+
+    // Measures the label of a choice beside a mark of the width, wrapped in the room the available width leaves, and the height of the row that holds them.
+    [[nodiscard]] static math::Vec2 measureChoiceRow(Context& context, std::string_view label, float mark, float markHeight, float availableWidth);
+
+    // Draws the label of a choice in the bounds of its row beside a mark of the width, wrapped and centered across the height of the row.
+    static void drawChoiceLabel(Context& context, const math::Rect& bounds, float mark, std::string_view label);
 
     // Draws the icon and the label of a button inside the space its surface leaves free.
     static void drawButtonContent(Context& context, const math::Rect& inner, std::string_view label, const graphics::Texture* icon, math::Color textColor, math::Color iconColor, const ButtonContent& content);

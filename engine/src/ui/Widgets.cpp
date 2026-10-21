@@ -129,7 +129,7 @@ void Widgets::focusItem(Context& context) {
     context.getFocus().focus(ImGui::GetItemID(), math::Rect::fromMinMax({box.Min.x, box.Min.y}, {box.Max.x, box.Max.y}));
 }
 
-math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content) {
+math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool hasIcon, ButtonVariant variant, const ButtonContent& content, float availableWidth) {
     const float height = context.getMetric(Theme::Metric::ControlHeight);
     const float icon = context.getMetric(Theme::Metric::IconSize);
     if (variant == ButtonVariant::Icon) {
@@ -147,11 +147,14 @@ math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool
         const float stacked = icon + labelHeight + context.getMetric(Theme::Metric::ControlPaddingY) + padding.getVertical();
         return {std::max(std::max(textWidth, icon) + paddingX, height), std::max(stacked, height)};
     }
-    float width = textWidth + paddingX;
-    if (hasIcon) {
-        width += icon + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing));
+    const float iconRoom = hasIcon ? icon + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing)) : 0.0F;
+    const float room = std::max(0.0F, availableWidth - paddingX - iconRoom);
+    if (textWidth > room && room > 0.0F) {
+        const math::Vec2 wrapped = Typography::measure(context, Theme::Font::Button, label, room);
+        const float wrappedHeight = wrapped.y + context.getMetric(Theme::Metric::ControlPaddingY) * 2.0F + padding.getVertical();
+        return {std::max(wrapped.x + paddingX + iconRoom, height), std::max(wrappedHeight, height)};
     }
-    return {std::max(width, height), height};
+    return {std::max(textWidth + paddingX + iconRoom, height), height};
 }
 
 bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, const IconColor& iconColor, const ButtonContent& content) {
@@ -227,22 +230,44 @@ void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::
         return;
     }
 
-    const float labelWidth = std::min(measured, std::max(0.0F, room - iconSize - spacing));
-    const float contentWidth = iconSize + labelWidth + (iconSize > 0.0F && labelWidth > 0.0F ? spacing : 0.0F);
+    // A label wider than its room wraps there, on lines that keep the alignment of the content.
+    const float textRoom = std::max(0.0F, room - (iconSize > 0.0F ? iconSize + spacing : 0.0F));
+    const bool wrapped = measured > textRoom && textRoom > 0.0F;
+    const math::Vec2 text = wrapped ? Typography::measure(context, Theme::Font::Button, label, textRoom) : math::Vec2{std::min(measured, textRoom), Typography::getLineHeight(context, Theme::Font::Button)};
+    const float contentWidth = iconSize + text.x + (iconSize > 0.0F && text.x > 0.0F ? spacing : 0.0F);
     float x = std::floor(Component::align(content.justify, start, room, contentWidth));
     if (iconSize > 0.0F) {
         Surfaces::drawImage(context, *icon, context.mirror({x, std::floor(inner.getCenter().y - iconSize * 0.5F), iconSize, iconSize}, inner), iconColor);
         x += iconSize + spacing;
     }
-    if (labelWidth > 0.0F) {
-        Typography::drawAligned(context, Theme::Font::Button, context.mirror({x, inner.y, labelWidth, inner.height}, inner), textColor, label, Alignment::Start);
+    if (wrapped) {
+        Typography::drawParagraph(context, Theme::Font::Button, context.mirror({x, std::floor(inner.getCenter().y - text.y * 0.5F), text.x, text.y}, inner), textColor, label, content.justify == Alignment::Center ? Alignment::Center : Alignment::Start);
+    } else if (text.x > 0.0F) {
+        Typography::drawAligned(context, Theme::Font::Button, context.mirror({x, inner.y, text.x, inner.height}, inner), textColor, label, Alignment::Start);
     }
 }
 
-math::Vec2 Widgets::measureChoice(Context& context, std::string_view label) {
+math::Vec2 Widgets::measureChoice(Context& context, std::string_view label, float availableWidth) {
     const float box = context.getMetric(Theme::Metric::ChoiceSize);
-    const float width = box + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing) + Typography::measure(context, Theme::Font::Body, label).x);
-    return {width, std::max(std::max(box, Typography::getLineHeight(context, Theme::Font::Body)) + context.getMetric(Theme::Metric::ControlPaddingY), context.getMetric(Theme::Metric::ControlHeight))};
+    return measureChoiceRow(context, label, box, box, availableWidth);
+}
+
+math::Vec2 Widgets::measureChoiceRow(Context& context, std::string_view label, float mark, float markHeight, float availableWidth) {
+    const float spacing = context.getMetric(Theme::Metric::ContentSpacing);
+    const math::Vec2 text = label.empty() ? math::Vec2{0.0F, Typography::getLineHeight(context, Theme::Font::Body)} : Typography::measure(context, Theme::Font::Body, label, std::max(1.0F, availableWidth - mark - spacing));
+    const float width = mark + (label.empty() ? 0.0F : spacing + text.x);
+    return {width, std::max(std::max(markHeight, text.y) + context.getMetric(Theme::Metric::ControlPaddingY), context.getMetric(Theme::Metric::ControlHeight))};
+}
+
+void Widgets::drawChoiceLabel(Context& context, const math::Rect& bounds, float mark, std::string_view label) {
+    if (label.empty()) {
+        return;
+    }
+    const float spacing = context.getMetric(Theme::Metric::ContentSpacing);
+    const float width = std::max(0.0F, bounds.width - mark - spacing);
+    const float height = Typography::measure(context, Theme::Font::Body, label, width).y;
+    const math::Rect area{bounds.x + mark + spacing, std::floor(bounds.getCenter().y - height * 0.5F), width, height};
+    Typography::drawParagraph(context, Theme::Font::Body, context.mirror(area, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
 }
 
 bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, std::string_view label) {
@@ -263,9 +288,7 @@ bool Widgets::checkbox(Context& context, const math::Rect& bounds, bool& value, 
         const float padding = size * 0.22F;
         checkMark(context, {box.x + padding, box.y + padding}, size - padding * 2.0F, context.getColor(Theme::Color::OnAccent));
     }
-    if (!label.empty()) {
-        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + size + context.getMetric(Theme::Metric::ContentSpacing), bounds.y, bounds.width - size - context.getMetric(Theme::Metric::ContentSpacing), bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
-    }
+    drawChoiceLabel(context, bounds, size, label);
     return state.clicked;
 }
 
@@ -289,15 +312,12 @@ bool Widgets::radio(Context& context, const math::Rect& bounds, bool selected, s
         const float dot = size * 0.25F;
         Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(circle.getCenter(), {dot * 2.0F, dot * 2.0F}), .radii = {dot, dot, dot, dot}, .color = context.getColor(Theme::Color::Accent)});
     }
-    if (!label.empty()) {
-        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + size + context.getMetric(Theme::Metric::ContentSpacing), bounds.y, bounds.width - size - context.getMetric(Theme::Metric::ContentSpacing), bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
-    }
+    drawChoiceLabel(context, bounds, size, label);
     return state.clicked;
 }
 
-math::Vec2 Widgets::measureToggle(Context& context, std::string_view label) {
-    const float width = context.getMetric(Theme::Metric::ToggleWidth) + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing) + Typography::measure(context, Theme::Font::Body, label).x);
-    return {width, std::max(std::max(context.getMetric(Theme::Metric::ToggleHeight), Typography::getLineHeight(context, Theme::Font::Body)) + context.getMetric(Theme::Metric::ControlPaddingY), context.getMetric(Theme::Metric::ControlHeight))};
+math::Vec2 Widgets::measureToggle(Context& context, std::string_view label, float availableWidth) {
+    return measureChoiceRow(context, label, context.getMetric(Theme::Metric::ToggleWidth), context.getMetric(Theme::Metric::ToggleHeight), availableWidth);
 }
 
 bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, std::string_view label) {
@@ -339,9 +359,7 @@ bool Widgets::toggle(Context& context, const math::Rect& bounds, bool& value, st
     const math::Rect knobRect = context.mirror({track.x + inset + (width - knob - inset * 2.0F) * eased, track.y + inset, knob, knob}, track);
     const math::Color knobColor = context.getColor(Theme::Color::Knob);
     Surfaces::draw(context, Theme::Surface::Knob, knobRect, state.held ? mix(knobColor, context.getColor(Theme::Color::Pressed)) : knobColor, std::nullopt, knob * 0.5F);
-    if (!label.empty()) {
-        Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.x + width + context.getMetric(Theme::Metric::ContentSpacing), bounds.y, bounds.width - width - context.getMetric(Theme::Metric::ContentSpacing), bounds.height}, bounds), context.getColor(Theme::Color::Text), label, Alignment::Start);
-    }
+    drawChoiceLabel(context, bounds, width, label);
     return state.clicked;
 }
 

@@ -18,11 +18,12 @@ void RadioGroup::readProperties(PropertyReader& reader) {
     reader.read("horizontal", horizontal);
 }
 
-math::Vec2 RadioGroup::measureContent(Context& context, float) {
+// The options of a vertical group wrap their labels at the width of the group, and the options of a horizontal group keep their labels on one line side by side.
+math::Vec2 RadioGroup::measureContent(Context& context, float availableWidth) {
     math::Vec2 size;
     const float spacing = context.getMetric(Theme::Metric::ItemSpacing);
     for (const ChoiceItem& item : items) {
-        const math::Vec2 option = Widgets::measureChoice(context, context.getText(item.text));
+        const math::Vec2 option = Widgets::measureChoice(context, context.getText(item.text), horizontal ? CommonProperties::kUnbounded : availableWidth);
         size = horizontal ? math::Vec2{size.x + option.x + spacing, std::max(size.y, option.y)} : math::Vec2{std::max(size.x, option.x), size.y + option.y};
     }
     if (horizontal && !items.empty()) {
@@ -39,7 +40,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
     math::Vec2 cursor = bounds.getMin();
     for (const ChoiceItem& item : items) {
         const std::string_view text = context.getText(item.text);
-        const math::Vec2 size = Widgets::measureChoice(context, text);
+        const math::Vec2 size = Widgets::measureChoice(context, text, horizontal ? CommonProperties::kUnbounded : bounds.width);
         const math::Rect option = context.mirror({cursor.x, cursor.y, horizontal ? size.x : bounds.width, size.y}, bounds);
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);

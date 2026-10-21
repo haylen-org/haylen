@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <cstdint>
+#include <string>
 #include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -117,6 +118,31 @@ TEST_F(LabelTest, DrawsTheMonospaceRoleWithAMonospaceFont) {
     EXPECT_EQ(getUi().getTheme().getFont(Theme::Font::Monospace).font, Backend::kMonospaceFontName);
     EXPECT_EQ(getBounds(*gui, "narrow").width, getBounds(*gui, "wide").width);
     EXPECT_EQ(getBounds(*gui, "digits").width, getBounds(*gui, "wide").width);
+}
+
+// Check boxes, toggles, radio buttons and buttons wrap a label longer than their width onto more lines, as labels do, and grow taller to hold them, instead of cutting it with an ellipsis.
+TEST_F(LabelTest, WrapsTheLabelsOfChoicesAndButtons) {
+    const std::string text = "Limit the coin sound to four voices at once and drop the oldest";
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "column", "width": 420, "alignItems": "stretch", "children": [
+        {"kind": "checkbox", "id": "check", "text": ")" + text + R"("},
+        {"kind": "toggle", "id": "toggle", "text": ")" + text + R"("},
+        {"kind": "radioGroup", "id": "radio", "items": [{"id": "one", "text": ")" + text + R"("}]},
+        {"kind": "button", "id": "button", "text": ")" + text + R"("}
+    ]}]})");
+    // clang-format on
+    frames(2);
+    const float control = getUi().getTheme().getMetric(Theme::Metric::ControlHeight);
+    for (const char* id : {"check", "toggle", "radio", "button"}) {
+        EXPECT_GT(getBounds(*gui, id).height, control) << id;
+        EXPECT_LE(getBounds(*gui, id).width, 420.0F) << id;
+    }
+    Backend& backend = getUi().getBackend();
+    int whole = 0;
+    for (const Backend::Text& drawn : backend.getTexts()) {
+        whole += backend.getContent(drawn) == text ? 1 : 0;
+    }
+    EXPECT_EQ(whole, 4);
 }
 
 } // namespace haylen::ui

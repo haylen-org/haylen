@@ -1078,8 +1078,9 @@ TEST_F(ComponentTest, DrawsChoiceLabelsWholeAtTheirMeasuredSize) {
             const std::string node = R"({"kind": ")" + kind + R"(", "text": ")" + text + R"(")";
             EXPECT_EQ(count(node + R"(, "align": "start"})"), count(node + R"(, "align": "stretch"})")) << kind << " " << text;
         }
+        // A label wider than a cramped choice wraps onto more lines and still draws every letter.
         const std::string cramped = R"({"kind": ")" + kind + R"(", "text": "Fullscreen", "width": 130)";
-        EXPECT_LT(count(cramped + "}"), count(cramped + R"(, "width": 900})")) << kind;
+        EXPECT_EQ(count(cramped + "}"), count(cramped + R"(, "width": 900})")) << kind;
     }
     EXPECT_EQ(count(R"({"kind": "statusIndicator", "text": "State: open", "align": "start"})"), count(R"({"kind": "statusIndicator", "text": "State: open", "align": "stretch"})"));
     EXPECT_EQ(count(R"({"kind": "radioGroup", "horizontal": true, "items": [{"id": "a", "text": "Music"}, {"id": "b", "text": "Spin"}]})"), count(R"({"kind": "radioGroup", "items": [{"id": "a", "text": "Music"}, {"id": "b", "text": "Spin"}]})"));

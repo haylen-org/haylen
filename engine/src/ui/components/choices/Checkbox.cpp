@@ -10,8 +10,8 @@ void Checkbox::readProperties(PropertyReader& reader) {
     reader.read("checked", checked);
 }
 
-math::Vec2 Checkbox::measureContent(Context& context, float) {
-    return Widgets::measureChoice(context, context.getText(text));
+math::Vec2 Checkbox::measureContent(Context& context, float availableWidth) {
+    return Widgets::measureChoice(context, context.getText(text), availableWidth);
 }
 
 void Checkbox::render(Context& context, const math::Rect& bounds) {

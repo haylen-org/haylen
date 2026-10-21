@@ -1769,7 +1769,7 @@ ui.mount(ui.alert{tone = 'warning', title = 'Careful', message = 'Night is comin
 
 ### ui.button(properties)
 
-A button that reports `click` when pressed. It can take the focus.
+A button that reports `click` when pressed. It can take the focus. A label longer than the width the button gets, such as in a narrow panel, wraps onto more lines and the button grows taller to hold them.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1902,7 +1902,7 @@ ui.mount(ui.popover{
 
 ### ui.checkbox(properties)
 
-A box with a check mark and a label. Pressing it flips `checked` and reports `change` with `checked`. It can take the focus.
+A box with a check mark and a label. Pressing it flips `checked` and reports `change` with `checked`. It can take the focus. A label longer than the width the check box gets wraps onto more lines like a `label`, centered beside the box.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1919,7 +1919,7 @@ end})
 
 ### ui.toggle(properties)
 
-A switch with a label. Off, its track takes the theme `track` color with the `knob` at its start, and on, the `accent` color covers the track with the knob at its end. A change slides the knob across over the theme `transitionDuration` while the color of the on state fades in or out over the whole track, so the track itself never moves or changes its shape. Like a button, the track and its on color take the `hover` color under the pointer and the `pressed` color while the switch is held, and the knob takes the `pressed` color while held, so every state draws from the same parts. The theme `track`, `trackFill` and `knob` surfaces draw it when the theme has them, with `trackFill` inside the padding of `track`. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
+A switch with a label, which wraps onto more lines like the label of a check box. Off, its track takes the theme `track` color with the `knob` at its start, and on, the `accent` color covers the track with the knob at its end. A change slides the knob across over the theme `transitionDuration` while the color of the on state fades in or out over the whole track, so the track itself never moves or changes its shape. Like a button, the track and its on color take the `hover` color under the pointer and the `pressed` color while the switch is held, and the knob takes the `pressed` color while held, so every state draws from the same parts. The theme `track`, `trackFill` and `knob` surfaces draw it when the theme has them, with `trackFill` inside the padding of `track`. It takes the properties of `checkbox`, reports `change` with `checked` and can take the focus.
 
 ```lua
 local ui = require('haylen.ui')
@@ -1931,7 +1931,7 @@ end})
 
 ### ui.radioGroup(properties)
 
-A group of options of which one is picked. Picking another option reports `change` with the item id as `value`. It can take the focus, which goes to the selected option. The theme `radio` and `radioSelected` surfaces draw the marks when the theme has them.
+A group of options of which one is picked, where the labels of a vertical group wrap at its width like the label of a check box. Picking another option reports `change` with the item id as `value`. It can take the focus, which goes to the selected option. The theme `radio` and `radioSelected` surfaces draw the marks when the theme has them.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
