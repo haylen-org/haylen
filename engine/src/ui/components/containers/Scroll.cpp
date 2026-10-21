@@ -14,6 +14,7 @@
 #include "haylen/ui/Context.hpp"
 #include "haylen/ui/PropertyReader.hpp"
 #include "ui/ImGuiConverter.hpp"
+#include "ui/ScrollFade.hpp"
 
 namespace haylen::ui {
 
@@ -171,6 +172,10 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             idle = 0.0F;
         }
         settle();
+        if (scroller.getMaximum() > 0.0) {
+            const double shownOffset = std::clamp(scroller.getOffset(), 0.0, scroller.getMaximum());
+            ScrollFade::draw(context, box, horizontal, shownOffset, scroller.getMaximum() - shownOffset);
+        }
         if (overflowing) {
             scrollbar.draw(context, 1.0F);
         }

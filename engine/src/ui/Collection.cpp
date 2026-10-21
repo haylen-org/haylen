@@ -16,6 +16,7 @@
 #include "haylen/ui/PropertyReader.hpp"
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ScrollArbiter.hpp"
+#include "ui/ScrollFade.hpp"
 #include "ui/Scrollbar.hpp"
 #include "ui/Scroller.hpp"
 #include "ui/Surfaces.hpp"
@@ -950,6 +951,13 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     drawLeaving(context);
     drawRefresh(context);
     ImGui::PopClipRect();
+    if (scroller->getMaximum() > 0.0) {
+        // A mirrored collection starts at its right end, so the content past its left edge is what its offset has not reached yet.
+        const double shown = std::clamp(scroller->getOffset(), 0.0, scroller->getMaximum());
+        const double rest = scroller->getMaximum() - shown;
+        const bool mirrored = rightToLeft && !isVertical();
+        ScrollFade::draw(context, cellArea, !isVertical(), mirrored ? rest : shown, mirrored ? shown : rest);
+    }
     if (barShown) {
         const bool touch = context.getInput().getLastDevice() == input::InputDevice::Touch;
         scrollbar->draw(context, touch ? std::clamp(1.0F - (idle - kScrollbarFadeDelay) / kScrollbarFade, 0.0F, 1.0F) : 1.0F);

@@ -2113,7 +2113,7 @@ Componentes e layout da UI:
 - [ ] O rótulo da barra de progresso fica legível sobre a parte cheia e sobre a vazia.
 - [ ] Os rótulos dos botões de toque guardam margem do anel e diminuem para caber.
 - [ ] Os segmentos do controle segmentado guardam um padding mínimo, e o segmento escolhido fica dentro do trilho em todo tema.
-- [ ] As áreas que rolam mostram um degradê na borda onde o conteúdo continua, configurável pelo tema.
+- [x] As áreas que rolam mostram um degradê na borda onde o conteúdo continua, configurável pelo tema. Feito: `scroll` e `collection` esmaecem o conteúdo na cor de tema `scrollFade`, ao longo da métrica `scrollFade`, em cada borda onde o conteúdo continua, com ou sem barra, e o degradê cresce conforme o conteúdo se afasta da ponta.
 - [ ] `ui.emptyState` com ícone e largura máxima de leitura, o sinal de menos de verdade no campo numérico e nenhum "-0" nos números formatados.
 - [ ] A janela (`GUI-033`) com sombra, folga entre o botão de fechar e a ponta da barra e posição dentro da área segura em qualquer escala, e o texto do overlay da área segura sem cobrir a interface.
 

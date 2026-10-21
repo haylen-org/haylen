@@ -32,6 +32,19 @@ class LayoutTest : public ::testing::Test, public test::UiFixture {
         }
         return false;
     }
+
+    // Whether the last frame drew a vertex of the color on the line across the screen at the height.
+    [[nodiscard]] static bool hasVertex(math::Color color, float y) {
+        const ImU32 packed = ImGui::ColorConvertFloat4ToU32({color.r, color.g, color.b, color.a});
+        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+            for (const ImDrawVert& vertex : list->VtxBuffer) {
+                if (vertex.col == packed && std::fabs(vertex.pos.y - y) < 0.5F) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 };
 
 } // namespace
@@ -154,6 +167,22 @@ TEST_F(LayoutTest, FillsTheAreaOfAScrollWithAShorterChild) {
     gui->set("top", {{"height", 100}});
     frames(2);
     EXPECT_EQ(getBounds(*gui, "bottom").y, 100.0F);
+}
+
+// An area that scrolls fades its content into the theme color along each edge where the content continues, and only there.
+TEST_F(LayoutTest, FadesTheEdgesOfAScrollWhereTheContentContinues) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "area", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
+    frames(2);
+    getUi().getBackend().makeCurrent();
+    const math::Color fade = getUi().getTheme().getColor(Theme::Color::ScrollFade);
+    const math::Rect area = getBounds(*gui, "area");
+    EXPECT_TRUE(hasVertex(fade, area.getBottom()));
+    EXPECT_FALSE(hasVertex(fade, area.y));
+
+    gui->command(getUi().getContext(), "area", "scrollTo", core::Json{{"offset", 600}, {"animated", false}});
+    frames(2);
+    EXPECT_TRUE(hasVertex(fade, area.y));
+    EXPECT_FALSE(hasVertex(fade, area.getBottom()));
 }
 
 TEST_F(LayoutTest, KeepsMarginsAroundChildrenAndPaddingInsideContainers) {

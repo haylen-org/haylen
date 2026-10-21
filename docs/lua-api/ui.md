@@ -3083,6 +3083,8 @@ Every area that scrolls, `scroll`, `collection`, the text of `textArea`, the pop
 | `scrollbarSize` | `10` | The thickness of the bar. |
 | `scrollbarInset` | `4` | The space between the bar and the edge of its area. The ends of the bar keep it from the other edges and from the rounded corners of dialogs, popups and text areas. |
 
+A `scroll` and a `collection` also fade their content into the theme color `scrollFade` over the theme metric `scrollFade` along each edge where the content continues past the area, whether the bar shows or not, so the player sees that there is more. A fade grows in as the content moves away from its end and is gone once the content rests at that end.
+
 The lane takes room from the content only while the content is longer than its area, and padding on the side of the bar counts toward it, so the content of a dialog keeps its width and a popup grows by the part of the lane its padding leaves. The layout never changes back and forth as the bar comes and goes. The colors `scrollbar` and `scrollbarHover` paint the thumb, and the [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint it and its track with images in the same place. A `style` changes all of them for one node and the nodes inside it.
 
 ```lua
@@ -3215,6 +3217,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The four tones `success`, `warn
 | `onInformation` | `#FFFFFFFF` | `#FFFFFFFF` | Ink on the information fill. |
 | `informationBackground` | `#263AA8E0` | `#1F2A8CC0` | Subtle background of the information tone. |
 | `informationText` | `#FF7FCBF2` | `#FF1D6A93` | Text of the information tone. |
+| `scrollFade` | `#CC0F111A` | `#CCF4F5F9` | The color the content of a `scroll` or a `collection` fades into along an edge where it continues past the area. |
 
 ## Theme metrics
 
@@ -3275,6 +3278,7 @@ Both built-in themes share these metrics, in design units.
 | `menuPadding` | `8` | Space between the edge of the popup of a combo, a menu button or a context menu and its rows. |
 | `splitterSize` | `10` | Thickness of the handle of splitters. |
 | `scrollLine` | `64` | Distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
+| `scrollFade` | `32` | Length of the fade along an edge of a `scroll` or a `collection` where the content continues past the area, 0 to draw none. |
 | `readingWidth` | `880` | Widest line of the title and the message of an empty state, which keeps a long message comfortable to read on a wide screen. |
 | `cellRadius` | `12` | Corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
 | `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |

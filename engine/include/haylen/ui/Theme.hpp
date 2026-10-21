@@ -69,6 +69,7 @@ class Theme final {
         OnInformation,
         InformationBackground,
         InformationText,
+        ScrollFade,
     };
 
     enum class Metric : std::uint8_t {
@@ -128,6 +129,7 @@ class Theme final {
         SplitterSize,
         ScrollLine,
         ReadingWidth,
+        ScrollFade,
     };
 
     enum class Font : std::uint8_t {
@@ -217,8 +219,8 @@ class Theme final {
     // Loads a texture for a theme image from a path relative to the package `content/` folder.
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
-    static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::InformationText) + 1;
-    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ReadingWidth) + 1;
+    static constexpr std::size_t kColorCount = static_cast<std::size_t>(Color::ScrollFade) + 1;
+    static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ScrollFade) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::FocusRing) + 1;
 
@@ -349,6 +351,7 @@ class Theme final {
         {"onInformation", 0xFFFFFFFF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
         {"informationBackground", 0x3AA8E026, 0x2A8CC01F, 0x7FD1FF40, 0x0B548026},
         {"informationText", 0x7FCBF2FF, 0x1D6A93FF, 0xA8E0FFFF, 0x0A4A70FF},
+        {"scrollFade", 0x0F111ACC, 0xF4F5F9CC, 0x000000E6, 0xFFFFFFE6},
     }};
     static constexpr std::array<MetricRole, kMetricCount> kMetricRoles{{
         {"controlHeight", 64.0F},
@@ -407,6 +410,7 @@ class Theme final {
         {"splitterSize", 10.0F},
         {"scrollLine", 64.0F},
         {"readingWidth", 880.0F},
+        {"scrollFade", 32.0F},
     }};
     static constexpr std::array<std::string_view, kFontCount> kFontNames{"body", "caption", "button", "heading", "title", "monospace"};
     static constexpr std::array<std::string_view, kSurfaceCount> kSurfaceNames{

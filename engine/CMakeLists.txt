@@ -668,6 +668,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/PropertyReader.cpp
   src/ui/Scaling.cpp
   src/ui/ScrollArbiter.cpp
+  src/ui/ScrollFade.cpp
   src/ui/Scrollbar.cpp
   src/ui/Scroller.cpp
   src/ui/Style.cpp
