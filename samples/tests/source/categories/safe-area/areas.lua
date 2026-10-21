@@ -1,7 +1,9 @@
--- The safe area the tests of the category show: the simulated devices of `haylen.viewport`, a phone with a dynamic island where the screen has no notch, the insets and the bands of the screen outside the safe area.
+-- The safe area the tests of the category show: the simulated devices of `haylen.viewport`, a phone with a dynamic island where the screen has no notch, the insets, the bands of the screen outside the safe area and a preview of the device with its safe area.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local viewport = require('haylen.viewport')
+
+local Device = require('categories.safe-area.device')
 
 local areas = {}
 
@@ -30,6 +32,36 @@ end
 function areas.insets()
     local visible, safe = viewport.visibleRect(), viewport.safeRect()
     return safe.y - visible.y, visible:right() - safe:right(), visible:bottom() - safe:bottom(), safe.x - visible.x
+end
+
+-- The kind of device of `device.lua` that draws each simulated device.
+areas.kinds = {device = 'island', iphoneNotch = 'notch', iphoneDynamicIsland = 'island', ipad = 'tablet', androidGestureBar = 'android', television = 'tv', custom = 'island'}
+
+-- Formats a whole number of units, never as "-0".
+function areas.number(value)
+    local rounded = math.floor(value + 0.5)
+    return tostring(rounded == 0 and 0 or rounded)
+end
+
+-- Draws a device of the kind held sideways around the rectangle `bounds`, with a screen of the shape of the visible screen, the bands outside the safe area of the visible screen shaded on its screen and its safe area outlined, and returns the screen and the safe area of the preview, which the tests fill.
+function areas.drawPreview(bounds, kind)
+    local visible = viewport.visibleRect()
+    local fit = math.min(bounds.width / visible.width, bounds.height / visible.height) * 0.86
+    local width, height = visible.width * fit, visible.height * fit
+    local screen = {bounds.x + (bounds.width - width) / 2, bounds.y + (bounds.height - height) / 2, width, height}
+    local top, right, bottom, left = areas.insets()
+    local safe = {screen[1] + left * fit, screen[2] + top * fit, width - (left + right) * fit, height - (top + bottom) * fit}
+    local device, radius = Device.around(kind, screen, kind ~= 'tv' and kind ~= 'tablet')
+    device.screen = '#FF1E3A5F'
+    Device.draw(device)
+    graphics2d.pushMask(function()
+        graphics2d.drawShape(screen, {radius = radius, color = '#FFFFFFFF'})
+    end, {layer = 3})
+    graphics2d.drawRect(screen, '#40F0473E')
+    graphics2d.drawRect(safe, '#FF1E3A5F', {layer = 1})
+    graphics2d.popMask()
+    graphics2d.drawShape(safe, {radius = 8, color = '#00000000', borderWidth = 2, borderColor = '#CC3AA8E0', layer = 5})
+    return screen, safe
 end
 
 -- Fills the four bands of the screen outside the safe area and outlines the safe area.
