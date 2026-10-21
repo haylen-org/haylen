@@ -4,18 +4,19 @@ local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
-local City = require('city')
 local MapView = require('map-view')
 local Page = require('page')
 local Places = require('data.places')
 local Rides = require('rides')
 local Shell = require('shell')
+local Style = require('style')
 
 local TripDetail = haylen.class('TripDetail', Page)
 
 TripDetail.mapSize = {960, 480}
 
 function TripDetail:enter()
+    local space = Style.space
     local trip
     for _, past in ipairs(Rides.past) do
         if past.id == self.params.trip then
@@ -28,53 +29,63 @@ function TripDetail:enter()
     self.target = graphics.newRenderTarget(TripDetail.mapSize[1], TripDetail.mapSize[2], {filter = 'linear'})
     self.mapName = '@route-' .. trip.id
     ui.setImage(self.mapName, self.target)
-    self.camera = graphics2d.newCamera()
-    local bounds = MapView.bounds(self.route, 300)
-    self.camera.position = {bounds.x + bounds.width / 2, bounds.y + bounds.height / 2}
-    local zoom = math.min((TripDetail.mapSize[1] - 120) / bounds.width, (TripDetail.mapSize[2] - 120) / bounds.height)
-    self.camera.zoom = {zoom, zoom}
+    self.map = MapView()
+    local bounds = MapView.bounds(self.route, 600)
+    local zoom = math.min((TripDetail.mapSize[1] - 160) / bounds.width, (TripDetail.mapSize[2] - 160) / bounds.height)
+    self.map.camera.zoom = {zoom, zoom}
+    -- The view keeps inside the city, so the edge of the map never shows beside a route near it.
+    local city = Rides.city
+    local halfWidth, halfHeight = TripDetail.mapSize[1] / zoom / 2, TripDetail.mapSize[2] / zoom / 2
+    local x = math.max(halfWidth, math.min(city.width - halfWidth, bounds.x + bounds.width / 2))
+    local y = math.max(halfHeight, math.min(city.height - halfHeight, bounds.y + bounds.height / 2))
+    self.map.camera.position = {x, y}
     local kind = Rides.kind(trip.kind)
     local service = trip.cancelled and 0 or trip.fare * 0.08
     self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
         Shell.header('Trip to ' .. to.name),
         ui.scroll{grow = 1, height = 0,
-            ui.column{maxWidth = 860, align = 'center', gap = 14, padding = {4, 20, 28, 20},
-                ui.image{image = self.mapName, align = 'stretch', aspectRatio = TripDetail.mapSize[1] / TripDetail.mapSize[2], radius = 22, fit = 'cover', accessibilityLabel = 'Map of the route'},
-                ui.card{gap = 8,
-                    ui.row{gap = 12, ui.icon{image = Shell.icon('pin'), size = 24, color = 'accentText'}, ui.column{gap = 0, grow = 1, ui.label{text = from.name, font = 'button'}, ui.label{text = from.line, font = 'caption', color = 'textMuted'}}},
-                    ui.row{gap = 12, ui.icon{image = Shell.icon('flag'), size = 24, color = 'text'}, ui.column{gap = 0, grow = 1, ui.label{text = to.name, font = 'button'}, ui.label{text = to.line, font = 'caption', color = 'textMuted'}}},
-                    ui.divider{},
-                    ui.label{text = trip.caption, font = 'caption', color = 'textMuted'},
-                },
-                ui.card{
-                    ui.row{gap = 14,
-                        ui.avatar{name = trip.driver.name, size = 56},
-                        ui.column{gap = 0, grow = 1, ui.label{text = trip.driver.name, font = 'button'}, ui.label{text = trip.driver.car .. ' · ' .. trip.driver.plate, font = 'caption', color = 'textMuted'}},
-                        ui.image{image = kind.art, width = 88, height = 52, fit = 'contain'},
+            Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
+                ui.image{image = self.mapName, align = 'stretch', aspectRatio = TripDetail.mapSize[1] / TripDetail.mapSize[2], radius = Style.radius.sheet, fit = 'cover', accessibilityLabel = 'Map of the route'},
+                ui.row{gap = space.m, align = 'stretch',
+                    ui.column{gap = 0, width = 28, padding = {14, 0},
+                        ui.icon{image = Shell.icon('dot'), size = 28, color = 'text', align = 'center'},
+                        ui.divider{vertical = true, grow = 1, width = 4, align = 'center', color = 'borderStrong', style = {metrics = {borderWidth = 2.5}}},
+                        ui.icon{image = Shell.icon('square'), size = 28, color = 'text', align = 'center'},
+                    },
+                    ui.column{gap = space.m, grow = 1,
+                        ui.column{gap = 0, ui.label{text = from.name, font = 'button'}, ui.label{text = from.line, font = 'caption', color = 'textMuted'}},
+                        ui.column{gap = 0, ui.label{text = to.name, font = 'button'}, ui.label{text = to.line, font = 'caption', color = 'textMuted'}},
                     },
                 },
-                ui.card{gap = 8,
-                    ui.label{text = 'Receipt', font = 'button'},
+                ui.label{text = trip.caption, color = 'textMuted'},
+                ui.divider{},
+                ui.row{gap = space.m,
+                    ui.avatar{name = trip.driver.name, size = 64},
+                    ui.column{gap = 0, grow = 1, ui.label{text = trip.driver.name, font = 'button'}, ui.label{text = trip.driver.car .. ' · ' .. trip.driver.plate, font = 'caption', color = 'textMuted'}},
+                    ui.image{image = kind.art, width = 112, height = 64, fit = 'contain'},
+                },
+                ui.card{gap = space.s, padding = space.l, style = {colors = {raised = Style.color.mist, border = Style.color.mist}, metrics = {panelRadius = Style.radius.control}},
+                    ui.label{text = 'Receipt', font = 'heading'},
                     self:costRow('Fare', trip.cancelled and 'Cancelled' or Rides.money(trip.fare - service)),
                     self:costRow('Service', Rides.money(service)),
                     ui.divider{},
                     self:costRow('Total', trip.price, 'heading'),
                 },
-                ui.row{wrap = true, gap = 12,
+                ui.row{wrap = true, gap = space.s,
                     ui.button{id = 'help', text = 'Get help', icon = Shell.icon('info'), iconColor = 'text', grow = 1, onClick = function()
-                        Shell.notify('Our team answers questions about this trip in the chat.', 'information')
+                        Shell.notify('Our team answers questions about this trip in the chat.')
                     end},
                     ui.button{id = 'again', text = 'Ride there again', variant = 'primary', grow = 1, onClick = function()
                         Shell.open(require('screens.preview'), {to = to.id})
                     end},
                 },
-            },
+            }),
         },
     })
 end
 
 function TripDetail:costRow(text, value, font)
-    return ui.row{gap = 8, ui.label{text = text, font = font or 'body', color = font and 'text' or 'textMuted', grow = 1}, ui.label{text = value, font = font or 'body'}}
+    return ui.row{gap = Style.space.s, ui.label{text = text, font = font or 'body', color = font and 'text' or 'textMuted', grow = 1}, ui.label{text = value, font = font or 'body'}}
 end
 
 function TripDetail:exit()
@@ -84,19 +95,14 @@ end
 -- Draws the route into its render target, which the picture of the page shows.
 function TripDetail:render()
     Page.render(self)
-    local day = ui.theme() == 'rideDay'
-    local palette = day and City.light or City.dark
-    local unit = 1 / self.camera.zoom.x
-    graphics2d.beginTarget(self.target, self.camera, {clear = palette.ground})
-    Rides.city:draw(palette, self.camera:visibleBounds())
+    local map = self.map
+    graphics2d.beginTarget(self.target, map.camera, {clear = Style.map.ground})
+    map.unit = 1.6 / map.camera.zoom.x
+    Rides.city:draw(Style.map, map.camera:visibleBounds())
     local route = self.route
-    local accent = ui.themeColor('accent')
-    graphics2d.drawStroke(route, {width = 18 * unit, color = '#FF1E1B33', join = 'round', cap = 'round'})
-    graphics2d.drawStroke(route, {width = 11 * unit, color = accent, join = 'round', cap = 'round'})
-    graphics2d.drawCircle(route[1], route[2], 16 * unit, '#FF1E1B33')
-    graphics2d.drawCircle(route[1], route[2], 10 * unit, accent)
-    graphics2d.drawCircle(route[#route - 1], route[#route], 16 * unit, '#FF1E1B33')
-    graphics2d.drawCircle(route[#route - 1], route[#route], 10 * unit, '#FFFFFFFF')
+    map:drawRoute(route)
+    map:drawPickup(route[1], route[2])
+    map:drawDestination(route[#route - 1], route[#route])
 end
 
 return TripDetail

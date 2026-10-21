@@ -7,13 +7,15 @@ local Random = require('random')
 local Traffic = haylen.class('Traffic')
 
 Traffic.speed = 90
+-- The colors of the cars, soft enough that the car of the driver stands out in the yellow of the app.
+Traffic.colors = {'#FFFFFFFF', '#FFF1F1EE', '#FFB9DCF5', '#FFF7C1B5', '#FFC5E8CF', '#FFD9D4F2'}
 
 function Traffic:init(city, count, seed)
     self.city = city
     self.random = Random(seed)
     self.cars = {}
     for index = 1, count do
-        local car = {color = self.random:pick({'#FFFFFFFF', '#FFFFC93C', '#FF2FB3C4', '#FFE8452C', '#FF9AA6C8'})}
+        local car = {color = self.random:pick(Traffic.colors)}
         self:send(car)
         car.ridden = self.random:number(0, car.length)
         self.cars[index] = car

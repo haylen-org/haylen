@@ -49,6 +49,11 @@ function Rides.money(amount)
     return string.format('$%.2f', amount)
 end
 
+function Rides.thousands(number)
+    local text = tostring(number):reverse():gsub('(%d%d%d)', '%1,'):reverse():gsub('^,', '')
+    return text
+end
+
 function Rides.kind(id)
     for _, kind in ipairs(Rides.kinds) do
         if kind.id == id then

@@ -1,23 +1,17 @@
--- The frame of the app: the tabs, the navigation between screens, the notices and the layout that follows the size of the window. Phones show a tab bar at the bottom, and wider windows show a rail on the side.
+-- The frame of the app: the navigation between screens, the notices and the parts that float over the map. The map fills the screen and has no tab bar: a round button opens the menu with the trips, the wallet and the account, and every step of a ride shows in a sheet, at the bottom of a phone or as a panel beside the map on a wide window.
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
+local Style = require('style')
+
 local Shell = {}
 
-Shell.tabs = {
-    {id = 'home', text = 'Ride', icon = 'car', screen = 'screens.home'},
-    {id = 'activity', text = 'Activity', icon = 'receipt', screen = 'screens.activity'},
-    {id = 'wallet', text = 'Wallet', icon = 'wallet', screen = 'screens.wallet'},
-    {id = 'account', text = 'Account', icon = 'user', screen = 'screens.account'},
-}
--- The width in UI units from which the window shows the rail instead of the tab bar.
-Shell.wideWidth = 960
 Shell.pushTransition = {duration = 0.3, effect = 'slideIn', direction = 'left', ease = 'cubicOut'}
 Shell.backTransition = {duration = 0.26, effect = 'slideIn', direction = 'right', ease = 'cubicOut'}
-Shell.flatBar = {metrics = {panelRadius = 0}}
-Shell.current = 'home'
+Shell.riseTransition = {duration = 0.28, effect = 'moveIn', direction = 'up', ease = 'cubicOut'}
+Shell.menuTransition = {duration = 0.24, effect = 'moveIn', direction = 'right', ease = 'cubicOut'}
 
 function Shell.icon(name)
     return 'icons/' .. name .. '.svg'
@@ -30,116 +24,99 @@ function Shell.width()
 end
 
 function Shell.isWide()
-    return Shell.width() >= Shell.wideWidth
+    return Shell.width() >= Style.wideWidth
 end
 
--- Mounts the notices, which stay above every screen, and shows the first tab.
+-- Mounts the notices, which stay above every screen, and shows the map.
 function Shell.start()
-    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'bottom', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
-    Shell.showTab('home')
+    Shell.notices = ui.mount(ui.toast{id = 'notice', position = 'top', duration = 2.5, indicator = 'icon'}, {layer = 10, sharedFocus = true})
+    Shell.showHome()
 end
 
 function Shell.notify(text, tone)
-    Shell.notices:command('notice', 'show', {text = text, tone = tone or 'success'})
+    Shell.notices:command('notice', 'show', {text = text, tone = tone or 'neutral'})
 end
 
--- Shows a tab as the only screen, without a transition, the way native tab bars switch. The parameters reach the screen of the tab.
-function Shell.showTab(id, params)
-    for _, tab in ipairs(Shell.tabs) do
-        if tab.id == id then
-            Shell.current = id
-            if scene.size() > 1 then
-                scene.popToRoot()
-            end
-            scene.replace(require(tab.screen)(params))
-            window.setBackLeavesApp(id == 'home')
-            return
-        end
+-- Shows the map with the sheet that asks where to as the only screen.
+function Shell.showHome()
+    if scene.size() > 1 then
+        scene.popToRoot()
     end
+    scene.replace(require('screens.home')())
+    window.setBackLeavesApp(true)
 end
 
--- Pushes a screen over the current one with a slide.
-function Shell.open(Screen, params)
+-- Pushes a screen over the current one with a slide, or with another transition.
+function Shell.open(Screen, params, transition)
     window.setBackLeavesApp(false)
-    return scene.push(Screen(params), Shell.pushTransition)
+    return scene.push(Screen(params), transition or Shell.pushTransition)
 end
 
--- Puts a screen in the place of the current one with the same slide, such as the route after the search.
+-- Puts a screen in the place of the current one with the same slide, such as the trip after its request.
 function Shell.replace(Screen, params)
     return scene.replace(Screen(params), Shell.pushTransition)
 end
 
--- Goes back one screen, or to the home tab from the root of another tab.
+-- Goes back one screen.
 function Shell.back()
     if scene.size() > 1 then
-        scene.pop(Shell.backTransition)
+        scene.pop(scene.top().backTransition or Shell.backTransition)
         if scene.size() == 2 then
-            window.setBackLeavesApp(Shell.current == 'home')
+            window.setBackLeavesApp(true)
         end
-    elseif Shell.current ~= 'home' then
-        Shell.showTab('home')
     end
 end
 
--- Shows the rail or the tab bar of a screen built with `Shell.frame`, and tells the screen when the window crosses the wide width.
+-- Opens a page of the menu: over the map with the menu closed.
+function Shell.openPage(Screen, params)
+    if scene.size() > 1 then
+        scene.popToRoot()
+    end
+    Shell.open(Screen, params)
+end
+
+-- Tells a screen when the window crosses the wide width.
 function Shell.adapt(page)
     local wide = Shell.isWide()
     if page.wide == wide then
         return
     end
     page.wide = wide
-    if page.gui:has('rail') then
-        page.gui:set('rail', {visible = wide})
-        page.gui:set('tabBar', {visible = not wide})
-    end
     if page.layoutChanged then
         page:layoutChanged(wide)
     end
 end
 
-function Shell.tabButton(tab, current, placement)
-    local selected = tab.id == current
-    return ui.button{
-        id = placement .. '-' .. tab.id,
-        text = tab.text,
-        icon = Shell.icon(tab.icon),
-        iconPlacement = placement == 'bar' and 'top' or 'start',
-        justify = placement == 'bar' and 'center' or 'start',
-        variant = 'toolbar',
-        grow = placement == 'bar' and 1 or 0,
-        align = placement == 'bar' and 'center' or 'stretch',
-        checked = selected and placement == 'rail',
-        iconColor = selected and 'accentText' or 'textMuted',
-        style = {colors = {text = selected and 'accentText' or 'textMuted'}},
-        accessibilityLabel = tab.text,
-        onClick = function()
-            if not selected then
-                Shell.showTab(tab.id)
-            end
-        end,
-    }
+-- A round white button that floats over the map, with a soft shadow of its own.
+function Shell.mapButton(id, icon, label, onClick, properties)
+    local size = Style.size.mapButton
+    local button = {id = id, icon = Shell.icon(icon), iconColor = 'text', width = size, height = size, accessibilityLabel = label, tooltip = label, onClick = onClick,
+        style = {colors = {raised = Style.color.paper, border = Style.color.paper}, metrics = {controlRadius = size / 2, controlPaddingX = 0}}}
+    for key, value in pairs(properties or {}) do
+        button[key] = value
+    end
+    local card = {padding = Style.space.xxs, align = button.align or 'start', anchor = button.anchor, margin = button.margin, visible = button.visible, style = {metrics = {panelRadius = size / 2 + Style.space.xxs}}}
+    button.align, button.anchor, button.margin, button.visible = nil, nil, nil, nil
+    card[1] = ui.button(button)
+    return ui.card(card)
 end
 
--- Wraps the content of a tab with the rail and the tab bar.
-function Shell.frame(current, content, onCancel)
-    local rail = {width = 260, gap = 6, align = 'stretch', padding = {28, 16}, style = Shell.flatBar,
-        ui.row{gap = 12, padding = {0, 12, 20, 12},
-            ui.image{image = 'images/logo.svg', width = 44, height = 44},
-            ui.label{text = 'Ride Hailing', font = 'heading', wrap = false},
-        },
-    }
-    local bar = {gap = 0}
-    for _, tab in ipairs(Shell.tabs) do
-        rail[#rail + 1] = Shell.tabButton(tab, current, 'rail')
-        bar[#bar + 1] = Shell.tabButton(tab, current, 'bar')
+-- The sheet of a step of a ride: a white card with large round corners that floats at the bottom of a phone, with a handle, or as a panel at the top left of a wide window.
+function Shell.sheet(id, children, wide)
+    local space = Style.space
+    local sheet = {id = id, gap = space.m, padding = wide and {space.l, space.l, space.l, space.l} or {space.s, space.l, space.l, space.l}}
+    if not wide then
+        sheet[1] = ui.panel{width = 56, height = 6, padding = 0, align = 'center', margin = {0, 0, space.xxs, 0}, style = {colors = {panel = Style.color.lineStrong}, metrics = {panelRadius = 3}}, accessibilityHidden = true}
     end
-    return ui.row{gap = 0, onCancel = onCancel or Shell.back,
-        ui.row{id = 'rail', visible = false, gap = 0, align = 'stretch', ui.panel(rail), ui.divider{vertical = true, align = 'stretch'}},
-        ui.column{grow = 1, gap = 0, align = 'stretch',
-            content,
-            ui.column{id = 'tabBar', gap = 0, ui.divider{}, ui.panel{padding = {6, 8, 4, 8}, style = Shell.flatBar, ui.row(bar)}},
-        },
-    }
+    for _, child in ipairs(children) do
+        sheet[#sheet + 1] = child
+    end
+    if wide then
+        sheet.anchor, sheet.width, sheet.margin = 'topLeft', Style.size.panel, {space.l, space.l}
+    else
+        sheet.anchor, sheet.margin = 'stretchBottom', {0, space.xs, space.xs, space.xs}
+    end
+    return ui.card(sheet)
 end
 
 -- Centers a node in the width it gets, as wide as it may be up to `maxWidth`. A `grow` lets the row take the free height of a column.
@@ -150,17 +127,15 @@ function Shell.centered(maxWidth, node, grow)
     return ui.row{gap = 0, grow = grow or 0, align = 'stretch', ui.spacer{grow = 1}, node, ui.spacer{grow = 1}}
 end
 
--- A bar at the top of a screen: a back button, a title and optional trailing nodes.
-function Shell.header(title, trailing, back)
-    local row = {gap = 8, padding = {10, 12}, height = 76}
-    if back ~= false then
-        row[#row + 1] = ui.button{id = 'back', icon = Shell.icon('back'), variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = Shell.back}
-    end
+-- A bar at the top of a page of the menu: a back button, a title and optional trailing nodes.
+function Shell.header(title, trailing)
+    local row = {gap = Style.space.xs, padding = {0, Style.space.s}, height = Style.size.header}
+    row[#row + 1] = ui.button{id = 'back', icon = Shell.icon('back'), iconColor = 'text', variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = Shell.back}
     row[#row + 1] = ui.label{id = 'title', text = title, font = 'heading', wrap = false, grow = 1}
     for _, node in ipairs(trailing or {}) do
         row[#row + 1] = node
     end
-    return ui.row(row)
+    return ui.column{gap = 0, ui.row(row), ui.divider{}}
 end
 
 return Shell

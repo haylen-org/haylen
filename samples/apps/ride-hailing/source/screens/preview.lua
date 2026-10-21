@@ -1,4 +1,4 @@
--- The route to a destination: the map with the route, the pickup and the destination, the six kinds of ride with their prices and times, the payment and the button that requests the ride.
+-- The ride to a destination: the map with the route, the pickup and the destination, and a sheet with the six kinds of ride with their prices and times, the payment and the button that requests the ride.
 local assets = require('haylen.assets')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -9,6 +9,7 @@ local Page = require('page')
 local Places = require('data.places')
 local Rides = require('rides')
 local Shell = require('shell')
+local Style = require('style')
 
 local Preview = haylen.class('Preview', Page)
 
@@ -20,9 +21,9 @@ function Preview:enter()
     self.route, self.length = Rides.route(self.from, self.to)
     self.kind = 'compact'
     self.payment = Rides.wallet.payment
-    local kinds = {}
+    self.kinds = {}
     for _, kind in ipairs(Rides.kinds) do
-        kinds[#kinds + 1] = {
+        self.kinds[#self.kinds + 1] = {
             id = kind.id,
             type = 'kind',
             name = kind.name,
@@ -32,19 +33,23 @@ function Preview:enter()
             eta = kind.minutes .. ' min away',
         }
     end
-    self:mountGui(ui.stack{onCancel = Shell.back,
-        ui.row{align = 'start', padding = 12, gap = 10,
-            ui.card{padding = 4, ui.button{id = 'back', icon = Shell.icon('back'), variant = 'icon', accessibilityLabel = 'Back', tooltip = 'Back', onClick = Shell.back}},
-            ui.card{padding = {4, 18, 4, 18}, ui.column{gap = 0,
-                ui.label{text = 'To ' .. self.to.name, font = 'button', wrap = false},
-                ui.label{text = string.format('%s · %d min', Rides.distanceText(self.length), Rides.minutes(self.length)), font = 'caption', color = 'textMuted'},
-            }},
-        },
-        ui.card{id = 'sheet', anchor = 'stretchBottom', gap = 10, padding = {18, 18, 18, 18}, margin = {0, 12, 12, 12},
-            ui.label{text = 'Choose a ride', font = 'heading'},
-            ui.collection{id = 'kinds', height = 280, gap = 4, selection = 'single', selected = {'compact'}, selectionFollowsFocus = true, rememberFocus = true,
-                types = {kind = {template = ui.row{gap = 14, padding = {6, 10},
-                    ui.image{part = 'art', bind = {image = 'art'}, width = 92, height = 54, fit = 'contain'},
+    self:mountGui(ui.stack{id = 'root', onCancel = Shell.back})
+end
+
+function Preview:layoutChanged(wide)
+    local space = Style.space
+    self.gui:replaceChildren('root', {
+        Shell.mapButton('back', 'back', 'Back', Shell.back, {anchor = wide and 'topRight' or 'topLeft', margin = space.m}),
+        Shell.sheet('sheet', {
+            ui.row{gap = space.s,
+                ui.column{gap = 0, grow = 1,
+                    ui.label{text = 'To ' .. self.to.name, font = 'heading', wrap = false},
+                    ui.label{text = string.format('%s · about %d minutes', Rides.distanceText(self.length), Rides.minutes(self.length)), color = 'textMuted'},
+                },
+            },
+            ui.collection{id = 'kinds', height = 84 * 4, gap = space.xxs, selection = 'single', selected = {self.kind}, selectionFollowsFocus = true, rememberFocus = true,
+                types = {kind = {template = ui.row{gap = space.m, padding = {space.xs, space.s},
+                    ui.image{part = 'art', bind = {image = 'art'}, width = 104, height = 60, fit = 'contain'},
                     ui.column{gap = 0, grow = 1,
                         ui.label{part = 'name', bind = {text = 'name'}, font = 'button', wrap = false},
                         ui.label{part = 'seats', bind = {text = 'seats'}, font = 'caption', color = 'textMuted', wrap = false},
@@ -53,25 +58,24 @@ function Preview:enter()
                         ui.label{part = 'price', bind = {text = 'price'}, font = 'button', align = 'end'},
                         ui.label{part = 'eta', bind = {text = 'eta'}, font = 'caption', color = 'textMuted', align = 'end'},
                     },
-                }, estimatedSize = 70}},
+                }, estimatedSize = 84}},
                 onSelect = function(event)
                     self:pickKind(event.item)
                 end,
             },
-            ui.row{gap = 10,
-                ui.menuButton{id = 'payment', text = self:paymentText(), icon = Shell.icon('wallet'), variant = 'toolbar', items = self:paymentItems(), grow = 1, justify = 'start', onSelect = function(event)
-                    self.payment = event.item
-                    Rides.wallet.payment = event.item
-                    event.gui:set('payment', {text = self:paymentText()})
-                end},
-                ui.button{id = 'request', text = '', variant = 'primary', grow = 1, onClick = function()
-                    self:request()
-                end},
-            },
-        },
+            ui.divider{},
+            ui.menuButton{id = 'payment', text = self:paymentText(), icon = Shell.icon(self:paymentIcon()), iconColor = 'text', variant = 'toolbar', items = self:paymentItems(), justify = 'start', align = 'stretch', onSelect = function(event)
+                self.payment = event.item
+                Rides.wallet.payment = event.item
+                event.gui:set('payment', {text = self:paymentText(), icon = Shell.icon(self:paymentIcon())})
+            end},
+            ui.button{id = 'request', text = '', variant = 'primary', align = 'stretch', height = 72, style = {fonts = {button = {size = Style.type.heading * 0.85}}}, onClick = function()
+                self:request()
+            end},
+        }, wide),
     })
-    self.gui:collection('kinds'):setItems(kinds)
-    self:pickKind('compact')
+    self.gui:collection('kinds'):setItems(self.kinds)
+    self:pickKind(self.kind)
 end
 
 function Preview:paymentItems()
@@ -91,13 +95,14 @@ function Preview:paymentText()
     end
 end
 
-function Preview:pickKind(id)
-    self.kind = id
-    self.gui:set('request', {text = 'Request ' .. Rides.kind(id).name})
+function Preview:paymentIcon()
+    return self.payment == 'cash' and 'cash' or (self.payment == 'wallet' and 'wallet' or 'card')
 end
 
-function Preview:layoutChanged(wide)
-    self.gui:set('sheet', wide and {anchor = 'topRight', width = 520, margin = 16} or {anchor = 'stretchBottom', width = 'auto', margin = {0, 12, 12, 12}})
+function Preview:pickKind(id)
+    self.kind = id
+    local kind = Rides.kind(id)
+    self.gui:set('request', {text = 'Request ' .. kind.name .. ', ' .. Rides.money(Rides.price(kind, self.length))})
 end
 
 function Preview:request()
@@ -105,6 +110,7 @@ function Preview:request()
     Shell.replace(require('screens.trip'))
 end
 
+-- Fits the route into the part of the screen the sheet leaves.
 function Preview:update(dt)
     Page.update(self, dt)
     local sheet = self.gui:bounds('sheet')
@@ -112,9 +118,9 @@ function Preview:update(dt)
         return
     end
     local visible = viewport.safeRect()
-    local area = {x = visible.x, y = visible.y + 80, width = visible.width, height = sheet.y - visible.y - 80}
+    local area = {x = visible.x, y = visible.y, width = visible.width, height = sheet.y - visible.y}
     if self.wide then
-        area = {x = visible.x, y = visible.y + 80, width = sheet.x - visible.x, height = visible.height - 80}
+        area = {x = sheet.x + sheet.width, y = visible.y, width = visible.x + visible.width - sheet.x - sheet.width, height = visible.height}
     end
     self.map:fit(MapView.bounds(self.route, 400), area, dt, not self.placed)
     self.placed = true
@@ -126,10 +132,9 @@ function Preview:render()
     map:begin()
     map:drawTraffic()
     local route = self.route
-    local accent = ui.themeColor('accent')
-    map:drawRoute(route, nil, accent)
-    map:drawPin(route[1], route[2], map.icons.pin, accent, 'Pickup', self.font)
-    map:drawPin(route[#route - 1], route[#route], map.icons.flag, '#FFFFFFFF', Rides.minutes(self.length) .. ' min', self.font)
+    map:drawRoute(route)
+    map:drawPickup(route[1], route[2], 'Pickup', self.font)
+    map:drawDestination(route[#route - 1], route[#route], Rides.minutes(self.length) .. ' min', self.font)
 end
 
 return Preview

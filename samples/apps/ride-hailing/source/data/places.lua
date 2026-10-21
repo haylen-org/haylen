@@ -22,7 +22,7 @@ Places.streets = {'Harbor Lane', 'Market Street', 'Garden Row', 'Maple Avenue', 
 -- The places the person saved, with the first places of the list as their corners.
 Places.saved = {
     {id = 'home', text = 'Home', icon = 'home', corner = {3, 13}, line = '12 Harbor Lane'},
-    {id = 'work', text = 'Work', icon = 'flag', corner = {12, 3}, line = '480 Market Street'},
+    {id = 'work', text = 'Work', icon = 'work', corner = {12, 3}, line = '480 Market Street'},
 }
 Places.here = {id = 'here', name = 'Current location', line = '7 Garden Row', corner = {6, 11}}
 

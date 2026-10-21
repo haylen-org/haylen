@@ -1,58 +1,77 @@
--- The ride tab: the night map of the city with its traffic and the rider, under a sheet that asks where to, with the saved places, the recent destinations and the ride in progress.
+-- The map: the day map of the city fills the screen with its traffic and the rider, the round buttons of the menu and of the rider's place float over it, and a sheet asks where to, with the saved places, the recent destinations and the ride in progress.
 local assets = require('haylen.assets')
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
+local viewport = require('haylen.viewport')
 
 local MapView = require('map-view')
 local Page = require('page')
 local Places = require('data.places')
 local Rides = require('rides')
 local Shell = require('shell')
+local Style = require('style')
 
 local Home = haylen.class('Home', Page)
 
 Home.recent = {'p12', 'p48', 'p230'}
+Home.searchBar = {colors = {raised = Style.color.mist, border = Style.color.mist, text = Style.color.ink}, metrics = {controlRadius = Style.radius.control, iconSize = 30}, fonts = {button = {size = Style.type.heading * 0.85}}}
+Home.place = {colors = {raised = Style.color.paper, border = Style.color.line}, metrics = {controlRadius = Style.radius.chip, controlPaddingX = Style.space.m}}
 
 function Home:enter()
     self.map = MapView()
     self.font = assets.font('fonts/barlow-semibold.ttf')
+    self:mountGui(ui.stack{id = 'root', onCancel = Shell.back})
+    events.on('tripChanged', function()
+        self:showCurrent()
+    end, {owner = self})
+end
+
+function Home:layoutChanged(wide)
+    local space = Style.space
     local recent = {}
     for _, id in ipairs(Home.recent) do
         local place = Places.find(id)
         recent[#recent + 1] = {id = id, text = place.name, caption = place.line, image = Shell.icon('clock')}
     end
-    local shortcuts = {gap = 10}
+    local places = {gap = space.xs, wrap = true}
     for _, saved in ipairs(Places.saved) do
-        shortcuts[#shortcuts + 1] = ui.button{id = 'saved-' .. saved.id, text = saved.text, icon = Shell.icon(saved.icon), iconColor = 'text', grow = 1, onClick = function()
+        places[#places + 1] = ui.button{id = 'saved-' .. saved.id, text = saved.text, icon = Shell.icon(saved.icon), iconColor = 'text', height = 52, style = Home.place, onClick = function()
             Home.preview(saved.id)
         end}
     end
-    self:mountGui(Shell.frame('home', ui.column{id = 'content', grow = 1, gap = 0, padding = 14, justify = 'end',
-        ui.card{id = 'sheet', gap = 12, padding = {18, 18, 18, 18},
-            ui.card{id = 'current', visible = false, padding = {10, 14}, style = {colors = {raised = 'accentBackground'}},
-                ui.row{gap = 12,
-                    ui.icon{image = Shell.icon('car'), size = 32, color = 'accentText'},
-                    ui.column{gap = 0, grow = 1, ui.label{id = 'currentTitle', text = '', font = 'button', wrap = false}, ui.label{id = 'currentCaption', text = '', font = 'caption', color = 'textMuted', wrap = false}},
-                    ui.button{id = 'openTrip', text = 'Open', variant = 'primary', onClick = function()
+    -- A phone shows the menu as a round button over the map, and a wide window in the head of the panel.
+    self.gui:replaceChildren('root', {
+        Shell.mapButton('menu', 'menu', 'Menu', function()
+            Shell.open(require('screens.menu'), nil, Shell.menuTransition)
+        end, {anchor = 'topLeft', margin = space.m, visible = not wide}),
+        Shell.mapButton('locate', 'locate', 'Show where I am', function()
+            self.map:reset()
+        end, {anchor = 'topRight', margin = space.m}),
+        Shell.sheet('sheet', {
+            ui.row{id = 'panelHead', visible = wide, gap = space.s, Shell.mapButton('menuWide', 'menu', 'Menu', function()
+                Shell.open(require('screens.menu'), nil, Shell.menuTransition)
+            end), ui.image{image = 'images/logo.svg', width = 44, height = 44, accessibilityHidden = true}, ui.label{text = 'Ride Hailing', font = 'heading', grow = 1, wrap = false}},
+            ui.card{id = 'current', visible = false, padding = {space.s, space.m}, style = {colors = {raised = Style.color.yellow, border = Style.color.yellow}, metrics = {panelRadius = Style.radius.control}},
+                ui.row{gap = space.s,
+                    ui.icon{image = Shell.icon('car'), size = 34, color = 'text'},
+                    ui.column{gap = 0, grow = 1, ui.label{id = 'currentTitle', text = '', font = 'button', wrap = false}, ui.label{id = 'currentCaption', text = '', font = 'caption', wrap = false}},
+                    ui.button{id = 'openTrip', text = 'Open', style = {colors = {raised = Style.color.ink, border = Style.color.ink, text = Style.color.paper}}, onClick = function()
                         Shell.open(require('screens.trip'))
                     end},
                 },
             },
-            ui.label{text = 'Good evening, Rosa', font = 'heading'},
-            ui.button{id = 'whereTo', text = 'Where to?', icon = Shell.icon('search'), iconColor = 'textMuted', justify = 'start', align = 'stretch', autofocus = true, onClick = function()
+            ui.label{text = 'Good evening, Rosa', font = 'title', style = Style.text('title', Style.type.heading)},
+            ui.button{id = 'whereTo', text = 'Where to?', icon = Shell.icon('search'), iconColor = 'text', justify = 'start', align = 'stretch', height = 72, autofocus = true, style = Home.searchBar, onClick = function()
                 Shell.open(require('screens.search'))
             end},
-            ui.row(shortcuts),
-            ui.label{text = 'Recent', font = 'caption', color = 'textMuted'},
+            ui.row(places),
+            ui.label{text = 'Recent', font = 'caption', color = 'textMuted', margin = {space.xxs, 0, 0, 0}},
             ui.list{id = 'recent', items = recent, onSelect = function(event)
                 Home.preview(event.item)
             end},
-        },
-    }))
-    events.on('tripChanged', function()
-        self:showCurrent()
-    end, {owner = self})
+        }, wide),
+    })
     self:showCurrent()
 end
 
@@ -60,14 +79,11 @@ function Home.preview(placeId)
     Shell.open(require('screens.preview'), {to = placeId})
 end
 
--- The sheet sits at the bottom of a phone and at the top left of a wide window.
-function Home:layoutChanged(wide)
-    self.gui:set('content', {justify = wide and 'start' or 'end'})
-    self.gui:set('sheet', {width = wide and 460 or 'auto', align = wide and 'start' or 'stretch'})
-end
-
 function Home:showCurrent()
     local trip = Rides.current
+    if not self.gui:has('current') then
+        return
+    end
     self.gui:set('current', {visible = trip ~= nil})
     if trip then
         self.gui:set('currentTitle', {text = Rides.stages[trip.stage].title})
@@ -75,18 +91,18 @@ function Home:showCurrent()
     end
 end
 
+-- Fits the place of the rider into the part of the screen the sheet leaves.
 function Home:update(dt)
     Page.update(self, dt)
-    local content, sheet = self.gui:bounds('content'), self.gui:bounds('sheet')
-    if not content or not sheet then
+    local sheet = self.gui:bounds('sheet')
+    if not sheet then
         return
     end
-    local area = {x = content.x, y = content.y, width = content.width, height = content.height}
+    local area = viewport.safeRect()
     if self.wide then
-        area.x = sheet.x + sheet.width
-        area.width = content.x + content.width - area.x
+        area = {x = sheet.x + sheet.width, y = area.y, width = area.x + area.width - sheet.x - sheet.width, height = area.height}
     else
-        area.height = sheet.y - content.y
+        area = {x = area.x, y = area.y, width = area.width, height = sheet.y - area.y}
     end
     local here = Places.here
     local x, y = Rides.city:corner(here.corner[1], here.corner[2])
@@ -100,8 +116,7 @@ function Home:render()
     map:begin()
     map:drawTraffic()
     local here = Places.here
-    local x, y = Rides.city:corner(here.corner[1], here.corner[2])
-    map:drawPulse(x, y, ui.themeColor('accent'))
+    map:drawPulse(Rides.city:corner(here.corner[1], here.corner[2]))
 end
 
 return Home

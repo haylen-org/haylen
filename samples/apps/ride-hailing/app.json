@@ -19,9 +19,9 @@
         "scaleMode": "physical"
     },
     "splash": {
-        "background": "#FF0B1020"
+        "background": "#FFE9E6DC"
     },
-    "clearColor": "#FF0B1020",
+    "clearColor": "#FFE9E6DC",
     "autoload": [
         "rides"
     ]

@@ -1,41 +1,55 @@
--- The search of a destination: the pickup, a field that narrows the 565 places of the city as the person types, and the saved places first.
+-- The search of a destination: the pickup and the destination joined by a line, a field that narrows the 565 places of the city as the person types, and the saved places first.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Page = require('page')
 local Places = require('data.places')
 local Shell = require('shell')
+local Style = require('style')
 
 local Search = haylen.class('Search', Page)
 
+Search.backTransition = {duration = 0.24, effect = 'push', direction = 'down', ease = 'cubicOut'}
+
 function Search:enter()
+    local space = Style.space
     self.query = ''
     self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
-        Shell.header('Where to?'),
-        Shell.centered(860, ui.column{gap = 0, padding = {0, 16, 0, 16},
-            ui.card{gap = 8, padding = 12,
-                ui.row{gap = 12, ui.icon{image = Shell.icon('pin'), size = 26, color = 'accentText'}, ui.label{text = Places.here.name .. ', ' .. Places.here.line, color = 'textMuted', grow = 1, wrap = false}},
-                ui.divider{},
-                ui.row{gap = 12, ui.icon{image = Shell.icon('flag'), size = 26, color = 'text'}, ui.filterField{id = 'query', placeholder = 'Search a place or an address', grow = 1, returnKey = 'search', onChange = function(event)
-                    self.query = string.lower(event.value)
-                    self:refresh()
-                end, onSubmit = function()
-                    local first = self.shown[1]
-                    if first then
-                        self:pick(first.id)
-                    end
-                end}},
+        Shell.header('Plan your ride'),
+        Shell.centered(Style.size.reading, ui.column{gap = 0, padding = {space.m, space.l, space.s, space.l},
+            ui.row{gap = space.m, align = 'stretch',
+                ui.column{gap = 0, width = 28, padding = {22, 0},
+                    ui.icon{image = Shell.icon('dot'), size = 28, color = 'text', align = 'center'},
+                    ui.divider{vertical = true, grow = 1, width = 4, align = 'center', color = 'borderStrong', style = {metrics = {borderWidth = 2.5}}},
+                    ui.icon{image = Shell.icon('square'), size = 28, color = 'text', align = 'center'},
+                },
+                ui.column{gap = space.s, grow = 1,
+                    ui.button{id = 'pickup', text = Places.here.name .. ', ' .. Places.here.line, justify = 'start', align = 'stretch', style = {colors = {raised = Style.color.mist, border = Style.color.mist}, fonts = {button = {bold = false}}}, onClick = function()
+                        Shell.notify('Your pickup follows where you are.')
+                    end},
+                    ui.filterField{id = 'query', placeholder = 'Where to?', returnKey = 'search', style = {colors = {raised = Style.color.mist}, metrics = {borderWidth = 2}}, onChange = function(event)
+                        self.query = string.lower(event.value)
+                        self:refresh()
+                    end, onSubmit = function()
+                        local first = self.shown[1]
+                        if first then
+                            self:pick(first.id)
+                        end
+                    end},
+                },
             },
-            ui.label{id = 'count', text = '', font = 'caption', color = 'textMuted', margin = {12, 8, 4, 8}},
+            ui.label{id = 'count', text = '', font = 'caption', color = 'textMuted', margin = {space.m, 0, 0, 0}},
         }),
-        Shell.centered(860, ui.collection{id = 'places', gap = 2, padding = {0, 16, 24, 16}, rememberFocus = true,
-            types = {place = {template = ui.row{gap = 14, padding = {8, 8},
-                ui.icon{part = 'icon', bind = {image = 'icon'}, image = Shell.icon('pin'), size = 28, color = 'textMuted'},
+        Shell.centered(Style.size.reading, ui.collection{id = 'places', gap = 0, padding = {0, space.s, space.xl, space.s}, rememberFocus = true,
+            types = {place = {template = ui.row{gap = space.m, padding = {space.s, space.s},
+                ui.panel{width = 52, height = 52, padding = space.s, justify = 'center', style = {colors = {panel = Style.color.mist}, metrics = {panelRadius = 26}},
+                    ui.icon{part = 'icon', bind = {image = 'icon'}, image = Shell.icon('pin'), size = 28, color = 'text', align = 'center'},
+                },
                 ui.column{gap = 0, grow = 1,
                     ui.label{part = 'name', bind = {text = 'name'}, font = 'button', wrap = false},
                     ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted', wrap = false},
                 },
-            }, estimatedSize = 76}},
+            }, estimatedSize = 80}},
             onSelect = function(event)
                 self:pick(event.item)
             end,

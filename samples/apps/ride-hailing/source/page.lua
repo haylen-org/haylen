@@ -14,8 +14,8 @@ function Page:init(params)
 end
 
 -- Mounts the tree of the screen. Every screen shares the focus with the GUIs of the app, so a remote reaches the notices and back.
-function Page:mountGui(tree)
-    self.gui = ui.mount(tree, {owner = self, sharedFocus = true})
+function Page:mountGui(tree, options)
+    self.gui = ui.mount(tree, {owner = self, sharedFocus = true, placement = options and options.placement})
     self.wide = nil
     Shell.adapt(self)
 end

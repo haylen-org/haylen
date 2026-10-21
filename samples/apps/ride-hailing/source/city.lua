@@ -14,38 +14,6 @@ City.riverRow = 9
 City.riverWidth = 120
 City.avenueEvery = 4
 
-City.light = {
-    ground = '#FFDDE3EE',
-    road = '#FFFFFFFF',
-    avenue = '#FFFFF1C9',
-    block = '#FFEEF1F7',
-    buildings = {'#FFD5DCEA', '#FFCCD4E4', '#FFDCE2EE', '#FFC7D0E2'},
-    roof = '#FFB9C3D8',
-    park = '#FFC6E6C4',
-    tree = '#FF7FC27A',
-    treeDark = '#FF64AA5F',
-    water = '#FF9FD3EA',
-    waterEdge = '#FF7FC0DE',
-    bridge = '#FFFFFFFF',
-    label = '#FF7A86A0',
-}
-
-City.dark = {
-    ground = '#FF0B1020',
-    road = '#FF1E2640',
-    avenue = '#FF2C3358',
-    block = '#FF0F1528',
-    buildings = {'#FF161E36', '#FF19223C', '#FF141B31', '#FF1C2642'},
-    roof = '#FF242E50',
-    park = '#FF102A22',
-    tree = '#FF1D4636',
-    treeDark = '#FF163A2C',
-    water = '#FF0A2638',
-    waterEdge = '#FF0F3249',
-    bridge = '#FF2C3358',
-    label = '#FF5C6A90',
-}
-
 function City:init(seed)
     self.random = Random(seed)
     self.columns = self:streetLines(false)
@@ -261,13 +229,16 @@ end
 function City:draw(palette, visible)
     local width, height = self.width, self.height
     graphics2d.drawRect({-600, -600, width + 1200, height + 1200}, palette.ground)
-    for index = 0, City.blocks do
-        local column, row = self.columns[index], self.rows[index]
-        local street = self:streetWidth(index)
-        local color = self:isAvenue(index) and palette.avenue or palette.road
-        graphics2d.drawRect({column - street / 2, -600, street, height + 1200}, color)
-        if index ~= City.riverRow then
-            graphics2d.drawRect({-600, row - street / 2, width + 1200, street}, color)
+    -- Every street draws its edge first and its surface over it, so the streets keep a thin border where they meet the blocks.
+    for pass = 1, 2 do
+        for index = 0, City.blocks do
+            local column, row = self.columns[index], self.rows[index]
+            local street = self:streetWidth(index) + (pass == 1 and 4 or 0)
+            local color = pass == 1 and palette.roadEdge or (self:isAvenue(index) and palette.avenue or palette.road)
+            graphics2d.drawRect({column - street / 2, -600, street, height + 1200}, color)
+            if index ~= City.riverRow then
+                graphics2d.drawRect({-600, row - street / 2, width + 1200, street}, color)
+            end
         end
     end
     local riverY = self.rows[City.riverRow]

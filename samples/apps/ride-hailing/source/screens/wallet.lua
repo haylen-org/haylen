@@ -1,4 +1,4 @@
--- The wallet tab: the balance with a way to add funds, the cards and the latest movements.
+-- The wallet: the balance on a dark card with a way to add funds, the ways to pay and the latest movements.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -6,48 +6,50 @@ local ui = require('haylen.ui')
 local Page = require('page')
 local Rides = require('rides')
 local Shell = require('shell')
+local Style = require('style')
 
 local Wallet = haylen.class('Wallet', Page)
 
 Wallet.amounts = {{id = '10', text = '$10'}, {id = '20', text = '$20'}, {id = '50', text = '$50'}, {id = '100', text = '$100'}}
 
 function Wallet:enter()
+    local space = Style.space
     self.amount = 20
     local cards = {}
     for _, card in ipairs(Rides.wallet.cards) do
         cards[#cards + 1] = {id = card.id, text = card.text, caption = card.caption, image = Shell.icon(card.icon)}
     end
     cards[#cards + 1] = {id = 'cash', text = 'Cash', caption = 'Pay the driver at the end of the ride', image = Shell.icon('cash')}
-    self:mountGui(Shell.frame('wallet', ui.column{grow = 1, gap = 0,
-        ui.row{padding = {14, 20, 8, 20}, ui.label{text = 'Wallet', font = 'title'}},
+    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+        Shell.header('Wallet'),
         ui.scroll{grow = 1, height = 0,
-            ui.column{maxWidth = 860, align = 'center', gap = 14, padding = {4, 20, 28, 20},
-                ui.card{gap = 6, padding = {22, 24}, style = {colors = {raised = 'accent', border = 'accent'}},
-                    ui.label{text = 'Wallet balance', color = 'onAccent'},
-                    ui.label{id = 'balance', text = '', font = 'title', color = 'onAccent'},
-                    ui.button{id = 'addFunds', text = 'Add funds', icon = Shell.icon('plus'), align = 'start', margin = {8, 0, 0, 0}, style = {colors = {raised = '#FF0B1020', border = '#FF0B1020', text = '#FFEAF0FF'}}, iconColor = 'accent', onClick = function(event)
+            Shell.centered(Style.size.reading, ui.column{gap = space.l, padding = {space.l, space.l, space.xl, space.l},
+                ui.card{gap = space.xs, padding = {space.l, space.l}, style = {colors = {raised = Style.color.ink, border = Style.color.ink}, metrics = {panelRadius = Style.radius.sheet}},
+                    ui.row{gap = space.s, ui.icon{image = Shell.icon('wallet'), size = 30, color = 'accent'}, ui.label{text = 'Wallet balance', color = 'onTooltip', grow = 1}},
+                    ui.label{id = 'balance', text = '', font = 'title', color = 'onTooltip', style = Style.text('title', Style.type.display)},
+                    ui.button{id = 'addFunds', text = 'Add funds', icon = Shell.icon('plus'), iconColor = 'text', variant = 'primary', align = 'start', margin = {space.xs, 0, 0, 0}, onClick = function(event)
                         event.gui:set('fundsDialog', {open = true})
                     end},
                 },
-                ui.sectionTitle{text = 'Payment methods'},
-                ui.card{padding = 6, ui.list{id = 'cards', items = cards}},
-                ui.sectionTitle{text = 'Movements'},
-                ui.card{padding = 6, ui.list{id = 'movements', items = {}}},
-            },
+                ui.label{text = 'Ways to pay', font = 'heading'},
+                ui.list{id = 'cards', items = cards},
+                ui.label{text = 'Movements', font = 'heading'},
+                ui.list{id = 'movements', items = {}},
+            }),
         },
         ui.dialog{id = 'fundsDialog', title = 'Add funds', message = 'The money comes from the card ending in 4821.',
             buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'add', text = 'Add funds', variant = 'primary'}},
             onAnswer = function(event)
                 if event.button == 'add' then
                     Rides.addFunds(self.amount)
-                    Shell.notify(Rides.money(self.amount) .. ' added to your wallet.')
+                    Shell.notify(Rides.money(self.amount) .. ' added to your wallet.', 'success')
                 end
             end,
             ui.segmentedControl{id = 'amount', items = Wallet.amounts, selected = '20', onChange = function(event)
                 self.amount = tonumber(event.value)
             end},
         },
-    }))
+    })
     events.on('walletChanged', function()
         self:showWallet()
     end, {owner = self})

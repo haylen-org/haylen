@@ -1,4 +1,4 @@
--- The activity tab: the 520 past trips in a recycled list under sticky months, each opening its details.
+-- The trips: the 520 past trips in a recycled list under sticky months, each opening its details.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -6,29 +6,31 @@ local ui = require('haylen.ui')
 local Page = require('page')
 local Rides = require('rides')
 local Shell = require('shell')
+local Style = require('style')
 
 local Activity = haylen.class('Activity', Page)
 
 function Activity:enter()
-    self:mountGui(Shell.frame('activity', ui.column{grow = 1, gap = 0,
-        ui.row{padding = {14, 20, 8, 20}, ui.label{text = 'Activity', font = 'title'}},
-        Shell.centered(980, ui.collection{id = 'trips', gap = 2, padding = {0, 12, 24, 12}, rememberFocus = true,
+    local space = Style.space
+    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+        Shell.header('Your trips'),
+        Shell.centered(Style.size.reading, ui.collection{id = 'trips', gap = 0, padding = {0, space.s, space.xl, space.s}, rememberFocus = true,
             types = {
-                month = {template = ui.panel{padding = {12, 8, 6, 8}, style = Shell.flatBar, ui.sectionTitle{part = 'title', bind = {text = 'title'}}}, sticky = true, interactive = false},
-                trip = {template = ui.row{gap = 14, padding = {8, 8},
-                    ui.image{part = 'art', bind = {image = 'art'}, width = 88, height = 52, fit = 'contain'},
+                month = {template = ui.panel{padding = {space.m, space.s, space.xs, space.s}, style = {metrics = {panelRadius = 0}}, ui.label{part = 'title', bind = {text = 'title'}, font = 'heading'}}, sticky = true, interactive = false},
+                trip = {template = ui.row{gap = space.m, padding = {space.s, space.s},
+                    ui.panel{width = 112, height = 72, padding = space.xs, style = {colors = {panel = Style.color.mist}, metrics = {panelRadius = Style.radius.control}}, ui.image{part = 'art', bind = {image = 'art'}, fit = 'contain', align = 'stretch', grow = 1}},
                     ui.column{gap = 0, grow = 1,
                         ui.label{part = 'title', bind = {text = 'title'}, font = 'button', wrap = false},
                         ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted', wrap = false},
                     },
                     ui.label{part = 'price', bind = {text = 'price'}, font = 'button'},
-                }, estimatedSize = 76},
+                }, estimatedSize = 96},
             },
             onSelect = function(event)
                 Shell.open(require('screens.trip-detail'), {trip = event.item})
             end,
         }, 1),
-    }))
+    })
     self.list = self.gui:collection('trips')
     events.on('tripChanged', function()
         self:showTrips()
