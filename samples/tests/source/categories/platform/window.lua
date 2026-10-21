@@ -11,7 +11,7 @@ local Test = require('harness.test')
 local Window = haylen.class('Window', Test)
 
 Window.code = [[
-print(haylen.platform, haylen.backend, window.orientation(), window.hasPointerDevice(), haylen.appState())
+print(haylen.platform, haylen.graphicsApi, window.orientation(), window.hasPointerDevice(), haylen.appState())
 local safe = viewport.safeRect()  -- The visible area minus notches, bars and rounded corners.
 window.setFullscreen(true)  window.setKeyboardVisible(true)
 viewport.setSafeAreaSimulation('iphoneNotch')
@@ -102,7 +102,7 @@ function Window:rows()
     local simulation = viewport.safeAreaSimulation()
     return {
         {'"haylen.platform"', quoted(haylen.platform)},
-        {'"haylen.backend"', quoted(haylen.backend)},
+        {'"haylen.graphicsApi"', quoted(haylen.graphicsApi)},
         {'"haylen.version"', quoted(haylen.version)},
         {'App', string.format('%s %s, %s', haylen.config.name, haylen.config.version, quoted(haylen.config.identifier))},
         {'"window.framebufferSize()"', string.format('%.0f x %.0f pixels, DPI scale %.2f', width, height, window.dpiScale())},
@@ -120,7 +120,7 @@ end
 
 function Window:update(dt)
     Window.super.update(self, dt)
-    self:status(string.format('Platform "%s" on "%s", the UI wants the keyboard "%s", back leaves the app "%s"', haylen.platform, haylen.backend, tostring(ui.usingKeyboard()), tostring(window.backLeavesApp())))
+    self:status(string.format('Platform "%s" on "%s", the UI wants the keyboard "%s", back leaves the app "%s"', haylen.platform, haylen.graphicsApi, tostring(ui.usingKeyboard()), tostring(window.backLeavesApp())))
 end
 
 -- Draws the visible area scaled into a box with the safe area and the keyboard inside it.

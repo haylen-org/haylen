@@ -16,6 +16,19 @@ class EmbeddedFiles final {
 
     // The Thai phrase model of BudouX, a JSON file under the Apache 2.0 license.
     [[nodiscard]] static std::span<const std::uint8_t> getThaiPhraseModel();
+
+    // The shader packages of the programs of the 2D renderer, which the Haylen shader compiler writes when the engine builds.
+    [[nodiscard]] static std::span<const std::uint8_t> getSpriteShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getTextShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getMeshShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getBlendShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getCompositeShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getLightShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getMetaballShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getRecolorShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getEffectShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getShapeShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getBackdropShader();
 };
 
 } // namespace haylen::core

@@ -281,6 +281,32 @@ class FileNameTest(unittest.TestCase):
         self.assertEqual([name for name in files if "_" in name and not allowed(name)], [], "These tracked files and folders use underscores where their names take dashes.")
 
 
+class BackendIsolationTest(unittest.TestCase):
+    """The engine reaches its backend only through its interfaces, so a backend swaps without touching the engine and the Lua API never changes with it."""
+
+    SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}
+
+    def sources(self) -> dict[str, str]:
+        root = Path(__file__).resolve().parent.parent
+        files = subprocess.run(["git", "ls-files", "engine"], cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
+        return {name: (root / name).read_text(encoding="utf-8") for name in files if Path(name).suffix in self.SOURCE_SUFFIXES}
+
+    def test_only_the_folder_of_a_backend_reaches_its_libraries(self):
+        library = re.compile(r'#\s*(include|import)\s*[<"](sokol_\w+\.h)[>"]|\b(sapp|sg|sglue|slog)_\w+\s*\(')
+        reaching = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/backends/", name) and library.search(text)]
+        self.assertEqual(reaching, [], "These files outside the folder of a backend include its headers or call its library.")
+
+    def test_only_the_folder_of_a_backend_includes_its_headers(self):
+        including = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/backends/", name) and re.search(r'#\s*(include|import)\s*"backends/', text)]
+        self.assertEqual(including, [], "These files include the headers of a backend, which only the backend itself and its tests include.")
+
+    def test_the_lua_bindings_know_no_backend_and_no_host(self):
+        binding = re.compile(r"engine/src/(lua/|.*Lua\.(cpp|hpp)$)")
+        host = re.compile(r'#\s*include\s*"(backends/|gpu/NullDevice|platform/(NativeHost|NativeWindow|Player|Services)\.hpp|platform/(apple|android|web|windows|linux|headless)/)')
+        knowing = [name for name, text in self.sources().items() if binding.match(name) and host.search(text)]
+        self.assertEqual(knowing, [], "These Lua bindings include a backend, a host or a platform folder, while the Lua API stays the same on every backend and platform.")
+
+
 class WritingTest(unittest.TestCase):
     root = Path(__file__).resolve().parent.parent
 
@@ -724,7 +750,7 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "ios-simulator-debug" / "bin" / "game" / "package.txt").write_text(str(self.scratch / "package"))
         args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "ios-simulator"])
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
-        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
+        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
         self.assertEqual(launch.call_args.args[2:], (simulator, []))
 
@@ -759,7 +785,7 @@ class RunCppTest(unittest.TestCase):
             mock.patch.object(haylen, "android_device", return_value="emulator-5554"),
             mock.patch.object(haylen, "capture", return_value="arm64-v8a"),
             mock.patch.object(haylen, "run"),
-            mock.patch.object(haylen, "ensure_shdc", return_value="shdc"),
+            mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"),
             mock.patch.object(haylen, "android_options", return_value=[]),
             mock.patch.object(haylen, "App"),
             mock.patch.object(haylen, "ensure_artifacts"),
@@ -782,7 +808,7 @@ class RunCppTest(unittest.TestCase):
         executable = self.scratch / "app"
         for options, launched in (([], True), (["--build-only"], False)):
             args = haylen.build_parser().parse_args(["run-cpp", str(self.scratch / "project"), *options])
-            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shdc", return_value="shdc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
                 haylen.command_run_cpp(args)
             self.assertEqual([executable] in [call.args[0] for call in run.call_args_list], launched)
             self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
@@ -807,31 +833,48 @@ class ShaderCompilerTest(unittest.TestCase):
         self.scratch = Path(tempfile.mkdtemp())
         self.addCleanup(shutil.rmtree, self.scratch)
 
-    def test_a_new_pin_of_the_shader_compiler_configures_the_build_tree_again(self):
-        compiler = self.scratch / "tools" / "sokol-shdc-new" / "sokol-shdc"
+    def test_another_shader_compiler_configures_the_build_tree_again(self):
+        compiler = self.scratch / "tools" / "haylen-shaderc-new" / "haylen-shaderc"
         tree = self.scratch / "build" / "macos-debug"
         tree.mkdir(parents=True)
-        arguments = argparse.Namespace(platform="macos", config="Debug", backend=None, sanitizers=None)
-        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shdc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_RENDER_BACKEND:STRING=AUTO\nHAYLEN_SOKOL_SHDC:FILEPATH={(self.scratch / 'tools' / 'sokol-shdc').as_posix()}\n")
+        arguments = argparse.Namespace(platform="macos", config="Debug", graphics_api=None, sanitizers=None)
+        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_RENDER_BACKEND:STRING=AUTO\nHAYLEN_SOKOL_SHDC:FILEPATH={compiler.as_posix()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
 
-    def test_the_shader_compiler_appears_only_once_it_is_complete_and_executable(self):
-        target = self.scratch / f"sokol-shdc-{haylen.SHDC_COMMIT[:7]}" / haylen.executable_name("sokol-shdc")
+    def test_the_variable_names_a_build_of_the_compiler_to_use_instead_of_the_pinned_one(self):
+        compiler = self.scratch / "haylen-shaderc"
+        compiler.write_text("compiler")
+        with mock.patch.dict(os.environ, {haylen.SHADER_COMPILER_VARIABLE: str(compiler)}), mock.patch.object(haylen, "run") as run:
+            self.assertEqual(haylen.ensure_shaderc(), compiler.resolve())
+        run.assert_not_called()
+        with mock.patch.dict(os.environ, {haylen.SHADER_COMPILER_VARIABLE: str(self.scratch / "missing")}):
+            with self.assertRaisesRegex(haylen.BuildError, haylen.SHADER_COMPILER_VARIABLE):
+                haylen.ensure_shaderc()
 
-        def download(url: str, partial: Path, sha256: str | None = None) -> None:
-            self.assertFalse(target.exists())
-            partial.parent.mkdir(parents=True, exist_ok=True)
-            partial.write_bytes(b"compiler")
+    def test_the_pinned_compiler_builds_once_into_a_folder_of_its_commit(self):
+        folder = self.scratch / f"haylen-shaderc-{haylen.SHADER_COMPILER_COMMIT[:7]}"
+        executable = haylen.executable_name("haylen-shaderc")
 
-        with mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "download", side_effect=download):
-            self.assertEqual(haylen.ensure_shdc(), target)
-        self.assertTrue(os.access(target, os.X_OK))
-        self.assertEqual([path.name for path in target.parent.iterdir()], [target.name])
+        def build(command, *arguments, **options):
+            if "--build" in command:
+                built = folder / "build" / "tools" / executable
+                built.parent.mkdir(parents=True, exist_ok=True)
+                built.write_text("compiler")
+
+        environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
+        with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "TOOLS_DIR", self.scratch), mock.patch.object(haylen, "run", side_effect=build) as run, mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            self.assertEqual(haylen.ensure_shaderc(), folder / executable)
+            fetched = [call.args[0] for call in run.call_args_list if "fetch" in [str(part) for part in call.args[0]]]
+            self.assertEqual([str(part) for part in fetched[0]][-2:], [haylen.SHADER_COMPILER_REPOSITORY, haylen.SHADER_COMPILER_COMMIT])
+            calls = run.call_count
+            self.assertEqual(haylen.ensure_shaderc(), folder / executable)
+            self.assertEqual(run.call_count, calls)
+        self.assertEqual((folder / executable).read_text(), "compiler")
 
 
 class XcodeGenTest(unittest.TestCase):
@@ -878,7 +921,7 @@ class EmscriptenTest(unittest.TestCase):
     def test_a_web_tree_of_another_version_builds_again_from_nothing(self):
         tree = self.scratch / "build" / "web-release"
         tree.mkdir(parents=True)
-        (tree / "CMakeCache.txt").write_text("HAYLEN_RENDER_BACKEND:STRING=WGPU\n")
+        (tree / "CMakeCache.txt").write_text("HAYLEN_GRAPHICS_API:STRING=WGPU\n")
         (tree / "object.o").write_bytes(b"object")
         (tree / haylen.EMSCRIPTEN_MARKER).write_text("1.0.0")
         self.assertTrue(haylen.is_stale_web_tree(tree))
@@ -886,7 +929,7 @@ class EmscriptenTest(unittest.TestCase):
             haylen.configure_web_tree(["emcmake", "cmake"], tree)
         run.assert_called_once()
         self.assertFalse((tree / "object.o").exists())
-        (tree / "CMakeCache.txt").write_text("HAYLEN_RENDER_BACKEND:STRING=WGPU\n")
+        (tree / "CMakeCache.txt").write_text("HAYLEN_GRAPHICS_API:STRING=WGPU\n")
         self.assertFalse(haylen.is_stale_web_tree(tree))
 
 

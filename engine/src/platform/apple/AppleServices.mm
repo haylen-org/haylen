@@ -18,6 +18,9 @@
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/io/Package.hpp"
 #include "io/CompositePackage.hpp"
+#include "platform/MemoryWarning.hpp"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 #import "platform/apple/AppleAccessibility.hpp"
 #import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
@@ -38,9 +41,6 @@
 #import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
-#include "platform/sokol/MemoryWarning.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -65,7 +65,7 @@ void Services::initialize() {
     dispatch_resume(pressure);
 #else
     [NSNotificationCenter.defaultCenter addObserverForName:UIApplicationDidReceiveMemoryWarningNotification object:nil queue:nil usingBlock:^(NSNotification*) { MemoryWarning::raise(); }];
-    [NSNotificationCenter.defaultCenter addObserverForName:AVAudioSessionMediaServicesWereResetNotification object:nil queue:nil usingBlock:^(NSNotification*) { SokolRuntime::postEvent({.type = Event::Type::AudioServicesReset}); }];
+    [NSNotificationCenter.defaultCenter addObserverForName:AVAudioSessionMediaServicesWereResetNotification object:nil queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::AudioServicesReset}); }];
 #endif
 #if !TARGET_OS_OSX
     AppleKeyboard::observe();
@@ -150,7 +150,7 @@ math::Rect Services::getWindowFrame() {
 #if TARGET_OS_OSX
     return AppleDesktop::getFrame();
 #else
-    return {0.0F, 0.0F, sapp_widthf() / sapp_dpi_scale(), sapp_heightf() / sapp_dpi_scale()};
+    return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 #endif
 }
 
@@ -165,7 +165,7 @@ std::vector<Monitor> Services::getMonitors() {
     return AppleDesktop::getMonitors();
 #else
     const math::Rect screen = getWindowFrame();
-    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = sapp_dpi_scale(), .primary = true}};
+    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = NativeWindow::getScale(), .primary = true}};
 #endif
 }
 
@@ -194,10 +194,10 @@ void Services::updateWindow() {
 }
 
 math::Insets Services::getSafeAreaInsets() {
-    const float scale = sapp_dpi_scale();
+    const float scale = NativeWindow::getScale();
 #if TARGET_OS_OSX
     // The camera housing of a notched display covers the top of its screen, which only a fullscreen window or a borderless window placed there reaches, and a fullscreen window that the system keeps below the housing does not.
-    NSWindow* window = (__bridge NSWindow*)sapp_macos_get_window();
+    NSWindow* window = (__bridge NSWindow*)NativeWindow::getHandle();
     NSScreen* screen = window.screen;
     if (screen == nil || screen.safeAreaInsets.top <= 0.0) {
         return {};
@@ -206,7 +206,7 @@ math::Insets Services::getSafeAreaInsets() {
     const CGFloat covered = NSMaxY(content) - (NSMaxY(screen.frame) - screen.safeAreaInsets.top);
     return {.top = static_cast<float>(std::clamp<CGFloat>(covered, 0.0, NSHeight(content))) * scale};
 #else
-    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     if (window == nil) {
         return {};
     }
@@ -333,7 +333,7 @@ void Services::cancelScreen(std::uint64_t id) {
 
 HaylenNativeWindow Services::getNativeWindow() {
 #if TARGET_OS_OSX
-    return {.handle = const_cast<void*>(sapp_macos_get_window()), .display = nullptr};
+    return {.handle = NativeWindow::getHandle(), .display = nullptr};
 #else
     return {};
 #endif

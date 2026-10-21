@@ -3,27 +3,25 @@
 #include <mutex>
 #include <vector>
 
-#include "sokol_gfx.h"
+#include "haylen/gpu/Device.hpp"
 
 namespace haylen::graphics {
 
-// Collects GPU objects whose owners died so they are destroyed on the frame thread once no queued draw can use them.
+// Collects the GPU objects whose owners died, from any thread, so they are destroyed on the frame thread once no queued draw can use them.
 class ResourceGraveyard final {
   public:
-    void bury(sg_image image, sg_view view);
-    void buryView(sg_view view);
-    void buryBuffer(sg_buffer buffer);
-    void buryShader(sg_shader shader);
-    void buryPipeline(sg_pipeline pipeline);
-    void collect();
+    void bury(gpu::Device::Image image);
+    void bury(gpu::Device::Buffer buffer);
+    void bury(gpu::Device::Program program);
+    void bury(gpu::Device::Pipeline pipeline);
+    void collect(gpu::Device& device);
 
   private:
     std::mutex mutex;
-    std::vector<sg_image> images;
-    std::vector<sg_view> views;
-    std::vector<sg_buffer> buffers;
-    std::vector<sg_shader> shaders;
-    std::vector<sg_pipeline> pipelines;
+    std::vector<gpu::Device::Image> images;
+    std::vector<gpu::Device::Buffer> buffers;
+    std::vector<gpu::Device::Program> programs;
+    std::vector<gpu::Device::Pipeline> pipelines;
 };
 
 } // namespace haylen::graphics

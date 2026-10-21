@@ -10,10 +10,10 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 
 | Page | What it covers |
 | --- | --- |
-| [Architecture](core/architecture.md) | The libraries the engine builds, the source layout, plugins, the host boundary, the frame, threads, resource ownership, app packages and the web runtime. |
+| [Architecture](core/architecture.md) | The libraries the engine builds, the source layout, plugins, the host boundary, the backends and the GPU device interface, the frame, threads, resource ownership, app packages and the web runtime. |
 | [Lifecycle](core/lifecycle.md) | What happens from start to stop: app states on each platform, the scene lifecycle, the game pause and process modes, autoloads and the owners that end listeners, timers and tasks. |
 | [Lua](core/lua.md) | The app package and `app.json`, modules and asset paths, scenes, autoloads, classes, disk access, asynchronous code, errors, hot reload, performance and Lua modules written in C++. |
-| [`haylen`](lua-api/haylen.md) | Engine version, platform, graphics backend, the resolved `app.json`, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. |
+| [`haylen`](lua-api/haylen.md) | Engine version, platform, graphics API, the resolved `app.json`, the app clock, time scale, the game pause, app states with the cover of native UI, lifecycle options, autoloads, classes, quitting with an exit status and fatal errors. |
 | [`haylen.scene`](lua-api/scene.md) | The stack of scenes and their lifecycle: asynchronous loads with progress, preloads, loading views, transitions that cover, hold and reveal or keep both scenes alive with built-in and custom effects, completion promises, tasks and listeners that end with their scene, process modes and platform events. |
 | [`haylen.events`](lua-api/events.md) | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. |
 | [`haylen.signal`](lua-api/signal.md) | Signals with priorities, one-shot, deferred and owned listeners, and the `Connection` of every listener. |
@@ -31,14 +31,14 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 
 ## Graphics
 
-Graphics draws everything an app shows: the GPU device and its backends, textures and render targets, the 2D renderer with its canvases, cameras and batching, shaders, text in every script and the mapping of design units to the screen.
+Graphics draws everything an app shows: the GPU device and its graphics APIs, textures and render targets, the 2D renderer with its canvases, cameras and batching, shaders, text in every script and the mapping of design units to the screen.
 
 | Page | What it covers |
 | --- | --- |
 | [Rendering](graphics/rendering.md) | The renderer: canvases, captures, scene transitions, draw order, batching, shapes with smooth edges, sprites, node trees, lighting, shaders, post-processing, text, nine-slices, vector images, groups, masks and performance. |
-| [Shaders](graphics/shaders.md) | Fragment shaders of an app: writing, compiling for every backend, the shader library, uniforms, textures, post-processing and the game shaders of the test project. |
+| [Shaders](graphics/shaders.md) | Fragment shaders of an app: the Haylen shader language, compiling for every graphics API, the shader package, the shader library, uniforms, textures, post-processing and the game shaders of the test project. |
 | [Text](graphics/text.md) | Fonts, font families and bitmap fonts, shaping, directions and line breaking, rich text with its markup, effects and typewriter reveal. |
-| [`haylen.graphics`](lua-api/graphics.md) | Textures from pixels, colors, images or the bytes of image files, with mipmaps, images on the CPU that decode and blit off the frame thread, render targets and whole frames read back without waiting for the GPU, PNG files, render targets, TrueType and bitmap fonts, font families, custom shaders and the GPU backend. |
+| [`haylen.graphics`](lua-api/graphics.md) | Textures from pixels, colors, images or the bytes of image files, with mipmaps, images on the CPU that decode and blit off the frame thread, render targets and whole frames read back without waiting for the GPU, PNG files, render targets, TrueType and bitmap fonts, font families, custom shaders and the graphics API. |
 | [`haylen.graphics2d`](lua-api/graphics2d.md) | Canvases, captures, draw order with y sorting and visibility, cameras with viewports, smoothing, drag margins and shake, camera rigs with zones and rails, pixel canvases that scroll smoothly, parallax layers, sprites, sprite batches, tile layers baked by chunks, strokes with joins, caps, textures, widths and dashes, kept meshes that deform in place, groups that fade as one image, masks of any shape, shapes, meshes, text shaped in every script and ordered in both directions, rich text with effects and a typewriter reveal, nine-slices, image blends, metaballs, materials with custom shaders, lit canvases with normal maps, lights and occluders. |
 | [`haylen.video`](lua-api/video.md) | Video files of the package played into a texture with the decoder of each platform, with play, pause, seek, loop, rate, sound through a bus of the mixer, events and asynchronous loads. |
 | [`haylen.viewport`](lua-api/viewport.md) | The design resolution and scaling policy, which change while the app runs, the visible area, the safe area and the edges that native views reserve. |

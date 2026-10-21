@@ -277,7 +277,7 @@ class PhysicsBenchmark final {
             const auto start = std::chrono::steady_clock::now();
             world.debugDraw(renderer);
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-            renderer.endFrame(host.getFrameTarget());
+            renderer.endFrame(host.isFrameTransparent());
         }
         report("Debug drawing of 2000 boxes", total / kRuns, kRuns);
     }

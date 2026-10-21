@@ -281,8 +281,8 @@ int CoreLua::openRoot(lua_State* L) {
     lua_setfield(L, -2, "version");
     lua::Stack::push(L, owner.getPlatformName());
     lua_setfield(L, -2, "platform");
-    lua::Stack::push(L, owner.getGraphics().getBackendName());
-    lua_setfield(L, -2, "backend");
+    lua::Stack::push(L, owner.getGraphics().getApiName());
+    lua_setfield(L, -2, "graphicsApi");
     lua::JsonConverter::push(L, owner.getConfig().toJson());
     lua_setfield(L, -2, "config");
     return 1;

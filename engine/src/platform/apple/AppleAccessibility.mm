@@ -6,8 +6,8 @@
 #import <UIKit/UIKit.h>
 #endif
 
+#include "platform/NativeHost.hpp"
 #include "platform/SystemState.hpp"
-#include "platform/sokol/SokolHost.hpp"
 
 namespace haylen::platform {
 
@@ -23,7 +23,7 @@ void AppleAccessibility::observe() {
 }
 
 void AppleAccessibility::report() {
-    SokolHost::getSystemState().setAccessibility(read());
+    NativeHost::getSystemState().setAccessibility(read());
 }
 
 // The text scale is the size of body text at the preferred content size of the app over its size at the default category, which macOS has no setting for.

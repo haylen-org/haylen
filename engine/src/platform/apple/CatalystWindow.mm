@@ -1,8 +1,8 @@
 #import "platform/apple/CatalystWindow.hpp"
 
 #if TARGET_OS_MACCATALYST
+#include "platform/Player.hpp"
 #import "platform/apple/HaylenScreenSceneDelegate.h"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -16,9 +16,9 @@ void CatalystWindow::resize(UIWindowScene* scene) {
         return;
     }
 
-    const sapp_desc desc = sapp_query_desc();
+    const math::Vec2 size = Player::getOpeningSize();
     const CGRect screen = scene.screen.bounds;
-    const CGRect frame = CGRectMake(CGRectGetMidX(screen) - (desc.width / 2.0), CGRectGetMidY(screen) - (desc.height / 2.0), desc.width, desc.height);
+    const CGRect frame = CGRectMake(CGRectGetMidX(screen) - (size.x / 2.0), CGRectGetMidY(screen) - (size.y / 2.0), size.x, size.y);
     [scene requestGeometryUpdateWithPreferences:[[UIWindowSceneGeometryPreferencesMac alloc] initWithSystemFrame:frame] errorHandler:nil];
 }
 

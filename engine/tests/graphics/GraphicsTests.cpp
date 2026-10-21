@@ -10,7 +10,7 @@
 #include <string_view>
 #include <vector>
 
-#include "graphics/Gpu.hpp"
+#include "gpu/NullDevice.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/core/Engine.hpp"
@@ -189,7 +189,7 @@ TEST(DeviceTest, ReadsRenderTargetsAndCapturesTheScreenInLaterFrames) {
 TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
-    EXPECT_EQ(device.getBackendName(), "dummy");
+    EXPECT_EQ(device.getApiName(), "none");
     EXPECT_EQ(device.getMaxTextureSize(), 16384);
 
     // The headless host takes the limits of desktop GPUs, so strips wider than 1024 pixels, like the foam of Tiny Island, load in tests.
@@ -230,6 +230,7 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
 TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
+    const gpu::NullDevice& gpu = fixture.host().getGpu();
 
     // The first frame sends the atlases of the default font and of the UI.
     fixture.frames(1);
@@ -241,20 +242,20 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
 
     // The first pixels wait for the next frame like any later change.
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 2U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 16U + 16U);
+    EXPECT_EQ(gpu.getLastFrame().imageWrites, 2);
+    EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 16U + 16U);
 
     for (std::uint8_t glyph = 1; glyph <= 12; ++glyph) {
         device.updateTexture(atlas, std::vector<std::uint8_t>(16, glyph));
     }
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 16U);
+    EXPECT_EQ(gpu.getLastFrame().imageWrites, 1);
+    EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 16U);
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, 16U);
     EXPECT_EQ(atlas.getResource()->image.id, atlasImage);
 
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 0U);
+    EXPECT_EQ(gpu.getLastFrame().imageWrites, 0);
 
     // A dynamic texture that takes a new size keeps its handle and stays dynamic, and its new pixels wait for the next frame.
     device.replaceTexture(image, graphics::Image(3, 1, math::Color::white()));
@@ -262,8 +263,8 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
     EXPECT_EQ(image.getResource()->staged.size(), 12U);
     device.updateTexture(image, std::vector<std::uint8_t>(12, 7));
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 12U);
+    EXPECT_EQ(gpu.getLastFrame().imageWrites, 1);
+    EXPECT_EQ(gpu.getLastFrame().imageWriteBytes, 12U);
 
     // A texture released before the upload is skipped.
     graphics::Texture temporary = device.createDynamicTexture(graphics::Image(1, 1, math::Color::white()));
@@ -283,14 +284,14 @@ TEST(DeviceTest, ReportsAFullTexturePool) {
     std::vector<graphics::Texture> textures;
     std::string error;
     try {
-        while (textures.size() <= static_cast<std::size_t>(graphics::Gpu::kImagePoolSize)) {
+        while (textures.size() <= static_cast<std::size_t>(gpu::NullDevice::kImagePoolSize)) {
             textures.push_back(device.createTexture(pixel));
         }
     } catch (const std::runtime_error& failure) {
         error = failure.what();
     }
     EXPECT_NE(error.find("no room for another texture"), std::string::npos);
-    EXPECT_LT(textures.size(), static_cast<std::size_t>(graphics::Gpu::kImagePoolSize));
+    EXPECT_LT(textures.size(), static_cast<std::size_t>(gpu::NullDevice::kImagePoolSize));
 
     // A replacement that finds the pool full keeps the texture it was replacing.
     EXPECT_THROW(device.replaceTexture(textures.front(), graphics::Image(2, 2, math::Color::white())), std::runtime_error);
@@ -328,33 +329,6 @@ TEST(DeviceTest, UpdatesDynamicTexturesEveryFrameWithoutAllocating) {
     EXPECT_EQ(fixture.engine().getRenderer2D().getStats().uploadedBytes, pixels.size());
     EXPECT_EQ(updated, measure(false));
     EXPECT_EQ(texture.getResource()->staged.capacity(), 0U);
-}
-
-TEST(DeviceTest, ReportsAFullPipelinePool) {
-    test::EngineFixture fixture;
-    sg_shader_desc shaderDesc{};
-    shaderDesc.label = "empty";
-    const sg_shader shader = graphics::Gpu::makeShader(shaderDesc);
-    sg_pipeline_desc pipelineDesc{};
-    pipelineDesc.shader = shader;
-    pipelineDesc.label = "empty";
-
-    std::vector<sg_pipeline> pipelines;
-    std::string error;
-    try {
-        while (pipelines.size() <= static_cast<std::size_t>(graphics::Gpu::kPipelinePoolSize)) {
-            pipelines.push_back(graphics::Gpu::makePipeline(pipelineDesc));
-        }
-    } catch (const std::runtime_error& failure) {
-        error = failure.what();
-    }
-    EXPECT_EQ(error, "The graphics device has no room for another pipeline. At most 2048 pipelines can exist at once.");
-    EXPECT_LE(pipelines.size(), static_cast<std::size_t>(graphics::Gpu::kPipelinePoolSize));
-
-    for (const sg_pipeline pipeline : pipelines) {
-        sg_destroy_pipeline(pipeline);
-    }
-    sg_destroy_shader(shader);
 }
 
 TEST(ViewportTest, FitLetterboxesAndConvertsCoordinates) {

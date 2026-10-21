@@ -6,7 +6,7 @@
 
 #include <imm.h>
 
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
@@ -15,7 +15,7 @@ void WindowsTextInput::edit(const Field& field) {
     if (field.id == kKeyboardField) {
         return;
     }
-    const auto window = static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()));
+    const auto window = static_cast<HWND>(NativeWindow::getHandle());
     const HIMC context = ImmGetContext(window);
     if (context == nullptr) {
         return;
@@ -23,7 +23,7 @@ void WindowsTextInput::edit(const Field& field) {
 
     RECT client{};
     GetClientRect(window, &client);
-    const float scale = sapp_widthf() > 0.0F ? static_cast<float>(client.right) / sapp_widthf() : 1.0F;
+    const float scale = NativeWindow::getFramebufferSize().x > 0.0F ? static_cast<float>(client.right) / NativeWindow::getFramebufferSize().x : 1.0F;
     const auto toClient = [scale](float value) { return static_cast<LONG>(value * scale); };
     const POINT caret{.x = toClient(field.caret.x), .y = toClient(field.caret.y)};
     const RECT line{.left = caret.x, .top = caret.y, .right = toClient(field.caret.getRight()), .bottom = toClient(field.caret.getBottom())};

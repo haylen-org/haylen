@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "2d/graphics/GpuInstance.hpp"
-#include "graphics/Gpu.hpp"
+#include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/graphics/StaticSpriteBatch.hpp"
@@ -118,7 +118,7 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
     const ObjectCounter::Snapshot textures = counted("Texture");
     const ObjectCounter::Snapshot targets = counted("RenderTarget");
     const graphics::Device::Pool images = pool(device, "images");
-    EXPECT_EQ(images.size, graphics::Gpu::kImagePoolSize);
+    EXPECT_EQ(images.size, gpu::NullDevice::kImagePoolSize);
     {
         const graphics::Texture texture = device.createTexture(graphics::Image(8, 4, math::Color::white()));
         const graphics::RenderTarget target = device.createRenderTarget(16, 16);
@@ -127,7 +127,6 @@ TEST_F(ObjectCounterTest, CountsEngineResources) {
         EXPECT_EQ(counted("RenderTarget").alive, targets.alive + 1);
         EXPECT_EQ(counted("RenderTarget").bytes, targets.bytes + 16 * 16 * 4);
         EXPECT_EQ(pool(device, "images").used, images.used + 2);
-        EXPECT_GE(pool(device, "views").used, pool(device, "images").used);
     }
     device.collectGarbage();
     EXPECT_EQ(counted("Texture").alive, textures.alive);
@@ -187,7 +186,7 @@ TEST(StatsTest, CapturesFramesCountersAndMemory) {
     EXPECT_GE(stats.frame.onePercentLow, stats.frame.average);
     EXPECT_GT(stats.memory.lua, 0U);
     EXPECT_GT(stats.memory.textures, 0);
-    EXPECT_EQ(stats.pools.size(), 6U);
+    EXPECT_EQ(stats.pools.size(), 5U);
     EXPECT_FALSE(stats.objects.empty());
 }
 

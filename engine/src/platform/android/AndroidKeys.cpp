@@ -1,11 +1,11 @@
 #include "platform/android/AndroidKeys.hpp"
 
-#include "platform/sokol/SokolRuntime.hpp"
+#include "platform/Player.hpp"
 
 namespace haylen::platform {
 
 void AndroidKeys::receiveBack() {
-    SokolRuntime::postBack();
+    Player::postBack();
 }
 
 } // namespace haylen::platform

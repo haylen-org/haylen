@@ -6,7 +6,7 @@
 
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/platform/Event.hpp"
-#include "platform/sokol/SokolRuntime.hpp"
+#include "platform/Player.hpp"
 
 // clang-format off
 EM_JS(void, haylen_js_text_edit, (const char* json), {
@@ -42,15 +42,15 @@ void WebTextInput::setVisibleFields(std::span<const Field> fields) {
 
 // The page reports edits and actions from its own event handlers, which may run inside a call of the engine, such as the blur of `finish`, so they wait for the next frame.
 void WebTextInput::receiveEdit(double field, double revision, const char* text, int selectionStart, int selectionEnd, int compositionStart, int compositionEnd) {
-    SokolRuntime::postEvent({.type = Event::Type::TextEdited, .textEdit = {.field = static_cast<std::uint64_t>(field), .revision = static_cast<std::uint64_t>(revision), .text = text, .selectionStart = selectionStart, .selectionEnd = selectionEnd, .compositionStart = compositionStart, .compositionEnd = compositionEnd}});
+    Player::postEvent({.type = Event::Type::TextEdited, .textEdit = {.field = static_cast<std::uint64_t>(field), .revision = static_cast<std::uint64_t>(revision), .text = text, .selectionStart = selectionStart, .selectionEnd = selectionEnd, .compositionStart = compositionStart, .compositionEnd = compositionEnd}});
 }
 
 void WebTextInput::receiveAction(double field, int action) {
-    SokolRuntime::postEvent({.type = Event::Type::TextAction, .textEdit = {.field = static_cast<std::uint64_t>(field)}, .textAction = static_cast<Action>(action)});
+    Player::postEvent({.type = Event::Type::TextAction, .textEdit = {.field = static_cast<std::uint64_t>(field)}, .textAction = static_cast<Action>(action)});
 }
 
 void WebTextInput::receiveKeyboard(float x, float y, float width, float height) {
-    SokolRuntime::postEvent({.type = Event::Type::KeyboardChanged, .keyboardFrame = {x, y, width, height}});
+    Player::postEvent({.type = Event::Type::KeyboardChanged, .keyboardFrame = {x, y, width, height}});
 }
 
 core::Json WebTextInput::toJson(const Field& field) {

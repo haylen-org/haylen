@@ -2,63 +2,51 @@
 
 namespace haylen::graphics {
 
-void ResourceGraveyard::bury(sg_image image, sg_view view) {
+void ResourceGraveyard::bury(gpu::Device::Image image) {
     std::scoped_lock lock(mutex);
     images.push_back(image);
-    views.push_back(view);
 }
 
-void ResourceGraveyard::buryView(sg_view view) {
-    std::scoped_lock lock(mutex);
-    views.push_back(view);
-}
-
-void ResourceGraveyard::buryBuffer(sg_buffer buffer) {
+void ResourceGraveyard::bury(gpu::Device::Buffer buffer) {
     std::scoped_lock lock(mutex);
     buffers.push_back(buffer);
 }
 
-void ResourceGraveyard::buryShader(sg_shader shader) {
+void ResourceGraveyard::bury(gpu::Device::Program program) {
     std::scoped_lock lock(mutex);
-    shaders.push_back(shader);
+    programs.push_back(program);
 }
 
-void ResourceGraveyard::buryPipeline(sg_pipeline pipeline) {
+void ResourceGraveyard::bury(gpu::Device::Pipeline pipeline) {
     std::scoped_lock lock(mutex);
     pipelines.push_back(pipeline);
 }
 
-void ResourceGraveyard::collect() {
-    std::vector<sg_image> deadImages;
-    std::vector<sg_view> deadViews;
-    std::vector<sg_buffer> deadBuffers;
-    std::vector<sg_shader> deadShaders;
-    std::vector<sg_pipeline> deadPipelines;
+void ResourceGraveyard::collect(gpu::Device& device) {
+    std::vector<gpu::Device::Image> deadImages;
+    std::vector<gpu::Device::Buffer> deadBuffers;
+    std::vector<gpu::Device::Program> deadPrograms;
+    std::vector<gpu::Device::Pipeline> deadPipelines;
     {
         std::scoped_lock lock(mutex);
         deadImages.swap(images);
-        deadViews.swap(views);
         deadBuffers.swap(buffers);
-        deadShaders.swap(shaders);
+        deadPrograms.swap(programs);
         deadPipelines.swap(pipelines);
     }
 
-    // Pipelines go before the shaders they were made from.
-    for (const sg_pipeline pipeline : deadPipelines) {
-        sg_destroy_pipeline(pipeline);
+    // Pipelines go before the programs they were made from.
+    for (const gpu::Device::Pipeline pipeline : deadPipelines) {
+        device.destroy(pipeline);
     }
-    for (const sg_shader shader : deadShaders) {
-        sg_destroy_shader(shader);
+    for (const gpu::Device::Program program : deadPrograms) {
+        device.destroy(program);
     }
-
-    for (const sg_view view : deadViews) {
-        sg_destroy_view(view);
+    for (const gpu::Device::Image image : deadImages) {
+        device.destroy(image);
     }
-    for (const sg_image image : deadImages) {
-        sg_destroy_image(image);
-    }
-    for (const sg_buffer buffer : deadBuffers) {
-        sg_destroy_buffer(buffer);
+    for (const gpu::Device::Buffer buffer : deadBuffers) {
+        device.destroy(buffer);
     }
 }
 

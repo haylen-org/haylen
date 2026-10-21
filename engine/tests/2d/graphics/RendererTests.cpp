@@ -13,7 +13,7 @@
 #include "2d/graphics/Canvas.hpp"
 #include "2d/graphics/FrameSubmitter.hpp"
 #include "2d/graphics/RendererState.hpp"
-#include "graphics/ShaderResource.hpp"
+#include "gpu/NullDevice.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
 #include "haylen/2d/graphics/Parallax.hpp"
@@ -22,10 +22,12 @@
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/2d/lighting/Occluder.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
+#include "haylen/graphics/Shader.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Spline.hpp"
 #include "haylen/text/Font.hpp"
@@ -33,6 +35,7 @@
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/FrameRenderer.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen {
 
@@ -251,15 +254,13 @@ TEST(RendererTest, RejectsDrawsThatSampleTheirOwnTarget) {
 // A material compiled with another version of the shader library fails when a pass first draws with it, and the pass ends with the frame, so the next frames draw normally.
 TEST(RendererTest, EndsTheFrameWhenAMaterialFailsInsideAPass) {
     test::EngineFixture fixture;
-    auto stale = std::make_shared<graphics::ShaderResource>();
-    stale->name = "stale";
-    stale->sources = {"void main() {}"};
-    const core::Json program = core::Json::parse(R"({"glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "attrs": [], "views": [], "samplers": [], "texture_sampler_pairs": [],
-        "uniform_blocks": [{"slot": 0, "stage": "vertex", "size": 64, "glsl_uniforms": [{"type": "mat4", "array_count": 1, "glsl_name": "view_projection"}]}]}})");
+    const core::Json program = core::Json::parse(R"({"attributes": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {},
+        "blocks": [{"name": "haylen_vs_params", "stage": "vertex", "slot": 0, "size": 64, "members": [{"name": "view_projection", "type": "mat4", "count": 1, "offset": 0}]}]})");
+    core::Json document{{"format", "haylen-shader"}, {"version", 2}, {"name", "stale"}, {"sources", core::Json::array()}, {"programs", core::Json::object()}};
     for (const std::string_view name : graphics2d::Material::kPrograms) {
-        stale->programs[std::string(name)] = program;
+        document["programs"][std::string(name)] = program;
     }
-    const graphics2d::Material material{graphics::Shader(stale)};
+    const graphics2d::Material material{graphics::Shader::parse(test::TestFiles::bytes(document.dump()))};
     const graphics::Texture white = fixture.engine().getGraphics().getWhiteTexture();
 
     // clang-format off
@@ -505,6 +506,28 @@ TEST(SpriteBatchTest, AddsUpdatesRemovesDrawsAndBakes) {
     batch.clear();
     EXPECT_EQ(batch.size(), 0U);
     EXPECT_THROW(graphics2d::SpriteBatch(graphics::Texture{}), std::invalid_argument);
+}
+
+// The shadow atlas of the lights reaches the GPU in the one image upload of the frame, together with the dynamic textures that changed, since a device stages every image of a frame before it copies any of them.
+TEST(RendererTest, SendsTheShadowAtlasWithTheTexturesThatChanged) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics::Texture glyphs = device.createDynamicTexture(2, 2, math::Color::white());
+    const lighting2d::Occluder wall{.points = {{10.0F, -20.0F}, {10.0F, 20.0F}, {20.0F, 20.0F}}};
+    fixture.frames(1);
+
+    // clang-format off
+    (void)test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        device.updateTexture(glyphs, std::vector<std::uint8_t>(16, 7));
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = math::Color{0.1F, 0.1F, 0.1F, 1.0F}});
+        renderer.draw({.texture = glyphs});
+        renderer.drawLight({.position = {0.0F, 0.0F}, .radius = 80.0F, .shadows = true});
+        renderer.drawOccluder(wall);
+    });
+    // clang-format on
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 2);
 }
 
 TEST(RendererTest, LightsShadowsAndShadesLitCanvases) {

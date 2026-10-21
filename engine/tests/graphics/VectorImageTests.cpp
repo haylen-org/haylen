@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "graphics/Gpu.hpp"
+#include "gpu/NullDevice.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/VectorImage.hpp"
@@ -115,7 +115,7 @@ TEST_F(VectorImageTest, RejectsARasterWithoutRoomForItsTexture) {
     Device& device = fixture.engine().getGraphics();
     std::vector<Texture> textures;
     try {
-        while (textures.size() <= static_cast<std::size_t>(Gpu::kImagePoolSize)) {
+        while (textures.size() <= static_cast<std::size_t>(gpu::NullDevice::kImagePoolSize)) {
             textures.push_back(device.createTexture(Image(1, 1, math::Color::white())));
         }
     } catch (const std::runtime_error&) {}

@@ -6,6 +6,7 @@
 #include <memory>
 #include <optional>
 #include <span>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -37,12 +38,13 @@
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/TrackedObject.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
-#include "sokol_gfx.h"
 
 namespace haylen::core {
 class JobSystem;
@@ -65,6 +67,38 @@ struct RendererState {
     static constexpr int kMetaballTextureSize = 64;
     static constexpr std::size_t kProgramCount = 13;
 
+    // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
+    static constexpr int kVertexBlock = 0;
+    static constexpr std::uint32_t kVertexBlockSize = 80;
+    static constexpr std::uint32_t kLitBlockSize = 32;
+    static constexpr int kFragmentBlock = 1;
+    static constexpr int kLitBlock = 7;
+    static constexpr int kSpriteTexture = 0;
+    static constexpr int kSpriteSampler = 0;
+    static constexpr int kNormalTexture = 1;
+    static constexpr int kPartMask = 1;
+    static constexpr int kBatchTextures = 25;
+    static constexpr int kLightShape = 0;
+    static constexpr int kLightSurface = 1;
+    static constexpr int kLightInfo = 2;
+    static constexpr int kLightShadow = 3;
+    static constexpr int kLightShapeSampler = 0;
+    static constexpr int kLightSurfaceSampler = 1;
+    static constexpr int kLightShadowSampler = 2;
+    static constexpr int kCompositeScene = 0;
+    static constexpr int kCompositeLight = 1;
+    static constexpr int kCompositeEmission = 2;
+    static constexpr int kCompositeDistortion = 3;
+    static constexpr int kCompositeBloom = 4;
+    static constexpr int kCompositeLut = 5;
+    static constexpr int kFilterSource = 0;
+    static constexpr int kBackdropImage = 0;
+    static constexpr int kBackdropMask = 1;
+    static constexpr int kBackdropCopy = 2;
+    static constexpr int kBlendFrom = 0;
+    static constexpr int kBlendTo = 1;
+    static constexpr int kMetaballField = 0;
+
     // The submissions numbered so far on the frame thread, where one engine runs at a time.
     static std::uint64_t submissions;
 
@@ -74,20 +108,18 @@ struct RendererState {
     graphics::Texture white;
     graphics::Texture light;
     graphics::Texture metaball;
-    sg_buffer quad{};
+    gpu::Device::Buffer quad;
 
     // Two instances that cover the unit square, the second with its rows flipped for render targets that start at the bottom, which post-processing materials draw with.
-    sg_buffer screen{};
+    gpu::Device::Buffer screen;
 
-    // The programs of the renderer, made the first time a draw needs them.
-    std::array<sg_shader, kProgramCount> shaders{};
-    std::array<sg_shader, kProgramCount> litShaders{};
-    std::unordered_map<std::uint32_t, sg_pipeline> pipelines;
-    sg_pixel_format lightFormat = SG_PIXELFORMAT_RGBA8;
+    // The packages of the programs of the renderer, read from the engine when it starts, and their pipelines.
+    std::vector<graphics::Shader> packages;
+    std::unordered_map<std::uint32_t, gpu::Device::Pipeline> pipelines;
+    gpu::Device::PixelFormat lightFormat = gpu::Device::PixelFormat::Rgba8;
 
     // One row of the shadow atlas per shadowed light of the frame, written every frame that draws lights.
-    sg_image shadowImage{};
-    sg_view shadowView{};
+    gpu::Device::Image shadowImage;
     int shadowRows = 0;
     std::vector<float> shadowTexels;
 
@@ -145,13 +177,13 @@ struct RendererState {
     std::vector<std::pair<LightDraw*, const Canvas*>> shadowCasts;
     std::vector<const Canvas*> orderedCanvases;
 
-    sg_buffer instanceBuffer{};
+    gpu::Device::Buffer instanceBuffer;
     std::size_t instanceCapacity = 0;
-    sg_buffer vertexBuffer{};
+    gpu::Device::Buffer vertexBuffer;
     std::size_t vertexCapacity = 0;
-    sg_buffer indexBuffer{};
+    gpu::Device::Buffer indexBuffer;
     std::size_t indexCapacity = 0;
-    sg_buffer lightBuffer{};
+    gpu::Device::Buffer lightBuffer;
     std::size_t lightCapacity = 0;
 
     // The streaming buffers above count as one `RendererBuffers` object with their bytes in the debug statistics.
@@ -182,6 +214,10 @@ struct RendererState {
     Renderer::Stats stats{};
 
     RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem), white(graphicsDevice.getWhiteTexture()), vectors(graphicsDevice, jobSystem), painter(white) {}
+
+    [[nodiscard]] gpu::Device& getGpu() noexcept {
+        return device.getGpu();
+    }
 
     // Returns the open canvas, and throws when no canvas is active.
     [[nodiscard]] Canvas& getCanvas();
@@ -237,43 +273,77 @@ struct RendererState {
     [[nodiscard]] static bool expectsPremultiplied(graphics::BlendMode::Type mode) noexcept;
 
     // Returns the pipeline blend of a blend mode, which mixes what the shader wrote with the target, so every mode but `premultiplied` blends the straight colors of a draw.
-    [[nodiscard]] static sg_blend_state blendState(graphics::BlendMode::Type mode) noexcept;
+    [[nodiscard]] static gpu::Device::Blend blendState(graphics::BlendMode::Type mode) noexcept;
 
     // Returns the pipeline of a program, blend mode and pass target, creating it on first use. The light program takes the blend of the light instead.
-    [[nodiscard]] sg_pipeline getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target);
+    [[nodiscard]] gpu::Device::Pipeline getPipeline(Program program, std::uint8_t blend, graphics::PassTarget target);
 
     // Returns the pipeline of a material for the program it replaces, which lives with the material's shader, and the program with its bind slots.
-    [[nodiscard]] sg_pipeline getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target);
-    [[nodiscard]] const graphics::ShaderResource::Program& getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target);
+    [[nodiscard]] gpu::Device::Pipeline getMaterialPipeline(MaterialResource& material, Program program, std::uint8_t blend, graphics::PassTarget target);
+    [[nodiscard]] const graphics::ShaderResource::Compiled& getMaterialProgram(MaterialResource& material, Program program, graphics::PassTarget target);
 
-    // Grows a streaming buffer to hold at least the needed number of elements.
-    void ensureBuffer(sg_buffer& buffer, std::size_t& capacity, std::size_t needed, std::size_t elementSize, bool isIndexBuffer);
+    // Grows a dynamic buffer to hold at least the needed number of elements.
+    void ensureBuffer(gpu::Device::Buffer& buffer, std::size_t& capacity, std::size_t needed, std::size_t elementSize, bool isIndexBuffer);
 
-    // Starts compiling the sources of every program of the renderer in the background, so the first draws that make them do not wait for a cold compiler.
-    void precompilePrograms();
+    // Reads the packages of the programs of the renderer and starts compiling them in the background, so the first draws that make them do not wait for a cold compiler.
+    void loadPrograms();
 
   private:
-    using Description = const sg_shader_desc* (*)(sg_backend);
+    // A program of the renderer: its package, its program in the package, and the name of its version for lit canvases where it draws into them.
+    struct ProgramSource {
+        std::size_t package = 0;
+        std::string_view program;
+        std::string_view lit;
+    };
 
-    // The generated description of each program, and of its version for lit canvases where the program draws into them.
-    static const std::array<Description, kProgramCount> kPrograms;
-    static const std::array<Description, kProgramCount> kLitPrograms;
+    // A vertex input of a program, which a pipeline reads from one of its buffers at an offset.
+    struct Input {
+        std::string_view name;
+        int buffer = 0;
+        int offset = 0;
+        gpu::Device::VertexFormat format = gpu::Device::VertexFormat::Float;
+    };
 
-    [[nodiscard]] sg_shader getShader(Program program, bool lit);
+    // The vertex buffers, inputs and primitive of the programs that share a layout.
+    struct Layout {
+        std::array<gpu::Device::VertexBufferLayout, gpu::Device::kMaxVertexBuffers> buffers{};
+        std::size_t bufferCount = 0;
+        std::span<const Input> inputs;
+        gpu::Device::Primitive primitive = gpu::Device::Primitive::TriangleStrip;
+        gpu::Device::IndexType indexType = gpu::Device::IndexType::None;
+    };
+
+    // The colors a pipeline writes for a pass target, with their formats, masks and blends.
+    struct Targets {
+        std::array<gpu::Device::ColorTarget, gpu::Device::kMaxColorTargets> colors{};
+        std::size_t count = 1;
+        int sampleCount = 1;
+    };
+
+    static const std::array<std::span<const std::uint8_t> (*)(), 11> kPackages;
+    static const std::array<ProgramSource, kProgramCount> kPrograms;
+    static const std::array<Input, 9> kSpriteInputs;
+    static const std::array<Input, 11> kBatchInputs;
+    static const std::array<Input, 13> kRecolorInputs;
+    static const std::array<Input, 15> kEffectInputs;
+    static const std::array<Input, 9> kShapeInputs;
+    static const std::array<Input, 10> kLightInputs;
+    static const std::array<Input, 3> kMeshInputs;
+    static const std::array<Input, 1> kQuadInputs;
+
+    [[nodiscard]] const graphics::ShaderResource::Compiled& getProgram(Program program, bool lit);
     [[nodiscard]] static std::uint32_t pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept;
-    [[nodiscard]] static sg_blend_state lightBlend(std::uint8_t blend) noexcept;
+    [[nodiscard]] static gpu::Device::Blend lightBlend(std::uint8_t blend) noexcept;
     [[nodiscard]] static const char* materialProgramName(Program program, graphics::PassTarget target);
 
     // Returns the index of the shade of a draw, reusing the last shade when the draw shades the same way.
     [[nodiscard]] std::uint32_t getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures);
     [[nodiscard]] std::uint32_t pushShade(Shade shade, const Material& material);
-    void describeLayout(sg_pipeline_desc& desc, Program program) const;
-    static void describeRecolorLayout(sg_pipeline_desc& desc);
-    static void describeEffectLayout(sg_pipeline_desc& desc);
-    static void describeShapeLayout(sg_pipeline_desc& desc);
-    static void describeBatchLayout(sg_pipeline_desc& desc);
-    static void describeLightLayout(sg_pipeline_desc& desc);
-    void describeTargets(sg_pipeline_desc& desc, std::uint8_t blend, graphics::PassTarget target) const;
+    [[nodiscard]] static Layout describeLayout(Program program);
+    [[nodiscard]] Targets describeTargets(std::uint8_t blend, graphics::PassTarget target) const;
+
+    // Makes a pipeline of a program of a package with the layout of a program of the renderer and the colors of a pass target.
+    [[nodiscard]] gpu::Device::Pipeline makePipeline(const graphics::ShaderResource& package, std::string_view programName, gpu::Device::Program made, Program program, std::uint8_t blend, graphics::PassTarget target, std::string_view label);
 };
 
 } // namespace haylen::graphics2d

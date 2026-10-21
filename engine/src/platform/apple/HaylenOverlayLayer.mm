@@ -1,12 +1,12 @@
 #import "platform/apple/HaylenOverlayLayer.h"
 
 #include "haylen/math/Insets.hpp"
+#include "platform/NativeHost.hpp"
+#include "platform/NativeWindow.hpp"
 #import "platform/apple/HaylenOverlayItem+Runtime.h"
-#include "platform/sokol/SokolHost.hpp"
-#include "sokol_app.h"
 
 using haylen::math::Insets;
-using haylen::platform::SokolHost;
+using haylen::platform::NativeHost;
 
 @implementation HaylenOverlayLayer {
     NSMutableArray<HaylenOverlayItem*>* items;
@@ -59,7 +59,7 @@ using haylen::platform::SokolHost;
 - (void)detach {
     [self removeFromSuperview];
     for (HaylenOverlayItem* item in items) {
-        SokolHost::getNativeViews().releaseInsets(item.key.UTF8String);
+        NativeHost::getNativeViews().releaseInsets(item.key.UTF8String);
     }
 }
 
@@ -92,7 +92,7 @@ using haylen::platform::SokolHost;
     }
     [items removeObject:item];
     [item.view removeFromSuperview];
-    SokolHost::getNativeViews().releaseInsets(item.key.UTF8String);
+    NativeHost::getNativeViews().releaseInsets(item.key.UTF8String);
 }
 
 #if TARGET_OS_OSX
@@ -169,11 +169,11 @@ using haylen::platform::SokolHost;
 // A visible view reserves the edge its anchor names, from the edge of the app to its far side, like the overlay of the web runtime. A centered view reserves nothing.
 - (void)reserveEdges {
     const CGSize size = self.bounds.size;
-    const CGFloat scale = sapp_dpi_scale();
+    const CGFloat scale = haylen::platform::NativeWindow::getScale();
     for (HaylenOverlayItem* item in items) {
         HaylenPlacement* placement = item.placement;
         if (!item.visible || !placement.reserve || placement.anchor == HaylenPlacementAnchorCenter) {
-            SokolHost::getNativeViews().releaseInsets(item.key.UTF8String);
+            NativeHost::getNativeViews().releaseInsets(item.key.UTF8String);
             continue;
         }
 
@@ -189,7 +189,7 @@ using haylen::platform::SokolHost;
         } else {
             insets.right = static_cast<float>((size.width - CGRectGetMinX(frame)) * scale);
         }
-        SokolHost::getNativeViews().reserveInsets(item.key.UTF8String, insets);
+        NativeHost::getNativeViews().reserveInsets(item.key.UTF8String, insets);
     }
 }
 

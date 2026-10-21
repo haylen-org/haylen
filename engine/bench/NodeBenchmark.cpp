@@ -113,7 +113,7 @@ class NodeBenchmark final {
             const auto start = std::chrono::steady_clock::now();
             tree->draw(renderer);
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-            renderer.endFrame(host.getFrameTarget());
+            renderer.endFrame(host.isFrameTransparent());
         }
         report("Draw of 100000 sprite nodes, " + std::to_string(tree->getDrawnCount()) + " in view", total / kFrames);
     }

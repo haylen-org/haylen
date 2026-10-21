@@ -18,8 +18,8 @@
 #include <vector>
 
 #include "2d/graphics/MaterialResource.hpp"
+#include "gpu/NullDevice.hpp"
 #include "graphics/DeviceState.hpp"
-#include "graphics/Gpu.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "haylen/2d/graphics/Material.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -27,6 +27,7 @@
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Device.hpp"
@@ -44,7 +45,7 @@ namespace {
 
 class ShaderTest : public ::testing::Test {
   protected:
-    // A material with two uniform blocks of every kind of member and a texture of its own.
+    // A material with uniform blocks of every kind of member, floats and integers in blocks of their own, and a texture of its own.
     static constexpr const char* kTintSource = R"(@include haylen/material.glsl
 
 @fs tint_fs
@@ -53,12 +54,15 @@ layout(binding=1) uniform tint_params {
     vec4 tint;
     float strength;
     vec2 offset;
-    int steps;
     mat4 transform;
     vec4 palette[3];
 };
 layout(binding=2) uniform tint_extra {
     vec3 glow;
+    float weights[3];
+};
+layout(binding=3) uniform tint_counts {
+    int steps;
 };
 layout(binding=1) uniform texture2D mask_texture;
 layout(binding=1) uniform sampler mask_sampler;
@@ -67,26 +71,25 @@ void main() {
     vec4 base = haylen_base(uv + offset);
     float mask = texture(sampler2D(mask_texture, mask_sampler), uv).r;
     vec4 moved = transform * vec4(base.rgb, 1.0);
-    haylen_output(vec4(mix(base.rgb, moved.rgb * tint.rgb + glow + palette[steps].rgb, strength * mask), base.a));
+    haylen_output(vec4(mix(base.rgb, moved.rgb * tint.rgb + glow * weights[steps] + palette[steps].rgb, strength * mask), base.a));
 }
 @end
 
 @program tint haylen_vs tint_fs
 )";
 
-    // A small shader file with a block, a texture and one program for the desktop GLSL of the headless backend, which the malformed cases change field by field.
-    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 1, "name": "small",
-    "blocks": [{"name": "params", "slot": 1, "size": 16, "uniforms": [{"name": "tint", "type": "vec4", "count": 1, "offset": 0}]}],
-    "textures": [{"name": "mask", "slot": 1}],
-    "sources": ["void main() {}"],
-    "programs": {"sprite": {"glsl430": {
-        "vertex": {"source": 0, "entry": "main"},
-        "fragment": {"source": 0, "entry": "main"},
-        "attrs": [{"slot": 0, "glsl_name": "corner", "base_type": "float"}],
-        "uniform_blocks": [{"slot": 1, "stage": "fragment", "size": 16, "glsl_uniforms": [{"type": "vec4", "array_count": 1, "glsl_name": "params"}]}],
-        "views": [{"slot": 1, "stage": "fragment", "sample_type": "float", "multisampled": false, "image_type": "2d"}],
-        "samplers": [{"slot": 1, "stage": "fragment", "sampler_type": "filtering"}],
-        "texture_sampler_pairs": [{"slot": 0, "stage": "fragment", "view_slot": 1, "sampler_slot": 1, "glsl_name": "mask_sampler"}]}}}})";
+    // A small shader package with a block, a texture and one program for the desktop GLSL and Metal, which the malformed cases change field by field.
+    static constexpr const char* kSmallShader = R"({"format": "haylen-shader", "version": 2, "name": "small", "sources": ["void main() {}"],
+    "programs": {"sprite": {
+        "attributes": [{"location": 0, "name": "corner", "type": "vec2"}],
+        "blocks": [{"name": "params", "stage": "fragment", "slot": 1, "size": 16, "members": [{"name": "tint", "type": "vec4", "count": 1, "offset": 0}]}],
+        "textures": [{"name": "mask", "stage": "fragment", "slot": 1, "type": "2d", "sampleType": "float"}],
+        "samplers": [{"name": "mask_sampler", "stage": "fragment", "slot": 1, "type": "filtering"}],
+        "pairs": [{"stage": "fragment", "texture": 1, "sampler": 1, "name": "mask_mask_sampler"}],
+        "outputs": 1,
+        "targets": {
+            "glsl430": {"vertex": {"source": 0, "entry": "main"}, "fragment": {"source": 0, "entry": "main"}, "blocks": {"1": {"name": "params", "type": "vec4", "count": 1}}},
+            "msl-macos": {"vertex": {"source": 0, "entry": "main0"}, "fragment": {"source": 0, "entry": "main0"}, "blocks": {"1": 1}, "textures": {"1": 1}, "samplers": {"1": 1}}}}}})";
 
     // Parses the small shader with the values of `changes` written at their JSON pointers, and returns the error, which is empty when the file parses.
     [[nodiscard]] static std::string parseError(const core::Json& changes) {
@@ -102,14 +105,15 @@ void main() {
         return {};
     }
 
-    // Compiles the material with `haylen.py shaders`, the way apps compile theirs, once for every test that needs it. Python starts without a shell, so no shell reinterprets the quotes of the paths.
+    // Compiles the material with `haylen.py shaders`, the way apps compile theirs, with the shader compiler of the build, once for every test that needs it. Python starts without a shell, so no shell reinterprets the quotes of the paths.
     [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
         // clang-format off
         static const std::vector<std::uint8_t> compiled = [] {
             const test::TemporaryDirectory app;
             app.write("app.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
             app.write("content/shaders/tint.glsl", kTintSource);
-            if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}).wait() != 0) {
+            const Poco::Process::Env env{{"HAYLEN_SHADER_COMPILER", HAYLEN_SHADER_COMPILER}};
+            if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}, "", nullptr, nullptr, nullptr, env).wait() != 0) {
                 throw std::runtime_error("The command \"haylen.py shaders\" failed.");
             }
             std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
@@ -141,18 +145,21 @@ TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
     }
     EXPECT_FALSE(shader.hasProgram("light"));
 
-    // The blocks of the material keep the std140 layout sokol-shdc gives them, and the blocks and texture of the shader library stay out.
-    ASSERT_EQ(shader.getBlocks().size(), 2U);
+    // The blocks of the material keep the std140 layout the shader compiler gives them, and the blocks and texture of the shader library stay out.
+    ASSERT_EQ(shader.getBlocks().size(), 3U);
     EXPECT_EQ(shader.getBlocks()[0].name, "tint_params");
     EXPECT_EQ(shader.getBlocks()[0].slot, 1);
-    EXPECT_EQ(shader.getBlocks()[0].size, 160U);
+    EXPECT_EQ(shader.getBlocks()[0].size, 144U);
     EXPECT_EQ(shader.getBlocks()[1].name, "tint_extra");
     EXPECT_EQ(shader.getBlocks()[1].slot, 2);
+    EXPECT_EQ(shader.getBlocks()[1].size, 64U);
+    EXPECT_EQ(shader.getBlocks()[2].name, "tint_counts");
+    EXPECT_EQ(shader.getBlocks()[2].size, 16U);
 
     using Type = graphics::Shader::UniformType;
-    const std::vector<std::string_view> names{"tint", "strength", "offset", "steps", "transform", "palette", "glow"};
-    const std::vector<Type> types{Type::Vec4, Type::Float, Type::Vec2, Type::Int, Type::Mat4, Type::Vec4, Type::Vec3};
-    const std::vector<std::uint32_t> offsets{0, 16, 24, 32, 48, 112, 0};
+    const std::vector<std::string_view> names{"tint", "strength", "offset", "steps", "transform", "palette", "glow", "weights"};
+    const std::vector<Type> types{Type::Vec4, Type::Float, Type::Vec2, Type::Int, Type::Mat4, Type::Vec4, Type::Vec3, Type::Float};
+    const std::vector<std::uint32_t> offsets{0, 16, 24, 0, 32, 96, 0, 16};
     ASSERT_EQ(shader.getUniforms().size(), names.size());
     for (std::size_t index = 0; index < names.size(); ++index) {
         const graphics::Shader::Uniform* uniform = shader.findUniform(names[index]);
@@ -161,7 +168,9 @@ TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
         EXPECT_EQ(uniform->offset, offsets[index]) << names[index];
     }
     EXPECT_EQ(shader.findUniform("palette")->count, 3);
+    EXPECT_EQ(shader.findUniform("weights")->count, 3);
     EXPECT_EQ(shader.findUniform("glow")->block, 1U);
+    EXPECT_EQ(shader.findUniform("steps")->block, 2U);
     EXPECT_EQ(shader.findUniform("sprite_texture"), nullptr);
     ASSERT_EQ(shader.getTextures().size(), 1U);
     EXPECT_EQ(shader.findTexture("mask_texture")->slot, 1);
@@ -170,16 +179,19 @@ TEST_F(ShaderTest, CompilesWithMakePyIntoEveryProgramWithItsReflection) {
     EXPECT_EQ(graphics::Shader::uniformTypeFromName("ivec3"), Type::IVec3);
     EXPECT_EQ(graphics::Shader::uniformTypeName(Type::Mat4), "mat4");
     EXPECT_EQ(graphics::Shader::getComponentCount(Type::Mat4), 16);
+    EXPECT_EQ(graphics::Shader::getArrayStride(Type::Float), 16U);
+    EXPECT_EQ(graphics::Shader::getArrayStride(Type::Vec3), 16U);
+    EXPECT_EQ(graphics::Shader::getArrayStride(Type::Mat4), 64U);
     EXPECT_FALSE(graphics::Shader::uniformTypeFromName("mat3").has_value());
 }
 
 TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
     const auto parse = [](const std::string& text) { return graphics::Shader::parse(test::TestFiles::bytes(text)); };
     EXPECT_THROW((void)parse("not json"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2})"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 1, "name": "x", "blocks": [], "textures": [], "sources": [], "programs": [], "extra": 1})"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 1, "name": "x", "blocks": [], "textures": [], "sources": [], "programs": []})"), std::invalid_argument);
-    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 1, "name": "x", "blocks": [{"name": "b", "slot": 1, "size": 16, "uniforms": [{"name": "u", "type": "mat3", "count": 1, "offset": 0}]}], "textures": [], "sources": [], "programs": {}})"), std::invalid_argument);
+    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 1, "name": "x", "sources": [], "programs": {"p": {}}})"), std::invalid_argument);
+    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": {}, "extra": 1})"), std::invalid_argument);
+    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": {}})"), std::invalid_argument);
+    EXPECT_THROW((void)parse(R"({"format": "haylen-shader", "version": 2, "name": "x", "sources": [], "programs": []})"), std::invalid_argument);
 
     const graphics::Shader empty;
     EXPECT_FALSE(empty.isValid());
@@ -190,57 +202,41 @@ TEST_F(ShaderTest, RejectsFilesThatAreNotShaders) {
 
 TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     const std::string malformed = "The shader file is malformed: ";
-    const std::string program = "/programs/sprite/glsl430";
+    const std::string program = "/programs/sprite";
+    const std::string glsl = program + "/targets/glsl430";
+    const std::string metal = program + "/targets/msl-macos";
     EXPECT_EQ(parseError(core::Json::object()), "");
 
-    // Every slot, member and source index stays inside the arrays of the shader description.
-    EXPECT_EQ(parseError({{program + "/attrs/0/slot", 16}}), malformed + "The vertex attribute slot 16 is out of range.");
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms", core::Json(std::size_t{17}, core::Json{{"type", "float"}, {"array_count", 1}, {"glsl_name", "x"}})}}), malformed + "The uniform block member 16 is out of range.");
-    EXPECT_EQ(parseError({{program + "/views/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
+    // Every slot and source index stays inside the bind slots of every GPU device and the sources of the package.
+    EXPECT_EQ(parseError({{program + "/attributes/0/location", 16}}), malformed + "The attribute slot 16 is out of range.");
+    EXPECT_EQ(parseError({{program + "/blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
+    EXPECT_EQ(parseError({{program + "/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
     EXPECT_EQ(parseError({{program + "/samplers/0/slot", 12}}), malformed + "The sampler slot 12 is out of range.");
-    EXPECT_EQ(parseError({{program + "/texture_sampler_pairs/0/slot", 32}}), malformed + "The texture sampler pair slot 32 is out of range.");
-    EXPECT_EQ(parseError({{program + "/texture_sampler_pairs/0/sampler_slot", 12}}), malformed + "The sampler slot 12 is out of range.");
-    EXPECT_EQ(parseError({{program + "/texture_sampler_pairs/0/view_slot", 2}}), malformed + "The texture sampler pair at slot 0 names a texture or sampler the program does not declare.");
-    EXPECT_EQ(parseError({{program + "/fragment/source", 1}}), malformed + "The source 1 is out of range.");
-    EXPECT_EQ(parseError({{program + "/vertex/source", -1}}), malformed + "The source -1 is out of range.");
-    EXPECT_NE(parseError({{program + "/fragment", nullptr}}), "");
+    EXPECT_EQ(parseError({{program + "/pairs/0/texture", 2}}), malformed + "The texture sampler pair \"mask_mask_sampler\" names a texture or sampler the program does not declare.");
+    EXPECT_EQ(parseError({{glsl + "/fragment/source", 1}}), malformed + "A stage names the source 1, which the file does not have.");
+    EXPECT_EQ(parseError({{glsl + "/vertex/source", -1}}), malformed + "A stage names the source -1, which the file does not have.");
+    EXPECT_EQ(parseError({{program + "/outputs", 0}}), malformed + "The program \"sprite\" writes 0 colors, and draws write one to 4.");
+    EXPECT_NE(parseError({{glsl + "/fragment", nullptr}}), "");
 
-    // Names outside the ones sokol-shdc writes fail instead of taking a default.
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/stage", "compute"}}), malformed + "Shaders do not support the \"compute\" stage.");
-    EXPECT_EQ(parseError({{program + "/views/0/image_type", "1d"}}), malformed + "Shaders do not support \"1d\" textures.");
-    EXPECT_EQ(parseError({{program + "/views/0/sample_type", "half"}}), malformed + "Shaders do not support textures that sample \"half\".");
-    EXPECT_EQ(parseError({{program + "/samplers/0/sampler_type", "anisotropic"}}), malformed + "Shaders do not support \"anisotropic\" samplers.");
-    EXPECT_EQ(parseError({{program + "/attrs/0/base_type", "double"}}), malformed + "Shaders do not support vertex attributes of type \"double\".");
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/type", "mat3"}}), malformed + "Shaders do not support uniforms of type \"mat3\".");
+    // Names outside the ones the shader compiler writes fail instead of taking a default.
+    EXPECT_EQ(parseError({{program + "/blocks/0/stage", "compute"}}), malformed + "Shaders have no \"compute\" stage.");
+    EXPECT_EQ(parseError({{program + "/textures/0/type", "1d"}}), malformed + "Shaders have no \"1d\" textures.");
+    EXPECT_EQ(parseError({{program + "/textures/0/sampleType", "half"}}), malformed + "Shaders have no textures that sample \"half\".");
+    EXPECT_EQ(parseError({{program + "/samplers/0/type", "anisotropic"}}), malformed + "Shaders have no \"anisotropic\" samplers.");
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/type", "mat3"}}), malformed + "The uniform \"tint\" has the type \"mat3\", which materials do not set.");
+    EXPECT_EQ(parseError({{program + "/targets/spirv", core::Json::object()}}), malformed + "The program \"sprite\" has code for \"spirv\", which is not a shader language of the engine.");
 
-    // The GLSL members fill their block, and every program reads the blocks of the reflection with their own size.
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/glsl_uniforms/0/array_count", 2}}), malformed + "The members of the uniform block at slot 1 do not fill its 16 bytes.");
-    EXPECT_EQ(parseError({{program + "/uniform_blocks/0/size", 32}, {program + "/uniform_blocks/0/glsl_uniforms", core::Json::array()}}), malformed + "The \"sprite\" program for \"glsl430\" reads 32 bytes from the block \"params\", which holds 16.");
+    // Blocks hold whole vectors, OpenGL reads each one as an array that fills it, and every other language binds every slot.
+    EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), malformed + "The uniform block \"params\" holds 24 bytes, which is not a multiple of 16.");
+    EXPECT_EQ(parseError({{glsl + "/blocks/1/count", 2}}), malformed + "The array of the block \"params\" does not fill its 16 bytes.");
+    EXPECT_EQ(parseError({{glsl + "/blocks/1/type", "mat4"}}), malformed + "The block \"params\" is read as \"mat4\", and OpenGL reads blocks as arrays of \"vec4\" or \"ivec4\".");
+    EXPECT_EQ(parseError({{metal + "/textures", core::Json::object()}}), malformed + "The texture at slot 1 has no binding number.");
+    EXPECT_EQ(parseError({{metal + "/samplers/1", 256}}), malformed + "The binding number 256 of the sampler at slot 1 is out of range.");
 
-    // Materials write every uniform inside its block, and the reflection keeps its slots inside the limits.
-    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/offset", 4}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
-    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 2}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
-    EXPECT_EQ(parseError({{"/blocks/0/uniforms/0/count", 0}}), malformed + "The uniform \"tint\" has no elements.");
-    EXPECT_EQ(parseError({{"/blocks/0/slot", 8}}), malformed + "The uniform block slot 8 is out of range.");
-    EXPECT_EQ(parseError({{"/textures/0/slot", 32}}), malformed + "The texture slot 32 is out of range.");
-}
-
-// The sources of every program for the backend of the device, which the Metal backend compiles ahead on the I/O pool, each once, since the programs of a file share stages.
-TEST_F(ShaderTest, ListsTheSourcesOfTheActiveBackendOnce) {
-    test::EngineFixture fixture;
-    const core::Json document = core::Json::parse(tintShader().begin(), tintShader().end());
-    const std::vector<std::string> sources = graphics::Shader::parse(tintShader()).getResource()->getBackendSources();
-    ASSERT_FALSE(sources.empty());
-    for (std::size_t index = 0; index < sources.size(); ++index) {
-        EXPECT_EQ(std::count(sources.begin(), sources.end(), sources[index]), 1) << index;
-    }
-    for (const auto& [program, languages] : document.at("programs").items()) {
-        for (const char* stage : {"vertex", "fragment"}) {
-            const std::string& source = document.at("sources").at(languages.at("glsl430").at(stage).at("source").get<std::size_t>()).get_ref<const std::string&>();
-            EXPECT_NE(std::find(sources.begin(), sources.end(), source), sources.end()) << program << " " << stage;
-        }
-    }
+    // Materials write every uniform inside its block.
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/offset", 4}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 2}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
+    EXPECT_EQ(parseError({{program + "/blocks/0/members/0/count", 0}}), malformed + "The uniform \"tint\" does not fit in the block \"params\".");
 }
 
 // The renderer makes each of its programs the first time a draw needs it, so starting an engine compiles no shader and a frame of sprites compiles only the sprite program.
@@ -249,7 +245,7 @@ TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
     // clang-format off
     const auto shaders = [&fixture] {
         for (const graphics::Device::Pool& pool : fixture.engine().getGraphics().getPools()) {
-            if (pool.name == "shaders") {
+            if (pool.name == "programs") {
                 return pool.used;
             }
         }
@@ -269,19 +265,25 @@ TEST_F(ShaderTest, MakesTheProgramsOfTheRendererWhenDrawsFirstNeedThem) {
     EXPECT_EQ(shaders(), 1);
 }
 
-// A shader file compiled without the language of the active backend names the program and the language it lacks.
+// A package compiled without the language of the device names the program and the language it lacks, and only the programs with code in the language of the device start compiling ahead.
 TEST_F(ShaderTest, NamesTheLanguageAProgramLacks) {
-    const test::EngineFixture fixture;
-    core::Json document = core::Json::parse(kSmallShader);
-    document["programs"]["sprite"]["glsl300es"] = document["programs"]["sprite"]["glsl430"];
-    document["programs"]["sprite"].erase("glsl430");
-    const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
+    const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(kSmallShader));
+    gpu::NullDevice gles(gpu::Device::Language::Glsl300es);
     try {
-        (void)shader.getResource()->getProgram("sprite");
-        ADD_FAILURE() << "A program without the language of the backend was made.";
+        (void)shader.getResource()->getProgram(gles, "sprite");
+        ADD_FAILURE() << "A program without the language of the device was made.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The shader \"small\" has no \"sprite\" program for the \"glsl430\" language of this graphics backend. Compile it again with \"haylen.py shaders\".");
+        EXPECT_STREQ(error.what(), "The program \"small/sprite\" has no code for the \"glsl300es\" language of this GPU device. Compile its shader again with the Haylen shader compiler.");
     }
+
+    test::EngineFixture fixture;
+    core::JobSystem& jobs = fixture.engine().getJobs();
+    shader.getResource()->prepare(gles, jobs);
+    EXPECT_EQ(gles.getPreparedPrograms(), 0);
+    gpu::NullDevice metal(gpu::Device::Language::MetalMacos);
+    shader.getResource()->prepare(metal, jobs);
+    EXPECT_EQ(metal.getPreparedPrograms(), 1);
+    EXPECT_NE(shader.getResource()->getProgram(metal, "sprite").program.id, 0U);
 }
 
 TEST_F(ShaderTest, ReportsAFullShaderPool) {
@@ -290,10 +292,10 @@ TEST_F(ShaderTest, ReportsAFullShaderPool) {
     std::vector<graphics::Shader> shaders;
     std::string error;
     try {
-        while (shaders.size() <= static_cast<std::size_t>(graphics::Gpu::kShaderPoolSize)) {
+        while (shaders.size() <= static_cast<std::size_t>(gpu::NullDevice::kProgramPoolSize)) {
             shaders.push_back(graphics::Shader::parse(test::TestFiles::bytes(kSmallShader)));
             shaders.back().getResource()->graveyard = device.getState().graveyard;
-            (void)shaders.back().getResource()->getProgram("sprite");
+            (void)shaders.back().getResource()->getProgram(device.getGpu(), "sprite");
         }
     } catch (const std::runtime_error& failure) {
         error = failure.what();
@@ -318,8 +320,9 @@ TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
     material.set("glow", math::Color{0.1F, 0.2F, 0.3F, 1.0F});
     const std::vector<float> palette(12, 0.5F);
     material.set("palette", palette);
+    material.set("weights", std::vector<float>{1.0F, 2.0F, 3.0F});
     const std::uint32_t revision = material.getResource()->revision;
-    EXPECT_EQ(revision, 7U);
+    EXPECT_EQ(revision, 8U);
 
     EXPECT_EQ(material.get("offset"), (std::vector<float>{3.0F, 4.0F}));
     EXPECT_EQ(material.get("glow").size(), 3U);
@@ -327,16 +330,22 @@ TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
 
     std::vector<std::uint8_t> bytes;
     material.getResource()->pack(bytes);
-    ASSERT_EQ(bytes.size(), 160U + material.getShader().getBlocks()[1].size);
+    ASSERT_EQ(bytes.size(), 144U + 64U + 16U);
     EXPECT_EQ(floatAt(bytes, 4), 0.25F);
     EXPECT_EQ(floatAt(bytes, 16), 0.75F);
     EXPECT_EQ(floatAt(bytes, 28), 4.0F);
+    EXPECT_EQ(floatAt(bytes, 32 + 13 * 4), 20.0F);
+    EXPECT_EQ(floatAt(bytes, 96 + 11 * 4), 0.5F);
+    EXPECT_EQ(floatAt(bytes, 144 + 8), 0.3F);
+
+    // Every element of an array of floats takes a whole vector of four in the std140 layout.
+    EXPECT_EQ(floatAt(bytes, 144 + 16), 1.0F);
+    EXPECT_EQ(floatAt(bytes, 144 + 32), 2.0F);
+    EXPECT_EQ(floatAt(bytes, 144 + 48), 3.0F);
+    EXPECT_EQ(floatAt(bytes, 144 + 20), 0.0F);
     std::int32_t steps = 0;
-    std::memcpy(&steps, bytes.data() + 32, sizeof(steps));
+    std::memcpy(&steps, bytes.data() + 208, sizeof(steps));
     EXPECT_EQ(steps, 2);
-    EXPECT_EQ(floatAt(bytes, 48 + 13 * 4), 20.0F);
-    EXPECT_EQ(floatAt(bytes, 112 + 11 * 4), 0.5F);
-    EXPECT_EQ(floatAt(bytes, 160 + 8), 0.3F);
 
     test::EngineFixture fixture;
     const graphics::Texture mask = fixture.engine().getGraphics().createTexture(graphics::Image(2, 2, math::Color::white()));
@@ -355,7 +364,7 @@ TEST_F(MaterialTest, SetsUniformsByNameAndPacksThemInTheirBlocks) {
 
     EXPECT_THROW(graphics2d::Material{graphics::Shader{}}, std::invalid_argument);
     EXPECT_THROW((void)graphics2d::Material{}.getShader(), std::logic_error);
-    const std::string bare = R"({"format": "haylen-shader", "version": 1, "name": "bare", "blocks": [], "textures": [], "sources": [], "programs": {"sprite": {}}})";
+    const std::string bare = R"({"format": "haylen-shader", "version": 2, "name": "bare", "sources": [], "programs": {"sprite": {"attributes": [], "blocks": [], "textures": [], "samplers": [], "pairs": [], "outputs": 1, "targets": {}}}})";
     EXPECT_THROW(graphics2d::Material{graphics::Shader::parse(test::TestFiles::bytes(bare))}, std::invalid_argument);
 }
 
@@ -375,7 +384,7 @@ TEST_F(MaterialTest, SetsAndPacksValuesEveryFrameWithoutAllocating) {
     }
     EXPECT_EQ(tracker.getTotal(), 0U);
     EXPECT_EQ(floatAt(bytes, 16), 10.0F);
-    EXPECT_EQ(floatAt(bytes, 112), 0.5F);
+    EXPECT_EQ(floatAt(bytes, 96), 0.5F);
 }
 
 TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
@@ -460,7 +469,7 @@ TEST_F(MaterialLuaTest, LoadsShadersAndDrawsWithMaterials) {
         tint = graphics2d.newMaterial(shader, {tint = '#FF8040FF', strength = 0.5, offset = {1, 2}, steps = 1, transform = m.identity(), glow = {r = 1, g = 0.5, b = 0}, palette = {1, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1}, mask_texture = graphics.whiteTexture()})
     )");
 
-    EXPECT_EQ(fixture.lua("return shader.name .. ' ' .. #shader.uniforms .. ' ' .. shader.uniforms[1].name .. ' ' .. shader.uniforms[1].type .. ' ' .. shader.uniforms[6].count .. ' ' .. shader.textures[1]"), "tint 7 tint vec4 3 mask_texture");
+    EXPECT_EQ(fixture.lua("return shader.name .. ' ' .. #shader.uniforms .. ' ' .. shader.uniforms[1].name .. ' ' .. shader.uniforms[1].type .. ' ' .. shader.uniforms[5].count .. ' ' .. shader.textures[1]"), "tint 8 tint vec4 3 mask_texture");
     EXPECT_EQ(fixture.lua("return tostring(assets.load('shaders/tint.shader') == shader) .. ' ' .. tostring(tint.shader == shader)"), "true true");
     EXPECT_EQ(fixture.lua("return tint:get('strength') .. ' ' .. tint:get('offset').y .. ' ' .. tint:get('steps') .. ' ' .. string.format('%.2f', tint:get('tint').g) .. ' ' .. #tint:get('glow') .. ' ' .. #tint:get('palette') .. ' ' .. tint:get('mask_texture').width"), "0.5 2.0 1 0.25 3 12 1");
     EXPECT_EQ(fixture.lua("tint:set('offset', m.vec2(5, 6)) tint:set('tint', {1, 1, 1, 0.5}) tint:set('mask_texture', nil) return tint:get('offset').x .. ' ' .. tint:get('tint').a .. ' ' .. tostring(tint:get('mask_texture'))"), "5.0 0.5 nil");

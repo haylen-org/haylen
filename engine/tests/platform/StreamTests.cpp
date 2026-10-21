@@ -8,13 +8,13 @@
 #include <thread>
 #include <vector>
 
+#include "gpu/NullDevice.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/platform/PluginStreams.hpp"
 #include "haylen/platform/VideoStream.hpp"
 #include "plugins/PlatformPlugin.hpp"
-#include "sokol_gfx.h"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::platform {
@@ -111,11 +111,11 @@ TEST_F(VideoStreamTest, ReachesTheTextureAtTheStartOfTheNextFrame) {
     fixture.frames(1);
     EXPECT_EQ(stream->getFrameCount(), 1U);
     EXPECT_EQ(texture.getSize(), math::Vec2(2.0F, 2.0F));
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 1U);
-    EXPECT_EQ(sg_query_stats().prev_frame.size_copy_buffer_to_image, 16U);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, 16U);
 
     fixture.frames(1);
-    EXPECT_EQ(sg_query_stats().prev_frame.num_copy_buffer_to_image, 0U);
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 0);
 }
 
 TEST(PluginStreamsTest, OpensEachStreamOnceByPluginAndName) {

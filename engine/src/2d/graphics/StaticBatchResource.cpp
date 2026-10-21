@@ -6,7 +6,7 @@ debug::ObjectCounter& StaticBatchResource::counter = *new debug::ObjectCounter("
 
 StaticBatchResource::~StaticBatchResource() {
     if (const auto owner = graveyard.lock()) {
-        owner->buryBuffer(buffer);
+        owner->bury(buffer);
     }
 }
 

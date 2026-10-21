@@ -180,7 +180,7 @@ class ParticleBenchmark final {
                 emitter.draw(renderer);
             }
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-            renderer.endFrame(host.getFrameTarget());
+            renderer.endFrame(host.isFrameTransparent());
         }
         report("Drawing 100 emitters of 100 particles with trails", total / kFrames, kFrames);
     }
@@ -204,7 +204,7 @@ class ParticleBenchmark final {
                     emitter.draw(renderer);
                 }
                 total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-                renderer.endFrame(host.getFrameTarget());
+                renderer.endFrame(host.isFrameTransparent());
             }
             report("Drawing " + std::to_string(count) + (count == 1 ? " emitter of " : " emitters of ") + std::to_string(size) + " particles", total / kFrames, kFrames);
         }

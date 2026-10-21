@@ -12,6 +12,7 @@
 #include "haylen/io/Package.hpp"
 #include "io/CompositePackage.hpp"
 #include "platform/BridgeRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
@@ -20,7 +21,6 @@
 #include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxSettings.hpp"
 #include "platform/linux/LinuxSystem.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -222,7 +222,7 @@ void Services::openScreen(const ScreenRequest& request) {
 void Services::cancelScreen(std::uint64_t) {}
 
 HaylenNativeWindow Services::getNativeWindow() {
-    return {.handle = const_cast<void*>(sapp_x11_get_window()), .display = const_cast<void*>(sapp_x11_get_display())};
+    return {.handle = NativeWindow::getHandle(), .display = NativeWindow::getDisplay()};
 }
 
 } // namespace haylen::platform

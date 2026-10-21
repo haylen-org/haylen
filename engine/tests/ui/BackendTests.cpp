@@ -44,7 +44,7 @@ class BackendTest : public ::testing::Test {
         backend.beginFrame(1.0F / 60.0F, getEngine().getViewport(), getEngine().getInput(), navigation);
         build();
         backend.render(getEngine().getRenderer2D());
-        getEngine().getRenderer2D().endFrame(fixture.host().getFrameTarget());
+        getEngine().getRenderer2D().endFrame(fixture.host().isFrameTransparent());
     }
 
     void send(platform::Event::Type type, math::Vec2 position = {}) {
@@ -209,7 +209,7 @@ TEST_F(BackendTest, RecoversFromFramesLeftOpenAndReportsMisuse) {
     backend.beginFrame(1.0F / 60.0F, getEngine().getViewport(), getEngine().getInput(), navigation);
     beginWindow("broken", {0.0F, 0.0F});
     EXPECT_TRUE(backend.isFrameActive());
-    getEngine().getRenderer2D().endFrame(fixture.host().getFrameTarget());
+    getEngine().getRenderer2D().endFrame(fixture.host().isFrameTransparent());
 
     bool drawn = false;
     // clang-format off

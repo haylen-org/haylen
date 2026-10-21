@@ -2,11 +2,11 @@
 
 #include <algorithm>
 #include <format>
-#include <optional>
 #include <stdexcept>
 #include <utility>
 
-#include "graphics/Gpu.hpp"
+#include "haylen/core/JobSystem.hpp"
+#include "haylen/core/JsonValidator.hpp"
 
 namespace haylen::graphics {
 
@@ -14,349 +14,374 @@ ShaderResource::~ShaderResource() {
     release();
 }
 
-std::string_view ShaderResource::slangOf(sg_backend backend) {
-    switch (backend) {
-    case SG_BACKEND_GLCORE:
-    case SG_BACKEND_DUMMY:
-        return "glsl430";
-    case SG_BACKEND_GLES3:
-        return "glsl300es";
-    case SG_BACKEND_D3D11:
-        return "hlsl5";
-    case SG_BACKEND_METAL_MACOS:
-        return "metal_macos";
-    case SG_BACKEND_METAL_IOS:
-        return "metal_ios";
-    case SG_BACKEND_METAL_SIMULATOR:
-        return "metal_sim";
-    case SG_BACKEND_WGPU:
-        return "wgsl";
-    case SG_BACKEND_VULKAN:
-        break;
-    }
-    throw std::runtime_error("Custom shaders have no programs for the active graphics backend.");
+const ShaderResource::Attribute* ShaderResource::ProgramInfo::findAttribute(std::string_view attribute) const noexcept {
+    const auto found = std::ranges::find(attributes, attribute, &Attribute::name);
+    return found == attributes.end() ? nullptr : &*found;
 }
 
-std::size_t ShaderResource::checkIndex(std::string_view kind, std::int64_t index, std::size_t limit) {
-    if (index < 0 || static_cast<std::uint64_t>(index) >= limit) {
-        throw std::invalid_argument(std::format("The {} {} is out of range.", kind, index));
+std::optional<gpu::Device::Language> ShaderResource::languageFromName(std::string_view value) noexcept {
+    const auto found = std::ranges::find(kLanguageNames, value);
+    if (found == kLanguageNames.begin() || found == kLanguageNames.end()) {
+        return std::nullopt;
     }
-    return static_cast<std::size_t>(index);
+    return static_cast<gpu::Device::Language>(found - kLanguageNames.begin());
 }
 
-sg_shader_stage ShaderResource::toStage(const std::string& value) {
-    if (value == "vertex") {
-        return SG_SHADERSTAGE_VERTEX;
+gpu::Device::Stage ShaderResource::readStage(const core::Json& value) {
+    const std::string& stage = value.get_ref<const std::string&>();
+    if (stage == "vertex") {
+        return gpu::Device::Stage::Vertex;
     }
-    if (value == "fragment") {
-        return SG_SHADERSTAGE_FRAGMENT;
+    if (stage == "fragment") {
+        return gpu::Device::Stage::Fragment;
     }
-    throw std::invalid_argument(std::format("Shaders do not support the \"{}\" stage.", value));
+    throw std::invalid_argument(std::format("Shaders have no \"{}\" stage.", stage));
 }
 
-sg_uniform_type ShaderResource::toUniformType(Shader::UniformType type) noexcept {
-    switch (type) {
-    case Shader::UniformType::Float:
-        return SG_UNIFORMTYPE_FLOAT;
-    case Shader::UniformType::Vec2:
-        return SG_UNIFORMTYPE_FLOAT2;
-    case Shader::UniformType::Vec3:
-        return SG_UNIFORMTYPE_FLOAT3;
-    case Shader::UniformType::Vec4:
-        return SG_UNIFORMTYPE_FLOAT4;
-    case Shader::UniformType::Int:
-        return SG_UNIFORMTYPE_INT;
-    case Shader::UniformType::IVec2:
-        return SG_UNIFORMTYPE_INT2;
-    case Shader::UniformType::IVec3:
-        return SG_UNIFORMTYPE_INT3;
-    case Shader::UniformType::IVec4:
-        return SG_UNIFORMTYPE_INT4;
-    case Shader::UniformType::Mat4:
-        return SG_UNIFORMTYPE_MAT4;
+int ShaderResource::readSlot(const core::Json& value, std::string_view kind, std::size_t limit) {
+    const auto slot = value.get<std::int64_t>();
+    if (slot < 0 || static_cast<std::uint64_t>(slot) >= limit) {
+        throw std::invalid_argument(std::format("The {} slot {} is out of range.", kind, slot));
     }
-    return SG_UNIFORMTYPE_FLOAT4;
+    return static_cast<int>(slot);
 }
 
-sg_image_type ShaderResource::toImageType(const std::string& value) {
-    if (value == "2d") {
-        return SG_IMAGETYPE_2D;
+gpu::Device::TextureType ShaderResource::readTextureType(const core::Json& value) {
+    const std::string& type = value.get_ref<const std::string&>();
+    if (type == "2d") {
+        return gpu::Device::TextureType::Flat;
     }
-    if (value == "cube") {
-        return SG_IMAGETYPE_CUBE;
+    if (type == "2d_array") {
+        return gpu::Device::TextureType::Array;
     }
-    if (value == "3d") {
-        return SG_IMAGETYPE_3D;
+    if (type == "3d") {
+        return gpu::Device::TextureType::Volume;
     }
-    if (value == "array") {
-        return SG_IMAGETYPE_ARRAY;
+    if (type == "cube") {
+        return gpu::Device::TextureType::Cube;
     }
-    throw std::invalid_argument(std::format("Shaders do not support \"{}\" textures.", value));
+    throw std::invalid_argument(std::format("Shaders have no \"{}\" textures.", type));
 }
 
-sg_image_sample_type ShaderResource::toSampleType(const std::string& value) {
-    if (value == "float") {
-        return SG_IMAGESAMPLETYPE_FLOAT;
+gpu::Device::SampleType ShaderResource::readSampleType(const core::Json& value) {
+    const std::string& type = value.get_ref<const std::string&>();
+    if (type == "float") {
+        return gpu::Device::SampleType::Float;
     }
-    if (value == "unfilterable_float") {
-        return SG_IMAGESAMPLETYPE_UNFILTERABLE_FLOAT;
+    if (type == "unfilterable_float") {
+        return gpu::Device::SampleType::UnfilterableFloat;
     }
-    if (value == "sint") {
-        return SG_IMAGESAMPLETYPE_SINT;
+    if (type == "depth") {
+        return gpu::Device::SampleType::Depth;
     }
-    if (value == "uint") {
-        return SG_IMAGESAMPLETYPE_UINT;
+    if (type == "sint") {
+        return gpu::Device::SampleType::SignedInteger;
     }
-    if (value == "depth") {
-        return SG_IMAGESAMPLETYPE_DEPTH;
+    if (type == "uint") {
+        return gpu::Device::SampleType::UnsignedInteger;
     }
-    throw std::invalid_argument(std::format("Shaders do not support textures that sample \"{}\".", value));
+    throw std::invalid_argument(std::format("Shaders have no textures that sample \"{}\".", type));
 }
 
-sg_sampler_type ShaderResource::toSamplerType(const std::string& value) {
-    if (value == "filtering") {
-        return SG_SAMPLERTYPE_FILTERING;
+gpu::Device::SamplerType ShaderResource::readSamplerType(const core::Json& value) {
+    const std::string& type = value.get_ref<const std::string&>();
+    if (type == "filtering") {
+        return gpu::Device::SamplerType::Filtering;
     }
-    if (value == "nonfiltering") {
-        return SG_SAMPLERTYPE_NONFILTERING;
+    if (type == "nonfiltering") {
+        return gpu::Device::SamplerType::NonFiltering;
     }
-    if (value == "comparison") {
-        return SG_SAMPLERTYPE_COMPARISON;
+    if (type == "comparison") {
+        return gpu::Device::SamplerType::Comparison;
     }
-    throw std::invalid_argument(std::format("Shaders do not support \"{}\" samplers.", value));
+    throw std::invalid_argument(std::format("Shaders have no \"{}\" samplers.", type));
 }
 
-sg_shader_attr_base_type ShaderResource::toBaseType(const std::string& value) {
-    if (value == "float") {
-        return SG_SHADERATTRBASETYPE_FLOAT;
+// Every slot the program declares needs a binding number in every language.
+std::vector<std::pair<int, int>> ShaderResource::readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind) {
+    std::vector<std::pair<int, int>> bindings;
+    if (slots.empty()) {
+        return bindings;
     }
-    if (value == "sint") {
-        return SG_SHADERATTRBASETYPE_SINT;
-    }
-    if (value == "uint") {
-        return SG_SHADERATTRBASETYPE_UINT;
-    }
-    throw std::invalid_argument(std::format("Shaders do not support vertex attributes of type \"{}\".", value));
-}
-
-void ShaderResource::describe(sg_shader_desc& desc, const core::Json& backend) const {
-    describeFunction(desc.vertex_func, backend.at("vertex"));
-    describeFunction(desc.fragment_func, backend.at("fragment"));
-    describeBindings(desc, backend);
-}
-
-void ShaderResource::describeFunction(sg_shader_function& function, const core::Json& stage) const {
-    function.source = sources[checkIndex("source", stage.at("source").get<std::int64_t>(), sources.size())].c_str();
-    function.entry = stage.at("entry").get_ref<const std::string&>().c_str();
-    if (stage.contains("d3d11_target")) {
-        function.d3d11_target = stage.at("d3d11_target").get_ref<const std::string&>().c_str();
-    }
-}
-
-void ShaderResource::describeBindings(sg_shader_desc& desc, const core::Json& backend) {
-    for (const core::Json& attr : backend.at("attrs")) {
-        sg_shader_vertex_attr& target = desc.attrs[checkIndex("vertex attribute slot", attr.at("slot").get<std::int64_t>(), SG_MAX_VERTEX_ATTRIBUTES)];
-        target.base_type = toBaseType(attr.at("base_type").get<std::string>());
-        if (attr.contains("glsl_name")) {
-            target.glsl_name = attr.at("glsl_name").get_ref<const std::string&>().c_str();
+    const core::Json& numbers = target.at(key);
+    for (const int slot : slots) {
+        const std::string name = std::to_string(slot);
+        if (!numbers.contains(name)) {
+            throw std::invalid_argument(std::format("The {} at slot {} has no binding number.", kind, slot));
         }
-        if (attr.contains("hlsl_sem_name")) {
-            target.hlsl_sem_name = attr.at("hlsl_sem_name").get_ref<const std::string&>().c_str();
-            target.hlsl_sem_index = attr.at("hlsl_sem_index").get<std::uint8_t>();
+        const auto binding = numbers.at(name).get<std::int64_t>();
+        if (binding < 0 || binding > 255) {
+            throw std::invalid_argument(std::format("The binding number {} of the {} at slot {} is out of range.", binding, kind, slot));
         }
+        bindings.emplace_back(slot, static_cast<int>(binding));
     }
-
-    for (const core::Json& block : backend.at("uniform_blocks")) {
-        const std::size_t slot = checkIndex("uniform block slot", block.at("slot").get<std::int64_t>(), SG_MAX_UNIFORMBLOCK_BINDSLOTS);
-        sg_shader_uniform_block& target = desc.uniform_blocks[slot];
-        target.stage = toStage(block.at("stage").get<std::string>());
-        target.size = block.at("size").get<std::uint32_t>();
-        target.layout = SG_UNIFORMLAYOUT_STD140;
-        target.hlsl_register_b_n = block.value("hlsl_register_b_n", std::uint8_t{0});
-        target.msl_buffer_n = block.value("msl_buffer_n", std::uint8_t{0});
-        target.wgsl_group0_binding_n = block.value("wgsl_group0_binding_n", std::uint8_t{0});
-
-        // The description points into the reflection of the resource, so the members are read in place and never copied.
-        // The GL backends read every member at its own offset in the data of the block, so the members must fill the block exactly.
-        std::size_t member = 0;
-        std::uint64_t end = 0;
-        for (const core::Json& uniform : block.at("glsl_uniforms")) {
-            end = describeMember(target.glsl_uniforms[checkIndex("uniform block member", static_cast<std::int64_t>(member), SG_MAX_UNIFORMBLOCK_MEMBERS)], uniform, end);
-            ++member;
-        }
-        if (member > 0 && (end + 15U) / 16U * 16U != target.size) {
-            throw std::invalid_argument(std::format("The members of the uniform block at slot {} do not fill its {} bytes.", slot, target.size));
-        }
-    }
-
-    for (const core::Json& view : backend.at("views")) {
-        sg_shader_texture_view& target = desc.views[checkIndex("texture slot", view.at("slot").get<std::int64_t>(), SG_MAX_VIEW_BINDSLOTS)].texture;
-        target.stage = toStage(view.at("stage").get<std::string>());
-        target.image_type = toImageType(view.at("image_type").get<std::string>());
-        target.sample_type = toSampleType(view.at("sample_type").get<std::string>());
-        target.multisampled = view.at("multisampled").get<bool>();
-        target.hlsl_register_t_n = view.value("hlsl_register_t_n", std::uint8_t{0});
-        target.msl_texture_n = view.value("msl_texture_n", std::uint8_t{0});
-        target.wgsl_group1_binding_n = view.value("wgsl_group1_binding_n", std::uint8_t{0});
-    }
-
-    for (const core::Json& sampler : backend.at("samplers")) {
-        sg_shader_sampler& target = desc.samplers[checkIndex("sampler slot", sampler.at("slot").get<std::int64_t>(), SG_MAX_SAMPLER_BINDSLOTS)];
-        target.stage = toStage(sampler.at("stage").get<std::string>());
-        target.sampler_type = toSamplerType(sampler.at("sampler_type").get<std::string>());
-        target.hlsl_register_s_n = sampler.value("hlsl_register_s_n", std::uint8_t{0});
-        target.msl_sampler_n = sampler.value("msl_sampler_n", std::uint8_t{0});
-        target.wgsl_group1_binding_n = sampler.value("wgsl_group1_binding_n", std::uint8_t{0});
-    }
-
-    // Draws bind a texture and a sampler for every pair, so a pair only names the ones the program declares.
-    for (const core::Json& pair : backend.at("texture_sampler_pairs")) {
-        const std::size_t slot = checkIndex("texture sampler pair slot", pair.at("slot").get<std::int64_t>(), SG_MAX_TEXTURE_SAMPLER_PAIRS);
-        const std::size_t view = checkIndex("texture slot", pair.at("view_slot").get<std::int64_t>(), SG_MAX_VIEW_BINDSLOTS);
-        const std::size_t sampler = checkIndex("sampler slot", pair.at("sampler_slot").get<std::int64_t>(), SG_MAX_SAMPLER_BINDSLOTS);
-        if (desc.views[view].texture.stage == SG_SHADERSTAGE_NONE || desc.samplers[sampler].stage == SG_SHADERSTAGE_NONE) {
-            throw std::invalid_argument(std::format("The texture sampler pair at slot {} names a texture or sampler the program does not declare.", slot));
-        }
-
-        sg_shader_texture_sampler_pair& target = desc.texture_sampler_pairs[slot];
-        target.stage = toStage(pair.at("stage").get<std::string>());
-        target.view_slot = static_cast<std::uint8_t>(view);
-        target.sampler_slot = static_cast<std::uint8_t>(sampler);
-        if (pair.contains("glsl_name")) {
-            target.glsl_name = pair.at("glsl_name").get_ref<const std::string&>().c_str();
-        }
-    }
+    return bindings;
 }
 
-std::uint64_t ShaderResource::describeMember(sg_glsl_shader_uniform& member, const core::Json& uniform, std::uint64_t offset) {
-    const std::string& typeName = uniform.at("type").get_ref<const std::string&>();
-    const std::optional<Shader::UniformType> type = Shader::uniformTypeFromName(typeName);
-    if (!type) {
-        throw std::invalid_argument(std::format("Shaders do not support uniforms of type \"{}\".", typeName));
+ShaderResource::StageCode ShaderResource::readStageCode(const core::Json& value) const {
+    core::JsonValidator::requireKnownKeys(value, {"source", "entry", "profile"}, "a stage");
+    const auto source = value.at("source").get<std::int64_t>();
+    if (source < 0 || static_cast<std::uint64_t>(source) >= sources.size()) {
+        throw std::invalid_argument(std::format("A stage names the source {}, which the file does not have.", source));
     }
-    member.type = toUniformType(*type);
-    member.array_count = uniform.at("array_count").get<std::uint16_t>();
-    member.glsl_name = uniform.at("glsl_name").get_ref<const std::string&>().c_str();
-
-    // A count of 0 marks a member that is not an array, which holds one element like a count of 1. Arrays and members of three or more numbers start on 16 bytes, and every element of an array takes at least 16 bytes.
-    const auto bytes = static_cast<std::uint64_t>(Shader::getComponentCount(*type)) * 4U;
-    const std::uint64_t count = std::max<std::uint64_t>(member.array_count, 1);
-    const std::uint64_t alignment = count > 1 || bytes > 8 ? 16 : bytes;
-    const std::uint64_t stride = count > 1 ? std::max<std::uint64_t>(bytes, 16) : bytes;
-    return (offset + alignment - 1) / alignment * alignment + stride * count;
+    return {.source = static_cast<std::size_t>(source), .entry = value.at("entry").get<std::string>(), .profile = value.value("profile", std::string())};
 }
 
-void ShaderResource::validate() const {
-    for (const Shader::Block& block : blocks) {
-        checkIndex("uniform block slot", block.slot, SG_MAX_UNIFORMBLOCK_BINDSLOTS);
-    }
-    for (const Shader::TextureSlot& texture : textures) {
-        checkIndex("texture slot", texture.slot, SG_MAX_VIEW_BINDSLOTS);
-    }
-
-    // Materials write every uniform at its offset inside the bytes of its block.
-    for (const Shader::Uniform& uniform : uniforms) {
-        const Shader::Block& block = blocks[uniform.block];
-        if (uniform.count < 1) {
-            throw std::invalid_argument(std::format("The uniform \"{}\" has no elements.", uniform.name));
-        }
-        const std::uint64_t bytes = static_cast<std::uint64_t>(uniform.count) * static_cast<std::uint64_t>(Shader::getComponentCount(uniform.type)) * 4U;
-        if (uniform.offset + bytes > block.size) {
-            throw std::invalid_argument(std::format("The uniform \"{}\" does not fit in the block \"{}\".", uniform.name, block.name));
-        }
+ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& program, const core::Json& value) const {
+    core::JsonValidator::requireKnownKeys(value, {"attributes", "blocks", "textures", "samplers", "pairs", "outputs", "targets"}, "a program");
+    ProgramInfo info;
+    for (const core::Json& attribute : value.at("attributes")) {
+        info.attributes.push_back({.location = readSlot(attribute.at("location"), "attribute", gpu::Device::kMaxAttributes), .name = attribute.at("name").get<std::string>()});
     }
 
-    // Draws hand each block of the reflection to the programs that declare its slot for the fragment stage, which read exactly their own size.
-    for (const auto& [program, languages] : programs.items()) {
-        for (const auto& [language, backend] : languages.items()) {
-            sg_shader_desc desc{};
-            describe(desc, backend);
-            for (const Shader::Block& block : blocks) {
-                const sg_shader_uniform_block& described = desc.uniform_blocks[static_cast<std::size_t>(block.slot)];
-                if (described.stage == SG_SHADERSTAGE_FRAGMENT && described.size != block.size) {
-                    throw std::invalid_argument(std::format("The \"{}\" program for \"{}\" reads {} bytes from the block \"{}\", which holds {}.", program, language, described.size, block.name, block.size));
+    std::vector<int> blockSlots;
+    for (const core::Json& block : value.at("blocks")) {
+        Block read{.name = block.at("name").get<std::string>(), .stage = readStage(block.at("stage")), .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = block.at("size").get<std::uint32_t>()};
+        if (read.size == 0 || read.size % 16 != 0) {
+            throw std::invalid_argument(std::format("The uniform block \"{}\" holds {} bytes, which is not a multiple of 16.", read.name, read.size));
+        }
+        if (std::ranges::find(blockSlots, read.slot) != blockSlots.end()) {
+            throw std::invalid_argument(std::format("Two uniform blocks of the program \"{}\" share the slot {}.", program, read.slot));
+        }
+        blockSlots.push_back(read.slot);
+        info.blocks.push_back(std::move(read));
+    }
+
+    std::vector<int> textureSlots;
+    for (const core::Json& texture : value.at("textures")) {
+        TextureInfo read{.name = texture.at("name").get<std::string>(), .stage = readStage(texture.at("stage")), .slot = readSlot(texture.at("slot"), "texture", gpu::Device::kMaxTextures), .type = readTextureType(texture.at("type")), .sampleType = readSampleType(texture.at("sampleType"))};
+        if (std::ranges::find(textureSlots, read.slot) != textureSlots.end()) {
+            throw std::invalid_argument(std::format("Two textures of the program \"{}\" share the slot {}.", program, read.slot));
+        }
+        textureSlots.push_back(read.slot);
+        info.textures.push_back(std::move(read));
+    }
+
+    std::vector<int> samplerSlots;
+    for (const core::Json& sampler : value.at("samplers")) {
+        SamplerInfo read{.name = sampler.at("name").get<std::string>(), .stage = readStage(sampler.at("stage")), .slot = readSlot(sampler.at("slot"), "sampler", gpu::Device::kMaxSamplers), .type = readSamplerType(sampler.at("type"))};
+        if (std::ranges::find(samplerSlots, read.slot) != samplerSlots.end()) {
+            throw std::invalid_argument(std::format("Two samplers of the program \"{}\" share the slot {}.", program, read.slot));
+        }
+        samplerSlots.push_back(read.slot);
+        info.samplers.push_back(std::move(read));
+    }
+
+    for (const core::Json& pair : value.at("pairs")) {
+        Pair read{.stage = readStage(pair.at("stage")), .texture = pair.at("texture").get<int>(), .sampler = pair.at("sampler").get<int>(), .name = pair.at("name").get<std::string>()};
+        if (std::ranges::find(textureSlots, read.texture) == textureSlots.end() || std::ranges::find(samplerSlots, read.sampler) == samplerSlots.end()) {
+            throw std::invalid_argument(std::format("The texture sampler pair \"{}\" names a texture or sampler the program does not declare.", read.name));
+        }
+        info.pairs.push_back(std::move(read));
+    }
+
+    info.outputs = value.at("outputs").get<int>();
+    if (info.outputs < 1 || info.outputs > static_cast<int>(gpu::Device::kMaxColorTargets)) {
+        throw std::invalid_argument(std::format("The program \"{}\" writes {} colors, and draws write one to {}.", program, info.outputs, gpu::Device::kMaxColorTargets));
+    }
+
+    for (const auto& [languageName, target] : value.at("targets").items()) {
+        const std::optional<gpu::Device::Language> language = languageFromName(languageName);
+        if (!language) {
+            throw std::invalid_argument(std::format("The program \"{}\" has code for \"{}\", which is not a shader language of the engine.", program, languageName));
+        }
+        core::JsonValidator::requireKnownKeys(target, {"vertex", "fragment", "blocks", "textures", "samplers"}, "a target");
+        Target read{.vertex = readStageCode(target.at("vertex")), .fragment = readStageCode(target.at("fragment"))};
+        const bool glsl = *language == gpu::Device::Language::Glsl430 || *language == gpu::Device::Language::Glsl300es;
+        if (glsl) {
+            for (const Block& block : info.blocks) {
+                const core::Json& flattened = target.at("blocks").at(std::to_string(block.slot));
+                const std::string& type = flattened.at("type").get_ref<const std::string&>();
+                if (type != "vec4" && type != "ivec4") {
+                    throw std::invalid_argument(std::format("The block \"{}\" is read as \"{}\", and OpenGL reads blocks as arrays of \"vec4\" or \"ivec4\".", block.name, type));
                 }
+                const int count = flattened.at("count").get<int>();
+                if (count * 16 != static_cast<int>(block.size)) {
+                    throw std::invalid_argument(std::format("The array of the block \"{}\" does not fill its {} bytes.", block.name, block.size));
+                }
+                read.glslBlocks.push_back({.slot = block.slot, .name = flattened.at("name").get<std::string>(), .integers = type == "ivec4", .count = count});
             }
+        } else {
+            read.blockBindings = readBindings(target, "blocks", blockSlots, "uniform block");
         }
+        if (!glsl) {
+            read.textureBindings = readBindings(target, "textures", textureSlots, "texture");
+            read.samplerBindings = readBindings(target, "samplers", samplerSlots, "sampler");
+        }
+        info.targets[static_cast<std::size_t>(*language)] = std::move(read);
     }
+    return info;
 }
 
-std::vector<std::string> ShaderResource::getBackendSources() const {
-    const sg_backend backend = sg_query_backend();
-    if (backend == SG_BACKEND_VULKAN) {
-        return {};
-    }
-    const std::string slang(slangOf(backend));
-    std::vector<std::size_t> used;
-    for (const auto& [program, languages] : programs.items()) {
-        if (!languages.contains(slang)) {
+// Materials fill the fragment blocks that the shader library does not own, which every program of the package reads with the same slot and size, and bind the textures it does not own.
+void ShaderResource::readMaterialBindings(const ProgramInfo& program) {
+    for (const Block& block : program.blocks) {
+        if (block.stage != gpu::Device::Stage::Fragment || std::ranges::find(kEngineBlocks, block.name) != kEngineBlocks.end()) {
             continue;
         }
-        for (const char* stage : {"vertex", "fragment"}) {
-            const auto index = languages.at(slang).at(stage).at("source").get<std::size_t>();
-            if (std::ranges::find(used, index) == used.end()) {
-                used.push_back(index);
+        const auto known = std::ranges::find(blocks, block.name, &Shader::Block::name);
+        if (known == blocks.end()) {
+            throw std::invalid_argument(std::format("The block \"{}\" has no members in the file.", block.name));
+        }
+        if (known->slot != block.slot || known->size != block.size) {
+            throw std::invalid_argument(std::format("A program reads {} bytes at slot {} from the block \"{}\", which holds {} at slot {}.", block.size, block.slot, block.name, known->size, known->slot));
+        }
+    }
+    for (const TextureInfo& texture : program.textures) {
+        if (std::ranges::find(kEngineTextures, texture.name) == kEngineTextures.end() && std::ranges::find(textures, texture.name, &Shader::TextureSlot::name) == textures.end()) {
+            textures.push_back({.name = texture.name, .slot = texture.slot});
+        }
+    }
+}
+
+void ShaderResource::read(const core::Json& document) {
+    core::JsonValidator::requireKnownKeys(document, {"format", "version", "name", "sources", "programs"}, "a shader file");
+    if (document.at("format") != "haylen-shader" || document.at("version") != 2) {
+        throw std::invalid_argument("It is not a version 2 Haylen shader package. Compile its source again with the Haylen shader compiler.");
+    }
+    name = document.at("name").get<std::string>();
+    sources = document.at("sources").get<std::vector<std::string>>();
+    const core::Json& entries = document.at("programs");
+    if (!entries.is_object() || entries.empty()) {
+        throw std::invalid_argument("It has no programs.");
+    }
+
+    // The members of the material blocks come from the program that declares each block first.
+    for (const auto& [program, value] : entries.items()) {
+        for (const core::Json& block : value.at("blocks")) {
+            const std::string& blockName = block.at("name").get_ref<const std::string&>();
+            if (readStage(block.at("stage")) != gpu::Device::Stage::Fragment || std::ranges::find(kEngineBlocks, blockName) != kEngineBlocks.end() || std::ranges::find(blocks, blockName, &Shader::Block::name) != blocks.end()) {
+                continue;
+            }
+            blocks.push_back({.name = blockName, .slot = readSlot(block.at("slot"), "uniform block", gpu::Device::kMaxBlocks), .size = block.at("size").get<std::uint32_t>()});
+            for (const core::Json& member : block.at("members")) {
+                const std::string& typeName = member.at("type").get_ref<const std::string&>();
+                const std::optional<Shader::UniformType> type = Shader::uniformTypeFromName(typeName);
+                if (!type) {
+                    throw std::invalid_argument(std::format("The uniform \"{}\" has the type \"{}\", which materials do not set.", member.at("name").get<std::string>(), typeName));
+                }
+                Shader::Uniform uniform{.name = member.at("name").get<std::string>(), .type = *type, .count = member.at("count").get<int>(), .offset = member.at("offset").get<std::uint32_t>(), .block = blocks.size() - 1};
+                const std::uint64_t element = static_cast<std::uint64_t>(Shader::getComponentCount(uniform.type)) * 4U;
+                const std::uint64_t bytes = uniform.count < 1 ? 0U : (static_cast<std::uint64_t>(uniform.count) - 1U) * Shader::getArrayStride(uniform.type) + element;
+                if (uniform.count < 1 || uniform.offset + bytes > blocks.back().size) {
+                    throw std::invalid_argument(std::format("The uniform \"{}\" does not fit in the block \"{}\".", uniform.name, blockName));
+                }
+                uniforms.push_back(std::move(uniform));
             }
         }
     }
-    std::vector<std::string> stages;
-    stages.reserve(used.size());
-    for (const std::size_t index : used) {
-        stages.push_back(sources[index]);
+
+    for (const auto& [program, value] : entries.items()) {
+        ProgramInfo info = readProgram(program, value);
+        readMaterialBindings(info);
+        programs.emplace(program, std::move(info));
     }
-    return stages;
 }
 
-const ShaderResource::Program& ShaderResource::getProgram(std::string_view program) {
+const ShaderResource::ProgramInfo& ShaderResource::getInfo(std::string_view program) const {
+    const auto found = programs.find(std::string(program));
+    if (found == programs.end()) {
+        throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program.", name, program));
+    }
+    return found->second;
+}
+
+int ShaderResource::findBinding(const std::vector<std::pair<int, int>>& bindings, int slot) noexcept {
+    const auto found = std::ranges::find(bindings, slot, &std::pair<int, int>::first);
+    return found == bindings.end() ? 0 : found->second;
+}
+
+void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language language, std::string_view label, Described& described) const {
+    const std::optional<Target>& target = program.targets[static_cast<std::size_t>(language)];
+    if (language != gpu::Device::Language::None && !target) {
+        throw std::invalid_argument(std::format("The program \"{}\" has no code for the \"{}\" language of this GPU device. Compile its shader again with the Haylen shader compiler.", label, kLanguageNames[static_cast<std::size_t>(language)]));
+    }
+
+    for (const Attribute& attribute : program.attributes) {
+        described.attributes.push_back({.location = attribute.location, .name = attribute.name});
+    }
+    for (const Block& block : program.blocks) {
+        gpu::Device::BlockBinding binding{.slot = block.slot, .stage = block.stage, .size = block.size};
+        if (target) {
+            binding.binding = findBinding(target->blockBindings, block.slot);
+            if (const auto glsl = std::ranges::find(target->glslBlocks, block.slot, &GlslBlock::slot); glsl != target->glslBlocks.end()) {
+                binding.glslName = glsl->name;
+                binding.glslIntegers = glsl->integers;
+                binding.glslCount = glsl->count;
+            }
+        }
+        described.blocks.push_back(binding);
+    }
+    for (const TextureInfo& texture : program.textures) {
+        described.textures.push_back({.slot = texture.slot, .stage = texture.stage, .type = texture.type, .sampleType = texture.sampleType, .binding = target ? findBinding(target->textureBindings, texture.slot) : 0});
+    }
+    for (const SamplerInfo& sampler : program.samplers) {
+        described.samplers.push_back({.slot = sampler.slot, .stage = sampler.stage, .type = sampler.type, .binding = target ? findBinding(target->samplerBindings, sampler.slot) : 0});
+    }
+    for (const Pair& pair : program.pairs) {
+        described.pairs.push_back({.stage = pair.stage, .texture = pair.texture, .sampler = pair.sampler, .glslName = pair.name});
+    }
+
+    described.desc.attributes = described.attributes;
+    described.desc.blocks = described.blocks;
+    described.desc.textures = described.textures;
+    described.desc.samplers = described.samplers;
+    described.desc.pairs = described.pairs;
+    described.desc.label = label;
+    if (target) {
+        described.desc.vertex = {.source = sources[target->vertex.source], .entry = target->vertex.entry, .profile = target->vertex.profile};
+        described.desc.fragment = {.source = sources[target->fragment.source], .entry = target->fragment.entry, .profile = target->fragment.profile};
+    }
+}
+
+const ShaderResource::Compiled& ShaderResource::getProgram(gpu::Device& device, std::string_view program) {
     const std::string key(program);
     if (const auto found = compiled.find(key); found != compiled.end()) {
         return found->second;
     }
-    if (!programs.contains(key)) {
-        throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program.", name, program));
-    }
-
-    const std::string slang(slangOf(sg_query_backend()));
-    const core::Json& languages = programs.at(key);
-    if (!languages.contains(slang)) {
-        throw std::invalid_argument(std::format("The shader \"{}\" has no \"{}\" program for the \"{}\" language of this graphics backend. Compile it again with \"haylen.py shaders\".", name, program, slang));
-    }
-    const core::Json& backend = languages.at(slang);
-    sg_shader_desc desc{};
-    describe(desc, backend);
+    const ProgramInfo& info = getInfo(program);
     const std::string label = std::format("{}/{}", name, program);
-    desc.label = label.c_str();
+    Described described;
+    describe(info, device.getLanguage(), label, described);
 
-    Program made;
-    made.shader = Gpu::makeShader(desc);
-    for (std::size_t slot = 0; slot < made.blockSizes.size(); ++slot) {
-        made.blockSizes[slot] = desc.uniform_blocks[slot].size;
-    }
-    for (const core::Json& block : backend.at("uniform_blocks")) {
-        if (block.at("stage") == "fragment") {
-            made.blocks.push_back(block.at("slot").get<int>());
+    Compiled made;
+    made.program = device.makeProgram(described.desc);
+    for (const Block& block : info.blocks) {
+        made.blockSizes[static_cast<std::size_t>(block.slot)] = block.size;
+        if (block.stage == gpu::Device::Stage::Fragment) {
+            made.blocks.push_back(block.slot);
         }
     }
-    for (const core::Json& view : backend.at("views")) {
-        made.views.push_back(view.at("slot").get<int>());
+    for (const TextureInfo& texture : info.textures) {
+        made.textures.push_back(texture.slot);
     }
-    for (const core::Json& pair : backend.at("texture_sampler_pairs")) {
-        const int sampler = pair.at("sampler_slot").get<int>();
-        if (std::none_of(made.samplers.begin(), made.samplers.end(), [sampler](const auto& known) { return known.first == sampler; })) {
-            made.samplers.emplace_back(sampler, pair.at("view_slot").get<int>());
+    for (const Pair& pair : info.pairs) {
+        if (std::ranges::find(made.samplers, pair.sampler, &std::pair<int, int>::first) == made.samplers.end()) {
+            made.samplers.emplace_back(pair.sampler, pair.texture);
         }
     }
     return compiled.emplace(key, std::move(made)).first->second;
+}
+
+void ShaderResource::prepare(gpu::Device& device, core::JobSystem& jobs) const {
+    const gpu::Device::Language language = device.getLanguage();
+    for (const auto& [program, info] : programs) {
+        if (info.targets[static_cast<std::size_t>(language)]) {
+            Described described;
+            describe(info, language, program, described);
+            device.prepareProgram(described.desc, jobs);
+        }
+    }
 }
 
 void ShaderResource::release() noexcept {
     const std::shared_ptr<ResourceGraveyard> owner = graveyard.lock();
     if (owner) {
         for (const auto& [key, pipeline] : pipelines) {
-            owner->buryPipeline(pipeline);
+            owner->bury(pipeline);
         }
         for (const auto& [key, made] : compiled) {
-            owner->buryShader(made.shader);
+            owner->bury(made.program);
         }
     }
     pipelines.clear();

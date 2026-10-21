@@ -51,9 +51,9 @@ function LoadTime:update(dt)
     LoadTime.super.update(self, dt)
     if self.drawnFrame and not self.measured and haylen.frameIndex() > self.drawnFrame then
         self.measured = true
-        self.results:set('first', 'info', 'First frame with every shader', string.format('%.1f ms on "%s".', debugging.frame().milliseconds, graphics.backendName()))
+        self.results:set('first', 'info', 'First frame with every shader', string.format('%.1f ms on "%s".', debugging.frame().milliseconds, graphics.apiName()))
     end
-    self:status(string.format('Backend "%s"   Shaders %d of %d   Frame %.1f ms', graphics.backendName(), #self.materials, #LoadTime.names, debugging.frame().milliseconds))
+    self:status(string.format('Graphics API "%s"   Shaders %d of %d   Frame %.1f ms', graphics.apiName(), #self.materials, #LoadTime.names, debugging.frame().milliseconds))
 end
 
 function LoadTime:draw(area)

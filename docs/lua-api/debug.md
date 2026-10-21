@@ -60,7 +60,7 @@ The engine measures every frame in named scopes: `scripts` for promises, corouti
 
 ## Traces
 
-A trace records a span of frames into a file in the trace event JSON format, which the profilers of browsers and trace viewers open, so the work of each frame shows on a timeline. It holds a lane for each thread: `frame` with every frame and every profiler scope nested as they ran, a lane for each worker of the task pool and the I/O pool with the jobs it ran as `job` and `ioJob`, and a `gpu` lane with the time the GPU took for each frame, as `gpuFrame`, where the backend measures it, which Metal does on macOS, iOS, tvOS and Mac Catalyst. The other backends, Direct3D 11, OpenGL, OpenGL ES, WebGL 2 and WebGPU, leave the `gpu` lane empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures, so its length is exact while its place on the timeline is late.
+A trace records a span of frames into a file in the trace event JSON format, which the profilers of browsers and trace viewers open, so the work of each frame shows on a timeline. It holds a lane for each thread: `frame` with every frame and every profiler scope nested as they ran, a lane for each worker of the task pool and the I/O pool with the jobs it ran as `job` and `ioJob`, and a `gpu` lane with the time the GPU took for each frame, as `gpuFrame`, where the graphics API measures it, which Metal does on macOS, iOS, tvOS and Mac Catalyst. The other graphics APIs, Direct3D 11, OpenGL, OpenGL ES, WebGL 2 and WebGPU, leave the `gpu` lane empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures, so its length is exact while its place on the timeline is late.
 
 The function `debug.startTrace` starts a trace, and `debug.stopTraceAsync` stops it and writes it into user storage on the I/O pool. A trace keeps at most 262144 spans in memory by default, and counts the spans it drops once it is full. Recording costs a lock per span, so a trace measures a little more than the frames take without one.
 
@@ -295,7 +295,7 @@ Returns a snapshot of the engine statistics as a table with these fields. Render
 | `memory` | Bytes of `lua`, the Lua heap, and the estimated bytes of `textures`, `targets` for render targets, `batches` for the GPU instance buffers of static sprite batches, `buffers` for the vertex, index and instance buffers that the renderer streams sprites, shapes, text and batches through every frame, and `sounds`. |
 | `counts` | `scenes` on the stack, root `tweens`, `timers`, playing `voices`, `assetsCached`, `assetsPending`, open `sockets`, physics `bodies` and `contacts`, and live `particles`. |
 | `buses` | The audio buses by name, such as `music` and `sfx`, each with the `voices` that play through it, how many of them are `playing` and `paused`, and `processing`, whether its process mode runs in the current pause state. |
-| `pools` | The GPU pools by name, `images`, `views`, `buffers`, `samplers`, `shaders` and `pipelines`, each with `used` and `size`. A full pool makes the next GPU object fail. |
+| `pools` | The pools of the GPU device by name, `images`, `buffers`, `samplers`, `programs` and `pipelines`, each with `used` and `size`. A full pool makes the next GPU object fail. |
 | `objects` | Every counted type by name, each with `kind` (`'userdata'` or `'native'`), `created`, `alive`, `destroyed` and `bytes`, as [object counts](#object-counts-and-events) describes. |
 
 ```lua
@@ -407,7 +407,7 @@ Returns the measurements of the last finished frame as a table. Before the first
 | `milliseconds` | number | Work of the last frame, from the start of its update to the end of its rendering, in milliseconds. |
 | `average` | number | Average work of the recent frames, in milliseconds. |
 | `fps` | number | Frames per second that the display showed over the recent frames, from the intervals the platform reports for the frames it shows: the display link on Apple platforms, the timestamps of `requestAnimationFrame` on the web, the Choreographer on Android and the time between presented frames on the desktops. They hold the wait for the display and the frames it missed, unlike the work of the frames, or `0` before the second frame. |
-| `gpuMilliseconds` | number or `nil` | Time the GPU took for the last frame it finished, which lags a frame or two behind, where the backend measures it, which Metal does. It is `nil` on the other backends and before the GPU finished a frame. |
+| `gpuMilliseconds` | number or `nil` | Time the GPU took for the last frame it finished, which lags a frame or two behind, where the graphics API measures it, which Metal does. It is `nil` on the other graphics APIs and before the GPU finished a frame. |
 | `scopes` | list | Scopes of the last frame, parents before their children. |
 
 Every scope is a table with these fields.

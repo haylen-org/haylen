@@ -1155,7 +1155,7 @@ scene.push({
 
 ### graphics2d.drawImageBlend(from, to, rect, options)
 
-Draws the textures `from` and `to` over `rect`, mixed through a pattern that `progress` advances from `from` at 0 to `to` at 1. The shader-based scene transitions use it, and custom transitions and effects can too. Render target textures sample upright on every backend. Both textures are required, and `options` also takes the keys of [Draw order](#draw-order):
+Draws the textures `from` and `to` over `rect`, mixed through a pattern that `progress` advances from `from` at 0 to `to` at 1. The shader-based scene transitions use it, and custom transitions and effects can too. Render target textures sample upright on every graphics API. Both textures are required, and `options` also takes the keys of [Draw order](#draw-order):
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1526,7 +1526,7 @@ scene.push({
 
 ### graphics2d.hdrLighting()
 
-Tells whether light maps hold light in floating point, which lets lights brighter than 1 brighten the scene beyond its unlit colors. It is `true` where the backend renders and blends floating-point targets, and otherwise light saturates at 1.
+Tells whether light maps hold light in floating point, which lets lights brighter than 1 brighten the scene beyond its unlit colors. It is `true` where the GPU device renders and blends floating-point targets, and otherwise light saturates at 1.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

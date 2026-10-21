@@ -7,15 +7,16 @@ The `engine/` folder is a standalone CMake project that other projects consume a
 | Name | Kind | Purpose |
 | --- | --- | --- |
 | `haylen::engine` | Library target | The whole C++ API and every Lua binding. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Lua errors unwind as C++ exceptions and yields jump back to their resume with `longjmp`, both native to WebAssembly. |
-| `haylen::runtime` | Library target | The Sokol app entry point, the platform host and the platform services. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
+| `haylen::runtime` | Library target | The player, the native host, the platform services and the backend, which opens the window, runs and draws the frames and holds the entry point. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
 | `haylen_add_app` | CMake function | Builds the app of one package for the current platform. |
 
 When the engine is not the top-level project, its player, tests and benchmarks are off, because `HAYLEN_BUILD_PLAYER`, `HAYLEN_BUILD_TESTS` and `HAYLEN_BUILD_BENCHMARKS` default to `PROJECT_IS_TOP_LEVEL`. These cache variables also shape a source build.
 
 | Variable | Default | Meaning |
 | --- | --- | --- |
-| `HAYLEN_SOKOL_SHDC` | Empty | Path to the `sokol-shdc` executable that compiles the engine shaders. A source build fails without it. The command `haylen tools` downloads the pinned version into `.tools/` of a Haylen checkout. |
-| `HAYLEN_RENDER_BACKEND` | `AUTO` | `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
+| `HAYLEN_SHADERC` | Empty | Path to the Haylen shader compiler `haylen-shaderc`, which compiles the engine shaders. A source build fails without it. The command `haylen tools` builds the pinned version into `.tools/` of a Haylen checkout. |
+| `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | Folder of the backend, whose `backend.cmake` adds the window, the frames, the GPU device and the entry point to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. |
+| `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, D3D11 on Windows, GLES3 on Android, WebGPU in the browser and OpenGL Core on Linux. |
 | `HAYLEN_SANITIZERS` | `OFF` | Sanitizers of desktop builds that do not use MSVC: `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer, or `THREAD` for ThreadSanitizer. |
 | `HAYLEN_BUILD_SDK` | `OFF` | Adds the `haylen_sdk` target and the install rules of the SDK. |
 
@@ -38,7 +39,7 @@ haylen_add_app(my-app
 ```
 
 ```sh
-cmake -S . -B build -G Ninja -DHAYLEN_SOKOL_SHDC=/path/to/sokol-shdc
+cmake -S . -B build -G Ninja -DHAYLEN_SHADERC=/path/to/haylen-shaderc
 cmake --build build
 ```
 
@@ -64,11 +65,11 @@ haylen_add_app(my-app
 )
 ```
 
-A local checkout works the same way with `CPMAddPackage(NAME haylen SOURCE_DIR "<checkout>/engine")`, which is how `samples/cpp/embedding` does it. The engine reuses the CPM that the project already included, and `HAYLEN_SOKOL_SHDC` is passed on the command line as in the previous section.
+A local checkout works the same way with `CPMAddPackage(NAME haylen SOURCE_DIR "<checkout>/engine")`, which is how `samples/cpp/embedding` does it. The engine reuses the CPM that the project already included, and `HAYLEN_SHADERC` is passed on the command line as in the previous section.
 
 ## find_package and the SDK
 
-The SDK is a prebuilt engine for one platform and one graphics backend. It needs neither the engine sources nor `sokol-shdc`, because the shaders are already compiled into it.
+The SDK is a prebuilt engine for one platform, one backend and one graphics API. It needs neither the engine sources nor `haylen-shaderc`, because the shaders are already compiled into it.
 
 ```sh
 haylen sdk --platform macos --config Release
@@ -108,7 +109,7 @@ haylen_add_app(my-app
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/path/to/haylen-macos-release
 ```
 
-The package config imports `haylen::engine` and `haylen::runtime`, defines `haylen_add_app` and sets `HAYLEN_PLATFORM`, `HAYLEN_BACKEND` and `HAYLEN_DESKTOP` to the values the SDK was built with. Its version file accepts requests for the same major and minor version. A web SDK is used from a project configured with Emscripten's `emcmake`. Android, iOS and tvOS projects add the engine from source through `add_subdirectory`, as the [build guide](build.md) describes.
+The package config imports `haylen::engine` and `haylen::runtime`, defines `haylen_add_app` and sets `HAYLEN_PLATFORM`, `HAYLEN_BACKEND`, `HAYLEN_GRAPHICS` and `HAYLEN_DESKTOP` to the values the SDK was built with, where `HAYLEN_BACKEND` is the name of the folder of the backend, such as `sokol`, and `HAYLEN_GRAPHICS` the graphics API, such as `METAL`. Its version file accepts requests for the same major and minor version. A web SDK is used from a project configured with Emscripten's `emcmake`. Android, iOS and tvOS projects add the engine from source through `add_subdirectory`, as the [build guide](build.md) describes.
 
 ## haylen_add_app
 
@@ -127,7 +128,7 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `APPLE_PROJECT` | Folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in`, `tvos/LaunchScreen.storyboard` and `PrivacyInfo.xcprivacy`. The default is `engine/platform/apple`, whose privacy manifest declares the APIs with required reasons that the engine calls, as the [distribution guide](distribution.md#privacy-manifest) lists them. |
 | `WEB_SHELL` | HTML shell of the browser build. The default is `engine/platform/web/shell.html`. |
 
-The function links `haylen::runtime`, which brings the system libraries of the platform, and deploys the package into the app of each platform. On Apple platforms those are the system frameworks of `HAYLEN_APPLE_FRAMEWORKS_MACOS`, `_IOS`, `_MACCATALYST` and `_TVOS` in `engine/cmake/haylen-app.cmake`, the lists that the Apple artifacts publish as `haylen-frameworks.json` for the projects of Lua apps, so C++ apps and Lua apps link the same frameworks. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because `sokol_app` leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
+The function links `haylen::runtime`, which brings the system libraries of the platform, and deploys the package into the app of each platform. On Apple platforms those are the system frameworks of `HAYLEN_APPLE_FRAMEWORKS_MACOS`, `_IOS`, `_MACCATALYST` and `_TVOS` in `engine/cmake/haylen-app.cmake`, the lists that the Apple artifacts publish as `haylen-frameworks.json` for the projects of Lua apps, so C++ apps and Lua apps link the same frameworks. On Apple platforms it also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because the Sokol backend leaves `main` to the app there. Only `app.json`, `source/` and `content/` are deployed, so platform projects, notes and build files can share the package folder.
 
 | Platform | Result |
 | --- | --- |

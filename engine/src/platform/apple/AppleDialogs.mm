@@ -7,8 +7,8 @@
 #include <variant>
 
 #include "platform/DialogRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #import "platform/apple/HaylenDialog.h"
-#include "sokol_app.h"
 
 #if !TARGET_OS_OSX
 #import "platform/apple/ApplePresenter.hpp"
@@ -24,7 +24,7 @@ void AppleDialogs::show(std::uint64_t id, const DialogRequest& request, const st
     HaylenDialog* dialog = [[HaylenDialog alloc] initWithIdentifier:id folder:folder];
     dialogs[@(id)] = dialog;
 #if TARGET_OS_OSX
-    if (!sapp_isvalid()) {
+    if (!NativeWindow::isOpen()) {
         answer(id, makeFailure(DialogResult::Code::Failed, "The app has no window to show the dialog on."));
         return;
     }
@@ -50,7 +50,7 @@ void AppleDialogs::cancel(std::uint64_t id) {
 #if TARGET_OS_OSX
     if ([dialog.view isKindOfClass:NSAlert.class]) {
         NSWindow* sheet = static_cast<NSAlert*>(dialog.view).window;
-        [(__bridge NSWindow*)sapp_macos_get_window() endSheet:sheet returnCode:NSModalResponseCancel];
+        [(__bridge NSWindow*)NativeWindow::getHandle() endSheet:sheet returnCode:NSModalResponseCancel];
     } else {
         [static_cast<NSSavePanel*>(dialog.view) cancel:nil];
     }
@@ -110,7 +110,7 @@ void AppleDialogs::showMessage(HaylenDialog* dialog, const DialogRequest::Messag
     const std::uint64_t id = dialog.identifier;
     const std::size_t count = message.buttons.size();
     // clang-format off
-    [alert beginSheetModalForWindow:(__bridge NSWindow*)sapp_macos_get_window() completionHandler:^(NSModalResponse response) {
+    [alert beginSheetModalForWindow:(__bridge NSWindow*)NativeWindow::getHandle() completionHandler:^(NSModalResponse response) {
         const NSInteger index = response - NSAlertFirstButtonReturn;
         answer(id, index >= 0 && static_cast<std::size_t>(index) < count ? DialogResult{.button = static_cast<std::size_t>(index)} : DialogResult{});
     }];
@@ -130,7 +130,7 @@ void AppleDialogs::showOpenFiles(HaylenDialog* dialog, const DialogRequest::Open
     dialog.view = panel;
     const std::uint64_t id = dialog.identifier;
     // clang-format off
-    [panel beginSheetModalForWindow:(__bridge NSWindow*)sapp_macos_get_window() completionHandler:^(NSModalResponse response) {
+    [panel beginSheetModalForWindow:(__bridge NSWindow*)NativeWindow::getHandle() completionHandler:^(NSModalResponse response) {
         if (response != NSModalResponseOK) {
             answer(id, {});
             return;
@@ -159,7 +159,7 @@ void AppleDialogs::showSaveFile(HaylenDialog* dialog, const DialogRequest::SaveF
 
     // The file is written on a thread of its own, so a large file never holds the frames back.
     // clang-format off
-    [panel beginSheetModalForWindow:(__bridge NSWindow*)sapp_macos_get_window() completionHandler:^(NSModalResponse response) {
+    [panel beginSheetModalForWindow:(__bridge NSWindow*)NativeWindow::getHandle() completionHandler:^(NSModalResponse response) {
         if (response != NSModalResponseOK) {
             answer(id, {});
             return;
@@ -184,7 +184,7 @@ void AppleDialogs::showOpenFolder(HaylenDialog* dialog, const DialogRequest::Ope
 
     dialog.view = panel;
     const std::uint64_t id = dialog.identifier;
-    [panel beginSheetModalForWindow:(__bridge NSWindow*)sapp_macos_get_window() completionHandler:^(NSModalResponse response) { answer(id, response == NSModalResponseOK ? DialogResult{.folder = std::string(panel.URL.path.UTF8String)} : DialogResult{}); }];
+    [panel beginSheetModalForWindow:(__bridge NSWindow*)NativeWindow::getHandle() completionHandler:^(NSModalResponse response) { answer(id, response == NSModalResponseOK ? DialogResult{.folder = std::string(panel.URL.path.UTF8String)} : DialogResult{}); }];
 }
 #else
 // An alert answers only through its buttons, which dismiss it, in the order of the request.

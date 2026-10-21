@@ -1,23 +1,23 @@
 # Building Haylen
 
-The script `haylen.py` at the repository root is the single entry point for building, running, testing and packaging the engine and its apps on every platform. It wraps CMake, downloads the pinned tools it needs into `.tools/`, and keeps one build tree per platform and configuration under `build/`. This guide covers building the engine, what each platform needs, how dependencies are declared, how `haylen_add_app` deploys a package into a C++ app, the web runtime and continuous integration. The [distribution guide](distribution.md) covers the prebuilt engine artifacts, the platform templates and the commands that create, run and package apps, the [embedding guide](embedding.md) covers consuming the engine from another CMake project, and the [testing guide](testing.md) covers the test suite.
+The script `haylen.py` at the repository root is the single entry point for building, running, testing and packaging the engine and its apps on every platform. It wraps CMake, downloads or builds the pinned tools it needs into `.tools/`, and keeps one build tree per platform and configuration under `build/`. This guide covers building the engine, what each platform needs, how dependencies are declared, how `haylen_add_app` deploys a package into a C++ app, the web runtime and continuous integration. The [distribution guide](distribution.md) covers the prebuilt engine artifacts, the platform templates and the commands that create, run and package apps, the [embedding guide](embedding.md) covers consuming the engine from another CMake project, and the [testing guide](testing.md) covers the test suite.
 
 ## Requirements
 
 Every host needs Python 3.12 or newer, CMake 3.28 or newer and a C++20 compiler. An older Python stops `haylen.py` at its start with a message that names the version it needs. Ninja is needed by every build except iOS, tvOS, macOS with `--xcode`, and Windows builds, which fall back to the default CMake generator when Ninja is not on `PATH`. Run the script with the command `haylen` at the root of the repository, the shell script on macOS and Linux and `haylen.cmd` on Windows.
 
-The script `haylen.py` downloads the remaining tools the first time a command needs them:
+The script `haylen.py` downloads or builds the remaining tools the first time a command needs them:
 
 | Tool | Version | Location | Needed by |
 | --- | --- | --- | --- |
-| `sokol-shdc` | commit `b975d56` of `floooh/sokol-tools-bin` | `.tools/sokol-shdc-b975d56` | Every build. Prebuilt binaries exist for macOS (arm64 and x64), Linux (arm64 and x64) and Windows (x64). |
+| `haylen-shaderc` | The commit of [haylen-shader-compiler](https://github.com/haylen-org/haylen-shader-compiler) that `SHADER_COMPILER_COMMIT` of `haylen.py` pins | `.tools/haylen-shaderc-<commit>` | Every build and `haylen.py shaders`. The script fetches that commit with `git` and builds the compiler with CMake, in a folder named after the commit, so a new pin builds its own compiler. The environment variable `HAYLEN_SHADER_COMPILER` names a build of the compiler to use instead. |
 | Emscripten SDK | 6.0.12 | `.tools/emsdk` | Web builds. It is cloned with `git`, and an SDK of another version takes the newest list of releases and installs this one. Every web build tree records the version that configured it, and a tree of another version builds again from nothing, because Emscripten keeps no ABI between versions. |
 | Gradle | 9.8.1 | `.tools/gradle-9.8.1` | The Android library and Android apps. |
 | XcodeGen | 2.46.0, the release zip checked against its pinned SHA-256 hash | `.tools/xcodegen-2.46.0` | Apple apps whose plugins add to the Apple project, which haylen.py generates again. macOS only. |
 
 What each platform needs on top of that:
 
-| Platform | `--platform` | Host | Graphics backend | Generator | Also install |
+| Platform | `--platform` | Host | Graphics API | Generator | Also install |
 | --- | --- | --- | --- | --- | --- |
 | macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | Xcode Command Line Tools, or Xcode for `--xcode`. |
 | Windows | `windows` | Windows | Direct3D 11 | Ninja when it is on `PATH`, otherwise the CMake default (Visual Studio) | Visual Studio with the C++ workload. Ninja builds run from a developer command prompt so MSVC is on `PATH`. |
@@ -34,7 +34,7 @@ The script `haylen.py` refuses to configure macOS, iOS, tvOS, Linux and Windows 
 
 Every platform and configuration gets its own tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`, and builds with sanitizers get trees of their own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree. The command `haylen clean` removes the whole `build/` folder but keeps `.tools/` and the dependency cache.
 
-The command `build` configures a tree when it has no CMake cache yet or when `--backend` differs from the backend the tree was configured with. Run `clean` before switching the generator with `--xcode`, because CMake cannot change the generator of a tree. The prebuilt engine artifacts that apps use have trees of their own, described in the [distribution guide](distribution.md#engine-artifacts).
+The command `build` configures a tree when it has no CMake cache yet, when `--graphics-api` asks for another graphics API than the one the tree was configured with, when the shader compiler changed or when another version of Emscripten configured a web tree. Run `clean` before switching the generator with `--xcode`, because CMake cannot change the generator of a tree. The prebuilt engine artifacts that apps use have trees of their own, described in the [distribution guide](distribution.md#engine-artifacts).
 
 ## Commands
 
@@ -88,13 +88,13 @@ The commands `configure`, `build` and `test` share these options:
 | --- | --- | --- |
 | `--platform` | the host | `macos`, `linux`, `windows`, `ios`, `tvos`, `android`, `web` or `web-webgl2`. `test` always uses the host. |
 | `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. |
-| `--backend` | the platform default | `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`, passed as `HAYLEN_RENDER_BACKEND`. The web platforms always choose their own backend. |
+| `--graphics-api` | the platform default | `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`, the graphics API that the backend draws through, passed as `HAYLEN_GRAPHICS_API`. The web platforms always choose their own graphics API. |
 | `--xcode` | off | Use the Xcode generator on macOS. |
 | `--sanitizers` | none | `address` for AddressSanitizer and UndefinedBehaviorSanitizer or `thread` for ThreadSanitizer, in a tree of its own and passed as `HAYLEN_SANITIZERS`. MSVC builds ignore it. The [testing guide](testing.md#sanitizers) explains both. |
 | `--target` | everything | CMake target that `build` builds. |
 | `--jobs` | CPU count minus one | Parallel build and test jobs. |
 
-The runtime links the system libraries of each platform's default backend, plus OpenGL on Windows when the backend is not `D3D11`. That makes `--backend GLCORE` on Windows the one desktop override with a complete link setup.
+The runtime links the system libraries of the default graphics API of each platform, plus OpenGL on Windows when the graphics API is not `D3D11`. That makes `--graphics-api GLCORE` on Windows the one desktop override with a complete link setup.
 
 ### tools
 
@@ -102,7 +102,7 @@ The runtime links the system libraries of each platform's default backend, plus 
 haylen tools [--emsdk] [--gradle]
 ```
 
-Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.12 or Gradle 9.8.1 when asked, and prints where each one lives. Every other command downloads what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
+Builds the shader compiler `haylen-shaderc`, downloads XcodeGen 2.46.0 on macOS, and Emscripten 6.0.12 or Gradle 9.8.1 when asked, and prints where each one lives. Every other command downloads or builds what it needs by itself, so `tools` is mainly useful to warm up a machine or a CI cache.
 
 ### configure
 
@@ -110,7 +110,7 @@ Downloads `sokol-shdc`, XcodeGen 2.46.0 on macOS, and Emscripten 6.0.12 or Gradl
 haylen configure --platform ios
 ```
 
-Generates the build tree with the options above. Every tree receives `-DHAYLEN_SOKOL_SHDC` and `-DCMAKE_BUILD_TYPE`. The platforms add their own settings:
+Generates the build tree with the options above. Every tree receives `-DHAYLEN_SHADERC`, `-DCMAKE_BUILD_TYPE`, `-DHAYLEN_GRAPHICS_API` and `-DHAYLEN_SANITIZERS`. The platforms add their own settings:
 
 - iOS and tvOS use the Xcode generator with `CMAKE_SYSTEM_NAME` set to `iOS` or `tvOS`, the `arm64` architecture, the 16.3 deployment target, and tests and the player turned off. macOS trees target macOS 14.0. The [distribution guide](distribution.md#haylenxcframework) explains these minimums.
 - Android uses the NDK toolchain with `ANDROID_ABI=arm64-v8a`, `ANDROID_PLATFORM=android-27` and the static C++ library, with the tests turned off. The player is the shared library `libhaylen.so`, the one the [Android library](distribution.md#the-android-libraries) packages.
@@ -142,7 +142,7 @@ Builds `haylen_tests` for the host and runs it through `ctest` with `--output-on
 haylen coverage
 ```
 
-Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and without samples and the player, builds and runs the tests, merges the profiles with `llvm-profdata`, prints the `llvm-cov report` table and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, tests, generated files and the platform backends in `engine/src/platform/{apple,android,web,windows,linux,sokol}`, which need a real device. Coverage uses LLVM source-based coverage, so it needs Clang. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. It accepts `--jobs` and `--sanitizers`.
+Configures `build/coverage` in Debug with `HAYLEN_ENABLE_COVERAGE=ON` and without samples and the player, builds and runs the tests, merges the profiles with `llvm-profdata`, prints the `llvm-cov report` table and writes an HTML report to `build/coverage/coverage/html/index.html`. The report leaves out dependencies, tests, generated files and the platform folders in `engine/src/platform/{apple,android,web,windows,linux}`, which need a real device. Coverage uses LLVM source-based coverage, so it needs Clang. On macOS the LLVM tools come from Xcode through `xcrun`, and elsewhere they must be on `PATH`. It accepts `--jobs` and `--sanitizers`.
 
 ### format
 
@@ -199,8 +199,9 @@ The script `haylen.py` sets these options for you, and projects that add the eng
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `HAYLEN_SOKOL_SHDC` | empty | Path to `sokol-shdc`. Configuring fails without it. |
-| `HAYLEN_RENDER_BACKEND` | `AUTO` | `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. `AUTO` picks Metal on Apple platforms, Direct3D 11 on Windows, GLES3 on Android, WebGPU on the web and OpenGL core on Linux. |
+| `HAYLEN_SHADERC` | empty | Path to the Haylen shader compiler `haylen-shaderc`, which compiles the engine shaders. Configuring fails without it, and `haylen tools` builds it. |
+| `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | Folder of the backend that opens the window, runs and draws the frames and holds the entry point, whose `backend.cmake` adds its sources to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. The backend is named after the folder, as `HAYLEN_BACKEND`. |
+| `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. `AUTO` picks Metal on Apple platforms, Direct3D 11 on Windows, GLES3 on Android, WebGPU on the web and OpenGL core on Linux. The engine shaders carry the shader languages of that graphics API alone. |
 | `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Build the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
 | `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Build the tests on desktop. |
 | `HAYLEN_BUILD_BENCHMARKS` | on when the engine is the top-level project | Build the benchmarks of `haylen.py bench` on desktop: the sprite benchmark and the algorithm, procedural, physics, UI, render, particle and Lua benchmarks. |
@@ -213,7 +214,7 @@ The script `haylen.py` sets these options for you, and projects that add the eng
 
 Every target of the engine and its dependencies compiles with the settings of `engine/cmake/haylen-release.cmake`: Clang and GCC map the source trees of the engine, its build folder and the CPM cache to `engine/`, `build/` and `deps/` in the file names that `__FILE__` writes into binaries, such as the ones that assertions keep, so no binary names a folder of the machine that built it, and they place every function and object in a section of its own, which `--gc-sections` drops when nothing calls it, outside Apple platforms, whose linker strips dead code by atom. MSVC has no such mapping, so a Windows build keeps the full paths of the files whose assertions it compiles. On Apple platforms they also compile with hidden symbols, since an Apple executable exports every global symbol it holds, so an app exports only the symbols of its own code, which [`native.findSymbol`](../lua-api/native.md#nativefindsymbolname) finds. A Release build compiles them with link-time optimization wherever the compiler supports it, `CMAKE_INTERPROCEDURAL_OPTIMIZATION_RELEASE`, which is thin LTO with Clang on Apple platforms, Android and the web, LTO with GCC on Linux and whole program optimization with MSVC on Windows, so the libraries and the SDKs of the artifacts hold the intermediate code of the compiler and the link of each app optimizes the engine, its dependencies and the app as one program and drops what the app never reaches. The SDK of Windows is the exception: the intermediate code of MSVC would make its one library larger than the 4 GB that a library of Windows holds, so it compiles to machine code, while a C++ app that compiles the engine with MSVC keeps whole program optimization. GCC and MSVC link that code only when the link asks for it, so `haylen::engine` carries `-flto=auto` or `/LTCG /INCREMENTAL:NO` to every program that links it, a Debug app that links the prebuilt SDK included, while Clang links it on its own. An SDK holds code for the compiler that built it, so an app links it with the same compiler, which is how `haylen.py` builds both on one machine. The slices of `Haylen.xcframework` hold machine code instead, because `xcodebuild -create-xcframework` and `lipo` refuse libraries of LLVM bitcode since Xcode stopped taking bitcode, so a Lua app on Apple platforms links the engine with dead code stripping alone, while a C++ app compiles the engine with the rest of its code and links it with LTO there too.
 
-The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns the player, the tests and the benchmark on. Shaders in `engine/shaders` are compiled by `sokol-shdc` at build time for GLSL 4.30, GLSL 3.00 ES, HLSL 5, Metal for macOS, iOS and the simulator and WGSL, and the runtime picks the variant of the active backend. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every compile runs from `engine/shaders/include`, the shader library that app shaders include too.
+The workspace `CMakeLists.txt` at the repository root adds `engine/` and turns the player, the tests and the benchmark on. Shaders in `engine/shaders` are compiled by `haylen-shaderc` at build time through `haylen_compile_shader` of `engine/cmake/haylen-shaders.cmake`, into packages that the engine embeds with the code of the shader languages of its graphics API alone, which `HAYLEN_SHADER_LANGUAGES` of `engine/cmake/haylen-platform.cmake` lists: the three Metal languages for macOS, iOS and the iOS simulator on Apple platforms, HLSL 5 for Direct3D 11, GLSL 4.30 for OpenGL core, GLSL 3.00 ES for OpenGL ES 3 and WebGL2, and WGSL for WebGPU. The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`, and every compile includes `engine/shaders/include`, the shader library that app shaders include too.
 
 ## Dependencies
 
@@ -223,7 +224,7 @@ Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmak
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it. |
 | Varn | v0.0.1, commit `19d8d86` | Lua runtime, event loop, worker pools and the `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and other modules. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links, and Varn picks the HTTP client driver of each platform itself: the Apple driver on iOS, tvOS and Mac Catalyst, the Android driver on Android and the fetch driver on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. Varn builds OpenSSL with its own `make` as one step of the build, with the jobs that `CMAKE_BUILD_PARALLEL_LEVEL` names when the tree is configured and one job without it, and `haylen.py` leaves the variable out, so a build never runs more jobs than it was given. |
-| Sokol | commit `5e94d12` | Headers only. The runtime compiles the implementation for the chosen backend, with the patches in `engine/cmake/patches` that the [distribution guide](distribution.md#notes-on-dependencies) describes. |
+| Sokol | commit `5e94d12` | Headers only. The Sokol backend compiles the implementation for the chosen graphics API, with the patches in `engine/cmake/patches` that the [distribution guide](distribution.md#notes-on-dependencies) describes. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash, whose prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images, and publishes no releases, so it is pinned to a commit of its default branch. |
@@ -305,13 +306,13 @@ build/macos-debug/bin/haylen/haylen my-game.zip
 
 The option `--dev` turns on development mode, which `haylen.py run` passes. When the package is a folder, the player then watches its `app.json`, `source/` and `content/`: a changed texture updates in place, other changed assets leave the cache so the next load reads them again, a changed Lua module reloads in place with the state of the app, and a changed `app.json` or `source/main.lua` restarts the app, even from the error screen or after an `app.json` that failed to load. Hidden and backup files never count, and changes saved while the app restarts reach the next app. Without `--dev` the player runs the package like a shipped app. A package that fails to load keeps the window open and shows the error. The command `haylen.py engine --platform desktop` builds the player in `build/engine/desktop-<config>/` and copies it to `build/artifacts/desktop/<os>-<arch>/`, next to the content tool `haylen-content`, which builds the protected releases of apps as the [content guide](../content/content.md#the-content-tool) describes, and the SDK of the engine in `sdk/`, which links the release executables of Windows and Linux apps.
 
-The player, like every desktop app, exits with the status that the app quit with, which [`haylen.quit`](../lua-api/haylen.md#haylenquitoptions) sets, with 0 when its window closes and with 1 when its engine could not start. On Windows and Linux `sokol_app` is compiled with `SOKOL_NO_ENTRY`, so the entry point of the runtime, `WinMain` or `main`, returns the status, and on macOS the application delegate of the runtime ends the process with it.
+The player, like every desktop app, exits with the status that the app quit with, which [`haylen.quit`](../lua-api/haylen.md#haylenquitoptions) sets, with 0 when its window closes and with 1 when its engine could not start. With the Sokol backend, `sokol_app` is compiled with `SOKOL_NO_ENTRY` on Windows and Linux, so the entry point of the backend, `WinMain` or `main`, returns the status, and on macOS the application delegate of the backend ends the process with it.
 
 ## Web builds
 
 Web builds are single-threaded like Varn, so they need no `SharedArrayBuffer` and no cross-origin isolation, and `haylen.py serve` sends a COOP header only when `--coop` asks for one, since `same-origin` cuts the page off from the sign-in and payment popups of plugins, as the [distribution guide](distribution.md#serve) explains. Audio reaches the browser through an `AudioWorkletNode` that the page feeds over its message port, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. Pages play sound only when they are served over https or from localhost, where browsers offer `AudioWorklet`, which `haylen.py serve`, `haylen.py run --platform web` and `haylen.py run-cpp --platform web` do on `127.0.0.1` by default. Apps run on any other page too, without sound, as the [audio guide](../audio/audio.md#without-an-audio-output) explains. The link options come from `haylen_link_runtime_platform`: memory growth, a 1 MB stack, IDBFS for user data, the `emdawnwebgpu` port for WebGPU, and WebGL 2 only for the `web-webgl2` platform. The engine target adds the native exceptions and the native `longjmp` of WebAssembly, `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Varn compiles Lua as C++, whose errors unwind as exceptions and whose yields jump back to their resume, and every current browser runs both without help from JavaScript.
 
-A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A post-build step of `haylen_setup_web_page` also copies the target's shell, the `WEB_SHELL` of `haylen_add_app` or `engine/platform/web/shell.html` by default, next to them as `<target>.shell.html`, together with `haylen-logo.svg`, the engine logo that the default shell shows as the icon of the page, and `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output, which the runtime loads from the folder of its script through `locateFile`. The prebuilt player of `haylen.py engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web template](distribution.md#web-loader). The command `haylen.py run-cpp --platform web` builds a C++ app target for both backends and writes this layout:
+A single web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A post-build step of `haylen_setup_web_page` also copies the target's shell, the `WEB_SHELL` of `haylen_add_app` or `engine/platform/web/shell.html` by default, next to them as `<target>.shell.html`, together with `haylen-logo.svg`, the engine logo that the default shell shows as the icon of the page, and `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output, which the runtime loads from the folder of its script through `locateFile`. The prebuilt player of `haylen.py engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web template](distribution.md#web-loader). The command `haylen.py run-cpp --platform web` builds a C++ app target for both graphics APIs of the web and writes this layout:
 
 ```text
 build/cpp/embedding-<hash>/web/

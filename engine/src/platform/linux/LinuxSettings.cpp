@@ -4,9 +4,9 @@
 #include <string>
 
 #include "haylen/platform/Theme.hpp"
+#include "platform/NativeHost.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/linux/LinuxGlib.hpp"
-#include "platform/sokol/SokolHost.hpp"
 
 namespace haylen::platform {
 
@@ -43,7 +43,7 @@ void LinuxSettings::observe() {
 
 void LinuxSettings::setScreenReader(bool value) {
     accessibility.screenReader = value;
-    SokolHost::getSystemState().setAccessibility(accessibility);
+    NativeHost::getSystemState().setAccessibility(accessibility);
 }
 
 bool LinuxSettings::load(void* library) {
@@ -72,16 +72,16 @@ void LinuxSettings::apply(std::string_view space, std::string_view key, void* va
     }
     const bool number = isOfType(value, "u") != 0;
     if (space == kAppearance && key == kColorScheme && number) {
-        SokolHost::getSystemState().setTheme(getUint32(value) == kPreferDark ? Theme::Dark : Theme::Light);
+        NativeHost::getSystemState().setTheme(getUint32(value) == kPreferDark ? Theme::Dark : Theme::Light);
     } else if (space == kAppearance && key == kContrast && number) {
         accessibility.highContrast = getUint32(value) == kHigherContrast;
-        SokolHost::getSystemState().setAccessibility(accessibility);
+        NativeHost::getSystemState().setAccessibility(accessibility);
     } else if (space == kAppearance && key == kMotion && number) {
         accessibility.reducedMotion = getUint32(value) == kReducedMotion;
-        SokolHost::getSystemState().setAccessibility(accessibility);
+        NativeHost::getSystemState().setAccessibility(accessibility);
     } else if (space == kInterface && key == kTextScaling && isOfType(value, "d") != 0) {
         accessibility.textScale = static_cast<float>(getDouble(value));
-        SokolHost::getSystemState().setAccessibility(accessibility);
+        NativeHost::getSystemState().setAccessibility(accessibility);
     }
     unref(value);
 }

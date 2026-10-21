@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <optional>
+#include <span>
 #include <utility>
 #include <vector>
 
@@ -14,16 +15,15 @@
 #include "graphics/PassTarget.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/lighting/Light.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/BlendMode.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Transform2D.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "sokol_gfx.h"
 
 namespace haylen::graphics {
-struct FrameTarget;
 struct TextureResource;
 } // namespace haylen::graphics
 
@@ -36,7 +36,8 @@ struct Shade;
 // Turns the canvases recorded during a frame into GPU passes: it casts the shadow maps, orders and merges the draws, uploads the instance data and renders the metaball fields, the offscreen, light, post-processing and capture passes and the swapchain pass.
 class FrameSubmitter final {
   public:
-    FrameSubmitter(RendererState& rendererState, const graphics::FrameTarget& frameTarget) : state(rendererState), target(frameTarget) {}
+    // A transparent window composes the alpha of the frame with the desktop, and every other frame keeps alpha 1 whatever it draws.
+    FrameSubmitter(RendererState& rendererState, bool transparentFrame) : state(rendererState), transparent(transparentFrame) {}
 
     // Every render target is created before the first pass, and a failure inside a pass ends it and the frame before it goes on.
     void submit();
@@ -46,6 +47,81 @@ class FrameSubmitter final {
 
   private:
     using Matrix = std::array<float, 16>;
+    using Vector = std::array<float, 4>;
+
+    // The uniform blocks of the programs of the renderer, laid out as their sources declare them under the std140 rules.
+    struct VertexParams {
+        Matrix viewProjection{};
+        float premultiply = 0.0F;
+        std::array<float, 3> padding{};
+    };
+
+    struct LitParams {
+        Vector surface{};
+        Vector info{};
+    };
+
+    struct LightParams {
+        Matrix viewProjection{};
+    };
+
+    struct CompositeParams {
+        Vector tint{};
+        Vector fade{};
+        Vector grading{};
+        Vector vignette{};
+        Vector flags{};
+        Vector view{};
+        Vector shape{};
+        Vector visionRed{};
+        Vector visionGreen{};
+        Vector visionBlue{};
+        Vector grain{};
+    };
+
+    struct FilterParams {
+        Vector settings{};
+        Vector offset{};
+    };
+
+    struct BlendVertexParams {
+        Matrix viewProjection{};
+        Vector placement{};
+        Vector columns{};
+        float premultiply = 0.0F;
+        std::array<float, 3> padding{};
+    };
+
+    struct BlendFragmentParams {
+        Vector settings{};
+        Vector shape{};
+        Vector color{};
+        Vector image{};
+        Vector fade{};
+    };
+
+    struct BackdropVertexParams {
+        Matrix viewProjection{};
+        Vector placement{};
+        Vector columns{};
+    };
+
+    struct BackdropFragmentParams {
+        Vector settings{};
+        Vector flips{};
+    };
+
+    struct MetaballVertexParams {
+        Matrix viewProjection{};
+        Vector area{};
+        Vector field{};
+    };
+
+    struct MetaballFragmentParams {
+        Vector fill{};
+        Vector outlineColor{};
+        Vector levels{};
+    };
 
     // The parts of the composite of a canvas: everything in one pass, the image before bloom and blur, or what comes after them.
     enum class Stage : std::uint8_t {
@@ -69,12 +145,14 @@ class FrameSubmitter final {
     LitTargets& getLitTargets(std::size_t index, math::Vec2 size, const Canvas& canvas);
     const graphics::RenderTarget& getField(std::size_t index, math::Vec2 size);
     void castShadows();
-    void writeShadowAtlas(int rows);
     void buildCommands();
     void append(const DrawItem& item);
     void appendCanvas(const std::vector<std::uint32_t>& order, bool distortion, std::uint32_t& expected, bool& inOrder);
     void upload();
-    void writeBuffer(sg_buffer& buffer, std::size_t& capacity, const void* data, std::size_t count, std::size_t elementSize, bool indexBuffer);
+    void writeBuffer(gpu::Device::Buffer& buffer, std::size_t& capacity, std::span<const std::byte> data, std::size_t elementSize, bool indexBuffer);
+
+    // Applies the values of a uniform block of the applied pipeline.
+    template <typename Block> void applyBlock(int slot, const Block& block);
 
     void renderOffscreen();
     void renderFields(const Canvas& canvas);
@@ -113,18 +191,21 @@ class FrameSubmitter final {
     void applyShade(const Shade& shade, graphics::PassTarget pass, Program program);
 
     // Binds the textures of a batch program without a material, every one with the sampler of the first.
-    void bindBatch(sg_bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass);
+    void bindBatch(gpu::Device::Bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass);
 
     // Binds the textures and samplers of a material program, where slot 0 takes the texture of the draw and the slots of the textures of a batch take the others.
-    void bindMaterial(sg_bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass, Program program);
+    void bindMaterial(gpu::Device::Bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass, Program program);
 
     RendererState& state;
-    const graphics::FrameTarget& target;
+    bool transparent = false;
     std::size_t instanceCursor = 0;
     std::size_t splatBase = 0;
     std::size_t commandFloor = 0;
     bool identity = true;
     bool passOpen = false;
+
+    // The pixels of the shadow atlas that the shadowed lights of the frame cast, which reach the GPU with the dynamic textures.
+    std::optional<gpu::Device::ImageWrite> shadowWrite;
 };
 
 } // namespace haylen::graphics2d

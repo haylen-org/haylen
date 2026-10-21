@@ -1,7 +1,7 @@
 #import "platform/apple/AppleStatusBar.hpp"
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
-#include "sokol_app.h"
+#include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
 
@@ -16,7 +16,7 @@ Window::StatusBar AppleStatusBar::get() {
 
 void AppleStatusBar::set(Window::StatusBar value) {
     current = value;
-    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     [window.rootViewController setNeedsStatusBarAppearanceUpdate];
 }
 
@@ -34,12 +34,12 @@ UIStatusBarStyle AppleStatusBar::getStyle() {
 }
 
 float AppleStatusBar::getHeight() {
-    UIWindow* window = (__bridge UIWindow*)sapp_ios_get_window();
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     UIStatusBarManager* manager = window.windowScene.statusBarManager;
     if (manager == nil || manager.isStatusBarHidden) {
         return 0.0F;
     }
-    return static_cast<float>(manager.statusBarFrame.size.height) * sapp_dpi_scale();
+    return static_cast<float>(manager.statusBarFrame.size.height) * NativeWindow::getScale();
 }
 
 // The keys that haylen.py writes from `app.json` launch the app with its status bar, so the view controller keeps it until the engine applies the same value.

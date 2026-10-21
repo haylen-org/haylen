@@ -923,7 +923,7 @@ Events that native code sends while no app runs, such as while the app launches 
 
 ### Events of the app
 
-The runtime's application delegate hands every event below to the plugins that implement its method, in load order, on the main thread. On iOS, tvOS and Mac Catalyst it is `HaylenSceneDelegate`, which also delegates the scene, and on macOS `HaylenAppDelegate`. Both derive from the delegates of `sokol_app`, which the patch that the [distribution guide](../tools/distribution.md#notes-on-dependencies) describes lets the runtime name.
+The runtime's application delegate hands every event below to the plugins that implement its method, in load order, on the main thread. On iOS, tvOS and Mac Catalyst it is `HaylenSceneDelegate`, which also delegates the scene, and on macOS `HaylenAppDelegate`. Both live in `engine/src/backends/sokol/apple/` and derive from the delegates of `sokol_app`, which the patch that the [distribution guide](../tools/distribution.md#notes-on-dependencies) describes lets the Sokol backend name.
 
 | Platforms | Methods |
 | --- | --- |

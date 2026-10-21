@@ -5,11 +5,11 @@
 #include <cstdint>
 
 #include "haylen/platform/Event.hpp"
+#include "platform/NativeWindow.hpp"
+#include "platform/Player.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/HaylenTextField.h"
 #import "platform/apple/HaylenTextView.h"
-#include "platform/sokol/SokolRuntime.hpp"
-#include "sokol_app.h"
 
 using haylen::platform::AppleTextInput;
 using haylen::platform::TextInput;
@@ -138,7 +138,7 @@ using haylen::platform::TextInput;
 }
 
 - (void)edit:(const TextInput::Field&)value {
-    UIView* host = ((__bridge UIWindow*)sapp_ios_get_window()).rootViewController.view;
+    UIView* host = ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).rootViewController.view;
 #if TARGET_OS_TV
     UIView<UITextInput>* view = textField;
 #else
@@ -265,14 +265,14 @@ using haylen::platform::TextInput;
 
 // The keyboard frame reaches the engine in framebuffer pixels of the view of the app, and a hidden keyboard covers nothing.
 - (void)keyboardChanged:(NSNotification*)notification {
-    UIView* host = ((__bridge UIWindow*)sapp_ios_get_window()).rootViewController.view;
+    UIView* host = ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).rootViewController.view;
     CGRect frame = CGRectZero;
     if (![notification.name isEqualToString:UIKeyboardWillHideNotification] && host.window != nil) {
         const CGRect screen = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
         frame = CGRectIntersection([host convertRect:screen fromCoordinateSpace:host.window.windowScene.screen.coordinateSpace], host.bounds);
     }
     const haylen::math::Rect area = CGRectIsNull(frame) || CGRectIsEmpty(frame) ? haylen::math::Rect{} : AppleTextInput::toPixels(frame);
-    haylen::platform::SokolRuntime::postEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = area});
+    haylen::platform::Player::postEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = area});
 }
 #endif
 

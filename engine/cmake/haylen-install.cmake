@@ -151,7 +151,7 @@ install(FILES "${imgui_SOURCE_DIR}/imgui.h" "${imgui_SOURCE_DIR}/imconfig.h" "${
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen_sdk)
 install(FILES "${HAYLEN_CMAKE_DIR}/haylen-app.cmake" "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake" "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/cmake" COMPONENT haylen_sdk)
 install(DIRECTORY "${HAYLEN_ENGINE_DIR}/platform/web" "${HAYLEN_ENGINE_DIR}/platform/apple" "${HAYLEN_ENGINE_DIR}/platform/windows" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/platform" COMPONENT haylen_sdk)
-install(FILES "${HAYLEN_ENGINE_DIR}/src/platform/sokol/LuaPlayer.cpp" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/src/platform/sokol" COMPONENT haylen_sdk)
+install(FILES "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/src/platform" COMPONENT haylen_sdk)
 if(APPLE)
   install(FILES "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleMain.cpp" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/src/platform/apple" COMPONENT haylen_sdk)
 endif()

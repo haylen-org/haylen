@@ -13,8 +13,8 @@
 #include <variant>
 
 #include "platform/DialogRelay.hpp"
+#include "platform/NativeWindow.hpp"
 #include "platform/windows/WindowsText.hpp"
-#include "sokol_app.h"
 
 namespace haylen::platform {
 
@@ -27,7 +27,7 @@ bool WindowsDialogs::showing = false;
 
 // The thread starts with the first dialog and shows what waits once its window exists, so a request never needs the window before it does.
 void WindowsDialogs::show(std::uint64_t id, const DialogRequest& request) {
-    const auto owner = static_cast<HWND>(const_cast<void*>(sapp_win32_get_hwnd()));
+    const auto owner = static_cast<HWND>(NativeWindow::getHandle());
     std::wstring ownerTitle(static_cast<std::size_t>(GetWindowTextLengthW(owner)) + 1, L'\0');
     ownerTitle.resize(static_cast<std::size_t>(GetWindowTextW(owner, ownerTitle.data(), static_cast<int>(ownerTitle.size()))));
     HWND target = nullptr;

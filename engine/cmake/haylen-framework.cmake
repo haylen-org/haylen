@@ -6,7 +6,7 @@ if(NOT APPLE OR NOT HAYLEN_BUILD_SDK)
   message(FATAL_ERROR "The option \"HAYLEN_BUILD_FRAMEWORK\" needs an Apple platform and \"HAYLEN_BUILD_SDK\".")
 endif()
 
-add_library(haylen_framework_player OBJECT "${HAYLEN_ENGINE_DIR}/src/platform/sokol/LuaPlayer.cpp")
+add_library(haylen_framework_player OBJECT "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp")
 target_link_libraries(haylen_framework_player PRIVATE haylen_engine)
 haylen_enable_warnings(haylen_framework_player)
 

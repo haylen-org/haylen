@@ -8,7 +8,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "graphics/ShaderPrecompiler.hpp"
 #include "graphics/ShaderResource.hpp"
 #include "graphics/TextureResource.hpp"
 #include "haylen/core/EventBus.hpp"
@@ -160,13 +159,13 @@ Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphi
         },
         .decode = [this](Request& request) -> std::shared_ptr<void> {
             const graphics::Shader shader = graphics::Shader::parse(request.bytes);
-            graphics::ShaderPrecompiler::start(jobs, shader.getResource()->getBackendSources());
+            shader.getResource()->prepare(device.getGpu(), jobs);
             return shader.getResource();
         },
         .finalize = [](std::shared_ptr<void> decoded, const Request&) { return decoded; },
         .reload = [this](const std::shared_ptr<void>& asset, Request& request) {
             const graphics::Shader fresh = graphics::Shader::parse(request.bytes);
-            graphics::ShaderPrecompiler::start(jobs, fresh.getResource()->getBackendSources());
+            fresh.getResource()->prepare(device.getGpu(), jobs);
             graphics::Shader(std::static_pointer_cast<graphics::ShaderResource>(asset)).replace(fresh);
         },
     });

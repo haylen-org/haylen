@@ -37,7 +37,7 @@ class PackageReader;
 
 namespace haylen::platform {
 
-// Services every platform folder implements for the Sokol runtime. Exactly one implementation is compiled into a runtime build. The platform reports the theme, the battery and the accessibility settings of the device through `SokolHost::getSystemState`, from any thread, when it initializes and whenever the system changes them.
+// Services every platform folder implements for the player. Exactly one implementation is compiled into a runtime build. The platform reports the theme, the battery and the accessibility settings of the device through `NativeHost::getSystemState`, from any thread, when it initializes and whenever the system changes them.
 class Services final {
   public:
     [[nodiscard]] static std::string_view getName() noexcept;
@@ -79,7 +79,7 @@ class Services final {
     // Moves the window with the mouse while the button that went down last stays down.
     static void startWindowDrag();
 
-    // Starts following the window once `sokol_app` opened it, so its moves and the changes of the monitors reach the running app as events.
+    // Starts following the window once the backend opened it, so its moves and the changes of the monitors reach the running app as events.
     static void watchWindow();
 
     // Runs before every frame of the app, where platforms follow the mouse over the window for passthrough and Linux runs the main context of GLib.
@@ -149,7 +149,7 @@ class Services final {
     // Ends the launch screen that covered the window since the app started, fading it out over the seconds. Platforms without a launch screen of their own do nothing.
     static void endSplashScreen(float fadeOutSeconds);
 
-    // The window of the app on the desktops for native libraries, as `HaylenNativeWindow` describes, and null handles where apps have no desktop window. It exists once `sokol_app` opened the window.
+    // The window of the app on the desktops for native libraries, as `HaylenNativeWindow` describes, and null handles where apps have no desktop window. It exists once the backend opened the window.
     [[nodiscard]] static HaylenNativeWindow getNativeWindow();
 };
 

@@ -6,7 +6,6 @@
 #include <utility>
 
 #include "graphics/ShaderResource.hpp"
-#include "haylen/core/JsonValidator.hpp"
 
 namespace haylen::graphics {
 
@@ -19,6 +18,11 @@ std::optional<Shader::UniformType> Shader::uniformTypeFromName(std::string_view 
 
 std::string_view Shader::uniformTypeName(UniformType type) noexcept {
     return kUniformTypeNames[static_cast<std::size_t>(type)];
+}
+
+std::uint32_t Shader::getArrayStride(UniformType type) noexcept {
+    const auto bytes = static_cast<std::uint32_t>(getComponentCount(type)) * 4U;
+    return (bytes + 15U) / 16U * 16U;
 }
 
 int Shader::getComponentCount(UniformType type) noexcept {
@@ -44,32 +48,7 @@ int Shader::getComponentCount(UniformType type) noexcept {
 Shader Shader::parse(std::span<const std::uint8_t> bytes) {
     auto resource = std::make_shared<ShaderResource>();
     try {
-        const core::Json document = core::Json::parse(bytes.begin(), bytes.end());
-        core::JsonValidator::requireKnownKeys(document, {"format", "version", "name", "blocks", "textures", "sources", "programs"}, "a shader file");
-        if (document.at("format") != "haylen-shader" || document.at("version") != 1) {
-            throw std::invalid_argument("It is not a version 1 Haylen shader.");
-        }
-
-        resource->name = document.at("name").get<std::string>();
-        for (const core::Json& block : document.at("blocks")) {
-            resource->blocks.push_back({.name = block.at("name").get<std::string>(), .slot = block.at("slot").get<int>(), .size = block.at("size").get<std::uint32_t>()});
-            for (const core::Json& uniform : block.at("uniforms")) {
-                const std::optional<UniformType> type = uniformTypeFromName(uniform.at("type").get<std::string>());
-                if (!type) {
-                    throw std::invalid_argument(std::format("The uniform \"{}\" has an unsupported type.", uniform.at("name").get<std::string>()));
-                }
-                resource->uniforms.push_back({.name = uniform.at("name").get<std::string>(), .type = *type, .count = uniform.at("count").get<int>(), .offset = uniform.at("offset").get<std::uint32_t>(), .block = resource->blocks.size() - 1});
-            }
-        }
-        for (const core::Json& texture : document.at("textures")) {
-            resource->textures.push_back({.name = texture.at("name").get<std::string>(), .slot = texture.at("slot").get<int>()});
-        }
-        resource->sources = document.at("sources").get<std::vector<std::string>>();
-        resource->programs = document.at("programs");
-        if (!resource->programs.is_object()) {
-            throw std::invalid_argument("Its programs are not an object.");
-        }
-        resource->validate();
+        resource->read(core::Json::parse(bytes.begin(), bytes.end()));
     } catch (const core::Json::exception& error) {
         throw std::invalid_argument(std::format("The shader file is malformed, and the JSON reader reported \"{}\".", error.what()));
     } catch (const std::invalid_argument& error) {

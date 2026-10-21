@@ -1,6 +1,6 @@
 # haylen.graphics
 
-The module `haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts, font families and vector images, and names the GPU backend and its texture size limit. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily`, `Shader` and `VectorImage` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md).
+The module `haylen.graphics` creates the GPU resources that every kind of drawing shares, textures, render targets, bitmap fonts, font families and vector images, and names the graphics API and its texture size limit. It also describes the `Texture`, `RenderTarget`, `Font`, `FontFamily`, `Shader` and `VectorImage` values the rest of the engine passes around. Drawing in 2D, and the materials that draw with shaders, live in [`haylen.graphics2d`](graphics2d.md).
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -143,15 +143,18 @@ local graphics2d = require('haylen.graphics2d')
 local pixel = graphics2d.newSprite(graphics.whiteTexture(), {width = 8, height = 8, color = '#FF40FF80'})
 ```
 
-### graphics.backendName()
+### graphics.apiName()
 
-Returns the name of the GPU backend: `'glcore'`, `'gles3'`, `'d3d11'`, `'metal'`, `'webgpu'` or `'dummy'` in headless tests.
+Returns the name of the graphics API that the GPU device draws through: `'metal'`, `'direct3D11'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'`, or `'none'` on the headless host, where nothing draws. The name is the same on every backend and is the value of [`haylen.graphicsApi`](haylen.md#haylengraphicsapi).
 
 ```lua
 local graphics = require('haylen.graphics')
 local log = require('haylen.log')
 
-log.info('Rendering with ' .. graphics.backendName())
+log.info('Rendering with ' .. graphics.apiName())
+if graphics.apiName() == 'webGl2' then
+    log.info('The browser draws through WebGL 2, so programs compile when the first draw needs them.')
+end
 ```
 
 ### graphics.maxTextureSize()
@@ -208,7 +211,7 @@ end
 
 ### graphics.readTarget(target) and graphics.captureScreen()
 
-Return a promise of an [`Image`](#image) of the pixels of the render target `target` as the current frame renders it, or of everything the screen shows of the next frame the app renders, the interface and the debug overlay included. The GPU copies the pixels after the frame is submitted without the frame thread waiting for it, where the backend allows, as the [rendering guide](../graphics/rendering.md#reading-pixels-back) describes, and the task pool turns them into straight colors with the top row first, so the promise settles a frame or more later. An image saves as a PNG file with `image:encodePngAsync()` and [`storage.writeTextAsync`](storage.md).
+Return a promise of an [`Image`](#image) of the pixels of the render target `target` as the current frame renders it, or of everything the screen shows of the next frame the app renders, the interface and the debug overlay included. The GPU copies the pixels after the frame is submitted without the frame thread waiting for it, where the graphics API allows, as the [rendering guide](../graphics/rendering.md#reading-pixels-back) describes, and the task pool turns them into straight colors with the top row first, so the promise settles a frame or more later. An image saves as a PNG file with `image:encodePngAsync()` and [`storage.writeTextAsync`](storage.md).
 
 ```lua
 local async = require('async')
@@ -618,7 +621,7 @@ end
 
 ## Shader
 
-A `Shader` is a custom shader that `haylen.py shaders` compiled from annotated GLSL for every backend the engine runs on, loaded with `assets.shader(path)` or `assets.load(path)` from a `.shader` file. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../graphics/shaders.md) explains how to write one. The engine creates the GPU program of the active backend the first time a draw needs it.
+A `Shader` is a custom shader that `haylen.py shaders` compiled from the Haylen shader language for every shader language the engine runs, loaded with `assets.shader(path)` or `assets.load(path)` from a `.shader` file. [Materials](graphics2d.md#material) draw with it, and the [shader guide](../graphics/shaders.md) explains how to write one. The engine creates the GPU program for the shader language of the GPU device the first time a draw needs it.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
