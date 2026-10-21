@@ -22,9 +22,9 @@
         "iosSession": "playback"
     },
     "splash": {
-        "background": "#FF120E1F"
+        "background": "#FF0B0A12"
     },
-    "clearColor": "#FF120E1F",
+    "clearColor": "#FF0B0A12",
     "autoload": [
         "player"
     ]

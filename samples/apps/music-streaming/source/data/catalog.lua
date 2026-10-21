@@ -1,4 +1,6 @@
 -- The made-up music of the app: genres, artists, albums with covers drawn from shapes, their songs, the liked songs, the mixes and the playlists. Every value comes from a seeded generator, so the same library shows on every run.
+local events = require('haylen.events')
+
 local Random = require('random')
 local Synth = require('synth')
 
@@ -98,7 +100,7 @@ function Catalog.build()
     end
     Catalog.mixes = {}
     for index, genre in ipairs(Catalog.genres) do
-        local mix = {id = 'mix-' .. genre.id, type = 'playlist', name = 'Daily mix ' .. index, description = 'The ' .. string.lower(genre.name) .. ' you play most, and more like it.', tracks = {}}
+        local mix = {id = 'mix-' .. genre.id, type = 'playlist', genre = genre.id, name = 'Daily mix ' .. index, description = 'The ' .. string.lower(genre.name) .. ' you play most, and more like it.', tracks = {}}
         for _, track in ipairs(Catalog.tracks) do
             if track.genre == genre.id and #mix.tracks < 40 then
                 mix.tracks[#mix.tracks + 1] = track
@@ -170,6 +172,24 @@ end
 
 function Catalog.find(id)
     return Catalog.byId[id]
+end
+
+-- Likes a song or takes the like back, keeps the liked songs newest first, and emits "playerChanged" so every view of the song follows.
+function Catalog.toggleLike(track)
+    track.liked = not track.liked
+    if track.liked then
+        table.insert(Catalog.liked, 1, track)
+    else
+        for index, other in ipairs(Catalog.liked) do
+            if other == track then
+                table.remove(Catalog.liked, index)
+                break
+            end
+        end
+    end
+    events.emit('playerChanged')
+    events.emit('notice', track.liked and 'Added to your liked songs.' or 'Removed from your liked songs.')
+    return track.liked
 end
 
 function Catalog.thousands(number)

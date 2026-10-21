@@ -6,11 +6,15 @@ local ui = require('haylen.ui')
 local Page = require('page')
 local Player = require('player')
 local Shell = require('shell')
+local Style = require('style')
 
 local Queue = haylen.class('Queue', Page)
 
 function Queue:enter()
-    self:mountGui(ui.column{gap = 0, onCancel = Shell.back,
+    local space = Style.space
+    local track = Player.current()
+    self.glow = track and track.genre
+    self:mountGui(Shell.frame(Shell.current, ui.column{grow = 1, gap = 0,
         Shell.header('Queue', {
             ui.button{id = 'clear', text = 'Clear', variant = 'toolbar', onClick = function()
                 for index = #Player.queue, Player.index + 1, -1 do
@@ -19,26 +23,26 @@ function Queue:enter()
                 Player.changed()
             end},
         }),
-        Shell.centered(900, ui.column{gap = 8, padding = {0, 12, 0, 12},
-            ui.label{text = 'Now playing', font = 'caption', color = 'textMuted', margin = {0, 8}},
-            ui.row{gap = 14, padding = {6, 8},
-                ui.image{id = 'nowCover', image = Shell.blankCover, width = 56, height = 56, radius = 8},
+        Shell.centered(900, ui.column{gap = space.xs, padding = {space.s, space.m, 0, space.m},
+            ui.label{text = 'Now playing', font = 'caption', color = 'textMuted', margin = {0, space.s}},
+            ui.row{gap = space.m, padding = {space.xs, space.s},
+                ui.image{id = 'nowCover', image = Shell.blankCover, width = 72, height = 72, radius = Style.radius.cover},
                 ui.column{gap = 0, grow = 1, ui.label{id = 'nowName', text = '', font = 'button', color = 'accentText', wrap = false}, ui.label{id = 'nowArtist', text = '', font = 'caption', color = 'textMuted', wrap = false}},
             },
-            ui.label{id = 'nextLabel', text = 'Next up', font = 'caption', color = 'textMuted', margin = {8, 8, 0, 8}},
+            ui.label{id = 'nextLabel', text = 'Next up', font = 'heading', margin = {space.m, space.s, 0, space.s}},
         }),
-        Shell.centered(900, ui.collection{id = 'upcoming', gap = 2, padding = {0, 12, 24, 12}, reorderable = true, rememberFocus = true,
+        Shell.centered(900, ui.collection{id = 'upcoming', gap = 0, padding = {0, space.m, space.xl, space.m}, reorderable = true, rememberFocus = true,
             types = {entry = {template = ui.contextMenu{part = 'menu', items = {{id = 'remove', text = 'Remove from the queue', image = Shell.icon('trash')}, {id = 'next', text = 'Play now', image = Shell.icon('play')}},
-                ui.row{gap = 14, padding = {6, 8},
-                    ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 52, height = 52, radius = 8},
+                ui.row{gap = space.m, padding = {space.xs, space.s},
+                    ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 60, height = 60, radius = Style.radius.cover},
                     ui.column{gap = 0, grow = 1,
-                        ui.label{part = 'name', bind = {text = 'name'}, font = 'button', wrap = false},
+                        ui.label{part = 'name', bind = {text = 'name'}, wrap = false},
                         ui.label{part = 'artist', bind = {text = 'artist'}, font = 'caption', color = 'textMuted', wrap = false},
                     },
                     ui.label{part = 'duration', bind = {text = 'duration'}, font = 'caption', color = 'textMuted'},
-                    ui.icon{image = Shell.icon('more'), size = 24, color = 'textMuted'},
+                    ui.icon{image = Shell.icon('more'), size = 26, color = 'textMuted'},
                 },
-            }, interactive = true, estimatedSize = 66}},
+            }, interactive = true, estimatedSize = 84}},
             onReorder = function(event)
                 Player.moveInQueue(Player.index + event.from, Player.index + event.to)
             end,
@@ -55,7 +59,7 @@ function Queue:enter()
             end,
             ui.emptyState{image = Shell.icon('queue'), imageSize = 72, title = 'Nothing comes next', message = 'Add songs to the queue from their menu.'},
         }, 1),
-    })
+    }))
     self.list = self.gui:collection('upcoming')
     events.on('playerChanged', function()
         self:showQueue()

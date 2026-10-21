@@ -73,6 +73,26 @@ function Synth.plan(seed, style)
     return plan
 end
 
+-- Fills `levels` with how loud each voice of a song sounds at a time, from 0 to 1, read from the same plan and envelopes that render it, so a visualizer follows the music without listening to it: the kick, the snare, the hats, the bass, the melody and the pad.
+function Synth.levels(plan, style, time, levels)
+    local beat = plan.beat
+    local eighth = beat / 2
+    local beats = time / beat
+    local whole = math.floor(beats)
+    local inBeat = (beats - whole) * beat
+    local step = math.floor(time / eighth) + 1
+    local inEighth = time - (step - 1) * eighth
+    local inBar = time - math.floor(beats / 4) * 4 * beat
+    local onKick = whole % 4 == 0 or whole % 4 == 2
+    levels.kick = onKick and math.exp(-inBeat * 9) * style.drums or 0
+    levels.snare = onKick and 0 or math.exp(-inBeat * 12) * style.drums * 0.8
+    levels.hats = math.exp(-inEighth * 30) * math.min(1, style.hats)
+    levels.bass = math.exp(-inBeat * 3)
+    levels.lead = plan.melody[step] and math.exp(-inEighth * style.decay * 0.6) * math.min(1, style.lead) or 0
+    levels.pad = math.max(0, math.min(1, inBar / 0.4) * (1 - inBar / (8 * beat)))
+    return levels
+end
+
 -- Renders a song into the bytes of 16-bit mono samples. It runs inside a job and pauses at checkpoints.
 function Synth.render(seed, styleName)
     local style = Synth.styles[styleName]

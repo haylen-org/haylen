@@ -1,10 +1,12 @@
--- The search tab: the genres to browse while the field is empty, and the artists, albums and songs that match the typed text in one recycled list.
+-- The search tab: the genres to browse as tiles in their colors while the field is empty, and the artists, albums and songs that match the typed text in one recycled list.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
+local Covers = require('covers')
 local Page = require('page')
 local Shell = require('shell')
+local Style = require('style')
 local Widgets = require('widgets')
 
 local Search = haylen.class('Search', Page)
@@ -12,51 +14,56 @@ local Search = haylen.class('Search', Page)
 Search.limit = 400
 
 function Search:enter()
+    local space = Style.space
     self.query = ''
     local tiles = {}
     for _, genre in ipairs(Catalog.genres) do
-        tiles[#tiles + 1] = ui.button{id = 'genre-' .. genre.id, text = genre.name, height = 110, align = 'stretch', justify = 'start', style = {colors = {raised = genre.colors[1], border = genre.colors[1], text = '#FF1D1533', hover = '#22FFFFFF'}, metrics = {controlRadius = 18}, fonts = {button = {size = 26}}}, onClick = function()
-            Shell.open(require('screens.collection'), {collection = 'genre-' .. genre.id})
-        end}
+        local shade = Covers.deepText(genre.id, 0.8)
+        tiles[#tiles + 1] = ui.button{id = 'genre-' .. genre.id, text = genre.name, height = 132, align = 'stretch', justify = 'start',
+            style = {colors = {raised = shade, border = shade, text = Style.color.text, hover = '#1FFFFFFF'}, metrics = {controlRadius = Style.radius.card, controlPaddingX = space.l}, fonts = {button = {size = Style.type.heading}}},
+            onClick = function()
+                Shell.open(require('screens.collection'), {collection = 'genre-' .. genre.id})
+            end}
     end
-    self:mountGui(Shell.frame('search', ui.column{grow = 1, gap = 12, padding = {14, 0, 0, 0},
-        ui.row{padding = {0, 20}, ui.filterField{id = 'query', placeholder = 'Artists, albums or songs', grow = 1, returnKey = 'search', onChange = function(event)
-            self.query = string.lower(event.value)
-            self:refresh()
-        end}},
+    self:mountGui(Shell.frame('search', ui.column{grow = 1, gap = space.s, padding = {space.l, 0, 0, 0},
+        Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {0, space.l},
+            ui.label{text = 'Search', font = 'title'},
+            ui.filterField{id = 'query', placeholder = 'Artists, albums or songs', returnKey = 'search', onChange = function(event)
+                self.query = string.lower(event.value)
+                self:refresh()
+            end},
+        }),
         ui.scroll{id = 'browse', grow = 1, height = 0,
-            Shell.centered(1300, ui.column{gap = 12, padding = {0, 20, 24, 20},
-                ui.sectionTitle{text = 'Browse all'},
-                ui.grid{minColumnWidth = 220, columns = 6, gap = 14, children = tiles},
+            Shell.centered(Style.size.page, ui.column{gap = space.s, padding = {space.s, space.l, space.xl, space.l},
+                ui.label{text = 'Browse all', font = 'heading'},
+                ui.grid{minColumnWidth = 200, columns = 6, gap = space.s, children = tiles},
             }),
         },
-        ui.collection{id = 'results', visible = false, grow = 1, gap = 2, padding = {0, 12, 24, 12}, rememberFocus = true,
+        ui.row{id = 'results', visible = false, grow = 1, gap = 0, align = 'stretch', Shell.centered(Style.size.page, ui.collection{id = 'resultList', grow = 1, gap = 0, padding = {0, space.s, space.xl, space.s}, rememberFocus = true,
             types = {
-                artist = {template = ui.row{gap = 14, padding = {6, 8},
-                    ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 56, height = 56, radius = 28},
-                    ui.column{gap = 0, grow = 1, ui.label{part = 'name', bind = {text = 'name'}, font = 'button', wrap = false}, ui.label{text = 'Artist', font = 'caption', color = 'textMuted'}},
-                }, estimatedSize = 68},
-                album = {template = ui.row{gap = 14, padding = {6, 8},
-                    ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 56, height = 56, radius = 8},
-                    ui.column{gap = 0, grow = 1, ui.label{part = 'name', bind = {text = 'name'}, font = 'button', wrap = false}, ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted', wrap = false}},
-                }, estimatedSize = 68},
+                artist = {template = ui.row{gap = space.m, padding = {space.xs, space.s},
+                    ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 60, height = 60, radius = 30},
+                    ui.column{gap = 0, grow = 1, ui.label{part = 'name', bind = {text = 'name'}, wrap = false}, ui.label{text = 'Artist', font = 'caption', color = 'textMuted'}},
+                }, estimatedSize = 84},
+                album = {template = ui.row{gap = space.m, padding = {space.xs, space.s},
+                    ui.image{part = 'cover', bind = {image = 'cover'}, image = Shell.blankCover, width = 60, height = 60, radius = Style.radius.cover},
+                    ui.column{gap = 0, grow = 1, ui.label{part = 'name', bind = {text = 'name'}, wrap = false}, ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted', wrap = false}},
+                }, estimatedSize = 84},
                 track = Widgets.trackRow(true),
             },
             onSelect = function(event)
                 local found = Catalog.find(event.part == 'menu' and event.cell.item or event.item)
-                if found.type == 'artist' then
-                    Shell.open(require('screens.artist'), {artist = found.id})
-                elseif found.type == 'album' then
-                    Shell.open(require('screens.collection'), {collection = found.id})
+                if found.type == 'artist' or found.type == 'album' then
+                    Widgets.openItem(found.id)
                 else
                     self.onTracks(event)
                 end
             end,
             ui.emptyState{image = Shell.icon('music'), imageSize = 72, title = 'Nothing found', message = 'Try another name.'},
-        },
+        }, 1)},
         Widgets.playlistDialog(self),
     }))
-    self.results = self.gui:collection('results')
+    self.results = self.gui:collection('resultList')
     self.onTracks = Widgets.onTracks(function() return self.tracks end, self)
 end
 

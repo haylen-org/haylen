@@ -1,49 +1,46 @@
--- The home tab: a greeting with the settings, the playlists, the daily mixes, the new releases, the popular artists and the albums to jump back into, in horizontal shelves.
+-- The home tab: a greeting, the playlists to jump back into as quick picks, the mix of the day on a card lit by its colors, and shelves of mixes, new releases, popular artists and albums.
 local haylen = require('haylen')
-local preferences = require('haylen.preferences')
 local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
+local Covers = require('covers')
 local Page = require('page')
+local Player = require('player')
 local Shell = require('shell')
+local Style = require('style')
 local Widgets = require('widgets')
 
 local Home = haylen.class('Home', Page)
 
-Home.cardWidth = 200
+-- A quick pick: the cover and the name of a playlist on a button that opens it.
+Home.pick = {colors = {raised = Style.color.lifted, border = Style.color.lifted}, metrics = {controlRadius = Style.radius.cover, iconSize = 64, controlPaddingX = 0, contentSpacing = Style.space.m}, fonts = {button = {size = Style.type.label}}}
 
 function Home:enter()
-    self:mountGui(Shell.frame('home', ui.column{grow = 1, gap = 0,
-        ui.row{gap = 12, padding = {14, 16, 6, 20},
-            ui.label{text = 'Good evening', font = 'title', grow = 1, wrap = false},
-            ui.button{id = 'settings', icon = Shell.icon('settings'), variant = 'icon', tooltip = 'Settings', accessibilityLabel = 'Settings', onClick = function(event)
-                event.gui:set('settingsDialog', {open = true})
-            end},
-        },
-        ui.scroll{grow = 1, height = 0,
-            ui.column{maxWidth = 1300, align = 'center', gap = 14, padding = {4, 20, 28, 20},
-                self:banner(),
-                ui.sectionTitle{text = 'Your playlists'},
-                self:shelf('playlists', Widgets.coverCard(Home.cardWidth), 'playlist'),
-                ui.sectionTitle{text = 'Made for you'},
-                self:shelf('mixes', Widgets.coverCard(Home.cardWidth), 'playlist'),
-                ui.sectionTitle{text = 'New releases'},
-                self:shelf('releases', Widgets.coverCard(Home.cardWidth), 'album'),
-                ui.sectionTitle{text = 'Popular artists'},
-                self:shelf('artists', Widgets.artistCard(170), 'artist'),
-                ui.sectionTitle{text = 'Jump back in'},
-                self:shelf('albums', Widgets.coverCard(Home.cardWidth), 'album'),
-            },
-        },
-        ui.dialog{id = 'settingsDialog', title = 'Settings', buttons = {{id = 'close', text = 'Close'}},
-            ui.toggle{id = 'day', text = 'Light theme', checked = ui.theme() == 'musicDay', onChange = function(event)
-                preferences.set('day', event.checked)
-                ui.setTheme(event.checked and 'musicDay' or 'musicNight')
-            end},
-            ui.toggle{id = 'crossfade', text = 'Crossfade between songs', checked = true},
-        },
+    local space = Style.space
+    self.glow = Catalog.mixes[1].genre
+    local picks = {}
+    for index = 1, 6 do
+        local playlist = Catalog.playlists[index] or Catalog.mixes[index]
+        picks[index] = ui.button{id = 'pick-' .. playlist.id, text = playlist.name, icon = playlist.cover, iconColor = false, justify = 'start', height = 64, align = 'stretch', style = Home.pick, onClick = function()
+            Shell.open(require('screens.collection'), {collection = playlist.id})
+        end}
+    end
+    self:mountGui(Shell.frame('home', ui.scroll{grow = 1, height = 0,
+        Shell.centered(Style.size.page, ui.column{id = 'page', gap = space.s, padding = {space.l, space.m, space.xl, space.m},
+            ui.label{text = Home.greeting(), font = 'title', margin = {0, space.xs, space.xs, space.xs}},
+            ui.grid{id = 'picks', columns = 3, minColumnWidth = 210, gap = space.s, padding = {0, space.xs}, children = picks},
+            ui.column{id = 'featured', margin = {space.m, space.xs, 0, space.xs}},
+            Widgets.section('Made for you'),
+            Widgets.shelf('mixes', 'playlist'),
+            Widgets.section('New releases'),
+            Widgets.shelf('releases', 'album'),
+            Widgets.section('Popular artists'),
+            Widgets.shelf('artists', 'artist'),
+            Widgets.section('Jump back in'),
+            Widgets.shelf('albums', 'album'),
+        }),
     }))
-    local releases, albums = {}, {}
+    local releases, albums, artists = {}, {}, {}
     for index = #Catalog.albums, 1, -1 do
         local album = Catalog.albums[index]
         if album.year >= 2025 and #releases < 12 then
@@ -52,42 +49,40 @@ function Home:enter()
     end
     for index = 1, 12 do
         albums[index] = Catalog.albums[index * 7]
-    end
-    local artists = {}
-    for index = 1, 12 do
         artists[index] = Catalog.artists[index * 3]
     end
-    self.gui:collection('playlists'):setItems(Catalog.playlists)
     self.gui:collection('mixes'):setItems(Catalog.mixes)
     self.gui:collection('releases'):setItems(releases)
     self.gui:collection('artists'):setItems(artists)
     self.gui:collection('albums'):setItems(albums)
 end
 
--- The card of the week with the illustration of the app.
-function Home:banner()
-    return ui.card{padding = {18, 12, 18, 24}, style = {colors = {raised = 'accent', border = 'accent'}},
-        ui.row{gap = 8,
-            ui.column{gap = 6, grow = 1,
-                ui.label{text = 'Fresh sounds every morning', font = 'heading', color = 'onAccent'},
-                ui.label{text = 'Every song here is made by the app itself, so no two libraries sound alike.', font = 'caption', color = 'onAccent'},
-                ui.button{id = 'playMix', text = 'Play your mix', icon = Shell.icon('play'), align = 'start', margin = {6, 0, 0, 0}, style = {colors = {raised = '#FFFFFFFF', border = '#FFFFFFFF', text = '#FF1D1533'}}, iconColor = 'accent', onClick = function()
-                    require('player').playList(Catalog.mixes[1].tracks, 1)
-                end},
-            },
-            ui.image{image = 'images/hero.png', width = 220, height = 165, fit = 'contain', accessibilityHidden = true},
-        },
-    }
+function Home.greeting()
+    local hour = tonumber(os.date('%H'))
+    return hour < 12 and 'Good morning' or (hour < 18 and 'Good afternoon' or 'Good evening')
 end
 
-function Home:shelf(id, card, kind)
-    return ui.collection{id = id, axis = 'horizontal', scrollbar = false, gap = 16, rememberFocus = true, types = {[kind] = card}, onSelect = function(event)
-        if kind == 'artist' then
-            Shell.open(require('screens.artist'), {artist = event.item})
-        else
-            Shell.open(require('screens.collection'), {collection = event.item})
-        end
-    end}
+-- The mix of the day: its cover beside its name and the button that plays it, over the colors of its genre, with the illustration of the app on wide windows.
+function Home:layoutChanged(wide)
+    local space = Style.space
+    local mix = Catalog.mixes[1]
+    local shade = Covers.deepText(mix.genre, 0.7)
+    local card = ui.card{padding = wide and space.l or space.m, gap = space.m, style = {colors = {raised = shade, border = shade}, metrics = {panelRadius = Style.radius.card}},
+        ui.row{gap = space.l,
+            ui.image{image = mix.cover, width = wide and 180 or 120, height = wide and 180 or 120, radius = Style.radius.cover},
+            ui.column{gap = space.xxs, grow = 1,
+                ui.label{text = 'Mix of the day', font = 'caption', color = 'text'},
+                ui.label{text = mix.name, font = 'title', wrap = false, style = Style.text('title', wide and Style.type.title or Style.type.heading)},
+                ui.label{text = mix.description, color = 'text', visible = wide},
+                Widgets.playButton('featuredPlay', wide and 64 or 56, {margin = {space.xs, 0, 0, 0}, onClick = function()
+                    Player.playList(mix.tracks, 1)
+                end}, true),
+            },
+            wide and ui.image{image = 'images/hero.png', width = 280, height = 210, fit = 'contain', accessibilityHidden = true} or nil,
+        },
+    }
+    self.gui:replaceChildren('featured', {card})
+    self.gui:set('page', {padding = wide and {space.xl, space.xl, space.xxl, space.xl} or {space.l, space.m, space.xl, space.m}})
 end
 
 return Home

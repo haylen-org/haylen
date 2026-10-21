@@ -1,9 +1,8 @@
--- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the liked songs, an artist, the search, a genre and the library, adds a song to a playlist and switches the theme, logs each step and quits, so an unattended run checks every path of the app.
+-- The automatic run of the headless platform: it plays a mix, opens the player, seeks, picks a shorter song, skips, shuffles and repeats, sets the sleep timer, reorders the queue, browses the liked songs, an artist, the search, a genre and the library, adds a song to a playlist and makes a playlist, logs each step and quits, so an unattended run checks every path of the app.
 local haylen = require('haylen')
 local log = require('haylen.log')
 local scene = require('haylen.scene')
 local timer = require('haylen.timer')
-local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Player = require('player')
@@ -24,7 +23,7 @@ function Tour.steps()
         {'Skip to the next song', function() Player.next() end},
         {'Shuffle and repeat', function() Player.setShuffle(true) Player.cycleRepeat() end},
         {'Set the sleep timer', function() scene.top():setSleep('15') end},
-        {'Like the song', function() scene.top():toggleLike() end},
+        {'Like the song', function() Catalog.toggleLike(Player.current()) end},
         {'Open the queue', function() Shell.open(require('screens.queue')) end},
         {'Reorder the queue', function() Player.moveInQueue(Player.index + 3, Player.index + 1) Player.removeFromQueue(Player.index + 2) end},
         {'Close the player', function() Shell.back() Shell.back() end},
@@ -37,11 +36,11 @@ function Tour.steps()
         {'Type a search', function() local page = scene.top() page.query = 'golden' page.gui:set('query', {value = 'golden'}) page:refresh() end},
         {'Open a genre', function() Shell.open(require('screens.collection'), {collection = 'genre-jazz'}) end},
         {'Open the library', function() Shell.showTab('library') end},
-        {'Show the albums', function() local page = scene.top() page.section = 'albums' page.gui:set('section', {selected = 'albums'}) page:show() end},
-        {'Make a playlist', function() local page = scene.top() page.newName = 'Road trip' page:create() end},
-        {'Turn on the light theme', function() ui.setTheme('musicDay') Shell.showTab('home') end},
-        {'Player in the light theme', function() Shell.openPlayer() end},
-        {'Back to the night', function() ui.setTheme('musicNight') Shell.showTab('home') end},
+        {'Show the albums', function() scene.top():pick('albums') end},
+        {'Make a playlist', function() local page = scene.top() page.newName = 'Road trip' page:pick('playlists') page:create() end},
+        {'Back home', function() Shell.showTab('home') end},
+        {'Player again', function() Shell.openPlayer() end},
+        {'Close it', function() Shell.back() end},
     }
 end
 

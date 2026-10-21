@@ -1,9 +1,11 @@
 -- The covers of the albums and mixes: SVG documents made from a style and the colors of a genre, read with graphics.newVectorImage and named for the UI with ui.setImage, so hundreds of covers cost a few hundred bytes each and rasterize only when they show.
 local graphics = require('haylen.graphics')
+local math2d = require('haylen.math')
 local ui = require('haylen.ui')
 
 local Catalog = require('data.catalog')
 local Random = require('random')
+local Style = require('style')
 
 local Covers = {}
 
@@ -54,7 +56,7 @@ function Covers.document(spec)
         add(string.format('<circle cx="98" cy="146" r="20" fill="#FFFFFF" stroke="%s" stroke-width="5"/>', o))
     end
     return string.format('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">'
-        .. '<defs><linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/></linearGradient></defs>'
+        .. '<defs><linearGradient id="sky" x1="0%%" y1="0%%" x2="100%%" y2="100%%"><stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/></linearGradient></defs>'
         .. '<rect width="200" height="200" fill="url(#sky)"/><g transform="rotate(%d 100 100)">%s</g>'
         .. '<path d="M0 0h200v60Q100 20 0 70z" fill="#FFFFFF" opacity=".12"/></svg>', background, second, spec.turn, table.concat(shapes))
 end
@@ -64,6 +66,35 @@ function Covers.register()
     for name, spec in pairs(Catalog.coverSpecs) do
         ui.setImage(name, graphics.newVectorImage(Covers.document(spec)))
     end
+end
+
+-- Returns the backdrop of a genre, a tall texture that fades from a dark shade of its first color into the night of the app, made the first time a screen asks for it.
+Covers.backdrops = {}
+
+function Covers.backdrop(genreId)
+    local texture = Covers.backdrops[genreId]
+    if texture then
+        return texture
+    end
+    local night = math2d.color(Style.color.night)
+    local image = graphics.newImage(4, 256)
+    image:fillGradient({angle = math.pi / 2, stops = {{0, Covers.deep(genreId, 0.55)}, {0.75, night}, {1, night}}})
+    texture = graphics.newTexture(image, {filter = 'linear'})
+    Covers.backdrops[genreId] = texture
+    return texture
+end
+
+-- The first color of a genre mixed with the night of the app by `amount`, dark enough for white text.
+function Covers.deep(genreId, amount)
+    local color = math2d.color(Catalog.genre(genreId).colors[1])
+    local night = math2d.color(Style.color.night)
+    return math2d.color(color.r * amount + night.r * (1 - amount), color.g * amount + night.g * (1 - amount), color.b * amount + night.b * (1 - amount), 1)
+end
+
+-- The same color written as the color text that the style of a node takes.
+function Covers.deepText(genreId, amount)
+    local color = Covers.deep(genreId, amount)
+    return string.format('#FF%02X%02X%02X', math.floor(color.r * 255 + 0.5), math.floor(color.g * 255 + 0.5), math.floor(color.b * 255 + 0.5))
 end
 
 return Covers
