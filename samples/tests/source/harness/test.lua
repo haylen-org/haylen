@@ -96,13 +96,13 @@ function Test:region(stage, options)
     return ui.stack{id = 'region', grow = 1, align = 'stretch', children = layers}
 end
 
--- The card holds the code in the monospace font with the colors of the theme, and keeps the height of its lines whatever the length of the code, which scrolls past them.
+-- The card holds the code in the monospace font with the colors of the theme, and keeps the height of its lines whatever the length of the code, which scrolls past them. Code reads from left to right in every language.
 function Test:codeCard(source)
     self.codeSource = source
     self.codeTheme = ui.theme()
     local padding = Test.codePadding
     local height = math.ceil(ui.themeFont('monospace').size * Test.codeLineSpacing * Test.codeLines) + padding[1] * 2
-    return ui.card{id = 'code-card', height = height, padding = padding, ui.scroll{grow = 1, height = 0, ui.richText{id = 'code', text = code.markup(source), font = 'monospace'}}}
+    return ui.card{id = 'code-card', height = height, padding = padding, direction = 'leftToRight', ui.scroll{grow = 1, height = 0, ui.richText{id = 'code', text = code.markup(source), font = 'monospace'}}}
 end
 
 -- The hint of the test, and the keys that move around the frame, shown the same way in every test.
