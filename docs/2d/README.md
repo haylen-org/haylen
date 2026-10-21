@@ -12,7 +12,7 @@ The 2D block holds the modules that build 2D games and apps: retained node trees
 | Nodes | Retained trees of objects made of parts: what nodes pass to their children, updating and drawing, handles, prefabs, nodes with physics, tweens, animation and particles, and performance. | [`nodes.md`](nodes.md) |
 | Particles | Emitters and effect files, how particles are born, move, collide and look, composite effects, sub-emitters, trails, lights, the effect library and performance. | [`particles.md`](particles.md) |
 | Physics | Worlds, bodies, shapes and joints, units, stepping on several threads, sleeping, collisions and queries, the helpers, the common problems of physics games with their solutions, and performance. | [`physics.md`](physics.md) |
-| Procedural | Deterministic generation of scatterings, caves, dungeons, mazes, tile maps, triangulations and autotiles, on the frame or in the background. | [`procedural.md`](procedural.md) |
+| Procedural | Seeds that repeat, which generator suits which content, maps as cell grids, recipes for dungeons, caves, forests, mazes, tiles that follow rules and territories, autotiling, work off the frame and what each generator costs. | [`procedural.md`](procedural.md) |
 | Spatial | Spatial structures, grid algorithms, screen picking and overlap worlds, and which to choose. | [`spatial.md`](spatial.md) |
 | Tiled | Maps and worlds made with the Tiled editor: authoring, supported features, loading, drawing, reading a map, collision, spawning objects, ray casts, maps built in code, automapping and streamed worlds. | [`tiled.md`](tiled.md) |
 
