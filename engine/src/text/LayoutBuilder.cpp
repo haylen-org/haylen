@@ -436,7 +436,11 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
     // clang-format off
     const auto start = [&](std::size_t begin) {
         const float hang = flow.lines.empty() ? 0.0F : flow.hangShift;
-        line = Line{.begin = begin, .end = begin, .visibleEnd = begin, .top = top, .shift = std::max(top < flow.dropCapHeight ? flow.dropCapShift : 0.0F, hang)};
+        if (flow.lines.size() == 1 && !flow.dropCap.empty()) {
+            placeDropCap(flow);
+        }
+        const bool besideDropCap = !flow.dropCap.empty() && (flow.lines.empty() || top < flow.dropCapReach);
+        line = Line{.begin = begin, .end = begin, .visibleEnd = begin, .top = top, .shift = std::max(besideDropCap ? flow.dropCapShift : 0.0F, hang)};
         penX = 0.0F;
     };
     const auto isVisible = [](const Piece& piece) {
@@ -511,6 +515,22 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
     closeLine(flow, line, top);
 }
 
+// The top of the drop cap lines up with the capitals of the first line, and the lines whose capitals start above its foot stand beside it.
+void LayoutBuilder::placeDropCap(Flow& flow) {
+    const Line& first = flow.lines.front();
+    float capHeight = 0.0F;
+    for (std::size_t index = first.begin; index < first.end; ++index) {
+        const Piece& piece = flow.pieces[index];
+        if (piece.kind == Piece::Kind::Cluster) {
+            const StyleFont& font = getStyleFont(piece.style);
+            capHeight = std::max(capHeight, font.face.font->getCapHeight(font.size));
+        }
+    }
+    const float capitalsTop = capHeight > 0.0F ? first.ascent - capHeight : 0.0F;
+    flow.dropCapBaseline = first.top + capitalsTop + flow.dropCapCapHeight;
+    flow.dropCapReach = flow.dropCapBaseline - capitalsTop;
+}
+
 std::vector<LayoutBuilder::Block> LayoutBuilder::measureBlocks(const std::vector<RichTextDocument::Paragraph>& paragraphs, float width) {
     std::vector<Block> blocks;
     blocks.reserve(paragraphs.size());
@@ -577,13 +597,13 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
         flow.dropCapText = paragraph.dropCap->text;
         shapeAside(flow, paragraph.dropCap->text, paragraph.dropCap->style, flow.dropCap, flow.dropCapOrder);
         float dropCapWidth = 0.0F;
-        float descent = 0.0F;
         for (const Piece& piece : flow.dropCap) {
+            const StyleFont& font = getStyleFont(piece.style);
             dropCapWidth += piece.advance;
             flow.dropCapAscent = std::max(flow.dropCapAscent, piece.ascent);
-            descent = std::max(descent, piece.descent);
+            flow.dropCapDescent = std::max(flow.dropCapDescent, piece.descent);
+            flow.dropCapCapHeight = std::max(flow.dropCapCapHeight, font.face.font->getCapHeight(font.size));
         }
-        flow.dropCapHeight = flow.dropCapAscent + descent;
         flow.dropCapShift = dropCapWidth + paragraph.dropCap->margin * options.scale;
     }
     if (!paragraph.marker.empty()) {
@@ -598,10 +618,15 @@ LayoutBuilder::Block LayoutBuilder::measureParagraph(const RichTextDocument::Par
         flow.naturalWidth = std::max(flow.naturalWidth, line.shift + line.width);
     }
 
+    if (!flow.dropCap.empty()) {
+        placeDropCap(flow);
+    }
+
     const Line& last = flow.lines.back();
     const float linesHeight = last.top + (last.ascent + last.descent) * options.lineSpacing;
-    block.height = std::max(linesHeight, flow.dropCapHeight);
-    block.trailing = linesHeight >= flow.dropCapHeight ? (last.ascent + last.descent) * (options.lineSpacing - 1.0F) : 0.0F;
+    const float dropCapBottom = flow.dropCap.empty() ? 0.0F : flow.dropCapBaseline + flow.dropCapDescent;
+    block.height = std::max(linesHeight, dropCapBottom);
+    block.trailing = linesHeight >= dropCapBottom ? (last.ascent + last.descent) * (options.lineSpacing - 1.0F) : 0.0F;
     block.naturalWidth = indent + flow.naturalWidth;
     block.minimumWidth = indent + std::max(flow.minimumWidth, flow.dropCapShift);
     return block;
@@ -736,10 +761,11 @@ void LayoutBuilder::emitParagraph(const Block& block, math::Vec2 origin, float w
         dropWidth += flow.dropCap[index].advance;
     }
     float dropX = rightToLeft ? left + room - dropWidth : left;
+    const float dropBottom = flow.dropCapBaseline + flow.dropCapDescent;
     for (const std::size_t index : flow.dropCapOrder) {
         const Piece& piece = flow.dropCap[index];
-        emitPiece(flow, flow.dropCapText, piece, {dropX, origin.y + flow.dropCapAscent}, origin.y, flow.dropCapHeight, dropCharacters[index]);
-        layout.characters[dropCharacters[index]].box = {dropX, origin.y, piece.advance, flow.dropCapHeight};
+        emitPiece(flow, flow.dropCapText, piece, {dropX, origin.y + flow.dropCapBaseline}, origin.y, dropBottom, dropCharacters[index]);
+        layout.characters[dropCharacters[index]].box = {dropX, origin.y, piece.advance, dropBottom};
         dropX += piece.advance;
     }
 

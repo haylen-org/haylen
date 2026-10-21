@@ -94,10 +94,18 @@ Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontO
     int descent = 0;
     int lineGap = 0;
     stbtt_GetFontVMetrics(&opened.info, &ascent, &descent, &lineGap);
+    int left = 0;
+    int bottom = 0;
+    int right = 0;
+    int top = ascent;
+    if (stbtt_FindGlyphIndex(&opened.info, 'H') != 0) {
+        stbtt_GetCodepointBox(&opened.info, 'H', &left, &bottom, &right, &top);
+    }
     return {
         .nativeSize = fontOptions.bakeSize,
         .ascent = static_cast<float>(ascent) * opened.scale,
         .lineHeight = static_cast<float>(ascent - descent + lineGap) * opened.scale,
+        .capHeight = static_cast<float>(top) * opened.scale,
         .spread = static_cast<float>(fontOptions.spread),
     };
 }

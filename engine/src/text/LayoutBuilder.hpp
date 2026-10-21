@@ -112,7 +112,10 @@ class LayoutBuilder final {
         std::vector<Piece> marker;
         std::vector<std::size_t> markerOrder;
         float dropCapAscent = 0.0F;
-        float dropCapHeight = 0.0F;
+        float dropCapDescent = 0.0F;
+        float dropCapCapHeight = 0.0F;
+        float dropCapBaseline = 0.0F;
+        float dropCapReach = 0.0F;
         float dropCapShift = 0.0F;
         float hangShift = 0.0F;
         float emptyAscent = 0.0F;
@@ -199,6 +202,7 @@ class LayoutBuilder final {
     [[nodiscard]] Block measureRule(const RichTextDocument::Paragraph& paragraph);
     [[nodiscard]] Block measureTable(const RichTextDocument::Paragraph& paragraph, float width);
     void breakLines(Flow& flow, float available);
+    void placeDropCap(Flow& flow);
     void closeLine(Flow& flow, Line& line, float& top) const;
 
     float emitBlocks(const std::vector<Block>& blocks, math::Vec2 origin, float width);

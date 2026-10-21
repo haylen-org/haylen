@@ -84,18 +84,24 @@ class Font {
     [[nodiscard]] float toDistance(float pixels, float size) const noexcept;
 
   protected:
-    // Line metrics at the native size. The spread is the reach of the distance field in native pixels, zero for a font without one.
+    // Line metrics at the native size, with the height of the capital H above the baseline, or the ascent of a font without one. The spread is the reach of the distance field in native pixels, zero for a font without one.
     struct Metrics {
         float nativeSize = 0.0F;
         float ascent = 0.0F;
         float lineHeight = 0.0F;
+        float capHeight = 0.0F;
         float spread = 0.0F;
     };
 
     explicit Font(Metrics fontMetrics);
 
   private:
+    // The layout lines the top of a drop cap up with the capitals of its first line.
+    friend class LayoutBuilder;
+
     static debug::ObjectCounter& counter;
+
+    [[nodiscard]] float getCapHeight(float size) const noexcept;
 
     Metrics metrics;
     std::unique_ptr<LayoutCache> layouts;

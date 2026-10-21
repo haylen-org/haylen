@@ -151,6 +151,30 @@ TEST_F(RichTextLayoutTest, LaysOutListsRulesTablesAndDropCaps) {
     EXPECT_LT(belowLeft, capital.position.x + capital.size.x);
 }
 
+TEST_F(RichTextLayoutTest, LinesTheTopOfADropCapUpWithTheCapitalsOfItsFirstLine) {
+    // A bitmap font whose capital H stands 6 pixels tall on a baseline 8 pixels below the top of its lines, which draws its glyphs from the top of their images.
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(8, 8, math::Color::white()));
+    BitmapFont::Description description{.size = 8.0F, .lineHeight = 10.0F, .base = 8.0F, .pages = {"page"}};
+    description.characters = {{.codePoint = U'H', .source = {0.0F, 0.0F, 6.0F, 6.0F}, .offset = {0.0F, -6.0F}, .advance = 7.0F}, {.codePoint = U' ', .advance = 3.0F}};
+    const auto capitals = std::make_shared<FontFamily>(FontFamily::Faces{.regular = std::make_shared<BitmapFont>(description, std::vector<graphics::Texture>{texture})});
+
+    for (const int size : {24, 32, 40}) {
+        RichText dropped = make("[dropcap size=" + std::to_string(size) + "]H[/dropcap]HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH HH", {.family = capitals, .size = 8.0F, .maxWidth = 120.0F});
+        const Layout& capped = dropped.getLayout();
+        const Layout::Glyph& capital = glyphOf(capped, U'H');
+        const Layout::Glyph& text = glyphOf(capped, U'H', 1);
+        EXPECT_FLOAT_EQ(capital.position.y, text.position.y) << "Drop cap of size " << size << ".";
+        EXPECT_FLOAT_EQ(capital.baseline, text.position.y + static_cast<float>(size) * 0.75F);
+        EXPECT_GE(capped.size.y, capital.baseline);
+
+        // The lines whose capitals start above the foot of the drop cap stand beside it, and the next one returns to the left.
+        for (const Layout::Line& line : capped.lines) {
+            const bool beside = line.baseline - 6.0F < capital.baseline;
+            EXPECT_EQ(line.box.x > capital.position.x + capital.size.x, beside) << "Drop cap of size " << size << ".";
+        }
+    }
+}
+
 TEST_F(RichTextLayoutTest, PlacesImagesAndIconsAgainstTheText) {
     const graphics::Texture wide = fixture.engine().getGraphics().createTexture(graphics::Image(20, 10, math::Color::white()));
     bool loaded = false;

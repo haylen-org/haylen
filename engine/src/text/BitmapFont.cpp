@@ -18,7 +18,9 @@ Font::Metrics BitmapFont::readMetrics(const Description& description) {
     if (!(description.size > 0.0F) || !(description.lineHeight > 0.0F)) {
         throw std::invalid_argument("A bitmap font needs a positive size and line height.");
     }
-    return {.nativeSize = description.size, .ascent = description.base, .lineHeight = description.lineHeight};
+    const auto capital = std::ranges::find(description.characters, U'H', &Character::codePoint);
+    const float capHeight = capital != description.characters.end() ? -capital->offset.y : description.base;
+    return {.nativeSize = description.size, .ascent = description.base, .lineHeight = description.lineHeight, .capHeight = capHeight};
 }
 
 BitmapFont::BitmapFont(const Description& description, std::vector<graphics::Texture> pageTextures) : Font(readMetrics(description)), pages(std::move(pageTextures)) {
