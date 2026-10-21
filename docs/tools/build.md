@@ -106,7 +106,7 @@ The Haylen shader compiler, `haylen-shaderc`, compiles the shaders of the engine
 The script `engine/cmake/haylen-shader-compiler.cmake` provides the compiler from those pins, in the same way for `haylen.py` and for CMake:
 
 1. It names the machine by its system and processor, such as `macos-arm64` or `windows-x64`.
-2. The release ships binaries for macOS on Apple silicon and Intel, Linux on x64 and ARM64 with glibc 2.28 or later, and Windows on x64. On those machines the script downloads the binary and checks its hash.
+2. The release ships binaries for macOS on Apple silicon and Intel, Linux on x64 and ARM64 with glibc 2.28 or later, and Windows on x64, and on ARM64 from Windows 11. On those machines the script downloads the binary and checks its hash.
 3. On any other machine, it downloads the source of the commit, checks its hash and builds the compiler with CMake on half of the processors.
 4. It keeps the compiler in a folder named after the version, or after the first seven characters of the commit when it built it. A new pin therefore brings its own compiler.
 5. Builds that configure at the same time wait for the first one, which moves the finished compiler into place.
