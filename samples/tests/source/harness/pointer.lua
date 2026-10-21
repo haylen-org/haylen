@@ -1,4 +1,4 @@
--- One pointer over the play area of a test for every device: the mouse, the first finger on the screen and a cursor that the `cursor` action moves and the `press` action presses, the right stick and the right trigger in `Pointer.actions`. A test adds those actions to its action map, updates the pointer after the frame follows the play area and draws it from `renderUi`. With `confined = true` the pointer starts in the middle of the play area and never leaves it, and with `shown = true` it draws its ring for every device instead of only for gamepads.
+-- One pointer over the play area of a test for every device: the mouse, the first finger on the screen and a cursor that the `cursor` action moves and the `press` action presses, the right stick and the right trigger in `Pointer.actions`. A test adds those actions to its action map, updates the pointer after the frame follows the play area and draws it from `renderUi`. With `confined = true` the pointer starts in the middle of the play area, or at the share of it that `origin` gives, such as `{0.5, 0.85}` near the middle of its bottom edge, and never leaves it, and with `shown = true` it draws its ring for every device instead of only for gamepads.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -16,6 +16,7 @@ Pointer.actions = {
 function Pointer:init(options)
     options = options or {}
     self.confined = options.confined
+    self.origin = options.origin or {0.5, 0.5}
     self.shown = options.shown
     self.x, self.y = input.mousePosition()
     self.worldX, self.worldY = 0, 0
@@ -31,7 +32,7 @@ function Pointer:update(dt, test)
     local wasDown = self.down
     if self.confined and not self.started then
         self.started = true
-        self.x, self.y = stage.x + stage.width / 2, stage.y + stage.height / 2
+        self.x, self.y = stage.x + stage.width * self.origin[1], stage.y + stage.height * self.origin[2]
     end
     self:follow(dt)
     if self.confined then
