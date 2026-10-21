@@ -2087,6 +2087,36 @@ Revisão:
 
 - [x] Revisar todo o código procurando bugs, erros, falhas, inconsistências, coisas que deveriam funcionar ou aparecer e estão quebradas, e condições de corrida. Revisado por área (animação, Tiled e partículas, conteúdo, áudio e armazenamento, UI, gráficos e texto, física, navegação e procedural, plataformas, core, Lua e plugins), com 36 defeitos achados e corrigidos, cada um com um teste que falha sem a correção. As corridas eram o mundo de colisão das partículas guardado por ponteiro cru, o fim do som de um vídeo que um `seek` perdia, a sessão de mídia do Windows e as chamadas nativas pendentes de uma ponte que parava. Os laços sem fim vinham de escalas de tempo enormes ou infinitas, de timers e loops de som curtos demais e de tweens que repetiam para sempre. Os estouros e alocações sem limite estavam no recorte de imagens, nas páginas de fontes bitmap, nos dados comprimidos do Tiled e nas trilhas de esqueletos. Entraram também textos que não são UTF-8 nos leitores de tela e na sessão de mídia, o limite dos campos contado em pontos de código no Android e na web, o som de vídeos Android com outra taxa, as referências locais do JNI e o Tab que não entrava numa GUI sem foco. A suíte passou também com o thread sanitizer e o address sanitizer, e o projeto de testes passou no player headless.
 
+#### AX. Revisão visual do projeto de testes: moldura dos testes e componentes da UI
+
+A revisão visual de cada teste do projeto de testes, nas capturas do player web, achou defeitos que vêm da moldura compartilhada dos testes (`samples/tests/source/harness/`) e dos componentes e do layout da UI da engine. Cada correção da engine vem com um teste que falha sem ela e com a documentação.
+
+Moldura dos testes:
+
+- [ ] A área do teste (a área de jogo ou o conteúdo) fica entre o cabeçalho e o cartão de código, recortada e com rolagem quando o conteúdo passa da altura, e o cartão de código e a dica nunca cobrem nada nem empurram a moldura para fora da janela.
+- [ ] Controles de toque dentro da área de jogo, presos aos cantos dela com margem, e só onde o toque é a entrada (`touchOnly`), sem cobrir o cartão de código, o status ou o painel. As sobreposições dos testes ficam dentro da área do teste.
+- [ ] Cartão de código em fonte monoespaçada de verdade, com cores de sintaxe do tema (palavras-chave, textos, números, comentários e funções), sem partir um token no fim da linha, com recuo nas linhas que continuam e com altura fixa, para a área de jogo ter a mesma altura em todo teste.
+- [ ] O botão Back e o selo do código ficam no topo do cabeçalho mesmo com a descrição em duas linhas.
+- [ ] A linha de status vazia não ocupa espaço, e o status mostra sempre o último texto, sem perder uma chamada feita entre dois intervalos.
+- [ ] Painéis laterais que cabem ou rolam, mostrando um degradê na borda onde o conteúdo continua, com os botões na largura do painel e listas que não empurram os controles para fora da vista.
+- [ ] A dica traz só o que o teste explica, e as teclas de navegação aparecem uma vez, de forma compacta e igual em todo teste.
+- [ ] As verificações de `harness/results.lua` rolam, então nenhuma fica escondida.
+- [ ] Todo teste mostra o cartão de código, também os de desenvolvimento, de idiomas, de desenhos de debug e de vídeo, e a página de não suportado mostra um ícone, o motivo numa largura de leitura, as plataformas onde o teste roda e o código.
+
+Componentes e layout da UI:
+
+- [ ] `ui.row{wrap = true}`: um filho que cresce só vai para outra linha quando a largura mínima dele não cabe, as linhas dividem a altura da linha e esticam os filhos com `align = 'stretch'`, e o que passa da altura é recortado.
+- [ ] Painéis e cartões recortam os filhos nas suas bordas.
+- [ ] O papel `monospace` dos temas da engine usa uma fonte monoespaçada embutida, com a licença dela, sem ligaduras e sem quebrar a linha dentro de identificadores, com algarismos de largura igual.
+- [ ] Rótulos de checkbox, toggle, rádio e botão quebram a linha como os rótulos, em vez de cortar com reticências.
+- [ ] Os sliders de uma mesma coluna têm trilhos do mesmo comprimento.
+- [ ] O rótulo da barra de progresso fica legível sobre a parte cheia e sobre a vazia.
+- [ ] Os rótulos dos botões de toque guardam margem do anel e diminuem para caber.
+- [ ] Os segmentos do controle segmentado guardam um padding mínimo, e o segmento escolhido fica dentro do trilho em todo tema.
+- [ ] As áreas que rolam mostram um degradê na borda onde o conteúdo continua, configurável pelo tema.
+- [ ] `ui.emptyState` com ícone e largura máxima de leitura, o sinal de menos de verdade no campo numérico e nenhum "-0" nos números formatados.
+- [ ] A janela (`GUI-033`) com sombra, folga entre o botão de fechar e a ponta da barra e posição dentro da área segura em qualquer escala, e o texto do overlay da área segura sem cobrir a interface.
+
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.
