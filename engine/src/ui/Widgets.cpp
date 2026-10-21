@@ -502,13 +502,19 @@ int Widgets::getStep(const Context& context, FocusDirection direction) noexcept 
     return (direction == FocusDirection::Right) != context.isRightToLeft() ? 1 : -1;
 }
 
-// The triangle is the part of a rectangle around its tip that the sector reaching the two far corners keeps, so the far side of the rectangle is its base.
+// The chevron is two strokes with round ends that meet at the tip, a quarter of the size ahead of the center, and spread to the full size across it.
 void Widgets::arrow(Context& context, math::Vec2 center, float size, ImGuiDir direction, math::Color color) {
     constexpr float kPi = std::numbers::pi_v<float>;
     const float pointing = direction == ImGuiDir_Down ? kPi * 0.5F : direction == ImGuiDir_Up ? -kPi * 0.5F : direction == ImGuiDir_Left ? kPi : 0.0F;
-    const math::Vec2 tip = center + math::Vec2::fromAngle(pointing, size * 0.5F);
-    const float spread = std::atan2(size * 0.5F, size);
-    Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter(tip, {size * 2.0F, size}), .rotation = pointing + kPi, .startAngle = -spread, .sweep = spread * 2.0F, .color = color});
+    const math::Vec2 ahead = math::Vec2::fromAngle(pointing, size * 0.25F);
+    const math::Vec2 across = math::Vec2::fromAngle(pointing + kPi * 0.5F, size * 0.5F);
+    const math::Vec2 tip = center + ahead;
+    const float thickness = std::max(context.getMetric(Theme::Metric::StrokeWidth), size * 0.16F);
+    for (const math::Vec2 end : {center - ahead + across, center - ahead - across}) {
+        const math::Vec2 arm = tip - end;
+        const float half = thickness * 0.5F;
+        Surfaces::drawShape(context, {.bounds = math::Rect::fromCenter((tip + end) * 0.5F, {arm.getLength() + thickness, thickness}), .radii = {half, half, half, half}, .rotation = arm.getAngle(), .color = color});
+    }
 }
 
 } // namespace haylen::ui

@@ -143,6 +143,26 @@ TEST_F(GameComponentTest, DragsAndStepsBothEndsOfARange) {
     EXPECT_EQ(findLastEvent("change").value, (core::Json{{"low", 70.0}, {"high", 80.0}}));
 }
 
+// The arrows of a stepper draw as chevrons of two strokes with round ends, whose arms lean apart from their tip.
+TEST_F(GameComponentTest, DrawsTheArrowsOfAStepperAsChevrons) {
+    mount(R"({"kind": "column", "children": [{"kind": "stepper", "value": 2, "min": 1, "max": 4}]})");
+    frames(2);
+    const math::Color muted = getUi().getTheme().getColor(Theme::Color::TextMuted);
+    std::vector<graphics2d::Shape> arms;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        if (shape.color == muted) {
+            arms.push_back(shape);
+        }
+    }
+    ASSERT_EQ(arms.size(), 4U);
+    for (const graphics2d::Shape& arm : arms) {
+        EXPECT_FLOAT_EQ(arm.radii[0], arm.bounds.height * 0.5F);
+        EXPECT_GT(arm.bounds.width, arm.bounds.height * 2.0F);
+    }
+    EXPECT_NEAR(arms[0].rotation + arms[1].rotation, 0.0F, 1e-4F);
+    EXPECT_NEAR(arms[2].rotation + arms[3].rotation, 0.0F, 1e-4F);
+}
+
 // A range that shows its ends leaves at least the value width of the theme for them, so its track lines up with the track of a slider above it.
 TEST_F(GameComponentTest, LinesUpTheTrackOfARangeWithTheTrackOfASlider) {
     // clang-format off

@@ -2149,7 +2149,7 @@ end})
 
 ### ui.stepper(properties)
 
-A value between two arrows that step it, a number or one of a list of options, the way console settings pick a difficulty. The arrows step it, a click or a tap on the value moves to the next one, and a change reports `change` with the number or the item id as `value`. It takes the focus as a whole: left and right step it and accept moves to the next value, starting over after the last one.
+A value between two arrows that step it, a number or one of a list of options, the way console settings pick a difficulty. The arrows are chevrons of two strokes with round ends, like the arrows of combos, carousels, accordions and trees. The arrows step it, a click or a tap on the value moves to the next one, and a change reports `change` with the number or the item id as `value`. It takes the focus as a whole: left and right step it and accept moves to the next value, starting over after the last one.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |

@@ -139,7 +139,7 @@ class Widgets final {
     // Draws the close button of the theme over the area in the state of the press and returns whether the theme has one, so a theme without it gets the cross of the caller.
     static bool closeImage(Context& context, const math::Rect& area, const Interaction& state);
 
-    // Draws a filled triangle pointing in a direction, sized in design units and centered on a point.
+    // Draws a chevron of two strokes with round ends pointing in a direction, as long across as the size in design units and centered on a point.
     static void arrow(Context& context, math::Vec2 center, float size, ImGuiDir direction, math::Color color);
 
     // Returns the direction an arrow points in the direction of the UI, which swaps left and right in a right-to-left UI, so an arrow that means forward points the way the UI reads.
