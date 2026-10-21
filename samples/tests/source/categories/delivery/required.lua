@@ -5,7 +5,7 @@ local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
-local mapView = require('categories.delivery.map-view')
+local MapView = require('categories.delivery.map-view')
 
 local Required = haylen.class('Required', Test)
 
@@ -13,23 +13,32 @@ Required.path = 'delivery/required/harbor.json'
 
 function Required:enter()
     self.map = assets.json(Required.path)
+    self.mapView = MapView()
     local stats = content.stats()
     local source = content.isProtected() and string.format('A protected release of generation %d, whose catalog lists %d files.', content.generation(), stats.catalogFiles) or 'The folder of the app, as in development. The command "haylen run samples/tests --config Release" plays the protected release instead, with the Lua modules as bytecode and every asset in encrypted shards.'
+    local onDevice = content.isLocal(Required.path)
     self:frame{
         code = string.format("local map = assets.json('%s')\nprint(content.isLocal('%s'))", Required.path, Required.path),
         controls = {
             ui.sectionTitle{text = 'The asset'},
-            ui.label{text = string.format('The map "%s" has %d rows and is on the device: %s.', self.map.name, #self.map.rows, tostring(content.isLocal(Required.path)))},
+            ui.label{text = string.format('The map "%s", %d rows of tiles.', self.map.name, #self.map.rows)},
+            ui.row{gap = 12, alignItems = 'center',
+                ui.badge{text = onDevice and 'On the device' or 'Not on the device', tone = onDevice and 'success' or 'danger', solid = true},
+                ui.badge{text = 'Read synchronously', tone = 'information'},
+            },
             ui.sectionTitle{text = 'The package'},
             ui.label{text = source, color = 'textMuted'},
-            ui.label{text = string.format('Content status "%s".', content.status())},
+            ui.row{gap = 12, alignItems = 'center',
+                ui.label{text = 'Content status', color = 'textMuted'},
+                ui.badge{text = (content.status():gsub('^%l', string.upper)), tone = 'neutral'},
+            },
         },
     }
 end
 
 function Required:draw(area)
-    mapView.draw(self.map, area)
-    Test.caption('The required map, read synchronously.', 16, 16)
+    self.mapView:draw(self.map, area)
+    Test.caption('The harbor, a required map read at once.', area.width / 2, 20, {size = 22, color = Test.ink, anchor = {0.5, 0}})
 end
 
 return Required
