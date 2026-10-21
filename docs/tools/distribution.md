@@ -26,7 +26,7 @@ haylen run-cpp ~/apps/my-cpp-game --platform android
 
 ## Commands
 
-Every command names an app by its folder, relative to the current folder or absolute. A command without an app, or with a path that holds no `app.json`, stops with an error that says what an app folder is. It never runs another app in its place. A folder that holds `CMakeLists.txt` is a C++ app. The commands `run`, `prepare`, `xcodegen` and `dist` build the platform projects of Lua apps, so they stop for a C++ app and name `run-cpp` instead.
+The commands of apps name an app by its folder, relative to the current folder or absolute. A command without an app, or with a path that holds no `app.json`, stops with an error that says what an app folder is. It never runs another app in its place. A folder that holds `CMakeLists.txt` is a C++ app. The commands `run`, `prepare`, `xcodegen` and `dist` build the platform projects of Lua apps, so they stop for a C++ app and name `run-cpp` instead.
 
 Several commands share these options:
 
@@ -63,7 +63,7 @@ Creates an app from the [templates](#templates). The folder must not exist, or m
 | --- | --- | --- |
 | `--kind` | `lua` | The kind of the app: `lua`, whose code is Lua, or `cpp`, a CMake project whose C++ code compiles the engine. |
 | `--name` | the name of the folder in title case | The display name. |
-| `--identifier` | `com.example.<folder>` | The reverse domain identifier, such as `com.example.game`. |
+| `--identifier` | `com.example.<folder>`, with the dashes of the folder name left out | The reverse domain identifier, such as `com.example.spacerace`. |
 | `--orientation` | `landscape` | `landscape`, `portrait` or `any`. |
 
 The command copies `templates/common` first, then `templates/lua` or `templates/cpp`, whose files replace the common files of the same path. The app gets its package, its `.gitignore`, `.editorconfig` and `.clang-format`, and the project of every platform template of its kind under `platform/<platform>`:
@@ -432,7 +432,7 @@ The command `steamcmd +login <account> +run_app_build <steam>/scripts/app_build.
 
 ### content
 
-The command `content` builds, verifies, inspects, compares, publishes and compacts the protected releases of an app, and shows or rotates its keys. Its actions are `build`, `verify`, `inspect`, `diff`, `publish`, `compact` and `keys`, which the [content guide](../content/content.md#the-content-tool) describes with their options.
+The command `content` builds, verifies, inspects, compares, publishes and compacts the protected releases of an app, and shows or rotates its keys. Its actions are `build`, `verify`, `inspect`, `diff`, `publish`, `compact` and `keys`, which the [content guide](../content/content.md#the-content-tool) describes with their options. Every action also takes `--engine-config`, the configuration of the content tool of the desktop artifacts, `Release` by default, and `--jobs`, the jobs of its build. The option `--platform` of an action takes the platforms of `run` and picks their content profile.
 
 ```sh
 haylen content keys ~/apps/my-game
