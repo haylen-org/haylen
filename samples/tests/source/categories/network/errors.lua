@@ -61,10 +61,7 @@ Errors.groups = {
     {id = 'content', title = 'Bad content', tone = 'accent'},
 }
 
--- The cases that answer at once, which the test tries when it opens.
-Errors.opening = {'refused', 'missing', 'notJson'}
-
--- Every case has a button in its group and a card on the board of results, in the same order, so the board shows every failure from the start.
+-- Every case has a button in its group and a card on the board of results, in the same order. The test tries every case when it opens, so the board shows every failure, and a button tries its case again.
 function Errors:enter()
     local controls, cards = {}, {}
     for _, group in ipairs(Errors.groups) do
@@ -96,11 +93,7 @@ function Errors:enter()
         }},
     }
     for _, case in ipairs(Errors.cases) do
-        for _, id in ipairs(Errors.opening) do
-            if case.id == id then
-                self:try(case)
-            end
-        end
+        self:try(case)
     end
 end
 

@@ -156,8 +156,20 @@ function WebSocket:sendText(text)
     if self:ready() then
         self.socket:send(text)
         self:count('sent')
-        self:record('Called "socket:send"', text)
+        local sentAt = WebSocket.pingTime(text)
+        self:record('Called "socket:send"', sentAt and string.format('A ping with the time it left, %s', WebSocket.clock(sentAt)) or text)
     end
+end
+
+-- The time in milliseconds that a ping carries, or nothing for another text.
+function WebSocket.pingTime(text)
+    local sentAt = text:match('^' .. WebSocket.ping .. '(%d+)$')
+    return sentAt and tonumber(sentAt)
+end
+
+-- A time in milliseconds of the wall clock as the clock of the device with its milliseconds.
+function WebSocket.clock(milliseconds)
+    return string.format('%s.%03d', os.date('%H:%M:%S', milliseconds // 1000), milliseconds % 1000)
 end
 
 -- Packs a counter and the time into eight little-endian bytes.
@@ -187,9 +199,12 @@ function WebSocket:receive(data, binary)
         self:record('Event "message", binary', #data .. ' bytes: ' .. readout.hex(data))
         return
     end
-    local sentAt = data:match('^' .. WebSocket.ping .. '(%d+)$')
+    local sentAt = WebSocket.pingTime(data)
     if sentAt then
-        self:set('roundTrip', {text = string.format('%d ms', readout.millis() - tonumber(sentAt))})
+        local roundTrip = readout.millis() - sentAt
+        self:set('roundTrip', {text = string.format('%d ms', roundTrip)})
+        self:record('Event "message", text', string.format('The ping that left at %s, back after %d ms', WebSocket.clock(sentAt), roundTrip))
+        return
     end
     self:record('Event "message", text', data)
 end

@@ -30,7 +30,7 @@ end
 function Download:enter()
     local items = {}
     for index, choice in ipairs(services.downloads) do
-        items[index] = {id = choice.id, text = choice.text, caption = choice.caption, image = 'plugins/file.svg'}
+        items[index] = {id = choice.id, text = choice.text, caption = choice.caption, image = choice.icon, iconColor = false}
     end
     self:frame{
         code = Download.code,
@@ -57,9 +57,11 @@ function Download:enter()
                 ui.progress{id = 'progress', value = 0, text = 'Nothing downloaded yet'},
                 ui.row{gap = 16, ui.busyIndicator{id = 'busy', size = 40, visible = false}, ui.label{id = 'outcome', text = 'Pick a file and stream it.', color = 'textMuted', grow = 1}},
                 ui.label{id = 'result', text = '', color = 'textMuted'},
-                ui.sectionTitle{text = 'Downloads of this visit'},
-                ui.label{id = 'historyEmpty', text = 'Every finished download lands here with its size, its speed and where it was saved.', color = 'textMuted'},
-                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'history', items = {}}},
+                ui.card{grow = 1, gap = 12, align = 'stretch',
+                    ui.sectionTitle{text = 'Downloads of this visit'},
+                    ui.label{id = 'historyEmpty', text = 'Every finished download lands here with its size, its speed and where it was saved.', color = 'textMuted'},
+                    ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'history', items = {}}},
+                },
             },
         }},
     }
@@ -106,7 +108,7 @@ function Download:finish(data, failure)
     self:set('result', {text = saved and 'Saved as "' .. folder .. '/' .. self.choice.file .. '".' or 'Saving failed: ' .. tostring(problem)})
     self.finished = (self.finished or 0) + 1
     self.history = self.history or {}
-    table.insert(self.history, 1, {id = 'download-' .. self.finished, text = self.choice.text, caption = speed .. (saved and ', saved as "' .. self.choice.file .. '"' or ', not saved'), image = 'plugins/file.svg'})
+    table.insert(self.history, 1, {id = 'download-' .. self.finished, text = self.choice.text, caption = speed .. (saved and ', saved as "' .. self.choice.file .. '"' or ', not saved'), image = self.choice.icon, iconColor = false})
     self:set('history', {items = self.history})
     self:set('historyEmpty', {visible = false})
 end

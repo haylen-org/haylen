@@ -17,35 +17,55 @@ local open = net.openSocketCount()]]
 
 Events.socketEvents = {'open', 'message', 'error', 'disconnect', 'reconnecting', 'close'}
 Events.busEvents = {'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting', 'networkOnline', 'networkOffline', 'appBackground', 'appActive'}
+-- The failing socket, which the test opens with the echo socket, tries a few times and gives up.
+Events.failing = {initialDelay = 0.5, maxDelay = 2, maxAttempts = 3}
 
--- Formats one value of an event, with strings quoted so an empty reason still shows.
-local function format(value)
-    if type(value) == 'string' then
-        return string.format('%q', value)
-    end
-    if math.type(value) == 'float' then
-        return string.format('%.2f', value)
-    end
-    return tostring(value)
-end
+-- Each event of the timeline as a sentence made from its values, keyed by its source and name.
+Events.sentences = {
+    ['socket open'] = function()
+        return 'The socket connected.'
+    end,
+    ['socket message'] = function(data, binary)
+        return binary and string.format('A binary message of %s arrived.', readout.bytes(#data)) or string.format('The text "%s" arrived.', data)
+    end,
+    ['socket error'] = function(message)
+        return message
+    end,
+    ['socket disconnect'] = function(code, reason)
+        return string.format('The connection ended with the code %d%s.', code, Events.reason(reason))
+    end,
+    ['socket reconnecting'] = function(attempt, delay)
+        return string.format('Attempt %d comes in %.2f seconds.', attempt, delay)
+    end,
+    ['socket close'] = function(code, reason)
+        return string.format('The socket is done, with the code %d%s.', code, Events.reason(reason))
+    end,
+    ['bus webSocketConnected'] = function(info)
+        return string.format('The socket to "%s" connected%s.', info.url, info.protocol ~= '' and string.format(' with the protocol "%s"', info.protocol) or '')
+    end,
+    ['bus webSocketDisconnected'] = function(info)
+        return string.format('The socket to "%s" lost its connection with the code %d%s.', info.url, info.code, Events.reason(info.reason))
+    end,
+    ['bus webSocketReconnecting'] = function(info)
+        return string.format('The socket to "%s" tries attempt %d in %.2f seconds.', info.url, info.attempt, info.delay)
+    end,
+    ['bus networkOnline'] = function()
+        return 'The device has a network.'
+    end,
+    ['bus networkOffline'] = function()
+        return 'The device lost its network.'
+    end,
+    ['bus appBackground'] = function()
+        return 'The app went to the background.'
+    end,
+    ['bus appActive'] = function()
+        return 'The app came back to the foreground.'
+    end,
+}
 
--- Describes the values of an event in one line.
-local function describe(values)
-    local parts = {}
-    for index = 1, values.n do
-        local value = values[index]
-        if type(value) == 'table' then
-            local fields = {}
-            for key, field in pairs(value) do
-                fields[#fields + 1] = key .. ' = ' .. format(field)
-            end
-            table.sort(fields)
-            parts[#parts + 1] = '{' .. table.concat(fields, ', ') .. '}'
-        else
-            parts[#parts + 1] = format(value)
-        end
-    end
-    return table.concat(parts, ', ')
+-- The reason of a code, which is often empty.
+function Events.reason(reason)
+    return reason ~= '' and string.format(' and the reason "%s"', reason) or ''
 end
 
 function Events:init(entry)
@@ -76,7 +96,7 @@ function Events:enter()
                         self:open(services.echo, nil)
                     end},
                     ui.button{id = 'failing', text = 'Open a failing socket', align = 'stretch', onClick = function()
-                        self:open(services.unreachable, {initialDelay = 0.5, maxDelay = 2, maxAttempts = 3})
+                        self:open(services.unreachable, Events.failing)
                     end},
                     ui.button{id = 'hello', text = 'Send hello', align = 'stretch', onClick = function()
                         self:sendHello()
@@ -103,6 +123,7 @@ function Events:enter()
         end)
     end
     self:open(services.echo, nil)
+    self:open(services.unreachable, Events.failing)
 end
 
 function Events:update(dt)
@@ -124,7 +145,7 @@ function Events:record(source, name, values)
     end
     self:set('counters', {rows = self.counters})
     self.logged = self.logged + 1
-    table.insert(self.lines, 1, {id = 'line-' .. self.logged, text = (source == 'bus' and 'Bus event "' or 'Socket event "') .. name .. '"', caption = readout.clock() .. '  ' .. describe(values)})
+    table.insert(self.lines, 1, {id = 'line-' .. self.logged, text = (source == 'bus' and 'Bus event "' or 'Socket event "') .. name .. '"', caption = readout.clock() .. '  ' .. Events.sentences[key](table.unpack(values, 1, values.n))})
     self.lines[100] = nil
     self:set('timeline', {items = self.lines})
     self:set('timelineEmpty', {visible = false})

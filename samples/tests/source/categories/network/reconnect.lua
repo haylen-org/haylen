@@ -30,7 +30,7 @@ function Reconnect:enter()
         hint = 'The test starts with the unreachable server, which shows every attempt and its wait until the socket gives up. Pick the echo server and start again to connect and stay up.',
         focus = 'target',
         content = {ui.row{grow = 1, gap = 24,
-            ui.panel{width = 640, align = 'stretch', gap = 12,
+            ui.panel{width = 560, align = 'stretch', gap = 12,
                 ui.segmentedControl{id = 'target', items = Reconnect.targets, selected = self.target, onChange = function(event)
                     self.target = event.value
                     self:set('url', {text = services[self.target]})
@@ -47,18 +47,31 @@ function Reconnect:enter()
                     end},
                 },
                 ui.statusIndicator{id = 'state', text = 'Not started', tone = 'neutral'},
-                ui.sectionTitle{text = 'Events', margin = {12, 0, 0, 0}},
-                ui.label{id = 'eventsEmpty', text = 'Start to see every attempt, wait and close arrive.', color = 'textMuted'},
-                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'events', items = {}}},
+                ui.sectionTitle{text = 'The option "reconnect"'},
+                ui.table{columns = {{text = 'Key', width = 220}, {text = 'Value'}}, rows = Reconnect.settingRows(), style = {fonts = {body = {font = 'monospace'}}, metrics = {listRowHeight = 40}}},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Waits before each attempt'},
                 ui.label{text = string.format('Each wait doubles from %.1f seconds up to %d seconds, shortened at random by up to a quarter, and the socket gives up after %d failures in a row.', Reconnect.settings.initialDelay, Reconnect.settings.maxDelay, Reconnect.settings.maxAttempts), color = 'textMuted'},
-                ui.column{gap = 10, children = self:plannedWaits()},
+                ui.column{gap = 8, children = self:plannedWaits()},
+                ui.sectionTitle{text = 'Events', margin = {12, 0, 0, 0}},
+                ui.label{id = 'eventsEmpty', text = 'Start to see every attempt, wait and close arrive.', color = 'textMuted'},
+                ui.scroll{grow = 1, height = 0, focusable = false, ui.list{id = 'events', items = {}}},
             },
         }},
     }
     self:start()
+end
+
+-- The keys of the option in the order the code gives them, with their values and units.
+Reconnect.settingKeys = {{'initialDelay', '%.1f seconds'}, {'maxDelay', '%d seconds'}, {'multiplier', '%d'}, {'jitter', '%.2f'}, {'maxAttempts', '%d'}}
+
+function Reconnect.settingRows()
+    local rows = {}
+    for index, key in ipairs(Reconnect.settingKeys) do
+        rows[index] = {id = key[1], cells = {key[1], string.format(key[2], Reconnect.settings[key[1]])}}
+    end
+    return rows
 end
 
 -- The bar of the wait the settings plan before an attempt, in grey until that attempt comes.

@@ -13,15 +13,15 @@ function readout.clock()
     return os.date('%H:%M:%S')
 end
 
--- Formats a byte count for people, such as 512 bytes or 3.4 KB.
+-- Formats a byte count for people in decimal units, such as 512 bytes, 3.4 KB for 3400 bytes or 10.00 MB for ten million.
 function readout.bytes(count)
-    if count < 1024 then
-        return string.format('%d bytes', count)
+    if count < 1000 then
+        return string.format('%d bytes', math.floor(count))
     end
-    if count < 1024 * 1024 then
-        return string.format('%.1f KB', count / 1024)
+    if count < 1000 * 1000 then
+        return string.format('%.1f KB', count / 1000)
     end
-    return string.format('%.2f MB', count / (1024 * 1024))
+    return string.format('%.2f MB', count / (1000 * 1000))
 end
 
 -- Shows a body as indented JSON when it is JSON, and as it came otherwise.
