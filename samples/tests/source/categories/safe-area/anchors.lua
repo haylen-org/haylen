@@ -3,8 +3,8 @@ local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 
-local Device = require('categories.safe-area.device')
 local Test = require('harness.test')
+local areas = require('categories.safe-area.areas')
 
 local Anchors = haylen.class('Anchors', Test)
 
@@ -22,6 +22,8 @@ Anchors.sizes = {stretchTop = {height = 0.16}, stretchBottom = {height = 0.16}, 
 -- The screen of a phone with a dynamic island held sideways, and its safe area as shares of the screen: the island on the left, the corners on the right and the home indicator at the bottom.
 Anchors.screen = {2532, 1170}
 Anchors.insets = {0, 0.069, 0.054, 0.069}
+-- The markers name their presets in the monospace font, as code.
+Anchors.markerStyle = {fonts = {caption = {font = 'monospace', size = 20, ligatures = false}}}
 
 function Anchors:init(entry)
     Anchors.super.init(self, entry)
@@ -38,7 +40,7 @@ function Anchors:enter()
         fixed = true,
         content = {ui.row{grow = 1, gap = 24, align = 'stretch',
             ui.stack{id = 'room', grow = 1, align = 'stretch',
-                ui.stack{id = 'screen', aspectRatio = Anchors.screen[1] / Anchors.screen[2], align = 'stretch', margin = {56, 72},
+                ui.stack{id = 'screen', aspectRatio = Anchors.screen[1] / Anchors.screen[2], align = 'stretch', margin = {56, 72}, style = Anchors.markerStyle,
                     ui.stack{id = 'safe', align = 'stretch'},
                 },
             },
@@ -133,16 +135,7 @@ function Anchors:render()
         return
     end
     graphics2d.beginScreen()
-    local device, radius = Device.around('island', {screen.x, screen.y, screen.width, screen.height}, true)
-    device.screen = '#FF1E3A5F'
-    Device.draw(device)
-    graphics2d.pushMask(function()
-        graphics2d.drawShape({screen.x, screen.y, screen.width, screen.height}, {radius = radius, color = '#FFFFFFFF'})
-    end, {layer = 3})
-    graphics2d.drawRect({screen.x, screen.y, screen.width, screen.height}, '#26F0473E')
-    graphics2d.drawRect({safe.x, safe.y, safe.width, safe.height}, '#FF1E3A5F', {layer = 1})
-    graphics2d.popMask()
-    graphics2d.drawShape({safe.x, safe.y, safe.width, safe.height}, {radius = 12, color = '#00000000', borderWidth = 3, borderColor = '#B33AA8E0', layer = 5})
+    areas.drawDevice('island', {screen.x, screen.y, screen.width, screen.height}, {safe.x, safe.y, safe.width, safe.height})
 end
 
 return Anchors

@@ -1,4 +1,5 @@
 -- The functions `window.setStatusBar` and `window.setStatusBarColor` show the status bar of a phone or tablet with light, dark or automatic content, and paint a color behind it, while the safe area leaves it out.
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -11,30 +12,38 @@ local areas = require('categories.safe-area.areas')
 local StatusBar = haylen.class('StatusBar', Test)
 
 StatusBar.code = [[
-window.setStatusBar('light')  -- Or `hidden`, `auto` and `dark`, which `window.statusBar` of `app.json` sets at start.
+window.setStatusBar('light')  -- Or "hidden", "auto" and "dark", which "window.statusBar" of "app.json" sets at start.
 window.setStatusBarColor('#FF1E2A44')  -- Painted behind it, since the app draws under it.
 print(window.statusBar(), viewport.safeRect().y)  -- The safe area starts below it.]]
 
 -- The background "none" has no color, so the engine paints nothing behind the status bar.
 StatusBar.colors = {night = '#FF1E2A44', paper = '#FFF4EFE3', leaf = '#FF4C8B3F'}
 
-StatusBar.platforms = '[table=2][cell bg=#33FFFFFF padding=10][b]Platform[/b][/cell][cell bg=#33FFFFFF padding=10][b]What the status bar does[/b][/cell]'
-    .. '[cell padding=10]iPhone and iPad[/cell][cell padding=10]Shows through the view controller of the window, and an iPhone hides it in landscape.[/cell]'
-    .. '[cell bg=#14FFFFFF padding=10]Android[/cell][cell bg=#14FFFFFF padding=10]Shows over the app, and a hidden status bar shows for a while after a swipe from the top edge.[/cell]'
-    .. '[cell padding=10]Desktop, Mac Catalyst, TVs and browsers[/cell][cell padding=10]Have no status bar over the app, so nothing changes.[/cell][/table]'
+StatusBar.platforms = {
+    {'iPhone and iPad', 'Shows through the view controller of the window, and an iPhone hides it in landscape.'},
+    {'Android', 'Shows over the app, and a hidden status bar shows for a while after a swipe from the top edge.'},
+    {'Desktop, Mac Catalyst, TVs and browsers', 'Have no status bar over the app, so nothing changes.'},
+}
+-- The backgrounds in the order of their buttons.
+StatusBar.backgrounds = {{id = 'none', text = 'None'}, {id = 'night', text = 'Night'}, {id = 'paper', text = 'Paper'}, {id = 'leaf', text = 'Leaf'}}
 -- The ink of the content of the bar for each choice, where automatic content follows the theme of the UI.
 StatusBar.inks = {light = '#FFFFFFFF', dark = '#FF15172A'}
-StatusBar.names = {none = 'no color', night = 'the night color', paper = 'the paper color', leaf = 'the leaf color'}
+StatusBar.names = {none = 'with nothing painted behind it', night = 'over the night color', paper = 'over the paper color', leaf = 'over the leaf color'}
+StatusBar.states = {auto = 'shown with automatic content', light = 'shown with light content', dark = 'shown with dark content'}
 
 function StatusBar:init(entry)
     StatusBar.super.init(self, entry)
     self.initialBar = window.statusBar()
     self.initialColor = window.statusBarColor()
-    self.bar = self.initialBar
-    self.color = 'none'
+    self.bar = 'light'
+    self.color = 'night'
 end
 
+-- The test opens with light content over the night color, so the phone shows its status bar at once.
 function StatusBar:enter()
+    window.setStatusBar(self.bar)
+    window.setStatusBarColor(StatusBar.colors[self.color])
+    self.wallpaper = areas.wallpaper()
     self:frame{
         hint = 'The file "app.json" hides the status bar of this project, and leaving this test hides it again. Light content suits a dark background and dark content a light one, while automatic content follows the theme of the system.',
         code = StatusBar.code,
@@ -49,19 +58,41 @@ function StatusBar:enter()
                         window.setStatusBar(event.value)
                     end},
                     ui.sectionTitle{text = 'Background', margin = {12, 0, 0, 0}},
-                    ui.segmentedControl{id = 'color', items = {{id = 'none', text = 'None'}, {id = 'night', text = 'Night'}, {id = 'paper', text = 'Paper'}, {id = 'leaf', text = 'Leaf'}}, selected = self.color, onChange = function(event)
-                        self.color = event.value
-                        window.setStatusBarColor(StatusBar.colors[event.value])
-                    end},
+                    ui.row{gap = 12, children = self:backgroundButtons()},
                 },
-                ui.card{gap = 12, ui.sectionTitle{text = 'Platforms'}, ui.richText{text = StatusBar.platforms}},
+                ui.card{gap = 12, ui.sectionTitle{text = 'Platforms'}, areas.platformTable('What the status bar does', StatusBar.platforms)},
             }},
             ui.card{width = 520, gap = 12, align = 'stretch', ui.sectionTitle{text = 'On a phone'}, ui.spacer{id = 'preview', grow = 1}},
         }},
     }
 end
 
+-- A button for each background, with a swatch of its color, of which the chosen one shows checked.
+function StatusBar:backgroundButtons()
+    local buttons = {}
+    for index, background in ipairs(StatusBar.backgrounds) do
+        local color = StatusBar.colors[background.id]
+        local swatch = color and string.format('<circle cx="12" cy="12" r="10" fill="#%s" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5"/>', color:sub(4)) or '<circle cx="12" cy="12" r="9.25" fill="none" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5"/><path d="M5.5 18.5 18.5 5.5" stroke="#FFFFFF" stroke-opacity="0.6" stroke-width="1.5"/>'
+        ui.setImage('@swatch-' .. background.id, graphics.newVectorImage('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">' .. swatch .. '</svg>'))
+        buttons[index] = ui.button{id = 'color-' .. background.id, text = background.text, icon = '@swatch-' .. background.id, iconColor = false, variant = 'toolbar', checked = background.id == self.color, grow = 1, onClick = function()
+            self:pickBackground(background.id)
+        end}
+    end
+    return buttons
+end
+
+function StatusBar:pickBackground(id)
+    self.color = id
+    window.setStatusBarColor(StatusBar.colors[id])
+    for _, background in ipairs(StatusBar.backgrounds) do
+        self:set('color-' .. background.id, {checked = background.id == id})
+    end
+end
+
 function StatusBar:exit()
+    for _, background in ipairs(StatusBar.backgrounds) do
+        ui.removeImage('@swatch-' .. background.id)
+    end
     window.setStatusBar(self.initialBar)
     window.setStatusBarColor(self.initialColor)
     StatusBar.super.exit(self)
@@ -70,7 +101,9 @@ end
 function StatusBar:update(dt)
     StatusBar.super.update(self, dt)
     local top = areas.insets()
-    self:status(string.format('The status bar is %s on %s, and the safe area starts %s units below the top of this screen.', window.statusBar(), StatusBar.names[self.color], areas.number(top)))
+    local bar = window.statusBar()
+    local state = bar == 'hidden' and 'hidden' or StatusBar.states[bar] .. ' ' .. StatusBar.names[self.color]
+    self:status(string.format('The status bar is %s, and the safe area starts %s units below the top of this screen.', state, areas.number(top)))
 end
 
 -- The phone of the preview shows its status bar the way the choices ask: hidden, or with the time, the signal and the battery in light or dark ink over the background color.
@@ -84,7 +117,7 @@ function StatusBar:render()
     local height = math.min(bounds.height * 0.94, bounds.width * 1.6)
     local width = height * 0.49
     local x, y = bounds.x + bounds.width / 2, bounds.y + bounds.height / 2
-    Device.draw{kind = 'island', x = x, y = y, width = width, height = height, screen = '#FF2F86F6'}
+    Device.draw{kind = 'island', x = x, y = y, width = width, height = height, wallpaper = self.wallpaper}
     if self.bar == 'hidden' then
         return
     end
@@ -95,7 +128,7 @@ function StatusBar:render()
     if color then
         graphics2d.pushMask(function()
             graphics2d.drawShape({left, top, screenWidth, screenHeight}, {radius = width * 0.15 - width * 0.045, color = '#FFFFFFFF'})
-        end, {layer = 3})
+        end, {layer = 4})
         graphics2d.drawRect({left, top, screenWidth, barHeight}, color)
         graphics2d.popMask()
     end

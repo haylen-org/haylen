@@ -5,14 +5,13 @@ local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
-local Device = require('categories.safe-area.device')
 local Test = require('harness.test')
 local areas = require('categories.safe-area.areas')
 
 local Simulations = haylen.class('Simulations', Test)
 
 Simulations.code = [[
-viewport.setSafeAreaSimulation('iphoneDynamicIsland')  -- Or `iphoneNotch`, `ipad`, `androidGestureBar` and `television`.
+viewport.setSafeAreaSimulation('iphoneDynamicIsland')  -- Or "iphoneNotch", "ipad", "androidGestureBar" and "television".
 viewport.setSafeAreaSimulation({60, 0, 40, 120})  -- Top, right, bottom and left in window points.
 viewport.setSafeAreaSimulation(nil)  -- The safe area of the device again.
 print(viewport.safeAreaSimulation(), viewport.safeRect())]]
@@ -26,11 +25,12 @@ end
 
 function Simulations:enter()
     self.simulation = areas.simulate()
+    self.wallpaper = areas.wallpaper()
     local current = viewport.safeAreaSimulation()
     self.device = current == nil and 'device' or (type(current) == 'string' and current or 'custom')
     local visible = viewport.visibleRect()
     self:frame{
-        hint = 'The HUD on the device sits in the safe area the engine reports, so it moves with every device. Custom insets are window points: top, right, bottom and left. Leaving the test puts the safe area of the device back.',
+        hint = 'The HUD on the device sits in the safe area the engine reports, so it moves with every device. The insets are window points, the unit that custom insets take. Leaving the test puts the safe area of the device back.',
         code = Simulations.code,
         focus = 'device',
         fixed = true,
@@ -92,20 +92,25 @@ function Simulations:controls()
             self.device = event.value
             self:apply()
         end}},
+        ui.sectionTitle{text = 'Insets in window points', margin = {8, 0, 0, 0}},
         ui.grid{columns = 2, gap = 16, children = steppers},
         ui.label{id = 'note', text = '', color = 'textMuted'},
     }
 end
 
+-- Returns the insets of the safe area in window points: top, right, bottom and left.
+function Simulations.points()
+    local top, right, bottom, left = areas.insets()
+    local points = viewport.pixelsPerUnit() / window.dpiScale()
+    return {top = math.floor(top * points + 0.5), right = math.floor(right * points + 0.5), bottom = math.floor(bottom * points + 0.5), left = math.floor(left * points + 0.5)}
+end
+
 -- The steppers show the insets of the device in window points and edit them only for custom insets.
 function Simulations:refresh()
     local custom = self.device == 'custom'
-    local top, right, bottom, left = areas.insets()
-    local perUnit = viewport.pixelsPerUnit()
-    local points = perUnit / window.dpiScale()
-    local values = {top = top * points, right = right * points, bottom = bottom * points, left = left * points}
+    local values = Simulations.points()
     for _, side in ipairs(Simulations.sides) do
-        self:set('inset-' .. side, {value = custom and self.custom[side] or math.floor(values[side] + 0.5), enabled = custom})
+        self:set('inset-' .. side, {value = custom and self.custom[side] or values[side], enabled = custom})
     end
     self:set('note', {text = custom and 'Step the insets to move the safe area.' or 'Pick "Custom insets" to edit them.'})
 end
@@ -126,8 +131,8 @@ end
 
 function Simulations:update(dt)
     Simulations.super.update(self, dt)
-    local safe = viewport.safeRect()
-    self:status(string.format('%s, whose safe area is %s by %s units.', describe(viewport.safeAreaSimulation()), areas.number(safe.width), areas.number(safe.height)))
+    local points = Simulations.points()
+    self:status(string.format('%s, which keeps the HUD %d points from the top, %d from the right, %d from the bottom and %d from the left.', describe(viewport.safeAreaSimulation()), points.top, points.right, points.bottom, points.left))
     -- The safe area of the preview takes the insets the engine reports, scaled to the screen of the preview.
     local screen = self.gui:bounds('screen')
     if screen then
@@ -151,17 +156,7 @@ function Simulations:render()
         return
     end
     graphics2d.beginScreen()
-    local kind = areas.kinds[self.device] or 'island'
-    local device, radius = Device.around(kind, {screen.x, screen.y, screen.width, screen.height}, kind ~= 'tv' and kind ~= 'tablet')
-    device.screen = '#FF1E3A5F'
-    Device.draw(device)
-    graphics2d.pushMask(function()
-        graphics2d.drawShape({screen.x, screen.y, screen.width, screen.height}, {radius = radius, color = '#FFFFFFFF'})
-    end, {layer = 3})
-    graphics2d.drawRect({screen.x, screen.y, screen.width, screen.height}, '#40F0473E')
-    graphics2d.drawRect({safe.x, safe.y, safe.width, safe.height}, '#FF1E3A5F', {layer = 1})
-    graphics2d.popMask()
-    graphics2d.drawShape({safe.x, safe.y, safe.width, safe.height}, {radius = 8, color = '#00000000', borderWidth = 2, borderColor = '#CC3AA8E0', layer = 5})
+    areas.drawDevice(areas.kinds[self.device] or 'island', {screen.x, screen.y, screen.width, screen.height}, {safe.x, safe.y, safe.width, safe.height}, self.wallpaper)
 end
 
 return Simulations

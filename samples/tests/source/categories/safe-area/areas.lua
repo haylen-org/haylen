@@ -1,6 +1,8 @@
 -- The safe area the tests of the category show: the simulated devices of `haylen.viewport`, a phone with a dynamic island where the screen has no notch, the insets, the bands of the screen outside the safe area and a preview of the device with its safe area.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
 
 local Device = require('categories.safe-area.device')
@@ -43,37 +45,52 @@ function areas.number(value)
     return tostring(rounded == 0 and 0 or rounded)
 end
 
--- Draws a device of the kind held sideways around the rectangle `bounds`, with a screen of the shape of the visible screen, the bands outside the safe area of the visible screen shaded on its screen and its safe area outlined, and returns the screen and the safe area of the preview, which the tests fill.
-function areas.drawPreview(bounds, kind)
+-- The shade of the bands of a screen outside its safe area.
+areas.band = '#66F0473E'
+
+-- Loads the picture that the screens of the devices show, a painted island seen from its shore.
+function areas.wallpaper()
+    return assets.texture('interface/images/landscape.png', {filter = 'linear'})
+end
+
+-- Draws a device of the kind held sideways around the rectangle `bounds`, with a screen of the shape of the visible screen that shows the picture `wallpaper`, the bands outside the safe area of the visible screen shaded and its safe area outlined, and returns the screen and the safe area of the preview.
+function areas.drawPreview(bounds, kind, wallpaper)
     local visible = viewport.visibleRect()
     local fit = math.min(bounds.width / visible.width, bounds.height / visible.height) * 0.86
     local width, height = visible.width * fit, visible.height * fit
     local screen = {bounds.x + (bounds.width - width) / 2, bounds.y + (bounds.height - height) / 2, width, height}
     local top, right, bottom, left = areas.insets()
     local safe = {screen[1] + left * fit, screen[2] + top * fit, width - (left + right) * fit, height - (top + bottom) * fit}
-    local device, radius = Device.around(kind, screen, kind ~= 'tv' and kind ~= 'tablet')
-    device.screen = '#FF1E3A5F'
-    Device.draw(device)
-    graphics2d.pushMask(function()
-        graphics2d.drawShape(screen, {radius = radius, color = '#FFFFFFFF'})
-    end, {layer = 3})
-    graphics2d.drawRect(screen, '#40F0473E')
-    graphics2d.drawRect(safe, '#FF1E3A5F', {layer = 1})
-    graphics2d.popMask()
-    graphics2d.drawShape(safe, {radius = 8, color = '#00000000', borderWidth = 2, borderColor = '#CC3AA8E0', layer = 5})
+    areas.drawDevice(kind, screen, safe, wallpaper)
     return screen, safe
 end
 
--- Fills the four bands of the screen outside the safe area and outlines the safe area.
-function areas.drawBands()
-    local visible, safe = viewport.visibleRect(), viewport.safeRect()
-    local top, right, bottom, left = areas.insets()
-    graphics2d.beginScreen()
-    graphics2d.drawRect({visible.x, visible.y, visible.width, top}, '#40FF4040')
-    graphics2d.drawRect({visible.x, safe:bottom(), visible.width, bottom}, '#40FF4040')
-    graphics2d.drawRect({visible.x, safe.y, left, safe.height}, '#40FF4040')
-    graphics2d.drawRect({safe:right(), safe.y, right, safe.height}, '#40FF4040')
-    graphics2d.drawRectOutline(safe, 3, '#FF3AA8E0')
+-- Draws a device of the kind around the rectangle `screen`, held sideways unless it is a TV or a tablet, with the picture `wallpaper` on its screen or the plain color of the screen without one, the bands outside the rectangle `safe` shaded and the safe area outlined.
+function areas.drawDevice(kind, screen, safe, wallpaper)
+    local device, radius = Device.around(kind, screen, kind ~= 'tv' and kind ~= 'tablet')
+    device.wallpaper = wallpaper
+    Device.draw(device)
+    graphics2d.pushMask(function()
+        graphics2d.drawShape(screen, {radius = radius, color = '#FFFFFFFF'})
+    end, {layer = 4})
+    local x, y, width, height = screen[1], screen[2], screen[3], screen[4]
+    local safeRight, safeBottom = safe[1] + safe[3], safe[2] + safe[4]
+    graphics2d.drawRect({x, y, width, safe[2] - y}, areas.band)
+    graphics2d.drawRect({x, safeBottom, width, y + height - safeBottom}, areas.band)
+    graphics2d.drawRect({x, safe[2], safe[1] - x, safe[4]}, areas.band)
+    graphics2d.drawRect({safeRight, safe[2], x + width - safeRight, safe[4]}, areas.band)
+    graphics2d.popMask()
+    graphics2d.drawShape(safe, {radius = 8, color = '#00000000', borderWidth = 3, borderColor = '#E63AA8E0', layer = 5})
+end
+
+-- A table of what each platform does, in the look of the tables of the UI, whose descriptions wrap: muted captions over rows split by dividers. Each row is a platform and its description.
+function areas.platformTable(heading, rows)
+    local children = {ui.row{gap = 24, ui.label{text = 'Platform', font = 'caption', color = 'textMuted', width = 280}, ui.label{text = heading, font = 'caption', color = 'textMuted', grow = 1}}}
+    for _, row in ipairs(rows) do
+        children[#children + 1] = ui.divider{align = 'stretch'}
+        children[#children + 1] = ui.row{gap = 24, alignItems = 'start', ui.label{text = row[1], width = 280}, ui.label{text = row[2], grow = 1}}
+    end
+    return ui.column{gap = 12, align = 'stretch', children = children}
 end
 
 return areas

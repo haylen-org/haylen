@@ -1,4 +1,4 @@
--- A phone, a tablet or a TV drawn with shapes, which the orientation and safe area tests hold their screens in: a body with a rim and a soft shadow, a screen that a color or a picture fills, the dynamic island, the notch or the camera of its kind, its side buttons and its home indicator. The size and the parts are those of the device held upright, and an angle turns the whole device around its center, so a phone turns into landscape with its island on the left.
+-- A phone, a tablet or a TV drawn with shapes, which the orientation and safe area tests hold their screens in: a body with a rim and a soft shadow, a screen that a color or a picture fills, the dynamic island, the notch or the camera of its kind, its side buttons and its home indicator. The size and the parts are those of the device held upright, and an angle turns the whole device around its center, so a phone turns into landscape with its island on the left. The device draws its body from its layer up, its screen two layers above and the wallpaper three above, and leaves the fourth and fifth layers above it to what a test draws over the screen, under the cutout and the indicator.
 local graphics2d = require('haylen.graphics2d')
 
 local Device = {}
@@ -46,7 +46,7 @@ function Device.around(kind, rect, sideways)
     return options, math.max(0, width * share.radius - bezel)
 end
 
--- Draws a device from a table with `kind`, the center `x` and `y`, the `width` and `height` held upright, the `angle` it turns by, the `screen` color, an optional `texture` stretched over the screen and the `layer` it starts at.
+-- Draws a device from a table with `kind`, the center `x` and `y`, the `width` and `height` held upright, the `angle` it turns by, the `screen` color, an optional `wallpaper` texture that covers the screen upright whatever the angle, the way a screen keeps its picture upright as it turns, and the `layer` it starts at.
 function Device.draw(options)
     local kind = Device.kinds[options.kind or 'island']
     local width, height = options.width, options.height
@@ -70,22 +70,41 @@ function Device.draw(options)
     Device.part(options, 0, 0, width - outline * 2.5, height - outline * 2.5, {radius = radius - outline, color = '#00000000', borderWidth = math.max(1.5, outline * 0.5), borderColor = colors.rim, layer = 1})
 
     local screenWidth, screenHeight = width - bezel * 2, height - bezel * 2
-    Device.part(options, 0, 0, screenWidth, screenHeight, {radius = math.max(0, radius - bezel), color = options.screen or '#FF2F86F6', texture = options.texture, layer = 2})
+    local screenRadius = math.max(0, radius - bezel)
+    Device.part(options, 0, 0, screenWidth, screenHeight, {radius = screenRadius, color = options.screen or '#FF1E3A5F', layer = 2})
+    if options.wallpaper then
+        Device.drawWallpaper(options, screenWidth, screenHeight, screenRadius)
+    end
 
     -- The cutout and the indicator sit on the screen, at its top and bottom as the device is held upright.
     local top = -screenHeight / 2
     if kind.cutout == 'island' then
-        Device.part(options, 0, top + width * 0.055, width * 0.3, width * 0.085, {radius = width * 0.0425, color = colors.cutout, layer = 4})
+        Device.part(options, 0, top + width * 0.055, width * 0.3, width * 0.085, {radius = width * 0.0425, color = colors.cutout, layer = 6})
     elseif kind.cutout == 'notch' then
-        Device.part(options, 0, top + width * 0.035, width * 0.46, width * 0.07, {radius = {0, 0, width * 0.035, width * 0.035}, color = colors.cutout, layer = 4})
+        Device.part(options, 0, top + width * 0.035, width * 0.46, width * 0.07, {radius = {0, 0, width * 0.035, width * 0.035}, color = colors.cutout, layer = 6})
     elseif kind.cutout == 'hole' then
-        Device.part(options, 0, top + width * 0.05, width * 0.05, width * 0.05, {kind = 'ellipse', color = colors.cutout, layer = 4})
+        Device.part(options, 0, top + width * 0.05, width * 0.05, width * 0.05, {kind = 'ellipse', color = colors.cutout, layer = 6})
     elseif kind.cutout == 'camera' then
-        Device.part(options, 0, -height / 2 + bezel / 2, bezel * 0.35, bezel * 0.35, {kind = 'ellipse', color = colors.cutout, layer = 4})
+        Device.part(options, 0, -height / 2 + bezel / 2, bezel * 0.35, bezel * 0.35, {kind = 'ellipse', color = colors.cutout, layer = 6})
     end
     if kind.indicator then
-        Device.part(options, 0, screenHeight / 2 - width * 0.035, width * 0.34, width * 0.016, {radius = width * 0.008, color = options.indicator or colors.indicator, layer = 4})
+        Device.part(options, 0, screenHeight / 2 - width * 0.035, width * 0.34, width * 0.016, {radius = width * 0.008, color = options.indicator or colors.indicator, layer = 6})
     end
+end
+
+-- The wallpaper covers the box around the turned screen, cut to the shape of the screen.
+function Device.drawWallpaper(options, screenWidth, screenHeight, radius)
+    local texture = options.wallpaper
+    local angle = options.angle or 0
+    local cos, sin = math.abs(math.cos(angle)), math.abs(math.sin(angle))
+    local boxWidth, boxHeight = screenWidth * cos + screenHeight * sin, screenWidth * sin + screenHeight * cos
+    local scale = math.max(boxWidth / texture.width, boxHeight / texture.height)
+    local sourceWidth, sourceHeight = boxWidth / scale, boxHeight / scale
+    graphics2d.pushMask(function()
+        Device.part(options, 0, 0, screenWidth, screenHeight, {radius = radius, color = '#FFFFFFFF'})
+    end, {layer = (options.layer or 0) + 3})
+    graphics2d.draw(texture, options.x, options.y, {source = {(texture.width - sourceWidth) / 2, (texture.height - sourceHeight) / 2, sourceWidth, sourceHeight}, width = boxWidth, height = boxHeight})
+    graphics2d.popMask()
 end
 
 return Device

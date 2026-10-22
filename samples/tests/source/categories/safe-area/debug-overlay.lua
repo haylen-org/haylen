@@ -10,7 +10,7 @@ local areas = require('categories.safe-area.areas')
 local DebugOverlay = haylen.class('DebugOverlay', Test)
 
 DebugOverlay.code = [[
-ui.setSafeAreaVisible(true)  -- Or `"debug": {"showSafeArea": true}` in `app.json`.
+ui.setSafeAreaVisible(true)  -- Or "debug.showSafeArea" in "app.json".
 events.on('windowSafeAreaChanged', function(safe) print(safe.x, safe.y, safe.width, safe.height) end, {owner = self})
 local visible, safe = viewport.visibleRect(), viewport.safeRect()]]
 
@@ -23,6 +23,7 @@ end
 function DebugOverlay:enter()
     self.simulation = areas.simulate()
     self.overlay = ui.safeAreaVisible()
+    self.wallpaper = areas.wallpaper()
     ui.setSafeAreaVisible(true)
     local simulation = viewport.safeAreaSimulation()
     self.device = type(simulation) == 'string' and simulation or 'device'
@@ -31,7 +32,7 @@ function DebugOverlay:enter()
         code = DebugOverlay.code,
         focus = 'overlay',
         fixed = true,
-        content = {ui.row{grow = 1, gap = 24, align = 'stretch',
+        content = {ui.row{grow = 1, gap = 24, align = 'stretch', alignItems = 'stretch',
             ui.card{width = 760, gap = 16,
                 ui.toggle{id = 'overlay', text = 'Show the safe area overlay', checked = true, onChange = function(event)
                     ui.setSafeAreaVisible(event.checked)
@@ -42,7 +43,7 @@ function DebugOverlay:enter()
                 end}},
                 ui.table{id = 'rects', columns = {{text = 'Area', width = 200}, {text = 'In design units'}}},
             },
-            ui.card{grow = 1, gap = 12, align = 'stretch', ui.sectionTitle{text = 'The device'}, ui.spacer{id = 'preview', grow = 1}},
+            ui.card{grow = 1, gap = 12, ui.sectionTitle{text = 'The device'}, ui.spacer{id = 'preview', grow = 1}},
         }},
     }
     self:listen('windowSafeAreaChanged', function()
@@ -82,7 +83,7 @@ function DebugOverlay:render()
         return
     end
     graphics2d.beginScreen({order = 1})
-    areas.drawPreview(bounds, areas.kinds[self.device] or 'island')
+    areas.drawPreview(bounds, areas.kinds[self.device] or 'island', self.wallpaper)
 end
 
 return DebugOverlay
