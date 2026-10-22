@@ -88,7 +88,7 @@ ui.mount(ui.segmentedControl{
 
 ### viewport.visibleRect()
 
-Returns the region of design space that the screen shows, as a `Rect` from `haylen.math`. With `expand` it grows past the design area on screens of another shape, and with `fill` it is the cropped part of the design area. Screen canvases draw in this space.
+Returns the region of design space that the screen shows, as a `Rect` from `haylen.math`. With `expand` it grows past the design area on screens of another shape, and with `fill` it is the cropped part of the design area. On a screen of the shape of the design area, every policy shows exactly the design area, from 0, 0. Screen canvases draw in this space.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

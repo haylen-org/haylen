@@ -28,6 +28,12 @@ math::Rect Viewport::centered(math::Vec2 container, math::Vec2 size) noexcept {
     return {(container.x - size.x) * 0.5F, (container.y - size.y) * 0.5F, size.x, size.y};
 }
 
+// Every axis spans the framebuffer at the scale, except an axis the scale comes from, which spans the design size exactly. Dividing by the scale there could miss the design size by a rounding error, which would center the area at a tiny negative offset.
+math::Vec2 Viewport::getVisibleSize(math::Vec2 ratio, float scale) const noexcept {
+    const math::Vec2 spanned = framebufferSize / scale;
+    return {ratio.x == scale ? designSize.x : spanned.x, ratio.y == scale ? designSize.y : spanned.y};
+}
+
 void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy scaling, const math::Insets& safeInsetsPixels, float pixelsPerPoint) noexcept {
     framebufferSize = {std::max(1.0F, framebuffer.x), std::max(1.0F, framebuffer.y)};
     designSize = {std::max(1.0F, design.x), std::max(1.0F, design.y)};
@@ -55,7 +61,7 @@ void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy s
     case ScalingPolicy::Fill: {
         const float scale = std::max(ratio.x, ratio.y);
         pixelRect = fullFramebuffer;
-        visibleRect = centered(designSize, framebufferSize / scale);
+        visibleRect = centered(designSize, getVisibleSize(ratio, scale));
         break;
     }
     case ScalingPolicy::Stretch:
@@ -65,12 +71,12 @@ void Viewport::update(math::Vec2 framebuffer, math::Vec2 design, ScalingPolicy s
     case ScalingPolicy::Expand: {
         const float scale = std::min(ratio.x, ratio.y);
         pixelRect = fullFramebuffer;
-        visibleRect = centered(designSize, framebufferSize / scale);
+        visibleRect = centered(designSize, getVisibleSize(ratio, scale));
         break;
     }
     case ScalingPolicy::FitWidth:
         pixelRect = fullFramebuffer;
-        visibleRect = centered(designSize, framebufferSize / ratio.x);
+        visibleRect = centered(designSize, getVisibleSize(ratio, ratio.x));
         break;
     case ScalingPolicy::None:
         pixelRect = fullFramebuffer;

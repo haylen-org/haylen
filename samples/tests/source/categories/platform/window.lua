@@ -39,10 +39,7 @@ Window.kept = 30
 
 -- Writes an area in whole design units, the way the layout places things.
 local function rectText(rect)
-    local function whole(value)
-        return math.floor(value + 0.5)
-    end
-    return string.format('%d, %d, %d by %d', whole(rect.x), whole(rect.y), whole(rect.width), whole(rect.height))
+    return string.format('%.0f, %.0f, %.0f by %.0f', rect.x, rect.y, rect.width, rect.height)
 end
 
 local function yesNo(value)

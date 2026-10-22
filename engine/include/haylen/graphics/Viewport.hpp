@@ -71,6 +71,7 @@ class Viewport final {
     static const std::array<std::pair<std::string_view, ScalingPolicy>, 7> kPolicyNames;
 
     [[nodiscard]] static math::Rect centered(math::Vec2 container, math::Vec2 size) noexcept;
+    [[nodiscard]] math::Vec2 getVisibleSize(math::Vec2 ratio, float scale) const noexcept;
 
     math::Vec2 framebufferSize{1920.0F, 1080.0F};
     math::Vec2 designSize{1920.0F, 1080.0F};

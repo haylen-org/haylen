@@ -352,6 +352,17 @@ TEST(ViewportTest, ExpandFillsTheScreenAroundTheDesignArea) {
     EXPECT_EQ(viewport.getPixelsPerUnit(), math::Vec2(1.0F, 1.0F));
 }
 
+// A screen of the shape of the design area shows exactly the design area, whatever rounding a scale such as 25 over 24 brings, so the visible and safe areas start at 0 and never at a tiny negative number that prints as -0.
+TEST(ViewportTest, ShowsExactlyTheDesignAreaOnAScreenOfItsShape) {
+    graphics::Viewport viewport;
+    for (const graphics::Viewport::ScalingPolicy policy : {graphics::Viewport::ScalingPolicy::Expand, graphics::Viewport::ScalingPolicy::Fill, graphics::Viewport::ScalingPolicy::FitWidth}) {
+        viewport.update(math::Vec2(2000.0F, 1125.0F), math::Vec2(1920.0F, 1080.0F), policy);
+        EXPECT_EQ(viewport.getVisibleRect(), (math::Rect{0.0F, 0.0F, 1920.0F, 1080.0F})) << graphics::Viewport::scalingPolicyName(policy);
+        EXPECT_FALSE(std::signbit(viewport.getVisibleRect().x)) << graphics::Viewport::scalingPolicyName(policy);
+        EXPECT_FALSE(std::signbit(viewport.getSafeRect().x)) << graphics::Viewport::scalingPolicyName(policy);
+    }
+}
+
 TEST(ViewportTest, FillStretchAndPixelPerfect) {
     graphics::Viewport viewport;
     viewport.update(math::Vec2(1000.0F, 1000.0F), math::Vec2(2000.0F, 1000.0F), graphics::Viewport::ScalingPolicy::Fill);
