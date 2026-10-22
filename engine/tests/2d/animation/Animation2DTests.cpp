@@ -450,4 +450,25 @@ TEST_F(Animation2DLuaTest, AnimatesSpritesFromLua) {
     EXPECT_NE(fixture.lua("animator:update(5)").find("finish failed"), std::string::npos);
 }
 
+TEST_F(Animation2DLuaTest, SeeksTheCurrentAnimationWithoutCallbacks) {
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(64, 32, 0xFFFFFFFFU);
+    test::EngineFixture fixture({{"content/units/warrior.png", std::string(image.begin(), image.end())}});
+    // clang-format off
+    fixture.runLua(R"(
+        animation2d = require('haylen.animation2d')
+        graphics2d = require('haylen.graphics2d')
+        sheet = require('haylen.assets').texture('units/warrior.png')
+        animator = animation2d.newAnimator()
+        animator:add('run', animation2d.fromGrid(sheet, {frameWidth = 16, frameHeight = 16, framesPerSecond = 10}))
+        reports = 0
+        animator.onFrame = function() reports = reports + 1 end
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("animator:seek(0.5) return tostring(animator.current) .. ' ' .. animator.time"), "nil 0.0");
+    EXPECT_EQ(fixture.lua("animator:play('run') animator:seek(0.35) local sprite = graphics2d.newSprite(sheet) animator:apply(sprite) return animator.frame .. ' ' .. string.format('%.2f', animator.time) .. ' ' .. sprite.source.x .. ' ' .. reports"), "4 0.35 48.0 0");
+    EXPECT_EQ(fixture.lua("animator:seek(0.65) return animator.frame .. ' ' .. reports"), "7 0");
+    EXPECT_NE(fixture.lua("animator:seek('soon')").find("number expected"), std::string::npos);
+}
+
 } // namespace haylen::animation2d

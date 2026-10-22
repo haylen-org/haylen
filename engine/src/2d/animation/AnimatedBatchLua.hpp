@@ -47,6 +47,7 @@ class AnimatedBatchLua final {
     static int set(lua_State* L);
     static int get(lua_State* L);
     static int play(lua_State* L);
+    static int seek(lua_State* L);
     static int animationOf(lua_State* L);
     static int frameOf(lua_State* L);
     static int remove(lua_State* L);

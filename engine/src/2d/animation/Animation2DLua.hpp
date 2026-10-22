@@ -52,6 +52,7 @@ class Animation2DLua final {
     static int animatorClearQueue(lua_State* L);
     static int animatorQueuedCount(lua_State* L);
     static int animatorStop(lua_State* L);
+    static int animatorSeek(lua_State* L);
     static int animatorHas(lua_State* L);
     static int animatorAnimation(lua_State* L);
     static void callCallback(lua_State* L, const char* name, std::string_view animation, std::optional<std::size_t> frame);

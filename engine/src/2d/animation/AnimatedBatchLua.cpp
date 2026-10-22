@@ -111,6 +111,13 @@ int AnimatedBatchLua::play(lua_State* L) {
     return 0;
 }
 
+// Moves a sprite to a time of its animation with `batch:seek(index, time)` and shows its frame there.
+int AnimatedBatchLua::seek(lua_State* L) {
+    AnimatedBatch& batch = check(L);
+    batch.seek(checkIndex(L, 2, batch), lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
 int AnimatedBatchLua::animationOf(lua_State* L) {
     const AnimatedBatch& batch = check(L);
     lua::Stack::push(L, batch.getAnimation(checkIndex(L, 2, batch)));
@@ -270,7 +277,7 @@ int AnimatedBatchLua::on(lua_State* L) {
 }
 
 void AnimatedBatchLua::install(lua_State* L) {
-    lua::ClassBuilder<AnimatedBatch>(L).function("add", &lua::Binding::native<&add>).function("set", &lua::Binding::native<&set>).function("get", &lua::Binding::native<&get>).function("play", &lua::Binding::native<&play>).function("animation", &lua::Binding::native<&animationOf>).function("frame", &lua::Binding::native<&frameOf>).function("remove", &lua::Binding::native<&remove>).function("clear", &clear).function("reserve", &lua::Binding::native<&reserve>).function("size", &size).function("animationNames", &lua::Binding::native<&animationNames>).function("writeFields", &lua::Binding::native<&writeFields>).function("readFields", &lua::Binding::native<&readFields>).function("update", &lua::Binding::native<&update>).function("step", &lua::Binding::native<&step>).function("finished", &lua::Binding::native<&finished>).function("draw", &lua::Binding::native<&draw>).function("on", &lua::Binding::native<&on>).property("texture", &texture).install();
+    lua::ClassBuilder<AnimatedBatch>(L).function("add", &lua::Binding::native<&add>).function("set", &lua::Binding::native<&set>).function("get", &lua::Binding::native<&get>).function("play", &lua::Binding::native<&play>).function("seek", &lua::Binding::native<&seek>).function("animation", &lua::Binding::native<&animationOf>).function("frame", &lua::Binding::native<&frameOf>).function("remove", &lua::Binding::native<&remove>).function("clear", &clear).function("reserve", &lua::Binding::native<&reserve>).function("size", &size).function("animationNames", &lua::Binding::native<&animationNames>).function("writeFields", &lua::Binding::native<&writeFields>).function("readFields", &lua::Binding::native<&readFields>).function("update", &lua::Binding::native<&update>).function("step", &lua::Binding::native<&step>).function("finished", &lua::Binding::native<&finished>).function("draw", &lua::Binding::native<&draw>).function("on", &lua::Binding::native<&on>).property("texture", &texture).install();
 }
 
 } // namespace haylen::animation2d

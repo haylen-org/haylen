@@ -508,6 +508,28 @@ scene.push({
 })
 ```
 
+### animator:seek(time)
+
+Moves the current animation to `time` and shows the frame there. The time is in seconds, or in ticks for an animation that counts ticks. It calls none of `onFrame`, `onEvent` and `onComplete`. Use it when a character switches to another animation and keeps its step, such as when it turns around. Before the first `play`, it does nothing. A `time` that is not a number raises an argument error.
+
+```lua
+local animation2d = require('haylen.animation2d')
+local assets = require('haylen.assets')
+
+local knight = 'sprites/knight/'
+local animator = animation2d.newAnimator()
+animator:add('walkLeft', animation2d.fromGrid(assets.texture(knight .. 'walk-left.png'), {frameWidth = 192, frameHeight = 192}))
+animator:add('walkRight', animation2d.fromGrid(assets.texture(knight .. 'walk-right.png'), {frameWidth = 192, frameHeight = 192}))
+animator:play('walkLeft')
+animator:update(0.3)
+
+-- The knight turns around and keeps the step it was on.
+local step = animator.time
+animator:play('walkRight')
+animator:seek(step)
+print(animator.frame)
+```
+
 ### animator:queue(name)
 
 Adds `name` to the queue. The next queued animation starts from its first frame on the update that ends the current pass. A one-shot animation ends its pass when it finishes. A looping animation ends its pass at the end of the cycle it is in, measured with `cycleDuration`, so a looping animation that has already played for a while still finishes its current cycle first. With no current animation, or when the current one-shot animation has already finished, `queue` plays `name` at once from its first frame, which replays a one-shot animation that just finished when `name` is that animation. An unknown name raises `The animation "<name>" does not exist in this animator.`
@@ -691,6 +713,10 @@ Returns the sprite as the table of `batch:get` of a sprite batch, with `animatio
 
 Switches a sprite to the animation `name` from its start, unless it plays it already and `restart` is not `true`.
 
+### batch:seek(index, time)
+
+Moves a sprite to `time` of its animation and shows the frame there. The time is in seconds, or in ticks for animations that count ticks.
+
 ### batch:animation(index)
 
 Returns the name of the animation of a sprite.
@@ -758,7 +784,9 @@ local atlas = assets.load('units/soldier.json', 'atlas')
 local army = animation2d.newAnimatedBatch(atlas.texture, {march = atlas:animation('march'), fall = atlas:animation('fall')})
 army:reserve(500)
 for index = 1, 500 do
-    army:add({x = (index % 25) * 40, y = (index // 25) * 40, animation = 'march'})
+    local soldier = army:add({x = (index % 25) * 40, y = (index // 25) * 40, animation = 'march'})
+    -- Each soldier starts on a step of its own, so the army never marches in lockstep.
+    army:seek(soldier, (index % 7) * 0.1)
 end
 print(army:size(), army:animation(7), army:frame(7), #army:animationNames())
 local places = collections.newFloatBuffer(500 * 2)

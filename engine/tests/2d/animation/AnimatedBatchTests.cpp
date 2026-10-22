@@ -200,6 +200,8 @@ TEST_F(AnimatedBatchLuaTest, PlaysCrowdsFromLua) {
     EXPECT_EQ(fixture.lua("crowd:play(1, 'die', true) crowd:set(1, {speed = 2, scaleX = 2}) crowd:update(0.1) return crowd:animation(1) .. ' ' .. crowd:frame(1) .. ' ' .. crowd:get(1).width .. ' ' .. #crowd:finished()"), "die 2 32.0 1");
     EXPECT_EQ(fixture.lua("local ok, message = pcall(crowd.add, crowd, {animation = 'fly'}) return message:match('The animation.*')"), "The animation \"fly\" does not exist in this animated batch.");
     EXPECT_EQ(fixture.lua("local ok, message = pcall(crowd.on, crowd, 'loop', function() end) return message:match('Unknown.*')"), "Unknown animated batch event \"loop\". Animated batches report \"complete\".");
+    EXPECT_EQ(fixture.lua("crowd:seek(3, 0.35) local sprite = crowd:get(3) return crowd:frame(3) .. ' ' .. string.format('%.2f', sprite.time) .. ' ' .. sprite.source.x"), "4 0.35 48.0");
+    EXPECT_NE(fixture.lua("crowd:seek(99, 0)").find("sprite index out of range"), std::string::npos);
 }
 
 } // namespace haylen::animation2d
