@@ -1,6 +1,7 @@
 #include "ai/BehaviorTreeLua.hpp"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <utility>
 
@@ -22,29 +23,43 @@ template <> struct Type<ai::BehaviorTreeLua::Scripted> {
 
 namespace haylen::ai {
 
+// The arguments are read before the description goes on the stack, where it would take the place of an optional argument that was left out.
 int BehaviorTreeLua::describe(lua_State* L, BehaviorTree::Kind kind, int children, int child, int count, int seconds) {
+    if (children > 0) {
+        luaL_checktype(L, children, LUA_TTABLE);
+    }
+    if (child > 0) {
+        luaL_checktype(L, child, LUA_TTABLE);
+    }
+    std::optional<lua_Integer> times;
+    if (count > 0 && !lua_isnoneornil(L, count)) {
+        times = luaL_checkinteger(L, count);
+    } else if (kind == BehaviorTree::Kind::Parallel) {
+        // A parallel node that names no count succeeds once every child succeeded.
+        times = luaL_len(L, children);
+    }
+    const std::optional<lua_Number> duration = seconds > 0 ? std::optional(luaL_checknumber(L, seconds)) : std::nullopt;
+
     lua_createtable(L, 0, 4);
     const int description = lua_gettop(L);
     lua::Stack::push(L, kKinds[static_cast<std::size_t>(kind)]);
     lua_setfield(L, description, "kind");
     if (children > 0) {
-        luaL_checktype(L, children, LUA_TTABLE);
         lua_pushvalue(L, children);
         lua_setfield(L, description, "children");
     }
     if (child > 0) {
-        luaL_checktype(L, child, LUA_TTABLE);
         lua_createtable(L, 1, 0);
         lua_pushvalue(L, child);
         lua_rawseti(L, -2, 1);
         lua_setfield(L, description, "children");
     }
-    if (count > 0) {
-        lua_pushinteger(L, luaL_optinteger(L, count, 0));
+    if (times) {
+        lua_pushinteger(L, *times);
         lua_setfield(L, description, "count");
     }
-    if (seconds > 0) {
-        lua_pushnumber(L, luaL_checknumber(L, seconds));
+    if (duration) {
+        lua_pushnumber(L, *duration);
         lua_setfield(L, description, "seconds");
     }
     return 1;

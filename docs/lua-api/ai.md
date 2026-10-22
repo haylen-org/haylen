@@ -311,7 +311,7 @@ print(brain.kind) -- selector
 
 Returns the description of a parallel node, which ticks all its unfinished children on the same tick. It succeeds once `successes` children succeeded. It fails once so many children failed that `successes` can no longer be reached. A child that finished keeps its result and does not run again until the parallel node finishes. When the node finishes, it resets all its children.
 
-The integer `successes` is required, and it must be between `1` and the number of children. Otherwise `ai.newBehaviorTree` raises `A parallel node needs between one success and as many successes as it has children.`.
+The integer `successes` is optional. Without it, every child must succeed. It must be between `1` and the number of children. Otherwise `ai.newBehaviorTree` raises `A parallel node needs between one success and as many successes as it has children.`.
 
 ```lua
 local ai = require('haylen.ai')
@@ -327,6 +327,12 @@ local escape = ai.parallel({
         return 'running'
     end),
 }, 1)
+
+-- Succeeds once the guard locked both doors, in any order.
+local lockUp = ai.parallel({
+    ai.action(function(board) return board.frontLocked and 'success' or 'running' end),
+    ai.action(function(board) return board.backLocked and 'success' or 'running' end),
+})
 ```
 
 ### ai.inverter(child)
@@ -370,7 +376,7 @@ local plans = ai.selector({
 
 ### ai.repeater(child, count)
 
-Returns the description of a decorator that runs `child` again after each success, once per tick. After a success it reports `'running'`, so the next tick runs the child again. It succeeds after `count` successes, and a `count` of `0` or less makes it repeat forever. A failure of the child fails the repeater and starts its count over.
+Returns the description of a decorator that runs `child` again after each success, once per tick. After a success it reports `'running'`, so the next tick runs the child again. It succeeds after `count` successes. Without `count`, it repeats forever. A failure of the child fails the repeater and starts its count over.
 
 ```lua
 local ai = require('haylen.ai')
@@ -379,18 +385,21 @@ local ai = require('haylen.ai')
 local burst = ai.repeater(ai.action(function(board) board.shots = board.shots + 1 end), 3)
 
 -- Paces back and forth for as long as the tree runs.
-local pace = ai.repeater(ai.action(function(board) board.direction = -board.direction end), 0)
+local pace = ai.repeater(ai.action(function(board) board.direction = -board.direction end))
 ```
 
 ### ai.retry(child, count)
 
-Returns the description of a decorator that runs `child` again after each failure, once per tick. After a failure it reports `'running'`, so the next tick runs the child again. It fails after `count` failures, and a `count` of `0` or less makes it retry forever. A success of the child succeeds the retry and starts its count over.
+Returns the description of a decorator that runs `child` again after each failure, once per tick. After a failure it reports `'running'`, so the next tick runs the child again. It fails after `count` failures. Without `count`, it retries forever. A success of the child succeeds the retry and starts its count over.
 
 ```lua
 local ai = require('haylen.ai')
 
 -- Tries the locked door up to five times.
 local open = ai.retry(ai.action(function(board) return board.keys > 0 end), 5)
+
+-- Calls for help until someone answers.
+local call = ai.retry(ai.action(function(board) return board.answered == true end))
 ```
 
 ### ai.cooldown(child, seconds)

@@ -76,6 +76,16 @@ TEST_F(DecisionLuaTest, RefusesToResetATreeWhileItTicks) {
     EXPECT_EQ(lua("local calls, tree = 0 tree = ai.newBehaviorTree(ai.action(function() calls = calls + 1 if calls == 1 then tree:reset() end end)) local ticked = pcall(tree.tick, tree, 0) return tostring(ticked) .. ' ' .. tree:tick(0)"), "false success");
 }
 
+TEST_F(DecisionLuaTest, TakesTheCountsOfRepeatersRetriesAndParallelNodesAsOptional) {
+    EXPECT_EQ(lua("local forever = ai.newBehaviorTree(ai.repeater(ai.action(function() return true end))) return forever:tick(0) .. ' ' .. forever:tick(0) .. ' ' .. tostring(ai.repeater(ai.wait(1)).count)"), "running running nil");
+    EXPECT_EQ(lua("local stubborn = ai.newBehaviorTree(ai.retry(ai.action(function() return false end))) return stubborn:tick(0) .. ' ' .. stubborn:tick(0)"), "running running");
+
+    // A parallel node without a count waits for every child to succeed.
+    fixture.runLua("done = false all = ai.newBehaviorTree(ai.parallel({ai.action(function() return true end), ai.action(function() return done or 'running' end)}))");
+    EXPECT_EQ(lua("local first = all:tick(0) done = true return first .. ' ' .. all:tick(0) .. ' ' .. ai.parallel({ai.wait(1), ai.wait(2)}).count"), "running success 2");
+    EXPECT_NE(lua("ai.cooldown(ai.wait(1))").find("bad argument #2 to 'cooldown' (number expected, got no value)"), std::string::npos);
+}
+
 TEST_F(DecisionLuaTest, RejectsDescriptionsWithKeysTheirKindDoesNotHave) {
     EXPECT_NE(lua("ai.newBehaviorTree({kind = 'wait', second = 2})").find("Unknown option \"second\"."), std::string::npos);
     EXPECT_NE(lua("ai.newBehaviorTree({kind = 'action', fn = function() end, count = 2})").find("Unknown option \"count\"."), std::string::npos);
