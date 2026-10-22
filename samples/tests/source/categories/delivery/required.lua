@@ -38,7 +38,7 @@ end
 
 function Required:draw(area)
     self.mapView:draw(self.map, area)
-    Test.caption('The harbor, a required map read at once.', area.width / 2, 20, {size = 22, color = Test.ink, anchor = {0.5, 0}})
+    Test.caption('The island of "harbor.json", a required map read at once.', area.width / 2, 20, {size = 22, color = Test.ink, anchor = {0.5, 0}})
 end
 
 return Required

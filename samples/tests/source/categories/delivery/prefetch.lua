@@ -21,7 +21,7 @@ function Prefetch:enter()
     for index in ipairs(Prefetch.paths) do
         rows[index] = ui.card{padding = {8, 20}, align = 'stretch',
             ui.row{gap = 16, alignItems = 'center',
-                ui.image{image = 'interface/themes/fantasy/icons/star.png', scale = 0.35},
+                ui.badge{text = tostring(index), tone = 'accent', solid = true, width = 48},
                 ui.column{gap = 2, grow = 1,
                     ui.label{id = 'name-' .. index, text = string.format('Track %d', index), font = 'button'},
                     ui.label{id = 'detail-' .. index, text = Prefetch.paths[index], font = 'caption', color = 'textMuted'},
