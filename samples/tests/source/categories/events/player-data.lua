@@ -1,13 +1,8 @@
--- The player data the events tests share: an autoload that `app.json` lists, so it loads before `main.lua`, lives as long as the app and gets the callbacks of the engine. It keeps the coins, the hats bought in the shop, the time played and the input events it saw, and draws a coin counter in the top-right corner of the play area while an events test shows.
+-- The player data the events tests share: an autoload that `app.json` lists, so it loads before `main.lua`, lives as long as the app and gets the callbacks of the engine. It keeps the coins, the hats bought in the shop, the time played and the input events it saw, and draws a coin counter in the top-right corner of the play area of the test that asks for it.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
-local haylen = require('haylen')
 
-local playerData = {coins = 30, hats = {}, playTime = 0, inputs = 0, startFrame = -1, counterShown = false, counterCorner = nil, processMode = 'always'}
-
-function playerData:start()
-    self.startFrame = haylen.frameIndex()
-end
+local playerData = {coins = 30, hats = {}, playTime = 0, inputs = 0, counterShown = false, counterCorner = nil, processMode = 'always'}
 
 function playerData:event(event)
     if event.type == 'keyDown' or event.type == 'mouseDown' or event.type == 'touchBegan' then

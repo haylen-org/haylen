@@ -1,4 +1,4 @@
--- Autoloads: the player data that `app.json` loads before `main.lua`, shared by this test, a shop scene and the coin counter it draws while an events test shows, and a jukebox added at run time with `haylen.autoload`.
+-- Autoloads: the player data that `app.json` loads before `main.lua`, shared by this test, a shop scene and the coin counter it draws in the corner of this test, and a jukebox added at run time with `haylen.autoload`.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -10,6 +10,7 @@ local Overlay = require('categories.events.overlay')
 local Test = require('harness.test')
 
 local Autoloads = haylen.class('Autoloads', EventsTest)
+Autoloads.coinCounter = true
 
 local kCode = [[
 -- The file "app.json" lists "categories.events.player-data" in "autoload".
@@ -19,7 +20,7 @@ haylen.autoload('categories.events.jukebox')  -- Named "jukebox".
 print(haylen.autoloads.jukebox.beats)]]
 
 local kItems = {{id = 'hat', text = 'Buy a hat for 25', price = 25}, {id = 'scarf', text = 'Buy a scarf for 15', price = 15}}
-local kRowHeight = 50
+local kRowHeight = 46
 
 -- The shop spends the coins of the same player data the test shows.
 local Shop = haylen.class('Shop', Overlay)
@@ -46,7 +47,7 @@ function Autoloads:enter()
     self.coin = assets.texture('physics/coin.png', {filter = 'linear'})
     self:listen('autoloadStarted', function(info) self.journal:add('The event "autoloadStarted" names "' .. info.name .. '".', Test.accent) end)
     self:frame({
-        hint = 'Earn coins here and spend them in the shop. The autoload draws the counter in the corner while an events test shows.',
+        hint = 'Earn coins here and spend them in the shop. The autoload draws the coin counter in the corner of this test, and the shop reads the same coins.',
         code = kCode,
         controls = {
             ui.button{id = 'earn', text = 'Earn 10 coins', variant = 'primary', onClick = function()
@@ -72,7 +73,7 @@ function Autoloads:update(dt)
         names[#names + 1] = '"' .. name .. '"'
     end
     table.sort(names)
-    self:status('The table "haylen.autoloads" holds ' .. table.concat(names, ' and ') .. '.')
+    self:status('The table "haylen.autoloads" holds ' .. table.concat(names, ' and ') .. '. The player data loaded before "main.lua" and keeps its coins in every scene.')
 end
 
 -- Formats seconds as minutes and seconds for people.
@@ -106,9 +107,8 @@ function Autoloads:drawPlayerData(rect)
     local rows = {
         {'Coins', ''},
         {'Bought in the shop', #data.hats > 0 and '' or 'Nothing yet'},
-        {'Play time', Autoloads.duration(math.floor(data.playTime))},
-        {'Inputs its event hook saw', tostring(data.inputs)},
-        {'Started on frame', tostring(data.startFrame)},
+        {'Time played', Autoloads.duration(math.floor(data.playTime))},
+        {'Taps, clicks and keys it heard', tostring(data.inputs)},
         {'The call "require" gives the same table', require('categories.events.player-data') == data and 'Yes' or 'No'},
     }
     self:drawRows(rows, rect)
@@ -137,7 +137,7 @@ end
 
 function Autoloads:draw(area)
     local margin, gap = 24, 16
-    local height = 72 + kRowHeight * 6 + 16
+    local height = 72 + kRowHeight * 5 + 16
     local width = area.width - margin * 2
     self:drawPlayerData({margin, margin, width * 0.66 - gap / 2, height})
     self:drawJukebox({margin + width * 0.66 + gap / 2, EventsTest.counterRoom, width * 0.34 - gap / 2, height - EventsTest.counterRoom + margin})
