@@ -223,6 +223,23 @@ TEST_F(ScrollbarTest, KeepsTheBarOfAScrollInALaneBesideItsContentAtEveryScale) {
     EXPECT_FALSE(findDrawn(kBarColor, getBounds(*gui, "area")).has_value());
 }
 
+// A flat theme draws the groove the thumb runs in, as wide as the thumb and along the whole bar, in the track color of scroll bars.
+TEST_F(ScrollbarTest, RunsTheThumbInAGrooveOfTheTrackColor) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF", "scrollbarTrack": "#00FF00"}}, "children": [
+        {"kind": "scroll", "id": "area", "width": 300, "height": 240, "children": [{"kind": "column", "id": "content", "children": [)" + labels(30) + R"(]}]}
+    ]})");
+    // clang-format on
+    const math::Rect area = getBounds(*gui, "area");
+    const math::Rect thumb = findBar(area);
+    const std::optional<math::Rect> groove = findDrawn(0x00FF00U, area);
+    ASSERT_TRUE(groove.has_value());
+    expectApart(getBounds(*gui, "content"), *groove, area, Side::End);
+    EXPECT_TRUE(groove->contains(thumb));
+    EXPECT_FLOAT_EQ(groove->width, thumb.width);
+    EXPECT_GT(groove->height, thumb.height * 2.0F);
+}
+
 TEST_F(ScrollbarTest, TakesTheGapFromTheStyleOfANodeButNeverLessThanFourPoints) {
     // clang-format off
     auto gui = mount(marked(R"({"kind": "row", "children": [

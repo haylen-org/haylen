@@ -1920,7 +1920,7 @@ The layout never changes back and forth as the bar comes and goes. A scroll and 
 
 A `scroll` and a `collection` also fade their content into the theme color `scrollFade` along each edge where the content continues past the area. The fade is as long as the theme metric `scrollFade`, and it shows whether the bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. A theme sets the metric to `0` to draw no fade.
 
-The colors `scrollbar` and `scrollbarHover` paint the thumb. The [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint the thumb and its track with images in the same place. A `style` changes all of them for one node and the nodes inside it.
+The thumb runs in a groove along the whole bar, as wide as the thumb and with the same round ends. So the bar shows how long the content is and where the view lies in it. The colors `scrollbar` and `scrollbarHover` paint the thumb, and `scrollbarTrack` paints the groove, which a transparent color leaves out. The [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint the thumb and its groove with images in the same place. A `style` changes all of them for one node and the nodes inside it.
 
 ```lua
 local ui = require('haylen.ui')
@@ -2258,6 +2258,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `borderStrong` | `#FF525A7A` | `#FFB3B8CC` | Strong borders, hovered fields and empty slider tracks. |
 | `scrollbar` | `#FF3A4058` | `#FFC9CDDB` | The thumb of scroll bars. |
 | `scrollbarHover` | `#FF525A7A` | `#FFA9AEC2` | The thumb of hovered or held scroll bars. |
+| `scrollbarTrack` | `#4D000000` | `#14000000` | The groove that the thumb of a scroll bar runs in, a shade of the surface under it. |
 | `track` | `#FF3A4058` | `#FFCDD1DD` | The track of a switch that is off, and the color a `scrollbarTrack` image with `colorize` takes. |
 | `knob` | `#FFFFFFFF` | `#FFFFFFFF` | The knob of switches. |
 | `text` | `#FFE8EAF2` | `#FF1B1E2B` | The main text. |
@@ -2476,7 +2477,7 @@ A surface paints a part of a component with a nine-slice image instead of flat c
 | `slot`, `slotHighlighted` | The slots of slot grids, and the selected or hovered slot. |
 | `cell`, `cellHover`, `cellPressed`, `cellSelected` | The backgrounds of interactive collection cells: always, while hovered, while pressed and while selected. The state surfaces also mark the rows of lists, trees, tables, accordions and popups. Without images, the state surfaces paint the `hover`, `pressed` and `selection` colors, and `cell` paints nothing. |
 | `scrollbar`, `scrollbarHover` | The thumb of [scroll bars](#scroll-bars), and the thumb while hovered or held, which falls back to `scrollbar`. |
-| `scrollbarTrack` | The track the thumb of a scroll bar runs along, which only an image draws. |
+| `scrollbarTrack` | The groove that the thumb of a scroll bar runs in, which the color `scrollbarTrack` paints without an image. |
 | `focusRing` | The frame around the control that has the focus, in place of the line of the focus ring. It lies where the ring runs, `focusGap` and `focusWidth` away from the control. |
 
 A surface image is an object with these keys. Insets of four numbers run clockwise from the top: top, right, bottom and left.

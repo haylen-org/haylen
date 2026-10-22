@@ -33,7 +33,7 @@ class Scrollbar final {
     // Scrolls the current ImGui window up and down by the wheel of the frame, with the momentum of a trackpad, while a vertical gesture of the wheel belongs to it. Windows that scroll this way set `ImGuiWindowFlags_NoScrollWithMouse`, so the wheel moves them as far as it moves the other areas that scroll.
     static void takeWheel(Context& context);
 
-    // Draws the track, when the theme paints it with an image, and the thumb, faded by `alpha`.
+    // Draws the track and the thumb, faded by `alpha`.
     void draw(Context& context, float alpha) const;
 
   private:

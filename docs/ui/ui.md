@@ -421,7 +421,7 @@ Colors come in families of roles:
 
 - The roles `window`, `panel`, `raised` and `tooltip` fill surfaces, and `overlay` dims the app behind modal dialogs.
 - The roles `hover`, `pressed`, `selection` and `focus` mark states.
-- The roles `border` and `borderStrong` draw lines, and `scrollbar` and `scrollbarHover` draw the thumbs of scroll bars.
+- The roles `border` and `borderStrong` draw lines, `scrollbar` and `scrollbarHover` draw the thumbs of scroll bars, and `scrollbarTrack` draws the grooves they run in.
 - The roles `text`, `textMuted`, `textDisabled` and `onTooltip` write text.
 - The accent and the four tones `success`, `warning`, `danger` and `information` each come in four roles. There is a fill, and the ink on that fill, such as `onAccent`. There is a subtle background, such as `accentBackground`, and a text color that reads on the window, such as `accentText`.
 
@@ -688,7 +688,7 @@ journal:command('log', 'scrollTo', {node = 'entry40', align = 'end'})
 
 ### Scroll bars
 
-Every area that scrolls keeps its scroll bar in a lane of its own, beside the content. The bar never covers the content and never touches it, so text never runs under a thumb. Content that fits keeps the whole width, and the layout never jumps back and forth as the bar comes and goes. A `scroll` and a `collection` also fade their content into the theme color `scrollFade` along each edge where it goes on. So a card cut by the edge reads as content that continues, not as a broken card. The reference describes the [lane, its metrics and the fade](../lua-api/ui.md#scroll-bars).
+Every area that scrolls keeps its scroll bar in a lane of its own, beside the content. The bar never covers the content and never touches it, so text never runs under a thumb. The thumb runs in a groove of the theme color `scrollbarTrack` along the whole bar, so the bar shows how long the content is and where the view lies in it. The windows of `haylen.imgui` draw the thumb alone. Content that fits keeps the whole width, and the layout never jumps back and forth as the bar comes and goes. A `scroll` and a `collection` also fade their content into the theme color `scrollFade` along each edge where it goes on. So a card cut by the edge reads as content that continues, not as a broken card. The reference describes the [lane, its metrics and the fade](../lua-api/ui.md#scroll-bars).
 
 ### Scrolling with wheels and trackpads
 
