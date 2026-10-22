@@ -80,7 +80,8 @@ function LabelUpTest:update(dt)
         end
     end
     self.labels:update(dt)
-    self:status(string.format('Labels on screen %d, records in the pool %d, draw calls %d', self.labels.count, #self.labels.records, graphics2d.stats().drawCalls))
+    local shown = self.labels.count == 0 and 'No label shows' or (self.labels.count == 1 and '1 label shows' or self.labels.count .. ' labels show')
+    self:status(string.format('%s now, from a pool of %d records that grows only when more labels show at once. The stage draws in %d calls.', shown, #self.labels.records, graphics2d.stats().drawCalls))
 end
 
 function LabelUpTest:draw(area)

@@ -11,29 +11,29 @@ local Test = require('harness.test')
 
 local HealthBarTest = haylen.class('HealthBarTest', ComponentTest)
 
-HealthBarTest.bossWidth = 940
-HealthBarTest.bossPlate = {-580, -500, 1160, 128}
+HealthBarTest.bossWidth = 1060
+HealthBarTest.bossPlate = {-640, -500, 1300, 160}
 
 HealthBarTest.code = [[
 local HealthBar = require('health-bar')  -- One file, copied from samples/tests.
-local bar = HealthBar.new(100, {width = 210, height = 26, tick = 25, shield = 0, hideWhenFull = false})
+local bar = HealthBar.new(100, {width = 210, height = 26, tick = 25, shield = 40, hideWhenFull = false})
 bar:damage(18)  -- The shield takes it first, then the health.
-bar:heal(10); bar:setShield(40)
+bar:heal(10)
 bar:update(dt)  -- Eases the fill and the trail toward the health.
 bar:draw(enemy.x, enemy.y - 220)]]
 
 function HealthBarTest:enter()
     HealthBarTest.super.enter(self)
-    self.labels = LabelUp.new({size = 34, rise = 90})
+    self.labels = LabelUp.new({size = 44, rise = 110})
     self.targets = {
-        ComponentTest.target('hero', -560, 300, 1.4),
-        ComponentTest.target('bunny', 0, 300, 2.4),
-        ComponentTest.target('rock', 560, 300, 2.2),
+        ComponentTest.target('hero', -600, 300, 1.75),
+        ComponentTest.target('bunny', 0, 300, 3),
+        ComponentTest.target('rock', 600, 300, 2.8),
     }
-    self.targets[1].name, self.targets[1].bar = 'Knight', HealthBar.new(100, {width = 210, height = 26, tick = 25})
-    self.targets[2].name, self.targets[2].bar = 'Bunny', HealthBar.new(40, {width = 160, height = 22, tick = 0, hideWhenFull = true})
-    self.targets[3].name, self.targets[3].bar = 'Rock', HealthBar.new(300, {width = 230, height = 26, tick = 50, shield = 80})
-    self.boss = HealthBar.new(1000, {width = HealthBarTest.bossWidth, height = 32, tick = 100, layer = 4})
+    self.targets[1].name, self.targets[1].bar = 'Knight', HealthBar.new(100, {width = 250, height = 30, tick = 25})
+    self.targets[2].name, self.targets[2].bar = 'Bunny', HealthBar.new(40, {width = 200, height = 26, tick = 0, hideWhenFull = true})
+    self.targets[3].name, self.targets[3].bar = 'Rock', HealthBar.new(300, {width = 270, height = 30, tick = 50, shield = 80})
+    self.boss = HealthBar.new(1000, {width = HealthBarTest.bossWidth, height = 38, tick = 100, layer = 4})
     self.slime = assets.load('sprites/atlases/slime.json', 'atlas', {filter = 'linear'})
     -- The knight and the boss open wounded, so the colors of the share left show at once.
     self.targets[1].bar:setHealth(64)
@@ -124,7 +124,8 @@ function HealthBarTest:update(dt)
     self.labels:update(dt)
 
     local knight, bunny, rock = self.targets[1].bar, self.targets[2].bar, self.targets[3].bar
-    self:status(string.format('Knight %d of 100, bunny %d of 40, rock %d of 300 with shield %d, boss %d of 1000', math.ceil(knight.health), math.ceil(bunny.health), math.ceil(rock.health), math.ceil(rock.shield), math.ceil(self.boss.health)))
+    local shield = rock.shield > 0 and string.format(' behind a shield of %d', math.ceil(rock.shield)) or ''
+    self:status(string.format('The knight has %d of 100 health, the bunny %d of 40 and the rock %d of 300%s. The Slime King has %d of 1000.', math.ceil(knight.health), math.ceil(bunny.health), math.ceil(rock.health), shield, math.ceil(self.boss.health)))
 end
 
 function HealthBarTest:draw(area)
@@ -143,12 +144,12 @@ function HealthBarTest:drawBoss()
     local plate = HealthBarTest.bossPlate
     graphics2d.drawShape({plate[1], plate[2] + 8, plate[3], plate[4]}, {radius = 28, color = '#60000000', softness = 18})
     graphics2d.drawShape(plate, {radius = 28, color = '#F01E2232', borderWidth = 3, borderColor = '#FF3A4160', layer = 1})
-    local cx, cy = plate[1] + 70, plate[2] + plate[4] / 2
-    graphics2d.drawShape({cx - 54, cy - 54, 108, 108}, {kind = 'ellipse', color = '#FF2E5A3A', borderWidth = 5, borderColor = '#FFFFC93C', layer = 2})
-    graphics2d.draw(self.slime.texture, cx, cy + 36, {source = self.slime:source('slime 0'), width = 84, height = 84, pivotY = 1, layer = 3})
-    graphics2d.drawText(nil, 'Slime King', plate[1] + 150, plate[2] + 18, {size = 32, color = Test.ink, layer = 3})
-    graphics2d.drawText(nil, string.format('%d / %d', math.ceil(self.boss.health), self.boss.maximum), plate[1] + plate[3] - 34, plate[2] + 22, {size = 26, color = '#FFAAB4CC', anchor = {1, 0}, layer = 3})
-    self.boss:draw(plate[1] + 150 + HealthBarTest.bossWidth / 2, plate[2] + plate[4] - 34)
+    local cx, cy = plate[1] + 86, plate[2] + plate[4] / 2
+    graphics2d.drawShape({cx - 64, cy - 64, 128, 128}, {kind = 'ellipse', color = '#FF2E5A3A', borderWidth = 6, borderColor = '#FFFFC93C', layer = 2})
+    graphics2d.draw(self.slime.texture, cx, cy + 44, {source = self.slime:source('slime 0'), width = 104, height = 104, pivotY = 1, layer = 3})
+    graphics2d.drawText(nil, 'Slime King', plate[1] + 180, plate[2] + 18, {size = 46, color = Test.ink, layer = 3})
+    graphics2d.drawText(nil, string.format('%d / %d', math.ceil(self.boss.health), self.boss.maximum), plate[1] + plate[3] - 40, plate[2] + 24, {size = 40, color = '#FFC4CCE0', anchor = {1, 0}, layer = 3})
+    self.boss:draw(plate[1] + 180 + HealthBarTest.bossWidth / 2, plate[2] + plate[4] - 42)
 end
 
 return HealthBarTest
