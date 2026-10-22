@@ -505,6 +505,8 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             Table::readValue(L, key, style.language);
         } else if (key == "pixelSnap") {
             Table::readValue(L, key, style.pixelSnap);
+        } else if (key == "ligatures") {
+            Table::readValue(L, key, style.ligatures);
         }
     });
     // clang-format on

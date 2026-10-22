@@ -16,6 +16,9 @@ catalog.categories = {}
 catalog.tests = {}
 catalog.byCode = {}
 
+-- The titles of tests name the functions and modules they show, such as "ffi", so the header and the lists draw them without ligatures.
+catalog.titleStyle = {fonts = {heading = {ligatures = false}, button = {ligatures = false}}}
+
 -- Checks a test of a manifest, so a mistake in a manifest stops the project at start with the code and the field that is wrong.
 function catalog.check(category, test)
     local code = test.code

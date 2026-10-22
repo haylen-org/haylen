@@ -198,12 +198,13 @@ class Theme final {
         FocusRing,
     };
 
-    // The font a role draws with, the size of its em square and the style of its face, where a font without a face for the style draws with its regular face.
+    // The font a role draws with, the size of its em square, the style of its face, where a font without a face for the style draws with its regular face, and whether its letters join into ligatures.
     struct FontStyle {
         std::string font = "default";
         float size = 26.0F;
         bool bold = false;
         bool italic = false;
+        bool ligatures = true;
     };
 
     // A nine-slice image drawn in place of a flat surface. Borders keep their texture size times the scale, and the padding moves content away from thick borders. An SVG document takes the place of the texture through `vector`, with its regions in the units of the document, and the whole document cut by `borders` when `whole` is set, since its size is known only once it loads.

@@ -185,7 +185,10 @@ Theme Theme::dark() {
     for (std::size_t index = 0; index < kFontCount; ++index) {
         theme.fonts[index].size = kFontSizes[index];
     }
-    theme.fonts[static_cast<std::size_t>(Font::Monospace)].font = Backend::kMonospaceFontName;
+    // Code and columns of numbers keep a glyph for every letter.
+    FontStyle& monospace = theme.fonts[static_cast<std::size_t>(Font::Monospace)];
+    monospace.font = Backend::kMonospaceFontName;
+    monospace.ligatures = false;
     return theme;
 }
 
@@ -280,7 +283,7 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (!role || !value.is_object()) {
             throw std::invalid_argument("The theme font \"" + key + "\" must be a known role with an object value.");
         }
-        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic"}, "the theme font \"" + key + "\"");
+        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic", "ligatures"}, "the theme font \"" + key + "\"");
         FontStyle style = theme.getFont(*role);
         if (value.contains("font")) {
             if (!value.at("font").is_string()) {
@@ -291,7 +294,7 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         if (value.contains("size")) {
             style.size = readNumber(value.at("size"), "The size of the theme font \"" + key + "\"");
         }
-        for (const auto& [flag, field] : {std::pair{"bold", &style.bold}, std::pair{"italic", &style.italic}}) {
+        for (const auto& [flag, field] : {std::pair{"bold", &style.bold}, std::pair{"italic", &style.italic}, std::pair{"ligatures", &style.ligatures}}) {
             if (!value.contains(flag)) {
                 continue;
             }

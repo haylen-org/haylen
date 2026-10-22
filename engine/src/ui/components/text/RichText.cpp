@@ -30,24 +30,25 @@ void RichText::readProperties(PropertyReader& reader) {
     changed = true;
 }
 
-// The theme gives the family, size, style and color and the node its language and the side start and end name, so a change of them lays the text out again, which starts its reveal over. Paragraphs read in the direction of their first strong letter unless their markup sets one. The text takes the size of its role, so it lines up with labels in the same font. Fonts and images resolve through the context the options were made with.
+// The theme gives the family, size, style, ligatures and color and the node its language and the side start and end name, so a change of them lays the text out again, which starts its reveal over. Paragraphs read in the direction of their first strong letter unless their markup sets one. The text takes the size of its role, so it lines up with labels in the same font. Fonts and images resolve through the context the options were made with.
 text::RichText& RichText::refreshText(Context& context) {
     const std::string_view markup = context.getText(text);
     std::shared_ptr<text::FontFamily> family = context.getFontFamily(font);
     const float size = context.getFontSize(font);
     const bool bold = context.isFontBold(font);
     const bool italic = context.isFontItalic(font);
+    const bool ligatures = context.hasLigatures(font);
     const math::Color ink = context.getColor(color.value_or(Theme::Color::Text));
     const bool rightToLeft = context.isRightToLeft();
     const bool sided = textAlign == text::Alignment::Start || textAlign == text::Alignment::End;
     const text::Alignment align = sided ? ((textAlign == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right) : textAlign;
     const text::RichTextOptions* current = richText ? &richText->getOptions() : nullptr;
-    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == bold && current->italic == italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == revealSpeed;
+    const bool sameOptions = current != nullptr && preparedFor == &context && current->family == family && current->size == size && current->bold == bold && current->italic == italic && current->color == ink && current->align == align && current->language == context.getLanguage() && current->revealSpeed == revealSpeed && current->ligatures == ligatures;
 
     if (!sameOptions) {
         Context* owner = &context;
         preparedFor = owner;
-        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = bold, .italic = italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = revealSpeed};
+        text::RichTextOptions options{.family = std::move(family), .size = size, .bold = bold, .italic = italic, .color = ink, .align = align, .language = context.getLanguage(), .revealSpeed = revealSpeed, .ligatures = ligatures};
         options.fonts = [owner](std::string_view name) { return owner->getFontFamily(name); };
         options.images = [owner](std::string_view path) { return owner->getImageAtScale(path, 1.0F); };
         if (richText) {

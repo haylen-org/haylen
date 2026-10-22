@@ -38,6 +38,7 @@ class LayoutCache final {
         bool italic = false;
         bool underline = false;
         bool strike = false;
+        bool ligatures = true;
 
         friend bool operator==(const Key&, const Key&) = default;
     };

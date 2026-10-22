@@ -197,6 +197,16 @@ scene.push({
 
 A bitmap font has no shaping tables, so it maps every code point to its own glyph and applies the kerning pairs of its file. It lays out and orders right-to-left text, with mirrored brackets, but it draws neither joined Arabic letters nor Indic conjuncts, which need a TrueType or OpenType font.
 
+## Ligatures
+
+A ligature joins letters, such as f and i, or f, f and i, into one glyph where the font draws one. A book sets prose this way, so text takes ligatures by default. Code and identifiers must read as their letters, and a ligature turns the name `ffi` into one glyph that no keyboard can type. So text turns ligatures off where it shows code and names:
+
+- The text style option `ligatures = false` and the rich text option of the same name keep a glyph for every letter.
+- The text of `[code]` never takes ligatures.
+- The `monospace` role of the [UI themes](../lua-api/ui.md#theme-fonts) turns them off, and any other role can turn them off for the names of functions, files and keys.
+
+A run without ligatures turns off the standard and contextual ligatures of the font and its contextual alternates, which programming fonts draw their ligatures with. It keeps the required ligatures of scripts such as Arabic, whose text needs them.
+
 ## Line breaking
 
 Lines break where the Unicode Line Breaking Algorithm of libunibreak allows: after spaces and hyphens, and between Chinese and Japanese characters. They never break before a closing punctuation mark or inside a number.
@@ -284,7 +294,7 @@ Rich text is text with tags in square brackets:
 | Tag | Meaning |
 | --- | --- |
 | `[b]`, `[i]`, `[u]`, `[s]` | Bold, italic, underline and strike. |
-| `[code]` | The mono face of the family, which in the default family of the engine is Space Mono, a monospace font without ligatures. |
+| `[code]` | The mono face of the family, which in the default family of the engine is Space Mono, a monospace font. Code never takes ligatures, so every letter keeps its own glyph and column. |
 | `[color=c]`, `[bgcolor=c]` | Text color and a background behind the text. |
 | `[font=name]` | A font family that the host names: the `fonts` option in 2D and the fonts of `ui.addFont` in the UI. |
 | `[size=24]`, `[size=150%]` | An absolute size, or a size relative to the text around it. |

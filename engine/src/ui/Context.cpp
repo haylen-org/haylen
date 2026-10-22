@@ -166,6 +166,10 @@ bool Context::isFontItalic(Theme::Font role) const noexcept {
     return resolve<bool>([role](const Style& style) { return style.getFont(role).italic; }, [role](const Theme& theme) { return theme.getFont(role).italic; });
 }
 
+bool Context::hasLigatures(Theme::Font role) const noexcept {
+    return resolve<bool>([role](const Style& style) { return style.getFont(role).ligatures; }, [role](const Theme& theme) { return theme.getFont(role).ligatures; });
+}
+
 ImFont* Context::getFont(Theme::Font role) const {
     return backend.getFont(getFontName(role), isFontBold(role), isFontItalic(role));
 }

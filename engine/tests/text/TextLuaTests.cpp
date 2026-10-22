@@ -46,6 +46,12 @@ class TextLuaTest : public ::testing::Test {
     test::EngineFixture fixture{fontFiles()};
 };
 
+// Text joins the letters of ffi into the ligatures of the default font unless its style or its rich text turns ligatures off.
+TEST_F(TextLuaTest, TurnsLigaturesOff) {
+    EXPECT_EQ(lua("return tostring(#font:layout('ffi', {size = 32}).quads < 3) .. ' ' .. #font:layout('ffi', {size = 32, ligatures = false}).quads"), "true 3");
+    EXPECT_EQ(lua("local rich = graphics2d.newRichText('ffi', {ligatures = false}) local before = rich.ligatures rich.ligatures = true return tostring(before) .. ' ' .. tostring(rich.ligatures)"), "false true");
+}
+
 TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("return tostring(font.distanceField) .. ' ' .. font.nativeSize .. ' ' .. font.pageCount .. ' ' .. tostring(font:hasGlyph('A')) .. ' ' .. tostring(font:hasGlyph(0xE000))"), "true 48.0 1 true false");
     EXPECT_EQ(lua("local glyph = font:glyph('A') return tostring(glyph.visible) .. ' ' .. tostring(glyph.advance > 0) .. ' ' .. glyph.page .. ' ' .. tostring(font:page(1).width >= 512)"), "true true 1 true");

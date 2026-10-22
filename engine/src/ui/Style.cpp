@@ -84,7 +84,7 @@ void Style::readFonts(Style& style, const core::Json& section, const std::string
         if (!value.is_object()) {
             throw std::invalid_argument("T" + font.substr(1) + " must be a table.");
         }
-        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic"}, font);
+        core::JsonValidator::requireKnownKeys(value, {"font", "size", "bold", "italic", "ligatures"}, font);
         Font& entry = style.fonts[static_cast<std::size_t>(*role)];
         if (value.contains("font")) {
             if (!value.at("font").is_string() || value.at("font").get_ref<const std::string&>().empty()) {
@@ -98,7 +98,7 @@ void Style::readFonts(Style& style, const core::Json& section, const std::string
                 throw std::invalid_argument("The size of " + font + " must be positive.");
             }
         }
-        for (const auto& [flag, field] : {std::pair{"bold", &entry.bold}, std::pair{"italic", &entry.italic}}) {
+        for (const auto& [flag, field] : {std::pair{"bold", &entry.bold}, std::pair{"italic", &entry.italic}, std::pair{"ligatures", &entry.ligatures}}) {
             if (!value.contains(flag)) {
                 continue;
             }

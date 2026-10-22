@@ -2143,7 +2143,7 @@ A theme file is a JSON object in the package assets. It starts from a base theme
 | `name` | string | The name of the theme. It is required and not empty. |
 | `colors` | object | [Color roles](#theme-colors) mapped to colors. |
 | `metrics` | object | [Metrics](#theme-metrics) mapped to non-negative numbers in design units. |
-| `fonts` | object | [Font roles](#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean}`, where every key is optional and the size is the size of the em square. |
+| `fonts` | object | [Font roles](#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean, "ligatures": boolean}`, where every key is optional and the size is the size of the em square. |
 | `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets. The function `ui.loadTheme` registers them, unless a font with that name already exists. |
 | `surfaces` | object | [Surfaces](#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
 | `imageFilter` | string | The texture filter of the pictures components show: `'nearest'`, the default, for pixel art, or `'linear'` for painted art that the screen scales. It covers the pictures of `image`, `icon`, `imageButton`, `avatar`, `circularProgress` and the touch controls. A switch to a theme with another filter loads the pictures again. |
@@ -2160,7 +2160,7 @@ Unknown keys, roles, metrics and surfaces are errors, so a typo never goes unnot
 - `The theme color "<name>" must be a color such as "#FF2E7D32".` and `The theme metric "<name>" must be a non-negative number.`
 - `The theme font file "<name>" must be a path.`
 - `The theme font "<name>" must be a known role with an object value.` and `Unknown key "<key>" in the theme font "<name>".`
-- `The theme font "<name>" must name its font with a string.`, `The size of the theme font "<name>" must be a non-negative number.`, `The theme font "<name>" must set "bold" to "true" or "false".` and the same for `italic`.
+- `The theme font "<name>" must name its font with a string.`, `The size of the theme font "<name>" must be a non-negative number.`, `The theme font "<name>" must set "bold" to "true" or "false".` and the same for `italic` and `ligatures`.
 - `A theme font needs a font name and a positive size.` for a role with an empty font name or a size of zero.
 - The errors of [surface images](#theme-surfaces).
 
@@ -2231,7 +2231,7 @@ Each error of a style starts with the property that holds it:
 - `The color "<name>" of the property "style" of a "<kind>" must be a color such as "#FF2E7D32".`, for a value that starts with `#` or is not a string.
 - `The color "<name>" of the property "style" of a "<kind>" must name a theme color such as "accent" or "textMuted".`, for an unknown role.
 - `The metric "<name>" of the property "style" of a "<kind>" must be a non-negative number.`
-- `The font "<name>" of the property "style" of a "<kind>" must be a table.`, `... must name its font with a string.` and `... must set "bold" to "true" or "false".`
+- `The font "<name>" of the property "style" of a "<kind>" must be a table.`, `... must name its font with a string.` and `... must set "bold" to "true" or "false".`, and the same for `italic` and `ligatures`.
 - `The size of the font "<name>" of the property "style" of a "<kind>" must be positive.`
 - `The image of the surface "<name>" of the property "style" of a "<kind>" must be a path.`
 
@@ -2390,6 +2390,8 @@ A font role names a registered font and a size. Every role starts with the built
 
 A role that sets `bold` or `italic` draws with that face of its font, when the font is a family that has it, and with its regular face otherwise. A [`richText`](#uirichtextproperties) of that role starts in that style, as if inside `[b]` or `[i]`.
 
+A role joins letters such as f and i into the ligatures of its font, as prose takes them. A role with `ligatures = false` keeps a glyph for every letter. The `monospace` role does that, so code keeps its letters, and a `style` can do it for one node, such as a title that names a function or a list of keys.
+
 The size of a role is the size of its em square in UI units. The em square is the square that the designer of a font draws every letter in, and it is what a font size means in every module of the engine and in design tools. So two fonts at one size draw their letters at one scale, whatever their ascents and descents, and a type scale works with any font without converting its sizes. A line of a role is as tall as its face from ascent to descent at that size, plus the line gap of the font. So a font with tall ascenders or deep descenders gets taller lines, not smaller letters. The function [`ui.themeFont`](#uithemefontrole) reports that height as `lineHeight`. The components and the `richText` of a role draw at that size, and the windows of [`haylen.imgui`](imgui.md) take the size of `body`.
 
 | Role | Size | Used for |
@@ -2433,13 +2435,13 @@ ui.mount(ui.column{ui.label{text = 'Chapter 1', font = 'heading'}, ui.label{text
 
 ### ui.themeFont(role)
 
-Returns a [font role](#theme-fonts) of the active theme as a table. The field `font` is the registered font name, and `size` is the size of its em square in UI units. The field `lineHeight` is the height of a line of the role at that size. The fields `bold` and `italic` are the style of the face the role draws with. An unknown role raises `The theme has no font role named "<role>".`.
+Returns a [font role](#theme-fonts) of the active theme as a table. The field `font` is the registered font name, and `size` is the size of its em square in UI units. The field `lineHeight` is the height of a line of the role at that size. The fields `bold` and `italic` are the style of the face the role draws with, and `ligatures` tells whether its letters join into the ligatures of the font. An unknown role raises `The theme has no font role named "<role>".`.
 
 ```lua
 local ui = require('haylen.ui')
 
 local title = ui.themeFont('title')
-print(title.font, title.size, title.lineHeight, title.bold, title.italic)
+print(title.font, title.size, title.lineHeight, title.bold, title.italic, title.ligatures)
 ```
 
 ### Theme surfaces

@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -10,6 +12,8 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Geometry.hpp"
 #include "haylen/math/Rect.hpp"
+#include "haylen/text/FontFamily.hpp"
+#include "haylen/text/Layout.hpp"
 #include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Theme.hpp"
@@ -143,6 +147,29 @@ TEST_F(LabelTest, WrapsTheLabelsOfChoicesAndButtons) {
         whole += backend.getContent(drawn) == text ? 1 : 0;
     }
     EXPECT_EQ(whole, 4);
+}
+
+// A label joins the letters of its role into ligatures, while the monospace role and a role whose style turns them off keep a glyph for every letter, as code and the names of functions need.
+TEST_F(LabelTest, KeepsTheLettersOfCodeAndNamesApart) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [
+        {"kind": "label", "id": "prose", "text": "ffi"},
+        {"kind": "label", "id": "code", "text": "ffi", "font": "monospace"},
+        {"kind": "label", "id": "name", "text": "ffi", "style": {"fonts": {"body": {"ligatures": false}}}}
+    ]})");
+    // clang-format on
+    frames(2);
+    Backend& backend = getUi().getBackend();
+    const std::span<const Backend::Text> texts = backend.getTexts();
+    ASSERT_EQ(texts.size(), 3U);
+    std::vector<std::size_t> glyphs;
+    for (const Backend::Text& drawn : texts) {
+        glyphs.push_back(drawn.family->layout(backend.getContent(drawn), drawn.style)->glyphs.size());
+    }
+    EXPECT_LT(glyphs[0], 3U);
+    EXPECT_EQ(glyphs[1], 3U);
+    EXPECT_EQ(glyphs[2], 3U);
+    EXPECT_FALSE(texts[1].style.ligatures);
 }
 
 } // namespace haylen::ui

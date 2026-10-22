@@ -1,6 +1,7 @@
 #include "haylen/text/TrueTypeFont.hpp"
 
 #include <algorithm>
+#include <array>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -17,6 +18,13 @@ namespace haylen::text {
 
 // The parsed font file, sized by its em square at the bake size. The stb_truetype library reads the outlines and HarfBuzz shapes in font units, with a buffer kept for every run.
 struct TrueTypeFont::Face {
+    // The features that a run without ligatures turns off: the standard and contextual ligatures and the contextual alternates, which programming fonts draw their ligatures with. The required ligatures of a script stay, since its text needs them.
+    static constexpr std::array<hb_feature_t, 3> kWithoutLigatures{{
+        {.tag = HB_TAG('l', 'i', 'g', 'a'), .value = 0, .start = HB_FEATURE_GLOBAL_START, .end = HB_FEATURE_GLOBAL_END},
+        {.tag = HB_TAG('c', 'l', 'i', 'g'), .value = 0, .start = HB_FEATURE_GLOBAL_START, .end = HB_FEATURE_GLOBAL_END},
+        {.tag = HB_TAG('c', 'a', 'l', 't'), .value = 0, .start = HB_FEATURE_GLOBAL_START, .end = HB_FEATURE_GLOBAL_END},
+    }};
+
     std::vector<std::uint8_t> ttf;
     stbtt_fontinfo info{};
     float scale = 1.0F;
@@ -150,7 +158,11 @@ void TrueTypeFont::shape(const Run& run, std::vector<ShapedGlyph>& shaped) {
     if (!run.language.empty()) {
         hb_buffer_set_language(buffer, hb_language_from_string(run.language.data(), static_cast<int>(run.language.size())));
     }
-    hb_shape(face->shapingFont.get(), buffer, nullptr, 0);
+    if (run.ligatures) {
+        hb_shape(face->shapingFont.get(), buffer, nullptr, 0);
+    } else {
+        hb_shape(face->shapingFont.get(), buffer, Face::kWithoutLigatures.data(), static_cast<unsigned int>(Face::kWithoutLigatures.size()));
+    }
 
     unsigned int count = 0;
     const hb_glyph_info_t* infos = hb_buffer_get_glyph_infos(buffer, &count);

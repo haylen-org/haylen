@@ -38,7 +38,7 @@ Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style,
         start = end + 1;
     }
 
-    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing};
+    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .ligatures = style.ligatures};
     return LayoutBuilder(plain, plainOptions, nullptr, baseFamily, baseFont).build();
 }
 
@@ -161,8 +161,10 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
     const Layout::Look& drawn = layout.looks[look];
     const float factor = font.size / drawing.getNativeSize();
 
+    // Code keeps a glyph for every letter, so it never takes ligatures.
     shapedGlyphs.clear();
-    drawing.shape({.text = source.text, .begin = begin, .end = end, .script = script, .language = options.language, .rightToLeft = level % 2 != 0}, shapedGlyphs);
+    const bool ligatures = options.ligatures && !document.styles[style].mono;
+    drawing.shape({.text = source.text, .begin = begin, .end = end, .script = script, .language = options.language, .rightToLeft = level % 2 != 0, .ligatures = ligatures}, shapedGlyphs);
     std::vector<std::size_t>& byCluster = clusterOrder;
     byCluster.resize(shapedGlyphs.size());
     std::iota(byCluster.begin(), byCluster.end(), std::size_t{0});

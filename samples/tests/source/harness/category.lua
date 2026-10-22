@@ -29,7 +29,7 @@ function Category:enter()
             description = string.format('Unsupported on "%s". %s', haylen.platform, description)
         end
         rows[#rows + 1] = ui.row{gap = 24,
-            ui.button{id = test.code, text = string.format('%s  %s', test.code, test.title), width = 560, onClick = function()
+            ui.button{id = test.code, text = string.format('%s  %s', test.code, test.title), width = 560, style = catalog.titleStyle, onClick = function()
                 self.selected = test
                 navigation.openTest(test)
             end},

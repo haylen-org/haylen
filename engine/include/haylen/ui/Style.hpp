@@ -21,6 +21,7 @@ class Style final {
         std::optional<float> size;
         std::optional<bool> bold;
         std::optional<bool> italic;
+        std::optional<bool> ligatures;
     };
 
     // A color the style sets: a color of its own, or a theme color role, which takes the color of that role around the style each time it draws.

@@ -711,7 +711,7 @@ int UiLua::removeImage(lua_State* L) {
     return 0;
 }
 
-// Returns a font role of the active theme as `{font, size, lineHeight, bold, italic}`, where a line is as tall as one the face of the role lays out at its size.
+// Returns a font role of the active theme as `{font, size, lineHeight, bold, italic, ligatures}`, where a line is as tall as one the face of the role lays out at its size.
 int UiLua::themeFont(lua_State* L) {
     const std::string name = lua::Stack::read<std::string>(L, 1);
     const std::optional<Theme::Font> role = Theme::fontFromName(name);
@@ -721,7 +721,7 @@ int UiLua::themeFont(lua_State* L) {
     plugins::UiPlugin& plugin = getPlugin(L);
     const Theme::FontStyle& style = plugin.getTheme().getFont(*role);
     const text::Font& face = *plugin.getContext().getFontFamily(style.font)->select(style.bold, style.italic, false).font;
-    lua_createtable(L, 0, 5);
+    lua_createtable(L, 0, 6);
     lua::Stack::push(L, style.font);
     lua_setfield(L, -2, "font");
     lua::Stack::push(L, style.size);
@@ -732,6 +732,8 @@ int UiLua::themeFont(lua_State* L) {
     lua_setfield(L, -2, "bold");
     lua::Stack::push(L, style.italic);
     lua_setfield(L, -2, "italic");
+    lua::Stack::push(L, style.ligatures);
+    lua_setfield(L, -2, "ligatures");
     return 1;
 }
 

@@ -96,7 +96,7 @@ function Menu:search(query)
     local rows = {}
     for _, test in ipairs(catalog.search(query)) do
         rows[#rows + 1] = ui.row{gap = 24,
-            ui.button{id = 'found-' .. test.code, text = string.format('%s  %s', test.code, test.title), width = 560, onClick = function()
+            ui.button{id = 'found-' .. test.code, text = string.format('%s  %s', test.code, test.title), width = 560, style = catalog.titleStyle, onClick = function()
                 navigation.openTest(test)
             end},
             ui.label{text = test.description, color = 'textMuted', grow = 1},

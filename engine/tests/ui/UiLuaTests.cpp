@@ -435,6 +435,8 @@ TEST(UiLuaThemeTest, ReadsAndAddsThemes) {
     fixture.runLua("ui = require('haylen.ui')");
     EXPECT_EQ(fixture.lua("return ui.themeColor('accent'):toHex() .. ' ' .. ui.themeMetric('controlHeight') .. ' ' .. ui.themeMetric('caretWidth')"), "#FF4C7DFF 64.0 2.0");
     EXPECT_EQ(fixture.lua("local font = ui.themeFont('title') return font.font .. ' ' .. font.size .. ' ' .. tostring(ui.themeSurface('panel')) .. ' ' .. ui.themeImageFilter()"), "default 48.0 nil nearest");
+    EXPECT_EQ(fixture.lua("return tostring(ui.themeFont('monospace').ligatures) .. ' ' .. tostring(ui.themeFont('body').ligatures)"), "false true");
+    EXPECT_NE(fixture.lua("ui.addTheme({name = 'joined', fonts = {body = {ligatures = 'no'}}})").find("The theme font \"body\" must set \"ligatures\" to \"true\" or \"false\"."), std::string::npos);
 
     // clang-format off
     EXPECT_EQ(fixture.lua(R"(

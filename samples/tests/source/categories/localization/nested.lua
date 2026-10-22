@@ -17,6 +17,8 @@ ui.tree{id = 'tree', items = items, expanded = {'story', 'story.chapters'}}]]
 Nested.hint = 'Open the groups of the tree and pick a key or a group to read it with "localization.text" and "localization.has".'
 Nested.focus = 'tree'
 Nested.first = 'story.chapters.first.title'
+-- The tree names keys, so their letters keep their own glyphs and `first` never draws the ligature of f and i.
+Nested.keyStyle = {fonts = {body = {ligatures = false}}}
 Nested.pluralParts = {zero = true, one = true, two = true, few = true, many = true, other = true}
 
 local function isPlural(value)
@@ -90,7 +92,7 @@ function Nested:content()
     return {
         ui.panel{width = 760, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'The groups of "' .. language.folder .. '/en.json"'},
-            ui.scroll{grow = 1, height = 0, ui.tree{id = 'tree', items = items(language.file('en'), ''), expanded = {'story', 'story.chapters', 'story.chapters.first'}, selected = Nested.first, onSelect = function(event)
+            ui.scroll{grow = 1, height = 0, ui.tree{id = 'tree', items = items(language.file('en'), ''), expanded = {'story', 'story.chapters', 'story.chapters.first'}, selected = Nested.first, style = Nested.keyStyle, onSelect = function(event)
                 self:pick(event.item)
             end}},
         },

@@ -7,6 +7,7 @@ local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
+local catalog = require('harness.catalog')
 local code = require('harness.code')
 local navigation = require('harness.navigation')
 
@@ -67,7 +68,7 @@ function Test:frame(options)
         ui.row{gap = 24, alignItems = 'start',
             ui.button{id = 'back', text = 'Back', onClick = function() self:cancel() end},
             ui.column{grow = 1, gap = 4,
-                ui.row{gap = 16, minHeight = ui.themeMetric('controlHeight'), ui.badge{text = entry.code, tone = 'accent', solid = true}, ui.label{text = entry.title, font = 'heading', grow = 1}},
+                ui.row{gap = 16, minHeight = ui.themeMetric('controlHeight'), ui.badge{text = entry.code, tone = 'accent', solid = true}, ui.label{text = entry.title, font = 'heading', grow = 1, style = catalog.titleStyle}},
                 ui.label{text = entry.description, color = 'textMuted'},
             },
         },

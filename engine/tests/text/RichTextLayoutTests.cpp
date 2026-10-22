@@ -14,6 +14,7 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/BitmapFont.hpp"
+#include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
@@ -64,6 +65,17 @@ class RichTextLayoutTest : public ::testing::Test {
 };
 
 } // namespace
+
+// Prose joins the letters of ffi into the ligatures of the default font, while text without ligatures and code keep a glyph for every letter, so a name such as ffi reads as its letters.
+TEST_F(RichTextLayoutTest, JoinsLigaturesOutsideCodeUnlessTurnedOff) {
+    const auto family = std::make_shared<FontFamily>(FontFamily::Faces{.regular = registry()->getDefaultFamily()->getFaces().regular, .mono = copyOfDefaultFont(fixture.engine())});
+    const std::size_t joined = make("ffi", {.family = family}).getLayout().glyphs.size();
+    EXPECT_LT(joined, 3U);
+    EXPECT_EQ(make("ffi", {.family = family, .ligatures = false}).getLayout().glyphs.size(), 3U);
+    EXPECT_EQ(make("[code]ffi[/code] ffi", {.family = family}).getLayout().glyphs.size(), 3U + joined);
+    EXPECT_EQ(regular().layout("ffi", {.size = 32.0F})->glyphs.size(), joined);
+    EXPECT_EQ(regular().layout("ffi", {.size = 32.0F, .ligatures = false})->glyphs.size(), 3U);
+}
 
 TEST_F(RichTextLayoutTest, WrapsMixedSizesOnOneBaselineAndAligns) {
     RichText mixed = make("a [size=64]B[/size] c", {.size = 20.0F});

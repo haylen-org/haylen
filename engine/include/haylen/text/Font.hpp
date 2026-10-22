@@ -38,7 +38,7 @@ class Font {
         math::Vec2 offset{};
     };
 
-    // A run of text to shape in one script, language and direction. The text around the run gives the letters at its ends their joining forms, and the script is an ISO 15924 tag such as `Arab` or `Deva`.
+    // A run of text to shape in one script, language and direction. The text around the run gives the letters at its ends their joining forms, the script is an ISO 15924 tag such as `Arab` or `Deva`, and a run without ligatures keeps a glyph for every letter.
     struct Run {
         std::u32string_view text;
         std::size_t begin = 0;
@@ -46,6 +46,7 @@ class Font {
         std::uint32_t script = 0;
         std::string_view language;
         bool rightToLeft = false;
+        bool ligatures = true;
     };
 
     virtual ~Font();

@@ -25,7 +25,7 @@ text::Style Typography::getStyle(Context& context, Theme::Font font, float wrapW
     if (align == text::Alignment::Start || align == text::Alignment::End) {
         align = (align == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right;
     }
-    return {.size = context.getFontSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = context.isFontBold(font), .italic = context.isFontItalic(font), .direction = text::Direction::Auto, .language = context.getLanguage()};
+    return {.size = context.getFontSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = context.isFontBold(font), .italic = context.isFontItalic(font), .direction = text::Direction::Auto, .language = context.getLanguage(), .ligatures = context.hasLigatures(font)};
 }
 
 std::shared_ptr<const text::Layout> Typography::layout(Context& context, Theme::Font font, std::string_view text, const text::Style& style) {

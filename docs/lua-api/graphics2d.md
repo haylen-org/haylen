@@ -2824,6 +2824,7 @@ scene.push({
 | `rotation` | number | `0` | The rotation in radians. |
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
 | `pixelSnap` | boolean | `false` | Moves every line so its left edge lands on a whole pixel of the destination, centered and right-aligned lines included, and puts its baseline on a whole pixel row. This keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
+| `ligatures` | boolean | `true` | Joins letters such as f and i into one glyph where the font has a ligature for them, which suits prose. The value `false` keeps a glyph for every letter, which code, file names and the names of functions need. |
 
 A `size`, `maxWidth`, `maxHeight`, `minScale` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width, maximum height, minimum scale and line spacing.`. A `minScale` out of range raises `The "minScale" of a text style is a share of its size above 0 and at most 1.`.
 
@@ -2905,6 +2906,7 @@ scene.push({
 | `scale` | number | `1` | Multiplies every size of the markup and the options. |
 | `revealSpeed` | number | `0` | The characters per second that the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
 | `underlineLinks` | boolean | `true` | Whether `[url]` text is underlined. |
+| `ligatures` | boolean | `true` | Joins letters into the ligatures of the font, like the text style option. The text of `[code]` never takes ligatures. |
 | `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. A key that is not a string raises `The "fonts" option maps font names to families, so its keys must be strings.`. |
 
 ### graphics2d.drawRichText(markup, x, y, options)
@@ -3010,6 +3012,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 | `lineSpacing` | number | read and write | The distance between lines as a multiple of their height. |
 | `revealSpeed` | number | read and write | The characters per second that the typewriter reveal shows, 0 for everything at once. |
 | `underlineLinks` | boolean | read and write | Whether `[url]` text is underlined. |
+| `ligatures` | boolean | read and write | Whether letters outside `[code]` join into the ligatures of the font. |
 | `visibleCharacters` | integer | read and write | How many characters show. Setting it moves the reveal there, and a negative count shows everything. |
 | `visibleRatio` | number | read and write | The share of characters that show, from 0 to 1. Values outside that range count as its ends, and NaN raises `The visible ratio of rich text must be a number.`. |
 | `characterCount` | integer | read | The characters of the text: one per cluster, which is a letter with its marks, a conjunct or a ligature, and one per image or icon. |

@@ -164,6 +164,7 @@ class Context final {
     }
     [[nodiscard]] bool isFontBold(Theme::Font role) const noexcept;
     [[nodiscard]] bool isFontItalic(Theme::Font role) const noexcept;
+    [[nodiscard]] bool hasLigatures(Theme::Font role) const noexcept;
     [[nodiscard]] ImFont* getFont(Theme::Font role) const;
 
     // The height of the face of a font role from its ascent to its descent at the size of the role, which is the size ImGui draws the role at.
