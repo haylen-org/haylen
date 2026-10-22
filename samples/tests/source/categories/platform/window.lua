@@ -46,6 +46,11 @@ local function yesNo(value)
     return value and 'Yes' or 'No'
 end
 
+-- Marks a value of the API, such as a platform or an orientation name, as the writing of the project marks reserved words.
+local function quoted(value)
+    return '"' .. tostring(value) .. '"'
+end
+
 function Window:enter()
     self.simulation = viewport.safeAreaSimulation()
     self.safeAreaVisible = ui.safeAreaVisible()
@@ -155,18 +160,18 @@ function Window:values()
     local designWidth, designHeight = viewport.designSize()
     local simulation = viewport.safeAreaSimulation()
     return {
-        platform = haylen.platform,
-        graphicsApi = haylen.graphicsApi,
+        platform = quoted(haylen.platform),
+        graphicsApi = quoted(haylen.graphicsApi),
         version = haylen.version,
         app = string.format('%s %s, %s', haylen.config.name, haylen.config.version, haylen.config.identifier),
         framebuffer = string.format('%.0f by %.0f pixels at a scale of %.2f', width, height, window.dpiScale()),
         design = string.format('%.0f by %.0f, scaling "%s"', designWidth, designHeight, viewport.scaling()),
         visible = rectText(viewport.visibleRect()),
         safe = rectText(viewport.safeRect()) .. (simulation and ', simulating "' .. simulation .. '"' or ''),
-        orientation = window.orientation(),
+        orientation = quoted(window.orientation()),
         pointer = yesNo(window.hasPointerDevice()),
         fullscreen = yesNo(window.fullscreen()),
-        state = haylen.appState(),
+        state = quoted(haylen.appState()),
         keyboard = self.keyboard and 'Shown over ' .. rectText(self.keyboard) or 'Hidden',
         network = self.network,
     }
