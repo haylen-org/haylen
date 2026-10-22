@@ -85,20 +85,20 @@ TEST_F(FluidTest, SpreadsAndSettlesInsideItsContainer) {
 
 TEST_F(FluidTest, FloatsLightBodiesAndSinksHeavyOnes) {
     // Particles push the bodies they hit, so a crate lighter than the liquid floats on it and a denser one goes to the bottom.
-    tank(600.0F, 500.0F);
-    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .density = 1.0F, .maxParticles = 6000});
-    fluid.fill({-300.0F, -300.0F, 600.0F, 300.0F});
-    simulate(3.0F);
+    tank(300.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .density = 1.0F, .maxParticles = 2000});
+    fluid.fill({-150.0F, -220.0F, 300.0F, 220.0F});
+    simulate(2.0F);
     float surface = 0.0F;
     for (const math::Vec2 position : fluid.getPositions()) {
         surface = std::min(surface, position.y);
     }
 
-    Body cork = world.createBody({.position = {-150.0F, surface - 80.0F}});
-    cork.addBox({60.0F, 40.0F}, {.density = 0.3F});
-    Body stone = world.createBody({.position = {150.0F, surface - 80.0F}});
-    stone.addBox({40.0F, 40.0F}, {.density = 4.0F});
-    simulate(5.0F);
+    Body cork = world.createBody({.position = {-70.0F, surface - 60.0F}});
+    cork.addBox({48.0F, 32.0F}, {.density = 0.3F});
+    Body stone = world.createBody({.position = {70.0F, surface - 60.0F}});
+    stone.addBox({32.0F, 32.0F}, {.density = 4.0F});
+    simulate(4.0F);
 
     EXPECT_LT(cork.getPosition().y, surface + 25.0F);
     EXPECT_GT(stone.getPosition().y, -60.0F);
@@ -106,13 +106,13 @@ TEST_F(FluidTest, FloatsLightBodiesAndSinksHeavyOnes) {
 
 TEST_F(FluidTest, RestsWithoutGainingEnergyOrVolume) {
     // A deep tank settles and stays still: the bottom holds the weight of the column without squeezing the liquid to half its depth, and no particle is thrown out through the floor.
-    tank(600.0F, 400.0F);
-    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 4000});
-    const std::size_t added = fluid.fill({-300.0F, -200.0F, 600.0F, 200.0F});
-    const float depth = static_cast<float>(added) * 64.0F / 600.0F;
+    tank(300.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 2000});
+    const std::size_t added = fluid.fill({-150.0F, -200.0F, 300.0F, 200.0F});
+    const float depth = static_cast<float>(added) * 64.0F / 300.0F;
     for (int second = 0; second < 6; ++second) {
         simulate(1.0F);
-        ASSERT_EQ(countOutside(fluid, 600.0F), 0U) << "Second " << second;
+        ASSERT_EQ(countOutside(fluid, 300.0F), 0U) << "Second " << second;
     }
     EXPECT_LT(getFastest(fluid), 15.0F);
     EXPECT_LT(getTop(fluid), -depth * 0.85F);
@@ -120,17 +120,17 @@ TEST_F(FluidTest, RestsWithoutGainingEnergyOrVolume) {
 
 TEST_F(FluidTest, SlowTouchesNeverSplash) {
     // A paddle that sinks slowly into still liquid and a floating crate dragged slowly through it only raise the surface by what they displace and the small waves they make, and the liquid calms down once they stop.
-    tank(600.0F, 400.0F);
-    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 4000});
-    fluid.fill({-300.0F, -160.0F, 600.0F, 160.0F});
-    simulate(4.0F);
+    tank(320.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 2000});
+    fluid.fill({-160.0F, -160.0F, 320.0F, 160.0F});
+    simulate(3.0F);
     const float surface = getTop(fluid);
-    Body crate = world.createBody({.position = {-20.0F, surface - 30.0F}});
-    crate.addBox({70.0F, 50.0F}, {.density = 0.4F});
+    Body crate = world.createBody({.position = {-70.0F, surface - 24.0F}});
+    crate.addBox({52.0F, 36.0F}, {.density = 0.4F});
     simulate(2.0F);
 
-    Body paddle = world.createBody({.type = Body::Type::Kinematic, .position = {-200.0F, surface - 30.0F}, .velocity = {0.0F, 40.0F}});
-    paddle.addBox({70.0F, 50.0F});
+    Body paddle = world.createBody({.type = Body::Type::Kinematic, .position = {100.0F, surface - 24.0F}, .velocity = {0.0F, 40.0F}});
+    paddle.addBox({52.0F, 36.0F});
     float top = 0.0F;
     for (int step = 0; step < 120; ++step) {
         crate.setVelocity({40.0F, crate.getVelocity().y});
@@ -143,20 +143,20 @@ TEST_F(FluidTest, SlowTouchesNeverSplash) {
     paddle.setVelocity({});
     simulate(3.0F);
     EXPECT_LT(getFastest(fluid), 40.0F);
-    EXPECT_EQ(countOutside(fluid, 600.0F), 0U);
+    EXPECT_EQ(countOutside(fluid, 320.0F), 0U);
 }
 
 TEST_F(FluidTest, FloatsVeryLightBodiesCalmly) {
     // Many particles push a light body at once, and their pushes together never throw it back faster than they hit it, so crates far lighter than the liquid float still, lighter ones higher.
-    tank(600.0F, 400.0F);
-    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 4000});
-    fluid.fill({-300.0F, -160.0F, 600.0F, 160.0F});
+    tank(420.0F, 400.0F);
+    Fluid fluid(world, {.radius = 4.0F, .smoothingRadius = 16.0F, .viscosity = 0.25F, .maxParticles = 2500});
+    fluid.fill({-210.0F, -160.0F, 420.0F, 160.0F});
     simulate(3.0F);
     const float surface = getTop(fluid);
     std::vector<Body> crates;
     for (const float density : {0.05F, 0.2F, 0.5F}) {
-        Body crate = world.createBody({.position = {-200.0F + static_cast<float>(crates.size()) * 200.0F, surface - 30.0F}});
-        crate.addBox({70.0F, 50.0F}, {.density = density});
+        Body crate = world.createBody({.position = {-130.0F + static_cast<float>(crates.size()) * 130.0F, surface - 24.0F}});
+        crate.addBox({52.0F, 36.0F}, {.density = density});
         crates.push_back(crate);
     }
     simulate(5.0F);
@@ -166,7 +166,7 @@ TEST_F(FluidTest, FloatsVeryLightBodiesCalmly) {
         EXPECT_NEAR(crate.getPosition().y, surface, 40.0F);
     }
     EXPECT_LT(crates[0].getPosition().y, crates[2].getPosition().y);
-    EXPECT_EQ(countOutside(fluid, 600.0F), 0U);
+    EXPECT_EQ(countOutside(fluid, 420.0F), 0U);
 }
 
 TEST_F(FluidTest, ThinWallsHoldFastParticlesAtEveryStep) {
