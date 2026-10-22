@@ -11,10 +11,12 @@
 
 namespace haylen::lighting2d {
 
-// Casts the 1D shadow maps of lights on the CPU. A point or spot light stores the distance of the nearest occluder in every direction around it, and a directional light the depth of the nearest occluder along the light at every point across it, both as fractions of their range. The light pass reads one row per shadowed light.
+// Casts the 1D shadow maps of lights on the CPU. A point or spot light stores the distance of the nearest occluder in every direction around it, and a directional light the depth of the nearest occluder along the light at every point across it, both as fractions of their range. The light pass reads one row per shadowed light: the map of `kResolution` texels, then smaller copies of it, each half as wide as the one before, whose texels keep the nearest occluder of the two texels they cover, so a wide soft edge reads few texels and never misses an occluder.
 class ShadowMap final {
   public:
     static constexpr int kResolution = 1024;
+    static constexpr int kLevels = 7;
+    static constexpr int kRowTexels = 2 * kResolution;
 
     // Depth of the texels that no occluder reaches.
     static constexpr float kClear = 1.0e9F;
@@ -37,7 +39,7 @@ class ShadowMap final {
     // Adds the edges of an occluder in world coordinates.
     static void appendSegments(const Occluder& occluder, std::vector<Segment>& segments);
 
-    // Fills a row of `kResolution` texels for the light from the segments that cast its shadows, and returns the axis of directional maps, which cover the bounds.
+    // Fills a row of `kRowTexels` texels for the light from the segments that cast its shadows, the map and its smaller copies, and returns the axis of directional maps, which cover the bounds.
     static Axis cast(const Light& light, std::span<const Segment> segments, const math::Rect& bounds, std::span<float> row);
 
     // Returns how far a point may lie behind the nearest occluder depth and still count as lit, as a fraction of the range, which keeps occluder edges from shadowing themselves.
@@ -59,6 +61,7 @@ class ShadowMap final {
     // Tells whether a point light, at the origin of the segment's coordinates, lies on the line of the segment, such as on a corner of its occluder, so it sees the segment edge-on and the segment blocks no direction.
     [[nodiscard]] static bool isEdgeOn(math::Vec2 from, math::Vec2 to) noexcept;
     static void castRadial(const Light& light, std::span<const Segment> segments, std::span<float> row);
+    static void reduce(std::span<float> row) noexcept;
     static Axis castParallel(const Light& light, std::span<const Segment> segments, const math::Rect& bounds, std::span<float> row);
 };
 

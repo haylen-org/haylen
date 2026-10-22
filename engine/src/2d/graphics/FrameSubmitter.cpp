@@ -178,14 +178,14 @@ void FrameSubmitter::castShadows() {
         if (state.shadowImage.isValid()) {
             state.device.getState().graveyard->bury(state.shadowImage);
         }
-        state.shadowImage = state.getGpu().makeImage({.width = lighting2d::ShadowMap::kResolution, .height = state.shadowRows, .format = gpu::Device::PixelFormat::R32Float, .kind = gpu::Device::ImageKind::Dynamic, .label = "haylen-shadow-atlas"});
+        state.shadowImage = state.getGpu().makeImage({.width = lighting2d::ShadowMap::kRowTexels, .height = state.shadowRows, .format = gpu::Device::PixelFormat::R32Float, .kind = gpu::Device::ImageKind::Dynamic, .label = "haylen-shadow-atlas"});
     }
-    state.shadowTexels.assign(static_cast<std::size_t>(state.shadowRows) * lighting2d::ShadowMap::kResolution, lighting2d::ShadowMap::kClear);
+    state.shadowTexels.assign(static_cast<std::size_t>(state.shadowRows) * lighting2d::ShadowMap::kRowTexels, lighting2d::ShadowMap::kClear);
     // clang-format off
     state.jobs.parallelFor(0, casts.size(), 1, [&](std::size_t begin, std::size_t end) {
         for (std::size_t index = begin; index < end; ++index) {
             const auto& [draw, canvas] = casts[index];
-            const std::span<float> row(state.shadowTexels.data() + index * lighting2d::ShadowMap::kResolution, lighting2d::ShadowMap::kResolution);
+            const std::span<float> row(state.shadowTexels.data() + index * lighting2d::ShadowMap::kRowTexels, lighting2d::ShadowMap::kRowTexels);
             const std::span<const lighting2d::ShadowMap::Segment> segments(state.segments.data() + canvas->segmentBegin, canvas->segmentEnd - canvas->segmentBegin);
             draw->axis = lighting2d::ShadowMap::cast(draw->light, segments, canvas->getWorldBounds(), row);
         }

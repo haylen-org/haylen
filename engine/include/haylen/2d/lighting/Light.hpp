@@ -30,7 +30,7 @@ struct Light {
         Max,
     };
 
-    // Shadow edges take one sample of the shadow map, or 5 or 13 samples spread by the smoothness for softer edges.
+    // The edge of a shadow fades over a window of 1, 5 or 13 texels of the shadow map, widened by the smoothness, and never over less than a pixel.
     enum class ShadowFilter : std::uint8_t {
         None,
         Pcf5,
@@ -75,7 +75,7 @@ struct Light {
     // Light that shadowed pixels still receive, where the alpha sets how dark the shadow is.
     math::Color shadowColor = math::Color::black();
 
-    // Widens the spread of the filter samples, in shadow map texels beyond the first.
+    // Widens the window of the shadow filter by this many times its width more.
     float shadowSmoothness = 0.0F;
     std::uint32_t shadowMask = 1;
 

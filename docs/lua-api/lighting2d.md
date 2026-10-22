@@ -202,9 +202,9 @@ A `Light` holds every setting of one light. Create it once with `lighting2d.newL
 | `itemMask` | integer | `1` | The bits of the light masks of the draws the light reaches, from 0 to 255. |
 | `layerMin`, `layerMax` | integer | all layers | The layers of the draws the light reaches. |
 | `shadows` | boolean | `false` | Lets occluders block the light. |
-| `shadowFilter` | string | `'none'` | `'none'`, `'pcf5'` or `'pcf13'`. |
+| `shadowFilter` | string | `'none'` | How wide the edge of a shadow fades: over 1 texel of the shadow map with `'none'`, over 5 with `'pcf5'` and over 13 with `'pcf13'`, and never over less than a pixel. |
 | `shadowColor` | Color | `'#FF000000'` | The light that shadowed pixels still receive. Its alpha sets how dark shadows are. |
-| `shadowSmoothness` | number | `0` | Spreads the filter samples wider, in shadow map texels beyond the first. It must be zero or positive. |
+| `shadowSmoothness` | number | `0` | Widens the window of the shadow filter by this many times its width more, so `'pcf5'` with a smoothness of 1 fades the edge over 10 texels of the shadow map. It must be zero or positive. |
 | `shadowMask` | integer | `1` | The bits of the masks of the occluders that cast the shadows of the light. |
 
 ```lua

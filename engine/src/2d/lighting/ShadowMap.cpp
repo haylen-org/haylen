@@ -22,11 +22,29 @@ void ShadowMap::appendSegments(const Occluder& occluder, std::vector<Segment>& s
 
 ShadowMap::Axis ShadowMap::cast(const Light& light, std::span<const Segment> segments, const math::Rect& bounds, std::span<float> row) {
     std::fill(row.begin(), row.end(), kClear);
+    const std::span<float> map = row.first(kResolution);
+    Axis axis;
     if (light.type == Light::Type::Directional) {
-        return castParallel(light, segments, bounds, row);
+        axis = castParallel(light, segments, bounds, map);
+    } else {
+        castRadial(light, segments, map);
     }
-    castRadial(light, segments, row);
-    return {};
+    reduce(row);
+    return axis;
+}
+
+// Each copy starts where the copy before it ends, and each of its texels keeps the nearer occluder of the two texels it covers.
+void ShadowMap::reduce(std::span<float> row) noexcept {
+    std::size_t from = 0;
+    std::size_t width = kResolution;
+    for (int level = 1; level < kLevels; ++level) {
+        const std::size_t to = from + width;
+        for (std::size_t texel = 0; texel < width / 2; ++texel) {
+            row[to + texel] = std::min(row[from + texel * 2], row[from + texel * 2 + 1]);
+        }
+        from = to;
+        width /= 2;
+    }
 }
 
 float ShadowMap::getBias(const Light& light, const Axis& axis) noexcept {

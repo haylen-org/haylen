@@ -137,11 +137,11 @@ scene.push({
 
 A light with `shadows = true` is blocked by occluders. An occluder is an outline, a list of points, that you draw with `graphics2d.drawOccluder` in the same canvas as the light. Create it once with `lighting2d.newOccluder`. Its points are local to its position, rotation and scale, so the occluder of a moving object copies the place of the object in every frame.
 
-For each shadowed light, the engine casts a shadow map in every frame. It is a row of 1024 texels. Around a point or spot light, each texel holds the distance to the nearest occluder in one direction. For a directional light, each texel holds the depth of the nearest occluder along the light at one point across the canvas, so its shadows run across the whole view.
+For each shadowed light, the engine casts a shadow map in every frame. It is a row of 1024 texels. Around a point or spot light, each texel holds the distance to the nearest occluder in one direction. For a directional light, each texel holds the depth of the nearest occluder along the light at one point across the canvas, so its shadows run across the whole view. After the map come smaller copies of it, each half as wide as the one before, whose texels keep the nearest occluder of the two texels they cover.
 
 These settings shape the shadows:
 
-- The `shadowFilter` softens the edges. With `'none'` each pixel tests the shadow map once. The filters `'pcf5'` and `'pcf13'` test it 5 and 13 times, and `shadowSmoothness` spreads those tests wider.
+- The `shadowFilter` softens the edges. A pixel tests a window of texels centered on it, and counts every texel by how much of it the window covers. So the edge of a shadow fades smoothly, without stripes, and moves smoothly with the light instead of in steps of whole texels. With `'none'` the window is one texel wide, which still fades the edge over a texel, and `'pcf5'` and `'pcf13'` make it 5 and 13 texels wide. The `shadowSmoothness` widens the window by that many times its width more. The window is never narrower than one pixel, so a shadow edge near its light stays smooth too. A wide window reads a smaller copy of the map, so it costs no more than a narrow one.
 - The `shadowColor` is the light that shadowed pixels still get. Its alpha sets how dark the shadows are.
 - The `shadowMask` of a light and the `mask` of an occluder choose which occluders block which lights. An occluder casts the shadow of a light when the two masks share a bit.
 

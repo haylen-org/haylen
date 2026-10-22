@@ -21,7 +21,7 @@ namespace {
 
 // Casts the shadow map row of a light over some occluders, the way the renderer does for a canvas that shows the bounds, and reads it the way the light shader does.
 struct CastRow {
-    std::vector<float> row = std::vector<float>(lighting2d::ShadowMap::kResolution);
+    std::vector<float> row = std::vector<float>(lighting2d::ShadowMap::kRowTexels);
     lighting2d::ShadowMap::Axis axis{};
 
     CastRow(const lighting2d::Light& light, const std::vector<lighting2d::Occluder>& occluders, math::Rect bounds = {0.0F, 0.0F, 1000.0F, 1000.0F}) {
@@ -34,7 +34,7 @@ struct CastRow {
 
     // The shader finds the texel of the direction or of the place across the light, and a point deeper than the occluder depth there plus the bias is shadowed.
     [[nodiscard]] bool shadows(const lighting2d::Light& light, math::Vec2 point) const {
-        const auto width = static_cast<float>(row.size());
+        const auto width = static_cast<float>(lighting2d::ShadowMap::kResolution);
         float coordinate = 0.0F;
         float depth = 0.0F;
         if (light.type == lighting2d::Light::Type::Directional) {
@@ -47,7 +47,7 @@ struct CastRow {
             depth = offset.getLength() / lighting2d::ShadowMap::getRange(light);
         }
 
-        const auto size = static_cast<int>(row.size());
+        const auto size = lighting2d::ShadowMap::kResolution;
         const int texel = static_cast<int>(std::floor(coordinate));
         const int wrapped = light.type == lighting2d::Light::Type::Directional ? std::clamp(texel, 0, size - 1) : ((texel % size) + size) % size;
         return depth > row[static_cast<std::size_t>(wrapped)] + lighting2d::ShadowMap::getBias(light, axis);
@@ -223,6 +223,27 @@ TEST_F(ShadowMapTest, ShadowsWhatLiesBehindOccludersOfPointLights) {
 }
 
 // A light on a corner or on an edge of an occluder sees the edges through it from the side, so they shadow no direction, while the other edges still cast.
+// After the map, every smaller copy keeps in each texel the nearest occluder of the two texels it covers, so the soft filter reads wide windows from few texels and never misses an occluder, even one a texel thin.
+TEST_F(ShadowMapTest, KeepsTheNearestOccluderInEverySmallerCopy) {
+    const lighting2d::Light light{.position = {500.0F, 500.0F}, .radius = 400.0F, .shadows = true};
+    const CastRow cast(light, {box({700.0F, 500.0F}), {.points = {{-1.0F, 0.0F}, {1.0F, 0.0F}}, .closed = false, .position = {500.0F, 200.0F}}});
+    const std::vector<float>& row = cast.row;
+    std::size_t from = 0;
+    std::size_t width = lighting2d::ShadowMap::kResolution;
+    for (int level = 1; level < lighting2d::ShadowMap::kLevels; ++level) {
+        for (std::size_t texel = 0; texel < width / 2; ++texel) {
+            ASSERT_EQ(row[from + width + texel], std::min(row[from + texel * 2], row[from + texel * 2 + 1])) << level;
+        }
+        from += width;
+        width /= 2;
+    }
+    EXPECT_LE(from + width, row.size());
+
+    // The occluder a texel thin above the light still shows in the smallest copy, whose texel above the light is as near as the occluder.
+    const std::size_t above = from + width / 4;
+    EXPECT_NEAR(row[above], 300.0F / 400.0F, 0.01F);
+}
+
 TEST_F(ShadowMapTest, LightsAroundTheEdgesThatPassThroughTheLight) {
     const lighting2d::Light light{.position = {100.0F, 100.0F}, .radius = 400.0F, .shadows = true};
     const std::vector<lighting2d::Occluder> corner{box({80.0F, 120.0F})};

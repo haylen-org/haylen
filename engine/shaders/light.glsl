@@ -55,10 +55,10 @@ flat in vec4 shape;
 flat in vec4 cone;
 // Origin: xy is the light position and z the item mask.
 flat in vec4 origin;
-// Range: xy is the lowest and highest layer, z the number of shadow samples and w the texels between them.
+// Range: xy is the lowest and highest layer and z the width in texels of the window the shadow filter reads.
 flat in vec4 range;
 flat in vec4 shadow_color;
-// Shadow map: x is its width in texels and y the depth bias.
+// Shadow map: x is the width in texels of its base row and y the depth bias.
 flat in vec4 shadow_map;
 // Shadow axis of directional lights: x and y place the first texel and the span across the light, z and w the start and span of depths along it.
 flat in vec4 shadow_axis;
@@ -76,38 +76,48 @@ out vec4 frag_color;
 
 const float PI = 3.14159265;
 
-// The 1D shadow map of point and spot lights stores the nearest occluder of each direction around the light, and the map of directional lights the nearest occluder along the light at each point across it, both as a fraction of their range.
-float shadow_amount(vec2 offset, float reach_distance) {
-    int width = int(shadow_map.x);
-    int row = int(shape.w);
+// The 1D shadow map of point and spot lights stores the nearest occluder of each direction around the light, and the map of directional lights the nearest occluder along the light at each point across it, both as a fraction of their range. After the base row come smaller copies, each half as wide as the one before, whose texels keep the nearest occluder of the two texels they cover.
+// The shadow is the share of a window centered on the point that lies behind its occluders, where every texel counts by how much of it the window covers, so the edge moves smoothly with the point instead of in steps of whole texels. The window is as wide as the filter and never narrower than the texels one pixel spans, and the smallest copy that still gives it at most 16 texels carries it, so a wide soft edge costs as little as a sharp one.
+float shadow_amount(vec2 offset, float reach_distance, float pixel) {
+    float width = shadow_map.x;
     bool directional = shape.x > 1.5;
     float coordinate;
     float depth;
+    float footprint;
     if (directional) {
         vec2 across = vec2(-cone.y, cone.x);
-        coordinate = (dot(world, across) - shadow_axis.x) / shadow_axis.y * shadow_map.x;
+        coordinate = (dot(world, across) - shadow_axis.x) / shadow_axis.y * width;
         depth = (dot(world, cone.xy) - shadow_axis.z) / shadow_axis.w;
+        footprint = pixel / shadow_axis.y * width;
     } else {
-        coordinate = (atan(offset.y, offset.x) / (2.0 * PI) + 0.5) * shadow_map.x;
+        coordinate = (atan(offset.y, offset.x) / (2.0 * PI) + 0.5) * width;
         depth = reach_distance / shape.y;
+        footprint = pixel / max(reach_distance, 0.0001) / (2.0 * PI) * width;
     }
 
-    int samples = int(range.z);
-    int reach = samples / 2;
+    float window = min(max(range.z, footprint), width);
+    float scale = exp2(clamp(ceil(log2(window / 16.0)), 0.0, 6.0));
+    float texels = width / scale;
+    float start = 2.0 * (width - texels);
+    float low = (coordinate - 0.5 * window) / scale;
+    float high = (coordinate + 0.5 * window) / scale;
     float blocked = 0.0;
-    for (int tap = -6; tap <= 6; tap++) {
-        if (tap < -reach || tap > reach) {
-            continue;
+    for (int tap = 0; tap < 18; tap++) {
+        float cell = floor(low) + float(tap);
+        if (cell >= high) {
+            break;
         }
-        int texel = int(floor(coordinate + float(tap) * range.w));
-        texel = directional ? clamp(texel, 0, width - 1) : ((texel % width) + width) % width;
-        float occluder = texelFetch(sampler2D(shadow_texture, shadow_sampler), ivec2(texel, row), 0).x;
-        blocked += depth > occluder + shadow_map.y ? 1.0 : 0.0;
+        float cover = min(cell + 1.0, high) - max(cell, low);
+        float texel = directional ? clamp(cell, 0.0, texels - 1.0) : mod(cell, texels);
+        float occluder = texelFetch(sampler2D(shadow_texture, shadow_sampler), ivec2(int(start + texel), int(shape.w)), 0).x;
+        blocked += depth > occluder + shadow_map.y ? cover : 0.0;
     }
-    return blocked / float(samples);
+    return blocked / (high - low);
 }
 
 void main() {
+    // The size of a pixel in the world, taken before any branch, where the derivatives of every pixel are still known.
+    float world_pixel = 0.5 * (length(dFdx(world)) + length(dFdy(world)));
     ivec2 pixel = ivec2(gl_FragCoord.xy);
     vec4 info = texelFetch(sampler2D(info_texture, surface_sampler), pixel, 0);
     int mask = int(info.x * 255.0 + 0.5);
@@ -140,7 +150,7 @@ void main() {
         specular = surface.z * pow(max(dot(normal, normalize(toward + vec3(0.0, 0.0, 1.0))), 0.0), shininess);
     }
 
-    float shadowed = shape.w >= 0.0 ? shadow_amount(offset, along) * shadow_color.a : 0.0;
+    float shadowed = shape.w >= 0.0 ? shadow_amount(offset, along, world_pixel) * shadow_color.a : 0.0;
     vec3 tint = color.rgb * shaped.rgb;
     if (color.a > 1.5 && color.a < 2.5) {
         frag_color = vec4(tint, clamp(falloff * (diffuse + specular) * (1.0 - shadowed), 0.0, 1.0));
