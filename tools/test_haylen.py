@@ -1989,36 +1989,35 @@ class SiteServerTest(unittest.TestCase):
         response = connection.getresponse()
         return response, response.read()
 
-    def test_serves_every_connection_that_a_page_opens_at_once(self):
+    def test_serves_every_connection_that_a_page_opens_while_the_server_is_busy(self):
         site = Path(self.scratch.name)
         (site / "app.zip").write_bytes(b"z" * 200_000)
         handler = functools.partial(type("Handler", (haylen.WebHandler,), {"log_message": lambda *arguments: None}), directory=self.scratch.name)
         server = haylen.LocalServer(("127.0.0.1", 0), handler)
-        threading.Thread(target=server.serve_forever, daemon=True).start()
         self.addCleanup(server.server_close)
-        self.addCleanup(server.shutdown)
-        clients = 48
-        start = threading.Barrier(clients)
-        statuses = []
 
-        def fetch():
-            start.wait()
+        # The page opens its connections while the server is too busy to accept them, as on a machine under load, and the listen queue holds every one until the server takes it.
+        statuses = []
+        connections = []
+        for _ in range(48):
             try:
-                with socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=10) as connection:
-                    connection.sendall(b"GET /app.zip HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-                    response = b""
-                    while chunk := connection.recv(1 << 16):
-                        response += chunk
-                statuses.append(response.split(b"\r\n", 1)[0])
+                connection = socket.create_connection(("127.0.0.1", server.server_address[1]), timeout=10)
+                self.addCleanup(connection.close)
+                connection.sendall(b"GET /app.zip HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
+                connections.append(connection)
             except OSError as error:
                 statuses.append(type(error).__name__.encode())
-
-        threads = [threading.Thread(target=fetch) for _ in range(clients)]
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-        self.assertEqual(statuses, [b"HTTP/1.0 200 OK"] * clients)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.shutdown)
+        for connection in connections:
+            try:
+                response = b""
+                while chunk := connection.recv(1 << 16):
+                    response += chunk
+                statuses.append(response.split(b"\r\n", 1)[0] if len(response) > 200_000 else b"short")
+            except OSError as error:
+                statuses.append(type(error).__name__.encode())
+        self.assertEqual(statuses, [b"HTTP/1.0 200 OK"] * 48)
 
     def test_serves_ranges_and_the_whole_file_when_the_file_changed(self):
         whole, body = self.get({})
