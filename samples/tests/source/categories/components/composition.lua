@@ -144,10 +144,14 @@ function Composition.bob(options)
     return behavior
 end
 
--- Fires a shot at `target` every `interval` seconds, and moves and draws its own shots, which spin as they fly: the region `source` of the texture `shot`, or the whole texture, `size` units across.
+-- Fires a shot at `target` every `interval` seconds, and moves and draws its own shots, which spin as they fly with a soft glow of the color `glow` and a trail of fading copies: the region `source` of the texture `shot`, or the whole texture, `size` units across.
 function Composition.shooter(options)
+    local size = options.size or 40
     local behavior = {name = 'shooter', target = options.target, interval = options.interval or 1.2, speed = options.speed or 520, wait = options.interval or 1.2, shots = {}}
-    behavior.order = {source = options.source, width = options.size or 40, height = options.size or 40, rotation = 0, layer = 3}
+    behavior.order = {source = options.source, width = size, height = size, rotation = 0, layer = 3}
+    behavior.trail = {source = options.source, width = size, height = size, rotation = 0, color = {1, 1, 1, 1}, layer = 2}
+    behavior.glow = {kind = 'ellipse', color = options.glow or '#60FFFFFF', softness = size * 0.6, layer = 2}
+    behavior.rect = {0, 0, size * 1.8, size * 1.8}
     behavior.texture = options.shot
     function behavior.update(entity, dt)
         behavior.wait = behavior.wait - dt
@@ -167,8 +171,18 @@ function Composition.shooter(options)
         end
     end
     function behavior.draw()
-        local order = behavior.order
+        local order, trail, rect = behavior.order, behavior.trail, behavior.rect
         for _, shot in ipairs(behavior.shots) do
+            rect[1], rect[2] = shot.x - rect[3] / 2, shot.y - rect[4] / 2
+            graphics2d.drawShape(rect, behavior.glow)
+            -- Each copy of the trail sits where the shot was a moment before, smaller and fainter the older it is.
+            for step = 3, 1, -1 do
+                local share = 1 - step * 0.22
+                trail.width, trail.height = size * share, size * share
+                trail.color[4] = 0.5 * share
+                trail.rotation = (shot.life + step * 0.04) * 9
+                graphics2d.draw(behavior.texture, shot.x - shot.vx * step * 0.04, shot.y - shot.vy * step * 0.04, trail)
+            end
             order.rotation = shot.life * 9
             graphics2d.draw(behavior.texture, shot.x, shot.y, order)
         end

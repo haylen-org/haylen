@@ -10,7 +10,12 @@ local LabelUp = require('categories.components.label-up')
 
 local CompositionTest = haylen.class('CompositionTest', ComponentTest)
 
-CompositionTest.meadowTile = 512
+-- The meadow is the green of the grass tile of the Tiled tests with its tufts and flowers, regions of `tiled/tiles/terrain.png`, scattered over cells of this size so no pattern repeats.
+CompositionTest.meadow = '#FF7CC647'
+CompositionTest.cell = 150
+CompositionTest.tuftScale = 3.6
+CompositionTest.tufts = {{56, 3, 21, 19}, {24, 23, 20, 15}, {98, 26, 20, 19}, {61, 46, 20, 17}, {2, 54, 19, 16}, {96, 68, 21, 18}, {38, 78, 20, 17}, {16, 99, 21, 19}, {82, 103, 20, 18}}
+CompositionTest.flowers = {{150, 14, 43, 44}, {202, 56, 47, 43}, {148, 78, 50, 44}}
 
 CompositionTest.code = [[
 local Composition = require('composition')  -- With health-bar.lua, copied from samples/tests.
@@ -18,13 +23,12 @@ local rock = Composition.entity('Rock', rockTexture, 560, 300, 2)
 rock:add(Composition.shooter({target = knight, interval = 1.2, shot = orbs, source = {0, 0, 64, 64}}))
 rock:add(Composition.health({maximum = 120}))
 bunny:remove('wander')  -- Behaviors come and go while it runs.
-rock:update(dt)
-rock:draw()]]
+rock:update(dt)  -- Then rock:draw() where the frame draws.]]
 
 function CompositionTest:enter()
     CompositionTest.super.enter(self)
     self.labels = LabelUp.new({font = assets.font('fonts/lilita-one-regular.ttf'), size = 36, rise = 80})
-    self.meadowOptions = {source = {2, 2, 128, 128}, width = CompositionTest.meadowTile, height = CompositionTest.meadowTile, pivotX = 0, pivotY = 0, layer = -2}
+    self.meadowOptions = {source = nil, scaleX = CompositionTest.tuftScale, scaleY = CompositionTest.tuftScale, layer = -2}
     local function picture(name)
         return assets.texture('sprites/images/' .. name .. '.png', {filter = 'linear'})
     end
@@ -44,20 +48,20 @@ function CompositionTest:enter()
         :add(Composition.bob({height = 24, speed = 1.6}))
         :add(Composition.health({maximum = 40, onHit = onHit}))
     self.rock = Composition.entity('Rock', picture('rock'), 620, 360, 2)
-        :add(Composition.shooter({target = self.knight, interval = 1.4, shot = self.orbs, source = {0, 0, 64, 64}, size = 56}))
+        :add(Composition.shooter({target = self.knight, interval = 1.4, shot = self.orbs, source = {0, 0, 64, 64}, size = 96, glow = '#A0FFD34A'}))
         :add(Composition.health({maximum = 200, width = 170, tick = 50, onHit = onHit}))
     self.gem = Composition.entity('Gem', gems.texture, 0, 0, 1, gems:source('gem-blue.png'))
     self.gem:add(Composition.orbit({center = self.knight, radius = 170, speed = 0.35})):add(Composition.bob({height = 10, speed = 2})):add(Composition.health({maximum = 20, width = 80, onHit = onHit}))
     self.entities = {self.bunny, self.knight, self.rock, self.gem}
 
     self:frame{
-        hint = 'Move the cursor to lead the knight, and click, tap or press E or the south button on an entity to hit it. The buttons change the behaviors of the bunny while it runs.',
+        hint = 'Move the cursor to lead the knight, and click, tap or press E or the south button on an entity to hit it. The switches give the bunny behaviors of the others while it runs.',
         code = CompositionTest.code,
         play = true,
         view = ComponentTest.view,
         controls = {
-            ui.button{id = 'shooter', text = 'Give the bunny a shooter', variant = 'primary', onClick = function() self:toggleShooter() end},
-            ui.button{id = 'follow', text = 'Make the bunny follow the cursor', onClick = function() self:toggleFollow() end},
+            ui.toggle{id = 'shooter', text = 'Bunny shoots the knight', onChange = function(event) self:setShooter(event.checked) end},
+            ui.toggle{id = 'follow', text = 'Bunny chases the cursor', onChange = function(event) self:setFollow(event.checked) end},
             ui.sectionTitle{text = 'What each one is made of'},
             self:behaviorRow(self.knight),
             self:behaviorRow(self.bunny),
@@ -83,25 +87,24 @@ function CompositionTest.listed(entity)
     return table.concat(names, ', ') .. '.'
 end
 
-function CompositionTest:toggleShooter()
-    if self.bunny:remove('shooter') then
-        self:set('shooter', {text = 'Give the bunny a shooter'})
-        return
+-- Gives the bunny the shooter of the rock with pink orbs, or takes it away.
+function CompositionTest:setShooter(enabled)
+    if enabled then
+        self.bunny:add(Composition.shooter({target = self.knight, interval = 0.8, shot = self.orbs, source = {128, 0, 64, 64}, size = 84, glow = '#A0FF7FC8'}))
+    else
+        self.bunny:remove('shooter')
     end
-    self.bunny:add(Composition.shooter({target = self.knight, interval = 0.8, shot = self.orbs, source = {128, 0, 64, 64}, size = 44}))
-    self:set('shooter', {text = 'Take the shooter from the bunny'})
 end
 
 -- Swaps the wander of the bunny for a follow of the cursor, and back.
-function CompositionTest:toggleFollow()
-    if self.bunny:remove('follow') then
+function CompositionTest:setFollow(enabled)
+    if enabled then
+        self.bunny:remove('wander')
+        self.bunny:add(Composition.follow({target = self.cursor, distance = 120, speed = 200}))
+    else
+        self.bunny:remove('follow')
         self.bunny:add(Composition.wander({speed = 120, area = {-900, 0, 700, 420}}))
-        self:set('follow', {text = 'Make the bunny follow the cursor'})
-        return
     end
-    self.bunny:remove('wander')
-    self.bunny:add(Composition.follow({target = self.cursor, distance = 120, speed = 200}))
-    self:set('follow', {text = 'Let the bunny wander again'})
 end
 
 -- Returns the entity whose drawing covers the cursor, or nothing.
@@ -141,17 +144,32 @@ function CompositionTest:update(dt)
             self:set('made-' .. entity.name, {text = listed})
         end
     end
-    self:status(string.format('The bunny is made of %d behaviors, the knight of %d, the rock of %d and the gem of %d', #self.bunny.behaviors, #self.knight.behaviors, #self.rock.behaviors, #self.gem.behaviors))
+    self:status(string.format('The bunny is made of %d behaviors, the knight of %d, the rock of %d and the gem of %d.', #self.bunny.behaviors, #self.knight.behaviors, #self.rock.behaviors, #self.gem.behaviors))
 end
 
--- The entities walk on a meadow seen from above, the seamless grass of the Tiled tests from edge to edge of the play area.
+-- Returns a number from 0 to 1 that stays the same for a cell and a salt, so the meadow keeps its tufts in place from frame to frame.
+function CompositionTest.noise(column, row, salt)
+    local value = (column * 374761393 + row * 668265263 + salt * 1442695041) % 2147483647
+    value = ((value ~ (value >> 13)) * 1274126177) % 2147483647
+    return value / 2147483647
+end
+
+-- The entities walk on a meadow seen from above, from edge to edge of the play area: one tuft or now and then a clump of flowers at a random spot of every cell, and some cells left bare.
 function CompositionTest:draw(area)
     local bounds = graphics2d.canvasBounds()
-    local tile = CompositionTest.meadowTile
+    graphics2d.drawRect(bounds, CompositionTest.meadow, {layer = -3})
+    local cell = CompositionTest.cell
     local options = self.meadowOptions
-    for y = bounds.y - (bounds.y % tile), bounds:bottom(), tile do
-        for x = bounds.x - (bounds.x % tile), bounds:right(), tile do
-            graphics2d.draw(self.meadow, x, y, options)
+    for row = math.floor(bounds.y / cell), math.floor(bounds:bottom() / cell) do
+        for column = math.floor(bounds.x / cell), math.floor(bounds:right() / cell) do
+            local roll = CompositionTest.noise(column, row, 1)
+            if roll > 0.2 then
+                local list = roll > 0.96 and CompositionTest.flowers or CompositionTest.tufts
+                options.source = list[math.floor(CompositionTest.noise(column, row, 2) * #list) + 1]
+                local x = (column + 0.15 + CompositionTest.noise(column, row, 3) * 0.7) * cell
+                local y = (row + 0.15 + CompositionTest.noise(column, row, 4) * 0.7) * cell
+                graphics2d.draw(self.meadow, x, y, options)
+            end
         end
     end
     for _, entity in ipairs(self.entities) do
