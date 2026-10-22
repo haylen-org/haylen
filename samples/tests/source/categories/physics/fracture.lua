@@ -1,4 +1,4 @@
--- Objects of glass, wood and stone that `physics2d.fracture` breaks into Voronoi pieces around the point they are hit, by a tap or a click or by a wrecking ball that swings from a crane.
+-- Objects of glass, wood and stone that `physics2d.fracture` breaks into Voronoi pieces around the point they are hit, by a tap or a click or by a wrecking ball that swings from the boom of a crawler crane.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local physics2d = require('haylen.physics2d')
@@ -21,7 +21,11 @@ local shape = world:pick(camera, pointerX, pointerY)[1]  -- The object under a t
 
 Fracture.ground = 330
 Fracture.breakSpeed = 500
-Fracture.pivot = {560, -330}
+Fracture.pivot = {520, -330}
+-- The crane stands on its tracks at the right, with the foot of its boom on the cab.
+Fracture.crane = 745
+Fracture.boomFoot = {700, 190}
+Fracture.window = Look.tint('glass', '#CC9BE7FF', '#CC6FB8D8', '#FFFFFFFF')
 -- What each material breaks into: the material of its pieces and the effect of its break.
 Fracture.materials = {
     glass = {pieces = 'glass', effect = 'ice'},
@@ -50,7 +54,6 @@ function Fracture:enter()
         crate = Burst('level/crate-break', {count = 3, scale = 0.6, layer = 30}),
         rock = Burst('level/rock-break', {count = 3, scale = 0.6, layer = 30}),
     }
-    self.chain = {}
     self:build()
     timer.after(0.6, function() self:swing() end, {owner = self})
 end
@@ -139,21 +142,44 @@ function Fracture:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The chain hangs from a steel girder that reaches in from the side, link after link down to the ball.
+-- The crane: a cab with a window and a counterweight on crawler tracks and a lattice boom of two chords with braces between them, whose tip holds the chain that hangs link after link down to the ball.
 function Fracture:drawCrane()
     local px, py = Fracture.pivot[1], Fracture.pivot[2]
+    local x, ground = Fracture.crane, Fracture.ground
     local unit = Look.pixel
-    Look.block(px + 600, py - 22, 1240, 30, 'steel', 1)
-    Look.block(px, py - 4, 40, 26, 'iron', 2)
-    local dx, dy = self.ball.x - px, self.ball.y - py
+    Look.block(x, ground - 24, 240, 44, 'tire', 0)
+    for wheel = 0, 4 do
+        Look.disc(x - 110 + wheel * 55, ground - 24, 14, 'steel', 0)
+    end
+    Look.block(x, ground - 96, 180, 100, 'yellow', 0)
+    Look.block(x - 45, ground - 104, 70, 50, Fracture.window, 0)
+    Look.block(x + 100, ground - 90, 70, 80, 'iron', 0)
+
+    local fx, fy = Fracture.boomFoot[1], Fracture.boomFoot[2]
+    local dx, dy = px - fx, py - fy
     local length = math.sqrt(dx * dx + dy * dy)
-    local links = math.floor(length / 26)
+    local cos, sin = dx / length, dy / length
+    local nx, ny = -sin * 12, cos * 12
+    for _, side in ipairs({-1, 1}) do
+        Look.line(fx + nx * side, fy + ny * side, px + nx * side, py + ny * side, 6 * unit, '#FFFFC93C', 0)
+    end
+    local braces = 12
+    for index = 0, braces - 1 do
+        local a, b = index / braces * length, (index + 1) / braces * length
+        local side = index % 2 == 0 and 1 or -1
+        Look.line(fx + cos * a + nx * side, fy + sin * a + ny * side, fx + cos * b - nx * side, fy + sin * b - ny * side, 4 * unit, '#FFE09A1E', 0)
+    end
+    Look.pin(fx, fy, 12 * unit, 0)
+
+    local cx, cy = self.ball.x - px, self.ball.y - py
+    local chain = math.sqrt(cx * cx + cy * cy)
+    local links = math.floor(chain / 26)
     for index = 0, links - 1 do
         local t0, t1 = index / links, (index + 0.8) / links
         local width = index % 2 == 0 and 9 * unit or 5 * unit
-        Look.line(px + dx * t0, py + dy * t0, px + dx * t1, py + dy * t1, width, '#FF8A96AE', 1)
+        Look.line(px + cx * t0, py + cy * t0, px + cx * t1, py + cy * t1, width, '#FF8A96AE', 1)
     end
-    Look.pin(px, py, 8 * unit, 3)
+    Look.pin(px, py, 12 * unit, 3)
 end
 
 function Fracture:draw(area)
