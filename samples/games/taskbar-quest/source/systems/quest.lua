@@ -105,7 +105,7 @@ function quest:heroStrikes()
 end
 
 function quest:damage(target, amount)
-    self.effects:text(target.x, self.lane.ground - target.kind.height - 12, '-' .. amount, '#FFFFFFFF')
+    self.effects:text(target.x, self.lane.ground - target.kind.height - 12, '-' .. amount, '#FFFFD34A')
     if not target:hit(amount) then
         return
     end
