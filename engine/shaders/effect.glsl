@@ -82,6 +82,28 @@ float effect_noise(vec2 point) {
     return mix(top, bottom, inside.y);
 }
 
+// How far the edge of the sprite lies from the point, as a share of the reach, or 1 when it lies further. Twelve rays look for the first of twelve steps covered more than half, and place the edge between that step and the one before by their coverage, so the distance changes smoothly from pixel to pixel.
+float effect_distance(vec2 reach) {
+    if (effect_sample(uv).a >= 0.5) {
+        return 0.0;
+    }
+    float nearest = 1.0;
+    for (int ray = 0; ray < 12; ++ray) {
+        float angle = float(ray) * 0.5235988;
+        vec2 direction = vec2(cos(angle), sin(angle)) * reach;
+        float previous = effect_sample(uv).a;
+        for (int index = 1; index <= 12; ++index) {
+            float current = effect_sample(uv + direction * (float(index) / 12.0)).a;
+            if (current >= 0.5) {
+                nearest = min(nearest, (float(index) - 1.0 + (0.5 - previous) / max(current - previous, 0.0001)) / 12.0);
+                break;
+            }
+            previous = current;
+        }
+    }
+    return nearest;
+}
+
 // Amounts: x is the dissolve, y the share of its edge and z the size of its noise cells over 64 pixels. Widths: x is the outline width and y the glow size in pixels.
 void main() {
     vec2 texel = 1.0 / vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
@@ -101,23 +123,21 @@ void main() {
         }
     }
 
-    // The outline takes the most covered of twelve points around each pixel at its width, and the glow a weighted average of three staggered rings of them, nearer rings counting more, so wide glows stay smooth.
+    // The outline takes the most covered of twelve points around each pixel at its width, and the glow fades with the square of the distance to the sprite over its size, so it shows no rings at any size.
     float around = 0.0;
-    float glow = 0.0;
     for (int index = 0; index < 12; ++index) {
         float angle = float(index) * 0.5235988;
         if (widths.x > 0.0) {
             around = max(around, effect_sample(uv + vec2(cos(angle), sin(angle)) * texel * widths.x).a);
         }
-        if (widths.y > 0.0) {
-            vec2 reach = texel * widths.y;
-            glow += effect_sample(uv + vec2(cos(angle), sin(angle)) * reach * 0.34).a;
-            glow += effect_sample(uv + vec2(cos(angle + 0.1745329), sin(angle + 0.1745329)) * reach * 0.67).a * 0.75;
-            glow += effect_sample(uv + vec2(cos(angle + 0.3490659), sin(angle + 0.3490659)) * reach).a * 0.5;
-        }
+    }
+    float glow = 0.0;
+    if (widths.y > 0.0) {
+        float distance_share = 1.0 - effect_distance(texel * widths.y);
+        glow = distance_share * distance_share;
     }
     float fading = 1.0 - dissolve;
-    vec4 under = vec4(glow_color.rgb, glow_color.a * min(glow / 13.5, 1.0) * fading);
+    vec4 under = vec4(glow_color.rgb, glow_color.a * glow * fading);
     float lining = outline_color.a * around * fading;
     under = vec4(mix(under.rgb, outline_color.rgb, lining / max(lining + under.a * (1.0 - lining), 0.0001)), lining + under.a * (1.0 - lining));
 
