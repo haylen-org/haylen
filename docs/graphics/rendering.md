@@ -136,7 +136,7 @@ Second, the screen pass clears the framebuffer with the `clearColor` of `app.jso
 
 A world canvas with lighting or post-processing reaches the screen as one image that covers its whole viewport. The image blends with the premultiplied alpha of its scene, and its clear color makes it opaque by default. So it hides everything that earlier canvases drew there, unless its clear color is transparent. Begin such a canvas before the canvases that must show on top of it, or give those canvases a higher `order`.
 
-Every such canvas keeps render targets of its own, with the pixel size of its viewport, so split screens and minimaps light each view on its own. It keeps the scene image, and when it is lit, the emission, surface and info images and the light map. It adds a distortion map when it has distortion draws, and two more targets when it has post-processing materials, bloom or blur. Bloom and blur add a pair of half-size targets each.
+Every such canvas keeps render targets of its own, with the pixel size of its viewport, so split screens and minimaps light each view on its own. It keeps the scene image, and when it is lit, the emission, surface and info images and the light map. It adds a distortion map when it has distortion draws, and two more targets when it has post-processing materials, bloom or blur. Bloom and blur each add a pair of half-size targets, and a pair at every smaller size their radius reaches.
 
 ### Clear colors
 
@@ -840,10 +840,12 @@ A world or render target canvas with `postProcess` renders offscreen like a lit 
 
 Without bloom and blur, the composite is one pass. Bloom and blur split it into two stages:
 
-1. The first stage writes the image of steps 1 to 4 into a post target. The filter program shrinks that image to half its size into a pair of half-size targets, keeping for bloom only what passes `bloomThreshold`. It blurs the image there, across and then down, with nine Gaussian taps spread over `bloomRadius` or `blur`.
-2. The second stage reads the blurred image instead of the sharp one when the canvas blurs, adds the bloom and finishes the steps from 5 on.
+1. The first stage writes the image of steps 1 to 4 into a post target. The filter program shrinks that image to half its size, keeping for bloom only what passes `bloomThreshold`.
+2. It goes on shrinking it, each time to half the size, until `bloomRadius` or `blur` spans at most four texels. There it blurs the image, across and then down, with nine Gaussian taps a texel or less apart. So a wide radius leaves no gaps between its taps, which would show as rings around bright shapes.
+3. It grows the blurred image back, size by size, to half the size of the canvas. Every step averages four taps around each texel, which keeps the blur smooth.
+4. The second stage reads the blurred image instead of the sharp one when the canvas blurs, adds the bloom and finishes the steps from 5 on.
 
-So bloom and blur each cost a full-size pass and three half-size passes, and the other adjustments cost nothing beyond the composite. Distances are in units of the destination: design units for world canvases and pixels for render target canvases. The [canvas options reference](../lua-api/graphics2d.md#post-process-options) lists every option with its default.
+So bloom and blur each cost a full-size pass, three half-size passes and two smaller passes for every size the radius needs, and the other adjustments cost nothing beyond the composite. Distances are in units of the destination: design units for world canvases and pixels for render target canvases. The [canvas options reference](../lua-api/graphics2d.md#post-process-options) lists every option with its default.
 
 Colors stay premultiplied by their alpha through the composite. The composite keeps the alpha of the scene, raises it where emission glows and toward 1 with the fade, and never lets a color pass its alpha. A canvas over an opaque clear color looks the same either way, and a [transparent window](../platform/desktop.md#transparency) composes correctly with the desktop. A window that is not transparent at the moment clears alpha to 1 in its screen pass, and draws with pipelines that never write alpha. So nothing an app draws lets the desktop through an opaque window. Screen canvases raise an error when they are given lighting or post-processing.
 
@@ -866,7 +868,7 @@ scene.push({
 
 A draw whose order has a `distortion` above 0 bends the image of its canvas instead of drawing colors, like a lens, a shock wave or the heat above a fire. It goes into the distortion map of its canvas. The renderer multiplies the alpha of its instances or vertices by the distortion and draws it with additive blending into a target the size of the canvas. That target is cleared to nothing in a pass before the scene pass.
 
-The composite reads the map four units to each side of every pixel. The slope of the coverage across those 8 units moves the pixel by up to `PostProcess::distortion` units. So the edges of a soft draw bend the image, while the flat middle of a draw leaves it in place. Only composited canvases have the map. Other canvases skip distortion draws when they are recorded, so effects that distort stay harmless in a canvas without post-processing. The [distortion reference](../lua-api/graphics2d.md#distortion) lists which draws take it.
+The map then shrinks to a quarter of its size in two steps, each averaging four texels, so its texels hold the mean coverage around them. The composite reads that smaller map four units to each side of every pixel. Because the map is averaged first, a texture that a distortion draw shrinks far without mipmaps still bends the image smoothly, instead of scattering its pixels. The slope of the coverage across those 8 units moves the pixel by up to `PostProcess::distortion` units. So the edges of a soft draw bend the image, while the flat middle of a draw leaves it in place. Only composited canvases have the map. Other canvases skip distortion draws when they are recorded, so effects that distort stay harmless in a canvas without post-processing. The [distortion reference](../lua-api/graphics2d.md#distortion) lists which draws take it.
 
 ```lua
 local assets = require('haylen.assets')

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <cstddef>
 #include <stdexcept>
 #include <string>
@@ -74,7 +75,9 @@ TEST(ScreenEffectsTest, DistortionDrawsGoIntoTheMapOfCompositedCanvases) {
     EXPECT_EQ(plain.vertices, 0U);
     EXPECT_EQ(bent.sprites, 5U);
     EXPECT_EQ(visible, 1U);
-    EXPECT_EQ(bent.passes, flat.passes + 1U);
+
+    // The distortion draws take a pass of their own, and the map shrinks twice before the composite measures its slope.
+    EXPECT_EQ(bent.passes, flat.passes + 3U);
 
     Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginWorld(Camera{}, {.ambientLight = math::Color::white()});
@@ -98,15 +101,20 @@ TEST(ScreenEffectsTest, BloomAndBlurAddPassesAtHalfTheSize) {
     // clang-format on
     const Renderer::Stats plain = render({});
     const Renderer::Stats lens = render({.chromaticAberration = 4.0F, .pixelate = 6.0F});
-    const Renderer::Stats bloom = render({.bloomStrength = 0.8F});
-    const Renderer::Stats both = render({.blur = 8.0F, .bloomStrength = 0.8F});
+    const Renderer::Stats bloom = render({.bloomStrength = 0.8F, .bloomRadius = 4.0F});
+    const Renderer::Stats both = render({.blur = 4.0F, .bloomStrength = 0.8F, .bloomRadius = 4.0F});
 
-    // The lens effects live in the composite, and bloom and blur each shrink and blur twice after the first stage.
+    // The lens effects live in the composite, and a narrow bloom or blur shrinks once and blurs twice after the first stage.
     EXPECT_EQ(lens.passes, plain.passes);
     EXPECT_EQ(render({.grain = 0.3F, .dither = true}).passes, plain.passes);
     EXPECT_EQ(bloom.passes, plain.passes + 4U);
     EXPECT_EQ(both.passes, plain.passes + 7U);
     EXPECT_EQ(both.drawCalls, plain.drawCalls + 7U);
+
+    // A radius that spans more than four texels of the half-size image shrinks on to a smaller size and grows back for every halving it needs, so its taps never lie more than a texel apart.
+    const float halfTexelsPerUnit = std::floor(fixture.host().getFramebufferSize().x * 0.5F) / fixture.engine().getViewport().getVisibleRect().width;
+    EXPECT_EQ(render({.bloomStrength = 0.8F, .bloomRadius = 8.0F / halfTexelsPerUnit}).passes, plain.passes + 6U);
+    EXPECT_EQ(render({.bloomStrength = 0.8F, .bloomRadius = 64.0F / halfTexelsPerUnit}).passes, plain.passes + 4U + 2U * 4U);
 
     // A lookup texture is as wide as its height squared.
     const graphics::Texture lut = fixture.engine().getGraphics().createTexture(graphics::Image(16, 4, math::Color::white()));

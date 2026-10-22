@@ -136,6 +136,11 @@ class FrameSubmitter final {
     // The grain repeats its pattern after this many frames, which keeps the seed of its noise exact as a float.
     static constexpr std::uint64_t kGrainFrames = 1024;
 
+    // A blur shrinks the image until its radius spans at most this many texels, through at most this many sizes, none smaller than this many texels across.
+    static constexpr float kBlurReach = 4.0F;
+    static constexpr std::size_t kBlurLevels = 8;
+    static constexpr int kBlurSmallest = 4;
+
     // Moves everything drawn with the matrix by an offset in world units.
     [[nodiscard]] static Matrix translated(Matrix matrix, math::Vec2 offset) noexcept;
     [[nodiscard]] static Matrix projection(const math::Transform2D& view, math::Vec2 viewSize) noexcept;
@@ -159,7 +164,7 @@ class FrameSubmitter final {
     void renderCanvasOffscreen(Canvas& canvas);
     void renderLights(const Canvas& canvas, const LitTargets& targets);
     [[nodiscard]] const graphics::TextureResource& getLightShape(const lighting2d::Light& light) const;
-    void renderPostChain(Canvas& canvas, const LitTargets& targets);
+    void renderPostChain(Canvas& canvas, LitTargets& targets);
     void renderCapture(std::size_t index);
     void renderSwapchain();
     void drawCanvases(std::size_t capture, graphics::PassTarget pass);
@@ -176,8 +181,9 @@ class FrameSubmitter final {
     void filter(const graphics::RenderTarget& source, const graphics::RenderTarget& destination, float threshold, math::Vec2 step);
     void copy(const graphics::RenderTarget& source, const graphics::RenderTarget& destination);
 
-    // Blurs the image of a stage at half its size over the radius in units of the canvas, into the first of the pair of targets.
-    void blurInto(const Canvas& canvas, const graphics::RenderTarget& image, const std::array<graphics::RenderTarget, 2>& pair, float threshold, float radius);
+    // Blurs the image of a stage over the radius in units of the canvas into the first target of the chain, at half its size, through the smaller sizes the radius needs.
+    void blurInto(const Canvas& canvas, const graphics::RenderTarget& image, std::vector<std::array<graphics::RenderTarget, 2>>& chain, float threshold, float radius);
+    void growChain(std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t levels, int width, int height);
     void drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass);
 
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);

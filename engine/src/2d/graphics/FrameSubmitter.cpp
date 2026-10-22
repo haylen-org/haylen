@@ -122,22 +122,33 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
     }
     if (canvas.distorted && !targets.distortion.isValid()) {
         targets.distortion = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
+        targets.distortionField[0] = state.device.createRenderTarget(std::max(1, width / 2), std::max(1, height / 2), {.filter = graphics::Texture::Filter::Linear});
+        targets.distortionField[1] = state.device.createRenderTarget(std::max(1, width / 4), std::max(1, height / 4), {.filter = graphics::Texture::Filter::Linear});
     }
     if (canvas.backdrop && !targets.backdrop.isValid()) {
         targets.backdrop = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
     }
 
-    // Bloom and blur work at half the size, which their filters read with linear filtering.
-    const int halfWidth = std::max(1, width / 2);
-    const int halfHeight = std::max(1, height / 2);
-    for (auto [used, pair] : {std::pair{canvas.hasBloom(), &targets.bloom}, std::pair{canvas.hasBlur(), &targets.blur}}) {
-        if (used && !(*pair)[0].isValid()) {
-            for (graphics::RenderTarget& image : *pair) {
-                image = state.device.createRenderTarget(halfWidth, halfHeight, {.filter = graphics::Texture::Filter::Linear});
-            }
+    // Bloom and blur start at half the size, which their filters read with linear filtering, and their chains grow the smaller sizes they need when they blur.
+    for (auto [used, chain] : {std::pair{canvas.hasBloom(), &targets.bloom}, std::pair{canvas.hasBlur(), &targets.blur}}) {
+        if (used && chain->empty()) {
+            growChain(*chain, 1, width, height);
         }
     }
     return targets;
+}
+
+// Every size of a chain is half the one before it, starting at half the size of the canvas.
+void FrameSubmitter::growChain(std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t levels, int width, int height) {
+    while (chain.size() < levels) {
+        const int shift = static_cast<int>(chain.size()) + 1;
+        const int levelWidth = std::max(1, width >> shift);
+        const int levelHeight = std::max(1, height >> shift);
+        std::array<graphics::RenderTarget, 2>& pair = chain.emplace_back();
+        for (graphics::RenderTarget& image : pair) {
+            image = state.device.createRenderTarget(levelWidth, levelHeight, {.filter = graphics::Texture::Filter::Linear});
+        }
+    }
 }
 
 // Metaball fields have half the resolution of their canvas, and linear filtering keeps their surface smooth.
@@ -387,13 +398,16 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
         return;
     }
 
-    const LitTargets& targets = state.litTargets[canvas.litIndex];
+    LitTargets& targets = state.litTargets[canvas.litIndex];
     const math::Rect full{0.0F, 0.0F, static_cast<float>(targets.scene.getWidth()), static_cast<float>(targets.scene.getHeight())};
     const math::Color clear = canvas.options.clear.value_or(canvas.kind == Canvas::Kind::Target ? math::Color::transparent() : state.clearColor).getPremultiplied();
+    // The distortion map shrinks twice, so the slope the composite measures across 8 units averages the coverage of every texel there, and a texture that a distortion draw shrinks far without mipmaps bends the image smoothly instead of scattering its pixels.
     if (canvas.distortEnd > canvas.distortBegin) {
         beginOffscreenPass(targets.distortion, math::Color::transparent());
         drawCommands(canvas, canvas.distortBegin, canvas.distortEnd, graphics::PassTarget::Offscreen, full);
         endPass();
+        filter(targets.distortion, targets.distortionField[0], -1.0F, {});
+        filter(targets.distortionField[0], targets.distortionField[1], -1.0F, {});
     }
     if (canvas.isLit()) {
         beginLitPass(targets, clear);
@@ -459,7 +473,7 @@ const graphics::TextureResource& FrameSubmitter::getLightShape(const lighting2d:
 }
 
 // A staged canvas composites its first stage into the first post target, where bloom and blur read it, and finishes the image in the destination, or in the other post target when materials follow. The composite of a canvas with materials writes into a post target, and every material but the last draws the image before it into the other one, which leaves the input of the last material in `postImage`.
-void FrameSubmitter::renderPostChain(Canvas& canvas, const LitTargets& targets) {
+void FrameSubmitter::renderPostChain(Canvas& canvas, LitTargets& targets) {
     const bool staged = canvas.isStaged();
     if (!staged && !canvas.hasPostMaterials()) {
         return;
@@ -586,7 +600,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     const bool distorts = canvas.distortEnd > canvas.distortBegin && stage != Stage::Finish;
     const bool blooms = canvas.hasBloom() && stage != Stage::First;
     const bool grades = post.colorLut.isValid() && stage != Stage::First;
-    const graphics::RenderTarget& image = stage != Stage::Finish ? targets.scene : (canvas.hasBlur() ? targets.blur[0] : targets.post[0]);
+    const graphics::RenderTarget& image = stage != Stage::Finish ? targets.scene : (canvas.hasBlur() ? targets.blur.front()[0] : targets.post[0]);
     const auto viewOf = [](const graphics::RenderTarget& used) { return used.getTexture().getResource()->image; };
 
     state.getGpu().applyPipeline(state.getPipeline(Program::Composite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
@@ -594,8 +608,8 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     bindings.textures[RendererState::kCompositeScene] = viewOf(image);
     bindings.textures[RendererState::kCompositeLight] = viewOf(lit ? targets.light : image);
     bindings.textures[RendererState::kCompositeEmission] = viewOf(lit ? targets.emission : image);
-    bindings.textures[RendererState::kCompositeDistortion] = viewOf(distorts ? targets.distortion : image);
-    bindings.textures[RendererState::kCompositeBloom] = viewOf(blooms ? targets.bloom[0] : image);
+    bindings.textures[RendererState::kCompositeDistortion] = viewOf(distorts ? targets.distortionField[1] : image);
+    bindings.textures[RendererState::kCompositeBloom] = viewOf(blooms ? targets.bloom.front()[0] : image);
     bindings.textures[RendererState::kCompositeLut] = grades ? post.colorLut.getResource()->image : viewOf(image);
     bindings.samplers[0] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Linear});
     state.getGpu().applyBindings(bindings);
@@ -654,13 +668,27 @@ void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::
     endPass();
 }
 
-// Nine taps of the blur span four steps on each side, so the steps of a radius are a quarter of it in texels of the half-size image.
-void FrameSubmitter::blurInto(const Canvas& canvas, const graphics::RenderTarget& image, const std::array<graphics::RenderTarget, 2>& pair, float threshold, float radius) {
-    filter(image, pair[0], threshold, {});
-    const float texelsPerUnit = pair[0].getSize().x / std::max(canvas.viewSize.x, 1.0F);
-    const float spacing = std::max(radius * texelsPerUnit * 0.25F, 0.5F);
-    filter(pair[0], pair[1], -1.0F, {spacing, 0.0F});
-    filter(pair[1], pair[0], -1.0F, {0.0F, spacing});
+// Nine taps of the blur span four steps on each side, so the steps of a radius are a quarter of it in texels. The image shrinks into smaller sizes until the radius spans at most four texels, where the taps lie a texel or less apart and leave no gap for rings, blurs there and grows back size by size, each step averaging four taps around every texel.
+void FrameSubmitter::blurInto(const Canvas& canvas, const graphics::RenderTarget& image, std::vector<std::array<graphics::RenderTarget, 2>>& chain, float threshold, float radius) {
+    const graphics::RenderTarget& first = chain.front()[0];
+    float reach = radius * first.getSize().x / std::max(canvas.viewSize.x, 1.0F);
+    std::size_t level = 0;
+    while (reach > kBlurReach && level + 1 < kBlurLevels && std::min(first.getWidth(), first.getHeight()) >> (level + 1) >= kBlurSmallest) {
+        reach *= 0.5F;
+        ++level;
+    }
+    growChain(chain, level + 1, image.getWidth(), image.getHeight());
+
+    filter(image, chain[0][0], threshold, {});
+    for (std::size_t index = 1; index <= level; ++index) {
+        filter(chain[index - 1][0], chain[index][0], -1.0F, {});
+    }
+    const float spacing = std::max(reach * 0.25F, 0.5F);
+    filter(chain[level][0], chain[level][1], -1.0F, {spacing, 0.0F});
+    filter(chain[level][1], chain[level][0], -1.0F, {0.0F, spacing});
+    for (std::size_t index = level; index > 0; --index) {
+        filter(chain[index][0], chain[index - 1][0], -1.0F, {});
+    }
 }
 
 // A post-processing material draws the image as one sprite over the unit square, which covers the viewport of the pass.
