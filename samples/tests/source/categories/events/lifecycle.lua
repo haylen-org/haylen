@@ -21,18 +21,73 @@ local Test = require('harness.test')
 local Lifecycle = haylen.class('Lifecycle', EventsTest)
 Lifecycle.processMode = 'always'
 
-local kEvents = {
-    'appActive', 'appInactive', 'appBackground', 'appLowMemory', 'appQuitRequested', 'paused', 'unpaused',
-    'sceneLoading', 'sceneLoaded', 'sceneLoadFailed', 'sceneEntered', 'sceneExited', 'sceneUnloaded', 'scenePaused', 'sceneResumed',
-    'sceneExitTransitionStarted', 'sceneEnterTransitionFinished', 'transitionOutStarted', 'transitionOutFinished',
-    'transitionInStarted', 'transitionInFinished', 'autoloadStarted', 'autoloadStopped',
-    'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowMonitorsChanged',
-    'guiMounted', 'guiUnmounted', 'gamepadConnected', 'gamepadDisconnected', 'audioInterrupted', 'audioResumed', 'audioRouteChanged',
-    'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline', 'systemThemeChanged', 'batteryChanged', 'webSocketConnected', 'webSocketDisconnected', 'webSocketReconnecting',
-    'assetLoaded', 'assetUnloaded', 'assetReloaded', 'objectCreated', 'objectDestroyed',
+-- The groups of the log, each with its color in the legend. The test writes its own lines in the color of the last group.
+local kGroups = {
+    {id = 'app', title = 'App', color = Test.warm},
+    {id = 'scene', title = 'Scenes', color = Test.accent},
+    {id = 'window', title = 'Window', color = Test.green},
+    {id = 'gui', title = 'Interface', color = '#FF5ED3E8'},
+    {id = 'device', title = 'Devices', color = '#FFFF9ED8'},
+    {id = 'asset', title = 'Assets', color = Test.violet},
+    {id = 'network', title = 'Network', color = Test.red},
+    {id = 'test', title = 'The test', color = Test.ink},
 }
-local kColors = {app = Test.warm, scene = Test.accent, window = Test.green, asset = Test.violet, webSocket = Test.red}
-local kLegend = {{'App', Test.warm}, {'Scenes', Test.accent}, {'Window', Test.green}, {'Assets', Test.violet}, {'Sockets', Test.red}}
+-- Every engine event the log listens to, with its group and what it means, where a word such as "$scene" takes that field of the table of the event.
+local kEvents = {
+    {'appActive', 'app', 'the app is active again'},
+    {'appInactive', 'app', 'the app lost the focus but still shows'},
+    {'appBackground', 'app', 'the app went to the background'},
+    {'appLowMemory', 'app', 'the system is short of memory'},
+    {'appQuitRequested', 'app', 'the player asked to quit'},
+    {'paused', 'app', 'the game paused'},
+    {'unpaused', 'app', 'the game runs again'},
+    {'autoloadStarted', 'app', 'the autoload "$name" started'},
+    {'autoloadStopped', 'app', 'the autoload "$name" stopped'},
+    {'sceneLoading', 'scene', 'the scene $scene starts to load'},
+    {'sceneLoaded', 'scene', 'the scene $scene finished loading'},
+    {'sceneLoadFailed', 'scene', 'the scene $scene failed to load with "$error"'},
+    {'sceneEntered', 'scene', 'the scene $scene entered the stack'},
+    {'sceneExited', 'scene', 'the scene $scene left the stack'},
+    {'sceneUnloaded', 'scene', 'the scene $scene unloaded'},
+    {'scenePaused', 'scene', 'another scene covers $scene'},
+    {'sceneResumed', 'scene', 'the scene $scene is on top again'},
+    {'sceneExitTransitionStarted', 'scene', 'a change starts to take $scene off the screen'},
+    {'sceneEnterTransitionFinished', 'scene', 'the change ended with $scene on top'},
+    {'transitionOutStarted', 'scene', 'the transition starts to hide $from'},
+    {'transitionOutFinished', 'scene', 'the transition hid $from'},
+    {'transitionInStarted', 'scene', 'the transition starts to show $to'},
+    {'transitionInFinished', 'scene', 'the transition showed $to'},
+    {'windowResized', 'window', 'the window is $width by $height pixels'},
+    {'windowFocusGained', 'window', 'the window has the focus'},
+    {'windowFocusLost', 'window', 'the window lost the focus'},
+    {'windowFullscreenChanged', 'window', function(value) return value.fullscreen and 'the window went fullscreen' or 'the window left fullscreen' end},
+    {'windowOrientationChanged', 'window', 'the screen turned to $orientation'},
+    {'windowFoldChanged', 'window', 'the fold of the screen changed to the posture "$posture"'},
+    {'windowSafeAreaChanged', 'window', 'the safe area is $width by $height units'},
+    {'windowMoved', 'window', 'the window moved to $x, $y'},
+    {'windowMonitorsChanged', 'window', 'the monitors changed'},
+    {'keyboardShown', 'window', 'the on-screen keyboard covers $height units'},
+    {'keyboardHidden', 'window', 'the on-screen keyboard went away'},
+    {'guiMounted', 'gui', 'a GUI mounted'},
+    {'guiUnmounted', 'gui', 'a GUI unmounted'},
+    {'gamepadConnected', 'device', 'gamepad $gamepad, "$name", connected'},
+    {'gamepadDisconnected', 'device', 'gamepad $gamepad, "$name", disconnected'},
+    {'audioInterrupted', 'device', 'the system took the audio, so every voice paused'},
+    {'audioResumed', 'device', 'the system gave the audio back'},
+    {'audioRouteChanged', 'device', 'the sound moved to another output'},
+    {'systemThemeChanged', 'device', 'the system switched to $theme colors'},
+    {'batteryChanged', 'device', 'the battery changed its level or its charging'},
+    {'networkOnline', 'network', 'the device is online'},
+    {'networkOffline', 'network', 'the device is offline'},
+    {'webSocketConnected', 'network', 'a socket connected to $url'},
+    {'webSocketDisconnected', 'network', 'the socket to $url closed with the code $code'},
+    {'webSocketReconnecting', 'network', 'the socket to $url tries again in $delay seconds, attempt $attempt'},
+    {'assetLoaded', 'asset', 'the cache loaded "$path"'},
+    {'assetUnloaded', 'asset', 'the cache let go of "$path"'},
+    {'assetReloaded', 'asset', 'the asset "$path" reloaded in place'},
+    {'objectCreated', 'asset', 'a sprite was made, and $count are alive'},
+    {'objectDestroyed', 'asset', 'a sprite was collected, and $count are alive'},
+}
 local kCode = [[
 events.on('transitionOutFinished', function(change) print(change.from, change.to) end, {owner = self})
 scene.push(room, {duration = 0.8, loading = view, loadingDelay = 0.1, minimumLoadingTime = 0.6})
@@ -41,34 +96,24 @@ function room:load(context)
     async.sleep(100):await()
 end]]
 
--- Names a scene or a GUI by its type, or says that C++ pushed the scene.
-local function sceneName(value)
-    if value == false then
-        return 'a C++ scene'
+-- Writes a field of the table of an engine event for people: a scene by the name of its class in quotes, and a number without trailing zeros.
+local function fieldText(value, key)
+    local field = value[key]
+    if key == 'scene' or key == 'from' or key == 'to' then
+        if field == nil then
+            return 'no scene'
+        end
+        return field == false and 'a scene of C++' or '"' .. tostring(field):match('^[^:]+') .. '"'
     end
-    return (tostring(value):match('^[^:]+'))
+    return type(field) == 'number' and string.format('%g', field) or tostring(field)
 end
 
--- Writes the table of an engine event in a few words: a scene, a GUI, the scenes of a transition phase or the fields of the table.
-local function describe(value)
-    if value == nil then
-        return ''
+-- Writes what an engine event means, from its sentence and the fields of its table.
+local function describe(meaning, value)
+    if type(meaning) == 'function' then
+        return meaning(value)
     end
-    if value.from ~= nil or value.to ~= nil then
-        return 'from ' .. sceneName(value.from) .. ' to ' .. sceneName(value.to)
-    end
-    if value.scene ~= nil then
-        return sceneName(value.scene) .. (value.error and ': ' .. value.error or '')
-    end
-    if value.gui ~= nil then
-        return sceneName(value.gui)
-    end
-    local fields = {}
-    for key, field in pairs(value) do
-        fields[#fields + 1] = key .. ' ' .. (type(field) == 'number' and string.format('%g', field) or tostring(field))
-    end
-    table.sort(fields)
-    return table.concat(fields, ', ')
+    return (meaning:gsub('%$(%a+)', function(key) return fieldText(value or {}, key) end))
 end
 
 -- A scene that takes a while to load, reporting its progress to the loading view.
@@ -110,14 +155,17 @@ local loadingView = {
 function Lifecycle:enter()
     local journal = Journal(80)
     self.journal = journal
-    for _, name in ipairs(kEvents) do
-        local color = kColors[name:match('^webSocket') or name:match('^%l+')] or Test.ink
+    local colors = {}
+    for _, group in ipairs(kGroups) do
+        colors[group.id] = group.color
+    end
+    for _, entry in ipairs(kEvents) do
+        local name, color, meaning = entry[1], colors[entry[2]], entry[3]
         events.on(name, function(value)
             if name:match('^object') and value.type ~= 'haylen.Sprite' then
                 return
             end
-            local detail = describe(value)
-            journal:add('Event "' .. name .. '"' .. (detail ~= '' and ': ' .. detail or '') .. '.', color)
+            journal:add('Event "' .. name .. '": ' .. describe(meaning, value) .. '.', color)
         end, {owner = self})
     end
 
@@ -162,13 +210,13 @@ end
 
 function Lifecycle:pushBroken()
     if not scene.transitioning() then
-        scene.push(Broken(), {duration = 0.6, onError = function(message) self.journal:add('The handler "onError" received "' .. message .. '"', Test.red) end})
+        scene.push(Broken(), {duration = 0.6, onError = function(message) self.journal:add('The handler "onError" of the change received "' .. message .. '".', Test.ink) end})
     end
 end
 
 function Lifecycle:touchSprite()
     local sprite = graphics2d.newSprite(graphics.whiteTexture())
-    self.journal:add('Made a "' .. tostring(sprite):match('^[^:]+') .. '" and dropped it.', Test.muted)
+    self.journal:add('The test made a sprite and dropped it.', Test.ink)
     sprite = nil
     collectgarbage()
 end
@@ -193,7 +241,7 @@ function Lifecycle:openSocket()
         self.socket:close()
     end
     self.socket = net.connectWebSocket('ws://127.0.0.1:9/', {reconnect = {initialDelay = 0.5, maxDelay = 1, maxAttempts = 2}})
-    self.socket:on('close', function(code) self.journal:add('The socket gave up with the code ' .. code .. '.', Test.red) end)
+    self.socket:on('close', function(code) self.journal:add('The socket gave up with the code ' .. code .. '.', Test.ink) end)
 end
 
 function Lifecycle:update(dt)
@@ -204,12 +252,12 @@ end
 function Lifecycle:draw(area)
     local margin = 24
     local x = margin
-    for _, entry in ipairs(kLegend) do
-        graphics2d.drawShape({x, 38, 20, 20}, {kind = 'ellipse', color = entry[2], layer = 2})
-        self:label(entry[1], x + 30, 48, {anchor = {0, 0.5}, size = 24})
-        x = x + 50 + graphics2d.measureText(self.font, entry[1], {size = 24})
+    for _, group in ipairs(kGroups) do
+        graphics2d.drawShape({x, 38, 20, 20}, {kind = 'ellipse', color = group.color, layer = 2})
+        self:label(group.title, x + 30, 48, {anchor = {0, 0.5}, size = 24})
+        x = x + 50 + graphics2d.measureText(self.font, group.title, {size = 24})
     end
-    local top = EventsTest.counterRoom
+    local top = EventsTest.titleRoom
     self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'Engine events as they happen')
 end
 

@@ -37,6 +37,7 @@ function Diagnostics:enter()
     self.previous = {}
     self.flashes = {}
     self.previousMode = debugging.statsMode()
+    self.firstTopic, self.topicsShown = 1, 0
     self.score = signal.new('demo.score')
     self.health = signal.new('demo.health')
     self.score:connect(function() end, {owner = self})
@@ -49,6 +50,10 @@ function Diagnostics:enter()
             ui.button{id = 'emit', text = 'Emit everything', variant = 'primary', onClick = function() self:emit() end},
             ui.button{id = 'listen', text = 'Add listeners', onClick = function() self:addListeners() end},
             ui.button{id = 'drop', text = 'Add an owner and drop it', onClick = function() self:dropOwner() end},
+            ui.formField{label = 'Rows of the topics', ui.row{gap = 12,
+                ui.button{id = 'previous', text = 'Previous', grow = 1, onClick = function() self:turnTopics(-1) end},
+                ui.button{id = 'next', text = 'Next', grow = 1, onClick = function() self:turnTopics(1) end},
+            }},
             ui.toggle{id = 'overlay', text = 'Debug overlay', onChange = function(event) debugging.setStatsMode(event.checked and 'full' or 'off') end},
         },
         focus = 'emit',
@@ -83,6 +88,18 @@ function Diagnostics:dropOwner()
     self.note = string.format('The event "demoPing" had %d listeners with the owner and %d right after the collection, %d of them stale.', held, freed.listeners, freed.stale)
 end
 
+-- Shows the previous or the next rows of the topics that fit the table, from the last rows back to the first ones.
+function Diagnostics:turnTopics(direction)
+    local count, step = #events.topics(), math.max(1, self.topicsShown)
+    local first = self.firstTopic + direction * step
+    if first > count then
+        first = 1
+    elseif first < 1 then
+        first = math.max(1, count - (count - 1) % step)
+    end
+    self.firstTopic = first
+end
+
 function Diagnostics:update(dt)
     Diagnostics.super.update(self, dt)
     for name, flash in pairs(self.flashes) do
@@ -112,8 +129,8 @@ function Diagnostics:prepare(rows, kind)
     return rows
 end
 
--- Draws the rows of one table in a card, with the names on the left, the counts aligned on the right of their columns, and the rows that do not fit counted at the bottom.
-function Diagnostics:drawTable(title, rows, rect)
+-- Draws the rows of one table from the row `first` in a card, with the names on the left, the counts aligned on the right of their columns, and which rows show at the bottom. Returns how many rows fit.
+function Diagnostics:drawTable(title, rows, rect, first)
     EventsTest.panel(rect)
     local x, y, width = rect[1] + 24, rect[2], rect[3] - 48
     self:label(title, x, y + 34, {anchor = {0, 0.5}, size = 26, maxWidth = width})
@@ -124,9 +141,9 @@ function Diagnostics:drawTable(title, rows, rect)
         graphics2d.drawText(nil, column[1], x + column[2], headerY, {size = 20, color = Test.muted, anchor = {1, 0.5}, layer = 2})
     end
     local count = math.max(0, math.floor((rect[4] - 150) / kRow))
-    local shown = math.min(#rows, count)
+    local shown = math.max(0, math.min(#rows - first + 1, count))
     for index = 1, shown do
-        local row = rows[index]
+        local row = rows[first + index - 1]
         local top = headerY + 20 + (index - 1) * kRow
         if index % 2 == 1 then
             graphics2d.drawShape({rect[1] + 12, top, rect[3] - 24, kRow}, {radius = 8, color = '#FF1E2330', layer = 1})
@@ -141,17 +158,25 @@ function Diagnostics:drawTable(title, rows, rect)
         graphics2d.drawText(nil, tostring(row.emissions), x + columns[2][2], middle, {size = 22, color = color, anchor = {1, 0.5}, layer = 2})
         graphics2d.drawText(nil, tostring(row.stale), x + columns[3][2], middle, {size = 22, color = row.stale > 0 and Test.red or color, anchor = {1, 0.5}, layer = 2})
     end
-    graphics2d.drawText(nil, string.format('Showing %d of %d', shown, #rows), x, rect[2] + rect[4] - 24, {size = 20, color = Test.muted, anchor = {0, 0.5}, layer = 2})
+    local range = shown == #rows and string.format('Showing all %d', #rows) or string.format('Showing %d to %d of %d', first, first + shown - 1, #rows)
+    graphics2d.drawText(nil, range, x, rect[2] + rect[4] - 24, {size = 20, color = Test.muted, anchor = {0, 0.5}, layer = 2})
+    return count
 end
 
 function Diagnostics:draw(area)
     local margin, gap = 24, 16
-    local top = EventsTest.counterRoom
+    local top = EventsTest.titleRoom
     local width = (area.width - margin * 2 - gap) / 2
     local height = area.height - top - margin - 64
     self:label('Live counts of the bus and the signals', margin, 48, {anchor = {0, 0.5}, size = 26})
-    self:drawTable('Topics of "events.topics()"', self:prepare(events.topics(), 'topic'), {margin, top, width, height})
-    self:drawTable('Signals of "signal.list()"', self:prepare(signal.list(), 'signal'), {margin + width + gap, top, width, height})
+    local key = 'Blue rows are the names this test made'
+    local keyWidth = graphics2d.measureText(nil, key, {size = 22})
+    graphics2d.drawShape({area.width - margin - keyWidth - 34, 39, 22, 18}, {radius = 6, color = Test.accent, layer = 2})
+    graphics2d.drawText(nil, key, area.width - margin, 48, {size = 22, color = Test.muted, anchor = {1, 0.5}, layer = 2})
+    local topics = self:prepare(events.topics(), 'topic')
+    self.firstTopic = math.min(self.firstTopic, math.max(1, #topics))
+    self.topicsShown = self:drawTable('Topics of "events.topics()"', topics, {margin, top, width, height}, self.firstTopic)
+    self:drawTable('Signals of "signal.list()"', self:prepare(signal.list(), 'signal'), {margin + width + gap, top, width, height}, 1)
     graphics2d.drawText(nil, self.note, margin, area.height - margin - 20, {size = 24, color = Test.warm, anchor = {0, 0.5}, maxWidth = area.width - margin * 2, layer = 2})
 end
 

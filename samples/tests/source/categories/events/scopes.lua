@@ -162,7 +162,7 @@ function Scopes:drawOwned(owned, rect)
     local x = rect[1] + rect[3] / 2
     EventsTest.panel(rect, pulse)
     self:icon(owned.icon, x, rect[2] + rect[4] * 0.34 - pulse * 6, math.min(rect[3] * 0.46, rect[4] * 0.4), not self.arenaOpen and '#55FFFFFF' or nil)
-    self:label(owned.name, x, rect[2] + rect[4] * 0.66, {size = 24, maxWidth = rect[3] - 20, color = self.arenaOpen and '#FFFFFFFF' or Test.muted})
+    self:label(owned.name, x, rect[2] + rect[4] * 0.66, {size = 24, maxWidth = rect[3] - 20})
     self:pill(self.arenaOpen and 'Running' or (self.everOpened and 'Ended' or 'Not yet'), x, rect[2] + rect[4] * 0.84, self.arenaOpen and Test.green or Test.muted)
     if owned.id == 'tween' and self.arenaOpen then
         local width = rect[3] - 40
@@ -177,10 +177,10 @@ function Scopes:draw(area)
     local width = (area.width - margin * 2 - gap * (#kOwned - 1)) / #kOwned
     local height = math.min(220, math.max(170, area.height * 0.34))
     for index, owned in ipairs(kOwned) do
-        self:drawOwned(owned, {margin + (index - 1) * (width + gap), EventsTest.counterRoom, width, height})
+        self:drawOwned(owned, {margin + (index - 1) * (width + gap), EventsTest.titleRoom, width, height})
     end
-    local top = EventsTest.counterRoom + height + gap
-    self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'What happened', {'shield', 'Open the arena to give it a timer, a tween, a task, two listeners and a card.'})
+    local top = EventsTest.titleRoom + height + gap
+    self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'What happened', {nil, 'Open the arena to give it a timer, a tween, a task, two listeners and a card.'})
 end
 
 return Scopes

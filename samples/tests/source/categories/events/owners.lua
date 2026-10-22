@@ -77,7 +77,7 @@ end
 -- The banner is a GUI of its own in the corner of the play area, with a listener it owns.
 function Owners:showBanner(visible)
     if visible and not self.banner then
-        self.banner = ui.mount(ui.card{id = 'banner', anchor = 'bottomRight', gap = 8,
+        self.banner = ui.mount(ui.card{id = 'banner', anchor = 'bottomRight', gap = 8, justify = 'center',
             ui.label{text = 'The banner listens', font = 'heading', color = 'warningText'},
             ui.label{id = 'text', text = 'It owns a listener of "alarmRaised", which ends when it unmounts.', color = 'textMuted'},
         }, {owner = self, layer = 1})
@@ -96,13 +96,20 @@ function Owners:showBanner(visible)
     end
 end
 
+-- The banner takes the right half of the bottom of the play area, beside the log and as tall as it.
 function Owners:placeBanner()
-    if self.banner and self.area then
-        self.banner:set('banner', {width = self.area.width / 2 - 36})
+    if self.banner and self.lower then
+        self.banner:set('banner', {width = self.lower[3], height = self.lower[4]})
     end
 end
 
+-- The guards stand in a row under the title, and the log and the banner share the room under them.
 function Owners:resize(area)
+    local margin = 24
+    local size = math.min(150, (area.width - margin * 2) / kMostGuards * 0.95)
+    self.guardSize, self.feet = size, EventsTest.titleRoom + size * 0.95
+    local top = self.feet + 130
+    self.lower = {margin, top, area.width / 2 - margin - 12, area.height - top - margin}
     self:placeBanner()
 end
 
@@ -144,18 +151,21 @@ function Owners:draw(area)
     if self.flash > 0 then
         self:icon('bell', margin + 430, 48 + math.sin(self.flash * 40) * 4, 56)
     end
-    local room = area.width - margin * 2
-    local spacing = room / kMostGuards
-    local size = math.min(150, spacing * 0.95)
-    local feet = EventsTest.counterRoom + size * 0.95
+    local spacing = (area.width - margin * 2) / kMostGuards
+    local size, feet = self.guardSize, self.feet
     for index, guard in ipairs(self.guards) do
         self:drawGuard(guard, area.width / 2 + spacing * (index - (#self.guards + 1) / 2), feet, size)
     end
     if #self.guards == 0 then
         graphics2d.drawText(nil, 'No guard is left. Add one to hear the alarm again.', area.width / 2, feet - size * 0.4, {size = 26, color = Test.muted, anchor = {0.5, 0.5}, layer = 2})
     end
-    local top = feet + 130
-    self:logPanel(self.journal, {margin, top, area.width / 2 - margin - 12, area.height - top - margin}, 'What happened')
+    local lower = self.lower
+    self:logPanel(self.journal, lower, 'What happened')
+    if not self.banner then
+        local place = {area.width / 2 + 12, lower[2], lower[3], lower[4]}
+        EventsTest.panel(place)
+        self:emptyState(place, 'bell', 'The banner is unmounted, and its listener ended with it.')
+    end
 end
 
 return Owners

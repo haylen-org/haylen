@@ -1,4 +1,4 @@
--- The base of the events tests: while one of them shows, the player data autoload draws its coin counter in the top-right corner of the play area, and the tests draw their listeners as painted icons on cards, with labels in the font of the art.
+-- The base of the events tests: they draw their listeners as painted icons on cards, with labels in the font of the art, and their logs in a card with the frame of every line. A test that sets `coinCounter` shows the coin counter of the player data autoload in the top-right corner of its play area.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -14,8 +14,12 @@ EventsTest.iconNames = {'shield', 'heart', 'trophy', 'scroll', 'bolt', 'sparkle'
 EventsTest.card = '#FF232938'
 EventsTest.cardBorder = '#FF2C3147'
 EventsTest.lit = '#FFFFC93C'
--- The corner of the play area the coin counter takes, which the tests keep clear.
+EventsTest.coinCounter = false
+-- The corner of the play area the coin counter takes, which a test that shows it keeps clear.
 EventsTest.counterRoom = 96
+-- The band at the top of the play area that holds the title of a test, under which its cards start.
+EventsTest.titleRoom = 96
+EventsTest.logSize = 24
 
 function EventsTest:frame(options)
     self.font = assets.font('fonts/lilita-one-regular.ttf')
@@ -25,8 +29,11 @@ function EventsTest:frame(options)
         local cell = EventsTest.iconCell
         self.iconSources[name] = {(index - 1) % EventsTest.iconColumns * cell, (index - 1) // EventsTest.iconColumns * cell, cell, cell}
     end
+    self.firstFrame = haylen.frameIndex()
+    self.logStyle = {size = EventsTest.logSize, color = Test.ink, maxWidth = 0, layer = 2}
+    self.frameStyle = {size = EventsTest.logSize, color = Test.muted, anchor = {1, 0}, layer = 2}
     EventsTest.super.frame(self, options)
-    haylen.autoloads.playerData.counterShown = true
+    haylen.autoloads.playerData.counterShown = self.coinCounter
 end
 
 function EventsTest:exit()
@@ -37,7 +44,7 @@ end
 -- The counter of the autoload follows the top-right corner of the play area wherever the layout puts it.
 function EventsTest:update(dt)
     EventsTest.super.update(self, dt)
-    if self.stage then
+    if self.coinCounter and self.stage then
         haylen.autoloads.playerData.counterCorner = {self.stage.x + self.stage.width, self.stage.y}
     end
 end
@@ -72,26 +79,73 @@ function EventsTest:pill(text, x, y, fill, options)
     graphics2d.drawText(self.font, text, x, y, {size = size, color = options.color or '#FF15172A', anchor = {0.5, 0.5}, layer = (options.layer or 3) + 1})
 end
 
--- Draws a journal in a card that fills `rect`, under a title, with the frame each line happened on in a column of its own, or the empty state of `empty`, an icon and a line, while the journal has no lines.
+-- Draws a journal in a card that fills `rect`, under a title, with the frame each line happened on, counted from the opening of the test, in a column of its own, or the empty state of `empty`, an icon name or `nil` and a line, while the journal has no lines. The newest lines that fit show with the newest at the bottom, and a line wider than the card wraps under its own start.
 function EventsTest:logPanel(journal, rect, title, empty)
     EventsTest.panel(rect)
-    local size = 24
+    local size = EventsTest.logSize
     local x, y = rect[1] + 20, rect[2] + 16
-    graphics2d.drawText(nil, 'Frame', x + size * 3.2, y, {size = 20, color = Test.muted, anchor = {1, 0}, layer = 2})
-    graphics2d.drawText(nil, title, x + size * 4, y, {size = 20, color = Test.muted, layer = 2})
+    local frameX, textX = x + size * 3.2, x + size * 4
+    graphics2d.drawText(nil, 'Frame', frameX, y, {size = 20, color = Test.muted, anchor = {1, 0}, layer = 2})
+    graphics2d.drawText(nil, title, textX, y, {size = 20, color = Test.muted, layer = 2})
     local body = {rect[1], y + 32, rect[3], rect[4] - 48}
-    if journal.lines.size == 0 and empty then
-        self:emptyState(body, empty[1], empty[2])
+    if journal.lines.size == 0 then
+        if empty then
+            self:emptyState(body, empty[1], empty[2])
+        end
         return
     end
-    journal:draw(x, body[2], body[4], size, rect[3] - 40)
+
+    -- The lines that fit are counted from the newest, and every line keeps a little room under it.
+    local lines = journal.lines:values()
+    local style = self.logStyle
+    style.maxWidth = rect[1] + rect[3] - 20 - textX
+    local gap = size * 0.25
+    local used, first = 0, #lines + 1
+    for index = #lines, 1, -1 do
+        local _, height = graphics2d.measureText(nil, lines[index].text, style)
+        if used + height > body[4] then
+            break
+        end
+        used, first = used + height + gap, index
+    end
+
+    local top = body[2]
+    for index = first, #lines do
+        local line = lines[index]
+        graphics2d.drawText(nil, tostring(line.frame - self.firstFrame), frameX, top, self.frameStyle)
+        style.color = line.color
+        graphics2d.drawText(nil, line.text, textX, top, style)
+        local _, height = graphics2d.measureText(nil, line.text, style)
+        top = top + height + gap
+    end
 end
 
--- Draws an empty state centered in `rect`: a faded icon and a line that says what to do.
+-- Draws an empty state centered in `rect`: a faded icon over a line that says what to do, or a smaller icon beside the line when the room is too short for both, or the line alone without an icon. Nothing draws outside `rect`.
 function EventsTest:emptyState(rect, icon, text)
     local x, y = rect[1] + rect[3] / 2, rect[2] + rect[4] / 2
-    self:icon(icon, x, y - 40, 96, '#80FFFFFF')
-    graphics2d.drawText(nil, text, x, y + 28, {size = 26, color = Test.muted, anchor = {0.5, 0}, maxWidth = rect[3] - 48, align = 'center', layer = 2})
+    local style = {size = 26, color = Test.muted, maxWidth = rect[3] - 48, maxHeight = rect[4] - 16, minScale = 0.7, align = 'center', anchor = {0.5, 0.5}, layer = 2}
+    local _, height = graphics2d.measureText(nil, text, style)
+    local stacked = 96
+    if not icon then
+        graphics2d.drawText(nil, text, x, y, style)
+        return
+    end
+    if stacked + 16 + height <= rect[4] - 16 then
+        local top = y - (stacked + 16 + height) / 2
+        self:icon(icon, x, top + stacked / 2, stacked, '#80FFFFFF')
+        graphics2d.drawText(nil, text, x, top + stacked + 16 + height / 2, style)
+        return
+    end
+
+    -- Beside the line, the icon takes the height the room has, and the line keeps the rest of the width.
+    local size = math.min(64, rect[4] - 16)
+    style.maxWidth = rect[3] - 48 - size - 16
+    style.align = 'left'
+    local width = graphics2d.measureText(nil, text, style)
+    local left = x - (size + 16 + width) / 2
+    self:icon(icon, left + size / 2, y, size, '#80FFFFFF')
+    style.anchor = {0, 0.5}
+    graphics2d.drawText(nil, text, left + size + 16, y, style)
 end
 
 return EventsTest

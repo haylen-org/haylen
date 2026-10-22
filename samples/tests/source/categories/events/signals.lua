@@ -115,7 +115,9 @@ function Signals:update(dt)
         card.glow = math.max(0, card.glow - dt)
     end
     local hit = self.hit
-    self:status(string.format('%d listeners and %d %s. The signal is %s and the health bar is %s.', hit.size, hit.emissionCount, hit.emissionCount == 1 and 'emission' or 'emissions', hit.blocked and 'blocked' or 'open', self.connections.healthBar.blocked and 'blocked' or 'open'))
+    local barBlocked = self.connections.healthBar.blocked
+    local blocked = hit.blocked and barBlocked and 'the signal and the health bar are blocked' or (hit.blocked and 'the signal is blocked') or (barBlocked and 'the health bar is blocked') or 'nothing is blocked'
+    self:status(string.format('The signal has %d %s and %d %s, and %s.', hit.size, hit.size == 1 and 'listener' or 'listeners', hit.emissionCount, hit.emissionCount == 1 and 'emission' or 'emissions', blocked))
 end
 
 -- Tells what keeps a listener from running, if anything.
@@ -151,13 +153,13 @@ end
 
 function Signals:draw(area)
     local margin, gap = 24, 16
-    self:label('The listeners of "demo.hit", in the order an emit runs them', margin, 48, {anchor = {0, 0.5}, size = 26, maxWidth = area.width - margin * 2 - 260})
+    self:label('The listeners of "demo.hit", in the order an emit runs them', margin, 48, {anchor = {0, 0.5}, size = 26, maxWidth = area.width - margin * 2})
     local width = (area.width - margin * 2 - gap * (#kListeners - 1)) / #kListeners
     local height = math.min(230, math.max(170, area.height * 0.36))
     for index, listener in ipairs(kListeners) do
-        self:drawCard(listener, {margin + (index - 1) * (width + gap), EventsTest.counterRoom, width, height})
+        self:drawCard(listener, {margin + (index - 1) * (width + gap), EventsTest.titleRoom, width, height})
     end
-    local top = EventsTest.counterRoom + height + gap
+    local top = EventsTest.titleRoom + height + gap
     self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'What happened')
 end
 

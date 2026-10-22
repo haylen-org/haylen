@@ -86,14 +86,16 @@ function Bus:heard(id)
     card.glow, card.heard = kGlow, card.heard + 1
 end
 
+-- Writes the emit before the listeners hear it, and what the emit returned once they did.
 function Bus:emit(channel, amount)
+    self.journal:add(string.format('Emit %d %s.', amount, channel and 'on the channel "' .. channel .. '"' or 'on no channel'), Test.muted)
     local consumed
     if channel then
         consumed = events.emitTo(channel, 'damage', amount)
     else
         consumed = events.emit('damage', amount)
     end
-    self.journal:add(string.format('Emit %d %s: %s.', amount, channel and 'on the channel "' .. channel .. '"' or 'on no channel', consumed and 'a listener consumed it' or 'nobody consumed it'), Test.muted)
+    self.journal:add(consumed and 'The emit returns true, since a listener consumed it.' or 'The emit returns false, since nobody consumed it.', Test.muted)
 end
 
 function Bus:post(channel, amount)
@@ -108,7 +110,7 @@ function Bus:update(dt)
     end
     for _, topic in ipairs(events.topics()) do
         if topic.name == 'damage' then
-            self:status(string.format('The event "damage" has %d listeners and %d emissions, and the shield is %s.', topic.listeners, topic.emissions, self.shield and 'up' or 'down'))
+            self:status(string.format('The event "damage" has %d %s and %d %s, and the shield is %s.', topic.listeners, topic.listeners == 1 and 'listener' or 'listeners', topic.emissions, topic.emissions == 1 and 'emission' or 'emissions', self.shield and 'up' or 'down'))
         end
     end
 end
@@ -146,10 +148,10 @@ function Bus:draw(area)
     local width = (area.width - margin * 2 - gap * (#kListeners - 1)) / #kListeners
     local height = math.min(240, math.max(180, area.height * 0.38))
     for index, listener in ipairs(kListeners) do
-        self:drawCard(listener, {margin + (index - 1) * (width + gap), EventsTest.counterRoom, width, height})
+        self:drawCard(listener, {margin + (index - 1) * (width + gap), EventsTest.titleRoom, width, height})
     end
-    local top = EventsTest.counterRoom + height + gap
-    self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'What happened', {'book', 'Emit or post a hit to see who receives it.'})
+    local top = EventsTest.titleRoom + height + gap
+    self:logPanel(self.journal, {margin, top, area.width - margin * 2, area.height - top - margin}, 'What happened', {'bell', 'Emit or post a hit to see who receives it.'})
 end
 
 return Bus

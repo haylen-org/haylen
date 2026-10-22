@@ -26,15 +26,18 @@ local kLooks = {
     Bat = {sheet = 'events/bat.png', columns = 2, frames = {0, 1}, rate = 8, size = 110, feet = 0.5},
     Dragon = {sheet = 'events/dragon.png', columns = 2, frames = {0, 1}, rate = 4, size = 170, feet = 248 / 256},
 }
--- New units take the next of these places across the meadow.
-local kSpots = 8
+-- The meadow holds this many units, each in a lane of its own, and a new unit past them takes the place of the oldest.
+local kMostUnits = 6
+-- How far a walker keeps from the ends of its lane, and how far under the bottom of the meadow its ground line sits, so a band of soil shows under the grass.
+local kLaneMargin = 70
+local kSoil = 64
 
 -- Builds the classes of the test. The mixins write to the journal when a class includes them.
 local function defineClasses(journal)
     local Unit = haylen.class('Unit')
 
     function Unit:init(name, health, x)
-        self.name, self.health, self.x, self.lift, self.direction, self.phase = name, health, x, 0, 1, x * 7
+        self.name, self.health, self.x, self.lift, self.altitude, self.direction = name, health, x, 0, 0, 1
     end
 
     function Unit:describe()
@@ -56,7 +59,7 @@ local function defineClasses(journal)
     }
     local Flyer = {
         fly = function(self, time)
-            self.lift = 120 + math.sin(time * 2.4 + self.phase) * 50
+            self.lift = self.altitude + math.sin(time * 2.4 + self.phase) * 24
         end,
         included = function(class) journal:add('The class "' .. class.name .. '" includes "Flyer".', Test.green) end,
     }
@@ -76,6 +79,7 @@ local function defineClasses(journal)
 
     function Bat:init(name, x)
         Bat.super.init(self, name, 20, x)
+        self.altitude = 150
     end
 
     local Dragon = haylen.class('Dragon', Unit, Walker, Flyer)
@@ -83,6 +87,7 @@ local function defineClasses(journal)
     function Dragon:init(name, x)
         Dragon.super.init(self, name, 500, x)
         self.speed = 70
+        self.altitude = 40
     end
 
     return {Unit = Unit, Walker = Walker, Flyer = Flyer, Hero = Hero, Bat = Bat, Dragon = Dragon}
@@ -115,13 +120,22 @@ function Classes:enter()
     self:addUnit('Dragon', 'Ember')
 end
 
--- Places each new unit on the next spot across the meadow, as a share of its width until the meadow has a size.
+-- Adds a unit in the middle of the last lane, once the meadow has a size, and lets the oldest unit go when the meadow is full.
 function Classes:addUnit(className, name)
-    local share = (#self.units % kSpots + 0.5) / kSpots
-    local unit = self.classes[className](name, self.meadow and self.meadow.x + share * self.meadow.width or share)
-    unit.kind = className
+    if #self.units >= kMostUnits then
+        local oldest = table.remove(self.units, 1)
+        self.journal:add(oldest.name .. ' leaves to make room.', Test.muted)
+    end
+    local count = #self.units + 1
+    local unit = self.classes[className](name, self.meadow and self:laneCenter(count, count) or 0)
+    unit.kind, unit.phase = className, count * 1.9
     table.insert(self.units, unit)
     self.journal:add('Spawned ' .. unit:describe() .. '.')
+end
+
+-- The meadow is split into one lane per unit, so no two units ever cross.
+function Classes:laneCenter(index, count)
+    return self.meadow.x + (index - 0.5) * self.meadow.width / count
 end
 
 function Classes:check()
@@ -137,13 +151,13 @@ function Classes.yes(value)
     return value and 'yes' or 'no'
 end
 
--- Lays out the meadow over the top of the play area and moves the units that waited for it to their spots.
+-- Lays out the meadow over the top of the play area and moves the units that waited for it to the middle of their lanes.
 function Classes:resize(area)
     local first = self.meadow == nil
-    self.meadow = m.rect(24, 24, area.width - 48, math.max(260, area.height * 0.58))
+    self.meadow = m.rect(24, 24, area.width - 48, math.max(320, area.height * 0.58))
     if first then
-        for _, unit in ipairs(self.units) do
-            unit.x = self.meadow.x + unit.x * self.meadow.width
+        for index, unit in ipairs(self.units) do
+            unit.x = self:laneCenter(index, #self.units)
         end
     end
 end
@@ -151,10 +165,16 @@ end
 function Classes:update(dt)
     Classes.super.update(self, dt)
     self.time = self.time + dt
+    -- Walkers pace their lanes, and a flyer that only flies glides to the middle of its lane.
     if self.meadow then
-        for _, unit in ipairs(self.units) do
+        local lane = self.meadow.width / #self.units
+        local margin = math.min(kLaneMargin, lane * 0.3)
+        for index, unit in ipairs(self.units) do
+            local left = self.meadow.x + (index - 1) * lane
             if unit.walk then
-                unit:walk(dt, self.meadow.x + 60, self.meadow:right() - 60)
+                unit:walk(dt, left + margin, left + lane - margin)
+            else
+                unit.x = unit.x + (left + lane / 2 - unit.x) * math.min(1, dt * 2)
             end
             if unit.fly then
                 unit:fly(self.time)
@@ -177,7 +197,7 @@ end
 
 function Classes:draw(area)
     local meadow = self.meadow
-    local ground = meadow:bottom() - 36
+    local ground = meadow:bottom() - kSoil
     graphics2d.pushMask(self.meadowShape)
     self.backdrop:draw(meadow, ground, 150, 0)
     for _, unit in ipairs(self.units) do
