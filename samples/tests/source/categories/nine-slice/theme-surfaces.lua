@@ -1,14 +1,12 @@
 -- UI theme surfaces: a theme whose panels, banner, buttons, tracks, fills and knobs are nine-slice images. Every piece is one region of the near white atlas `nine-slice/theme.png`, painted at twice the size it draws at, and the pieces take the color of each component through `colorize`, so one fill paints every tone. The theme applies to the whole screen while the test runs.
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
-local viewport = require('haylen.viewport')
 
 local Test = require('harness.test')
 
 local ThemeSurfaces = haylen.class('ThemeSurfaces', Test)
 
-ThemeSurfaces.demoWidth = 640
+ThemeSurfaces.columnWidth = 440
 ThemeSurfaces.tones = {'accent', 'success', 'warning', 'danger'}
 ThemeSurfaces.code = [[
 local atlas = 'nine-slice/theme.png'
@@ -65,24 +63,36 @@ function ThemeSurfaces:enter()
             ui.button{id = 'primary', text = 'Primary', variant = 'primary'},
         },
         focus = 'colorize',
+        content = {self:demo()},
     }
+end
 
+-- The workshop: the banner over the buttons and a slider on the left, and on the right the bars of the four tones over the near white atlas that every piece comes from.
+function ThemeSurfaces:demo()
     local bars = {}
     for index, tone in ipairs(ThemeSurfaces.tones) do
         bars[index] = ui.row{gap = 12, alignItems = 'center', ui.label{text = tone:sub(1, 1):upper() .. tone:sub(2), width = 130}, ui.progress{id = tone, value = 0.6, tone = tone, grow = 1}}
     end
-    self.demo = ui.mount(ui.column{id = 'demo', anchor = 'topLeft', width = ThemeSurfaces.demoWidth, gap = 16, onCancel = function() self:cancel() end,
-        ui.pageHeader{title = 'Workshop', caption = 'Every surface is a nine-slice', banner = true, textAlign = 'center'},
-        ui.panel{gap = 14,
-            ui.row{wrap = true, gap = 12,
-                ui.button{id = 'default', text = 'Default', grow = 1},
-                ui.button{id = 'accept', text = 'Primary', variant = 'primary', grow = 1},
-                ui.button{id = 'delete', text = 'Destructive', variant = 'destructive', grow = 1},
+    return ui.row{wrap = true, gap = 24, alignItems = 'start',
+        ui.column{grow = 1, minWidth = ThemeSurfaces.columnWidth, gap = 16,
+            ui.pageHeader{title = 'Workshop', caption = 'Every surface is a nine-slice', banner = true, textAlign = 'center'},
+            ui.panel{gap = 18,
+                ui.row{wrap = true, gap = 12,
+                    ui.button{id = 'default', text = 'Default', grow = 1},
+                    ui.button{id = 'accept', text = 'Primary', variant = 'primary', grow = 1},
+                    ui.button{id = 'delete', text = 'Destructive', variant = 'destructive', grow = 1},
+                },
+                ui.slider{id = 'volume', value = 0.5, showValue = true},
             },
-            ui.column{gap = 10, children = bars},
-            ui.slider{id = 'volume', value = 0.5, showValue = true},
         },
-    }, {owner = self, layer = 1})
+        ui.column{grow = 1, minWidth = ThemeSurfaces.columnWidth, gap = 16,
+            ui.panel{gap = 10, ui.sectionTitle{text = 'One fill in four tones'}, ui.column{gap = 10, children = bars}},
+            ui.card{gap = 10,
+                ui.sectionTitle{text = 'The near white pieces of "nine-slice/theme.png"'},
+                ui.image{image = ThemeSurfaces.atlas, height = 150, fit = 'contain', align = 'stretch'},
+            },
+        },
+    }
 end
 
 function ThemeSurfaces:exit()
@@ -92,41 +102,14 @@ end
 
 function ThemeSurfaces:fill(value)
     for _, tone in ipairs(ThemeSurfaces.tones) do
-        self.demo:set(tone, {value = value})
+        self.gui:set(tone, {value = value})
     end
-end
-
--- Places the demo in the left part of the play area, which the safe area and the frame decide.
-function ThemeSurfaces:resize(area)
-    local safe = viewport.safeRect()
-    self.demo:set('demo', {margin = {self.stage.y - safe.y + 20, 0, 0, self.stage.x - safe.x + 20}})
 end
 
 function ThemeSurfaces:update(dt)
     ThemeSurfaces.super.update(self, dt)
     local fill = ui.themeSurface('trackFill')
     self:status(string.format('The theme "%s" draws its fills with borders of %g pixels, %s.', ui.theme(), fill.slice.borders[1], fill.colorize and 'colored by each component' or 'as they are painted'))
-end
-
--- Draws the fill of the theme once per tone, multiplied by the color of the tone as "colorize" does, with its round ends kept round at the height it draws at, and the button once per role with the name of the role on it, all on the paper of the theme.
-function ThemeSurfaces:draw(area)
-    graphics2d.drawRect(area, ui.themeColor('window'), {layer = -1})
-    local left = ThemeSurfaces.demoWidth + 70
-    local fill, button = ui.themeSurface('trackFill'), ui.themeSurface('button')
-    local width = area.width - left - 40
-    local ink = ui.themeColor('text')
-    Test.caption('The fill of "nine-slice/theme.png" times each tone', left, 30, {size = 24, color = ink, maxWidth = width})
-    local height = 30
-    for index, tone in ipairs(ThemeSurfaces.tones) do
-        graphics2d.drawNineSlice(fill.slice, {left, 50 + index * 50, width, height}, ui.themeColor(tone), {borderScale = height / 36})
-    end
-    Test.caption('The button of "nine-slice/theme.png" times "raised", "accent" and "danger"', left, 330, {size = 24, color = ink, maxWidth = width})
-    local third = (width - 20) / 3
-    for index, role in ipairs({'raised', 'accent', 'danger'}) do
-        local x = left + (index - 1) * (third + 10)
-        graphics2d.drawNineSlice(button.slice, {x, 400, third, 64}, ui.themeColor(role), {borderScale = button.scale})
-        graphics2d.drawText(nil, role:sub(1, 1):upper() .. role:sub(2), x + third / 2, 428, {size = 24, color = role == 'raised' and ink or '#FFFFFFFF', anchor = {0.5, 0.5}, layer = 2})
-    end
 end
 
 return ThemeSurfaces

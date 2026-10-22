@@ -12,6 +12,9 @@ local Resizable = haylen.class('Resizable', Test)
 
 Resizable.border = 50
 Resizable.grabReach = 22
+-- The painted frame stops this many pixels inside its image along its edges and at its rounded corners, so the handles sit on the wood.
+Resizable.edgeInset = 3
+Resizable.cornerInset = 7
 Resizable.fills = {{id = 'stretch', text = 'Stretch'}, {id = 'tile', text = 'Tile'}}
 Resizable.text = 'Drag the middle to move the panel and the edges or corners to resize it. The corners keep their size, the edges and the center follow, and this text wraps inside the borders.'
 Resizable.actions = {actions = {
@@ -125,7 +128,24 @@ function Resizable:update(dt)
     local minimum = self:minimum()
     self.panel.width = math.max(minimum, self.panel.width + growX * 400 * dt)
     self.panel.height = math.max(minimum, self.panel.height + growY * 400 * dt)
-    self:status(string.format('The panel is at %.0f, %.0f and %.0f by %.0f units%s.', self.panel.x, self.panel.y, self.panel.width, self.panel.height, self.dragging and ', and the pointer drags it' or ''))
+    self:status(self:story())
+end
+
+-- Tells what the pointer does to the panel, or its size while nothing holds it.
+function Resizable:story()
+    local grab = self.dragging and self.dragging.grab
+    if not grab then
+        return string.format('The panel is %.0f units wide and %.0f tall, and its text wraps inside its borders.', self.panel.width, self.panel.height)
+    end
+    if grab.move then
+        return 'The pointer moves the panel by its middle.'
+    end
+    local vertical = grab.top and 'top' or grab.bottom and 'bottom'
+    local horizontal = grab.left and 'left' or grab.right and 'right'
+    if vertical and horizontal then
+        return string.format('The pointer resizes the panel by its %s-%s corner, which keeps its size.', vertical, horizontal)
+    end
+    return string.format('The pointer resizes the panel by its %s edge, which stretches along.', vertical or horizontal)
 end
 
 function Resizable:draw(area)
@@ -142,11 +162,13 @@ function Resizable:draw(area)
 
     -- Handles on the corners and the middle of every edge, lit while the pointer holds or points at them.
     local hover = self.hover
+    local edge, corner = Resizable.edgeInset * self.scale, Resizable.cornerInset * self.scale
+    local left, top, right, bottom = panel.x, panel.y, panel.x + panel.width, panel.y + panel.height
     local handles = {
-        {panel.x, panel.y, 'left', 'top'}, {panel.x + panel.width, panel.y, 'right', 'top'},
-        {panel.x, panel.y + panel.height, 'left', 'bottom'}, {panel.x + panel.width, panel.y + panel.height, 'right', 'bottom'},
-        {panel.x + panel.width / 2, panel.y, 'top'}, {panel.x + panel.width / 2, panel.y + panel.height, 'bottom'},
-        {panel.x, panel.y + panel.height / 2, 'left'}, {panel.x + panel.width, panel.y + panel.height / 2, 'right'},
+        {left + corner, top + corner, 'left', 'top'}, {right - corner, top + corner, 'right', 'top'},
+        {left + corner, bottom - corner, 'left', 'bottom'}, {right - corner, bottom - corner, 'right', 'bottom'},
+        {left + panel.width / 2, top + edge, 'top'}, {left + panel.width / 2, bottom - edge, 'bottom'},
+        {left + edge, top + panel.height / 2, 'left'}, {right - edge, top + panel.height / 2, 'right'},
     }
     for _, handle in ipairs(handles) do
         local lit = hover and hover[handle[3]] and (handle[4] == nil or hover[handle[4]])

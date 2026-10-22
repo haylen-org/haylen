@@ -4,7 +4,7 @@ The sheet `frames.png` is painted with the "codex" command line in the style of 
 
 - `panel.png`, the wooden frame around parchment with diagonal stripes whose period divides the middle, so the middle tiles without a seam while stretching widens its stripes;
 - `parchment.png`, the wooden frame around plain parchment, for the panels that hold text;
-- `pieces.png`, the plain frame at 384 pixels, whose parchment repeats without a seam too, cut into nine pieces apart in a sheet with transparent gaps;
+- `pieces.png`, the wooden frame at 384 pixels around the same diagonal stripes, nine periods across its middle, cut into nine pieces apart in a sheet with transparent gaps;
 - `frame-white.png`, the near white frame, which tints to any color;
 - `cards.png` and `cards.json`, an atlas whose frame `card`, the plain frame at 96 pixels, was trimmed out of a canvas of 128 with a margin of 16 and packed next to a checkered frame, with the bounds of the slice `card` in the coordinates of the whole canvas and its center in the coordinates of its bounds.
 
@@ -30,7 +30,7 @@ SIZE = 256
 # The border of each frame at 256 pixels, which holds its wood or bevel and the shadow along its inner edge.
 WOOD_BORDER = 50
 WHITE_BORDER = 46
-# Diagonal stripes of this period in pixels repeat six times across the middle of the wooden frame.
+# Diagonal stripes of this period in pixels repeat six times across the middle of the wooden frame and nine times across the middle of the frame cut into pieces.
 STRIPE = 26
 STRIPE_COLORS = ((243, 230, 196), (232, 211, 166))
 PIECES_SIZE = 384
@@ -79,25 +79,6 @@ def seamless(image: Image, border: int) -> Image:
             put(result, border + along, across, mixed)
             mixed = [round(a + (b - a) * weight) for a, b in zip(pixel(image, across, border + along), pixel(image, across, border + shifted))]
             put(result, across, border + along, mixed)
-    return result
-
-
-def seamless_middle(image: Image, border: int) -> Image:
-    """Blends the middle with itself shifted by half its size, along each axis in turn, so the middle repeats without a seam too."""
-    result = Image(image.width, image.height, bytearray(image.pixels))
-    length = image.width - border * 2
-    for vertical in (False, True):
-        source = Image(result.width, result.height, bytearray(result.pixels))
-        for along in range(length):
-            weight = max(0.0, 1.0 - min(along, length - 1 - along) / (length * 0.35))
-            shifted = (along + length // 2) % length
-            for across in range(border, image.height - border):
-                if vertical:
-                    first, second, target = (across, border + along), (across, border + shifted), (across, border + along)
-                else:
-                    first, second, target = (border + along, across), (border + shifted, across), (border + along, across)
-                mixed = [round(a + (b - a) * weight) for a, b in zip(pixel(source, *first), pixel(source, *second))]
-                put(result, *target, mixed)
     return result
 
 
@@ -160,7 +141,7 @@ def main() -> None:
     write(striped(wood, WOOD_BORDER), CONTENT / "panel.png")
     write(wood, CONTENT / "parchment.png")
     border = WOOD_BORDER * PIECES_SIZE // SIZE
-    write(pieces(seamless_middle(seamless(frame(sheet, 0, PIECES_SIZE), border), border), border), CONTENT / "pieces.png")
+    write(pieces(striped(seamless(frame(sheet, 0, PIECES_SIZE), border), border), border), CONTENT / "pieces.png")
     write(seamless(frame(sheet, 1), WHITE_BORDER), CONTENT / "frame-white.png")
     cards(wood)
     print("Wrote panel.png, parchment.png, pieces.png, frame-white.png, cards.png and cards.json.")

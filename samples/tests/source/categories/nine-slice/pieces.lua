@@ -1,4 +1,4 @@
--- Nine pieces: a wooden frame made of nine separate regions of a sheet, listed row by row from the top-left corner, stretched and tiled at a size that grows and shrinks. The pieces sit apart in the sheet with transparent gaps between them, which never show.
+-- Nine pieces: a wooden frame made of nine separate regions of a sheet, listed row by row from the top-left corner, stretched and tiled at a size that grows and shrinks, so the stripes of its middle widen in one and repeat in the other. The pieces sit apart in the sheet with transparent gaps between them, which never show.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -15,12 +15,12 @@ Pieces.middle = 234
 Pieces.gap = 16
 Pieces.filters = {{id = 'linear', text = 'Linear'}, {id = 'nearest', text = 'Nearest'}}
 Pieces.code = [[
-local spans = {{0, 75}, {91, 234}, {341, 75}}  -- Where each column and row of pieces starts, and its size.
-local pieces = {}
-for _, row in ipairs(spans) do
-    for _, column in ipairs(spans) do pieces[#pieces + 1] = {column[1], row[1], column[2], row[2]} end
+local spans, pieces = {{0, 75}, {91, 234}, {341, 75}}, {}  -- Where each column and row of pieces starts, and its size.
+for index = 0, 8 do
+    local column, row = spans[index % 3 + 1], spans[index // 3 + 1]
+    pieces[index + 1] = {column[1], row[1], column[2], row[2]}
 end
-local frame = graphics2d.newNineSlice(assets.texture('nine-slice/pieces.png', {filter = 'linear'}), {pieces = pieces})]]
+local frame = graphics2d.newNineSlice(assets.texture('nine-slice/pieces.png'), {pieces = pieces, fill = 'tile'})]]
 
 function Pieces:enter()
     self:build('linear')
@@ -28,7 +28,7 @@ function Pieces:enter()
     tween.to(self.grow, 2.4, {amount = 1}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self:frame{
         code = Pieces.code,
-        hint = 'The gaps between the pieces never show, with either filter, since each region is read on its own.',
+        hint = 'The stripes widen as the stretched frame grows and repeat in the tiled one. The gaps between the pieces never show, with either filter, since each region is read on its own.',
         controls = {ui.formField{label = 'Filter', ui.segmentedControl{id = 'filter', items = Pieces.filters, selected = 'linear', onChange = function(event) self:build(event.value) end}}},
         focus = 'filter',
     }
@@ -40,10 +40,9 @@ function Pieces:build(filter)
     self.texture = assets.texture('nine-slice/pieces.png', {filter = filter})
     local spans = {{0, Pieces.border}, {Pieces.border + Pieces.gap, Pieces.middle}, {Pieces.border + Pieces.middle + Pieces.gap * 2, Pieces.border}}
     local pieces = {}
-    for _, row in ipairs(spans) do
-        for _, column in ipairs(spans) do
-            pieces[#pieces + 1] = {column[1], row[1], column[2], row[2]}
-        end
+    for index = 0, 8 do
+        local column, row = spans[index % 3 + 1], spans[index // 3 + 1]
+        pieces[index + 1] = {column[1], row[1], column[2], row[2]}
     end
     self.stretched = graphics2d.newNineSlice(self.texture, {pieces = pieces})
     self.tiled = graphics2d.newNineSlice(self.texture, {pieces = pieces, fill = 'tile'})

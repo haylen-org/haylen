@@ -24,7 +24,8 @@ function TrimmedSlices:enter()
     self.byHand = graphics2d.newNineSlice(self.atlas.texture, {source = {source.x, source.y, source.width, source.height}, borders = {19, 19, 19, 19}})
     self.results = Results(self.entry.code)
     self:check()
-    self:frame{code = TrimmedSlices.code, hint = 'Both panels must look the same. A slice that ignores the trim offset reads the checkered frame next to the panel.'}
+    self:frame{code = TrimmedSlices.code, hint = 'Both panels must look the same. A slice that ignores the trim offset reads the checkered frame next to the panel.', controls = {self.results:view('Checks')}}
+    self.results:show(self.gui)
 end
 
 -- Compares the first and the last piece of the slice with the rectangle of the frame in the texture.
@@ -33,10 +34,10 @@ function TrimmedSlices:check()
     local source, offset = frame.source, frame.offset
     local first, last = self.fromAtlas.pieces[1], self.fromAtlas.pieces[9]
     local starts = first.x == source.x and first.y == source.y
-    self.results:set('start', starts and 'pass' or 'fail', 'Top-left piece', string.format('Starts at %g, %g of the texture, and the frame starts at %g, %g with a trim offset of %g, %g.', first.x, first.y, source.x, source.y, offset.x, offset.y))
+    self.results:set('start', starts and 'pass' or 'fail', 'Top-left piece', string.format('It starts at %g, %g of the texture, where the frame starts after a trim of %g pixels.', first.x, first.y, offset.x))
     local right, bottom = last.x + last.width, last.y + last.height
     local ends = right == source.x + source.width and bottom == source.y + source.height
-    self.results:set('end', ends and 'pass' or 'fail', 'Bottom-right piece', string.format('Ends at %g, %g of the texture, and the frame ends at %g, %g.', right, bottom, source.x + source.width, source.y + source.height))
+    self.results:set('end', ends and 'pass' or 'fail', 'Bottom-right piece', string.format('It ends at %g, %g of the texture, where the frame ends.', right, bottom))
 end
 
 function TrimmedSlices:update(dt)
@@ -44,34 +45,40 @@ function TrimmedSlices:update(dt)
     self:status(self.results:summary())
 end
 
--- Draws the atlas with the outline of every frame and of the slice, the panel from the slice of the atlas and the panel built from the frame, in two columns of the same margins.
+-- Draws a line of the legend: a stroke of the color of an outline and what it marks.
+function TrimmedSlices.legend(color, text, x, y, width)
+    graphics2d.drawShape({x, y + 9, 34, 6}, {radius = 3, color = color})
+    Test.caption(text, x + 48, y, {size = 22, color = Test.ink, maxWidth = width - 48})
+end
+
+-- Draws the atlas on the left with the outline of every frame, and the slice just outside the frame it shares its bounds with, over a legend, and on the right the panel from the slice of the atlas over the panel built from the frame.
 function TrimmedSlices:draw(area)
     local margin = 40
     local scale = TrimmedSlices.preview
     local texture = self.atlas.texture
     local x, y = margin, margin
     local atlasWidth = texture.width * scale
-    graphics2d.drawShape({x - 12, y - 12, atlasWidth + 24, texture.height * scale + 24}, {radius = 14, color = '#FF151A2A'})
+    graphics2d.drawShape({x - 14, y - 14, atlasWidth + 28, texture.height * scale + 28}, {radius = 14, color = '#FF151A2A'})
     graphics2d.draw(texture, x, y, {pivotX = 0, pivotY = 0, scaleX = scale, scaleY = scale, layer = 1})
     for _, name in ipairs(self.atlas:frameNames()) do
         local source = self.atlas:source(name)
         graphics2d.drawRectOutline({x + source.x * scale, y + source.y * scale, source.width * scale, source.height * scale}, 2, Test.accent, {layer = 2})
     end
     local first, last = self.fromAtlas.pieces[1], self.fromAtlas.pieces[9]
-    local bottom = last.y + last.height
-    graphics2d.drawRectOutline({x + first.x * scale, y + first.y * scale, (last.x + last.width - first.x) * scale, (bottom - first.y) * scale}, 3, Test.warm, {layer = 3})
-    Test.caption('The atlas: its frames in blue, and the slice in orange.', x, y + texture.height * scale + 28, {size = 22, color = Test.ink, maxWidth = atlasWidth})
+    local slice = {x + first.x * scale - 6, y + first.y * scale - 6, (last.x + last.width - first.x) * scale + 12, (last.y + last.height - first.y) * scale + 12}
+    graphics2d.drawRectOutline(slice, 3, Test.warm, {layer = 3})
+    local legendTop = y + texture.height * scale + 40
+    TrimmedSlices.legend(Test.accent, 'The frames that the packer trimmed', x, legendTop, atlasWidth)
+    TrimmedSlices.legend(Test.warm, 'The slice "card", on the same pixels', x, legendTop + 40, atlasWidth)
 
-    local left = x + atlasWidth + 60
-    local gap = 30
-    local width = (area.width - left - margin - gap) / 2
-    local height = math.min(260, area.height - 260)
+    local left = x + atlasWidth + 70
+    local width = area.width - left - margin
+    local height = (area.height - margin * 2 - 100) / 2
     graphics2d.drawNineSlice(self.fromAtlas, {left, y, width, height}, nil, {borderScale = TrimmedSlices.borderScale})
-    Test.caption('From "atlas:slice"', left + width / 2, y + height + 14, {size = 24, color = Test.ink, anchor = {0.5, 0}})
-    graphics2d.drawNineSlice(self.byHand, {left + width + gap, y, width, height}, nil, {borderScale = TrimmedSlices.borderScale})
-    Test.caption('Built from the frame', left + width + gap + width / 2, y + height + 14, {size = 24, color = Test.ink, anchor = {0.5, 0}})
-
-    self.results:draw(area, y + height + 70)
+    Test.caption('From "atlas:slice"', left + width / 2, y + height + 12, {size = 24, color = Test.ink, anchor = {0.5, 0}})
+    local lower = y + height + 60
+    graphics2d.drawNineSlice(self.byHand, {left, lower, width, height}, nil, {borderScale = TrimmedSlices.borderScale})
+    Test.caption('Built from the frame', left + width / 2, lower + height + 12, {size = 24, color = Test.ink, anchor = {0.5, 0}})
 end
 
 return TrimmedSlices
