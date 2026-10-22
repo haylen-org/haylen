@@ -16,7 +16,8 @@ local ring = {outside, inside}  -- An outline and a hole wound the other way.
 local result = m.polygon.subtract(star, ring)  -- Or unite, intersect and exclude.
 result = m.polygon.offset(result, -12, {join = 'miter'})  -- Shrinking can split it apart.
 local pieces = m.polygon.decompose(result)  -- Convex pieces of at most 8 points.
-local area = m.polygon.area(result)]]
+local area = m.polygon.area(result)
+graphics2d.drawPolygon(result, fill)  -- The holes stay open, and only the outlines fade.]]
 
 local kOperations = {{id = 'unite', text = 'Union'}, {id = 'subtract', text = 'Difference'}, {id = 'intersect', text = 'Intersection'}, {id = 'exclude', text = 'Exclusion'}}
 local kJoins = {{id = 'round', text = 'Round corners'}, {id = 'miter', text = 'Miter corners'}, {id = 'square', text = 'Square corners'}, {id = 'bevel', text = 'Bevel corners'}}
@@ -78,29 +79,14 @@ function Polygons:combine()
     self.result = result
     self.pieces = #result > 0 and m.polygon.decompose(result) or {}
     profiler.endScope()
-    self:shapeMesh()
+    self.pieceColors = {}
+    for index in ipairs(self.pieces) do
+        self.pieceColors[index] = m.fromHsv((index * 0.618) % 1, 0.45, 0.9)
+    end
     self.outlines = {}
     for index, outline in ipairs(self.result) do
         self.outlines[index] = {points = Polygons.flat(outline), hole = m.polygonSignedArea(outline) < 0}
     end
-end
-
--- The convex pieces fill the result as one mesh of triangles, whose inner edges meet without a seam, and the outline of the result covers its outer edge.
-function Polygons:shapeMesh()
-    local vertices, indices = {}, {}
-    for index, piece in ipairs(self.pieces) do
-        local color = self.options.pieces and m.fromHsv((index * 0.618) % 1, 0.45, 0.9):toHex() or Polygons.fill
-        local first = #vertices + 1
-        for _, point in ipairs(piece) do
-            vertices[#vertices + 1] = {x = point.x, y = point.y, color = color}
-        end
-        for corner = 2, #piece - 1 do
-            indices[#indices + 1] = first
-            indices[#indices + 1] = first + corner - 1
-            indices[#indices + 1] = first + corner
-        end
-    end
-    self.mesh = {vertices = vertices, indices = indices}
 end
 
 -- Turns a list of points into the flat list of coordinates that strokes take.
@@ -128,11 +114,14 @@ function Polygons:draw(area)
     for _, outline in ipairs(self.ringStrokes) do
         graphics2d.drawStroke(outline, dashed)
     end
-    graphics2d.drawMesh(nil, self.mesh.vertices, self.mesh.indices, {layer = 1})
+    -- The result fills as one shape with its holes open, or as its convex pieces in colors of their own.
     if self.options.pieces then
-        for _, piece in ipairs(self.pieces) do
+        for index, piece in ipairs(self.pieces) do
+            graphics2d.drawPolygon(piece, self.pieceColors[index], {layer = 1})
             graphics2d.drawStroke(Polygons.flat(piece), {width = 2, color = '#CC15172A', closed = true, join = 'round', layer = 2})
         end
+    else
+        graphics2d.drawPolygon(self.result, Polygons.fill, {layer = 1})
     end
     for _, outline in ipairs(self.outlines) do
         graphics2d.drawStroke(outline.points, {width = 4, color = outline.hole and '#FFFFC93C' or '#FFF2F3FF', closed = true, join = 'round', layer = 3})

@@ -578,9 +578,9 @@ TEST_F(ParticlesTest, ShapesAndDirectionModesPlaceParticles) {
 
     EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{0.0F, 0.0F}, {1.0F, 0.0F}}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{0.0F, 0.0F}, {1.0F, 0.0F}, {2.0F, 0.0F}}}), std::invalid_argument);
-    // An outline with area that ear clipping cannot split into a single triangle has nowhere to spawn.
-    EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{4.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 3.0F}, {3.0F, 3.0F}}}), std::invalid_argument);
-    EXPECT_THROW(polygon.setShapePoints({{0.0F, 4.0F}, {0.0F, 6.0F}, {4.0F, 6.0F}, {3.0F, 6.0F}, {8.0F, 4.0F}, {9.0F, 6.0F}}), std::invalid_argument);
+    // A bow tie crosses itself into two halves that wind both ways, so it encloses no area, while a triangle with a repeated point still spawns in its area.
+    EXPECT_THROW(polygon.setShapePoints({{0.0F, 0.0F}, {2.0F, 2.0F}, {2.0F, 0.0F}, {0.0F, 2.0F}}), std::invalid_argument);
+    EXPECT_NO_THROW(Emitter({.texture = texture(), .shape = Shape::Polygon, .shapePoints = {{4.0F, 0.0F}, {2.0F, 0.0F}, {3.0F, 3.0F}, {3.0F, 3.0F}}}));
     EXPECT_THROW(polyline.setShapePoints({{0.0F, 0.0F}}), std::invalid_argument);
     EXPECT_THROW(Emitter({.texture = texture(), .shape = Shape::Image}), std::invalid_argument);
 }

@@ -41,6 +41,7 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/FontFamily.hpp"
+#include "math/PolygonLua.hpp"
 
 namespace haylen::graphics2d {
 
@@ -486,8 +487,9 @@ int Graphics2DLua::drawShape(lua_State* L) {
     return 0;
 }
 
+// Fills a polygon or a shape of outlines with `drawPolygon(points or shape, color, order)`, where a shape takes the outlines of `m.polygon`.
 int Graphics2DLua::drawPolygon(lua_State* L) {
-    getRenderer(L).drawPolygon(lua::Stack::read<std::vector<math::Vec2>>(L, 1), lua::Stack::read<math::Color>(L, 2), lua::TypeConverter::readDrawOrder(L, 3));
+    getRenderer(L).drawPolygon(math::PolygonLua::readShape(L, 1), lua::Stack::read<math::Color>(L, 2), lua::TypeConverter::readDrawOrder(L, 3));
     return 0;
 }
 

@@ -467,6 +467,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Spring.cpp
   src/math/SpringLua.cpp
   src/math/Transform2D.cpp
+  src/math/Triangulator.cpp
   src/math/WeightedChoice.cpp
   src/net/MessagePackLua.cpp
   src/net/NetLua.cpp

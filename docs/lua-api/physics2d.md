@@ -3185,7 +3185,7 @@ print(terrain:isSolid({256, 128}), terrain:isSolid({20, 20})) -- true false
 
 ### terrain:outlines()
 
-Returns the collision outlines of every chunk as lists of `Vec2`, which also draw the ground.
+Returns the collision outlines of every chunk as lists of `Vec2`, which also draw the ground. An outline wound the other way from the outline around it is a cave. Passed whole to [`graphics2d.drawPolygon`](graphics2d.md#graphics2ddrawpolygonpoints-color-order), the outlines fill as one shape, so the chunks join without a seam and the caves stay open.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -3201,9 +3201,7 @@ local camera = graphics2d.newCamera()
 scene.push({
     render = function(self)
         graphics2d.beginWorld(camera)
-        for _, outline in ipairs(terrain:outlines()) do
-            graphics2d.drawPolygon(outline, '#FF795548')
-        end
+        graphics2d.drawPolygon(terrain:outlines(), '#FF795548')
     end,
 })
 ```

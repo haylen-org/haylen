@@ -214,6 +214,9 @@ class Renderer final {
     // A polygon fills the triangles of its outline and fades its edge out over one pixel of the destination.
     void drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order = {});
 
+    // Fills a shape of outlines by the nonzero rule, so an outline wound opposite to the outline around it cuts a hole, and fades only its outer outline and its holes, so outlines that share edges, such as the convex pieces of a shape or the chunks of a terrain, join without a seam.
+    void drawPolygon(std::span<const std::vector<math::Vec2>> shape, math::Color color, const DrawOrder& order = {});
+
     // Outlines every textured quad and text block the open canvas holds so far, in the color, and names each sprite after the path of its texture with the font, at a size in units of the destination: sprites, batches, nine-slice pieces, baked batches and glyphs drawn together.
     void drawBounds(text::Font& font, math::Color color, float labelSize);
 
@@ -282,6 +285,7 @@ class Renderer final {
     [[nodiscard]] static std::vector<std::uint8_t> radialFalloff(int size);
     [[nodiscard]] static std::vector<std::uint8_t> metaballKernel(int size);
     [[nodiscard]] static float lowestPoint(std::span<const math::Vec2> points) noexcept;
+    void addPolygon(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, math::Color color, const DrawOrder& order);
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
     void addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform);

@@ -20,7 +20,7 @@ terrain.samples = function(column, row) return row * 5 > surface(column) and 1 o
 terrain:explode(x, y, 60, {impulse = 900})  -- Blows a crater and pushes the crates.
 terrain:carve(x, y, 36)  terrain:fill(x, y, 36)
 local rebuilt = terrain:update()  -- Only the chunks that changed.
-for _, outline in ipairs(terrain:outlines()) do graphics2d.drawPolygon(outline, dirt) end]]
+graphics2d.drawPolygon(terrain:outlines(), dirt)  -- One shape, whose chunks join without a seam around open caves.]]
 
 Terrain.cellSize = 5
 Terrain.columns, Terrain.rows = 361, 161
@@ -106,20 +106,18 @@ function Terrain:apply(tool, x, y)
     end
 end
 
--- Rebuilds the collision of the changed chunks and keeps the outlines that draw the ground, solid ones and holes apart.
+-- Rebuilds the collision of the changed chunks and keeps the outlines that draw the ground, which fill as one shape with its caves open, and the lawn, a copy of its solid outlines a little higher.
 function Terrain:rebuild()
     local rebuilt = self.terrain:update()
     self.rebuilt = self.rebuilt + rebuilt
-    self.solids, self.holes, self.lawns = {}, {}, {}
-    for _, outline in ipairs(self.terrain:outlines()) do
-        local list = m.polygonSignedArea(outline) >= 0 and self.solids or self.holes
-        list[#list + 1] = outline
-        if list == self.solids then
+    self.ground, self.lawn = self.terrain:outlines(), {}
+    for _, outline in ipairs(self.ground) do
+        if m.polygonSignedArea(outline) >= 0 then
             local lawn = {}
             for index, point in ipairs(outline) do
                 lawn[index] = {point.x, point.y - Terrain.grassDepth}
             end
-            self.lawns[#self.lawns + 1] = lawn
+            self.lawn[#self.lawn + 1] = lawn
         end
     end
     return rebuilt
@@ -145,24 +143,16 @@ function Terrain:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The grass is the ground drawn once more a little higher under the dirt, so it shows along every face that looks up above the hills the ground grew with, and the earth behind the ground covers it below them and darkens every cave, crater and tunnel.
+-- The grass is the ground drawn once more a little higher under the dirt, so it shows along every face that looks up above the hills the ground grew with, and the earth behind the ground covers it below them and shows through every cave, crater and tunnel the dirt leaves open. Each is one shape, so its chunks join without a seam.
 function Terrain:draw(area)
     local order = self.order
     Scenery.sky(self.camera, 40)
     order.layer = -7
-    for _, lawn in ipairs(self.lawns) do
-        graphics2d.drawPolygon(lawn, Terrain.grass, order)
-    end
+    graphics2d.drawPolygon(self.lawn, Terrain.grass, order)
     order.layer = -6
     graphics2d.drawPolygon(self.backfill, Terrain.cave, order)
     order.layer = -5
-    for _, outline in ipairs(self.solids) do
-        graphics2d.drawPolygon(outline, Terrain.dirt, order)
-    end
-    order.layer = -4
-    for _, outline in ipairs(self.holes) do
-        graphics2d.drawPolygon(outline, Terrain.cave, order)
-    end
+    graphics2d.drawPolygon(self.ground, Terrain.dirt, order)
     Look.drawAll(self.crates, {layer = 3})
     self.blast:draw()
     local pointer = self.pointer

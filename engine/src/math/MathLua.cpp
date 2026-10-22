@@ -500,7 +500,7 @@ std::vector<Vec2> MathLua::hull(std::vector<Vec2> points) {
 }
 
 int MathLua::triangulatePolygon(lua_State* L) {
-    const std::vector<std::uint32_t> indices = Geometry::triangulate(lua::Stack::read<std::vector<Vec2>>(L, 1));
+    const std::vector<std::uint32_t> indices = Geometry::triangulate(PolygonLua::readShape(L, 1));
     lua_createtable(L, static_cast<int>(indices.size()), 0);
     for (std::size_t index = 0; index < indices.size(); ++index) {
         lua_pushinteger(L, static_cast<lua_Integer>(indices[index] + 1));

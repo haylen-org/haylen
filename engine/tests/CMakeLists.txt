@@ -150,6 +150,7 @@ set(HAYLEN_TEST_SOURCES
   math/PolygonTests.cpp
   math/ProceduralTests.cpp
   math/RaycastTests.cpp
+  math/TriangulatorTests.cpp
   math/UtilityTests.cpp
   math/VectorTests.cpp
   net/WebSocketTests.cpp

@@ -2475,6 +2475,23 @@ scene.push({
 
 Fills a simple polygon, convex or concave, given as a list of points in either winding. The fill stops half a pixel of the destination inside the outline, and a fringe fades it out to half a pixel outside. So its edges cover the pixels they cross like the edges of shapes. Fewer than three points draw nothing.
 
+In place of the points it takes a shape of the [`m.polygon`](math.md#polygon-operations) functions: a list of outlines, each a list of points. An outline wound opposite to the outline around it cuts a hole, and the edge of the hole fades into the hole. Outlines that share an edge, such as the convex pieces of `m.polygon.decompose` or the outlines of a [terrain](physics2d.md#terrainoutlines), fill up to it without a fringe. So the whole shape fades only along its outer outline and its holes, and its pieces join without a seam. A table that is not a list of points or outlines raises the `bad argument` error of Lua.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local m = require('haylen.math')
+local scene = require('haylen.scene')
+
+local frame = m.polygon.subtract({{100, 100}, {400, 100}, {400, 300}, {100, 300}}, {{160, 160}, {340, 160}, {340, 240}, {160, 240}})
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawPolygon(frame, '#FF4080FF')
+    end,
+})
+```
+
 ```lua
 local graphics2d = require('haylen.graphics2d')
 local scene = require('haylen.scene')

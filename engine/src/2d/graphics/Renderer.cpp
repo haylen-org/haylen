@@ -701,13 +701,30 @@ void Renderer::drawPoints(std::span<const math::Vec2> points, float radius, std:
 }
 
 void Renderer::drawPolygon(std::span<const math::Vec2> points, math::Color color, const DrawOrder& order) {
+    const std::array<std::uint32_t, 1> counts{static_cast<std::uint32_t>(points.size())};
+    addPolygon(points, counts, color, order);
+}
+
+// The outlines of a shape follow each other in storage the renderer keeps, so a shape drawn every frame allocates nothing once it has grown.
+void Renderer::drawPolygon(std::span<const std::vector<math::Vec2>> shape, math::Color color, const DrawOrder& order) {
+    std::vector<math::Vec2>& points = state->polygonPoints;
+    std::vector<std::uint32_t>& counts = state->polygonCounts;
+    points.clear();
+    counts.clear();
+    for (const std::vector<math::Vec2>& outline : shape) {
+        points.insert(points.end(), outline.begin(), outline.end());
+        counts.push_back(static_cast<std::uint32_t>(outline.size()));
+    }
+    addPolygon(points, counts, color, order);
+}
+
+void Renderer::addPolygon(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, math::Color color, const DrawOrder& order) {
     if (!state->accepts(order)) {
         return;
     }
-
-    math::Geometry::triangulate(points, state->polygonTriangles, state->polygonCorners);
-    PolygonMesh::build(points, state->polygonTriangles, color.toRgba8(), state->getPixelSize(), state->scratchVertices, state->scratchIndices);
-    state->addMesh(state->white, state->scratchVertices, state->scratchIndices, order);
+    PolygonMesh& polygon = state->polygons;
+    polygon.build(points, counts, color.toRgba8(), state->getPixelSize());
+    state->addMesh(state->white, polygon.getVertices(), polygon.getIndices(), order);
 }
 
 std::uint64_t Renderer::addCanvasOverlay(CanvasOverlay overlay) {

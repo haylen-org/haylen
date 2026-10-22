@@ -23,6 +23,7 @@
 #include "2d/graphics/LightInstance.hpp"
 #include "2d/graphics/LitTargets.hpp"
 #include "2d/graphics/MetaballDraw.hpp"
+#include "2d/graphics/PolygonMesh.hpp"
 #include "2d/graphics/Program.hpp"
 #include "2d/graphics/Shade.hpp"
 #include "2d/graphics/StaticBatchResource.hpp"
@@ -166,8 +167,8 @@ struct RendererState {
     std::vector<GpuInstance> scratchInstances;
     std::vector<GpuVertex> scratchVertices;
     std::vector<std::uint32_t> scratchIndices;
-    std::vector<std::uint32_t> polygonTriangles;
-    std::vector<std::uint32_t> polygonCorners;
+    std::vector<math::Vec2> polygonPoints;
+    std::vector<std::uint32_t> polygonCounts;
     std::vector<NineSlice::Patch> patches;
     std::vector<math::Vec2> curvePoints;
 
@@ -194,6 +195,7 @@ struct RendererState {
     VectorAtlas vectors;
 
     StrokeBuilder strokes;
+    PolygonMesh polygons;
 
     // Turns the layout of every text draw into instances, reusing its batches from draw to draw.
     TextPainter painter;

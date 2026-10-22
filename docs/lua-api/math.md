@@ -1666,6 +1666,8 @@ print(#m.convexHull(rocks)) -- 4
 
 Splits a simple polygon, one whose outline never crosses itself, into triangles. It returns a flat list of corner positions counted from 1, three per triangle. The polygon may have dents and either winding, and every triangle comes out with the winding that `m.polygonSignedArea` reports as positive. Fewer than three points give an empty list, and an outline that crosses itself may leave part of its area without triangles.
 
+It also takes a shape of the [`m.polygon`](#polygon-operations) functions: a list of outlines, where an outline wound opposite to the outline around it is a hole. Then the corner positions count the points of all the outlines one after the other, and no triangle covers a hole. A table that is not a list of points or outlines raises the `bad argument` error of Lua.
+
 ```lua
 local graphics2d = require('haylen.graphics2d')
 local m = require('haylen.math')

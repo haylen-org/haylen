@@ -1,19 +1,14 @@
 #include "haylen/math/Geometry.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <numeric>
 
 #include "haylen/math/Math.hpp"
+#include "math/Triangulator.hpp"
 
 namespace haylen::math {
-
-bool Geometry::pointInTriangle(Vec2 point, Vec2 a, Vec2 b, Vec2 c) noexcept {
-    const float ab = Vec2::cross(b - a, point - a);
-    const float bc = Vec2::cross(c - b, point - b);
-    const float ca = Vec2::cross(a - c, point - c);
-    return ab >= 0.0F && bc >= 0.0F && ca >= 0.0F;
-}
 
 bool Geometry::intersects(const Circle& lhs, const Circle& rhs) noexcept {
     const float radius = lhs.radius + rhs.radius;
@@ -170,60 +165,22 @@ std::vector<Vec2> Geometry::convexHull(std::span<const Vec2> points) {
 }
 
 std::vector<std::uint32_t> Geometry::triangulate(std::span<const Vec2> polygon) {
-    std::vector<std::uint32_t> triangles;
-    std::vector<std::uint32_t> remaining;
-    triangulate(polygon, triangles, remaining);
-    return triangles;
+    Triangulator triangulator;
+    const std::array<std::uint32_t, 1> counts{static_cast<std::uint32_t>(polygon.size())};
+    triangulator.triangulate(polygon, counts);
+    return triangulator.getTriangles();
 }
 
-void Geometry::triangulate(std::span<const Vec2> polygon, std::vector<std::uint32_t>& triangles, std::vector<std::uint32_t>& remaining) {
-    triangles.clear();
-    if (polygon.size() < 3) {
-        return;
+std::vector<std::uint32_t> Geometry::triangulate(std::span<const std::vector<Vec2>> shape) {
+    std::vector<Vec2> points;
+    std::vector<std::uint32_t> counts;
+    for (const std::vector<Vec2>& outline : shape) {
+        points.insert(points.end(), outline.begin(), outline.end());
+        counts.push_back(static_cast<std::uint32_t>(outline.size()));
     }
-
-    remaining.resize(polygon.size());
-    std::iota(remaining.begin(), remaining.end(), std::uint32_t{0});
-    if (signedArea(polygon) < 0.0F) {
-        std::reverse(remaining.begin(), remaining.end());
-    }
-    triangles.reserve((polygon.size() - 2) * 3);
-
-    // Ear clipping removes one convex vertex whose triangle contains no other vertex per iteration, and it stops once a whole pass finds no ear, as happens on an outline that crosses itself.
-    std::size_t misses = 0;
-    std::size_t index = 0;
-    while (remaining.size() > 3 && misses < remaining.size()) {
-        const std::size_t count = remaining.size();
-        const std::uint32_t previous = remaining[(index + count - 1) % count];
-        const std::uint32_t current = remaining[index % count];
-        const std::uint32_t next = remaining[(index + 1) % count];
-        const Vec2 a = polygon[previous];
-        const Vec2 b = polygon[current];
-        const Vec2 c = polygon[next];
-
-        bool ear = Vec2::cross(b - a, c - b) > 0.0F;
-        for (std::size_t other = 0; ear && other < count; ++other) {
-            const std::uint32_t vertex = remaining[other];
-            if (vertex != previous && vertex != current && vertex != next && pointInTriangle(polygon[vertex], a, b, c)) {
-                ear = false;
-            }
-        }
-
-        if (!ear) {
-            index = (index + 1) % count;
-            ++misses;
-            continue;
-        }
-
-        triangles.insert(triangles.end(), {previous, current, next});
-        remaining.erase(remaining.begin() + static_cast<std::ptrdiff_t>(index % count));
-        index = index % remaining.size();
-        misses = 0;
-    }
-
-    if (remaining.size() == 3) {
-        triangles.insert(triangles.end(), {remaining[0], remaining[1], remaining[2]});
-    }
+    Triangulator triangulator;
+    triangulator.triangulate(points, counts);
+    return triangulator.getTriangles();
 }
 
 } // namespace haylen::math

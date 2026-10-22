@@ -413,7 +413,11 @@ This is how the shape program draws:
 - A shape with a texture stretches it over its rectangle under the fill color. The texture is clamped inside, so the fade past the edge never wraps around a texture that repeats.
 - The shader library applies the coverage in `haylen_output`, so a [material](shaders.md) that shades a shape keeps its edge whatever color it writes.
 
-Polygons are tessellated instead, since their edges are straight. The fill stops half a pixel inside the outline, and a fringe of triangles fades it to nothing half a pixel outside. Corners move along their bisector no further than two half pixels.
+Polygons are tessellated instead, since their edges are straight. The fill stops half a pixel inside the outline, and a fringe of triangles fades it to nothing half a pixel outside. Corners move no further than two half pixels. `PolygonMesh` (`engine/src/2d/graphics/PolygonMesh.cpp`) builds them:
+
+- The outlines of a shape fill by the nonzero rule. `math::Triangulator` (`engine/src/math/Triangulator.cpp`) finds the outline around every outline, so an outline wound opposite to the one around it is a hole. It joins every hole to the outline around it through a bridge to a vertex the hole sees, and clips the joined ring one ear at a time.
+- The edge of a hole fades into the hole. An edge that two outlines share, such as the edge between two convex pieces or two chunks of a terrain, gets no fringe. The fills of both outlines reach it, and a corner on it slides along it, so the pieces join without a seam.
+- The triangulator, the edges and the vertices keep their storage in the renderer, so a shape drawn every frame allocates nothing once its buffers have grown.
 
 Strokes of `graphics2d.drawStroke`, `Renderer::drawStroke` in C++, are tessellated the same way by `StrokeBuilder` (`engine/src/2d/graphics/StrokeBuilder.cpp`):
 
