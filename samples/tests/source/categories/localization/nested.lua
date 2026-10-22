@@ -17,8 +17,8 @@ ui.tree{id = 'tree', items = items, expanded = {'story', 'story.chapters'}}]]
 Nested.hint = 'Open the groups of the tree and pick a key or a group to read it with "localization.text" and "localization.has".'
 Nested.focus = 'tree'
 Nested.first = 'story.chapters.first.title'
--- The tree names keys, so their letters keep their own glyphs and `first` never draws the ligature of f and i.
-Nested.keyStyle = {fonts = {body = {ligatures = false}}}
+-- The tree names keys, so their letters keep their own glyphs and `first` never draws the ligature of f and i, in rows a little closer than a list of choices.
+Nested.keyStyle = {fonts = {body = {ligatures = false}}, metrics = {listRowHeight = 56}}
 Nested.pluralParts = {zero = true, one = true, two = true, few = true, many = true, other = true}
 
 local function isPlural(value)
@@ -84,7 +84,7 @@ end
 function Nested:content()
     local rows = {}
     for index, tag in ipairs(language.tags) do
-        rows[index] = ui.row{gap = 16, alignItems = 'start',
+        rows[index] = ui.row{gap = 16, alignItems = 'center',
             ui.badge{text = tag, tone = 'accent', width = 96},
             ui.label{id = 'in-' .. tag, text = '', grow = 1},
         }

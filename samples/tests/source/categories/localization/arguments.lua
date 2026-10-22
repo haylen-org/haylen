@@ -38,12 +38,14 @@ function Arguments:content()
                 ui.formField{label = 'Argument "name"', ui.textField{id = 'name', value = values.name, maxLength = 20, autocapitalize = 'words', returnKey = 'done', onChange = function(event)
                     self:change('name', event.value)
                 end}},
-                ui.formField{label = 'Argument "day"', ui.stepper{id = 'day', value = values.day, min = 1, max = 30, onChange = function(event)
-                    self:change('day', event.value)
-                end}},
-                ui.formField{label = 'Argument "score"', ui.numberField{id = 'score', value = values.score, min = 0, max = 99999, step = 250, onChange = function(event)
-                    self:change('score', event.value)
-                end}},
+                ui.row{gap = 12,
+                    ui.formField{label = 'Argument "day"', grow = 1, width = 0, ui.stepper{id = 'day', value = values.day, min = 1, max = 30, onChange = function(event)
+                        self:change('day', event.value)
+                    end}},
+                    ui.formField{label = 'Argument "score"', grow = 1, width = 0, ui.numberField{id = 'score', value = values.score, min = 0, max = 99999, step = 250, onChange = function(event)
+                        self:change('score', event.value)
+                    end}},
+                },
                 ui.formField{label = 'Argument "ratio"', ui.slider{id = 'ratio', value = values.ratio, showValue = true, onChange = function(event)
                     self:change('ratio', math.floor(event.value * 100 + 0.5) / 100)
                 end}},

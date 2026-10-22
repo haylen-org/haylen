@@ -1,4 +1,4 @@
--- Every text of the title screen is a translation such as `{key = 'menu.play'}`, which the UI resolves every time it draws, so `localization.setLanguage` changes the whole screen at once without rebuilding it. The title screen stands on a painted landscape whose clouds drift, drawn into a render target that the card shows.
+-- Every text of the title screen is a translation such as `{key = 'menu.play'}`, which the UI resolves every time it draws, so `localization.setLanguage` changes the whole screen at once without rebuilding it. The title screen stands on a painted landscape whose clouds drift, drawn into a render target that the card shows, with the title as a logo of warm letters over a block shadow and the subtitle on a dark plate.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -26,6 +26,11 @@ Switch.backdropSize = {1280, 720}
 -- The backdrop measures a quarter of its pixels, so the title screen fits the region it covers.
 Switch.backdropScale = 0.25
 Switch.ink = '#FF1E1B33'
+-- The logo is a warm fill over a copy in ink that sits a few points lower, both with an outline in ink, and the subtitle sits on a plate.
+Switch.logoColor = '#FFFFD45C'
+Switch.logoSize = 60
+Switch.logoDepth = 6
+Switch.plate = '#B0101418'
 
 function Switch:content()
     self.landscape = Landscape()
@@ -45,18 +50,23 @@ function Switch:content()
     return {
         ui.stack{grow = 1, align = 'stretch',
             ui.image{image = Switch.backdrop, fit = 'cover', scale = Switch.backdropScale, radius = 16, align = 'stretch'},
-            ui.column{align = 'stretch', gap = 12, justify = 'center', padding = 24,
-                ui.label{text = {key = 'menu.title'}, font = 'title', color = 'onAccent', outline = Switch.ink, outlineWidth = 4, textAlign = 'center', align = 'stretch'},
-                ui.label{text = {key = 'menu.subtitle'}, color = 'onAccent', outline = Switch.ink, outlineWidth = 3, textAlign = 'center', align = 'stretch'},
-                ui.panel{width = 500, gap = 12, align = 'center', margin = {8, 0, 0, 0}, style = {colors = {panel = '#C01B1E2B'}},
-                    ui.column{gap = 12, align = 'stretch', children = buttons},
+            ui.column{align = 'stretch', gap = 12, justify = 'center', padding = 12,
+                ui.stack{align = 'stretch', style = {fonts = {title = {size = Switch.logoSize}}},
+                    ui.label{text = {key = 'menu.title'}, font = 'title', outline = Switch.ink, outlineWidth = 6, textAlign = 'center', align = 'stretch', margin = {Switch.logoDepth, 0, 0, 0}, style = {colors = {text = Switch.ink}}},
+                    ui.label{text = {key = 'menu.title'}, font = 'title', outline = Switch.ink, outlineWidth = 6, textAlign = 'center', align = 'stretch', margin = {0, 0, Switch.logoDepth, 0}, style = {colors = {text = Switch.logoColor}}},
+                },
+                ui.panel{align = 'center', padding = {6, 20}, style = {colors = {panel = Switch.plate}},
+                    ui.label{text = {key = 'menu.subtitle'}, color = 'onAccent', textAlign = 'center'},
+                },
+                ui.panel{width = 500, gap = 12, align = 'center', style = {colors = {panel = '#C01B1E2B'}, metrics = {panelPadding = 20}},
+                    ui.column{gap = 10, align = 'stretch', children = buttons},
                     ui.label{id = 'current', text = '', color = 'textMuted', textAlign = 'center', align = 'stretch'},
                 },
             },
         },
-        ui.panel{width = 560, align = 'stretch', gap = 16,
+        ui.panel{width = 560, align = 'stretch', gap = 12,
             ui.sectionTitle{text = 'The languages of the app'},
-            ui.scroll{grow = 1, height = 0, ui.list{id = 'languages', items = languages, selected = localization.language(), onSelect = function(event)
+            ui.scroll{grow = 1, height = 0, style = {metrics = {listRowHeight = 56}}, ui.list{id = 'languages', items = languages, selected = localization.language(), onSelect = function(event)
                 localization.setLanguage(event.item)
             end}},
             ui.label{id = 'state', text = '', color = 'textMuted'},

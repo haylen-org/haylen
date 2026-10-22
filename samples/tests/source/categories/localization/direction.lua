@@ -19,7 +19,7 @@ Direction.hint = 'The test opens in Arabic, which mirrors the settings card and 
 function Direction:content()
     return {
         ui.card{width = 760, align = 'stretch',
-            ui.scroll{grow = 1, height = 0, ui.column{gap = 18,
+            ui.scroll{grow = 1, height = 0, ui.column{gap = 12, style = {metrics = {listRowHeight = 56}},
                 ui.sectionTitle{text = {key = 'direction.settings'}},
                 ui.row{gap = 24,
                     ui.checkbox{id = 'music', text = {key = 'direction.music'}, checked = true},
@@ -50,8 +50,8 @@ function Direction:content()
                 ui.label{text = "A column with \"direction = 'rightToLeft'\"", font = 'caption', color = 'textMuted'},
                 ui.column{direction = 'rightToLeft', language = 'ar', gap = 12,
                     ui.label{text = 'مرحبًا بك في الجزيرة! رقم الغرفة 42، والمفتاح (A-7).'},
-                    ui.textField{id = 'arabic', value = 'مرحبا 123 abc'},
                     ui.row{gap = 12,
+                        ui.textField{id = 'arabic', value = 'مرحبا 123 abc', grow = 1},
                         ui.checkbox{text = 'تذكرني', checked = true},
                         ui.button{text = 'دخول', variant = 'primary'},
                     },

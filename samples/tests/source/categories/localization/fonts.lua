@@ -16,7 +16,7 @@ ui.richText{text = '[b]日本語[/b] こんにちは', font = 'heading'}
 family:resolve(utf8.codepoint('語'))]]
 
 Fonts.hint = 'Pick any language to see labels, buttons and rich text draw it through the fallback of one family, next to the same line without the fallback.'
-Fonts.mixed = '[b]English[/b] Hello [b]Português[/b] Olá [b]Español[/b] ¡Hola! [b]日本語[/b] こんにちは'
+Fonts.mixed = '[b]English[/b] Hello [b]Português[/b] Olá [b]日本語[/b] こんにちは'
 
 function Fonts:content()
     local character = utf8.codepoint('語')

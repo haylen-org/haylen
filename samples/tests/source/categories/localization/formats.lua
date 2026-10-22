@@ -1,4 +1,4 @@
--- Numbers, dates and lists in many languages: decimals, percentages, amounts and compact numbers with the marks of each language, a moment in every date style with the time, a list joined with "and" and "or", and the plural and ordinal categories of the counts from 0 to 25, colored by category.
+-- Numbers, dates and lists in many languages: decimals, percentages, amounts and compact numbers with the marks of each language, a moment in every date style, its time in the clock of the language and both together, a list joined with "and" and "or", and the plural and ordinal categories of the counts from 0 to 25, colored by category.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local ui = require('haylen.ui')
@@ -48,7 +48,7 @@ function Formats:enter()
                 ui.row{grow = 1, gap = 8, justify = 'end', children = legend},
             },
             ui.panel{grow = 1, align = 'stretch',
-                ui.scroll{grow = 1, height = 0, ui.column{gap = 20, style = {metrics = {listRowHeight = 48}},
+                ui.scroll{grow = 1, height = 0, ui.column{gap = 20, style = {metrics = {listRowHeight = 44}},
                     ui.row{gap = 24, alignItems = 'start',
                         ui.column{grow = 2, gap = 8,
                             ui.sectionTitle{text = 'Numbers and lists'},
@@ -56,7 +56,7 @@ function Formats:enter()
                         },
                         ui.column{grow = 3, gap = 8,
                             ui.sectionTitle{text = 'Dates'},
-                            ui.table{id = 'dates', columns = {{text = 'Style', width = 150}, {text = 'Result'}}, rows = {}},
+                            ui.table{id = 'dates', columns = {{text = 'Style', width = 200}, {text = 'Result'}}, rows = {}},
                         },
                     },
                     ui.row{gap = 24, alignItems = 'start',
@@ -102,10 +102,17 @@ function Formats:show()
         {id = 'or', cells = {'Choice', localization.formatList({'Ada', 'Grace'}, {type = 'or', language = language})}},
     }})
 
+    local function date(options)
+        options.timeZoneOffset = 0
+        options.language = language
+        return localization.formatDate(Formats.moment, options)
+    end
     local dates = {}
     for _, style in ipairs({'short', 'medium', 'long', 'full'}) do
-        dates[#dates + 1] = {id = style, cells = {capitalized(style), localization.formatDate(Formats.moment, {date = style, time = style == 'full', timeZoneOffset = 0, language = language})}}
+        dates[#dates + 1] = {id = style, cells = {capitalized(style), date({date = style})}}
     end
+    dates[#dates + 1] = {id = 'time', cells = {'Time', date({date = false, time = true})}}
+    dates[#dates + 1] = {id = 'both', cells = {'Date and time', date({date = 'medium', time = true})}}
     self:set('dates', {rows = dates})
     self.gui:replaceChildren('plurals', self:badges('plural-', false))
     self.gui:replaceChildren('ordinals', self:badges('ordinal-', true))
