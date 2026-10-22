@@ -265,7 +265,7 @@ A trail is a ribbon behind a moving point. There are two kinds:
 - A `Trail` follows one point you move yourself, such as the tip of a blade or a projectile, without any particles. It adds a point when its position has moved far enough and drops the points older than its lifetime.
 - The `trail` option of an emitter gives every particle a ribbon of its own, for meteors and fireworks. The emitter records the positions of all its particles at the same moments.
 
-Both draw as strokes with round ends and joins. Their width and colors go from the head to the tail, and their edges fade over one pixel at any width and zoom.
+Both draw as strokes with round ends and joins. Their width and colors go from the head to the tail, and their edges fade over one pixel at any width and zoom. The head moves on between the points a trail keeps, so the newest point can lie just behind it. When that point lies closer to the head than the ribbon is wide there, the head takes its place, so the ribbon never turns on a segment shorter than its width, which would dent its edge at the head.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

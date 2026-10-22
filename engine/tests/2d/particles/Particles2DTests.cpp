@@ -799,6 +799,22 @@ TEST_F(ParticlesTest, TrailsDrawRibbonsBehindParticlesAndPoints) {
     // clang-format on
     EXPECT_GT(ribbonVertices, 6U);
     EXPECT_EQ(ribbonVertices, strokeVertices);
+
+    // A point closer to the head than the ribbon is wide there gives the head its place, so the ribbon never turns on so short a segment, which would dent its edge.
+    const std::vector<math::Vec2> crowded{{0.0F, 0.0F}, {2.0F, 3.0F}, {100.0F, 0.0F}, {200.0F, 0.0F}};
+    const std::vector<float> crowdedPlaces{0.0F, 0.01F, 0.5F, 1.0F};
+    const std::vector<math::Vec2> smooth{{0.0F, 0.0F}, {100.0F, 0.0F}, {200.0F, 0.0F}};
+    const std::vector<float> smoothWidths{22.0F, 11.0F, 0.0F};
+    const std::vector<math::Color> smoothTints{math::Color::white(), Ribbon::colorAt(colors, 0.5F), math::Color::transparent()};
+    // clang-format off
+    const std::size_t crowdedVertices = drawn([&](graphics2d::Renderer& renderer) {
+        ribbon.draw(renderer, crowded, crowdedPlaces, {.widthStart = 22.0F, .widthEnd = 0.0F, .colors = colors}, {}, {});
+    });
+    const std::size_t smoothVertices = drawn([&](graphics2d::Renderer& renderer) {
+        renderer.drawStroke(smooth, {.widths = smoothWidths, .colors = smoothTints, .join = graphics2d::Stroke::Join::Round, .cap = graphics2d::Stroke::Cap::Round});
+    });
+    // clang-format on
+    EXPECT_EQ(crowdedVertices, smoothVertices);
 }
 
 TEST_F(ParticlesTest, SystemsMoveScaleAndRestartTheirEmitters) {

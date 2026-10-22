@@ -25,13 +25,14 @@ class Ribbon final {
         math::Color tint = math::Color::white();
     };
 
-    // Draws a ribbon through the points, the head first, where `places` gives each point its place along the ribbon from 0 at the head to 1 at the tail. A ribbon needs two points.
+    // Draws a ribbon through the points, the head first, where `places` gives each point its place along the ribbon from 0 at the head to 1 at the tail. A ribbon needs two points. The head moves on between the points a trail keeps, so the point right behind it can lie closer than the ribbon is wide, and turning on so short a segment would dent the edge, so the head takes the place of such a point.
     void draw(graphics2d::Renderer& renderer, std::span<const math::Vec2> points, std::span<const float> places, const Style& style, const graphics::Texture& texture, const graphics2d::DrawOrder& order);
 
     // Returns the color at a place of evenly spread colors, blended between neighbours.
     [[nodiscard]] static math::Color colorAt(std::span<const math::Color> colors, float place) noexcept;
 
   private:
+    std::vector<math::Vec2> line;
     std::vector<float> widths;
     std::vector<math::Color> tints;
 };
