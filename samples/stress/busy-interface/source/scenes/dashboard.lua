@@ -32,7 +32,7 @@ Dashboard.containerChanges = 4
 Dashboard.listPadding = {0, 18, 0, 0}
 -- A sticky header paints the color of its card, so the rows that scroll under it never show through.
 Dashboard.headerStyle = {colors = {panel = '#FF1B2430'}}
-Dashboard.tableColumns = {{text = 'Berth', width = 60, align = 'center'}, {text = 'Vessel'}, {text = 'Done', width = 60, align = 'end'}, {text = 'State', width = 100}}
+Dashboard.tableColumns = {{text = 'Berth', width = 64, align = 'center'}, {text = 'Vessel'}, {text = 'Done', width = 60, align = 'end'}, {text = 'State', width = 120}}
 Dashboard.actions = {actions = {
     {name = 'moreCards', type = 'button', bindings = {'key:equal', 'key:keypadAdd', 'axis:rightTrigger+'}},
     {name = 'fewerCards', type = 'button', bindings = {'key:minus', 'key:keypadSubtract', 'axis:leftTrigger+'}},
@@ -87,22 +87,22 @@ function Dashboard:content()
             chartNode('cranes', 'Share of the cranes', 1),
         },
         ui.row{gap = 12, grow = 1, align = 'stretch',
-            section('Vessels', 2.6, ui.collection{id = 'vessels', grow = 1, gap = 6, padding = Dashboard.listPadding, selection = 'single', types = {
+            section('Vessels', 2.4, ui.collection{id = 'vessels', grow = 1, gap = 6, padding = Dashboard.listPadding, selection = 'single', types = {
                 terminal = {template = ui.panel{padding = {4, 0}, style = Dashboard.headerStyle, ui.label{part = 'title', bind = {text = 'title'}, font = 'button', color = 'accentText'}}, sticky = true, interactive = false},
                 vessel = {template = ui.column{gap = 4,
                     ui.row{gap = 8, ui.label{part = 'name', bind = {text = 'name'}, grow = 1, wrap = false}, ui.badge{part = 'status', bind = {text = 'status', tone = 'tone'}}},
                     ui.row{gap = 8, ui.progress{part = 'progress', bind = {value = 'progress'}, grow = 1}, ui.label{part = 'eta', bind = {text = 'eta'}, font = 'caption', color = 'textMuted', wrap = false}},
                 }},
             }, ui.busyIndicator{size = 40}}),
-            section('Containers', 3, ui.collection{id = 'containers', grow = 1, layout = 'grid', minCellSize = 130, cellAspect = 0.62, gap = 8, padding = Dashboard.listPadding, selection = 'multiple', types = {
+            section('Containers', 2.6, ui.collection{id = 'containers', grow = 1, layout = 'grid', minCellSize = 130, cellAspect = 0.62, gap = 8, padding = Dashboard.listPadding, selection = 'multiple', types = {
                 box = {template = ui.column{gap = 2, padding = 6,
                     ui.label{part = 'code', bind = {text = 'code'}, wrap = false},
                     ui.label{part = 'block', bind = {text = 'block'}, font = 'caption', color = 'textMuted', wrap = false},
                     ui.badge{part = 'status', bind = {text = 'status', tone = 'tone'}},
                 }},
             }, ui.busyIndicator{size = 40}}),
-            section('Berths', 2.8, ui.scroll{grow = 1, height = 0, ui.table{id = 'berths', columns = Dashboard.tableColumns, rows = self.port:stepBerths(0)}}),
-            section('Events', 2.6, ui.collection{id = 'feed', grow = 1, gap = 4, padding = Dashboard.listPadding, stickToEnd = true, types = {
+            section('Berths', 3.6, ui.scroll{grow = 1, height = 0, ui.table{id = 'berths', columns = Dashboard.tableColumns, rows = self.port:stepBerths(0)}}),
+            section('Events', 2.4, ui.collection{id = 'feed', grow = 1, gap = 4, padding = Dashboard.listPadding, stickToEnd = true, types = {
                 event = {template = ui.row{gap = 8,
                     ui.statusIndicator{part = 'line', bind = {text = 'text', tone = 'tone'}, grow = 1},
                     ui.label{part = 'time', bind = {text = 'time'}, font = 'caption', color = 'textMuted', wrap = false},
