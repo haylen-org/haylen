@@ -1,6 +1,5 @@
 -- The island the camera tests look at: a meadow of painted tiles ringed by a beach and the sea, with a pond, a sandy clearing and a dirt road, a cottage, a shrine and woods that thicken toward the coast, baked once and drawn by every camera of a test.
 local assets = require('haylen.assets')
-local collections = require('haylen.collections')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -77,7 +76,6 @@ function World:init()
     for index, path in ipairs(World.textures) do
         textures[index] = World.texture(path)
     end
-    self:chart()
     self.props = graphics2d.newSpriteBatch(textures)
     self.flats = graphics2d.newSpriteBatch(textures)
     self.placed = {}
@@ -85,28 +83,38 @@ function World:init()
     self:shade()
 end
 
--- Lays out the map of the minimaps: a round spot of flat color on every corner of the island, kept as points of each kind of ground, which merge into smooth shapes at the size of a minimap.
+-- Readies the map of flat colors that minimaps draw: the beach and the meadow inside the coast, and the road from shore to shore, which `draw` adds to the pond and the clearing as smooth shapes. Only the tests with a map call it.
 function World:chart()
-    local bounds, cell = World.bounds, World.cell
-    local spots = {[Terrain.grass] = {}, [Terrain.sand] = {}, [Terrain.path] = {}, [Terrain.water] = {}}
-    for row = 0, bounds.height // cell do
-        for column = 0, bounds.width // cell do
-            local x, y = bounds.x + column * cell, bounds.y + row * cell
-            local list = spots[self:kindAt(x, y)]
-            if list then
-                list[#list + 1] = x
-                list[#list + 1] = y
-            end
+    local bounds, coast = World.bounds, World.coast
+    local meadow = bounds:expanded(-(coast.inset + coast.beach))
+    local left, right = meadow.x, meadow:right()
+    local road = {left, World.roadY(left)}
+    for _, point in ipairs(World.road) do
+        if point[1] > left and point[1] < right then
+            road[#road + 1] = point[1]
+            road[#road + 1] = point[2]
         end
     end
-    self.spots = {}
-    for kind, list in pairs(spots) do
-        local points = collections.newFloatBuffer(#list)
-        for index, value in ipairs(list) do
-            points[index] = value
-        end
-        self.spots[kind] = points
+    road[#road + 1] = right
+    road[#road + 1] = World.roadY(right)
+    local lane = {}
+    for _, point in ipairs(World.lane) do
+        lane[#lane + 1] = point[1]
+        lane[#lane + 1] = point[2]
     end
+    self.mapShapes = {beach = bounds:expanded(-coast.inset), meadow = meadow, road = road, lane = lane}
+end
+
+-- Draws the map of flat colors on the map bit, below the details that a minimap may also show.
+function World:drawMap()
+    local map, coast, pond, clearing, colors = self.mapShapes, World.coast, World.pond, World.clearing, World.mapColors
+    graphics2d.drawShape(map.beach, {radius = coast.radius, color = colors[Terrain.sand], layer = -7, visibility = World.map})
+    graphics2d.drawShape(map.meadow, {radius = coast.radius - coast.beach, color = colors[Terrain.grass], layer = -6, visibility = World.map})
+    graphics2d.drawEllipse(pond.x, pond.y, pond.radiusX, pond.radiusY, colors[Terrain.water], {layer = -5, visibility = World.map})
+    graphics2d.drawEllipse(clearing.x, clearing.y, clearing.radiusX, clearing.radiusY, colors[Terrain.sand], {layer = -5, visibility = World.map})
+    local width = World.pathWidth * 2
+    graphics2d.drawStroke(map.road, {width = width, color = colors[Terrain.path], join = 'round', layer = -5, visibility = World.map})
+    graphics2d.drawStroke(map.lane, {width = width, color = colors[Terrain.path], cap = 'round', layer = -5, visibility = World.map})
 end
 
 -- Bakes a soft shadow under every prop that casts one into a static batch, from one image of a radial gradient.
@@ -291,14 +299,14 @@ function World:walkable(x, y)
     return true
 end
 
--- Draws the world into the active canvas, which sorts by y: the ground below everything, the shadows on it, and the props among the walkers by the y they stand on, and the map of flat colors. The ground takes the terrain bit, the map the map bit and the rest the details bit, so the mask of each canvas picks what it shows.
+-- Draws the world into the active canvas, which sorts by y: the ground below everything, the shadows on it, and the props among the walkers by the y they stand on, and the map of flat colors once `chart` readied it. The ground takes the terrain bit, the map the map bit and the rest the details bit, so the mask of each canvas picks what it shows.
 function World:draw()
     local bounds = World.bounds
-    graphics2d.drawRect({bounds.x - 8000, bounds.y - 8000, bounds.width + 16000, bounds.height + 16000}, World.seaColor, {layer = -4, visibility = World.terrain | World.map})
+    graphics2d.drawRect({bounds.x - 8000, bounds.y - 8000, bounds.width + 16000, bounds.height + 16000}, World.seaColor, {layer = -8, visibility = World.terrain | World.map})
     graphics2d.drawStatic(self.ground, 0, 0, {layer = -3, visibility = World.terrain})
     graphics2d.drawStatic(self.edges, 0, 0, {layer = -2, visibility = World.terrain})
-    for kind, points in pairs(self.spots) do
-        graphics2d.drawPoints(points, {radius = World.cell * 0.75, color = World.mapColors[kind], layer = kind - 3, visibility = World.map})
+    if self.mapShapes then
+        self:drawMap()
     end
     graphics2d.drawStatic(self.shadows, 0, 0, {layer = -1, visibility = World.details})
     self.flats:draw({layer = -1, visibility = World.details})

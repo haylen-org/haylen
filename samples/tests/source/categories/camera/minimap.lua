@@ -12,21 +12,22 @@ local actions = require('categories.camera.actions')
 local Minimap = haylen.class('Minimap', CameraTest)
 
 Minimap.code = [[
-minimap.zoom = {0.1, 0.1}
-minimap.viewport = {1400, 750, 480, 280}  -- A corner of the screen.
+minimap.zoom = {0.075, 0.075}
+minimap.viewport = {1500, 800, 360, 210}  -- A corner of the screen.
 graphics2d.beginWorld(minimap, {order = 1, visibilityMask = 4})
 graphics2d.drawStatic(ground, 0, 0, {visibility = 1})  -- The painted ground is left out.
-graphics2d.drawPoints(water, {radius = 75, color = '#FF2FB3C4', visibility = 4})  -- The flat map shows.
+graphics2d.drawEllipse(pond.x, pond.y, pond.radiusX, pond.radiusY, '#FF2FB3C4', {visibility = 4})  -- The flat map shows.
 props:draw({layer = 1, visibility = 2})  -- The props show once the mask takes 2.]]
 
 -- The minimap shows the whole island, so its viewport has the shape of the world.
-Minimap.zoom = 0.1
+Minimap.zoom = 0.075
 Minimap.margin = 20
 Minimap.route = {{-400, 230, 0.6}, {250, 500}, {1300, 570, 0.6}, {250, 500}, {-1000, 60, 0.6}}
 
 function Minimap:init(entry)
     Minimap.super.init(self, entry)
     self.world = World()
+    self.world:chart()
     self.walker = Walker(-1000, 60, {action = 'move', route = Minimap.route})
     self.camera = graphics2d.newCamera()
     self.camera.positionSmoothing = true

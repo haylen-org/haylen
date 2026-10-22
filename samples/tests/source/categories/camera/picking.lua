@@ -153,7 +153,7 @@ function Picking:update(dt)
     if selected then
         self.selected = self.hovered
     end
-    local name = self.hovered and self.hovered.name:lower() or 'the grass'
+    local name = self.hovered and 'the ' .. self.hovered.name:lower() or 'the grass'
     self:status(string.format('The pointer at %d, %d on the screen is at %d, %d in the world, over %s.', math.floor(self.cursorX + 0.5), math.floor(self.cursorY + 0.5), math.floor(self.worldX + 0.5), math.floor(self.worldY + 0.5), name))
 end
 

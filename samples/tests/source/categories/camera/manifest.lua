@@ -10,7 +10,7 @@ return {
         {code = 'CAM-004', title = 'Zoom', description = 'Zoom around the pointer with the wheel, a pinch, keys or triggers, within limits.', module = 'zoom'},
         {code = 'CAM-005', title = 'Framing several targets', description = 'A camera that keeps three walkers in view, zooming out as they spread.', module = 'framing'},
         {code = 'CAM-006', title = 'Shake', description = 'Trauma shake in every direction and directional recoil.', module = 'shake'},
-        {code = 'CAM-007', title = 'Rotation', description = 'A turning view with rotation smoothing, and "ignoreRotation" keeping it upright.', module = 'rotation'},
+        {code = 'CAM-007', title = 'Rotation', description = 'A view that turns smoothly, or stays upright while its camera turns.', module = 'rotation'},
         {code = 'CAM-008', title = 'Split screen', description = 'Two walkers, each with a camera in its own half of the play area.', module = 'split-screen'},
         {code = 'CAM-009', title = 'Minimap', description = 'A second camera in a corner viewport whose visibility mask draws a flat map of the island and leaves the painted ground and the props out.', module = 'minimap'},
         {code = 'CAM-010', title = 'Blending cameras', description = 'Smooth cuts between a walker camera and a landmark camera.', module = 'blend'},

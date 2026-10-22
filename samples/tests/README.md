@@ -174,7 +174,7 @@ The 2D camera following, framing, shaking, turning and splitting the view, with 
 | `CAM-004` | Zoom | Zoom around the pointer with the wheel, a pinch, keys or triggers, within limits. |  |
 | `CAM-005` | Framing several targets | A camera that keeps three walkers in view, zooming out as they spread. |  |
 | `CAM-006` | Shake | Trauma shake in every direction and directional recoil. |  |
-| `CAM-007` | Rotation | A turning view with rotation smoothing, and "ignoreRotation" keeping it upright. |  |
+| `CAM-007` | Rotation | A view that turns smoothly, or stays upright while its camera turns. |  |
 | `CAM-008` | Split screen | Two walkers, each with a camera in its own half of the play area. |  |
 | `CAM-009` | Minimap | A second camera in a corner viewport whose visibility mask draws a flat map of the island and leaves the painted ground and the props out. |  |
 | `CAM-010` | Blending cameras | Smooth cuts between a walker camera and a landmark camera. |  |

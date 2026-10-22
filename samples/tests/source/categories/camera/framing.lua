@@ -20,7 +20,7 @@ camera:update(dt)]]
 
 Framing.padding = 220
 Framing.walkers = {
-    {name = 'Yellow', color = '#FFFFD040', x = -500, y = 200, action = 'move'},
+    {name = 'Yellow', color = '#FFFFD040', x = -660, y = 250, action = 'move'},
     {name = 'Blue', color = '#FF40A0FF', x = -200, y = 260, action = 'move2'},
     -- The red walker roams the road and the shore of the pond by itself.
     {name = 'Red', color = '#FFFF5050', x = -350, y = 230, route = {{1300, 580, 1}, {1900, 330}, {1500, -80, 0.8}, {300, 120}, {-1700, 330, 1}, {-350, 230}}},
@@ -87,11 +87,26 @@ function Framing:update(dt)
     end
 end
 
+-- Draws the walkers with their names, and the box around the framed walkers, which the view keeps with the padding on every side.
 function Framing:draw(area)
     self.world:draw()
-    for _, walker in ipairs(self.walkers) do
+    for index, walker in ipairs(self.walkers) do
         walker:draw()
+        local spec = Framing.walkers[index]
+        CameraTest.tag(spec.name, walker.x, walker.y - 150, {color = spec.color, layer = 40})
     end
+    local points = self:points()
+    if #points == 0 then
+        return
+    end
+    local left, top, right, bottom = math.huge, math.huge, -math.huge, -math.huge
+    for _, point in ipairs(points) do
+        left, top, right, bottom = math.min(left, point[1]), math.min(top, point[2]), math.max(right, point[1]), math.max(bottom, point[2])
+    end
+    local unit = graphics2d.canvasUnitSize()
+    local box = {left - 70, top - 250, right - left + 140, bottom - top + 280}
+    graphics2d.drawShape(box, {radius = 28 * unit, color = '#14FFFFFF', borderWidth = 5 * unit, borderColor = '#C0FFFFFF', layer = 30})
+    CameraTest.tag(string.format('Kept in view with %d units around', Framing.padding), box[1] + box[3] / 2, box[2] + box[4] + 54 * unit, {color = '#C0FFFFFF', layer = 40})
 end
 
 return Framing

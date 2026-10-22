@@ -99,12 +99,12 @@ function Zones:draw(area)
     for _, zone in ipairs(Zones.zones) do
         local box, color = zone.area, m.color(zone.color)
         local active = zone.name == self.rig.zone
-        graphics2d.drawShape(box, {radius = 24, color = color:withAlpha(active and 0.16 or 0.08), borderWidth = (active and 6 or 4) * unit, borderColor = color:withAlpha(active and 1 or 0.6), layer = 9})
-        -- The name sits in the top left corner of the part of the zone in view, when that part is wide enough to hold it.
+        graphics2d.drawShape(box, {radius = 24 * unit, color = color:withAlpha(active and 0.26 or 0.14), borderWidth = (active and 9 or 5) * unit, borderColor = color:withAlpha(active and 1 or 0.7), layer = 9})
+        -- The name sits in the bottom left corner of the part of the zone in view, away from what stands in it, when that part is wide enough to hold it.
         local left, right = math.max(box[1], view.x), math.min(box[1] + box[3], view:right())
         if right - left > 240 * unit then
-            local y = math.min(math.max(box[2], view.y) + 64 * unit, box[2] + box[4] - 20 * unit)
-            CameraTest.tag(zone.title, left + 20 * unit, y, {color = zone.color, anchorX = 0})
+            local y = math.max(math.min(box[2] + box[4], view:bottom()) - 22 * unit, box[2] + 70 * unit)
+            CameraTest.tag(zone.title, left + 22 * unit, y, {color = zone.color, anchorX = 0})
         end
     end
     if self.railed then

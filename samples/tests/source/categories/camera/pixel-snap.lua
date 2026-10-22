@@ -81,7 +81,7 @@ function PixelSnap:update(dt)
     self.travel = self.travel + self.speed * dt
     self:place(self.stage)
     local position, drawn = self.cameras[1].position, self.cameras[2]:renderPosition()
-    self:status(string.format('The view is at %.2f, %.2f, and the snapped view draws at %.2f, %.2f.', position.x, position.y, drawn.x, drawn.y))
+    self:status(string.format('The free view sits at %.2f, %.2f, and the snapped view draws at %.2f, %.2f, on a whole pixel of the screen.', position.x, position.y, drawn.x, drawn.y))
 end
 
 function PixelSnap:render()

@@ -10,7 +10,7 @@ local Test = require('harness.test')
 local PixelCanvas = haylen.class('PixelCanvas', Test)
 
 PixelCanvas.code = [[
-local pixels = graphics2d.newPixelCanvas(220, 196, {smooth = true})
+local pixels = graphics2d.newPixelCanvas(width, height, {smooth = true})  -- A size with the shape of half the play area.
 pixels:begin(lowCamera, {clear = '#FF101418'})  -- In render, then draw the art in canvas pixels.
 graphics2d.draw(island, 0, 0, {pivotX = 0, pivotY = 0})
 pixels:draw(half.x, half.y, half.width, half.height)  -- In renderUi, scaled up to its half of the play area.]]
@@ -58,7 +58,7 @@ function PixelCanvas:update(dt)
     local phase = self.travel % (span * 2)
     self.lowCamera.position = {340 + (phase < span and phase or span * 2 - phase) - span / 2, 160 + math.sin(self.time * 0.5) * 12}
     local x, y = self.canvases[2]:fraction()
-    self:status(string.format('Each canvas is %d by %d pixels. The camera is at %.2f, %.2f, and the smooth canvas shifts by %.2f, %.2f of a pixel.', self.canvasWidth, self.canvasHeight, self.lowCamera.x, self.lowCamera.y, x, y))
+    self:status(string.format('Each canvas is %d by %d pixels, and the smooth one shifts by %.2f of a pixel across and %.2f down.', self.canvasWidth, self.canvasHeight, x, y))
 end
 
 function PixelCanvas:render()
