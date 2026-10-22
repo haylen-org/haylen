@@ -30,6 +30,9 @@ local kHeroSize = 150
 local kPlatformHeight = 76
 local kPlatformTop = 22 / 241
 local kGround = 50
+-- The band at the top of the play area that the prompt takes, which no platform or coin reaches.
+local kPromptRoom = 96
+local kCoinRise = 60
 local kRun, kAcceleration = 520, 4200
 local kGravity, kJump, kCut = 2600, 1080, 0.45
 local kCoyote, kBuffer = 0.1, 0.12
@@ -82,20 +85,23 @@ function Character:respawn()
     self.hero = {x = self.area.width * 0.18, y = self.area.height - 260, vx = 0, vy = 0, facing = 1, grounded = false, coyote = 0, buffer = 0, dash = 0, cooldown = 0}
 end
 
+-- The platforms rise in steps that a jump reaches, and a short play area takes shorter steps, so the highest coin stays under the prompt.
 function Character:resize(area)
     local w, h = area.width, area.height
+    local floor = h - kGround
+    local step = math.min(120, (floor - kPromptRoom - kCoinRise - 30) / 3.6)
     self.platforms = {
-        {-200, h - kGround, w + 400, kGround},
-        {w * 0.08, h - 220, w * 0.22, 24},
-        {w * 0.4, h - 340, w * 0.2, 24},
-        {w * 0.7, h - 230, w * 0.22, 24},
-        {w * 0.26, h - 460, w * 0.14, 24},
-        {w * 0.62, h - 480, w * 0.16, 24},
+        {-200, floor, w + 400, kGround},
+        {w * 0.08, floor - step * 1.42, w * 0.22, 24},
+        {w * 0.4, floor - step * 2.42, w * 0.2, 24},
+        {w * 0.7, floor - step * 1.5, w * 0.22, 24},
+        {w * 0.26, floor - step * 3.42, w * 0.14, 24},
+        {w * 0.62, floor - step * 3.6, w * 0.16, 24},
     }
     self.spots = {}
     for index = 2, #self.platforms do
         local platform = self.platforms[index]
-        self.spots[#self.spots + 1] = {x = platform[1] + platform[3] / 2, y = platform[2] - 60, taken = false}
+        self.spots[#self.spots + 1] = {x = platform[1] + platform[3] / 2, y = platform[2] - kCoinRise, taken = false}
     end
     self:respawn()
 end
@@ -182,7 +188,13 @@ function Character:update(dt)
             spot.taken = false
         end
     end
-    self:status(string.format('The hero is %s at %+.0f, %+.0f units a second, the dash is %s, and %d coins are collected.', hero.grounded and 'on the ground' or 'in the air', hero.vx, hero.vy, hero.cooldown <= 0 and 'ready' or 'cooling down', self.coins))
+    local motion = hero.vy < 0 and 'jumps' or 'falls'
+    if hero.dash > 0 then
+        motion = 'dashes'
+    elseif hero.grounded then
+        motion = math.abs(hero.vx) > 40 and string.format('runs at %d units a second', math.floor(math.abs(hero.vx) + 0.5)) or 'stands on the ground'
+    end
+    self:status(string.format('The hero %s, the dash is %s, and %d %s collected.', motion, hero.cooldown <= 0 and 'ready' or 'cooling down', self.coins, self.coins == 1 and 'coin is' or 'coins are'))
 end
 
 -- Picks the frame of the walker sheet for the state of the hero.
@@ -226,9 +238,10 @@ function Character:draw(area)
     self:drawHero(hero.x, hero.y, frame, hero.facing, hero.dash > 0 and '#FFFFE9A8' or nil, 4)
 
     local text = kPrompts[input.lastDevice()]
-    local width = graphics2d.measureText(nil, text, {size = 24}) + 48
-    graphics2d.drawShape({area.width / 2 - width / 2, 20, width, 48}, {radius = 24, color = '#CC151A2A', layer = 5})
-    graphics2d.drawText(nil, text, area.width / 2, 44, {size = 24, color = Test.ink, anchor = {0.5, 0.5}, layer = 6})
+    local size = math.min(24, 24 * (area.width - 88) / graphics2d.measureText(nil, text, {size = 24}))
+    local width = graphics2d.measureText(nil, text, {size = size}) + size * 2
+    graphics2d.drawShape({area.width / 2 - width / 2, 20, width, size * 2}, {radius = size, color = '#CC151A2A', layer = 5})
+    graphics2d.drawText(nil, text, area.width / 2, 20 + size, {size = size, color = Test.ink, anchor = {0.5, 0.5}, layer = 6})
 end
 
 return Character
