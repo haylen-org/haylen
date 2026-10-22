@@ -331,9 +331,9 @@ This table shows which program and texture each kind of draw uses, so you can te
 | Sprites and batches with a `partMask` | recolor | Their texture, and the mask as a second texture. |
 | Sprite batches with several textures, or with sprite data and a material | batch | Their textures, up to 8, which each sprite picks from. |
 | Sprites with an `effect` | effect | Their texture. |
-| `graphics2d.drawRect`, `drawRectOutline`, `drawLine`, `drawPolyline` | sprite | The white texture. |
+| `graphics2d.drawRect` | sprite | The white texture. |
 | `graphics2d.drawCircle`, `drawEllipse`, `drawPoints`, `drawRing`, `drawArc`, `drawShape` | shape | The white texture, or the `texture` of a shape. |
-| `graphics2d.drawPolygon` | mesh | The white texture. |
+| `graphics2d.drawPolygon`, `drawRectOutline`, `drawLine`, `drawPolyline` | mesh | The white texture. |
 | `graphics2d.drawMesh`, `graphics2d.drawStroke`, `mesh:draw()` | mesh | Their texture, or the white texture. |
 | `graphics2d.drawText` | text for TrueType fonts, sprite for bitmap fonts | The atlas of the font or its pages. |
 | `graphics2d.drawRichText`, `richText:draw()`, the text of `haylen.ui` components | text for TrueType glyphs, sprite for bitmap glyphs, images and boxes | The atlas or page of each font, each image and the white texture. |
@@ -420,6 +420,7 @@ Strokes of `graphics2d.drawStroke`, `Renderer::drawStroke` in C++, are tessellat
 - Every cross section of a stroke is four vertices: the outer edge and the core on each side. The core lies half a pixel inside the edge and the outer vertices half a pixel past it. A section joins the one before it with three quads.
 - A miter join is one section whose offsets grow longer along the bisector. A bevel or round join and a round cap are runs of sections around one point. Their outer side turns in steps that keep the arc within a quarter pixel, and their inner side stays at the corner of the offset edges. Butt and square caps add a section that fades past the end.
 - A stroke thinner than a pixel keeps no core and fades by the share of the pixel it covers.
+- Lines, polylines and the outlines of rectangles are strokes too, with butt ends and miter joins. So their edges fade like the edges of strokes, a thin line never breaks into dashes, and a translucent polyline covers each pixel once at its turns.
 - Dashes cut the length into separate runs, whose texture coordinates keep counting along the whole stroke.
 - A stroke along a `math::Spline` first flattens the curve into points whose lines stay within a quarter pixel of it. It splits each segment where its middle strays from its chord.
 - The builder keeps its storage in the renderer, so a stroke drawn every frame allocates nothing once its buffers have grown. The stroke draws on the mesh program with the other meshes of its texture and order.

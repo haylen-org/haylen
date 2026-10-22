@@ -2295,7 +2295,7 @@ scene.push({
 
 ### graphics2d.drawRectOutline(rect, thickness, color, order)
 
-Draws the border of `rect` with lines `thickness` units wide, inside the rectangle.
+Draws the border of `rect` with lines `thickness` units wide, inside the rectangle. The border is one closed [stroke](#graphics2ddrawstrokepoints-options), so its corners meet in miters and its edges fade over one pixel of the destination. A border that fills the rectangle draws as one wide line. A thickness of 0 or less draws nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2311,7 +2311,7 @@ scene.push({
 
 ### graphics2d.drawLine(x1, y1, x2, y2, thickness, color, order)
 
-Draws a straight line from `x1`, `y1` to `x2`, `y2`, `thickness` units wide and centered on the segment. A line of zero length draws nothing.
+Draws a straight line from `x1`, `y1` to `x2`, `y2`, `thickness` units wide and centered on the segment. The line is a [stroke](#graphics2ddrawstrokepoints-options) with butt ends, so its edges fade over one pixel of the destination. A line thinner than a pixel fades by the share of the pixels it covers, so it never breaks into dashes. A line of zero length, or a thickness of 0 or less, draws nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2489,7 +2489,7 @@ scene.push({
 
 ### graphics2d.drawPolyline(points, thickness, color, closed, order)
 
-Draws line segments through `points`, `thickness` units wide. When `closed` is `true`, a last segment joins the final point to the first one.
+Draws line segments through `points`, `thickness` units wide. When `closed` is `true`, a last segment joins the final point to the first one. The segments are one [stroke](#graphics2ddrawstrokepoints-options) that turns in miters, which become bevels past four widths. So the edges fade over one pixel of the destination, and a translucent polyline covers each pixel once, also at its turns. A thickness of 0 or less draws nothing.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')

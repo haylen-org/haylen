@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <functional>
 #include <stdexcept>
 #include <vector>
 
@@ -197,6 +198,36 @@ TEST_F(StrokeBuilderTest, RejectsStrokesThatCannotDraw) {
     const std::array<math::Vec2, 2> same{{{4.0F, 4.0F}, {4.0F, 4.0F}}};
     build(same, {});
     EXPECT_EQ(sections(), 0U);
+}
+
+// Lines, polylines and the outlines of rectangles draw as strokes of the mesh program, with four vertices for every cross section and no sprite, so their edges fade like the edges of strokes, a line thinner than a pixel still draws and a polyline covers its turns once.
+TEST(StrokeDrawTest, DrawsLinesPolylinesAndOutlinesAsStrokes) {
+    test::EngineFixture fixture;
+    const std::array<math::Vec2, 3> turn{{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}}};
+    // clang-format off
+    const auto render = [&fixture](const std::function<void(Renderer&)>& draw) {
+        return test::FrameRenderer::renderOnce(fixture, [&draw](core::Engine& engine) {
+            engine.getRenderer2D().beginScreen();
+            draw(engine.getRenderer2D());
+        });
+    };
+    // clang-format on
+
+    // A line has a section at each end and one that fades past each end.
+    const Renderer::Stats line = render([](Renderer& renderer) { renderer.drawLine({0.0F, 0.0F}, {100.0F, 40.0F}, 0.3F, math::Color::white()); });
+    EXPECT_EQ(line.sprites, 0U);
+    EXPECT_EQ(line.vertices, 16U);
+    EXPECT_EQ(line.drawCalls, 1U);
+
+    // A polyline turns in one mitered section, and the outline of a rectangle is one closed stroke of four mitered corners.
+    EXPECT_EQ(render([&turn](Renderer& renderer) { renderer.drawPolyline(turn, 4.0F, math::Color::white()); }).vertices, 20U);
+    const Renderer::Stats outline = render([](Renderer& renderer) { renderer.drawRectOutline({0.0F, 0.0F, 100.0F, 60.0F}, 4.0F, math::Color::white()); });
+    EXPECT_EQ(outline.sprites, 0U);
+    EXPECT_EQ(outline.vertices, 20U);
+
+    // A band that fills the rectangle draws as one wide line, and a thickness of 0 draws nothing.
+    EXPECT_EQ(render([](Renderer& renderer) { renderer.drawRectOutline({0.0F, 0.0F, 10.0F, 4.0F}, 3.0F, math::Color::white()); }).vertices, 16U);
+    EXPECT_EQ(render([](Renderer& renderer) { renderer.drawLine({0.0F, 0.0F}, {10.0F, 0.0F}, 0.0F, math::Color::white()); }).vertices, 0U);
 }
 
 TEST(MeshTest, DeformsKeptVerticesAndDrawsThemWithoutAllocating) {

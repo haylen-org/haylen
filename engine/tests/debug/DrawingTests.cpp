@@ -124,14 +124,15 @@ TEST_F(DebugDrawingTest, DrawsThePhysicsWorldsOfLuaInWorldCanvases) {
     )");
     // clang-format on
     fixture.frames(1);
-    const std::size_t screenOnly = fixture.engine().getRenderer2D().getStats().sprites;
+    const std::size_t screenOnly = fixture.engine().getRenderer2D().getStats().vertices;
     getPlugin().setDrawing("physics", true);
     fixture.frames(1);
-    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().sprites, screenOnly);
+    EXPECT_EQ(fixture.engine().getRenderer2D().getStats().vertices, screenOnly);
 
+    // The outline of the crate is one closed stroke of five cross sections, at four vertices a section.
     fixture.runLua("scene.clear() camera = graphics2d.newCamera() scene.push({render = function() graphics2d.beginWorld(camera) graphics2d.drawRect({0, 0, 10, 10}, '#FFFFFFFF') end})");
     fixture.frames(2);
-    EXPECT_GE(fixture.engine().getRenderer2D().getStats().sprites, screenOnly + 4U);
+    EXPECT_GE(fixture.engine().getRenderer2D().getStats().vertices, screenOnly + 20U);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 

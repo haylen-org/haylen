@@ -293,18 +293,18 @@ TEST_F(CameraTest, DrawsItsDebugShapes) {
     camera.follow({10.0F, 10.0F}, 0.1F, screen);
 
     // clang-format off
-    const auto sprites = [&] {
+    const auto vertices = [&] {
         return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
             engine.getRenderer2D().beginWorld(camera);
             camera.drawDebug(engine.getRenderer2D(), screen);
-        }).sprites;
+        }).vertices;
     };
     // clang-format on
 
-    // The view and the limits have four edges each, the box of the target four more, and its cross two lines.
-    EXPECT_EQ(sprites(), 14U);
+    // The view, the limits and the box of the target are closed strokes of five cross sections each, and the cross of the target two lines of four, at four vertices a section.
+    EXPECT_EQ(vertices(), 92U);
     camera.anchor = graphics2d::Camera::Anchor::TopLeft;
-    EXPECT_EQ(sprites(), 8U);
+    EXPECT_EQ(vertices(), 40U);
 }
 
 TEST(ParallaxTest, ScrollsRepeatsAndStopsOutsideItsLimits) {

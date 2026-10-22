@@ -608,19 +608,22 @@ void Renderer::drawRect(const math::Rect& rect, math::Color color, const DrawOrd
     state->addInstances(Program::Sprite, order, state->white, std::span(&gpu, 1), rect.getBottom());
 }
 
-// The four edges are one draw, so a y-sorted canvas keeps them together.
+// The outline is one closed stroke along the middle of its band inside the rectangle, whose corners meet in miters, so a y-sorted canvas keeps it together. A band that fills the rectangle is one wide line along its longer side.
 void Renderer::drawRectOutline(const math::Rect& rect, float thickness, math::Color color, const DrawOrder& order) {
-    if (!state->accepts(order)) {
+    if (!(thickness > 0.0F && rect.width > 0.0F && rect.height > 0.0F)) {
         return;
     }
 
-    const graphics::TextureResource& white = *state->white.getResource();
-    const std::array<math::Rect, 4> edges{math::Rect{rect.x, rect.y, rect.width, thickness}, math::Rect{rect.x, rect.getBottom() - thickness, rect.width, thickness}, math::Rect{rect.x, rect.y + thickness, thickness, rect.height - thickness * 2.0F}, math::Rect{rect.getRight() - thickness, rect.y + thickness, thickness, rect.height - thickness * 2.0F}};
-    std::array<GpuInstance, 4> quads{};
-    for (std::size_t index = 0; index < edges.size(); ++index) {
-        quads[index] = GpuInstance::make(white, {.position = edges[index].getMin(), .size = edges[index].getSize(), .pivot = {}, .color = color});
+    const math::Vec2 center = rect.getCenter();
+    if (thickness * 2.0F >= std::min(rect.width, rect.height)) {
+        const bool wide = rect.width >= rect.height;
+        const std::array<math::Vec2, 2> line{wide ? math::Vec2{rect.getLeft(), center.y} : math::Vec2{center.x, rect.getTop()}, wide ? math::Vec2{rect.getRight(), center.y} : math::Vec2{center.x, rect.getBottom()}};
+        drawStroke(line, {.width = wide ? rect.height : rect.width, .color = color}, order);
+        return;
     }
-    state->addInstances(Program::Sprite, order, state->white, quads, rect.getBottom());
+    const float inset = thickness * 0.5F;
+    const std::array<math::Vec2, 4> corners{math::Vec2{rect.getLeft() + inset, rect.getTop() + inset}, math::Vec2{rect.getRight() - inset, rect.getTop() + inset}, math::Vec2{rect.getRight() - inset, rect.getBottom() - inset}, math::Vec2{rect.getLeft() + inset, rect.getBottom() - inset}};
+    drawStroke(corners, {.width = thickness, .color = color, .closed = true}, order);
 }
 
 void Renderer::drawLine(math::Vec2 from, math::Vec2 to, float thickness, math::Color color, const DrawOrder& order) {
@@ -628,26 +631,10 @@ void Renderer::drawLine(math::Vec2 from, math::Vec2 to, float thickness, math::C
     drawPolyline(points, thickness, color, false, order);
 }
 
-// Every segment is a rotated quad of the white texture, and the whole line is one draw.
+// A polyline is one stroke whose segments meet in miters, which turn into bevels past the miter limit, so its edges fade like the edges of strokes and a translucent polyline covers every pixel once.
 void Renderer::drawPolyline(std::span<const math::Vec2> points, float thickness, math::Color color, bool closed, const DrawOrder& order) {
-    if (points.size() < 2 || !state->accepts(order)) {
-        return;
-    }
-
-    const graphics::TextureResource& white = *state->white.getResource();
-    std::vector<GpuInstance>& segments = state->scratchInstances;
-    segments.clear();
-    const std::size_t count = closed && points.size() > 2 ? points.size() : points.size() - 1;
-    for (std::size_t index = 0; index < count; ++index) {
-        const math::Vec2 from = points[index];
-        const math::Vec2 delta = points[(index + 1) % points.size()] - from;
-        if (delta.isZero()) {
-            continue;
-        }
-        segments.push_back(GpuInstance::make(white, {.position = from, .size = {delta.getLength(), thickness}, .pivot = {0.0F, 0.5F}, .rotation = delta.getAngle(), .color = color}));
-    }
-    if (!segments.empty()) {
-        state->addInstances(Program::Sprite, order, state->white, segments, lowestPoint(points));
+    if (thickness > 0.0F) {
+        drawStroke(points, {.width = thickness, .color = color, .closed = closed}, order);
     }
 }
 

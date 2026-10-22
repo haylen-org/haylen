@@ -217,7 +217,7 @@ TEST_F(Graphics2DLuaTest, ControlsCameras) {
 
     EXPECT_EQ(lua("local a, b = graphics2d.newCamera(), graphics2d.newCamera() b.position = {100, 0} b.zoom = {4, 4} local c = graphics2d.blendCameras(a, b, 0.5) return c.x .. ' ' .. c.zoom.x"), "50.0 2.0");
     EXPECT_EQ(render("graphics2d.beginWorld(camera) camera:drawDebug({layer = 5})"), "nil");
-    EXPECT_GT(std::stoi(lua("return graphics2d.stats().sprites")), 0);
+    EXPECT_GT(std::stoi(lua("return graphics2d.stats().vertices")), 0);
 }
 
 TEST_F(Graphics2DLuaTest, KeepsCamerasInStepWithTheVisibleArea) {

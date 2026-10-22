@@ -312,8 +312,8 @@ TEST(RendererTest, SortsByTheYDrawsStandOn) {
     });
     // clang-format on
 
-    // Rectangles and lines stand on their lowest point, so the sprite at 20 draws first and the white quads merge after it.
-    EXPECT_EQ(shapes.drawCalls, 2U);
+    // Rectangles stand on their lowest point and strokes on their lowest vertex, so the sprite at 20 draws first, then the rectangle, and the outline and the line merge into one mesh after it.
+    EXPECT_EQ(shapes.drawCalls, 3U);
 }
 
 TEST(RendererTest, OrdersDrawsThatSortTheSameByTheirSortIds) {

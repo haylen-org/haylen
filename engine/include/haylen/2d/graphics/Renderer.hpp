@@ -195,6 +195,8 @@ class Renderer final {
     void drawMetaballs(std::span<const math::Vec2> points, float radius, const MetaballStyle& style = kDefaultMetaballs, const DrawOrder& order = {});
 
     void drawRect(const math::Rect& rect, math::Color color, const DrawOrder& order = {});
+
+    // Lines, polylines and the outlines of rectangles draw as strokes with butt ends and miter joins, so their edges fade over one pixel of the destination, a line thinner than a pixel fades by the share of the pixels it covers and a translucent line covers every pixel once. The outline of a rectangle runs inside it, and a thickness of 0 or less draws nothing.
     void drawRectOutline(const math::Rect& rect, float thickness, math::Color color, const DrawOrder& order = {});
     void drawLine(math::Vec2 from, math::Vec2 to, float thickness, math::Color color, const DrawOrder& order = {});
     void drawPolyline(std::span<const math::Vec2> points, float thickness, math::Color color, bool closed = false, const DrawOrder& order = {});
