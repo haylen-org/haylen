@@ -15,7 +15,7 @@ function Hooks:reloaded(info)
     self:set('title', {text = hud.title()})  -- The modules that reloaded are in info.modules.
 end]]
 
-Hooks.file = 'source/categories/development/edit/hud.lua'
+Hooks.files = {'source/categories/development/edit/hud.lua'}
 Hooks.steps = {'Change the text that "hud.title" returns.', 'Save the file.', 'The title changes through the "reloaded" hook, "Loads of the module" grows, and one press of "Press" still counts once, because the signal has one listener.'}
 
 function Hooks:init(entry)
@@ -42,9 +42,13 @@ function Hooks:content()
             DevelopmentTest.valueCard('loads', 'Loads of the module', ''),
             DevelopmentTest.valueCard('listeners', 'Listeners of the kept signal', ''),
         },
-        ui.card{gap = 8, align = 'stretch',
+        ui.card{gap = 8, align = 'stretch', grow = 1,
             ui.label{text = 'Modules of the last call of the hook', font = 'caption', color = 'textMuted'},
-            ui.label{id = 'modules', text = '', font = 'heading'},
+            ui.column{id = 'quiet', grow = 1, gap = 16, justify = 'center', align = 'stretch',
+                ui.icon{image = 'plugins/file.svg', size = 96, color = 'textMuted', align = 'center'},
+                ui.emptyState{title = 'No module reloaded yet', message = 'Save "hud.lua", and the modules that the hook hears show here.'},
+            },
+            ui.label{id = 'modules', text = '', font = 'heading', visible = false},
         },
     }
 end
@@ -54,6 +58,8 @@ function Hooks:reloaded(info)
     self.hooks = self.hooks + 1
     self.modules = table.concat(info.modules, ', ')
     self:set('title', {text = hud.title()})
+    self:set('quiet', {visible = false})
+    self:set('modules', {visible = true})
 end
 
 -- Shows the values once they change.
@@ -64,7 +70,7 @@ function Hooks:update(dt)
         hooks = tostring(self.hooks),
         loads = tostring(hud.loads),
         listeners = tostring(hud.pressed.size),
-        modules = self.modules or 'No module reloaded yet.',
+        modules = self.modules or '',
     }
     for id, text in pairs(values) do
         if self.shown[id] ~= text then

@@ -17,7 +17,7 @@ events.on('assetReloaded', function(event)
 end, {owner = self})
 localization.text('development.greeting')]]
 
-Assets.file = 'content/development/settings.json and content/development/texts/en.json'
+Assets.files = {'content/development/settings.json', 'content/development/texts/en.json'}
 Assets.steps = {'Change the "label" or the "speed" of "settings.json", or the text of "texts/en.json".', 'Save the file.', 'The value changes at once, and the list shows the asset events of the save.'}
 Assets.settings = 'development/settings.json'
 Assets.events = 8
@@ -56,7 +56,10 @@ function Assets:content()
         },
         ui.card{gap = 12, align = 'stretch', grow = 1,
             ui.label{text = 'Asset events', font = 'heading'},
-            ui.emptyState{id = 'quiet', title = 'No asset event yet', message = 'Save one of the files and its events show here.'},
+            ui.column{id = 'quiet', grow = 1, gap = 16, justify = 'center', align = 'stretch',
+                ui.icon{image = 'plugins/file.svg', size = 96, color = 'textMuted', align = 'center'},
+                ui.emptyState{title = 'No asset event yet', message = 'Save one of the files and its events show here.'},
+            },
             ui.list{id = 'events', items = {}, visible = false},
         },
     }

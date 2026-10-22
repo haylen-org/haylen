@@ -26,9 +26,9 @@ function Inspector:enter()
         hint = 'Open the inspector and edit "watched.player.speed", or type "inspect watched.player" in the console.',
         code = Inspector.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
-            ui.panel{width = 600, gap = 12,
+            ui.panel{width = 600, grow = 1, gap = 12,
                 ui.label{text = 'The player in the inspector', font = 'heading'},
-                ui.table{id = 'player', columns = {{text = 'Key', width = 130}, {text = 'Type', width = 150}, {text = 'Value'}}, rows = self:rows()},
+                ui.table{id = 'player', columns = {{text = 'Key', width = 160}, {text = 'Type', width = 180}, {text = 'Value'}}, rows = self:rows(), style = {metrics = {listRowHeight = 44}}},
                 ui.label{text = string.format('The camera lists %d properties.', #debugging.inspect('watched.camera')), color = 'textMuted'},
                 ui.button{id = 'open', text = 'Open the inspector', align = 'stretch', variant = 'primary', onClick = function() self:open() end},
                 ui.button{id = 'edit', text = 'Set the speed to 300', align = 'stretch', onClick = function() self:run('set watched.player.speed 300') end},
@@ -38,6 +38,7 @@ function Inspector:enter()
         }},
     }
     self:run('set watched.player.name Brave Hero')
+    self:run('set watched.camera.minZoom -1')
 end
 
 function Inspector:exit()

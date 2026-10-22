@@ -16,7 +16,7 @@ events.on('moduleReloaded', function(event)
 end, {owner = self})
 hotReload.active()  -- On while the app runs in development.]]
 
-ModuleReload.file = 'source/categories/development/edit/greeting.lua'
+ModuleReload.files = {'source/categories/development/edit/greeting.lua'}
 ModuleReload.steps = {'Change the text that "greeting.text" returns, or the color of "greeting.color".', 'Save the file.', 'The greeting changes at once, while the counter keeps counting, because the module reloaded in place and the app did not restart.'}
 
 function ModuleReload:init(entry)

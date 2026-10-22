@@ -1,4 +1,4 @@
--- The base of the hot reload tests: a test names the file to edit and the steps to follow, and the status line shows whether hot reload is on, its mode, how many modules reloaded and the last one. A test draws in its play area, or gives the nodes of its `content` in place of it. Hot reload is on while the project runs in development, with "haylen run samples/tests" or with "--platform web", and the tests say so when it is off.
+-- The base of the hot reload tests: a test names the files to edit and the steps to follow, and the status line says whether hot reload is on, its mode, how many modules reloaded and the last one. A test draws in its play area, or gives the nodes of its `content` in place of it. Hot reload is on while the project runs in development, with "haylen run samples/tests" or with "--platform web", and the tests say so when it is off.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local hotReload = require('haylen.hotReload')
@@ -8,7 +8,7 @@ local Test = require('harness.test')
 
 local DevelopmentTest = haylen.class('DevelopmentTest', Test)
 
-DevelopmentTest.file = ''
+DevelopmentTest.files = {}
 DevelopmentTest.steps = {}
 DevelopmentTest.off = 'Hot reload is off, because the project does not run in development. Run it with "haylen run samples/tests" or with "--platform web" to try it.'
 
@@ -18,9 +18,9 @@ function DevelopmentTest:init(entry)
     self.last = nil
 end
 
--- Mounts the frame with the file to edit and the steps in the panel, and counts the modules that reload.
+-- Mounts the frame with the files to edit and the steps in the panel, and counts the modules that reload.
 function DevelopmentTest:enter()
-    local controls = {ui.sectionTitle{text = 'File to edit'}, ui.card{ui.label{text = self.file, font = 'monospace'}}, ui.sectionTitle{text = 'Steps'}}
+    local controls = {ui.sectionTitle{text = #self.files > 1 and 'Files to edit' or 'File to edit'}, self:filesCard(), ui.sectionTitle{text = 'Steps'}}
     for index, step in ipairs(self.steps) do
         controls[#controls + 1] = ui.label{text = string.format('%d. %s', index, step)}
     end
@@ -32,6 +32,19 @@ function DevelopmentTest:enter()
         self.reloads = self.reloads + 1
         self.last = event.path
     end, {owner = self})
+end
+
+-- A card with the name of each file to edit and the folder of the project that holds it.
+function DevelopmentTest:filesCard()
+    local files = {}
+    for index, path in ipairs(self.files) do
+        local folder, name = path:match('^(.*)/([^/]+)$')
+        files[index] = ui.column{gap = 2,
+            ui.label{text = name, font = 'monospace', color = 'accentText'},
+            ui.label{text = string.format('In "%s"', folder), font = 'caption', color = 'textMuted'},
+        }
+    end
+    return ui.card{gap = 12, padding = {14, 18}, children = files}
 end
 
 function DevelopmentTest:controls()
@@ -53,8 +66,11 @@ end
 
 function DevelopmentTest:update(dt)
     DevelopmentTest.super.update(self, dt)
-    local last = self.last and string.format(', the last "%s"', self.last) or ''
-    self:status(string.format('Hot reload is %s in the mode "%s". Modules reloaded %d%s.', hotReload.active() and 'on' or 'off', hotReload.mode(), self.reloads, last))
+    local reloads = 'no module reloaded yet'
+    if self.reloads > 0 then
+        reloads = string.format('%d %s reloaded, the last "%s"', self.reloads, self.reloads == 1 and 'module' or 'modules', self.last)
+    end
+    self:status(string.format('Hot reload is %s in the mode "%s", and %s.', hotReload.active() and 'on' or 'off', hotReload.mode(), reloads))
 end
 
 return DevelopmentTest

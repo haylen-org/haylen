@@ -1,7 +1,7 @@
 -- Crashes and breadcrumbs: breadcrumbs that the event bus publishes for plugins, the report of the native crash that ended the last run, and a button that crashes the app natively so the next start shows its report. The panel holds the report of the last crash, and the card beside it the kept breadcrumbs with their time and data.
 local debugging = require('haylen.debug')
 local haylen = require('haylen')
-local json = require('json')
+local localization = require('haylen.localization')
 local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
@@ -18,6 +18,7 @@ if crash then print(crash.reason, #crash.context.breadcrumbs) end]]
 
 function Crashes:enter()
     self.heard = 0
+    self.presses = 0
     self.crumbs = LogCard(self, 'crumbs', 'Breadcrumbs', 'The breadcrumbs of this run show here.')
     self:listen('breadcrumbAdded', function()
         self.heard = self.heard + 1
@@ -36,7 +37,7 @@ function Crashes:enter()
         hint = 'Add breadcrumbs, then crash the app and start it again to read the report of the crash.',
         code = Crashes.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
-            ui.panel{width = 560, gap = 12,
+            ui.panel{width = 560, grow = 1, gap = 12,
                 ui.label{text = 'The last run', font = 'heading'},
                 report,
                 ui.label{id = 'heard', text = 'No breadcrumb arrived yet.', color = 'textMuted'},
@@ -46,12 +47,13 @@ function Crashes:enter()
             self.crumbs:node(),
         }},
     }
+    debugging.addBreadcrumb('Opened the test.', {test = 'DEV-010'})
     self:add()
 end
 
 function Crashes:add()
-    local count = #debugging.breadcrumbs() + 1
-    debugging.addBreadcrumb('Pressed the test button ' .. count .. '.', {test = 'DEV-010', press = count})
+    self.presses = self.presses + 1
+    debugging.addBreadcrumb('Pressed the test button ' .. self.presses .. '.', {test = 'DEV-010', press = self.presses})
     self:showCrumbs()
 end
 
@@ -59,8 +61,23 @@ end
 function Crashes:showCrumbs()
     self.crumbs.entries = {}
     for _, crumb in ipairs(debugging.breadcrumbs()) do
-        self.crumbs:add(string.format('%s  %s', os.date('%H:%M:%S', math.floor(crumb.time)), crumb.message), crumb.data and 'Data ' .. json.encode(crumb.data) or nil)
+        self.crumbs:add(string.format('%s  %s', os.date('%H:%M:%S', math.floor(crumb.time)), crumb.message), crumb.data and Crashes.describe(crumb.data) or nil)
     end
+end
+
+-- The data of a breadcrumb as a sentence, with its keys in order.
+function Crashes.describe(data)
+    local keys = {}
+    for key in pairs(data) do
+        keys[#keys + 1] = key
+    end
+    table.sort(keys)
+    local parts = {}
+    for index, key in ipairs(keys) do
+        local value = data[key]
+        parts[index] = string.format('"%s" set to %s', key, type(value) == 'string' and string.format('"%s"', value) or tostring(value))
+    end
+    return string.format('With %s.', localization.formatList(parts, {language = 'en'}))
 end
 
 -- Reading address zero through the foreign function interface ends the process with a fault that only the native guard sees.

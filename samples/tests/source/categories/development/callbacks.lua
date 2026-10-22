@@ -15,9 +15,11 @@ timer.every(0.5, function()
 end, {owner = self})
 self.closureTimer = timer.every(0.5, ticks.makeClosure(self), {owner = self})  -- A closure keeps its code.]]
 
-Callbacks.file = 'source/categories/development/edit/ticks.lua'
+Callbacks.files = {'source/categories/development/edit/ticks.lua'}
 Callbacks.steps = {'Change "first" to "second" in the three functions.', 'Save the file.', 'The module function and the call through the table show "second" within half a second, and the closure keeps "first" until "Make the closure again" makes a new one.'}
 Callbacks.interval = 0.5
+-- Each card keeps the versions of its last calls, oldest first.
+Callbacks.historyLength = 8
 Callbacks.kinds = {
     {id = 'moduleFunction', title = 'Module function', note = 'Handed to a timer as it is, and replaced wherever the engine holds it.'},
     {id = 'throughTable', title = 'Call through the table', note = 'Finds the new function on every call.'},
@@ -26,9 +28,8 @@ Callbacks.kinds = {
 
 function Callbacks:init(entry)
     Callbacks.super.init(self, entry)
-    self.moduleFunction, self.throughTable, self.closure = 'waiting', 'waiting', 'waiting'
     self.firstControl = 'remake'
-    self.shown = {}
+    self.history = {moduleFunction = {}, throughTable = {}, closure = {}}
 end
 
 function Callbacks:controls()
@@ -52,29 +53,49 @@ function Callbacks:makeClosure()
     self.closureTimer = timer.every(Callbacks.interval, ticks.makeClosure(self), {owner = self})
 end
 
--- The three ways of calling, each in a card with the version of the code it ran last and what it does after a save.
+-- The three ways of calling, each in a card with what it does after a save, the version of the code it ran last and the versions of its last calls.
 function Callbacks:content()
     local cards = {}
     for index, kind in ipairs(Callbacks.kinds) do
-        cards[index] = ui.card{grow = 1, gap = 20, minWidth = 320, align = 'stretch', justify = 'center', alignItems = 'center',
+        cards[index] = ui.card{grow = 1, gap = 16, minWidth = 320, align = 'stretch',
             ui.label{text = kind.title, font = 'heading'},
-            ui.label{id = kind.id, text = 'Waiting', font = 'title', color = 'textMuted'},
-            ui.label{text = kind.note, color = 'textMuted', textAlign = 'center'},
+            ui.label{text = kind.note, color = 'textMuted'},
+            ui.divider{align = 'stretch'},
+            ui.spacer{grow = 1},
+            ui.label{id = kind.id, text = 'Waiting', font = 'title', color = 'textMuted', textAlign = 'center', align = 'stretch'},
+            ui.spacer{grow = 1},
+            ui.label{text = 'The last calls, oldest first', font = 'caption', color = 'textMuted'},
+            ui.grid{id = kind.id .. '-history', columns = 4, gap = 6},
         }
     end
     return {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch', children = cards}}
 end
 
--- Shows the version each way ran last, once it changes.
+-- Takes the version of each call since the last frame, which the timers write into the fields of the kinds, and shows it with the last calls.
 function Callbacks:update(dt)
     Callbacks.super.update(self, dt)
     for _, kind in ipairs(Callbacks.kinds) do
         local value = self[kind.id]
-        if value ~= self.shown[kind.id] and value ~= 'waiting' then
-            self.shown[kind.id] = value
-            self:set(kind.id, {text = string.format('Ran "%s"', value), color = value == 'first' and 'warningText' or 'successText'})
+        if value then
+            self[kind.id] = nil
+            self:showCall(kind.id, value)
         end
     end
+end
+
+function Callbacks:showCall(id, value)
+    local history = self.history[id]
+    history[#history + 1] = value
+    if #history > Callbacks.historyLength then
+        table.remove(history, 1)
+    end
+    local tone = value == 'first' and 'warning' or 'success'
+    self:set(id, {text = string.format('Ran "%s"', value), color = tone .. 'Text'})
+    local badges = {}
+    for index, version in ipairs(history) do
+        badges[index] = ui.badge{text = string.format('"%s"', version), tone = version == 'first' and 'warning' or 'success', align = 'stretch'}
+    end
+    self.gui:replaceChildren(id .. '-history', badges)
 end
 
 return Callbacks
