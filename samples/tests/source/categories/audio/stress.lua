@@ -32,7 +32,7 @@ function Stress:enter()
         code = Stress.code,
         focus = 'burst32',
         controls = {
-            ui.row{wrap = true, gap = 12,
+            ui.grid{columns = 2, gap = 12, alignItems = 'stretch',
                 ui.button{id = 'burst32', text = 'Burst of 32', variant = 'primary', onClick = function() self:burst(32) end},
                 ui.button{id = 'burst160', text = 'Burst of 160', variant = 'primary', onClick = function() self:burst(160) end},
             },
@@ -72,11 +72,26 @@ function Stress:update(dt)
     end
     self.history:push(audio.voiceCount())
     self.stats = audio.busStats()
-    self:status(string.format('%d voices of %d, %d started, the music %s, a frame of %.1f ms', audio.voiceCount(), kLimit, self.started, audio.music() and 'plays' or 'is stopped', haylen.unscaledDelta() * 1000))
+    local music = audio.music() and ', the music among them' or ', and the music is stopped'
+    self:status(string.format('%d of the %d voices play now%s. This test started %d voices, and the last frame took %.1f ms.', audio.voiceCount(), kLimit, music, self.started, haylen.unscaledDelta() * 1000))
 end
 
+-- Says what a bus plays, such as "10 playing and 2 paused".
+function Stress.describe(bus)
+    local text = bus.voices == 0 and 'Silent' or bus.playing .. ' playing'
+    if bus.paused > 0 then
+        text = text .. ' and ' .. bus.paused .. ' paused'
+    end
+    return bus.processing and text or text .. ', held by the pause'
+end
+
+-- The chart takes the height that the statistics of the buses leave, which sit in two columns under it.
 function Stress:draw(area)
-    local left, top, width, height = 70, 60, area.width - 110, area.height * 0.46
+    local stats = self.stats or {}
+    local rows = math.max(1, math.ceil(#stats / 2))
+    local rowHeight = 40
+    local left, top, width = 70, 60, area.width - 110
+    local height = math.max(120, area.height - top - 96 - rows * rowHeight)
     graphics2d.drawShape({left, top, width, height}, {radius = 10, color = Test.surface})
     for count = 0, 160, 32 do
         local y = top + height * (1 - count / 160)
@@ -98,13 +113,14 @@ function Stress:draw(area)
         graphics2d.drawStroke(points, {width = 3, color = Test.accent, join = 'round', layer = 2})
     end
 
-    local y = top + height + 60
-    Test.caption('Bus statistics from "audio.busStats()"', left, y - 36, {size = 22})
-    for index, bus in ipairs(self.stats or {}) do
-        local rowY = y + (index - 1) * 40
-        Test.caption('Bus "' .. bus.name .. '"', left, rowY, {color = Test.ink, size = 20})
-        AudioTest.bar(left + 160, rowY + 4, width * 0.45, 16, bus.voices / kLimit, bus.processing and Test.accent or Test.red)
-        Test.caption(string.format('%d voices, %d playing and %d paused%s', bus.voices, bus.playing, bus.paused, bus.processing and '' or ', held by the pause'), left + 180 + width * 0.45, rowY, {size = 18})
+    local y = top + height + 72
+    Test.caption('Voices of every bus from "audio.busStats()", out of the limit of 128', left, y - 36, {size = 20})
+    local column = (width + 40) / 2
+    for index, bus in ipairs(stats) do
+        local x, rowY = left + (index - 1) // rows * column, y + (index - 1) % rows * rowHeight
+        Test.caption('Bus "' .. bus.name .. '"', x, rowY + 10, {color = Test.ink, size = 20, anchor = {0, 0.5}})
+        AudioTest.bar(x + 150, rowY + 2, column * 0.34, 16, bus.voices / kLimit, bus.processing and Test.accent or Test.red)
+        Test.caption(Stress.describe(bus), x + 166 + column * 0.34, rowY + 10, {size = 18, anchor = {0, 0.5}})
     end
 end
 
