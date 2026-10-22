@@ -1,0 +1,31 @@
+--- a/src/nanosvg.h
++++ b/src/nanosvg.h
+@@ -885,12 +885,12 @@
+ 	grad = (NSVGgradient*)malloc(sizeof(NSVGgradient) + sizeof(NSVGgradientStop)*(nstops-1));
+ 	if (grad == NULL) return NULL;
+ 
+-	// The shape width and height.
++	// The shape width and height. In the bounding box of the object, coordinates are fractions of a unit square that the box stretches over the shape after the gradient transform.
+ 	if (data->units == NSVG_OBJECT_SPACE) {
+-		ox = localBounds[0];
+-		oy = localBounds[1];
+-		sw = localBounds[2] - localBounds[0];
+-		sh = localBounds[3] - localBounds[1];
++		ox = 0.0f;
++		oy = 0.0f;
++		sw = 1.0f;
++		sh = 1.0f;
+ 	} else {
+ 		ox = nsvg__actualOrigX(p);
+ 		oy = nsvg__actualOrigY(p);
+@@ -927,6 +927,10 @@
+ 	}
+ 
+ 	nsvg__xformMultiply(grad->xform, data->xform);
++	if (data->units == NSVG_OBJECT_SPACE) {
++		float box[6] = {localBounds[2] - localBounds[0], 0.0f, 0.0f, localBounds[3] - localBounds[1], localBounds[0], localBounds[1]};
++		nsvg__xformMultiply(grad->xform, box);
++	}
+ 	nsvg__xformMultiply(grad->xform, xform);
+ 
+ 	grad->spread = data->spread;

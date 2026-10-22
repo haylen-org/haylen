@@ -595,7 +595,7 @@ scene.push({
 
 ## Vector images
 
-A vector image, `graphics::VectorImage` (`haylen/graphics/VectorImage.hpp`), is an SVG document that NanoSVG reads into curves. It keeps paths and basic shapes with their fills and strokes, line joins, caps and dashes, linear and radial gradients, transforms, groups, opacity and the view box. The color `currentColor` paints white, so the color of a draw tints the parts that use it, the way icons follow the color of their text. Clip paths, masks, `use`, style sheets and text are left out.
+A vector image, `graphics::VectorImage` (`haylen/graphics/VectorImage.hpp`), is an SVG document that NanoSVG reads into curves. It keeps paths and basic shapes with their fills and strokes, line joins, caps and dashes, linear and radial gradients, transforms, groups, opacity and the view box. A gradient lays itself out in the bounding box of its shape, the default of SVG, where `x2="1"` is the far side of the box, or in user space with `gradientUnits="userSpaceOnUse"`. The color `currentColor` paints white, so the color of a draw tints the parts that use it, the way icons follow the color of their text. Clip paths, masks, `use`, style sheets and text are left out.
 
 The asset type `vectorImage` reads `.svg` files on the task pool, and `graphics.newVectorImage(text)` reads a document from Lua. The method `VectorImage::rasterize(scale)` turns an image into straight RGBA pixels on any thread, with the colors of its edges spread into the transparent pixels around them.
 

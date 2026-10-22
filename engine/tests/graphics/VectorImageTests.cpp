@@ -58,6 +58,36 @@ TEST_F(VectorImageTest, RasterizesFillsStrokesGradientsAndGroupsAtAScale) {
     EXPECT_EQ(raster.getPixel(40, 30).a, 0.0F);
 }
 
+// A gradient lays itself out in the bounding box of its shape by default, where coordinates without units and percentages are fractions of the box and the gradient transform turns the unit square before the box stretches it.
+TEST_F(VectorImageTest, LaysGradientsOutInTheBoundingBoxOfTheirShape) {
+    const Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40">
+        <defs>
+            <linearGradient id="across" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#0000FF"/><stop offset="1" stop-color="#00FF00"/></linearGradient>
+            <linearGradient id="percent" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0" stop-color="#0000FF"/><stop offset="1" stop-color="#00FF00"/></linearGradient>
+            <linearGradient id="turned" gradientTransform="rotate(90 0.5 0.5)"><stop offset="0" stop-color="#0000FF"/><stop offset="1" stop-color="#00FF00"/></linearGradient>
+            <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5"><stop offset="0" stop-color="#FF0000"/><stop offset="1" stop-color="#0000FF"/></radialGradient>
+        </defs>
+        <rect x="20" y="0" width="20" height="10" fill="url(#across)"/>
+        <rect x="60" y="0" width="20" height="10" fill="url(#percent)"/>
+        <rect x="0" y="20" width="20" height="20" fill="url(#turned)"/>
+        <rect x="40" y="20" width="60" height="20" fill="url(#glow)"/>
+    </svg>)svg")
+                             .rasterize(1.0F);
+    for (const int left : {20, 60}) {
+        EXPECT_GT(raster.getPixel(left, 5).b, 0.9F) << "x " << left;
+        EXPECT_GT(raster.getPixel(left + 19, 5).g, 0.9F) << "x " << left;
+        EXPECT_NEAR(raster.getPixel(left + 10, 5).g, 0.5F, 0.1F) << "x " << left;
+    }
+    EXPECT_GT(raster.getPixel(10, 20).b, 0.9F);
+    EXPECT_GT(raster.getPixel(10, 39).g, 0.9F);
+
+    // The circle of the radial gradient stretches into an ellipse that touches the four sides of its wide box.
+    EXPECT_GT(raster.getPixel(70, 30).r, 0.9F);
+    EXPECT_GT(raster.getPixel(41, 30).b, 0.9F);
+    EXPECT_GT(raster.getPixel(70, 20).b, 0.9F);
+    EXPECT_NEAR(raster.getPixel(55, 30).r, 0.5F, 0.1F);
+}
+
 // A drawing program leaves hidden shapes in documents, such as the background of a logo, which stay hidden like the shapes that display none.
 TEST_F(VectorImageTest, LeavesOutTheShapesThatAreHidden) {
     const Image raster = parse(R"svg(<svg xmlns="http://www.w3.org/2000/svg" width="30" height="10">

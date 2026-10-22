@@ -105,8 +105,9 @@ CPMAddPackage(
 )
 
 # NanoSVG reads SVG documents into cubic curves and rasterizes them with anti-aliasing, which vector images rasterize their sizes with. It publishes no releases, so it is pinned to a commit of its default branch.
-# NanoSVG hides the shapes of `display` none but draws those whose `visibility` is hidden, such as the background a drawing program leaves in a logo, so the patch hides those too.
-set(nanosvg_patches "${CMAKE_CURRENT_LIST_DIR}/patches/nanosvg-visibility.patch")
+# NanoSVG hides the shapes of `display` none but draws those whose `visibility` is hidden, such as the background a drawing program leaves in a logo, so a patch hides those too.
+# NanoSVG reads the unitless coordinates of a gradient in the bounding box of its shape, the default units of SVG, as lengths of the document, which collapses the gradient, so a patch reads them as fractions of the box, which it stretches over the shape after the gradient transform.
+set(nanosvg_patches "${CMAKE_CURRENT_LIST_DIR}/patches/nanosvg-visibility.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/nanosvg-bounding-box-gradients.patch")
 set(nanosvg_hash 2bc68bdb518d7800252042e5cad50a0ab321596f0cbf49ef2a752926329063d2)
 haylen_patched_package_key(nanosvg_cache_key ${nanosvg_hash} ${nanosvg_patches})
 CPMAddPackage(

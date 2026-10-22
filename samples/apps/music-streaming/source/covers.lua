@@ -56,7 +56,7 @@ function Covers.document(spec)
         add(string.format('<circle cx="98" cy="146" r="20" fill="#FFFFFF" stroke="%s" stroke-width="5"/>', o))
     end
     return string.format('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200">'
-        .. '<defs><linearGradient id="sky" x1="0%%" y1="0%%" x2="100%%" y2="100%%"><stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/></linearGradient></defs>'
+        .. '<defs><linearGradient id="sky" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="%s"/><stop offset="1" stop-color="%s"/></linearGradient></defs>'
         .. '<rect width="200" height="200" fill="url(#sky)"/><g transform="rotate(%d 100 100)">%s</g>'
         .. '<path d="M0 0h200v60Q100 20 0 70z" fill="#FFFFFF" opacity=".12"/></svg>', background, second, spec.turn, table.concat(shapes))
 end

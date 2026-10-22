@@ -430,6 +430,10 @@ The validation of `sokol_gfx` sets the bit of a view slot by shifting a signed 1
 
 NanoSVG hides the shapes whose `display` is `none`, but draws those whose `visibility` is `hidden` or `collapse`. A drawing program may leave such a hidden background behind a logo, which the vector images of the engine and the SVG pictures of the UI would then show. The patch hides those shapes too.
 
+#### nanosvg-bounding-box-gradients.patch
+
+A gradient of SVG lays itself out in the bounding box of its shape, unless it sets `gradientUnits="userSpaceOnUse"`. There a coordinate without a unit, such as `x2="1"`, is a fraction of the box. NanoSVG reads such a coordinate as a length of the document. So a gradient from `0` to `1` shrinks to one unit at the corner of the document, and the shape takes the color of one end of the gradient. The patch reads the coordinates, percentages and radii of these gradients in a unit square. Then it stretches that square over the bounding box of the shape after the `gradientTransform`, as SVG defines it. So a radial gradient on a wide shape becomes an ellipse.
+
 ### Choices that need no patch
 
 - The module `sokol_app` asks Android for an OpenGL ES 3.1 context, which some devices and some configurations of the Android emulator lack. The shaders of the engine are GLSL ES 3.00, which every version runs. So the runtime asks for the newest version that the device declares in `ro.opengles.version` instead. The emulator creates a context of exactly the version an app asks for, while every context reports the newest version of the device. So `sokol_gfx` would otherwise query the features of that version, such as the limits of OpenGL ES 3.1, in a context that rejects them.
