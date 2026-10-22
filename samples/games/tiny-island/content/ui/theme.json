@@ -29,6 +29,7 @@
         "success": "#FF4CD45A",
         "successText": "#FF7FE88A",
         "warning": "#FFFFB436",
+        "onWarning": "#FF3A2306",
         "warningText": "#FFFFCB70",
         "danger": "#FFF0473E",
         "dangerText": "#FFFF8A84",
