@@ -1,4 +1,4 @@
--- ECS: the world of `ecs.lua` with hundreds of balls whose behavior comes only from the components they hold and the systems that run over them: every ball moves and bounces, some fall with gravity, some seek the cursor, and some live for a while, fade and give way to new ones. A system switches off with its toggle, and the status line counts the entities, the components and what each system visited.
+-- ECS: the world of `ecs.lua` with hundreds of balls whose behavior comes only from the components they hold and the systems that run over them: every ball moves and bounces, some fall with gravity, some seek the cursor, and some live for a while, with a ring of the time they have left, and give way to new ones. The color of a ball tells its components, as the legend in the arena says. A system switches off with its toggle, and the status line counts the entities and the components.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -17,9 +17,15 @@ world:add(entity, 'gravity', {strength = 900})  -- Gravity now acts on it.
 world:update(dt)  -- Runs every system over the entities that hold what it needs.
 world:destroy(entity)]]
 
--- An aging ball fades no further than this, so it stays visible until it ends.
-EcsTest.faded = 0.35
-EcsTest.colors = {{0.56, 0.69, 1}, {0.44, 0.86, 0.63}, {0.95, 0.7, 0.23}, {0.79, 0.63, 1}, {1, 0.54, 0.52}}
+-- The color of a ball tells what moves it: blue balls only move and bounce, orange ones also fall with gravity and violet ones seek the cursor.
+EcsTest.colors = {plain = {0.56, 0.69, 1}, gravity = {0.95, 0.66, 0.23}, seeker = {0.79, 0.6, 1}}
+EcsTest.arena = {-920, -500, 1840, 1000}
+EcsTest.legend = {
+    {'plain', 'Moves and bounces'},
+    {'gravity', 'Also falls with gravity'},
+    {'seeker', 'Also seeks the cursor'},
+    {'lifetime', 'Lives a while, its ring is the time left'},
+}
 
 function EcsTest:enter()
     EcsTest.super.enter(self)
@@ -53,16 +59,16 @@ end
 -- Spawns a ball with the components every ball has, and a share of them with gravity, a seeker or a lifetime.
 function EcsTest:spawnBall()
     local world = self.world
-    local color = EcsTest.colors[math.floor(self:roll() * #EcsTest.colors) + 1]
+    local roll = self:roll()
+    local kind = roll < 0.3 and 'gravity' or roll < 0.5 and 'seeker' or 'plain'
     local entity = world:spawn({
         position = {x = (self:roll() - 0.5) * 1700, y = (self:roll() - 0.5) * 900},
         velocity = {x = (self:roll() - 0.5) * 500, y = (self:roll() - 0.5) * 500},
-        ball = {radius = 8 + self:roll() * 14, color = {color[1], color[2], color[3], 1}},
+        ball = {radius = 9 + self:roll() * 14, color = EcsTest.colors[kind]},
     })
-    local kind = self:roll()
-    if kind < 0.3 then
+    if kind == 'gravity' then
         world:add(entity, 'gravity', {strength = 900})
-    elseif kind < 0.5 then
+    elseif kind == 'seeker' then
         world:add(entity, 'seeker', {pull = 900})
     end
     if self:roll() < 0.4 then
@@ -99,7 +105,7 @@ function EcsTest:addSystems()
     end)
 
     world:system('bounce', {'position', 'velocity', 'ball'}, function(_, position, velocity, ball)
-        local right, bottom = 940 - ball.radius, 520 - ball.radius
+        local right, bottom = EcsTest.arena[3] / 2 - 6 - ball.radius, EcsTest.arena[4] / 2 - 6 - ball.radius
         if position.x < -right or position.x > right then
             position.x, velocity.x = math.max(-right, math.min(right, position.x)), -velocity.x * 0.9
         end
@@ -108,28 +114,32 @@ function EcsTest:addSystems()
         end
     end)
 
-    world:system('age', {'ball', 'lifetime'}, function(entity, ball, lifetime, dt)
+    world:system('age', {'lifetime'}, function(entity, lifetime, dt)
         lifetime.left = lifetime.left - dt
-        ball.color[4] = math.max(EcsTest.faded, math.min(1, lifetime.left / lifetime.total * 2))
         if lifetime.left <= 0 then
             world:destroy(entity)
             self:spawnBall()
         end
     end)
 
-    -- A ball draws as a disc with a darker rim and a soft highlight, in tables the painter fills in place.
-    local rect, rim, shine = {0, 0, 0, 0}, {0, 0, 0, 1}, {1, 1, 1, 0}
+    -- A ball draws as a disc with a darker rim and a soft highlight, in tables the painter fills in place, and a ball with a lifetime draws a white ring of the time it has left.
+    local rect, rim = {0, 0, 0, 0}, {0, 0, 0, 1}
     local disc = {kind = 'ellipse', color = nil, borderWidth = 0, borderColor = rim, layer = 1}
-    local glint = {kind = 'ellipse', color = shine, layer = 2}
-    self.painter = world:system('draw', {'position', 'ball'}, function(_, position, ball)
+    local glint = {kind = 'ellipse', color = '#8CFFFFFF', layer = 2}
+    local ring = {layer = 2}
+    self.painter = world:system('draw', {'position', 'ball'}, function(entity, position, ball)
         local radius, color = ball.radius, ball.color
-        rim[1], rim[2], rim[3], rim[4] = color[1] * 0.55, color[2] * 0.55, color[3] * 0.6, color[4]
+        rim[1], rim[2], rim[3] = color[1] * 0.55, color[2] * 0.55, color[3] * 0.6
         rect[1], rect[2], rect[3], rect[4] = position.x - radius, position.y - radius, radius * 2, radius * 2
         disc.color, disc.borderWidth = color, math.max(2, radius * 0.18)
         graphics2d.drawShape(rect, disc)
-        shine[4] = color[4] * 0.55
         rect[1], rect[2], rect[3], rect[4] = position.x - radius * 0.55, position.y - radius * 0.6, radius * 0.5, radius * 0.4
         graphics2d.drawShape(rect, glint)
+        local lifetime = world:get(entity, 'lifetime')
+        if lifetime then
+            graphics2d.drawRing(position.x, position.y, radius + 7, 3, '#40FFFFFF', ring)
+            graphics2d.drawArc(position.x, position.y, radius + 7, 3, -math.pi / 2, -math.pi / 2 + math.pi * 2 * lifetime.left / lifetime.total, '#FFFFFFFF', ring)
+        end
     end)
     self.painter.enabled = false
 end
@@ -159,13 +169,29 @@ function EcsTest:update(dt)
     self.world:update(dt)
     local spent = (os.clock() - started) * 1000
     local world = self.world
-    self:status(string.format('Entities %d, of which %d have "velocity", %d "gravity", %d "seeker" and %d "lifetime", systems took %.2f ms', world.count, world:countOf('velocity'), world:countOf('gravity'), world:countOf('seeker'), world:countOf('lifetime'), spent))
+    self:status(string.format('The arena holds %d balls: %d move, %d fall with gravity, %d seek the cursor and %d live for a while. The systems took %.1f ms.', world.count, world:countOf('velocity'), world:countOf('gravity'), world:countOf('seeker'), world:countOf('lifetime'), spent))
 end
 
 function EcsTest:draw(area)
-    graphics2d.drawShape({-954, -534, 1908, 1068}, {radius = 18, color = '#FF181D2A', borderWidth = 4, borderColor = '#FF4A5578', layer = -1})
+    graphics2d.drawShape(EcsTest.arena, {radius = 24, color = '#FF1E2536', borderWidth = 4, borderColor = '#FF4A5578', layer = -1})
     self.world:runSystem(self.painter, 0)
     graphics2d.drawRing(self.pointer.worldX, self.pointer.worldY, 26, 3, Test.warm, {layer = 2})
+    self:drawLegend()
+end
+
+-- The legend sits on a plate in the top left corner of the arena, above the balls, with a ball of each color and a ball with its ring.
+function EcsTest:drawLegend()
+    local left, top = EcsTest.arena[1] + 24, EcsTest.arena[2] + 24
+    graphics2d.drawShape({left, top, 740, 36 + #EcsTest.legend * 52}, {radius = 18, color = '#F5141824', borderWidth = 2, borderColor = '#FF2C3147', layer = 5})
+    for index, entry in ipairs(EcsTest.legend) do
+        local x, y = left + 44, top + 18 + (index - 0.5) * 52
+        local color = EcsTest.colors[entry[1]] or EcsTest.colors.plain
+        graphics2d.drawCircle(x, y, 14, color, {layer = 6})
+        if entry[1] == 'lifetime' then
+            graphics2d.drawArc(x, y, 21, 3, -math.pi / 2, math.pi * 0.9, '#FFFFFFFF', {layer = 6})
+        end
+        graphics2d.drawText(nil, entry[2], x + 42, y, {size = 36, color = Test.ink, anchor = {0, 0.5}, layer = 6})
+    end
 end
 
 return EcsTest
