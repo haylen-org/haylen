@@ -11,6 +11,10 @@
 
 struct lua_State;
 
+namespace haylen::lua {
+class Promise;
+}
+
 namespace haylen::storage {
 
 class UserStorage;
@@ -33,8 +37,11 @@ class StorageLua final {
     [[nodiscard]] static Pusher pushJson(core::Json value);
     [[nodiscard]] static Pusher pushInfos(std::vector<SaveSlots::Info> infos);
 
-    // Queues work with the other storage operations on the I/O pool and pushes a promise that settles on the frame thread with what `work` returns, or rejects with what it threw. A durable operation flushes user storage before it settles.
+    // Queues work with the other storage operations on the I/O pool and pushes a promise that settles on the frame thread with the value that the pusher `work` returns pushes, or rejects with what `work` or the pusher threw. A durable operation flushes user storage before it settles.
     static int queue(lua_State* L, bool durable, std::function<Pusher()> work);
+
+    // Pushes the result on the main thread `L` and resolves the promise with it, or rejects the promise with the error the pusher raised.
+    static void settle(lua_State* L, const lua::Promise& promise, const Pusher& pushResult);
 
     // The registry key of the table of Lua migrations, from the version each one upgrades.
     static constexpr const char* kMigrations = "haylen.storage.migrations";

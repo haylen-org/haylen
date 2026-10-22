@@ -554,7 +554,7 @@ end)
 
 ### storage.readSlotAsync(slot)
 
-Returns a promise of what `storage.readSlot` returns. The file is read on the I/O pool, and the [migrations](#storageaddmigrationfromversion-migration) run on the frame thread. A slot without a sound file or backup rejects the promise with `The save slot "<slot>" is damaged.`.
+Returns a promise of what `storage.readSlot` returns. The file is read on the I/O pool, and the [migrations](#storageaddmigrationfromversion-migration) run on the frame thread. A slot without a sound file or backup rejects the promise with `The save slot "<slot>" is damaged.`. Every error that `storage.readSlot` raises for the version of a slot rejects the promise too, such as a slot newer than the app or one that no migration reaches, and so does the error of a migration that fails.
 
 ```lua
 local async = require('async')

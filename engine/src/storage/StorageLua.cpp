@@ -3,6 +3,7 @@
 #include <lua.hpp>
 
 #include <exception>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -16,6 +17,7 @@
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
+#include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -261,22 +263,40 @@ StorageLua::Pusher StorageLua::pushInfos(std::vector<SaveSlots::Info> infos) {
     // clang-format on
 }
 
+// The value goes on the stack in a protected call, so a failure there, such as a migration that raises, rejects the promise instead of escaping into the coroutine that awaits it.
+void StorageLua::settle(lua_State* L, const lua::Promise& promise, const Pusher& pushResult) {
+    std::shared_ptr<lua::Reference> value;
+    try {
+        // clang-format off
+        lua::Runtime::protectedRun(L, [&pushResult, &value](lua_State* state) {
+            pushResult(state);
+            value = std::make_shared<lua::Reference>(state, -1);
+        });
+        // clang-format on
+    } catch (const std::exception& error) {
+        promise.reject(error.what());
+        return;
+    }
+    promise.resolveWith([value](lua_State* state) { value->push(state); });
+}
+
 int StorageLua::queue(lua_State* L, bool durable, std::function<Pusher()> work) {
     core::Engine& engine = lua::Runtime::getEngine(L);
-    const lua::Promise promise(engine);
+    lua::Promise promise(engine);
     core::JobSystem& jobs = engine.getJobs();
     UserStorage& storage = engine.getStorage();
+    lua_State* main = lua::Runtime::getMainThread(L);
     // clang-format off
-    engine.getPlugin<plugins::StoragePlugin>().queueOperation([promise, &jobs, &storage, durable, work = std::move(work)] {
+    engine.getPlugin<plugins::StoragePlugin>().queueOperation([promise, main, &jobs, &storage, durable, work = std::move(work)]() mutable {
         try {
             Pusher pushResult = work();
 
-            // Flushing belongs to the frame thread, so the promise settles there once the change is durable.
-            jobs.postToFrame([promise, &storage, durable, pushResult = std::move(pushResult)] {
+            // Flushing belongs to the frame thread, so the promise settles there once the change is durable. The promise moves there, so the value it keeps is released on the frame thread.
+            jobs.postToFrame([promise = std::move(promise), main, &storage, durable, pushResult = std::move(pushResult)] {
                 if (durable) {
                     storage.flush();
                 }
-                promise.resolveWith(pushResult);
+                settle(main, promise, pushResult);
             });
         } catch (const std::exception& error) {
             promise.reject(error.what());

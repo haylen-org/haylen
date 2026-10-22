@@ -640,6 +640,32 @@ TEST(StorageLuaTest, MigratesSlotsAndMovesThemBetweenDevices) {
     EXPECT_NE(fixture.lua("storage.addMigration(0, print)").find("A save migration needs a version from 1 and a function."), std::string::npos);
 }
 
+TEST(StorageLuaTest, RejectsAnAsynchronousReadWhoseVersionOrMigrationFails) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        storage = require('haylen.storage')
+        storage.writeSlot('old', {gold = 5})
+        storage.setSaveVersion(3)
+        storage.writeSlot('newer', {gold = 9})
+        storage.setSaveVersion(2)
+        storage.addMigration(1, function(data) error('The gold of the old save cannot be read.', 0) end)
+        results = {}
+        require('async').spawn(function()
+            local data, message = storage.readSlotAsync('old'):await()
+            results[#results + 1] = tostring(data) .. ' ' .. message
+            data, message = storage.readSlotAsync('newer'):await()
+            results[#results + 1] = tostring(data) .. ' ' .. message
+            done = true
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(done)") == "true"; })) << "The coroutine that awaits the failed reads goes on.";
+    EXPECT_EQ(fixture.lua("return results[1]"), "nil The gold of the old save cannot be read.");
+    EXPECT_NE(fixture.lua("return results[2]").find("nil The save slot \"newer\" has version 3, which is newer than the version 2 this app reads."), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST(StorageLuaTest, RunsAsynchronousOperationsInOrderOnTheIoPool) {
     test::EngineFixture fixture;
     const int persisted = fixture.host().getPersistCount();
