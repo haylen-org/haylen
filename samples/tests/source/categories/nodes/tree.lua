@@ -22,10 +22,13 @@ NodeTree.slots = 32
 NodeTree.starting = 24
 -- The hull stands this far above the middle of its road, so its track runs on the road.
 NodeTree.lift = 18
+-- The barrels turn from this far up to this far down, so a barrel that aims high stays under the name above its tank.
+NodeTree.aim = {-0.8, 0.4}
 -- The tanks, wheels, barrels and pennants move in one call, eight nodes of three values for each tank.
 NodeTree.movingPaths = {'', 'wheel1', 'wheel2', 'wheel3', 'wheel4', 'wheel5', 'turret/barrel', 'turret/flag'}
 NodeTree.grass = {2, 2, 128, 128}
 NodeTree.flowers = {134, 2, 128, 128}
+NodeTree.flowerShare = 0.035
 -- The tiles of the roads, from the corner set of the paths of the Tiled tests: the row of cells above the line of a road holds its top edge and the row below it its bottom edge.
 NodeTree.roadTop = {2 + 12 * 132, 2 + 5 * 132, 128, 128}
 NodeTree.roadBottom = {2 + 3 * 132, 2 + 5 * 132, 128, 128}
@@ -120,7 +123,7 @@ function NodeTree:buildGround()
     local random = m.random(7)
     for row = -40, 50 do
         for column = first, last do
-            self.grass:setCell(column, row, random:chance(0.06) and 2 or 1)
+            self.grass:setCell(column, row, random:chance(NodeTree.flowerShare) and 2 or 1)
         end
     end
     for _, lane in ipairs(NodeTree.lanes) do
@@ -276,7 +279,7 @@ function NodeTree:update(dt)
         local barrel, flag = self.parts[base + 7], self.parts[base + 8]
         local localX = (aimX - x) * rule.direction - barrel[3] - barrel[1]
         local localY = aimY - y - barrel[4] - barrel[2]
-        values[(base + 6) * 3 + 1], values[(base + 6) * 3 + 2], values[(base + 6) * 3 + 3] = barrel[1], barrel[2], m.clamp(math.atan(localY, localX), -1.2, 0.4)
+        values[(base + 6) * 3 + 1], values[(base + 6) * 3 + 2], values[(base + 6) * 3 + 3] = barrel[1], barrel[2], m.clamp(math.atan(localY, localX), NodeTree.aim[1], NodeTree.aim[2])
         values[(base + 7) * 3 + 1], values[(base + 7) * 3 + 2], values[(base + 7) * 3 + 3] = flag[1], flag[2], math.sin(self.time * 6 + x * 0.01) * 0.15
     end
     if #self.moving > 0 then
@@ -285,7 +288,9 @@ function NodeTree:update(dt)
     end
     self.tree:update(dt)
 
-    local line = string.format('%d nodes: %d drawn and %d culled outside the view, and the whole frame takes %d draw calls.', self.tree.size, self.tree.drawnCount, self.tree.culledCount, graphics2d.stats().drawCalls)
+    local tree = self.tree
+    local rest = tree.size - tree.drawnCount - tree.culledCount
+    local line = string.format('The tree holds %d nodes: %d drawn, %d culled outside the view and %d hidden or holding only other nodes. The frame takes %d draw calls.', tree.size, tree.drawnCount, tree.culledCount, rest, graphics2d.stats().drawCalls)
     if self.destroyedCount > 0 then
         line = line .. string.format(' Tanks destroyed: %d.', self.destroyedCount)
     end
