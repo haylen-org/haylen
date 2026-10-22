@@ -25,12 +25,21 @@ function LibraryHandlers:enter()
         content = {self.checks:view()},
         controls = {
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
-            ui.label{text = 'The function "native.load" calls "native_test_haylen_init" with the interface of the engine. The library registers "native_test.echo", "native_test.fail" and "native_test.wait" with it, answers from its own threads, sends "native_test.ready" and hears when the app gives up a call.', color = 'textMuted', font = 'caption'},
+            ui.label{text = LibraryHandlers.explanation(), color = 'textMuted', font = 'caption'},
         },
-        code = "native.load('native-test', {init = 'native_test_haylen_init'})\nlocal call = platform.call('native_test.wait', nil, {timeout = 0.2})\nlocal _, err = call:await()\nprint(err.code)",
+        code = "native.load('native-test', {init = 'native_test_haylen_init'})\nlocal call = platform.call(nativeTest.name('wait'), nil, {timeout = 0.2})\nlocal _, err = call:await()\nprint(err.code)",
     }
     self.checks:show(self.gui)
     self:run()
+end
+
+-- What answers the handlers here, with the names they have on this platform.
+function LibraryHandlers.explanation()
+    local names = string.format('"%s", "%s" and "%s"', nativeTest.name('echo'), nativeTest.name('fail'), nativeTest.name('wait'))
+    if native.available() then
+        return string.format('The function "native.load" calls "native_test_haylen_init" with the interface of the engine. The library registers %s with it, answers from its own threads, sends "%s" and hears when the app gives up a call.', names, nativeTest.name('ready'))
+    end
+    return string.format('The browser loads no native library, so the plugin "native-test" answers %s and sends "%s" in its place, the way the library answers from its own threads where "native.load" calls "native_test_haylen_init".', names, nativeTest.name('ready'))
 end
 
 function LibraryHandlers:exit()
