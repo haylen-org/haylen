@@ -119,6 +119,16 @@ TEST_F(NativeLibrariesTest, LoadsByPathAndByNameNextToTheExecutable) {
     EXPECT_EQ(NativeLibraries::findSymbol("native_test_nowhere"), nullptr);
 }
 
+#if defined(HAYLEN_PLAYER_FOLDER)
+// The tests of native libraries in the test project load the test library by name in both players, which look for it next to themselves.
+TEST_F(NativeLibrariesTest, SitsNextToBothPlayers) {
+    const std::filesystem::path library = std::filesystem::path(HAYLEN_NATIVE_TEST_LIBRARY).filename();
+    for (const std::filesystem::path folder : {HAYLEN_PLAYER_FOLDER, HAYLEN_HEADLESS_PLAYER_FOLDER}) {
+        EXPECT_TRUE(std::filesystem::is_regular_file(folder / library)) << folder;
+    }
+}
+#endif
+
 TEST_F(NativeLibrariesTest, SearchesAddedFoldersBeforeThePlatformFolders) {
     const test::TemporaryDirectory folder;
     const std::filesystem::path library(HAYLEN_NATIVE_TEST_LIBRARY);

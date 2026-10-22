@@ -16,7 +16,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters that the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
 | `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, in MP3 with and without the header that tells its length, and in FLAC, which the streaming tests decode. CMake passes the folder as `HAYLEN_TEST_AUDIO`. |
 | `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation. CMake passes the folder as `HAYLEN_TEST_VIDEO`. |
-| `engine/tests/native/` | The file `NativeTest.c`, a plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests`, where `native.load` finds it by name, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
+| `engine/tests/native/` | The file `NativeTest.c`, a plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests` and the headless player, where `native.load` finds it by name, copies it next to the desktop player in `bin/haylen`, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
 | `engine/tests/backends/<backend>/` | The tests of a backend, which its `backend.cmake` names in `HAYLEN_BACKEND_TEST_SOURCES`, such as `backends/sokol/EventsTests.cpp`, which tests the translation of the events of `sokol_app`. |
 | `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`, which also compiles the tests of the backend of the build. |
 
@@ -202,7 +202,7 @@ Then it opens the page again in a browser whose page finds no private file syste
 
 The app `samples/tests`, Haylen Tests, holds a test of every feature of the engine, from sprites to plugins, in categories with a code per test, as [its README](../../samples/tests/README.md) lists. A person runs it on every platform, with `haylen run samples/tests` on the desktop. Its menu runs one test at a time, or every test one after the other.
 
-The headless player runs it without a window, as every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen-native-test` builds next to the player:
+The headless player runs it without a window, as every platform runs it, so a broken test shows up without a device. The Native libraries tests load the test library of the engine, which the target `haylen-native-test` builds next to the headless player and the desktop player:
 
 ```sh
 haylen build --target haylen-headless

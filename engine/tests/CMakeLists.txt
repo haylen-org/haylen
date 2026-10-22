@@ -254,7 +254,7 @@ endif()
 haylen_enable_warnings(haylen-tests)
 haylen_enable_coverage(haylen-tests)
 
-# The native library that the native interop tests call. It sits next to the test executable, where `native.load` finds it by its exact name, which the Debug postfix that Poco forces would change.
+# The native library that the native interop tests call. It sits next to the test executable and the headless player, where `native.load` finds it by its exact name, which the Debug postfix that Poco forces would change.
 add_library(haylen-native-test SHARED native/NativeTest.c)
 set_target_properties(haylen-native-test PROPERTIES OUTPUT_NAME native-test DEBUG_POSTFIX "" C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 target_include_directories(haylen-native-test PRIVATE "${HAYLEN_ENGINE_DIR}/include")
@@ -265,6 +265,17 @@ endif()
 haylen_enable_warnings(haylen-native-test)
 add_dependencies(haylen-tests haylen-native-test)
 target_compile_definitions(haylen-tests PRIVATE HAYLEN_NATIVE_TEST_LIBRARY="$<TARGET_FILE:haylen-native-test>")
+
+# The desktop player keeps a folder of its own, so the library goes next to it too, where the tests of native libraries in the test project load it by name.
+if(TARGET haylen AND TARGET haylen-headless)
+  get_target_property(player_folder haylen RUNTIME_OUTPUT_DIRECTORY)
+  add_custom_command(TARGET haylen-native-test POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${player_folder}"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:haylen-native-test>" "${player_folder}"
+    VERBATIM
+  )
+  target_compile_definitions(haylen-tests PRIVATE HAYLEN_PLAYER_FOLDER="${player_folder}" HAYLEN_HEADLESS_PLAYER_FOLDER="$<TARGET_FILE_DIR:haylen-headless>")
+endif()
 
 # Every test runs with a time limit far above the slowest one, so a test that hangs fails alone and the rest of the suite still runs.
 include(GoogleTest)
