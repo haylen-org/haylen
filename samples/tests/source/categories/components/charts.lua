@@ -7,9 +7,10 @@ local Charts = {}
 
 Charts.kinds = {'line', 'area', 'bar', 'stackedBar', 'pie', 'donut', 'scatter', 'radar', 'histogram', 'candles', 'heatmap'}
 Charts.palette = {{0.24, 0.61, 0.88}, {0.21, 0.7, 0.49}, {0.91, 0.66, 0.23}, {0.9, 0.33, 0.29}, {0.66, 0.5, 0.88}, {0.31, 0.79, 0.77}, {0.94, 0.49, 0.3}, {0.61, 0.71, 0.8}}
-Charts.colors = {text = {0.54, 0.6, 0.68, 1}, grid = {0.15, 0.2, 0.26, 1}, axis = {0.3, 0.36, 0.44, 1}, rise = {0.21, 0.7, 0.49, 1}, fall = {0.9, 0.33, 0.29, 1}, empty = {0.2, 0.24, 0.3, 1}}
+Charts.colors = {title = {0.91, 0.92, 0.95, 1}, text = {0.54, 0.6, 0.68, 1}, grid = {0.15, 0.2, 0.26, 1}, axis = {0.3, 0.36, 0.44, 1}, rise = {0.21, 0.7, 0.49, 1}, fall = {0.9, 0.33, 0.29, 1}, empty = {0.2, 0.24, 0.3, 1}}
 Charts.limit = 1e15
 Charts.textSize = 18
+Charts.measureStyle = {size = Charts.textSize}
 
 local Chart = {}
 Chart.__index = Chart
@@ -62,7 +63,7 @@ function Charts.scale(low, high, count)
     return math.floor(low / step) * step, math.ceil(high / step) * step, step
 end
 
--- Makes a chart. `data` is a list of numbers for "line", "area", "bar", "pie", "donut", "histogram" and "radar", a list of lists for several series of "line", "area" and "stackedBar", a list of `{x, y}` for "scatter", a list of `{open, high, low, close}` for "candles" and a list of rows of numbers for "heatmap". Options: `labels`, the names of the bars, slices, axes or columns, `bins` of a histogram (from the data when nil) and `maximum` of a radar (from the data when nil).
+-- Makes a chart. `data` is a list of numbers for "line", "area", "bar", "pie", "donut", "histogram" and "radar", a list of lists for several series of "line", "area" and "stackedBar", a list of `{x, y}` for "scatter", a list of `{open, high, low, close}` for "candles" and a list of rows of numbers for "heatmap". Options: `title`, drawn at the top left, `series`, the names of the series of "line", "area" and "stackedBar", drawn with their colors at the top right, `labels`, the names of the bars, slices, axes or columns, `rows`, the names of the rows of a heat map, `bins` of a histogram (from the data when nil) and `maximum` of a radar (from the data when nil).
 function Charts.new(kind, data, options)
     local known = false
     for _, name in ipairs(Charts.kinds) do
@@ -96,6 +97,42 @@ end
 local function color(index, alpha)
     local tone = Charts.palette[(index - 1) % #Charts.palette + 1]
     return {tone[1], tone[2], tone[3], alpha or 1}
+end
+
+function Chart.measure(text)
+    return graphics2d.measureText(nil, text, Charts.measureStyle)
+end
+
+-- Answers every how many labels of an axis show, so that labels `slot` units apart never touch: every one when they fit, or every second or third one.
+function Chart.every(labels, count, slot)
+    local widest = 0
+    for index = 1, count do
+        if labels[index] then
+            widest = math.max(widest, Chart.measure(tostring(labels[index])))
+        end
+    end
+    return math.max(1, math.ceil((widest + Charts.textSize * 0.8) / slot))
+end
+
+-- Lays out the names of the series with their colors at the top right of the chart and the title at the top left in the room they leave, and answers the area left under them.
+function Chart:header(rect)
+    local options = self.options
+    local height = Charts.textSize * 1.8
+    local middle = rect[2] + height / 2
+    local right = rect[1] + rect[3] - 8
+    local names = options.series or {}
+    for index = #names, 1, -1 do
+        local name = tostring(names[index])
+        local width = Chart.measure(name)
+        self:text(name, right, middle, {1, 0.5})
+        self:add({'shape', {right - width - 20, middle - 6, 12, 12}, {radius = 3, color = color(index), layer = 2}})
+        right = right - width - 34
+    end
+    if options.title then
+        local room = math.max(Charts.textSize, right - rect[1] - 8)
+        self:add({'text', tostring(options.title), rect[1] + 8, middle, {size = Charts.textSize + 2, color = Charts.colors.title, anchor = {0, 0.5}, maxWidth = room, wrap = false, minScale = 0.8, layer = 3}})
+    end
+    return {rect[1], rect[2] + height, rect[3], rect[4] - height}
 end
 
 -- The area inside the axis labels, and the horizontal grid with its labels for a value scale from `low` to `high`.
@@ -196,10 +233,12 @@ function Chart:fill(run, baseY, tone)
     self:add({'polygon', shape, tone, {layer = 1}})
 end
 
+-- The names of the categories under the plot, thinned to every second or third one when the slots are too narrow for all of them.
 function Chart:categoryLabels(left, width, count, top, height)
     local labels = self.options.labels or {}
     local slot = width / count
-    for index = 1, count do
+    local every = Chart.every(labels, count, slot)
+    for index = 1, count, every do
         if labels[index] then
             self:text(tostring(labels[index]), left + slot * (index - 0.5), top + height + 16)
         end
@@ -369,6 +408,7 @@ function Chart:layoutScatter(rect)
     end
 end
 
+-- The radar turns so that no corner points straight up or down, puts every name beside its corner, and takes the largest radius at which the web and its names fit the area.
 function Chart:layoutRadar(rect)
     local values = self.data
     local count = #values
@@ -382,11 +422,31 @@ function Chart:layoutRadar(rect)
     if maximum <= 0 then
         maximum = 1
     end
-    local radius = math.min(rect[3], rect[4]) / 2 - Charts.textSize * 1.3
+    local labels = self.options.labels or {}
     local centerX, centerY = rect[1] + rect[3] / 2, rect[2] + rect[4] / 2
+    local halfWidth, halfHeight = rect[3] / 2 - 4, rect[4] / 2 - 4
+    local function angle(index)
+        return -math.pi / 2 + math.pi / count + (index - 1) / count * math.pi * 2
+    end
+    local radius = math.min(halfWidth, halfHeight)
+    for index = 1, count do
+        local cos, sin = math.cos(angle(index)), math.sin(angle(index))
+        local width, height = 0, Charts.textSize
+        if labels[index] then
+            width, height = Chart.measure(tostring(labels[index]))
+        end
+        if math.abs(cos) > 0.3 then
+            radius = math.min(radius, (halfWidth - width - 10) / math.abs(cos))
+            if math.abs(sin) > 0.01 then
+                radius = math.min(radius, (halfHeight - height / 2) / math.abs(sin))
+            end
+        else
+            radius = math.min(radius, (halfHeight - height - 8) / math.abs(sin), halfWidth)
+        end
+    end
+    radius = math.max(radius, 8)
     local function corner(index, share)
-        local angle = -math.pi / 2 + (index - 1) / count * math.pi * 2
-        return centerX + math.cos(angle) * radius * share, centerY + math.sin(angle) * radius * share
+        return centerX + math.cos(angle(index)) * radius * share, centerY + math.sin(angle(index)) * radius * share
     end
     for ring = 1, 4 do
         local web = {}
@@ -396,16 +456,18 @@ function Chart:layoutRadar(rect)
         end
         self:add({'polyline', web, 1, Charts.colors.grid, true, {layer = 1}})
     end
-    local labels = self.options.labels or {}
     local shape = {}
     for index = 1, count do
         local x, y = corner(index, 1)
         self:add({'line', centerX, centerY, x, y, 1, Charts.colors.grid, {layer = 1}})
         if labels[index] then
-            -- A name sits just past the end of its axis and leans away from the center, so it never covers the web.
-            local angle = -math.pi / 2 + (index - 1) / count * math.pi * 2
-            local labelX, labelY = corner(index, 1)
-            self:text(tostring(labels[index]), labelX + math.cos(angle) * 8, labelY + math.sin(angle) * 8, {0.5 - math.cos(angle) * 0.5, 0.5 - math.sin(angle) * 0.5})
+            -- A name sits beside its corner, or above or below a corner near the top or the bottom, so it never covers the web.
+            local cos, sin = math.cos(angle(index)), math.sin(angle(index))
+            if math.abs(cos) > 0.3 then
+                self:text(tostring(labels[index]), x + (cos > 0 and 10 or -10), y, {cos > 0 and 0 or 1, 0.5})
+            else
+                self:text(tostring(labels[index]), x, y + (sin > 0 and 8 or -8), {0.5, sin > 0 and 0 or 1})
+            end
         end
         -- Negative and missing values sit at the center, and values past the maximum at the edge.
         local share = math.max(0, math.min(1, (Charts.finite(values[index]) or 0) / maximum))
@@ -499,14 +561,29 @@ local function heat(share)
     return {from[1] + (to[1] - from[1]) * t, from[2] + (to[2] - from[2]) * t, from[3] + (to[3] - from[3]) * t, 1}
 end
 
+-- The heat map names its rows at the left and its columns under the cells, thinned when they are too close, and keeps a key of its colors from the lowest value to the highest at the right.
 function Chart:layoutHeatmap(rect)
     local rows = self.data
     local low, high, columns = range(rows)
     if #rows == 0 or columns == 0 then
         return self:message('No data', rect)
     end
-    local left, top = rect[1] + 8, rect[2] + 8
-    local cellWidth, cellHeight = (rect[3] - 16) / columns, (rect[4] - 16) / #rows
+    local rowNames, columnNames = self.options.rows or {}, self.options.labels or {}
+    local namesWidth = 0
+    for index = 1, #rows do
+        if rowNames[index] then
+            namesWidth = math.max(namesWidth, Chart.measure(tostring(rowNames[index])) + 12)
+        end
+    end
+    local keyWidth = 0
+    if low then
+        keyWidth = 30 + math.max(Chart.measure(Charts.formatSpan(low, high - low)), Chart.measure(Charts.formatSpan(high, high - low)))
+    end
+    local bottomRoom = #columnNames > 0 and Charts.textSize * 1.6 or 0
+    local left, top = rect[1] + 4 + namesWidth, rect[2] + 4
+    local width, height = rect[3] - 8 - namesWidth - keyWidth, rect[4] - 8 - bottomRoom
+    local cellWidth, cellHeight = width / columns, height / #rows
+
     for row, values in ipairs(rows) do
         for column = 1, columns do
             local value = Charts.finite(values[column])
@@ -517,10 +594,35 @@ function Chart:layoutHeatmap(rect)
             self:add({'rect', {left + (column - 1) * cellWidth + 1, top + (row - 1) * cellHeight + 1, cellWidth - 2, cellHeight - 2}, tone, {layer = 2}})
         end
     end
+    local rowEvery = math.max(1, math.ceil(Charts.textSize * 1.1 / cellHeight))
+    for row = 1, #rows, rowEvery do
+        if rowNames[row] then
+            self:text(tostring(rowNames[row]), left - 10, top + (row - 0.5) * cellHeight, {1, 0.5})
+        end
+    end
+    local columnEvery = Chart.every(columnNames, columns, cellWidth)
+    for column = 1, columns, columnEvery do
+        if columnNames[column] then
+            self:text(tostring(columnNames[column]), left + (column - 0.5) * cellWidth, top + height + bottomRoom / 2 + 2)
+        end
+    end
+
+    -- The key is a column of the colors of the scale with round ends, the highest value at its top and the lowest at its bottom, both written with the same decimals.
+    if low then
+        local keyX, steps = left + width + 12, 12
+        for step = 1, steps do
+            local share = 1 - (step - 0.5) / steps
+            local corners = step == 1 and {6, 6, 0, 0} or step == steps and {0, 0, 6, 6} or 0
+            self:add({'shape', {keyX, top + (step - 1) * height / steps, 12, height / steps + 0.5}, {radius = corners, color = heat(share), layer = 2}})
+        end
+        self:text(Charts.formatSpan(high, high - low), keyX + 18, top + Charts.textSize * 0.5, {0, 0.5})
+        self:text(Charts.formatSpan(low, high - low), keyX + 18, top + height - Charts.textSize * 0.5, {0, 0.5})
+    end
 end
 
-function Chart:layout(rect)
+function Chart:layout(area)
     self.items = {}
+    local rect = (self.options.title or self.options.series) and self:header(area) or area
     local kind = self.kind
     if kind == 'line' or kind == 'area' then
         self:layoutLines(rect, kind == 'area')
@@ -541,7 +643,7 @@ function Chart:layout(rect)
     else
         self:layoutHeatmap(rect)
     end
-    self.x, self.y, self.width, self.height = rect[1], rect[2], rect[3], rect[4]
+    self.x, self.y, self.width, self.height = area[1], area[2], area[3], area[4]
 end
 
 -- Lays the chart out again only when it draws at another place or size than before.

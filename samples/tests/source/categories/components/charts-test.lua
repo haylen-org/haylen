@@ -11,13 +11,12 @@ local ChartsTest = haylen.class('ChartsTest', Test)
 ChartsTest.code = [[
 local Charts = require('charts')  -- One file, copied from samples/tests.
 local sales = Charts.new('bar', {12, -4, 30, 0 / 0, 18}, {labels = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri'}})
-local share = Charts.new('donut', {40, 25, 35}, {labels = {'Quests', 'Shop', 'Arena'}})
+local share = Charts.new('donut', {40, 25, 35}, {title = 'Share', labels = {'Quests', 'Shop', 'Arena'}})
 sales:draw({40, 40, 480, 300})  -- Lays out once for each size, then draws without allocating.
 sales:setData(newValues)
 sales:check({0, 0, 480, 300})  -- Raises when a shape holds a number that is not finite.]]
 
 ChartsTest.sets = {'normal', 'empty', 'negative', 'huge', 'missing', 'single', 'flat'}
-ChartsTest.titles = {line = 'Line, two series', area = 'Area', bar = 'Bar', stackedBar = 'Stacked bar', pie = 'Pie', donut = 'Donut', scatter = 'Scatter', radar = 'Radar', histogram = 'Histogram', candles = 'Candles', heatmap = 'Heat map'}
 
 -- Returns the values of a data set, with `wave` giving normal values that change with `seed`.
 function ChartsTest.values(set, count, seed)
@@ -87,11 +86,17 @@ function ChartsTest.data(kind, set, seed)
 end
 
 ChartsTest.options = {
-    bar = {labels = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'}},
-    stackedBar = {labels = {'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'}},
-    radar = {labels = {'Speed', 'Power', 'Range', 'Armor', 'Luck', 'Magic'}},
-    pie = {labels = {'Wood', 'Stone', 'Gold', 'Food', 'Gems'}},
-    donut = {labels = {'Quests', 'Shop', 'Arena', 'Daily', 'Other'}},
+    line = {title = 'Line', series = {'Players', 'Guests'}},
+    area = {title = 'Area'},
+    bar = {title = 'Bar', labels = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'}},
+    stackedBar = {title = 'Stacked bar', labels = {'Q1', 'Q2', 'Q3', 'Q4', 'Q5', 'Q6'}, series = {'Wood', 'Iron', 'Gold'}},
+    pie = {title = 'Pie', labels = {'Wood', 'Stone', 'Gold', 'Food', 'Gems'}},
+    donut = {title = 'Donut', labels = {'Quests', 'Shop', 'Arena', 'Daily', 'Other'}},
+    scatter = {title = 'Scatter'},
+    radar = {title = 'Radar', labels = {'Speed', 'Power', 'Range', 'Armor', 'Luck', 'Magic'}},
+    histogram = {title = 'Histogram'},
+    candles = {title = 'Candles'},
+    heatmap = {title = 'Heat map of visits by day and hour', labels = {'9h', '10h', '11h', '12h', '13h', '14h', '15h', '16h', '17h', '18h'}, rows = {'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'}},
 }
 
 function ChartsTest:enter()
@@ -139,7 +144,7 @@ end
 function ChartsTest:update(dt)
     ChartsTest.super.update(self, dt)
     if self.stage then
-        self:status(string.format('The data set "%s" draws in %d draw calls', self.set, graphics2d.stats().drawCalls))
+        self:status(string.format('Every chart draws the data set "%s", in %d draw calls in all.', self.set, graphics2d.stats().drawCalls))
     end
 end
 
@@ -156,8 +161,7 @@ function ChartsTest:draw(area)
         local span = index == #self.charts and columns - column or 1
         local cardWidth = width * span + gap * (span - 1)
         graphics2d.drawShape({x, y, cardWidth, height}, {radius = 12, color = '#FF1B2430', borderWidth = 2, borderColor = '#FF2A3646'})
-        Test.caption(ChartsTest.titles[chart.kind], x + 14, y + 10, {color = Test.ink, size = 20})
-        chart:draw({x + 6, y + 38, cardWidth - 12, height - 44})
+        chart:draw({x + 6, y + 4, cardWidth - 12, height - 10})
     end
 end
 
