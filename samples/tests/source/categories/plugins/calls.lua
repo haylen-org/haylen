@@ -65,7 +65,7 @@ function Calls:echo()
 end
 
 function Calls:compute()
-    local name = 'The call "compute" runs in the background'
+    local name = 'The call "compute" leaves the frame free'
     self.results:set('compute', 'waiting', name, 'Counting the primes below ' .. Calls.limit .. '.')
     local started = haylen.frameIndex()
     local computed, err = demo.compute(Calls.limit):await()
@@ -73,9 +73,16 @@ function Calls:compute()
         self.results:failure('compute', name, err)
         return
     end
+    local frames = haylen.frameIndex() - started
+    local over = string.format('over %d %s while the app kept drawing', frames, frames == 1 and 'frame' or 'frames')
     -- The web runtime has one thread, so its handler counts in slices that yield to the page instead.
+    local detail
+    if computed.language == 'JavaScript' then
+        detail = string.format('JavaScript counted %d primes below %d in slices that yield to the page, which has one thread, %s.', computed.primes, Calls.limit, over)
+    else
+        detail = string.format('%s counted %d primes below %d on the thread "%s", %s.', computed.language, computed.primes, Calls.limit, computed.thread, over)
+    end
     local thread = computed.thread == 'background' or computed.language == 'JavaScript'
-    local detail = string.format('%s counted %d primes below %d in %d frames while the app kept drawing, on the thread "%s".', computed.language, computed.primes, Calls.limit, haylen.frameIndex() - started, computed.thread)
     self.results:set('compute', (computed.primes == Calls.primes and thread) and 'pass' or 'fail', name, detail)
 end
 

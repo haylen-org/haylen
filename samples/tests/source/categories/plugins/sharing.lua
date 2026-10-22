@@ -16,12 +16,13 @@ print(opened.opened)  -- False when no app takes the link.]]
 Sharing.text = 'A text that Haylen Tests shares.'
 Sharing.link = 'https://example.com/haylen'
 Sharing.apps = {
-    {kind = 'settings', button = 'Open the settings', name = 'The settings of the app open'},
-    {kind = 'maps', button = 'Open a map', name = 'A map app opens at a place'},
-    {kind = 'mail', button = 'Write an email', name = 'A new message of the mail app opens'},
+    {kind = 'settings', button = 'Open the settings', name = 'The settings of the app open', title = 'The settings of the app', icon = 'sprites/vector/gear.svg'},
+    {kind = 'maps', button = 'Open a map', name = 'A map app opens at a place', title = 'A map app at a place', icon = 'plugins/map.svg'},
+    {kind = 'mail', button = 'Write an email', name = 'A new message of the mail app opens', title = 'A new message of the mail app', icon = 'platform/message.svg'},
 }
 
 function Sharing:enter()
+    self.opened = {}
     local controls = {
         ui.button{id = 'share', text = 'Share a text and a link', variant = 'primary', onClick = function() self:share() end},
     }
@@ -35,13 +36,22 @@ function Sharing:enter()
         checksEmpty = 'Share or open an app to check what the platform answers.',
         controls = controls,
         showcase = {
-            ui.card{grow = 1, align = 'stretch', gap = 16, justify = 'center',
+            ui.card{grow = 1, align = 'stretch', gap = 16,
                 ui.row{gap = 16, ui.icon{image = 'plugins/share.svg', size = 56, color = 'accentText'}, ui.label{text = 'What the share sheet gets', font = 'heading', grow = 1}},
                 ui.card{align = 'stretch', gap = 8,
                     ui.label{text = Sharing.text},
                     ui.label{text = Sharing.link, font = 'monospace', color = 'accentText'},
                 },
                 ui.label{id = 'shareState', text = 'Nothing shared yet.', color = 'textMuted'},
+                ui.divider{align = 'stretch'},
+                ui.sectionTitle{text = 'Apps opened through their links'},
+                ui.list{id = 'apps', items = self:appItems(), onSelect = function(event)
+                    for _, app in ipairs(Sharing.apps) do
+                        if app.kind == event.item then
+                            self:open(app)
+                        end
+                    end
+                end},
             },
         },
     }
@@ -63,13 +73,26 @@ function Sharing:share()
     end)
 end
 
+-- The apps that the links open, each with what happened the last time.
+function Sharing:appItems()
+    local items = {}
+    for index, app in ipairs(Sharing.apps) do
+        items[index] = {id = app.kind, text = app.title, caption = self.opened[app.kind] or 'Not opened yet', image = app.icon}
+    end
+    return items
+end
+
 function Sharing:open(app)
     self:act(function()
         local result, err = demo.openApp(app.kind):await()
         if err then
+            self.opened[app.kind] = 'It did not open: ' .. err.message
+            self:set('apps', {items = self:appItems()})
             self.results:failure(app.kind, app.name, err)
             return
         end
+        self.opened[app.kind] = result.opened and string.format('Opened by %s', result.language) or 'No app of this device took the link'
+        self:set('apps', {items = self:appItems()})
         self.results:set(app.kind, result.opened and 'pass' or 'info', app.name, result.opened and string.format('%s opened it.', result.language) or 'No app of this device took the link.')
     end)
 end

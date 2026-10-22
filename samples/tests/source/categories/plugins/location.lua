@@ -37,7 +37,7 @@ function Location:enter()
                     Location.value('longitude', 'Longitude'),
                     Location.value('accuracy', 'Accuracy'),
                 },
-                ui.label{id = 'placeState', text = 'Not found yet. The map shows a hill above a bay until then.', font = 'caption', color = 'textMuted'},
+                ui.label{id = 'placeState', text = string.format('Not found yet. Until then the native map centers on a hill above a bay, at %.4f, %.4f.', Location.place.latitude, Location.place.longitude), font = 'caption', color = 'textMuted'},
             },
             ui.card{grow = 1, align = 'stretch', gap = 12, justify = 'center',
                 DemoTest.placeholder('mapState', 'plugins/map.svg', 'The native map shows at the bottom of the app, over it, once you show it.'),
@@ -75,7 +75,7 @@ function Location:locate()
         self:set('latitude', {text = string.format('%.5f°', place.latitude)})
         self:set('longitude', {text = string.format('%.5f°', place.longitude)})
         self:set('accuracy', {text = string.format('%.0f m', place.accuracy)})
-        self:set('placeState', {text = string.format('Found by %s. The map shows this place now.', place.language)})
+        self:set('placeState', {text = string.format('Found by %s. The native map centers on this place now.', place.language)})
         self.results:set('location', 'pass', Location.locationName, string.format('%s found %.5f, %.5f within %.0f meters.', place.language, place.latitude, place.longitude, place.accuracy))
     end)
 end

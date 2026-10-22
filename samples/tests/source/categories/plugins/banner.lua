@@ -172,7 +172,7 @@ function Banner:draw(area)
     graphics2d.drawShape({0, 0, area.width, area.height}, {radius = 16, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     local count = self.gameTaps == 0 and 'Tap or click anywhere here' or string.format('%d %s reached the app', self.gameTaps, self.gameTaps == 1 and 'tap' or 'taps')
     graphics2d.drawText(nil, count, area.width / 2, area.height / 2 - 8, {size = 34, color = Test.ink, anchor = {0.5, 1}, layer = 2})
-    graphics2d.drawText(nil, 'The overlay of the banner lets every other tap through.', area.width / 2, area.height / 2 + 8, {size = 22, color = Test.muted, anchor = {0.5, 0}, maxWidth = area.width - 64, layer = 2})
+    graphics2d.drawText(nil, 'The overlay of the banner lets every other tap through.', area.width / 2, area.height / 2 + 8, {size = 22, color = Test.muted, anchor = {0.5, 0}, maxWidth = area.width - 64, align = 'center', layer = 2})
     local now = haylen.elapsed()
     for index = #self.ripples, 1, -1 do
         local ripple = self.ripples[index]

@@ -20,6 +20,7 @@ Events.loadedWait = 3
 Events.ticksToPass = 3
 Events.quietSeconds = 2.5
 Events.ticksName = 'The events "tick" arrive every "tickInterval" seconds'
+Events.checksWidth = 820
 
 -- The payload of `loaded` outlives the scene, because a retained event reaches only the first listener of its name.
 Events.loaded = {}
@@ -66,7 +67,7 @@ function Events:listenLoaded()
         return
     end
 
-    self.results:set('loaded', 'waiting', name, string.format('Connected %.1f seconds after the app started.', haylen.elapsed()))
+    self.results:set('loaded', 'waiting', name, string.format('Connected %s after the app started.', Events.duration(haylen.elapsed())))
     local connectedAt = haylen.elapsed()
     self.connections[#self.connections + 1] = demo.onLoaded(function(payload)
         Events.loaded.payload = payload
@@ -82,7 +83,7 @@ end
 
 function Events:showLoaded(name)
     local loaded = Events.loaded
-    self.results:set('loaded', 'pass', name, string.format('%s sent "loaded" on "%s" when it loaded, and this listener, which connected %.1f seconds after the app started, received it because the event was retained.', loaded.payload.language, loaded.payload.platform, loaded.connectedAt))
+    self.results:set('loaded', 'pass', name, string.format('%s sent "loaded" on "%s" when it loaded, and this listener, which connected %s after the app started, received it because the event was retained.', loaded.payload.language, loaded.payload.platform, Events.duration(loaded.connectedAt)))
 end
 
 function Events:toggleTicks()
@@ -96,10 +97,10 @@ function Events:toggleTicks()
         self.ticking = answer.enabled
         self.interval = answer.interval
         self:set('ticks', {text = self.ticking and 'Stop the native ticks' or 'Start the native ticks'})
-        self:set('beatState', {text = self.ticking and string.format('Ticking every %s seconds.', tostring(answer.interval)) or 'Stopped. Start the ticks to hear from it.'})
+        self:set('beatState', {text = self.ticking and string.format('Ticking every %s.', Events.seconds(answer.interval)) or 'Stopped. Start the ticks to hear from it.'})
         if self.ticking then
             self.ticks = {}
-            self.results:set('ticks', 'waiting', Events.ticksName, string.format('The native timer ticks every %s seconds.', tostring(answer.interval)))
+            self.results:set('ticks', 'waiting', Events.ticksName, string.format('The native timer ticks every %s.', Events.seconds(answer.interval)))
             self.results:set('stopped', 'info', 'Stopped ticks stay quiet', 'Stop the ticks to check it.')
         else
             self:checkQuiet()
@@ -130,7 +131,22 @@ function Events:tick(payload)
     local first, last = self.ticks[1], self.ticks[#self.ticks]
     local average = #self.ticks > 1 and (last.at - first.at) / (#self.ticks - 1) or 0
     local state = self.ticking and #self.ticks >= Events.ticksToPass and 'pass' or 'waiting'
-    self.results:set('ticks', state, Events.ticksName, string.format('%d ticks from %s on the thread "%s", the last with the count %d, %.2f seconds apart on average for an interval of %s seconds.', #self.ticks, payload.language, payload.thread, payload.count, average, tostring(self.interval)))
+    self.results:set('ticks', state, Events.ticksName, string.format('%d %s from %s on the thread "%s", the last with the count %d, %.2f seconds apart on average for an interval of %s.', #self.ticks, #self.ticks == 1 and 'tick' or 'ticks', payload.language, payload.thread, payload.count, average, Events.seconds(self.interval)))
+end
+
+-- A number of seconds in words, such as "1 second" or "0.5 seconds".
+function Events.seconds(value)
+    return string.format('%g %s', value, value == 1 and 'second' or 'seconds')
+end
+
+-- A time since the start of the app in words, in seconds under a minute and in minutes and seconds after it.
+function Events.duration(seconds)
+    if seconds < 60 then
+        return string.format('%.1f seconds', seconds)
+    end
+    local minutes = math.floor(seconds / 60)
+    local rest = math.floor(seconds % 60)
+    return string.format('%d %s and %d %s', minutes, minutes == 1 and 'minute' or 'minutes', rest, rest == 1 and 'second' or 'seconds')
 end
 
 -- Ticks already on their way may still arrive right after the stop, so the quiet time starts at the stop.

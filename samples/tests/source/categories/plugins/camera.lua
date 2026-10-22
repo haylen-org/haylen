@@ -55,7 +55,7 @@ function Camera:enter()
             },
             ui.card{align = 'stretch', gap = 12,
                 ui.row{gap = 16, ui.icon{id = 'microphoneIcon', image = 'plugins/microphone.svg', size = 48, color = 'textMuted'}, ui.label{text = 'Microphone', font = 'heading', grow = 1}, ui.badge{id = 'microphoneState', text = 'Off', tone = 'neutral'}},
-                ui.progress{id = 'level', value = 0, tone = 'success', text = 'Level 0.000'},
+                ui.progress{id = 'level', value = 0, tone = 'success', text = 'Level 0.00'},
             },
         },
     }
@@ -152,7 +152,7 @@ function Camera:toggleMicrophone()
         self.levels = 0
         self.levelConnection = demo.onMicrophoneLevel(function(level)
             self.levels = self.levels + 1
-            self:set('level', {value = math.min(1, level.level * 4), text = string.format('Level %.3f', level.level)})
+            self:set('level', {value = math.min(1, level.level * 4), text = string.format('Level %.2f', level.level)})
             local state = self.levels >= 5 and 'pass' or 'waiting'
             self.results:set('microphone', state, Camera.microphoneName, string.format('%s records %d Hz, the app read %d samples of the stream in the last frame, and %d level reports arrived.', started.language, started.sampleRate, self.count or 0, self.levels))
         end)
@@ -172,7 +172,7 @@ function Camera:stopMicrophone()
     self:set('microphone', {text = 'Start the microphone'})
     self:set('microphoneState', {text = 'Off', tone = 'neutral'})
     self:set('microphoneIcon', {color = 'textMuted'})
-    self:set('level', {value = 0, text = 'Level 0.000'})
+    self:set('level', {value = 0, text = 'Level 0.00'})
 end
 
 function Camera:update(dt)

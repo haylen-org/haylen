@@ -19,14 +19,14 @@ function DemoTest:init(entry)
     self.results = Results(entry.code)
 end
 
--- Mounts the frame with the checks as its content, or beside the nodes of `showcase`, which show what the test does, such as a video, a store or an account. The options `checksTitle` and `checksEmpty` name the panel of the checks and tell what to do while it is empty.
+-- Mounts the frame with the checks as its content, or beside the nodes of `showcase`, which show what the test does, such as a video, a store or an account, in a column as wide as the `checksWidth` of the test. The options `checksTitle` and `checksEmpty` name the panel of the checks and tell what to do while it is empty.
 function DemoTest:frame(options)
     self.native = demo.available()
     if not self.native then
         self.results:set('native', 'skip', 'Native part', DemoTest.missing)
         options.focus = 'back'
     end
-    local checks = self.results:view(options.checksTitle, {grow = options.showcase and 0 or 1, width = options.showcase and DemoTest.checksWidth, empty = options.checksEmpty})
+    local checks = self.results:view(options.checksTitle, {grow = options.showcase and 0 or 1, width = options.showcase and self.checksWidth, empty = options.checksEmpty})
     local content = {checks}
     if options.showcase then
         content = {ui.row{grow = 1, gap = 24, align = 'stretch', ui.column{grow = 1, gap = 16, align = 'stretch', children = options.showcase}, checks}}
