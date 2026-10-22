@@ -7,19 +7,21 @@ local window = require('haylen.window')
 
 local Device = require('categories.safe-area.device')
 local Test = require('harness.test')
+local areas = require('categories.safe-area.areas')
 
 local Lock = haylen.class('Lock', Test)
 
 Lock.code = [[
-window.lockOrientation('portrait')  -- Or `landscape` and `any`, which lets the screen turn.
+window.lockOrientation('portrait')  -- Or "landscape" and "any", which lets the screen turn.
 window.setFullscreen(true)  -- Browsers usually lock only a fullscreen page.
 print(window.orientation())]]
 
-Lock.platforms = '[table=2][cell bg=#33FFFFFF padding=10][b]Platform[/b][/cell][cell bg=#33FFFFFF padding=10][b]What the lock does[/b][/cell]'
-    .. '[cell padding=10]Android[/cell][cell padding=10]Locks the activity with "setRequestedOrientation".[/cell]'
-    .. '[cell bg=#14FFFFFF padding=10]iPhone and iPad[/cell][cell bg=#14FFFFFF padding=10]Asks UIKit for the new orientations and turns the screen at once.[/cell]'
-    .. '[cell padding=10]Browsers[/cell][cell padding=10]The Screen Orientation API, which usually works only for a fullscreen page on a phone.[/cell]'
-    .. '[cell bg=#14FFFFFF padding=10]Desktop, Mac Catalyst and TVs[/cell][cell bg=#14FFFFFF padding=10]Ignore it, since their screens do not turn.[/cell][/table]'
+Lock.platforms = {
+    {'Android', 'Locks the activity with "setRequestedOrientation".'},
+    {'iPhone and iPad', 'Asks UIKit for the new orientations and turns the screen at once.'},
+    {'Browsers', 'The Screen Orientation API, which usually works only for a fullscreen page on a phone.'},
+    {'Desktop, Mac Catalyst and TVs', 'Ignore it, since their screens do not turn.'},
+}
 -- The angle the phone of the preview turns to for each lock, where "any" leans it between the two.
 Lock.angles = {portrait = 0, landscape = -math.pi / 2, any = -math.pi / 4}
 
@@ -31,6 +33,7 @@ function Lock:init(entry)
 end
 
 function Lock:enter()
+    self.wallpaper = areas.wallpaper()
     self:frame{
         hint = 'The file "app.json" sets the orientation an app starts with, "landscape" in this project, and leaving this test locks the screen to landscape again. Browsers usually lock only a fullscreen page on a phone, so turn fullscreen on first there.',
         code = Lock.code,
@@ -48,7 +51,7 @@ function Lock:enter()
                 end},
                 ui.spacer{id = 'preview', grow = 1, minHeight = 260},
             },
-            ui.card{grow = 1, align = 'start', gap = 12, ui.sectionTitle{text = 'Platforms'}, ui.richText{text = Lock.platforms}},
+            ui.card{grow = 1, align = 'stretch', gap = 12, ui.sectionTitle{text = 'Platforms'}, areas.platformTable('What the lock does', Lock.platforms)},
         }},
         fixed = true,
     }
@@ -75,7 +78,7 @@ function Lock:render()
     graphics2d.beginScreen({order = 1})
     local height = math.min(bounds.height * 0.95, bounds.width * 0.5)
     local x, y = bounds.x + bounds.width * 0.42, bounds.y + bounds.height / 2
-    Device.draw{kind = 'island', x = x, y = y, width = height * 0.49, height = height, angle = self.phone.angle, screen = '#FF2F86F6'}
+    Device.draw{kind = 'island', x = x, y = y, width = height * 0.49, height = height, angle = self.phone.angle, wallpaper = self.wallpaper}
     self:drawPadlock(bounds.x + bounds.width * 0.78, y, height * 0.28, self.lock == 'any')
 end
 

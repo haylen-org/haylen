@@ -15,7 +15,7 @@ local segments = window.segments()  -- Two areas when a fold separates the windo
 local map, instruments = segments[1], segments[2] or segments[1]
 local fold = window.fold()  -- With bounds, axis, state, separating and occluding.
 events.on('windowFoldChanged', function(change) print(change.posture, #change.segments) end, {owner = self})
-window.setFoldSimulation('book')  -- Or `tabletop`, `flat`, `dualScreen` and nil for the device.]]
+window.setFoldSimulation('book')  -- Or "tabletop", "flat", "dualScreen" and nil for the device.]]
 
 Folds.simulations = {
     {id = 'device', text = 'The fold of the device'},
@@ -118,7 +118,7 @@ function Folds:drawMap(region)
     local size = math.max(48, math.min(region.width, region.height) * 0.12)
     graphics2d.drawShape({x + 4 - size * 0.22, y + 8 - size * 0.45, size * 0.44, size * 0.9}, {kind = 'ellipse', rotation = heading, color = '#40102030', softness = 8, layer = 2})
     graphics2d.draw(self.boat, x, y, {width = size, height = size, rotation = heading, layer = 3})
-    graphics2d.drawShape({region.x + 16, region.y + 16, 230, 48}, {radius = 24, color = '#C0151826', layer = 4})
+    graphics2d.drawShape({region.x + 16, region.y + 16, 230, 48}, {radius = 24, color = '#FF151826', borderWidth = 2, borderColor = Test.line, layer = 4})
     Test.caption('Harbor map', region.x + 36, region.y + 40, {size = 26, color = Test.ink, anchor = {0, 0.5}, layer = 5})
 end
 
@@ -165,7 +165,7 @@ function Folds:drawInstruments(region)
     Test.caption(string.format('Heading %d degrees, %s', bearing, direction), x, region.y + region.height - 24, {size = 24, color = Test.muted, anchor = {0.5, 1}, layer = 8})
 end
 
--- A hinge hides what lies under it and draws as the dark spine between two screens, and a seamless fold is a soft crease the content keeps away from.
+-- A hinge hides what lies under it and draws as the dark spine between two screens, and a seamless fold is the crease of a page: a shade that deepens toward the fold on both sides, a dark valley and a thin light ridge on its edge.
 function Folds:drawFold(bounds, fold)
     if fold.occluding then
         graphics2d.drawShape(bounds, {radius = math.min(bounds.width, bounds.height) * 0.5, color = '#FF07080C', layer = 12})
@@ -173,12 +173,15 @@ function Folds:drawFold(bounds, fold)
     end
     local center = bounds:center()
     local vertical = fold.axis == 'vertical'
-    local crease = vertical and {center.x - 14, bounds.y, 28, bounds.height} or {bounds.x, center.y - 14, bounds.width, 28}
-    graphics2d.drawShape(crease, {color = '#50000000', softness = 24, layer = 12})
+    local function band(width)
+        return vertical and {center.x - width / 2, bounds.y, width, bounds.height} or {bounds.x, center.y - width / 2, bounds.width, width}
+    end
+    graphics2d.drawShape(band(160), {color = '#66000000', softness = 70, layer = 12})
+    graphics2d.drawShape(band(36), {color = '#AA000000', softness = 16, layer = 13})
     if vertical then
-        graphics2d.drawLine(center.x, bounds.y, center.x, bounds:bottom(), 2, '#40FFFFFF', {layer = 13})
+        graphics2d.drawLine(center.x + 3, bounds.y, center.x + 3, bounds:bottom(), 2, '#40FFFFFF', {layer = 14})
     else
-        graphics2d.drawLine(bounds.x, center.y, bounds:right(), center.y, 2, '#40FFFFFF', {layer = 13})
+        graphics2d.drawLine(bounds.x, center.y + 3, bounds:right(), center.y + 3, 2, '#40FFFFFF', {layer = 14})
     end
 end
 

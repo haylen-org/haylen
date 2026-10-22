@@ -12,10 +12,10 @@ local Test = require('harness.test')
 local Scaling = haylen.class('Scaling', Test)
 
 Scaling.code = [[
--- The file `app.json` sets `"design": {"width": 1920, "height": 1080, "scaling": "expand"}`.
+-- The file "app.json" sets "design" to a width of 1920, a height of 1080 and the scaling "expand".
 viewport.setScaling('fit')
 local width, height = viewport.designSize()
-local visible = viewport.visibleRect()  -- Larger than the design area with `expand`.
+local visible = viewport.visibleRect()  -- Larger than the design area with "expand".
 local unitX, unitY = viewport.pixelsPerUnit()]]
 
 Scaling.policies = {{id = 'fit', text = 'Fit'}, {id = 'fill', text = 'Fill'}, {id = 'stretch', text = 'Stretch'}, {id = 'expand', text = 'Expand'}, {id = 'pixelPerfect', text = 'Pixel perfect'}, {id = 'fitWidth', text = 'Fit width'}, {id = 'none', text = 'None'}}
@@ -31,7 +31,7 @@ Scaling.screens = {
 function Scaling:init(entry)
     Scaling.super.init(self, entry)
     self.policy = viewport.scaling()
-    self.screen = Scaling.screens[1]
+    self.screen = Scaling.screens[2]
     self.scenery = assets.texture('interface/images/landscape.png', {filter = 'linear'})
     self.heart = assets.texture('interface/themes/fantasy/icons/heart.png', {filter = 'linear'})
     self.coin = assets.texture('interface/themes/fantasy/icons/coin.png', {filter = 'linear'})
@@ -58,7 +58,7 @@ function Scaling:enter()
                     end
                 end
             end},
-            ui.table{id = 'mapping', columns = {{text = 'Preview', width = 170}, {text = 'Value'}}},
+            ui.table{id = 'mapping', columns = {{text = 'Measure', width = 170}, {text = 'Value'}}},
             ui.sectionTitle{text = 'This app now'},
             ui.table{id = 'live', columns = {{text = 'Measure', width = 170}, {text = 'Value'}}},
         },
@@ -163,17 +163,18 @@ end
 -- The simulated screen sits in the device it belongs to, a phone, a tablet or a monitor, and shows the extra area of "expand" as a soft hatched band, the letterboxing as black and the design area in its place.
 function Scaling:draw(area)
     local screen = self.screen
-    local fit = math.min((area.width - 160) / screen.width, (area.height - 140) / screen.height)
+    local fit = math.min((area.width - 120) / screen.width, (area.height - 100) / screen.height)
     local screenRect = {(area.width - screen.width * fit) / 2, (area.height - screen.height * fit) / 2, screen.width * fit, screen.height * fit}
     local scaleX, scaleY, offsetX, offsetY = self:map(screen.width, screen.height)
     local device, radius = Device.around(screen.device, screenRect, screen.sideways)
     device.screen = '#FF000000'
-    device.layer = -10
+    device.layer = -2
     Device.draw(device)
 
+    -- The screen draws as one group over the screen of the device and under its cutout.
     graphics2d.pushMask(function()
         graphics2d.drawShape(screenRect, {radius = radius, color = '#FFFFFFFF'})
-    end)
+    end, {layer = 1})
     -- The policy `expand` shows more than the design area, which the app is expected to fill.
     if self.policy == 'expand' then
         graphics2d.drawRect(screenRect, '#FF262B3D')

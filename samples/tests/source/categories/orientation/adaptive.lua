@@ -1,4 +1,4 @@
--- A character screen that stacks its parts when the screen is taller than wide and places them side by side otherwise, rebuilt with `gui:replaceChildren` when the shape changes. The project starts locked to landscape, so the test lets the screen turn while it shows.
+-- A character screen that stacks its parts when the screen is taller than wide and places them side by side otherwise, filling the region, rebuilt with `gui:replaceChildren` when the shape changes. The project starts locked to landscape, so the test lets the screen turn while it shows.
 local haylen = require('haylen')
 local ui = require('haylen.ui')
 local viewport = require('haylen.viewport')
@@ -33,7 +33,7 @@ function Adaptive:enter()
         hint = 'Turn a phone or a tablet, or make a desktop window taller than wide: the "expand" policy shows more design units along the long side, and the screen lays itself out again.',
         code = Adaptive.code,
         focus = 'equip',
-        content = {ui.column{id = 'layout', grow = 1, self:layout(self.shape)}},
+        content = {ui.column{id = 'layout', grow = 1, align = 'stretch', self:layout(self.shape)}},
     }
 end
 
@@ -42,10 +42,17 @@ function Adaptive:exit()
     Adaptive.super.exit(self)
 end
 
-function Adaptive:portrait()
-    return ui.card{gap = 16, align = 'stretch',
+-- The gear of the captain, each with its icon and its name.
+Adaptive.gear = {{icon = 'interface/icons/sword.png', text = 'Cutlass'}, {icon = 'interface/themes/fantasy/icons/shield.png', text = 'Buckler'}, {icon = 'interface/themes/fantasy/icons/potion.png', text = 'Three potions'}, {icon = 'interface/themes/fantasy/icons/key.png', text = 'Brass key'}}
+
+-- The profile holds the portrait, the name, the traits and a line about the captain, with the actions at its foot.
+function Adaptive:profile(stacked)
+    return ui.card{gap = 16, align = 'stretch', grow = stacked and 0 or 1,
         ui.row{gap = 24, ui.avatar{image = 'interface/images/avatar-ana.png', size = 140}, ui.column{grow = 1, gap = 4, ui.label{text = 'Ana Souza', font = 'title'}, ui.label{text = 'Captain of the Gull, level 12', color = 'textMuted'}}},
         ui.row{gap = 12, ui.badge{text = 'Navigator', tone = 'accent', solid = true}, ui.badge{text = 'Fearless', tone = 'success'}, ui.badge{text = 'Seasick', tone = 'warning'}},
+        ui.label{text = 'She keeps the Gull on course through storms and reefs, and has never lost a crew.', color = 'textMuted', align = 'stretch'},
+        ui.spacer{grow = 1},
+        self:actions(stacked),
     }
 end
 
@@ -56,6 +63,15 @@ function Adaptive:stats()
         Adaptive.stat('Stamina', 0.45, 'warning', '45'),
         Adaptive.stat('Experience', 0.6, 'accent', '60%'),
     }
+end
+
+-- The gear lies in slots of one size, two in a row, that fill the card.
+function Adaptive:gearCard(stacked)
+    local slots = {}
+    for index, item in ipairs(Adaptive.gear) do
+        slots[index] = ui.panel{gap = 8, alignItems = 'center', justify = 'center', ui.icon{image = item.icon, size = 64}, ui.label{text = item.text, font = 'caption'}}
+    end
+    return ui.card{gap = 16, align = 'stretch', grow = stacked and 0 or 1, ui.sectionTitle{text = 'Gear'}, ui.grid{columns = 2, gap = 12, grow = 1, align = 'stretch', children = slots}}
 end
 
 -- A stat reads as its name, its bar and its value, so no text crosses the end of the fill.
@@ -70,17 +86,17 @@ function Adaptive:actions(stacked)
         ui.button{id = 'train', text = 'Train', grow = stacked and 0 or 1, align = stacked and 'stretch' or nil, onClick = press},
         ui.button{id = 'rest', text = 'Rest', grow = stacked and 0 or 1, align = stacked and 'stretch' or nil, onClick = press},
     }
-    return stacked and ui.column{gap = 12, children = buttons} or ui.row{gap = 12, children = buttons}
+    return stacked and ui.column{gap = 12, align = 'stretch', children = buttons} or ui.row{gap = 12, align = 'stretch', children = buttons}
 end
 
--- Portrait stacks everything in one column, and landscape puts the portrait on the left and the stats and actions on the right.
+-- Portrait stacks everything in one column, and landscape puts the profile on the left and the stats over the gear on the right, filling the screen.
 function Adaptive:layout(shape)
     if shape == 'portrait' then
-        return ui.column{gap = 24, self:portrait(), self:stats(), self:actions(true)}
+        return ui.column{gap = 24, align = 'stretch', self:profile(true), self:stats(), self:gearCard(true)}
     end
-    return ui.row{gap = 24, alignItems = 'start',
-        ui.column{grow = 1, gap = 24, self:portrait(), self:actions(false)},
-        ui.column{grow = 1, gap = 24, self:stats()},
+    return ui.row{gap = 24, grow = 1, align = 'stretch', alignItems = 'stretch',
+        ui.column{grow = 1, gap = 24, self:profile(false)},
+        ui.column{grow = 1, gap = 24, self:stats(), self:gearCard(false)},
     }
 end
 

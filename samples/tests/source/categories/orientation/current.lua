@@ -1,6 +1,4 @@
 -- The function `window.orientation` reads how the screen is turned, and `windowOrientationChanged` announces every turn, next to `windowResized` and `windowSafeAreaChanged`. The project starts locked to landscape, so the test lets the screen turn while it shows.
-local assets = require('haylen.assets')
-local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local tween = require('haylen.tween')
@@ -10,12 +8,13 @@ local window = require('haylen.window')
 
 local Device = require('categories.safe-area.device')
 local Test = require('harness.test')
+local areas = require('categories.safe-area.areas')
 
 local Current = haylen.class('Current', Test)
 
 Current.code = [[
 window.lockOrientation('any')
-print(window.orientation())  -- Prints `portrait` or `landscape`.
+print(window.orientation())  -- Prints "portrait" or "landscape".
 events.on('windowOrientationChanged', function(event) layOut(event.orientation) end, {owner = self})
 events.on('windowResized', function(event) print(event.width, event.height) end, {owner = self})]]
 
@@ -32,15 +31,11 @@ function Current:init(entry)
     Current.super.init(self, entry)
     self.lines = {}
     self.phone = {angle = window.orientation() == 'portrait' and 0 or -math.pi / 2}
-    -- The wallpaper of the phone is the middle of the landscape picture in the shape of the screen held upright.
-    local picture = assets.load('interface/images/landscape.png', 'image')
-    local screenWidth, screenHeight = Device.screenSize('island', Current.phoneShape, 1)
-    local width = math.floor(picture.height * screenWidth / screenHeight)
-    self.wallpaper = graphics.newTexture(picture:crop({math.floor((picture.width - width) * 0.55), 0, width, picture.height}), {filter = 'linear'})
 end
 
 function Current:enter()
     window.lockOrientation('any')
+    self.wallpaper = areas.wallpaper()
     self:frame{
         hint = 'Turn a phone or a tablet, or resize a browser on one. Desktop windows, Mac Catalyst and TVs always count as landscape, so resizing a desktop window reports "windowResized" but never a turn.',
         code = Current.code,
@@ -98,11 +93,12 @@ function Current:update(dt)
     self:status('The call "window.orientation()" returns "' .. window.orientation() .. '".')
 end
 
--- A phone that turns with the screen, with a soft glow on the floor of the play area under it.
+-- A phone that turns with the screen and keeps its wallpaper upright, over a soft glow in the middle of the play area.
 function Current:draw(area)
-    local height = math.min(area.height * 0.78, area.width * 0.6)
-    graphics2d.drawEllipse(area.width / 2, area.height / 2, height * 0.62, height * 0.62, '#14FFFFFF', {layer = -5})
-    Device.draw{kind = 'island', x = area.width / 2, y = area.height / 2, width = height * Current.phoneShape, height = height, angle = self.phone.angle, texture = self.wallpaper, screen = '#FFFFFFFF'}
+    local height = math.min(area.height * 0.72, area.width * 0.6)
+    local glow = height * 0.66
+    graphics2d.drawShape({area.width / 2 - glow, area.height / 2 - glow, glow * 2, glow * 2}, {kind = 'ellipse', color = '#1AFFFFFF', softness = glow * 0.5, layer = -5})
+    Device.draw{kind = 'island', x = area.width / 2, y = area.height / 2, width = height * Current.phoneShape, height = height, angle = self.phone.angle, wallpaper = self.wallpaper}
 end
 
 return Current
