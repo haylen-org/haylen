@@ -127,8 +127,9 @@ function Skeletons:draw(area)
     end
     Backdrop.shadow(self.puppet.x, Skeletons.ground, 150, 0)
     self.puppet:draw({layer = 1})
+    -- While the arm reaches, a dot marks the point of the hand that inverse kinematics brings to the pointer.
     local x, y = self.puppet:point('hand')
-    if x then
+    if x and self.aiming then
         graphics2d.drawShape({x - 8, y - 8, 16, 16}, {kind = 'ellipse', color = '#FFFFC93C', borderWidth = 3, borderColor = '#FF1E1B33', layer = 5})
     end
 end

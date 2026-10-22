@@ -58,14 +58,14 @@ StateGraph.graph = {
 }
 
 -- The states and the transitions as the panel draws them: each transition is a curve from its start to its end, bent toward a control point, with its condition on a chip in the middle.
-StateGraph.nodes = {idle = {x = 78, y = 84, text = 'Idle'}, run = {x = 350, y = 84, text = 'Run'}, attack = {x = 214, y = 270, text = 'Attack'}}
-StateGraph.nodeSize = {132, 56}
+StateGraph.nodes = {idle = {x = 100, y = 70, text = 'Idle'}, run = {x = 328, y = 70, text = 'Run'}, attack = {x = 214, y = 290, text = 'Attack'}}
+StateGraph.nodeSize = {124, 56}
 StateGraph.edges = {
-    {key = 'idle>run', points = {152, 72, 214, 8, 276, 72}, text = 'Speed > 0.2'},
-    {key = 'run>idle', points = {276, 98, 214, 162, 152, 98}, text = 'Speed ≤ 0.2'},
-    {key = 'idle>attack', points = {92, 114, 112, 230, 150, 260}, text = 'Attack'},
-    {key = 'run>attack', points = {336, 114, 316, 230, 278, 260}, text = 'Attack'},
-    {key = 'attack>idle', points = {148, 284, 40, 310, 50, 114}, text = 'At the end'},
+    {key = 'idle>run', points = {162, 58, 214, -10, 266, 58}, text = 'Speed > 0.2'},
+    {key = 'run>idle', points = {266, 82, 214, 160, 162, 82}, text = 'Speed ≤ 0.2'},
+    {key = 'idle>attack', points = {108, 98, 120, 200, 168, 262}, text = 'Pressed'},
+    {key = 'run>attack', points = {320, 98, 308, 200, 260, 262}, text = 'Pressed'},
+    {key = 'attack>idle', points = {152, 300, 44, 300, 64, 98}, text = 'At the end'},
 }
 StateGraph.colors = {
     node = '#FF2F3352', nodeRim = '#FF5D6596', active = '#FF2F86F6', activeRim = '#FFFFC93C', text = '#FFF2F3FF',

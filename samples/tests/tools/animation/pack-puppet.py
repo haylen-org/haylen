@@ -33,7 +33,7 @@ HEAD_NECK = (128, 206)
 HATS = {"cap": ((100, 118), (122, 44)), "crown": ((69, 96), (122, 22))}
 ELBOW_DEPTH = 34
 # The relaxed pose in degrees, clockwise from the right, where 90 points straight down.
-POSE = {"frontUpper": 82, "frontFore": -14, "backUpper": 98, "backFore": -10, "frontThigh": 86, "frontShin": 4, "backThigh": 95, "backShin": -5}
+POSE = {"frontUpper": 82, "frontFore": -14, "backUpper": 90, "backFore": -16, "frontThigh": 86, "frontShin": 4, "backThigh": 95, "backShin": -5}
 SHADE = "#FFBDBDCC"
 
 

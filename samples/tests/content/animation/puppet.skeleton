@@ -25,14 +25,14 @@
             "parent": "torso",
             "x": -20.13,
             "y": -33.09,
-            "rotation": 98,
+            "rotation": 90,
             "length": 20.51
         },
         {
             "name": "backFore",
             "parent": "backUpper",
             "x": 20.51,
-            "rotation": -10,
+            "rotation": -16,
             "length": 36.56
         },
         {

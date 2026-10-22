@@ -12,7 +12,7 @@ local Meadow = require('categories.animation.meadow')
 
 local Crowd = haylen.class('Crowd', AnimationTest)
 
-Crowd.counts = {{id = '500', text = '500'}, {id = '2000', text = '2,000'}, {id = '8000', text = '8,000'}}
+Crowd.counts = {{id = '250', text = '250'}, {id = '2000', text = '2,000'}, {id = '8000', text = '8,000'}}
 Crowd.scale = 0.18
 -- The fighters stand this far apart, in pixels of their frames, so a punch never reaches the next fighter of the row.
 Crowd.spacing = {480, 400}
@@ -34,13 +34,13 @@ function Crowd:enter()
     self.jab = atlas:animation('punch')
     self.jab.loop = 'once'
     self.shadowTexture = Crowd.shadow()
-    self.count = 500
+    self.count = 250
     self.jabs = 0
     self:frame{
         code = Crowd.code,
         hint = 'Every fighter is a sprite of one batch with its own animation, time and speed.',
         controls = {
-            ui.formField{label = 'Fighters', ui.stepper{id = 'count', items = Crowd.counts, selected = '500', onChange = function(event)
+            ui.formField{label = 'Fighters', ui.stepper{id = 'count', items = Crowd.counts, selected = '250', onChange = function(event)
                 self.count = tonumber(event.value)
                 self:build()
             end}},
@@ -57,7 +57,7 @@ function Crowd.shadow()
     return graphics.newTexture(image, {filter = 'linear'})
 end
 
--- Lays the crowd out in rows that keep the shape of the play area, with the last row centered under the others.
+-- Lays the crowd out in staggered rows that keep the shape of the play area, with the last row centered under the others, each fighter a little off its place so the crowd never reads as a grid.
 function Crowd:build()
     local count = self.count
     local dx, dy = Crowd.spacing[1] * Crowd.scale, Crowd.spacing[2] * Crowd.scale
@@ -71,11 +71,13 @@ function Crowd:build()
     self.shadows = graphics2d.newSpriteBatch(self.shadowTexture)
     self.shadows:reserve(count)
     self.columnOf = {}
+    local random = m.random(19)
     for index = 0, count - 1 do
         local row, column = index // columns, index % columns
         local inRow = row == rows - 1 and count - row * columns or columns
-        local x = (column + 0.5 + (columns - inRow) / 2) * dx
-        local y = (row + 0.9) * dy
+        local stagger = row % 2 == 1 and inRow == columns and 0.25 or 0
+        local x = (column + 0.5 + stagger + (columns - inRow) / 2 + random:range(-0.18, 0.18)) * dx
+        local y = (row + 0.9 + random:range(-0.15, 0.15)) * dy
         self.crowd:add({x = x, y = y, animation = 'punch', speed = 0.6 + (index * 37 % 9) * 0.1, scaleX = Crowd.scale, scaleY = Crowd.scale, flipHorizontal = row % 2 == 1})
         self.shadows:add({x = x, y = y, width = 230 * Crowd.scale, height = 70 * Crowd.scale})
         self.columnOf[index + 1] = x
@@ -93,7 +95,7 @@ function Crowd:build()
     end, {owner = self})
 
     local margin = math.max(dx, dy) * 3
-    self.meadow = Meadow(m.rect(-margin, -margin, self.size[1] + margin * 2, self.size[2] + margin * 2), math.max(dx, dy) * 1.6)
+    self.meadow = Meadow(m.rect(-margin, -margin, self.size[1] + margin * 2, self.size[2] + margin * 2), math.max(dx, dy) * 1.6, m.rect(-dx, -dy, self.size[1] + dx * 2, self.size[2] + dy * 2))
     self.wavePosition = nil
 end
 
