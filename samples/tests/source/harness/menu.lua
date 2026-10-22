@@ -79,7 +79,7 @@ function Menu:sections()
                     self.selected = category
                     navigation.openCategory(category)
                 end},
-                ui.label{text = string.format('%s, %d tests', category.prefix, #category.tests), font = 'caption', color = 'textMuted'},
+                ui.label{text = string.format('%s, %d %s', category.prefix, #category.tests, #category.tests == 1 and 'test' or 'tests'), font = 'caption', color = 'textMuted'},
             }
         end
         nodes[#nodes + 1] = ui.grid{columns = Menu.columns, gap = 16, children = cells}
