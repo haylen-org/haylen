@@ -353,6 +353,11 @@ def shown_path(path: Path) -> str:
 
 
 
+def python_executable() -> str:
+    """The Python that runs haylen.py, which the tests of the engine run haylen.py with too, so they never take an older one from the path."""
+    return Path(sys.executable).as_posix()
+
+
 def quoted_names(names, separator: str = ", ") -> str:
     """Lists names for a message, each in double quotes."""
     return separator.join(f'"{name}"' for name in names)
@@ -629,7 +634,7 @@ def build_options(platform_name: str, config: str, target: str | None = None, jo
 def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
     require_host(args.platform)
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    command = ["cmake", "-S", ROOT, "-B", directory, f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
+    command = ["cmake", "-S", ROOT, "-B", directory, f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
     command += [f"-DHAYLEN_GRAPHICS_API={requested_graphics_api(args)}", f"-DHAYLEN_SANITIZERS={requested_sanitizers(args)}"]
     env = os.environ.copy()
 
@@ -675,20 +680,38 @@ def command_configure(args: argparse.Namespace) -> None:
         run(command, env=env)
 
 
-def cmake_cache_value(directory: Path, name: str) -> str:
+def cmake_cache_entry(directory: Path, name: str) -> str | None:
+    """The value of a variable in the CMake cache of a build tree, or None when the cache does not hold it."""
     prefix = f"{name}:"
     for line in (directory / "CMakeCache.txt").read_text(encoding="utf-8").splitlines():
         if line.startswith(prefix):
             return line.split("=", 1)[1]
-    raise BuildError(f'The variable "{name}" is missing from the CMake cache of `{shown_path(directory)}`. Configure the build tree again with "{TOOL} configure".')
+    return None
+
+
+def cmake_cache_value(directory: Path, name: str) -> str:
+    value = cmake_cache_entry(directory, name)
+    if value is None:
+        raise BuildError(f'The variable "{name}" is missing from the CMake cache of `{shown_path(directory)}`. Configure the build tree again with "{TOOL} configure".')
+    return value
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
-    """Configures the build tree when it does not exist yet, when the requested graphics API differs from the one it was configured with, when the shader compiler changed or when another version of Emscripten configured a web tree."""
+    """Configures the build tree when it does not exist yet or is stale."""
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    if not (directory / "CMakeCache.txt").exists() or cmake_cache_value(directory, "HAYLEN_GRAPHICS_API") != requested_graphics_api(args) or Path(cmake_cache_value(directory, "HAYLEN_SHADERC")) != ensure_shaderc() or (args.platform in WEB_PLATFORMS and is_stale_web_tree(directory)):
+    if not (directory / "CMakeCache.txt").exists() or is_stale_tree(directory, args):
         command_configure(args)
     return directory
+
+
+def is_stale_tree(directory: Path, args: argparse.Namespace) -> bool:
+    """Tells whether a build tree was configured for another graphics API, shader compiler or Python that runs haylen.py, or holds no value for one of them, or another version of Emscripten configured a web tree."""
+    compiler = cmake_cache_entry(directory, "HAYLEN_SHADERC")
+    if compiler is None or Path(compiler) != ensure_shaderc():
+        return True
+    if cmake_cache_entry(directory, "HAYLEN_GRAPHICS_API") != requested_graphics_api(args) or cmake_cache_entry(directory, "Python3_EXECUTABLE") != python_executable():
+        return True
+    return args.platform in WEB_PLATFORMS and is_stale_web_tree(directory)
 
 
 def command_build(args: argparse.Namespace) -> None:
@@ -841,7 +864,7 @@ def command_fuzz(args: argparse.Namespace) -> None:
     directory = BUILD_ROOT / "fuzz"
     terminal.step(f"Building the fuzzers with `{shown_path(clangxx)}` in `{shown_path(directory)}`")
     # The engine uses no C++ modules, so the build skips the scan for them, which would need the "clang-scan-deps" of the same LLVM.
-    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SHADERC={ensure_shaderc()}"])
+    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}"])
     run(["cmake", "--build", directory, "--target", *FUZZERS, "--parallel", str(args.jobs)])
 
     # Each fuzzer keeps the inputs that reached new code in a corpus of its own, which the next run starts from.
@@ -1228,7 +1251,7 @@ def ensure_artifacts(platform_name: str, config: str, jobs: int, slices: list[st
         stale = [name for name in slices or list(APPLE_SLICES) if recorded.get(name) != sources]
         if not stale:
             return
-        terminal.info(f'The slices {", ".join(f"\"{name}\"" for name in stale)} of the Apple artifacts are missing or older than the engine sources, so they build first.')
+        terminal.info(f"The slices {quoted_names(stale)} of the Apple artifacts are missing or older than the engine sources, so they build first.")
         build_artifacts(platform_name, config, jobs, stale)
         return
     if entry == {"config": config, "sources": sources}:
@@ -4660,7 +4683,7 @@ def command_plugin_new(args: argparse.Namespace) -> None:
     chosen = [name for entry in args.features for name in entry.split(",") if name]
     for name in chosen:
         if name not in offered:
-            raise BuildError(f'The plugin template has no feature "{name}". The features are {", ".join(f"\"{feature}\"" for feature in offered)}.')
+            raise BuildError(f'The plugin template has no feature "{name}". The features are {quoted_names(offered)}.')
 
     words = identifier.split("-")
     tokens = {"{{ID}}": identifier, "{{NAME}}": "".join(word.capitalize() for word in words), "{{TITLE}}": " ".join(word.capitalize() for word in words), "{{PACKAGE}}": "".join(words), "{{SYMBOL}}": "_".join(words), "{{MACRO}}": "_".join(words).upper()}
@@ -4684,7 +4707,7 @@ def command_plugin_new(args: argparse.Namespace) -> None:
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(substitute(fill_plugin_blocks(source.read_text(encoding="utf-8"), blocks)), encoding="utf-8")
     (folder / "plugin.json").write_text(json_document(manifest) + "\n", encoding="utf-8")
-    described = f' with {", ".join(f"\"{name}\"" for name in chosen)}' if chosen else ""
+    described = f" with {quoted_names(chosen)}" if chosen else ""
     terminal.success(f'Created the plugin "{identifier}"{described} in `{shown_path(folder)}`.')
     terminal.info(f'Add it to an app with "{TOOL} plugin add {shown_path(folder)} --app <app folder>".')
 

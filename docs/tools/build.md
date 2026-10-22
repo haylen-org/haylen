@@ -126,6 +126,8 @@ The command `build` configures its tree first when one of these is true:
 - The tree has no CMake cache yet.
 - The option `--graphics-api` asks for another graphics API than the tree has.
 - The shader compiler changed.
+- Another Python runs `haylen.py` than the one the tree was configured with. The engine tests run `haylen.py` with the same Python, so they never take an older one from `PATH`.
+- The cache misses one of these values.
 - Another version of Emscripten configured a web tree.
 
 CMake cannot change the generator of a tree, so run `clean` before you switch to Xcode with `--xcode`. The other folders of `build/` belong to other commands:

@@ -245,7 +245,7 @@ target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless hayle
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
 # The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.
-find_package(Python3 REQUIRED COMPONENTS Interpreter)
+find_package(Python3 3.12 REQUIRED COMPONENTS Interpreter)
 target_compile_definitions(haylen-tests PRIVATE HAYLEN_PYTHON="${Python3_EXECUTABLE}" HAYLEN_TOOL_SCRIPT="${HAYLEN_ENGINE_DIR}/../haylen.py" HAYLEN_SHADER_COMPILER="${HAYLEN_SHADERC}" HAYLEN_TEST_FONTS="${CMAKE_CURRENT_LIST_DIR}/data/fonts" HAYLEN_TEST_AUDIO="${CMAKE_CURRENT_LIST_DIR}/data/audio" HAYLEN_TEST_VIDEO="${CMAKE_CURRENT_LIST_DIR}/data/video" HAYLEN_DOCS_DIR="${HAYLEN_ENGINE_DIR}/../docs")
 # On Windows the tests also run the decoder of Media Foundation and the reader of the accessibility settings, which need no window, on the clip made for the tests in `data/video`.
 if(WIN32)

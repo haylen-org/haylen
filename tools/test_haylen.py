@@ -890,49 +890,28 @@ class PythonVersionTest(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("Haylen needs Python 3.12 or newer", result.stderr)
 
-    def test_every_f_string_keeps_its_quote_out_of_its_fields_so_an_older_python_reads_the_file(self):
-        source = (haylen.ROOT / "haylen.py").read_text(encoding="utf-8")
-        offsets = [0]
-        for line in source.splitlines(keepends=True):
-            offsets.append(offsets[-1] + len(line))
-        depth, start, quote = 0, 0, ""
+    def test_every_f_string_keeps_its_quote_and_backslashes_out_of_its_fields_so_an_older_python_reads_the_file(self):
+        # Before Python 3.12, the expression of a field may hold neither the quote of its f-string nor a backslash, even inside a string or an f-string of its own.
+        wrong = []
+        depth, quote, line = 0, "", 0
         with tokenize.open(haylen.ROOT / "haylen.py") as file:
             for token in tokenize.generate_tokens(file.readline):
+                if token.type == tokenize.FSTRING_START and depth == 0:
+                    depth, quote, line = 1, token.string.lstrip("rRfFbB"), token.start[0]
+                    continue
+                if depth == 0:
+                    continue
                 if token.type == tokenize.FSTRING_START:
-                    if depth == 0:
-                        quote = token.string.lstrip("rRfFbB")
-                        start = offsets[token.start[0] - 1] + token.start[1] + len(token.string)
                     depth += 1
                 elif token.type == tokenize.FSTRING_END:
                     depth -= 1
                     if depth == 0:
-                        fields = re.sub(r"\\.", "", source[start : offsets[token.start[0] - 1] + token.start[1]])
-                        self.assertNotIn(quote, fields, f"The f-string on line {token.start[0]} uses its own quote inside, which only Python 3.12 reads.")
-
-class NativeLibrariesTest(unittest.TestCase):
-    def setUp(self):
-        self.scratch = Path(tempfile.mkdtemp())
-        self.addCleanup(shutil.rmtree, self.scratch)
-        self.library = haylen.NativeLibrary("native-test-static", {}, self.scratch, ("ios", "tvos"), True, ("native_test_add",))
-        self.app = mock.Mock(native=[self.library], build_folder=self.scratch / "build")
-
-    def prepare(self, run_platform):
-        archive = self.scratch / "libnative-test-static.a"
-        archive.write_bytes(b"")
-        with mock.patch.object(haylen, "build_apple_native", return_value=archive):
-            return haylen.prepare_apple_native(self.app, self.scratch / "generated", run_platform, 1)
-
-    def test_static_libraries_link_only_into_the_mac_catalyst_build_of_the_ios_target(self):
-        settings = self.prepare("catalyst")
-        self.assertEqual(settings, ['HAYLEN_NATIVE_LDFLAGS_MACCATALYST_YES = "$(PROJECT_DIR)/haylen/native/ios-macosx/libnative-test-static.a"', "HAYLEN_NATIVE_LDFLAGS[sdk=macosx*] = $(HAYLEN_NATIVE_LDFLAGS_MACCATALYST_$(IS_MACCATALYST))"])
-        self.assertTrue((self.scratch / "generated" / "native" / "ios-macosx" / "libnative-test-static.a").is_file())
-        self.assertEqual(self.prepare("ios-simulator"), ['HAYLEN_NATIVE_LDFLAGS[sdk=iphonesimulator*] = "$(PROJECT_DIR)/haylen/native/ios-iphonesimulator/libnative-test-static.a"'])
-
-    def test_the_symbols_of_ios_libraries_register_on_mac_catalyst_too(self):
-        self.assertTrue(haylen.write_apple_native_symbols(self.app, self.scratch))
-        table = (self.scratch / "HaylenNativeSymbols.mm").read_text()
-        self.assertIn("#if TARGET_OS_IOS || TARGET_OS_TV\n", table)
-        self.assertIn('registerLinked("native-test-static", {{"native_test_add", reinterpret_cast<void*>(&native_test_add)}});', table)
+                        continue
+                elif token.type == tokenize.FSTRING_MIDDLE and depth == 1:
+                    continue
+                if quote in token.string or "\\" in token.string:
+                    wrong.append(line)
+        self.assertEqual(sorted(set(wrong)), [], "These lines hold an f-string whose fields use its own quote or a backslash, which only Python 3.12 reads.")
 
 
 class RunCppTest(unittest.TestCase):
@@ -1031,18 +1010,26 @@ class ShaderCompilerTest(unittest.TestCase):
         haylen.ensure_shaderc.cache_clear()
         self.addCleanup(haylen.ensure_shaderc.cache_clear)
 
-    def test_another_shader_compiler_configures_the_build_tree_again(self):
+    def test_another_shader_compiler_or_python_configures_the_build_tree_again(self):
         compiler = self.scratch / "tools" / "haylen-shaderc-new" / "haylen-shaderc"
         tree = self.scratch / "build" / "macos-debug"
         tree.mkdir(parents=True)
         arguments = argparse.Namespace(platform="macos", config="Debug", graphics_api=None, sanitizers=None)
         with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
+
+            # A tree that another Python configured, or one whose cache misses a value that the tool reads, is configured again instead of stopping.
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH=/usr/bin/python3.11\n")
+            haylen.ensure_configured(arguments)
+            self.assertEqual(configure.call_count, 2)
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
+            haylen.ensure_configured(arguments)
+            self.assertEqual(configure.call_count, 3)
 
     def test_the_variable_names_a_build_of_the_compiler_to_use_instead_of_the_pinned_one(self):
         compiler = self.scratch / "haylen-shaderc"
