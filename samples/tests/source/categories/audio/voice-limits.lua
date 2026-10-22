@@ -121,7 +121,7 @@ function VoiceLimits:update(dt)
         end
     end
     local line = self.lineVoice and audio.active(self.lineVoice) and 'plays' or 'is silent'
-    self:status(string.format('%d voices play, the line %s and the coin limit is %s', audio.voiceCount(), line, self.limited and 'on' or 'off'))
+    self:status(string.format('%s play, the line %s, and the coin sound %s.', AudioTest.count(audio.voiceCount(), 'voice', 'voices'), line, self.limited and 'keeps to four voices' or 'takes a voice for every coin'))
 end
 
 function VoiceLimits:draw(area)
@@ -155,9 +155,10 @@ function VoiceLimits:draw(area)
     graphics2d.draw(self.slime.texture, slimeX, ground - hop, {source = self.slime:source(playing and 'slime 2' or 'slime 0'), width = 170, height = 170, pivotY = 0.95, layer = 1})
     if playing then
         graphics2d.draw(self.slime.texture, slimeX + 110, ground - 150, {source = self.slime:source('slime 14'), width = 220, height = 180, pivotX = 0, pivotY = 1, layer = 2})
-        Test.caption('Priority 255', slimeX + 220, ground - 250, {size = 22, color = '#FF15172A', anchor = {0.5, 0.5}, layer = 3})
+        graphics2d.drawText(nil, 'I outrank\nthe noise!', slimeX + 220, ground - 252, {size = 22, color = '#FF15172A', align = 'center', anchor = {0.5, 0.5}, layer = 3})
     end
-    Test.caption(playing and 'The line plays on through every burst' or 'The line is silent', slimeX, ground + 4, {size = 20, anchor = {0.5, 0}, color = Test.ink})
+    Test.caption(playing and 'A line of priority 255 plays on through every burst' or 'The line is silent', slimeX, ground + 4, {size = 20, anchor = {0.5, 0}, color = Test.ink})
+    AudioTest.lockNote(left + width, 116)
 end
 
 return VoiceLimits

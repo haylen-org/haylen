@@ -8,7 +8,7 @@ local system = require('haylen.system')
 local ui = require('haylen.ui')
 
 local AudioTest = require('categories.audio.audio-test')
-local Journal = require('harness.journal')
+local EventLog = require('categories.audio.event-log')
 local sounds = require('categories.audio.sounds')
 local Test = require('harness.test')
 
@@ -24,7 +24,12 @@ system.setNowPlaying({
 events.on('mediaCommand', function(event) print(event.command, event.position) end, {owner = self})]]
 
 function NowPlaying:enter()
-    self.journal = Journal(16)
+    self.log = EventLog({
+        title = 'Commands and what the app did',
+        hint = 'Next: play, pause, skip or seek from the controls of the system, the media keys, a headset or a remote, and each command shows here.',
+        legend = {{Test.green, 'From the system'}, {Test.warm, 'From the app'}},
+    })
+    self.clock = 0
     self.index = 1
     self.artwork = assets.bytes(NowPlaying.artwork)
     self.cover = assets.texture(NowPlaying.artwork, {filter = 'linear', mipmaps = true})
@@ -53,11 +58,12 @@ function NowPlaying:start()
     local track = sounds.tracks[self.index]
     self.voice = audio.playMusic(assets.load(track.path, 'sound', sounds.stream), {fade = 0.5})
     self:show(true)
+    self.log:add(self.clock, string.format('The app played the %s and showed it in the controls of the system.', track.text:lower()), Test.warm)
 end
 
 function NowPlaying:leave()
     system.clearNowPlaying()
-    self.journal:add('The app left the controls.', Test.warm)
+    self.log:add(self.clock, 'The app left the controls of the system.', Test.warm)
 end
 
 function NowPlaying:show(playing)
@@ -67,7 +73,7 @@ end
 
 -- Every command changes what plays and shows the new state in the controls.
 function NowPlaying:command(event)
-    self.journal:add(string.format('The command "%s"%s arrived.', event.command, event.position and string.format(' at %.1f seconds', event.position) or ''), Test.green)
+    self.log:add(self.clock, string.format('The command "%s"%s arrived.', event.command, event.position and ' to ' .. AudioTest.clock(event.position) or ''), Test.green)
     if not self.voice then
         self:start()
         return
@@ -94,8 +100,16 @@ end
 
 function NowPlaying:update(dt)
     NowPlaying.super.update(self, dt)
-    local state = self.voice and (audio.paused(self.voice) and 'paused' or 'playing') or 'stopped'
-    self:status(string.format('The track "%s" is %s at %.1f seconds', sounds.tracks[self.index].text, state, self.voice and audio.cursor(self.voice) or 0))
+    self.clock = self.clock + haylen.unscaledDelta()
+    local name = 'The ' .. sounds.tracks[self.index].text:lower()
+    if not self.voice then
+        self:status(name .. ' stopped, and the controls of the system no longer show it.')
+    elseif AudioTest.locked() then
+        self:status(name .. ' waits at its start, since the browser plays no sound until the first click, tap or key on the page.')
+    else
+        local place = string.format('%s of %s', AudioTest.clock(audio.cursor(self.voice) % NowPlaying.length), AudioTest.clock(NowPlaying.length))
+        self:status(string.format('%s %s at %s.', name, audio.paused(self.voice) and 'is paused' or 'plays', place))
+    end
 end
 
 -- The card of what plays: the artwork, the title, the artist, the state and a bar of the position, beside the commands as they arrive.
@@ -112,19 +126,17 @@ function NowPlaying:draw(area)
     local position = self.voice and audio.cursor(self.voice) % NowPlaying.length or 0
     local y = top + size + 14
     Test.caption(track.text, left, y, {size = 28, color = Test.ink, maxWidth = size, layer = 1})
-    Test.caption(self.voice and (playing and 'Haylen tests, playing' or 'Haylen tests, paused') or 'Haylen tests, stopped', left, y + 38, {size = 20, layer = 1})
+    local state = not self.voice and 'stopped' or not playing and 'paused' or AudioTest.locked() and 'waiting for the browser' or 'playing'
+    Test.caption('Haylen tests, ' .. state, left, y + 38, {size = 20, maxWidth = size, wrap = false, minScale = 0.8, layer = 1})
     AudioTest.bar(left, y + 74, size, 10, position / NowPlaying.length, playing and Test.accent or Test.muted)
-    Test.caption(string.format('%d:%02d', math.floor(position / 60), math.floor(position % 60)), left, y + 92, {size = 18, layer = 1})
-    Test.caption(string.format('%d:%02d', NowPlaying.length // 60, NowPlaying.length % 60), left + size, y + 92, {size = 18, anchor = {1, 0}, layer = 1})
+    Test.caption(AudioTest.clock(position), left, y + 92, {size = 18, layer = 1})
+    Test.caption(AudioTest.clock(NowPlaying.length), left + size, y + 92, {size = 18, anchor = {1, 0}, layer = 1})
 
     local logLeft = margin * 2 + cardWidth
     if area.width - logLeft > 200 then
-        Test.caption('Commands from the system', logLeft, margin + 4, {size = 26, color = Test.ink})
-        if self.journal.lines.size == 0 then
-            Test.caption('No command yet. Play, pause, skip or seek from the controls of the system or the media keys.', logLeft, margin + 52, {size = 21, maxWidth = area.width - logLeft - margin})
-        end
-        self.journal:draw(logLeft, margin + 52, area.height - margin * 2 - 52, 21)
+        self.log:draw(logLeft, margin, area.width - logLeft - margin, area.height - margin * 2)
     end
+    AudioTest.lockNote(area.width - margin - 24, area.height - margin - 140)
 end
 
 return NowPlaying

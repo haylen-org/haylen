@@ -23,6 +23,12 @@ local kHistory = 6
 local kSamples = 180
 local kFloor = -12
 
+Output.stateLines = {
+    running = 'The output plays the mix of every bus.',
+    suspended = 'The background or an interruption holds the sound.',
+    unavailable = 'This device offers no output now.',
+}
+
 function Output:enter()
     self.limiter = audio.busEffects('master')[1]
     self.threshold = self.limiter and self.limiter.threshold or 0.9
@@ -88,7 +94,12 @@ function Output:update(dt)
         table.remove(self.history, 1)
         self.history[kSamples] = reduction
     end
-    self:status(string.format('The output is "%s" with a latency of %.1f ms, unlocked %d times, %d voices', audio.outputState(), audio.outputLatency() * 1000, self.unlocks, audio.voiceCount()))
+    local voices = AudioTest.count(audio.voiceCount(), 'voice', 'voices')
+    if AudioTest.locked() then
+        self:status(string.format('The output waits for the first click, tap or key on the page, and %s wait with it.', voices))
+    else
+        self:status(string.format('The output is "%s" and plays %.1f ms behind the mix, with %s.', audio.outputState(), audio.outputLatency() * 1000, voices))
+    end
 end
 
 -- The gain a reduction leaves, in decibels, within the floor of the scale.
@@ -108,27 +119,57 @@ function Output:draw(area)
         Test.caption(string.format('%d dB', decibels), left - 14, y, {size = 18, anchor = {1, 0.5}})
     end
     local points = {}
+    local quiet = true
     for index, reduction in ipairs(self.history) do
         points[#points + 1] = left + width * (index - 1) / (kSamples - 1)
         points[#points + 1] = top + height * Output.decibels(reduction) / kFloor
+        quiet = quiet and reduction == 0
     end
     graphics2d.drawStroke(points, {width = 4, color = Test.red, join = 'round', cap = 'round', layer = 2})
     Test.caption(self.limited and string.format('Limiter on, threshold %.2f', self.threshold) or 'Limiter off, the sum may clip', left, top + height + 14, {size = 20, color = self.limited and Test.green or Test.red})
+    -- While the limiter takes nothing away, the graph says why and what makes it work.
+    if quiet then
+        local reason = AudioTest.locked() and 'The limiter takes nothing away while the browser keeps the sound locked.' or not self.limited and 'The limiter is off, so it takes nothing away.' or 'Nothing loud plays now, so the limiter takes nothing away.'
+        local hint = AudioTest.locked() and 'Click, tap or press a key on the page, then play thirty explosions at once.' or 'Thirty explosions at once push the sum past the threshold.'
+        graphics2d.drawText(nil, reason, left + width / 2, top + height / 2 - 8, {size = 22, color = Test.ink, maxWidth = width - 120, align = 'center', anchor = {0.5, 1}, layer = 3})
+        graphics2d.drawText(nil, hint, left + width / 2, top + height / 2 + 8, {size = 20, color = Test.muted, maxWidth = width - 120, align = 'center', anchor = {0.5, 0}, layer = 3})
+    end
 
     -- The state of the output, with a padlock while the browser holds the sound back.
     local cardX = area.width - 320
     local state = audio.outputState()
-    local color = state == 'running' and Test.green or (state == 'locked' and Test.warm or Test.muted)
-    graphics2d.drawShape({cardX, top, 296, 220}, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = color})
-    if state == 'locked' then
-        graphics2d.drawArc(cardX + 60, top + 62, 18, 7, math.pi, math.pi * 2, color, {layer = 1})
-        graphics2d.drawShape({cardX + 34, top + 60, 52, 42}, {radius = 8, color = color, layer = 1})
-        graphics2d.drawCircle(cardX + 60, top + 79, 5, Test.surface, {layer = 2})
+    local locked = state == 'locked'
+    local color = state == 'running' and Test.green or (locked and Test.warm or Test.muted)
+    graphics2d.drawShape({cardX, top, 296, 200}, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = color})
+    if locked then
+        AudioTest.padlock(cardX + 58, top + 62, 56, color, Test.surface, 1)
     else
-        graphics2d.drawCircle(cardX + 60, top + 72, 16, color, {layer = 1})
+        graphics2d.drawCircle(cardX + 58, top + 62, 16, color, {layer = 1})
     end
-    Test.caption(state == 'locked' and 'Locked' or 'Output ' .. state, cardX + 104, top + 52, {size = 28, color = Test.ink, layer = 1})
-    Test.caption(state == 'locked' and 'The first tap, click or key on the page lets the sound play.' or string.format('Latency %.1f ms, unlocked %d times.', audio.outputLatency() * 1000, self.unlocks), cardX + 28, top + 124, {size = 19, maxWidth = 240, layer = 1})
+    Test.caption(locked and 'Locked' or state == 'running' and 'Sound on' or 'Output ' .. state, cardX + 104, top + 44, {size = 28, color = Test.ink, layer = 1})
+    Test.caption(locked and 'Waiting for a click, tap or key on the page.' or Output.stateLines[state], cardX + 28, top + 112, {size = 19, maxWidth = 240, layer = 1})
+
+    -- The facts of the output fill the column under the state, one per row.
+    local factsTop = top + 216
+    local factsHeight = math.min(area.height - 24 - factsTop, 228)
+    graphics2d.drawShape({cardX, factsTop, 296, factsHeight}, {radius = 18, color = Test.surface, borderWidth = 1, borderColor = Test.line})
+    local facts = {
+        {'Latency', string.format('%.1f ms', audio.outputLatency() * 1000)},
+        {'Sample rate', string.format('%d Hz', audio.sampleRate())},
+        {'Voices', tostring(audio.voiceCount())},
+        {'Unlocked', AudioTest.count(self.unlocks, 'time', 'times')},
+    }
+    for index, fact in ipairs(facts) do
+        local y = factsTop + 18 + (index - 1) * 50
+        if y + 30 > factsTop + factsHeight then
+            break
+        end
+        Test.caption(fact[1], cardX + 24, y + 4, {size = 20, layer = 1})
+        Test.caption(fact[2], cardX + 272, y + 4, {size = 20, color = Test.ink, anchor = {1, 0}, layer = 1})
+        if index < #facts then
+            graphics2d.drawLine(cardX + 24, y + 42, cardX + 272, y + 42, 1, Test.line, {layer = 1})
+        end
+    end
 end
 
 return Output

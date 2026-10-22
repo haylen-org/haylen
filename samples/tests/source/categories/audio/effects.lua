@@ -20,14 +20,15 @@ local kKinds = {
     {id = 'peak', text = 'Peak equalizer', params = {'cutoff', 'q', 'gain'}, sweep = {'cutoff', 200, 6000}},
     {id = 'lowShelf', text = 'Low shelf', params = {'cutoff', 'q', 'gain'}, sweep = {'gain', -18, 18}},
     {id = 'highShelf', text = 'High shelf', params = {'cutoff', 'q', 'gain'}, sweep = {'gain', -18, 18}},
-    {id = 'delay', text = 'Delay and echo', params = {'time', 'feedback', 'wet', 'dry'}, sweep = {'time', 0.12, 0.6}},
+    {id = 'delay', text = 'Delay', params = {'time', 'feedback', 'wet', 'dry'}, sweep = {'time', 0.12, 0.6}},
     {id = 'reverb', text = 'Reverb', params = {'roomSize', 'damping', 'width', 'wet', 'dry'}, sweep = {'roomSize', 0.2, 0.95}},
 }
+-- Every slider shows its value in a label of one width after its track, so the tracks of the panel line up whatever the unit of their value.
 local kParams = {
     cutoff = {label = 'Cutoff', min = 0, max = 1, step = 0.01},
     q = {label = 'Q', min = 0.2, max = 10, step = 0.1},
-    gain = {label = 'Gain in decibels', min = -24, max = 24, step = 1},
-    time = {label = 'Time in seconds', min = 0.02, max = 1, step = 0.01},
+    gain = {label = 'Gain', min = -24, max = 24, step = 1},
+    time = {label = 'Time', min = 0.02, max = 1, step = 0.01},
     feedback = {label = 'Feedback', min = 0, max = 0.95, step = 0.05},
     wet = {label = 'Wet', min = 0, max = 1, step = 0.05},
     dry = {label = 'Dry', min = 0, max = 1, step = 0.05},
@@ -35,6 +36,7 @@ local kParams = {
     damping = {label = 'Damping', min = 0, max = 1, step = 0.05},
     width = {label = 'Width', min = 0, max = 1, step = 0.05},
 }
+local kValueWidth = 120
 local kTargets = {{id = 'bus', text = 'Music bus'}, {id = 'voice', text = 'Looping voice'}}
 local kCode = [[
 local muffle = audio.newEffect('lowpass', {cutoff = 800})
@@ -149,32 +151,59 @@ function Effects:setSweep(on)
     end
 end
 
-function Effects.cutoffLabel(frequency)
-    return string.format('Cutoff, %.0f Hz', frequency)
+-- Writes the value of a parameter with its unit, such as "1.2 kHz", "+6 dB" or "0.35 s".
+function Effects.valueText(param, value)
+    if param == 'cutoff' then
+        return value >= 1000 and string.format('%.1f kHz', value / 1000) or string.format('%.0f Hz', value)
+    elseif param == 'gain' then
+        return string.format('%+.0f dB', value)
+    elseif param == 'time' then
+        return string.format('%.2f s', value)
+    end
+    return string.format('%.2f', value)
+end
+
+-- The cutoff slider moves along octaves, so its position is the octave share of the frequency and not the frequency itself.
+function Effects:sliderValue(param)
+    return param == 'cutoff' and response.position(self.effect.cutoff) or self.effect[param]
 end
 
 function Effects:showParams()
     local nodes = {}
+    self.shown = {}
     for _, param in ipairs(self.kind.params) do
         local info = kParams[param]
-        local value = param == 'cutoff' and response.position(self.effect.cutoff) or self.effect[param]
-        -- The cutoff slider moves along octaves, so its field names the frequency in hertz instead of the position of the slider.
-        local cutoff = param == 'cutoff'
-        nodes[#nodes + 1] = ui.formField{id = param .. 'Field', label = cutoff and Effects.cutoffLabel(self.effect.cutoff) or info.label, ui.slider{id = param, min = info.min, max = info.max, step = info.step, value = value, showValue = not cutoff, onChange = function(event)
-            self.effect[param] = cutoff and response.frequency(event.value) or event.value
-            if cutoff then
-                self:set('cutoffField', {label = Effects.cutoffLabel(self.effect.cutoff)})
-            end
-        end}}
+        self.shown[param] = Effects.valueText(param, self.effect[param])
+        nodes[#nodes + 1] = ui.formField{label = info.label, ui.row{gap = 16,
+            ui.slider{id = param, grow = 1, min = info.min, max = info.max, step = info.step, value = self:sliderValue(param), onChange = function(event)
+                self.effect[param] = param == 'cutoff' and response.frequency(event.value) or event.value
+                self:showValue(param)
+            end},
+            ui.label{id = param .. 'Value', width = kValueWidth, text = self.shown[param], color = 'textMuted', textAlign = 'end', wrap = false},
+        }}
     end
     self.gui:replaceChildren('params', nodes)
 end
 
+function Effects:showValue(param)
+    local text = Effects.valueText(param, self.effect[param])
+    if self.shown[param] ~= text then
+        self.shown[param] = text
+        self:set(param .. 'Value', {text = text})
+    end
+end
+
 function Effects:update(dt)
     Effects.super.update(self, dt)
-    local chain = self.target == 'bus' and audio.busEffects('music') or audio.effects(self.voice)
-    local where = self.target == 'bus' and 'the music bus' or 'voice ' .. self.voice
-    self:status(string.format('The effect "%s" is %s on %s, with a tail of %.2f s, %s of a chain of %d', self.kind.id, self.effect.attached and 'attached' or 'detached', where, self.effect.tail, chain[1] == self.effect and 'first' or 'not first', #chain))
+    -- A sweep moves the knob and the value of the parameter it tweens.
+    if self.sweeping then
+        local param = self.kind.sweep[1]
+        self:set(param, {value = self:sliderValue(param)})
+        self:showValue(param)
+    end
+    local where = self.target == 'bus' and 'the music bus' or 'a looping voice'
+    local tail = self.effect.tail > 0 and string.format(', and its sound rings on for %.1f seconds after the input stops', self.effect.tail) or ''
+    self:status(string.format('The %s works on %s%s.', self.kind.text:lower(), where, tail))
 end
 
 function Effects:drawFilter(left, top, width, height)
@@ -182,14 +211,14 @@ function Effects:drawFilter(left, top, width, height)
     local function y(decibels)
         return top + height * (high - math.max(low, math.min(high, decibels))) / (high - low)
     end
-    for _, decibels in ipairs({-36, -24, -12, 0, 12}) do
+    for _, decibels in ipairs({-48, -36, -24, -12, 0, 12, 24}) do
         graphics2d.drawLine(left, y(decibels), left + width, y(decibels), decibels == 0 and 2 or 1, Test.line, {layer = 1})
-        Test.caption(decibels .. ' dB', left - 10, y(decibels), {anchor = {1, 0.5}, size = 16})
+        Test.caption(decibels .. ' dB', left - 10, y(decibels), {anchor = {1, 0.5}, size = 18})
     end
     for _, frequency in ipairs({50, 100, 500, 1000, 5000, 10000}) do
         local x = left + width * response.position(frequency)
         graphics2d.drawLine(x, top, x, top + height, 1, Test.line, {layer = 1})
-        Test.caption(frequency >= 1000 and (frequency // 1000) .. ' kHz' or frequency .. ' Hz', x, top + height + 8, {anchor = {0.5, 0}, size = 16})
+        Test.caption(frequency >= 1000 and (frequency // 1000) .. ' kHz' or frequency .. ' Hz', x, top + height + 8, {anchor = {0.5, 0}, size = 18})
     end
 
     local effect = self.effect
@@ -211,7 +240,7 @@ function Effects:drawFilter(left, top, width, height)
     end
     local cutoffX = left + width * response.position(effect.cutoff)
     graphics2d.drawLine(cutoffX, top, cutoffX, top + height, 2, Test.warm, {layer = 2})
-    Test.caption(string.format('%.0f Hz', effect.cutoff), cutoffX + 8, top + 8, {color = Test.warm})
+    Test.caption(Effects.valueText('cutoff', effect.cutoff), cutoffX + 8, top + 8, {color = Test.warm})
 end
 
 function Effects:drawDelay(left, top, width, height)
@@ -250,6 +279,7 @@ function Effects:draw(area)
     local left, top, width, height = 90, 80, area.width - 130, area.height - 160
     graphics2d.drawShape({left, top, width, height}, {radius = 12, color = Test.surface})
     Test.caption(self.kind.text .. ' on the ' .. (self.target == 'bus' and 'music bus' or 'looping voice'), left, 24, {size = 28, color = Test.ink})
+    AudioTest.lockNote(left + width, 18)
     if self.kind.id == 'delay' then
         self:drawDelay(left, top, width, height)
     elseif self.kind.id == 'reverb' then
@@ -260,7 +290,7 @@ function Effects:draw(area)
 
     local lines = {}
     for _, param in ipairs(self.kind.params) do
-        lines[#lines + 1] = param == 'cutoff' and string.format('%s %.0f Hz', kParams[param].label, self.effect.cutoff) or string.format('%s %.2f', kParams[param].label, self.effect[param])
+        lines[#lines + 1] = kParams[param].label .. ' ' .. Effects.valueText(param, self.effect[param])
     end
     Test.caption(table.concat(lines, ', '), left, top + height + 40, {size = 22, color = Test.ink})
 end

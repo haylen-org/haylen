@@ -5,7 +5,7 @@ local haylen = require('haylen')
 local ui = require('haylen.ui')
 
 local AudioTest = require('categories.audio.audio-test')
-local Journal = require('harness.journal')
+local EventLog = require('categories.audio.event-log')
 local sounds = require('categories.audio.sounds')
 local Test = require('harness.test')
 
@@ -38,15 +38,24 @@ function Lifecycle:enter()
     self.saved = haylen.lifecycle()
     self.clock = 0
     self.counts = {}
-    self.journal = Journal(26)
+    self.log = EventLog({
+        title = 'Events as they happen',
+        hint = 'Next: switch to another app or tab, take a call or unplug headphones while the music plays. Each event shows here with the color of its counter.',
+        legend = {{Test.ink, 'This test'}, {Test.muted, 'The platform'}},
+    })
     for _, name in ipairs(kOrder) do
         self.counts[name] = 0
         self:listen(name, function()
             self.counts[name] = self.counts[name] + 1
-            self.journal:add(string.format('The event "%s" at %.1f seconds, %s, in the app state "%s".', name, self.clock, audio.interrupted() and 'interrupted' or 'not interrupted', haylen.appState()), kEvents[name])
+            self.log:add(self.clock, string.format('The event "%s" arrived %s, in the app state "%s".', name, audio.interrupted() and 'while an interruption holds the sound' or 'with the sound free', haylen.appState()), kEvents[name])
         end)
     end
+    self:listen('audioUnlocked', function() self.log:add(self.clock, 'The browser let the sound play after the first click, tap or key on the page.', Test.muted) end)
     audio.playMusic(sounds.track(sounds.tracks[1].path), {fade = 1, volume = 0.7})
+    self.log:add(0, string.format('The test started the calm loop in the app state "%s".', haylen.appState()), Test.ink)
+    if AudioTest.locked() then
+        self.log:add(0, 'The browser holds the sound until the first click, tap or key on the page.', Test.muted)
+    end
 
     local controls = {
         ui.button{id = 'chime', text = 'Play a chime', variant = 'primary', onClick = function() audio.play(sounds.get('audio/ui/confirm.ogg'), {bus = 'ui'}) end},
@@ -69,22 +78,42 @@ end
 -- The platform reports interruptions as events of the scene too, before the engine turns them into audio events.
 function Lifecycle:event(event)
     if event.type == 'interruptionBegan' or event.type == 'interruptionEnded' or event.type == 'suspended' or event.type == 'resumed' then
-        self.journal:add('The platform sent "' .. event.type .. '".', Test.muted)
+        self.log:add(self.clock, 'The platform sent "' .. event.type .. '".', Test.muted)
     end
 end
 
 function Lifecycle:update(dt)
     Lifecycle.super.update(self, dt)
     self.clock = self.clock + haylen.unscaledDelta()
-    self:status(string.format('App state "%s", %s, %s, %s, output %s, %d Hz, %d channels, voices %d', haylen.appState(), haylen.halted() and 'halted' or 'running', audio.interrupted() and 'interrupted' or 'not interrupted', audio.hasDevice() and 'device open' or 'no device', audio.outputAvailable() and 'available' or 'unavailable with no sound', audio.sampleRate(), audio.channels(), audio.voiceCount()))
+    self:status(string.format('The app is "%s"%s. %s', haylen.appState(), haylen.halted() and ' and halted, so its frames and its sound wait' or '', Lifecycle.sound()))
+end
+
+-- Says in a sentence what the output does: locked by a browser, held by an interruption, without a device or an output, or playing.
+function Lifecycle.sound()
+    if AudioTest.locked() then
+        return 'The browser holds the sound until the first click, tap or key on the page.'
+    elseif audio.interrupted() then
+        return 'An interruption holds the sound, and every voice waits for it to end.'
+    elseif not audio.hasDevice() then
+        return 'No audio device is open, so the voices play in silence.'
+    elseif not audio.outputAvailable() then
+        return 'The device offers no output now, so the voices play in silence.'
+    end
+    local channels = audio.channels() == 2 and 'stereo' or audio.channels() == 1 and 'mono' or audio.channels() .. ' channels'
+    return string.format('The device plays %s at %d Hz in %s.', AudioTest.count(audio.voiceCount(), 'voice', 'voices'), audio.sampleRate(), channels)
 end
 
 function Lifecycle:draw(area)
-    local interrupted = audio.interrupted()
-    local state = interrupted and Test.red or Test.green
-    graphics2d.drawShape({24, 24, 360, 132}, {radius = 18, color = interrupted and '#FF3A2430' or '#FF1D3329', borderWidth = 2, borderColor = state})
-    graphics2d.drawCircle(56, 64, 10, state, {layer = 1})
-    Test.caption(interrupted and 'Interrupted' or 'Audio running', 78, 44, {size = 32, color = state, layer = 1})
+    -- The card of the state turns red while an interruption holds the sound, and shows a padlock while a browser keeps it locked.
+    local interrupted, locked = audio.interrupted(), AudioTest.locked()
+    local state = interrupted and Test.red or locked and Test.warm or Test.green
+    graphics2d.drawShape({24, 24, 360, 132}, {radius = 18, color = interrupted and '#FF3A2430' or locked and '#FF2A2618' or '#FF1D3329', borderWidth = 2, borderColor = state})
+    if locked then
+        AudioTest.padlock(56, 62, 30, state, '#FF2A2618', 1)
+    else
+        graphics2d.drawCircle(56, 64, 10, state, {layer = 1})
+    end
+    Test.caption(interrupted and 'Interrupted' or locked and 'Sound locked' or 'Audio running', 82, 44, {size = 32, color = state, layer = 1})
     Test.caption('The call "audio.interrupted()" returns "' .. tostring(interrupted) .. '".', 44, 100, {size = 19, maxWidth = 320, layer = 1})
 
     -- The counters fill the width beside the state, three to a row, each with its count under its name.
@@ -99,11 +128,7 @@ function Lifecycle:draw(area)
         Test.caption(tostring(self.counts[name]), x + width - 18, y + 29, {size = 28, color = Test.ink, anchor = {1, 0.5}, layer = 1})
     end
 
-    Test.caption('Events as they happen', 24, 186, {size = 24, color = Test.ink})
-    if self.journal.lines.size == 0 then
-        Test.caption('No event yet. Switch to another app or tab, take a call or unplug headphones while the music plays.', 24, 226, {size = 21, maxWidth = area.width - 48})
-    end
-    self.journal:draw(24, 226, area.height - 250, 20)
+    self.log:draw(24, 180, area.width - 48, area.height - 204)
 end
 
 return Lifecycle

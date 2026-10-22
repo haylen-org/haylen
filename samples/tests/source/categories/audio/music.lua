@@ -12,6 +12,7 @@ local Music = haylen.class('Music', AudioTest)
 
 local kHistory = 14
 local kColors = {calm = Test.accent, lively = Test.warm}
+local kPaused = '#30FF8A84'
 local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8, startAt = 0, loopStart = 4})\naudio.pause(music)\naudio.resume(music)\naudio.setCursor(music, audio.cursor(music) + 10)\naudio.stopMusic(2)\naudio.music() == track"
 
 function Music:enter()
@@ -26,15 +27,13 @@ function Music:enter()
         controls = {
             ui.button{id = 'calm', text = 'Play the ' .. sounds.tracks[1].text:lower(), variant = 'primary', onClick = function() self:play(sounds.tracks[1]) end},
             ui.button{id = 'lively', text = 'Play the ' .. sounds.tracks[2].text:lower(), variant = 'primary', onClick = function() self:play(sounds.tracks[2]) end},
-            ui.row{wrap = true, gap = 12,
+            ui.grid{columns = 2, gap = 12, alignItems = 'stretch',
                 ui.button{id = 'pause', text = 'Pause', onClick = function() self:pause() end},
                 ui.button{id = 'resume', text = 'Resume', onClick = function() self:resume() end},
-                ui.button{id = 'stop', text = 'Stop', variant = 'destructive', onClick = function() self:stop() end},
+                ui.button{id = 'rewind', text = 'Back 10 s', onClick = function() self:seek(-10) end},
+                ui.button{id = 'forward', text = 'Ahead 10 s', onClick = function() self:seek(10) end},
             },
-            ui.row{wrap = true, gap = 12,
-                ui.button{id = 'rewind', text = 'Back 10 seconds', onClick = function() self:seek(-10) end},
-                ui.button{id = 'forward', text = 'Forward 10 seconds', onClick = function() self:seek(10) end},
-            },
+            ui.button{id = 'stop', text = 'Stop', variant = 'destructive', onClick = function() self:stop() end},
             ui.formField{label = 'Crossfade and stop seconds', ui.slider{id = 'fade', min = 0, max = 5, step = 0.25, value = self.fade, showValue = true, onChange = function(event) self.fade = event.value end}},
             ui.toggle{id = 'loop', text = 'Loop the next track', checked = true, onChange = function(event) self.loop = event.checked end},
             ui.formField{label = 'Repeat the next track from seconds', ui.slider{id = 'loopStart', min = 0, max = 20, step = 1, decimals = 0, value = self.loopStart, showValue = true, onChange = function(event) self.loopStart = event.value end}},
@@ -132,16 +131,27 @@ function Music:update(dt)
         self:endCurrent(0)
     end
 
-    local playing = audio.music()
-    local name = 'no track'
-    for _, track in ipairs(sounds.tracks) do
-        if playing == sounds.track(track.path) then
-            name = 'the ' .. track.text:lower()
-        end
+    self:status(self:describe())
+end
+
+-- Says what the music does now in a sentence: the track, its place in it and its state.
+function Music:describe()
+    local current = self:current()
+    if not current or not self.voice or not audio.active(self.voice) then
+        return 'No track plays. Start one with a button of the panel.'
     end
-    local paused = self.voice ~= nil and audio.paused(self.voice)
-    local cursor = self.voice and audio.active(self.voice) and audio.cursor(self.voice) or 0
-    self:status(string.format('The call "audio.music()" returns %s, %s at %.1f seconds, voices %d, music bus volume %.2f', name, paused and 'paused' or 'not paused', cursor, audio.voiceCount(), audio.busVolume('music')))
+    local name = 'The ' .. current.track.text:lower()
+    if AudioTest.locked() then
+        return name .. ' waits at its start, since the browser plays no sound until the first click, tap or key on the page.'
+    end
+    local duration = sounds.track(current.track.path).duration
+    local place = string.format('%s of %s', AudioTest.clock(audio.cursor(self.voice) % duration), AudioTest.clock(duration))
+    if audio.paused(self.voice) then
+        return string.format('%s is paused at %s.', name, place)
+    end
+    local before = self.segments[#self.segments - 1]
+    local fading = before and before.stop and self.clock < before.stop + before.fadeOut
+    return string.format('%s plays at %s%s.', name, place, fading and ', while the track before it fades out' or '')
 end
 
 -- The volume the calls asked for at a time: the fade in, the level set last and the fade out.
@@ -164,15 +174,21 @@ function Music:level(segment, time)
 end
 
 function Music:draw(area)
-    local left, top, width, height = 60, 90, area.width - 100, area.height * 0.5
+    local left, top, width, height = 96, 90, area.width - 136, area.height * 0.5
     local from = self.clock - kHistory
+    Test.caption(string.format('Volume the calls asked for, over the last %d seconds', kHistory), left, top - 40, {size = 22})
+    AudioTest.lockNote(left + width, top - 54)
     graphics2d.drawShape({left, top, width, height}, {radius = 12, color = Test.surface})
+    for volume = 0, 1, 0.25 do
+        local y = top + height * (1 - volume)
+        graphics2d.drawLine(left, y, left + width, y, 1, Test.line, {layer = 1})
+        Test.caption(string.format('%g', volume), left - 14, y, {anchor = {1, 0.5}, size = 18})
+    end
     for index = 0, kHistory, 2 do
         local x = left + width * index / kHistory
         graphics2d.drawLine(x, top, x, top + height, 1, Test.line, {layer = 1})
         Test.caption(string.format('%d s', index - kHistory), x, top + height + 8, {anchor = {0.5, 0}, size = 18})
     end
-    Test.caption(string.format('Volume the calls asked for, over the last %d seconds', kHistory), left, top - 40, {size = 22})
 
     local spans = {}
     for _, pause in ipairs(self.pauses) do
@@ -185,7 +201,7 @@ function Music:draw(area)
         local a = math.max(0, (span[1] - from) / kHistory)
         local b = math.max(0, (span[2] - from) / kHistory)
         if b > a then
-            graphics2d.drawRect({left + width * a, top, width * (b - a), height}, '#30FF8A84', {layer = 1})
+            graphics2d.drawRect({left + width * a, top, width * (b - a), height}, kPaused, {layer = 1})
         end
     end
 
@@ -203,14 +219,25 @@ function Music:draw(area)
         end
     end
 
-    local y = top + height + 60
+    -- The legend names each track with what it is, marks the one that plays and shows what a red span means.
+    local y = top + height + 54
+    local current = self:current()
     for index, track in ipairs(sounds.tracks) do
         local sound = sounds.track(track.path)
-        local playing = audio.music() == sound
-        graphics2d.drawCircle(left + 12, y + 14 + (index - 1) * 44, 10, kColors[track.id], {layer = 1})
-        Test.caption(string.format('%s, %.0f seconds, %d Hz, %d channels, %s%s', track.text, sound.duration, sound.sampleRate, sound.channels, sound.streamed and 'streamed' or 'decoded', playing and ', playing' or ''), left + 34, y + (index - 1) * 44, {size = 22, color = playing and Test.ink or Test.muted})
+        local rowY = y + (index - 1) * 44
+        local playing = current ~= nil and current.track == track
+        local text = string.format('%s: a %s %s of %d seconds at %.1f kHz', track.text, sound.channels == 1 and 'mono' or 'stereo', sound.streamed and 'stream' or 'decoded sound', math.floor(sound.duration + 0.5), sound.sampleRate / 1000)
+        graphics2d.drawCircle(left + 12, rowY + 14, 10, kColors[track.id], {layer = 1})
+        Test.caption(text, left + 34, rowY, {size = 22, color = playing and Test.ink or Test.muted})
+        if playing then
+            local textWidth = graphics2d.measureText(nil, text, {size = 22})
+            graphics2d.drawShape({left + 50 + textWidth, rowY - 2, 120, 32}, {radius = 16, color = '#FF2C3A66', layer = 1})
+            Test.caption('Now playing', left + 110 + textWidth, rowY + 14, {size = 18, color = Test.accent, anchor = {0.5, 0.5}})
+        end
     end
-    Test.caption('Red spans: the music paused through its voice', left, y + 100, {size = 18})
+    local spanY = y + 2 * 44 + 10
+    graphics2d.drawShape({left + 2, spanY + 2, 20, 20}, {radius = 4, color = kPaused, borderWidth = 2, borderColor = Test.red, layer = 1})
+    Test.caption('A red span marks a pause of the music through its voice', left + 34, spanY, {size = 19})
 end
 
 return Music

@@ -21,6 +21,9 @@ audio.followCamera(camera)  -- Or audio.setListener(x, y).
 local fire = audio.play(crackle, {bus = 'ambience', loop = true, x = -760, y = -300})
 audio.setPosition(hum, x, y)  -- A moving sound pans and gets the Doppler pitch.]]
 
+-- The dashed ring that the hum circles on, named by a caption under it.
+Positional.orbitColor = '#90C9A0FF'
+
 Positional.walk = {name = 'walk', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'stick:right', 'virtualStick:walk'}}
 
 local kModels = {{id = 'linear', text = 'Linear'}, {id = 'inverse', text = 'Inverse'}, {id = 'exponential', text = 'Exponential'}}
@@ -199,7 +202,8 @@ function Positional:update(dt)
 
     local lx, ly = audio.listener()
     hum.heard = self:dopplerPitch(hum, lx, ly, dt)
-    self:status(string.format('Listener at %.0f, %.0f, the hum plays at a pitch of %.2f and is heard at %.2f times, %d voices', lx, ly, audio.pitch(hum.voice), hum.heard, audio.voiceCount()))
+    local orbit = self.orbitSpeed == 0 and 'The hum rests on its ring, so it keeps its own pitch' or 'The hum circles the middle, so the Doppler effect raises its pitch as it comes and lowers it as it goes'
+    self:status(string.format('The listener stands at %.0f, %.0f, with %s around it. %s.', lx, ly, AudioTest.count(audio.voiceCount(), 'voice', 'voices'), orbit))
 end
 
 function Positional:drawWorld()
@@ -209,7 +213,8 @@ function Positional:drawWorld()
         graphics2d.drawLine(line, -1500, line, 1500, 2 * unit, '#FF1F2536')
         graphics2d.drawLine(-2000, line * 0.75, 2000, line * 0.75, 2 * unit, '#FF1F2536')
     end
-    graphics2d.drawStroke(self.orbitPath, {width = 2 * unit, color = '#50C9A0FF', closed = true, dashes = {18 * unit, 14 * unit}, layer = 1})
+    graphics2d.drawStroke(self.orbitPath, {width = 3 * unit, color = Positional.orbitColor, closed = true, dashes = {18 * unit, 14 * unit}, layer = 1})
+    graphics2d.drawText(nil, 'The hum circles on this ring', 0, kOrbit + 16 * unit, {size = 20 * unit, color = '#FFC9A0FF', anchor = {0.5, 0}, outlineWidth = 3 * unit, outlineColor = '#FF15172A', layer = 6})
 
     local lx, ly = audio.listener()
     graphics2d.drawRing(lx, ly, settings.minDistance, 3 * unit, Test.green, {layer = 1})
@@ -228,9 +233,9 @@ function Positional:drawWorld()
         graphics2d.drawText(nil, string.format('Volume %.2f, pan %+.2f%s', volume, pan, pitch), emitter.x, emitter.y + 26 + 32 * unit, {size = 20 * unit, color = '#FFCDD3E6', anchor = {0.5, 0}, outlineWidth = 3 * unit, outlineColor = '#FF15172A', layer = 6})
     end
 
-    graphics2d.drawEllipse(self.x, self.y, 60, 14, '#50000000', {layer = 3})
-    graphics2d.draw(self.art.knight, self.x, self.y, {width = 150, height = 150, pivotY = 1, layer = 4})
-    local top = ly - 190
+    graphics2d.drawEllipse(self.x, self.y, 80, 18, '#50000000', {layer = 3})
+    graphics2d.draw(self.art.knight, self.x, self.y, {width = 210, height = 210, pivotY = 1, layer = 4})
+    local top = ly - 250
     graphics2d.drawPolygon({{lx, top - 30}, {lx + 26, top + 16}, {lx - 26, top + 16}}, '#FFFFFFFF', {layer = 5})
 end
 
@@ -239,9 +244,9 @@ function Positional:drawSource(emitter)
     if emitter.kind == 'fire' then
         graphics2d.draw(self.art.firewood, emitter.x, emitter.y, {width = 230, height = 144, pivotY = 1, layer = 2})
     elseif emitter.kind == 'cutter' then
-        graphics2d.draw(self.art.tree, emitter.x + 70, emitter.y, {width = 200, height = 300, pivotY = 1, layer = 2})
+        graphics2d.draw(self.art.tree, emitter.x + 90, emitter.y, {width = 240, height = 360, pivotY = 1, layer = 2})
         local frame = emitter.swing and math.min(#kSwing, math.floor(emitter.swing / 0.08) + 1) or #kSwing
-        graphics2d.draw(self.art.walker, emitter.x - 70, emitter.y, {source = {kSwing[frame] * 256, 512, 256, 256}, width = 190, height = 190, pivotY = 1, layer = 3})
+        graphics2d.draw(self.art.walker, emitter.x - 80, emitter.y, {source = {kSwing[frame] * 256, 512, 256, 256}, width = 250, height = 250, pivotY = 1, layer = 3})
     else
         graphics2d.drawCircle(emitter.x, emitter.y - 60, 56, '#40C9A0FF', {layer = 2})
         graphics2d.draw(self.art.orb, emitter.x, emitter.y - 60, {source = {128, 0, 64, 64}, width = 84, height = 84, layer = 3})
@@ -258,21 +263,23 @@ function Positional:draw(area)
     -- The legend sits on a plate in the lower corner of the play area, above the world.
     graphics2d.beginWorld(self.camera)
     local settings = audio.spatialization()
-    local width = math.min(area.width - 32, 520)
-    local top = area.height - 192
-    graphics2d.drawShape({16, top, width, 176}, {radius = 16, color = '#E0141824', borderWidth = 2, borderColor = '#FF2C3147', layer = 10})
+    local width = math.min(area.width - 32, 540)
     local rows = {
         {Test.green, string.format('Full volume within %.0f', settings.minDistance)},
         {Test.red, string.format('%s past %.0f', settings.model == 'linear' and 'Silent' or 'Steady', settings.maxDistance)},
         {Test.accent, string.format('Full pan at %.0f to each side', settings.panDistance)},
         {'#FFFFFFFF', self.following and 'The white triangle is the listener, on the camera' or 'The listener stays where the camera left it'},
     }
+    local height = 40 + #rows * 34
+    local top = area.height - height - 16
+    graphics2d.drawShape({16, top, width, height}, {radius = 16, color = '#E0141824', borderWidth = 2, borderColor = '#FF2C3147', layer = 10})
     Test.caption(string.format('The "%s" fade, Doppler %.1f', settings.model, settings.doppler), 36, top + 10, {size = 22, color = Test.ink, layer = 11})
     for index, row in ipairs(rows) do
         local y = top + 10 + index * 34
         graphics2d.drawCircle(46, y + 12, 8, row[1], {layer = 11})
         Test.caption(row[2], 66, y, {size = 20, maxWidth = width - 70, layer = 11})
     end
+    AudioTest.lockNote(area.width - 16, 16)
 end
 
 return Positional
