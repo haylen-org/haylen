@@ -187,8 +187,8 @@ class FrameSubmitter final {
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
 
-    // Applies the uniforms of how a command is shaded: the lighting of lit passes and the values of its material.
-    void applyShade(const Shade& shade, graphics::PassTarget pass, Program program);
+    // Applies the uniforms of how a command is shaded: the lighting of lit passes, with how its blend covers the emission, the surface and the info, and the values of its material.
+    void applyShade(const Shade& shade, graphics::PassTarget pass, Program program, graphics::BlendMode::Type blend);
 
     // Binds the textures of a batch program without a material, every one with the sampler of the first.
     void bindBatch(gpu::Device::Bindings& bindings, const Shade& shade, const graphics::TextureResource& texture, graphics::PassTarget pass);

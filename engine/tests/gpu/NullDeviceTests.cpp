@@ -78,6 +78,19 @@ TEST_F(NullDeviceTest, RunsOutOfRoomLikeTheDeviceOfTheSokolBackend) {
     EXPECT_NO_THROW((void)device.makePipeline({.program = program, .colors = colors, .label = "empty"}));
 }
 
+// The colors of a pipeline share one blend and one write mask, which OpenGL applies to every color of a pass.
+TEST_F(NullDeviceTest, RejectsPipelinesWhoseColorsBlendApart) {
+    NullDevice device;
+    const Device::Program program = device.makeProgram({.label = "empty"});
+    const Device::Blend adding{.enabled = true, .sourceColor = Device::BlendFactor::SourceAlpha, .destinationColor = Device::BlendFactor::One};
+    const std::array<Device::ColorTarget, 2> alike{{{.blend = adding}, {.blend = adding}}};
+    EXPECT_NO_THROW((void)device.makePipeline({.program = program, .colors = alike, .label = "alike"}));
+    const std::array<Device::ColorTarget, 2> blends{{{.blend = adding}, {}}};
+    EXPECT_THROW((void)device.makePipeline({.program = program, .colors = blends, .label = "blends"}), std::logic_error);
+    const std::array<Device::ColorTarget, 2> masks{{{.blend = adding}, {.writeMask = Device::ColorMask::None, .blend = adding}}};
+    EXPECT_THROW((void)device.makePipeline({.program = program, .colors = masks, .label = "masks"}), std::logic_error);
+}
+
 // Every draw needs a pass and a pipeline, and the record of the last frame says what each pass cleared to and wrote.
 TEST_F(NullDeviceTest, ChecksDrawsAndRecordsTheFramesWithoutAllocatingOnceSteady) {
     NullDevice device;

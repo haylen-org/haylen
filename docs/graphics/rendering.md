@@ -777,7 +777,7 @@ The scene pass of a lit canvas renders into four targets with the pixel size of 
 | Surface | The world normal of normal-mapped sprites in red and green, and their specular strength in blue. |
 | Info | The light mask, the layer shifted by 128 and the shininess of the draw divided by 255. A draw writes it only where it covers more than half of the pixel, so these values never blend between two draws. |
 
-Draws with the `alpha`, `premultiplied` and `opaque` blends write the surface and the info. Draws with `additive`, `multiply` and `screen`, such as glows and shadows, leave them alone, and multiplying draws leave the emission alone too.
+Draws with the `alpha`, `premultiplied` and `opaque` blends write the surface and the info. Draws with `additive`, `multiply` and `screen`, such as glows and shadows, leave them alone, and multiplying draws leave the emission alone too. OpenGL and WebGL2 blend every color attachment of a pass with the blend of the first, so every pipeline of a lit pass gives its four targets the blend of the draw, which `gpu::Device` requires of all its pipelines. The lit block of the shader library tells `haylen_output` how the blend covers the targets, and a draw writes zero into a target it must leave alone, which no blend of a lit pass changes the target with. A premultiplied draw premultiplies the surface and the info it covers.
 
 The light pass then draws every light of the canvas into the light map, which starts at the ambient color, in the order the lights were drawn:
 

@@ -669,7 +669,7 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     const graphics::TextureResource& resource = *image.getResource();
     state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
     applyUniforms(projection(math::Transform2D::identity(), {1.0F, 1.0F}), graphics::BlendMode::Type::Premultiplied);
-    applyShade(shade, pass, Program::Sprite);
+    applyShade(shade, pass, Program::Sprite, graphics::BlendMode::Type::Premultiplied);
 
     gpu::Device::Bindings bindings;
     bindings.vertexBuffers[0] = state.quad;
@@ -718,7 +718,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             // These apply their own pipeline, uniforms and clip, so the next command applies them again.
             state.getGpu().applyPipeline(state.getPipeline(command.program, static_cast<std::uint8_t>(command.blend), pass));
             applyClip(canvas, command.clip, passRect);
-            applyShade(shade, pass, command.program);
+            applyShade(shade, pass, command.program, command.blend);
             if (command.program == Program::ImageBlend) {
                 drawImageBlend(command, matrix);
             } else {
@@ -742,7 +742,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             currentOffset = command.offset;
         }
         if (fresh || command.shade != currentShade) {
-            applyShade(shade, pass, command.program);
+            applyShade(shade, pass, command.program, command.blend);
             currentShade = command.shade;
         }
         if (currentClip != command.clip) {
@@ -905,11 +905,14 @@ void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Ty
     applyBlock(RendererState::kVertexBlock, params);
 }
 
-void FrameSubmitter::applyShade(const Shade& shade, graphics::PassTarget pass, Program program) {
+// Alpha and opaque draws cover the surface and the info by straight alpha and premultiplied draws by premultiplied alpha, while adding, multiplying and screen draws leave them, and multiplying draws also leave the emission.
+void FrameSubmitter::applyShade(const Shade& shade, graphics::PassTarget pass, Program program, graphics::BlendMode::Type blend) {
     if (pass == graphics::PassTarget::LitScene) {
+        using Mode = graphics::BlendMode::Type;
+        const float covers = blend == Mode::Alpha || blend == Mode::Opaque ? 1.0F : (blend == Mode::Premultiplied ? 2.0F : 0.0F);
         const LitParams lit{
-            .surface = {shade.specular, shade.emission, shade.unshaded ? 1.0F : 0.0F, 0.0F},
-            .info = {static_cast<float>(shade.lightMask) / 255.0F, static_cast<float>(shade.layer + 128) / 255.0F, shade.normalMap != nullptr ? shade.shininess / 255.0F : 0.0F, 0.0F},
+            .surface = {shade.specular, shade.emission, shade.unshaded ? 1.0F : 0.0F, covers},
+            .info = {static_cast<float>(shade.lightMask) / 255.0F, static_cast<float>(shade.layer + 128) / 255.0F, shade.normalMap != nullptr ? shade.shininess / 255.0F : 0.0F, blend == Mode::Multiply ? 1.0F : 0.0F},
         };
         applyBlock(RendererState::kLitBlock, lit);
     }

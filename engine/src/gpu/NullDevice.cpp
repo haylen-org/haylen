@@ -145,6 +145,11 @@ Device::Pipeline NullDevice::makePipeline(const PipelineDesc& desc) {
     if (desc.colors.empty() || desc.colors.size() > kMaxColorTargets) {
         throw std::logic_error(std::format("The pipeline \"{}\" needs one to {} color targets.", desc.label, kMaxColorTargets));
     }
+    for (const ColorTarget& color : desc.colors) {
+        if (color.blend != desc.colors.front().blend || color.writeMask != desc.colors.front().writeMask) {
+            throw std::logic_error(std::format("The color targets of the pipeline \"{}\" differ in their blend or write mask, which OpenGL applies alike to every color.", desc.label));
+        }
+    }
     for (const VertexAttribute& attribute : desc.attributes) {
         if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size())) {
             throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));

@@ -633,13 +633,10 @@ RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphi
         break;
     }
 
-    // The emission follows the blend of the draw, except that multiplying draws leave it alone, and only draws that cover what is below write the surface and the info.
+    // Every color of a lit pass takes the blend and the write mask of the draw, as the OpenGL backends apply them to every color of a pass, and the shader library writes what keeps the emission, the surface and the info as they were where a draw must leave them.
     targets.count = 4;
-    const bool covers = mode == Mode::Alpha || mode == Mode::Premultiplied || mode == Mode::Opaque;
-    targets.colors[0] = {.format = offscreen, .blend = blendState(mode)};
-    targets.colors[1] = {.format = offscreen, .writeMask = mode == Mode::Multiply ? gpu::Device::ColorMask::None : gpu::Device::ColorMask::All, .blend = blendState(mode)};
-    for (std::size_t index = 2; index < 4; ++index) {
-        targets.colors[index] = {.format = offscreen, .writeMask = covers ? gpu::Device::ColorMask::All : gpu::Device::ColorMask::None, .blend = mode == Mode::Opaque ? gpu::Device::Blend{} : blendState(Mode::Alpha)};
+    for (std::size_t index = 0; index < targets.count; ++index) {
+        targets.colors[index] = {.format = offscreen, .blend = blendState(mode)};
     }
     return targets;
 }

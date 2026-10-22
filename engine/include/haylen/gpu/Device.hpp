@@ -323,6 +323,8 @@ class Device {
         BlendFactor sourceAlpha = BlendFactor::One;
         BlendFactor destinationAlpha = BlendFactor::Zero;
         BlendOperation alphaOperation = BlendOperation::Add;
+
+        friend bool operator==(const Blend&, const Blend&) = default;
     };
 
     struct ColorTarget {
@@ -331,7 +333,7 @@ class Device {
         Blend blend;
     };
 
-    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its color target names, and the others draw into render targets of one sample without depth.
+    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its color target names, and the others draw into render targets of one sample without depth. All the color targets of a pipeline share one blend and one write mask, because OpenGL and WebGL2 apply those of the first target to every color of a pass.
     struct PipelineDesc {
         Program program;
         std::span<const VertexBufferLayout> buffers;
