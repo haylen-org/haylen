@@ -1,4 +1,4 @@
--- Preferences are one table of nested groups addressed by dotted keys, changed in memory by `set` and `remove`, written to `preferences.json` by `save` and read back by `load`, which also throws away unsaved changes.
+-- Preferences are one table of nested groups addressed by dotted keys, changed in memory by `set` and `remove`, written to `preferences.json` by `save` and read back by `load`, which also throws away unsaved changes. The test opens with a saved profile and one change that only memory holds.
 local haylen = require('haylen')
 local json = require('json')
 local preferences = require('haylen.preferences')
@@ -29,6 +29,10 @@ Values.examples = {
     {id = 'empty', key = 'profile..name', value = 'Ana', kind = 'text'},
     {id = 'reserved', key = 'audio.volume.music', value = '0.5', kind = 'number'},
 }
+
+-- The profile that the test saves when it opens, before it changes the coins in memory only, so memory and the file differ from the start.
+Values.profile = {{'profile.name', 'Ana'}, {'profile.stats.coins', 120}, {'profile.stats.level', 3}, {'profile.tutorialDone', true}, {'recent', {'slot-1', 'slot-3'}}}
+Values.unsavedCoins = 150
 
 -- Formats a Lua value as indented JSON, the way `preferences.json` holds it.
 local function show(value)
@@ -138,7 +142,17 @@ function Values:enter()
             },
         }},
     }
+    self:startProfile()
     self:refresh()
+end
+
+function Values:startProfile()
+    for _, entry in ipairs(Values.profile) do
+        preferences.set(entry[1], entry[2])
+    end
+    preferences.save()
+    preferences.set('profile.stats.coins', Values.unsavedCoins)
+    self:set('result', {text = string.format('The test saved a profile, then set "profile.stats.coins" to %d in memory only.', Values.unsavedCoins), color = 'accentText'})
 end
 
 function Values:pick(id)

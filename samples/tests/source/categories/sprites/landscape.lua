@@ -45,12 +45,13 @@ function Landscape:draw(area, groundY, scale, time, travel)
     local cloudBottom, cloudHeight = groundY - distant * 0.5, distant * 0.4
     local drift = time * Landscape.cloudSpeed + travel * 0.05
     Landscape.strip(self.clouds, width, cloudBottom, cloudHeight, drift, layer + 1)
-    -- A sky taller than the landscape holds more bands of clouds, smaller and slower the higher they float.
+    -- A sky taller than the landscape holds more bands of clouds, smaller and slower the higher they float, each whole below the top of the area.
     for band = 1, Landscape.cloudBands do
-        if cloudBottom - cloudHeight < cloudHeight * 0.5 or cloudHeight * 0.8 < Landscape.smallestCloud then
+        local bandBottom, bandHeight = cloudBottom - cloudHeight * 1.3, cloudHeight * 0.8
+        if bandBottom - bandHeight < 0 or bandHeight < Landscape.smallestCloud then
             break
         end
-        cloudBottom, cloudHeight = cloudBottom - cloudHeight * 1.3, cloudHeight * 0.8
+        cloudBottom, cloudHeight = bandBottom, bandHeight
         Landscape.strip(self.clouds, width, cloudBottom, cloudHeight, drift * 0.7 ^ band + band * 211, layer + 1)
     end
     Landscape.strip(self.mountains, width, groundY, distant * 0.62, width * 0.3 + travel * 0.15, layer + 2)

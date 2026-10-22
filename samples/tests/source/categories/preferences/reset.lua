@@ -69,7 +69,7 @@ function Reset:enter()
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.label{id = 'summary', text = '', color = 'textMuted'},
-                ui.scroll{grow = 1, height = 0, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}}},
+                ui.scroll{grow = 1, height = 0, ui.table{id = 'values', columns = {{text = 'Setting'}, {text = 'Stored', width = 240}, {text = 'Default', width = 240}, {text = '', width = 150}}, rows = {}, style = {fonts = {body = {font = 'monospace'}}, metrics = {listRowHeight = 52}}}},
             },
             ui.dialog{id = 'confirm', title = 'Reset every setting?', message = 'Every setting of these tests goes back to its default and is saved at once. The other preferences of the project stay.', buttons = {{id = 'cancel', text = 'Cancel'}, {id = 'reset', text = 'Reset', variant = 'destructive'}}, onAnswer = function(event)
                 if event.button == 'reset' then

@@ -51,7 +51,7 @@ function Engine:enter()
     local rows = {}
     for _, bus in ipairs(settings.buses) do
         rows[#rows + 1] = ui.row{gap = 16,
-            ui.label{text = 'Bus "' .. bus .. '"', width = 200},
+            ui.label{text = Engine.busNames[bus], width = 200},
             ui.slider{id = 'volume-' .. bus, value = audio.busVolume(bus), showValue = true, grow = 1, onChange = function(event)
                 audio.setBusVolume(bus, event.value)
                 self:tick(bus)
