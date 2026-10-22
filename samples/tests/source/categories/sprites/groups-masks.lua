@@ -26,6 +26,8 @@ GroupsMasks.props = {
     {image = 'terrain', source = {530, 398, 128, 128}, x = 0.6, y = 0.9, size = 0.6},
     {image = 'tree', source = {2, 2, 128, 256}, x = 0.88, y = 0.95, size = 2},
 }
+-- How far the light of the hole reaches from its middle, which the wandering hole keeps inside the island.
+GroupsMasks.holeReach = 175
 GroupsMasks.layouts = {
     landscape = {view = {1700, 800}, cards = {portrait = {-830, -380, 400, 370}, card = {-830, 10, 400, 370}, fog = {-410, -380, 800, 760}, groups = {410, -380, 420, 760}}},
     portrait = {view = {900, 1700}, cards = {portrait = {-430, -830, 420, 400}, card = {10, -830, 420, 400}, fog = {-430, -410, 860, 760}, groups = {-430, 370, 860, 460}}},
@@ -71,7 +73,7 @@ function GroupsMasks:resize(area)
     local rect = layout.cards.fog
     local columns, rows = GroupsMasks.columns, GroupsMasks.rows
     local size = math.min((rect[3] - 40) / columns, (rect[4] - 106) / rows)
-    self.map = {rect[1] + (rect[3] - columns * size) / 2, rect[2] + 66, columns * size, rows * size}
+    self.map = {rect[1] + (rect[3] - columns * size) / 2, rect[2] + 66 + (rect[4] - 86 - rows * size) / 2, columns * size, rows * size}
     self.cell = size
     self.grass, self.edges = Terrain.bake(columns, rows, size, self.map[1], self.map[2], function(column, row)
         local dx, dy = (column - 8) / 2.2, (row - 5) / 2
@@ -137,7 +139,7 @@ function GroupsMasks:drawCard(rect)
     graphics2d.drawShape(shape, {radius = 26, color = '#00000000', borderWidth = 6, borderColor = '#FFFFC93C', layer = 1})
 end
 
--- The island under its fog, whose hole follows the pointer over the map and wanders around the pond while the pointer is elsewhere.
+-- The island under its fog, whose hole follows the pointer over the map and wanders around the pond while the pointer is elsewhere, without reaching past the island.
 function GroupsMasks:drawFog(rect)
     Panels.card(rect, 'Fog of war around the pointer')
     local map, cell = self.map, self.cell
@@ -146,8 +148,8 @@ function GroupsMasks:drawFog(rect)
     if pointerX >= map[1] and pointerX <= map[1] + map[3] and pointerY >= map[2] and pointerY <= map[2] + map[4] then
         holeX, holeY = pointerX, pointerY
     else
-        holeX = map[1] + map[3] * (0.5 + math.sin(self.time * 0.5) * 0.3)
-        holeY = map[2] + map[4] * (0.5 + math.sin(self.time * 0.8) * 0.28)
+        holeX = map[1] + map[3] / 2 + math.sin(self.time * 0.5) * math.max(0, map[3] / 2 - GroupsMasks.holeReach)
+        holeY = map[2] + map[4] / 2 + math.sin(self.time * 0.8) * math.max(0, map[4] / 2 - GroupsMasks.holeReach)
     end
 
     graphics2d.pushMask(function()

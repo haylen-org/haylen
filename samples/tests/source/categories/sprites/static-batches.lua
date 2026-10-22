@@ -16,6 +16,9 @@ StaticBatches.rows = 34
 -- Clouds float closer to the camera than the ground, so they move by this share more than it, and drift with the wind.
 StaticBatches.cloudParallax = 0.45
 StaticBatches.wind = 40
+-- The heights of the lake noise under which a corner is water, and beach beside the water.
+StaticBatches.water = -0.3
+StaticBatches.beach = -0.2
 
 StaticBatches.code = [[
 local ground = graphics2d.newSpriteBatch(tiles)  -- One add per tile of the map.
@@ -24,19 +27,35 @@ graphics2d.drawStatic(baked)  -- Draws every frame without uploading.
 local x = wind * time - camera.x * 0.45
 graphics2d.drawStatic(clouds, x, 0, {layer = 3})  -- An offset moves the whole batch without baking again.]]
 
--- Returns the kind of ground at a corner of the map from noise: lakes ringed by beaches, dirt roads along the ridges of a second noise, and grass.
+-- Returns the kind of ground at a corner of the map from noise: lakes ringed by beaches, dirt roads along the ridges of a second noise, and grass. A low corner is beach only beside the water, so no patch of sand lies alone in the grass.
 function StaticBatches.kindAt(lakes, roads, column, row)
-    local height = lakes:fractal(column * 0.07, row * 0.07, 3, 2, 0.5)
-    if height < -0.3 then
+    local height = StaticBatches.height(lakes, column, row)
+    if height < StaticBatches.water then
         return Terrain.water
     end
-    if height < -0.22 then
+    if height < StaticBatches.beach and StaticBatches.nearWater(lakes, column, row) then
         return Terrain.sand
     end
     if math.abs(roads:fractal(column * 0.05, row * 0.05, 2, 2, 0.5)) < 0.045 then
         return Terrain.path
     end
     return Terrain.grass
+end
+
+function StaticBatches.height(lakes, column, row)
+    return lakes:fractal(column * 0.07, row * 0.07, 3, 2, 0.5)
+end
+
+-- Tells whether water lies within two corners of a corner.
+function StaticBatches.nearWater(lakes, column, row)
+    for dy = -2, 2 do
+        for dx = -2, 2 do
+            if StaticBatches.height(lakes, column + dx, row + dy) < StaticBatches.water then
+                return true
+            end
+        end
+    end
+    return false
 end
 
 function StaticBatches:enter()

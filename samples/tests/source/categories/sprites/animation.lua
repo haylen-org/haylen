@@ -21,10 +21,10 @@ Animation.feet = 0.97
 Animation.code = [[
 local grid = {frameWidth = 256, frameHeight = 256, cells = {17, 18, 19, 20, 21, 22}, loop = 'once'}
 animator:add('attack', animation2d.fromGrid(sheet, grid))
-animator.onFrame = function(name, frame) if frame == 3 then log.info('The blow lands.') end end
+animator.onFrame = function(name, frame) log.info('Frame ' .. frame .. ' of "' .. name .. '".') end
 animator.onComplete = function(name) log.info('The clip "' .. name .. '" finished.') end
 animator:play('attack', true)
-animator:queue('run')]]
+animator:queue('run')  -- Starts once the attack ends its pass.]]
 
 -- Adds the clips of the walker sheet to an animator, with the run clip in the given loop mode.
 function Animation.clips(animator, sheet, runLoop)
@@ -65,7 +65,7 @@ function Animation:enter()
             ui.row{gap = 12,
                 ui.button{id = 'idle', text = 'Idle', grow = 1, onClick = function() self:play('idle') end},
                 ui.button{id = 'run', text = 'Run', grow = 1, onClick = function() self:play('run') end},
-                ui.button{id = 'attack', text = 'Attack', grow = 1, variant = 'primary', onClick = function() self:play('attack') end},
+                ui.button{id = 'attack', text = 'Attack', grow = 1, onClick = function() self:play('attack') end},
             },
             ui.button{id = 'queue', text = 'Attack, then run, then idle', align = 'stretch', onClick = function() self:combo() end},
             ui.button{id = 'stop', text = 'Stop', align = 'stretch', onClick = function()

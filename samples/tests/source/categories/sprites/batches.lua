@@ -138,7 +138,7 @@ function Batches:update(dt)
 
     local count, frame = self.batch:size(), debugging.frame()
     local calls = self.oneByOne and localization.formatNumber(count) .. ' draws from Lua' or 'one draw from Lua'
-    self:status(string.format('%s gems with %s. The frame takes %.2f ms and %d draw calls, the interface included.', localization.formatNumber(count), calls, frame.milliseconds, graphics2d.stats().drawCalls))
+    self:status(string.format('%s gems with %s. The engine works %.1f ms of the frame in %d draw calls, the interface included.', localization.formatNumber(count), calls, frame.milliseconds, graphics2d.stats().drawCalls))
 end
 
 function Batches:draw(area)

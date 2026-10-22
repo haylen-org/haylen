@@ -13,8 +13,8 @@ Terrain.water = 3
 Terrain.rows = {[Terrain.sand] = 4, [Terrain.path] = 5, [Terrain.water] = 0}
 
 Terrain.textureOptions = {filter = 'linear', mipmaps = true}
--- The share of grass cells that show the grass with flowers.
-Terrain.flowers = 0.14
+-- The share of grass cells that the hash picks for the grass with flowers, of which those beside another one stay plain.
+Terrain.flowers = 0.12
 
 -- Returns the area of the painted tile at a column and row of a tile image.
 function Terrain.source(column, row)
@@ -26,18 +26,29 @@ function Terrain.textures()
     return assets.texture('tiled/tiles/terrain.png', Terrain.textureOptions), assets.texture('tiled/tiles/transitions.png', Terrain.textureOptions)
 end
 
--- Returns the corner set tile of a kind of ground in a cell whose corners hold the given kinds, from 0 for none of them to 15 for all four.
+-- Returns the corner set tile of a kind of ground in a cell whose corners hold the given kinds, from 0 for none of them to 15 for all four. A cell that holds the kind also covers with it the corners of the kinds above it, which draw over it, so no grass shows where two kinds meet.
 function Terrain.mask(kind, topLeft, topRight, bottomRight, bottomLeft)
-    return (topLeft == kind and 1 or 0) + (topRight == kind and 2 or 0) + (bottomRight == kind and 4 or 0) + (bottomLeft == kind and 8 or 0)
+    if topLeft ~= kind and topRight ~= kind and bottomRight ~= kind and bottomLeft ~= kind then
+        return 0
+    end
+    return (topLeft >= kind and 1 or 0) + (topRight >= kind and 2 or 0) + (bottomRight >= kind and 4 or 0) + (bottomLeft >= kind and 8 or 0)
 end
 
--- Returns the grass tile of a cell, mostly plain with some flowers scattered without a pattern, the same for a cell every time.
-function Terrain.grassAt(column, row)
+-- Tells whether the hash of a cell picks flowers for it, the same for a cell every time.
+function Terrain.flowering(column, row)
     local hash = column * 0x9E3779B97F4A7C15 + row * 0xC2B2AE3D27D4EB4F
     hash = (hash ~ (hash >> 30)) * 0xBF58476D1CE4E5B9
     hash = (hash ~ (hash >> 27)) * 0x94D049BB133111EB
     hash = ((hash ~ (hash >> 31)) >> 40) & 0xFFFF
-    return hash < Terrain.flowers * 0x10000 and 1 or 0
+    return hash < Terrain.flowers * 0x10000
+end
+
+-- Returns the grass tile of a cell, mostly plain with flowers scattered without a pattern. A cell beside a cell above or to its left that the hash also picks stays plain, so no two flowering cells touch and the flowers never line up in rows or columns.
+function Terrain.grassAt(column, row)
+    if Terrain.flowering(column, row) and not Terrain.flowering(column - 1, row) and not Terrain.flowering(column, row - 1) then
+        return 1
+    end
+    return 0
 end
 
 -- Calls `add(texture, source)` for every tile of a cell from the bottom up: its grass on the first texture, then the corner tiles of sand, paths and water on the second.

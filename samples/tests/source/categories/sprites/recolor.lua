@@ -27,7 +27,9 @@ Recolor.layouts = {
     landscape = {view = {1700, 800}, wardrobe = {-830, -380, 1660, 380}, meadow = {-830, 20, 1660, 360}, perRow = 8, columns = 24},
     portrait = {view = {900, 1700}, wardrobe = {-430, -830, 860, 900}, meadow = {-430, 90, 860, 740}, perRow = 4, columns = 12},
 }
-Recolor.walkerHeight = 76
+Recolor.walkerHeight = 100
+-- The corners of the meadow, rounded like the card around it.
+Recolor.meadowRadius = 12
 
 Recolor.code = [[
 local mask = assets.texture('sprites/images/outfit-mask.png', {filter = 'linear', mipmaps = true})
@@ -63,7 +65,7 @@ function Recolor:resize(area)
     self:makeCrowd()
 end
 
--- The meadow is grass with a dirt road across it and a patch of sand.
+-- The meadow is grass with a dirt road across it and a patch of sand inside it.
 function Recolor:bakeMeadow()
     local meadow, columns = self.layout.meadow, self.layout.columns
     local inner = {meadow[1] + 20, meadow[2] + 66, meadow[3] - 40, meadow[4] - 86}
@@ -75,21 +77,21 @@ function Recolor:bakeMeadow()
         if row == road and column > 1 and column < columns - 1 then
             return Terrain.path
         end
-        if row == 0 and column >= columns * 0.66 and column <= columns * 0.85 then
+        if row >= 1 and row <= 2 and column >= columns * 0.66 and column <= columns * 0.8 then
             return Terrain.sand
         end
         return Terrain.grass
     end)
 end
 
--- Walkers stand in lanes from the back of the meadow to the front and join the batch in that order, so the ones in front draw over the ones behind.
+-- Walkers stand in lanes from the back of the meadow to the front, their heads inside it, and join the batch in that order, so the ones in front draw over the ones behind.
 function Recolor:makeCrowd()
     local ground = self.ground
     self.random = m.random(11)
     local width = Recolor.walkerHeight * self.base.width / self.base.height
     self.walkers = {}
     for index = 1, Recolor.crowdSize do
-        local y = ground[2] + Recolor.walkerHeight * 0.75 + self.random:range(0, ground[4] - Recolor.walkerHeight * 0.75 - 6)
+        local y = ground[2] + Recolor.walkerHeight + 10 + self.random:range(0, ground[4] - Recolor.walkerHeight - 16)
         self.walkers[index] = {x = self.random:range(ground[1] + 30, ground[1] + ground[3] - 30), y = y, speed = self.random:range(40, 90) * (self.random:range(0, 1) < 0.5 and -1 or 1), phase = self.random:range(0, math.pi * 2)}
     end
     table.sort(self.walkers, function(a, b) return a.y < b.y end)
@@ -162,10 +164,13 @@ function Recolor:draw(area)
         self:figure(inner[1] + slot * (column + 0.5), inner[2] + rowHeight * (row + 1) - 46, rowHeight - 56, figure.name, figure.options)
     end
 
+    -- A ring of the color of the card around the meadow rounds its corners.
     Panels.card(layout.meadow, 'A crowd of 120 in one draw call')
     graphics2d.drawStatic(self.grass, 0, 0, {layer = -5})
     graphics2d.drawStatic(self.edges, 0, 0, {layer = -4})
     self.crowd:draw({partMask = self.mask})
+    local ground, ring = self.ground, 24
+    graphics2d.drawShape({ground[1] - ring, ground[2] - ring, ground[3] + ring * 2, ground[4] + ring * 2}, {radius = Recolor.meadowRadius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
 end
 
 return Recolor

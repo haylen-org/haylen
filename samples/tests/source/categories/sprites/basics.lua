@@ -23,7 +23,7 @@ Basics.variants = {
     {label = 'Stretched', properties = {scaleX = 1.5, scaleY = 0.75}},
     {label = 'Mirrored', properties = {flipHorizontal = true}},
     {label = 'Upside down', properties = {flipVertical = true}},
-    {label = 'Tinted blue', properties = {color = '#FF70C0FF'}},
+    {label = 'Tinted red', properties = {color = '#FFFF7A6A'}},
     {label = 'Flashed white', properties = {flash = '#B0FFFFFF'}},
 }
 Basics.markInk = '#FFFFE45C'

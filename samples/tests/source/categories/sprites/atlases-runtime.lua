@@ -1,4 +1,4 @@
--- Images and runtime atlases: a medal composed on the CPU off the frame thread from the pieces of one image and the hero, a meadow of sprites drawn from four separate textures or from one atlas packed at run time, which turns hundreds of draw calls into one, and graph paper drawn small with and without mipmaps.
+-- Images and runtime atlases: a medal composed on the CPU off the frame thread from the pieces of one image and the hero, a meadow of sprites in woods and open grass drawn from four separate textures or from one atlas packed at run time, which turns hundreds of draw calls into one, and graph paper drawn small with and without mipmaps.
 local animation2d = require('haylen.animation2d')
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
@@ -16,9 +16,13 @@ local RuntimeAtlases = haylen.class('RuntimeAtlases', SpriteTest)
 
 RuntimeAtlases.images = {'hero', 'rock', 'tree', 'bunny'}
 -- The height of each image in the meadow, in units, and its share of the sprites.
-RuntimeAtlases.heights = {hero = 44, rock = 24, tree = 62, bunny = 26}
-RuntimeAtlases.shares = {hero = 0.3, rock = 0.25, tree = 0.15, bunny = 0.3}
-RuntimeAtlases.count = 600
+RuntimeAtlases.heights = {hero = 58, rock = 32, tree = 92, bunny = 34}
+RuntimeAtlases.count = 360
+RuntimeAtlases.columns = 24
+-- The noise of the meadow above which trees grow into woods, and rocks lie along their edges, with heroes and bunnies in the open grass.
+RuntimeAtlases.woods = 0.2
+RuntimeAtlases.edge = 0.05
+RuntimeAtlases.meadowRadius = 12
 RuntimeAtlases.medal = {0, 0, 324, 277}
 RuntimeAtlases.ribbon = {328, 0, 324, 99}
 RuntimeAtlases.layouts = {
@@ -47,15 +51,16 @@ function RuntimeAtlases.paper()
     return image
 end
 
--- Returns the image whose share of the sprites holds a number from 0 to 1.
-function RuntimeAtlases.pick(value)
-    for index, name in ipairs(RuntimeAtlases.images) do
-        value = value - RuntimeAtlases.shares[name]
-        if value <= 0 then
-            return index
-        end
+-- Returns the image of a spot of the meadow from the noise there: trees in the woods, rocks along their edges, and heroes and bunnies in the open grass.
+function RuntimeAtlases.pick(noise, random, x, y)
+    local value = noise:fractal(x * 3, y * 2, 3, 2, 0.5)
+    if value > RuntimeAtlases.woods then
+        return 3
     end
-    return #RuntimeAtlases.images
+    if value > RuntimeAtlases.edge then
+        return 2
+    end
+    return random:range(0, 1) < 0.45 and 1 or 4
 end
 
 function RuntimeAtlases:enter()
@@ -71,13 +76,14 @@ function RuntimeAtlases:enter()
     self.layout = RuntimeAtlases.layouts.landscape
 
     -- Every sprite of the meadow takes a cell of a jittered grid, so the meadow fills evenly, and the sprites draw from the back to the front.
-    local random = m.random(5)
-    local columns = 30
+    local random, noise = m.random(5), m.noise(9)
+    local columns = RuntimeAtlases.columns
     local rows = math.ceil(RuntimeAtlases.count / columns)
     self.spots = {}
     for index = 0, RuntimeAtlases.count - 1 do
         local column, row = index % columns, index // columns
-        self.spots[index + 1] = {x = (column + random:range(0.1, 0.9)) / columns, y = (row + random:range(0.1, 0.9)) / rows, which = RuntimeAtlases.pick(random:range(0, 1))}
+        local x, y = (column + random:range(0.1, 0.9)) / columns, (row + random:range(0.1, 0.9)) / rows
+        self.spots[index + 1] = {x = x, y = y, which = RuntimeAtlases.pick(noise, random, x, y), flip = random:range(0, 1) < 0.5}
     end
     table.sort(self.spots, function(a, b) return a.y < b.y end)
     self:frame{
@@ -120,9 +126,9 @@ function RuntimeAtlases:resize(area)
     local inner = {rect[1] + 20, rect[2] + 66, rect[3] - 40, rect[4] - 86}
     local columns, rows = math.floor(inner[3] / 80), math.floor(inner[4] / 80)
     local width, height = inner[3] / columns, inner[4] / rows
-    self.meadow = inner
     local size = math.min(width, height)
-    local grass = Terrain.batches(columns, rows, size, inner[1] + (inner[3] - columns * size) / 2, inner[2] + (inner[4] - rows * size) / 2, function()
+    self.grassRect = {inner[1] + (inner[3] - columns * size) / 2, inner[2] + (inner[4] - rows * size) / 2, columns * size, rows * size}
+    local grass = Terrain.batches(columns, rows, size, self.grassRect[1], self.grassRect[2], function()
         return Terrain.grass
     end)
     self.grass = grass:bake()
@@ -134,13 +140,13 @@ function RuntimeAtlases:update(dt)
     local stats = graphics2d.stats()
     local atlas = self.packedAtlas
     local packed = atlas and string.format('The atlas packs %d images into %d by %d pixels', #atlas:frameNames(), atlas.texture.width, atlas.texture.height) or 'The atlas is packing'
-    self:status(string.format('%s, and the stage draws in %d calls with %d texture switches.', packed, stats.drawCalls, stats.textureSwitches))
+    self:status(string.format('%s. The whole screen, its interface and the other cards included, draws in %d calls with %d texture switches.', packed, stats.drawCalls, stats.textureSwitches))
 end
 
 -- Sprites that alternate their images break every batch when each image is a texture of its own.
 function RuntimeAtlases:drawMeadow(rect)
-    Panels.card(rect, 'A meadow of 600 sprites')
-    local meadow = self.meadow
+    Panels.card(rect, string.format('A meadow of %d sprites', RuntimeAtlases.count))
+    local grass, tallest = self.grassRect, RuntimeAtlases.heights.tree + 4
     graphics2d.drawStatic(self.grass, 0, 0, {layer = -5})
     local names, heights = RuntimeAtlases.images, RuntimeAtlases.heights
     local atlas = self.useAtlas and self.packedAtlas
@@ -148,14 +154,17 @@ function RuntimeAtlases:drawMeadow(rect)
         local name = names[spot.which]
         local texture = self.textures[spot.which]
         local scale = heights[name] / texture.height
-        local x = meadow[1] + 22 + spot.x * (meadow[3] - 44)
-        local y = meadow[2] + 66 + spot.y * (meadow[4] - 72)
+        local x = grass[1] + 30 + spot.x * (grass[3] - 60)
+        local y = grass[2] + tallest + spot.y * (grass[4] - tallest - 8)
         if atlas then
-            graphics2d.draw(atlas.texture, x, y, {source = atlas:source(name), scaleX = scale, scaleY = scale, pivotY = 1})
+            graphics2d.draw(atlas.texture, x, y, {source = atlas:source(name), scaleX = scale, scaleY = scale, pivotY = 1, flipHorizontal = spot.flip})
         else
-            graphics2d.draw(texture, x, y, {scaleX = scale, scaleY = scale, pivotY = 1})
+            graphics2d.draw(texture, x, y, {scaleX = scale, scaleY = scale, pivotY = 1, flipHorizontal = spot.flip})
         end
     end
+    -- A ring of the color of the card around the grass rounds its corners, and every sprite stands inside it.
+    local ring = 24
+    graphics2d.drawShape({grass[1] - ring, grass[2] - ring, grass[3] + ring * 2, grass[4] + ring * 2}, {radius = RuntimeAtlases.meadowRadius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
 end
 
 -- The medal with the hero, composed on the task pool, and a name on its ribbon drawn as text.

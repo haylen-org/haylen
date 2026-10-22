@@ -74,11 +74,11 @@ function Layers:resize(area)
         local hero = graphics2d.newSprite(self.heroTexture, {x = x, y = y, pivotY = 0.95, scaleX = Layers.heroScale, scaleY = Layers.heroScale, layer = 1})
         self.walkers[index] = {sprite = hero, targetX = x, targetY = y}
     end
-    -- Heroes that stand on the same y sort the same, so only their sort ids keep them in place.
+    -- Heroes that stand on the same y sort the same, so only their sort ids keep them in place. Every other one faces the other way, so a change of order shows.
     self.row = {}
     self.rowY = area.height - 44
     for index = 1, 4 do
-        self.row[index] = graphics2d.newSprite(self.heroTexture, {x = area.width * 0.32 + (index - 2.5) * 58, y = self.rowY, pivotY = 0.95, scaleX = Layers.heroScale, scaleY = Layers.heroScale, layer = 1, color = index % 2 == 0 and '#FFFFD27A' or '#FFFFFFFF'})
+        self.row[index] = graphics2d.newSprite(self.heroTexture, {x = area.width * 0.32 + (index - 2.5) * 58, y = self.rowY, pivotY = 0.95, scaleX = Layers.heroScale, scaleY = Layers.heroScale, layer = 1, flipHorizontal = index % 2 == 0})
     end
     self:setIds(self.ids)
 end

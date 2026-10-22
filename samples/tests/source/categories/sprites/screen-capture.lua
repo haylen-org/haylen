@@ -3,6 +3,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local m = require('haylen.math')
 local scene = require('haylen.scene')
 local storage = require('haylen.storage')
 local ui = require('haylen.ui')
@@ -16,7 +17,8 @@ local ScreenCapture = haylen.class('ScreenCapture', SpriteTest)
 
 ScreenCapture.path = 'tests/screen-capture.png'
 ScreenCapture.rows = 8
-ScreenCapture.coins = {{2, 398, 128, 128}, {134, 398, 128, 128}, {266, 398, 128, 128}, {398, 398, 128, 128}, {266, 398, 128, 128}, {134, 398, 128, 128}}
+-- The coins turn back and forth between their faces, never edge on, so a still picture shows a coin.
+ScreenCapture.coins = {{2, 398, 128, 128}, {134, 398, 128, 128}, {398, 398, 128, 128}, {134, 398, 128, 128}}
 ScreenCapture.slime = {{530, 398, 128, 128}, {662, 398, 128, 128}}
 ScreenCapture.layouts = {
     landscape = {view = {1700, 800}, cards = {scene = {-830, -380, 820, 760}, shot = {10, -380, 820, 760}}},
@@ -31,6 +33,7 @@ local back = graphics.decodeImage(storage.readText('tests/screen-capture.png'))]
 
 function ScreenCapture:enter()
     self.time = 0
+    self.noise = m.noise(23)
     self.message = 'Press "Capture the screen" to take a picture of everything the screen shows.'
     self.hero = SpriteTest.texture('images/hero.png')
     self.terrain = assets.texture('tiled/tiles/terrain.png', Terrain.textureOptions)
@@ -45,7 +48,7 @@ function ScreenCapture:enter()
     }
 end
 
--- Picks the layout that draws the cards larger in the play area and bakes the island of the scene: grass around a pond with a sandy shore.
+-- Picks the layout that draws the cards larger in the play area and bakes the island of the scene: grass around a pond with a wide sandy shore whose edges wander with noise.
 function ScreenCapture:resize(area)
     local layout = Panels.layout(ScreenCapture.layouts, area)
     self.view = layout.view
@@ -61,11 +64,11 @@ function ScreenCapture:resize(area)
     self.cell = size
     self.grass, self.edges = Terrain.bake(columns, rows, size, self.map[1], self.map[2], function(column, row)
         local dx, dy = (column - columns / 2) / (columns * 0.22), (row - rows / 2) / (rows * 0.21)
-        local pond = dx * dx + dy * dy
+        local pond = dx * dx + dy * dy + self.noise:fractal(column * 0.4, row * 0.4, 2, 2, 0.5) * 0.5
         if pond < 1 then
             return Terrain.water
         end
-        return pond < 2.2 and Terrain.sand or Terrain.grass
+        return pond < 2.7 and Terrain.sand or Terrain.grass
     end)
 end
 

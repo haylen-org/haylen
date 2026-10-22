@@ -188,7 +188,8 @@ function TileLayers:update(dt)
         self:paint(worldX, worldY)
     end
     local layer = self.layers[Terrain.grass]
-    self:status(string.format('%d chunks hold the world near the view: %d generated and %d dropped so far, with %d corners of paths painted.', layer.chunkCount, self.generated, self.dropped, self.paintedCount))
+    local painted = self.paintedCount == 0 and 'and no path is painted yet' or string.format('and you painted dirt on %d points of the map', self.paintedCount)
+    self:status(string.format('%d chunks hold the world near the view, %d generated and %d dropped so far, %s.', layer.chunkCount, self.generated, self.dropped, painted))
 end
 
 function TileLayers:draw(area)

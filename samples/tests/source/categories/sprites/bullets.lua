@@ -182,7 +182,7 @@ function Bullets:update(dt)
     end
     local frame = debugging.frame()
     local pool = self.pool
-    self:status(string.format('%s bullets in flight and %s waiting in the pool of %s. %.0f frames per second, %.2f ms per frame.', localization.formatNumber(pool.active), localization.formatNumber(pool.idle), localization.formatNumber(pool.capacity), frame.fps, frame.milliseconds))
+    self:status(string.format('%s bullets in flight and %s waiting in the pool of %s. The engine works %.1f ms of each frame, and the screen shows %.0f frames per second.', localization.formatNumber(pool.active), localization.formatNumber(pool.idle), localization.formatNumber(pool.capacity), frame.milliseconds, frame.fps))
 end
 
 function Bullets:drawTurret(x, y, light)

@@ -122,14 +122,17 @@ function RenderTargets:draw(area)
     graphics2d.draw(texture, cells[2].x, cells[2].y, {width = width * scale, height = height * scale, rotation = math.sin(time) * 0.45})
     graphics2d.draw(texture, cells[3].x, cells[3].y, {width = width, height = height, color = '#FFFF9060', flipVertical = true})
 
+    -- The strip is smaller by the reach of its wave, so its crests and troughs stay where the other pictures end.
     local columns = RenderTargets.columns
-    local left, top = cells[4].x - width / 2, cells[4].y - height / 2
     local amplitude = height * 0.05
+    local meshHeight = height - amplitude * 2
+    local meshWidth = width * meshHeight / height
+    local left, top = cells[4].x - meshWidth / 2, cells[4].y - meshHeight / 2
     for column = 0, columns do
         local lift = math.sin(time * 3 + column * 0.6) * amplitude
-        local x = left + width * column / columns
+        local x = left + meshWidth * column / columns
         self.vertices[column * 2 + 1].x, self.vertices[column * 2 + 1].y = x, top + lift
-        self.vertices[column * 2 + 2].x, self.vertices[column * 2 + 2].y = x, top + height + lift
+        self.vertices[column * 2 + 2].x, self.vertices[column * 2 + 2].y = x, top + meshHeight + lift
     end
     graphics2d.drawMesh(texture, self.vertices, self.indices)
 end

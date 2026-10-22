@@ -49,7 +49,7 @@ function BouncingBunnies:enter()
         controls = {
             ui.formField{label = 'Positions', ui.segmentedControl{id = 'mode', items = BouncingBunnies.modes, selected = 'bulk', onChange = function(event) self.mode = event.value end}},
             ui.row{wrap = true, gap = 12,
-                ui.button{id = 'add', text = 'Add 1,000', grow = 1, variant = 'primary', onClick = function() self:add(1000) end},
+                ui.button{id = 'add', text = 'Add 1,000', grow = 1, onClick = function() self:add(1000) end},
                 ui.button{id = 'many', text = 'Add 10,000', grow = 1, onClick = function() self:add(10000) end},
             },
             ui.row{wrap = true, gap = 12,
@@ -164,7 +164,7 @@ function BouncingBunnies:update(dt)
     end
     local frame = debugging.frame()
     local source = self.mode == 'bulk' and 'from one float buffer' or 'from one table each'
-    self:status(string.format('%s bunnies drawn %s, at %.0f frames per second and %.2f ms per frame.', localization.formatNumber(self.count), source, frame.fps, frame.milliseconds))
+    self:status(string.format('%s bunnies drawn %s. The engine works %.1f ms of each frame, and the screen shows %.0f frames per second.', localization.formatNumber(self.count), source, frame.milliseconds, frame.fps))
 end
 
 function BouncingBunnies:draw(area)

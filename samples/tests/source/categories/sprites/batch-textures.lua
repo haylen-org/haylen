@@ -14,6 +14,7 @@ local BatchTextures = haylen.class('BatchTextures', SpriteTest)
 
 BatchTextures.images = {'hero', 'rock', 'tree', 'bunny'}
 BatchTextures.hero, BatchTextures.rock, BatchTextures.tree, BatchTextures.bunny = 1, 2, 3, 4
+BatchTextures.fieldRadius = 12
 BatchTextures.cell = 84
 BatchTextures.layouts = {
     landscape = {view = {1700, 800}, card = {-830, -380, 1660, 760}},
@@ -40,7 +41,7 @@ function BatchTextures:enter()
         code = BatchTextures.code,
         view = self.layout.view,
         hint = 'Every sprite picks one of four textures and sways by its own data, and the whole meadow stays one draw call.',
-        controls = {ui.toggle{id = 'sway', text = 'Sway each sprite by its data', checked = true, onChange = function(event) self.swaying = event.checked end}},
+        controls = {ui.toggle{id = 'sway', text = 'Sway by sprite data', checked = true, onChange = function(event) self.swaying = event.checked end}},
         focus = 'sway',
     }
 end
@@ -66,11 +67,12 @@ function BatchTextures:resize(area)
     self:fill()
 end
 
--- Adds a sprite of an image whose feet stand at a point of the field, `height` units tall, with the strength of its sway and a walk when it moves, unless it would stand on the road or reach past the field.
+-- Adds a sprite of an image whose feet stand at a point of the field, `height` units tall, with the strength of its sway and a walk when it moves, unless it would stand on the road or reach past the field as it sways.
 function BatchTextures:place(sprites, which, x, y, height, strength, walk)
-    local field = self.field
+    local field, texture = self.field, self.textures[which]
+    local reach = height * texture.width / texture.height / 2 + 12
     local onRoad = which ~= BatchTextures.hero and y > self.roadY - self.roadHeight * 0.5 - 6 and y < self.roadY + self.roadHeight * 0.5 + height * 0.3
-    if onRoad or y - height * 0.9 < field[2] or y > field[2] + field[4] - 4 or x < field[1] + 20 or x > field[1] + field[3] - 20 then
+    if onRoad or y - height * 0.9 < field[2] or y > field[2] + field[4] - 4 or x - reach < field[1] or x + reach > field[1] + field[3] then
         return
     end
     sprites[#sprites + 1] = {which = which, x = x, y = y, height = height, strength = strength, walk = walk}
@@ -156,11 +158,14 @@ function BatchTextures:walk(dt)
     self.meadow:writeFields(positions, {'x', 'y'})
 end
 
+-- A ring of the color of the card around the field rounds its corners.
 function BatchTextures:draw(area)
     Panels.card(self.layout.card, 'Four textures, one batch, one draw call')
     graphics2d.drawStatic(self.grass, 0, 0, {layer = -5})
     graphics2d.drawStatic(self.edges, 0, 0, {layer = -4})
     self.meadow:draw(self.swaying and {material = self.sway} or nil)
+    local field, ring = self.field, 24
+    graphics2d.drawShape({field[1] - ring, field[2] - ring, field[3] + ring * 2, field[4] + ring * 2}, {radius = BatchTextures.fieldRadius + ring, color = '#00000000', borderWidth = ring, borderColor = Panels.fill, layer = 1})
 end
 
 return BatchTextures

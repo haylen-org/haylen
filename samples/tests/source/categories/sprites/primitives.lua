@@ -1,4 +1,4 @@
--- Primitives: a card for each drawing function with its name in code: lines of several widths and a turning hand, open and closed polylines, filled and outlined rectangles, circles from large to tiny, rings, arcs that fill up, a star, a hexagon and a concave polygon, meshes with vertex colors and a texture, shapes with a gradient, a border, a soft shadow and corners of their own, ellipses filled, outlined, cut into a sector and holding a portrait, strokes along a Bézier curve and a dashed loop, and a field of points that twinkle.
+-- Primitives: a card for each drawing function with its name in code: lines of several widths and a turning hand, open and closed polylines, filled and outlined rectangles, circles from large to tiny, rings, an arc that fills and empties, a star, a hexagon and a concave polygon, a mesh with vertex colors beside a textured one that sways, shapes with a gradient, a border, a soft shadow and corners of their own, ellipses filled, outlined, cut into a sector and holding a portrait, strokes along a Bézier curve and a dashed loop, and a field of points that twinkle.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -113,25 +113,25 @@ function Primitives:cell(index, x, y, rx, ry)
             graphics2d.drawRing(x, y, radius, 3 + ring, m.fromHsv(ring / 5, 0.6, 1))
         end
     elseif index == 6 then
-        local progress = (time * 0.35) % 1
+        local progress = 0.5 + math.sin(time * 0.8) * 0.4
         local start = -math.pi / 2
-        graphics2d.drawRing(x, y, reach * 0.8, 12, Test.line)
-        graphics2d.drawArc(x, y, reach * 0.8, 12, start, start + m.tau * progress, Test.green, {layer = 1})
-        graphics2d.drawArc(x, y, reach * 0.48, 8, time * 2, time * 2 + 1.5, Test.warm)
-        graphics2d.drawText(nil, string.format('%.0f%%', progress * 100), x, y, {size = 26, color = Test.ink, anchor = {0.5, 0.5}})
+        graphics2d.drawRing(x, y, reach * 0.8, 14, Test.line)
+        graphics2d.drawArc(x, y, reach * 0.8, 14, start, start + m.tau * progress, Test.green, {layer = 1})
+        graphics2d.drawText(nil, string.format('%.0f%%', progress * 100), x, y, {size = 30, color = Test.ink, anchor = {0.5, 0.5}})
     elseif index == 7 then
         graphics2d.drawPolygon(Primitives.star(x - rx * 0.4, y - ry * 0.38, reach * 0.5, reach * 0.22, time * 0.3), Test.warm)
         graphics2d.drawPolygon(Primitives.regular(x + rx * 0.58, y - ry * 0.62, reach * 0.24, 6, time * 0.5), Test.green)
         local left, top, wide, tall, thick = x - rx * 0.1, y + ry * 0.12, rx * 0.95, ry * 0.68, reach * 0.26
         graphics2d.drawPolygon({{left, top}, {left + thick, top}, {left + thick, top + tall - thick}, {left + wide, top + tall - thick}, {left + wide, top + tall}, {left, top + tall}}, Test.accent)
     elseif index == 8 then
+        local side = math.min(rx * 0.8, ry * 1.4)
+        local middle = x - rx * 0.48
         graphics2d.drawMesh(nil, {
-            {x = x - rx * 0.9, y = y - ry * 0.05, color = '#FFFF4060'},
-            {x = x - rx * 0.35, y = y - ry * 0.85, color = '#FF40FF80'},
-            {x = x + rx * 0.2, y = y - ry * 0.05, color = '#FF4080FF'},
+            {x = middle - side / 2, y = y + side * 0.45, color = '#FFFF4060'},
+            {x = middle, y = y - side * 0.55, color = '#FF40FF80'},
+            {x = middle + side / 2, y = y + side * 0.45, color = '#FF4080FF'},
         }, {1, 2, 3})
-        local side = reach * 0.72
-        local left, top, sway = x + rx * 0.85 - side, y + ry * 0.75 - side, math.sin(time * 2) * side * 0.2
+        local left, top, sway = x + rx * 0.48 - side / 2, y - side / 2, math.sin(time * 2) * side * 0.2
         graphics2d.drawMesh(self.hero, {
             {x = left, y = top, u = 0, v = 0},
             {x = left + side + sway, y = top - side * 0.1, u = 1, v = 0},

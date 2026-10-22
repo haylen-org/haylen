@@ -15,8 +15,6 @@ Atlases.runCells = {9, 10, 11, 12, 13, 14, 15, 16}
 Atlases.titles = {'Hash atlas, trimmed frames', 'Array atlas, tags and a slice', 'Grid sheet of cells'}
 -- The sheets draw at most this tall above their samples.
 Atlases.sheetHeight = 210
--- The samples spread over at most this much room under their sheet, so a tall stage keeps them close to it.
-Atlases.room = 420
 Atlases.ink = '#FFE8EAF2'
 Atlases.frameLine = '#FF6C7FC8'
 
@@ -112,6 +110,7 @@ function Atlases.place(entry, x, y)
     entry.sprite:draw()
 end
 
+-- Each column holds a sheet at the top and what it makes below it, on one row whose captions share one line across the columns.
 function Atlases:draw(area)
     local column = area.width / 3
     local inner = column - 72
@@ -121,40 +120,36 @@ function Atlases:draw(area)
     graphics2d.drawLine(column, 16, column, area.height - 16, 2, Test.line)
     graphics2d.drawLine(column * 2, 16, column * 2, area.height - 16, 2, Test.line)
 
-    -- The free room under each sheet holds its samples: the upper row near the middle of it and the lower row near its end.
-    local top = 84
-    local bottom = Atlases.drawSheet(self.gems.texture, column * 0.5, top, inner, self.gemSources)
-    local room = math.min(area.height - bottom, Atlases.room)
-    local upper, lower = bottom + room * 0.3, bottom + room * 0.72
-    local step = math.min(88, inner / #self.icons)
+    local top, caption = 84, area.height - 52
+    local row = caption - 52
+    Atlases.drawSheet(self.gems.texture, column * 0.5, top, inner, self.gemSources)
+    local step = math.min(76, inner / (#self.icons + 1.6))
+    local left = column * 0.5 - step * (#self.icons + 0.6) / 2
     for index, icon in ipairs(self.icons) do
-        icon.x, icon.y = column * 0.5 + (index - (#self.icons + 1) / 2) * step, upper
+        icon.x, icon.y = left + (index - 1) * step, row
         icon:draw()
     end
-    Atlases.label('Five frames by name', column * 0.5, upper + 50)
-    Atlases.place(self.players.coin, column * 0.5, lower)
-    Atlases.label('A coin from six frames', column * 0.5, lower + 52)
+    Atlases.place(self.players.coin, left + (#self.icons + 0.6) * step, row)
+    Atlases.label('Five frames by name, and a coin of six', column * 0.5, caption)
 
-    bottom = Atlases.drawSheet(self.slime.texture, column * 1.5, top, inner, self.slimeSources)
-    room = math.min(area.height - bottom, Atlases.room)
-    lower = bottom + room * 0.72
     -- The idle slime says the bubble, whose tail points down at it from the corner of the slice, and the body of the bubble ends above the tail.
+    Atlases.drawSheet(self.slime.texture, column * 1.5, top, inner, self.slimeSources)
     local speaker, borderScale = column * 1.5 - inner / 3, 1.4
-    local bubble = {speaker - 16, lower - 54 - 120, 270, 120}
+    local bubble = {speaker - 16, row - 54 - 120, 270, 120}
     graphics2d.drawNineSlice(self.bubble, bubble, '#FFFFFFFF', {borderScale = borderScale, layer = 2})
     graphics2d.drawText(nil, 'A slice!', bubble[1] + bubble[3] / 2, bubble[2] + bubble[4] / 2 - 8 * borderScale, {size = 32, color = '#FF1E1B33', anchor = {0.5, 0.5}, layer = 3})
     for index, entry in ipairs(Atlases.tags) do
         local x = column * 1.5 + (index - 2) * inner / 3
-        Atlases.place(self.players[entry.tag], x, lower)
-        Atlases.label(entry.label, x, lower + 52)
+        Atlases.place(self.players[entry.tag], x, row)
+        Atlases.label(entry.label, x, caption)
     end
 
-    bottom = Atlases.drawSheet(self.sheet, column * 2.5, top, inner, self.cells, Atlases.runCells[self.players.walker.animator.frame])
+    local bottom = Atlases.drawSheet(self.sheet, column * 2.5, top, inner, self.cells, Atlases.runCells[self.players.walker.animator.frame])
     local walker = self.players.walker.sprite
-    local size = math.min(Atlases.room - 80, area.height - bottom - 80, inner)
+    local size = math.min(caption - bottom - 24, inner)
     walker.scaleX, walker.scaleY = size / 256, size / 256
-    Atlases.place(self.players.walker, column * 2.5, bottom + 20 + size / 2)
-    Atlases.label('Run, cells 9 to 16', column * 2.5, bottom + 28 + size)
+    Atlases.place(self.players.walker, column * 2.5, caption - 8 - size / 2)
+    Atlases.label('Run, cells 9 to 16', column * 2.5, caption)
 end
 
 return Atlases
