@@ -200,26 +200,70 @@ function Window:update(dt)
     self:status(string.format('The UI %s the keyboard, and the back button %s.', ui.usingKeyboard() and 'wants' or 'does not want', window.backLeavesApp() and 'leaves the app' or 'stays in the app'))
 end
 
--- Paints the visible area scaled into the picture, with what lies outside the safe area in red, the safe area in green and the keyboard in yellow.
+-- The body drawn around the picture of the screen: a phone or a tablet on those platforms or while the safe area simulates one, a television, or a monitor on a stand.
+Window.devices = {iphoneNotch = 'phone', iphoneDynamicIsland = 'phone', androidGestureBar = 'phone', ipad = 'tablet', television = 'television'}
+Window.platformDevices = {ios = 'phone', android = 'phone', tvos = 'television'}
+-- The width of the bezel around the screen of each body, and the room under it for a stand.
+Window.bezels = {phone = 12, tablet = 16, television = 6, monitor = 10}
+Window.stands = {phone = 0, tablet = 0, television = 14, monitor = 34}
+-- The sketch of the frame of a test inside the safe area: the Back button, the code, the title, the region, the code card and the panel, as shares of the safe area.
+Window.sketch = {
+    {0.03, 0.05, 0.07, 0.07, '#FF39415A'},
+    {0.12, 0.065, 0.05, 0.04, '#FF8FB0FF'},
+    {0.19, 0.065, 0.24, 0.04, '#FF7A8099'},
+    {0.03, 0.17, 0.66, 0.52, '#FF232938'},
+    {0.03, 0.72, 0.66, 0.22, '#FF232938'},
+    {0.71, 0.17, 0.26, 0.77, '#FF232938'},
+}
+
+-- Paints the screen scaled into the picture, inside the body of its device, with what lies outside the safe area in red, a sketch of the frame of a test in the safe area and the keyboard in yellow.
 function Window:render()
     Window.super.render(self)
     local size = Window.previewSize
     graphics2d.beginTarget(self.previewTarget, self.previewCamera, {clear = ui.themeColor('raised')})
+    local device = Window.devices[viewport.safeAreaSimulation()] or Window.platformDevices[haylen.platform] or 'monitor'
+    local bezel, stand = Window.bezels[device], Window.stands[device]
     local visible = viewport.visibleRect()
-    local scale = math.min((size[1] - 48) / visible.width, (size[2] - 48) / visible.height)
+    local scale = math.min((size[1] - 40 - bezel * 2) / visible.width, (size[2] - 32 - bezel * 2 - stand) / visible.height)
     local width, height = visible.width * scale, visible.height * scale
-    local left, top = (size[1] - width) / 2, (size[2] - height) / 2
+    local left, top = (size[1] - width) / 2, (size[2] - height - stand) / 2
     local function place(rect)
         return {left + (rect.x - visible.x) * scale, top + (rect.y - visible.y) * scale, rect.width * scale, rect.height * scale}
     end
-    graphics2d.drawShape({left - 10, top - 10, width + 20, height + 20}, {radius = 22, color = '#FF0F111A', borderWidth = 3, borderColor = Test.line})
-    graphics2d.drawShape({left, top, width, height}, {radius = 12, color = '#66FF8A84'})
+    self:drawDevice(device, {left, top, width, height}, bezel)
+    graphics2d.drawShape({left, top, width, height}, {radius = device == 'phone' and 14 or 4, color = '#FF5A3A44'})
+
     local safe = place(viewport.safeRect())
-    graphics2d.drawShape(safe, {radius = 10, color = '#FF1E3A33', borderWidth = 3, borderColor = Test.green})
-    graphics2d.drawText(nil, 'Safe area', safe[1] + safe[3] / 2, safe[2] + safe[4] / 2, {size = 30, color = Test.green, anchor = {0.5, 0.5}, layer = 2})
-    if self.keyboard then
-        graphics2d.drawShape(place(self.keyboard), {radius = 8, color = '#C0F2B23A', layer = 3})
+    graphics2d.drawShape(safe, {radius = 6, color = '#FF181D26', layer = 1})
+    for _, part in ipairs(Window.sketch) do
+        graphics2d.drawShape({safe[1] + safe[3] * part[1], safe[2] + safe[4] * part[2], safe[3] * part[3], safe[4] * part[4]}, {radius = 3, color = part[5], layer = 2})
     end
+    graphics2d.drawShape(safe, {radius = 6, color = '#00000000', borderWidth = 2, borderColor = Test.green, layer = 3})
+    if self.keyboard then
+        graphics2d.drawShape(place(self.keyboard), {radius = 6, color = '#E0F2B23A', layer = 4})
+    end
+end
+
+-- The body of the device around the screen, with the stand of a monitor or the feet of a television under it and the buttons on the side of a phone.
+function Window:drawDevice(device, screen, bezel)
+    local body = {screen[1] - bezel, screen[2] - bezel, screen[3] + bezel * 2, screen[4] + bezel * 2}
+    local color, edge = '#FF0F111A', '#FF39415A'
+    local bottom = body[2] + body[4]
+    local middle = body[1] + body[3] / 2
+    if device == 'monitor' then
+        graphics2d.drawShape({middle - body[3] * 0.06, bottom - 2, body[3] * 0.12, 24}, {color = '#FF2C3147'})
+        graphics2d.drawShape({middle - body[3] * 0.17, bottom + 20, body[3] * 0.34, 10}, {radius = 5, color = '#FF2C3147', borderWidth = 2, borderColor = edge})
+    elseif device == 'television' then
+        for _, side in ipairs({0.18, 0.82}) do
+            graphics2d.drawShape({body[1] + body[3] * side - 4, bottom - 2, 8, 14}, {radius = 3, color = '#FF2C3147'})
+        end
+    elseif device == 'phone' then
+        local tall = body[4] > body[3]
+        local button = tall and {body[1] + body[3] - 2, body[2] + body[4] * 0.2, 5, body[4] * 0.12} or {body[1] + body[3] * 0.7, body[2] - 3, body[3] * 0.1, 5}
+        graphics2d.drawShape(button, {radius = 2, color = edge})
+    end
+    local radius = ({phone = 26, tablet = 22, television = 6, monitor = 12})[device]
+    graphics2d.drawShape(body, {radius = radius, color = color, borderWidth = 3, borderColor = edge})
 end
 
 return Window

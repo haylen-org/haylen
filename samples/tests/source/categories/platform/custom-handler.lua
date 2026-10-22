@@ -9,10 +9,11 @@ local platformSample = require('platform-sample')
 
 local CustomHandler = haylen.class('CustomHandler', SampleTest)
 
+-- The platform, the file, its folder in the plugin and where the file registers the handler.
 CustomHandler.sources = {
-    {'Android', 'android/src/main/java/dev/haylen/samples/platform/PlatformSamplePlugin.java', 'Registered in "onLoad", which the meta-data of the manifest of the module names.'},
-    {'Apple', 'apple/PlatformSamplePlugin.m', 'Registered in "loadWithContext:", which the runtime calls for the class of "plugin.json".'},
-    {'Web', 'web/platform-sample.js', 'Registered in "load", which the loader calls before the runtime starts.'},
+    {'Android', 'PlatformSamplePlugin.java', 'android/src/main/java/com/haylen/plugins/platformsample', 'registered in "onLoad", which the meta-data of the manifest of the module names.'},
+    {'Apple', 'PlatformSamplePlugin.m', 'apple', 'registered in "loadWithContext:", which the runtime calls for the class of "plugin.json".'},
+    {'Web', 'platform-sample.js', 'web', 'registered in "load", which the loader calls before the runtime starts.'},
 }
 
 function CustomHandler:enter()
@@ -21,10 +22,10 @@ function CustomHandler:enter()
     for _, source in ipairs(CustomHandler.sources) do
         sources[#sources + 1] = ui.column{gap = 4,
             ui.row{gap = 12, ui.badge{text = source[1], tone = 'accent', width = 130}, ui.label{text = source[2], font = 'monospace', color = 'accentText', grow = 1}},
-            ui.label{text = source[3], font = 'caption', color = 'textMuted'},
+            ui.label{text = string.format('In the folder "%s", %s', source[3], source[4]), font = 'caption', color = 'textMuted'},
         }
     end
-    sources[#sources + 1] = ui.label{text = 'The paths are inside the folder "plugins/platform-sample" of the test project.', font = 'caption', color = 'textMuted'}
+    sources[#sources + 1] = ui.label{text = 'Each of these folders is inside "plugins/platform-sample" of the test project.', font = 'caption', color = 'textMuted'}
     self:frame{
         hint = 'Send any text to "platform-sample.echo" again and see which language answered.',
         focus = 'call',
