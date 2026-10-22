@@ -705,6 +705,18 @@ TEST_F(ParticlesTest, SubEmittersSpawnOnEveryTrigger) {
     EXPECT_THROW(Emitter({.texture = texture(), .subEmitters = {{.trigger = Trigger::Death}}}), std::invalid_argument);
 }
 
+TEST_F(ParticlesTest, LivingParticlesSpreadTheBirthsOfTheirSubEmittersOverTheStep) {
+    using Trigger = EmitterConfig::SubEmitter::Trigger;
+    const auto smoke = std::make_shared<EmitterConfig>(EmitterConfig{.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {0.0F, 0.0F}, .bounds = math::Rect{5.0F, -50.0F, 100.0F, 100.0F}});
+    Emitter rocket({.texture = texture(), .rate = 0.0F, .lifetime = {10.0F, 10.0F}, .speed = {100.0F, 100.0F}, .direction = 0.0F, .spread = 0.0F, .subEmitters = {{.config = smoke, .trigger = Trigger::Alive, .rate = 100.0F}}});
+    rocket.burst(1);
+    rocket.update(0.1F);
+    rocket.update(0.0F);
+
+    // The ten puffs of the step lie along the way the rocket went from 0 to 10, so the four it left before 5 fall outside the bounds of the smoke.
+    EXPECT_EQ(drawFrame({&rocket}).sprites, 7U);
+}
+
 TEST_F(ParticlesTest, LightsDrawOnlyInLitCanvases) {
     Emitter fire({.texture = texture(), .rate = 0.0F, .lifetime = {1.0F, 1.0F}, .light = EmitterConfig::Light{.radius = 200.0F, .flicker = {.speed = 8.0F, .amount = 0.2F}}, .particleLights = EmitterConfig::ParticleLights{.max = 4}});
     fire.burst(10);

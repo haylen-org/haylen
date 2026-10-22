@@ -238,7 +238,7 @@ local circle = particles2d.newEmitter({texture = assets.texture('effects/rune.pn
 
 A sub-emitter spawns the particles of another effect at the particles of its emitter. It can spawn them where particles are born, where they die, where they hit something, or at a rate while they live. A raindrop that splashes where it dies is a sub-emitter, and so is a firework that bursts into sparks.
 
-Each sub-emitter keeps one emitter for all its particles. It updates and draws with its parent, after it. So a rain of thousands of drops that splash costs two emitters, not thousands.
+Each sub-emitter keeps one emitter for all its particles. It updates with its parent, before it, and draws with its parent, after it. So a rain of thousands of drops that splash costs two emitters, not thousands, and the particles that a parent spawns in it start at the moment that spawned them. A living particle fires the `alive` trigger at moments spread over each update, where the particle was at each moment, so a fast rocket leaves a smooth trail of smoke, not a clump every frame.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -343,13 +343,13 @@ An emitter keeps its particles in parallel arrays, one for each value a particle
 
 Every update runs these steps:
 
-1. The emitter measures its own velocity from its move since the last update. The options `inheritVelocity` and `rateOverDistance` use it.
-2. The particles move: gravity, radial and tangential acceleration, turbulence, which samples `math::Noise2D` at the position of each particle, attractors, damping, the speed and spin curves, and the floor, bounds and walls. When Lua updates the emitter, they move in chunks of 4096 on the job system. A chunk touches only its own particles, so the result is the same as on one thread.
-3. World collision casts the move of every particle through the physics world in one `physics2d::RayBatch`, also on the job system.
-4. The sub-emitters of hits and of living particles fire. Then the expired particles fire the sub-emitters of death and leave the arrays, which close their gaps in place and keep the order the particles draw in.
-5. New particles spawn. Bursts spawn at the position of the emitter. The particles of the rate and of the distance spread along the path the emitter moved and over the time of the update. Each particle is born at its own moment inside the update, then moves, collides and ages for the part of the update it lived. So a long frame, a slow device or a fast emitter leaves an even stream, not a clump at the emitter and a gap behind it. World collision casts these first moves from where the particles were born.
-6. The trails record the positions of the particles at fixed moments.
-7. The emitters of the sub-emitters update the same way.
+1. The emitters of the sub-emitters update the same way, so the particles that the next steps spawn in them start where and when they are born.
+2. The emitter measures its own velocity from its move since the last update. The options `inheritVelocity` and `rateOverDistance` use it.
+3. The particles move: gravity, radial and tangential acceleration, turbulence, which samples `math::Noise2D` at the position of each particle, attractors, damping, the speed and spin curves, and the floor, bounds and walls. When Lua updates the emitter, they move in chunks of 4096 on the job system. A chunk touches only its own particles, so the result is the same as on one thread.
+4. World collision casts the move of every particle through the physics world in one `physics2d::RayBatch`, also on the job system.
+5. The sub-emitters of hits and of living particles fire. A living particle fires at moments spread over the update, each where the particle was then, and what it spawns moves for the rest of the update. Then the expired particles fire the sub-emitters of death and leave the arrays, which close their gaps in place and keep the order the particles draw in.
+6. New particles spawn. Bursts spawn at the position of the emitter. The particles of the rate and of the distance spread along the path the emitter moved and over the time of the update. Each particle is born at its own moment inside the update, then moves, collides and ages for the part of the update it lived. So a long frame, a slow device or a fast emitter leaves an even stream, not a clump at the emitter and a gap behind it. World collision casts these first moves from where the particles were born. Each new particle fires the sub-emitters of births where it was born.
+7. The trails record the positions of the particles at fixed moments.
 
 ## How drawing works
 

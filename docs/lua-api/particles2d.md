@@ -191,7 +191,7 @@ The `subEmitters` key takes a list of sub-emitters. Each spawns the particles of
 | `overrides` | table | none | Options applied on top of the effect. |
 | `trigger` | string | `'death'` | The moment that spawns: `'birth'`, `'death'`, `'collision'` or `'alive'`. |
 | `count` | integer or range | `1` | The particles spawned each time. |
-| `rate` | number | `10` | Particles per second for each living particle of the `alive` trigger. |
+| `rate` | number | `10` | Particles per second for each living particle of the `alive` trigger. They are born at moments spread over each update, where the particle was at each moment. |
 | `probability` | number | `1` | The chance of each spawn, from 0 to 1. |
 | `inheritVelocity` | number | `0` | The share of the velocity of the particle that the spawned particles take. |
 | `inheritColor` | boolean | `false` | Tints the spawned particles with the color the particle had. |

@@ -374,6 +374,11 @@ void Emitter::spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec
         if (lived > 0.0F) {
             simulate(lived, born, born + 1);
         }
+        for (std::size_t sub = 0; sub < config.subEmitters.size(); ++sub) {
+            if (config.subEmitters[sub].trigger == EmitterConfig::SubEmitter::Trigger::Birth) {
+                trigger(sub, born, lived);
+            }
+        }
     }
 }
 
@@ -530,12 +535,6 @@ void Emitter::spawnParticle(math::Vec2 origin, math::Vec2 inherited, math::Color
         particles.trails.resize(particles.trails.size() + config.trail.length);
     }
     ++spawned;
-
-    for (std::size_t index = 0; index < config.subEmitters.size(); ++index) {
-        if (config.subEmitters[index].trigger == EmitterConfig::SubEmitter::Trigger::Birth) {
-            trigger(index, getCount() - 1);
-        }
-    }
 }
 
 void Emitter::burst(std::size_t count) {
@@ -543,18 +542,19 @@ void Emitter::burst(std::size_t count) {
     liveParticles.set(getCount());
 }
 
-// Spawns the particles of a sub-emitter where a particle of this emitter is, with the velocity and the color it passes on.
-void Emitter::trigger(std::size_t subEmitter, std::size_t index) {
+// Spawns the particles of a sub-emitter where a particle of this emitter was `lived` seconds ago, with the velocity and the color it passes on, and they move for that time.
+void Emitter::trigger(std::size_t subEmitter, std::size_t index, float lived) {
     const EmitterConfig::SubEmitter& sub = config.subEmitters[subEmitter];
     if (sub.probability < 1.0F && !random.chance(sub.probability)) {
         return;
     }
     const std::size_t count = pick(sub.count);
-    const math::Vec2 at = placeOnPlane(getOrigin() + particles.positions[index]);
-    const math::Vec2 inherited = getVelocity(index) * sub.inheritVelocity;
+    const math::Vec2 velocityNow = getVelocity(index);
+    const math::Vec2 at = placeOnPlane(getOrigin() + particles.positions[index] - velocityNow * lived);
+    const math::Vec2 inherited = velocityNow * sub.inheritVelocity;
     const math::Color tint = sub.inheritColor ? particleColor(index) : math::Color::white();
     Emitter& child = *children[subEmitter];
-    child.spawn(count, at, at, inherited, tint, 0.0F, 0.0F);
+    child.spawn(count, at, at, inherited, tint, 0.0F, lived);
 }
 
 void Emitter::update(float deltaSeconds) {
@@ -568,6 +568,10 @@ void Emitter::update(float deltaSeconds, core::JobSystem& jobs) {
 }
 
 void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
+    // The sub-emitters move first, so the particles that this step spawns in them start at the moment of the step that spawned them.
+    for (const std::unique_ptr<Emitter>& child : children) {
+        child->step(deltaSeconds, jobs);
+    }
     velocity = deltaSeconds > 0.0F ? (position - previousPosition) / deltaSeconds : math::Vec2{};
     clock += deltaSeconds;
     const bool casts = castsRays();
@@ -600,9 +604,6 @@ void Emitter::step(float deltaSeconds, core::JobSystem* jobs) {
     sampleTrails(deltaSeconds);
     previousPosition = position;
     peakCount = std::max(peakCount, getCount());
-    for (const std::unique_ptr<Emitter>& child : children) {
-        child->step(deltaSeconds, jobs);
-    }
     liveParticles.set(getCount());
 }
 
@@ -746,14 +747,15 @@ void Emitter::runTriggers(float deltaSeconds) {
         if (entry.trigger == Trigger::Collision && usesHits) {
             for (std::size_t index = 0; index < getCount(); ++index) {
                 if ((particles.flags[index] & kHit) != 0) {
-                    trigger(sub, index);
+                    trigger(sub, index, 0.0F);
                 }
             }
         } else if (entry.trigger == Trigger::Alive) {
+            // The firings of a step spread over it along the way each particle went, so a fast particle leaves a stream instead of a clump every frame.
             for (std::size_t index = 0; index < getCount(); ++index) {
                 const auto times = static_cast<std::size_t>(entry.rate * deltaSeconds + random.nextFloat());
                 for (std::size_t repeat = 0; repeat < times; ++repeat) {
-                    trigger(sub, index);
+                    trigger(sub, index, deltaSeconds * static_cast<float>(times - 1 - repeat) / static_cast<float>(times));
                 }
             }
         }
@@ -766,7 +768,7 @@ void Emitter::removeExpired() {
         if (config.subEmitters[sub].trigger == EmitterConfig::SubEmitter::Trigger::Death) {
             for (std::size_t index = 0; index < getCount(); ++index) {
                 if (particles.ages[index] >= particles.lifetimes[index]) {
-                    trigger(sub, index);
+                    trigger(sub, index, 0.0F);
                 }
             }
         }

@@ -171,7 +171,7 @@ class Emitter final {
     void prepareShape();
     void prepareSubEmitters(const std::vector<EmitterConfig::SubEmitter>& previous);
 
-    // Spawns up to `count` particles, as many as `maxParticles` leaves room for, spread along the segment the emitter moved this step, with the velocity they inherit and a tint over their colors. Their births spread evenly over the last `span` seconds before the final `rest` seconds of the step, and each one moves for the time it lived since, so particles of a long step leave as a stream instead of a clump.
+    // Spawns up to `count` particles, as many as `maxParticles` leaves room for, spread along the segment the emitter moved this step, with the velocity they inherit and a tint over their colors. Their births spread evenly over the last `span` seconds before the final `rest` seconds of the step, and each one moves for the time it lived since, so particles of a long step leave as a stream instead of a clump. Each new particle fires the sub-emitters of births where it started.
     void spawn(std::size_t count, math::Vec2 from, math::Vec2 to, math::Vec2 inherited, math::Color tint, float span, float rest);
     void spawnParticle(math::Vec2 origin, math::Vec2 inherited, math::Color tint);
     [[nodiscard]] Spawn pickSpawn();
@@ -187,7 +187,7 @@ class Emitter final {
     void collideWithWorld(std::size_t begin, core::JobSystem* jobs);
     void removeExpired();
     void runTriggers(float deltaSeconds);
-    void trigger(std::size_t subEmitter, std::size_t index);
+    void trigger(std::size_t subEmitter, std::size_t index, float lived);
     void sampleTrails(float deltaSeconds);
 
     // Returns how many particles the bursts that the cycle time reached since the last call spawn.
