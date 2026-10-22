@@ -590,7 +590,7 @@ print(grid.width, grid.height, grid:contains(9, 7), grid:contains(10, 0)) -- 10 
 
 ## UnionFind
 
-A `UnionFind` keeps the elements 1 to `size` in sets that never share an element, which [`spatial2d.newUnionFind`](#spatial2dnewunionfindcount) returns. It merges sets by size and halves paths as it finds them, so every call takes nearly constant time. Use it to join regions, such as rooms that a door connects. An element below 1 raises `bad argument #1 to 'find' (union-find elements count from 1)`, with the position and the name of the method. An element above `size` raises `Element <index> is outside the union-find of <size> elements.`, where `<index>` is the element minus 1.
+A `UnionFind` keeps the elements 1 to `size` in sets that never share an element, which [`spatial2d.newUnionFind`](#spatial2dnewunionfindcount) returns. It merges sets by size and halves paths as it finds them, so every call takes nearly constant time. Use it to join regions, such as rooms that a door connects. An element below 1 raises `bad argument #1 to 'find' (union-find elements count from 1)`, with the position and the name of the method. An element above `size` raises `Element <element> is outside the union-find of <size> elements.`, which names the element as you passed it, such as `Element 11 is outside the union-find of 10 elements.` for `sets:find(11)` on 10 elements.
 
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
@@ -928,7 +928,7 @@ These messages come from the functions and methods of the module. Messages that 
 | `Unknown option "<key>".` | An options table or a box has a key that it does not take. |
 | `The option "<option>" of "<function>" is invalid: <reason>.` | An option has the wrong type, such as `The option "maxDepth" of "newQuadTree" is invalid: number has no integer representation.`. |
 | `bad argument #1 to 'find' (union-find elements count from 1)` | A method of a `UnionFind` got an element below 1. |
-| `Element <index> is outside the union-find of <size> elements.` | A method of a `UnionFind` got an element above its size. |
+| `Element <element> is outside the union-find of <size> elements.` | A method of a `UnionFind` got an element above its size. |
 | `An overlap world has at most 256 kinds of boxes.` | The `kinds` of `spatial2d.newOverlapWorld` name too many kinds. |
 | `The cell size of an overlap world must be 0 or positive.` | The `cellSize` of `spatial2d.newOverlapWorld` is negative or not finite. |
 | `A box needs a positive width and height.` | A box of `world:defineSet` has no area. |

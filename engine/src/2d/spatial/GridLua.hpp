@@ -24,6 +24,8 @@ template <> struct Type<spatial2d::CellGrid> {
 
 namespace haylen::spatial2d {
 
+class UnionFind;
+
 // Installs the `CellGrid` and `UnionFind` classes of `haylen.spatial2d` and its grid algorithms: grid ray casts and traversals, Bresenham lines and circles, field of view, visibility polygons, flood fills and connected regions. Cells cross into Lua as `{x = column, y = row}` tables.
 class GridLua final {
   public:
@@ -43,8 +45,8 @@ class GridLua final {
     // Reads a cell size given as a number or a `{width, height}` pair.
     [[nodiscard]] static math::Vec2 readCellSize(lua_State* L, int index);
 
-    // Reads a 1-based union-find element and returns its 0-based index.
-    [[nodiscard]] static std::size_t readElement(lua_State* L, int index);
+    // Reads an element of the union-find, counted from 1, and returns its 0-based index. An element outside the union-find raises an error that names it as the app counts it.
+    [[nodiscard]] static std::size_t readElement(lua_State* L, int index, const UnionFind& sets);
 
     static int newCellGrid(lua_State* L);
     static int gridGet(lua_State* L);

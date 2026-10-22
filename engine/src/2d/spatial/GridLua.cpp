@@ -52,9 +52,12 @@ void GridLua::pushCells(lua_State* L, const std::vector<Cell>& cells) {
     }
 }
 
-std::size_t GridLua::readElement(lua_State* L, int index) {
+std::size_t GridLua::readElement(lua_State* L, int index, const UnionFind& sets) {
     const auto element = lua::Stack::read<lua_Integer>(L, index);
     luaL_argcheck(L, element >= 1, index, "union-find elements count from 1");
+    if (static_cast<std::size_t>(element) > sets.size()) {
+        luaL_error(L, "Element %I is outside the union-find of %I elements.", element, static_cast<lua_Integer>(sets.size()));
+    }
     return static_cast<std::size_t>(element - 1);
 }
 
@@ -106,27 +109,27 @@ int GridLua::unionAdd(lua_State* L) {
 
 int GridLua::unionFind(lua_State* L) {
     UnionFind& sets = lua::Userdata::check<UnionFind>(L, 1);
-    lua::Stack::push(L, sets.find(readElement(L, 2)) + 1);
+    lua::Stack::push(L, sets.find(readElement(L, 2, sets)) + 1);
     return 1;
 }
 
 int GridLua::unionUnite(lua_State* L) {
     UnionFind& sets = lua::Userdata::check<UnionFind>(L, 1);
-    const std::size_t first = readElement(L, 2);
-    lua::Stack::push(L, sets.unite(first, readElement(L, 3)));
+    const std::size_t first = readElement(L, 2, sets);
+    lua::Stack::push(L, sets.unite(first, readElement(L, 3, sets)));
     return 1;
 }
 
 int GridLua::unionConnected(lua_State* L) {
     UnionFind& sets = lua::Userdata::check<UnionFind>(L, 1);
-    const std::size_t first = readElement(L, 2);
-    lua::Stack::push(L, sets.isConnected(first, readElement(L, 3)));
+    const std::size_t first = readElement(L, 2, sets);
+    lua::Stack::push(L, sets.isConnected(first, readElement(L, 3, sets)));
     return 1;
 }
 
 int GridLua::unionSetSize(lua_State* L) {
     UnionFind& sets = lua::Userdata::check<UnionFind>(L, 1);
-    lua::Stack::push(L, sets.getSetSize(readElement(L, 2)));
+    lua::Stack::push(L, sets.getSetSize(readElement(L, 2, sets)));
     return 1;
 }
 

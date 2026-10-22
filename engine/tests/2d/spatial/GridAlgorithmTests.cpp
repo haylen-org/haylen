@@ -326,6 +326,8 @@ TEST(GridAlgorithmsLuaTest, RunsGridAlgorithmsFromLua) {
     fixture.runLua("sets = spatial2d.newUnionFind(4)");
     EXPECT_EQ(fixture.lua("return tostring(sets:unite(1, 2)) .. tostring(sets:unite(2, 1)) .. ' ' .. sets:find(2) .. ' ' .. tostring(sets:connected(1, 3)) .. ' ' .. sets:setSize(1) .. ' ' .. sets.setCount .. ' ' .. sets:add() .. ' ' .. sets.size"), "truefalse 1 false 2 3 5 5");
     EXPECT_NE(fixture.lua("sets:find(0)").find("count from 1"), std::string::npos);
+    EXPECT_NE(fixture.lua("sets:find(6)").find("Element 6 is outside the union-find of 5 elements."), std::string::npos);
+    EXPECT_NE(fixture.lua("sets:unite(1, 7)").find("Element 7 is outside the union-find of 5 elements."), std::string::npos);
     EXPECT_EQ(fixture.lua("sets:reset(3) return sets.size .. ' ' .. sets.setCount .. ' ' .. tostring(sets:connected(1, 2))"), "3 3 false");
     EXPECT_NE(fixture.lua("grid:set(9, 0, 1)").find("outside the cell grid"), std::string::npos);
     EXPECT_NE(fixture.lua("spatial2d.floodFill(grid, 0, 0, {fill = 2})").find("Unknown option \"fill\""), std::string::npos);
