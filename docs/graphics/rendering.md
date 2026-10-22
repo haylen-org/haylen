@@ -365,7 +365,7 @@ scene.push({
 
 ### Inside a batch
 
-Sprites, glyphs, nine-slice pieces and metaball splats are instances of one shared quad. Each instance is 48 bytes: position, size, texture coordinates, color, flash color, rotation, four parameter bytes and pivot. The sprite program reads the flip flags from the first parameter byte. The text program reads the outline, the weight and the softness of a glyph from the first, second and fourth bytes. Both lean the quad around its pivot by the skew in the third byte.
+Sprites, glyphs, nine-slice pieces and metaball splats are instances of one shared quad. Each instance is 48 bytes: position, size, texture coordinates, color, flash color, rotation, four parameter bytes and pivot. The sprite program reads the flip flags from the first parameter byte. The texture coordinates are four numbers of 16 bits from 0 to 1, which address every texel of an atlas exactly. A source rectangle that reaches past its texture, such as a tile repeated over a floor, spreads its coordinates over a range of 2, 4 or more textures, centered on 0 when it starts left of or above the texture. The size of that range takes the free bits of the first parameter byte, so the sampler repeats or mirrors the texture across the quad by its `wrap`. The text program reads the outline, the weight and the softness of a glyph from the first, second and fourth bytes. Both lean the quad around its pivot by the skew in the third byte.
 
 Some programs need more per instance:
 

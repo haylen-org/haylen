@@ -1,6 +1,7 @@
 #include "2d/graphics/GpuInstance.hpp"
 
 #include <algorithm>
+#include <array>
 #include <bit>
 #include <cmath>
 
@@ -56,16 +57,36 @@ GpuInstance GpuInstance::make(const graphics::TextureResource& texture, const Sp
         bottom = 1.0F - bottom;
     }
 
-    return {
+    GpuInstance packed{
         .position = {sprite.position.x, sprite.position.y},
         .size = {sprite.size.x, sprite.size.y},
-        .uv = {unorm16(source.getLeft() / width), unorm16(top), unorm16(source.getRight() / width), unorm16(bottom)},
+        .uv = {},
         .color = sprite.color.toRgba8(),
         .flash = sprite.flash.toRgba8(),
         .rotation = sprite.rotation,
         .parameters = {flipBits(sprite.flip), 0, 0, static_cast<std::uint8_t>(std::lround((1.0F - std::fabs(std::cos(sprite.tilt))) * 255.0F))},
         .pivot = {sprite.pivot.x, sprite.pivot.y},
     };
+    const std::array<float, 4> corners{source.getLeft() / width, top, source.getRight() / width, bottom};
+    const auto [lowest, highest] = std::minmax_element(corners.begin(), corners.end());
+    if (*lowest >= 0.0F && *highest <= 1.0F) {
+        for (std::size_t index = 0; index < corners.size(); ++index) {
+            packed.uv[index] = unorm16(corners[index]);
+        }
+        return packed;
+    }
+
+    // A source past the texture spreads its coordinates over the smallest range of whole textures that holds them.
+    const bool centered = *lowest < 0.0F;
+    const float reach = centered ? 2.0F * std::max(-*lowest, *highest) : *highest;
+    const int range = std::clamp(static_cast<int>(std::ceil(std::log2(reach))), 1, kMaxRange);
+    const float span = std::ldexp(1.0F, range);
+    const float shift = centered ? span * 0.5F : 0.0F;
+    for (std::size_t index = 0; index < corners.size(); ++index) {
+        packed.uv[index] = unorm16((corners[index] + shift) / span);
+    }
+    packed.parameters[0] = static_cast<std::uint8_t>(packed.parameters[0] | static_cast<unsigned>(range << kRangeShift) | (centered ? kCenteredBit : 0U));
+    return packed;
 }
 
 // The outline, a positive weight and the softness shrink together into the reach their bytes hold, and the text shader shrinks them again to what the field of the glyph reaches at its size on screen.

@@ -18,7 +18,7 @@ struct TextureResource;
 
 namespace haylen::graphics2d {
 
-// One sprite or glyph as the sprite and text shaders read it from the instance buffer. The four parameter bytes hold the flip bits of a sprite in the first byte and how much its tilt shortens it in the fourth, and the outline, weight and softness of a glyph drawn by the text program, while the third byte is the skew of both. A shape fills a record of the same size with fields of its own.
+// One sprite or glyph as the sprite and text shaders read it from the instance buffer. The four parameter bytes hold the flip bits of a sprite and the range of its texture coordinates in the first byte and how much its tilt shortens it in the fourth, and the outline, weight and softness of a glyph drawn by the text program, while the third byte is the skew of both. A shape fills a record of the same size with fields of its own.
 struct GpuInstance {
     // How a glyph looks beyond its color: the outline, weight and softness in distance field units and the skew as a horizontal shift per unit of height above the baseline.
     struct TextParameters {
@@ -103,6 +103,11 @@ struct GpuInstance {
     static constexpr float kWeightScale = 256.0F;
     static constexpr float kSkewScale = 127.0F;
     static constexpr float kMaximumReach = 0.48F;
+
+    // Texture coordinates inside the texture keep all 16 bits of their precision, while a source that reaches past the texture spreads its coordinates over `2^range` textures, from 0, or centered on 0 when one of them lies below 0. The range and the centering take the bits of the first parameter byte above the flips.
+    static constexpr int kRangeShift = 3;
+    static constexpr int kMaxRange = 15;
+    static constexpr std::uint8_t kCenteredBit = 0x80;
 
     // The flags of a shape, which the shape program reads from the last number of its form.
     static constexpr std::uint16_t kEllipseFlag = 1;

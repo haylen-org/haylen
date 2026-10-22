@@ -65,6 +65,15 @@ float haylen_signed_byte(float value) {
     return step < 128.0 ? step : step - 256.0;
 }
 
+#if !defined(HAYLEN_MESH) && !defined(HAYLEN_SHAPE)
+// The source rectangle of a sprite in texture coordinates. A source that reaches past its texture spreads them over `2^range` textures, from 0 or centered on 0, with the range in bits 3 to 6 of the flags of the sprite and the centering in bit 7, so the texture repeats or mirrors by its wrap across the quad.
+vec4 haylen_instance_source(float flags) {
+    float span = exp2(mod(floor(flags / 8.0), 16.0));
+    float shift = floor(flags / 128.0) * span * 0.5;
+    return instance_uv * span - shift;
+}
+#endif
+
 // Places the corner of the quad of an instance, or the vertex of a mesh, and hands the fragment stage what it reads.
 void haylen_vertex_main() {
     haylen_output_premultiply = haylen_premultiply;
@@ -136,8 +145,9 @@ void haylen_vertex_main() {
         texel = texel.yx;
     }
 
-    uv = mix(instance_uv.xy, instance_uv.zw, texel);
-    haylen_source = vec4(min(instance_uv.xy, instance_uv.zw), max(instance_uv.xy, instance_uv.zw));
+    vec4 source = haylen_instance_source(flags);
+    uv = mix(source.xy, source.zw, texel);
+    haylen_source = vec4(min(source.xy, source.zw), max(source.xy, source.zw));
     color = instance_color;
     haylen_flash = instance_flash;
     haylen_transform = vec2(angle, flags);

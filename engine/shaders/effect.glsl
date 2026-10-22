@@ -38,8 +38,9 @@ void main() {
     if (mod(floor(flags / 4.0), 2.0) >= 1.0) {
         texel = texel.yx;
     }
-    uv = mix(instance_uv.xy, instance_uv.zw, texel);
-    haylen_source = vec4(min(instance_uv.xy, instance_uv.zw), max(instance_uv.xy, instance_uv.zw));
+    vec4 source = haylen_instance_source(flags);
+    uv = mix(source.xy, source.zw, texel);
+    haylen_source = vec4(min(source.xy, source.zw), max(source.xy, source.zw));
     color = instance_color;
     haylen_flash = instance_flash;
     haylen_text_style = vec3(0.0);

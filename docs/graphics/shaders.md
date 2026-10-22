@@ -134,7 +134,7 @@ The file `haylen/material.glsl` holds what every material shares:
 | `color` | `in vec4` | Color of the draw, or of the mesh vertex. |
 | `sprite_texture`, `sprite_sampler` | texture and sampler at binding 0 | The texture of the draw, the image before the pass in post-processing, and the atlas of text. |
 | `haylen_texture(vec2 point)` | `vec4` | The texture of the draw at a point. A sprite of a batch with several textures picks its own texture. |
-| `haylen_source` | `in vec4` | The source rectangle of the draw in texture coordinates, with its smallest corner in `xy` and its largest in `zw`. Meshes, strokes and shapes have the whole texture. |
+| `haylen_source` | `in vec4` | The source rectangle of the draw in texture coordinates, with its smallest corner in `xy` and its largest in `zw`. A source that reaches past its texture runs below 0 or past 1. Meshes, strokes and shapes have the whole texture. |
 | `haylen_data` | `in vec4` | The four numbers of the [sprite data](#sprite-data) of a sprite of a batch, and zeros in the other draws. |
 | `haylen_inside(vec2 point)` | `vec2` | The point moved inside the texels of the source rectangle of the draw, half a texel in from its sides. So filtering never reads the texels around the region of a sprite, such as its neighbours in an atlas. Meshes keep their point, and shapes keep it inside the texture. |
 | `haylen_sprite(vec2 point)` | `vec4` | The texture color inside the source of the draw times the draw color, mixed toward the flash color of the sprite, which is how sprites and meshes draw. A shape paints its border color over it in the band along its edge. |

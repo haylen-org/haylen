@@ -1288,7 +1288,7 @@ scene.push({
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `texture` | Texture | the argument | The texture to draw. |
-| `source` | Rect | empty | The region of the texture in pixels. An empty rectangle covers the whole texture. |
+| `source` | Rect | empty | The region of the texture in pixels. An empty rectangle covers the whole texture, and a region that reaches past the texture shows it again by its `wrap`. |
 | `position` | Vec2 | `{0, 0}` | Where the layer sits in the world while the camera shows the world origin. |
 | `size` | Vec2 | `{0, 0}` | The drawn size of one copy, or the size of the source when zero. |
 | `scrollScale` | Vec2 | `{1, 1}` | How much the layer follows the world on each axis. 1 moves with the world, 0 stays still on the screen, and values between look farther away. Values above 1 look closer than the world. |
@@ -1415,7 +1415,7 @@ Draws `texture` once with its pivot at `x`, `y`. The table `options` is optional
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `source` | Rect | the whole texture | The region of the texture in pixels. |
+| `source` | Rect | the whole texture | The region of the texture in pixels. A region that reaches past the texture shows it again by its `wrap`: repeated with `'repeat'`, mirrored with `'mirror'`, or its edge texels with `'clamp'`. |
 | `width`, `height` | number | `0` | The drawn size before scaling. When both are 0, the size of the source is used. |
 | `scaleX`, `scaleY` | number | `1` | Multiply the drawn size. |
 | `pivotX`, `pivotY` | number | `0.5` | The point of the sprite that sits at `x`, `y` and that the rotation turns around. |
@@ -1511,7 +1511,7 @@ Vector and color properties return copies, so assign a new value instead of chan
 | `tilt` | number | `0` | Lays the turned sprite on a plane that leans away from the viewer, as the `tilt` of `graphics2d.draw` does. |
 | `color` | Color | `'#FFFFFFFF'` | Multiplies the texture color. |
 | `flash` | Color | `'#00000000'` | Mixes the result toward this color by its alpha. |
-| `source` | Rect | empty | The region of the texture in pixels. An empty rectangle covers the whole texture. |
+| `source` | Rect | empty | The region of the texture in pixels. An empty rectangle covers the whole texture, and a region that reaches past the texture shows it again by its `wrap`. |
 | `flipHorizontal`, `flipVertical` | boolean | `false` | Mirror the image. |
 | `flipDiagonal` | boolean | `false` | Mirrors the image across its diagonal from the top-left corner. |
 | `layer`, `depth`, `sortOffset`, `sortId`, `visibility`, `blend` | | `0`, `0`, `0`, `0`, `1`, `'alpha'` | The [draw order](#draw-order). |
@@ -1719,7 +1719,7 @@ Each sprite of a batch is a table with these keys:
 | --- | --- | --- | --- |
 | `x`, `y` | number | `0` | The position of the pivot. |
 | `width`, `height` | number | `0` | The drawn size. When both are 0, the size of the source is used, which is the whole texture without a source, like `graphics2d.draw`. |
-| `source` | Rect | the whole texture | The region of the texture in pixels. |
+| `source` | Rect | the whole texture | The region of the texture in pixels. A region that reaches past the texture shows it again by its `wrap`: repeated with `'repeat'`, mirrored with `'mirror'`, or its edge texels with `'clamp'`. |
 | `pivotX`, `pivotY` | number | `0.5` | The pivot as a share of the size. |
 | `rotation` | number | `0` | The rotation in radians. |
 | `tilt` | number | `0` | Lays the turned sprite on a plane that leans away from the viewer, as the `tilt` of `graphics2d.draw` does. |

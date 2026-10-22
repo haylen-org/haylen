@@ -23,7 +23,6 @@ graphics2d.drawLight({x = x, y = y, radius = 1100, shadows = true, shadowFilter 
 
 Occluders.maxCrates = 40
 Occluders.brick = 96
-Occluders.quad = {1, 2, 3, 1, 3, 4}
 
 -- Culls the edges of closed occluders that face the light, whatever their winding, so walls and crates stay lit and only what lies behind them is dark.
 function Occluders.shadeBehind(occluders)
@@ -44,7 +43,6 @@ function Occluders:init(entry)
     self.walls = Occluders.shadeBehind(lighting2d.occludersFromMap(self.map, 'walls'))
     self.lamp = lighting2d.newLight({radius = 1100, color = '#FFFFE4B8', intensity = 1.3, shadows = true, shadowFilter = 'pcf5', shadowSmoothness = 1})
     self.bricks = Room.bricks()
-    self.backdrop = {}
     local tiles = assets.load(Room.tileset, 'image')
     self.stone = graphics.newTexture(tiles:crop(Room.sources.floor), {filter = 'linear', wrap = 'repeat'})
     self.crateTexture = assets.texture(Room.tileset, {filter = 'linear'})
@@ -98,16 +96,11 @@ function Occluders:update(dt)
     self:status(string.format('The map gives %d wall occluders and %d crates follow their bodies, %d occluders in all.', #self.walls, #self.crates, graphics2d.stats().occluders))
 end
 
--- Covers the canvas with a brick wall whose tile repeats every `Occluders.brick` units, as one mesh whose texture coordinates run past 1.
+-- Covers the canvas with a brick wall whose tile repeats every `Occluders.brick` units from the origin of the world, as one sprite whose source reaches over as many tiles as the canvas shows.
 function Occluders:drawBricks()
     local canvas = graphics2d.canvasBounds()
-    local size, color = Occluders.brick, '#FF9A90A0'
-    local left, top, right, bottom = canvas.x, canvas.y, canvas:right(), canvas:bottom()
-    self.backdrop[1] = {x = left, y = top, u = left / size, v = top / size, color = color}
-    self.backdrop[2] = {x = right, y = top, u = right / size, v = top / size, color = color}
-    self.backdrop[3] = {x = right, y = bottom, u = right / size, v = bottom / size, color = color}
-    self.backdrop[4] = {x = left, y = bottom, u = left / size, v = bottom / size, color = color}
-    graphics2d.drawMesh(self.bricks, self.backdrop, Occluders.quad)
+    local scale = self.bricks.width / Occluders.brick
+    graphics2d.draw(self.bricks, canvas.x, canvas.y, {source = {canvas.x * scale, canvas.y * scale, canvas.width * scale, canvas.height * scale}, width = canvas.width, height = canvas.height, pivotX = 0, pivotY = 0, color = '#FF9A90A0'})
 end
 
 -- Draws a closed occluder as stone that repeats across it, with a dark outline, and an open one as a wooden rail.
