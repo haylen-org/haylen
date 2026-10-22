@@ -4,6 +4,7 @@ local storage = require('haylen.storage')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
+local Activity = require('categories.files.activity')
 
 local ResumeState = haylen.class('ResumeState', Test)
 
@@ -66,7 +67,7 @@ end
 function ResumeState:found()
     local value, age = storage.resumeState()
     if type(value) ~= 'table' then
-        return ui.emptyState{title = 'Nothing kept', message = 'The run before quit, came back to the foreground or never went to the background.', grow = 1}
+        return Activity.emptyState(nil, 'files/icons/folder.svg', 'Nothing kept', 'The run before quit, came back to the foreground or never went to the background.')
     end
     return ui.alert{tone = 'success', title = string.format('The %s with %d coins', ResumeState.names[value.screen] or tostring(value.screen), tonumber(value.coins) or 0), message = string.format('Kept %.0f seconds before this launch.', age)}
 end

@@ -5,6 +5,7 @@ local ui = require('haylen.ui')
 local Activity = haylen.class('Activity')
 
 Activity.limit = 60
+Activity.icon = 'interface/states/info.svg'
 
 -- Takes the test that owns the page, the id of the list node and the message the list shows while it is empty.
 function Activity:init(test, id, empty)
@@ -15,13 +16,21 @@ function Activity:init(test, id, empty)
     self.count = 0
 end
 
--- Returns the node that shows the lines, a list in a scroll area that grows to fill its column, over the empty state until the first line.
+-- Returns the node that shows the lines, a list in a scroll area that grows to fill its column, over the empty state in its middle until the first line.
 function Activity:node()
     return ui.scroll{grow = 1, focusable = false, fill = true,
         ui.column{align = 'stretch', grow = 1,
-            ui.emptyState{id = self.id .. '-empty', title = 'Nothing yet', message = self.empty, grow = 1},
+            Activity.emptyState(self.id .. '-empty', Activity.icon, 'Nothing yet', self.empty),
             ui.list{id = self.id, items = self.items, visible = false},
         },
+    }
+end
+
+-- An empty state with its icon in the middle of the room it fills, which the tests of the category share.
+function Activity.emptyState(id, icon, title, message)
+    return ui.column{id = id, grow = 1, gap = 16, justify = 'center', align = 'stretch',
+        ui.icon{image = icon, size = 96, color = 'textMuted', align = 'center'},
+        ui.emptyState{title = title, message = message},
     }
 end
 

@@ -1,4 +1,4 @@
--- The user folder with Varn `fs`: every call runs on the I/O pool and returns a promise, which a task of the scene awaits, so the frame never waits for the disk and nothing resumes once the player left.
+-- The user folder with Varn `fs`: every call runs on the I/O pool and returns a promise, which a task of the scene awaits, so the frame never waits for the disk and nothing resumes once the player left. The test creates the folders and writes the file when it opens.
 local fs = require('fs')
 local haylen = require('haylen')
 local storage = require('haylen.storage')
@@ -19,7 +19,7 @@ async.spawn(function()
     local text, failure = fs.readFile(base .. '/logs/run.txt'):await()
 end)]]
 
-Fs.chunk = 64 * 1024
+Fs.chunk = 64 * 1000
 Fs.chunks = 32
 
 -- Waits for a promise and raises its error, so one `pcall` around an operation catches every failure of its steps.
@@ -62,14 +62,15 @@ function Fs:enter()
         hint = 'Press the buttons with the mouse, a finger, or the arrows and Enter or the south button. Each result shows how many frames the operation took.',
         focus = 'mkdir',
         content = {ui.row{grow = 1, gap = 24,
-            ui.panel{width = 560, align = 'stretch', gap = 12,
+            ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Varn module "fs"'},
                 ui.grid{columns = 2, gap = 12, children = buttons},
                 ui.column{id = 'streaming', gap = 8, align = 'stretch', visible = false,
                     ui.label{id = 'streamText', text = '', color = 'textMuted'},
                     ui.progress{id = 'progress', value = 0},
                 },
-                ui.label{text = 'Paths are built from "storage.root()": "' .. self.base .. '".', font = 'caption', color = 'textMuted'},
+                ui.label{text = 'Every path starts at the folder "fs-demo" of "storage.root()":', font = 'caption', color = 'textMuted'},
+                ui.label{text = self.base, font = 'monospace', color = 'textMuted'},
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Activity'},
@@ -77,6 +78,8 @@ function Fs:enter()
             },
         }},
     }
+    self:run('Create folders', self.mkdir)
+    self:run('Write a file', self.writeFile)
 end
 
 -- Runs an operation as a task of the scene and reports its result, or its error, with the frames it took.

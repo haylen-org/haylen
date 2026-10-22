@@ -1,15 +1,15 @@
 -- How the tests of the category show what they read and write: sizes, times, bytes as hexadecimal and previews of files.
 local readout = {}
 
--- Formats a byte count for people, such as 512 bytes or 3.4 KB.
+-- Formats a byte count for people in decimal units, such as 512 bytes, 3.4 KB for 3400 bytes or 2.0 MB for two million.
 function readout.bytes(count)
-    if count < 1024 then
+    if count < 1000 then
         return string.format('%d bytes', count)
     end
-    if count < 1024 * 1024 then
-        return string.format('%.1f KB', count / 1024)
+    if count < 1000 * 1000 then
+        return string.format('%.1f KB', count / 1000)
     end
-    return string.format('%.1f MB', count / (1024 * 1024))
+    return string.format('%.1f MB', count / (1000 * 1000))
 end
 
 -- Formats Unix seconds as a date and time of the clock of the device.

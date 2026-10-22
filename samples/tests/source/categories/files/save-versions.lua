@@ -37,7 +37,7 @@ function SaveVersions:enter()
             },
             ui.panel{width = 520, grow = 1, gap = 12,
                 ui.sectionTitle{text = 'The slot "versions"'},
-                ui.label{id = 'state', text = 'Empty', font = 'heading', color = 'accentText'},
+                ui.label{id = 'state', text = 'The slot is empty.', font = 'heading', color = 'textMuted'},
                 ui.sectionTitle{text = 'History'},
                 self.history:node(),
             },
@@ -56,7 +56,13 @@ end
 function SaveVersions:note(line)
     self.history:add(line)
     local ok, state = pcall(self.describe, self, kSlot)
-    self:set('state', {text = ok and state:gsub('^%l', string.upper) or 'Damaged', color = ok and 'accentText' or 'dangerText'})
+    if not ok then
+        self:set('state', {text = 'The slot is damaged.', color = 'dangerText'})
+    elseif state == 'empty' then
+        self:set('state', {text = 'The slot is empty.', color = 'textMuted'})
+    else
+        self:set('state', {text = (state:gsub('^%l', string.upper)), color = 'text'})
+    end
 end
 
 function SaveVersions:describe(slot)

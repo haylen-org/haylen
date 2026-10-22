@@ -1,4 +1,4 @@
--- The user folder with `haylen.storage`: every call runs at once and returns its result, writes replace files atomically and create missing folders, and paths stay inside the folder of the app.
+-- The user folder with `haylen.storage`: every call runs at once and returns its result, writes replace files atomically and create missing folders, and paths stay inside the folder of the app. The test writes the note and the JSON when it opens.
 local haylen = require('haylen')
 local storage = require('haylen.storage')
 local ui = require('haylen.ui')
@@ -35,7 +35,7 @@ function Storage:enter()
         {id = 'readJson', text = 'Read JSON', run = self.readJson},
         {id = 'exists', text = 'Check exists', run = self.exists},
         {id = 'missing', text = 'Read a missing file', run = self.missing},
-        {id = 'outside', text = 'Try to leave the folder', run = self.outside},
+        {id = 'outside', text = 'Leave the folder', run = self.outside},
         {id = 'remove', text = 'Remove the note', run = self.remove},
         {id = 'clear', text = 'Remove every file', run = self.clear},
     }
@@ -51,16 +51,16 @@ function Storage:enter()
         hint = 'Press the buttons with the mouse, a finger, or the arrows and Enter or the south button. Every call and its result goes to the activity on the right.',
         focus = 'write',
         content = {ui.row{grow = 1, gap = 24,
-            ui.panel{width = 560, align = 'stretch', gap = 12,
+            ui.panel{width = 640, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'The module "haylen.storage"'},
                 ui.grid{columns = 2, gap = 12, children = buttons},
                 ui.label{text = 'The folder of the app is "' .. storage.root() .. '".', font = 'caption', color = 'textMuted'},
             },
-            ui.panel{width = 520, align = 'stretch', gap = 12,
+            ui.panel{width = 480, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Files of "notes" and "profile"'},
                 ui.scroll{grow = 1, focusable = false, fill = true,
                     ui.column{align = 'stretch', grow = 1,
-                        ui.emptyState{id = 'files-empty', title = 'No files', message = 'Write the note or the JSON to make a file here.', grow = 1},
+                        Activity.emptyState('files-empty', 'files/icons/folder.svg', 'No files', 'Write the note or the JSON to make a file here.'),
                         ui.list{id = 'files', items = {}},
                     },
                 },
@@ -71,6 +71,8 @@ function Storage:enter()
             },
         }},
     }
+    self:write()
+    self:writeJson()
     self:refresh()
 end
 

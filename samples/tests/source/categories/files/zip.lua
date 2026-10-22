@@ -70,7 +70,7 @@ function Zip:enter()
                 ui.sectionTitle{id = 'entriesTitle', text = 'Entries'},
                 ui.scroll{grow = 1, focusable = false, fill = true,
                     ui.column{gap = 12, align = 'stretch', grow = 1,
-                        ui.emptyState{id = 'entries-empty', title = 'No entries yet', message = 'Create and list the archive, extract it or unpack the postcards.', grow = 1},
+                        Activity.emptyState('entries-empty', 'files/icons/folder.svg', 'No entries yet', 'Create and list the archive, extract it or unpack the postcards.'),
                         ui.list{id = 'entries', items = {}, visible = false},
                         ui.column{id = 'cards', gap = 12, align = 'stretch'},
                         ui.label{id = 'preview', text = '', font = 'monospace', color = 'accentText'},

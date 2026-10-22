@@ -1,4 +1,4 @@
--- The function `storage.writeSlot` keeps the data of a game with a summary and the time, `storage.slotInfo` and `storage.listSlots` feed a load menu, and `storage.readSlot` and `storage.removeSlot` load and delete. The game also saves itself to `auto_save` when the test closes.
+-- The function `storage.writeSlot` keeps the data of a game with a summary and the time, `storage.slotInfo` and `storage.listSlots` feed a load menu, and `storage.readSlot` and `storage.removeSlot` load and delete. The game also saves itself to `autosave` when the test closes, and the first visit saves two example games so the load menu has something to show.
 local haylen = require('haylen')
 local storage = require('haylen.storage')
 local ui = require('haylen.ui')
@@ -13,13 +13,15 @@ for _, info in ipairs(storage.listSlots()) do print(info.slot, info.summary.day)
 local loaded = storage.readSlot('slot-1')
 storage.removeSlot('slot-1')]]
 
-SaveSlots.slots = {'slot-1', 'slot-2', 'slot-3', 'auto_save'}
-SaveSlots.names = {['slot-1'] = 'Slot 1', ['slot-2'] = 'Slot 2', ['slot-3'] = 'Slot 3', auto_save = 'Autosave'}
+SaveSlots.slots = {'slot-1', 'slot-2', 'slot-3', 'autosave'}
+SaveSlots.names = {['slot-1'] = 'Slot 1', ['slot-2'] = 'Slot 2', ['slot-3'] = 'Slot 3', autosave = 'Autosave'}
+-- The games that the first visit saves in the first two slots.
+SaveSlots.examples = {{slot = 'slot-1', game = {day = 4, wood = 12, place = 2, inventory = {'axe', 'rope'}}}, {slot = 'slot-2', game = {day = 9, wood = 30, place = 4, inventory = {'axe', 'lantern'}}}}
 SaveSlots.places = {'Beach', 'Forest', 'Cave', 'Lighthouse'}
 
 function SaveSlots:init(entry)
     SaveSlots.super.init(self, entry)
-    local ok, saved = pcall(storage.readSlot, 'auto_save')
+    local ok, saved = pcall(storage.readSlot, 'autosave')
     self.game = ok and saved or {day = 1, wood = 0, place = 1, inventory = {'axe'}}
     self.selected = SaveSlots.slots[1]
 end
@@ -48,7 +50,7 @@ function SaveSlots:enter()
             },
             ui.panel{grow = 1, align = 'stretch', gap = 12,
                 ui.sectionTitle{text = 'Slots'},
-                ui.table{id = 'slots', columns = {{text = 'Slot', width = 150}, {text = 'Place'}, {text = 'Day', width = 80, align = 'end'}, {text = 'Wood', width = 90, align = 'end'}, {text = 'Saved', width = 200, align = 'end'}}, rows = {}, selected = self.selected, onSelect = function(event)
+                ui.table{id = 'slots', columns = {{text = 'Slot', width = 180}, {text = 'Place'}, {text = 'Day', width = 130, align = 'end'}, {text = 'Wood', width = 130, align = 'end'}, {text = 'Saved', width = 280, align = 'end'}}, rows = {}, selected = self.selected, onSelect = function(event)
                     self.selected = event.item
                     self:refresh()
                 end},
@@ -77,13 +79,26 @@ function SaveSlots:enter()
             end},
         }},
     }
+    self:saveExamples()
     self:showGame()
     self:refresh()
 end
 
--- Leaving the test saves the game to `auto_save`, which the test reads back the next time it opens.
+-- The first visit, with no slot saved yet, saves the example games.
+function SaveSlots:saveExamples()
+    local ok, slots = pcall(storage.listSlots)
+    if not ok or #slots > 0 then
+        return
+    end
+    for _, example in ipairs(SaveSlots.examples) do
+        local game = example.game
+        storage.writeSlot(example.slot, game, {day = game.day, wood = game.wood, place = SaveSlots.places[game.place]})
+    end
+end
+
+-- Leaving the test saves the game to `autosave`, which the test reads back the next time it opens.
 function SaveSlots:exit()
-    storage.writeSlot('auto_save', self.game, self:summary())
+    storage.writeSlot('autosave', self.game, self:summary())
     SaveSlots.super.exit(self)
 end
 
