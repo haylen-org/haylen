@@ -17,7 +17,8 @@ print(now:iso(), now:format('%A %d %B %Y'))]]},
     {'Parse and compute', [[
 local launch = datetime.parse('2026-06-21T09:30:00-03:00')
 print(launch:iso(), launch:weekdayName(), launch:yearday())
-local due = datetime.parse('2026-01-31'):add({months = 1})
+local january = datetime.parse('2026-01-31')
+local due = january:add({months = 1})
 local from = datetime.parse('2026-01-10')
 local to = datetime.parse('2026-03-15')
 print(to:diffIn(from, 'days'), to:diffIn(from, 'months'))
@@ -39,7 +40,8 @@ function Dates:run()
     local launch = datetime.parse('2026-06-21T09:30:00-03:00')
     self:check('parse', 'Parse with an offset', launch:iso() == '2026-06-21T12:30:00Z' and launch:weekdayName() == 'Sunday' and launch:yearday() == 172, string.format('The text "2026-06-21T09:30:00-03:00" is %s in UTC, a %s, day %d of the year.', launch:iso(), launch:weekdayName(), launch:yearday()))
 
-    local due = datetime.parse('2026-01-31'):add({months = 1})
+    local january = datetime.parse('2026-01-31')
+    local due = january:add({months = 1})
     self:check('months', 'Calendar months', due:iso() == '2026-02-28T00:00:00Z', string.format('January 31 plus one month is %s, the last day of February, and not a day that does not exist.', due:iso()))
 
     local from, to = datetime.parse('2026-01-10'), datetime.parse('2026-03-15')

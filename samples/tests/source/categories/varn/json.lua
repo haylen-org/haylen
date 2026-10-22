@@ -65,7 +65,7 @@ function Json:showcase()
         },
         ui.card{grow = 1, align = 'stretch', gap = 8,
             ui.label{text = 'Lua values as JSON', font = 'heading'},
-            ui.scroll{grow = 1, height = 0, ui.table{columns = {{text = 'Lua'}, {text = 'JSON'}}, rows = rows, style = {metrics = {listRowHeight = 40}}}},
+            ui.scroll{grow = 1, height = 0, ui.table{columns = {{text = 'Lua'}, {text = 'JSON'}}, rows = rows, style = {fonts = {body = {font = 'monospace'}}, metrics = {listRowHeight = 40}}}},
         },
     }
 end
