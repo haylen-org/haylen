@@ -34,7 +34,7 @@ function Shadows:enter()
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. The brick wall is an open outline and the wooden door turns on its hinge.',
         code = Shadows.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {
             ui.formField{label = 'Filter', ui.radioGroup{id = 'filter', horizontal = true, selected = 'pcf5', items = {{id = 'none', text = 'None'}, {id = 'pcf5', text = 'PCF5'}, {id = 'pcf13', text = 'PCF13'}}, onChange = function(event)
                 self.held.shadowFilter = event.value
@@ -73,13 +73,9 @@ end
 
 function Shadows:draw(area)
     self.room:draw()
-    Room.drawWall(self.bricks, Shadows.flat(self.wall), 56, 1)
+    Room.drawWall(self.bricks, Shadows.flat(self.wall), 64, 1)
     local door = Shadows.flat(self.door)
-    graphics2d.drawStroke(door, {width = 40, color = '#FF1E1B33', cap = 'round', layer = 1})
-    graphics2d.drawStroke(door, {width = 30, color = '#FFA8683A', cap = 'round', layer = 2})
-    graphics2d.drawStroke(door, {width = 6, color = '#FF7A4A28', cap = 'round', layer = 3})
-    graphics2d.drawCircle(door[1], door[2], 18, '#FF1E1B33', {layer = 3})
-    graphics2d.drawCircle(door[1], door[2], 12, '#FF8890B0', {layer = 4})
+    Room.drawDoor(door[1], door[2], door[3], door[4], 34, 1)
     graphics2d.drawOccluder(self.wall)
     graphics2d.drawOccluder(self.door)
     Room.drawLamp(self.corner.x, self.corner.y, self.corner.color, 26)

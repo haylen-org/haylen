@@ -9,6 +9,10 @@ local Room = require('categories.lighting.room')
 
 local SpotLights = haylen.class('SpotLights', LightingTest)
 
+SpotLights.iron = '#FF4E4A66'
+SpotLights.ironLight = '#FF6E6A8C'
+SpotLights.steel = '#FF9AA2C4'
+
 SpotLights.code = [[
 local lamp = lighting2d.newLight({type = 'spot', x = -60, y = 40, radius = 900, intensity = 1.4, shadows = true})
 lamp.rotation = math.atan(y - lamp.y, x - lamp.x)  -- Aims at a point.
@@ -27,6 +31,7 @@ function SpotLights:init(entry)
         lighting2d.newLight({type = 'spot', x = 880, y = -430, radius = 1500, innerAngle = 0.12, outerAngle = 0.22, color = '#FFFF90C0'}),
     }
     self.time = 0
+    self.pointer.origin = {0.74, 0.66}
 end
 
 function SpotLights:enter()
@@ -57,15 +62,19 @@ function SpotLights:update(dt)
     self:status(string.format('The lantern shines fully within %.0f degrees of its aim and fades out by %.0f degrees.', math.deg(lamp.innerAngle), math.deg(lamp.outerAngle)))
 end
 
--- Draws a searchlight on its stand: a round base and a barrel that turns with the light, with its glass glowing in the color of the light.
+-- Draws a searchlight seen from above: a round iron base and a barrel that turns with the light, outlined like the props, with its lens glowing in the color of the light. The housing keeps its colors whatever the light.
 function SpotLights.drawHousing(light, length)
     local dx, dy = math.cos(light.rotation), math.sin(light.rotation)
-    local order = {layer = 5, unshaded = true}
-    graphics2d.drawCircle(light.x, light.y, 34, '#FF1E1B33', order)
-    graphics2d.drawCircle(light.x, light.y, 28, '#FF5A6080', order)
-    graphics2d.drawLine(light.x, light.y, light.x + dx * length, light.y + dy * length, 34, '#FF1E1B33', {layer = 6, unshaded = true})
-    graphics2d.drawLine(light.x, light.y, light.x + dx * length, light.y + dy * length, 24, '#FF8890B0', {layer = 6, unshaded = true})
-    graphics2d.drawCircle(light.x + dx * length, light.y + dy * length, 15, light.color, {layer = 7, emission = 1.5})
+    local outline = Room.outlineColor
+    local base = {layer = 5, unshaded = true}
+    graphics2d.drawCircle(light.x, light.y, 36, outline, base)
+    graphics2d.drawCircle(light.x, light.y, 30, SpotLights.iron, base)
+    graphics2d.drawCircle(light.x - 7, light.y - 7, 15, SpotLights.ironLight, base)
+    local middle = length * 0.5 + 6
+    local barrelX, barrelY = light.x + dx * middle, light.y + dy * middle
+    graphics2d.drawShape({barrelX - middle - 12, barrelY - 18, middle * 2 + 24, 36}, {radius = 12, rotation = light.rotation, color = SpotLights.steel, borderWidth = 5, borderColor = outline, layer = 6, unshaded = true})
+    local lensX, lensY = light.x + dx * (length + 16), light.y + dy * (length + 16)
+    graphics2d.drawShape({lensX - 8, lensY - 21, 16, 42}, {radius = 7, rotation = light.rotation, color = light.color, borderWidth = 4, borderColor = outline, layer = 7, unshaded = true})
 end
 
 function SpotLights:draw(area)

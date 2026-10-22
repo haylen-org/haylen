@@ -36,7 +36,7 @@ function BlendModes:enter()
     self:frame{
         hint = 'Four fixed lights show each mode. The light on the cursor takes the mode you pick, so move it over the others to see how they combine.',
         code = BlendModes.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {ui.formField{label = 'Blend of the cursor light', ui.radioGroup{id = 'blend', items = BlendModes.modes, selected = 'add', onChange = function(event)
             self.held.blend = event.value
         end}}},
@@ -65,9 +65,8 @@ function BlendModes:renderUi()
     end
     BlendModes.super.renderUi(self)
     for _, entry in ipairs(self.fixed) do
-        local x, y = self.camera:worldToScreen(entry.light.x, entry.light.y + 70)
-        graphics2d.drawText(nil, entry.label, x, y, {size = 36, anchor = {0.5, 0}, outlineWidth = 3})
-        graphics2d.drawText(nil, entry.story, x, y + 44, {size = 24, anchor = {0.5, 0}, outlineWidth = 3, color = '#FFE8EAF2'})
+        local x, y = self.camera:worldToScreen(entry.light.x, entry.light.y + 60)
+        LightingTest.tag(entry.label, entry.story, x, y)
     end
 end
 

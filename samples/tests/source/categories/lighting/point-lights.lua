@@ -33,7 +33,7 @@ function PointLights:enter()
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. A click, a tap, E, Enter or the south button places a copy.',
         code = PointLights.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {
             ui.formField{label = 'Radius', ui.slider{id = 'radius', min = 60, max = 700, value = self.held.radius, showValue = true, decimals = 0, onChange = function(event)
                 self.held.radius = event.value

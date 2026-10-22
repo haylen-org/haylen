@@ -23,7 +23,7 @@ Ambient.presets = {
     {id = 'underwater', text = 'Underwater', color = '#FF3A86B8', story = 'Underwater: a deep teal that cools every color.'},
     {id = 'cave', text = 'Cave', color = '#FF0C0C12', story = 'Cave: almost black, so the scene nearly disappears.'},
 }
-Ambient.tourStep = 2.5
+Ambient.tourStep = 4
 
 function Ambient:init(entry)
     Ambient.super.init(self, entry)

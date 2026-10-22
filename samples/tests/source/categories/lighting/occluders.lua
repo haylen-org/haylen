@@ -15,14 +15,19 @@ local Room = require('categories.lighting.room')
 local Occluders = haylen.class('Occluders', LightingTest)
 
 Occluders.code = [[
-local walls = lighting2d.occludersFromMap(map, 'walls')  -- One per object of the layer, in world coordinates.
+local walls = lighting2d.occludersFromMap(map, 'walls')  -- One per object of the layer.
 local shapes = lighting2d.occludersFromBody(world, crate)
-for _, shape in ipairs(shapes) do shape.x, shape.y, shape.rotation = crate.x, crate.y, crate.rotation end  -- Follows the body.
-graphics2d.drawOccluder(walls[1])
-graphics2d.drawLight({x = x, y = y, radius = 1100, shadows = true, shadowFilter = 'pcf5'})]]
+for _, shape in ipairs(shapes) do
+    shape.x, shape.y, shape.rotation = crate.x, crate.y, crate.rotation  -- Follows the body.
+end
+graphics2d.drawOccluder(walls[1])  -- Casts the shadows of the lights drawn with shadows = true.]]
 
 Occluders.maxCrates = 40
 Occluders.brick = 96
+Occluders.crate = 92
+Occluders.stoneTile = 300
+-- Where the first crates fall from: onto the ledge, the shelf, the beam and the floor.
+Occluders.drops = {{330, 120}, {1520, 260}, {1180, 420}, {860, 700}, {1480, 760}, {1660, 860}}
 
 -- Culls the edges of closed occluders that face the light, whatever their winding, so walls and crates stay lit and only what lies behind them is dark.
 function Occluders.shadeBehind(occluders)
@@ -36,19 +41,19 @@ end
 
 function Occluders:init(entry)
     Occluders.super.init(self, entry)
-    self.ambientLight = '#FF1A1E2A'
+    self.ambientLight = '#FF2A2E40'
     self.map = tiled.newMapRenderer(assets.load('lighting/walls.tmj'))
     self.world = physics2d.newWorld({owner = self})
     self.map:buildCollision(self.world)
     self.walls = Occluders.shadeBehind(lighting2d.occludersFromMap(self.map, 'walls'))
     self.lamp = lighting2d.newLight({radius = 1100, color = '#FFFFE4B8', intensity = 1.3, shadows = true, shadowFilter = 'pcf5', shadowSmoothness = 1})
     self.bricks = Room.bricks()
-    local tiles = assets.load(Room.tileset, 'image')
-    self.stone = graphics.newTexture(tiles:crop(Room.sources.floor), {filter = 'linear', wrap = 'repeat'})
+    self.stone = assets.texture(Room.floor, {filter = 'linear', wrap = 'repeat', mipmaps = true})
+    self.plank = Occluders.plank()
     self.crateTexture = assets.texture(Room.tileset, {filter = 'linear'})
     self.crates = {}
-    for index = 1, 6 do
-        self:drop(780 + index * 70, 80 + index * 60)
+    for _, drop in ipairs(Occluders.drops) do
+        self:drop(drop[1], drop[2])
     end
 end
 
@@ -57,7 +62,7 @@ function Occluders:enter()
     self:frame{
         hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. A click, a tap, E, Enter or the south button drops a crate at the cursor.',
         code = Occluders.code,
-        cursor = true,
+        cursor = 'lamp',
         view = {bounds.height, bounds.height},
         controls = {ui.button{id = 'remove', text = 'Remove the crates', onClick = function()
             for _, crate in ipairs(self.crates) do
@@ -74,7 +79,7 @@ function Occluders:drop(x, y)
         table.remove(self.crates, 1).body:destroy()
     end
     local body = self.world:createBody({x = x, y = y, rotation = #self.crates * 0.4})
-    body:addBox(64, 64, {friction = 0.7})
+    body:addBox(Occluders.crate, Occluders.crate, {friction = 0.7})
     self.crates[#self.crates + 1] = {body = body, occluders = Occluders.shadeBehind(lighting2d.occludersFromBody(self.world, body))}
 end
 
@@ -103,7 +108,17 @@ function Occluders:drawBricks()
     graphics2d.draw(self.bricks, canvas.x, canvas.y, {source = {canvas.x * scale, canvas.y * scale, canvas.width * scale, canvas.height * scale}, width = canvas.width, height = canvas.height, pivotX = 0, pivotY = 0, color = '#FF9A90A0'})
 end
 
--- Draws a closed occluder as stone that repeats across it, with a dark outline, and an open one as a wooden rail.
+-- Returns a plank of wood seen from the side and lit from above, with a light top edge, its grain and a shaded bottom edge, which repeats along a stroke.
+function Occluders.plank()
+    local image = graphics.newImage(64, 32, '#FFB0743F')
+    image:fill('#FFD8A060', {0, 0, 64, 7})
+    image:fill('#FF9A6236', {0, 13, 38, 2})
+    image:fill('#FF9A6236', {26, 19, 38, 2})
+    image:fill('#FF7E4C2A', {0, 25, 64, 7})
+    return graphics.newTexture(image, {filter = 'linear', wrap = 'repeat'})
+end
+
+-- Draws a closed occluder as stone that repeats across it, with a dark outline, and an open one as a wooden beam.
 function Occluders:drawWall(occluder)
     local points = occluder:worldPoints()
     local flat = {}
@@ -112,13 +127,13 @@ function Occluders:drawWall(occluder)
         flat[#flat + 1] = point.y
     end
     if not occluder.closed then
-        graphics2d.drawStroke(flat, {width = 26, color = '#FF1E1B33', join = 'round', cap = 'round', layer = 1})
-        graphics2d.drawStroke(flat, {width = 16, color = '#FFA8683A', join = 'round', cap = 'round', layer = 2})
+        graphics2d.drawStroke(flat, {width = 40, color = Room.outlineColor, join = 'round', cap = 'round', layer = 1})
+        graphics2d.drawStroke(flat, {width = 30, texture = self.plank, textureMode = 'tile', textureLength = 60, join = 'round', cap = 'round', layer = 2})
         return
     end
     local vertices, indices = {}, {}
     for index, point in ipairs(points) do
-        vertices[index] = {x = point.x, y = point.y, u = point.x / 160, v = point.y / 160}
+        vertices[index] = {x = point.x, y = point.y, u = point.x / Occluders.stoneTile, v = point.y / Occluders.stoneTile}
         if index > 2 then
             indices[#indices + 1], indices[#indices + 2], indices[#indices + 3] = 1, index - 1, index
         end
@@ -135,7 +150,7 @@ function Occluders:draw(area)
         graphics2d.drawOccluder(wall)
     end
     for _, crate in ipairs(self.crates) do
-        graphics2d.draw(self.crateTexture, crate.body.x, crate.body.y, {source = Room.sources.crate, width = 64 / Room.fill.crate, height = 64 / Room.fill.crate, rotation = crate.body.rotation, layer = 3})
+        graphics2d.draw(self.crateTexture, crate.body.x, crate.body.y, {source = Room.sources.crate, width = Occluders.crate / Room.fill.crate, height = Occluders.crate / Room.fill.crate, rotation = crate.body.rotation, layer = 3})
         for _, occluder in ipairs(crate.occluders) do
             graphics2d.drawOccluder(occluder)
         end

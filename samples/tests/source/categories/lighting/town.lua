@@ -14,9 +14,10 @@ Town.houses = {
     ['stone-house'] = {windows = {{108, 369, 49, 127}, {207, 166, 61, 125}, {319, 369, 49, 127}}, chimney = {360, 10}},
 }
 
--- The lamp post of the props tileset, with the glass of its lantern, in pixels of its tile.
+-- The lamp post and the trees of the props tileset, with the glass of the lantern, in pixels of its tile.
 Town.lampTiles = 'tiled/tiles/props.png'
 Town.postSource = {266, 2, 128, 256}
+Town.treeSources = {tree = {2, 2, 128, 256}, pine = {134, 2, 128, 256}}
 Town.lantern = {110, 137}
 
 Town.glass = {night = '#FFFFC870', day = '#FF33465E'}
@@ -47,15 +48,22 @@ function Town:piece(name, x, y, scale, options)
     graphics2d.draw(self.scenery.texture, x, y, options)
 end
 
--- Draws a house standing on `ground` with its middle at `x`, its window panes behind its frames on the layer below it, lit by `glow` from 0 by day to 1 at night, and its walls multiplied by `tint`, such as a dark blue for a rainy night.
-function Town:house(name, x, ground, scale, layer, glow, tint)
+-- Draws a house standing on `ground` with its middle at `x`, its window panes behind its frames on the layer below it, lit by `glow` from 0 by day to 1 at night, its walls multiplied by `tint`, such as a dark blue for a rainy night, and mirrored when `flip` is true.
+function Town:house(name, x, ground, scale, layer, glow, tint, flip)
     local width, height = self:size(name)
     local left, top = x - width * scale / 2, ground - height * scale
     local color = glow > 0 and Town.glass.night or Town.glass.day
     for _, window in ipairs(Town.houses[name].windows) do
-        graphics2d.drawRect({left + window[1] * scale - 2, top + window[2] * scale - 2, window[3] * scale + 4, window[4] * scale + 4}, color, {layer = layer, emission = glow})
+        local windowX = flip and width - window[1] - window[3] or window[1]
+        graphics2d.drawRect({left + windowX * scale - 2, top + window[2] * scale - 2, window[3] * scale + 4, window[4] * scale + 4}, color, {layer = layer, emission = glow})
     end
-    self:piece(name, x, ground, scale, {pivotY = 1, layer = layer + 1, color = tint})
+    self:piece(name, x, ground, scale, {pivotY = 1, layer = layer + 1, color = tint, flipHorizontal = flip})
+end
+
+-- Draws a tree of the props tileset, `'tree'` or `'pine'`, standing on `ground` with the height `height`.
+function Town:tree(kind, x, ground, height, layer, flip)
+    local source = Town.treeSources[kind]
+    graphics2d.draw(self.lamps, x, ground, {source = source, width = source[3] * height / source[4], height = height, pivotY = 0.94, layer = layer, flipHorizontal = flip})
 end
 
 -- Returns where the chimney of a house drawn by `house` ends, in world units.
@@ -78,10 +86,10 @@ function Town:lampPost(x, ground, height, layer, glow)
     return lanternX, lanternY
 end
 
--- Fills the canvas with a sky that runs from `zenith` at the top to `horizon` at `bottom`, which keeps its colors whatever the light.
+-- Fills the canvas with a sky that runs from `zenith` at the top to `horizon` at `bottom` and keeps `horizon` below it, behind the hills, whose painted strip starts transparent above their tops. The sky keeps its colors whatever the light.
 function Town:sky(zenith, horizon, bottom)
     local area = graphics2d.canvasBounds()
-    graphics2d.drawRect({area.x, area.y, area.width, bottom - area.y}, horizon, {layer = -20, unshaded = true})
+    graphics2d.drawRect(area, horizon, {layer = -20, unshaded = true})
     graphics2d.draw(self.fade, area.x, area.y, {width = area.width, height = bottom - area.y, pivotX = 0, pivotY = 0, color = zenith, layer = -19, unshaded = true})
 end
 

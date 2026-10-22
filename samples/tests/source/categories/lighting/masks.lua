@@ -26,8 +26,10 @@ Masks.kinds = {
     {name = 'Rocks', source = {398, 266, 128, 128}},
 }
 Masks.layers = {{id = '1', text = '1'}, {id = '2', text = '2'}, {id = '3', text = '3'}}
-Masks.spacing = {x = 340, y = 210}
+Masks.spacing = {x = 420, y = 230}
 Masks.size = 170
+-- The middle of the grid, right of the middle of the view so the names of the layers fit at its left.
+Masks.center = {90, 50}
 
 function Masks:init(entry)
     Masks.super.init(self, entry)
@@ -35,7 +37,7 @@ function Masks:init(entry)
     self.room = Room()
     self.ambientLight = '#FF2A3046'
     self.bits = {true, false, true}
-    self.fill = lighting2d.newLight({type = 'directional', intensity = 0.35, itemMask = Masks.floorMask})
+    self.fill = lighting2d.newLight({type = 'directional', intensity = 0.6, itemMask = Masks.floorMask})
     self.lamp = lighting2d.newLight({radius = 1400, color = '#FFFFF0D0', intensity = 0.9, itemMask = 1 | 4, layerMin = 1, layerMax = 2})
     self.pointer.origin = {0.5, 0.12}
 end
@@ -51,7 +53,7 @@ function Masks:enter()
     self:frame{
         hint = 'Pick what the lamp reaches by mask and by layer, and move it with the mouse, a finger, the arrows, WASD or a stick. What it does not reach stays in the dim ambient light.',
         code = Masks.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {
             ui.formField{label = 'The lamp reaches', ui.column{gap = 8, children = checks}},
             ui.formField{label = 'Lowest layer', ui.combo{id = 'layerMin', items = Masks.layers, selected = '1', onChange = function(event)
@@ -107,10 +109,10 @@ function Masks:update(dt)
 end
 
 function Masks:draw(area)
-    graphics2d.drawStatic(self.room.floor, 0, 0, {lightMask = Masks.floorMask})
+    self.room:drawFloor({lightMask = Masks.floorMask})
     for column, kind in ipairs(Masks.kinds) do
         for row = 1, 3 do
-            local x, y = (column - 2) * Masks.spacing.x + 100, (row - 2) * Masks.spacing.y + 60
+            local x, y = Masks.cell(column, row)
             graphics2d.draw(self.tiles, x, y, {source = kind.source, width = Masks.size, height = Masks.size, layer = row, lightMask = 1 << (column - 1)})
         end
     end
@@ -119,18 +121,25 @@ function Masks:draw(area)
     graphics2d.drawLight(self.lamp)
 end
 
+-- Returns the middle of the cell of a column and a row of the grid.
+function Masks.cell(column, row)
+    return (column - 2) * Masks.spacing.x + Masks.center[1], (row - 2) * Masks.spacing.y + Masks.center[2]
+end
+
 function Masks:renderUi()
     if not self.stage then
         return
     end
     Masks.super.renderUi(self)
     for column, kind in ipairs(Masks.kinds) do
-        local x, y = self.camera:worldToScreen((column - 2) * Masks.spacing.x + 100, -Masks.spacing.y + 60 - Masks.size * 0.62)
-        graphics2d.drawText(nil, string.format('%s, mask %d', kind.name, 1 << (column - 1)), x, y, {size = 26, anchor = {0.5, 1}, outlineWidth = 3})
+        local x, y = Masks.cell(column, 1)
+        x, y = self.camera:worldToScreen(x, y - Masks.size * 0.6)
+        LightingTest.tag(kind.name, string.format('Mask %d', 1 << (column - 1)), x, y, {0.5, 1})
     end
     for row = 1, 3 do
-        local x, y = self.camera:worldToScreen(-Masks.spacing.x + 100 - Masks.size * 0.62, (row - 2) * Masks.spacing.y + 60)
-        graphics2d.drawText(nil, 'Layer ' .. row, x, y, {size = 26, anchor = {1, 0.5}, outlineWidth = 3})
+        local x, y = Masks.cell(1, row)
+        x, y = self.camera:worldToScreen(x - Masks.size * 0.65, y)
+        LightingTest.tag('Layer ' .. row, nil, x, y, {1, 0.5})
     end
 end
 

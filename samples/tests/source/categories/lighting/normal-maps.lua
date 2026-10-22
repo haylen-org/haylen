@@ -97,26 +97,28 @@ end
 
 function NormalMaps:init(entry)
     NormalMaps.super.init(self, entry)
-    self.ambientLight = '#FF1C1E26'
+    self.ambientLight = '#FF262834'
     self.brick, self.brickNormals = NormalMaps.bricks()
     self.plate, self.plateNormals = NormalMaps.studs()
     self.normalMapped = true
     self.specular = 1
     self.shininess = 32
     self.lamp = lighting2d.newLight({radius = 700, color = '#FFFFEAD0', intensity = 1.6, height = 90})
+    self.plateLamp = lighting2d.newLight({x = 560, y = -40, radius = 640, color = '#FFB8D0FF', intensity = 1.3, height = 90})
+    self.pointer.origin = {0.27, 0.45}
 end
 
 function NormalMaps:enter()
     self:frame{
-        hint = 'Move the light with the mouse, a finger, the arrows, WASD or a stick. Low lights graze the surface and show the relief, high ones flatten it.',
+        hint = 'Move the warm light with the mouse, a finger, the arrows, WASD or a stick, and the cool lamp keeps lighting the plate. Low lights graze the surface and show the relief, high ones flatten it.',
         code = NormalMaps.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {
             ui.toggle{id = 'normalMaps', text = 'Normal maps', checked = true, onChange = function(event)
                 self.normalMapped = event.checked
             end},
-            ui.formField{label = 'Light height', ui.slider{id = 'height', min = 0, max = 400, value = self.lamp.height, showValue = true, decimals = 0, onChange = function(event)
-                self.lamp.height = event.value
+            ui.formField{label = 'Height of the lights', ui.slider{id = 'height', min = 0, max = 400, value = self.lamp.height, showValue = true, decimals = 0, onChange = function(event)
+                self.lamp.height, self.plateLamp.height = event.value, event.value
             end}},
             ui.formField{label = 'Specular', ui.slider{id = 'specular', min = 0, max = 3, value = self.specular, showValue = true, onChange = function(event)
                 self.specular = event.value
@@ -131,7 +133,7 @@ end
 function NormalMaps:update(dt)
     NormalMaps.super.update(self, dt)
     self.lamp.x, self.lamp.y = self.cursorX, self.cursorY
-    self:status(string.format('The light hangs %.0f units above the wall, with a specular strength of %.2f and a shininess of %.0f.', self.lamp.height, self.specular, self.shininess))
+    self:status(string.format('The lights hang %.0f units above the wall, with a specular strength of %.2f and a shininess of %.0f.', self.lamp.height, self.specular, self.shininess))
 end
 
 -- Tiles a texture over a rectangle, with its normal map when they are on.
@@ -144,7 +146,7 @@ function NormalMaps:drawSurface(texture, normals, rect)
     end
 end
 
--- Bricks cover the left half of the canvas and the studded plate the right half, so the light starts on the seam between them.
+-- Bricks cover the left half of the canvas and the studded plate the right half. The light of the cursor starts over the bricks and a cool lamp hangs over the plate, so both show their relief from the start.
 function NormalMaps:draw(area)
     local canvas = graphics2d.canvasBounds()
     local tile = NormalMaps.size * 2
@@ -154,6 +156,8 @@ function NormalMaps:draw(area)
     self:drawSurface(self.brick, self.brickNormals, {left, top, -left, height})
     self:drawSurface(self.plate, self.plateNormals, {0, top, math.ceil(canvas:right() / tile) * tile, height})
     graphics2d.drawLine(0, canvas.y, 0, canvas:bottom(), 8, '#FF1E1B33', {layer = 1})
+    Room.drawLamp(self.plateLamp.x, self.plateLamp.y, self.plateLamp.color, 26)
+    graphics2d.drawLight(self.plateLamp)
     Room.drawLamp(self.lamp.x, self.lamp.y, self.lamp.color, 26)
     graphics2d.drawLight(self.lamp)
 end

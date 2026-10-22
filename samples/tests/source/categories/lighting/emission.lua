@@ -45,7 +45,7 @@ function Emission:enter()
     self:frame{
         hint = 'The lantern on the cursor lights the street: move it with the mouse, a finger, the arrows, WASD or a stick. The windows and the neon glow with emission, and the signposts are unshaded.',
         code = Emission.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {
             ui.formField{label = 'Emission of the windows and the neon', ui.slider{id = 'emission', min = 0, max = 3, value = self.emission, showValue = true, onChange = function(event)
                 self.emission = event.value

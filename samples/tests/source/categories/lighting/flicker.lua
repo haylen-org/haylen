@@ -13,9 +13,9 @@ local Town = require('categories.lighting.town')
 local Flicker = haylen.class('Flicker', LightingTest)
 
 Flicker.code = [[
-local torch = lighting2d.newLight({x = -380, y = -330, radius = 380, color = '#FFFFA050'})
-local wave = lighting2d.flicker(haylen.elapsed(), {speed = 8, amount = 0.25, seed = 3})
-torch.intensity = 1.2 * wave  -- Each torch has a seed of its own.
+local torch = lighting2d.newLight({x = -380, y = -360, radius = 290, color = '#FFFFA050'})
+local wave = lighting2d.flicker(haylen.elapsed(), {speed = 8, amount = 0.35, seed = 3})
+torch.intensity = 1.5 * wave  -- Each torch has a seed of its own.
 graphics2d.drawLight(torch)]]
 
 Flicker.wall = -300
@@ -43,14 +43,14 @@ function Flicker:init(entry)
     local effects = assets.load(Flicker.effects, 'atlas', {filter = 'linear'})
     self.ambientLight = '#FF0E1016'
     self.speed = 8
-    self.amount = 0.25
+    self.amount = 0.35
     self.shared = false
     self.torches = {}
     for index = 1, 5 do
         local x = (index - 3) * 380
         local flame = Flicker.flames(effects, 58, 22, index)
         flame.position = {x, Flicker.wall - 10 - 312 * Flicker.torchScale + 24}
-        self.torches[index] = {seed = index, wave = 1, flame = flame, light = lighting2d.newLight({x = x, y = Flicker.wall - 60, radius = 420, color = '#FFFFA050', intensity = 1.2})}
+        self.torches[index] = {seed = index, wave = 1, flame = flame, light = lighting2d.newLight({x = x, y = Flicker.wall - 60, radius = 290, color = '#FFFFA050', intensity = 1.5})}
     end
     local fire = Flicker.flames(effects, 120, 30, 9)
     fire.position = {Flicker.campfire.x, Flicker.campfire.y - 10}
@@ -85,7 +85,7 @@ function Flicker:update(dt)
     Flicker.super.update(self, dt)
     for _, torch in ipairs(self.torches) do
         torch.wave = self:wave(torch)
-        torch.light.intensity = 1.2 * torch.wave
+        torch.light.intensity = 1.5 * torch.wave
         torch.flame:update(dt)
     end
     self.fire.wave = self:wave(self.fire)

@@ -31,7 +31,7 @@ function Hdr:enter()
     self:frame{
         hint = 'The fixed lights shine with intensity 1, 2 and 4. Move the cursor light and raise its intensity to overexpose the floor.',
         code = Hdr.code,
-        cursor = true,
+        cursor = 'lamp',
         controls = {ui.formField{label = 'Intensity of the cursor light', ui.slider{id = 'intensity', min = 0, max = 6, value = self.held.intensity, showValue = true, onChange = function(event)
             self.held.intensity = event.value
         end}}},
@@ -62,7 +62,7 @@ function Hdr:renderUi()
     Hdr.super.renderUi(self)
     for _, light in ipairs(self.fixed) do
         local x, y = self.camera:worldToScreen(light.x, light.y - 290)
-        graphics2d.drawText(nil, string.format('Intensity %g', light.intensity), x, y, {size = 34, anchor = {0.5, 1}, outlineWidth = 3})
+        LightingTest.tag(string.format('Intensity %g', light.intensity), nil, x, y, {0.5, 1})
     end
 end
 

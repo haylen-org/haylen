@@ -4,6 +4,7 @@ local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local lighting2d = require('haylen.lighting2d')
+local m = require('haylen.math')
 
 local LightingTest = require('categories.lighting.lighting-test')
 local Room = require('categories.lighting.room')
@@ -21,6 +22,9 @@ graphics2d.draw(garden.texture, 80, -260, {pivotX = 0, pivotY = 0})]]
 RenderTargets.width = 800
 RenderTargets.height = 450
 RenderTargets.grass = {2, 2, 128, 128}
+-- The top of the desk the monitors stand on, in world units.
+RenderTargets.desk = 310
+RenderTargets.fireflyGlow = m.color('#FFE8FF90')
 
 function RenderTargets:init(entry)
     RenderTargets.super.init(self, entry)
@@ -39,9 +43,12 @@ function RenderTargets:init(entry)
         self.crates[#self.crates + 1] = {x = x, y = y, size = size, occluder = lighting2d.newOccluder({points = {x - half, y - half, x + half, y - half, x + half, y + half, x - half, y + half}, cull = 'counterClockwise'})}
     end
     self.bushes = {{110, 360, 150}, {280, 90, 120}, {470, 400, 170}, {640, 110, 140}, {740, 300, 120}}
+    -- Each firefly wanders around a home of its own, spread over the garden, and the homes lean toward the cursor.
     self.fireflies = {}
+    local random = m.random(17)
     for index = 1, 14 do
-        self.fireflies[index] = {phase = index * 0.7, light = lighting2d.newLight({radius = 90, color = '#FFC8FF60', intensity = 1.2})}
+        local home = {random:range(80, RenderTargets.width - 80), random:range(60, RenderTargets.height - 60)}
+        self.fireflies[index] = {phase = random:range(0, m.tau), speed = random:range(0.6, 1.1), home = home, light = lighting2d.newLight({radius = 70, color = '#FFD8FF80', intensity = 0.8})}
     end
     self.focus = {x = 400, y = 225}
     self.time = 0
@@ -76,9 +83,12 @@ function RenderTargets:update(dt)
         self.focus.x, self.focus.y = x, y
     end
     for _, firefly in ipairs(self.fireflies) do
-        local angle = self.time * 0.8 + firefly.phase
-        firefly.light.x = self.focus.x + math.cos(angle) * (60 + firefly.phase * 12)
-        firefly.light.y = self.focus.y + math.sin(angle * 1.3) * (40 + firefly.phase * 6)
+        local angle = self.time * firefly.speed + firefly.phase
+        local homeX, homeY = m.lerp(firefly.home[1], self.focus.x, 0.3), m.lerp(firefly.home[2], self.focus.y, 0.3)
+        firefly.light.x = homeX + math.cos(angle) * 40
+        firefly.light.y = homeY + math.sin(angle * 1.3) * 26
+        firefly.glow = 0.55 + 0.45 * math.sin(self.time * 3 + firefly.phase * 2)
+        firefly.light.intensity = 0.8 * firefly.glow
     end
     self:status(string.format('Two lit render targets of %d by %d pixels, and %d canvases drew this frame.', RenderTargets.width, RenderTargets.height, graphics2d.stats().canvases))
 end
@@ -112,8 +122,8 @@ function RenderTargets:renderGarden()
         graphics2d.draw(self.tiles, bush[1], bush[2], {source = Room.sources.bush, width = size, height = size, layer = 1})
     end
     for _, firefly in ipairs(self.fireflies) do
-        graphics2d.draw(graphics2d.lightTexture(), firefly.light.x, firefly.light.y, {width = 28, height = 28, color = '#FFE8FF90', blend = 'additive', layer = 2, emission = 1.5})
-        graphics2d.drawCircle(firefly.light.x, firefly.light.y, 3.5, '#FFF4FFC0', {layer = 3, emission = 2})
+        graphics2d.draw(graphics2d.lightTexture(), firefly.light.x, firefly.light.y, {width = 24, height = 24, color = RenderTargets.fireflyGlow:withAlpha(firefly.glow), blend = 'additive', layer = 2, emission = 1.2})
+        graphics2d.drawCircle(firefly.light.x, firefly.light.y, 3, '#FFF4FFC0', {layer = 3, emission = 1.5 * firefly.glow})
         graphics2d.drawLight(firefly.light)
     end
 end
@@ -145,11 +155,17 @@ function RenderTargets.drawMonitor(screen)
     graphics2d.drawText(nil, screen.title, x + width / 2, y - 60, {size = 44, anchor = {0.5, 1}, color = '#FFE8EAF2', layer = 4})
 end
 
+-- The monitors stand on a wooden desk in front of a slate wall: the top of the desk with a lit front edge, its front in shade, and a soft shadow under each stand.
 function RenderTargets:draw(area)
     local canvas = graphics2d.canvasBounds()
+    local desk = RenderTargets.desk
     graphics2d.drawRect(canvas, '#FF232838')
-    graphics2d.drawRect({canvas.x, 320, canvas.width, canvas:bottom() - 320}, '#FF1B1F2E')
+    graphics2d.drawRect({canvas.x, desk, canvas.width, canvas:bottom() - desk}, '#FF6B4A33')
+    graphics2d.drawRect({canvas.x, desk + 34, canvas.width, 6}, '#FF9A7048')
+    graphics2d.drawRect({canvas.x, desk + 40, canvas.width, canvas:bottom() - desk - 40}, '#FF45301F')
+    graphics2d.drawRect({canvas.x, desk - 4, canvas.width, 4}, '#FF15172A')
     for _, screen in ipairs(self.screens) do
+        graphics2d.drawShape({screen.x + RenderTargets.width / 2 - 200, desk - 4, 400, 30}, {kind = 'ellipse', color = '#80100C08', softness = 12})
         RenderTargets.drawMonitor(screen)
     end
 end

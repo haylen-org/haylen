@@ -32,12 +32,16 @@ DayNight.keys = {
 
 DayNight.horizon = -110
 DayNight.ground = 250
+-- The houses of the village, mirrored and scaled so no two neighbors look alike, and the trees between them on the slope behind.
 DayNight.houses = {
-    {name = 'cottage', x = -1120}, {name = 'stone-house', x = -700}, {name = 'cottage', x = -250},
-    {name = 'stone-house', x = 230}, {name = 'cottage', x = 650}, {name = 'stone-house', x = 1080},
+    {name = 'cottage', x = -1130, scale = 0.54, flip = true}, {name = 'stone-house', x = -690, scale = 0.64}, {name = 'cottage', x = -215, scale = 0.6},
+    {name = 'stone-house', x = 245, scale = 0.55, flip = true}, {name = 'cottage', x = 700, scale = 0.64, flip = true}, {name = 'stone-house', x = 1130, scale = 0.6},
 }
-DayNight.houseScale = 0.6
-DayNight.lampPosts = {-880, -505, 18, 411, 893}
+DayNight.trees = {
+    {kind = 'pine', x = -1330, height = 340}, {kind = 'tree', x = -560, height = 300, flip = true}, {kind = 'pine', x = -60, height = 370},
+    {kind = 'tree', x = 380, height = 310}, {kind = 'pine', x = 830, height = 330, flip = true}, {kind = 'tree', x = 1290, height = 320},
+}
+DayNight.lampPosts = {-896, -476, 49, 431, 950}
 DayNight.lampHeight = 300
 DayNight.times = {{'Dawn', 6}, {'Noon', 12}, {'Dusk', 18.5}, {'Midnight', 0}}
 
@@ -65,7 +69,7 @@ end
 function DayNight:enter()
     local buttons = {}
     for index, time in ipairs(DayNight.times) do
-        buttons[index] = ui.button{id = time[1]:lower(), text = time[1], onClick = function()
+        buttons[index] = ui.button{id = time[1]:lower(), text = time[1], align = 'stretch', onClick = function()
             self.hour = time[2]
         end}
     end
@@ -164,8 +168,11 @@ end
 function DayNight:draw(area)
     self:drawSky()
     self.town:land(DayNight.horizon, DayNight.ground)
+    for _, tree in ipairs(DayNight.trees) do
+        self.town:tree(tree.kind, tree.x, DayNight.ground - 20, tree.height, 1, tree.flip)
+    end
     for _, house in ipairs(DayNight.houses) do
-        self.town:house(house.name, house.x, DayNight.ground + 12, DayNight.houseScale, 2, self.glow)
+        self.town:house(house.name, house.x, DayNight.ground + 12, house.scale, 2, self.glow, nil, house.flip)
     end
     for index, x in ipairs(DayNight.lampPosts) do
         local lanternX, lanternY = self.town:lampPost(x, DayNight.ground + 30, DayNight.lampHeight, 4, self.glow)
