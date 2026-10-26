@@ -355,6 +355,7 @@ SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS 
 - Leaves the presses that carry a key of a keyboard to GameController, and turns the other presses into keys whether a keyboard is connected or not. On tvOS it keeps the Menu press that the Escape key of a keyboard makes, so Escape goes back like the remote.
 - Removes the key commands of the arrows and escape.
 - Removes the swipe gestures of the Apple TV remote.
+- Reads whether the joystick subsystem opened the Siri Remote only where SDL builds that subsystem, which the engine leaves out.
 
 #### sdl-web-page-keys.patch
 

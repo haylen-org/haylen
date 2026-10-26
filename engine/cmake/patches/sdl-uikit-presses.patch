@@ -1,8 +1,19 @@
-Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to GameController, through which the engine reads every key with its release, so SDL turns only the presses of remotes and game controllers into keys, whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote.
+Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to GameController, through which the engine reads every key with its release, so SDL turns only the presses of remotes and game controllers into keys, whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote, and reads the Siri Remote that the joystick subsystem opens only where SDL builds that subsystem.
 
 --- a/src/video/uikit/SDL_uikitview.m
 +++ b/src/video/uikit/SDL_uikitview.m
-@@ -57,25 +57,6 @@
+@@ -38,8 +38,10 @@
+ // The maximum number of mouse buttons we support
+ #define MAX_MOUSE_BUTTONS 5
+ 
++#ifndef SDL_JOYSTICK_DISABLED
+ // This is defined in SDL_sysjoystick.m
+ extern int SDL_AppleTVRemoteOpenedAsJoystick;
++#endif
+ 
+ @implementation SDL_uikitview
+ {
+@@ -57,25 +59,6 @@
  - (instancetype)initWithFrame:(CGRect)frame
  {
      if ((self = [super initWithFrame:frame])) {
@@ -28,7 +39,16 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
  #if !defined(SDL_PLATFORM_TVOS)
          /* Pinch gestures */
          UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(sdlPinchGesture:)];
-@@ -556,42 +537,59 @@
+@@ -520,7 +503,7 @@
+ 
+     // Presses from Apple TV remote or game controller
+     bool controller_opened = false;
+-#ifdef SDL_PLATFORM_TVOS
++#if defined(SDL_PLATFORM_TVOS) && !defined(SDL_JOYSTICK_DISABLED)
+     // tvOS doesn't send these for game controllers, but does for the Siri remote
+     controller_opened = (SDL_AppleTVRemoteOpenedAsJoystick > 0);
+ #else
+@@ -556,42 +539,59 @@
      return SDL_SCANCODE_UNKNOWN;
  }
  
@@ -104,6 +124,41 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
 +        [super pressesCancelled:dropped withEvent:event];
      }
  }
+ 
+@@ -603,34 +603,6 @@
+     }
+ }
+ 
+-#ifdef SDL_PLATFORM_TVOS
+-- (void)swipeGesture:(UISwipeGestureRecognizer *)gesture
+-{
+-    // Swipe gestures don't trigger begin states.
+-    if (gesture.state == UIGestureRecognizerStateEnded) {
+-        // tvOS doesn't send these for game controllers, but does for the Siri remote
+-        bool controller_opened = (SDL_AppleTVRemoteOpenedAsJoystick > 0);
+-        if (!controller_opened) {
+-            /* Send arrow key presses for now, as we don't have an external API
+-             * which better maps to swipe gestures. */
+-            switch (gesture.direction) {
+-            case UISwipeGestureRecognizerDirectionUp:
+-                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_UP);
+-                break;
+-            case UISwipeGestureRecognizerDirectionDown:
+-                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_DOWN);
+-                break;
+-            case UISwipeGestureRecognizerDirectionLeft:
+-                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_LEFT);
+-                break;
+-            case UISwipeGestureRecognizerDirectionRight:
+-                SDL_SendKeyboardKeyAutoRelease(0, SDL_SCANCODE_RIGHT);
+-                break;
+-            }
+-        }
+-    }
+-}
+-#endif // SDL_PLATFORM_TVOS
+ 
+ @end
  
 --- a/src/video/uikit/SDL_uikitviewcontroller.m
 +++ b/src/video/uikit/SDL_uikitviewcontroller.m
