@@ -6,6 +6,7 @@ Graphics draws everything an app shows: the GPU device and its graphics APIs, te
 
 | Name | Description | Link |
 | --- | --- | --- |
+| Direct3D | The devices of Direct3D 12 and Direct3D 11 on Windows: what the machine needs, how each one draws a frame, swapchains, transparent windows, shaders, capabilities, debugging, lost devices and limits. | [`direct3d.md`](direct3d.md) |
 | Rendering | How a frame is drawn: the GPU device of the backend, canvases and their order, design units and the viewport, cameras, draw order and blend modes, batching and what breaks a batch, smooth edges, sprites and batches, captures, groups, masks, lit canvases, post-processing, effects, the GPU pools and performance. | [`rendering.md`](rendering.md) |
 | Shaders | Fragment shaders of an app: the Haylen shader language, compiling with `haylen-shaderc` for every graphics API, the shader library, sprite data, uniforms and textures, post-processing, the game shaders of the test project, the shader package and load time. | [`shaders.md`](shaders.md) |
 | Text | Fonts, bitmap fonts and font families, how glyphs are made and drawn, shaping, directions and line breaking, layout and fitting, rich text with its markup, effects and typewriter reveal, and text in the UI. | [`text.md`](text.md) |
