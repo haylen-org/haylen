@@ -5,7 +5,7 @@
 
 namespace haylen::test {
 
-// An OpenGL 4.3 core or OpenGL ES 3.0 context that draws into a hidden drawable, for the tests of the OpenGL device: a pixel buffer of EGL without a window, such as on Mesa in a container or on the Android emulator, or a hidden window of WGL on Windows. Its drawable is the swapchain of the device.
+// An OpenGL 4.3 core, OpenGL ES 3.0 or WebGL2 context that draws into a hidden drawable, for the tests of the OpenGL device: a pixel buffer of EGL without a window, such as on Mesa in a container or on the Android emulator, a hidden window of WGL on Windows, or the canvas of the page on the web. Its drawable is the swapchain of the device.
 class OffscreenGlContext final : public gpu::GlContext {
   public:
     // Throws `std::runtime_error` with the reason when the machine cannot make the context of the API.

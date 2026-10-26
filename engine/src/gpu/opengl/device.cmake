@@ -22,8 +22,10 @@ foreach(api IN ITEMS openGl openGlEs webGl2)
   endif()
 endforeach()
 
-# The tests of the device draw through an offscreen context of EGL on Linux and Android and of WGL on Windows, and the web runs them in a browser.
-if(NOT EMSCRIPTEN)
+# The tests of the device draw through an offscreen context of EGL on Linux and Android, of WGL on Windows and of the canvas of the page on the web, where only the conformance suite runs, since the tests of the device make OpenGL and OpenGL ES contexts.
+if(EMSCRIPTEN)
+  list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/web/OffscreenGlContext.cpp")
+else()
   list(APPEND HAYLEN_GPU_TEST_SOURCES
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DeviceTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ShaderProgramTests.cpp"
