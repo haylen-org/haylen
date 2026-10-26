@@ -58,10 +58,12 @@ class Device final {
     // Replaces the pixels and size of an existing texture. Every handle to it sees the new contents from the next draw, and a dynamic texture stays dynamic.
     void replaceTexture(const Texture& texture, const Image& image);
 
-    // Creates a texture whose pixels change in place with `updateTexture`, such as a glyph atlas. Its pixels reach the GPU with the next upload.
+    // Creates a texture whose pixels change in place with `updateTexture`, such as an image an app paints each frame. Its pixels reach the GPU with the next upload.
     [[nodiscard]] Texture createDynamicTexture(const Image& image, Texture::Options options = {});
     [[nodiscard]] Texture createDynamicTexture(int width, int height, math::Color fill, Texture::Options options = {});
-    [[nodiscard]] Texture createDynamicAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options = {});
+
+    // Creates a dynamic texture of one channel of half floats, such as the signed distance field of a glyph atlas, which every GPU filters without the steps of a byte. Its `updateTexture` takes the bytes of the halves.
+    [[nodiscard]] Texture createDynamicDistanceTexture(int width, int height, std::span<const std::uint16_t> distances, Texture::Options options = {});
 
     // Replaces every pixel of a dynamic texture, keeping its size. The GPU only takes whole textures, so the device keeps the last pixels a texture received and sends each changed texture once per frame, however many updates it had.
     void updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels);
@@ -105,7 +107,7 @@ class Device final {
 
   private:
     static void validateSize(int width, int height, int limit);
-    static void validateAlpha(int width, int height, std::span<const std::uint8_t> alpha, int limit);
+    static void validateDistances(int width, int height, std::span<const std::uint16_t> distances, int limit);
 
     std::unique_ptr<DeviceState> state;
 };

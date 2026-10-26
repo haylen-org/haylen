@@ -7,6 +7,8 @@
 #include <core/ShapeDistanceFinder.h>
 #include <msdfgen.h>
 
+#include "math/HalfFloat.hpp"
+
 namespace haylen::text {
 
 // The outline in pixels, with y pointing down like the rows of the field. Lines, quadratic curves and cubic curves keep their exact shape. A malformed CFF outline may draw before its first move, which starts a contour at the origin.
@@ -92,13 +94,13 @@ std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, in
         }
     }
 
-    // Each pixel samples its center, and distances across twice the spread fill the range of a byte.
-    std::vector<float> distances(static_cast<std::size_t>(field->width) * static_cast<std::size_t>(field->height));
-    const msdfgen::BitmapSection<float, 1> output(distances.data(), field->width, field->height, msdfgen::Y_DOWNWARD);
+    // Each pixel samples its center, and distances across twice the spread fill the range from 0 to 1.
+    std::vector<float> samples(static_cast<std::size_t>(field->width) * static_cast<std::size_t>(field->height));
+    const msdfgen::BitmapSection<float, 1> output(samples.data(), field->width, field->height, msdfgen::Y_DOWNWARD);
     const msdfgen::Projection projection(msdfgen::Vector2(1.0), msdfgen::Vector2(-field->offsetX, -field->offsetY));
     msdfgen::generateSDF(output, shape, msdfgen::SDFTransformation(projection, msdfgen::Range(spread * 2.0)), msdfgen::GeneratorConfig(mayOverlap(shape)));
-    field->pixels.resize(distances.size());
-    std::ranges::transform(distances, field->pixels.begin(), [](float distance) { return msdfgen::pixelFloatToByte(distance); });
+    field->distances.resize(samples.size());
+    std::ranges::transform(samples, field->distances.begin(), [](float distance) { return math::HalfFloat::fromFloat(std::clamp(distance, 0.0F, 1.0F)); });
     return field;
 }
 

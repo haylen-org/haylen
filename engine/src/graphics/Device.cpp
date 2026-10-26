@@ -21,10 +21,10 @@ void Device::validateSize(int width, int height, int limit) {
     }
 }
 
-void Device::validateAlpha(int width, int height, std::span<const std::uint8_t> alpha, int limit) {
+void Device::validateDistances(int width, int height, std::span<const std::uint16_t> distances, int limit) {
     validateSize(width, height, limit);
-    if (alpha.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
-        throw std::invalid_argument("Alpha texture data does not match its dimensions.");
+    if (distances.size() != static_cast<std::size_t>(width) * static_cast<std::size_t>(height)) {
+        throw std::invalid_argument("The distances of a distance texture do not match its dimensions.");
     }
 }
 
@@ -172,9 +172,11 @@ Texture Device::createDynamicTexture(int width, int height, math::Color fill, Te
     return createDynamicTexture(Image(width, height, fill), options);
 }
 
-Texture Device::createDynamicAlphaTexture(int width, int height, std::span<const std::uint8_t> alpha, Texture::Options options) {
-    validateAlpha(width, height, alpha, getMaxTextureSize());
-    return state->createDynamicTexture(width, height, gpu::Device::PixelFormat::R8, alpha, options);
+// The texture takes the bytes of the halves as they lie in memory, which is how the GPU reads them.
+Texture Device::createDynamicDistanceTexture(int width, int height, std::span<const std::uint16_t> distances, Texture::Options options) {
+    validateDistances(width, height, distances, getMaxTextureSize());
+    const std::span bytes(reinterpret_cast<const std::uint8_t*>(distances.data()), distances.size_bytes());
+    return state->createDynamicTexture(width, height, gpu::Device::PixelFormat::R16Float, bytes, options);
 }
 
 void Device::updateTexture(const Texture& texture, std::span<const std::uint8_t> pixels) {

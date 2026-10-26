@@ -20,6 +20,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/text/Font.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
+#include "math/HalfFloat.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 #include "text/DistanceField.hpp"
@@ -167,7 +168,7 @@ TEST(FontTest, UploadsItsAtlasOncePerFrameForTheGlyphsOfEveryDraw) {
     }
     fixture.frames(1);
     EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWrites, 1);
-    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, static_cast<std::size_t>(page.getWidth() * page.getHeight()));
+    EXPECT_EQ(fixture.host().getGpu().getLastFrame().imageWriteBytes, static_cast<std::size_t>(page.getWidth() * page.getHeight()) * sizeof(std::uint16_t));
     EXPECT_EQ(font.getPage(0).getResource()->image.id, image);
 }
 
@@ -230,7 +231,7 @@ TEST_F(FontFileTest, ReadsOutlinesThatDrawBeforeTheirFirstMove) {
 
     const std::optional<DistanceField> field = DistanceField::build(open(data), glyph, stbtt_ScaleForMappingEmToPixels(&info, 64.0F), 8);
     ASSERT_TRUE(field.has_value());
-    EXPECT_TRUE(std::ranges::any_of(field->pixels, [](std::uint8_t distance) { return distance >= 128; }));
+    EXPECT_TRUE(std::ranges::any_of(field->distances, [](std::uint16_t distance) { return distance >= math::HalfFloat::fromFloat(0.5F); }));
 }
 
 // The inside of a distance field covers the pixels the glyph covers, for the quadratic curves of TrueType outlines and the cubic curves of CFF outlines alike.
@@ -258,8 +259,8 @@ TEST_F(FontFileTest, BuildsDistanceFieldsFromWholeOutlines) {
                     if (covered > 64 && covered < 192) {
                         continue;
                     }
-                    const std::uint8_t distance = field->pixels[static_cast<std::size_t>((row + y - field->offsetY) * field->width + column + x - field->offsetX)];
-                    agreeing += (distance >= 128) == (covered >= 192) ? 1 : 0;
+                    const std::uint16_t distance = field->distances[static_cast<std::size_t>((row + y - field->offsetY) * field->width + column + x - field->offsetX)];
+                    agreeing += (distance >= math::HalfFloat::fromFloat(0.5F)) == (covered >= 192) ? 1 : 0;
                     ++counted;
                 }
             }

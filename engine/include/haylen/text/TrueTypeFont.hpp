@@ -75,7 +75,7 @@ class TrueTypeFont final : public Font {
     graphics::Texture texture;
     std::unordered_map<std::uint32_t, Glyph> glyphs;
     std::unordered_map<char32_t, bool> coverage;
-    std::vector<std::uint8_t> atlas;
+    std::vector<std::uint16_t> atlas;
     int atlasWidth = 0;
     int atlasHeight = 0;
     int cursorX = 1;

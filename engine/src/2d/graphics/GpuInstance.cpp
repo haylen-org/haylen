@@ -7,22 +7,12 @@
 
 #include "graphics/TextureResource.hpp"
 #include "haylen/math/Math.hpp"
+#include "math/HalfFloat.hpp"
 
 namespace haylen::graphics2d {
 
 std::uint16_t GpuInstance::unorm16(float value) noexcept {
     return static_cast<std::uint16_t>(std::clamp(value, 0.0F, 1.0F) * 65535.0F + 0.5F);
-}
-
-// Converts a distance of zero or more to the bits of a half float, rounding to the nearest and keeping it within the largest finite half.
-std::uint16_t GpuInstance::toHalf(float value) noexcept {
-    const float clamped = std::clamp(value, 0.0F, kLargestHalf);
-    if (clamped < kSmallestNormalHalf) {
-        return static_cast<std::uint16_t>(std::lround(clamped * kSubnormalHalfSteps));
-    }
-    const auto bits = std::bit_cast<std::uint32_t>(clamped);
-    const std::uint32_t rounded = bits + 0x0FFFU + ((bits >> 13U) & 1U);
-    return static_cast<std::uint16_t>((rounded - 0x38000000U) >> 13U);
 }
 
 std::uint32_t GpuInstance::scaleAlpha(std::uint32_t color, float amount) noexcept {
@@ -140,7 +130,7 @@ GpuInstance GpuInstance::makeShape(const Shape& shape, float margin, bool flippe
         .center = {center.x, center.y},
         .halfSize = {half.x, half.y},
         .rotation = shape.rotation,
-        .reach = {toHalf(shape.softness), toHalf(margin)},
+        .reach = {math::HalfFloat::fromFloat(shape.softness), math::HalfFloat::fromFloat(margin)},
         .colors = {shape.color.toRgba8(), shape.borderColor.toRgba8()},
         .form = {share(shape.borderWidth), unorm16(shape.sweep / math::Math::kTau), unorm16((start < 0.0F ? start + math::Math::kTau : start) / math::Math::kTau), flags},
         .radii = {share(shape.radii[0]), share(shape.radii[1]), share(shape.radii[2]), share(shape.radii[3])},

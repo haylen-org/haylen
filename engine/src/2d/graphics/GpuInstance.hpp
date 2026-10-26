@@ -113,13 +113,7 @@ struct GpuInstance {
     static constexpr std::uint16_t kEllipseFlag = 1;
     static constexpr std::uint16_t kFlippedFlag = 2;
 
-    // The largest finite half float, the smallest normal one and the steps of the subnormal halves below it.
-    static constexpr float kLargestHalf = 65504.0F;
-    static constexpr float kSmallestNormalHalf = 6.103515625e-05F;
-    static constexpr float kSubnormalHalfSteps = 16777216.0F;
-
     [[nodiscard]] static std::uint16_t unorm16(float value) noexcept;
-    [[nodiscard]] static std::uint16_t toHalf(float value) noexcept;
     [[nodiscard]] static std::uint32_t scaleAlpha(std::uint32_t color, float amount) noexcept;
     [[nodiscard]] static std::uint8_t flipBits(SpriteFlip flip) noexcept;
     [[nodiscard]] static std::uint8_t unsignedByte(float value) noexcept;

@@ -448,6 +448,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/math/Easing.cpp
   src/math/EasingCurve.cpp
   src/math/Geometry.cpp
+  src/math/HalfFloat.cpp
   src/math/HampelFilter.cpp
   src/math/KalmanFilter.cpp
   src/math/LowPassFilter.cpp

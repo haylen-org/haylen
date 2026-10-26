@@ -124,7 +124,7 @@ TrueTypeFont::TrueTypeFont(graphics::Device& graphicsDevice, std::unique_ptr<Fac
     atlasWidth = options.atlasSize;
     atlasHeight = options.atlasSize;
     atlas.assign(static_cast<std::size_t>(atlasWidth) * static_cast<std::size_t>(atlasHeight), 0);
-    texture = device.createDynamicAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
+    texture = device.createDynamicDistanceTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
 }
 
 TrueTypeFont::~TrueTypeFont() = default;
@@ -223,7 +223,7 @@ Font::Glyph TrueTypeFont::rasterize(std::uint32_t index) {
     }
 
     for (int row = 0; row < height; ++row) {
-        std::copy_n(field->pixels.begin() + static_cast<std::ptrdiff_t>(row * width), width, atlas.begin() + static_cast<std::ptrdiff_t>((cursorY + row) * atlasWidth + cursorX));
+        std::copy_n(field->distances.begin() + static_cast<std::ptrdiff_t>(row * width), width, atlas.begin() + static_cast<std::ptrdiff_t>((cursorY + row) * atlasWidth + cursorX));
     }
 
     glyph.source = {static_cast<float>(cursorX), static_cast<float>(cursorY), static_cast<float>(width), static_cast<float>(height)};
@@ -244,7 +244,7 @@ void TrueTypeFont::grow() {
         throw std::runtime_error("The font atlas exceeded the maximum texture size.");
     }
 
-    std::vector<std::uint8_t> grown(static_cast<std::size_t>(width) * static_cast<std::size_t>(height), 0);
+    std::vector<std::uint16_t> grown(static_cast<std::size_t>(width) * static_cast<std::size_t>(height), 0);
     for (int row = 0; row < atlasHeight; ++row) {
         std::copy_n(atlas.begin() + static_cast<std::ptrdiff_t>(row * atlasWidth), atlasWidth, grown.begin() + static_cast<std::ptrdiff_t>(row * width));
     }
@@ -260,9 +260,9 @@ void TrueTypeFont::sync() {
         return;
     }
     if (texture.getWidth() == atlasWidth && texture.getHeight() == atlasHeight) {
-        device.updateTexture(texture, atlas);
+        device.updateTexture(texture, std::span(reinterpret_cast<const std::uint8_t*>(atlas.data()), atlas.size() * sizeof(std::uint16_t)));
     } else {
-        texture = device.createDynamicAlphaTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
+        texture = device.createDynamicDistanceTexture(atlasWidth, atlasHeight, atlas, {.filter = graphics::Texture::Filter::Linear});
     }
     dirty = false;
 }

@@ -234,7 +234,7 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
 
     // The first frame sends the atlases of the default font and of the UI.
     fixture.frames(1);
-    const graphics::Texture atlas = device.createDynamicAlphaTexture(4, 4, std::vector<std::uint8_t>(16, 0), {.filter = graphics::Texture::Filter::Linear});
+    const graphics::Texture atlas = device.createDynamicDistanceTexture(4, 2, std::vector<std::uint16_t>(8, 0), {.filter = graphics::Texture::Filter::Linear});
     const graphics::Texture image = device.createDynamicTexture(2, 2, math::Color::white());
     const std::uint32_t atlasImage = atlas.getResource()->image.id;
     EXPECT_EQ(atlas.getOptions().filter, graphics::Texture::Filter::Linear);
@@ -273,7 +273,7 @@ TEST(DeviceTest, UploadsEachChangedDynamicTextureOncePerFrame) {
 
     EXPECT_THROW(device.updateTexture(atlas, std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW(device.updateTexture(device.createTexture(2, 2, math::Color::white()), std::vector<std::uint8_t>(16)), std::logic_error);
-    EXPECT_THROW((void)device.createDynamicAlphaTexture(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
+    EXPECT_THROW((void)device.createDynamicDistanceTexture(2, 2, std::vector<std::uint16_t>(3)), std::invalid_argument);
     EXPECT_THROW((void)device.createDynamicTexture(1 << 20, 1 << 20, math::Color::white()), std::invalid_argument);
 }
 

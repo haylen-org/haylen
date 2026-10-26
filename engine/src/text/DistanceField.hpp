@@ -12,9 +12,9 @@ class Shape;
 
 namespace haylen::text {
 
-// The signed distance field of one glyph of a TrueType or OpenType font, built from its whole outline, the cubic curves of CFF outlines included. Its bytes run in rows from the top, and the edge of the glyph lies halfway between 0 and 255 with the inside above it.
+// The signed distance field of one glyph of a TrueType or OpenType font, built from its whole outline, the cubic curves of CFF outlines included. Its distances are half floats from 0 to 1 that run in rows from the top, with the edge of the glyph at 0.5 and the inside above it, so every GPU filters them without the steps of a byte.
 struct DistanceField {
-    std::vector<std::uint8_t> pixels;
+    std::vector<std::uint16_t> distances;
     int width = 0;
     int height = 0;
 
