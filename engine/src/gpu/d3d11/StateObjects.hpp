@@ -18,6 +18,7 @@ class StateObjects final {
 
   private:
     [[nodiscard]] static D3D11_BLEND toBlend(Device::BlendFactor factor) noexcept;
+    [[nodiscard]] static D3D11_BLEND toAlphaBlend(Device::BlendFactor factor) noexcept;
     [[nodiscard]] static D3D11_BLEND_OP toBlendOperation(Device::BlendOperation operation) noexcept;
     [[nodiscard]] static D3D11_COMPARISON_FUNC toCompare(Device::CompareFunction function) noexcept;
     [[nodiscard]] static D3D11_STENCIL_OP toStencilOperation(Device::StencilOperation operation) noexcept;

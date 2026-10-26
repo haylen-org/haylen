@@ -161,11 +161,17 @@ void Device::readCapabilities() {
         }
     }
 
+    // Images sample through the view of their format, and depth images draw through the view of their depth.
     for (std::size_t index = 0; index < Formats::kPixelFormatCount; ++index) {
         const auto format = static_cast<PixelFormat>(index);
-        D3D12_FEATURE_DATA_FORMAT_SUPPORT support{.Format = Formats::getViewFormat(format), .Support1 = D3D12_FORMAT_SUPPORT1_NONE, .Support2 = D3D12_FORMAT_SUPPORT2_NONE};
-        const bool known = !Formats::isDepth(format) && SUCCEEDED(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &support, sizeof(support)));
-        capabilities.blendableFormats[index] = known && (support.Support1 & D3D12_FORMAT_SUPPORT1_RENDER_TARGET) != 0 && (support.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
+        const bool depth = Formats::isDepth(format);
+        D3D12_FEATURE_DATA_FORMAT_SUPPORT view{.Format = Formats::getViewFormat(format), .Support1 = D3D12_FORMAT_SUPPORT1_NONE, .Support2 = D3D12_FORMAT_SUPPORT2_NONE};
+        D3D12_FEATURE_DATA_FORMAT_SUPPORT target{.Format = depth ? Formats::getDepthFormat(format) : Formats::getViewFormat(format), .Support1 = D3D12_FORMAT_SUPPORT1_NONE, .Support2 = D3D12_FORMAT_SUPPORT2_NONE};
+        static_cast<void>(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &view, sizeof(view)));
+        static_cast<void>(device->CheckFeatureSupport(D3D12_FEATURE_FORMAT_SUPPORT, &target, sizeof(target)));
+        capabilities.textureFormats[index] = (view.Support1 & (D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE | D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE_COMPARISON)) != 0;
+        capabilities.renderFormats[index] = (target.Support1 & (depth ? D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL : D3D12_FORMAT_SUPPORT1_RENDER_TARGET)) != 0;
+        capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
     }
 }
 

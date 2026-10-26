@@ -26,8 +26,8 @@ ComPtr<ID3D11BlendState> StateObjects::makeBlend(ID3D11Device& device, const Dev
         target.SrcBlend = toBlend(color.blend.sourceColor);
         target.DestBlend = toBlend(color.blend.destinationColor);
         target.BlendOp = toBlendOperation(color.blend.colorOperation);
-        target.SrcBlendAlpha = toBlend(color.blend.sourceAlpha);
-        target.DestBlendAlpha = toBlend(color.blend.destinationAlpha);
+        target.SrcBlendAlpha = toAlphaBlend(color.blend.sourceAlpha);
+        target.DestBlendAlpha = toAlphaBlend(color.blend.destinationAlpha);
         target.BlendOpAlpha = toBlendOperation(color.blend.alphaOperation);
         target.RenderTargetWriteMask = static_cast<UINT8>(color.writeMask);
     }
@@ -136,6 +136,23 @@ D3D11_BLEND StateObjects::toBlend(Device::BlendFactor factor) noexcept {
         return D3D11_BLEND_INV_BLEND_FACTOR;
     }
     return D3D11_BLEND_ONE;
+}
+
+// Direct3D takes no factor of the color channels for alpha, so the factor of a color takes its alpha there, which is the value it gives the alpha channel.
+D3D11_BLEND StateObjects::toAlphaBlend(Device::BlendFactor factor) noexcept {
+    using BlendFactor = Device::BlendFactor;
+    switch (factor) {
+    case BlendFactor::SourceColor:
+        return D3D11_BLEND_SRC_ALPHA;
+    case BlendFactor::OneMinusSourceColor:
+        return D3D11_BLEND_INV_SRC_ALPHA;
+    case BlendFactor::DestinationColor:
+        return D3D11_BLEND_DEST_ALPHA;
+    case BlendFactor::OneMinusDestinationColor:
+        return D3D11_BLEND_INV_DEST_ALPHA;
+    default:
+        return toBlend(factor);
+    }
 }
 
 D3D11_BLEND_OP StateObjects::toBlendOperation(Device::BlendOperation operation) noexcept {

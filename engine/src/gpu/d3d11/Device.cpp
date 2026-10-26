@@ -126,11 +126,17 @@ void Device::readCapabilities() {
         }
     }
 
+    // Images sample through the view of their format, and depth images draw through the view of their depth.
     for (std::size_t index = 0; index < Formats::kPixelFormatCount; ++index) {
         const auto format = static_cast<PixelFormat>(index);
-        UINT support = 0;
-        const bool known = !Formats::isDepth(format) && SUCCEEDED(device->CheckFormatSupport(Formats::getViewFormat(format), &support));
-        capabilities.blendableFormats[index] = known && (support & D3D11_FORMAT_SUPPORT_RENDER_TARGET) != 0 && (support & D3D11_FORMAT_SUPPORT_BLENDABLE) != 0;
+        const bool depth = Formats::isDepth(format);
+        UINT view = 0;
+        UINT target = 0;
+        static_cast<void>(device->CheckFormatSupport(Formats::getViewFormat(format), &view));
+        static_cast<void>(device->CheckFormatSupport(depth ? Formats::getDepthFormat(format) : Formats::getViewFormat(format), &target));
+        capabilities.textureFormats[index] = (view & static_cast<UINT>(D3D11_FORMAT_SUPPORT_SHADER_SAMPLE | D3D11_FORMAT_SUPPORT_SHADER_SAMPLE_COMPARISON)) != 0;
+        capabilities.renderFormats[index] = (target & static_cast<UINT>(depth ? D3D11_FORMAT_SUPPORT_DEPTH_STENCIL : D3D11_FORMAT_SUPPORT_RENDER_TARGET)) != 0;
+        capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target & static_cast<UINT>(D3D11_FORMAT_SUPPORT_BLENDABLE)) != 0;
     }
 }
 
