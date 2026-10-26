@@ -671,18 +671,18 @@ void ContentManager::startSurvey() {
     surveying = true;
     // clang-format off
     engine.getJobs().run([release = std::shared_ptr<const ReleasePackage>(release), content = release->getContent(), rules = settings] {
-        const std::vector<bool> installed = release->findInstalledShards(*content);
-        const std::vector<bool> appInstalled = release->findInstalledShards(*release->getApp());
+        const std::vector<bool> contentShards = release->findInstalledShards(*content);
+        const std::vector<bool> appShards = release->findInstalledShards(*release->getApp());
         const LocalStore* store = release->getStore().get();
-        const auto isLocal = [&installed, store](const Catalog::Chunk& chunk) { return installed[chunk.shard] || (store != nullptr && store->contains(chunk.storedId)); };
+        const auto isLocal = [&contentShards, store](const Catalog::Chunk& chunk) { return contentShards[chunk.shard] || (store != nullptr && store->contains(chunk.storedId)); };
         Survey counted;
-        counted.installedShards = static_cast<std::uint64_t>(std::ranges::count(installed, true) + std::ranges::count(appInstalled, true));
-        counted.remoteShards = installed.size() + appInstalled.size() - counted.installedShards;
+        counted.installedShards = static_cast<std::uint64_t>(std::ranges::count(contentShards, true) + std::ranges::count(appShards, true));
+        counted.remoteShards = contentShards.size() + appShards.size() - counted.installedShards;
         for (std::uint64_t index = 0; index < content->catalog->getChunkCount(); ++index) {
-            counted.missingChunks += isLocal(content->catalog->getChunk(index)) ? 0 : 1;
+            counted.missingChunks += isLocal(content->catalog->getChunk(index)) ? 0U : 1U;
         }
         for (const Catalog::Chunk& chunk : Updater::getChunks(*content->catalog, Delivery::Prefetch, rules)) {
-            counted.pendingPrefetch += isLocal(chunk) ? 0 : 1;
+            counted.pendingPrefetch += isLocal(chunk) ? 0U : 1U;
         }
         return counted;
     }, [this, owner = std::weak_ptr(alive)](core::JobSystem::Result<Survey> counted) {

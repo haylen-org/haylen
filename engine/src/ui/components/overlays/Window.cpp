@@ -108,10 +108,10 @@ void Window::render(Context& context, const math::Rect&) {
 // The close button stands at the end of the bar inside the padding of the image of the title bar, so it keeps clear of the rounded end of the bar.
 void Window::drawTitle(Context& context, const math::Rect& bar) {
     const float radius = context.getMetric(Theme::Metric::ControlRadius);
-    const math::Insets padding = Surfaces::getPadding(context, Theme::Surface::TitleBar);
-    const math::Rect inside = bar.inset(padding);
+    const math::Insets barPadding = Surfaces::getPadding(context, Theme::Surface::TitleBar);
+    const math::Rect inside = bar.inset(barPadding);
     const float side = closable ? inside.height : 0.0F;
-    const float end = closable ? side + padding.right : 0.0F;
+    const float end = closable ? side + barPadding.right : 0.0F;
     const math::Rect grip = context.mirror({bar.x, bar.y, bar.width - end, bar.height}, bar);
 
     // An image of the title bar covers the whole bar, and the flat bar fills the top of the window inside its border, with its top corners parallel to the corners of the window.

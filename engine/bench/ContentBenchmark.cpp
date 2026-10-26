@@ -100,9 +100,9 @@ class ContentBenchmark final {
         // Lua modules ship as bytecode, and maps and images load from the folder in development and from the release the way an app loads them.
         report("Load a Lua module of 2 MiB from its text in the folder", [&] { loadChunk(folder->read("source/world.lua"), "t"); }, 0.0, "ms");
         report("Load the same module as bytecode from the release", [&] { loadChunk(release->read("source/world.lua"), "b"); }, 0.0, "ms");
-        report("Read and parse a map of JSON from the folder", [&] { (void)core::Json::parse(folder->readAssetText("maps/island.json")); }, 0.0, "ms");
-        report("Read and parse the map from the release", [&] { (void)core::Json::parse(release->readAssetText("maps/island.json")); }, 0.0, "ms");
-        report("Read the map cooked as CBOR from the release", [&] { (void)core::Json::from_cbor(release->read("content/maps/island.cbor")); }, 0.0, "ms");
+        report("Read and parse a map of JSON from the folder", [&] { [[maybe_unused]] const core::Json map = core::Json::parse(folder->readAssetText("maps/island.json")); }, 0.0, "ms");
+        report("Read and parse the map from the release", [&] { [[maybe_unused]] const core::Json map = core::Json::parse(release->readAssetText("maps/island.json")); }, 0.0, "ms");
+        report("Read the map cooked as CBOR from the release", [&] { [[maybe_unused]] const core::Json map = core::Json::from_cbor(release->read("content/maps/island.cbor")); }, 0.0, "ms");
         report("Read and decode a 1024 px PNG from the folder", [&] { (void)graphics::Image::decode(folder->read("content/images/scene.png")); }, 0.0, "ms");
         report("Read and decode the PNG from the release", [&] { (void)graphics::Image::decode(release->read("content/images/scene.png")); }, 0.0, "ms");
         report("Read the same pixels raw from the folder", [&] { (void)folder->read("content/images/scene.rgba"); }, 0.0, "ms");

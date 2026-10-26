@@ -76,7 +76,7 @@ class BrowserStoreFiles final : public content::StoreFiles {
         {
             std::scoped_lock lock(mutex);
             for (const Range& range : ranges) {
-                loaded += resident.emplace(range.name, range.offset, range.size).second ? 1 : 0;
+                loaded += resident.emplace(range.name, range.offset, range.size).second ? 1U : 0U;
             }
         }
         done(true);

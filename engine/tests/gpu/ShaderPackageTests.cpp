@@ -21,20 +21,20 @@ TEST_P(GpuShaderPackageTest, MakesEveryProgramOfTheRenderer) {
     const std::array<std::span<const std::uint8_t>, 11> packages{
         core::EmbeddedFiles::getSpriteShader(), core::EmbeddedFiles::getTextShader(), core::EmbeddedFiles::getMeshShader(), core::EmbeddedFiles::getBlendShader(), core::EmbeddedFiles::getCompositeShader(), core::EmbeddedFiles::getLightShader(), core::EmbeddedFiles::getMetaballShader(), core::EmbeddedFiles::getRecolorShader(), core::EmbeddedFiles::getEffectShader(), core::EmbeddedFiles::getShapeShader(), core::EmbeddedFiles::getBackdropShader(),
     };
-    const auto graveyard = std::make_shared<graphics::ResourceGraveyard>();
-    int made = 0;
+    const auto programGraveyard = std::make_shared<graphics::ResourceGraveyard>();
+    int programs = 0;
     for (const std::span<const std::uint8_t> bytes : packages) {
         const graphics::Shader shader = graphics::Shader::parse(bytes);
         const std::shared_ptr<graphics::ShaderResource>& resource = shader.getResource();
-        resource->graveyard = graveyard;
+        resource->graveyard = programGraveyard;
         for (const auto& [name, info] : resource->programs) {
             EXPECT_NO_THROW(static_cast<void>(resource->getProgram(device(), name))) << "The program \"" << resource->name << "/" << name << "\" did not make.";
-            ++made;
+            ++programs;
         }
     }
-    graveyard->collect(device());
+    programGraveyard->collect(device());
     device().commit();
-    EXPECT_GT(made, 0);
+    EXPECT_GT(programs, 0);
 }
 
 INSTANTIATE_TEST_SUITE_P(Devices, GpuShaderPackageTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);
