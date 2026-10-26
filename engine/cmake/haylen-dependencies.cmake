@@ -121,6 +121,14 @@ if(NOT ANDROID)
     set(CMAKE_SYSTEM_NAME Darwin)
   endif()
   haylen_disable_warnings(SDL3-static)
+
+  # SDL links its frameworks through the framework feature of `LINK_LIBRARY`, whose name CMake drops from the link line while it keeps the flag when another library links the same framework with a plain flag first, such as Foundation through Varn, so SDL links them with plain flags as the other libraries do.
+  if(APPLE)
+    get_target_property(sdl_links SDL3-static INTERFACE_LINK_LIBRARIES)
+    string(REGEX REPLACE "\\$<LINK_LIBRARY:FRAMEWORK,([A-Za-z]+)>" "-framework \\1" sdl_links "${sdl_links}")
+    string(REGEX REPLACE "\\$<LINK_LIBRARY:WEAK_FRAMEWORK,([A-Za-z]+)>" "-weak_framework \\1" sdl_links "${sdl_links}")
+    set_property(TARGET SDL3-static PROPERTY INTERFACE_LINK_LIBRARIES "${sdl_links}")
+  endif()
 endif()
 
 # GameActivity of the AndroidX games libraries hosts Android apps. The script `haylen.py` builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
