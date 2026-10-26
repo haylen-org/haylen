@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cmath>
+#include <cstdint>
 #include <functional>
 #include <memory>
 #include <numbers>
@@ -216,6 +217,26 @@ TEST_P(GpuRendererTest, ComposesRenderTargets) {
         renderer.beginTarget(into, topLeft(), {.clear = math::Color::fromHex(0x011627FFU)});
         renderer.draw({.texture = inner.getTexture(), .position = {36.0F, 36.0F}, .size = {48.0F, 48.0F}});
         renderer.draw({.texture = inner.getTexture(), .position = {92.0F, 92.0F}, .size = {48.0F, 48.0F}, .rotation = std::numbers::pi_v<float> / 4.0F});
+    });
+    // clang-format on
+}
+
+// Groups whose blends mix with what lies below, which read a copy of what their canvas drew before them, over stripes of four colors.
+TEST_P(GpuRendererTest, BlendsGroupsWithWhatLiesBelow) {
+    // clang-format off
+    expectScene("blend-groups", [](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::fromHex(0x1B2A41FFU)});
+        const std::array<std::uint32_t, 4> stripes{0xE63946FFU, 0xF1FAEEFFU, 0x457B9DFFU, 0xFFB703FFU};
+        for (std::size_t index = 0; index < stripes.size(); ++index) {
+            renderer.drawRect({static_cast<float>(index) * 32.0F, 0.0F, 32.0F, static_cast<float>(kSize)}, math::Color::fromHex(stripes[index]));
+        }
+        const std::array<std::pair<graphics::BlendMode::Type, float>, 3> groups{{{graphics::BlendMode::Type::Overlay, 32.0F}, {graphics::BlendMode::Type::Difference, 64.0F}, {graphics::BlendMode::Type::ColorBurn, 96.0F}}};
+        for (const auto& [blend, y] : groups) {
+            renderer.beginGroup({.opacity = 0.9F, .order = {.blend = blend}});
+            renderer.drawCircle({48.0F, y}, 22.0F, math::Color::fromHex(0x2A9D8FFFU));
+            renderer.drawCircle({80.0F, y}, 22.0F, math::Color::fromHex(0xE9C46AFFU));
+            renderer.endGroup();
+        }
     });
     // clang-format on
 }

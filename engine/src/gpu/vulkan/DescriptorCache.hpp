@@ -18,7 +18,7 @@ namespace haylen::gpu::vulkan {
 class Context;
 class ReleaseQueue;
 
-// The descriptor sets of a device, which outlive the frames that use them. A set of textures and samplers is made once for each layout and each choice of images and samplers, so a frame that binds what the frame before it bound writes no descriptor, and it goes when one of its images or samplers is destroyed or, past a bound, when no frame used it for a while. A set of uniform blocks points at one buffer of the uniform ring, whose offsets each draw passes as dynamic offsets.
+// The descriptor sets of a device, which outlive the frames that use them. A set of textures and samplers is made once for each layout and each choice of images and samplers, so a frame that binds what the frame before it bound writes no descriptor, and it goes when one of its images or samplers is destroyed or, past a bound, when no frame used it for a while. A set of uniform blocks points at one buffer of the uniform ring with the sizes of the blocks of its programs, since programs of one layout may hold blocks of other sizes, and each draw passes the offsets of its blocks as dynamic offsets.
 class DescriptorCache final {
   public:
     // How many sets of textures and samplers stay once frames no longer use them.
@@ -36,6 +36,8 @@ class DescriptorCache final {
     struct UniformBlock {
         std::uint32_t binding = 0;
         VkDeviceSize size = 0;
+
+        friend bool operator==(const UniformBlock&, const UniformBlock&) = default;
     };
 
     DescriptorCache(const Context& owner, ReleaseQueue& releases) noexcept : context(owner), releaseQueue(releases) {}
@@ -71,6 +73,14 @@ class DescriptorCache final {
         [[nodiscard]] std::size_t operator()(const ResourceKey& key) const noexcept;
     };
 
+    struct UniformKey {
+        std::uint64_t layout = 0;
+        std::uint64_t buffer = 0;
+        std::array<VkDeviceSize, Device::kMaxBlocks> ranges{};
+
+        friend auto operator<=>(const UniformKey&, const UniformKey&) = default;
+    };
+
     [[nodiscard]] std::pair<VkDescriptorPool, VkDescriptorSet> allocate(VkDescriptorSetLayout layout);
     [[nodiscard]] VkDescriptorPool makePool() const;
     template <typename Predicate> void forget(Predicate&& holds, std::uint64_t serial);
@@ -79,7 +89,7 @@ class DescriptorCache final {
     ReleaseQueue& releaseQueue;
     std::vector<VkDescriptorPool> pools;
     std::unordered_map<ResourceKey, Entry, KeyHash> resourceSets;
-    std::map<std::pair<std::uint64_t, std::uint64_t>, VkDescriptorSet> uniformSets;
+    std::map<UniformKey, VkDescriptorSet> uniformSets;
 };
 
 } // namespace haylen::gpu::vulkan

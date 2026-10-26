@@ -268,7 +268,7 @@ class Device final : public gpu::Device {
         bool resourcesDirty = true;
         bool uniformsDirty = true;
         VkBuffer uniformBuffer = VK_NULL_HANDLE;
-        VkDescriptorSetLayout uniformSetLayout = VK_NULL_HANDLE;
+        const ProgramRecord* uniformSetProgram = nullptr;
         VkDescriptorSet uniformSet = VK_NULL_HANDLE;
         std::uint32_t uniformMask = 0;
         std::array<std::uint32_t, kMaxBlocks> uniformOffsets{};
@@ -311,6 +311,7 @@ class Device final : public gpu::Device {
     void endRendering();
     void endSwapchainRendering();
     void resetDrawState() noexcept;
+    [[nodiscard]] static bool sharesUniforms(const ProgramRecord& first, const ProgramRecord& second) noexcept;
     void bindVertexBuffers();
     void bindIndexBuffer();
     void bindResources();

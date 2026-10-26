@@ -1015,6 +1015,8 @@ void Device::destroy(Pipeline pipeline) noexcept {
     if (bound.pipeline == record.get()) {
         bound.pipeline = nullptr;
         bound.program = nullptr;
+        bound.uniformSetProgram = nullptr;
+        bound.uniformSet = VK_NULL_HANDLE;
     }
     releases.push(ReleaseQueue::Pipeline{.pipeline = record->pipeline}, nextSerial);
     forgetProgramUse(record->program, nextSerial);
@@ -1385,7 +1387,7 @@ void Device::applyPipeline(Pipeline pipeline) {
         bound.resourcesDirty = true;
         bound.uniformsDirty = true;
     }
-    if (bound.program == nullptr || bound.program->uniformLayout != program->uniformLayout) {
+    if (bound.program == nullptr || !sharesUniforms(*bound.program, *program)) {
         bound.uniformMask = 0;
         bound.uniformSet = VK_NULL_HANDLE;
     }
@@ -1517,7 +1519,13 @@ void Device::resetDrawState() noexcept {
     bound.resourcesDirty = true;
     bound.uniformsDirty = true;
     bound.uniformSet = VK_NULL_HANDLE;
+    bound.uniformSetProgram = nullptr;
     bound.uniformMask = 0;
+}
+
+// Programs share the uniform blocks of a draw when they read blocks of the same sizes at the same bindings, the ranges that their descriptor sets give the blocks.
+bool Device::sharesUniforms(const ProgramRecord& first, const ProgramRecord& second) noexcept {
+    return first.uniformLayout == second.uniformLayout && first.uniformBlocks == second.uniformBlocks;
 }
 
 void Device::bindVertexBuffers() {
@@ -1597,9 +1605,9 @@ void Device::bindUniforms() {
             std::memset(allocation.data, 0, static_cast<std::size_t>(program.uniformBlocks[index].size));
         }
     }
-    if (bound.uniformSet == VK_NULL_HANDLE || bound.uniformSetLayout != program.uniformLayout) {
+    if (bound.uniformSet == VK_NULL_HANDLE || bound.uniformSetProgram == nullptr || !sharesUniforms(*bound.uniformSetProgram, program)) {
         bound.uniformSet = descriptors.getUniformSet(program.uniformLayout, bound.uniformBuffer, program.uniformBlocks);
-        bound.uniformSetLayout = program.uniformLayout;
+        bound.uniformSetProgram = &program;
     }
     bound.uniformsDirty = false;
     vk.vkCmdBindDescriptorSets(frames[frameIndex].graphics, VK_PIPELINE_BIND_POINT_GRAPHICS, program.layout, program.uniformSet, 1, &bound.uniformSet, static_cast<std::uint32_t>(program.uniformBlocks.size()), bound.uniformOffsets.data());

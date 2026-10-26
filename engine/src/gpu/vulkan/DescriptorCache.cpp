@@ -50,7 +50,10 @@ VkDescriptorSet DescriptorCache::addResourceSet(const ResourceKey& key, std::spa
 }
 
 VkDescriptorSet DescriptorCache::getUniformSet(VkDescriptorSetLayout layout, VkBuffer buffer, std::span<const UniformBlock> blocks) {
-    const std::pair<std::uint64_t, std::uint64_t> key{Context::toHandle(layout), Context::toHandle(buffer)};
+    UniformKey key{.layout = Context::toHandle(layout), .buffer = Context::toHandle(buffer)};
+    for (std::size_t index = 0; index < blocks.size(); ++index) {
+        key.ranges[index] = blocks[index].size;
+    }
     if (const auto found = uniformSets.find(key); found != uniformSets.end()) {
         return found->second;
     }
