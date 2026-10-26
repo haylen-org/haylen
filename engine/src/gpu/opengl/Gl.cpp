@@ -63,6 +63,7 @@ void Gl::readFeatures() {
     const int version = features.majorVersion * 10 + features.minorVersion;
     if (isDesktop()) {
         features.bufferStorage = version >= 44 || hasExtension("GL_ARB_buffer_storage");
+        suffixes.robustness = version < 45 && !hasExtension("GL_KHR_robustness") ? "ARB" : "";
         features.vertexAttribBinding = true;
         features.drawBuffersIndexed = true;
         features.timerQuery = true;
@@ -92,6 +93,16 @@ void Gl::readFeatures() {
     features.timerQuery = hasExtension("GL_EXT_disjoint_timer_query");
     features.debug = version >= 32 || hasExtension("GL_KHR_debug");
     features.robustness = version >= 32 || hasExtension("GL_KHR_robustness") || hasExtension("GL_EXT_robustness");
+
+    // The loader of Android answers every name of OpenGL ES 3.2 even on older contexts, with functions that do nothing there, so an older context takes the names of the extension it has.
+    suffixes.bufferStorage = "EXT";
+    suffixes.timerQuery = "EXT";
+    if (version >= 32) {
+        return;
+    }
+    suffixes.drawBuffersIndexed = hasExtension("GL_OES_draw_buffers_indexed") ? "OES" : "EXT";
+    suffixes.debug = "KHR";
+    suffixes.robustness = hasExtension("GL_KHR_robustness") ? "KHR" : "EXT";
 }
 
 void Gl::loadCore(GlContext& context) {
@@ -215,48 +226,51 @@ void Gl::loadCore(GlContext& context) {
     }
 }
 
-// Each optional feature loads its entry points under the names of the core version that has them first, then under the names of its extensions, and drops the feature when one of them is missing.
+void Gl::bindNamed(GlContext& context, void*& address, std::string_view name, std::string_view suffix) {
+    address = context.getProcAddress(std::format("{}{}", name, suffix).c_str());
+}
+
+// Each optional feature loads its entry points under the names of the core version or the extension that the context has, and drops the feature when one of them is missing.
 void Gl::loadOptional(GlContext& context) {
     if (features.bufferStorage) {
-        bind(context, bufferStorage, {"glBufferStorage", "glBufferStorageEXT"});
+        bindSuffixed(context, bufferStorage, "glBufferStorage", suffixes.bufferStorage);
         features.bufferStorage = bufferStorage != nullptr;
     }
 
     if (features.vertexAttribBinding) {
-        bind(context, vertexAttribFormat, {"glVertexAttribFormat"});
-        bind(context, vertexAttribIFormat, {"glVertexAttribIFormat"});
-        bind(context, vertexAttribBinding, {"glVertexAttribBinding"});
-        bind(context, vertexBindingDivisor, {"glVertexBindingDivisor"});
-        bind(context, bindVertexBuffer, {"glBindVertexBuffer"});
+        bindSuffixed(context, vertexAttribFormat, "glVertexAttribFormat", "");
+        bindSuffixed(context, vertexAttribIFormat, "glVertexAttribIFormat", "");
+        bindSuffixed(context, vertexAttribBinding, "glVertexAttribBinding", "");
+        bindSuffixed(context, vertexBindingDivisor, "glVertexBindingDivisor", "");
+        bindSuffixed(context, bindVertexBuffer, "glBindVertexBuffer", "");
         features.vertexAttribBinding = vertexAttribFormat != nullptr && vertexAttribIFormat != nullptr && vertexAttribBinding != nullptr && vertexBindingDivisor != nullptr && bindVertexBuffer != nullptr;
     }
 
     if (features.drawBuffersIndexed) {
-        bind(context, enablei, {"glEnablei", "glEnableiOES", "glEnableiEXT"});
-        bind(context, disablei, {"glDisablei", "glDisableiOES", "glDisableiEXT"});
-        bind(context, blendFuncSeparatei, {"glBlendFuncSeparatei", "glBlendFuncSeparateiOES", "glBlendFuncSeparateiEXT"});
-        bind(context, blendEquationSeparatei, {"glBlendEquationSeparatei", "glBlendEquationSeparateiOES", "glBlendEquationSeparateiEXT"});
-        bind(context, colorMaski, {"glColorMaski", "glColorMaskiOES", "glColorMaskiEXT"});
+        bindSuffixed(context, enablei, "glEnablei", suffixes.drawBuffersIndexed);
+        bindSuffixed(context, disablei, "glDisablei", suffixes.drawBuffersIndexed);
+        bindSuffixed(context, blendFuncSeparatei, "glBlendFuncSeparatei", suffixes.drawBuffersIndexed);
+        bindSuffixed(context, blendEquationSeparatei, "glBlendEquationSeparatei", suffixes.drawBuffersIndexed);
+        bindSuffixed(context, colorMaski, "glColorMaski", suffixes.drawBuffersIndexed);
         features.drawBuffersIndexed = enablei != nullptr && disablei != nullptr && blendFuncSeparatei != nullptr && blendEquationSeparatei != nullptr && colorMaski != nullptr;
     }
 
     if (features.timerQuery) {
-        bind(context, getQueryObjectui64v, {isDesktop() ? "glGetQueryObjectui64v" : "glGetQueryObjectui64vEXT"});
+        bindSuffixed(context, getQueryObjectui64v, "glGetQueryObjectui64v", suffixes.timerQuery);
         features.timerQuery = getQueryObjectui64v != nullptr;
     }
 
     if (features.debug) {
-        const bool core = isDesktop() || features.majorVersion * 10 + features.minorVersion >= 32;
-        bind(context, debugMessageCallback, {core ? "glDebugMessageCallback" : "glDebugMessageCallbackKHR"});
-        bind(context, debugMessageControl, {core ? "glDebugMessageControl" : "glDebugMessageControlKHR"});
-        bind(context, objectLabel, {core ? "glObjectLabel" : "glObjectLabelKHR"});
-        bind(context, pushDebugGroup, {core ? "glPushDebugGroup" : "glPushDebugGroupKHR"});
-        bind(context, popDebugGroup, {core ? "glPopDebugGroup" : "glPopDebugGroupKHR"});
+        bindSuffixed(context, debugMessageCallback, "glDebugMessageCallback", suffixes.debug);
+        bindSuffixed(context, debugMessageControl, "glDebugMessageControl", suffixes.debug);
+        bindSuffixed(context, objectLabel, "glObjectLabel", suffixes.debug);
+        bindSuffixed(context, pushDebugGroup, "glPushDebugGroup", suffixes.debug);
+        bindSuffixed(context, popDebugGroup, "glPopDebugGroup", suffixes.debug);
         features.debug = debugMessageCallback != nullptr && debugMessageControl != nullptr && objectLabel != nullptr && pushDebugGroup != nullptr && popDebugGroup != nullptr;
     }
 
     if (features.robustness) {
-        bind(context, getGraphicsResetStatus, {"glGetGraphicsResetStatus", "glGetGraphicsResetStatusKHR", "glGetGraphicsResetStatusARB", "glGetGraphicsResetStatusEXT"});
+        bindSuffixed(context, getGraphicsResetStatus, "glGetGraphicsResetStatus", suffixes.robustness);
         features.robustness = getGraphicsResetStatus != nullptr;
     }
 }

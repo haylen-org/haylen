@@ -1,7 +1,6 @@
 #pragma once
 
 #include <cstdint>
-#include <initializer_list>
 #include <string>
 #include <string_view>
 
@@ -420,24 +419,30 @@ class Gl final {
     Enum (*getGraphicsResetStatus)() = nullptr;
 
   private:
-    // Points the entry point at the first of the names the context knows, and leaves it null when it knows none.
-    template <typename Function> void bind(GlContext& context, Function& function, std::initializer_list<const char*> names) {
-        for (const char* name : names) {
-            if (void* address = context.getProcAddress(name)) {
-                function = reinterpret_cast<Function>(address);
-                return;
-            }
-        }
-        function = nullptr;
+    // The suffixes of the names of the entry points of the optional features, which a context takes from the extension that brings each of them when its version lacks it.
+    struct Suffixes {
+        std::string_view bufferStorage;
+        std::string_view drawBuffersIndexed;
+        std::string_view timerQuery;
+        std::string_view debug;
+        std::string_view robustness;
+    };
+
+    // Points the entry point at the function of the name and the suffix, and leaves it null when the context knows no such function.
+    template <typename Function> void bindSuffixed(GlContext& context, Function& function, std::string_view name, std::string_view suffix) {
+        void* address = nullptr;
+        bindNamed(context, address, name, suffix);
+        function = reinterpret_cast<Function>(address);
     }
 
-    template <typename Function> void require(GlContext& context, Function& function, const char* name) {
-        bind(context, function, {name});
+    template <typename Function> void require(GlContext& context, Function& function, std::string_view name) {
+        bindSuffixed(context, function, name, "");
         if (function == nullptr) {
             throwMissing(name);
         }
     }
 
+    static void bindNamed(GlContext& context, void*& address, std::string_view name, std::string_view suffix);
     [[noreturn]] void throwMissing(std::string_view name) const;
     [[nodiscard]] bool hasExtension(std::string_view name) const;
     void readVersion();
@@ -447,6 +452,7 @@ class Gl final {
 
     Device::Api api = Device::Api::OpenGl;
     Features features;
+    Suffixes suffixes;
     std::string extensions;
 };
 
