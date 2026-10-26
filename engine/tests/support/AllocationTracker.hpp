@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <string_view>
 
 namespace haylen::test {
 
@@ -29,6 +30,13 @@ class AllocationTracker final {
 
     // Whether the code at the address belongs to the GPU driver of the system or to the validation layer of its graphics API, which allocate for every command buffer that a device records, beyond what the engine can change.
     [[nodiscard]] static bool isSystemGraphics(const void* caller) noexcept;
+#if defined(__linux__)
+    // The frames of the stack of an allocation that Linux reads to find the code that asked for it.
+    static constexpr std::size_t kStackDepth = 24;
+
+    [[nodiscard]] static bool isLinuxGraphics(const void* caller) noexcept;
+    [[nodiscard]] static std::string_view getLibraryName(const void* address) noexcept;
+#endif
 
     static thread_local AllocationTracker* active;
 
