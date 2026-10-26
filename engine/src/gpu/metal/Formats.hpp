@@ -13,8 +13,8 @@ class Formats final {
   public:
     Formats() = delete;
 
-    // The format of the image, where a GPU without `Depth24Stencil8` takes `Depth32FloatStencil8` in its place.
-    [[nodiscard]] static MTLPixelFormat toPixelFormat(gpu::Device::PixelFormat format, bool depth24Stencil8) noexcept;
+    // The format of the image, where `Depth24Stencil8` takes `Depth32FloatStencil8`, the depth and stencil format of every Metal GPU.
+    [[nodiscard]] static MTLPixelFormat toPixelFormat(gpu::Device::PixelFormat format) noexcept;
     [[nodiscard]] static std::size_t getBytesPerPixel(gpu::Device::PixelFormat format) noexcept;
     [[nodiscard]] static bool isDepth(gpu::Device::PixelFormat format) noexcept;
     [[nodiscard]] static bool hasStencil(gpu::Device::PixelFormat format) noexcept;

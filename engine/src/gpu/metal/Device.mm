@@ -148,7 +148,6 @@ struct Device::Native {
     Capabilities capabilities;
     bool labels = false;
     bool unifiedMemory = false;
-    bool depth24Stencil8 = false;
     std::size_t uniformAlignment = 256;
     std::shared_ptr<Signals> signals = std::make_shared<Signals>();
     Graveyard graveyard;
@@ -192,9 +191,6 @@ struct Device::Native {
 };
 
 Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : device(metal), capabilities(describe(metal)), labels(debug), unifiedMemory(metal.hasUnifiedMemory), swapchain(metal, graveyard, swapchainSamples, hasTileMemory(metal)), libraries(metal) {
-#if TARGET_OS_OSX || TARGET_OS_MACCATALYST
-    depth24Stencil8 = metal.depth24Stencil8PixelFormatSupported;
-#endif
 #if !TARGET_OS_SIMULATOR
     if ([metal supportsFamily:MTLGPUFamilyApple1]) {
         uniformAlignment = 16;
@@ -223,10 +219,11 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Every Metal GPU samples and draws into every format of the contract, with `Depth24Stencil8` through its replacement where the GPU lacks it, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats.
+// Every Metal GPU samples and draws into every format of the contract, with `Depth24Stencil8` as `Depth32FloatStencil8`, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats. A GPU outside the Apple families is the GPU of an Intel Mac, which takes images of 16384 pixels and blends into every format.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
-    made.maxImageSize = [metal supportsFamily:MTLGPUFamilyApple3] || [metal supportsFamily:MTLGPUFamilyMac2] ? 16384 : 8192;
+    const bool apple = [metal supportsFamily:MTLGPUFamilyApple1];
+    made.maxImageSize = [metal supportsFamily:MTLGPUFamilyApple3] || !apple ? 16384 : 8192;
     made.maxArrayLayers = 2048;
     for (const int samples : {8, 4, 2}) {
         if ([metal supportsTextureSampleCount:static_cast<NSUInteger>(samples)]) {
@@ -239,7 +236,7 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.multisampledRenderTargets = true;
     made.gpuTiming = true;
 
-    const bool floats = [metal supportsFamily:MTLGPUFamilyApple7] || [metal supportsFamily:MTLGPUFamilyMac2];
+    const bool floats = [metal supportsFamily:MTLGPUFamilyApple7] || !apple;
     for (std::size_t index = 0; index < made.blendableFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool wide = format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
@@ -276,9 +273,9 @@ std::string Device::Native::describeError(id<MTLCommandBuffer> commands) {
     return message;
 }
 
-// Only a Mac can lose its GPU itself, such as an external GPU that was unplugged, while every system can revoke the access of the app to the GPU or fail inside its driver.
+// Only an Intel Mac can lose its GPU itself, such as an external GPU that was unplugged, so only builds that run on macOS before 27 check it, while every system can revoke the access of the app to the GPU or fail inside its driver.
 bool Device::Native::isLostError(NSInteger code) noexcept {
-#if TARGET_OS_OSX
+#if TARGET_OS_OSX && __MAC_OS_X_VERSION_MIN_REQUIRED < 270000
     if (code == MTLCommandBufferErrorDeviceRemoved) {
         return true;
     }
@@ -447,7 +444,7 @@ MTLTextureDescriptor* Device::Native::describeImage(const ImageDesc& desc) const
         made.textureType = MTLTextureTypeCube;
         break;
     }
-    made.pixelFormat = Formats::toPixelFormat(desc.format, depth24Stencil8);
+    made.pixelFormat = Formats::toPixelFormat(desc.format);
     made.width = static_cast<NSUInteger>(desc.width);
     made.height = static_cast<NSUInteger>(desc.height);
     made.mipmapLevelCount = static_cast<NSUInteger>(desc.mipLevels);
@@ -802,7 +799,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
         for (std::size_t index = 0; index < targets; ++index) {
             const ColorTarget color = index < desc.colors.size() ? desc.colors[index] : ColorTarget{};
             MTLRenderPipelineColorAttachmentDescriptor* target = made.colorAttachments[index];
-            target.pixelFormat = desc.swapchain ? Swapchain::kColorFormat : Formats::toPixelFormat(color.format, native->depth24Stencil8);
+            target.pixelFormat = desc.swapchain ? Swapchain::kColorFormat : Formats::toPixelFormat(color.format);
             target.writeMask = Formats::toColorWriteMask(color.writeMask);
             target.blendingEnabled = color.blend.enabled;
             target.sourceRGBBlendFactor = Formats::toBlendFactor(color.blend.sourceColor);
@@ -813,7 +810,7 @@ gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
             target.alphaBlendOperation = Formats::toBlendOperation(color.blend.alphaOperation);
         }
 
-        const MTLPixelFormat depthFormat = desc.swapchain ? Swapchain::kDepthFormat : (depth ? Formats::toPixelFormat(*desc.depthStencil.format, native->depth24Stencil8) : MTLPixelFormatInvalid);
+        const MTLPixelFormat depthFormat = desc.swapchain ? Swapchain::kDepthFormat : (depth ? Formats::toPixelFormat(*desc.depthStencil.format) : MTLPixelFormatInvalid);
         made.depthAttachmentPixelFormat = depthFormat;
         made.stencilAttachmentPixelFormat = stencil ? depthFormat : MTLPixelFormatInvalid;
         if (native->labels && !desc.label.empty()) {

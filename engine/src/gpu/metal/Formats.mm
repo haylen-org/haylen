@@ -2,7 +2,7 @@
 
 namespace haylen::gpu::metal {
 
-MTLPixelFormat Formats::toPixelFormat(gpu::Device::PixelFormat format, bool depth24Stencil8) noexcept {
+MTLPixelFormat Formats::toPixelFormat(gpu::Device::PixelFormat format) noexcept {
     using PixelFormat = gpu::Device::PixelFormat;
     switch (format) {
     case PixelFormat::R8:
@@ -34,12 +34,6 @@ MTLPixelFormat Formats::toPixelFormat(gpu::Device::PixelFormat format, bool dept
     case PixelFormat::Depth32Float:
         return MTLPixelFormatDepth32Float;
     case PixelFormat::Depth24Stencil8:
-#if TARGET_OS_OSX || TARGET_OS_MACCATALYST
-        return depth24Stencil8 ? MTLPixelFormatDepth24Unorm_Stencil8 : MTLPixelFormatDepth32Float_Stencil8;
-#else
-        static_cast<void>(depth24Stencil8);
-        return MTLPixelFormatDepth32Float_Stencil8;
-#endif
     case PixelFormat::Depth32FloatStencil8:
         return MTLPixelFormatDepth32Float_Stencil8;
     }
@@ -62,10 +56,10 @@ std::size_t Formats::getBytesPerPixel(gpu::Device::PixelFormat format) noexcept 
     case PixelFormat::Rg16Float:
     case PixelFormat::R32Float:
     case PixelFormat::Depth32Float:
-    case PixelFormat::Depth24Stencil8:
         return 4;
     case PixelFormat::Rgba16Float:
     case PixelFormat::Rg32Float:
+    case PixelFormat::Depth24Stencil8:
     case PixelFormat::Depth32FloatStencil8:
         return 8;
     case PixelFormat::Rgba32Float:
