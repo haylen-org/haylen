@@ -84,7 +84,7 @@ foreach(archive IN LISTS engine_archives)
   endif()
 endforeach()
 file(GENERATE OUTPUT "${sdk_libraries}/engine-inputs.txt" CONTENT "${engine_inputs}")
-# The runtime carries the GPU devices with the static libraries they link beyond the ones of the engine, and the Android runtime carries the static library of GameActivity, which only the build tree of the engine names.
+# The runtime carries the GPU devices with the static libraries they link beyond the ones of the engine, and the static libraries that its backend names in `HAYLEN_BACKEND_ARCHIVES`, such as SDL, and the Android runtime carries the static library of GameActivity, which only the build tree of the engine names.
 set(runtime_inputs "$<TARGET_FILE:haylen-platform>\n$<JOIN:$<TARGET_OBJECTS:haylen-runtime>,\n>\n")
 haylen_static_closure(haylen-gpu gpu_archives gpu_externals)
 list(REMOVE_ITEM gpu_archives ${engine_archives})
@@ -100,6 +100,9 @@ list(REMOVE_DUPLICATES engine_externals)
 if(ANDROID)
   string(APPEND runtime_inputs "$<TARGET_FILE:haylen-game-activity>\n")
 endif()
+foreach(archive IN LISTS HAYLEN_BACKEND_ARCHIVES)
+  string(APPEND runtime_inputs "$<TARGET_FILE:${archive}>\n")
+endforeach()
 file(GENERATE OUTPUT "${sdk_libraries}/runtime-inputs.txt" CONTENT "${runtime_inputs}")
 
 if(APPLE)
@@ -118,7 +121,7 @@ endif()
 foreach(part engine runtime)
   add_custom_command(OUTPUT "${${part}_library}"
     COMMAND "${CMAKE_COMMAND}" -DKIND=${merge_kind} "-DTOOL=${merge_tool}" "-DOUTPUT=${${part}_library}" "-DINPUTS=${sdk_libraries}/${part}-inputs.txt" -P "${HAYLEN_CMAKE_DIR}/haylen-merge-archives.cmake"
-    DEPENDS "${sdk_libraries}/${part}-inputs.txt" ${built_archives} haylen-platform haylen-runtime "$<TARGET_OBJECTS:haylen-runtime>"
+    DEPENDS "${sdk_libraries}/${part}-inputs.txt" ${built_archives} ${HAYLEN_BACKEND_ARCHIVES} haylen-platform haylen-runtime "$<TARGET_OBJECTS:haylen-runtime>"
     COMMENT "Merging the Haylen ${part} library."
     VERBATIM
   )

@@ -1,4 +1,4 @@
-Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to GameController, through which the engine reads every key with its release, so SDL turns only the presses of remotes and game controllers into keys, whether a keyboard is connected or not, and no longer turns arrows and escape into key commands or the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote.
+Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to GameController, through which the engine reads every key with its release, so SDL turns only the presses of remotes and game controllers into keys, whether a keyboard is connected or not, and hands UIKit the presses whose key the app drops through its event filter, such as the Menu press of the Apple TV remote while the app leaves the back button to the system. It also stops turning arrows and escape into key commands, and the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote.
 
 --- a/src/video/uikit/SDL_uikitview.m
 +++ b/src/video/uikit/SDL_uikitview.m
@@ -28,13 +28,18 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
  #if !defined(SDL_PLATFORM_TVOS)
          /* Pinch gestures */
          UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(sdlPinchGesture:)];
-@@ -556,13 +537,24 @@
+@@ -556,42 +537,59 @@
      return SDL_SCANCODE_UNKNOWN;
  }
  
+-- (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
 +// The keys of a hardware keyboard reach the app through GameController, except the Escape key of tvOS, which makes the Menu press of the remote.
 +- (BOOL)isKeyboardPress:(UIPress *)press
-+{
+ {
+-    if (!SDL_HasKeyboard()) {
+-        for (UIPress *press in presses) {
+-            SDL_Scancode scancode = [self scancodeFromPress:press];
+-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
 +#ifdef SDL_PLATFORM_TVOS
 +    return press.key != nil && press.type != UIPressTypeMenu;
 +#else
@@ -42,22 +47,31 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
 +#endif
 +}
 +
- - (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
- {
--    if (!SDL_HasKeyboard()) {
--        for (UIPress *press in presses) {
--            SDL_Scancode scancode = [self scancodeFromPress:press];
--            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
++// Sends the presses that are no keys of a keyboard as keys, and returns the ones whose key the app dropped through its event filter, which go on to UIKit, such as the Menu press of the remote that leaves the app.
++- (NSSet<UIPress *> *)sendPresses:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event down:(bool)down
++{
++    NSMutableSet<UIPress *> *dropped = [NSMutableSet set];
 +    for (UIPress *press in presses) {
 +        if ([self isKeyboardPress:press]) {
 +            continue;
          }
 +        SDL_Scancode scancode = [self scancodeFromPress:press];
-+        SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
++        if (!SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, down)) {
++            [dropped addObject:press];
++        }
      }
++    return dropped;
++}
++
++- (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
++{
++    NSSet<UIPress *> *dropped = [self sendPresses:presses withEvent:event down:true];
      if (SDL_TextInputActive(sdlwindow)) {
          [super pressesBegan:presses withEvent:event];
-@@ -571,11 +563,12 @@
++    } else if (dropped.count > 0) {
++        [super pressesBegan:dropped withEvent:event];
+     }
+ }
  
  - (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
  {
@@ -65,16 +79,15 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
 -        for (UIPress *press in presses) {
 -            SDL_Scancode scancode = [self scancodeFromPress:press];
 -            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
-+    for (UIPress *press in presses) {
-+        if ([self isKeyboardPress:press]) {
-+            continue;
-         }
-+        SDL_Scancode scancode = [self scancodeFromPress:press];
-+        SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
-     }
+-        }
+-    }
++    NSSet<UIPress *> *dropped = [self sendPresses:presses withEvent:event down:false];
      if (SDL_TextInputActive(sdlwindow)) {
          [super pressesEnded:presses withEvent:event];
-@@ -584,11 +577,12 @@
++    } else if (dropped.count > 0) {
++        [super pressesEnded:dropped withEvent:event];
+     }
+ }
  
  - (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
  {
@@ -82,15 +95,16 @@ Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to G
 -        for (UIPress *press in presses) {
 -            SDL_Scancode scancode = [self scancodeFromPress:press];
 -            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
-+    for (UIPress *press in presses) {
-+        if ([self isKeyboardPress:press]) {
-+            continue;
-         }
-+        SDL_Scancode scancode = [self scancodeFromPress:press];
-+        SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
-     }
+-        }
+-    }
++    NSSet<UIPress *> *dropped = [self sendPresses:presses withEvent:event down:false];
      if (SDL_TextInputActive(sdlwindow)) {
          [super pressesCancelled:presses withEvent:event];
++    } else if (dropped.count > 0) {
++        [super pressesCancelled:dropped withEvent:event];
+     }
+ }
+ 
 --- a/src/video/uikit/SDL_uikitviewcontroller.m
 +++ b/src/video/uikit/SDL_uikitviewcontroller.m
 @@ -306,39 +306,6 @@

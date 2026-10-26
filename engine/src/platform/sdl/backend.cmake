@@ -23,6 +23,9 @@ endif()
 
 target_link_libraries(haylen-runtime PRIVATE SDL3::SDL3-static haylen-gpu)
 
+# The SDK merges SDL into the library of the runtime.
+set(HAYLEN_BACKEND_ARCHIVES SDL3-static)
+
 # The tests of the platform layer, which the test suite of the engine runs: the translation of the events of SDL and the timing of the frames, which read only their own data.
 set(HAYLEN_BACKEND_TEST_SOURCES
   "${CMAKE_CURRENT_LIST_DIR}/Events.cpp"

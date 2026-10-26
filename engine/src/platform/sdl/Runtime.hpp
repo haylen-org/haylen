@@ -67,6 +67,7 @@ class Runtime final {
     static int enter(int argc, char* argv[]);
     static SDL_AppResult onInitialize(void** state, int argc, char* argv[]);
     static SDL_AppResult onIterate(void* state);
+    static bool SDLCALL onFilter(void* state, SDL_Event* event);
     static SDL_AppResult onEvent(void* state, SDL_Event* event);
     static void onQuit(void* state, SDL_AppResult result);
     static void describeApp(const core::AppConfig& config);
@@ -99,6 +100,9 @@ class Runtime final {
 
     // Whether the frames run at the rate of a window that shows nothing.
     bool paced = false;
+
+    // The presses and releases of the back button that the player took as they arrived, which reach no app.
+    int takenBacks = 0;
 
     // The events that the platform read on its own, which wait for the event of SDL that keeps their place in the queue.
     std::uint32_t postedType = 0;

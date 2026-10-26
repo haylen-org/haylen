@@ -87,6 +87,23 @@ SDL_AppResult Runtime::onIterate(void* state) {
     return static_cast<Runtime*>(state)->iterate();
 }
 
+// The filter runs as UIKit hands over the press, so a press of the back button that the system takes goes on to UIKit, which leaves the app.
+bool Runtime::onFilter(void* state, SDL_Event* event) {
+    auto* runtime = static_cast<Runtime*>(state);
+    if (!Events::isPlatformBack(*event)) {
+        return true;
+    }
+    switch (Player::routeBack(event->type == SDL_EVENT_KEY_DOWN)) {
+    case Player::Back::System:
+        return false;
+    case Player::Back::Player:
+        ++runtime->takenBacks;
+        return true;
+    default:
+        return true;
+    }
+}
+
 SDL_AppResult Runtime::onEvent(void* state, SDL_Event* event) {
     return static_cast<Runtime*>(state)->handle(*event);
 }
@@ -103,7 +120,10 @@ void Runtime::describeApp(const core::AppConfig& config) {
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-#if defined(__EMSCRIPTEN__)
+#if defined(__APPLE__) && TARGET_OS_TV
+    // The presses of the Apple TV remote reach UIKit, which leaves the app on the Menu press that the app does not take.
+    SDL_SetHint(SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS, "1");
+#elif defined(__EMSCRIPTEN__)
     SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebPage::getCanvasSelector().c_str());
 #elif defined(__linux__)
     // Linux apps open their window on X11 first, also through XWayland in a Wayland session, since Wayland lets no app place its window, keep it above the others, leave the taskbar or let clicks through. A session without X11 opens it on Wayland, and the variable `SDL_VIDEO_DRIVER` picks either one.
@@ -138,7 +158,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 
     // AppKit and UIKit lay out the views of the services over the window as soon as they create it, before the first frame initializes the app.
     platform::NativeWindow::install(&window);
-    apis = gpu::DeviceFactory::order(Player::getGraphicsApis());
+    apis = Player::getGraphicsApis();
     return start();
 }
 
@@ -154,6 +174,9 @@ SDL_AppResult Runtime::start() {
     }
 #if defined(__APPLE__)
     AppleApplication::finishLaunching(*this);
+#endif
+#if defined(__APPLE__) && TARGET_OS_TV
+    SDL_SetEventFilter(&Runtime::onFilter, this);
 #endif
     // Desktops and the web type text into the window itself, while UIKit apps type into the native fields of the services alone.
 #if !defined(__APPLE__) || TARGET_OS_OSX
@@ -171,9 +194,11 @@ bool Runtime::openWindow() {
     const core::AppConfig& config = Player::getOpeningConfig();
     for (; nextApi < apis.size(); ++nextApi) {
         const gpu::Device::Api api = apis[nextApi];
+#if defined(__EMSCRIPTEN__)
         if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
             return false;
         }
+#endif
         try {
             window.open(config.window, api);
             if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
@@ -222,13 +247,11 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
-// The system leaves the app on a press of the back button that neither the app nor the player takes. A request to quit closes the window once the app heard it, as an app that quits itself does.
+// The back button that the player took reaches no app. A request to quit closes the window once the app heard it, as an app that quits itself does.
 void Runtime::deliver(const SDL_Event& event) {
-    if (Events::isPlatformBack(event)) {
-        const Player::Back back = Player::routeBack(event.type == SDL_EVENT_KEY_DOWN);
-        if (back != Player::Back::App) {
-            return;
-        }
+    if (Events::isPlatformBack(event) && takenBacks > 0) {
+        --takenBacks;
+        return;
     }
 
     translated.clear();

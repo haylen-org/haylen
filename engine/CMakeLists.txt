@@ -848,7 +848,6 @@ if(APPLE)
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/AppleTheme.mm
     src/platform/apple/AppleVideoDecoder.mm
-    src/platform/apple/CatalystInput.mm
     src/platform/apple/CatalystWindow.mm
     src/platform/apple/HaylenAccessibilityElement.mm
     src/platform/apple/HaylenAccessibilityView.mm
@@ -861,7 +860,6 @@ if(APPLE)
     src/platform/apple/HaylenOverlayLayer.mm
     src/platform/apple/HaylenPlacement.mm
     src/platform/apple/HaylenPluginContext.mm
-    src/platform/apple/HaylenPointer.mm
     src/platform/apple/HaylenRequirement.mm
     src/platform/apple/HaylenRequirements.mm
     src/platform/apple/HaylenScreen.mm

@@ -10,8 +10,8 @@ set(HAYLEN_CONTENT_TOOL "" CACHE FILEPATH "The content tool of the host, haylen-
 set(HAYLEN_PREVIOUS_RELEASE "" CACHE PATH "A folder that holds the last release of the app that shipped, which the protected release follows instead of the last release of the build tree, so a clean machine keeps the shards of unchanged content. Empty follows the build tree.")
 
 # The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which haylen.py links them into the projects of Lua apps.
-# Mac Catalyst reads the battery of the Mac from the power sources of IOKit, and every Apple platform decodes videos with AVFoundation and CoreMedia.
-set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
+# Mac Catalyst reads the battery of the Mac from the power sources of IOKit, every Apple platform decodes videos with AVFoundation and CoreMedia, and SDL reads the keyboard layouts of macOS through Carbon.
+set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})

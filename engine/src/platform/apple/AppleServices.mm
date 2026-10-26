@@ -38,7 +38,6 @@
 #import "platform/apple/AppleSystem.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
-#import "platform/apple/CatalystInput.hpp"
 #import "platform/apple/CatalystWindow.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
 
@@ -71,7 +70,6 @@ void Services::initialize() {
     AppleKeyboard::observe();
 #endif
 #if TARGET_OS_MACCATALYST
-    CatalystInput::observe();
     CatalystWindow::observe();
 #endif
 }
