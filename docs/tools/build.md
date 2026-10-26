@@ -122,7 +122,7 @@ Every platform and configuration gets its own build tree at `build/<platform>-<c
 
 The command `build` configures its tree first when one of these is true:
 
-- The tree has no CMake cache yet.
+- CMake never configured the tree, or its last configure failed. The file `haylen-configured.txt` of the tree records each configure that succeeded, so a tree that holds a CMake cache without the files of its generator configures again. The trees of the engine artifacts and of the GPU tests follow the same record.
 - The shader compiler changed.
 - Another Python runs `haylen.py` than the one the tree was configured with. The engine tests run `haylen.py` with the same Python, so they never take an older one from `PATH`.
 - The cache misses one of these values.

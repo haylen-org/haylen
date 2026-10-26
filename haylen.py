@@ -112,6 +112,8 @@ ANDROID_NDK_VERSION = "30.0.16248370"
 EMSDK_VERSION = "6.0.12"
 # The file in every web build tree that records the version of Emscripten that configured it.
 EMSCRIPTEN_MARKER = "emscripten-version.txt"
+# The file that a build tree holds once CMake configured and generated it, so a tree whose configure failed, which keeps a cache without the files of its generator, configures again.
+CONFIGURED_MARKER = "haylen-configured.txt"
 # The miniaudio library plays through AAudio from Android 8.1 on, and the engine builds it without OpenSL ES, like the `minSdk` of the Android library and template.
 ANDROID_MIN_SDK = 27
 # The ABIs of the `haylen` Android library, which the native libraries of an app match: 32-bit ARM keeps the Android TV devices that still run it, and `x86_64` serves emulators.
@@ -563,11 +565,23 @@ def is_stale_web_tree(directory: Path) -> bool:
     return (directory / "CMakeCache.txt").exists() and (not marker.exists() or marker.read_text(encoding="utf-8").strip() != EMSDK_VERSION)
 
 
+def is_configured(directory: Path) -> bool:
+    """Tells whether CMake configured and generated a build tree, which `configure_tree` records."""
+    return (directory / CONFIGURED_MARKER).is_file()
+
+
+def configure_tree(command: list, directory: Path, env: dict[str, str] | None = None) -> None:
+    """Configures a build tree and records that CMake generated it only once the configure succeeded, so the next command configures a tree whose configure failed again instead of building it."""
+    (directory / CONFIGURED_MARKER).unlink(missing_ok=True)
+    run(command, env=env)
+    (directory / CONFIGURED_MARKER).write_text("", encoding="utf-8")
+
+
 def configure_web_tree(command: list, directory: Path, env: dict[str, str] | None = None) -> None:
     """Configures a web build tree with the pinned Emscripten. A tree that another version configured is deleted first, because Emscripten keeps no ABI between versions, so every object builds again."""
     if is_stale_web_tree(directory):
         shutil.rmtree(directory)
-    run(command, env=env)
+    configure_tree(command, directory, env)
     (directory / EMSCRIPTEN_MARKER).write_text(EMSDK_VERSION, encoding="utf-8")
 
 
@@ -669,7 +683,7 @@ def command_configure(args: argparse.Namespace) -> None:
     if args.platform == "web":
         configure_web_tree(command, directory, env)
     else:
-        run(command, env=env)
+        configure_tree(command, directory, env)
 
 
 def cmake_cache_entry(directory: Path, name: str) -> str | None:
@@ -689,9 +703,9 @@ def cmake_cache_value(directory: Path, name: str) -> str:
 
 
 def ensure_configured(args: argparse.Namespace) -> Path:
-    """Configures the build tree when it does not exist yet or is stale."""
+    """Configures the build tree when it was never configured, its configure failed or it is stale."""
     directory = build_dir(args.platform, args.config, args.sanitizers)
-    if not (directory / "CMakeCache.txt").exists() or is_stale_tree(directory, args):
+    if not is_configured(directory) or is_stale_tree(directory, args):
         command_configure(args)
     return directory
 
@@ -912,7 +926,7 @@ def command_test_gpu_web(args: argparse.Namespace) -> None:
     """Builds the GPU tests for the browser and runs them in a page of a headless browser, on every device of the build or on the one that "--graphics-api" names, and stops when a test fails or the page does not finish."""
     api = args.graphics_api
     directory = BUILD_ROOT / f"web-gpu-tests-{args.config.lower()}"
-    if not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
+    if not is_configured(directory) or is_stale_web_tree(directory):
         terminal.step(f"Configuring the GPU tests of the web in `{shown_path(directory)}`")
         configure_web_tree([ensure_emsdk(), "cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={args.config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"], directory)
     terminal.step(f"Building the GPU tests of the web in `{shown_path(directory)}`")
@@ -999,9 +1013,9 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
     api = args.graphics_api
     abi = android_test_abi(args.device)
     directory = BUILD_ROOT / f"android-gpu-tests-{abi}-{args.config.lower()}"
-    if not (directory / "CMakeCache.txt").exists():
+    if not is_configured(directory):
         terminal.step(f"Configuring the GPU tests of Android in `{shown_path(directory)}`")
-        run(android_gpu_tests_configure_command(directory, abi, args.config))
+        configure_tree(android_gpu_tests_configure_command(directory, abi, args.config), directory)
     terminal.step(f"Building the GPU tests of Android in `{shown_path(directory)}`")
     run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
 
@@ -1294,8 +1308,8 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
         archives: list[Path] = []
         for arch in APPLE_SLICES[slice_name]:
             directory = ENGINE_BUILDS_DIR / f"apple-{slice_name}-{arch}-{config.lower()}"
-            if not (directory / "CMakeCache.txt").exists():
-                run(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)])
+            if not is_configured(directory):
+                configure_tree(["cmake", "-S", ENGINE_DIR, "-B", directory, "-G", "Ninja", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCMAKE_BUILD_TYPE={config}", "-DHAYLEN_BUILD_SDK=ON", "-DHAYLEN_BUILD_FRAMEWORK=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", *apple_slice_options(slice_name, arch)], directory)
             run(["cmake", "--build", directory, "--target", "haylen-framework", "--parallel", str(jobs)])
             run(["cmake", "--install", directory, "--component", "haylen-framework", "--prefix", directory / "framework"])
             archives.append(directory / "framework" / "lib" / "libhaylen.a")
@@ -5073,7 +5087,7 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
     output.mkdir(parents=True)
     directory = folder / f"web-{config.lower()}"
     terminal.step(f'Building the target "{target}" for "web" in `{shown_path(directory)}`')
-    if options is not None or not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
+    if options is not None or not is_configured(directory) or is_stale_web_tree(directory):
         configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", *(options or [])], directory)
     run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
     built = directory / "bin" / target

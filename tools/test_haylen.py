@@ -1033,6 +1033,7 @@ class ShaderCompilerTest(unittest.TestCase):
         tree = self.scratch / "build" / "macos-debug"
         tree.mkdir(parents=True)
         arguments = argparse.Namespace(platform="macos", config="Debug", sanitizers=None)
+        (tree / haylen.CONFIGURED_MARKER).write_text("")
         with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
             (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
             haylen.ensure_configured(arguments)
@@ -1048,6 +1049,37 @@ class ShaderCompilerTest(unittest.TestCase):
             (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 3)
+
+    def test_a_tree_whose_configure_failed_configures_again(self):
+        compiler = self.scratch / "tools" / "haylen-shaderc"
+        tree = self.scratch / "build" / "macos-debug"
+        arguments = argparse.Namespace(platform="macos", config="Debug", sanitizers=None)
+
+        # A configure that fails leaves the cache of CMake without the files of its generator and without the record of a configured tree.
+        with mock.patch.object(haylen, "run", side_effect=haylen.BuildError("The configure failed.")):
+            with self.assertRaises(haylen.BuildError):
+                haylen.configure_tree(["cmake", "-B", tree], tree)
+        tree.mkdir(parents=True)
+        (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
+        self.assertFalse(haylen.is_configured(tree))
+        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
+            haylen.ensure_configured(arguments)
+        self.assertEqual(configure.call_count, 1)
+
+        # A configure that succeeds records the tree, which the next command builds without configuring it again.
+        with mock.patch.object(haylen, "run") as run:
+            haylen.configure_tree(["cmake", "-B", tree], tree)
+        run.assert_called_once()
+        self.assertTrue(haylen.is_configured(tree))
+        with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
+            haylen.ensure_configured(arguments)
+        configure.assert_not_called()
+
+        # A configure that starts again and fails takes the record away.
+        with mock.patch.object(haylen, "run", side_effect=haylen.BuildError("The configure failed.")):
+            with self.assertRaises(haylen.BuildError):
+                haylen.configure_tree(["cmake", "-B", tree], tree)
+        self.assertFalse(haylen.is_configured(tree))
 
     def test_the_variable_names_a_build_of_the_compiler_to_use_instead_of_the_pinned_one(self):
         compiler = self.scratch / "haylen-shaderc"
