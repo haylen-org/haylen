@@ -79,13 +79,11 @@ VkCompositeAlphaFlagBitsKHR Swapchain::chooseCompositeAlpha(VkCompositeAlphaFlag
     return VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 }
 
-// A surface that leaves the size to the swapchain takes the size of the drawable, and a surface that the compositor turns, as on Android, reports its size before the turn.
-VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, VkSurfaceTransformFlagBitsKHR transform, const Settings& settings) noexcept {
+// A surface that leaves the size to the swapchain takes the size of the drawable. The images keep the size of the window as it shows, since the compositor turns them where the display turns.
+VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept {
     VkExtent2D chosen = capabilities.currentExtent;
     if (chosen.width == 0xFFFFFFFFU) {
         chosen = {static_cast<std::uint32_t>(std::max(settings.width, 0)), static_cast<std::uint32_t>(std::max(settings.height, 0))};
-    } else if (transform == VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR && (capabilities.currentTransform & (VK_SURFACE_TRANSFORM_ROTATE_90_BIT_KHR | VK_SURFACE_TRANSFORM_ROTATE_270_BIT_KHR)) != 0) {
-        std::swap(chosen.width, chosen.height);
     }
     if (chosen.width == 0 || chosen.height == 0) {
         return {};
@@ -109,7 +107,7 @@ bool Swapchain::configure(const Settings& settings) {
 
     // The compositor turns the images when the surface allows it, so the frames draw as the window shows them.
     const VkSurfaceTransformFlagBitsKHR transform = (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0 ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : capabilities.currentTransform;
-    const VkExtent2D chosen = chooseExtent(capabilities, transform, settings);
+    const VkExtent2D chosen = chooseExtent(capabilities, settings);
     destroyImages();
     if (chosen.width == 0) {
         destroySwapchain();

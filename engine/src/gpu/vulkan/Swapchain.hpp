@@ -109,7 +109,7 @@ class Swapchain final {
     [[nodiscard]] static VkSurfaceFormatKHR chooseFormat(std::uint32_t count, const VkSurfaceFormatKHR* formats) noexcept;
     [[nodiscard]] VkPresentModeKHR choosePresentMode(bool vsync) const;
     [[nodiscard]] static VkCompositeAlphaFlagBitsKHR chooseCompositeAlpha(VkCompositeAlphaFlagsKHR supported, bool transparent) noexcept;
-    [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, VkSurfaceTransformFlagBitsKHR transform, const Settings& settings) noexcept;
+    [[nodiscard]] static VkExtent2D chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities, const Settings& settings) noexcept;
     [[nodiscard]] VkImageView makeView(VkImage image, VkFormat viewFormat) const;
     [[nodiscard]] Attachment makeAttachment(VkFormat attachmentFormat, VkImageUsageFlags usage) const;
     void destroyAttachment(Attachment& attachment) const;
