@@ -137,6 +137,8 @@ struct Device::Native {
     [[nodiscard]] id<MTLBlitCommandEncoder> getTransferBlit();
     [[nodiscard]] id<MTLDepthStencilState> getDepthStencilState(const DepthStencil& desc, bool depth, bool stencil);
     [[nodiscard]] NSUInteger getRegionOffset(const BufferEntry& entry) const noexcept;
+    void checkImage(const ImageDesc& desc) const;
+    static void checkPipeline(const PipelineDesc& desc);
     [[nodiscard]] MTLTextureDescriptor* describeImage(const ImageDesc& desc) const;
     void releaseLibraries(const ProgramEntry& entry);
     static void copyLevel(id<MTLBlitCommandEncoder> blit, id<MTLBuffer> source, NSUInteger offset, const ImageEntry& image, int level);
@@ -221,7 +223,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Apple GPUs blend into every color format, while the GPUs of Intel Macs blend into no format of 32 bit floats.
+// Every Metal GPU blends into the color formats of the contract, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
     made.maxImageSize = [metal supportsFamily:MTLGPUFamilyApple3] || [metal supportsFamily:MTLGPUFamilyMac2] ? 16384 : 8192;
@@ -237,7 +239,7 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.multisampledRenderTargets = true;
     made.gpuTiming = true;
 
-    const bool floats = [metal supportsFamily:MTLGPUFamilyApple1];
+    const bool floats = [metal supportsFamily:MTLGPUFamilyApple7] || [metal supportsFamily:MTLGPUFamilyMac2];
     for (std::size_t index = 0; index < made.blendableFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool wide = format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
@@ -384,6 +386,45 @@ id<MTLDepthStencilState> Device::Native::getDepthStencilState(const DepthStencil
 
 NSUInteger Device::Native::getRegionOffset(const BufferEntry& entry) const noexcept {
     return entry.dynamic ? frameSlot * entry.region : 0;
+}
+
+void Device::Native::checkImage(const ImageDesc& desc) const {
+    const int maxSize = capabilities.maxImageSize;
+    if (desc.width <= 0 || desc.height <= 0 || desc.width > maxSize || desc.height > maxSize || desc.layers <= 0 || desc.mipLevels <= 0) {
+        throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
+    }
+    if (desc.type == TextureType::Cube && desc.layers != 6) {
+        throw std::logic_error(std::format("The cube image \"{}\" needs 6 layers, not {}.", desc.label, desc.layers));
+    }
+    if (desc.sampleCount > 1 && (desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic || desc.mipLevels > 1 || desc.type == TextureType::Volume || desc.type == TextureType::Cube || ![device supportsTextureSampleCount:static_cast<NSUInteger>(desc.sampleCount)])) {
+        throw std::logic_error(std::format("The image \"{}\" cannot have {} samples, which only flat or array attachments of one level up to {} samples have.", desc.label, desc.sampleCount, capabilities.maxSampleCount));
+    }
+    if (Formats::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
+        throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
+    }
+    if ((desc.kind == ImageKind::Texture) != !desc.levels.empty()) {
+        throw std::logic_error(std::format("The image \"{}\" comes with pixels exactly when it is a texture.", desc.label));
+    }
+    if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
+        throw std::logic_error(std::format("The texture \"{}\" has {} levels and comes with the pixels of {}.", desc.label, desc.mipLevels, desc.levels.size()));
+    }
+}
+
+void Device::Native::checkPipeline(const PipelineDesc& desc) {
+    if (desc.colors.size() > kMaxColorTargets || (desc.colors.empty() && !desc.swapchain && !desc.depthStencil.format)) {
+        throw std::logic_error(std::format("The pipeline \"{}\" needs a depth format or one to {} color targets.", desc.label, kMaxColorTargets));
+    }
+    if (desc.buffers.size() > kMaxVertexBuffers) {
+        throw std::logic_error(std::format("The pipeline \"{}\" lays out more than {} vertex buffers.", desc.label, kMaxVertexBuffers));
+    }
+    for (const VertexAttribute& attribute : desc.attributes) {
+        if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size()) || attribute.location < 0 || attribute.location >= static_cast<int>(kMaxAttributes)) {
+            throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
+        }
+    }
+    if (!desc.swapchain && desc.depthStencil.format && !Formats::isDepth(*desc.depthStencil.format)) {
+        throw std::logic_error(std::format("The depth format of the pipeline \"{}\" is a color format.", desc.label));
+    }
 }
 
 MTLTextureDescriptor* Device::Native::describeImage(const ImageDesc& desc) const {
@@ -573,25 +614,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
 }
 
 gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
-    const int maxSize = native->capabilities.maxImageSize;
-    if (desc.width <= 0 || desc.height <= 0 || desc.width > maxSize || desc.height > maxSize || desc.layers <= 0 || desc.mipLevels <= 0) {
-        throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
-    }
-    if (desc.type == TextureType::Cube && desc.layers != 6) {
-        throw std::logic_error(std::format("The cube image \"{}\" needs 6 layers, not {}.", desc.label, desc.layers));
-    }
-    if (desc.sampleCount > 1 && (desc.kind == ImageKind::Texture || desc.kind == ImageKind::Dynamic || desc.mipLevels > 1 || desc.type == TextureType::Volume || desc.type == TextureType::Cube || desc.sampleCount > native->capabilities.maxSampleCount)) {
-        throw std::logic_error(std::format("The image \"{}\" cannot have {} samples, which only flat or array attachments of one level up to {} samples have.", desc.label, desc.sampleCount, native->capabilities.maxSampleCount));
-    }
-    if (Formats::isDepth(desc.format) != (desc.kind == ImageKind::DepthStencil)) {
-        throw std::logic_error(std::format("The image \"{}\" needs a depth format exactly when it is a depth stencil image.", desc.label));
-    }
-    if ((desc.kind == ImageKind::Texture) != !desc.levels.empty()) {
-        throw std::logic_error(std::format("The image \"{}\" comes with pixels exactly when it is a texture.", desc.label));
-    }
-    if (desc.kind == ImageKind::Texture && desc.levels.size() != static_cast<std::size_t>(desc.mipLevels)) {
-        throw std::logic_error(std::format("The texture \"{}\" has {} levels and comes with the pixels of {}.", desc.label, desc.mipLevels, desc.levels.size()));
-    }
+    native->checkImage(desc);
 
     Native::ImageEntry entry{.type = desc.type, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .format = desc.format, .kind = desc.kind};
     @autoreleasepool {
@@ -740,20 +763,7 @@ void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) {
 
 gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
     const Native::ProgramEntry& program = native->requireProgram(desc.program);
-    if (desc.colors.size() > kMaxColorTargets || (desc.colors.empty() && !desc.swapchain && !desc.depthStencil.format)) {
-        throw std::logic_error(std::format("The pipeline \"{}\" needs a depth format or one to {} color targets.", desc.label, kMaxColorTargets));
-    }
-    if (desc.buffers.size() > kMaxVertexBuffers) {
-        throw std::logic_error(std::format("The pipeline \"{}\" lays out more than {} vertex buffers.", desc.label, kMaxVertexBuffers));
-    }
-    for (const VertexAttribute& attribute : desc.attributes) {
-        if (attribute.buffer < 0 || attribute.buffer >= static_cast<int>(desc.buffers.size()) || attribute.location < 0 || attribute.location >= static_cast<int>(kMaxAttributes)) {
-            throw std::logic_error(std::format("An attribute of the pipeline \"{}\" reads a vertex buffer it does not lay out.", desc.label));
-        }
-    }
-    if (!desc.swapchain && desc.depthStencil.format && !Formats::isDepth(*desc.depthStencil.format)) {
-        throw std::logic_error(std::format("The depth format of the pipeline \"{}\" is a color format.", desc.label));
-    }
+    native->checkPipeline(desc);
 
     const bool depth = desc.swapchain || desc.depthStencil.format.has_value();
     const bool stencil = desc.swapchain || (desc.depthStencil.format && Formats::hasStencil(*desc.depthStencil.format));
