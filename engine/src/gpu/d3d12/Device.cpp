@@ -391,13 +391,12 @@ void Device::stagePixels(const ImageRecord& image, std::span<const std::span<con
     const auto layers = static_cast<UINT>(volume ? 1 : image.layers);
     const auto count = static_cast<UINT>(levels.size());
 
-    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints(static_cast<std::size_t>(count) * layers);
-    std::vector<UINT> rows(footprints.size());
+    footprints.resize(static_cast<std::size_t>(count) * layers);
     UINT64 total = 0;
     for (UINT layer = 0; layer < layers; ++layer) {
         const UINT first = layer * static_cast<UINT>(image.mipLevels);
         UINT64 bytes = 0;
-        device->GetCopyableFootprints(&desc, first, count, total, footprints.data() + static_cast<std::size_t>(layer) * count, rows.data() + static_cast<std::size_t>(layer) * count, nullptr, &bytes);
+        device->GetCopyableFootprints(&desc, first, count, total, footprints.data() + static_cast<std::size_t>(layer) * count, nullptr, nullptr, &bytes);
         total += (bytes + D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT - 1) / D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT * D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT;
     }
     const UploadAllocator::Allocation staged = uploads->allocate(total, D3D12_TEXTURE_DATA_PLACEMENT_ALIGNMENT);

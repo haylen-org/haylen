@@ -273,6 +273,8 @@ class Device final : public gpu::Device {
     std::array<float, 4> blendColor{};
     UINT stencilReference = 0;
     std::string markerText;
+    // The footprints of the pixels that a copy stages, which keep their storage, so writing the same images every frame allocates nothing.
+    std::vector<D3D12_PLACED_SUBRESOURCE_FOOTPRINT> footprints;
 };
 
 } // namespace haylen::gpu::d3d12
