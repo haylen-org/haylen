@@ -17,3 +17,7 @@ target_sources(haylen-gpu PRIVATE
 )
 target_link_libraries(haylen-gpu PRIVATE haylen-vulkan-memory-allocator)
 target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_VULKAN)
+
+# The GPU tests run the render passes of GPUs without dynamic rendering on every machine with Vulkan.
+list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/gpu/vulkan/VulkanDeviceTests.cpp")
+list(APPEND HAYLEN_GPU_TEST_LIBRARIES haylen-vulkan-memory-allocator)
