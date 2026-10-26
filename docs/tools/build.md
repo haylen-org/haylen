@@ -151,7 +151,8 @@ The commands `configure`, `build` and `test` take these options:
 | --- | --- | --- |
 | `--platform` | this machine | `macos`, `linux`, `windows`, `ios`, `tvos`, `android`, `web` or `web-webgl2`. The command `test` always runs on this machine, except that `web` and `web-webgl2` run the memory check of the web. |
 | `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. |
-| `--graphics-api` | the default of the platform | `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`, the graphics API that the backend draws through. It reaches CMake as `HAYLEN_GRAPHICS_API`. The web platforms always use their own graphics API. |
+| `--graphics-api` | the default of the platform | `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`, the graphics API that the backend draws through. It reaches CMake as `HAYLEN_GRAPHICS_API`. The web platforms always use their own graphics API. The command `test` also takes a name of `gpu::Device::kApiNames`, such as `vulkan`, which runs the [GPU tests](testing.md#the-gpu-tests) on that device alone. |
+| `--gpu` | off | Only for `test`: runs the [GPU tests](testing.md#the-gpu-tests) on every device of the build instead of the engine tests. |
 | `--xcode` | off | Uses the Xcode generator on macOS. |
 | `--sanitizers` | none | `address` for AddressSanitizer and UndefinedBehaviorSanitizer, or `thread` for ThreadSanitizer, in a tree of its own. It reaches CMake as `HAYLEN_SANITIZERS`, and MSVC builds ignore it. The [testing guide](testing.md#sanitizers) explains both. |
 | `--target` | everything | The CMake target that `build` builds. |

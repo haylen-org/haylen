@@ -195,9 +195,14 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
 
-    // The null device of the app that runs, which tests read what the frames did from.
+    // The null device of the app that runs, which tests read what the frames did from, while the host draws through it.
     [[nodiscard]] gpu::NullDevice& getGpu() const {
         return *gpu;
+    }
+
+    // Makes the devices of the apps that run instead of the null device, such as a real device that draws offscreen in the GPU tests.
+    void setGpuDeviceMaker(std::function<std::unique_ptr<gpu::Device>()> maker) {
+        gpuDeviceMaker = std::move(maker);
     }
     // Without an output backend the mixer has no device and mixes only when a test asks it to.
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override {
@@ -471,6 +476,7 @@ class HeadlessHost final : public Host {
 
   private:
     gpu::NullDevice* gpu = nullptr;
+    std::function<std::unique_ptr<gpu::Device>()> gpuDeviceMaker;
     std::filesystem::path dataDirectory;
     math::Vec2 framebufferSize;
     float dpiScale = 1.0F;

@@ -17,6 +17,8 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, in MP3 with and without the header that tells its length, and in FLAC, which the streaming tests decode. CMake passes the folder as `HAYLEN_TEST_AUDIO`. |
 | `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation. CMake passes the folder as `HAYLEN_TEST_VIDEO`. |
 | `engine/tests/native/` | The file `NativeTest.c`, a plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests` and the headless player, where `native.load` finds it by name, copies it next to the desktop player in `bin/haylen`, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
+| `engine/tests/gpu/` | The tests of the null device and of `gpu::DeviceFactory`, which `haylen-tests` runs, and the [GPU tests](#the-gpu-tests) of the real devices, which `haylen-gpu-tests` runs: the conformance suite of the contract, the reference scenes of the 2D renderer, their programs in `shaders/conformance.glsl` and their helpers in `support/`. |
+| `engine/tests/data/gpu/` | The reference images of the scenes of the 2D renderer, one PNG per scene, which hold for every graphics API. |
 | `engine/tests/backends/<backend>/` | The tests of a backend, which its `backend.cmake` names in `HAYLEN_BACKEND_TEST_SOURCES`, such as `backends/sokol/EventsTests.cpp`, which tests the translation of the events of `sokol_app`. |
 | `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`, which also compiles the tests of the backend of the build. |
 
@@ -180,6 +182,29 @@ Run one suite or one test through CTest or through the executable:
 ```sh
 ctest --test-dir build/macos-debug -R SpatialLuaTest --output-on-failure
 build/macos-debug/bin/haylen-tests --gtest_filter='SpatialLuaTest.*'
+```
+
+## The GPU tests
+
+The executable `haylen-gpu-tests` runs on the real GPU devices of the build, while `haylen-tests` runs on the null device. It links `haylen::gpu`, and the tests take each graphics API that the build compiled as a parameter, so each test runs once per device and takes the name of its API, such as `GpuBlendTest.BlendsWithEveryFactor/vulkan`.
+
+```sh
+haylen test --gpu
+haylen test --graphics-api vulkan
+HAYLEN_TEST_GRAPHICS_API=metal build/macos-debug/bin/haylen-gpu-tests --gtest_filter='GpuTextureTest.*'
+```
+
+The option `--gpu` of `haylen test` builds the executable and runs it on every device of the build, and `--graphics-api` with a name of `gpu::Device::kApiNames` runs it on that device alone, through the environment variable `HAYLEN_TEST_GRAPHICS_API`. CTest does not run these tests, so `haylen test` without them runs only `haylen-tests`.
+
+- The fixture `test::GpuFixture` creates the device of its API offscreen with the validation of the API on, through `gpu::DeviceFactory::create`. The OpenGL APIs draw into the context of a hidden drawable that `test::OffscreenSurface` makes, which the OpenGL device brings to the tests through `HAYLEN_GPU_TEST_SOURCES`. A device that cannot start on the machine skips the test with the reason, such as a machine without Vulkan.
+- Every error that reaches the log while a test runs fails it, through `test::LoggedErrors`. The devices log the messages of the validation of their API as errors, so a call that the API rejects fails the test.
+- The conformance suite draws into render targets and reads them back with `GpuFixture::read`, which commits frames until the copy finishes and hands the rows with the top row first. It covers clears, viewports and scissors, kept passes, four color targets, the resolve of multisampled targets, mip levels and layers of render targets, triangles, strips, lines, indexed and instanced draws, uniforms per draw, dynamic buffers, every blend factor and operation, write masks, independent blending, depth, stencil, comparison samplers, every pixel format the device marks, arrays, volumes, cubes, mip levels, filters, wraps, levels of detail, dynamic images, objects destroyed while their frames run, frames that allocate nothing, GPU timing and programs prepared ahead.
+- The reference scenes run a real engine through `test::EngineFixture` with the option `gpuDevice`, which draws the engine through the device instead of the null device. Each scene draws shapes, sprites, text, lights and shadows, particles, post-processing or render targets into a render target, reads it back and compares it with its PNG in `engine/tests/data/gpu` through `test::ImageComparison`, within a small tolerance for the edges that APIs rasterize apart.
+
+The references come from the first device that draws the scenes right, and every other device matches them. To write them, run the GPU tests with `HAYLEN_GPU_REFERENCES=write`, which writes the image of each scene to its reference and names it in the output, then look at every image before you commit it. A run without the variable never writes a reference. A missing reference fails its test, and a scene that differs keeps the image it drew and the difference in `gpu-test-output` of the build tree.
+
+```sh
+HAYLEN_GPU_REFERENCES=write HAYLEN_TEST_GRAPHICS_API=metal build/macos-debug/bin/haylen-gpu-tests --gtest_filter='GpuRendererTest.*'
 ```
 
 ## The memory check of the web

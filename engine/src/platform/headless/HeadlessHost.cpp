@@ -19,6 +19,10 @@ HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : d
 }
 
 std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {
+    if (gpuDeviceMaker) {
+        gpu = nullptr;
+        return gpuDeviceMaker();
+    }
     auto device = std::make_unique<gpu::NullDevice>();
     gpu = device.get();
     return device;

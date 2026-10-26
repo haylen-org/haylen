@@ -831,16 +831,37 @@ def check_web_memory(report: dict) -> None:
         raise BuildError(" ".join(problems))
 
 
+# The names of `gpu::Device::kApiNames` that the GPU tests run on, while the uppercase names of "--graphics-api" pick the graphics API of the backend.
+GPU_GRAPHICS_APIS = ("metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGl2", "webGpu")
+
+
 def command_test(args: argparse.Namespace) -> None:
     if args.platform in ("web", "web-webgl2"):
         command_test_web(args)
         return
     args.platform = host_name()
+    if args.gpu or args.graphics_api in GPU_GRAPHICS_APIS:
+        command_test_gpu(args)
+        return
     args.target = "haylen-tests"
     command_build(args)
     terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
     terminal.success("The engine tests passed.")
+
+
+def command_test_gpu(args: argparse.Namespace) -> None:
+    """Builds and runs the GPU tests: the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, or on the one that "--graphics-api" names."""
+    api = args.graphics_api if args.graphics_api in GPU_GRAPHICS_APIS else None
+    args.graphics_api = None
+    args.target = "haylen-gpu-tests"
+    command_build(args)
+    env = os.environ.copy()
+    if api:
+        env["HAYLEN_TEST_GRAPHICS_API"] = api
+    terminal.step(f'Running the GPU tests on "{api}"' if api else "Running the GPU tests on every device of the build")
+    run([build_dir(args.platform, args.config, args.sanitizers) / "bin" / executable_name("haylen-gpu-tests")], cwd=ENGINE_DIR / "tests", env=env, stream=True)
+    terminal.success("The GPU tests passed.")
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
@@ -5704,10 +5725,14 @@ def add_jobs_option(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--jobs", type=int, default=default_jobs(), help="Parallel jobs of the builds, one less than the processors of this machine by default.")
 
 
-def add_build_options(parser: argparse.ArgumentParser) -> None:
+def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) -> None:
     parser.add_argument("--platform", default=host_name(), choices=PLATFORMS, help="Platform of the build tree, this machine by default.")
     parser.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the build tree, "Debug" by default.')
-    parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics API the backend draws through, the default of the platform otherwise.")
+    if gpu_tests:
+        parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU", *GPU_GRAPHICS_APIS], help='Graphics API the backend draws through, the default of the platform otherwise, or a name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
+        parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
+    else:
+        parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics API the backend draws through, the default of the platform otherwise.")
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)
     parser.add_argument("--target", help="CMake target to build, every target by default.")
@@ -5747,7 +5772,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, 'Build and run the engine tests on this machine, or with "--platform web" the memory check of the web in a headless browser.')):
         sub = commands.add_parser(name, parents=[common], help=help_text)
-        add_build_options(sub)
+        add_build_options(sub, gpu_tests=name == "test")
         sub.set_defaults(handler=handler)
 
     engine = commands.add_parser("engine", parents=[common], help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")

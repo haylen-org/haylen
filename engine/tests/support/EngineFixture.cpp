@@ -19,6 +19,9 @@ EngineFixture::EngineFixture(std::map<std::string, std::string> files, std::uniq
         headlessHost.enableDevelopment(std::nullopt, options.developmentServer);
     }
     headlessHost.setAudioOutput(options.audioOutput);
+    if (options.gpuDevice) {
+        headlessHost.setGpuDeviceMaker(std::move(options.gpuDevice));
+    }
     files.try_emplace("app.json", R"({"name": "Test App", "identifier": "com.haylen.tests"})");
     files.try_emplace("source/main.lua", "");
 
