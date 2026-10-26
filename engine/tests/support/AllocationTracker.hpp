@@ -20,10 +20,13 @@ class AllocationTracker final {
         return total;
     }
 
-    // Called by the global allocation functions of the test program for every allocation.
-    static void record(std::size_t size) noexcept;
+    // Called by the global allocation functions of the test program for every allocation, with the address of the code that asked for it.
+    static void record(std::size_t size, const void* caller) noexcept;
 
   private:
+    // Whether the code at the address belongs to the GPU driver of the system or to the validation layer of its graphics API, which allocate for every command buffer that a device records, beyond what the engine can change.
+    [[nodiscard]] static bool isSystemGraphics(const void* caller) noexcept;
+
     static thread_local AllocationTracker* active;
 
     AllocationTracker* previous;

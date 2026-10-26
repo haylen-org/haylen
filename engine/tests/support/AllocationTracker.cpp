@@ -4,6 +4,13 @@
 #include <cstdlib>
 #include <memory>
 #include <new>
+#include <string_view>
+
+#if defined(__APPLE__)
+#include <dlfcn.h>
+#elif defined(_MSC_VER) && !defined(__clang__)
+#include <intrin.h>
+#endif
 
 namespace haylen::test {
 
@@ -17,24 +24,44 @@ AllocationTracker::~AllocationTracker() {
     active = previous;
 }
 
-void AllocationTracker::record(std::size_t size) noexcept {
+void AllocationTracker::record(std::size_t size, const void* caller) noexcept {
 #if defined(_MSC_VER) && _ITERATOR_DEBUG_LEVEL != 0
     // The checked iterators of the debug library of MSVC give every container a proxy that the library allocates on its own, so the tracker leaves out the allocations of the size of that proxy there, while the other libraries count every size.
     if (size == sizeof(std::_Container_proxy)) {
         return;
     }
 #endif
-    if (active != nullptr) {
-        active->largest = std::max(active->largest, size);
-        active->total += size;
+    if (active == nullptr || isSystemGraphics(caller)) {
+        return;
     }
+    active->largest = std::max(active->largest, size);
+    active->total += size;
+}
+
+// The GPU drivers of Apple platforms live in the extensions of the system, and Metal validates through the private framework of its tools.
+bool AllocationTracker::isSystemGraphics(const void* caller) noexcept {
+#if defined(__APPLE__)
+    Dl_info image{};
+    if (dladdr(caller, &image) == 0 || image.dli_fname == nullptr) {
+        return false;
+    }
+    const std::string_view path(image.dli_fname);
+    return path.starts_with("/System/Library/Extensions/") || path.starts_with("/System/Library/PrivateFrameworks/MetalTools.framework/");
+#else
+    static_cast<void>(caller);
+    return false;
+#endif
 }
 
 } // namespace haylen::test
 
-// The standard names the replaceable allocation functions, so the program replaces them here, and they only forward to the tracker and to `malloc` and `free`. The array and nothrow forms are replaced too, since a sanitizer that replaces the forms a program leaves out would free its own allocations with the `free` of these, while the aligned forms keep their own pair.
+// The standard names the replaceable allocation functions, so the program replaces them here, and they only forward to the tracker, with the address of the code that allocates, and to `malloc` and `free`. The array and nothrow forms are replaced too, since a sanitizer that replaces the forms a program leaves out would free its own allocations with the `free` of these, while the aligned forms keep their own pair.
 void* operator new(std::size_t size) {
-    haylen::test::AllocationTracker::record(size);
+#if defined(_MSC_VER) && !defined(__clang__)
+    haylen::test::AllocationTracker::record(size, _ReturnAddress());
+#else
+    haylen::test::AllocationTracker::record(size, __builtin_return_address(0));
+#endif
     if (void* memory = std::malloc(size == 0 ? 1 : size)) {
         return memory;
     }
@@ -46,7 +73,11 @@ void* operator new[](std::size_t size) {
 }
 
 void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
-    haylen::test::AllocationTracker::record(size);
+#if defined(_MSC_VER) && !defined(__clang__)
+    haylen::test::AllocationTracker::record(size, _ReturnAddress());
+#else
+    haylen::test::AllocationTracker::record(size, __builtin_return_address(0));
+#endif
     return std::malloc(size == 0 ? 1 : size);
 }
 
