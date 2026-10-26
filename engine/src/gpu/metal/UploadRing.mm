@@ -29,10 +29,10 @@ UploadRing::Allocation UploadRing::write(std::span<const std::byte> data, std::s
     return {.buffer = buffer, .offset = offset};
 }
 
-// The commands that the frame recorded still read the smaller buffer, which stays until the frame starts again.
+// The commands that the frame recorded still read the smaller buffer, which stays until the frame starts again. The CPU caches the buffer, since small writes into write-combined memory cost more.
 void UploadRing::grow(std::size_t needed) {
     const std::size_t size = std::bit_ceil(std::max(needed, capacity * 2U));
-    id<MTLBuffer> grown = [device newBufferWithLength:size options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
+    id<MTLBuffer> grown = [device newBufferWithLength:size options:MTLResourceStorageModeShared];
     if (grown == nil) {
         throw std::runtime_error(std::format("The GPU has no memory for the {} bytes that a frame uploads.", size));
     }

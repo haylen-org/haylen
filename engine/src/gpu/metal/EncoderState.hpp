@@ -5,6 +5,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 
 #include "haylen/gpu/Device.hpp"
 #include "haylen/math/Rect.hpp"
@@ -18,6 +19,7 @@ class EncoderState final {
     static constexpr std::size_t kBufferSlots = 31;
     static constexpr std::size_t kTextureSlots = 31;
     static constexpr std::size_t kSamplerSlots = 16;
+    static constexpr std::size_t kMaxBytes = 4096;
 
     // Starts recording a pass into an attachment of the size in pixels, with the state Metal gives a new encoder.
     void begin(id<MTLRenderCommandEncoder> value, int passWidth, int passHeight);
@@ -42,6 +44,9 @@ class EncoderState final {
     void setDepthStencil(id<MTLDepthStencilState> state);
     void setRasterizer(MTLCullMode cull, MTLWinding winding, float depthBias, float depthBiasSlope);
     void setBuffer(gpu::Device::Stage stage, id<MTLBuffer> buffer, NSUInteger offset, NSUInteger index);
+
+    // Hands Metal a copy of a few bytes for the buffer index, which costs less than a buffer of the upload ring for up to `kMaxBytes` bytes.
+    void setBytes(gpu::Device::Stage stage, std::span<const std::byte> data, NSUInteger index);
     void setTexture(gpu::Device::Stage stage, id<MTLTexture> texture, NSUInteger index);
     void setSampler(gpu::Device::Stage stage, id<MTLSamplerState> sampler, NSUInteger index);
     void setViewport(const math::Rect& pixels);

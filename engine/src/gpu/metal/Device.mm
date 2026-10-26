@@ -548,7 +548,7 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
     @autoreleasepool {
         if (entry.dynamic) {
             entry.region = (size + Native::kRegionAlignment - 1U) & ~(Native::kRegionAlignment - 1U);
-            entry.buffer = [native->device newBufferWithLength:entry.region * kFramesInFlight options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
+            entry.buffer = [native->device newBufferWithLength:entry.region * kFramesInFlight options:MTLResourceStorageModeShared];
             entry.contents = entry.buffer == nil ? nullptr : static_cast<std::byte*>(entry.buffer.contents);
             for (std::size_t frame = 0; entry.contents != nullptr && !desc.data.empty() && frame < kFramesInFlight; ++frame) {
                 std::memcpy(entry.contents + frame * entry.region, desc.data.data(), size);
@@ -634,7 +634,7 @@ void Device::uploadLevels(Image image, std::span<const std::span<const std::byte
     }
 
     @autoreleasepool {
-        id<MTLBuffer> staging = [native->device newBufferWithLength:total options:MTLResourceStorageModeShared | MTLResourceCPUCacheModeWriteCombined];
+        id<MTLBuffer> staging = [native->device newBufferWithLength:total options:MTLResourceStorageModeShared];
         if (staging == nil) {
             throw std::runtime_error(std::format("The GPU has no memory to stage the {} bytes of a texture.", total));
         }
@@ -1133,6 +1133,10 @@ void Device::applyUniforms(int slot, std::span<const std::byte> data) {
         return;
     }
 
+    if (data.size() <= EncoderState::kMaxBytes) {
+        native->encoder.setBytes(block.stage, data, block.binding);
+        return;
+    }
     const UploadRing::Allocation uploaded = native->rings[native->frameSlot].write(data, native->uniformAlignment);
     native->encoder.setBuffer(block.stage, uploaded.buffer, uploaded.offset, block.binding);
 }

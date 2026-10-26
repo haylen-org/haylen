@@ -88,6 +88,16 @@ void EncoderState::setBuffer(gpu::Device::Stage stage, id<MTLBuffer> buffer, NSU
     }
 }
 
+// The copy takes the index from whatever buffer the encoder bound there, so the next buffer at the index binds again.
+void EncoderState::setBytes(gpu::Device::Stage stage, std::span<const std::byte> data, NSUInteger index) {
+    stages[static_cast<std::size_t>(stage)].buffers[index] = {};
+    if (stage == gpu::Device::Stage::Vertex) {
+        [encoder setVertexBytes:data.data() length:data.size() atIndex:index];
+    } else {
+        [encoder setFragmentBytes:data.data() length:data.size() atIndex:index];
+    }
+}
+
 void EncoderState::setTexture(gpu::Device::Stage stage, id<MTLTexture> texture, NSUInteger index) {
     const void*& bound = stages[static_cast<std::size_t>(stage)].textures[index];
     const void* identity = (__bridge const void*)texture;
