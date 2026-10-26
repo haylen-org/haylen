@@ -195,10 +195,6 @@ float NativeHost::getStatusBarHeight() const {
     return Services::getStatusBarHeight();
 }
 
-void NativeHost::pollGamepads(std::span<input::GamepadState> gamepads) {
-    Services::pollGamepads(gamepads);
-}
-
 void NativeHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
     Services::dispatch(id, method, paramsJson, buffers);
 }
@@ -272,10 +268,6 @@ void NativeHost::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> NativeHost::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return Services::openVideo(std::move(file), path);
-}
-
-void NativeHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
-    Services::rumbleGamepad(index, low, high, seconds);
 }
 
 void NativeHost::guardCrashes(const std::filesystem::path& report) {

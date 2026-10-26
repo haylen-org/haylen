@@ -16,6 +16,13 @@
 #include "platform/sdl/FrameTimer.hpp"
 #include "platform/sdl/Window.hpp"
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#if !defined(__APPLE__) || TARGET_OS_OSX
+#include "platform/sdl/Gamepads.hpp"
+#endif
+
 namespace haylen::platform::sdl {
 
 // Plays apps in the window that SDL opens, through the main callbacks of SDL, which run the same frames on the desktops, on the display link of UIKit and on the animation frames of the browser. It opens the window for the graphics API that starts first among the ones the app prefers, calls the player of the platform as the window opens, draws its frames, receives its events and closes, and hands the player the GPU device of that window.
@@ -41,6 +48,12 @@ class Runtime final {
         return transparent;
     }
 
+#if !defined(__APPLE__) || TARGET_OS_OSX
+    [[nodiscard]] Gamepads& getGamepads() noexcept {
+        return gamepads;
+    }
+#endif
+
     // Hands over the GPU device that started with the window, or creates another one for the window, as an app that replaces the last one asks for it.
     [[nodiscard]] std::unique_ptr<gpu::Device> createDevice();
 
@@ -61,6 +74,13 @@ class Runtime final {
   private:
     // The highest number of iterations per second while the window shows nothing, minimized or hidden, which the display no longer paces, so the app keeps running timers and network callbacks without spending a core.
     static constexpr const char* kHiddenRate = "60";
+
+#if !defined(__APPLE__) || TARGET_OS_OSX
+    static constexpr SDL_InitFlags kSubsystems = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
+#else
+    // UIKit apps read their controllers through GameController, as `platform::AppleGamepads` does, so SDL starts no gamepads there.
+    static constexpr SDL_InitFlags kSubsystems = SDL_INIT_VIDEO;
+#endif
 
     static inline Runtime* running = nullptr;
 
@@ -87,6 +107,9 @@ class Runtime final {
 
     Window window;
     Events events;
+#if !defined(__APPLE__) || TARGET_OS_OSX
+    Gamepads gamepads;
+#endif
     FrameTimer timer;
     std::vector<platform::Event> translated;
     std::unique_ptr<gpu::Device> openedDevice;

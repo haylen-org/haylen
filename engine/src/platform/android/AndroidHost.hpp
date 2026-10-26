@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -32,6 +34,8 @@ class AndroidHost final : public NativeHost {
     }
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     void closeWindow() override;
+    void pollGamepads(std::span<input::GamepadState> gamepads) override;
+    void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
 
   protected:
     void requestWindowClose() override;

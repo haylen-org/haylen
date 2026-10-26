@@ -125,6 +125,10 @@ void Runtime::describeApp(const core::AppConfig& config) {
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+#if !defined(__APPLE__) || TARGET_OS_OSX
+    // Controllers reach the app also while its window has no focus, such as a window that never takes it above the taskbar.
+    SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
+#endif
 #if defined(__APPLE__) && TARGET_OS_TV
     // The presses of the Apple TV remote reach UIKit, which leaves the app on the Menu press that the app does not take.
     SDL_SetHint(SDL_HINT_APPLE_TV_CONTROLLER_UI_EVENTS, "1");
@@ -155,7 +159,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     highDpi = config.window.highDpi;
     transparent = config.window.transparent;
     describeApp(config);
-    if (!SDL_Init(SDL_INIT_VIDEO)) {
+    if (!SDL_Init(kSubsystems)) {
         core::Log::error("The window system could not start. {}", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -246,8 +250,11 @@ bool Runtime::recover() {
     return true;
 }
 
-// The events before the app started find no app to hear them.
+// Controllers open as SDL connects them, also the ones connected before the app started, while the other events before the app started find no app to hear them.
 SDL_AppResult Runtime::handle(const SDL_Event& event) {
+#if !defined(__APPLE__) || TARGET_OS_OSX
+    gamepads.handle(event);
+#endif
     if (!started) {
         return SDL_APP_CONTINUE;
     }

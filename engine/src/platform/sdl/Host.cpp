@@ -6,7 +6,12 @@
 
 #include "platform/sdl/Runtime.hpp"
 
-#if defined(__EMSCRIPTEN__)
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#if defined(__APPLE__) && !TARGET_OS_OSX
+#include "platform/apple/AppleGamepads.hpp"
+#elif defined(__EMSCRIPTEN__)
 #include "platform/web/WebPage.hpp"
 #endif
 
@@ -98,6 +103,23 @@ std::unique_ptr<gpu::Device> Host::createGpuDevice() {
 
 void Host::closeWindow() {
     runtime.close();
+}
+
+// UIKit apps read their controllers through GameController, which reads the Siri Remote as a controller of its own while UIKit keeps its presses for the focus, and SDL reads them through GameController there too, so it would add nothing.
+void Host::pollGamepads(std::span<input::GamepadState> gamepads) {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleGamepads::poll(gamepads);
+#else
+    runtime.getGamepads().poll(gamepads);
+#endif
+}
+
+void Host::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleGamepads::rumble(index, low, high, seconds);
+#else
+    runtime.getGamepads().rumble(index, low, high, seconds);
+#endif
 }
 
 void Host::requestWindowClose() {

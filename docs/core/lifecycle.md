@@ -233,7 +233,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | A change of the default output device of Core Audio, such as headphones plugged in. |
 | `systemThemeChanged`, `batteryChanged` | The appearance of the app and the power sources of the Mac, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The display options of the accessibility settings and the state of VoiceOver, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
-| `gamepadConnected`, `gamepadDisconnected` | GameController. |
+| `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads GameController and HID controllers. |
 
 ### Windows
 
@@ -253,7 +253,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | A change of the default output device of WASAPI. |
 | `systemThemeChanged`, `batteryChanged` | The app theme of the personalization settings and the power status of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The accessibility settings and the transparency effects of the personalization settings, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
-| `gamepadConnected`, `gamepadDisconnected` | XInput. |
+| `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads XInput, Windows.Gaming.Input, raw input and HID controllers. |
 
 ### Linux
 
@@ -273,7 +273,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | A stream that PulseAudio, or PipeWire through it, moves to another output. |
 | `systemThemeChanged`, `batteryChanged` | The color scheme of the settings portal and the power supplies of the system, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The appearance settings of the settings portal and the text scaling factor of the GNOME interface settings, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
-| `gamepadConnected`, `gamepadDisconnected` | The joystick devices under `/dev/input`. |
+| `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the event devices under `/dev/input` and HID controllers. |
 
 ### iOS and iPadOS
 
@@ -384,7 +384,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `audioRouteChanged` | Never, because the audio output of the page follows the output of the browser without telling the page. |
 | `systemThemeChanged`, `batteryChanged` | The `prefers-color-scheme` media query and the Battery Status API, as [`haylen.system`](../lua-api/system.md#platforms) describes. |
 | `accessibilitySettingsChanged` | The media queries of reduced motion, contrast and transparency and the default font size of the browser, as [`haylen.accessibility`](../lua-api/accessibility.md#platforms) describes. |
-| `gamepadConnected`, `gamepadDisconnected` | The Gamepad API, once a button of the gamepad is pressed. |
+| `gamepadConnected`, `gamepadDisconnected` | The gamepad API of SDL, which reads the Gamepad API of the browser, once a button of the gamepad is pressed. |
 
 ## Assets, connections and objects
 

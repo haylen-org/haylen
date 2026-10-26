@@ -74,7 +74,7 @@ What each platform needs on top of that:
 | --- | --- | --- | --- | --- | --- |
 | macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | The Xcode Command Line Tools, or Xcode for `--xcode`. |
 | Windows | `windows` | Windows | Direct3D 12, Direct3D 11, Vulkan, OpenGL | Ninja when it is on `PATH`, otherwise the default of CMake (Visual Studio) | Visual Studio with the C++ workload. Run Ninja builds from a developer command prompt, so MSVC is on `PATH`. |
-| Linux | `linux` | Linux | Vulkan, OpenGL | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr, OpenGL, EGL, Wayland, xkbcommon and D-Bus, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev` on Debian and Ubuntu. SDL builds its Wayland support and the input methods of IBus and Fcitx with them. |
+| Linux | `linux` | Linux | Vulkan, OpenGL | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr, OpenGL, EGL, Wayland, xkbcommon, D-Bus, IBus and udev, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev libudev-dev` on Debian and Ubuntu. SDL builds its Wayland support, the input methods of IBus and Fcitx and the hotplug of controllers through udev with them. |
 | iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen to generate the Apple project again. |
 | tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
 | Android | `android` | any | Vulkan, OpenGL ES 3 | Ninja | The Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37.2 and platform-tools, and JDK 17 or newer. |
@@ -294,7 +294,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it and the build holds one copy. |
 | Varn | commit `7a20070` | The Lua runtime, the event loop, the worker pools and the modules `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and the others. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links. Varn picks the HTTP client of each platform itself: the Apple one on iOS, tvOS and Mac Catalyst, the Android one on Android and `fetch` on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. ThreadSanitizer builds tell Varn to keep the yields of Lua as exceptions, because the sanitizer cannot follow the `_longjmp` of a yield. |
-| SDL | 3.4.18 | zlib license. The release archive of SDL 3, with the [patches](#patches) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video and event subsystems, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. It opens the window, runs the frames and reads the input on every platform but Android. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts. |
+| SDL | 3.4.18 | zlib license. The release archive of SDL 3, with the [patches](#patches) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video, event and gamepad subsystems, since the engine plays sound through miniaudio and draws through its own devices. It opens the window, runs the frames and reads the input and the controllers on every platform but Android, and UIKit builds leave its gamepads out, since the engine reads the controllers of UIKit through GameController. Linux builds keep X11, Wayland and udev, whose libraries SDL loads when the app starts. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash. Its prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images. It publishes no releases, so it is pinned to a commit of its default branch. |
@@ -350,7 +350,7 @@ SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS 
 - Leaves the presses that carry a key of a keyboard to GameController, and turns the other presses into keys whether a keyboard is connected or not. On tvOS it keeps the Menu press that the Escape key of a keyboard makes, so Escape goes back like the remote.
 - Removes the key commands of the arrows and escape.
 - Removes the swipe gestures of the Apple TV remote.
-- Reads whether the joystick subsystem opened the Siri Remote only where SDL builds that subsystem, which the engine leaves out.
+- Reads whether the joystick subsystem opened the Siri Remote only where SDL builds that subsystem, which the UIKit builds of the engine leave out.
 
 #### sdl-web-page-keys.patch
 

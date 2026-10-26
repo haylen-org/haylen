@@ -2,6 +2,7 @@
 
 #include "platform/NativeWindow.hpp"
 #include "platform/android/AndroidActivity.hpp"
+#include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidRuntime.hpp"
 #include "platform/android/JavaBridge.hpp"
 
@@ -30,6 +31,14 @@ std::unique_ptr<gpu::Device> AndroidHost::createGpuDevice() {
 
 void AndroidHost::closeWindow() {
     runtime.quit();
+}
+
+void AndroidHost::pollGamepads(std::span<input::GamepadState> gamepads) {
+    AndroidGamepads::poll(gamepads);
+}
+
+void AndroidHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
+    AndroidGamepads::rumble(index, low, high, seconds);
 }
 
 void AndroidHost::requestWindowClose() {

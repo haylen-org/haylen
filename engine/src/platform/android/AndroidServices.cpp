@@ -114,10 +114,6 @@ bool Services::hasPointerDevice() noexcept {
     return !AndroidActivity::isTelevision();
 }
 
-void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
-    AndroidGamepads::poll(gamepads);
-}
-
 Orientation Services::getOrientation() {
     return AndroidActivity::getOrientation();
 }
@@ -198,10 +194,6 @@ std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageRea
         return nullptr;
     }
     return std::make_unique<AndroidVideoDecoder>(std::move(file), path);
-}
-
-void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
-    AndroidGamepads::rumble(index, low, high, seconds);
 }
 
 // Script texts may hold bytes that are not UTF-8, which reach the dialog replaced instead of failing it.

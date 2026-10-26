@@ -60,15 +60,18 @@ if(MSVC AND TARGET Poco::Foundation)
   target_compile_definitions(${poco_foundation} PUBLIC POCO_NO_AUTOMATIC_LIBS)
 endif()
 
-# SDL opens the window, runs the frames and reads the input of every platform but Android. It builds as a static library with its video and event subsystems alone, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts, and Apple builds keep Metal, which the window hands to the Metal device.
+# SDL opens the window, runs the frames and reads the input and the controllers of every platform but Android. It builds as a static library with its video, event and gamepad subsystems alone, since the engine plays sound through miniaudio and draws through its own devices, and it rumbles controllers through their gamepads without its haptic subsystem. Linux builds keep X11, Wayland and udev, whose libraries SDL loads when the app starts, and Apple builds keep Metal, which the window hands to the Metal device.
 set(haylen_sdl_options
   "SDL_SHARED OFF" "SDL_STATIC ON" "SDL_TEST_LIBRARY OFF" "SDL_TESTS OFF" "SDL_EXAMPLES OFF" "SDL_INSTALL OFF" "SDL_UNINSTALL OFF"
-  "SDL_AUDIO OFF" "SDL_GPU OFF" "SDL_RENDER OFF" "SDL_CAMERA OFF" "SDL_JOYSTICK OFF" "SDL_HAPTIC OFF" "SDL_HIDAPI OFF" "SDL_POWER OFF" "SDL_SENSOR OFF" "SDL_DIALOG OFF" "SDL_TRAY OFF"
-  "SDL_OFFSCREEN OFF" "SDL_DUMMYVIDEO OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBUDEV OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
+  "SDL_AUDIO OFF" "SDL_GPU OFF" "SDL_RENDER OFF" "SDL_CAMERA OFF" "SDL_HAPTIC OFF" "SDL_HIDAPI_LIBUSB OFF" "SDL_POWER OFF" "SDL_SENSOR OFF" "SDL_DIALOG OFF" "SDL_TRAY OFF"
+  "SDL_OFFSCREEN OFF" "SDL_DUMMYVIDEO OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
 )
-# Apple platforms draw through Metal alone, so their SDL carries neither OpenGL nor Vulkan.
+# Apple platforms draw through Metal alone, so their SDL carries neither OpenGL nor Vulkan, and UIKit apps read their controllers through GameController, so their SDL reads none.
 if(APPLE)
   list(APPEND haylen_sdl_options "SDL_OPENGL OFF" "SDL_OPENGLES OFF" "SDL_VULKAN OFF")
+endif()
+if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
+  list(APPEND haylen_sdl_options "SDL_JOYSTICK OFF" "SDL_HIDAPI OFF")
 endif()
 # SDL turns the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS into keys only while GameController reads no keyboard, and the arrows and escape of a keyboard into key commands too, while the engine reads every key of a keyboard through GameController, so the patch leaves keyboards to GameController and turns the presses of remotes and game controllers into keys whether a keyboard is connected or not. It also drops the swipes of the Apple TV remote that SDL turns into arrows, since the engine reads the touch surface of the remote as its stick.
 # SDL reads the keys of the whole page on the web, so a page that hosts the app next to elements of its own, such as an editor, could keep their keys from the app only by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks.

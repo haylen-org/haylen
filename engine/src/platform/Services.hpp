@@ -91,8 +91,6 @@ class Services final {
     // Whether the device has a mouse or a touch screen, which TVs lack.
     [[nodiscard]] static bool hasPointerDevice() noexcept;
 
-    static void pollGamepads(std::span<input::GamepadState> gamepads);
-
     // Returns `Landscape` or `Portrait`. Desktop windows always count as landscape.
     [[nodiscard]] static Orientation getOrientation();
     static void lockOrientation(Orientation value);
@@ -132,9 +130,6 @@ class Services final {
 
     // Opens a decoder of a video file with the decoder of the platform, from any thread, as `Host::openVideo` describes.
     [[nodiscard]] static std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path);
-
-    // Runs the motors of a gamepad as `Host::rumbleGamepad` describes.
-    static void rumbleGamepad(std::size_t index, float low, float high, float seconds);
 
     // Shows a native dialog and answers it exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
     static void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder);

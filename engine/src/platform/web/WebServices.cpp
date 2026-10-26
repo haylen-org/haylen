@@ -1,7 +1,6 @@
 #include "platform/Services.hpp"
 
 #include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
 
 #include <array>
 #include <cstdint>
@@ -19,7 +18,6 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/DialogRelay.hpp"
-#include "platform/GamepadVendors.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebPage.hpp"
@@ -114,10 +112,6 @@ EM_JS(void, haylen_js_vibrate, (float seconds), {
 
 EM_JS(void, haylen_js_now_playing, (const char* json, const uint8_t* artwork, int size), {
     Module.haylen.nowPlaying(json ? JSON.parse(UTF8ToString(json)) : null, HEAPU8.slice(artwork, artwork + size));
-});
-
-EM_JS(void, haylen_js_rumble_gamepad, (int index, float low, float high, float seconds), {
-    Module.haylen.rumbleGamepad(index, low, high, seconds);
 });
 
 EM_JS(void, haylen_js_show_dialog, (double id, const char* json, const uint8_t* data, int size), {
@@ -217,35 +211,6 @@ bool Services::hasPointerDevice() noexcept {
     return true;
 }
 
-void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
-    const bool sampled = emscripten_sample_gamepad_data() == EMSCRIPTEN_RESULT_SUCCESS;
-    const int available = sampled ? emscripten_get_num_gamepads() : 0;
-    for (std::size_t index = 0; index < gamepads.size(); ++index) {
-        input::GamepadState& state = gamepads[index];
-        EmscriptenGamepadEvent pad{};
-        if (static_cast<int>(index) >= available || emscripten_get_gamepad_status(static_cast<int>(index), &pad) != EMSCRIPTEN_RESULT_SUCCESS || pad.connected == 0 || std::string_view(pad.mapping) != "standard") {
-            state = {};
-            continue;
-        }
-
-        // The standard mapping of the Gamepad API numbers buttons and axes the same way on every browser.
-        constexpr std::array<std::pair<int, input::GamepadButton>, 15> kButtons{{{0, input::GamepadButton::South}, {1, input::GamepadButton::East}, {2, input::GamepadButton::West}, {3, input::GamepadButton::North}, {4, input::GamepadButton::LeftShoulder}, {5, input::GamepadButton::RightShoulder}, {8, input::GamepadButton::Back}, {9, input::GamepadButton::Start}, {10, input::GamepadButton::LeftStick}, {11, input::GamepadButton::RightStick}, {12, input::GamepadButton::DpadUp}, {13, input::GamepadButton::DpadDown}, {14, input::GamepadButton::DpadLeft}, {15, input::GamepadButton::DpadRight}, {16, input::GamepadButton::Guide}}};
-        state.connected = true;
-        state.name = pad.id;
-        const std::optional<std::uint16_t> vendor = GamepadVendors::findInBrowserId(pad.id);
-        state.labels = vendor ? GamepadVendors::getLabels(*vendor) : input::GamepadLabels::Unknown;
-        for (const auto& [source, button] : kButtons) {
-            state.buttons[static_cast<std::size_t>(button)] = source < pad.numButtons && pad.digitalButton[source] != 0;
-        }
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = static_cast<float>(pad.axis[0]);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = static_cast<float>(pad.axis[1]);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = static_cast<float>(pad.axis[2]);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = static_cast<float>(pad.axis[3]);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftTrigger)] = static_cast<float>(pad.analogButton[6]);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightTrigger)] = static_cast<float>(pad.analogButton[7]);
-    }
-}
-
 Orientation Services::getOrientation() {
     return static_cast<Orientation>(haylen_js_orientation());
 }
@@ -341,10 +306,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WebVideoDecoder>(*file, path);
-}
-
-void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
-    haylen_js_rumble_gamepad(static_cast<int>(index), low, high, seconds);
 }
 
 // The page shows the dialog in the frame that asked for it, and titles that are not UTF-8 reach it replaced.

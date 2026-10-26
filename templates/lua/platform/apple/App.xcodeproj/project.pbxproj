@@ -10,6 +10,7 @@
 		001A1465A5DE9677D50E146A /* GameController.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E659DE470F86E25B0A48DA55 /* GameController.framework */; };
 		09BEE119FFA87606AFEC98A0 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27E75B669F3DE4112956C6F9 /* CoreMedia.framework */; };
 		1526223C7B74A786EDC6B392 /* AudioToolbox.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */; };
+		1826C4CCD85E043E2AB25C6F /* CoreHaptics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 633A37EB8D49832876BF0712 /* CoreHaptics.framework */; };
 		23C93E3CA5F3F0934920AC1B /* app in Resources */ = {isa = PBXBuildFile; fileRef = 785CC13C763BA59F86046EB0 /* app */; };
 		2530307C175CA0D60D66C8E6 /* HaylenBootstrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */; };
 		2BEDB2E614DBF2CAFCB8DBAD /* HaylenBootstrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */; };
@@ -41,6 +42,7 @@
 		914F3304D2A9BB099291F289 /* Network.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 93773212B32C9B1B03E2D35B /* Network.framework */; };
 		917DE0041DE8C874A225D781 /* Splash.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 037D2CFC365C78ED67618965 /* Splash.xcassets */; };
 		91EE9A5DB424FA32614525BA /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */; };
+		93CAD7B15517B3724308EBE4 /* ForceFeedback.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 25230CABE3B320AA9CF20146 /* ForceFeedback.framework */; };
 		9A0F5AE3909B56954E2164E5 /* HaylenBootstrap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */; };
 		9BC83BC6CD4CEFCC79791868 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3CAAB913D12582C4BAC7F7E5 /* CoreVideo.framework */; };
 		9C935C4A0B9EE4AA32F751EB /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 64525A5E227A6F8D56316636 /* AVFoundation.framework */; };
@@ -68,6 +70,7 @@
 		DBE33D7F8E26B76335100EED /* HaylenBridgeAsync.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC7D43001340BE61E9FB5AE6 /* HaylenBridgeAsync.swift */; };
 		DEE4BD0D75B23A2892CF21B1 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 58FBB2D1052B9870DDD312D5 /* Metal.framework */; };
 		E5592221B879FDB263605333 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 3F039FF63D30D21B8BB1868F /* LaunchScreen.storyboard */; };
+		E57F01901C5FBA9905CE85A8 /* CoreFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 02401D3D9624FA71B2DDF0F7 /* CoreFoundation.framework */; };
 		EB9D689C7598B3D35EB90987 /* Haylen.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DBB0B5A6BA934671179571C /* Haylen.xcframework */; };
 		F56AF4354E541FAC12C2FD45 /* UniformTypeIdentifiers.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 32DFCA6979988D18408B2256 /* UniformTypeIdentifiers.framework */; };
 		F8CC57B848E29E69FAC0D5FD /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AB92594DDC4336170D045976 /* MetalKit.framework */; };
@@ -76,6 +79,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		02401D3D9624FA71B2DDF0F7 /* CoreFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreFoundation.framework; path = System/Library/Frameworks/CoreFoundation.framework; sourceTree = SDKROOT; };
 		037D2CFC365C78ED67618965 /* Splash.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Splash.xcassets; sourceTree = "<group>"; };
 		079F253040E2E950B67E7CD6 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0866489EA088F88D374FE024 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
@@ -83,6 +87,7 @@
 		1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AudioToolbox.framework; path = System/Library/Frameworks/AudioToolbox.framework; sourceTree = SDKROOT; };
 		1A46847C164D474B7B747BC0 /* iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HaylenBootstrap.cpp; sourceTree = "<group>"; };
+		25230CABE3B320AA9CF20146 /* ForceFeedback.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ForceFeedback.framework; path = System/Library/Frameworks/ForceFeedback.framework; sourceTree = SDKROOT; };
 		27E75B669F3DE4112956C6F9 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
 		31F8627049FA4255773BAEF5 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
@@ -94,6 +99,7 @@
 		58FBB2D1052B9870DDD312D5 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		59E6A3E8851905DB115F3231 /* project.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = project.yml; sourceTree = "<group>"; };
 		609349DF20D01EF9541FA51A /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		633A37EB8D49832876BF0712 /* CoreHaptics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreHaptics.framework; path = System/Library/Frameworks/CoreHaptics.framework; sourceTree = SDKROOT; };
 		64525A5E227A6F8D56316636 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = System/Library/Frameworks/AVFoundation.framework; sourceTree = SDKROOT; };
 		7119B3B4ECC2789700845009 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		785CC13C763BA59F86046EB0 /* app */ = {isa = PBXFileReference; lastKnownFileType = folder; name = app; path = haylen/app; sourceTree = SOURCE_ROOT; };
@@ -156,11 +162,14 @@
 				EB9D689C7598B3D35EB90987 /* Haylen.xcframework in Frameworks */,
 				AD04A9326EB80D4FC5CFDB63 /* Cocoa.framework in Frameworks */,
 				3528F1A928BACBC96EA927B3 /* Carbon.framework in Frameworks */,
+				E57F01901C5FBA9905CE85A8 /* CoreFoundation.framework in Frameworks */,
 				6FC6F99C15B8AE622764191B /* CoreGraphics.framework in Frameworks */,
 				62116A99E5DDE88777E66A57 /* QuartzCore.framework in Frameworks */,
 				A52579759E0192C6D1C7320C /* Metal.framework in Frameworks */,
 				F8CC57B848E29E69FAC0D5FD /* MetalKit.framework in Frameworks */,
 				001A1465A5DE9677D50E146A /* GameController.framework in Frameworks */,
+				1826C4CCD85E043E2AB25C6F /* CoreHaptics.framework in Frameworks */,
+				93CAD7B15517B3724308EBE4 /* ForceFeedback.framework in Frameworks */,
 				A5E0AD4BF5177DCF165C1BD1 /* AVFoundation.framework in Frameworks */,
 				D78069BD0E4A7CFF77925501 /* AudioToolbox.framework in Frameworks */,
 				DAF4DD7196A0F372A87D5D0F /* CoreAudio.framework in Frameworks */,
@@ -261,9 +270,12 @@
 				31F8627049FA4255773BAEF5 /* Carbon.framework */,
 				FCF7A4FB4D015D75B3963752 /* Cocoa.framework */,
 				E11F866B40772B2B88C0599A /* CoreAudio.framework */,
+				02401D3D9624FA71B2DDF0F7 /* CoreFoundation.framework */,
 				0A753EF2BDFD938E5832DBA1 /* CoreGraphics.framework */,
+				633A37EB8D49832876BF0712 /* CoreHaptics.framework */,
 				27E75B669F3DE4112956C6F9 /* CoreMedia.framework */,
 				3CAAB913D12582C4BAC7F7E5 /* CoreVideo.framework */,
+				25230CABE3B320AA9CF20146 /* ForceFeedback.framework */,
 				2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */,
 				E659DE470F86E25B0A48DA55 /* GameController.framework */,
 				8DBB0B5A6BA934671179571C /* Haylen.xcframework */,

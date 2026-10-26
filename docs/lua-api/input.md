@@ -522,11 +522,12 @@ Both motors at `0` stop the gamepad. A new rumble replaces the one that runs. Th
 
 | Platform | How it rumbles |
 | --- | --- |
-| iOS, iPadOS, tvOS, Mac Catalyst and macOS | The haptics engine of the controller plays one continuous event. Its intensity follows the stronger motor, and its sharpness follows the share of the high frequency motor. |
+| iOS, iPadOS, tvOS and Mac Catalyst | The haptics engine of the controller plays one continuous event. Its intensity follows the stronger motor, and its sharpness follows the share of the high frequency motor. |
+| macOS | Both motors of the controller through the gamepad API of SDL, where the controller and its driver rumble. |
 | Android | The vibrators of the controller, one motor on each when it has two, and the stronger motor on one. It needs the permission `VIBRATE`, which the template declares. |
-| Windows | Both motors of XInput controllers. |
-| Linux | The force feedback of the event device of the controller, when the user may write to it. The rules of most distributions allow it for the user at the computer. |
-| Web | The dual rumble of the Gamepad API, in browsers that offer it. |
+| Windows | Both motors of the controller through the gamepad API of SDL, for XInput, Windows.Gaming.Input and HID controllers that rumble. |
+| Linux | Both motors through the gamepad API of SDL, with the force feedback of the event device of the controller or its HID driver, when the user may write to the device. The rules of most distributions allow it for the user at the computer. |
+| Web | The dual rumble of the Gamepad API through the gamepad API of SDL, in browsers that offer it. |
 
 ```lua
 local input = require('haylen.input')

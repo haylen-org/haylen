@@ -217,10 +217,6 @@ bool Services::hasPointerDevice() noexcept {
     return TARGET_OS_TV == 0;
 }
 
-void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
-    AppleGamepads::poll(gamepads);
-}
-
 // Only iPhones and iPads turn their screen, while Macs, Mac Catalyst windows and TVs count as landscape.
 Orientation Services::getOrientation() {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
@@ -306,10 +302,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<AppleVideoDecoder>(std::move(file), path);
-}
-
-void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
-    AppleGamepads::rumble(index, low, high, seconds);
 }
 
 void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {

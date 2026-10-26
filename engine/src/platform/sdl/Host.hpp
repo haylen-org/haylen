@@ -1,7 +1,9 @@
 #pragma once
 
 #include <array>
+#include <cstddef>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 
@@ -32,6 +34,8 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     void closeWindow() override;
+    void pollGamepads(std::span<input::GamepadState> gamepads) override;
+    void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
 
   protected:
     void requestWindowClose() override;

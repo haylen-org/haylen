@@ -342,15 +342,14 @@ scene.push({
 })
 ```
 
-Each platform reads gamepads through its own API:
+Each platform reads gamepads through the API that knows its controllers best:
 
-- Apple platforms use the GameController framework.
-- Windows uses XInput.
-- Linux reads the joystick devices under `/dev/input`, in the layout of the common driver of controllers with lettered face buttons. Controllers whose drivers number their buttons another way may swap the west and north buttons there.
+- macOS, Windows, Linux and the web use the gamepad API of SDL. It lays every controller it knows out as a gamepad with its face buttons by their place, from GameController and HID on macOS, from XInput, Windows.Gaming.Input, raw input and HID on Windows, from the event devices under `/dev/input` and HID on Linux, and from the Gamepad API of the browser on the web. It names the labels of the face buttons of the controllers it knows, such as the shapes of a PlayStation controller. Its gamepads reach the app also while its window has no focus, such as a window above the taskbar that never takes it.
+- iOS, iPadOS, tvOS and Mac Catalyst use the GameController framework, which also reads the Siri Remote as a gamepad. SDL reads controllers through GameController there too, so it would add nothing.
 - Android reads the input events of GameActivity, which reach the app wherever the focus is inside its window. Android sends the sticks and the triggers only to the window with the focus, such as a dialog over the app. So they come to rest when the window of the app loses the focus, and the next movement of a stick brings its position back.
-- Browsers use the Gamepad API. The engine reads the gamepads that a browser gives its `standard` mapping and leaves the others out, since their buttons have no known places. Browsers reveal a gamepad to the page only after one of its buttons is pressed.
+- Browsers reveal a gamepad to the page only after one of its buttons is pressed.
 
-Windows reports at most four gamepads, the limit of XInput. Browsers report as many as they expose, usually four. The other platforms fill all eight slots. Every platform keeps a gamepad at its index for as long as it stays connected. So a gamepad that disconnects never moves the others, and a gamepad that connects takes the lowest free index.
+Browsers report as many gamepads as they expose, usually four. The other platforms fill all eight slots. Every platform keeps a gamepad at its index for as long as it stays connected. So a gamepad that disconnects never moves the others, and a gamepad that connects takes the lowest free index.
 
 ### TV remotes
 

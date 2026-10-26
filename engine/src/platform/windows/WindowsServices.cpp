@@ -6,7 +6,6 @@
 
 #include <knownfolders.h>
 #include <shlobj.h>
-#include <xinput.h>
 
 #include <stdexcept>
 #include <string>
@@ -25,7 +24,6 @@
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
-#include "platform/windows/WindowsRumble.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsTextInput.hpp"
 #include "platform/windows/WindowsVideoDecoder.hpp"
@@ -147,47 +145,6 @@ bool Services::hasPointerDevice() noexcept {
     return true;
 }
 
-void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
-    WindowsRumble::update();
-    const auto stick = [](SHORT value) { return value < 0 ? static_cast<float>(value) / 32768.0F : static_cast<float>(value) / 32767.0F; };
-    for (std::size_t index = 0; index < gamepads.size(); ++index) {
-        input::GamepadState& state = gamepads[index];
-        XINPUT_STATE reading{};
-        if (index >= XUSER_MAX_COUNT || XInputGetState(static_cast<DWORD>(index), &reading) != ERROR_SUCCESS) {
-            state = {};
-            continue;
-        }
-
-        const XINPUT_GAMEPAD& pad = reading.Gamepad;
-        state.connected = true;
-        state.name = "XInput Controller";
-        state.labels = input::GamepadLabels::Letters;
-        const auto set = [&state, &pad](input::GamepadButton button, WORD mask) { state.buttons[static_cast<std::size_t>(button)] = (pad.wButtons & mask) != 0; };
-        set(input::GamepadButton::South, XINPUT_GAMEPAD_A);
-        set(input::GamepadButton::East, XINPUT_GAMEPAD_B);
-        set(input::GamepadButton::West, XINPUT_GAMEPAD_X);
-        set(input::GamepadButton::North, XINPUT_GAMEPAD_Y);
-        set(input::GamepadButton::LeftShoulder, XINPUT_GAMEPAD_LEFT_SHOULDER);
-        set(input::GamepadButton::RightShoulder, XINPUT_GAMEPAD_RIGHT_SHOULDER);
-        set(input::GamepadButton::Back, XINPUT_GAMEPAD_BACK);
-        set(input::GamepadButton::Start, XINPUT_GAMEPAD_START);
-        set(input::GamepadButton::LeftStick, XINPUT_GAMEPAD_LEFT_THUMB);
-        set(input::GamepadButton::RightStick, XINPUT_GAMEPAD_RIGHT_THUMB);
-        set(input::GamepadButton::DpadUp, XINPUT_GAMEPAD_DPAD_UP);
-        set(input::GamepadButton::DpadDown, XINPUT_GAMEPAD_DPAD_DOWN);
-        set(input::GamepadButton::DpadLeft, XINPUT_GAMEPAD_DPAD_LEFT);
-        set(input::GamepadButton::DpadRight, XINPUT_GAMEPAD_DPAD_RIGHT);
-
-        // XInput reports up as positive, while the engine follows the screen with down as positive.
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftX)] = stick(pad.sThumbLX);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftY)] = -stick(pad.sThumbLY);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightX)] = stick(pad.sThumbRX);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightY)] = -stick(pad.sThumbRY);
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::LeftTrigger)] = static_cast<float>(pad.bLeftTrigger) / 255.0F;
-        state.axes[static_cast<std::size_t>(input::GamepadAxis::RightTrigger)] = static_cast<float>(pad.bRightTrigger) / 255.0F;
-    }
-}
-
 Orientation Services::getOrientation() {
     return Orientation::Landscape;
 }
@@ -250,10 +207,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WindowsVideoDecoder>(std::move(file), path);
-}
-
-void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
-    WindowsRumble::start(index, low, high, seconds);
 }
 
 // Picked files are files of the computer, which the app reads where they are.

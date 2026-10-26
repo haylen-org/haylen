@@ -57,7 +57,6 @@ class NativeHost : public Host {
     void persistUserData() override;
     [[nodiscard]] math::Insets getSafeAreaInsets() const override;
     [[nodiscard]] float getStatusBarHeight() const override;
-    void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) override;
     void cancelPlatformCall(std::uint64_t id) override;
     [[nodiscard]] math::Insets getReservedInsets() const override;
@@ -75,7 +74,6 @@ class NativeHost : public Host {
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override;
     void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
     void vibrate(float seconds) override;
-    void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
     void guardCrashes(const std::filesystem::path& report) override;
     void setCrashContext(std::string_view json) override;
     [[nodiscard]] std::string getNetworkRequirement() const override;

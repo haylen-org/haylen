@@ -181,6 +181,7 @@ set(HAYLEN_TEST_SOURCES
   platform/PluginLoadOrderTests.cpp
   platform/ScreensTests.cpp
   platform/sdl/EventsTests.cpp
+  platform/sdl/GamepadsTests.cpp
   platform/sdl/FrameTimerTests.cpp
   platform/StreamTests.cpp
   platform/SystemTests.cpp
@@ -245,8 +246,8 @@ set(HAYLEN_TEST_SOURCES
   ui/WheelTests.cpp
 )
 
-# The tests of the platform layer of SDL compile the translation of its events and the timing of the frames, which read only their own data.
-add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FrameTimer.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
+# The tests of the platform layer of SDL compile the translation of its events, the controllers, which virtual controllers of SDL stand in for, and the timing of the frames, which need no window.
+add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FrameTimer.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.

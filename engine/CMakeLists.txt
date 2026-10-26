@@ -826,7 +826,6 @@ if(APPLE)
     src/platform/apple/AppleClipboard.mm
     src/platform/apple/AppleDesktop.mm
     src/platform/apple/AppleDialogs.mm
-    src/platform/apple/AppleGamepads.mm
     src/platform/apple/AppleKeyboard.mm
     src/platform/apple/AppleMediaSession.mm
     src/platform/apple/AppleNetwork.mm
@@ -834,7 +833,6 @@ if(APPLE)
     src/platform/apple/AppleOrientation.mm
     src/platform/apple/ApplePlugins.mm
     src/platform/apple/ApplePresenter.mm
-    src/platform/apple/AppleRemote.mm
     src/platform/apple/AppleRuntime.mm
     src/platform/apple/AppleScroll.mm
     src/platform/apple/AppleScreens.mm
@@ -869,21 +867,31 @@ if(APPLE)
     src/platform/apple/HaylenThemeView.mm
     src/platform/apple/HaylenVideoStream.mm
   )
+  # UIKit apps read their controllers through GameController, while SDL reads the controllers of macOS.
+  if(NOT HAYLEN_PLATFORM STREQUAL "macos")
+    list(APPEND HAYLEN_APPLE_SOURCES src/platform/apple/AppleGamepads.mm src/platform/apple/AppleRemote.mm)
+  endif()
   list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsRumble.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp src/platform/windows/WindowsVideoDecoder.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsTextInput.cpp src/platform/windows/WindowsVideoDecoder.cpp)
 elseif(ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
 else()
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
 
 # Every platform but Android runs apps through the platform layer of SDL. The application delegate of macOS is the runtime's own, so SDL leaves the menus, the quit requests and the events of plugins to it, the scene delegate of UIKit derives from the one of SDL, which runs the app in its scene, and the view controller of the window answers UIKit with the status bar of the app.
 if(NOT ANDROID)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/Window.cpp)
+  # UIKit apps read their controllers through `platform::AppleGamepads`, whose header speaks Objective-C, and the other platforms through the gamepads of SDL.
+  if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
+    set_source_files_properties(src/platform/sdl/Host.cpp PROPERTIES LANGUAGE OBJCXX COMPILE_OPTIONS "-fobjc-arc")
+  else()
+    list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Gamepads.cpp)
+  endif()
   if(APPLE)
     set(HAYLEN_SDL_APPLE_SOURCES src/platform/sdl/apple/AppleApplication.mm src/platform/sdl/apple/HaylenAppDelegate.mm src/platform/sdl/apple/HaylenRootViewController.mm src/platform/sdl/apple/HaylenSceneDelegate.mm)
     list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_SDL_APPLE_SOURCES})

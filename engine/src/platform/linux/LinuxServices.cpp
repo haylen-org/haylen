@@ -17,7 +17,6 @@
 #include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
 #include "platform/linux/LinuxDialogs.hpp"
-#include "platform/linux/LinuxGamepads.hpp"
 #include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxSettings.hpp"
 #include "platform/linux/LinuxSystem.hpp"
@@ -29,7 +28,6 @@ std::string_view Services::getName() noexcept {
 }
 
 void Services::initialize() {
-    LinuxGamepads::scan();
     LinuxSystem::watchBattery();
     LinuxSettings::observe();
     LinuxAccessibility::start();
@@ -37,7 +35,6 @@ void Services::initialize() {
 
 void Services::shutdown() noexcept {
     LinuxDesktop::release();
-    LinuxGamepads::release();
 }
 
 void Services::reportError(const core::Json&) {}
@@ -132,10 +129,6 @@ bool Services::hasPointerDevice() noexcept {
     return true;
 }
 
-void Services::pollGamepads(std::span<input::GamepadState> gamepads) {
-    LinuxGamepads::poll(gamepads);
-}
-
 Orientation Services::getOrientation() {
     return Orientation::Landscape;
 }
@@ -157,7 +150,7 @@ std::optional<Fold> Services::getFold() {
     return std::nullopt;
 }
 
-// Linux types through the key and character events of X11, so its text input keeps the defaults.
+// Linux types through the text events of SDL, so its text input keeps the defaults.
 TextInput& Services::getTextInput() {
     static TextInput& input = *new TextInput();
     return input;
@@ -199,10 +192,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 // Linux has no decoder of video files that every distribution ships, as the video reference explains.
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
     return nullptr;
-}
-
-void Services::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
-    LinuxGamepads::rumble(index, low, high, seconds);
 }
 
 // Picked files are files of the computer, which the app reads where they are.

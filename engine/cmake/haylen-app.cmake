@@ -10,8 +10,8 @@ set(HAYLEN_CONTENT_TOOL "" CACHE FILEPATH "The content tool of the host, haylen-
 set(HAYLEN_PREVIOUS_RELEASE "" CACHE PATH "A folder that holds the last release of the app that shipped, which the protected release follows instead of the last release of the build tree, so a clean machine keeps the shards of unchanged content. Empty follows the build tree.")
 
 # The system frameworks that the engine needs on each Apple platform. The runtime links them, and the Apple artifacts publish them in haylen-frameworks.json, from which haylen.py links them into the projects of Lua apps.
-# Mac Catalyst reads the battery of the Mac from the power sources of IOKit, every Apple platform decodes videos with AVFoundation and CoreMedia, and SDL reads the keyboard layouts of macOS through Carbon.
-set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
+# Mac Catalyst reads the battery of the Mac from the power sources of IOKit, every Apple platform decodes videos with AVFoundation and CoreMedia, and SDL reads the keyboard layouts of macOS through Carbon and its controllers through IOKit, GameController, CoreHaptics and ForceFeedback.
+set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreFoundation CoreGraphics QuartzCore Metal MetalKit GameController CoreHaptics ForceFeedback AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo IOKit UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
@@ -31,7 +31,7 @@ function(haylen_link_runtime_platform target scope)
     list(TRANSFORM frameworks PREPEND "-framework ")
     target_link_libraries(${target} ${scope} ${frameworks})
   elseif(HAYLEN_PLATFORM STREQUAL "windows")
-    target_link_libraries(${target} ${scope} xinput shell32 shcore shlwapi ole32 oleaut32 imm32 advapi32 uuid mfplat mfreadwrite mfuuid runtimeobject uiautomationcore)
+    target_link_libraries(${target} ${scope} shell32 shcore shlwapi ole32 oleaut32 imm32 advapi32 uuid mfplat mfreadwrite mfuuid runtimeobject uiautomationcore)
   elseif(HAYLEN_PLATFORM STREQUAL "android")
     # The context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`.
     target_link_libraries(${target} ${scope} android log EGL jnigraphics mediandk)
