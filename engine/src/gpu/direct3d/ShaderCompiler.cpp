@@ -9,22 +9,26 @@ namespace haylen::gpu::direct3d {
 
 using Microsoft::WRL::ComPtr;
 
-ShaderCompiler::ShaderCompiler(bool debug) {
-    library = LoadLibraryExW(L"d3dcompiler_47.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
-    if (library == nullptr) {
-        throw std::runtime_error("The shader compiler of Direct3D, \"d3dcompiler_47.dll\", is missing from the system.");
-    }
-    function = reinterpret_cast<pD3DCompile>(reinterpret_cast<void*>(GetProcAddress(library, "D3DCompile")));
-    createBlob = reinterpret_cast<CreateBlob>(reinterpret_cast<void*>(GetProcAddress(library, "D3DCreateBlob")));
-    if (function == nullptr || createBlob == nullptr) {
-        FreeLibrary(library);
-        throw std::runtime_error("The shader compiler of Direct3D, \"d3dcompiler_47.dll\", lacks the functions \"D3DCompile\" and \"D3DCreateBlob\".");
-    }
-    flags = debug ? D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION : D3DCOMPILE_OPTIMIZATION_LEVEL3;
+ShaderCompiler::ShaderCompiler(bool debug) : library(getLibrary()), flags(debug ? D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION : D3DCOMPILE_OPTIMIZATION_LEVEL3) {}
+
+// A library that fails to load leaves nothing behind, so the next compiler tries again.
+const ShaderCompiler::Library& ShaderCompiler::getLibrary() {
+    static const Library* const loaded = loadLibrary();
+    return *loaded;
 }
 
-ShaderCompiler::~ShaderCompiler() {
-    FreeLibrary(library);
+const ShaderCompiler::Library* ShaderCompiler::loadLibrary() {
+    const HMODULE handle = LoadLibraryExW(L"d3dcompiler_47.dll", nullptr, LOAD_LIBRARY_SEARCH_SYSTEM32);
+    if (handle == nullptr) {
+        throw std::runtime_error("The shader compiler of Direct3D, \"d3dcompiler_47.dll\", is missing from the system.");
+    }
+    const auto compileFunction = reinterpret_cast<pD3DCompile>(reinterpret_cast<void*>(GetProcAddress(handle, "D3DCompile")));
+    const auto blobFunction = reinterpret_cast<CreateBlob>(reinterpret_cast<void*>(GetProcAddress(handle, "D3DCreateBlob")));
+    if (compileFunction == nullptr || blobFunction == nullptr) {
+        FreeLibrary(handle);
+        throw std::runtime_error("The shader compiler of Direct3D, \"d3dcompiler_47.dll\", lacks the functions \"D3DCompile\" and \"D3DCreateBlob\".");
+    }
+    return new Library{.compile = compileFunction, .createBlob = blobFunction};
 }
 
 // The key holds the profile and the entry point before the source, each ending in a null character, so `run` reads all three back from it.
@@ -40,7 +44,7 @@ std::string ShaderCompiler::makeKey(const Device::StageCode& stage) {
 ComPtr<ID3DBlob> ShaderCompiler::compile(const Device::StageCode& stage, std::string_view label) {
     if (!stage.bytecode.empty()) {
         ComPtr<ID3DBlob> code;
-        if (FAILED(createBlob(stage.bytecode.size(), code.GetAddressOf()))) {
+        if (FAILED(library.createBlob(stage.bytecode.size(), code.GetAddressOf()))) {
             throw std::runtime_error(std::format("The graphics device found no memory for the bytecode of the shader \"{}\".", label));
         }
         std::memcpy(code->GetBufferPointer(), stage.bytecode.data(), stage.bytecode.size());
@@ -83,7 +87,7 @@ ShaderCompiler::Result ShaderCompiler::run(const std::string& key) const {
 
     Result result;
     ComPtr<ID3DBlob> errors;
-    const HRESULT status = function(source, key.size() - sourceStart, nullptr, nullptr, nullptr, entry, profile, flags, 0, result.code.GetAddressOf(), errors.GetAddressOf());
+    const HRESULT status = library.compile(source, key.size() - sourceStart, nullptr, nullptr, nullptr, entry, profile, flags, 0, result.code.GetAddressOf(), errors.GetAddressOf());
     if (SUCCEEDED(status)) {
         return result;
     }

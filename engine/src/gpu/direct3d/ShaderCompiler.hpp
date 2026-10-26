@@ -19,14 +19,14 @@
 
 namespace haylen::gpu::direct3d {
 
-// Compiles the HLSL of shader packages into the bytecode of shader model 5.0, which Direct3D 11 and 12 both run, through `D3DCompile` of the system library `d3dcompiler_47.dll`, which it loads when it starts. Programs prepared ahead compile on the threads of its `CompileQueue`, and the frame thread takes their bytecode when it makes the program, waiting only for what is left. Every method may run on any thread.
+// Compiles the HLSL of shader packages into the bytecode of shader model 5.0, which Direct3D 11 and 12 both run, through `D3DCompile` of the system library `d3dcompiler_47.dll`, which the first compiler of the process loads and nothing unloads, since its bytecode and the threads that compile with it may outlive every compiler. Programs prepared ahead compile on the threads of its `CompileQueue`, and the frame thread takes their bytecode when it makes the program, waiting only for what is left. Every method may run on any thread.
 class ShaderCompiler final : public std::enable_shared_from_this<ShaderCompiler> {
   public:
     // Loads the compiler, which keeps debug information in the bytecode for GPU debuggers when `debug` is on. Throws `std::runtime_error` when the system lacks it.
     explicit ShaderCompiler(bool debug);
     ShaderCompiler(const ShaderCompiler&) = delete;
     ShaderCompiler& operator=(const ShaderCompiler&) = delete;
-    ~ShaderCompiler();
+    ~ShaderCompiler() = default;
 
     // The bytecode of a stage, which the stage brings itself or the compiler makes from its source. Throws `std::runtime_error` with the messages of the compiler when the source does not compile.
     [[nodiscard]] Microsoft::WRL::ComPtr<ID3DBlob> compile(const Device::StageCode& stage, std::string_view label);
@@ -47,9 +47,16 @@ class ShaderCompiler final : public std::enable_shared_from_this<ShaderCompiler>
 
     using CreateBlob = HRESULT(WINAPI*)(SIZE_T, ID3DBlob**);
 
-    HMODULE library = nullptr;
-    pD3DCompile function = nullptr;
-    CreateBlob createBlob = nullptr;
+    // The functions of the compiler library, which stays loaded until the process ends.
+    struct Library {
+        pD3DCompile compile = nullptr;
+        CreateBlob createBlob = nullptr;
+    };
+
+    [[nodiscard]] static const Library& getLibrary();
+    [[nodiscard]] static const Library* loadLibrary();
+
+    const Library& library;
     UINT flags = 0;
     std::mutex mutex;
     // The compilations that `prepare` started, under the profile, entry point and source of the stage they compile, until a program takes them.
