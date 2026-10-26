@@ -38,7 +38,7 @@ The `render` benchmark also counts the allocations of the frame thread per frame
 
 ## Software rasterizers
 
-Machines without a GPU, such as containers and the runners of continuous integration, draw through software rasterizers: Mesa lavapipe for Vulkan and Mesa llvmpipe for OpenGL on Linux, and WARP for Direct3D on Windows. They draw the same pixels as a GPU, but on the processor. So their numbers measure the processor and the rasterizer, not a GPU, and they only compare runs on the same machine. A report of such numbers names the rasterizer, which the first line of the output gives.
+Machines without a GPU, such as containers and the runners of continuous integration, draw through software rasterizers: Mesa lavapipe for Vulkan and Mesa llvmpipe for OpenGL on Linux, and WARP for Direct3D on Windows. They draw the same pixels as a GPU, but on the processor. So their numbers measure the processor and the rasterizer, not a GPU, and they only compare runs on the same machine. A report of such numbers names the rasterizer, which the first line of the output gives. The timer queries of OpenGL on llvmpipe measure only how long the commands take to reach the rasterizer, which draws them later on its own threads, and the first query of a context reports a time far longer than the run. So on llvmpipe the `GPU ms` of OpenGL means little, and `Frame ms` shows the cost of the frame.
 
 To measure Linux in a container, run the benchmarks of a Linux build there with the Mesa drivers installed, such as the packages `mesa-vulkan-drivers` and `libgl1-mesa-dri` of Ubuntu:
 
