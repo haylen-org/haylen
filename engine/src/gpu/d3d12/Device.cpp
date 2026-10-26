@@ -173,6 +173,7 @@ void Device::readCapabilities() {
         capabilities.textureFormats[index] = (view.Support1 & (D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE | D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE_COMPARISON)) != 0;
         capabilities.renderFormats[index] = (target.Support1 & (depth ? D3D12_FORMAT_SUPPORT1_DEPTH_STENCIL : D3D12_FORMAT_SUPPORT1_RENDER_TARGET)) != 0;
         capabilities.blendableFormats[index] = !depth && capabilities.renderFormats[index] && (target.Support1 & D3D12_FORMAT_SUPPORT1_BLENDABLE) != 0;
+        capabilities.filterableFormats[index] = !depth && (view.Support1 & D3D12_FORMAT_SUPPORT1_SHADER_SAMPLE) != 0;
     }
 }
 

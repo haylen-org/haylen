@@ -222,6 +222,37 @@ TEST_F(NullDeviceTest, RequiresTheBindingsAndUniformsOfEveryDraw) {
     device.commit();
 }
 
+// A slot that filters takes only images of the formats the device filters, and a sampler slot that does not filter takes no sampler with a linear filter, as WebGPU requires.
+TEST_F(NullDeviceTest, FiltersOnlyTheFormatsTheDeviceFilters) {
+    NullDevice device;
+    EXPECT_FALSE(device.getCapabilities().filterableFormats[static_cast<std::size_t>(Device::PixelFormat::R32Float)]);
+    const std::array<Device::TextureBinding, 1> filtered{{{.slot = 0}}};
+    const std::array<Device::TextureBinding, 1> unfiltered{{{.slot = 0, .sampleType = Device::SampleType::UnfilterableFloat}}};
+    const std::array<Device::SamplerBinding, 1> filtering{{{.slot = 0}}};
+    const std::array<Device::SamplerBinding, 1> nonFiltering{{{.slot = 0, .type = Device::SamplerType::NonFiltering}}};
+    const std::array<Device::ColorTarget, 1> targets{};
+    const Device::Pipeline filters = device.makePipeline({.program = device.makeProgram({.textures = filtered, .samplers = filtering, .label = "filters"}), .colors = targets, .label = "filters"});
+    const Device::Pipeline reads = device.makePipeline({.program = device.makeProgram({.textures = unfiltered, .samplers = nonFiltering, .label = "reads"}), .colors = targets, .label = "reads"});
+    const Device::Image floats = device.makeImage({.width = 2, .height = 2, .format = Device::PixelFormat::R32Float, .kind = Device::ImageKind::RenderTarget, .label = "floats"});
+    const Device::Image target = device.makeImage({.width = 2, .height = 2, .kind = Device::ImageKind::RenderTarget, .label = "target"});
+    const Device::Sampler linear = device.makeSampler({});
+    const Device::Sampler nearest = device.makeSampler({.minification = Device::Filter::Nearest, .magnification = Device::Filter::Nearest});
+    const std::array<Device::ColorAttachment, 1> colors{{{.image = target}}};
+
+    device.beginPass({.colors = colors});
+    Device::Bindings bindings;
+    bindings.textures[0] = floats;
+    bindings.samplers[0] = linear;
+    device.applyPipeline(filters);
+    EXPECT_THROW(device.applyBindings(bindings), std::logic_error);
+    device.applyPipeline(reads);
+    EXPECT_THROW(device.applyBindings(bindings), std::logic_error);
+    bindings.samplers[0] = nearest;
+    EXPECT_NO_THROW(device.applyBindings(bindings));
+    device.endPass();
+    device.commit();
+}
+
 // A frame writes each part of a dynamic buffer once and before a pass binds it, and an indexed draw reads only the indices its buffer holds.
 TEST_F(NullDeviceTest, WritesBuffersBeforeTheirPassesAndDrawsWithinTheirIndices) {
     NullDevice device;

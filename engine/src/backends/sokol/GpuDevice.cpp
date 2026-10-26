@@ -66,6 +66,7 @@ gpu::Device::Capabilities GpuDevice::queryCapabilities() noexcept {
         made.textureFormats[format] = info.sample;
         made.renderFormats[format] = info.render;
         made.blendableFormats[format] = info.render && info.blend && !info.depth;
+        made.filterableFormats[format] = info.sample && info.filter && !info.depth;
     }
     return made;
 }

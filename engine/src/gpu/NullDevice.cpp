@@ -24,6 +24,7 @@ Device::Capabilities NullDevice::getDefaultCapabilities() noexcept {
         const auto pixelFormat = static_cast<PixelFormat>(format);
         const bool wide = pixelFormat == PixelFormat::R32Float || pixelFormat == PixelFormat::Rg32Float || pixelFormat == PixelFormat::Rgba32Float;
         capabilities.blendableFormats[format] = !wide && !ImageInfo::isDepth(pixelFormat);
+        capabilities.filterableFormats[format] = !wide && !ImageInfo::isDepth(pixelFormat);
     }
     return capabilities;
 }
@@ -540,6 +541,9 @@ void NullDevice::checkTexture(const TextureBinding& binding, Image image) const 
     if ((binding.sampleType == SampleType::Depth) != ImageInfo::isDepth(desc.format)) {
         throw std::logic_error(std::format("The texture slot {} of the program samples depth from an image of another kind, or color from a depth image.", binding.slot));
     }
+    if (binding.sampleType == SampleType::Float && !features.filterableFormats[static_cast<std::size_t>(desc.format)]) {
+        throw std::logic_error(std::format("The texture slot {} of the program filters an image whose format the device samples only without filtering. Declare the texture unfilterable and sample it with a sampler that does not filter.", binding.slot));
+    }
     if (std::ranges::find(pass->images, image.id) != pass->images.end()) {
         throw std::logic_error(std::format("The texture slot {} of the program samples an attachment of the pass that draws into it.", binding.slot));
     }
@@ -552,6 +556,11 @@ void NullDevice::checkSampler(const SamplerBinding& binding, Sampler sampler) co
     }
     if ((binding.type == SamplerType::Comparison) != found->second.compare.has_value()) {
         throw std::logic_error(std::format("The sampler slot {} of the program takes a sampler that compares depth, or one that does not.", binding.slot));
+    }
+    const SamplerDesc& desc = found->second;
+    const bool filters = desc.minification == Filter::Linear || desc.magnification == Filter::Linear || desc.mipmap == Filter::Linear;
+    if (binding.type == SamplerType::NonFiltering && filters) {
+        throw std::logic_error(std::format("The sampler slot {} of the program takes a sampler that does not filter, and the bound one has a linear filter.", binding.slot));
     }
 }
 

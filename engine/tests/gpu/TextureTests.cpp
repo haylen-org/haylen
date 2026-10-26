@@ -22,8 +22,9 @@ class GpuTextureTest : public test::GpuFixture {
         Device::PixelFormat::R8, Device::PixelFormat::Rg8, Device::PixelFormat::Rgba8, Device::PixelFormat::Rgba8Srgb, Device::PixelFormat::Bgra8, Device::PixelFormat::Rgb10A2, Device::PixelFormat::R16Float, Device::PixelFormat::Rg16Float, Device::PixelFormat::Rgba16Float, Device::PixelFormat::R32Float, Device::PixelFormat::Rg32Float, Device::PixelFormat::Rgba32Float,
     };
 
-    [[nodiscard]] static bool isWideFloat(Device::PixelFormat format) noexcept {
-        return format == Device::PixelFormat::R32Float || format == Device::PixelFormat::Rg32Float || format == Device::PixelFormat::Rgba32Float;
+    // The program that samples the format: the one that filters where the device filters the format, and the one that reads texels without filtering elsewhere.
+    [[nodiscard]] std::string_view samplingProgram(Device::PixelFormat format) const noexcept {
+        return capabilities().filterableFormats[static_cast<std::size_t>(format)] ? "textured" : "unfilterable";
     }
 
     // The color of the tests as a format holds it, with the alpha of two bits of `Rgb10A2` at its largest.
@@ -176,8 +177,33 @@ TEST_P(GpuTextureTest, SamplesEveryFormatTheDeviceSupports) {
         if (format == Device::PixelFormat::Rgba8Srgb) {
             expected = {toLinear(expected.r), toLinear(expected.g), toLinear(expected.b), expected.a};
         }
-        const Pixels pixels = sample(isWideFloat(format) ? "unfilterable" : "textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
+        const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
         EXPECT_TRUE(isNear(pixels.at(0, 0), expected, 3)) << static_cast<int>(format);
+    }
+}
+
+// Every color format that the device marks filterable blends its texels with a linear filter. A row of an empty texel and a texel of the color, drawn four pixels wide, takes three quarters of the color at its third pixel, while the channels the format lacks keep their defaults.
+TEST_P(GpuTextureTest, FiltersEveryFormatTheDeviceFilters) {
+    ASSERT_TRUE(capabilities().filterableFormats[static_cast<std::size_t>(Device::PixelFormat::Rgba8)]) << "Every device filters the format Rgba8, which the capabilities must mark.";
+    const Device::Sampler sampler = makeSampler({});
+    for (const Device::PixelFormat format : kColorFormats) {
+        if (!capabilities().filterableFormats[static_cast<std::size_t>(format)]) {
+            continue;
+        }
+        std::vector<std::byte> texels(ImageInfo::getBytesPerPixel(format));
+        const std::vector<std::byte> texel = encode(format);
+        texels.insert(texels.end(), texel.begin(), texel.end());
+        const std::array<std::span<const std::byte>, 1> levels{texels};
+        const Device::Image texture = makeTexture(2, 1, levels, format);
+
+        math::Color full = sampledColor(format);
+        if (format == Device::PixelFormat::Rgba8Srgb) {
+            full = {toLinear(full.r), toLinear(full.g), toLinear(full.b), full.a};
+        }
+        const math::Color empty = sampledColor(format) == storedColor(format) ? math::Color::transparent() : math::Color{0.0F, 0.0F, 0.0F, 1.0F};
+        const math::Color expected{empty.r + (full.r - empty.r) * 0.75F, empty.g + (full.g - empty.g) * 0.75F, empty.b + (full.b - empty.b) * 0.75F, empty.a + (full.a - empty.a) * 0.75F};
+        const Pixels pixels = sample("textured", texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F}, 4, 1);
+        EXPECT_TRUE(isNear(pixels.at(2, 0), expected, 3)) << static_cast<int>(format);
     }
 }
 
@@ -194,7 +220,7 @@ TEST_P(GpuTextureTest, RendersIntoEveryFormatTheDeviceRenders) {
         const std::array<Device::ColorAttachment, 1> colors{{{.image = target, .clear = storedColor(format)}}};
         device().beginPass({.colors = colors});
         device().endPass();
-        const Pixels pixels = sample(isWideFloat(format) ? "unfilterable" : "textured", target, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
+        const Pixels pixels = sample(samplingProgram(format), target, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
         EXPECT_TRUE(isNear(pixels.at(0, 0), sampledColor(format), 3)) << static_cast<int>(format);
     }
 }

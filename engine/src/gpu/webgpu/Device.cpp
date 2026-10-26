@@ -78,6 +78,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
     result.gpuTiming = connection.hasFeature(WGPUFeatureName_TimestampQuery);
 
     const bool floatBlending = connection.hasFeature(WGPUFeatureName_Float32Blendable);
+    const bool floatFiltering = connection.hasFeature(WGPUFeatureName_Float32Filterable);
     const bool depthStencil32 = connection.hasFeature(WGPUFeatureName_Depth32FloatStencil8);
     for (std::size_t index = 0; index < result.textureFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
@@ -86,6 +87,7 @@ gpu::Device::Capabilities Device::describeCapabilities(const Connection& connect
         result.textureFormats[index] = exists;
         result.renderFormats[index] = exists;
         result.blendableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatBlending);
+        result.filterableFormats[index] = !ImageInfo::isDepth(format) && (!wideFloat || floatFiltering);
     }
     return result;
 }

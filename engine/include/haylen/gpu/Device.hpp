@@ -317,6 +317,9 @@ class Device {
 
         // The color formats that render targets can be drawn into with blending.
         std::array<bool, 16> blendableFormats{};
+
+        // The color formats that draws can sample with linear filters, through texture slots of the type `SampleType::Float`. The others are sampled only through slots of `SampleType::UnfilterableFloat` with samplers of `SamplerType::NonFiltering`.
+        std::array<bool, 16> filterableFormats{};
     };
 
     struct BufferDesc {

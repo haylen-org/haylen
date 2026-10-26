@@ -237,12 +237,14 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     made.gpuTiming = true;
 
     const bool floats = [metal supportsFamily:MTLGPUFamilyApple7] || !apple;
+    const bool floatFiltering = metal.supports32BitFloatFiltering;
     for (std::size_t index = 0; index < made.blendableFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool wide = format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
         made.textureFormats[index] = true;
         made.renderFormats[index] = true;
         made.blendableFormats[index] = !Formats::isDepth(format) && (!wide || floats);
+        made.filterableFormats[index] = !Formats::isDepth(format) && (!wide || floatFiltering);
     }
     return made;
 }
