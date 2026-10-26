@@ -39,6 +39,9 @@ class Window final : public platform::NativeWindow {
 
     [[nodiscard]] gpu::Surface getSurface() const;
 
+    // Replaces the context of OpenGL, OpenGL ES or WebGL2 that the GPU lost with a new one for the device that replaces the lost one. Windows of the other graphics APIs keep what they have.
+    void renewGlContext();
+
     // Reads the size of the drawable and the scale again once SDL reported that they changed, for the services that read them on other threads.
     void refresh() noexcept;
 

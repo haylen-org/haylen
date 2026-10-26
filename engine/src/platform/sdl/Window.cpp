@@ -84,6 +84,13 @@ gpu::Surface Window::getSurface() const {
     return surface;
 }
 
+void Window::renewGlContext() {
+    if (gl != nullptr) {
+        gl.reset();
+        gl = std::make_unique<GlContext>(window);
+    }
+}
+
 void Window::refresh() noexcept {
     int pixelWidth = 0;
     int pixelHeight = 0;
@@ -178,9 +185,13 @@ void Window::describeGl(const core::AppConfig::Window& options, gpu::Device::Api
     } else {
         return;
     }
-#if !defined(NDEBUG)
-    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
+    // A robust context reports a reset of the GPU as a lost context, which the device answers with isLost.
+#if defined(NDEBUG)
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG);
+#else
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_ROBUST_ACCESS_FLAG | SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_RESET_NOTIFICATION, SDL_GL_CONTEXT_RESET_LOSE_CONTEXT);
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_RED_SIZE, 8);
     SDL_GL_SetAttribute(SDL_GL_GREEN_SIZE, 8);

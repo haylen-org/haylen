@@ -77,6 +77,7 @@ class Runtime final {
     [[nodiscard]] SDL_AppResult start();
     [[nodiscard]] bool openWindow();
     [[nodiscard]] SDL_AppResult iterate();
+    [[nodiscard]] bool recover();
     [[nodiscard]] SDL_AppResult handle(const SDL_Event& event);
     void deliver(const SDL_Event& event);
     void quit() noexcept;
@@ -97,6 +98,9 @@ class Runtime final {
     bool transparent = false;
     bool started = false;
     bool closing = false;
+
+    // Whether the device of the app stopped working, until its replacement exists.
+    bool recovering = false;
 
     // Whether the frames run at the rate of a window that shows nothing.
     bool paced = false;

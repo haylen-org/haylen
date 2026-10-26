@@ -1,0 +1,15 @@
+Creates the transparent windows of Windows that draw through neither OpenGL nor Vulkan without a redirection surface, so the DirectComposition visual of the swapchain of Direct3D shows through, with its premultiplied alpha, where the redirection surface would cover it.
+
+--- a/src/video/windows/SDL_windowswindow.c
++++ b/src/video/windows/SDL_windowswindow.c
+@@ -138,6 +138,10 @@
+     if (SDL_WINDOW_IS_POPUP(window) || (window->flags & SDL_WINDOW_NOT_FOCUSABLE)) {
+         style |= WS_EX_NOACTIVATE;
+     }
++    /* A transparent window that draws through neither OpenGL nor Vulkan shows the DirectComposition visual of its swapchain, which a redirection surface would cover. */
++    if ((window->flags & SDL_WINDOW_TRANSPARENT) && !(window->flags & (SDL_WINDOW_OPENGL | SDL_WINDOW_VULKAN))) {
++        style |= WS_EX_NOREDIRECTIONBITMAP;
++    }
+     return style;
+ }
+ 

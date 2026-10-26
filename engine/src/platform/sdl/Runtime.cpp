@@ -45,9 +45,14 @@ int Runtime::run(int argc, char* argv[]) {
     return status != 0 ? status : Player::getExitStatus();
 }
 
+// A context of OpenGL that the GPU lost takes no more commands, so the device that replaces a lost one draws through a new context.
 std::unique_ptr<gpu::Device> Runtime::createDevice() {
     if (openedDevice != nullptr) {
         return std::move(openedDevice);
+    }
+    if (recovering) {
+        recovering = false;
+        window.renewGlContext();
     }
     return gpu::DeviceFactory::create(window.getApi(), window.getSurface(), getDeviceOptions());
 }
@@ -218,10 +223,27 @@ SDL_AppResult Runtime::iterate() {
     if (!started) {
         return start();
     }
-    if (!closing) {
+    if (!closing && recover()) {
         Player::frame(timer.next(SDL_GetTicksNS()));
     }
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
+}
+
+// A device that stopped working, after a reset of the GPU, the removal of the adapter or a lost context, gives way to a new one, which the app starts again on once the graphics API prepared it, and the frames wait meanwhile. It returns whether the app has a device that works.
+bool Runtime::recover() {
+    if (!recovering) {
+        const gpu::Device* device = Player::getGpuDevice();
+        if (device == nullptr || !device->isLost()) {
+            return true;
+        }
+        core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", gpu::DeviceFactory::getApiName(window.getApi()));
+        recovering = true;
+    }
+    if (!gpu::DeviceFactory::prepare(window.getApi(), getDeviceOptions())) {
+        return false;
+    }
+    Player::restart();
+    return true;
 }
 
 // The events before the app started find no app to hear them.

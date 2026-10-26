@@ -360,6 +360,10 @@ SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS 
 
 SDL listens for the keys of the whole page on the window of the browser. So a page that hosts the app next to elements of its own, such as the editor of a website, could keep their keys from the app only by stopping them before they reach those elements. The patch skips a key whose time stamp the runtime names in `Module.haylenIgnoredKey`. The runtime does this for the keys of elements that are not the canvas, the page or the fields of the runtime, so those elements still hear them.
 
+#### sdl-windows-composition.patch
+
+The Direct3D devices compose a transparent window of Windows with the desktop through a swapchain of DirectComposition with premultiplied alpha. SDL creates every window with a redirection surface, which covers the visual of that swapchain. The patch creates the transparent windows that draw through neither OpenGL nor Vulkan with `WS_EX_NOREDIRECTIONBITMAP`, so the visual shows. The windows of OpenGL keep the redirection surface, through which SDL makes them transparent.
+
 #### sokol-ios-view-size.patch
 
 The module `sokol_app` sizes the framebuffer of iOS apps by the screen. That crops every app whose window is smaller than the screen, such as Mac Catalyst windows and iPad windows. The patch sizes it by the view of the app instead.
