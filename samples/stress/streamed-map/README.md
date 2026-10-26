@@ -40,7 +40,7 @@ Every frame the app wants the chunks that the camera sees and a ring of one chun
 2. A job of [`haylen.jobs`](../../../docs/lua-api/jobs.md) samples the noise of the 4,096 tiles and their borders, sorts the decorations from the top down and makes the sprite fields of both, pausing at every row once the build time of the frame is spent, which the panel sets from 2 to 16 milliseconds.
 3. On the frame thread, one `buffer:set` and one `batch:writeFields` fill a sprite batch that `batch:bake()` turns into a static batch for the tiles and another for the decorations, so a loaded chunk uploads nothing again and draws with two calls of `graphics2d.drawStatic`.
 
-The readout shows the frame time, the frame rate and the draw calls of the engine, the loaded chunks, the chunks building and waiting, the tiles and decorations drawn in the frame, the sprites baked into the loaded chunks, the memory of Lua and the zoom.
+The readout shows the graphics API that draws the app, the frame time, the frame rate, the time the GPU took for a frame where the API measures it and the draw calls of the engine, the loaded chunks, the chunks building and waiting, the tiles and decorations drawn in the frame, the sprites baked into the loaded chunks, the memory of Lua and the zoom.
 
 ## Numbers
 

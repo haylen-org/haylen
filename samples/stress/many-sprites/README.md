@@ -50,7 +50,7 @@ The hand-over modes decide how the sprites reach the renderer, the fast paths of
 | Batch | The same copy moves a sprite batch with `batch:writeFields`, which keeps the size and the source of every sprite in C++, and `batch:draw` draws it. |
 | Tables | Every fish is a Lua table that `graphics2d.drawBatch(texture, tables)` reads key by key, the slow way that one table per sprite costs. |
 
-The readout shows the frame time, the frame rate and the draw calls of the engine, the fish, the sprites drawn, and the time of the Lua simulation and of the hand-over, which the profiler scopes `swarm` and `handOver` of [`haylen.debug`](../../../docs/lua-api/debug.md) measure.
+The readout shows the graphics API that draws the app, the frame time, the frame rate, the time the GPU took for a frame where the API measures it and the draw calls of the engine, the fish, the sprites drawn, and the time of the Lua simulation and of the hand-over, which the profiler scopes `swarm` and `handOver` of [`haylen.debug`](../../../docs/lua-api/debug.md) measure.
 
 ## Numbers
 

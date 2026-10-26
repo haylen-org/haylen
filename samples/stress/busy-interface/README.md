@@ -40,7 +40,7 @@ The screen is one GUI of [`haylen.ui`](../../../docs/lua-api/ui.md) in a dense t
 - The berths are a `table` whose rows the app replaces four times a second, and the events a `collection` that sticks to its end while a new line arrives every 0.3 seconds and only the last 300 lines stay.
 - The charts are `haylen.graphics2d` drawings in the spaces the GUI leaves open for them, under their titles: a line chart of the moves of the cranes over the last 180 changes with its target, bars of the progress of the berths and a ring of the share of every crane. Their panels are a nine-slice of the panel art in the colors of the cards.
 
-The readout shows the frame time, the frame rate and the draw calls of the engine, the changes per second, the items in the lists, the cells the collections keep alive and the memory of Lua.
+The readout shows the graphics API that draws the app, the frame time, the frame rate, the time the GPU took for a frame where the API measures it and the draw calls of the engine, the changes per second, the items in the lists, the cells the collections keep alive and the memory of Lua.
 
 ## Numbers
 

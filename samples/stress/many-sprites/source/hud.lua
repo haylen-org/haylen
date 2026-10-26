@@ -9,11 +9,19 @@ Hud.__index = Hud
 Hud.interval = 0.25
 Hud.width = 560
 Hud.frameRows = {
+    {id = 'graphicsApi', label = 'Graphics API'},
     {id = 'frameTime', label = 'Last frame'},
     {id = 'averageTime', label = 'Average frame'},
     {id = 'lowTime', label = 'One percent low'},
     {id = 'frameRate', label = 'Frames per second'},
+    {id = 'gpuTime', label = 'GPU time'},
     {id = 'drawCalls', label = 'Draw calls'},
+}
+
+-- The names that the readout shows for the graphics APIs of `haylen.graphicsApi`.
+Hud.apiNames = {
+    metal = 'Metal', direct3D12 = 'Direct3D 12', direct3D11 = 'Direct3D 11', vulkan = 'Vulkan', openGl = 'OpenGL',
+    openGlEs = 'OpenGL ES', webGl2 = 'WebGL 2', webGpu = 'WebGPU', none = 'None',
 }
 
 function Hud.count(value)
@@ -64,6 +72,7 @@ function Hud.new(owner, options)
         ui.panel{id = 'panel', width = Hud.width, align = 'stretch', ui.scroll{grow = 1, height = 0, ui.column{gap = 16, children = panel}}},
     }, {owner = owner})
     self.gui:command(options.focus, 'focus')
+    self:show('graphicsApi', Hud.apiNames[haylen.graphicsApi])
     return self
 end
 
@@ -93,6 +102,8 @@ function Hud:update(dt)
     self:show('averageTime', Hud.milliseconds(frame.average))
     self:show('lowTime', Hud.milliseconds(frame.onePercentLow))
     self:show('frameRate', string.format('%.0f', frame.fps))
+    local gpu = debugging.frame().gpuMilliseconds
+    self:show('gpuTime', gpu and Hud.milliseconds(gpu) or 'Not measured')
     self:show('drawCalls', Hud.count(stats.rendering.drawCalls))
     self.stats = stats
     return true
