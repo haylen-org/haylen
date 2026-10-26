@@ -3,6 +3,10 @@
 #include <format>
 #include <stdexcept>
 
+#if defined(__EMSCRIPTEN__)
+#include <webgl/webgl2.h>
+#endif
+
 namespace haylen::gpu::opengl {
 
 void Gl::load(GlContext& context, Device::Api flavour) {
@@ -197,9 +201,11 @@ void Gl::loadCore(GlContext& context) {
     require(context, endQuery, "glEndQuery");
     require(context, getQueryObjectuiv, "glGetQueryObjectuiv");
 
-    // OpenGL ES reads buffers back only by mapping them, and WebGL2 only by copying them out.
+    // OpenGL ES reads buffers back only by mapping them, and WebGL2 only by copying them out with a function that Emscripten offers in its header of WebGL2 and not through the context.
     if (isWeb()) {
-        require(context, getBufferSubData, "glGetBufferSubData");
+#if defined(__EMSCRIPTEN__)
+        getBufferSubData = &glGetBufferSubData;
+#endif
     } else {
         require(context, mapBufferRange, "glMapBufferRange");
         require(context, unmapBuffer, "glUnmapBuffer");
