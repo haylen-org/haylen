@@ -233,6 +233,28 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
+# The Vulkan device draws through the headers of Vulkan, opens the loader of the system at run time through volk and allocates its memory through the Vulkan Memory Allocator, so building it needs no Vulkan SDK.
+if("vulkan" IN_LIST HAYLEN_GRAPHICS_APIS)
+  CPMAddPackage(
+    NAME vulkan_headers
+    URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.366.tar.gz"
+    URL_HASH SHA256=577b90c208e6fd39ec9a1460e48772f63c76f6f5afb441df2a977a0fdb3f618c
+    DOWNLOAD_ONLY YES
+  )
+  CPMAddPackage(
+    NAME volk
+    URL "https://github.com/zeux/volk/archive/refs/tags/1.4.350.tar.gz"
+    URL_HASH SHA256=e47c6efe5294bb03729a976b385864bba5daf46ec60f0bdea11e1d1446345f9a
+    DOWNLOAD_ONLY YES
+  )
+  CPMAddPackage(
+    NAME vulkan_memory_allocator
+    URL "https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/archive/refs/tags/v3.5.0.tar.gz"
+    URL_HASH SHA256=c5f3db848fca9cb9726b41f256cc3007773321fa92a86d1e0902e66474e8a9e3
+    DOWNLOAD_ONLY YES
+  )
+endif()
+
 if(HAYLEN_BUILD_TESTS AND (HAYLEN_DESKTOP OR EMSCRIPTEN))
   CPMAddPackage(
     NAME googletest
@@ -311,4 +333,24 @@ elseif(HAYLEN_PLATFORM STREQUAL "web")
   target_compile_definitions(haylen-miniaudio PUBLIC MA_ENABLE_ONLY_SPECIFIC_BACKENDS MA_ENABLE_CUSTOM)
 elseif(HAYLEN_PLATFORM STREQUAL "linux")
   target_link_libraries(haylen-miniaudio PUBLIC ${CMAKE_DL_LIBS} m pthread)
+endif()
+
+# The loader of volk declares the functions of the surfaces of the windows of each platform, which the Vulkan device makes its swapchains on.
+if("vulkan" IN_LIST HAYLEN_GRAPHICS_APIS)
+  add_library(haylen-volk STATIC "${volk_SOURCE_DIR}/volk.c")
+  target_include_directories(haylen-volk SYSTEM PUBLIC "${volk_SOURCE_DIR}" "${vulkan_headers_SOURCE_DIR}/include")
+  target_link_libraries(haylen-volk PUBLIC ${CMAKE_DL_LIBS})
+  if(WIN32)
+    target_compile_definitions(haylen-volk PUBLIC VK_USE_PLATFORM_WIN32_KHR)
+  elseif(ANDROID)
+    target_compile_definitions(haylen-volk PUBLIC VK_USE_PLATFORM_ANDROID_KHR)
+  elseif(HAYLEN_PLATFORM STREQUAL "linux")
+    target_compile_definitions(haylen-volk PUBLIC VK_USE_PLATFORM_XLIB_KHR VK_USE_PLATFORM_WAYLAND_KHR)
+  endif()
+
+  # The allocator finds the functions of Vulkan through the two entry points of the loader that volk opens, and takes the headers of Vulkan that volk includes without the headers of the window systems.
+  add_library(haylen-vulkan-memory-allocator STATIC "${CMAKE_CURRENT_LIST_DIR}/../src/gpu/vulkan/VulkanMemoryAllocatorImpl.cpp")
+  target_include_directories(haylen-vulkan-memory-allocator SYSTEM PUBLIC "${vulkan_memory_allocator_SOURCE_DIR}/include")
+  target_compile_definitions(haylen-vulkan-memory-allocator PUBLIC VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1 VMA_VULKAN_HEADERS_ALREADY_INCLUDED)
+  target_link_libraries(haylen-vulkan-memory-allocator PUBLIC haylen-volk)
 endif()
