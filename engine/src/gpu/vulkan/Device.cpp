@@ -276,6 +276,7 @@ void Device::commit() {
         return;
     }
 
+    endSwapchainRendering();
     Frame& frame = frames[frameIndex];
     if (bufferCopies) {
         const VkMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT};
@@ -1071,6 +1072,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     vk.vkCmdPipelineBarrier(commands, VK_PIPELINE_STAGE_TRANSFER_BIT, restStages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
 }
 
+// A swapchain pass that keeps the contents of the swapchain pass right before it goes on drawing in the same rendering, so its depth, stencil and multisampled color stay. Labels name the commands inside the rendering of their pass.
 void Device::beginPass(const PassDesc& desc) {
     if (pass.open) {
         throw std::logic_error("A pass is already open. Call \"endPass\" before \"beginPass\".");
@@ -1085,6 +1087,22 @@ void Device::beginPass(const PassDesc& desc) {
     }
     resetDrawState();
 
+    const bool toSwapchain = desc.colors.empty() && !desc.depthStencil;
+    pass.swapchain = toSwapchain;
+    const bool continues = toSwapchain && swapchainRendering && desc.load == Load::Keep;
+    if (!continues) {
+        endSwapchainRendering();
+    }
+    if (toSwapchain && !continues) {
+        beginSwapchainPass(desc);
+    } else if (!toSwapchain) {
+        beginOffscreenPass(desc);
+    }
+    swapchainRendering = false;
+    if (pass.skipped) {
+        return;
+    }
+
     const VkCommandBuffer commands = frames[frameIndex].graphics;
     if (labels && !desc.label.empty()) {
         labelText.assign(desc.label);
@@ -1092,20 +1110,6 @@ void Device::beginPass(const PassDesc& desc) {
         vkCmdBeginDebugUtilsLabelEXT(commands, &label);
         pass.labeled = true;
     }
-
-    if (desc.colors.empty() && !desc.depthStencil) {
-        beginSwapchainPass(desc);
-    } else {
-        beginOffscreenPass(desc);
-    }
-    if (pass.skipped) {
-        if (pass.labeled) {
-            vkCmdEndDebugUtilsLabelEXT(commands);
-            pass.labeled = false;
-        }
-        return;
-    }
-
     const VkViewport viewport{.x = 0.0F, .y = static_cast<float>(pass.extent.height), .width = static_cast<float>(pass.extent.width), .height = -static_cast<float>(pass.extent.height), .minDepth = 0.0F, .maxDepth = 1.0F};
     const VkRect2D scissor{.offset = {0, 0}, .extent = pass.extent};
     const std::array<float, 4> blendColor{};
@@ -1115,7 +1119,7 @@ void Device::beginPass(const PassDesc& desc) {
     vk.vkCmdSetStencilReference(commands, VK_STENCIL_FACE_FRONT_AND_BACK, 0);
 }
 
-// The depth and stencil and the multisampled color of the swapchain last for the pass, while its image keeps what the passes of the frame drew until it is presented.
+// The depth and stencil and the multisampled color of the swapchain last while swapchain passes that keep them follow each other, while its image keeps what the passes of the frame drew until it is presented.
 void Device::beginSwapchainPass(const PassDesc& desc) {
     if (!acquireSwapchainImage()) {
         pass.skipped = true;
@@ -1283,6 +1287,7 @@ void Device::beginRendering(const PassTarget& target) {
 }
 
 // The attachments go back to their resting layouts, where later passes sample them and readbacks copy them.
+// The rendering of a swapchain pass stays open until another pass, a debug group outside passes or the commit, so a swapchain pass that keeps it goes on in it.
 void Device::endPass() {
     if (!pass.open) {
         throw std::logic_error("No pass is open. Call \"beginPass\" before \"endPass\".");
@@ -1293,26 +1298,40 @@ void Device::endPass() {
     }
 
     const VkCommandBuffer commands = frames[frameIndex].graphics;
+    if (pass.labeled) {
+        vkCmdEndDebugUtilsLabelEXT(commands);
+    }
+    if (pass.swapchain) {
+        swapchainRendering = true;
+        return;
+    }
+    endRendering();
+
+    imageBarriers.clear();
+    VkPipelineStageFlags before = 0;
+    VkPipelineStageFlags after = 0;
+    for (std::size_t index = 0; index < pass.transitionCount; ++index) {
+        const Transition& transition = pass.transitions[index];
+        imageBarriers.push_back(ImageLayouts::makeBarrier(transition.image, transition.range, transition.attachmentLayout, transition.attachmentLayout, transition.restLayout));
+        before |= ImageLayouts::getStages(transition.attachmentLayout);
+        after |= ImageLayouts::getStages(transition.restLayout);
+    }
+    vk.vkCmdPipelineBarrier(commands, before, after, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
+}
+
+void Device::endRendering() {
+    const VkCommandBuffer commands = frames[frameIndex].graphics;
     if (dynamicRendering) {
         endRenderingCommand(commands);
     } else {
         vk.vkCmdEndRenderPass(commands);
     }
+}
 
-    if (pass.transitionCount > 0) {
-        imageBarriers.clear();
-        VkPipelineStageFlags before = 0;
-        VkPipelineStageFlags after = 0;
-        for (std::size_t index = 0; index < pass.transitionCount; ++index) {
-            const Transition& transition = pass.transitions[index];
-            imageBarriers.push_back(ImageLayouts::makeBarrier(transition.image, transition.range, transition.attachmentLayout, transition.attachmentLayout, transition.restLayout));
-            before |= ImageLayouts::getStages(transition.attachmentLayout);
-            after |= ImageLayouts::getStages(transition.restLayout);
-        }
-        vk.vkCmdPipelineBarrier(commands, before, after, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
-    }
-    if (pass.labeled) {
-        vkCmdEndDebugUtilsLabelEXT(commands);
+void Device::endSwapchainRendering() {
+    if (swapchainRendering) {
+        endRendering();
+        swapchainRendering = false;
     }
 }
 
@@ -1584,6 +1603,9 @@ void Device::pushDebugGroup(std::string_view name) {
     if (!labels || !ensureFrame()) {
         return;
     }
+    if (!pass.open) {
+        endSwapchainRendering();
+    }
     labelText.assign(name);
     const VkDebugUtilsLabelEXT label{.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_LABEL_EXT, .pLabelName = labelText.c_str()};
     vkCmdBeginDebugUtilsLabelEXT(frames[frameIndex].graphics, &label);
@@ -1592,6 +1614,9 @@ void Device::pushDebugGroup(std::string_view name) {
 void Device::popDebugGroup() {
     if (!labels || !frameOpen) {
         return;
+    }
+    if (!pass.open) {
+        endSwapchainRendering();
     }
     vkCmdEndDebugUtilsLabelEXT(frames[frameIndex].graphics);
 }

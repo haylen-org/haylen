@@ -246,6 +246,7 @@ class Device final : public gpu::Device {
     struct PassState {
         bool open = false;
         bool skipped = false;
+        bool swapchain = false;
         bool labeled = false;
         VkExtent2D extent{};
         std::array<Transition, RenderPassCache::kMaxViews> transitions{};
@@ -303,6 +304,8 @@ class Device final : public gpu::Device {
     void beginOffscreenPass(const PassDesc& desc);
     void addTransition(const ImageRecord& record, int mipLevel, int layer, bool keeps);
     void beginRendering(const PassTarget& target);
+    void endRendering();
+    void endSwapchainRendering();
     void resetDrawState() noexcept;
     void bindVertexBuffers();
     void bindIndexBuffer();
@@ -350,6 +353,7 @@ class Device final : public gpu::Device {
     bool acquired = false;
     std::uint32_t imageIndex = 0;
     bool swapchainDrawn = false;
+    bool swapchainRendering = false;
 
     PassState pass;
     DrawState bound;
