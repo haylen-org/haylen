@@ -80,7 +80,7 @@ void Device::fillCapabilities() {
     capabilities.maxImageSize = static_cast<int>(limits.maxImageDimension2D);
     capabilities.maxArrayLayers = static_cast<int>(limits.maxImageArrayLayers);
     const VkSampleCountFlags counts = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
-    capabilities.maxSampleCount = static_cast<int>(std::bit_floor(counts & VK_SAMPLE_COUNT_64_BIT ? 64U : counts & 0x3FU));
+    capabilities.maxSampleCount = static_cast<int>(std::bit_floor(counts & 0x7FU));
     capabilities.originTopLeft = true;
     capabilities.independentBlend = context->getEnabledFeatures().independentBlend == VK_TRUE;
     capabilities.multisampledRenderTargets = true;
