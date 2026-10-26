@@ -63,9 +63,9 @@ in vec4 amounts;
 in vec2 widths;
 
 // The texture inside the source of the sprite, and nothing outside it, where the outline and the glow spill. Points on the edge texels stay inside them, so filtering never reads the neighbours of the region in an atlas.
-vec4 effect_sample(vec2 point) {
+vec4 effect_sample(vec2 point, vec2 slopeX, vec2 slopeY) {
     bool inside = all(greaterThanEqual(point, haylen_source.xy)) && all(lessThanEqual(point, haylen_source.zw));
-    return inside ? haylen_texture(haylen_inside(point)) : vec4(0.0);
+    return inside ? haylen_texture_grad(haylen_inside(point), slopeX, slopeY) : vec4(0.0);
 }
 
 float effect_hash(vec2 cell) {
@@ -83,17 +83,17 @@ float effect_noise(vec2 point) {
 }
 
 // How far the edge of the sprite lies from the point, as a share of the reach, or 1 when it lies further. Twelve rays look for the first of twelve steps covered more than half, and place the edge between that step and the one before by their coverage, so the distance changes smoothly from pixel to pixel.
-float effect_distance(vec2 reach) {
-    if (effect_sample(uv).a >= 0.5) {
+float effect_distance(vec2 reach, vec2 slopeX, vec2 slopeY) {
+    if (effect_sample(uv, slopeX, slopeY).a >= 0.5) {
         return 0.0;
     }
     float nearest = 1.0;
     for (int ray = 0; ray < 12; ++ray) {
         float angle = float(ray) * 0.5235988;
         vec2 direction = vec2(cos(angle), sin(angle)) * reach;
-        float previous = effect_sample(uv).a;
+        float previous = effect_sample(uv, slopeX, slopeY).a;
         for (int index = 1; index <= 12; ++index) {
-            float current = effect_sample(uv + direction * (float(index) / 12.0)).a;
+            float current = effect_sample(uv + direction * (float(index) / 12.0), slopeX, slopeY).a;
             if (current >= 0.5) {
                 nearest = min(nearest, (float(index) - 1.0 + (0.5 - previous) / max(current - previous, 0.0001)) / 12.0);
                 break;
@@ -106,8 +106,11 @@ float effect_distance(vec2 reach) {
 
 // Amounts: x is the dissolve, y the share of its edge and z the size of its noise cells over 64 pixels. Widths: x is the outline width and y the glow size in pixels.
 void main() {
+    // The samples of the loops take the slopes of the point once, which are the same for every point the loops look at, since those move by amounts that every pixel shares.
+    vec2 slopeX = dFdx(uv);
+    vec2 slopeY = dFdy(uv);
     vec2 texel = 1.0 / vec2(textureSize(sampler2D(sprite_texture, sprite_sampler), 0));
-    vec4 base = effect_sample(uv) * color;
+    vec4 base = effect_sample(uv, slopeX, slopeY) * color;
     base.rgb = mix(base.rgb, haylen_flash.rgb, haylen_flash.a);
 
     float dissolve = amounts.x;
@@ -128,12 +131,12 @@ void main() {
     for (int index = 0; index < 12; ++index) {
         float angle = float(index) * 0.5235988;
         if (widths.x > 0.0) {
-            around = max(around, effect_sample(uv + vec2(cos(angle), sin(angle)) * texel * widths.x).a);
+            around = max(around, effect_sample(uv + vec2(cos(angle), sin(angle)) * texel * widths.x, slopeX, slopeY).a);
         }
     }
     float glow = 0.0;
     if (widths.y > 0.0) {
-        float distance_share = 1.0 - effect_distance(texel * widths.y);
+        float distance_share = 1.0 - effect_distance(texel * widths.y, slopeX, slopeY);
         glow = distance_share * distance_share;
     }
     float fading = 1.0 - dissolve;

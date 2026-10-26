@@ -280,11 +280,9 @@ vec4 haylen_shape_paint(vec4 fill) {
 
 @include_block haylen_output
 
-// The texture of the draw at a point, which a sprite of a batch with several textures picks by its index. The index is the same across the quad of a sprite, but compilers cannot tell, so the lookup takes the slopes of the point before it picks the texture.
-vec4 haylen_texture(vec2 point) {
+// The texture of the draw at a point, with the slopes of the point across one pixel to the right and one pixel down, which pick its mip level. A loop that samples takes the slopes once before it starts and passes them to every step, so compilers keep the loop instead of unrolling it to take the slopes at each step. A sprite of a batch with several textures picks its own texture by its index.
+vec4 haylen_texture_grad(vec2 point, vec2 slopeX, vec2 slopeY) {
 #ifdef HAYLEN_BATCH
-    vec2 slopeX = dFdx(point);
-    vec2 slopeY = dFdy(point);
     int index = int(haylen_texture_index + 0.5);
     if (index == 1) {
         return textureGrad(sampler2D(sprite_texture_1, sprite_sampler), point, slopeX, slopeY);
@@ -308,6 +306,15 @@ vec4 haylen_texture(vec2 point) {
         return textureGrad(sampler2D(sprite_texture_7, sprite_sampler), point, slopeX, slopeY);
     }
     return textureGrad(sampler2D(sprite_texture, sprite_sampler), point, slopeX, slopeY);
+#else
+    return textureGrad(sampler2D(sprite_texture, sprite_sampler), point, slopeX, slopeY);
+#endif
+}
+
+// The texture of the draw at a point. The index of the texture of a sprite of a batch is the same across the quad of the sprite, but compilers cannot tell, so the lookup takes the slopes of the point before it picks the texture.
+vec4 haylen_texture(vec2 point) {
+#ifdef HAYLEN_BATCH
+    return haylen_texture_grad(point, dFdx(point), dFdy(point));
 #else
     return texture(sampler2D(sprite_texture, sprite_sampler), point);
 #endif
