@@ -289,7 +289,7 @@ async.spawn(function()
 end)
 ```
 
-The function `socket.tls.connect(host, port, options)` opens a TCP connection encrypted with TLS, with the same methods.
+The function `socket.tls.connect(host, port, options)` opens a TCP connection encrypted with TLS, with the same methods. Its `timeoutMs` covers the connection and the TLS handshake together.
 
 ### UDP
 

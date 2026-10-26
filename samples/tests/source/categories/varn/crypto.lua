@@ -29,7 +29,7 @@ local secret = crypto.randomBytes(32)
 local sealed = crypto.encrypt(secret, 'The chest is under the palm.')
 print(crypto.decrypt(secret, sealed))
 local salt = crypto.randomBytes(16)
-local derived = crypto.pbkdf2('tide', salt, 10000, 32)]]},
+local derived = crypto.pbkdf2('tide', salt, 10000, 32):await()]]},
 }
 
 -- The digests, the tags and the identifiers of the lesson in the monospace font, which keeps their digits in columns.
@@ -89,7 +89,7 @@ function Crypto:encryption()
     self:check('encrypt', 'Encryption', opened == 'The chest is under the palm.' and refused, string.format('AES-256-GCM sealed 28 bytes into %d, opened them again, and refused the sealed bytes once one of them changed.', #sealed))
 
     local salt = crypto.randomBytes(16)
-    local derived = crypto.pbkdf2('tide', salt, 10000, 32)
+    local derived = crypto.pbkdf2('tide', salt, 10000, 32):await()
     local session = crypto.hkdf(derived, salt, 'session', 32)
     self:check('derive', 'Key derivation', #derived == 32 and #session == 32 and derived ~= session, string.format('PBKDF2 made a key that starts with %s from a password, and HKDF one that starts with %s from it.', crypto.hexEncode(derived):sub(1, 16), crypto.hexEncode(session):sub(1, 16)))
 end
