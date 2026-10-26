@@ -194,11 +194,9 @@ bool Runtime::openWindow() {
     const core::AppConfig& config = Player::getOpeningConfig();
     for (; nextApi < apis.size(); ++nextApi) {
         const gpu::Device::Api api = apis[nextApi];
-#if defined(__EMSCRIPTEN__)
         if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
             return false;
         }
-#endif
         try {
             window.open(config.window, api);
             if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
