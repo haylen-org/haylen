@@ -24,14 +24,16 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Random.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Times the physics of the engine on the CPU: the step of piles, stacks, joints and ragdolls on one thread and on the job system, sleeping and sub-steps, fluids, queries, the bulk sync of transforms, the debug drawing and the events that reach Lua.
+// Times the physics of the engine on the CPU: the step of piles, stacks, joints and ragdolls on one thread and on the job system, sleeping and sub-steps, fluids, queries, the bulk sync of transforms, the debug drawing and the events that reach Lua. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
 class PhysicsBenchmark final {
   public:
-    static int run() {
+    static int run(BenchmarkGpu& gpu) {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-physics-benchmark");
+        gpu.install(host);
         std::map<std::string, std::vector<std::uint8_t>> files;
         files.emplace("app.json", bytes(R"({"name": "Physics Benchmark", "identifier": "com.haylen.physicsbenchmark"})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
@@ -43,8 +45,9 @@ class PhysicsBenchmark final {
         engine.start();
         core::JobSystem& jobs = engine.getJobs();
 
+        gpu.printDevice(engine);
         std::printf("Workers of the job system: %zu\n", jobs.getWorkerCount());
-        std::printf("%-62s %12s %8s\n", "Scene", "Average ms", "Steps");
+        std::printf("%-62s %12s %8s %10s %10s\n", "Scene", "Average ms", "Steps", "Frame ms", "GPU ms");
         for (const int threads : {1, 2, 4, 8}) {
             measurePile(jobs, threads);
         }
@@ -60,7 +63,7 @@ class PhysicsBenchmark final {
         }
         measureQueries();
         measureSync();
-        measureDebugDraw(engine, host);
+        measureDebugDraw(engine, host, gpu);
         measureLuaEvents(engine);
         engine.stop();
         return 0;
@@ -77,8 +80,9 @@ class PhysicsBenchmark final {
         return std::to_string(threads) + (threads == 1 ? " thread" : " threads");
     }
 
-    static void report(const std::string& name, double milliseconds, int steps) {
-        std::printf("%-62s %12.3f %8d\n", name.c_str(), milliseconds, steps);
+    // Prints a row, whose frame and GPU columns only rows that draw whole frames fill.
+    static void report(const std::string& name, double milliseconds, int steps, const std::string& frame = "-", const std::string& gpu = "-") {
+        std::printf("%-62s %12.3f %8d %10s %10s\n", name.c_str(), milliseconds, steps, frame.c_str(), gpu.c_str());
     }
 
     // Runs `warmup` steps, then times `steps` steps and reports the average.
@@ -263,7 +267,7 @@ class PhysicsBenchmark final {
         }
     }
 
-    static void measureDebugDraw(core::Engine& engine, platform::HeadlessHost& host) {
+    static void measureDebugDraw(core::Engine& engine, platform::HeadlessHost& host, BenchmarkGpu& gpu) {
         physics2d::World world;
         addPit(world, 2400.0F, 3000.0F);
         (void)addBoxes(world, 2000, 2300.0F, 24.0F);
@@ -271,15 +275,18 @@ class PhysicsBenchmark final {
         const graphics2d::Camera camera;
         constexpr int kRuns = 60;
         double total = 0.0;
+        gpu.resetFrames();
         for (int run = 0; run < kRuns; ++run) {
+            const auto began = std::chrono::steady_clock::now();
             renderer.beginFrame(engine.getViewport(), math::Color::black());
             renderer.beginWorld(camera);
             const auto start = std::chrono::steady_clock::now();
             world.debugDraw(renderer);
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
             renderer.endFrame(host.isFrameTransparent());
+            gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
-        report("Debug drawing of 2000 boxes", total / kRuns, kRuns);
+        report("Debug drawing of 2000 boxes", total / kRuns, kRuns, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 
     static bool runLua(lua_State* L, const char* source) {
@@ -337,6 +344,6 @@ class PhysicsBenchmark final {
 
 } // namespace haylen::bench
 
-int main() {
-    return haylen::bench::PhysicsBenchmark::run();
+int main(int argc, char** argv) {
+    return haylen::bench::BenchmarkGpu::run(argc, argv, &haylen::bench::PhysicsBenchmark::run);
 }

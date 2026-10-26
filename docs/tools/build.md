@@ -201,9 +201,13 @@ Apps are not part of this workspace. The command `run` runs Lua apps from their 
 haylen bench
 haylen bench --suite physics
 haylen bench --suite lua --jobs 4
+haylen bench --suite render --graphics-api vulkan
+haylen bench --suite render --gpu
 ```
 
 Builds a benchmark in the Release configuration for this machine and runs it. The option `--suite` picks it, `sprites` by default, and `--jobs` sets the jobs of the build. Every benchmark is a target of the engine, which `HAYLEN_BUILD_BENCHMARKS` adds. The guide of each subject shows the recorded results.
+
+The benchmarks that draw, `sprites`, `render`, `ui`, `particles`, `nodes`, `animation` and `physics`, take `--graphics-api` with a name of `gpu::Device::kApiNames` to draw through the device of that API, and `--gpu` to run once on every API that the build compiled, skipping the ones that cannot start on the machine. The [benchmarks guide](benchmarks.md) explains how they draw on a GPU and what their numbers mean.
 
 | Suite | Target | What it measures | Results |
 | --- | --- | --- | --- |

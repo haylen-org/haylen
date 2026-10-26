@@ -21,14 +21,16 @@
 #include "haylen/lua/Application.hpp"
 #include "haylen/math/Color.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Times node trees on the CPU: the update of a large tree after every root moved and after a few moved, on one thread and on the job system, and the draw of a large tree with every node in view and with most of them culled.
+// Times node trees on the CPU: the update of a large tree after every root moved and after a few moved, on one thread and on the job system, and the draw of a large tree with every node in view and with most of them culled. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
 class NodeBenchmark final {
   public:
-    static int run() {
+    static int run(BenchmarkGpu& gpu) {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-node-benchmark");
+        gpu.install(host);
         std::map<std::string, std::vector<std::uint8_t>> files;
         files.emplace("app.json", bytes(R"({"name": "Node Benchmark", "identifier": "com.haylen.nodebenchmark"})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
@@ -40,14 +42,15 @@ class NodeBenchmark final {
         engine.start();
         const graphics::Texture texture = engine.getGraphics().createTexture(graphics::Image(16, 16, math::Color::white()));
 
+        gpu.printDevice(engine);
         std::printf("Workers of the job system: %zu\n", engine.getJobs().getWorkerCount());
-        std::printf("%-62s %12s %8s\n", "Scene", "Average ms", "Frames");
+        std::printf("%-62s %12s %8s %10s %10s\n", "Scene", "Average ms", "Frames", "Frame ms", "GPU ms");
         for (const bool parallel : {false, true}) {
             measureUpdate(engine, texture, parallel, 1);
             measureUpdate(engine, texture, parallel, 100);
         }
-        measureDraw(engine, host, texture, false);
-        measureDraw(engine, host, texture, true);
+        measureDraw(engine, host, gpu, texture, false);
+        measureDraw(engine, host, gpu, texture, true);
         engine.stop();
         return 0;
     }
@@ -61,8 +64,9 @@ class NodeBenchmark final {
         return {text.begin(), text.end()};
     }
 
-    static void report(const std::string& name, double milliseconds) {
-        std::printf("%-62s %12.3f %8d\n", name.c_str(), milliseconds, kFrames);
+    // Prints a row, whose frame and GPU columns only rows that draw whole frames fill.
+    static void report(const std::string& name, double milliseconds, const std::string& frame = "-", const std::string& gpu = "-") {
+        std::printf("%-62s %12.3f %8d %10s %10s\n", name.c_str(), milliseconds, kFrames, frame.c_str(), gpu.c_str());
     }
 
     // A tree of `kRoots` units of a body and `kChildren` parts each, every node a sprite, spread over an area of 32000 by 32000 units.
@@ -97,7 +101,7 @@ class NodeBenchmark final {
     }
 
     // Times the draw of the whole tree into a world canvas whose view covers every node, or a corner of 2000 by 1000 units.
-    static void measureDraw(core::Engine& engine, platform::HeadlessHost& host, const graphics::Texture& texture, bool culled) {
+    static void measureDraw(core::Engine& engine, platform::HeadlessHost& host, BenchmarkGpu& gpu, const graphics::Texture& texture, bool culled) {
         auto [tree, roots] = makeTree(texture);
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         graphics2d::Camera camera;
@@ -107,20 +111,23 @@ class NodeBenchmark final {
         camera.setMinZoom(0.01F);
         camera.setZoom({zoom, zoom});
         double total = 0.0;
+        gpu.resetFrames();
         for (int frame = 0; frame < kFrames; ++frame) {
+            const auto began = std::chrono::steady_clock::now();
             renderer.beginFrame(engine.getViewport(), math::Color::black());
             renderer.beginWorld(camera);
             const auto start = std::chrono::steady_clock::now();
             tree->draw(renderer);
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
             renderer.endFrame(host.isFrameTransparent());
+            gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
-        report("Draw of 100000 sprite nodes, " + std::to_string(tree->getDrawnCount()) + " in view", total / kFrames);
+        report("Draw of 100000 sprite nodes, " + std::to_string(tree->getDrawnCount()) + " in view", total / kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 };
 
 } // namespace haylen::bench
 
-int main() {
-    return haylen::bench::NodeBenchmark::run();
+int main(int argc, char** argv) {
+    return haylen::bench::BenchmarkGpu::run(argc, argv, &haylen::bench::NodeBenchmark::run);
 }

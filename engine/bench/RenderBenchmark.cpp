@@ -37,14 +37,16 @@
 #include "haylen/ui/Gui.hpp"
 #include "haylen/ui/Placement.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Times whole engine frames that draw sprites, shapes, text, rich text and a screen of interface components on the headless host, and prints for each scene the CPU time of a frame with the draw calls, instances and uploaded bytes the renderer reports, and the allocations of the frame thread.
+// Times whole engine frames that draw sprites, shapes, text, rich text and a screen of interface components on the headless host, through its null device or offscreen through the device that `--graphics-api` names, and prints for each scene the CPU time of a frame and the time of the GPU where the device measures it, with the draw calls, instances and uploaded bytes the renderer reports, and the allocations of the frame thread.
 class RenderBenchmark final {
   public:
-    static int run() {
+    static int run(BenchmarkGpu& gpu) {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-render-benchmark");
+        gpu.install(host);
         std::map<std::string, std::vector<std::uint8_t>> files;
         files.emplace("app.json", bytes(R"({"name": "Render Benchmark", "identifier": "com.haylen.renderbenchmark", "design": {"width": 1920, "height": 1080}})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
@@ -55,12 +57,13 @@ class RenderBenchmark final {
         core::Engine engine(host, package, std::move(config), std::move(application));
         engine.start();
 
-        std::printf("%-44s %9s %7s %9s %11s %9s %11s\n", "Scene", "Frame ms", "Draws", "Instances", "Upload KB", "Allocs", "Alloc KB");
-        measureSprites(engine);
-        measureShapes(engine);
-        measureText(engine);
-        measureRichText(engine);
-        measureInterface(engine);
+        gpu.printDevice(engine);
+        std::printf("%-44s %9s %9s %7s %9s %11s %9s %11s\n", "Scene", "Frame ms", "GPU ms", "Draws", "Instances", "Upload KB", "Allocs", "Alloc KB");
+        measureSprites(engine, gpu);
+        measureShapes(engine, gpu);
+        measureText(engine, gpu);
+        measureRichText(engine, gpu);
+        measureInterface(engine, gpu);
         measurePacking();
         const bool failed = engine.getError() != nullptr;
         engine.stop();
@@ -106,30 +109,30 @@ class RenderBenchmark final {
         return {text.begin(), text.end()};
     }
 
-    static void measure(core::Engine& engine, std::string_view name, Draw draw) {
+    static void measure(core::Engine& engine, BenchmarkGpu& gpu, std::string_view name, Draw draw) {
         engine.getScenes().replace(std::make_shared<DrawingScene>(std::move(draw)));
         for (int frame = 0; frame < kWarmupFrames; ++frame) {
             engine.frame(kFrameSeconds);
         }
 
-        double milliseconds = 0.0;
         std::uint64_t uploaded = 0;
         Allocations::count = 0;
         Allocations::total = 0;
+        gpu.resetFrames();
         for (int frame = 0; frame < kFrames; ++frame) {
             const auto started = std::chrono::steady_clock::now();
             Allocations::counting = true;
             engine.frame(kFrameSeconds);
             Allocations::counting = false;
-            milliseconds += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
+            gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count());
             uploaded += engine.getRenderer2D().getStats().uploadedBytes;
         }
         const graphics2d::Renderer::Stats stats = engine.getRenderer2D().getStats();
-        std::printf("%-44.*s %9.3f %7zu %9zu %11.1f %9.1f %11.2f\n", static_cast<int>(name.size()), name.data(), milliseconds / kFrames, stats.drawCalls, stats.instances, static_cast<double>(uploaded) / kFrames / 1024.0, static_cast<double>(Allocations::count) / kFrames, static_cast<double>(Allocations::total) / kFrames / 1024.0);
+        std::printf("%-44.*s %9s %9s %7zu %9zu %11.1f %9.1f %11.2f\n", static_cast<int>(name.size()), name.data(), gpu.formatFrameTime().c_str(), gpu.formatGpuTime().c_str(), stats.drawCalls, stats.instances, static_cast<double>(uploaded) / kFrames / 1024.0, static_cast<double>(Allocations::count) / kFrames, static_cast<double>(Allocations::total) / kFrames / 1024.0);
     }
 
     // Ten thousand sprites in runs of one texture each, as an atlas per layer draws them, then the same sprites alternating textures, which breaks every batch.
-    static void measureSprites(core::Engine& engine) {
+    static void measureSprites(core::Engine& engine, BenchmarkGpu& gpu) {
         std::array<graphics::Texture, 4> textures;
         for (std::size_t index = 0; index < textures.size(); ++index) {
             textures[index] = engine.getGraphics().createTexture(graphics::Image(32, 32, math::Color{0.25F * static_cast<float>(index + 1), 0.5F, 0.8F, 1.0F}));
@@ -137,7 +140,7 @@ class RenderBenchmark final {
         const graphics2d::Camera camera;
         for (const bool alternate : {false, true}) {
             // clang-format off
-            measure(engine, alternate ? "Sprites, 10000 alternating 4 textures" : "Sprites, 10000 in runs of 4 textures", [&textures, &camera, alternate](core::Engine& current) {
+            measure(engine, gpu, alternate ? "Sprites, 10000 alternating 4 textures" : "Sprites, 10000 in runs of 4 textures", [&textures, &camera, alternate](core::Engine& current) {
                 graphics2d::Renderer& renderer = current.getRenderer2D();
                 renderer.beginWorld(camera);
                 for (int index = 0; index < 10000; ++index) {
@@ -157,7 +160,7 @@ class RenderBenchmark final {
         graphics::Texture image = engine.getGraphics().createTexture(packed.image);
         const animation2d::SpriteAtlas atlas = animation2d::AtlasBuilder::finish(std::move(packed), image);
         // clang-format off
-        measure(engine, "Sprites, 10000 alternating 4 atlas frames", [&atlas, &camera](core::Engine& current) {
+        measure(engine, gpu, "Sprites, 10000 alternating 4 atlas frames", [&atlas, &camera](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginWorld(camera);
             for (int index = 0; index < 10000; ++index) {
@@ -184,9 +187,9 @@ class RenderBenchmark final {
         std::printf("Packing 400 images into a linear atlas of %d by %d pixels: %.2f ms\n", packed.image.getWidth(), packed.image.getHeight(), milliseconds);
     }
 
-    static void measureShapes(core::Engine& engine) {
+    static void measureShapes(core::Engine& engine, BenchmarkGpu& gpu) {
         // clang-format off
-        measure(engine, "Shapes, 3000 circles, panels and lines", [](core::Engine& current) {
+        measure(engine, gpu, "Shapes, 3000 circles, panels and lines", [](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
             for (int index = 0; index < 1000; ++index) {
@@ -200,13 +203,13 @@ class RenderBenchmark final {
     }
 
     // Labels that stay find their layouts in the cache of the font, and labels whose numbers change every frame lay out every frame.
-    static void measureText(core::Engine& engine) {
+    static void measureText(core::Engine& engine, BenchmarkGpu& gpu) {
         std::vector<std::string> labels;
         for (int index = 0; index < 200; ++index) {
             labels.push_back(std::format("Label number {} of the screen", index + 1));
         }
         // clang-format off
-        measure(engine, "Text, 200 labels that stay", [&labels](core::Engine& current) {
+        measure(engine, gpu, "Text, 200 labels that stay", [&labels](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
             for (std::size_t index = 0; index < labels.size(); ++index) {
@@ -214,7 +217,7 @@ class RenderBenchmark final {
             }
         });
         std::string changing;
-        measure(engine, "Text, 200 labels that change every frame", [&changing](core::Engine& current) {
+        measure(engine, gpu, "Text, 200 labels that change every frame", [&changing](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
             for (int index = 0; index < 200; ++index) {
@@ -227,14 +230,14 @@ class RenderBenchmark final {
     }
 
     // Blocks of markup with colors, styles and an effect that moves every character every frame.
-    static void measureRichText(core::Engine& engine) {
+    static void measureRichText(core::Engine& engine, BenchmarkGpu& gpu) {
         const std::shared_ptr<text::RichTextRegistry> registry = engine.getPlugin<plugins::TextPlugin>().getRegistry();
         std::vector<std::unique_ptr<text::RichText>> blocks;
         for (int index = 0; index < 20; ++index) {
             blocks.push_back(std::make_unique<text::RichText>("A [b]bold[/b] word, a [color=#ff8040]colored[/color] one, [i]italics[/i] and a [wave]wave that moves[/wave] in a block that wraps its lines.", text::RichTextOptions{.family = registry->getDefaultFamily(), .size = 22.0F, .maxWidth = 420.0F}, registry));
         }
         // clang-format off
-        measure(engine, "Rich text, 20 blocks with a wave", [&blocks](core::Engine& current) {
+        measure(engine, gpu, "Rich text, 20 blocks with a wave", [&blocks](core::Engine& current) {
             graphics2d::Renderer& renderer = current.getRenderer2D();
             renderer.beginScreen();
             for (std::size_t index = 0; index < blocks.size(); ++index) {
@@ -246,7 +249,7 @@ class RenderBenchmark final {
     }
 
     // A settings screen with a component of every common kind.
-    static void measureInterface(core::Engine& engine) {
+    static void measureInterface(core::Engine& engine, BenchmarkGpu& gpu) {
         auto& plugin = engine.getPlugin<plugins::UiPlugin>();
         // clang-format off
         const std::shared_ptr<ui::Gui> gui = plugin.createGui(core::Json::parse(R"({"kind": "scroll", "children": [{"kind": "column", "padding": 20, "gap": 8, "children": [
@@ -270,7 +273,7 @@ class RenderBenchmark final {
         ]}]})"), ui::Placement::Screen);
         // clang-format on
         plugin.mount(gui);
-        measure(engine, "Interface, a screen of 40 components", [](core::Engine&) {});
+        measure(engine, gpu, "Interface, a screen of 40 components", [](core::Engine&) {});
         plugin.unmount(*gui);
     }
 };
@@ -298,6 +301,6 @@ void operator delete(void* memory, std::size_t) noexcept {
     std::free(memory);
 }
 
-int main() {
-    return haylen::bench::RenderBenchmark::run();
+int main(int argc, char** argv) {
+    return haylen::bench::BenchmarkGpu::run(argc, argv, &haylen::bench::RenderBenchmark::run);
 }

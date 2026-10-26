@@ -23,14 +23,16 @@
 #include "haylen/ui/CollectionItems.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Flings collections of a hundred thousand items of three types on the headless host, in a list and in a grid, and prints the CPU time of a frame with the items bound, the binder calls and the cells created, then the same counts for frames at rest.
+// Flings collections of a hundred thousand items of three types on the headless host, in a list and in a grid, through its null device or offscreen through the device that `--graphics-api` names, and prints the CPU time of a frame and the time of the GPU where the device measures it, with the items bound, the binder calls and the cells created, then the same counts for frames at rest.
 class UiBenchmark final {
   public:
-    static int run() {
+    static int run(BenchmarkGpu& gpu) {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-ui-benchmark");
+        gpu.install(host);
         std::map<std::string, std::vector<std::uint8_t>> files;
         for (const auto& [path, text] : {std::pair<std::string, std::string_view>{"app.json", R"({"name": "UI Benchmark", "identifier": "com.haylen.uibenchmark"})"}, {"source/main.lua", ""}}) {
             files.emplace(path, std::vector<std::uint8_t>(text.begin(), text.end()));
@@ -42,9 +44,10 @@ class UiBenchmark final {
         core::Engine engine(host, package, std::move(config), std::move(application));
         engine.start();
 
-        std::printf("%-6s %-6s %7s %9s %9s %8s %10s %8s %7s\n", "layout", "phase", "frames", "frame ms", "worst ms", "binds", "binder", "created", "alive");
-        measure(engine, "list", kList, [](std::size_t index) { return index % 50 == 0 ? "header" : index % 3 == 0 ? "detail" : "plain"; }, "detail");
-        measure(engine, "grid", kGrid, [](std::size_t index) { return index % 40 == 0 ? "header" : index % 7 == 0 ? "wide" : "tile"; }, "tile");
+        gpu.printDevice(engine);
+        std::printf("%-6s %-6s %7s %9s %9s %9s %8s %10s %8s %7s\n", "layout", "phase", "frames", "frame ms", "worst ms", "gpu ms", "binds", "binder", "created", "alive");
+        measure(engine, gpu, "list", kList, [](std::size_t index) { return index % 50 == 0 ? "header" : index % 3 == 0 ? "detail" : "plain"; }, "detail");
+        measure(engine, gpu, "grid", kGrid, [](std::size_t index) { return index % 40 == 0 ? "header" : index % 7 == 0 ? "wide" : "tile"; }, "tile");
         const bool failed = engine.getError() != nullptr;
         engine.stop();
         return failed ? 1 : 0;
@@ -83,7 +86,7 @@ class UiBenchmark final {
         "wide": {"template": {"kind": "card", "children": [{"kind": "label", "part": "title", "bind": {"text": "title"}, "font": "heading"}]}, "span": 2}
     }})";
 
-    template <typename TypeOf> static void measure(core::Engine& engine, const char* name, const char* definition, TypeOf typeOf, std::string_view boundType) {
+    template <typename TypeOf> static void measure(core::Engine& engine, BenchmarkGpu& gpu, const char* name, const char* definition, TypeOf typeOf, std::string_view boundType) {
         auto& plugin = engine.getPlugin<plugins::UiPlugin>();
         const std::shared_ptr<ui::Gui> gui = plugin.createGui(core::Json::parse(std::string(R"({"kind": "column", "children": [)") + definition + "]}"), ui::Placement::Screen);
         plugin.mount(gui);
@@ -109,24 +112,25 @@ class UiBenchmark final {
 
         const math::Rect area = collection.getBounds();
         // clang-format off
-        report(engine, name, "fling", kFlingFrames, *source, binderCalls, [&engine, &area](int frame) {
+        report(engine, gpu, name, "fling", kFlingFrames, *source, binderCalls, [&engine, &area](int frame) {
             fling(engine, area, frame % kFlingEvery);
         });
         // clang-format on
         for (int frame = 0; frame < kSettleFrames; ++frame) {
             engine.frame(kFrameSeconds);
         }
-        report(engine, name, "rest", kRestFrames, *source, binderCalls, [](int) {});
+        report(engine, gpu, name, "rest", kRestFrames, *source, binderCalls, [](int) {});
         plugin.unmount(*gui);
         engine.frame(kFrameSeconds);
     }
 
-    template <typename Step> static void report(core::Engine& engine, const char* name, const char* phase, int count, const CountingItems& source, const std::uint64_t& binderCalls, Step step) {
+    template <typename Step> static void report(core::Engine& engine, BenchmarkGpu& gpu, const char* name, const char* phase, int count, const CountingItems& source, const std::uint64_t& binderCalls, Step step) {
         const debug::ObjectCounter::Snapshot cellsBefore = *debug::ObjectCounter::find("UiCell");
         const std::uint64_t bindsBefore = source.binds;
         const std::uint64_t callsBefore = binderCalls;
         double total = 0.0;
         double worst = 0.0;
+        gpu.resetFrames();
         for (int frame = 0; frame < count; ++frame) {
             step(frame);
             const auto started = std::chrono::steady_clock::now();
@@ -134,9 +138,10 @@ class UiBenchmark final {
             const double milliseconds = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - started).count();
             total += milliseconds;
             worst = std::max(worst, milliseconds);
+            gpu.addFrame(engine, milliseconds);
         }
         const debug::ObjectCounter::Snapshot cells = *debug::ObjectCounter::find("UiCell");
-        std::printf("%-6s %-6s %7d %9.3f %9.3f %8llu %10llu %8llu %7llu\n", name, phase, count, total / count, worst, static_cast<unsigned long long>(source.binds - bindsBefore), static_cast<unsigned long long>(binderCalls - callsBefore), static_cast<unsigned long long>(cells.created - cellsBefore.created), static_cast<unsigned long long>(cells.alive));
+        std::printf("%-6s %-6s %7d %9.3f %9.3f %9s %8llu %10llu %8llu %7llu\n", name, phase, count, total / count, worst, gpu.formatGpuTime().c_str(), static_cast<unsigned long long>(source.binds - bindsBefore), static_cast<unsigned long long>(binderCalls - callsBefore), static_cast<unsigned long long>(cells.created - cellsBefore.created), static_cast<unsigned long long>(cells.alive));
     }
 
     // A finger drags the content up across most of the view in the first frames of every fling and lets go, which flings it.
@@ -163,6 +168,6 @@ class UiBenchmark final {
 
 } // namespace haylen::bench
 
-int main() {
-    return haylen::bench::UiBenchmark::run();
+int main(int argc, char** argv) {
+    return haylen::bench::BenchmarkGpu::run(argc, argv, &haylen::bench::UiBenchmark::run);
 }

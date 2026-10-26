@@ -1,4 +1,4 @@
-# The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen.py test --gpu`.
+# The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES`, `HAYLEN_GPU_TEST_LIBRARIES` and the offscreen contexts of `HAYLEN_GPU_OFFSCREEN_SOURCES` and `HAYLEN_GPU_OFFSCREEN_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen.py test --gpu`.
 set(haylen_tests_dir "${HAYLEN_ENGINE_DIR}/tests")
 set(HAYLEN_ANDROID_GPU_TESTS_DIR "/data/local/tmp/haylen-gpu-tests" CACHE STRING "Folder of the Android device that the GPU tests run from, which haylen.py pushes them into.")
 add_executable(haylen-gpu-tests
@@ -20,9 +20,10 @@ add_executable(haylen-gpu-tests
   "${haylen_tests_dir}/support/TemporaryDirectory.cpp"
   "${haylen_tests_dir}/support/TestFiles.cpp"
   ${HAYLEN_GPU_TEST_SOURCES}
+  ${HAYLEN_GPU_OFFSCREEN_SOURCES}
 )
 set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} GTest::gtest_main)
+target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES} GTest::gtest_main)
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
 # Android runs the tests from the folder of the device that `haylen.py` pushes them into, with the reference images next to them.
 if(ANDROID)

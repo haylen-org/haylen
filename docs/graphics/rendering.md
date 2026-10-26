@@ -1119,7 +1119,7 @@ These results are recorded in `PROJECT.md`, measured on an Apple M5 Pro with Met
 haylen bench --suite render
 ```
 
-The suite `render` builds `haylen-render-benchmark` in Release, from `engine/bench/RenderBenchmark.cpp`. It runs whole engine frames on the headless host, whose null GPU device takes the draw calls and uploads without a GPU. So it measures what the frame thread spends to record, sort, batch and submit. Each scene runs 30 warm-up frames and 300 measured frames of a 1920 by 1080 design area:
+The suite `render` builds `haylen-render-benchmark` in Release, from `engine/bench/RenderBenchmark.cpp`. It runs whole engine frames on the headless host, whose null GPU device takes the draw calls and uploads without a GPU. So it measures what the frame thread spends to record, sort, batch and submit. With `--graphics-api` or `--gpu` it draws the same frames offscreen through the GPU devices of the build and adds the time of the GPU, as the [benchmarks guide](../tools/benchmarks.md) explains. Each scene runs 30 warm-up frames and 300 measured frames of a 1920 by 1080 design area:
 
 - Ten thousand sprites in runs of four textures, and then alternating them.
 - A thousand circles, rounded panels and lines.
@@ -1127,7 +1127,7 @@ The suite `render` builds `haylen-render-benchmark` in Release, from `engine/ben
 - 20 rich text blocks with a wave effect.
 - A screen of 40 interface components.
 
-For each scene it prints the CPU time of a frame, the draw calls, instances and uploaded kilobytes of the last frame, and the allocations of the frame thread per frame. It counts them by replacing the allocation functions of the program. These are the numbers of an Apple M5 Pro in Release:
+For each scene it prints the CPU time of a frame, the time of the GPU on a real device, the draw calls, instances and uploaded kilobytes of the last frame, and the allocations of the frame thread per frame. It counts them by replacing the allocation functions of the program. These are the numbers of an Apple M5 Pro in Release:
 
 | Scene | Frame ms | Draw calls | Instances | Uploaded KB | Allocations | Allocated KB |
 | --- | --- | --- | --- | --- | --- | --- |

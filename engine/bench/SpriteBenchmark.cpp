@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <format>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -25,7 +26,7 @@
 
 namespace haylen::bench {
 
-// Draws each phase for a while with vsync off and reports the wall time between frames, which includes the GPU and displays that pace frames themselves, like macOS does, and the slowest frame. The work column is the CPU time of the frame outside the submit step, where the renderer uploads and waits for the next drawable. Dynamic phases move every sprite every frame, and baked phases draw a static batch. The last phase loads textures in the background while it draws, and lasts until they are ready, so its frames show what finishing them on the frame thread within the upload budget of the asset manager costs.
+// Draws each phase for a while with vsync off through the graphics API that the window starts with, which `--graphics-api` of the command line picks, and reports the wall time between frames, which includes the GPU and displays that pace frames themselves, like macOS does, and the slowest frame. The GPU column is the time the GPU took for a frame, where the device measures it. The work column is the CPU time of the frame outside the submit step, where the renderer uploads and waits for the next drawable. Dynamic phases move every sprite every frame, and baked phases draw a static batch. The last phase loads textures in the background while it draws, and lasts until they are ready, so its frames show what finishing them on the frame thread within the upload budget of the asset manager costs.
 class SpriteBenchmark final : public core::Application {
   public:
     void start(core::Engine& engine) override {
@@ -67,8 +68,10 @@ class SpriteBenchmark final : public core::Application {
     class Stage final : public core::Scene {
       public:
         void enter(core::Engine& engine, const std::any&) override {
-            texture = engine.getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
-            core::Log::info("{:>10} {:<22} {:>9} {:>9} {:>9} {:>14} {:>9} {:>7}", "sprites", "kind", "ms", "max ms", "fps", "Msprites/s", "work ms", "frames");
+            graphics::Device& graphics = engine.getGraphics();
+            texture = graphics.createTexture(graphics::Image(4, 4, math::Color::white()));
+            core::Log::info("Graphics API \"{}\" on \"{}\".", graphics.getApiName(), graphics.getAdapterName());
+            core::Log::info("{:>10} {:<22} {:>9} {:>9} {:>9} {:>14} {:>9} {:>9} {:>7}", "sprites", "kind", "ms", "max ms", "fps", "Msprites/s", "work ms", "gpu ms", "frames");
             begin(engine);
         }
 
@@ -79,9 +82,12 @@ class SpriteBenchmark final : public core::Application {
                 measureStart = now;
                 workMilliseconds = 0.0;
                 slowestMilliseconds = 0.0;
+                gpuSeconds = 0.0;
+                gpuFrames = 0;
                 loadTextures(engine, current.textures);
             } else if (frame > kWarmupFrames) {
                 workMilliseconds += getWorkMilliseconds(engine.getProfiler());
+                addGpuTime(engine);
                 slowestMilliseconds = std::max(slowestMilliseconds, std::chrono::duration<double, std::milli>(now - previousFrame).count());
             }
             previousFrame = now;
@@ -122,6 +128,14 @@ class SpriteBenchmark final : public core::Application {
                 }
             }
             return total;
+        }
+
+        // Adds the time the GPU took for the last frame it finished, where the device measures it.
+        void addGpuTime(core::Engine& engine) {
+            if (const std::optional<double> seconds = engine.getGraphics().getGpuFrameSeconds()) {
+                gpuSeconds += *seconds;
+                ++gpuFrames;
+            }
         }
 
         void begin(core::Engine& engine) {
@@ -173,7 +187,8 @@ class SpriteBenchmark final : public core::Application {
             const double fps = 1000.0 / milliseconds;
             const double work = workMilliseconds / frames;
             const std::string kind = current.textures > 0 ? std::format("dynamic, {} textures", current.textures) : current.baked ? "baked" : "dynamic";
-            core::Log::info("{:>10} {:<22} {:>9.2f} {:>9.2f} {:>9.1f} {:>14.1f} {:>9.2f} {:>7}", current.sprites, kind, milliseconds, slowestMilliseconds, fps, static_cast<double>(current.sprites) * fps / 1'000'000.0, work, frames);
+            const std::string gpu = gpuFrames == 0 ? std::string("-") : std::format("{:.2f}", gpuSeconds * 1000.0 / gpuFrames);
+            core::Log::info("{:>10} {:<22} {:>9.2f} {:>9.2f} {:>9.1f} {:>14.1f} {:>9.2f} {:>9} {:>7}", current.sprites, kind, milliseconds, slowestMilliseconds, fps, static_cast<double>(current.sprites) * fps / 1'000'000.0, work, gpu, frames);
             textures.clear();
 
             if (++phaseIndex == kPhases.size()) {
@@ -193,6 +208,8 @@ class SpriteBenchmark final : public core::Application {
         float elapsed = 0.0F;
         double workMilliseconds = 0.0;
         double slowestMilliseconds = 0.0;
+        double gpuSeconds = 0.0;
+        int gpuFrames = 0;
         std::chrono::steady_clock::time_point measureStart;
         std::chrono::steady_clock::time_point previousFrame;
         std::vector<std::shared_ptr<void>> textures;

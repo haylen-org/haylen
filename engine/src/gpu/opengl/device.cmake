@@ -22,9 +22,9 @@ foreach(api IN ITEMS openGl openGlEs webGl2)
   endif()
 endforeach()
 
-# The tests of the device draw through an offscreen context of EGL on Linux and Android, of WGL on Windows and of the canvas of the page on the web, where only the conformance suite runs, since the tests of the device make OpenGL and OpenGL ES contexts.
+# The GPU tests and the benchmarks draw through an offscreen context of EGL on Linux and Android, of WGL on Windows and of the canvas of the page on the web, where only the conformance suite runs, since the tests of the device make OpenGL and OpenGL ES contexts.
 if(EMSCRIPTEN)
-  list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/web/OffscreenGlContext.cpp")
+  list(APPEND HAYLEN_GPU_OFFSCREEN_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/web/OffscreenGlContext.cpp")
 else()
   list(APPEND HAYLEN_GPU_TEST_SOURCES
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DeviceTests.cpp"
@@ -33,11 +33,11 @@ else()
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/UploadRingTests.cpp"
   )
   if(WIN32)
-    list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/windows/OffscreenGlContext.cpp")
-    list(APPEND HAYLEN_GPU_TEST_LIBRARIES opengl32)
+    list(APPEND HAYLEN_GPU_OFFSCREEN_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/windows/OffscreenGlContext.cpp")
+    list(APPEND HAYLEN_GPU_OFFSCREEN_LIBRARIES opengl32)
   else()
-    list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/OffscreenGlContext.cpp")
-    list(APPEND HAYLEN_GPU_TEST_LIBRARIES EGL)
+    list(APPEND HAYLEN_GPU_OFFSCREEN_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/OffscreenGlContext.cpp")
+    list(APPEND HAYLEN_GPU_OFFSCREEN_LIBRARIES EGL)
   endif()
 endif()
 

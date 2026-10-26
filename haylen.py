@@ -193,6 +193,10 @@ COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", "
 ENGINE_HASH_SKIPPED = {"tests", "bench", "build", ".cxx", ".gradle", ".kotlin", ".DS_Store"}
 # The benchmarks of `haylen.py bench` that are plain executables on the CPU, by suite.
 CPU_BENCHMARKS = {"core": "haylen-core-benchmark", "algorithms": "haylen-algorithm-benchmark", "procedural": "haylen-procedural-benchmark", "physics": "haylen-physics-benchmark", "ui": "haylen-ui-benchmark", "render": "haylen-render-benchmark", "particles": "haylen-particle-benchmark", "content": "haylen-content-benchmark", "nodes": "haylen-node-benchmark", "animation": "haylen-animation-benchmark"}
+# The benchmarks that draw and take "--graphics-api": the sprite benchmark in a window of the player, and the others offscreen on the headless host instead of its null device.
+GPU_BENCHMARKS = {"sprites", "physics", "ui", "render", "particles", "nodes", "animation"}
+# The exit status of a benchmark whose device cannot start on this machine, `BenchmarkGpu::kUnavailable`.
+BENCHMARK_UNAVAILABLE = 3
 
 # The slices of `Haylen.xcframework` and the architectures each one joins with lipo.
 APPLE_SLICES = {
@@ -1171,12 +1175,15 @@ def command_format(args: argparse.Namespace) -> None:
 
 
 def command_bench(args: argparse.Namespace) -> None:
-    """Builds a benchmark in Release and runs it on this machine: sprites on the GPU, the frame loop, events, owners, timers, tweens, jobs and asset loading on the CPU, path finding, crowds, spatial queries and ray casts on the CPU, procedural generation, geometry and destruction on the CPU, physics worlds on the CPU, long UI lists on the CPU, frames of sprites, shapes, text and interface components on the CPU, particle emitters on the CPU, protected content on the CPU and the disk, or the Lua sprite benchmark on the CPU."""
+    """Builds a benchmark in Release and runs it on this machine: sprites on the GPU, the frame loop, events, owners, timers, tweens, jobs and asset loading on the CPU, path finding, crowds, spatial queries and ray casts on the CPU, procedural generation, geometry and destruction on the CPU, physics worlds on the CPU, long UI lists on the CPU, frames of sprites, shapes, text and interface components on the CPU, particle emitters on the CPU, protected content on the CPU and the disk, or the Lua sprite benchmark on the CPU. The benchmarks that draw run once per graphics API with "--gpu" or on the one that "--graphics-api" names."""
+    if (args.gpu or args.graphics_api) and args.suite not in GPU_BENCHMARKS:
+        raise BuildError(f'The "{args.suite}" benchmark draws nothing, so it takes neither "--gpu" nor "--graphics-api". The benchmarks that draw are "{", ".join(sorted(GPU_BENCHMARKS))}".')
+
     if args.suite in CPU_BENCHMARKS:
         build = build_options(host_name(), "Release", CPU_BENCHMARKS[args.suite], args.jobs)
         command_build(build)
-        terminal.step(f'Running the "{args.suite}" benchmark')
-        run([build_dir(build.platform, build.config) / "bin" / executable_name(build.target)], stream=True)
+        directory = build_dir(build.platform, build.config)
+        run_benchmark(args.suite, [directory / "bin" / executable_name(build.target)], benchmark_graphics_apis(args, directory))
         return
 
     if args.suite == "lua":
@@ -1188,8 +1195,36 @@ def command_bench(args: argparse.Namespace) -> None:
 
     build = build_options(host_name(), "Release", "haylen-sprite-benchmark", args.jobs)
     command_build(build)
-    terminal.step('Running the "sprites" benchmark')
-    run([cmake_app_executable(build_dir(build.platform, build.config), build.target)], stream=True)
+    directory = build_dir(build.platform, build.config)
+    run_benchmark(args.suite, [cmake_app_executable(directory, build.target)], benchmark_graphics_apis(args, directory))
+
+
+def benchmark_graphics_apis(args: argparse.Namespace, directory: Path) -> list[str | None]:
+    """The graphics APIs a benchmark runs on: the one that "--graphics-api" names, every API that the build tree compiled with "--gpu", or else none, which leaves the headless benchmarks on the null device and the window of the sprite benchmark on the first API that starts."""
+    if args.graphics_api:
+        return [args.graphics_api]
+    if args.gpu:
+        return cmake_cache_value(directory, "HAYLEN_GRAPHICS_APIS").split(";")
+    return [None]
+
+
+def run_benchmark(suite: str, executable: list, apis: list[str | None]) -> None:
+    """Runs a benchmark once per graphics API, each printing its own table, and goes past an API whose device cannot start on this machine, which the benchmark explains."""
+    started = 0
+    for api in apis:
+        terminal.step(f'Running the "{suite}" benchmark on "{api}"' if api else f'Running the "{suite}" benchmark')
+        command = [str(part) for part in [*executable, *(["--graphics-api", api] if api else [])]]
+        if terminal.verbose:
+            terminal.command(command)
+        code = subprocess.run(command, check=False).returncode
+        if code == BENCHMARK_UNAVAILABLE:
+            terminal.warning(f'The device of "{api}" cannot start on this machine, as the output above says, so the "{suite}" benchmark skips it.')
+            continue
+        if code != 0:
+            raise BuildError(f'The "{suite}" benchmark failed with exit code {code}, and its output above shows why.')
+        started += 1
+    if started == 0:
+        raise BuildError(f'No device that the "{suite}" benchmark asked for starts on this machine.')
 
 
 def sdk_dir(platform_name: str, config: str) -> Path:
@@ -6143,6 +6178,8 @@ def build_parser() -> argparse.ArgumentParser:
 
     bench = commands.add_parser("bench", parents=[common], help="Build and run a benchmark of the engine in Release on this machine.")
     bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua sprite benchmark on the CPU.")
+    bench.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which a benchmark that draws draws through instead of the null device of the headless host or the first API of the window.')
+    bench.add_argument("--gpu", action="store_true", help="Run a benchmark that draws once on every graphics API that the build compiled, skipping the ones that cannot start on this machine.")
     add_jobs_option(bench)
     bench.set_defaults(handler=command_bench)
 

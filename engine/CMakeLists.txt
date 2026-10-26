@@ -997,6 +997,17 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
     PACKAGE "${CMAKE_CURRENT_LIST_DIR}/bench/sprite-benchmark"
   )
 
+  # The benchmarks of the renderer take `--graphics-api` to draw their frames offscreen through a device of the build instead of the null device of the headless host, with the offscreen contexts of OpenGL that the GPU tests draw through.
+  add_library(haylen-benchmark-gpu STATIC
+    bench/support/BenchmarkGpu.cpp
+    bench/support/OffscreenSwapchain.cpp
+    tests/gpu/support/OffscreenSurface.cpp
+    ${HAYLEN_GPU_OFFSCREEN_SOURCES}
+  )
+  target_include_directories(haylen-benchmark-gpu PUBLIC "${CMAKE_CURRENT_LIST_DIR}/bench" "${CMAKE_CURRENT_LIST_DIR}/src" "${CMAKE_CURRENT_LIST_DIR}/tests")
+  target_link_libraries(haylen-benchmark-gpu PUBLIC haylen::engine haylen::gpu ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
+  haylen_enable_warnings(haylen-benchmark-gpu)
+
   # The procedural benchmark times the heavy generation, geometry and destruction algorithms on the CPU, so it is a plain executable on the headless host.
   add_executable(haylen-procedural-benchmark bench/ProceduralBenchmark.cpp)
   target_link_libraries(haylen-procedural-benchmark PRIVATE haylen::headless)
@@ -1012,42 +1023,42 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   # The physics benchmark times the steps, fluids, queries, transform sync, debug drawing and Lua events of physics worlds on the CPU, inside an engine on the headless host.
   add_executable(haylen-physics-benchmark bench/PhysicsBenchmark.cpp)
   target_include_directories(haylen-physics-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-physics-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-physics-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-physics-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-physics-benchmark)
 
   # The UI benchmark flings collections of a hundred thousand items on the headless host, which times what the frame thread spends on long lists and counts their binds and cells.
   add_executable(haylen-ui-benchmark bench/UiBenchmark.cpp)
   target_include_directories(haylen-ui-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-ui-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-ui-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-ui-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-ui-benchmark)
 
   # The render benchmark times whole frames of sprites, shapes, text, rich text and interface components on the headless host, with the draw calls, uploads and allocations of each frame.
   add_executable(haylen-render-benchmark bench/RenderBenchmark.cpp)
   target_include_directories(haylen-render-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-render-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-render-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-render-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-render-benchmark)
 
   # The particle benchmark times the simulation and the drawing of emitters on the CPU, inside an engine on the headless host.
   add_executable(haylen-particle-benchmark bench/ParticleBenchmark.cpp)
   target_include_directories(haylen-particle-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-particle-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-particle-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-particle-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-particle-benchmark)
 
   # The node benchmark times the update and the draw of large node trees on the CPU, inside an engine on the headless host.
   add_executable(haylen-node-benchmark bench/NodeBenchmark.cpp)
   target_include_directories(haylen-node-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-node-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-node-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-node-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-node-benchmark)
 
   # The animation benchmark times animated batches and crowds animated from Lua on the CPU, inside an engine on the headless host.
   add_executable(haylen-animation-benchmark bench/AnimationBenchmark.cpp)
   target_include_directories(haylen-animation-benchmark PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-  target_link_libraries(haylen-animation-benchmark PRIVATE haylen::engine haylen::headless)
+  target_link_libraries(haylen-animation-benchmark PRIVATE haylen::engine haylen::headless haylen-benchmark-gpu)
   set_target_properties(haylen-animation-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-animation-benchmark)
 

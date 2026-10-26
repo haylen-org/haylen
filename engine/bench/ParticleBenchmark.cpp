@@ -22,14 +22,16 @@
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "support/BenchmarkGpu.hpp"
 
 namespace haylen::bench {
 
-// Times particle emitters on the CPU: the simulation of one large emitter on one thread and on the job system, many small emitters, spawning, turbulence, attractors and collision, sub-emitters, the instances and trails that drawing builds, and emitters driven from Lua.
+// Times particle emitters on the CPU: the simulation of one large emitter on one thread and on the job system, many small emitters, spawning, turbulence, attractors and collision, sub-emitters, the instances and trails that drawing builds, and emitters driven from Lua. The frames that draw go through the null device of the headless host or offscreen through the device that `--graphics-api` names, which adds the whole frame and the time of the GPU to their rows.
 class ParticleBenchmark final {
   public:
-    static int run() {
+    static int run(BenchmarkGpu& gpu) {
         platform::HeadlessHost host(std::filesystem::temp_directory_path() / "haylen-particle-benchmark");
+        gpu.install(host);
         std::map<std::string, std::vector<std::uint8_t>> files;
         files.emplace("app.json", bytes(R"({"name": "Particle Benchmark", "identifier": "com.haylen.particlebenchmark"})"));
         files.emplace("source/main.lua", std::vector<std::uint8_t>{});
@@ -41,16 +43,17 @@ class ParticleBenchmark final {
         engine.start();
         const graphics::Texture texture = engine.getGraphics().createTexture(graphics::Image(16, 16, math::Color::white()));
 
+        gpu.printDevice(engine);
         std::printf("Workers of the job system: %zu\n", engine.getJobs().getWorkerCount());
-        std::printf("%-62s %12s %8s\n", "Scene", "Average ms", "Frames");
+        std::printf("%-62s %12s %8s %10s %10s\n", "Scene", "Average ms", "Frames", "Frame ms", "GPU ms");
         measureLarge(engine, texture, false);
         measureLarge(engine, texture, true);
         measureMany(engine, texture);
         measureSpawning(engine, texture);
         measureForces(engine, texture);
         measureSubEmitters(engine, texture);
-        measureDraw(engine, host, texture);
-        measureTrails(engine, host, texture);
+        measureDraw(engine, host, gpu, texture);
+        measureTrails(engine, host, gpu, texture);
         measureLua(engine);
         engine.stop();
         return 0;
@@ -64,8 +67,9 @@ class ParticleBenchmark final {
         return {text.begin(), text.end()};
     }
 
-    static void report(const std::string& name, double milliseconds, int frames) {
-        std::printf("%-62s %12.3f %8d\n", name.c_str(), milliseconds, frames);
+    // Prints a row, whose frame and GPU columns only rows that draw whole frames fill.
+    static void report(const std::string& name, double milliseconds, int frames, const std::string& frame = "-", const std::string& gpu = "-") {
+        std::printf("%-62s %12.3f %8d %10s %10s\n", name.c_str(), milliseconds, frames, frame.c_str(), gpu.c_str());
     }
 
     // A fountain whose rate keeps about `count` particles alive, with gravity, damping and both accelerations, as busy effects use.
@@ -157,7 +161,7 @@ class ParticleBenchmark final {
     }
 
     // Every particle draws a ribbon through its last eight positions, which the emitter builds as one mesh.
-    static void measureTrails(core::Engine& engine, platform::HeadlessHost& host, const graphics::Texture& texture) {
+    static void measureTrails(core::Engine& engine, platform::HeadlessHost& host, BenchmarkGpu& gpu, const graphics::Texture& texture) {
         particles2d::EmitterConfig config = fountain(texture, 100);
         config.trail = {.length = 8, .lifetime = 0.3F};
         std::vector<particles2d::Emitter> emitters;
@@ -172,7 +176,9 @@ class ParticleBenchmark final {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         const graphics2d::Camera camera;
         double total = 0.0;
+        gpu.resetFrames();
         for (int frame = 0; frame < kFrames; ++frame) {
+            const auto began = std::chrono::steady_clock::now();
             renderer.beginFrame(engine.getViewport(), math::Color::black());
             renderer.beginWorld(camera);
             const auto start = std::chrono::steady_clock::now();
@@ -181,12 +187,13 @@ class ParticleBenchmark final {
             }
             total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
             renderer.endFrame(host.isFrameTransparent());
+            gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
         }
-        report("Drawing 100 emitters of 100 particles with trails", total / kFrames, kFrames);
+        report("Drawing 100 emitters of 100 particles with trails", total / kFrames, kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
     }
 
     // Times the draw calls of the emitters alone, which build the instances of every particle, inside real frames.
-    static void measureDraw(core::Engine& engine, platform::HeadlessHost& host, const graphics::Texture& texture) {
+    static void measureDraw(core::Engine& engine, platform::HeadlessHost& host, BenchmarkGpu& gpu, const graphics::Texture& texture) {
         graphics2d::Renderer& renderer = engine.getRenderer2D();
         const graphics2d::Camera camera;
         for (const auto& [count, size] : {std::pair<std::size_t, std::size_t>{1, 100000}, std::pair<std::size_t, std::size_t>{1000, 100}}) {
@@ -196,7 +203,9 @@ class ParticleBenchmark final {
                 emitters.back().update(kStep);
             }
             double total = 0.0;
+            gpu.resetFrames();
             for (int frame = 0; frame < kFrames; ++frame) {
+                const auto began = std::chrono::steady_clock::now();
                 renderer.beginFrame(engine.getViewport(), math::Color::black());
                 renderer.beginWorld(camera);
                 const auto start = std::chrono::steady_clock::now();
@@ -205,8 +214,9 @@ class ParticleBenchmark final {
                 }
                 total += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
                 renderer.endFrame(host.isFrameTransparent());
+                gpu.addFrame(engine, std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count());
             }
-            report("Drawing " + std::to_string(count) + (count == 1 ? " emitter of " : " emitters of ") + std::to_string(size) + " particles", total / kFrames, kFrames);
+            report("Drawing " + std::to_string(count) + (count == 1 ? " emitter of " : " emitters of ") + std::to_string(size) + " particles", total / kFrames, kFrames, gpu.formatFrameTime(), gpu.formatGpuTime());
         }
     }
 
@@ -256,6 +266,6 @@ class ParticleBenchmark final {
 
 } // namespace haylen::bench
 
-int main() {
-    return haylen::bench::ParticleBenchmark::run();
+int main(int argc, char** argv) {
+    return haylen::bench::BenchmarkGpu::run(argc, argv, &haylen::bench::ParticleBenchmark::run);
 }
