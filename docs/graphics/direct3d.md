@@ -70,6 +70,7 @@ Compiling a shader takes time, so the engine asks the device to prepare programs
 | Largest image | 16384 pixels a side. | 16384 pixels a side. |
 | Layers of an array | 2048. | 2048. |
 | Samples | The most that the GPU gives both 8-bit color and depth, up to 8. | The same. |
+| Sample and draw into a format | Every format that the GPU samples and draws into, which the device reads from the driver. | The same. |
 | Blend into a color format | Every color format that the GPU blends into, which the device reads from the driver. | The same. |
 | Multisampled render targets with a resolve | Yes. | Yes, as part of the render pass. |
 | Separate blend for each color target | Yes. | Yes. |
