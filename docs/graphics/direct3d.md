@@ -63,7 +63,7 @@ A window that changes size resizes the swapchain before its next frame. A minimi
 
 Shader packages carry HLSL for shader model 5.0, the `hlsl5` language, which both devices run. The devices compile it with `D3DCompile` when a program is made. Uniform blocks use the `b` registers, textures the `t` registers and samplers the `s` registers, and vertex inputs use the semantic `TEXCOORD` with the location as its index.
 
-Compiling a shader takes time, so the engine asks the device to prepare programs as soon as it knows them. The device then compiles them on the I/O pool, and making the program later takes the result or waits only for what is left.
+Compiling a shader takes time, so the engine asks the device to prepare programs as soon as it knows them. The device then compiles them on threads of its own, and making the program later takes the result or waits only for what is left. The compiler of Direct3D unrolls loops that sample textures, so a shader with nested loops, such as an outline that searches around each pixel, can take more than ten seconds to compile. No compilation can stop, so the device never runs them on the pools of the engine, which a quit or a restart waits for. When the device goes away, the compilations that did not start never run, and the ones that run finish on their threads.
 
 ## Capabilities
 

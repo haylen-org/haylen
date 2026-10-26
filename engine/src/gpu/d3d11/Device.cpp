@@ -367,8 +367,8 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     return {programs.insert(std::move(record))};
 }
 
-void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) {
-    compiler->prepare(desc, jobs);
+void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem&) {
+    compiler->prepare(desc);
 }
 
 gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {

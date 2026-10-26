@@ -5,8 +5,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "haylen/core/JobSystem.hpp"
-
 namespace haylen::gpu::direct3d {
 
 using Microsoft::WRL::ComPtr;
@@ -94,12 +92,13 @@ ShaderCompiler::Result ShaderCompiler::run(const std::string& key) const {
     return result;
 }
 
-void ShaderCompiler::prepare(const Device::ProgramDesc& desc, core::JobSystem& jobs) {
-    start(desc.vertex, jobs);
-    start(desc.fragment, jobs);
+void ShaderCompiler::prepare(const Device::ProgramDesc& desc) {
+    start(desc.vertex);
+    start(desc.fragment);
 }
 
-void ShaderCompiler::start(const Device::StageCode& stage, core::JobSystem& jobs) {
+// A compilation holds the compiler only while it runs, so the device that lets the compiler go drops the compilations that wait.
+void ShaderCompiler::start(const Device::StageCode& stage) {
     if (!stage.bytecode.empty() || stage.source.empty()) {
         return;
     }
@@ -111,13 +110,14 @@ void ShaderCompiler::start(const Device::StageCode& stage, core::JobSystem& jobs
             return;
         }
         // clang-format off
-        *task = std::packaged_task<Result()>([compiler = shared_from_this(), key] {
-            return compiler->run(key);
+        *task = std::packaged_task<Result()>([weak = weak_from_this(), key] {
+            const std::shared_ptr<ShaderCompiler> compiler = weak.lock();
+            return compiler != nullptr ? compiler->run(key) : Result{};
         });
         // clang-format on
         started.emplace(std::move(key), task->get_future().share());
     }
-    jobs.postIo([task] { (*task)(); });
+    queue.post([task] { (*task)(); });
 }
 
 } // namespace haylen::gpu::direct3d
