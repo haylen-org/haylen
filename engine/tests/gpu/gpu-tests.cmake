@@ -1,5 +1,6 @@
 # The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen.py test --gpu`.
 set(haylen_tests_dir "${HAYLEN_ENGINE_DIR}/tests")
+set(HAYLEN_ANDROID_GPU_TESTS_DIR "/data/local/tmp/haylen-gpu-tests" CACHE STRING "Folder of the Android device that the GPU tests run from, which haylen.py pushes them into.")
 add_executable(haylen-gpu-tests
   "${haylen_tests_dir}/gpu/BlendTests.cpp"
   "${haylen_tests_dir}/gpu/DepthStencilTests.cpp"
@@ -23,7 +24,15 @@ add_executable(haylen-gpu-tests
 set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} GTest::gtest_main)
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
-target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_tests_dir}/data/gpu" HAYLEN_GPU_TEST_OUTPUT="${CMAKE_BINARY_DIR}/gpu-test-output")
+# Android runs the tests from the folder of the device that `haylen.py` pushes them into, with the reference images next to them.
+if(ANDROID)
+  set(haylen_gpu_references "${HAYLEN_ANDROID_GPU_TESTS_DIR}/data/gpu")
+  set(haylen_gpu_output "${HAYLEN_ANDROID_GPU_TESTS_DIR}/gpu-test-output")
+else()
+  set(haylen_gpu_references "${haylen_tests_dir}/data/gpu")
+  set(haylen_gpu_output "${CMAKE_BINARY_DIR}/gpu-test-output")
+endif()
+target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_gpu_references}" HAYLEN_GPU_TEST_OUTPUT="${haylen_gpu_output}")
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
 haylen_enable_warnings(haylen-gpu-tests)
 

@@ -855,6 +855,11 @@ def command_test(args: argparse.Namespace) -> None:
     if args.platform in WEB_PLATFORMS:
         command_test_web(args)
         return
+    if args.platform == "android":
+        if not gpu:
+            raise BuildError('Android runs only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
+        command_test_gpu_android(args)
+        return
     args.platform = host_name()
     if gpu:
         command_test_gpu(args)
@@ -908,6 +913,97 @@ def command_test_gpu_web(args: argparse.Namespace) -> None:
         server.shutdown()
         server.server_close()
     terminal.success("The GPU tests of the web passed.")
+
+
+# The GPU tests of Android: a tree of their own builds them for the ABI of the device, and adb runs them from a folder of the device that holds the reference images next to them and goes away afterwards.
+ANDROID_GPU_TESTS_DIR = "/data/local/tmp/haylen-gpu-tests"
+ANDROID_EMULATOR_PORT = 5554
+ANDROID_EMULATOR_BOOT_SECONDS = 300
+
+
+def android_gpu_tests_configure_command(directory: Path, abi: str, config: str) -> list:
+    """The CMake command that configures the tree of the GPU tests of Android for an ABI, which builds the tests alone."""
+    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", *android_options(abi), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", f"-DHAYLEN_ANDROID_GPU_TESTS_DIR={ANDROID_GPU_TESTS_DIR}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+
+
+def connected_android_devices() -> list[str]:
+    return [line.split()[0] for line in capture([adb(), "devices"]).splitlines()[1:] if line.strip().endswith("device")]
+
+
+def android_virtual_devices() -> list[str]:
+    emulator = android_sdk() / "emulator" / ("emulator.exe" if host_name() == "windows" else "emulator")
+    return capture([emulator, "-list-avds"]).split()
+
+
+def android_virtual_device_abi(name: str) -> str:
+    """The ABI of a virtual device of the Android SDK, from the configuration that Android Studio writes for it."""
+    folder = Path(os.environ.get("ANDROID_AVD_HOME", Path.home() / ".android" / "avd"))
+    for line in (folder / f"{name}.avd" / "config.ini").read_text(encoding="utf-8").splitlines():
+        if line.startswith("abi.type="):
+            return line.split("=", 1)[1].strip()
+    raise BuildError(f'The virtual device "{name}" names no ABI in its configuration. Create it again with the Device Manager of Android Studio.')
+
+
+def android_test_abi(requested: str | None) -> str:
+    """The ABI the GPU tests of Android build for: that of the device that "--device" names or of the only one connected, or else that of the first virtual device, which the tests start."""
+    if requested or connected_android_devices():
+        return android_device_abi(android_device(requested))
+    devices = android_virtual_devices()
+    if not devices:
+        raise BuildError("No Android device is connected and the Android SDK has no virtual device to start. Connect a device, or create a virtual device with the Device Manager of Android Studio.")
+    return android_virtual_device_abi(devices[0])
+
+
+@contextlib.contextmanager
+def android_test_device(requested: str | None):
+    """Yields the device the GPU tests run on: the one that "--device" names, the only one connected, or else an emulator of the first virtual device that it starts without a window and shuts down afterwards."""
+    if requested or connected_android_devices():
+        yield android_device(requested)
+        return
+    name = android_virtual_devices()[0]
+    serial = f"emulator-{ANDROID_EMULATOR_PORT}"
+    terminal.step(f'Starting the emulator of "{name}" without a window')
+    emulator = android_sdk() / "emulator" / ("emulator.exe" if host_name() == "windows" else "emulator")
+    process = subprocess.Popen([emulator, "-avd", name, "-port", str(ANDROID_EMULATOR_PORT), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot-save"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    try:
+        deadline = time.monotonic() + ANDROID_EMULATOR_BOOT_SECONDS
+        while serial not in connected_android_devices() or capture([adb(), "-s", serial, "shell", "getprop", "sys.boot_completed"]).strip() != "1":
+            if process.poll() is not None or time.monotonic() > deadline:
+                raise BuildError(f'The emulator of "{name}" did not start within {ANDROID_EMULATOR_BOOT_SECONDS} seconds.')
+            time.sleep(2)
+        yield serial
+    finally:
+        subprocess.run([adb(), "-s", serial, "emu", "kill"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        process.wait()
+
+
+def command_test_gpu_android(args: argparse.Namespace) -> None:
+    """Builds the GPU tests for the ABI of an Android device and runs them on it through adb, on every device of the build or on the one that "--graphics-api" names, keeps the images of the scenes that differ in the tree and removes everything it pushed. An emulator that it starts runs only while the tests do."""
+    api = args.graphics_api if args.graphics_api in GPU_GRAPHICS_APIS else None
+    abi = android_test_abi(args.device)
+    directory = BUILD_ROOT / f"android-gpu-tests-{abi}-{args.config.lower()}"
+    if not (directory / "CMakeCache.txt").exists():
+        terminal.step(f"Configuring the GPU tests of Android in `{shown_path(directory)}`")
+        run(android_gpu_tests_configure_command(directory, abi, args.config))
+    terminal.step(f"Building the GPU tests of Android in `{shown_path(directory)}`")
+    run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
+
+    with android_test_device(args.device) as device:
+        shell = [adb(), "-s", device, "shell"]
+        run([*shell, f"rm -rf {ANDROID_GPU_TESTS_DIR} && mkdir -p {ANDROID_GPU_TESTS_DIR}/data"])
+        try:
+            run([adb(), "-s", device, "push", directory / "bin" / "haylen-gpu-tests", f"{ANDROID_GPU_TESTS_DIR}/haylen-gpu-tests"])
+            run([adb(), "-s", device, "push", ENGINE_DIR / "tests" / "data" / "gpu", f"{ANDROID_GPU_TESTS_DIR}/data/gpu"])
+            terminal.step(f'Running the GPU tests of Android on "{api}" on "{device}"' if api else f'Running the GPU tests of Android on every device of the build on "{device}"')
+            run([*shell, f"cd {ANDROID_GPU_TESTS_DIR} && HAYLEN_TEST_GRAPHICS_API={api or ''} ./haylen-gpu-tests"], stream=True)
+        finally:
+            output = directory / "gpu-test-output"
+            shutil.rmtree(output, ignore_errors=True)
+            if capture([*shell, f"ls {ANDROID_GPU_TESTS_DIR}/gpu-test-output 2>/dev/null; true"]).strip():
+                run([adb(), "-s", device, "pull", f"{ANDROID_GPU_TESTS_DIR}/gpu-test-output", output])
+                terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
+            run([*shell, f"rm -rf {ANDROID_GPU_TESTS_DIR}"])
+    terminal.success("The GPU tests of Android passed.")
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
@@ -5777,6 +5873,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
     if gpu_tests:
         parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU", *GPU_GRAPHICS_APIS], help='Graphics API the backend draws through, the default of the platform otherwise, or a name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
+        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default.')
     else:
         parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics API the backend draws through, the default of the platform otherwise.")
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")

@@ -870,6 +870,23 @@ class PluginTemplateTest(unittest.TestCase):
         self.assertIn(haylen.ROOT / "templates" / "cpp" / "src" / "App.cpp", sources)
 
 
+class AndroidGpuTestsTest(unittest.TestCase):
+    def test_the_tests_build_alone_for_the_abi_and_run_from_the_folder_the_device_holds_them_in(self):
+        with mock.patch.object(haylen, "ensure_shaderc", return_value=Path("/tools/haylen-shaderc")), mock.patch.object(haylen, "android_ndk", return_value=Path("/sdk/ndk")):
+            command = [str(part) for part in haylen.android_gpu_tests_configure_command(Path("/build/android"), "x86_64", "Debug")]
+        self.assertIn("-DANDROID_ABI=x86_64", command)
+        self.assertIn("-DHAYLEN_BUILD_TESTS=ON", command)
+        self.assertIn("-DHAYLEN_BUILD_PLAYER=OFF", command)
+        self.assertIn(f"-DHAYLEN_ANDROID_GPU_TESTS_DIR={haylen.ANDROID_GPU_TESTS_DIR}", command)
+
+    def test_a_virtual_device_builds_for_the_abi_of_its_configuration(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            (Path(scratch) / "Phone.avd").mkdir()
+            (Path(scratch) / "Phone.avd" / "config.ini").write_text("hw.gpu.enabled=yes\nabi.type=arm64-v8a\n", encoding="utf-8")
+            with mock.patch.dict(os.environ, {"ANDROID_AVD_HOME": scratch}):
+                self.assertEqual(haylen.android_virtual_device_abi("Phone"), "arm64-v8a")
+
+
 class CleanTest(unittest.TestCase):
     def test_clean_removes_the_build_folder_and_says_when_it_was_already_clean(self):
         with tempfile.TemporaryDirectory() as scratch:

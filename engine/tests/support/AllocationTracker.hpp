@@ -1,7 +1,12 @@
 #pragma once
 
+#include <array>
 #include <cstddef>
 #include <string_view>
+
+#if defined(__ANDROID__)
+#include <unwind.h>
+#endif
 
 namespace haylen::test {
 
@@ -36,6 +41,16 @@ class AllocationTracker final {
 
     [[nodiscard]] static bool isLinuxGraphics(const void* caller) noexcept;
     [[nodiscard]] static std::string_view getLibraryName(const void* address) noexcept;
+    [[nodiscard]] static int captureStack(std::array<void*, kStackDepth>& frames) noexcept;
+#endif
+#if defined(__ANDROID__)
+    // The frames that the unwinder of Android walked so far.
+    struct StackWalk {
+        std::array<void*, kStackDepth>* frames = nullptr;
+        int depth = 0;
+    };
+
+    static _Unwind_Reason_Code addFrame(_Unwind_Context* context, void* walk) noexcept;
 #endif
 
     static thread_local AllocationTracker* active;

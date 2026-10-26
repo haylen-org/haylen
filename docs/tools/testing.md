@@ -176,7 +176,7 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` or `--platform web-webgl2` it runs [the memory check of the web](#the-memory-check-of-the-web) instead.
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` or `--platform web-webgl2` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web or on Android it runs [the GPU tests](#the-gpu-tests) there.
 
 Run one suite or one test through CTest or through the executable:
 
@@ -214,6 +214,14 @@ On the web, `haylen test --gpu --platform web` builds the GPU tests in `build/we
 ```sh
 haylen test --gpu --platform web
 haylen test --graphics-api webGpu --platform web
+haylen test --graphics-api webGl2 --platform web
+```
+
+On Android, `haylen test --gpu --platform android` builds the GPU tests for the ABI of the device in `build/android-gpu-tests-<abi>-debug`, pushes them with the reference images into `/data/local/tmp/haylen-gpu-tests` of the device and runs them there through adb. It takes the device that `--device` names or the only one connected. Without any, it starts an emulator of the first virtual device of the Android SDK without a window and shuts it down when the tests end. The scenes that differ come back into `gpu-test-output` of the tree, and the folder of the device goes away afterwards.
+
+```sh
+haylen test --gpu --platform android
+haylen test --graphics-api openGlEs --platform android --device emulator-5554
 ```
 
 ## The memory check of the web
