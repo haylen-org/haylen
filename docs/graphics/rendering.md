@@ -35,24 +35,13 @@ scene.push({
 
 ## The GPU device
 
-The engine never talks to a graphics library directly. It draws through `gpu::Device` (`engine/include/haylen/gpu/Device.hpp`), an interface of the engine for buffers, images, samplers, programs, pipelines, passes and draws. A device of each graphics API implements that interface, and a build carries the device of every graphics API of its platform. The renderer, the Lua API and apps look the same on every device, as the [layers of the architecture guide](../core/architecture.md#layers) explain.
+The engine never talks to a graphics library directly. It draws through `gpu::Device` (`engine/include/haylen/gpu/Device.hpp`), the render hardware interface of Haylen, with buffers, images, samplers, programs, pipelines, passes and draws. A device of each graphics API implements it, and a build carries the device of every graphics API of its platform. The renderer, the Lua API and apps look the same on every device. The [RHI guide](rhi.md) describes the contract, the capabilities of each API, the order in which the window tries them and the status of every device, and the pages of [Metal](metal.md), [Direct3D](direct3d.md), [Vulkan](vulkan.md), [OpenGL](opengl.md) and [WebGPU](webgpu.md) describe each device.
 
 The class `graphics::Device` (`engine/src/graphics/Device.cpp`) owns the GPU device that the host creates. It creates textures, single-channel alpha textures for font atlases and render targets on it. Every method runs on the frame thread, and one engine runs at a time, as the [architecture guide](../core/architecture.md#resource-ownership) explains.
 
-Two layers check the GPU calls. With validation on, which debug builds and the tests turn on, each device turns on the validation of its graphics API, such as the debug layers of Direct3D, the validation layers of Vulkan and the debug output of OpenGL, and sends its messages to the log. The null device of the headless host checks every call against the contract of the GPU device in every build. The null device also reports the texture limits of desktop GPUs, 16384 pixels for 2D textures, so headless runs load full-size art like real devices.
+Two layers check the GPU calls. With validation on, which debug builds and the tests turn on, each device turns on the validation of its graphics API and sends its messages to the log. The null device of the headless host checks every call against the contract of the GPU device in every build. The null device also reports the texture limits of desktop GPUs, 16384 pixels for 2D textures, so headless runs load full-size art like real devices.
 
-The function `graphics.apiName()`, `graphics::Device::getApiName()` in C++, names the graphics API the device draws through. The names come from `gpu::Device::kApiNames`. The window takes the first API that starts, in the order of `window.graphicsApis` of `app.json` and then in the order of the platform:
-
-| Platform | Graphics APIs in the order of the platform | `graphics.apiName()` |
-| --- | --- | --- |
-| macOS, iOS, tvOS, Mac Catalyst | Metal | `'metal'` |
-| Windows | Direct3D 12, Direct3D 11, Vulkan, OpenGL | `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'` |
-| Linux | Vulkan, OpenGL | `'vulkan'`, `'openGl'` |
-| Android | Vulkan, OpenGL ES 3 | `'vulkan'`, `'openGlEs'` |
-| Web | WebGPU, WebGL2 | `'webGpu'`, `'webGl2'` |
-| Headless host of tests | None | `'none'` |
-
-The [build guide](../tools/build.md#cmake-options) explains which devices a build carries. Some graphics APIs store the bottom row of a render target first. The engine corrects that on its own, so the texture of a render target samples upright everywhere.
+The function `graphics.apiName()`, `graphics::Device::getApiName()` in C++, names the graphics API the device draws through, such as `'metal'`, `'vulkan'` or `'webGpu'`, with the names of `gpu::Device::kApiNames`. The headless host of the tests reports `'none'`, and the device of a [port](../platform/ports.md) reports `'port'`. Some graphics APIs store the bottom row of a render target first. The engine corrects that on its own, so the texture of a render target samples upright everywhere.
 
 ```lua
 local graphics = require('haylen.graphics')

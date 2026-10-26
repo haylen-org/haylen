@@ -1,6 +1,6 @@
-# 🟩 OpenGL device
+# 🟩 OpenGL
 
-This page covers the OpenGL device of the engine: the graphics APIs it draws through, how it gets its context, how it runs shaders, uploads data, draws passes and reads pixels back, what it can do on each platform and its limits.
+This page covers the OpenGL device of the [render hardware interface](rhi.md): the graphics APIs it draws through, how it gets its context, how it runs shaders, uploads data, draws passes and reads pixels back, what it can do on each platform and its limits.
 
 ## The three flavours
 
@@ -20,7 +20,7 @@ OpenGL draws through a context, and the pixel format of a window is chosen befor
 
 ```cpp
 gpu::Surface surface{.kind = gpu::Surface::Kind::Gl, .gl = &context, .width = 1280, .height = 720, .vsync = true};
-std::unique_ptr<gpu::Device> device = gpu::opengl::Device::create(gpu::Device::Api::OpenGl, surface, true);
+std::unique_ptr<gpu::Device> device = gpu::DeviceFactory::create(gpu::Device::Api::OpenGl, surface, {.validation = true});
 ```
 
 The context stays current on the frame thread for the whole life of the device. The device needs a context, so it cannot start without a surface. The tests of the engine make one with `test::OffscreenGlContext`, which opens an OpenGL or OpenGL ES context on a hidden pixel buffer through EGL, with Mesa in a container or on the Android emulator.

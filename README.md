@@ -29,17 +29,19 @@ Haylen is built so that coding agents write correct apps and extend the engine w
 
 ## Platforms
 
-| | Platform | Renderer |
+| | Platform | Graphics APIs |
 | --- | --- | --- |
 | 🍎 | macOS | Metal |
-| 🪟 | Windows | Direct3D 11 |
-| 🐧 | Linux | OpenGL |
+| 🪟 | Windows | Direct3D 12, Direct3D 11, Vulkan and OpenGL |
+| 🐧 | Linux | Vulkan and OpenGL |
 | 📱 | iOS and iPadOS | Metal |
 | 💻 | Mac Catalyst | Metal |
 | 📺 | tvOS | Metal |
-| 🤖 | Android phones, tablets and TVs from one APK | OpenGL ES 3 |
-| 🌐 | Web | WebGPU, or WebGL2 where the browser lacks it |
+| 🤖 | Android phones, tablets and TVs from one APK | Vulkan and OpenGL ES |
+| 🌐 | Web | WebGPU and WebGL2 |
 | 🥽 | visionOS | Metal, running the iPad app |
+
+Each build carries every graphics API of its platform and uses the first one that starts on the machine, in the order of the table, while the app or its player can ask for another. Game consoles need a port in a private repository, which the engine is built to take.
 
 The guide to distribution in the documentation lists the minimum versions and how each platform runs.
 

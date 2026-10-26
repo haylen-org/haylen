@@ -1,6 +1,6 @@
 # 🪟 Direct3D
 
-This guide explains the two devices that draw on Windows through Direct3D: the device of Direct3D 12 and the device of Direct3D 11. It covers what each one needs from the machine, how each one draws a frame, how they show frames in a window, how they compile shaders, what they can do, how to debug them and their limits. Apps never talk to these devices. The renderers of the engine draw through the RHI contract, so an app draws the same way on every device.
+This guide explains the two devices that draw on Windows through Direct3D: the device of Direct3D 12 and the device of Direct3D 11. It covers what each one needs from the machine, how each one draws a frame, how they show frames in a window, how they compile shaders, what they can do, how to debug them and their limits. Apps never talk to these devices. The renderers of the engine draw through the [render hardware interface](rhi.md), so an app draws the same way on every device.
 
 ## Choosing a device
 

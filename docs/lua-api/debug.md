@@ -387,7 +387,7 @@ Returns the measurements of the last finished frame as a table. Before the first
 | `milliseconds` | number | The work of the last frame, from the start of its update to the end of its rendering, in milliseconds. |
 | `average` | number | The average work of the recent frames, in milliseconds. |
 | `fps` | number | The frames per second that the display showed over the recent frames, or `0` before the second frame. It comes from the intervals that the platform reports for the frames it shows: the display link on Apple platforms, the timestamps of `requestAnimationFrame` on the web, the Choreographer on Android and the time between presented frames on the desktops. So it holds the wait for the display and the frames it missed, unlike the work of the frames. |
-| `gpuMilliseconds` | number or `nil` | The time that the GPU took for the last frame it finished, which lags a frame or two behind. Only Metal measures it, so it is `nil` on the other graphics APIs, and before the GPU finished a frame. |
+| `gpuMilliseconds` | number or `nil` | The time that the GPU took for the last frame it finished, which lags a frame or two behind. It is `nil` where the GPU device does not measure it, which the [capability matrix](../graphics/rhi.md#capability-matrix) lists for each graphics API, and before the GPU finished a frame. |
 | `scopes` | list | The scopes of the last frame, parents before their children. |
 
 Every scope is a table with these fields:
@@ -519,7 +519,7 @@ A trace records a span of frames into a file in the trace event JSON format, whi
 
 - `frame`, with every frame and every profiler scope, nested as they ran.
 - A lane for each worker of the task pool and of the I/O pool, with the jobs it ran as `job` and `ioJob`.
-- `gpu`, with the time that the GPU took for each frame as `gpuFrame`, where the graphics API measures it. Metal does, on macOS, iOS, tvOS and Mac Catalyst. The other graphics APIs, Direct3D 11, OpenGL, OpenGL ES, WebGL 2 and WebGPU, leave the lane empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures. So its length is exact, while its place on the timeline is late.
+- `gpu`, with the time that the GPU took for each frame as `gpuFrame`, where the GPU device measures it, as the [capability matrix](../graphics/rhi.md#capability-matrix) lists. Elsewhere the lane stays empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures. So its length is exact, while its place on the timeline is late.
 
 A trace keeps at most 262144 spans in memory by default, and counts the spans it drops once it is full. Recording costs a lock per span, so a trace measures a little more than the frames take without one.
 

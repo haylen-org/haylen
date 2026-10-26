@@ -10,7 +10,7 @@ local graphics = require('haylen.graphics')
 
 ### graphics.apiName()
 
-Returns the name of the graphics API that the GPU device draws through: `'metal'`, `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'`, or `'none'` on the headless host, where nothing draws. It is the value of [`haylen.graphicsApi`](haylen.md#haylengraphicsapi). The [rendering guide](../graphics/rendering.md#the-gpu-device) lists the APIs of each platform.
+Returns the name of the graphics API that the GPU device draws through: `'metal'`, `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'`, `'port'` on the device of a port to another platform, or `'none'` on the headless host, where nothing draws. It is the value of [`haylen.graphicsApi`](haylen.md#haylengraphicsapi). The [RHI guide](../graphics/rhi.md#choosing-the-graphics-api) lists the APIs of each platform.
 
 ```lua
 local graphics = require('haylen.graphics')

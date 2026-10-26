@@ -20,7 +20,7 @@ print('Running on Haylen ' .. haylen.version .. '.')
 
 ### haylen.platform
 
-The platform that the app runs on, as a string. It is `'windows'`, `'macos'`, `'linux'`, `'ios'`, `'tvos'`, `'android'` or `'web'`. iPhones, iPads and Mac Catalyst apps report `'ios'`. The headless host that the engine tests use reports `'headless'`. The module [`haylen.system`](system.md) tells more about the device.
+The platform that the app runs on, as a string. It is `'windows'`, `'macos'`, `'linux'`, `'ios'`, `'tvos'`, `'android'` or `'web'`. iPhones, iPads and Mac Catalyst apps report `'ios'`. The headless host that the engine tests use reports `'headless'`, and a [port](../platform/ports.md) to another platform reports the name of its platform. The module [`haylen.system`](system.md) tells more about the device.
 
 ```lua
 local haylen = require('haylen')
@@ -31,7 +31,7 @@ print('Show the touch controls: ' .. tostring(touchFirst) .. '.')
 
 ### haylen.graphicsApi
 
-The graphics API that the GPU device draws through, as a string: `'metal'`, `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'` or `'none'`. The window takes the first API that starts, in the order of [`window.graphicsApis`](#haylenconfig) and then in the order of the platform.
+The graphics API that the GPU device draws through, as a string: `'metal'`, `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'`, `'port'` or `'none'`. The window takes the first API that starts, in the order of [`window.graphicsApis`](#haylenconfig) and then in the order of the platform.
 
 | Platform | Graphics APIs in the order of the platform |
 | --- | --- |
@@ -41,6 +41,7 @@ The graphics API that the GPU device draws through, as a string: `'metal'`, `'di
 | Android | `'vulkan'`, `'openGlEs'` |
 | Web | `'webGpu'`, `'webGl2'` |
 | Headless host | `'none'`, since nothing draws there |
+| A [port](../platform/ports.md) with a device of its own | `'port'`, then the APIs of the engine that the port compiles |
 
 The function [`graphics.apiName()`](graphics.md#graphicsapiname) returns it too.
 
@@ -111,7 +112,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | `window.mousePassthrough` | boolean | `false` | Lets every click pass through the window to what is behind it, until the app names regions that keep the mouse. |
 | `window.position` | string or object | Centered, absent | Where the desktop window opens: `"center"`, a point such as `{"x": 40, "y": 60}` in desktop points, or an anchored placement such as `{"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}`. The [desktop guide](../platform/desktop.md#placing-the-window) describes it. `haylen.config` holds it as `{x, y}` or `{anchor, area, monitor, offset, fill}`. |
 | `window.statusBar` | string | `"hidden"` | How the status bar of phones and tablets shows when the app launches: `"hidden"`, or `"auto"`, `"light"` or `"dark"` content, as [`window.setStatusBar`](window.md#windowsetstatusbarvalue) describes. |
-| `window.graphicsApis` | array of strings | `[]` | The graphics APIs that the window tries first, in order, such as `["vulkan", "openGl"]`. The names are `"metal"`, `"direct3D12"`, `"direct3D11"`, `"vulkan"`, `"openGl"`, `"openGlEs"`, `"webGpu"` and `"webGl2"`. After them the window tries the other APIs of the build in the order of the platform, and it leaves out the APIs that the build lacks, so one list serves every platform. The option `--graphics-api` of the player replaces it. Scripts read the API that draws in [`haylen.graphicsApi`](#haylengraphicsapi). |
+| `window.graphicsApis` | array of strings | `[]` | The graphics APIs that the window tries first, in order, such as `["vulkan", "openGl"]`. The names are `"metal"`, `"direct3D12"`, `"direct3D11"`, `"vulkan"`, `"openGl"`, `"openGlEs"`, `"webGpu"`, `"webGl2"` and `"port"`. After them the window tries the other APIs of the build in the order of the platform, and it leaves out the APIs that the build lacks, so one list serves every platform. The option `--graphics-api` of the player replaces it. Scripts read the API that draws in [`haylen.graphicsApi`](#haylengraphicsapi). |
 | `window.statusBarColor` | string | Absent | The color, such as `"#FF1E2A44"`, that the engine paints behind the status bar while it shows, as [`window.setStatusBarColor`](window.md#windowsetstatusbarcolorcolor) describes. |
 
 The desktop options of `window` change later through [`haylen.window`](window.md#desktop-windows), and the [desktop guide](../platform/desktop.md) describes them.
@@ -795,7 +796,7 @@ The engine checks `app.json` before any Lua runs. A package whose `app.json` fai
 | `The value of "<key>" in "app.json" must be a number of at least 0.` | The `splash.duration` or `splash.fadeOut` is negative or not finite. |
 | `The "<key>" value "<value>" in "app.json" is not a color such as "#RRGGBB" or "#AARRGGBB".` | The `clearColor`, `window.statusBarColor`, `splash.background` or `splash.darkBackground` is not a color. |
 | `The "window.statusBar" value "<value>" in "app.json" is unknown. It is "hidden", "auto", "light" or "dark".` | The status bar has another value. |
-| `The "window.graphicsApis" value "<value>" in "app.json" is not a graphics API. It is "metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGpu" or "webGl2".` | The list names something else, or `"none"`. |
+| `The "window.graphicsApis" value "<value>" in "app.json" is not a graphics API. It is "metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGpu", "webGl2" or "port".` | The list names something else, or `"none"`. |
 | `The "window.graphicsApis" of "app.json" names "<value>" twice.` | The list repeats an API. |
 | `The "window.graphicsApis" of "app.json" is not an array of graphics API names, such as ["vulkan", "openGl"].` | The value is not an array. |
 | `The "window.position" in "app.json" is invalid. <reason>` | The placement of the window is wrong, for the reason that follows. |

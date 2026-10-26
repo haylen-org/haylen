@@ -7,10 +7,14 @@ Graphics draws everything an app shows: the GPU device and its graphics APIs, te
 | Name | Description | Link |
 | --- | --- | --- |
 | Direct3D | The devices of Direct3D 12 and Direct3D 11 on Windows: what the machine needs, how each one draws a frame, swapchains, transparent windows, shaders, capabilities, debugging, lost devices and limits. | [`direct3d.md`](direct3d.md) |
+| Metal | The device of Metal on macOS, iOS, iPadOS, Mac Catalyst and tvOS: the GPU it draws on, how it draws a frame, drawables and tile memory, shaders compiled ahead, capabilities, debugging, lost devices and limits. | [`metal.md`](metal.md) |
 | OpenGL | The device of OpenGL, OpenGL ES and WebGL2: its context, shaders, the upload ring and frames in flight, passes and their framebuffers, the state cache, reading pixels back, its capabilities on each platform and its limits. | [`opengl.md`](opengl.md) |
+| Render hardware interface | The layers from scripts to the GPU, the contract of `gpu::Device` with its objects, passes, uploads, readbacks, lifetimes, surfaces, lost devices, capabilities, validation and profiling, the rules of the null device, the capability matrix of the graphics APIs, choosing the API and the status of every device. | [`rhi.md`](rhi.md) |
 | Rendering | How a frame is drawn: the GPU device of each graphics API, canvases and their order, design units and the viewport, cameras, draw order and blend modes, batching and what breaks a batch, smooth edges, sprites and batches, captures, groups, masks, lit canvases, post-processing, effects, the GPU pools and performance. | [`rendering.md`](rendering.md) |
 | Shaders | Fragment shaders of an app: the Haylen shader language, compiling with `haylen-shaderc` for every graphics API, the shader library, sprite data, uniforms and textures, post-processing, the game shaders of the test project, the shader package and load time. | [`shaders.md`](shaders.md) |
 | Text | Fonts, bitmap fonts and font families, how glyphs are made and drawn, shaping, directions and line breaking, layout and fitting, rich text with its markup, effects and typewriter reveal, and text in the UI. | [`text.md`](text.md) |
+| Vulkan | The device of Vulkan on Windows, Linux and Android: what the machine needs, how it picks a GPU and draws a frame, swapchains, shaders, capabilities, debugging, lost devices and limits. | [`vulkan.md`](vulkan.md) |
+| WebGPU | The device of WebGPU in browsers: how it starts, how it draws a frame, the canvas, shaders, capabilities, debugging, lost devices and limits. | [`webgpu.md`](webgpu.md) |
 
 ## Lua API
 

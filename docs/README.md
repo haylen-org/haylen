@@ -13,7 +13,7 @@ The documentation of Haylen has two parts. The guides explain how each block of 
 | 🎨 Graphics | Graphics draws everything an app shows: the GPU device and its graphics APIs, textures and render targets, the 2D renderer with its canvases, cameras and batching, shaders, text in every script and the mapping of design units to the screen. | [`graphics/README.md`](graphics/README.md) |
 | 🎮 Input | Input reads every device and gives gameplay named actions, with the timing that action games need. | [`input/README.md`](input/README.md) |
 | 🌐 Network | Network reaches servers and peers from every platform, with every result on the frame thread. | [`network/README.md`](network/README.md) |
-| 📱 Platform | Platform covers the window and the device, the services every platform offers and the ways an app reaches native code. | [`platform/README.md`](platform/README.md) |
+| 📱 Platform | Platform covers the window and the device, the services every platform offers, the ways an app reaches native code and the ports of the engine to other platforms. | [`platform/README.md`](platform/README.md) |
 | 🛠️ Tools | Tools build, test, debug and ship the engine and its apps. | [`tools/README.md`](tools/README.md) |
 | 🪟 UI | The UI draws the interface players see and the tools developers use, in design units, inside the safe area and with themes. | [`ui/README.md`](ui/README.md) |
 

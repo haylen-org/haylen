@@ -151,12 +151,13 @@ The commands `configure`, `build` and `test` take these options:
 | `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. |
 | `--graphics-api` | every device | Only for `test`: a name of `gpu::Device::kApiNames`, such as `vulkan`, which runs the [GPU tests](testing.md#the-gpu-tests) on that device alone. |
 | `--gpu` | off | Only for `test`: runs the [GPU tests](testing.md#the-gpu-tests) on every device of the build instead of the engine tests. |
+| `--port` | off | Only for `test`: builds the engine with the test port and plays its app, [the test port](testing.md#the-test-port), instead of the engine tests. |
 | `--xcode` | off | Uses the Xcode generator on macOS. |
 | `--sanitizers` | none | `address` for AddressSanitizer and UndefinedBehaviorSanitizer, or `thread` for ThreadSanitizer, in a tree of its own. It reaches CMake as `HAYLEN_SANITIZERS`, and MSVC builds ignore it. The [testing guide](testing.md#sanitizers) explains both. |
 | `--target` | everything | The CMake target that `build` builds. |
 | `--jobs` | the processors minus one | The parallel jobs of the build and the tests. |
 
-Every build carries the GPU device of each graphics API of its platform, which `HAYLEN_GRAPHICS_APIS` lists, and the app chooses one when it runs, as the [rendering guide](../graphics/rendering.md#the-gpu-device) describes.
+Every build carries the GPU device of each graphics API of its platform, which `HAYLEN_GRAPHICS_APIS` lists, and the app chooses one when it runs, as the [RHI guide](../graphics/rhi.md#choosing-the-graphics-api) describes.
 
 ### tools
 
@@ -236,6 +237,7 @@ The script `haylen.py` sets these cache variables for you. A project that adds t
 | `HAYLEN_SHADERC` | empty | The path of a build of `haylen-shaderc`, which compiles the shaders of the engine. Empty, the configure provides the pinned compiler as [the shader compiler](#the-shader-compiler) explains, and configures again when the pins change. |
 | `HAYLEN_SHADERC_CACHE` | the CPM source cache, or `tools` of the build tree without one | The folder that keeps the compilers that the configure provides, so build trees share them. |
 | `HAYLEN_GRAPHICS_APIS` | every API of the platform | The graphics APIs whose GPU devices the static library `haylen-gpu` compiles, as a CMake list of the names of `gpu::Device::kApiNames`. The default is `metal` on Apple platforms, `direct3D12;direct3D11;vulkan;openGl` on Windows, `vulkan;openGl` on Linux, `vulkan;openGlEs` on Android and `webGpu;webGl2` on the web, and a name of another platform is an error. The engine includes the `device.cmake` of the folder of each device under `engine/src/gpu`, and a name whose folder holds no `device.cmake` stops the configuration. The class `gpu::DeviceFactory` makes the devices in the default order of the platforms, whatever the order of the list, and the shaders of the engine carry the shader languages of the APIs of the list. |
+| `HAYLEN_PORT_DIR` | empty | The folder of a [port](../platform/ports.md) of the engine to a platform that the repository does not hold, outside the repository. Its `port.cmake` describes the platform, the runtime that replaces the platform layer and the services, and the GPU device of the API `port` with its shader tool. The engine then builds for the platform of the port, and `HAYLEN_GRAPHICS_APIS` defaults to `port` and the APIs of the engine that the port names. |
 | `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Builds the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
 | `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Builds the tests on desktop. |
 | `HAYLEN_BUILD_BENCHMARKS` | on when the engine is the top-level project | Builds every benchmark of [`bench`](#bench) on desktop. |
@@ -281,6 +283,7 @@ The shaders of the engine live in `engine/shaders`, in the Haylen shader languag
 | OpenGL core | GLSL 4.30. |
 | OpenGL ES 3 and WebGL2 | GLSL 3.00 ES. |
 | WebGPU | WGSL. |
+| The API `port` of a port | The languages that its `SHADER_LANGUAGES` names, and the `port` target that its `SHADER_COMMAND` writes into each package after `haylen-shaderc`, as the [guide to ports](../platform/ports.md#shaders) explains. |
 
 The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`. Every compile includes `engine/shaders/include`, the shader library that the shaders of apps include too, as the [shader guide](../graphics/shaders.md) explains.
 

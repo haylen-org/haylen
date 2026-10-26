@@ -19,6 +19,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/native/` | The file `NativeTest.c`, a plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests` and the headless player, where `native.load` finds it by name, copies it next to the desktop player in `bin/haylen`, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
 | `engine/tests/gpu/` | The tests of the null device and of `gpu::DeviceFactory`, which `haylen-tests` runs, and the [GPU tests](#the-gpu-tests) of the real devices, which `haylen-gpu-tests` runs: the conformance suite of the contract, the reference scenes of the 2D renderer, their programs in `shaders/conformance.glsl` and their helpers in `support/`. |
 | `engine/tests/data/gpu/` | The reference images of the scenes of the 2D renderer, one PNG per scene, which hold for every graphics API. |
+| `engine/tests/data/port/`, `engine/tests/data/port-app/` | The test port, the smallest [port](../platform/ports.md) of the engine, and the app that [the test port](#the-test-port) plays on it. |
 | `engine/tests/platform/sdl/` | The tests of the SDL platform layer: the translation of the events of SDL and the timing of the frames, which read only their own data, so `haylen-tests` compiles their sources with them. |
 | `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`. |
 
@@ -176,7 +177,7 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web or on Android it runs [the GPU tests](#the-gpu-tests) there.
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web or on Android it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port).
 
 Run one suite or one test through CTest or through the executable:
 
@@ -223,6 +224,17 @@ On Android, `haylen test --gpu --platform android` builds the GPU tests for the 
 haylen test --gpu --platform android
 haylen test --graphics-api openGlEs --platform android --device emulator-5554
 ```
+
+## The test port
+
+```sh
+haylen test --port
+haylen test --port --config Release
+```
+
+The option `--port` of `haylen test` checks the mechanism of [ports](../platform/ports.md) on this machine. It configures the engine with `HAYLEN_PORT_DIR` set to `engine/tests/data/port` in `build/<host>-port-<config>`, builds the player `haylen` of that port and plays `engine/tests/data/port-app` on it. The port replaces the platform layer and the services with a runtime that plays the app without a window, and draws through a device of the API `port` built on `gpu::NullDevice`, so every call of the engine meets the checks of the contract. Its shader tool gives every shader package of the engine a `port` target, which the device runs.
+
+The app fails the run with the status `1` when `haylen.platform` is not `'test-port'`, when the operating system of `haylen.system` is not `'port'` or when `haylen.graphicsApi` is not `'port'`. The runtime fails it too when the app does not quit within 600 frames, such as an app stuck on the error screen. Otherwise the app draws ten frames of shapes, sprites and text and quits with the status `0`.
 
 ## The memory check of the web
 

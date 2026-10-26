@@ -1,6 +1,6 @@
 # 📱 Platform
 
-Platform covers the window and the device, the services every platform offers and the ways an app reaches native code.
+Platform covers the window and the device, the services every platform offers, the ways an app reaches native code and the ports of the engine to other platforms.
 
 ## Guides
 
@@ -10,6 +10,7 @@ Platform covers the window and the device, the services every platform offers an
 | Native code | Native libraries called from Lua, their callbacks and threads, packaging them with an app and integrating SDKs with a C API. | [`native.md`](native.md) |
 | Platform bridge | The JSON bridge between Lua and native code: calls, events, bytes, timeouts, screens and the native side on every platform. | [`platform-bridge.md`](platform-bridge.md) |
 | Plugins | Native plugins from `haylen.py plugin new` to publishing: `plugin.json`, the Lua API, the services of the engine, screens, requirements, the Apple, Android, web and desktop parts and the demo plugin. | [`plugins.md`](plugins.md) |
+| Ports | Adding a platform that the repository does not hold, such as a game console: `HAYLEN_PORT_DIR` and `port.cmake`, the platform runtime, the GPU device of the API `port`, shaders, testing, private continuous integration, and the paths for Xbox, Nintendo Switch and PlayStation. | [`ports.md`](ports.md) |
 
 ## Lua API
 
