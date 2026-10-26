@@ -40,15 +40,15 @@ endif()
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/0adbdababe23ac98346f694e87228eadb2af2d61.tar.gz"
-  URL_HASH SHA256=00aa7eaca39dcb1facbc6672af56bd1346d9a2f58e30678795d17375b0bbb414
+  URL "https://github.com/varn-org/varn/archive/fb5ef4b89f6cb0265a806f07854e0a7711232187.tar.gz"
+  URL_HASH SHA256=0bc2f07a97ddeb445c4ce5ea7ea1dc46d85a2441bc155ae505a127a148b87f72
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
 )
 
 # Varn builds its own code, the Lua it vendors and libuv with the warning flags of their projects, which MSVC answers with hundreds of warnings in code the engine does not own.
-set(varn_compiled_targets varn_core varn_vendor_lua)
+set(varn_compiled_targets varn-core varn-vendor-lua)
 if(TARGET uv_a)
   list(APPEND varn_compiled_targets uv_a)
 endif()

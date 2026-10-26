@@ -402,7 +402,8 @@ These messages reach the `error` event of a socket.
 | `The WebSocket connection to "<url>" failed. The TLS handshake failed with "<reason>".` | The secure connection of a `wss://` address failed, such as for a certificate that does not verify, on native builds. |
 | `The WebSocket connection to "<url>" failed. The server did not accept the WebSocket and answered "<answer>".` | The server refused the upgrade to a WebSocket, on native builds. |
 | `The WebSocket connection to "<url>" failed. The network libraries reported "<text>".` | Any other failure of a native build. |
-| `The WebSocket connection to "<url>" failed. No trust store was found to check the certificate of a "wss://" server: <searched places>.` | A native build outside Windows found no trust store to check certificates with. |
+| `The WebSocket connection to "<url>" failed. No CA trust store was found for certificate verification: <searched places>.` | A native build outside Windows found no trust store to check certificates with. |
+| `The WebSocket connection to "<url>" failed. No trusted root certificate was found in the system store of Windows.` | A Windows build found no trusted root certificate to check certificates with. |
 | `The server sent a WebSocket message larger than the maximum of <size> bytes.` | A message passed `maxMessageSize`, on native builds. The socket then closes with code `1009`. |
 | `The WebSocket connection to "<url>" failed.` | The browser build failed to connect. Browsers hide the cause from pages, and when the browser refuses the address itself, its own reason follows. |
 

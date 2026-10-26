@@ -140,7 +140,7 @@ cmake_path(RELATIVE_PATH HAYLEN_SDK_PREFIX_FROM_CONFIG BASE_DIRECTORY "/${HAYLEN
 configure_file("${HAYLEN_CMAKE_DIR}/haylen-config.cmake.in" "${sdk}/haylen-config.cmake" @ONLY)
 write_basic_package_version_file("${sdk}/haylen-config-version.cmake" VERSION "${PROJECT_VERSION}" COMPATIBILITY SameMinorVersion)
 
-get_target_property(lua_include varn_vendor_lua INTERFACE_INCLUDE_DIRECTORIES)
+get_target_property(lua_include varn-vendor-lua INTERFACE_INCLUDE_DIRECTORIES)
 string(REGEX REPLACE "^\\$<BUILD_INTERFACE:(.*)>$" "\\1" lua_include "${lua_include}")
 
 install(FILES "${engine_library}" "${runtime_library}" DESTINATION "${CMAKE_INSTALL_LIBDIR}" COMPONENT haylen-sdk)
