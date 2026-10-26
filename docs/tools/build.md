@@ -348,7 +348,7 @@ Two more notes hold for miniaudio. It manages the audio session on iOS and tvOS 
 
 ### Patches
 
-A change to the source of a dependency is a patch in `engine/cmake/patches/` that CPM applies. CPM applies the patches of each package in the order of its list in `engine/cmake/haylen-dependencies.cmake`. Each patch below fixes one problem of the pinned commit.
+A change to the source of a dependency is a patch in `engine/cmake/patches/` that CPM applies. CPM applies the patches of each package in the order of its list in `engine/cmake/haylen-dependencies.cmake`. On Windows the patches take the `patch` that Git for Windows installs in its `usr/bin` folder, because many machines put the older `patch` of Strawberry Perl first on the path, which crashes on the patches of SDL. The cache path `PATCH_EXECUTABLE` names another one. Each patch below fixes one problem of the pinned commit.
 
 #### sdl-uikit-presses.patch
 

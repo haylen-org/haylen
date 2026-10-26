@@ -12,6 +12,15 @@ function(haylen_patched_package_key variable archive_hash)
   set(${variable} "${key}" PARENT_SCOPE)
 endfunction()
 
+# Windows machines often put the patch of Strawberry Perl first on the path, an old version that crashes on the patches of SDL, so the patches of dependencies take the patch that Git for Windows installs next to it, which CPM finds only when the path holds no other.
+if(CMAKE_HOST_WIN32 AND NOT PATCH_EXECUTABLE)
+  find_package(Git QUIET)
+  if(GIT_EXECUTABLE)
+    get_filename_component(haylen_git_folder "${GIT_EXECUTABLE}" DIRECTORY)
+    find_program(PATCH_EXECUTABLE patch HINTS "${haylen_git_folder}/../usr/bin" "${haylen_git_folder}/../../usr/bin" NO_DEFAULT_PATH)
+  endif()
+endif()
+
 # Varn uses nlohmann/json too, so it is resolved here first and Varn reuses it.
 CPMAddPackage(
   NAME nlohmann_json
