@@ -38,8 +38,9 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
         throw std::runtime_error("EGL could not make the pixel buffer of the context.");
     }
 
-    const std::array<EGLint, 9> desktopAttributes{EGL_CONTEXT_MAJOR_VERSION, 4, EGL_CONTEXT_MINOR_VERSION, 3, EGL_CONTEXT_OPENGL_PROFILE_MASK, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT, EGL_CONTEXT_OPENGL_DEBUG, EGL_TRUE, EGL_NONE};
-    const std::array<EGLint, 7> embeddedAttributes{EGL_CONTEXT_MAJOR_VERSION, 3, EGL_CONTEXT_MINOR_VERSION, 0, EGL_CONTEXT_OPENGL_DEBUG, EGL_TRUE, EGL_NONE};
+    // The attributes of `EGL_KHR_create_context` reach EGL 1.4 too, as on Android, and the OpenGL ES context needs no debug flag for the debug output the device turns on.
+    const std::array<EGLint, 9> desktopAttributes{EGL_CONTEXT_MAJOR_VERSION_KHR, 4, EGL_CONTEXT_MINOR_VERSION_KHR, 3, EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR, EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR, EGL_NONE};
+    const std::array<EGLint, 5> embeddedAttributes{EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGL_CONTEXT_MINOR_VERSION_KHR, 0, EGL_NONE};
     context = eglCreateContext(made, config, EGL_NO_CONTEXT, desktop ? desktopAttributes.data() : embeddedAttributes.data());
     if (context == EGL_NO_CONTEXT) {
         eglDestroySurface(made, surface);
