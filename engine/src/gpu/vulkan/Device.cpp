@@ -1418,7 +1418,7 @@ UploadRing::Allocation Device::allocateUniform(std::size_t index, VkDeviceSize s
             }
             const VkDeviceSize otherSize = bound.program->uniformBlocks[other].size;
             const UploadRing::Allocation moved = uniforms.allocate(otherSize, alignment);
-            std::memcpy(moved.data, bound.uniformData[other], otherSize);
+            std::memcpy(moved.data, bound.uniformData[other], static_cast<std::size_t>(otherSize));
             bound.uniformOffsets[other] = static_cast<std::uint32_t>(moved.offset);
             bound.uniformData[other] = moved.data;
         }
@@ -1569,7 +1569,7 @@ void Device::bindUniforms() {
     for (std::size_t index = 0; index < program.uniformBlocks.size(); ++index) {
         if ((bound.uniformMask & (1U << index)) == 0) {
             const UploadRing::Allocation allocation = allocateUniform(index, program.uniformBlocks[index].size);
-            std::memset(allocation.data, 0, program.uniformBlocks[index].size);
+            std::memset(allocation.data, 0, static_cast<std::size_t>(program.uniformBlocks[index].size));
         }
     }
     if (bound.uniformSet == VK_NULL_HANDLE || bound.uniformSetLayout != program.uniformLayout) {

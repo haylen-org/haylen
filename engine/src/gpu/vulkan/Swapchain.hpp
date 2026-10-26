@@ -114,6 +114,7 @@ class Swapchain final {
     [[nodiscard]] Attachment makeAttachment(VkFormat attachmentFormat, VkImageUsageFlags usage) const;
     void destroyAttachment(Attachment& attachment) const;
     void destroyImages();
+    void destroySwapchain();
 
     VkInstance instance = VK_NULL_HANDLE;
     const Context* context = nullptr;

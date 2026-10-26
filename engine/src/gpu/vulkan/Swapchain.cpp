@@ -97,19 +97,22 @@ VkExtent2D Swapchain::chooseExtent(const VkSurfaceCapabilitiesKHR& capabilities,
 
 bool Swapchain::configure(const Settings& settings) {
     const VkPhysicalDevice physicalDevice = context->getPhysicalDevice();
+    // A surface that the window system took back, such as the window of a backgrounded Android app, gives no swapchain until the platform hands over a new one.
     VkSurfaceCapabilitiesKHR capabilities{};
-    Context::check(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities), "read the surface of the window");
+    const VkResult described = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(physicalDevice, surface, &capabilities);
+    if (described == VK_ERROR_SURFACE_LOST_KHR) {
+        destroyImages();
+        destroySwapchain();
+        return false;
+    }
+    Context::check(described, "read the surface of the window");
 
     // The compositor turns the images when the surface allows it, so the frames draw as the window shows them.
     const VkSurfaceTransformFlagBitsKHR transform = (capabilities.supportedTransforms & VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR) != 0 ? VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR : capabilities.currentTransform;
     const VkExtent2D chosen = chooseExtent(capabilities, transform, settings);
     destroyImages();
     if (chosen.width == 0) {
-        if (handle != VK_NULL_HANDLE) {
-            context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
-            handle = VK_NULL_HANDLE;
-        }
-        extent = {};
+        destroySwapchain();
         return false;
     }
     extent = chosen;
@@ -154,6 +157,11 @@ bool Swapchain::configure(const Settings& settings) {
     const VkResult result = vk.vkCreateSwapchainKHR(context->getDevice(), &info, nullptr, &handle);
     if (old != VK_NULL_HANDLE) {
         vk.vkDestroySwapchainKHR(context->getDevice(), old, nullptr);
+    }
+    if (result == VK_ERROR_SURFACE_LOST_KHR || result == VK_ERROR_NATIVE_WINDOW_IN_USE_KHR) {
+        handle = VK_NULL_HANDLE;
+        extent = {};
+        return false;
     }
     if (result != VK_SUCCESS) {
         handle = VK_NULL_HANDLE;
@@ -243,6 +251,14 @@ void Swapchain::destroyAttachment(Attachment& attachment) const {
     context->getFunctions().vkDestroyImageView(context->getDevice(), attachment.view, nullptr);
     vmaDestroyImage(context->getAllocator(), attachment.image, attachment.allocation);
     attachment = {};
+}
+
+void Swapchain::destroySwapchain() {
+    if (handle != VK_NULL_HANDLE) {
+        context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
+        handle = VK_NULL_HANDLE;
+    }
+    extent = {};
 }
 
 void Swapchain::destroyImages() {
