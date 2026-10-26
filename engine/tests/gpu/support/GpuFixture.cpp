@@ -35,6 +35,11 @@ std::string GpuFixture::nameApi(const ::testing::TestParamInfo<gpu::Device::Api>
     return std::string(gpu::DeviceFactory::getApiName(info.param));
 }
 
+bool GpuFixture::isApiRequired() {
+    const char* requested = std::getenv("HAYLEN_TEST_GRAPHICS_API");
+    return requested != nullptr && *requested != '\0';
+}
+
 gpu::DeviceFactory::Options GpuFixture::getDeviceOptions() {
     return {.validation = true, .software = isEnabled("HAYLEN_TEST_GPU_SOFTWARE"), .lowPower = isEnabled("HAYLEN_TEST_GPU_LOW_POWER")};
 }
@@ -74,6 +79,9 @@ void GpuFixture::SetUp() {
         surface = std::make_unique<OffscreenSurface>(GetParam());
         made = makeDevice(GetParam(), surface->getSurface());
     } catch (const std::runtime_error& error) {
+        if (isApiRequired()) {
+            FAIL() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\", which \"HAYLEN_TEST_GRAPHICS_API\" names, cannot start on this machine: " << error.what();
+        }
         GTEST_SKIP() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\" cannot start on this machine: " << error.what();
     }
     shaders = graphics::Shader::parse(core::EmbeddedFiles::getConformanceShader());

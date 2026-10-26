@@ -991,7 +991,7 @@ def android_test_abi(requested: str | None) -> str:
 
 @contextlib.contextmanager
 def android_test_device(requested: str | None):
-    """Yields the device the GPU tests run on: the one that "--device" names, the only one connected, or else an emulator of the first virtual device that it starts without a window and shuts down afterwards."""
+    """Yields the device the GPU tests run on: the one that "--device" names, the only one connected, or else an emulator of the first virtual device that it starts without a window and shuts down afterwards. With "HAYLEN_TEST_GPU_SOFTWARE=1" that emulator draws through SwiftShader, as a machine without a GPU for it, such as a runner of continuous integration, needs."""
     if requested or connected_android_devices():
         yield android_device(requested)
         return
@@ -999,7 +999,8 @@ def android_test_device(requested: str | None):
     serial = f"emulator-{ANDROID_EMULATOR_PORT}"
     terminal.step(f'Starting the emulator of "{name}" without a window')
     emulator = android_sdk() / "emulator" / ("emulator.exe" if host_name() == "windows" else "emulator")
-    process = subprocess.Popen([emulator, "-avd", name, "-port", str(ANDROID_EMULATOR_PORT), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot-save"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    software = ["-gpu", "swiftshader_indirect"] if os.environ.get("HAYLEN_TEST_GPU_SOFTWARE") == "1" else []
+    process = subprocess.Popen([emulator, "-avd", name, "-port", str(ANDROID_EMULATOR_PORT), "-no-window", "-no-audio", "-no-boot-anim", "-no-snapshot-save", *software], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         deadline = time.monotonic() + ANDROID_EMULATOR_BOOT_SECONDS
         while serial not in connected_android_devices() or capture([adb(), "-s", serial, "shell", "getprop", "sys.boot_completed"]).strip() != "1":

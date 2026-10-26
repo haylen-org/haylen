@@ -56,6 +56,9 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
         try {
             fixture = std::make_unique<test::EngineFixture>(std::map<std::string, std::string>{}, nullptr, test::EngineFixture::Options{.gpuDevice = makeDevice});
         } catch (const std::runtime_error& error) {
+            if (test::GpuFixture::isApiRequired()) {
+                FAIL() << "The device of \"" << DeviceFactory::getApiName(GetParam()) << "\", which \"HAYLEN_TEST_GRAPHICS_API\" names, cannot start on this machine: " << error.what();
+            }
             GTEST_SKIP() << "The device of \"" << DeviceFactory::getApiName(GetParam()) << "\" cannot start on this machine: " << error.what();
         }
         target = fixture->engine().getGraphics().createRenderTarget(kSize, kSize);

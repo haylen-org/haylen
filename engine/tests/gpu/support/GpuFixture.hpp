@@ -21,7 +21,7 @@
 
 namespace haylen::test {
 
-// Runs a test on the device of each graphics API that the build compiled, or of the one that the environment variable `HAYLEN_TEST_GRAPHICS_API` names, drawing offscreen with the validation of the API on and the GPU that `getDeviceOptions` picks. A device that cannot start on this machine skips the test with the reason, and an error that the device logs, such as a message of the validation of its API, fails it. The programs come from `engine/tests/gpu/shaders/conformance.glsl`.
+// Runs a test on the device of each graphics API that the build compiled, or of the one that the environment variable `HAYLEN_TEST_GRAPHICS_API` names, drawing offscreen with the validation of the API on and the GPU that `getDeviceOptions` picks. A device that cannot start on this machine skips the test with the reason, or fails it when the variable names its API, and an error that the device logs, such as a message of the validation of its API, fails it. The programs come from `engine/tests/gpu/shaders/conformance.glsl`.
 class GpuFixture : public ::testing::TestWithParam<gpu::Device::Api> {
   public:
     // The pixels that a test reads back, four bytes a pixel with the top row first.
@@ -39,6 +39,9 @@ class GpuFixture : public ::testing::TestWithParam<gpu::Device::Api> {
     // The APIs the tests run on, which `INSTANTIATE_TEST_SUITE_P` takes, and the name each run of a test takes after its API.
     [[nodiscard]] static std::vector<gpu::Device::Api> getTestedApis();
     [[nodiscard]] static std::string nameApi(const ::testing::TestParamInfo<gpu::Device::Api>& info);
+
+    // Whether the environment variable `HAYLEN_TEST_GRAPHICS_API` names the API the tests run on, so a device that cannot start fails them instead of skipping them, as a run of continuous integration that counts on that device needs.
+    [[nodiscard]] static bool isApiRequired();
 
     // The options the tests make devices with: validation on, the software rasterizer of the API when the environment variable `HAYLEN_TEST_GPU_SOFTWARE` is `1`, and the GPU that uses the least power when `HAYLEN_TEST_GPU_LOW_POWER` is `1`.
     [[nodiscard]] static gpu::DeviceFactory::Options getDeviceOptions();
