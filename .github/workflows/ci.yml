@@ -55,6 +55,8 @@ jobs:
           key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Test
         run: python haylen.py --verbose test --config Debug
+      - name: Build the engine with the test port and play its app on it
+        run: python haylen.py --verbose test --port --config Debug
       - name: Build the SDK and a project that finds it with "find_package"
         run: python haylen.py --verbose sdk --config Release --check-consumers package
 
