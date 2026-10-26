@@ -247,6 +247,29 @@ TEST(RendererTest, MergesDrawsThatShadeAndClipAlike) {
     EXPECT_EQ(stats.drawCalls, 4U);
 }
 
+// A clip outside the canvas or without area covers no pixel, so its draws reach no device, which would see a scissor without pixels.
+TEST(RendererTest, SkipsTheDrawsOfClipsThatCoverNoPixel) {
+    test::EngineFixture fixture;
+    const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
+
+    // clang-format off
+    const graphics2d::Renderer::Stats stats = test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        renderer.beginScreen();
+        renderer.pushClip({-1000.0F, -1000.0F, 10.0F, 10.0F});
+        renderer.draw({.texture = texture});
+        renderer.popClip();
+        renderer.pushClip({5.0F, 5.0F, 0.0F, 10.0F});
+        renderer.drawRect({0.0F, 0.0F, 20.0F, 20.0F}, math::Color::white());
+        renderer.popClip();
+        renderer.draw({.texture = texture, .position = {40.0F, 40.0F}});
+    });
+    // clang-format on
+
+    EXPECT_EQ(stats.drawCalls, 1U);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 // A canvas that draws straight into an image cannot sample it, and a lit canvas can, since it draws into images of its own first.
 TEST(RendererTest, RejectsDrawsThatSampleTheirOwnTarget) {
     test::EngineFixture fixture;

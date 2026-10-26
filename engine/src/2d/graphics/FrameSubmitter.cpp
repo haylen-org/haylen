@@ -720,6 +720,11 @@ math::Rect FrameSubmitter::getScissor(const Canvas& canvas, const math::Rect& cl
     return {scissor.x, scissor.y, std::max(0.0F, scissor.width), std::max(0.0F, scissor.height)};
 }
 
+bool FrameSubmitter::showsPixels(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept {
+    const math::Rect scissor = clip == 0 ? passRect : getScissor(canvas, state.clips[clip - 1U], passRect);
+    return scissor.width > 0.0F && scissor.height > 0.0F;
+}
+
 void FrameSubmitter::applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) {
     const math::Rect scissor = clip == 0 ? passRect : getScissor(canvas, state.clips[clip - 1U], passRect);
     state.getGpu().applyScissor(scissor);
@@ -732,9 +737,21 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
     std::optional<std::uint32_t> currentClip;
     std::uint32_t currentShade = 0;
     math::Vec2 currentOffset{};
+    std::optional<std::uint32_t> checkedClip;
+    bool clipShows = true;
 
     for (std::size_t index = begin; index < end; ++index) {
         const Command& command = state.commands[index];
+
+        // A clip that covers no pixel of the pass hides its commands whole, so they draw nothing and change no state, and no device sees a scissor without pixels.
+        if (checkedClip != command.clip) {
+            checkedClip = command.clip;
+            clipShows = showsPixels(canvas, command.clip, passRect);
+        }
+        if (!clipShows) {
+            continue;
+        }
+
         const Shade& shade = state.shades[command.shade];
         if (command.program == Program::Backdrop) {
             drawBackdrop(canvas, command, matrix, passRect);

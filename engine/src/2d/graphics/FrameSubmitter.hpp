@@ -186,6 +186,7 @@ class FrameSubmitter final {
     void growChain(std::vector<std::array<graphics::RenderTarget, 2>>& chain, std::size_t levels, int width, int height);
     void drawPostMaterial(std::size_t shadeIndex, const graphics::Texture& image, graphics::PassTarget pass);
 
+    [[nodiscard]] bool showsPixels(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect) const noexcept;
     void applyClip(const Canvas& canvas, std::uint32_t clip, const math::Rect& passRect);
     void drawCommands(const Canvas& canvas, std::size_t begin, std::size_t end, graphics::PassTarget pass, const math::Rect& passRect);
     void drawImageBlend(const Command& command, const Matrix& matrix);
