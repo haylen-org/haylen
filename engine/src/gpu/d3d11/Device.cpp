@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
 #include <format>
 #include <initializer_list>
 #include <stdexcept>
@@ -44,7 +45,6 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     readCapabilities();
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
     uniforms = std::make_unique<DynamicRing>(*device.Get(), kUniformRingSize, D3D11_BIND_CONSTANT_BUFFER, kUniformAlignment, "haylen-uniform-ring");
-    uploads = std::make_unique<DynamicRing>(*device.Get(), kUploadRingSize, D3D11_BIND_VERTEX_BUFFER, kUploadAlignment, "haylen-upload-ring");
     timer = std::make_unique<FrameTimer>(*device.Get());
 
     const D3D11_QUERY_DESC event{.Query = D3D11_QUERY_EVENT, .MiscFlags = 0};
@@ -190,8 +190,9 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
 
     D3D11_BUFFER_DESC made{};
     made.ByteWidth = static_cast<UINT>(size);
-    made.Usage = desc.usage == Usage::Immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DEFAULT;
+    made.Usage = desc.usage == Usage::Immutable ? D3D11_USAGE_IMMUTABLE : D3D11_USAGE_DYNAMIC;
     made.BindFlags = desc.index ? D3D11_BIND_INDEX_BUFFER : D3D11_BIND_VERTEX_BUFFER;
+    made.CPUAccessFlags = desc.usage == Usage::Dynamic ? D3D11_CPU_ACCESS_WRITE : 0U;
     const D3D11_SUBRESOURCE_DATA initial{.pSysMem = desc.data.data(), .SysMemPitch = 0, .SysMemSlicePitch = 0};
 
     BufferRecord record{.size = size, .usage = desc.usage};
@@ -419,9 +420,9 @@ void Device::destroy(Pipeline pipeline) noexcept {
     }
 }
 
-// The GPU may still read the buffer for the frames in flight, so the data lands in the upload ring and the GPU copies it into the buffer in its turn.
+// A dynamic buffer holds in a frame only what that frame wrote, so the first write of a frame discards the buffer, which makes the driver hand over a fresh copy while the GPU still reads the old one, and the later writes of the frame fill other parts of the same copy.
 void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
-    const BufferRecord& record = buffers.get(buffer.id);
+    BufferRecord& record = buffers.get(buffer.id);
     if (record.usage != Usage::Dynamic) {
         throw std::logic_error("Only a dynamic buffer takes new contents.");
     }
@@ -433,13 +434,17 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     }
     openFrame();
 
-    const std::optional<UINT> source = uploads->write(*context.Get(), data);
-    if (!source) {
-        loseDevice(DXGI_ERROR_DEVICE_REMOVED);
+    const D3D11_MAP mode = record.writtenFrame == frameNumber ? D3D11_MAP_WRITE_NO_OVERWRITE : D3D11_MAP_WRITE_DISCARD;
+    D3D11_MAPPED_SUBRESOURCE mapped{};
+    const HRESULT result = context->Map(record.buffer.Get(), 0, mode, 0, &mapped);
+    if (HResult::isDeviceLoss(result)) {
+        loseDevice(result);
         return;
     }
-    const D3D11_BOX box{.left = *source, .top = 0, .front = 0, .right = *source + static_cast<UINT>(data.size()), .bottom = 1, .back = 1};
-    context->CopySubresourceRegion(record.buffer.Get(), 0, static_cast<UINT>(offset), 0, 0, uploads->get(), 0, &box);
+    HResult::check(result, "map a dynamic buffer");
+    std::memcpy(static_cast<std::byte*>(mapped.pData) + offset, data.data(), data.size());
+    context->Unmap(record.buffer.Get(), 0);
+    record.writtenFrame = frameNumber;
 }
 
 // Direct3D 11 copies no buffer into a texture, so the driver stages the pixels, and replacing a whole image of one subresource lets it hand the GPU a fresh copy instead of waiting for the frames that read the old one.
@@ -952,6 +957,7 @@ void Device::commit() {
     context->End(frameFinished[frameIndex].Get());
     frameSubmitted[frameIndex] = true;
     frameIndex = (frameIndex + 1) % kFramesInFlight;
+    ++frameNumber;
     frameOpen = false;
     presentPending = false;
 

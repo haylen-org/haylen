@@ -29,7 +29,7 @@ class Swapchain;
 
 namespace haylen::gpu::d3d11 {
 
-// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.1, which binds parts of one constant buffer to each draw. Uniforms and the writes of buffers go through rings of dynamic buffers that map without waiting, images take their pixels through the staging of the driver, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which event queries enforce. Validation turns on the debug layer and moves its messages into the log.
+// The device of Direct3D 11, on GPUs of feature level 11_0 and later with the runtime of Direct3D 11.1, which binds parts of one constant buffer to each draw. Uniforms go through a ring of one dynamic buffer and dynamic buffers take their data straight from the CPU, both mapped without waiting, images take their pixels through the staging of the driver, and the context state it keeps skips every binding that would change nothing. The GPU runs at most `kFramesInFlight` frames behind the CPU, which event queries enforce. Validation turns on the debug layer and moves its messages into the log.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 2;
@@ -87,14 +87,14 @@ class Device final : public gpu::Device {
 
   private:
     static constexpr UINT kUniformRingSize = 4U << 20U;
-    static constexpr UINT kUploadRingSize = 4U << 20U;
     static constexpr UINT kUniformAlignment = 256;
-    static constexpr UINT kUploadAlignment = 16;
 
+    // A dynamic buffer remembers the frame that wrote it last, since the first write of a frame hands the GPU a fresh copy of it.
     struct BufferRecord {
         Microsoft::WRL::ComPtr<ID3D11Buffer> buffer;
         std::size_t size = 0;
         Usage usage = Usage::Immutable;
+        std::uint64_t writtenFrame = 0;
     };
 
     // A view that a pass draws into, at a mip level and a layer of its image.
@@ -233,11 +233,11 @@ class Device final : public gpu::Device {
     direct3d::Slots<PipelineRecord> pipelines{"pipeline"};
 
     std::unique_ptr<DynamicRing> uniforms;
-    std::unique_ptr<DynamicRing> uploads;
     std::unique_ptr<FrameTimer> timer;
     std::array<Microsoft::WRL::ComPtr<ID3D11Query>, kFramesInFlight> frameFinished;
     std::array<bool, kFramesInFlight> frameSubmitted{};
     std::size_t frameIndex = 0;
+    std::uint64_t frameNumber = 1;
     bool frameOpen = false;
 
     std::optional<Surface> surface;

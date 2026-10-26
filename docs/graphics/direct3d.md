@@ -43,7 +43,7 @@ Images rest in the state that shaders read. A pass moves its attachments into th
 
 ## How the Direct3D 11 device draws a frame
 
-The Direct3D 11 device draws on the immediate context. It writes uniforms into one large dynamic buffer and binds a window of that buffer to each draw, which Direct3D 11.1 allows. Each piece of data goes after the previous one without waiting for the GPU, and when the buffer is full the driver hands the device a fresh copy while the GPU keeps reading the old one. Writes into buffers go through a second buffer of the same kind and a copy on the GPU, so the GPU never waits for the CPU.
+The Direct3D 11 device draws on the immediate context. It writes uniforms into one large dynamic buffer and binds a window of that buffer to each draw, which Direct3D 11.1 allows. Each piece of data goes after the previous one without waiting for the GPU, and when the buffer is full the driver hands the device a fresh copy while the GPU keeps reading the old one. A dynamic buffer holds in a frame only what that frame wrote into it, so the first write of a frame asks the driver for a fresh copy of the buffer and the CPU writes straight into it, while the GPU keeps reading the copy of the frame before.
 
 The device remembers what the context holds: the pipeline, the shaders, the states, the buffers, the textures and the samplers. A call that would set what the context already holds is skipped. Event queries keep the CPU at most two frames ahead of the GPU.
 
