@@ -86,6 +86,31 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
+# SDL opens the window, runs the frames and reads the input of every platform but Android. It builds as a static library with its video and event subsystems alone, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts, and Apple builds keep Metal, which the window hands to the Metal device.
+set(haylen_sdl_options
+  "SDL_SHARED OFF" "SDL_STATIC ON" "SDL_TEST_LIBRARY OFF" "SDL_TESTS OFF" "SDL_EXAMPLES OFF" "SDL_INSTALL OFF" "SDL_UNINSTALL OFF"
+  "SDL_AUDIO OFF" "SDL_GPU OFF" "SDL_RENDER OFF" "SDL_CAMERA OFF" "SDL_JOYSTICK OFF" "SDL_HAPTIC OFF" "SDL_HIDAPI OFF" "SDL_POWER OFF" "SDL_SENSOR OFF" "SDL_DIALOG OFF" "SDL_TRAY OFF"
+  "SDL_OFFSCREEN OFF" "SDL_DUMMYVIDEO OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBUDEV OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
+)
+# SDL turns the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS into keys only while GameController reads no keyboard, and the arrows and escape of a keyboard into key commands too, while the engine reads every key of a keyboard through GameController, so the patch leaves keyboards to GameController and turns the presses of remotes and game controllers into keys whether a keyboard is connected or not. It also drops the swipes of the Apple TV remote that SDL turns into arrows, since the engine reads the touch surface of the remote as its stick.
+if(NOT ANDROID)
+  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch")
+  set(sdl_hash 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3)
+  haylen_patched_package_key(sdl_cache_key ${sdl_hash} ${sdl_patches})
+  CPMAddPackage(
+    NAME SDL3
+    VERSION 3.4.18
+    URL "https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.tar.gz"
+    URL_HASH SHA256=${sdl_hash}
+    PATCHES ${sdl_patches}
+    CUSTOM_CACHE_KEY ${sdl_cache_key}
+    OPTIONS ${haylen_sdl_options}
+    EXCLUDE_FROM_ALL YES
+    SYSTEM YES
+  )
+  haylen_disable_warnings(SDL3-static)
+endif()
+
 # GameActivity of the AndroidX games libraries hosts Android apps. The script `haylen.py` builds the player outside Gradle, so the engine links the static library of its native side from the prefab folder of the AAR, whose Java classes the Android library and template use at the same version.
 if(ANDROID)
   CPMAddPackage(

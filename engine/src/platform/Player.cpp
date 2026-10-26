@@ -14,6 +14,7 @@
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/graphics/Device.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Error.hpp"

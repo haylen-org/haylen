@@ -74,7 +74,7 @@ What each platform needs on top of that:
 | --- | --- | --- | --- | --- | --- |
 | macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | The Xcode Command Line Tools, or Xcode for `--xcode`. |
 | Windows | `windows` | Windows | Direct3D 11 | Ninja when it is on `PATH`, otherwise the default of CMake (Visual Studio) | Visual Studio with the C++ workload. Run Ninja builds from a developer command prompt, so MSVC is on `PATH`. |
-| Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr and OpenGL, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev` on Debian and Ubuntu. |
+| Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr, OpenGL, EGL, Wayland, xkbcommon and D-Bus, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev` on Debian and Ubuntu. SDL builds its Wayland support and the input methods of IBus and Fcitx with them. |
 | iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen to generate the Apple project again. |
 | tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
 | Android | `android` | any | OpenGL ES 3 | Ninja | The Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37.2 and platform-tools, and JDK 17 or newer. |
@@ -299,6 +299,7 @@ A patched package, such as Sokol, keys its place in the cache with `haylen_patch
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it and the build holds one copy. |
 | Varn | commit `7a20070` | The Lua runtime, the event loop, the worker pools and the modules `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and the others. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links. Varn picks the HTTP client of each platform itself: the Apple one on iOS, tvOS and Mac Catalyst, the Android one on Android and `fetch` on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. ThreadSanitizer builds tell Varn to keep the yields of Lua as exceptions, because the sanitizer cannot follow the `_longjmp` of a yield. |
 | Sokol | commit `5e94d12` | Headers only. The Sokol backend compiles the implementation for the chosen graphics API, with the [patches](#patches) of `engine/cmake/patches`. |
+| SDL | 3.4.18 | zlib license. The release archive of SDL 3, with the [patch](#sdl-uikit-pressespatch) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video and event subsystems, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. It opens the window, runs the frames and reads the input on every platform but Android. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash. Its prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images. It publishes no releases, so it is pinned to a commit of its default branch. |
@@ -345,7 +346,15 @@ Two more notes hold for miniaudio. It manages the audio session on iOS and tvOS 
 
 ### Patches
 
-A change to the source of a dependency is a patch in `engine/cmake/patches/` that CPM applies. CPM applies the patches of Sokol in the order of the list in `engine/cmake/haylen-dependencies.cmake`. Each patch below fixes one problem of the pinned commit.
+A change to the source of a dependency is a patch in `engine/cmake/patches/` that CPM applies. CPM applies the patches of each package in the order of its list in `engine/cmake/haylen-dependencies.cmake`. Each patch below fixes one problem of the pinned commit.
+
+#### sdl-uikit-presses.patch
+
+SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS into keys only while GameController reads no keyboard, and it turns the arrows and escape of a keyboard into key commands of its view controller too. The runtime reads every key of a hardware keyboard through `GCKeyboard`, so those keys would arrive twice, and while a keyboard is connected SDL drops the presses of remotes and game controllers altogether. SDL also turns the swipes on the touch surface of the Apple TV remote into arrows, while the runtime reads that surface as the stick of the remote. The patch:
+
+- Leaves the presses that carry a key of a keyboard to GameController, and turns the other presses into keys whether a keyboard is connected or not. On tvOS it keeps the Menu press that the Escape key of a keyboard makes, so Escape goes back like the remote.
+- Removes the key commands of the arrows and escape.
+- Removes the swipe gestures of the Apple TV remote.
 
 #### sokol-ios-view-size.patch
 

@@ -40,7 +40,7 @@ jobs:
           python-version: "3.15"
       - name: Install Linux packages
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - name: Set up MSVC
         if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1.13.0
@@ -77,7 +77,7 @@ jobs:
         with:
           python-version: "3.15"
       # The release that the memory check builds needs the content tool of the desktop artifacts, which links the libraries of Linux windows.
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
@@ -104,7 +104,7 @@ jobs:
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
       - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+      - run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
@@ -153,7 +153,7 @@ jobs:
           python-version: "3.15"
       - name: Install Linux packages
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev dpkg-dev desktop-file-utils
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev dpkg-dev desktop-file-utils
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
         run: pip install cmake
@@ -199,7 +199,7 @@ jobs:
         with:
           python-version: "3.15"
       - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
@@ -215,7 +215,7 @@ jobs:
         with:
           python-version: "3.15"
       - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y ninja-build clang libclang-rt-dev libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build clang libclang-rt-dev libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
@@ -231,7 +231,7 @@ jobs:
         with:
           python-version: "3.15"
       - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm
@@ -252,7 +252,7 @@ jobs:
           python-version: "3.15"
       # The release takes the content tool of the desktop artifacts, which build with the player of this system.
       - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev
+        run: sudo apt-get update && sudo apt-get install -y ninja-build libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev
       - uses: actions/cache@v6
         with:
           path: .cache/cpm

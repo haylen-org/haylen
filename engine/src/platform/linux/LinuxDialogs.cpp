@@ -102,7 +102,7 @@ void LinuxDialogs::showMessage(std::uint64_t id, const DialogRequest::Message& m
     gtk.connect(dialog, "response", reinterpret_cast<void (*)()>(&messageResponded), nullptr, nullptr, 0);
     shown.emplace(id, Shown{.dialog = dialog});
 
-    if (parent == nullptr) {
+    if (parent == nullptr && NativeWindow::getHandle() != nullptr) {
         parent = gtk.newForeignWindow(gtk.getDefaultDisplay(), static_cast<unsigned long>(reinterpret_cast<std::uintptr_t>(NativeWindow::getHandle())));
     }
     gtk.realize(dialog);

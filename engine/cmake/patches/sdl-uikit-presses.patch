@@ -1,0 +1,135 @@
+Leaves the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS to GameController, through which the engine reads every key with its release, so SDL turns only the presses of remotes and game controllers into keys, whether a keyboard is connected or not, and no longer turns arrows and escape into key commands or the swipes of the Apple TV remote into arrows, which the engine reads as the stick of the remote.
+
+--- a/src/video/uikit/SDL_uikitview.m
++++ b/src/video/uikit/SDL_uikitview.m
+@@ -57,25 +57,6 @@
+ - (instancetype)initWithFrame:(CGRect)frame
+ {
+     if ((self = [super initWithFrame:frame])) {
+-#ifdef SDL_PLATFORM_TVOS
+-        // Apple TV Remote touchpad swipe gestures.
+-        UISwipeGestureRecognizer *swipeUp = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeGesture:)];
+-        swipeUp.direction = UISwipeGestureRecognizerDirectionUp;
+-        [self addGestureRecognizer:swipeUp];
+-
+-        UISwipeGestureRecognizer *swipeDown = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeGesture:)];
+-        swipeDown.direction = UISwipeGestureRecognizerDirectionDown;
+-        [self addGestureRecognizer:swipeDown];
+-
+-        UISwipeGestureRecognizer *swipeLeft = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeGesture:)];
+-        swipeLeft.direction = UISwipeGestureRecognizerDirectionLeft;
+-        [self addGestureRecognizer:swipeLeft];
+-
+-        UISwipeGestureRecognizer *swipeRight = [[UISwipeGestureRecognizer alloc] initWithTarget:self action:@selector(swipeGesture:)];
+-        swipeRight.direction = UISwipeGestureRecognizerDirectionRight;
+-        [self addGestureRecognizer:swipeRight];
+-#endif
+-
+ #if !defined(SDL_PLATFORM_TVOS)
+         /* Pinch gestures */
+         UIPinchGestureRecognizer *pinchGesture = [[UIPinchGestureRecognizer alloc] initWithTarget:self action:@selector(sdlPinchGesture:)];
+@@ -556,13 +537,24 @@
+     return SDL_SCANCODE_UNKNOWN;
+ }
+ 
++// The keys of a hardware keyboard reach the app through GameController, except the Escape key of tvOS, which makes the Menu press of the remote.
++- (BOOL)isKeyboardPress:(UIPress *)press
++{
++#ifdef SDL_PLATFORM_TVOS
++    return press.key != nil && press.type != UIPressTypeMenu;
++#else
++    return press.key != nil;
++#endif
++}
++
+ - (void)pressesBegan:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
+ {
+-    if (!SDL_HasKeyboard()) {
+-        for (UIPress *press in presses) {
+-            SDL_Scancode scancode = [self scancodeFromPress:press];
+-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
++    for (UIPress *press in presses) {
++        if ([self isKeyboardPress:press]) {
++            continue;
+         }
++        SDL_Scancode scancode = [self scancodeFromPress:press];
++        SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, true);
+     }
+     if (SDL_TextInputActive(sdlwindow)) {
+         [super pressesBegan:presses withEvent:event];
+@@ -571,11 +563,12 @@
+ 
+ - (void)pressesEnded:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
+ {
+-    if (!SDL_HasKeyboard()) {
+-        for (UIPress *press in presses) {
+-            SDL_Scancode scancode = [self scancodeFromPress:press];
+-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
++    for (UIPress *press in presses) {
++        if ([self isKeyboardPress:press]) {
++            continue;
+         }
++        SDL_Scancode scancode = [self scancodeFromPress:press];
++        SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
+     }
+     if (SDL_TextInputActive(sdlwindow)) {
+         [super pressesEnded:presses withEvent:event];
+@@ -584,11 +577,12 @@
+ 
+ - (void)pressesCancelled:(NSSet<UIPress *> *)presses withEvent:(UIPressesEvent *)event
+ {
+-    if (!SDL_HasKeyboard()) {
+-        for (UIPress *press in presses) {
+-            SDL_Scancode scancode = [self scancodeFromPress:press];
+-            SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
++    for (UIPress *press in presses) {
++        if ([self isKeyboardPress:press]) {
++            continue;
+         }
++        SDL_Scancode scancode = [self scancodeFromPress:press];
++        SDL_SendKeyboardKey(UIKit_GetEventTimestamp([event timestamp]), SDL_GLOBAL_KEYBOARD_ID, 0, scancode, false);
+     }
+     if (SDL_TextInputActive(sdlwindow)) {
+         [super pressesCancelled:presses withEvent:event];
+--- a/src/video/uikit/SDL_uikitviewcontroller.m
++++ b/src/video/uikit/SDL_uikitviewcontroller.m
+@@ -306,39 +306,6 @@
+                  object:nil];
+ }
+ 
+-- (NSArray *)keyCommands
+-{
+-    NSMutableArray *commands = [[NSMutableArray alloc] init];
+-    [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputUpArrow modifierFlags:kNilOptions action:@selector(handleCommand:)]];
+-    [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputDownArrow modifierFlags:kNilOptions action:@selector(handleCommand:)]];
+-    [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputLeftArrow modifierFlags:kNilOptions action:@selector(handleCommand:)]];
+-    [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputRightArrow modifierFlags:kNilOptions action:@selector(handleCommand:)]];
+-    [commands addObject:[UIKeyCommand keyCommandWithInput:UIKeyInputEscape modifierFlags:kNilOptions action:@selector(handleCommand:)]];
+-    return [NSArray arrayWithArray:commands];
+-}
+-
+-- (void)handleCommand:(UIKeyCommand *)keyCommand
+-{
+-    SDL_Scancode scancode = SDL_SCANCODE_UNKNOWN;
+-    NSString *input = keyCommand.input;
+-
+-    if (input == UIKeyInputUpArrow) {
+-        scancode = SDL_SCANCODE_UP;
+-    } else if (input == UIKeyInputDownArrow) {
+-        scancode = SDL_SCANCODE_DOWN;
+-    } else if (input == UIKeyInputLeftArrow) {
+-        scancode = SDL_SCANCODE_LEFT;
+-    } else if (input == UIKeyInputRightArrow) {
+-        scancode = SDL_SCANCODE_RIGHT;
+-    } else if (input == UIKeyInputEscape) {
+-        scancode = SDL_SCANCODE_ESCAPE;
+-    }
+-
+-    if (scancode != SDL_SCANCODE_UNKNOWN) {
+-        SDL_SendKeyboardKeyAutoRelease(0, scancode);
+-    }
+-}
+-
+ - (void)setView:(UIView *)view
+ {
+     [super setView:view];

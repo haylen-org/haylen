@@ -839,6 +839,7 @@ if(APPLE)
     src/platform/apple/ApplePresenter.mm
     src/platform/apple/AppleRemote.mm
     src/platform/apple/AppleRuntime.mm
+    src/platform/apple/AppleScroll.mm
     src/platform/apple/AppleScreens.mm
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleSplash.mm

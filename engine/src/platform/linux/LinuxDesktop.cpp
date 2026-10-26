@@ -162,6 +162,9 @@ void LinuxDesktop::applySizeHints(Display* display, ::Window window, int width, 
 void LinuxDesktop::setStyle(const WindowStyle& value) {
     style = value;
     Display* display = getDisplay();
+    if (display == nullptr) {
+        return;
+    }
     const ::Window window = getWindow();
     const Atom motif = XInternAtom(display, "_MOTIF_WM_HINTS", False);
     const std::array<long, 5> hints{kMotifDecorations, 0, value.decorated ? 1 : 0, 0, 0};
@@ -177,6 +180,10 @@ void LinuxDesktop::setStyle(const WindowStyle& value) {
 // The framebuffer covers the window pixel for pixel on X11.
 math::Rect LinuxDesktop::getFrame() {
     Display* display = getDisplay();
+    if (display == nullptr) {
+        const math::Vec2 size = NativeWindow::getFramebufferSize() / NativeWindow::getScale();
+        return {0.0F, 0.0F, size.x, size.y};
+    }
     int x = 0;
     int y = 0;
     ::Window child = 0;
@@ -188,7 +195,7 @@ math::Rect LinuxDesktop::getFrame() {
 std::string LinuxDesktop::getTitle() {
     Display* display = getDisplay();
     char* name = nullptr;
-    if (XFetchName(display, getWindow(), &name) == 0 || name == nullptr) {
+    if (display == nullptr || XFetchName(display, getWindow(), &name) == 0 || name == nullptr) {
         return {};
     }
     std::string title(name);
@@ -198,6 +205,9 @@ std::string LinuxDesktop::getTitle() {
 
 math::Vec2 LinuxDesktop::getOrigin() {
     Display* display = getDisplay();
+    if (display == nullptr) {
+        return {};
+    }
     int x = 0;
     int y = 0;
     ::Window child = 0;
@@ -207,6 +217,9 @@ math::Vec2 LinuxDesktop::getOrigin() {
 
 void LinuxDesktop::setFrame(const math::Rect& value) {
     Display* display = getDisplay();
+    if (display == nullptr) {
+        return;
+    }
     const ::Window window = getWindow();
     const float scale = getDesktopScale(display);
     const auto width = static_cast<int>(std::lround(value.width * scale));
@@ -225,6 +238,9 @@ void LinuxDesktop::setPassthrough(Window::Passthrough mode, std::span<const math
     regions.assign(value.begin(), value.end());
 
     Display* display = getDisplay();
+    if (display == nullptr) {
+        return;
+    }
     const ::Window window = getWindow();
     if (mode == Window::Passthrough::Off) {
         XShapeCombineMask(display, window, ShapeInput, 0, 0, None, ShapeSet);
@@ -254,6 +270,9 @@ void LinuxDesktop::setPassthrough(Window::Passthrough mode, std::span<const math
 // The window manager moves the window once the grab of the press ends, and keeps the release of the button from the app.
 void LinuxDesktop::startDrag() {
     Display* display = getDisplay();
+    if (display == nullptr) {
+        return;
+    }
     const ::Window window = getWindow();
     ::Window root = 0;
     ::Window child = 0;
@@ -285,6 +304,9 @@ void LinuxDesktop::startDrag() {
 
 // The event loop of the backend drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
 void LinuxDesktop::watch() {
+    if (getDisplay() == nullptr) {
+        return;
+    }
     watcher = XOpenDisplay(nullptr);
     if (watcher == nullptr) {
         core::Log::error("A second connection to the X11 display could not be opened, so the app will not hear window moves and monitor changes.");
