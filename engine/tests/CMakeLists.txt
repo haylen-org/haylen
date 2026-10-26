@@ -194,6 +194,7 @@ set(HAYLEN_TEST_SOURCES
   support/ContentServer.cpp
   support/CountingPackage.cpp
   support/EngineFixture.cpp
+  support/EventLoop.cpp
   support/FakeVideoDecoder.cpp
   support/ReleaseFixture.cpp
   support/TemporaryDirectory.cpp
@@ -259,31 +260,7 @@ endif()
 haylen_enable_warnings(haylen-tests)
 haylen_enable_coverage(haylen-tests)
 
-# The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen.py test --gpu`.
-add_executable(haylen-gpu-tests
-  gpu/BlendTests.cpp
-  gpu/DepthStencilTests.cpp
-  gpu/DrawTests.cpp
-  gpu/LifetimeTests.cpp
-  gpu/PassTests.cpp
-  gpu/RendererImageTests.cpp
-  gpu/TextureTests.cpp
-  gpu/support/GpuFixture.cpp
-  gpu/support/ImageComparison.cpp
-  gpu/support/LoggedErrors.cpp
-  gpu/support/OffscreenSurface.cpp
-  support/AllocationTracker.cpp
-  support/EngineFixture.cpp
-  support/TemporaryDirectory.cpp
-  support/TestFiles.cpp
-  ${HAYLEN_GPU_TEST_SOURCES}
-)
-set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} GTest::gtest_main)
-target_include_directories(haylen-gpu-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
-target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${CMAKE_CURRENT_LIST_DIR}/data/gpu" HAYLEN_GPU_TEST_OUTPUT="${CMAKE_BINARY_DIR}/gpu-test-output")
-haylen_compile_shader(haylen-gpu-tests SOURCE "${CMAKE_CURRENT_LIST_DIR}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
-haylen_enable_warnings(haylen-gpu-tests)
+include("${CMAKE_CURRENT_LIST_DIR}/gpu/gpu-tests.cmake")
 
 # The native library that the native interop tests call. It sits next to the test executable and the headless player, where `native.load` finds it by its exact name, which the Debug postfix that Poco forces would change.
 add_library(haylen-native-test SHARED native/NativeTest.c)

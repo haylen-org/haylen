@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Haylen GPU tests</title>
+</head>
+<body>
+  <canvas id="canvas" width="64" height="64"></canvas>
+  <script>
+    // The GPU tests run in this page on the graphics API that the parameter "api" of the address names, or on every device of the build, and print their output and their result to the console, which the driver of "gpu-tests.mjs" reads.
+    const api = new URLSearchParams(location.search).get("api") ?? "";
+    var Module = {
+      arguments: ["--gtest_color=no"],
+      preRun: [() => { ENV.HAYLEN_TEST_GRAPHICS_API = api; }],
+      print: (text) => console.log(text),
+      printErr: (text) => console.error(text),
+      onExit: (code) => console.log(`The GPU tests finished with the status ${code}.`),
+      onAbort: (reason) => console.log(`The GPU tests stopped: ${reason}`),
+    };
+  </script>
+  <script src="haylen-gpu-tests.js"></script>
+</body>
+</html>

@@ -8,11 +8,11 @@
 #include <optional>
 #include <stdexcept>
 #include <string_view>
-#include <thread>
 #include <utility>
 
 #include "core/EmbeddedFiles.hpp"
 #include "gpu/DeviceFactory.hpp"
+#include "support/EventLoop.hpp"
 
 namespace haylen::test {
 
@@ -55,6 +55,14 @@ bool GpuFixture::isEnabled(const char* variable) {
     return ::testing::AssertionSuccess();
 }
 
+// The tests wait for an API whose device arrives in a later turn of the event loop, such as WebGPU, before they make its device.
+std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, const std::optional<gpu::Surface>& surface) {
+    while (!gpu::DeviceFactory::prepare(api)) {
+        EventLoop::yield();
+    }
+    return gpu::DeviceFactory::create(api, surface, getDeviceOptions());
+}
+
 void GpuFixture::SetUp() {
     if (GetParam() == gpu::Device::Api::None) {
         FAIL() << "The variable \"HAYLEN_TEST_GRAPHICS_API\" names \"" << std::getenv("HAYLEN_TEST_GRAPHICS_API") << "\", which is not a graphics API of \"gpu::Device::kApiNames\".";
@@ -64,7 +72,7 @@ void GpuFixture::SetUp() {
 
     try {
         surface = std::make_unique<OffscreenSurface>(GetParam());
-        made = gpu::DeviceFactory::create(GetParam(), surface->getSurface(), getDeviceOptions());
+        made = makeDevice(GetParam(), surface->getSurface());
     } catch (const std::runtime_error& error) {
         GTEST_SKIP() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\" cannot start on this machine: " << error.what();
     }
@@ -134,7 +142,7 @@ GpuFixture::Pixels GpuFixture::read(gpu::Device::Image image, int width, int hei
         std::optional<std::vector<std::uint8_t>> pixels = copy->poll();
         if (!pixels) {
             made->commit();
-            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            EventLoop::yield();
             continue;
         }
 

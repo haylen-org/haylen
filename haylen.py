@@ -781,11 +781,12 @@ def command_test_web(args: argparse.Namespace) -> None:
     terminal.success(f"The page downloaded {report['receivedBytes']} bytes with a peak of {report['peakWasmBytes']} bytes of WebAssembly memory and kept {report['buffersAfterCollection']} bytes of array buffers, and a page without files kept the medium file in memory and refused the large one for want of room.")
 
 
-def run_web_memory_page(url: str, store: str) -> dict:
-    """Opens the page of the memory check in a headless browser of its own and returns what the driver measured, with the files of the browser or, with "memory", as a browser that keeps no files for the page."""
+@contextlib.contextmanager
+def headless_browser(arguments: list[str], purpose: str):
+    """Starts a headless Chrome of its own with a profile that goes away with it, and yields the port of its debugging protocol once it answers."""
     debugging = free_port()
     profile = Path(tempfile.mkdtemp())
-    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", *arguments, "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         deadline = time.monotonic() + 30
         while True:
@@ -794,17 +795,28 @@ def run_web_memory_page(url: str, store: str) -> dict:
                 break
             except OSError:
                 if time.monotonic() > deadline:
-                    raise BuildError("The headless browser of the memory check of the web did not start.") from None
+                    raise BuildError(f"The headless browser of {purpose} did not start.") from None
                 time.sleep(0.2)
-        node = next((emsdk_root() / "node").glob(f"*/bin/{'node.exe' if host_name() == 'windows' else 'node'}"), None)
-        if node is None:
-            raise BuildError(f'The Emscripten SDK holds no Node, which runs the memory check of the web. Install it again with "{TOOL} tools --emsdk".')
-        terminal.step(f"Running the memory check of the web in a headless browser{' that keeps no files for the page' if store == 'memory' else ''}")
-        return json.loads(capture([node, WEB_MEMORY_DRIVER, str(debugging), url, str(WEB_MEMORY_SECONDS), store]))
+        yield debugging
     finally:
         browser.terminate()
         browser.wait()
         shutil.rmtree(profile, ignore_errors=True)
+
+
+def emsdk_node() -> Path:
+    """The Node of the Emscripten SDK, which runs the drivers of the pages that the tests of the web open in a headless browser."""
+    node = next((emsdk_root() / "node").glob(f"*/bin/{'node.exe' if host_name() == 'windows' else 'node'}"), None)
+    if node is None:
+        raise BuildError(f'The Emscripten SDK holds no Node, which runs the tests of the web. Install it again with "{TOOL} tools --emsdk".')
+    return node
+
+
+def run_web_memory_page(url: str, store: str) -> dict:
+    """Opens the page of the memory check in a headless browser of its own and returns what the driver measured, with the files of the browser or, with "memory", as a browser that keeps no files for the page."""
+    with headless_browser([], "the memory check of the web") as debugging:
+        terminal.step(f"Running the memory check of the web in a headless browser{' that keeps no files for the page' if store == 'memory' else ''}")
+        return json.loads(capture([emsdk_node(), WEB_MEMORY_DRIVER, str(debugging), url, str(WEB_MEMORY_SECONDS), store]))
 
 
 def check_web_memory_without_files(report: dict) -> None:
@@ -836,11 +848,15 @@ GPU_GRAPHICS_APIS = ("metal", "direct3D12", "direct3D11", "vulkan", "openGl", "o
 
 
 def command_test(args: argparse.Namespace) -> None:
-    if args.platform in ("web", "web-webgl2"):
+    gpu = args.gpu or args.graphics_api in GPU_GRAPHICS_APIS
+    if args.platform in WEB_PLATFORMS and gpu:
+        command_test_gpu_web(args)
+        return
+    if args.platform in WEB_PLATFORMS:
         command_test_web(args)
         return
     args.platform = host_name()
-    if args.gpu or args.graphics_api in GPU_GRAPHICS_APIS:
+    if gpu:
         command_test_gpu(args)
         return
     args.target = "haylen-tests"
@@ -862,6 +878,36 @@ def command_test_gpu(args: argparse.Namespace) -> None:
     terminal.step(f'Running the GPU tests on "{api}"' if api else "Running the GPU tests on every device of the build")
     run([build_dir(args.platform, args.config, args.sanitizers) / "bin" / executable_name("haylen-gpu-tests")], cwd=ENGINE_DIR / "tests", env=env, stream=True)
     terminal.success("The GPU tests passed.")
+
+
+# The GPU tests of the web: a tree of their own builds them for the browser, and a page of a headless Chrome runs them, whose WebGPU draws through SwiftShader on a machine without a GPU for it.
+WEB_GPU_TESTS_DRIVER = ENGINE_DIR / "tests" / "web" / "gpu-tests.mjs"
+WEB_GPU_TESTS_SECONDS = 1200
+WEB_GPU_BROWSER_FLAGS = ["--enable-unsafe-webgpu", "--enable-unsafe-swiftshader", "--use-angle=swiftshader"]
+
+
+def command_test_gpu_web(args: argparse.Namespace) -> None:
+    """Builds the GPU tests for the browser and runs them in a page of a headless browser, on every device of the build or on the one that "--graphics-api" names, and stops when a test fails or the page does not finish."""
+    api = args.graphics_api if args.graphics_api in GPU_GRAPHICS_APIS else None
+    directory = BUILD_ROOT / f"web-gpu-tests-{args.config.lower()}"
+    if not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
+        terminal.step(f"Configuring the GPU tests of the web in `{shown_path(directory)}`")
+        configure_web_tree([ensure_emsdk(), "cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_BUILD_TYPE={args.config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"], directory)
+    terminal.step(f"Building the GPU tests of the web in `{shown_path(directory)}`")
+    run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
+
+    handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(directory / "bin"))
+    server = LocalServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        with headless_browser(WEB_GPU_BROWSER_FLAGS, "the GPU tests of the web") as debugging:
+            terminal.step(f'Running the GPU tests of the web on "{api}"' if api else "Running the GPU tests of the web on every device of the build")
+            page = f"http://127.0.0.1:{server.server_address[1]}/gpu-tests.html?api={api or ''}"
+            run([emsdk_node(), WEB_GPU_TESTS_DRIVER, str(debugging), page, str(WEB_GPU_TESTS_SECONDS), directory / "gpu-test-output"], stream=True)
+    finally:
+        server.shutdown()
+        server.server_close()
+    terminal.success("The GPU tests of the web passed.")
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
@@ -5770,7 +5816,7 @@ def build_parser() -> argparse.ArgumentParser:
     tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
     tools.set_defaults(handler=command_tools)
 
-    for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, 'Build and run the engine tests on this machine, or with "--platform web" the memory check of the web in a headless browser.')):
+    for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, 'Build and run the engine tests on this machine, or with "--platform web" the memory check of the web in a headless browser. With "--gpu" it runs the GPU tests instead, which the web runs in a headless browser too.')):
         sub = commands.add_parser(name, parents=[common], help=help_text)
         add_build_options(sub, gpu_tests=name == "test")
         sub.set_defaults(handler=handler)

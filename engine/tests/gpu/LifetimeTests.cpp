@@ -4,7 +4,6 @@
 #include <chrono>
 #include <span>
 #include <string>
-#include <thread>
 #include <vector>
 
 #include "core/EmbeddedFiles.hpp"
@@ -12,6 +11,7 @@
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/graphics/Shader.hpp"
 #include "support/AllocationTracker.hpp"
+#include "support/EventLoop.hpp"
 #include "support/VarnRuntime.hpp"
 
 namespace haylen::gpu {
@@ -122,7 +122,7 @@ TEST_P(GpuLifetimeTest, MeasuresTheFramesOfTheGpuWhereItCan) {
     const auto deadline = std::chrono::steady_clock::now() + kReadTimeout;
     while (!device().getGpuFrameSeconds() && std::chrono::steady_clock::now() < deadline) {
         drawFrame(target, pipeline, buffer, math::Color::white());
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        test::EventLoop::yield();
     }
     ASSERT_TRUE(device().getGpuFrameSeconds().has_value());
     EXPECT_GE(*device().getGpuFrameSeconds(), 0.0);

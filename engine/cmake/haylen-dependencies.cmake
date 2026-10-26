@@ -233,7 +233,7 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
-if(HAYLEN_BUILD_TESTS AND HAYLEN_DESKTOP)
+if(HAYLEN_BUILD_TESTS AND (HAYLEN_DESKTOP OR EMSCRIPTEN))
   CPMAddPackage(
     NAME googletest
     URL "https://github.com/google/googletest/archive/refs/tags/v1.18.0.tar.gz"

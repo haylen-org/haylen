@@ -3,11 +3,11 @@
 #include <lua.hpp>
 
 #include <stdexcept>
-#include <thread>
 
 #include "haylen/io/MemoryPackage.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "support/EventLoop.hpp"
 #include "support/TestFiles.hpp"
 
 namespace haylen::test {
@@ -70,7 +70,7 @@ bool EngineFixture::frameUntil(const std::function<bool()>& condition, std::chro
             return false;
         }
         runningEngine->frame(1.0 / 60.0);
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        EventLoop::yield();
     }
     return true;
 }

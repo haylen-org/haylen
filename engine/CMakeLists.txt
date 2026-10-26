@@ -908,8 +908,8 @@ if(HAYLEN_BUILD_SDK)
   include(haylen-install)
 endif()
 
-# The headless host draws through the null GPU device, which checks every call of the engine against the contract of the device and draws nothing.
-if(HAYLEN_DESKTOP)
+# The headless host draws through the null GPU device, which checks every call of the engine against the contract of the device and draws nothing, and the GPU tests of the web run the engine on it with a real device.
+if(HAYLEN_DESKTOP OR (EMSCRIPTEN AND HAYLEN_BUILD_TESTS))
   add_library(haylen-headless-host OBJECT
     src/gpu/NullDevice.cpp
     src/platform/headless/HeadlessHost.cpp
@@ -1051,4 +1051,7 @@ endif()
 if(HAYLEN_BUILD_TESTS AND HAYLEN_DESKTOP)
   enable_testing()
   add_subdirectory(tests)
+elseif(HAYLEN_BUILD_TESTS AND EMSCRIPTEN)
+  # The web builds the GPU tests alone, which run in a page of a browser.
+  include("${CMAKE_CURRENT_LIST_DIR}/tests/gpu/gpu-tests.cmake")
 endif()
