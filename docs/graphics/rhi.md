@@ -138,7 +138,7 @@ A transparent window composites the alpha of its pixels as premultiplied where t
 
 ## Lost devices
 
-A device is lost when the GPU resets or is removed, when its driver fails or updates, when the system revokes the GPU, or when an OpenGL or WebGL context is lost. `isLost` then answers `true`, and the device stops waiting for the GPU and recording work. The SDL platform layer checks it before each frame, logs which API stopped, makes a new device of the same API, on a new context for OpenGL, and starts the app again on it. The Android runtime does not check `isLost` yet, so it does not replace a device that is lost while the app runs. It makes a new context of OpenGL ES only when the next app starts and finds the old context lost. A lost surface is not a lost device: the platform calls `detachSurface` and `attachSurface` and the app goes on.
+A device is lost when the GPU resets or is removed, when its driver fails or updates, when the system revokes the GPU, or when an OpenGL or WebGL context is lost. `isLost` then answers `true`, and the device stops waiting for the GPU and recording work. The SDL platform layer and the Android runtime check it before each frame, log which API stopped, make a new device, on a new context for OpenGL and OpenGL ES, and start the app again on it. The Android runtime also counts an EGL context that reports itself lost as a lost device, and it makes the new device through the same order of APIs, so a Vulkan device that cannot start again gives way to OpenGL ES. A lost surface is not a lost device: the platform calls `detachSurface` and `attachSurface` and the app goes on.
 
 ## Capabilities
 

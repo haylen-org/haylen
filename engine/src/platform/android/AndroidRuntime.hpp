@@ -68,6 +68,7 @@ class AndroidRuntime final {
     void closeWindow();
     void requestFrame();
     void drawFrame(double now);
+    void replaceLostDevice();
     [[nodiscard]] int tick();
     void finishFrame();
     void end();

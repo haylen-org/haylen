@@ -163,6 +163,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidFramePacerTests.cpp
   platform/AndroidGamepadStatesTests.cpp
   platform/AndroidGlesVersionTests.cpp
+  platform/AndroidGraphicsApisTests.cpp
   platform/AndroidKeyClaimsTests.cpp
   platform/AndroidYuvImageTests.cpp
   platform/CrashGuardTests.cpp

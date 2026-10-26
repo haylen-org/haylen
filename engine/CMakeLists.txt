@@ -798,6 +798,7 @@ add_library(haylen-platform STATIC
   src/platform/android/AndroidFramePacer.cpp
   src/platform/android/AndroidGamepadStates.cpp
   src/platform/android/AndroidGlesVersion.cpp
+  src/platform/android/AndroidGraphicsApis.cpp
   src/platform/android/AndroidKeyClaims.cpp
   src/platform/android/AndroidYuvImage.cpp
   src/platform/linux/LinuxFilePattern.cpp

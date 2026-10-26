@@ -10,6 +10,7 @@
 #include <memory>
 #include <variant>
 
+#include "gpu/DeviceFactory.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Log.hpp"
 #include "platform/Player.hpp"
@@ -135,7 +136,7 @@ void AndroidRuntime::run() {
     Player::create(0, nullptr, std::make_unique<AndroidHost>(*this));
     const core::AppConfig::Window& config = Player::getOpeningConfig().window;
     window.setHighDpi(config.highDpi);
-    graphics.configure({.apis = Player::getGraphicsApis(), .sampleCount = config.sampleCount, .vsync = config.vsync});
+    graphics.configure(Player::getGraphicsApis(), {.sampleCount = config.sampleCount, .vsync = config.vsync});
 
     loop();
 
@@ -249,6 +250,7 @@ void AndroidRuntime::drawFrame(double now) {
         pacer.setStarted(true);
         Player::initialize();
     }
+    replaceLostDevice();
     Player::frame(pacer.takeElapsed(now));
     finishFrame();
 }
@@ -257,10 +259,22 @@ void AndroidRuntime::drawFrame(double now) {
 int AndroidRuntime::tick() {
     const double now = getTime();
     if (pacer.takeTick(now)) {
+        replaceLostDevice();
         Player::frame(pacer.takeElapsed(now));
         finishFrame();
     }
     return pacer.getWaitMilliseconds(getTime());
+}
+
+// A device that stopped working, after a reset of the GPU, a lost context or `VK_ERROR_DEVICE_LOST`, gives way to a new one, made through the order of graphics APIs again, on which the app starts again.
+void AndroidRuntime::replaceLostDevice() {
+    const gpu::Device* device = Player::getGpuDevice();
+    if (device == nullptr || !graphics.isLost(*device)) {
+        return;
+    }
+    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", gpu::DeviceFactory::getApiName(device->getApi()));
+    graphics.loseDevice(device->getApi());
+    Player::restart();
 }
 
 // A quit ends the app and finishes the activity, whose destruction then ends the frame thread. The process lives on, since an exit would run the destructors of static objects while the threads of Android still use them.
