@@ -7,6 +7,7 @@ add_executable(haylen-gpu-tests
   "${haylen_tests_dir}/gpu/LifetimeTests.cpp"
   "${haylen_tests_dir}/gpu/PassTests.cpp"
   "${haylen_tests_dir}/gpu/RendererImageTests.cpp"
+  "${haylen_tests_dir}/gpu/ShaderPackageTests.cpp"
   "${haylen_tests_dir}/gpu/TextureTests.cpp"
   "${haylen_tests_dir}/gpu/support/GpuFixture.cpp"
   "${haylen_tests_dir}/gpu/support/ImageComparison.cpp"

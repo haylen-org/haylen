@@ -15,11 +15,11 @@
 
 namespace haylen::gpu::opengl {
 
-std::unique_ptr<gpu::Device> Device::create(Api flavour, const std::optional<Surface>& surface, bool validation) {
+std::unique_ptr<gpu::Device> Device::create(Api flavour, const std::optional<Surface>& surface, const DeviceFactory::Options& options) {
     if (!surface || surface->kind != Surface::Kind::Gl || surface->gl == nullptr) {
         throw std::runtime_error("The OpenGL device draws through an OpenGL context, and the platform gave it no surface with one.");
     }
-    return std::make_unique<Device>(flavour, *surface, validation);
+    return std::make_unique<Device>(flavour, *surface, options.validation);
 }
 
 std::shared_ptr<Context> Device::makeContext(Api flavour, const Surface& surface) {
@@ -104,8 +104,11 @@ void Device::readCapabilities() {
     capabilities.multisampledRenderTargets = true;
     capabilities.gpuTiming = timer.isAvailable();
 
-    for (std::size_t index = 0; index < capabilities.blendableFormats.size(); ++index) {
+    // Every flavour makes and samples images of every format, and OpenGL ES and WebGL2 draw into float formats only with their extensions.
+    for (std::size_t index = 0; index < capabilities.textureFormats.size(); ++index) {
         const Conversions::Pixel pixel = Conversions::getPixel(static_cast<PixelFormat>(index), gl.isDesktop());
+        capabilities.textureFormats[index] = true;
+        capabilities.renderFormats[index] = isRenderable(pixel);
         capabilities.blendableFormats[index] = !pixel.depth && isRenderable(pixel) && (!pixel.floating || features.floatBlend);
     }
 

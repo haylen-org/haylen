@@ -22,7 +22,7 @@ class OpenGlDeviceTest : public OpenGlTest {
         if (IsSkipped()) {
             return;
         }
-        device = Device::create(GetParam(), context->getSurface(), true);
+        device = Device::create(GetParam(), context->getSurface(), {.validation = true});
         const std::string header = GetParam() == Device::Api::OpenGl ? "#version 430\n" : "#version 300 es\nprecision highp float;\n";
         vertex = header + "uniform vec4 shift[1];\nin vec2 position;\nin vec2 offset;\nvoid main() { gl_Position = vec4(position + offset + shift[0].xy, 0.0, 1.0); }\n";
         fragment = header + "uniform highp sampler2D picture;\nout vec4 color;\nvoid main() { color = texture(picture, vec2(0.5)); }\n";
@@ -96,7 +96,7 @@ class OpenGlDeviceTest : public OpenGlTest {
 
 TEST_P(OpenGlDeviceTest, StartsOnlyOnAnOpenGlSurface) {
     try {
-        static_cast<void>(Device::create(GetParam(), std::nullopt, false));
+        static_cast<void>(Device::create(GetParam(), std::nullopt, {}));
         FAIL() << "The device started without a context.";
     } catch (const std::runtime_error& error) {
         EXPECT_STREQ(error.what(), "The OpenGL device draws through an OpenGL context, and the platform gave it no surface with one.");
@@ -105,7 +105,7 @@ TEST_P(OpenGlDeviceTest, StartsOnlyOnAnOpenGlSurface) {
 
 TEST_P(OpenGlDeviceTest, RefusesAContextOfTheOtherFlavour) {
     const Device::Api other = GetParam() == Device::Api::OpenGl ? Device::Api::OpenGlEs : Device::Api::OpenGl;
-    EXPECT_THROW(static_cast<void>(Device::create(other, context->getSurface(), false)), std::runtime_error);
+    EXPECT_THROW(static_cast<void>(Device::create(other, context->getSurface(), {})), std::runtime_error);
 }
 
 TEST_P(OpenGlDeviceTest, ReportsTheBottomRowAsTheFirstRow) {
