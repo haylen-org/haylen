@@ -582,7 +582,7 @@ class Device {
     virtual void destroy(Program program) noexcept = 0;
     virtual void destroy(Pipeline pipeline) noexcept = 0;
 
-    // Writes data into a dynamic buffer at the offset, before the passes of the frame that read it. A frame may write several parts of one buffer, each at most once.
+    // Writes data into a dynamic buffer at an offset that is a multiple of 4, before the passes of the frame that read it. A frame may write several parts of one buffer, each at most once.
     virtual void writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) = 0;
 
     // Replaces the pixels of dynamic images, every image of a frame in one call before its first pass, so a device stages them all before it copies any of them.
