@@ -92,6 +92,15 @@ std::optional<Device::Api> DeviceFactory::findApi(std::string_view name) noexcep
     return found->second;
 }
 
+bool DeviceFactory::prepare([[maybe_unused]] Device::Api api) {
+#if defined(HAYLEN_GPU_WEBGPU)
+    if (api == Device::Api::WebGpu) {
+        return webgpu::Connection::request() != webgpu::Connection::Status::Pending;
+    }
+#endif
+    return true;
+}
+
 // The surface and the options reach only the devices that the build compiled.
 std::unique_ptr<Device> DeviceFactory::create(Device::Api api, [[maybe_unused]] const std::optional<Surface>& surface, [[maybe_unused]] const Options& options) {
     switch (api) {

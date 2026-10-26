@@ -12,7 +12,7 @@
 
 namespace haylen::gpu::webgpu {
 
-std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface) {
+std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface, const DeviceFactory::Options&) {
     return std::make_unique<Device>(Connection::take(), surface);
 }
 

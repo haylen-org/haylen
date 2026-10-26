@@ -41,6 +41,15 @@ TEST(DeviceFactoryTest, ReadsAndWritesTheNamesOfTheApis) {
     EXPECT_FALSE(DeviceFactory::findApi("Vulkan").has_value());
 }
 
+// Only WebGPU waits for the browser before its device can be made, and every other API is ready at once.
+TEST(DeviceFactoryTest, PreparesTheApisThatStartAtOnce) {
+    for (const auto& [name, api] : Device::kApiNames) {
+        if (api != Device::Api::WebGpu) {
+            EXPECT_TRUE(DeviceFactory::prepare(api)) << name;
+        }
+    }
+}
+
 // An API that the build did not compile fails with a sentence that names it, so the platform tries the next one.
 TEST(DeviceFactoryTest, RefusesApisTheBuildDidNotCompile) {
     for (const auto& [name, api] : Device::kApiNames) {
