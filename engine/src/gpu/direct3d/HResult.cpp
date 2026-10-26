@@ -32,6 +32,8 @@ std::string HResult::describe(HRESULT result) {
         return "the GPU does not support it";
     case DXGI_ERROR_NOT_FOUND:
         return "the system found no such object";
+    case DXGI_ERROR_NOT_CURRENTLY_AVAILABLE:
+        return "Windows gives this process no desktop to show a window on, as for a service";
     case DXGI_ERROR_SDK_COMPONENT_MISSING:
         return "the Graphics Tools of Windows are not installed";
     default:

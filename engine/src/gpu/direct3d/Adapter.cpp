@@ -21,9 +21,9 @@ ComPtr<IDXGIFactory6> Adapter::createFactory(bool validation) {
     return factory;
 }
 
-std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory, bool software) {
+std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory) {
     std::vector<ComPtr<IDXGIAdapter1>> adapters;
-    for (UINT index = 0; !software; ++index) {
+    for (UINT index = 0;; ++index) {
         ComPtr<IDXGIAdapter1> adapter;
         if (factory.EnumAdapterByGpuPreference(index, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.GetAddressOf())) == DXGI_ERROR_NOT_FOUND) {
             break;
@@ -40,6 +40,12 @@ std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory, bool so
         adapters.push_back(std::move(warp));
     }
     return adapters;
+}
+
+ComPtr<IDXGIAdapter1> Adapter::getSoftware(IDXGIFactory6& factory) {
+    ComPtr<IDXGIAdapter1> warp;
+    HResult::check(factory.EnumWarpAdapter(IID_PPV_ARGS(warp.GetAddressOf())), "find WARP, the software rasterizer of Windows");
+    return warp;
 }
 
 std::string Adapter::getName(IDXGIAdapter1& adapter) {

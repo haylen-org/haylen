@@ -29,7 +29,7 @@ using Microsoft::WRL::ComPtr;
 std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target, const DeviceFactory::Options& options) {
     ComPtr<IDXGIFactory6> dxgiFactory = direct3d::Adapter::createFactory(options.validation);
     std::string reasons;
-    for (ComPtr<IDXGIAdapter1>& card : direct3d::Adapter::list(*dxgiFactory.Get(), options.software)) {
+    for (ComPtr<IDXGIAdapter1>& card : direct3d::Adapter::list(*dxgiFactory.Get())) {
         const std::string name = direct3d::Adapter::getName(*card.Get());
         try {
             return std::make_unique<Device>(dxgiFactory, std::move(card), target, options.validation);
@@ -51,10 +51,9 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     for (ComPtr<ID3D11Query>& query : frameFinished) {
         HResult::check(device->CreateQuery(&event, query.GetAddressOf()), "create the query that marks the end of a frame");
     }
-    if (surface && (surface->width <= 0 || surface->height <= 0)) {
-        return;
-    }
-    if (surface) {
+
+    // A window that has a drawable takes its swapchain now, so a window that Direct3D 11 cannot draw into fails the device while the platform can still try another API.
+    if (surface && surface->width > 0 && surface->height > 0) {
         swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *surface);
         makeSwapchainTargets();
     }
@@ -497,7 +496,8 @@ bool Device::prepareSwapchain() {
         makeSwapchainTargets();
         return true;
     }
-    if (swapchain->getWidth() == surface->width && swapchain->getHeight() == surface->height) {
+    // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
+    if (presentPending || (swapchain->getWidth() == surface->width && swapchain->getHeight() == surface->height)) {
         return true;
     }
 

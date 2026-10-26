@@ -14,8 +14,11 @@ class Adapter final {
     // Makes the factory, with the debug layer of DXGI when `validation` is on and Windows has its Graphics Tools.
     [[nodiscard]] static Microsoft::WRL::ComPtr<IDXGIFactory6> createFactory(bool validation);
 
-    // The GPUs to try in turn: the hardware ones from the most powerful, then the software rasterizer of Windows, WARP, which is all that `software` asks for.
-    [[nodiscard]] static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> list(IDXGIFactory6& factory, bool software);
+    // The GPUs to try in turn: the hardware ones from the most powerful, then the software rasterizer of Windows, WARP.
+    [[nodiscard]] static std::vector<Microsoft::WRL::ComPtr<IDXGIAdapter1>> list(IDXGIFactory6& factory);
+
+    // WARP alone, which runs where no GPU does and draws the same pixels on every machine. Throws `std::runtime_error` when Windows lacks it.
+    [[nodiscard]] static Microsoft::WRL::ComPtr<IDXGIAdapter1> getSoftware(IDXGIFactory6& factory);
 
     [[nodiscard]] static std::string getName(IDXGIAdapter1& adapter);
 
