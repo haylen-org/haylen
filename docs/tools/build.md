@@ -409,7 +409,7 @@ The module `sokol_app` scales the points that trackpads and other precise device
 - On macOS, reports the phase of the gesture in `scroll_phase`, from the phase and the momentum phase of the event: the fingers touch the trackpad, move or leave it, or the system adds momentum after them.
 - Also sends the scrolls that only change the phase, when the fingers touch or leave the trackpad, which `sokol_app` dropped for having no movement. So the UI knows when to release the content and run its own inertia, as on iOS.
 
-The engine passes the flag on as `Event::preciseScroll` and the phase as `Event::scrollPhase`. The UI scrolls by the points of a trackpad and by the theme metric `scrollLine` for each step of a wheel, as the [UI guide](../ui/ui.md#scrolling-with-wheels-and-trackpads) describes. Android reports the wheels of mice and the scrolling of touchpads as scroll motion events. The engine takes them from GameActivity before `sokol_app`, in steps of a wheel at the place of the pointer.
+The engine passes the flag on as `Event::preciseScroll` and the phase as `Event::scrollPhase`. The UI scrolls by the points of a trackpad and by the theme metric `scrollLine` for each step of a wheel, as the [UI guide](../ui/ui.md#scrolling-with-wheels-and-trackpads) describes. Android reports the wheels of mice and the scrolling of touchpads as scroll motion events. The Android runtime takes them from GameActivity in steps of a wheel at the place of the pointer.
 
 #### sokol-web-page-events.patch
 

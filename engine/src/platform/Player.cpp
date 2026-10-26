@@ -355,6 +355,14 @@ bool Player::isBackCaptured() {
     return current != nullptr && current->engine != nullptr && current->engine->isBackCaptured();
 }
 
+gpu::Device* Player::getGpuDevice() noexcept {
+    const std::unique_ptr<Player>& current = getProcess().current;
+    if (current == nullptr || current->engine == nullptr) {
+        return nullptr;
+    }
+    return &current->engine->getGraphics().getGpu();
+}
+
 // The back button leaves the app from its root screen, which on the Apple TV means the system takes the press, and goes back inside the app everywhere else. A launched app leaves to the app that launched it instead.
 Player::Back Player::routeBack(bool pressed) {
     Player& runtime = getCurrent();

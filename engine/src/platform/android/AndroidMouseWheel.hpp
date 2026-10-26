@@ -4,7 +4,7 @@
 
 namespace haylen::platform {
 
-// The wheels of mice and the scrolling of touchpads on Android, which GameActivity reports as scroll motion events that the engine takes before the backend translates the others.
+// The wheels of mice and the scrolling of touchpads on Android, which GameActivity reports as scroll motion events.
 class AndroidMouseWheel final {
   public:
     // GameActivity copies the scroll axes of motion events only once they are enabled.

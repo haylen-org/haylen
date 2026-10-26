@@ -81,7 +81,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         splash.install();
         requirements = new HaylenRequirements(this, "The engine");
         HaylenBridge.attach(this);
-        // The class `GameActivity` loads the native library here and starts the app on its render thread.
+        // The class `GameActivity` loads the native library here, whose runtime starts the frame thread of the app.
         super.onCreate(savedInstanceState);
         // A new activity starts with the link as its intent, while a restored one hands it to the plugins as a new intent once they heard of the activity.
         Intent link = pendingLink;

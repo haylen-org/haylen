@@ -22,7 +22,7 @@ class AndroidGamepads final {
     // Answers on the UI thread whether a key is a button of a controller, which the app takes from the views and the system.
     [[nodiscard]] static bool takesKey(const GameActivityKeyEvent& event);
 
-    // Take a key or a motion event before the backend translates it and return whether it came from a controller. They run on the frame thread.
+    // Take a key or a motion event before the other readers of input and return whether it came from a controller. They run on the frame thread.
     [[nodiscard]] static bool handleKey(const GameActivityKeyEvent& event);
     [[nodiscard]] static bool handleMotion(const GameActivityMotionEvent& event);
 

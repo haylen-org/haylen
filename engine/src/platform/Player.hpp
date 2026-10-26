@@ -26,6 +26,10 @@ namespace haylen::core {
 class Engine;
 }
 
+namespace haylen::gpu {
+class Device;
+}
+
 namespace haylen::io {
 class OverlayPackage;
 class Package;
@@ -110,6 +114,9 @@ class Player final {
 
     // Whether the running app takes the next press of the back button of the platform instead of leaving, as the engine decides from its app and its open popups.
     [[nodiscard]] static bool isBackCaptured();
+
+    // The GPU device of the running app, which the backend tells when the surface of its window changes, or null while no app runs. It runs on the frame thread.
+    [[nodiscard]] static gpu::Device* getGpuDevice() noexcept;
 
   private:
     // Stands in for the app when its package cannot be opened, so the window explains the problem instead of closing.

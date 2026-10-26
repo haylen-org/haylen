@@ -35,7 +35,7 @@ end
 
 ### window.fullscreen()
 
-Returns `true` when the window is fullscreen.
+Returns `true` when the window is fullscreen. The window of an Android app always fills the screen, so it always returns `true` there.
 
 ```lua
 local window = require('haylen.window')
@@ -47,7 +47,7 @@ print('Fullscreen:', window.fullscreen())
 
 Switches between fullscreen and a window. Nothing happens when the window already is in that mode. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame.
 
-On the web the page puts the element that holds the canvas in fullscreen, so the dialogs and the views of plugins stay over the app. Browsers allow fullscreen only shortly after a click, a tap or a key of the person. So the `fullscreen` key of `app.json` leaves a page as it is when it loads.
+Android ignores it, since the window of the app always fills the screen. On the web the page puts the element that holds the canvas in fullscreen, so the dialogs and the views of plugins stay over the app. Browsers allow fullscreen only shortly after a click, a tap or a key of the person. So the `fullscreen` key of `app.json` leaves a page as it is when it loads.
 
 ```lua
 local window = require('haylen.window')
