@@ -33,11 +33,6 @@ set(haylen_shader_languages_openGl glsl430)
 set(haylen_shader_languages_openGlEs glsl300es)
 set(haylen_shader_languages_webGl2 glsl300es)
 set(haylen_shader_languages_webGpu wgsl)
-# The shader packages of the engine carry them next to the language of the backend.
-foreach(api IN LISTS HAYLEN_GRAPHICS_APIS)
-  list(APPEND HAYLEN_SHADER_LANGUAGES ${haylen_shader_languages_${api}})
-endforeach()
-list(REMOVE_DUPLICATES HAYLEN_SHADER_LANGUAGES)
 
 # The folder of the device of each API, where OpenGL, OpenGL ES and WebGL2 share one device.
 set(haylen_device_folder_metal metal)
@@ -48,6 +43,14 @@ set(haylen_device_folder_openGl opengl)
 set(haylen_device_folder_openGlEs opengl)
 set(haylen_device_folder_webGl2 opengl)
 set(haylen_device_folder_webGpu webgpu)
+
+# The shader packages of the engine carry them next to the language of the backend, for every API of the list whose device folder the tree holds, since an API without its device runs no shader.
+foreach(api IN LISTS HAYLEN_GRAPHICS_APIS)
+  if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../src/gpu/${haylen_device_folder_${api}}/device.cmake")
+    list(APPEND HAYLEN_SHADER_LANGUAGES ${haylen_shader_languages_${api}})
+  endif()
+endforeach()
+list(REMOVE_DUPLICATES HAYLEN_SHADER_LANGUAGES)
 
 function(haylen_add_gpu_library)
   add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp")
