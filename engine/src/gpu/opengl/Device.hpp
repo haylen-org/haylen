@@ -139,9 +139,14 @@ class Device final : public gpu::Device {
     void readCapabilities();
     [[nodiscard]] bool isRenderable(const Conversions::Pixel& pixel) const noexcept;
     void checkSampleCount(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
+    void checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
     void checkLevels(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
     [[nodiscard]] Gl::Uint makeRenderbuffer(const ImageDesc& desc, const Conversions::Pixel& pixel);
     [[nodiscard]] Gl::Uint makeTexture(const ImageDesc& desc, const Conversions::Pixel& pixel, Gl::Enum target);
+    void uploadTexture(const ImageDesc& desc, const ImageRecord& record);
+    [[nodiscard]] std::size_t checkImageWrites(std::span<const ImageWrite> writes);
+    void uploadImagesFromMemory(std::span<const ImageWrite> writes);
+    void uploadImagesThroughRing(std::span<const ImageWrite> writes, std::size_t total);
     void uploadLevel(const ImageRecord& record, int level, std::uintptr_t source);
     [[nodiscard]] std::size_t getLevelBytes(const ImageRecord& record, int level) const noexcept;
     [[nodiscard]] FramebufferCache::Attachment toAttachment(Image image, int mipLevel, int layer);

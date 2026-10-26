@@ -269,28 +269,50 @@ void Device::uploadLevel(const ImageRecord& record, int level, std::uintptr_t so
     }
 }
 
-Device::Image Device::makeImage(const ImageDesc& desc) {
-    const Conversions::Pixel pixel = Conversions::getPixel(desc.format, gl.isDesktop());
+void Device::checkImage(const ImageDesc& desc, const Conversions::Pixel& pixel) const {
     if (desc.width <= 0 || desc.height <= 0 || desc.width > capabilities.maxImageSize || desc.height > capabilities.maxImageSize || desc.layers < 1 || desc.mipLevels < 1 || desc.sampleCount < 1) {
         throw std::logic_error(std::format("The image \"{}\" of {}x{} pixels does not fit the device.", desc.label, desc.width, desc.height));
     }
+
     if (desc.type == TextureType::Cube && (desc.layers != 6 || desc.width != desc.height)) {
         throw std::logic_error(std::format("The cube \"{}\" needs six square faces.", desc.label));
     }
+
     if (desc.type == TextureType::Array && desc.layers > capabilities.maxArrayLayers) {
         throw std::logic_error(std::format("The array \"{}\" has {} layers, and the device holds at most {}.", desc.label, desc.layers, capabilities.maxArrayLayers));
     }
+
     if ((desc.kind == ImageKind::DepthStencil) != pixel.depth) {
         throw std::logic_error(std::format("The image \"{}\" takes a depth format exactly when it is a depth stencil image.", desc.label));
     }
+
     const bool attachment = desc.kind == ImageKind::RenderTarget || desc.kind == ImageKind::DepthStencil;
     if (attachment && !isRenderable(pixel)) {
         throw std::runtime_error(std::format("The OpenGL context cannot draw into the format of the image \"{}\".", desc.label));
     }
+
     checkLevels(desc, pixel);
     if (desc.sampleCount > 1) {
         checkSampleCount(desc, pixel);
     }
+}
+
+void Device::uploadTexture(const ImageDesc& desc, const ImageRecord& record) {
+    state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
+    for (int level = 0; level < desc.mipLevels; ++level) {
+        std::span<const std::byte> pixels = desc.levels[static_cast<std::size_t>(level)];
+        if (record.pixel.swapsRedBlue) {
+            staging.resize(pixels.size());
+            copyPixels(staging.data(), pixels, true);
+            pixels = staging;
+        }
+        uploadLevel(record, level, toAddress(pixels.data()));
+    }
+}
+
+Device::Image Device::makeImage(const ImageDesc& desc) {
+    const Conversions::Pixel pixel = Conversions::getPixel(desc.format, gl.isDesktop());
+    checkImage(desc, pixel);
 
     ImageRecord record{.target = desc.sampleCount > 1 ? Gl::kRenderbuffer : Conversions::toTextureTarget(desc.type), .type = desc.type, .format = desc.format, .pixel = pixel, .width = desc.width, .height = desc.height, .layers = desc.layers, .mipLevels = desc.mipLevels, .sampleCount = desc.sampleCount, .kind = desc.kind};
     if (record.target == Gl::kRenderbuffer) {
@@ -301,16 +323,7 @@ Device::Image Device::makeImage(const ImageDesc& desc) {
 
     record.name = makeTexture(desc, pixel, record.target);
     if (desc.kind == ImageKind::Texture) {
-        state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
-        for (int level = 0; level < desc.mipLevels; ++level) {
-            std::span<const std::byte> pixels = desc.levels[static_cast<std::size_t>(level)];
-            if (pixel.swapsRedBlue) {
-                staging.resize(pixels.size());
-                copyPixels(staging.data(), pixels, true);
-                pixels = staging;
-            }
-            uploadLevel(record, level, toAddress(pixels.data()));
-        }
+        uploadTexture(desc, record);
     }
     debug.label(Gl::kTexture, record.name, desc.label);
     return {images.add(record)};
@@ -469,12 +482,15 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     if (record.usage != Usage::Dynamic) {
         throw std::logic_error("Only a dynamic buffer takes new contents.");
     }
+
     if (pass.open) {
-        throw std::logic_error("Buffers take new contents before the passes of a frame.");
+        throw std::logic_error("Buffers take new contents outside the passes of a frame.");
     }
+
     if (offset + data.size() > record.size) {
         throw std::logic_error(std::format("The buffer of {} bytes cannot take {} bytes at {}.", record.size, data.size(), offset));
     }
+
     if (data.empty()) {
         return;
     }
@@ -485,6 +501,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
         gl.bufferSubData(Gl::kCopyWriteBuffer, static_cast<Gl::IntPtr>(offset), static_cast<Gl::SizeiPtr>(data.size()), data.data());
         return;
     }
+
     const UploadRing::Slice slice = ring->map(data.size());
     std::memcpy(slice.data, data.data(), data.size());
     ring->unmap();
@@ -493,11 +510,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     gl.copyBufferSubData(Gl::kCopyReadBuffer, Gl::kCopyWriteBuffer, static_cast<Gl::IntPtr>(slice.offset), static_cast<Gl::IntPtr>(offset), static_cast<Gl::SizeiPtr>(data.size()));
 }
 
-// The pixels of every image go into the upload ring in one mapping, and the textures copy them from it as a pixel unpack buffer. WebGL2 takes them from memory, which the browser stages itself.
-void Device::writeImages(std::span<const ImageWrite> writes) {
-    if (pass.open) {
-        throw std::logic_error("Images take new pixels before the first pass of a frame.");
-    }
+std::size_t Device::checkImageWrites(std::span<const ImageWrite> writes) {
     std::size_t total = 0;
     for (const ImageWrite& write : writes) {
         const ImageRecord& record = images.get(write.image.id);
@@ -507,33 +520,31 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
         if (write.pixels.size() != getLevelBytes(record, 0)) {
             throw std::logic_error(std::format("The pixels do not fill the image of {}x{}.", record.width, record.height));
         }
-        total += (write.pixels.size() + UploadRing::kAlignment - 1) / UploadRing::kAlignment * UploadRing::kAlignment;
+        total += UploadRing::align(write.pixels.size());
     }
-    if (total == 0) {
-        return;
-    }
-    beginFrame();
+    return total;
+}
 
-    if (!ring) {
-        state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
-        for (const ImageWrite& write : writes) {
-            const ImageRecord& record = images.get(write.image.id);
-            std::span<const std::byte> pixels = write.pixels;
-            if (record.pixel.swapsRedBlue) {
-                staging.resize(pixels.size());
-                copyPixels(staging.data(), pixels, true);
-                pixels = staging;
-            }
-            uploadLevel(record, 0, toAddress(pixels.data()));
+void Device::uploadImagesFromMemory(std::span<const ImageWrite> writes) {
+    state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
+    for (const ImageWrite& write : writes) {
+        const ImageRecord& record = images.get(write.image.id);
+        std::span<const std::byte> pixels = write.pixels;
+        if (record.pixel.swapsRedBlue) {
+            staging.resize(pixels.size());
+            copyPixels(staging.data(), pixels, true);
+            pixels = staging;
         }
-        return;
+        uploadLevel(record, 0, toAddress(pixels.data()));
     }
+}
 
+void Device::uploadImagesThroughRing(std::span<const ImageWrite> writes, std::size_t total) {
     const UploadRing::Slice slice = ring->map(total);
     std::size_t cursor = 0;
     for (const ImageWrite& write : writes) {
         copyPixels(slice.data + cursor, write.pixels, images.get(write.image.id).pixel.swapsRedBlue);
-        cursor += (write.pixels.size() + UploadRing::kAlignment - 1) / UploadRing::kAlignment * UploadRing::kAlignment;
+        cursor += UploadRing::align(write.pixels.size());
     }
     ring->unmap();
 
@@ -541,9 +552,28 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     cursor = slice.offset;
     for (const ImageWrite& write : writes) {
         uploadLevel(images.get(write.image.id), 0, cursor);
-        cursor += (write.pixels.size() + UploadRing::kAlignment - 1) / UploadRing::kAlignment * UploadRing::kAlignment;
+        cursor += UploadRing::align(write.pixels.size());
     }
     state.bindBuffer(Gl::kPixelUnpackBuffer, 0);
+}
+
+// The pixels of every image go into the upload ring in one mapping, and the textures copy them from it as a pixel unpack buffer. WebGL2 takes them from memory, which the browser stages itself.
+void Device::writeImages(std::span<const ImageWrite> writes) {
+    if (pass.open) {
+        throw std::logic_error("Images take new pixels before the first pass of a frame.");
+    }
+
+    const std::size_t total = checkImageWrites(writes);
+    if (total == 0) {
+        return;
+    }
+    beginFrame();
+
+    if (ring) {
+        uploadImagesThroughRing(writes, total);
+    } else {
+        uploadImagesFromMemory(writes);
+    }
 }
 
 void Device::requirePass(std::string_view call) const {

@@ -49,10 +49,10 @@ void UploadRing::beginFrame(std::size_t frame) noexcept {
 }
 
 UploadRing::Slice UploadRing::map(std::size_t size) {
-    const std::size_t start = (cursor + kAlignment - 1) / kAlignment * kAlignment;
+    const std::size_t start = align(cursor);
     if (start + size > (region + 1) * regionSize) {
         release();
-        allocate(std::max(regionSize * 2, (size + kAlignment - 1) / kAlignment * kAlignment));
+        allocate(std::max(regionSize * 2, align(size)));
         return map(size);
     }
     cursor = start + size;

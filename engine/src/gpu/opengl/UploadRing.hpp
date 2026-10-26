@@ -19,6 +19,10 @@ class UploadRing final {
         std::size_t offset = 0;
     };
 
+    [[nodiscard]] static constexpr std::size_t align(std::size_t size) noexcept {
+        return (size + kAlignment - 1) / kAlignment * kAlignment;
+    }
+
     UploadRing(Gl& functions, StateCache& cache, std::size_t regions);
     UploadRing(const UploadRing&) = delete;
     UploadRing& operator=(const UploadRing&) = delete;
