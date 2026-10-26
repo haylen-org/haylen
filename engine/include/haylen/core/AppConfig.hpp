@@ -13,6 +13,7 @@
 #include "haylen/content/Delivery.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/debug/StatsDisplay.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -50,6 +51,9 @@ struct AppConfig {
         std::optional<platform::WindowPlacement> position;
         platform::Window::StatusBar statusBar = platform::Window::StatusBar::Hidden;
         std::optional<math::Color> statusBarColor;
+
+        // The graphics APIs the window tries first, in order, before the other APIs of the build in the order of the platform, which an empty list leaves as it is.
+        std::vector<gpu::Device::Api> graphicsApis;
     };
 
     // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color, and another one while the system uses dark colors. It stays until the app drew its first frame and at least the duration in seconds since the launch, and fades out into the app over the fade-out in seconds. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.
@@ -182,6 +186,7 @@ struct AppConfig {
     static void requireNonNegative(double value, const char* key);
     [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);
     static void readPlugins(const Json& section, AppConfig& config);
+    [[nodiscard]] static std::vector<gpu::Device::Api> readGraphicsApis(const Json& value);
     static void expandGroups(const io::Package& package, Content& content);
     [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;
     static void readContent(const Json& section, AppConfig& config);

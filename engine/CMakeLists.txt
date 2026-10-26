@@ -790,6 +790,7 @@ add_library(haylen-platform STATIC
   src/platform/CrashGuard.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
+  src/platform/GraphicsApiOrder.cpp
   src/platform/KeyboardTranslator.cpp
   src/platform/PluginLoadOrder.cpp
   src/platform/android/AndroidBatteryStatus.cpp
@@ -808,7 +809,7 @@ add_library(haylen-platform STATIC
 add_library(haylen::platform ALIAS haylen-platform)
 # Apps see only the public API, so the private headers stay private to the engine libraries.
 target_include_directories(haylen-platform PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-target_link_libraries(haylen-platform PUBLIC haylen-engine)
+target_link_libraries(haylen-platform PUBLIC haylen-engine haylen-gpu)
 haylen_enable_warnings(haylen-platform)
 haylen_enable_coverage(haylen-platform)
 

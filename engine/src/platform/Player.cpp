@@ -21,6 +21,7 @@
 #include "haylen/platform/NativeLibraries.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "platform/GraphicsApiOrder.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/Services.hpp"
 #include "platform/native/NativeApi.hpp"
@@ -89,6 +90,7 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
     // The window opens with its desktop options already in effect, so a frameless window never shows a title bar for its first frame. Whether it can be transparent lasts for the whole run.
     const core::AppConfig::Window& window = runtime.pending.config.window;
     runtime.openingSize = {static_cast<float>(window.width), static_cast<float>(window.height)};
+    runtime.graphicsApis = GraphicsApiOrder::resolve(options.graphicsApi, window.graphicsApis);
     runtime.host->prepare({.transparent = window.transparent, .resizable = window.resizable, .decorated = window.decorated, .alwaysOnTop = window.alwaysOnTop, .shownInTaskbar = window.showInTaskbar}, window.focusable);
 }
 
@@ -98,6 +100,10 @@ const core::AppConfig& Player::getOpeningConfig() noexcept {
 
 math::Vec2 Player::getOpeningSize() noexcept {
     return getCurrent().openingSize;
+}
+
+const std::vector<gpu::Device::Api>& Player::getGraphicsApis() noexcept {
+    return getCurrent().graphicsApis;
 }
 
 std::optional<math::Rect> Player::getOpeningFrame() {
@@ -207,7 +213,7 @@ Player& Player::getCurrent() noexcept {
     return *getProcess().current;
 }
 
-// Options other than --dev, --dev-server and --native come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
+// Options other than --dev, --dev-server, --native and --graphics-api come from the system, such as the ones Xcode passes to the macOS apps it launches, and are left to it.
 Player::LaunchOptions Player::parseLaunchOptions(int argc, char* argv[]) {
     LaunchOptions options;
     for (int index = 1; index < argc; ++index) {
@@ -219,6 +225,8 @@ Player::LaunchOptions Player::parseLaunchOptions(int argc, char* argv[]) {
             options.developmentServer = argv[++index];
         } else if (argument == "--native" && index + 1 < argc) {
             options.nativeFolders.emplace_back(argv[++index]);
+        } else if (argument == "--graphics-api" && index + 1 < argc) {
+            options.graphicsApi = argv[++index];
         } else if (!argument.starts_with('-') && options.package.empty()) {
             options.package = argument;
         }

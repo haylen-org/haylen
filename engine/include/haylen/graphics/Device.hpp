@@ -69,7 +69,7 @@ class Device final {
     // Sends the pixels of the dynamic textures that changed since the last upload and returns how many bytes they took, together with the images that the frame fills itself, such as the shadow atlas of the lights, since the GPU device takes the images of a frame in one call. The renderer calls it once per frame, before its passes.
     std::size_t uploadTextures(std::span<const gpu::Device::ImageWrite> frameImages = {});
 
-    // The name of the graphics API the device draws through, from `gpu::Device::kApiNames`: `metal`, `direct3D11`, `openGl`, `openGlEs`, `webGl2`, `webGpu`, or `none` where nothing draws, such as the headless host of tests.
+    // The name of the graphics API the device draws through, from `gpu::Device::kApiNames`: `metal`, `direct3D12`, `direct3D11`, `vulkan`, `openGl`, `openGlEs`, `webGl2`, `webGpu`, or `none` where nothing draws, such as the headless host of tests.
     [[nodiscard]] std::string_view getApiName() const noexcept;
 
     // The seconds the GPU took for the last frame that it finished, which lags the frame that runs by a frame or two, or nothing where the graphics API does not measure it. Metal measures it, and the other APIs do not.

@@ -1036,6 +1036,7 @@ Development mode is [hot reload](../core/lua.md#hot-reload): the running app rel
 | `--dev` | Runs in development, watching the package folder. |
 | `--dev-server <address>` | Runs in development and connects to the development server at that WebSocket address, which pushes the saved files. |
 | `--native <folder>` | Adds a folder that `native.load` searches before the folders of the platform. It may repeat. |
+| `--graphics-api <name>` | The graphics API that the window tries first, such as `vulkan`, before the other APIs of the build. It replaces the `window.graphicsApis` of `app.json`, and the web page passes its choice the same way. A name that is not a graphics API stops the player with an error, and an API that the build lacks logs a warning. |
 | The first argument that is not an option | The package to play, a folder or a zip. Without one, the runtime plays the package bundled with the app. |
 
 Other options are ignored, because systems add their own, such as the ones that Xcode passes to the macOS apps it launches. Android starts apps without a command line. So a debuggable Android app takes the address of the development server from the extra `dev.haylen.developmentServer` of the intent that launched it, and an app that is not debuggable never reads it. A release build, which carries the bootstrap of its app, ignores `--dev` and `--dev-server` with a warning, since a protected release never runs in development.

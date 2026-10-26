@@ -247,6 +247,29 @@ TEST(AppConfigTest, RejectsInvalidValues) {
     }
 }
 
+// The window tries the graphics APIs of the list first, each named once, and an empty list leaves the order of the platform.
+TEST(AppConfigTest, ReadsTheGraphicsApisTheWindowTriesFirst) {
+    EXPECT_TRUE(core::AppConfig::fromJson(core::Json::object()).window.graphicsApis.empty());
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"graphicsApis": ["vulkan", "openGl"]}})"));
+    EXPECT_EQ(config.window.graphicsApis, (std::vector<gpu::Device::Api>{gpu::Device::Api::Vulkan, gpu::Device::Api::OpenGl}));
+    EXPECT_EQ(config.toJson().at("window").at("graphicsApis"), core::Json::parse(R"(["vulkan", "openGl"])"));
+
+    // clang-format off
+    const auto error = [](const char* document) {
+        try {
+            (void)core::AppConfig::fromJson(core::Json::parse(document));
+        } catch (const std::invalid_argument& failure) {
+            return std::string(failure.what());
+        }
+        return std::string();
+    };
+    // clang-format on
+    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["glide"]}})"), "The \"window.graphicsApis\" value \"glide\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
+    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["none"]}})"), "The \"window.graphicsApis\" value \"none\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
+    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["metal", "metal"]}})"), "The \"window.graphicsApis\" of \"app.json\" names \"metal\" twice.");
+    EXPECT_EQ(error(R"({"window": {"graphicsApis": "metal"}})"), "The \"window.graphicsApis\" of \"app.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
+}
+
 TEST(AppConfigTest, ReadsHowTheContentReachesTheDevice) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"content": {"updates": {"baseUrl": "https://cdn.example.com/game/", "channel": "beta"}, "delivery": [{"match": "world/asia/**", "mode": "onDemand"}, {"match": "cinematics/*.webm", "mode": "prefetch"}, {"match": "islands/**", "pack": "islands"}]}})"));
     ASSERT_TRUE(config.content.updates);

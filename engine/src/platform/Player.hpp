@@ -15,6 +15,7 @@
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Application.hpp"
+#include "haylen/gpu/Device.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
@@ -57,6 +58,9 @@ class Player final {
 
     // The size in points that `app.json` gives the window the process opened with.
     [[nodiscard]] static math::Vec2 getOpeningSize() noexcept;
+
+    // The graphics APIs the window tries in turn until one starts: the one that `--graphics-api` names, or else the ones of `window.graphicsApis` of `app.json`, then the other APIs of the build in the order of the platform.
+    [[nodiscard]] static const std::vector<gpu::Device::Api>& getGraphicsApis() noexcept;
 
     // Starts the app once the window of the backend is open.
     static void initialize();
@@ -134,12 +138,13 @@ class Player final {
         bool playing = true;
     };
 
-    // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, the address of the development server that --dev-server gives, and the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into.
+    // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, the address of the development server that --dev-server gives, the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into, and the graphics API that --graphics-api names, which the web page passes the same way.
     struct LaunchOptions {
         std::string package;
         bool development = false;
         std::string developmentServer;
         std::vector<std::string> nativeFolders;
+        std::string graphicsApi;
     };
 
     // What outlives every player of the process: the player that plays, which the frame thread creates when the backend asks for the app and destroys when its window closes, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
@@ -175,6 +180,7 @@ class Player final {
 
     std::unique_ptr<NativeHost> host;
     math::Vec2 openingSize;
+    std::vector<gpu::Device::Api> graphicsApis;
     App pending;
     std::shared_ptr<io::Package> package;
     std::unique_ptr<core::Engine> engine;

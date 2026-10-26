@@ -197,6 +197,26 @@ bool AppConfig::isPluginId(std::string_view text) noexcept {
     return true;
 }
 
+// The names are the ones of `gpu::Device::kApiNames`, each once, and the name that means none draws nothing.
+std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
+    if (!value.is_array()) {
+        throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
+    }
+    std::vector<gpu::Device::Api> apis;
+    for (const Json& entry : value) {
+        const std::string name = entry.is_string() ? entry.get<std::string>() : entry.dump();
+        const auto found = std::ranges::find(gpu::Device::kApiNames, name, &std::pair<std::string_view, gpu::Device::Api>::first);
+        if (found == gpu::Device::kApiNames.end() || found->second == gpu::Device::Api::None) {
+            throw std::invalid_argument("The \"window.graphicsApis\" value \"" + name + "\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
+        }
+        if (std::ranges::find(apis, found->second) != apis.end()) {
+            throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" names \"" + name + "\" twice.");
+        }
+        apis.push_back(found->second);
+    }
+    return apis;
+}
+
 void AppConfig::readPlugins(const Json& section, AppConfig& config) {
     if (!section.is_object()) {
         throw std::invalid_argument("The \"plugins\" section of \"app.json\" must be an object of plugins by id.");
@@ -276,7 +296,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("window")) {
         const Json& windowJson = document.at("window");
-        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position", "statusBar", "statusBarColor"}, "the \"window\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "position", "statusBar", "statusBarColor", "graphicsApis"}, "the \"window\" section of \"app.json\"");
         readValue(windowJson, "title", config.window.title);
         readValue(windowJson, "width", config.window.width);
         readValue(windowJson, "height", config.window.height);
@@ -310,6 +330,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
             if (!config.window.statusBarColor) {
                 throw std::invalid_argument("The \"window.statusBarColor\" value \"" + statusBarColorText + "\" in \"app.json\" is not a color such as \"#RRGGBB\" or \"#AARRGGBB\".");
             }
+        }
+        if (windowJson.contains("graphicsApis")) {
+            config.window.graphicsApis = readGraphicsApis(windowJson.at("graphicsApis"));
         }
         if (windowJson.contains("position")) {
             try {
@@ -543,6 +566,10 @@ Json AppConfig::toJson() const {
     }
     if (window.position) {
         windowJson["position"] = window.position->toJson();
+    }
+    windowJson["graphicsApis"] = Json::array();
+    for (const gpu::Device::Api api : window.graphicsApis) {
+        windowJson["graphicsApis"].push_back(std::ranges::find(gpu::Device::kApiNames, api, &std::pair<std::string_view, gpu::Device::Api>::second)->first);
     }
     // A rule that names a group keeps the name until `fromPackage` replaces it with the patterns of the group.
     Json contentJson = {{"delivery", Json::array()}};
