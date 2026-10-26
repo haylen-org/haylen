@@ -1,34 +1,34 @@
 {
     "version": "1.0.0",
-    "commit": "5f1a033487cbdaf5aefd19e6cec2f96b2cf00387",
+    "commit": "5efc654c111f670b23cd385349ae4a51b2915ac5",
     "source": {
-        "url": "https://github.com/haylen-org/haylen-shader-compiler/archive/5f1a033487cbdaf5aefd19e6cec2f96b2cf00387.tar.gz",
-        "sha256": "a1248410df95af3960156beaf2e5ebea0dd70eaa34d0fcf5fef8f0124872e36e"
+        "url": "https://github.com/haylen-org/haylen-shader-compiler/archive/5efc654c111f670b23cd385349ae4a51b2915ac5.tar.gz",
+        "sha256": "3e671a8c79cb757673b1dab0fcf4233d799bef001281107437143f5e4d9003fb"
     },
     "binaries": {
         "macos-arm64": {
             "url": "https://github.com/haylen-org/haylen-shader-compiler/releases/download/v1.0.0/haylen-shaderc-1.0.0-macos-universal.tar.gz",
-            "sha256": "8bf258b3aa02889cdc0adca762e33c6e2874496e5359e9c48c71a13ac154d440"
+            "sha256": "cabb65073b1cb343c13eff7b5bc698b0594dff2e0999425492cda063f5f9a1a2"
         },
         "macos-x64": {
             "url": "https://github.com/haylen-org/haylen-shader-compiler/releases/download/v1.0.0/haylen-shaderc-1.0.0-macos-universal.tar.gz",
-            "sha256": "8bf258b3aa02889cdc0adca762e33c6e2874496e5359e9c48c71a13ac154d440"
+            "sha256": "cabb65073b1cb343c13eff7b5bc698b0594dff2e0999425492cda063f5f9a1a2"
         },
         "linux-x64": {
             "url": "https://github.com/haylen-org/haylen-shader-compiler/releases/download/v1.0.0/haylen-shaderc-1.0.0-linux-x64.tar.gz",
-            "sha256": "995b448c91f76fa419a5b6c1f49f5316f5ad3ad350ff426ffcc2e6869b079c02"
+            "sha256": "fdee78e20ded154485c7c525ddf727ff571010c3a18116cda2b568c360ac9289"
         },
         "linux-arm64": {
             "url": "https://github.com/haylen-org/haylen-shader-compiler/releases/download/v1.0.0/haylen-shaderc-1.0.0-linux-arm64.tar.gz",
-            "sha256": "afc3f3274a1559c145d0baf782e14b68bcf5f2d420ab7dc87be0f4ab44007de3"
+            "sha256": "d1a314d443306709de05ecb5dbdb1682c361f8fbac4ac807d9330429aaa526af"
         },
         "windows-x64": {
             "url": "https://github.com/haylen-org/haylen-shader-compiler/releases/download/v1.0.0/haylen-shaderc-1.0.0-windows-x64.zip",
-            "sha256": "77544a40cf520a5a2dcff5d2753b2b12fec72921bcc49b3ff76fdda3e7d2a463"
+            "sha256": "da436845afa77e0bd8ecdd28cf778af7aaa149471e1cb6d9fde731ffa7dee6c7"
         },
         "windows-arm64": {
             "url": "https://github.com/haylen-org/haylen-shader-compiler/releases/download/v1.0.0/haylen-shaderc-1.0.0-windows-arm64.zip",
-            "sha256": "7f8138cacd430682d01bb86acbbf25aa4e549b077c21ac84a8055a3f8fb9e771"
+            "sha256": "b06ba029e67b8a87dc8e8e63e7e92b64590b744d614dd1cbb201ba2958a721ae"
         }
     }
 }
