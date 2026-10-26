@@ -32,7 +32,7 @@ UIInterfaceOrientationMask AppleOrientation::toMask(Orientation value) {
     return UIInterfaceOrientationMaskAll;
 }
 
-// UIKit asks the application delegate for the allowed orientations whenever it rotates, so the lock holds after the geometry update turns the screen. The delegate of the backend may not answer that question, so the first lock gives it the answer.
+// UIKit asks the application delegate for the allowed orientations whenever it rotates, so the lock holds after the geometry update turns the screen. The delegate of SDL may not answer that question, so the first lock gives it the answer.
 void AppleOrientation::lock(Orientation value) {
     const bool installed = mask != 0;
     mask = toMask(value);

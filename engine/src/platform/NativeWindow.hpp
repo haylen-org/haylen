@@ -6,7 +6,7 @@
 
 namespace haylen::platform {
 
-// The window of the backend as the system of each platform sees it, which the services of a platform read to place native dialogs, text fields, views, menus and accessibility over the app. The backend installs its window before the system creates it and removes it once it closed, so the services that the system calls while it creates the window find it, and services on other threads read what is open.
+// The window of the platform layer as the system of each platform sees it, which the services of a platform read to place native dialogs, text fields, views, menus and accessibility over the app. The platform layer installs its window before the system creates it and removes it once it closed, so the services that the system calls while it creates the window find it, and services on other threads read what is open.
 class NativeWindow {
   public:
     NativeWindow() = default;
@@ -14,7 +14,7 @@ class NativeWindow {
     NativeWindow& operator=(const NativeWindow&) = delete;
     virtual ~NativeWindow() = default;
 
-    // Whether the system created the window and the backend runs it.
+    // Whether the system created the window and the platform layer runs it.
     [[nodiscard]] static bool isOpen() noexcept {
         const NativeWindow* window = current.load();
         return window != nullptr && window->queryOpen();

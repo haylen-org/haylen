@@ -57,7 +57,7 @@ void FrameSubmitter::submit() {
     buildCommands();
     upload();
 
-    // A draw can still fail inside a pass, such as a material whose program the backend rejects, so the pass and the frame end before the error goes on and the next frame starts clean.
+    // A draw can still fail inside a pass, such as a material whose program the GPU device rejects, so the pass and the frame end before the error goes on and the next frame starts clean.
     try {
         renderOffscreen();
         renderSwapchain();

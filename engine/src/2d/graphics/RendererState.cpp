@@ -633,7 +633,7 @@ RendererState::Targets RendererState::describeTargets(std::uint8_t blend, graphi
         break;
     }
 
-    // Every color of a lit pass takes the blend and the write mask of the draw, as the OpenGL backends apply them to every color of a pass, and the shader library writes what keeps the emission, the surface and the info as they were where a draw must leave them.
+    // Every color of a lit pass takes the blend and the write mask of the draw, as OpenGL applies them to every color of a pass, and the shader library writes what keeps the emission, the surface and the info as they were where a draw must leave them.
     targets.count = 4;
     for (std::size_t index = 0; index < targets.count; ++index) {
         targets.colors[index] = {.format = offscreen, .blend = blendState(mode)};

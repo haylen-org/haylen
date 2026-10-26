@@ -70,16 +70,15 @@ Every machine needs Python 3.12 or newer, CMake 3.28 or newer and a C++20 compil
 
 What each platform needs on top of that:
 
-| Platform | `--platform` | Host | Graphics API | Generator | Also install |
+| Platform | `--platform` | Host | Graphics APIs | Generator | Also install |
 | --- | --- | --- | --- | --- | --- |
 | macOS | `macos` | macOS | Metal | Ninja, or Xcode with `--xcode` | The Xcode Command Line Tools, or Xcode for `--xcode`. |
-| Windows | `windows` | Windows | Direct3D 11 | Ninja when it is on `PATH`, otherwise the default of CMake (Visual Studio) | Visual Studio with the C++ workload. Run Ninja builds from a developer command prompt, so MSVC is on `PATH`. |
-| Linux | `linux` | Linux | OpenGL core | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr, OpenGL, EGL, Wayland, xkbcommon and D-Bus, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev` on Debian and Ubuntu. SDL builds its Wayland support and the input methods of IBus and Fcitx with them. |
+| Windows | `windows` | Windows | Direct3D 12, Direct3D 11, Vulkan, OpenGL | Ninja when it is on `PATH`, otherwise the default of CMake (Visual Studio) | Visual Studio with the C++ workload. Run Ninja builds from a developer command prompt, so MSVC is on `PATH`. |
+| Linux | `linux` | Linux | Vulkan, OpenGL | Ninja | GCC or Clang and the development packages of X11, Xi, Xcursor, Xext, Xrandr, OpenGL, EGL, Wayland, xkbcommon and D-Bus, such as `libx11-dev libxi-dev libxcursor-dev libxext-dev libxrandr-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdbus-1-dev libibus-1.0-dev` on Debian and Ubuntu. SDL builds its Wayland support and the input methods of IBus and Fcitx with them. |
 | iOS | `ios` | macOS | Metal | Xcode | Xcode. Apps also need XcodeGen to generate the Apple project again. |
 | tvOS | `tvos` | macOS | Metal | Xcode | Xcode, and the tvOS simulator runtime (`xcodebuild -downloadPlatform tvOS`) to run apps on it. |
-| Android | `android` | any | OpenGL ES 3 | Ninja | The Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37.2 and platform-tools, and JDK 17 or newer. |
-| Web | `web` | any | WebGPU | Ninja through `emcmake` | `git`, and a browser with WebGPU to run it. |
-| Web | `web-webgl2` | any | WebGL2 | Ninja through `emcmake` | `git`, and a browser with WebGL2 to run it. |
+| Android | `android` | any | Vulkan, OpenGL ES 3 | Ninja | The Android SDK with NDK `30.0.16248370`, CMake `4.1.2`, platform 37.2 and platform-tools, and JDK 17 or newer. |
+| Web | `web` | any | WebGPU, WebGL2 | Ninja through `emcmake` | `git`, and a browser with WebGPU or WebGL2 to run it. |
 
 The script refuses to configure macOS, iOS, tvOS, Linux and Windows builds on any other host. Android and web builds work from every host.
 
@@ -119,12 +118,11 @@ HAYLEN_SHADER_COMPILER=~/haylen-shader-compiler/build/haylen-shaderc haylen buil
 
 ## Build trees
 
-Every platform and configuration gets its own build tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-webgl2-release`. A build with sanitizers gets a tree of its own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree.
+Every platform and configuration gets its own build tree at `build/<platform>-<config>`, with the configuration in lowercase, such as `build/macos-debug` or `build/web-release`. A build with sanitizers gets a tree of its own at `build/<platform>-<config>-<sanitizers>`, such as `build/macos-debug-thread`. Executables and apps land in `bin/<target>/` inside the tree.
 
 The command `build` configures its tree first when one of these is true:
 
 - The tree has no CMake cache yet.
-- The option `--graphics-api` asks for another graphics API than the tree has.
 - The shader compiler changed.
 - Another Python runs `haylen.py` than the one the tree was configured with. The engine tests run `haylen.py` with the same Python, so they never take an older one from `PATH`.
 - The cache misses one of these values.
@@ -149,16 +147,16 @@ The commands `configure`, `build` and `test` take these options:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--platform` | this machine | `macos`, `linux`, `windows`, `ios`, `tvos`, `android`, `web` or `web-webgl2`. The command `test` always runs on this machine, except that `web` and `web-webgl2` run the memory check of the web. |
+| `--platform` | this machine | `macos`, `linux`, `windows`, `ios`, `tvos`, `android` or `web`. The command `test` always runs on this machine, except that `web` runs the memory check of the web and `android` runs the GPU tests on a device. |
 | `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. |
-| `--graphics-api` | the default of the platform | `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`, the graphics API that the backend draws through. It reaches CMake as `HAYLEN_GRAPHICS_API`. The web platforms always use their own graphics API. The command `test` also takes a name of `gpu::Device::kApiNames`, such as `vulkan`, which runs the [GPU tests](testing.md#the-gpu-tests) on that device alone. |
+| `--graphics-api` | every device | Only for `test`: a name of `gpu::Device::kApiNames`, such as `vulkan`, which runs the [GPU tests](testing.md#the-gpu-tests) on that device alone. |
 | `--gpu` | off | Only for `test`: runs the [GPU tests](testing.md#the-gpu-tests) on every device of the build instead of the engine tests. |
 | `--xcode` | off | Uses the Xcode generator on macOS. |
 | `--sanitizers` | none | `address` for AddressSanitizer and UndefinedBehaviorSanitizer, or `thread` for ThreadSanitizer, in a tree of its own. It reaches CMake as `HAYLEN_SANITIZERS`, and MSVC builds ignore it. The [testing guide](testing.md#sanitizers) explains both. |
 | `--target` | everything | The CMake target that `build` builds. |
 | `--jobs` | the processors minus one | The parallel jobs of the build and the tests. |
 
-The runtime links the system libraries of the default graphics API of each platform. On Windows it also links OpenGL when the graphics API is not `D3D11`. So `--graphics-api GLCORE` on Windows is the one desktop override with everything it needs to link.
+Every build carries the GPU device of each graphics API of its platform, which `HAYLEN_GRAPHICS_APIS` lists, and the app chooses one when it runs, as the [rendering guide](../graphics/rendering.md#the-gpu-device) describes.
 
 ### tools
 
@@ -175,12 +173,12 @@ Downloads the shader compiler, or builds it where its release has no binary for 
 haylen configure --platform ios
 ```
 
-Generates the build tree of a platform with the [build options](#build-options). Every tree receives `HAYLEN_SHADERC`, `CMAKE_BUILD_TYPE`, `HAYLEN_GRAPHICS_API` and `HAYLEN_SANITIZERS`. Each platform adds its own settings:
+Generates the build tree of a platform with the [build options](#build-options). Every tree receives `HAYLEN_SHADERC`, `CMAKE_BUILD_TYPE` and `HAYLEN_SANITIZERS`. Each platform adds its own settings:
 
-- macOS targets macOS 14.0 through `CMAKE_OSX_DEPLOYMENT_TARGET`.
+- macOS targets macOS 13.3 through `CMAKE_OSX_DEPLOYMENT_TARGET`.
 - iOS and tvOS use the Xcode generator with `CMAKE_SYSTEM_NAME` set to `iOS` or `tvOS`, the `arm64` architecture and the 16.3 deployment target. The tests and the player stay off. The [distribution guide](distribution.md#haylenxcframework) explains these minimum versions.
 - Android uses the NDK toolchain with `ANDROID_ABI=arm64-v8a`, `ANDROID_PLATFORM=android-27`, the static C++ library and `ANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES`. The tests stay off. The player is the shared library `libhaylen.so`, which the [Android library](distribution.md#the-android-libraries) packages.
-- The web platforms run CMake through `emcmake` with the tests off. They force `WGPU` for `web` and `GLES3` for `web-webgl2`.
+- The web platform runs CMake through `emcmake` with the tests off.
 
 Android builds always use the pinned NDK, `ndk/30.0.16248370` inside the SDK that `ANDROID_HOME` or `ANDROID_SDK_ROOT` names. This holds even when the environment names another NDK, because the engine and its dependencies build against its headers.
 
@@ -188,7 +186,7 @@ Android builds always use the pinned NDK, `ndk/30.0.16248370` inside the SDK tha
 
 ```sh
 haylen build
-haylen build --platform web-webgl2 --config Release --target haylen
+haylen build --platform web --config Release --target haylen
 haylen build --target haylen-headless
 ```
 
@@ -237,9 +235,7 @@ The script `haylen.py` sets these cache variables for you. A project that adds t
 | --- | --- | --- |
 | `HAYLEN_SHADERC` | empty | The path of a build of `haylen-shaderc`, which compiles the shaders of the engine. Empty, the configure provides the pinned compiler as [the shader compiler](#the-shader-compiler) explains, and configures again when the pins change. |
 | `HAYLEN_SHADERC_CACHE` | the CPM source cache, or `tools` of the build tree without one | The folder that keeps the compilers that the configure provides, so build trees share them. |
-| `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | The folder of the backend, which opens the window, runs and draws the frames and holds the entry point. Its `backend.cmake` adds its sources to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. The backend takes the name of its folder, which `HAYLEN_BACKEND` holds. |
-| `HAYLEN_GRAPHICS_APIS` | every API of the platform | The graphics APIs whose GPU devices the static library `haylen-gpu` compiles, as a CMake list of the names of `gpu::Device::kApiNames`. The default is `metal` on Apple platforms, `direct3D12;direct3D11;vulkan;openGl` on Windows, `vulkan;openGl` on Linux, `vulkan;openGlEs` on Android and `webGpu;webGl2` on the web, and a name of another platform is an error. The engine includes the `device.cmake` of the folder of each device under `engine/src/gpu`, and `gpu::DeviceFactory` makes the devices in the default order of the platforms, whatever the order of the list. |
-| `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, Direct3D 11 on Windows, OpenGL ES 3 on Android, WebGPU on the web and OpenGL core on Linux. The shaders of the engine carry the shader languages of that graphics API alone. |
+| `HAYLEN_GRAPHICS_APIS` | every API of the platform | The graphics APIs whose GPU devices the static library `haylen-gpu` compiles, as a CMake list of the names of `gpu::Device::kApiNames`. The default is `metal` on Apple platforms, `direct3D12;direct3D11;vulkan;openGl` on Windows, `vulkan;openGl` on Linux, `vulkan;openGlEs` on Android and `webGpu;webGl2` on the web, and a name of another platform is an error. The engine includes the `device.cmake` of the folder of each device under `engine/src/gpu`, and a name whose folder holds no `device.cmake` stops the configuration. The class `gpu::DeviceFactory` makes the devices in the default order of the platforms, whatever the order of the list, and the shaders of the engine carry the shader languages of the APIs of the list. |
 | `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Builds the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
 | `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Builds the tests on desktop. |
 | `HAYLEN_BUILD_BENCHMARKS` | on when the engine is the top-level project | Builds every benchmark of [`bench`](#bench) on desktop. |
@@ -275,7 +271,7 @@ With link-time optimization, the libraries and SDKs of the artifacts hold the in
 
 ### Shaders of the engine
 
-The shaders of the engine live in `engine/shaders`, in the Haylen shader language. The function `haylen_compile_shader` of `engine/cmake/haylen-shaders.cmake` compiles them with `haylen-shaderc` at build time into `.shader` packages, which the engine embeds. A package holds the code of the shader languages of the graphics API of the backend and of every API of `HAYLEN_GRAPHICS_APIS`, which `HAYLEN_SHADER_LANGUAGES` lists, from `engine/cmake/haylen-platform.cmake` and `engine/cmake/haylen-gpu.cmake`:
+The shaders of the engine live in `engine/shaders`, in the Haylen shader language. The function `haylen_compile_shader` of `engine/cmake/haylen-shaders.cmake` compiles them with `haylen-shaderc` at build time into `.shader` packages, which the engine embeds. A package holds the code of the shader languages of every API of `HAYLEN_GRAPHICS_APIS`, which `engine/cmake/haylen-gpu.cmake` lists in `HAYLEN_SHADER_LANGUAGES`:
 
 | Graphics API | Shader languages |
 | --- | --- |
@@ -292,13 +288,12 @@ The programs that draw into lit canvases compile a second time with `HAYLEN_LIT`
 
 Dependencies are declared with [CPM.cmake](https://github.com/cpm-cmake/CPM.cmake) in `engine/cmake/haylen-dependencies.cmake`. The file `engine/cmake/cpm.cmake` downloads CPM 0.43.2 and checks its SHA-256 hash. CPM keeps the sources in `.cache/cpm` under the top-level source folder, so several build trees share one download. Set `CPM_SOURCE_CACHE`, as a CMake variable or an environment variable, to keep them elsewhere.
 
-A patched package, such as Sokol, keys its place in the cache with `haylen_patched_package_key`. The key is a hash of its archive and of the contents of its patches. So an edited patch downloads and patches the package again in every checkout, while checkouts in other folders share the same package. The patches are configure dependencies of the build tree, so the next build after a patch changes configures again and fetches the package under its new key.
+A patched package, such as SDL, keys its place in the cache with `haylen_patched_package_key`. The key is a hash of its archive and of the contents of its patches. So an edited patch downloads and patches the package again in every checkout, while checkouts in other folders share the same package. The patches are configure dependencies of the build tree, so the next build after a patch changes configures again and fetches the package under its new key.
 
 | Package | Version | Notes |
 | --- | --- | --- |
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it and the build holds one copy. |
 | Varn | commit `7a20070` | The Lua runtime, the event loop, the worker pools and the modules `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and the others. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links. Varn picks the HTTP client of each platform itself: the Apple one on iOS, tvOS and Mac Catalyst, the Android one on Android and `fetch` on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. ThreadSanitizer builds tell Varn to keep the yields of Lua as exceptions, because the sanitizer cannot follow the `_longjmp` of a yield. |
-| Sokol | commit `5e94d12` | Headers only. The Sokol backend compiles the implementation for the chosen graphics API, with the [patches](#patches) of `engine/cmake/patches`. |
 | SDL | 3.4.18 | zlib license. The release archive of SDL 3, with the [patches](#patches) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video and event subsystems, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. It opens the window, runs the frames and reads the input on every platform but Android. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash. Its prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
@@ -335,7 +330,7 @@ To add or update a package:
 2. Compute the hash of that archive, such as with `curl -L <url> | shasum -a 256`.
 3. Adopt the new API everywhere the engine uses it.
 
-A package that Varn also uses goes before the Varn block, so the whole build resolves it once. Header-only sources use `DOWNLOAD_ONLY YES` and an interface library, like `haylen-sokol-headers` and `haylen-stb`.
+A package that Varn also uses goes before the Varn block, so the whole build resolves it once. Header-only sources use `DOWNLOAD_ONLY YES` and an interface library, like `haylen-stb`.
 
 Two details of the packages that come through Varn need care:
 
@@ -365,90 +360,6 @@ SDL listens for the keys of the whole page on the window of the browser. So a pa
 
 The Direct3D devices compose a transparent window of Windows with the desktop through a swapchain of DirectComposition with premultiplied alpha. SDL creates every window with a redirection surface, which covers the visual of that swapchain. The patch creates the transparent windows that draw through neither OpenGL nor Vulkan with `WS_EX_NOREDIRECTIONBITMAP`, so the visual shows. The windows of OpenGL keep the redirection surface, through which SDL makes them transparent.
 
-#### sokol-ios-view-size.patch
-
-The module `sokol_app` sizes the framebuffer of iOS apps by the screen. That crops every app whose window is smaller than the screen, such as Mac Catalyst windows and iPad windows. The patch sizes it by the view of the app instead.
-
-#### sokol-desktop-window.patch
-
-The module `sokol_app` opens every desktop window with a title bar, in the taskbar, without a position and able to take the focus. So a frameless, topmost, unfocusable or taskbar-less window of `app.json` would show its default style for its first frame. Its windows of Direct3D 11 and X11 also cannot be transparent. The patch:
-
-- Creates the window with those options and its position before it first shows.
-- Adds `sapp_set_window_focusable`, so the focus behavior changes while the app runs.
-- Makes transparency work on Direct3D 11 through DirectComposition and on X11 through ARGB visuals.
-- Gives X11 windows the class by which desktops find the desktop entry of the app.
-- Gives Windows windows the icon of the executable instead of the logo of the system.
-
-#### sokol-android-quit.patch
-
-The module `sokol_app` ends a destroyed Android activity with `exit()`. That runs the static destructors of the process while the rendering threads of Android still use them, so the process aborts with a crash report every time the app closes. It also ignores `sapp_quit()` on Android. The patch calls the cleanup callback of the runtime when the activity is destroyed, even after its window is gone, by binding the GL context without a surface. So the engine stops and releases its resources. Then the activity finishes normally, and the process stays cached like any Android app. The patch also makes `haylen.quit()` finish the activity, and a later activity in the same process starts a new runtime.
-
-#### sokol-apple-classes.patch
-
-On Apple platforms, `sokol_app` creates its own application delegate, which also delegates the scene on iOS, tvOS and Mac Catalyst. It is the only object that receives the launch, the links and user activities that open the app, the shortcut items, the life of the scene and the registration and delivery of remote notifications. Native plugins need all of them. Swizzling the class of `sokol_app` at run time would hide behavior and fight the SDKs that swizzle the delegate themselves.
-
-The patch adds `sapp_desc.apple.delegate_class`, which names the class that `UIApplicationMain` or AppKit creates instead. It lets the scene configuration name the class of the application delegate, so one object delegates both. The runtime names `HaylenSceneDelegate` on iOS, tvOS and Mac Catalyst and `HaylenAppDelegate` on macOS. Both derive from the delegates of `sokol_app`, call them for the events they handle and hand every event to the plugins, as the [plugin guide](../platform/plugins.md#events-of-the-app) describes.
-
-The scene configuration names that class for every scene. So `HaylenSceneDelegate` passes only the scene that holds the window of the app to `sokol_app`, gives the windows of screens a delegate of their own and removes other scenes of the app. That way `sokol_app` never builds a second window on its global state.
-
-UIKit asks the view controller of the window whether the status bar shows and which content color it has. The plain `UIViewController` of `sokol_app` answers neither. So the same patch adds `sapp_desc.apple.view_controller_class`, which names the subclass that holds the Metal view. The runtime names `HaylenViewController`, which answers with the status bar of the app.
-
-#### sokol-android-gameactivity.patch
-
-The module `sokol_app` hosts Android apps in `NativeActivity`, which extends the plain `Activity`. So it can never be the `ComponentActivity` that the Activity Result API and current SDKs need, such as paywalls, payment sheets and biometric prompts. It also takes the window surface, so views of the activity never draw over the app. The patch hosts apps in GameActivity of the AndroidX games libraries 4.4.2, an `AppCompatActivity` whose `SurfaceView` lives in an ordinary view hierarchy. It keeps the render thread of `sokol_app` and its handshakes with the UI thread.
-
-Input:
-
-- GameActivity delivers input on the UI thread. The patch copies it into a queue that the render thread drains. The queue grows when a slow frame fills it, so no release is ever dropped.
-- Keys go through a key table with the characters of hardware keyboards.
-- The UI thread decides which keys the app takes. Back and the system keys go on to the views and the system, and a release never reaches the app without its press.
-- `HaylenActivity` hands every release to the app before the views. So the release of a press that the app took reaches it, even when a view took the focus in between, such as the hidden field that the press started to edit.
-
-Frames:
-
-- From Android 10 on, frames follow the Choreographer through `AChoreographer_postFrameCallback64`, which the patch looks up at run time. Older devices wait for the display refresh in `eglSwapBuffers`.
-- The module `sokol_app` runs Android frames only while the window of the activity has the focus. That would stop timers, cancels and timeouts under every dialog, and leave the surface black when the app comes back under one. The patch runs frames while the activity is resumed and has a surface, whatever window has the focus. It reports the changes of that focus as focus events, which make the app `'inactive'`.
-- A frame swaps its buffers only when it acquired the swapchain. A frame that drew nothing, such as those of a covered app after its one covered frame, would show a buffer of undefined content. So the surface keeps the last picture, and older devices wait about one display refresh after such a frame.
-- The module `sokol_app` runs no frames at all while the activity is paused. That would stop the event loop of the app under every other activity, such as a document picker, a permission prompt or the screen of a plugin, and in the background. The patch ticks a paused activity every 100 milliseconds with a frame that presents nothing. In those frames the app, in the background from the pause on, runs its event loop and draws nothing.
-- Once the surface is gone, the GL context stays current without one (`EGL_KHR_surfaceless_context`). So those ticks still create and release GPU resources.
-
-The engine links the static library of GameActivity from the prefab folder of its AAR, which CPM pins by its hash. It links with `-u Java_com_google_androidgamesdk_GameActivity_initializeNativeCode`, since nothing in the library references the JNI entry that GameActivity looks up.
-
-#### sokol-ios-scene-states.patch
-
-The module `sokol_app` suspends iOS, tvOS and Mac Catalyst apps whenever their scene resigns active. That happens under the app switcher, Control Center, a phone call or another app in front of a Mac Catalyst window, and it stops the frames of an app that still shows. The patch reports this as the loss of the focus while the frames go on. It suspends the app only when its scene enters the background.
-
-#### sokol-scroll-units.patch
-
-The module `sokol_app` scales the points that trackpads and other precise devices scroll. It divides them by ten on macOS and by a hundred on the web, without telling them apart from the steps of a wheel. It also counts each of the three lines that browsers report for a step of a wheel as 1.33 steps. So the same gesture scrolls by different amounts on every platform. The patch:
-
-- Reports precise scrolls in the points they move, with `scroll_precise` set.
-- Reports the scroll of wheels in steps, one for each step of a mouse wheel on macOS, Windows and Linux, and on the web where the browser reports the wheel in lines, as Firefox does. Chromium and Safari report most wheels in pixels, about 100 for a step, which a page cannot tell apart from a trackpad. There a step of a wheel scrolls like a trackpad that moves as far.
-- On macOS, reports the phase of the gesture in `scroll_phase`, from the phase and the momentum phase of the event: the fingers touch the trackpad, move or leave it, or the system adds momentum after them.
-- Also sends the scrolls that only change the phase, when the fingers touch or leave the trackpad, which `sokol_app` dropped for having no movement. So the UI knows when to release the content and run its own inertia, as on iOS.
-
-The engine passes the flag on as `Event::preciseScroll` and the phase as `Event::scrollPhase`. The UI scrolls by the points of a trackpad and by the theme metric `scrollLine` for each step of a wheel, as the [UI guide](../ui/ui.md#scrolling-with-wheels-and-trackpads) describes. Android reports the wheels of mice and the scrolling of touchpads as scroll motion events. The Android runtime takes them from GameActivity in steps of a wheel at the place of the pointer.
-
-#### sokol-web-page-events.patch
-
-The module `sokol_app` listens for the keys of the whole page on the window. It also takes the focus moving between the elements of the page, such as from the canvas to a button, for the app losing the focus. So a page that hosts the app next to elements of its own, such as the editor of a website, could keep their keys from the app only by stopping them before they reach those elements. The patch skips a key whose time stamp the runtime names in `Module.sappIgnoredKey`. The runtime does this for the keys of elements that are not the canvas, the page or the fields of the runtime, so those elements still hear them. The patch reports only the focus of the window.
-
-#### sokol-ios-keyboard-presses.patch
-
-The module `sokol_app` turns only the arrows and the Select, Menu and Play/Pause presses of UIKit into keys. So a hardware keyboard of an iPad or an Apple TV would reach the app through those keys alone. The runtime reads every key of a hardware keyboard through `GCKeyboard` on iOS, iPadOS, tvOS and Mac Catalyst. The patch leaves the presses that carry a key of a keyboard to it, so no key arrives twice, and keeps the presses of remotes and game controllers. On tvOS it keeps the Menu press that the Escape key of a keyboard makes, so Escape goes back like the remote.
-
-#### sokol-webgpu-copy-source.patch
-
-The module `sokol_gfx` declares the `copy_src` usage of images, but does not use it yet. So it creates WebGPU textures without the `CopySrc` usage, which `sokol::ImageReadback` of the Sokol backend needs to copy a render target into a buffer that the CPU maps. The engine creates render targets with `copy_src`, and the patch gives the textures with that usage `CopySrc`.
-
-#### sokol-metal-gpu-time.patch
-
-The module `sokol_gfx` measures no time on the GPU. The GPU lane of [profiler traces](../lua-api/debug.md#traces) needs it. The patch reads the start and end times of the GPU from the completed command buffer of every Metal frame. It adds `sg_mtl_gpu_frame_nanoseconds()`, which returns the time of the last completed frame.
-
-#### sokol-validation-shifts.patch
-
-The validation of `sokol_gfx` sets the bit of a view slot by shifting a signed 1. That overflows for the last of its 32 slots, an undefined behavior that the sanitizers report. The patch shifts an unsigned 1.
-
 #### nanosvg-visibility.patch
 
 NanoSVG hides the shapes whose `display` is `none`, but draws those whose `visibility` is `hidden` or `collapse`. A drawing program may leave such a hidden background behind a logo, which the vector images of the engine and the SVG pictures of the UI would then show. The patch hides those shapes too.
@@ -459,9 +370,8 @@ A gradient of SVG lays itself out in the bounding box of its shape, unless it se
 
 ### Choices that need no patch
 
-- The module `sokol_app` asks Android for an OpenGL ES 3.1 context, which some devices and some configurations of the Android emulator lack. The shaders of the engine are GLSL ES 3.00, which every version runs. So the runtime asks for the newest version that the device declares in `ro.opengles.version` instead. The emulator creates a context of exactly the version an app asks for, while every context reports the newest version of the device. So `sokol_gfx` would otherwise query the features of that version, such as the limits of OpenGL ES 3.1, in a context that rejects them.
-- On Windows and Linux, the Sokol backend compiles `sokol_app` with `SOKOL_NO_ENTRY`, so its entry point, `WinMain` or `main`, returns the exit status of the app. On macOS the application delegate of the backend ends the process with it.
-- On Apple platforms the Sokol backend also compiles `sokol_app` with `SOKOL_NO_ENTRY`, so the runtime never defines `main`. The app calls `haylen_main` instead, as [`Haylen.xcframework`](distribution.md#haylenxcframework) shows.
+- The Android runtime asks EGL for the newest OpenGL ES version that the device declares in `ro.opengles.version`. The emulator creates a context of exactly the version an app asks for, while every context reports the newest version of the device. So a context of an older version would report features, such as the limits of OpenGL ES 3.1, that it rejects.
+- The SDL platform layer enters the main callbacks of SDL with `SDL_RunApp` and `SDL_EnterAppMainCallbacks`, without the `SDL_main.h` header that renames `main`. So its entry points, `WinMain` on Windows and `main` on Linux and the web, return the exit status of the app, and the runtime never defines `main` on Apple platforms. The app calls `haylen_main` there, as [`Haylen.xcframework`](distribution.md#haylenxcframework) shows.
 
 ## The desktop player
 
@@ -488,7 +398,7 @@ The link options come from `haylen_link_runtime_platform`:
 
 - Memory growth and a stack of 1 MB.
 - IDBFS for user data.
-- The `emdawnwebgpu` port for WebGPU, and WebGL 2 only for the `web-webgl2` platform.
+- The `emdawnwebgpu` port for WebGPU and WebGL 2, which the GPU devices of `haylen-gpu` hand on.
 
 The engine target adds the native exceptions and the native `longjmp` of WebAssembly, `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`. Varn compiles Lua as C++, so Lua errors unwind as exceptions and yields jump back to their resume. Every current browser runs both without help from JavaScript.
 
@@ -500,18 +410,18 @@ A web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for a
 - `haylen-logo.svg`, the engine logo, which the default shell shows as the icon of the page.
 - `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output. The runtime loads it from the folder of its script through `locateFile`.
 
-The prebuilt player of `haylen engine --platform web` is the `haylen` target of the `web` and `web-webgl2` trees, whose page is the [web loader](distribution.md#web-loader). The command `run-cpp --platform web` builds a C++ app target for both graphics APIs and writes this layout:
+The prebuilt player of `haylen engine --platform web` is the `haylen` target of the `web` tree, whose page is the [web loader](distribution.md#web-loader). The command `run-cpp --platform web` builds a C++ app target and writes this layout:
 
 ```text
 build/cpp/embedding-<hash>/web/
-  index.html              The shell of the target, with engine/platform/web/graphics-api-picker.html in place of {{{ SCRIPT }}}.
+  index.html              The shell of the target, with engine/platform/web/runtime-loader.html in place of {{{ SCRIPT }}}.
   haylen-logo.svg         The icon of the default shell.
   plugins.json            The web parts of the plugins of the app, which the page loads before the app starts.
-  webgpu/                 main.js, main.wasm and main.data built for WebGPU, next to haylen-audio-worklet.js and haylen-content-store.js.
-  webgl2/                 The same files built for WebGL2.
+  main.js                 The runtime, with main.wasm and main.data next to it.
+  haylen-audio-worklet.js The processor of the audio output, next to haylen-content-store.js.
 ```
 
-The graphics API picker runs the WebGPU build when `navigator.gpu` returns an adapter, and the WebGL2 build otherwise. It points `Module.locateFile` at the folder of the chosen build, `webgpu` or `webgl2`, and loads `<folder>/<target>.js`. Add `?graphicsApi=webGpu` or `?graphicsApi=webGl2` to the address to force one of them. Those are the names that `graphics.apiName()` gives the two APIs. Add `?package=<url>` to download a zipped package.
+The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The runtime loader loads the web parts of the plugins and then `<target>.js`. The default shell reads two parameters of the address: `?graphicsApi=webGpu` or `?graphicsApi=webGl2` tries one of the two APIs first, by the names that `graphics.apiName()` gives them, and `?package=<url>` downloads a zipped package.
 
 The page is the own shell of the target, so everything that a custom `WEB_SHELL` adds works in the bundle too, such as the page handlers of the [platform bridge](../platform/platform-bridge.md#web). So do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. The command `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
 
@@ -525,6 +435,7 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 | `Module.haylen.packageData` | Optional bytes of a zipped package, as an `ArrayBuffer` or a `Uint8Array`. The runtime writes them to its file system and plays them instead of the bundled package. The web loader downloads `app.zip` with a progress bar and hands it over this way. |
 | `Module.haylen.packageUrl` | Optional URL of a zipped package, used when `packageData` is not set. The runtime downloads it before the app starts and plays it instead of the bundled package. A failed download reaches `onError`. The default shell of C++ apps reads it from the `package` parameter of the address. |
 | `Module.haylen.release` | Optional `{address, identifier, files}` of a protected release. The `files` are `{name, bytes}` of its manifests and its app domain, which the page downloaded and which go to `/app`. The `address`, such as `app/`, is where the shards of the content stay and download by range. The `identifier` of the app names its [content store](../content/content.md#the-web). The web loader sets it in release builds. |
+| `Module.haylen.graphicsApi` | Optional `webGpu` or `webGl2`, the graphics API that the window tries first, as the player does with `--graphics-api`. Without it the runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The web loader and the default shell of C++ apps set it from the `graphicsApi` parameter of the address. |
 | `Module.haylen.development` | Optional `true` that runs the app in development, as the player does with `--dev`. Lua modules and assets that the page changes with `applyChanges()` then reload in place, as [hot reload](../core/lua.md#hot-reload) describes. |
 | `Module.haylen.developmentServer` | Optional WebSocket address of the development server that `run --platform web` starts, such as `ws://127.0.0.1:8000/haylen/development?token=<token>`. The server pushes every file saved in the app to the page. |
 | `Module.instantiateWasm` | Optional function that receives the imports of the module and a callback. It instantiates `haylen.wasm` itself and passes the instance to the callback. So a page that already downloaded the bytes, such as the web loader, keeps Emscripten from fetching the file again. |
@@ -532,7 +443,7 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 
 None of the package fields turns on development mode. Only a page that sets `Module.haylen.development` runs in development. The template loader sets it only for the `development` entry of `config.json` that `run --platform web` writes.
 
-A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Emscripten inserts the runtime script there, and `run-cpp` inserts the graphics API picker. Before the app starts, the runtime mounts IndexedDB at `/persistent` for user data and loads it. It also reads what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
+A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Emscripten inserts the runtime script there, and `run-cpp` inserts the runtime loader. Before the app starts, the runtime mounts IndexedDB at `/persistent` for user data and loads it. It also reads what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
 
 ### Runtime API
 

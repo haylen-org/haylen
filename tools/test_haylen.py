@@ -307,8 +307,8 @@ class CMakeNameTest(unittest.TestCase):
         self.assertEqual(underscored, [], "These CMake targets, projects and install components use underscores where their names take dashes.")
 
 
-class BackendIsolationTest(unittest.TestCase):
-    """The engine reaches its backend only through its interfaces, so a backend swaps without touching the engine and the Lua API never changes with it."""
+class LayerIsolationTest(unittest.TestCase):
+    """The engine reaches SDL only through its platform layer and each graphics API only through its GPU device, so the Lua API never changes with the platform or the graphics API that draws."""
 
     SOURCE_SUFFIXES = {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}
 
@@ -317,20 +317,21 @@ class BackendIsolationTest(unittest.TestCase):
         files = subprocess.run(["git", "ls-files", "engine"], cwd=root, capture_output=True, text=True, check=True).stdout.splitlines()
         return {name: (root / name).read_text(encoding="utf-8") for name in files if Path(name).suffix in self.SOURCE_SUFFIXES}
 
-    def test_only_the_folder_of_a_backend_reaches_its_libraries(self):
-        library = re.compile(r'#\s*(include|import)\s*[<"](sokol_\w+\.h)[>"]|\b(sapp|sg|sglue|slog)_\w+\s*\(')
-        reaching = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/backends/", name) and library.search(text)]
-        self.assertEqual(reaching, [], "These files outside the folder of a backend include its headers or call its library.")
+    def test_only_the_platform_layer_of_sdl_reaches_sdl(self):
+        library = re.compile(r'#\s*(include|import)\s*[<"]SDL3/|\bSDL_\w+\s*\(')
+        reaching = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/platform/sdl/", name) and library.search(text)]
+        self.assertEqual(reaching, [], "These files outside the platform layer of SDL include the headers of SDL or call it.")
 
-    def test_only_the_folder_of_a_backend_includes_its_headers(self):
-        including = [name for name, text in self.sources().items() if not re.match(r"engine/(src|tests)/backends/", name) and re.search(r'#\s*(include|import)\s*"backends/', text)]
-        self.assertEqual(including, [], "These files include the headers of a backend, which only the backend itself and its tests include.")
+    def test_only_the_gpu_devices_include_the_headers_of_their_graphics_apis(self):
+        api = re.compile(r'#\s*(include|import)\s*[<"](Metal/|QuartzCore/CAMetalLayer|d3d1[12]|dxgi|vulkan/|volk\.h|GLES\d?/|GL/|webgpu/)')
+        including = [name for name, text in self.sources().items() if not re.match(r"engine/(src/gpu|tests/gpu|tests/support)/", name) and api.search(text)]
+        self.assertEqual(including, [], "These files outside the GPU devices include the headers of a graphics API.")
 
-    def test_the_lua_bindings_know_no_backend_and_no_host(self):
+    def test_the_lua_bindings_know_no_host(self):
         binding = re.compile(r"engine/src/(lua/|.*Lua\.(cpp|hpp)$)")
-        host = re.compile(r'#\s*include\s*"(backends/|gpu/NullDevice|platform/(NativeHost|NativeWindow|Player|Services)\.hpp|platform/(apple|android|web|windows|linux|headless)/)')
+        host = re.compile(r'#\s*include\s*"(gpu/NullDevice|platform/(NativeHost|NativeWindow|Player|Services)\.hpp|platform/(sdl|apple|android|web|windows|linux|headless)/)')
         knowing = [name for name, text in self.sources().items() if binding.match(name) and host.search(text)]
-        self.assertEqual(knowing, [], "These Lua bindings include a backend, a host or a platform folder, while the Lua API stays the same on every backend and platform.")
+        self.assertEqual(knowing, [], "These Lua bindings include a host or a platform folder, while the Lua API stays the same on every platform and graphics API.")
 
 
 class WritingTest(unittest.TestCase):
@@ -1031,20 +1032,20 @@ class ShaderCompilerTest(unittest.TestCase):
         compiler = self.scratch / "tools" / "haylen-shaderc-new" / "haylen-shaderc"
         tree = self.scratch / "build" / "macos-debug"
         tree.mkdir(parents=True)
-        arguments = argparse.Namespace(platform="macos", config="Debug", graphics_api=None, sanitizers=None)
+        arguments = argparse.Namespace(platform="macos", config="Debug", sanitizers=None)
         with mock.patch.object(haylen, "BUILD_ROOT", self.scratch / "build"), mock.patch.object(haylen, "ensure_shaderc", return_value=compiler), mock.patch.object(haylen, "command_configure") as configure:
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={(self.scratch / 'tools' / 'haylen-shaderc').as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 1)
 
             # A tree that another Python configured, or one whose cache misses a value that the tool reads, is configured again instead of stopping.
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_GRAPHICS_API:STRING=AUTO\nHAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH=/usr/bin/python3.11\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH=/usr/bin/python3.11\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 2)
-            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\nPython3_EXECUTABLE:FILEPATH={haylen.python_executable()}\n")
+            (tree / "CMakeCache.txt").write_text(f"HAYLEN_SHADERC:FILEPATH={compiler.as_posix()}\n")
             haylen.ensure_configured(arguments)
             self.assertEqual(configure.call_count, 3)
 
@@ -1194,7 +1195,7 @@ class EmscriptenTest(unittest.TestCase):
     def test_a_web_tree_of_another_version_builds_again_from_nothing(self):
         tree = self.scratch / "build" / "web-release"
         tree.mkdir(parents=True)
-        (tree / "CMakeCache.txt").write_text("HAYLEN_GRAPHICS_API:STRING=WGPU\n")
+        (tree / "CMakeCache.txt").write_text("HAYLEN_SHADERC:FILEPATH=haylen-shaderc\n")
         (tree / "object.o").write_bytes(b"object")
         (tree / haylen.EMSCRIPTEN_MARKER).write_text("1.0.0")
         self.assertTrue(haylen.is_stale_web_tree(tree))
@@ -1202,7 +1203,7 @@ class EmscriptenTest(unittest.TestCase):
             haylen.configure_web_tree(["emcmake", "cmake"], tree)
         run.assert_called_once()
         self.assertFalse((tree / "object.o").exists())
-        (tree / "CMakeCache.txt").write_text("HAYLEN_GRAPHICS_API:STRING=WGPU\n")
+        (tree / "CMakeCache.txt").write_text("HAYLEN_SHADERC:FILEPATH=haylen-shaderc\n")
         self.assertFalse(haylen.is_stale_web_tree(tree))
 
 
@@ -1473,13 +1474,13 @@ class DesktopProjectTest(unittest.TestCase):
         node.parent.mkdir(parents=True)
         node.write_text("")
         site = self.scratch / "site"
-        for name in ("loader.js", "app.js", "webgpu/haylen.js", "webgpu/haylen-content-store.js", "plugins/banner/banner.js"):
+        for name in ("loader.js", "app.js", "haylen.js", "haylen-content-store.js", "plugins/banner/banner.js"):
             (site / name).parent.mkdir(parents=True, exist_ok=True)
             (site / name).write_text("const value = 1;\n")
         with mock.patch.object(haylen, "emsdk_root", return_value=emsdk), mock.patch.object(haylen, "run") as run:
             haylen.minify_web_scripts(site)
         commands = {Path(call.args[0][2]).relative_to(site).as_posix(): call.args[0] for call in run.call_args_list}
-        self.assertEqual(sorted(commands), ["app.js", "loader.js", "plugins/banner/banner.js", "webgpu/haylen-content-store.js"])
+        self.assertEqual(sorted(commands), ["app.js", "haylen-content-store.js", "loader.js", "plugins/banner/banner.js"])
         self.assertIn("--module", commands["plugins/banner/banner.js"])
         self.assertNotIn("--module", commands["loader.js"])
         self.assertEqual(commands["app.js"][0], node)

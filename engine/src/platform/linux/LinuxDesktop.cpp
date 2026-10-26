@@ -118,7 +118,7 @@ std::vector<Monitor> LinuxDesktop::readMonitors(Display* display) {
     return monitors;
 }
 
-// The player places the window before the backend connects to the display, so it reads the monitors through a connection of its own then.
+// The player places the window before SDL connects to the display, so it reads the monitors through a connection of its own then.
 std::vector<Monitor> LinuxDesktop::getMonitors() {
     if (Display* display = getDisplay()) {
         return readMonitors(display);
@@ -302,7 +302,7 @@ void LinuxDesktop::startDrag() {
     dragging = true;
 }
 
-// The event loop of the backend drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
+// The event loop of SDL drops events it does not handle, so a connection of its own hears the configure events of the window, the work area and RandR.
 void LinuxDesktop::watch() {
     if (getDisplay() == nullptr) {
         return;

@@ -496,12 +496,11 @@ haylen prepare ~/apps/my-game --platform web --config Release
 haylen run ~/apps/my-game --platform web --config Release
 ```
 
-The command `prepare` makes the site in `build/apps/<app>-<hash>/web/`, and `run` serves it on this machine with byte ranges, as a content delivery network does. The site holds the runtime of the app for WebGPU and for WebGL2, linked with the bootstrap of the app, and the release in `app/`.
+The command `prepare` makes the site in `build/apps/<app>-<hash>/web/`, and `run` serves it on this machine with byte ranges, as a content delivery network does. The site holds the runtime of the app, linked with the bootstrap of the app, and the release in `app/`.
 
 ```text
 index.html, loader.js, loader.css, app.js, config.json, splash.png
-webgpu/haylen.js, webgpu/haylen.wasm, webgpu/haylen-audio-worklet.js, webgpu/haylen-content-store.js
-webgl2/...                     The same files for WebGL2.
+haylen.js, haylen.wasm, haylen-audio-worklet.js, haylen-content-store.js
 app/app.hmanifest
 app/content.hmanifest
 app/<id>.hpak                  Every shard of the release.

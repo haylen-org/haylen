@@ -16,9 +16,9 @@ A name that a reference page or a guide documents is public. A name that no page
 
 ## What is internal
 
-Everything under `engine/src/` is internal. That includes the headers of the built-in plugins kept there, the `Host` interface of `engine/src/platform/Host.hpp`, the host of each platform, the backends of `engine/src/backends/`, and the wire formats that only the engine and the content tool read. Internal code changes freely, and apps never include it or rely on it.
+Everything under `engine/src/` is internal. That includes the headers of the built-in plugins kept there, the `Host` interface of `engine/src/platform/Host.hpp`, the host of each platform, the SDL platform layer of `engine/src/platform/sdl/`, the GPU devices of `engine/src/gpu/`, and the wire formats that only the engine and the content tool read. Internal code changes freely, and apps never include it or rely on it.
 
-The dependencies of the engine, such as Sokol, Box2D, miniaudio, Dear ImGui and Varn, are internal too. Apps reach them only through the API of the engine. The one exception is the Varn modules that the engine installs for apps, whose own reference lives in the Varn repository.
+The dependencies of the engine, such as SDL, Box2D, miniaudio, Dear ImGui and Varn, are internal too. Apps reach them only through the API of the engine. The one exception is the Varn modules that the engine installs for apps, whose own reference lives in the Varn repository.
 
 ## How an API grows
 

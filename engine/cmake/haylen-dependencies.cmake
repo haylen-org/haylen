@@ -60,32 +60,6 @@ if(MSVC AND TARGET Poco::Foundation)
   target_compile_definitions(${poco_foundation} PUBLIC POCO_NO_AUTOMATIC_LIBS)
 endif()
 
-# The `sokol_app` module sizes the iOS framebuffer by the screen, which crops apps whose window is smaller than the screen, on Mac Catalyst and in iPad windows, so the first patch sizes it by the view of the app.
-# Desktop apps open borderless, topmost, unfocusable and taskbar-less windows at a given position, so the second patch creates the window with those options before it first shows, lets the focus behavior change at run time, and makes transparency work on D3D11 through DirectComposition and on X11 through ARGB visuals. It also gives X11 windows the class by which desktops find the desktop entry of the app, and Windows windows the icon of the executable, since `sokol_app` gives them the logo of the system.
-# The `sokol_app` module ends a destroyed Android activity with `exit()`, which aborts the process in the rendering threads of Android, so the third patch stops the app through its cleanup callback and lets the activity finish normally, and makes `sapp_quit()` finish the activity.
-# Native plugins on Apple platforms receive the events of the application and its scenes, which only the application delegate of `sokol_app` sees, and the app shows and styles the status bar, which UIKit asks the view controller of the window about, so the fourth patch lets the runtime name a subclass of that delegate and of that view controller.
-# The `sokol_app` module hosts Android apps in `NativeActivity`, which can never be the `ComponentActivity` that current SDKs and the Activity Result API need and keeps views from drawing over the app, so the last patch hosts them in `GameActivity`, with input through a queue from the UI thread, a key table and the `Choreographer` frame loop chosen at run time.
-# The `sokol_app` module also runs Android frames only while the window of the activity has the focus, which stops timers, cancels and timeouts under every dialog and leaves the surface black when the app comes back under one, so the last patch runs them while the activity is resumed and has a surface, reports the focus as focus events and swaps only the frames that drew, so a covered app keeps its last picture.
-# The `sokol_app` module suspends iOS, tvOS and Mac Catalyst apps whenever their scene resigns active, such as under the app switcher, Control Center, a phone call or another app in front of a Mac Catalyst window, so the last patch reports that as the loss of the focus, with the frames going on, and suspends the app only when its scene enters the background.
-# The `sokol_app` module runs no Android frames at all while the activity is paused, which stops timers, network callbacks and native answers under every other activity and in the background, so the last patch also ticks a paused app ten times a second with frames that present nothing, and keeps the GL context current without a surface for them.
-# The `sokol_app` module scales the points that trackpads scroll down to a tenth on macOS and to a hundredth on the web, without telling them from the steps of a wheel, and counts the three lines that browsers report for a step of a wheel as four steps, so the last patch reports precise scrolls in points with a flag and the scroll of wheels in steps on every platform.
-# The `sokol_app` module reads the keys of the whole page and takes the focus moving between its elements for the focus of the app, so a page that hosts the app next to elements of its own, such as an editor, could only keep their keys from the app by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks and every focus change but that of the window.
-# The `sokol_app` module turns only the arrows, Select, Menu and Play/Pause presses of UIKit into keys, so a hardware keyboard of an iPad or an Apple TV reaches the app with those keys alone, while the engine reads every key of it through GameController, so the last patch leaves the presses of keyboards to GameController and keeps the presses of remotes and game controllers.
-# The `sokol_gfx` module declares the `copy_src` usage of images without using it yet, so WebGPU textures never allow the copies out of them that the readback of render targets needs, and the next patch gives that usage to the textures that ask for it.
-# The `sokol_gfx` module measures no time on the GPU, which the traces of the profiler show, so the next patch reads it from the completed command buffer of every Metal frame.
-# The validation of `sokol_gfx` sets the bit of a view slot by shifting a signed 1, which overflows for the last of its 32 slots, so the last patch shifts an unsigned 1.
-set(sokol_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-view-size.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-desktop-window.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-quit.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-apple-classes.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-android-gameactivity.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-scene-states.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-scroll-units.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-web-page-events.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-ios-keyboard-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-webgpu-copy-source.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-metal-gpu-time.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sokol-validation-shifts.patch")
-set(sokol_hash 8ddf2d37017e9029caca91bf6417d2c7fe0d4f52f35793864fbff70e52d23a97)
-haylen_patched_package_key(sokol_cache_key ${sokol_hash} ${sokol_patches})
-CPMAddPackage(
-  NAME sokol
-  URL "https://github.com/floooh/sokol/archive/5e94d1291fea504ed911090338cf35bd9ef49a06.tar.gz"
-  URL_HASH SHA256=${sokol_hash}
-  PATCHES ${sokol_patches}
-  CUSTOM_CACHE_KEY ${sokol_cache_key}
-  DOWNLOAD_ONLY YES
-)
-
 # SDL opens the window, runs the frames and reads the input of every platform but Android. It builds as a static library with its video and event subsystems alone, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts, and Apple builds keep Metal, which the window hands to the Metal device.
 set(haylen_sdl_options
   "SDL_SHARED OFF" "SDL_STATIC ON" "SDL_TEST_LIBRARY OFF" "SDL_TESTS OFF" "SDL_EXAMPLES OFF" "SDL_INSTALL OFF" "SDL_UNINSTALL OFF"
@@ -125,10 +99,16 @@ if(NOT ANDROID)
 
   # SDL links its frameworks through the framework feature of `LINK_LIBRARY`, whose name CMake drops from the link line while it keeps the flag when another library links the same framework with a plain flag first, such as Foundation through Varn, so SDL links them with plain flags as the other libraries do.
   if(APPLE)
-    get_target_property(sdl_links SDL3-static INTERFACE_LINK_LIBRARIES)
-    string(REGEX REPLACE "\\$<LINK_LIBRARY:FRAMEWORK,([A-Za-z]+)>" "-framework \\1" sdl_links "${sdl_links}")
-    string(REGEX REPLACE "\\$<LINK_LIBRARY:WEAK_FRAMEWORK,([A-Za-z]+)>" "-weak_framework \\1" sdl_links "${sdl_links}")
-    set_property(TARGET SDL3-static PROPERTY INTERFACE_LINK_LIBRARIES "${sdl_links}")
+    foreach(property IN ITEMS LINK_LIBRARIES INTERFACE_LINK_LIBRARIES)
+      get_target_property(sdl_links SDL3-static ${property})
+      string(REGEX REPLACE "\\$<LINK_LIBRARY:FRAMEWORK,([A-Za-z]+)>" "-framework \\1" sdl_links "${sdl_links}")
+      string(REGEX REPLACE "\\$<LINK_LIBRARY:WEAK_FRAMEWORK,([A-Za-z]+)>" "-weak_framework \\1" sdl_links "${sdl_links}")
+      set_property(TARGET SDL3-static PROPERTY ${property} "${sdl_links}")
+    endforeach()
+    # Apple platforms keep the threads of POSIX in the system library that every program links, and libuv names it again for Varn, so the link option of SDL that names it a third time goes, since the linker warns about the duplicate.
+    get_target_property(sdl_options SDL3-static INTERFACE_LINK_OPTIONS)
+    list(REMOVE_ITEM sdl_options "-lpthread")
+    set_property(TARGET SDL3-static PROPERTY INTERFACE_LINK_OPTIONS "${sdl_options}")
   endif()
 endif()
 
@@ -310,9 +290,6 @@ if(HAYLEN_BUILD_TESTS AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR ANDROID))
     SYSTEM YES
   )
 endif()
-
-add_library(haylen-sokol-headers INTERFACE)
-target_include_directories(haylen-sokol-headers SYSTEM INTERFACE "${sokol_SOURCE_DIR}" "${sokol_SOURCE_DIR}/util")
 
 if(ANDROID)
   set(game_activity_dir "${games_activity_SOURCE_DIR}/prefab/modules/game-activity_static")

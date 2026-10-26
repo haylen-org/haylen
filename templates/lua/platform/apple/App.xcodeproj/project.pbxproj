@@ -17,6 +17,7 @@
 		2D5D59A9E6C7CF3F7E576A3B /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 27E75B669F3DE4112956C6F9 /* CoreMedia.framework */; };
 		2EAFDE7EA6AA626BF6FDE31B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C563E05ACD9AEA786427820A /* PrivacyInfo.xcprivacy */; };
 		333C7017465AFE6F9F0E99B5 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = F8A98F04F8F091EAE21B2075 /* Assets.xcassets */; };
+		3528F1A928BACBC96EA927B3 /* Carbon.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 31F8627049FA4255773BAEF5 /* Carbon.framework */; };
 		3C5D098CD216C4EA7BBE4F28 /* CoreVideo.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 3CAAB913D12582C4BAC7F7E5 /* CoreVideo.framework */; };
 		4113BC6CC8460925A27D9678 /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 0A753EF2BDFD938E5832DBA1 /* CoreGraphics.framework */; };
 		419841EE1CDF971A3A0E6F6B /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = C563E05ACD9AEA786427820A /* PrivacyInfo.xcprivacy */; };
@@ -84,6 +85,7 @@
 		206F8F8CC2790E50A614A455 /* HaylenBootstrap.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = HaylenBootstrap.cpp; sourceTree = "<group>"; };
 		27E75B669F3DE4112956C6F9 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		2FBB2073FE2C3FA8CF2F2F81 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
+		31F8627049FA4255773BAEF5 /* Carbon.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Carbon.framework; path = System/Library/Frameworks/Carbon.framework; sourceTree = SDKROOT; };
 		32DFCA6979988D18408B2256 /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
 		3AF24FBCB72AEA680A86D5CC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3CAAB913D12582C4BAC7F7E5 /* CoreVideo.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreVideo.framework; path = System/Library/Frameworks/CoreVideo.framework; sourceTree = SDKROOT; };
@@ -153,6 +155,7 @@
 			files = (
 				EB9D689C7598B3D35EB90987 /* Haylen.xcframework in Frameworks */,
 				AD04A9326EB80D4FC5CFDB63 /* Cocoa.framework in Frameworks */,
+				3528F1A928BACBC96EA927B3 /* Carbon.framework in Frameworks */,
 				6FC6F99C15B8AE622764191B /* CoreGraphics.framework in Frameworks */,
 				62116A99E5DDE88777E66A57 /* QuartzCore.framework in Frameworks */,
 				A52579759E0192C6D1C7320C /* Metal.framework in Frameworks */,
@@ -255,6 +258,7 @@
 			children = (
 				1503D5523FDF705ED22BB7B6 /* AudioToolbox.framework */,
 				64525A5E227A6F8D56316636 /* AVFoundation.framework */,
+				31F8627049FA4255773BAEF5 /* Carbon.framework */,
 				FCF7A4FB4D015D75B3963752 /* Cocoa.framework */,
 				E11F866B40772B2B88C0599A /* CoreAudio.framework */,
 				0A753EF2BDFD938E5832DBA1 /* CoreGraphics.framework */,
@@ -563,7 +567,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.3;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_MODULE_NAME = HaylenApp;
@@ -718,7 +722,7 @@
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.3;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 13.3;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

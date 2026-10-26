@@ -1,10 +1,9 @@
-# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the `@HAYLEN_BACKEND@` backend drawing through `@HAYLEN_GRAPHICS@`, and defines `haylen::engine`, `haylen::runtime` and `haylen_add_app`.
+# Imports a Haylen SDK built for `@HAYLEN_PLATFORM@` with the GPU devices of `@HAYLEN_GRAPHICS_APIS@`, and defines `haylen::engine`, `haylen::runtime` and `haylen_add_app`.
 
 get_filename_component(_haylen_prefix "${CMAKE_CURRENT_LIST_DIR}/@HAYLEN_SDK_PREFIX_FROM_CONFIG@" ABSOLUTE)
 
 set(HAYLEN_PLATFORM "@HAYLEN_PLATFORM@")
-set(HAYLEN_BACKEND "@HAYLEN_BACKEND@")
-set(HAYLEN_GRAPHICS "@HAYLEN_GRAPHICS@")
+set(HAYLEN_GRAPHICS_APIS "@HAYLEN_GRAPHICS_APIS@")
 set(HAYLEN_DESKTOP @HAYLEN_DESKTOP@)
 set(HAYLEN_ENGINE_DIR "${_haylen_prefix}/@HAYLEN_SDK_SHARE_DIR@")
 set(HAYLEN_CMAKE_DIR "${HAYLEN_ENGINE_DIR}/cmake")
@@ -28,6 +27,8 @@ if(NOT TARGET haylen::engine)
   set_target_properties(haylen::runtime PROPERTIES
     IMPORTED_LOCATION "${_haylen_prefix}/@CMAKE_INSTALL_LIBDIR@/@HAYLEN_SDK_RUNTIME_FILE@"
     INTERFACE_LINK_LIBRARIES haylen::engine
+    INTERFACE_COMPILE_OPTIONS "@HAYLEN_SDK_RUNTIME_COMPILE_OPTIONS@"
+    INTERFACE_LINK_OPTIONS "@HAYLEN_SDK_RUNTIME_LINK_OPTIONS@"
   )
 
   include("${HAYLEN_CMAKE_DIR}/haylen-app.cmake")

@@ -33,27 +33,26 @@ scene.push({
 })
 ```
 
-## The GPU device and the backend
+## The GPU device
 
-The engine never talks to a graphics library directly. It draws through `gpu::Device` (`engine/include/haylen/gpu/Device.hpp`), an interface of the engine for buffers, images, samplers, programs, pipelines, passes and draws. A backend implements that interface, and a build picks its backend. The engine ships the Sokol backend, whose GPU device draws with `sokol_gfx`. The renderer, the Lua API and apps look the same on every backend, as the [backends section of the architecture guide](../core/architecture.md#backends) explains.
+The engine never talks to a graphics library directly. It draws through `gpu::Device` (`engine/include/haylen/gpu/Device.hpp`), an interface of the engine for buffers, images, samplers, programs, pipelines, passes and draws. A device of each graphics API implements that interface, and a build carries the device of every graphics API of its platform. The renderer, the Lua API and apps look the same on every device, as the [layers of the architecture guide](../core/architecture.md#layers) explain.
 
 The class `graphics::Device` (`engine/src/graphics/Device.cpp`) owns the GPU device that the host creates. It creates textures, single-channel alpha textures for font atlases and render targets on it. Every method runs on the frame thread, and one engine runs at a time, as the [architecture guide](../core/architecture.md#resource-ownership) explains.
 
-Two layers check the GPU calls. In builds without `NDEBUG`, the Sokol backend turns on the validation layer of `sokol_gfx`, which checks every GPU call. The null device of the headless host checks every call against the contract of the GPU device in every build. The null device also reports the texture limits of desktop GPUs, 16384 pixels for 2D textures, so headless runs load full-size art like real devices.
+Two layers check the GPU calls. With validation on, which debug builds and the tests turn on, each device turns on the validation of its graphics API, such as the debug layers of Direct3D, the validation layers of Vulkan and the debug output of OpenGL, and sends its messages to the log. The null device of the headless host checks every call against the contract of the GPU device in every build. The null device also reports the texture limits of desktop GPUs, 16384 pixels for 2D textures, so headless runs load full-size art like real devices.
 
-The function `graphics.apiName()`, `graphics::Device::getApiName()` in C++, names the graphics API the device draws through. The names come from `gpu::Device::kApiNames` and are the same on every backend:
+The function `graphics.apiName()`, `graphics::Device::getApiName()` in C++, names the graphics API the device draws through. The names come from `gpu::Device::kApiNames`. The window takes the first API that starts, in the order of `window.graphicsApis` of `app.json` and then in the order of the platform:
 
-| Platform | Graphics API | `graphics.apiName()` |
+| Platform | Graphics APIs in the order of the platform | `graphics.apiName()` |
 | --- | --- | --- |
 | macOS, iOS, tvOS, Mac Catalyst | Metal | `'metal'` |
-| Windows | Direct3D 11 | `'direct3D11'` |
-| Linux | OpenGL core | `'openGl'` |
-| Android | OpenGL ES 3 | `'openGlEs'` |
-| Web, `web` platform | WebGPU | `'webGpu'` |
-| Web, `web-webgl2` platform | WebGL2 | `'webGl2'` |
+| Windows | Direct3D 12, Direct3D 11, Vulkan, OpenGL | `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'` |
+| Linux | Vulkan, OpenGL | `'vulkan'`, `'openGl'` |
+| Android | Vulkan, OpenGL ES 3 | `'vulkan'`, `'openGlEs'` |
+| Web | WebGPU, WebGL2 | `'webGpu'`, `'webGl2'` |
 | Headless host of tests | None | `'none'` |
 
-The [build guide](../tools/build.md#cmake-options) explains how a build picks its graphics API. Some graphics APIs store the bottom row of a render target first. The engine corrects that on its own, so the texture of a render target samples upright everywhere.
+The [build guide](../tools/build.md#cmake-options) explains which devices a build carries. Some graphics APIs store the bottom row of a render target first. The engine corrects that on its own, so the texture of a render target samples upright everywhere.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -1015,9 +1014,10 @@ scene.push({
 
 The function `graphics.readTarget`, `graphics::Device::readTarget` in C++, copies the pixels of a render target to the CPU without making the frame thread wait for the GPU. The copy starts in `Device::processReads`, which the engine calls after it submits each frame, so it reads the target as that frame rendered it. The GPU device copies the image with `readImage`.
 
-The Sokol backend copies the image through the graphics API of the build:
+Each device copies the image through its graphics API:
 
 - Metal blits the texture into a shared buffer, on a command buffer of its own, and marks the copy done in the completion handler.
+- Direct3D 12 and Vulkan copy into a buffer that the CPU reads, behind a fence that the next frames test without waiting.
 - Direct3D 11 copies into a staging texture and maps it with `D3D11_MAP_FLAG_DO_NOT_WAIT`.
 - OpenGL, OpenGL ES 3 and WebGL2 read into a pixel buffer behind a fence, which the next frames test without waiting.
 - WebGPU copies into a buffer whose mapping calls back.
@@ -1036,7 +1036,7 @@ end)
 
 ## GPU object pools
 
-The GPU device has room for a bounded number of objects of each kind, and `debug.stats().pools` shows how full each pool is. The Sokol backend sets the pool sizes in `engine/src/backends/sokol/GpuDevice.hpp`, and the null device of the headless host uses the same bounds:
+The GPU device keeps the objects of each kind in a pool, and `debug.stats().pools` shows how many objects each pool holds and the room it has. The pools of the real devices grow as the app makes objects, while the null device of the headless host bounds them with the sizes of `engine/src/gpu/NullDevice.hpp`, so the tests catch objects that pile up:
 
 | Pool | Size | Taken by |
 | --- | --- | --- |
@@ -1085,7 +1085,7 @@ end
 - Clip rectangles split batches, so scroll areas and clipped panels cost a draw call each.
 - The method `map:setTile` bakes the region of its cell again. Grids that change cells every frame draw best as a `TileLayer`, whose chunks are smaller and bake only when they change. Or keep the cells that change in a small layer of their own.
 - Record draws in their final order, for example layer by layer from the lowest, so the renderer uploads instances without copying them into draw order.
-- Measure in Release builds. Debug builds run without optimizations and with the validation layer of the Sokol backend.
+- Measure in Release builds. Debug builds run without optimizations and with the validation of the graphics API.
 - Positions are 32-bit floats on their way to the GPU. They keep a step of a hundredth of a unit up to about 100,000 units from the origin. Near a million the step is a sixteenth of a unit, and sprites start to jitter. A larger world keeps a local origin near the player, as the chunks of a streamed world do. When the player crosses into another chunk, it moves the origin, the camera and every object by the same amount. Physics has the same limit, so its bodies move with the origin.
 
 ## Sprite benchmark

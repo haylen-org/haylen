@@ -77,7 +77,7 @@ std::vector<std::uint8_t> Image::encodePng() const {
     return encoded;
 }
 
-// Rows are swapped when the backend stores the bottom row first, and colors are divided by their alpha.
+// Rows are swapped when the GPU device stores the bottom row first, and colors are divided by their alpha.
 Image Image::fromRendered(std::vector<std::uint8_t> data, int columns, int rows, bool bottomUp) {
     const auto rowBytes = static_cast<std::size_t>(columns) * 4U;
     if (bottomUp) {

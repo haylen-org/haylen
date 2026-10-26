@@ -256,7 +256,7 @@ class Renderer final {
     [[nodiscard]] StaticSpriteBatch createStaticBatch(const graphics::Texture& texture, std::span<const SpriteInstance> sprites);
     [[nodiscard]] const graphics::Texture& getLightTexture() const noexcept;
 
-    // Tells whether light maps store light in floating point, where the backend can render and blend it, so lights brighter than 1 brighten the scene beyond its unlit colors. Otherwise light saturates at 1.
+    // Tells whether light maps store light in floating point, where the GPU device can render and blend it, so lights brighter than 1 brighten the scene beyond its unlit colors. Otherwise light saturates at 1.
     [[nodiscard]] bool isHdrLighting() const noexcept;
     [[nodiscard]] const Stats& getStats() const noexcept;
     [[nodiscard]] math::Rect getCanvasBounds() const noexcept;

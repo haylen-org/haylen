@@ -251,7 +251,7 @@ struct RendererState {
     void closeCapture();
     void resetFrame() noexcept;
 
-    // Throws when a draw would sample the image its canvas draws into, which no backend can read and write in one pass.
+    // Throws when a draw would sample the image its canvas draws into, which no GPU can read and write in one pass.
     void requireReadable(const graphics::TextureResource* texture);
 
     // The standing y is the point a y-sorted canvas sorts the draw by, and a draw of the batch program names every texture of its batch, the first one being the texture of the draw.

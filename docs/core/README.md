@@ -6,7 +6,7 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 
 | Name | Description | Link |
 | --- | --- | --- |
-| Architecture | The libraries the engine builds, the source layout, plugins, the host boundary, the backends and the GPU device interface, the frame, threads, resource ownership, app packages, the web runtime and how hot reload works. | [`architecture.md`](architecture.md) |
+| Architecture | The libraries the engine builds, the source layout, plugins, the host boundary, the platform layers, the GPU devices and the renderers, the frame, threads, resource ownership, app packages, the web runtime and how hot reload works. | [`architecture.md`](architecture.md) |
 | Lifecycle | What happens from start to stop: app states on each platform, the scene lifecycle, the game pause and process modes, autoloads and the owners that end listeners, timers and tasks. | [`lifecycle.md`](lifecycle.md) |
 | Lua | The first steps of a Lua app: the app package and `app.json`, modules and asset paths, scenes, autoloads, classes, owners, disk access, asynchronous code, errors, hot reload, performance and Lua modules written in C++. | [`lua.md`](lua.md) |
 

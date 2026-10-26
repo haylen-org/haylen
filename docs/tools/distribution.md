@@ -152,7 +152,7 @@ The command hands the project the engine of this checkout in `HAYLEN_ENGINE_SOUR
 | Platform | Build | Launch |
 | --- | --- | --- |
 | This machine | Ninja, or the default generator on Windows without Ninja. On a Mac, the macOS minimum of the engine as `CMAKE_OSX_DEPLOYMENT_TARGET`. | Runs the executable. |
-| `web` | Emscripten for WebGPU and for WebGL2 into `build/cpp/<project>-<hash>/web`, with an `index.html` that picks the graphics API that the browser supports, as [the files of a web build](build.md#files-of-a-web-build) show. | Serves that folder like `serve`. |
+| `web` | Emscripten into `build/cpp/<project>-<hash>/web`, with an `index.html` that loads the plugins and the runtime, which draws through WebGPU or WebGL2, as [the files of a web build](build.md#files-of-a-web-build) show. | Serves that folder like `serve`. |
 | `ios-simulator`, `tvos-simulator` | The Xcode generator with the SDK of the iOS or tvOS simulator for the architecture of this Mac, which compiles the launch screen and signs the bundle. | Like `run`, on the simulator that `--device` names, a booted one or the first one available. |
 | `ios`, `tvos` | The Xcode generator with the SDK of the device, signed with the team of `HAYLEN_APPLE_TEAM`. | Like `run`, on the device that `--device` names. |
 | `catalyst` | Ninja with `engine/cmake/haylen-catalyst.toolchain.cmake` for the architecture of this Mac. The function `haylen_add_app` signs the bundle ad hoc, as [Apple bundles](embedding.md#apple-bundles) explain. | Like `run`: starts the executable and streams its log. |
@@ -452,15 +452,14 @@ build/artifacts/
   apple/HaylenBridgeAsync.swift The Swift helpers of the bridge and of plugin contexts, which haylen.py writes into the haylen/ folder of Apple projects.
   android/maven/                Maven repository with dev.haylen:haylen, the Android library with the player, and dev.haylen:haylen-plugins, haylen-links and haylen-coroutines.
   android/sdk/<abi>/            The SDK of the engine for each Android ABI, which links the release libraries of apps.
-  web/webgpu/                   haylen.js and haylen.wasm of the player for WebGPU, haylen-audio-worklet.js, the processor of its audio output, and haylen-content-store.js, the worker of its content store.
-  web/webgl2/                   The same files for WebGL2.
-  web/sdk-webgpu/, sdk-webgl2/  The SDK of the engine for each graphics API, which links the release runtime of each app.
+  web/player/                   haylen.js and haylen.wasm of the player, which draws through WebGPU or WebGL2, haylen-audio-worklet.js, the processor of its audio output, and haylen-content-store.js, the worker of its content store.
+  web/sdk/                      The SDK of the engine for the web, which links the release runtime of each app.
   desktop/<os>-<arch>/haylen    The player of this machine.
   desktop/<os>-<arch>/haylen-content  The content tool of this machine, which builds, verifies, inspects and publishes protected releases.
   desktop/<os>-<arch>/sdk/      The SDK of the engine for this machine, which the Windows and Linux projects of apps link.
 ```
 
-The build trees of the artifacts live in `build/engine/` for Apple, Android and the desktop. The web uses the regular build trees of `haylen build`, `build/web-<config>` and `build/web-webgl2-<config>`.
+The build trees of the artifacts live in `build/engine/` for Apple, Android and the desktop. The web uses the regular build tree of `haylen build`, `build/web-<config>`.
 
 ### Haylen.xcframework
 
@@ -484,13 +483,13 @@ The framework holds one static library per slice, `libhaylen.a`, and the public 
 The slices target the oldest systems that the code of the engine allows:
 
 - iOS and tvOS 16.3, and Mac Catalyst 16.4, which is macOS 13.3 on the Mac. Those releases have a C++ library whose `std::format` formats floating point numbers, which the engine uses for text and logs. The toolchain itself reaches back to iOS and tvOS 15 and macOS 12, and a build for iOS 15 fails only on `std::format` with floating point.
-- macOS 14.0. The module `sokol_app`, which opens the window of the Sokol backend, drives the frames of macOS apps with `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced. It does not check the version of the system, so an app built for an earlier macOS stops as it opens there. Mac Catalyst draws through the UIKit path of `sokol_app`, which never calls it.
+- macOS 13.3, for the same `std::format` of its C++ library. SDL runs from macOS 10.13 on, and the Metal device from macOS 10.15 on, where Metal sorts GPUs into the families that it asks about, so neither sets the minimum.
 - The Apple template sets `IPHONEOS_DEPLOYMENT_TARGET[sdk=macosx*]` to 16.4 for Mac Catalyst, because Xcode would otherwise map iOS 16.3 to macOS 13.2.
 - The engine parses floating point numbers with fast_float, because `std::from_chars` for floating point needs iOS, tvOS and macOS 26.
 
 The script `haylen.py` passes the versions as `CMAKE_OSX_DEPLOYMENT_TARGET`, also to the C++ apps it builds for macOS. The Apple template sets them in `project.yml`, and C++ apps built with `haylen_add_app` use the same ones.
 
-The Sokol backend compiles `sokol_app` with `SOKOL_NO_ENTRY` on Apple platforms, so the runtime never defines `main`. The app calls `haylen_main` instead, which `haylen/platform/apple/HaylenMain.h` declares:
+The SDL platform layer enters the main callbacks of SDL itself, so the runtime never defines `main` on Apple platforms. The app calls `haylen_main` instead, which `haylen/platform/apple/HaylenMain.h` declares:
 
 ```objc
 #import "haylen/platform/apple/HaylenMain.h"
@@ -542,7 +541,7 @@ The POMs of the other libraries list `haylen`. The POM of `haylen-coroutines` al
 
 ### Web and desktop
 
-The web artifacts are the `haylen` player built for WebGPU and for WebGL2. Each sits next to `haylen-audio-worklet.js`, the AudioWorklet processor that the runtime loads from the folder of its script, and `haylen-content-store.js`, the worker of its content store. The SDK of the engine for each graphics API, in `web/sdk-webgpu/` and `web/sdk-webgl2/`, links the runtime of the release of each app. The player embeds no app. In development the page hands it the package at runtime, so the same `haylen.wasm` runs every app.
+The web artifacts are the `haylen` player, which carries the devices of WebGPU and WebGL2 and draws through WebGPU, or through WebGL2 where WebGPU does not start. It sits next to `haylen-audio-worklet.js`, the AudioWorklet processor that the runtime loads from the folder of its script, and `haylen-content-store.js`, the worker of its content store. The SDK of the engine for the web, in `web/sdk/`, links the runtime of the release of each app. The player embeds no app. In development the page hands it the package at runtime, so the same `haylen.wasm` runs every app.
 
 The desktop artifacts are three things, which one build tree of the engine builds, `build/engine/desktop-<config>/`:
 
@@ -691,7 +690,7 @@ The resources are vector drawables of the Haylen brand. The adaptive launcher ic
 templates/lua/platform/web/
   index.html        The canvas and the splash with the logo, the progress bar and the status line.
   loader.css        Styles of the page and the splash.
-  loader.js         Checks the browser, picks the graphics API, downloads with progress, loads the plugins and starts the runtime.
+  loader.js         Checks the browser, downloads with progress, loads the plugins and starts the runtime.
 templates/common/platform/web/
   app.js            Page code of the app, where its bridge handlers register, with the handler of the bridge example.
 ```
@@ -835,7 +834,7 @@ The files of `platform/web/` of the app, or of the layers of the template, go as
 - `config.json`.
 - The package: `app.zip` in development, or the protected release in `app/` with `--config Release`.
 - The splash logo, and the web modules of the plugins in `plugins/`.
-- The WebGPU and WebGL2 runtimes.
+- The runtime, `haylen.js` and `haylen.wasm`, with the processor of its audio output and the worker of its content store.
 
 Nothing is written into `platform/web/`, and a file that the developer deletes stays out of the site.
 
@@ -905,7 +904,7 @@ haylen check ~/apps/my-game --platform linux --config Release
 | --- | --- |
 | Windows, Linux | Writes the release of the profile `windows` or `linux` into `haylen/app/` of the project, and the bootstrap into `haylen/HaylenBootstrap.cpp`. The function `haylen_app` compiles it into the executable that links the SDK of the desktop artifacts, with hidden symbols. Linux links it with `--gc-sections` and ships it stripped, with its symbols in a `.debug` file next to the build, which the executable names in its debug link. Windows links it with `/DEBUG /OPT:REF /OPT:ICF`, so the PDB of its public symbols stays next to the build. The project installs the release in `app/` next to the executable, and neither symbol file. |
 | Android | Writes the release of the profile `android` into `haylen/assets/app/` of the Android project, a flat folder that Android lists without an index and whose shards the template keeps uncompressed in the APK. It links the library of the app, `libhaylen-app.so`, for every ABI from the SDK of the Android artifacts with the bootstrap. The library exports only the entry points of Java and GameActivity and ships stripped. Its symbols stay in `libhaylen-app.so.debug` of `build/apps/<app>-<hash>/release-library/build-<abi>/` for crash reports. The key `library` of `haylen/haylen.properties` names it, so the activity loads it and the Lua player of the `haylen` library stays out of the APK. The release build signs with the upload key of the app, which `android-key` creates, and the template shrinks the code and the resources of the APK with R8. |
-| Web | Places the whole release of the profile `web` in `app/` of the site, where the shards of the content stay and stream by range. It links the runtime of the app for WebGPU and for WebGL2 with Emscripten, from the web SDK of the artifacts with the bootstrap, in `build/apps/<app>-<hash>/release-web/`. The site holds no `app.zip`, and `config.json` names the manifests and the shards of the app domain, which the page downloads before the app starts. The symbol map of each runtime, `haylen.js.symbols`, stays in its build folder for crash reports and never reaches the site. Every other script of the site goes through the terser of the pinned Emscripten: the classic scripts of the page and its workers keep their top-level names, and the web modules of the plugins minify as modules. |
+| Web | Places the whole release of the profile `web` in `app/` of the site, where the shards of the content stay and stream by range. It links the runtime of the app with Emscripten, from the web SDK of the artifacts with the bootstrap, in `build/apps/<app>-<hash>/release-web/`. The site holds no `app.zip`, and `config.json` names the manifests and the shards of the app domain, which the page downloads before the app starts. The symbol map of the runtime, `haylen.js.symbols`, stays in its build folder for crash reports and never reaches the site. Every other script of the site goes through the terser of the pinned Emscripten: the classic scripts of the page and its workers keep their top-level names, and the web modules of the plugins minify as modules. |
 | macOS, Mac Catalyst, iOS, tvOS | Writes the release of the profile `apple` into `haylen/app/` of the Apple project, which the bundle carries as `Resources/app`, and on macOS as `Contents/Resources/app`. It writes the bootstrap into `haylen/HaylenBootstrap.cpp`, which the targets compile into the app that links `Haylen.xcframework`. Every target of the project shares the release. The generated `Haylen.xcconfig` makes the Release configuration keep the debug information in a `.dSYM` next to the app, and strip the app as it builds, so the release that runs is the one that ships. `App.xcconfig` may override each setting. The engine and its dependencies compile with hidden symbols on Apple platforms, so the app exports only the symbols of its own code. |
 
 After a release build, `run` inspects the built app and stops before it launches when the app holds what a release never may. The command `check --config Release` reports the same as missing requirements, so continuous integration fails on it. A release never holds:
@@ -958,7 +957,7 @@ The undefined symbols of `libhaylen.a` show which of those APIs the engine and i
 | Category | Reason | Callers |
 | --- | --- | --- |
 | File timestamp, `NSPrivacyAccessedAPICategoryFileTimestamp` | `C617.1`: the metadata of files inside the container of the app. | `stat`, `fstat` and `lstat` from the file layer of libuv, whose modification time Varn's `fs.stat` reports, and from Poco, OpenSSL, libsodium, libzip, pugixml, miniaudio and the log backend. |
-| System boot time, `NSPrivacyAccessedAPICategorySystemBootTime` | `35F9.1`: time between events of the app and timers. | `mach_absolute_time` from the clock of `sokol_time`, the timers of libuv and the audio of miniaudio. |
+| System boot time, `NSPrivacyAccessedAPICategorySystemBootTime` | `35F9.1`: time between events of the app and timers. | `mach_absolute_time` from the clock of SDL, the timers of libuv and the audio of miniaudio. |
 | Disk space, `NSPrivacyAccessedAPICategoryDiskSpace` | `E174.1`: whether there is room to write files. | `statfs` from the file systems of libuv and Poco, which report the free space of a disk. |
 
 The engine reads no user defaults, no active keyboards and no system boot time through `systemUptime`. An app that uses these APIs for other reasons adds them in its own `PrivacyInfo.xcprivacy`, such as the file timestamps of documents that the person picks with a dialog, `3B52.1`.
@@ -1019,7 +1018,7 @@ The app icons live in the asset catalogs of the Apple project and the launcher r
 | --- | --- |
 | iOS, iPadOS, Mac Catalyst | `ios/LaunchScreen.storyboard`: the image `splash-logo` centered in the safe area over the color `splash-background`, both from the asset catalog. Auto Layout keeps the logo square, at most 200 points and at most half of the safe area in each direction, so it fits every device, orientation and iPad window size. The system takes the launch screen away as soon as the window of the app shows. So `AppleSplash` covers the window with the same storyboard, which `UILaunchStoryboardName` of the `Info.plist` names, until the runtime ends the splash and fades it out. |
 | tvOS | `tvos/LaunchScreen.storyboard` with the same layout and a logo of at most 360 points, kept over the window the same way. |
-| Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the theme `Theme.Haylen.Splash` of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while `sokol_app` draws only once the activity resumed and its surface exists. So `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon. It stays until the runtime ends the splash through `nativeFramePresented`, and then fades out over the seconds of `nativeFadeOut`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
+| Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the theme `Theme.Haylen.Splash` of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while the Android runtime draws only once the activity resumed and its surface exists. So `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon. It stays until the runtime ends the splash through `nativeFramePresented`, and then fades out over the seconds of `nativeFadeOut`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
 | Web | The page shows the logo over the background with the progress bar, until the runtime ends the splash through `Module.haylen.onSplashEnded`, which fades it out. |
 
 The script `haylen.py` writes the splash into each project:
@@ -1037,7 +1036,7 @@ Development mode is [hot reload](../core/lua.md#hot-reload): the running app rel
 | `--dev` | Runs in development, watching the package folder. |
 | `--dev-server <address>` | Runs in development and connects to the development server at that WebSocket address, which pushes the saved files. |
 | `--native <folder>` | Adds a folder that `native.load` searches before the folders of the platform. It may repeat. |
-| `--graphics-api <name>` | The graphics API that the window tries first, such as `vulkan`, before the other APIs of the build. It replaces the `window.graphicsApis` of `app.json`, and the web page passes its choice the same way. A name that is not a graphics API stops the player with an error, and an API that the build lacks logs a warning. |
+| `--graphics-api <name>` | The graphics API that the window tries first, such as `vulkan`, before the other APIs of the build. It replaces the `window.graphicsApis` of `app.json`, and the web page passes the API that its address names the same way. A name that is not a graphics API stops the player with an error, and an API that the build lacks logs a warning. |
 | The first argument that is not an option | The package to play, a folder or a zip. Without one, the runtime plays the package bundled with the app. |
 
 Other options are ignored, because systems add their own, such as the ones that Xcode passes to the macOS apps it launches. Android starts apps without a command line. So a debuggable Android app takes the address of the development server from the extra `dev.haylen.developmentServer` of the intent that launched it, and an app that is not debuggable never reads it. A release build, which carries the bootstrap of its app, ignores `--dev` and `--dev-server` with a warning, since a protected release never runs in development.
@@ -1081,11 +1080,11 @@ An app that stops or restarts leaves the server, which says so and keeps serving
 The file `loader.js` runs when the page loads:
 
 1. It creates `Module` with the canvas, so `app.js` can add page handlers to `Module.preRun`.
-2. It reads `config.json`, which haylen.py writes. It holds the app name and identifier, whether `window.transparent` is set, the splash logo and backgrounds, the files of the protected release that download before the app starts, or `app.zip` in development, the size of each of them and of the two `haylen.wasm` files, and the plugins with a web part.
+2. It reads `config.json`, which haylen.py writes. It holds the app name and identifier, whether `window.transparent` is set, the splash logo and backgrounds, the files of the protected release that download before the app starts, or `app.zip` in development, the size of each of them and of `haylen.wasm`, and the plugins with a web part.
 3. It sets the title and the background, and downloads `splash.<ext>`, the logo of the app or the Haylen symbol, once for both the logo of the splash and the icon of the page. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas. Only the splash keeps the splash background.
-4. It checks for WebAssembly and picks the graphics API: WebGPU when `navigator.gpu` returns an adapter, and WebGL2 otherwise. Add `?graphicsApi=webGpu` or `?graphicsApi=webGl2` to the address to force one that the browser supports. Those are the names that `graphics.apiName()` gives the two APIs. A browser with neither sees a message instead of a blank page.
-5. It downloads `webgpu/haylen.wasm` or `webgl2/haylen.wasm` with the manifests and the app domain of the protected release, or with `app.zip` in development, behind one progress bar. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
-6. It hands the WebAssembly bytes to the runtime through `Module.instantiateWasm`, which compiles them instead of downloading `haylen.wasm` again. It hands the release as `Module.haylen.release`, or the package as `Module.haylen.packageData` in development, then loads `haylen.js` from the folder of that build. The runtime opens the [content store](../content/content.md#the-web) of the app before it starts, and the content of the release streams from `app/` as the app needs it. Every file of the page downloads once.
+4. It checks for WebAssembly and for WebGPU or WebGL2, and a browser with neither sees a message instead of a blank page. The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. Add `?graphicsApi=webGpu` or `?graphicsApi=webGl2` to the address to try one of them first, which the loader passes on as `Module.haylen.graphicsApi`. Those are the names that `graphics.apiName()` gives the two APIs.
+5. It downloads `haylen.wasm` with the manifests and the app domain of the protected release, or with `app.zip` in development, behind one progress bar. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
+6. It hands the WebAssembly bytes to the runtime through `Module.instantiateWasm`, which compiles them instead of downloading `haylen.wasm` again. It hands the release as `Module.haylen.release`, or the package as `Module.haylen.packageData` in development, then loads `haylen.js`. The runtime opens the [content store](../content/content.md#the-web) of the app before it starts, and the content of the release streams from `app/` as the app needs it. Every file of the page downloads once.
 7. Before the app starts, a `Module.preRun` callback holds the start with a run dependency. Meanwhile it calls `load(context)` of every plugin in load order, with the context of `Module.haylen.createPluginContext`, as the [plugin guide](../platform/plugins.md#web) describes. A plugin that fails to import or to load replaces the progress bar with its error, and the app does not start.
 8. `Module.haylen.onSplashEnded` fades the splash out once the runtime ends it, and `Module.haylen.onStarted` tells the page that the app runs. `Module.haylen.onError` writes every error to the console. An error that happens before the app starts replaces the progress bar with the message and the Lua stack trace. Later errors show on the error screen of the runtime.
 
@@ -1095,12 +1094,12 @@ When `config.json` holds the `development` entry, which only `run --platform web
 
 | Platform | Status | How it runs |
 | --- | --- | --- |
-| macOS | Supported | macOS 14.0 and later, because `sokol_app` drives the frames with `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced. The desktop player, or the `macOS` target of the Apple template with `--platform macos`. |
-| Windows, Linux | Supported | Windows 10 version 1903 and later, the first that applies the UTF-8 code page of the application manifest, through which the engine reads its command line. Linux with X11 and the glibc of the machine that built the app, or later. The desktop player, or the project of the [Windows or Linux template](#windows-and-linux) with `--platform windows` or `--platform linux`. CI builds and tests on those hosts. The application manifest of Windows apps declares Windows 10 and 11. Linux apps load GIO and GTK 3 at run time for the theme and the dialogs, and run without them, as [`haylen.system`](../lua-api/system.md#platforms) and [`haylen.dialogs`](../lua-api/dialogs.md#platforms) describe. |
+| macOS | Supported | macOS 13.3 and later, the first release whose C++ library formats floating point numbers with `std::format`, as [Haylen.xcframework](#haylenxcframework) explains. The desktop player, or the `macOS` target of the Apple template with `--platform macos`. |
+| Windows, Linux | Supported | Windows 10 version 1903 and later, the first that applies the UTF-8 code page of the application manifest, through which the engine reads its command line. Linux with X11, or with Wayland, where the window keeps the place and the level that the compositor gives it, and the glibc of the machine that built the app, or later. The desktop player, or the project of the [Windows or Linux template](#windows-and-linux) with `--platform windows` or `--platform linux`. CI builds and tests on those hosts. The application manifest of Windows apps declares Windows 10 and 11. Linux apps load GIO and GTK 3 at run time for the theme and the dialogs, and run without them, as [`haylen.system`](../lua-api/system.md#platforms) and [`haylen.dialogs`](../lua-api/dialogs.md#platforms) describe. |
 | iOS, iPadOS | Supported | iOS and iPadOS 16.3 and later. The `iOS` target on iPhone and iPad, with every orientation of `app.json` and every iPad window size. |
 | Mac Catalyst | Supported | macOS 13.3 and later. The `iOS` target on the Mac, whose window opens at the size of `app.json` in the points of the Mac, where macOS places it. SDL reads the buttons and the wheel of the mouse through `GCMouse` and the pointer position through a hover gesture on the view of the app, as on an iPad with a mouse or a trackpad, and the runtime reads the keyboard through `GCKeyboard`, as on iOS and tvOS. Typed text comes from the native field of the [text input](../ui/text-input.md) of the runtime. |
 | tvOS | Supported | tvOS 16.3 and later. The `tvOS` target on Apple TV and its simulator, with the Siri Remote and game controllers. |
-| visionOS | Runs the iPad app | The iOS target runs on Apple Vision Pro as a compatible iPad app. A native visionOS slice is not possible yet: `sokol_app` reads `UIScreen` through `windowScene.screen` in eight places, which the visionOS SDK marks unavailable, so its implementation does not compile for visionOS. |
+| visionOS | Runs the iPad app | The iOS target runs on Apple Vision Pro as a compatible iPad app. A native visionOS slice is possible now, since SDL runs on visionOS, but the engine does not build one. |
 | watchOS | Not possible | The watchOS 27 SDK has no Metal, MetalKit, GameController or AudioToolbox, which the renderer, the input and the audio of the engine need. |
 | Android | Supported | Phones, tablets and Android TV from one APK, on arm64-v8a, armeabi-v7a and x86_64, Android 8.1 (API 27) and later. |
 | Web | Supported | Desktop and mobile browsers with WebGPU or WebGL2 and the exception handling of WebAssembly, which Chrome 95, Firefox 100 and Safari 15.2 introduced, since Lua unwinds its errors and yields through it. Sound needs `AudioWorklet`, which browsers offer only to pages served over https or from localhost, and apps on other pages run without sound. |

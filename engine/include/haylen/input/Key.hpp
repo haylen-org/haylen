@@ -4,7 +4,7 @@
 
 namespace haylen::input {
 
-// A keyboard key. The numbers of the values never change, so a backend whose key codes match them translates its keys directly.
+// A keyboard key. The numbers of the values never change, so a platform whose key codes match them translates its keys directly.
 enum class Key : std::uint16_t {
     Unknown = 0,
     Space = 32,

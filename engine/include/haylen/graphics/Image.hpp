@@ -36,7 +36,7 @@ class Image final {
     // Decodes PNG, JPG, TGA, BMP and GIF data. Throws `std::runtime_error` when the data is not a supported image.
     [[nodiscard]] static Image decode(std::span<const std::uint8_t> encoded);
 
-    // Turns the pixels a render target holds, premultiplied by alpha and with the bottom row first where the backend stores them so, into an image of straight colors with the top row first.
+    // Turns the pixels a render target holds, premultiplied by alpha and with the bottom row first where the GPU device stores them so, into an image of straight colors with the top row first.
     [[nodiscard]] static Image fromRendered(std::vector<std::uint8_t> data, int columns, int rows, bool bottomUp);
 
     // Encodes the image as a PNG file.

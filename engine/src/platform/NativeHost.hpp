@@ -18,7 +18,7 @@
 
 namespace haylen::platform {
 
-// The host of every backend on a real device, which reaches the system through the services of the platform folder compiled into the runtime. A backend derives its host from it and adds what its window does: its size, scale, fullscreen, title, cursor, clipboard, closing, focus, transparency and GPU device.
+// The host of every platform layer on a real device, which reaches the system through the services of the platform folder compiled into the runtime. A platform layer derives its host from it and adds what its window does: its size, scale, fullscreen, title, cursor, clipboard, closing, focus, transparency and GPU device.
 class NativeHost : public Host {
   public:
     [[nodiscard]] bool isResizable() const noexcept override;

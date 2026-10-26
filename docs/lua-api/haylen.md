@@ -31,18 +31,18 @@ print('Show the touch controls: ' .. tostring(touchFirst) .. '.')
 
 ### haylen.graphicsApi
 
-The graphics API that the GPU device draws through, as a string: `'metal'`, `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'` or `'none'`. A build with the default graphics API of its platform reports these names.
+The graphics API that the GPU device draws through, as a string: `'metal'`, `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'`, `'openGlEs'`, `'webGl2'`, `'webGpu'` or `'none'`. The window takes the first API that starts, in the order of [`window.graphicsApis`](#haylenconfig) and then in the order of the platform.
 
-| Platform | Graphics API |
+| Platform | Graphics APIs in the order of the platform |
 | --- | --- |
 | Apple platforms | `'metal'` |
-| Windows | `'direct3D11'` |
-| Linux | `'openGl'` |
-| Android | `'openGlEs'` |
-| Web | `'webGpu'` or `'webGl2'`, whichever the page picked |
+| Windows | `'direct3D12'`, `'direct3D11'`, `'vulkan'`, `'openGl'` |
+| Linux | `'vulkan'`, `'openGl'` |
+| Android | `'vulkan'`, `'openGlEs'` |
+| Web | `'webGpu'`, `'webGl2'` |
 | Headless host | `'none'`, since nothing draws there |
 
-The name is the same on every backend, and [`graphics.apiName()`](graphics.md#graphicsapiname) returns it too.
+The function [`graphics.apiName()`](graphics.md#graphicsapiname) returns it too.
 
 ```lua
 local haylen = require('haylen')

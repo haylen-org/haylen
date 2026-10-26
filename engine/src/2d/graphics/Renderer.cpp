@@ -487,7 +487,7 @@ void Renderer::drawMesh(const Mesh& mesh, const DrawOrder& order, const math::Tr
     addMesh(mesh.getTexture(), mesh.getVertices(), mesh.getIndices(), order, &transform);
 }
 
-// Render targets of backends that start at the bottom row are flipped, like sprites flip them, so meshes sample them upright.
+// Render targets of GPU devices that start at the bottom row are flipped, like sprites flip them, so meshes sample them upright.
 void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform) {
     if (!state->accepts(order)) {
         return;

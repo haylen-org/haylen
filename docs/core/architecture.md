@@ -1,6 +1,6 @@
 # 🏛️ Architecture
 
-This guide explains how Haylen is put together. It covers the libraries that the engine builds, where each module lives, how subsystems plug into the engine as plugins, how a backend plugs in under it, how a frame runs, which thread owns what, how GPU resources and Lua values are released, what an app package is, and what the web runtime offers to a browser editor. It is written for people who work on the engine and for C++ developers who extend it. If you only write Lua, start with the [Lua guide](lua.md) and the [Lua API reference](../lua-api/README.md).
+This guide explains how Haylen is put together. It covers the libraries that the engine builds, where each module lives, how subsystems plug into the engine as plugins, how the platform layers, the GPU devices and the renderers stack under it, how a frame runs, which thread owns what, how GPU resources and Lua values are released, what an app package is, and what the web runtime offers to a browser editor. It is written for people who work on the engine and for C++ developers who extend it. If you only write Lua, start with the [Lua guide](lua.md) and the [Lua API reference](../lua-api/README.md).
 
 ## Libraries and products
 
@@ -8,11 +8,11 @@ The folder `engine/` is a CMake project of its own. It builds these targets, and
 
 | Target | Alias | What it is |
 | --- | --- | --- |
-| `haylen-engine` | `haylen::engine` | The static library with the whole C++ API and every Lua binding. It draws through the `gpu::Device` of the backend and reaches the platform through `platform::Host`. It never includes a backend and never calls the APIs of the operating system. Of the content format it holds only the reading side, which opens, verifies, decrypts, decodes and downloads releases. |
+| `haylen-engine` | `haylen::engine` | The static library with the whole C++ API and every Lua binding. It draws through `gpu::Device` and reaches the platform through `platform::Host`. It never includes SDL or a graphics API and never calls the APIs of the operating system. Of the content format it holds only the reading side, which opens, verifies, decrypts, decodes and downloads releases. |
 | `haylen-content-writer` | | The static library with the writing side of the content format: `ContentBuilder`, `ReleaseBuilder`, `ShardWriter`, `CatalogWriter`, `ManifestWriter`, `ChannelWriter`, `RecordSealer`, `Compressor`, `Chunker`, `RecordCache`, `LuaCompiler` and `SigningKey`. Apps never link it. The content tool, the tests, the fuzzers and the content benchmark link it, and it builds only for them. |
 | `haylen-platform` | `haylen::platform` | The static library with the parts of the runtime that compile on every platform: the keyboard translator, the gamepad slots, the memory warning flag, the state that the platform reported last, and the readers of the platform folders that need no platform. Since they compile everywhere, every host tests them. The runtime and the tests link it. |
 | `haylen-gpu` | `haylen::gpu` | The static library with `gpu::DeviceFactory` and the GPU device of every graphics API that `HAYLEN_GRAPHICS_APIS` names, each in its folder under `engine/src/gpu`, such as `vulkan`, whose `device.cmake` adds it to the library. The runtime and the GPU tests link it, and the SDK merges it into the runtime. |
-| `haylen-runtime` | `haylen::runtime` | The object library that turns the engine into an app. It holds `platform::Player`, `platform::NativeHost`, the services of one platform folder, which CMake picks when it configures the build, and the [backend](#backends) that `HAYLEN_BACKEND_DIR` names. The backend opens the window, runs and draws the frames, and holds the entry point. With the Sokol backend the entry point is `main` on Linux, `WinMain` on Windows, `sokol_main` on the web, and `haylen_main` on Apple platforms. Android runs on the [Android runtime](#the-android-runtime) of its platform folder instead, whose entry point is `GameActivity_onCreate`. |
+| `haylen-runtime` | `haylen::runtime` | The object library that turns the engine into an app. It holds `platform::Player`, `platform::NativeHost`, the services of one platform folder, which CMake picks when it configures the build, and the [platform layer](#layers), which opens the window, runs the frames, reads the input and holds the entry point. The [SDL platform layer](#the-sdl-platform-layer) runs every platform but Android, with the entry point `main` on Linux and the web, `WinMain` on Windows and `haylen_main` on Apple platforms. Android runs on the [Android runtime](#the-android-runtime) of its platform folder, whose entry point is `GameActivity_onCreate`. |
 | `haylen-headless-host` | `haylen::headless` | The object library with the headless host, a host without a window or a GPU. The tests, the headless player, the benchmarks and the content tool use it. It holds the null GPU device `gpu::NullDevice` that the host draws through, and `HeadlessPlayer`, which runs an app package on it. Only desktop platforms build it. |
 | `haylen` | | The player executable. It links the runtime with `engine/src/platform/LuaPlayer.cpp` and runs any app package. |
 | `haylen-headless` | | The headless player. Its entry point `engine/src/platform/headless/HeadlessMain.cpp` runs `HeadlessPlayer` on any app package, for automatic runs. It builds with the player on desktop platforms. |
@@ -40,7 +40,7 @@ This table names the main classes of each folder. The headers of a folder list a
 | `storage` | `UserStorage`, `SaveSlots`, `ResumeState` and `Preferences`. The save slots and the preferences check with the private `StoredJson` that what they write fits JSON text. |
 | `assets` | `Manager`, which loads, caches and preloads assets in groups, with `GroupManifest`, the format of the groups. It loads the dependencies that an asset type names, such as the images of an effect file, through the cache before it finalizes the asset. |
 | `gpu` | `Device`, the graphics device of the RHI of Haylen, and `Surface`, the window it draws into. The device covers the buffers, images of every type with their mip levels, samplers, programs and pipelines that the renderers create, the passes with their color, resolve and depth stencil attachments and the draws they record, debug groups, the copies of render targets to the CPU, the programs it prepares ahead, the `Capabilities` that say what it can do, the shader `Language` it runs, and the `Api` it draws through, whose names `kApiNames` lists. The private `NullDevice` is the device of the headless host. |
-| `graphics` | The GPU layer for every dimension, over the `gpu::Device` of the backend: `Device`, with its shared white texture, the name of its GPU and the reads of render targets, `Texture` with mipmaps, `RenderTarget`, `BlendMode`, `Viewport`, `Gradient` and `Shader`, whose packages the private `ShaderResource` reads, checks and prepares ahead on the GPU device. `Image` fills, blits, crops, extrudes, bleeds and halves pixels, with `ImageFilters`, `ImagePalette` and `ImagePlaceholder`. `VectorImage` holds SVG images that rasterize at any scale. `Video` plays a video file into a texture with the `VideoDecoder` of the platform. |
+| `graphics` | The GPU layer for every dimension, over `gpu::Device`: `Device`, with its shared white texture, the name of its GPU and the reads of render targets, `Texture` with mipmaps, `RenderTarget`, `BlendMode`, `Viewport`, `Gradient` and `Shader`, whose packages the private `ShaderResource` reads, checks and prepares ahead on the GPU device. `Image` fills, blits, crops, extrudes, bleeds and halves pixels, with `ImageFilters`, `ImagePalette` and `ImagePlaceholder`. `VectorImage` holds SVG images that rasterize at any scale. `Video` plays a video file into a texture with the `VideoDecoder` of the platform. |
 | `text` | `Font`, the interface of the fonts that shape and lay text out for any renderer, with the signed distance field `TrueTypeFont` shaped by HarfBuzz and the `BitmapFont` of BMFont files and grids. `FontFamily`, `Style`, `Layout`, `Alignment` and `Direction`. Rich text: `RichText` with `RichTextDocument`, `RichTextOptions`, `RichTextRegistry` and `Effect`. The markup parser, the layout builder, the layout cache, the bidirectional paragraph, the segmenter and the Thai phrase breaker are the private `MarkupParser`, `LayoutBuilder`, `LayoutCache`, `BidiParagraph`, `Segmenter` and `PhraseBreaker`. |
 | `input` | `Input` with `Touch`, `TouchPhase`, `GamepadState` and `InputDevice`. The enums `Key`, `MouseButton`, `GamepadButton` and `GamepadAxis` with their names in `Controls`, and `KeyModifiers`. `ActionMap` with `ActionMaps`, `VirtualInput`, `PointerEmulation`, `GestureRecognizer` with `Gesture`, `InputRecording` and `InputPlayback`, and `AppTextField`. |
 | `audio` | `Mixer`, which plays voices and music through named buses, `Sound`, the effects `Delay`, `Filter`, `Limiter` and `Reverb` with their `Effect` interface, the audio `Session` and the `OutputSettings`. |
@@ -77,9 +77,9 @@ The folder `engine/src/platform/` holds the boundary with the operating system. 
 | Class | What it does |
 | --- | --- |
 | `Host` | The interface between the engine and a platform, which [the host boundary](#the-host-boundary) describes. |
-| `NativeHost` | The host of real devices, from which every backend derives its host. |
-| `NativeWindow` | The native handles of the window of the backend. |
-| `Player` | Plays packages for the backend, with `ReportedState`, what the platform reported last, and `MemoryWarning`. `LuaPlayer.cpp` is the source of the player. |
+| `NativeHost` | The host of real devices, from which every platform layer derives its host. |
+| `NativeWindow` | The native handles of the window of the platform layer. |
+| `Player` | Plays packages for the platform layer, with `ReportedState`, what the platform reported last, and `MemoryWarning`. `LuaPlayer.cpp` is the source of the player. |
 | `Services` | The class whose static methods every platform folder implements. |
 | `BridgeRelay` and `PlatformLua` | Carry the answers of the bridge and bind it to Lua. `StreamsLua` binds the streams. |
 | `SystemState` | The theme, the battery and the accessibility settings that the platform reports, with `SystemLua` and `AccessibilityLua`. |
@@ -98,7 +98,7 @@ Each platform has a folder of its own. These are its main classes, and each fold
 
 | Folder | Main classes |
 | --- | --- |
-| `apple/` | `AppleServices.mm`. `AppleSystem`, `AppleTheme`, `AppleAccessibility` and `AppleBattery`, with what the device is and reports. `AppleVideoDecoder` with `HaylenVideoLoader`, which decode videos with AVFoundation. `HaylenAccessibilityView` with its `HaylenAccessibilityElement` objects, which serve the elements of the UI to the screen readers of Apple platforms. `AppleSplash`, which keeps the launch screen over the window of iOS, tvOS and Mac Catalyst apps until the splash ends. `AppleDialogs` with `HaylenDialog`, and `ApplePresenter`, which presents from the topmost view controller. `AppleBridge` behind `HaylenBridge`. The native plugin host: `ApplePlugins`, which the application delegates of the backend hand the events of the app, `AppleNotifications`, which reaches the notification center through the Objective-C runtime alone, the plugin contexts with the `HaylenRequirements` that check the project of the app, the overlay, the streams `HaylenVideoStream` and `HaylenAudioStream`, and the screens of `AppleScreens` with `HaylenScreen`, its container `HaylenScreenController` and `HaylenScreenSceneDelegate`, the scenes of screen windows. They stand behind `HaylenPlugin.h`, `HaylenNotificationPlugin.h` and `HaylenRequirements.h`. `AppleRuntime` follows whether an app runs. |
+| `apple/` | `AppleServices.mm`. `AppleSystem`, `AppleTheme`, `AppleAccessibility` and `AppleBattery`, with what the device is and reports. `AppleVideoDecoder` with `HaylenVideoLoader`, which decode videos with AVFoundation. `HaylenAccessibilityView` with its `HaylenAccessibilityElement` objects, which serve the elements of the UI to the screen readers of Apple platforms. `AppleSplash`, which keeps the launch screen over the window of iOS, tvOS and Mac Catalyst apps until the splash ends. `AppleDialogs` with `HaylenDialog`, and `ApplePresenter`, which presents from the topmost view controller. `AppleBridge` behind `HaylenBridge`. The native plugin host: `ApplePlugins`, which the application delegates of the SDL platform layer hand the events of the app, `AppleNotifications`, which reaches the notification center through the Objective-C runtime alone, the plugin contexts with the `HaylenRequirements` that check the project of the app, the overlay, the streams `HaylenVideoStream` and `HaylenAudioStream`, and the screens of `AppleScreens` with `HaylenScreen`, its container `HaylenScreenController` and `HaylenScreenSceneDelegate`, the scenes of screen windows. They stand behind `HaylenPlugin.h`, `HaylenNotificationPlugin.h` and `HaylenRequirements.h`. `AppleRuntime` follows whether an app runs. |
 | `android/` | The [Android runtime](#the-android-runtime) with `AndroidRuntime`, `AndroidHost`, `AndroidWindow`, `AndroidGraphics`, `AndroidEglContext`, `AndroidMessageQueue`, `AndroidFramePacer`, `AndroidKeyClaims` and `AndroidInputEvents`. `AndroidServices.cpp` with its JNI exports. `AndroidActivity` with the GameActivity of the app, `AndroidAssetPackage`, `AndroidGamepads` with the state of the controllers in `AndroidGamepadStates`, `AndroidKeys` with the back button, `AndroidTextInput` and `JavaBridge`. `AndroidDeviceInfo` and `AndroidBatteryStatus` read what the device is and reports. `AndroidGlesVersion` holds the OpenGL ES version that the context asks for. `AndroidDialogJson` holds the JSON of the dialogs of the Java side, and `AndroidStreams` stands behind the streams of Java plugins. `AndroidVideoDecoder` decodes videos with MediaExtractor and MediaCodec, with `AndroidYuvImage`, which turns their pictures into RGBA. |
 | `web/` | `WebServices.cpp`, `WebPage` with the exports that the page calls, `WebVideoDecoder`, which plays videos in video elements of the page, `WebDialogJson` with the JSON of the dialogs of the page, and `BrowserWebSocket`. |
 | `windows/` | Its services with `WindowsSystem`, `WindowsPowerStatus` and `WindowsText`. `WindowsVideoDecoder` with `WindowsPackageStream`, which decode videos with Media Foundation. `WindowsDialogs`, which shows the dialogs on a thread of their own. |
@@ -109,14 +109,14 @@ The classes `PluginLoadOrder`, `WebDialogJson`, `WindowsPowerStatus`, `LinuxSyst
 ### The other folders
 
 - **The content tool.** The tool `haylen-content` lives in `engine/tools/content/`, in the namespace `haylen::content`. `ContentTool` is its command line, `KeyStore` the key folder of an app, and `SecureRandom` reads the random generator of the system. `ReleaseInspector` inspects, verifies and compares releases, and `ChannelPublisher` publishes content to update channels and compacts publication trees. The library `haylen-content-tool` holds them for the tool and the tests, on top of `haylen-content-writer`. Only desktop hosts build it, since releases are built there.
-- **Backends.** The folder `engine/src/backends/` holds one folder per backend, such as `sokol/`, which [backends](#backends) describes.
+- **GPU devices.** The folder `engine/src/gpu/` holds `gpu::DeviceFactory` and one folder per graphics API, such as `vulkan/`, which [the render hardware interface](#the-render-hardware-interface) describes.
 - **Shaders.** The folder `engine/shaders/` holds the sources in the [Haylen shader language](../graphics/shaders.md), compiled at build time, with the shader library in `include/haylen/` that app shaders include too.
 - **Native projects.** The folder `engine/platform/` holds the Gradle project of the Android libraries, the web shell with `haylen-runtime.js`, and the Apple `Info.plist` and launch screen templates. Its Android module `haylen` hosts apps in `HaylenActivity`, a GameActivity of the AndroidX games libraries, next to `HaylenLinkActivity` for links and the plugin host with its overlays and requirements. Its modules `haylen-plugins`, `haylen-links` and `haylen-coroutines` bring the provider of plugins, the link activity and the suspending handlers to the apps that want them.
 - **The rest.** The folders `engine/cmake/`, `engine/tests/` and `engine/bench/` hold the CMake modules, the tests and the benchmarks.
 
 ### Dependencies
 
-Every dependency is pinned with a SHA-256 hash in `engine/cmake/haylen-dependencies.cmake`. The engine declares nlohmann/json before Varn, so both share one copy. Varn brings Lua, libuv, Poco, OpenSSL, libzip and zlib, which the engine reuses. The engine adds Sokol, which only the Sokol backend uses, Dear ImGui, Box2D, miniaudio, zstd, Monocypher, stb, the core of msdfgen, HarfBuzz, SheenBidi, libunibreak, the Thai model of BudouX and, for the tests, GoogleTest.
+Every dependency is pinned with a SHA-256 hash in `engine/cmake/haylen-dependencies.cmake`. The engine declares nlohmann/json before Varn, so both share one copy. Varn brings Lua, libuv, Poco, OpenSSL, libzip and zlib, which the engine reuses. The engine adds SDL, which the SDL platform layer uses, Dear ImGui, Box2D, miniaudio, zstd, Monocypher, stb, the core of msdfgen, HarfBuzz, SheenBidi, libunibreak, the Thai model of BudouX and, for the tests, GoogleTest.
 
 ## Plugins
 
@@ -191,7 +191,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 | Method | Purpose |
 | --- | --- |
 | `getPlatformName()` | The name that the field `platform` of the root `haylen` Lua module reports, such as `macos` or `web`. |
-| `createGpuDevice()` | The `gpu::Device` of the backend, which draws into the window of the host and which the `graphics::Device` of the engine owns. One exists while an app runs. |
+| `createGpuDevice()` | The `gpu::Device` that draws into the window of the host and which the `graphics::Device` of the engine owns. One exists while an app runs. |
 | `getAudioSetup()` | Whether the `audio::Mixer` opens a device, and the backend that its device plays through where the platform needs one of its own, such as the audio output of the page in browsers. |
 | `isFrameTransparent()` | Whether the window composes the alpha of every frame with the desktop. The renderer reads it when it submits a frame. |
 | `getUserDataDirectory(identifier)`, `persistUserData()` | Where `storage::UserStorage` keeps the files of an app, and how the platform makes them durable. |
@@ -218,7 +218,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 
 ### The native host and the player
 
-The target `haylen-runtime` implements the host with `platform::NativeHost` (`engine/src/platform/NativeHost.hpp`). It forwards to the `Services` of the platform folder compiled into it. The host of the backend derives from it and adds what its window does, as [backends](#backends) describes.
+The target `haylen-runtime` implements the host with `platform::NativeHost` (`engine/src/platform/NativeHost.hpp`). It forwards to the `Services` of the platform folder compiled into it. The host of each platform layer derives from it and adds what its window does, as [layers](#layers) describes.
 
 Some state belongs to the process and outlives the apps that restart under it. The platform services update it from any thread.
 
@@ -227,14 +227,14 @@ Some state belongs to the process and outlives the apps that restart under it. T
 - The screen of a plugin that shows lives in the `ScreenRelay`, and the covers of native libraries live in `NativeApi`.
 - The host reads the `SystemInfo` of the platform services once per process.
 
-The entry point of the backend hands the command line to `platform::Player` (`engine/src/platform/Player.hpp`). The player then does these steps:
+The entry point of the platform layer hands the command line to `platform::Player` (`engine/src/platform/Player.hpp`). The player then does these steps:
 
 1. It opens the package named on the command line, or the one bundled with the app, and turns on development mode only for `--dev`.
 2. It reads `app.json` and calls `Application::create()` and `Application::configure`.
-3. It keeps the configuration that the backend opens the window with, which `Player::getOpeningConfig` returns.
+3. It keeps the configuration that the platform layer opens the window with, which `Player::getOpeningConfig` returns.
 4. It creates and drives the `Engine`.
 
-A package that cannot be opened, or an `app.json` that fails validation, starts a stand-in application that shows the error on the screen. The process keeps the status that the last app quit with, or `1` when the engine could not start, and a desktop process exits with it. With the Sokol backend the entry point returns it on Windows and Linux, and `HaylenAppDelegate` ends a macOS app with it, because AppKit would end the process with `0`.
+A package that cannot be opened, or an `app.json` that fails validation, starts a stand-in application that shows the error on the screen. The process keeps the status that the last app quit with, or `1` when the engine could not start, and a desktop process exits with it. The SDL platform layer returns it from the entry point on every desktop, since its own application delegate of macOS leaves the run loop of AppKit to SDL.
 
 ### The headless host
 
@@ -247,55 +247,44 @@ The target `haylen-headless-host` implements the host with `HeadlessHost` for te
 - **System and dialogs.** What the device is, its theme and battery, opening urls and vibrating are engine services of `platform::System`, reached with `engine.getSystem()`. Native message boxes and file pickers belong to `platform::Dialogs`, reached with `engine.getDialogs()`. It checks each request, gives it an id unique in the process, keeps its callback, timeout and cancellation, and hands it to the host. Both deliver every answer on the frame thread, as the references of [`haylen.system`](../lua-api/system.md#c) and [`haylen.dialogs`](../lua-api/dialogs.md#c) describe.
 - **Screens.** The screens of plugins, such as a paywall or a sign-in page, go through `platform::Screens`, reached with `engine.getScreens()`. It opens one screen at a time while the app is active, and covers the app before the platform shows the screen. It routes the end of the screen to the call, or to the next app when the app that opened it is gone, as the [plugin guide](../platform/plugins.md#plugin-screens) describes.
 
-## Backends
+## Layers
 
-A backend opens the window, runs the frames, draws them on the GPU and holds the entry point of the process. The engine, the player that plays packages, the native host, the services of each platform and the Lua API are the same for every backend. So an app never depends on the backend that runs it. The engine ships the Sokol backend in `engine/src/backends/sokol/`, which opens the window with `sokol_app` and draws with `sokol_gfx`.
+The engine stands on three layers. The platform layer opens the window, runs the frames, reads the input and holds the entry point of the process. The render hardware interface, `gpu::Device`, draws through one graphics API, with a device for each API. The renderers draw through that interface alone. The engine, the player that plays packages, the native host, the services of each platform and the Lua API are the same on every platform and graphics API. So an app never depends on what opens its window or draws it.
 
 | Layer | Where | What it does |
 | --- | --- | --- |
 | Engine | `haylen-engine` | The C++ API and the Lua bindings, which reach the platform through `platform::Host` and draw through `gpu::Device`. |
-| Player | `platform::Player` in `engine/src/platform/Player.hpp` | The runtime that every backend shares. It reads the command line, opens the package it names or the bundled one, creates the engine, and replaces it whenever the app restarts or launches another. It hands the app the events of the window and the platform, routes the back button of the platform and ends the splash screen. |
+| Renderers | `graphics2d::Renderer` in `engine/src/2d/graphics/` | Turn the draws of the app into passes and draws of the GPU device. A 3D renderer goes next to it, in a `3d` folder of its own. |
+| Player | `platform::Player` in `engine/src/platform/Player.hpp` | The runtime that every platform layer shares. It reads the command line, opens the package it names or the bundled one, creates the engine, and replaces it whenever the app restarts or launches another. It hands the app the events of the window and the platform, routes the back button of the platform and ends the splash screen. |
 | Native host | `platform::NativeHost` in `engine/src/platform/NativeHost.hpp` | The `Host` of real devices. It forwards to the `Services` of the platform folder compiled into the runtime, and keeps the state that outlives the apps of the process, such as `NativeViews` and `SystemState`. |
-| Native window | `platform::NativeWindow` in `engine/src/platform/NativeWindow.hpp` | The window of the backend as the system sees it. The services of a platform read it to place dialogs, text fields, views, menus and accessibility over the app. It is an `NSWindow` on macOS, a `UIWindow` on iOS, iPadOS, Mac Catalyst and tvOS, an `HWND` on Windows, an X11 `Window` and its `Display` on Linux, and an `ANativeWindow` and its `GameActivity` on Android, with the size and scale of the framebuffer. |
-| Backend | `engine/src/backends/<name>/` | The window, the frames, the events, the GPU device and the entry point. |
+| Native window | `platform::NativeWindow` in `engine/src/platform/NativeWindow.hpp` | The window of the platform layer as the system sees it. The services of a platform read it to place dialogs, text fields, views, menus and accessibility over the app. It is an `NSWindow` on macOS, a `UIWindow` on iOS, iPadOS, Mac Catalyst and tvOS, an `HWND` on Windows, an X11 `Window` and its `Display` on Linux, and an `ANativeWindow` and its `GameActivity` on Android, with the size and scale of the framebuffer. |
+| Platform layer | `engine/src/platform/sdl/`, `engine/src/platform/android/` | The window, the frames, the events and the entry point: the [SDL platform layer](#the-sdl-platform-layer) on every platform but Android, and the [Android runtime](#the-android-runtime). |
+| GPU devices | `engine/src/gpu/<api>/` in `haylen-gpu` | The device of each graphics API, which `gpu::DeviceFactory` makes, as [the render hardware interface](#the-render-hardware-interface) describes. |
 
-A backend implements three interfaces of the engine and holds a runtime that drives the player:
+A platform layer implements two interfaces of the engine and holds a runtime that drives the player:
 
-1. **A host** derived from `platform::NativeHost`, which adds what its window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, whether the window can be transparent, closing the window, its focus, and `createGpuDevice()`, which returns the GPU device of the backend.
-2. **A GPU device** that implements `gpu::Device` (`engine/include/haylen/gpu/Device.hpp`). It creates the buffers, images, samplers, programs and pipelines that the renderers of the engine use, records their passes and draws, and writes dynamic buffers and images. It copies render targets back to the CPU with `readImage`. Where its graphics API compiles programs when they are made, `prepareProgram` starts compiling them ahead. It reports the shader `Language` it runs, the graphics `Api` it draws through, the name of its GPU, its limits and its pools. Its methods run on the frame thread, except `prepareProgram`, which may run on any thread. Methods that create an object throw `std::runtime_error` with a clear sentence when the device has no room for it or rejects it.
-3. **A window** derived from `platform::NativeWindow`. The backend installs it with `NativeWindow::install` when its window opens and removes it when the window closes.
-4. **A runtime** that owns the entry point and drives the player:
+1. **A host** derived from `platform::NativeHost`, which adds what its window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, whether the window can be transparent, closing the window, its focus, and `createGpuDevice()`, which hands over the GPU device that draws into its window.
+2. **A window** derived from `platform::NativeWindow`. The platform layer installs it with `NativeWindow::install` when its window opens and removes it when the window closes.
+3. **A runtime** that owns the entry point and drives the player:
     - It calls `Player::create` with the command line and its host.
-    - It opens the window with the configuration that `Player::getOpeningConfig` returns, installs its window and calls `Player::initialize`.
+    - It opens the window for the graphics APIs in the order that `Player::getGraphicsApis` returns, with the configuration that `Player::getOpeningConfig` returns, makes the device of the first API that starts, installs its window and calls `Player::initialize`.
     - It calls `Player::frame` with the seconds since the last frame.
     - It turns the events of its window into `platform::Event` values for `Player::handleEvent`.
     - It asks `Player::routeBack` where a press of the back button of the platform goes.
+    - It replaces a device that `gpu::Device::isLost` reports with a new one and calls `Player::restart`.
     - It calls `Player::cleanup` when the window closes.
 
-### Adding a backend to the build
+### The render hardware interface
 
-The folder of a backend holds a `backend.cmake`, which `engine/CMakeLists.txt` includes once it defined the target `haylen-runtime`. The cache path `HAYLEN_BACKEND_DIR` names that folder, `engine/src/backends/sokol` by default, and the configuration stops when the folder holds no `backend.cmake`. The backend is named after its folder, such as `sokol`. `engine/cmake/haylen-platform.cmake` sets that name as `HAYLEN_BACKEND`, and the SDK records it in `haylen-config.cmake`.
+A GPU device implements `gpu::Device` (`engine/include/haylen/gpu/Device.hpp`). It creates the buffers, images, samplers, programs and pipelines that the renderers of the engine use, records their passes and draws, and writes dynamic buffers and images. It copies render targets back to the CPU with `readImage`. Where its graphics API compiles programs when they are made, `prepareProgram` starts compiling them ahead. It reports the shader `Language` it runs, the graphics `Api` it draws through, the name of its GPU, its limits and its pools. Its methods run on the frame thread, except `prepareProgram`, which may run on any thread. Methods that create an object throw `std::runtime_error` with a clear sentence when the device has no room for it or rejects it.
 
-The file `backend.cmake` adds the sources of the backend to `haylen-runtime` with `target_sources` and links what they need. It also sets the cache variables `HAYLEN_BACKEND_TEST_SOURCES` and `HAYLEN_BACKEND_TEST_LIBRARIES`, the sources and libraries of the tests of the backend, which the test suite of the engine compiles into `haylen-tests`, and `HAYLEN_BACKEND_ARCHIVES`, the static libraries of the backend that the SDK merges into its runtime library, such as SDL. The graphics API comes from `HAYLEN_GRAPHICS_API`, as the [build guide](../tools/build.md#cmake-options) describes, and `HAYLEN_GRAPHICS` holds it with `AUTO` resolved, for the backend to read.
+The devices live in the namespace `haylen::gpu::<api>`, one folder each under `engine/src/gpu/`: `metal`, `d3d12`, `d3d11`, `vulkan`, `opengl` for OpenGL, OpenGL ES and WebGL2, and `webgpu`. The platform layer hands a device its window as a `gpu::Surface`, with a `gpu::GlContext` for the APIs of OpenGL. The class `gpu::DeviceFactory` makes the device of an API, prepares the ones that start asynchronously, such as WebGPU, which asks the browser for an adapter, and orders the APIs of each platform. The build compiles a device for every API of `HAYLEN_GRAPHICS_APIS`, which is every API of the platform by default, as the [build guide](../tools/build.md#cmake-options) describes. The file `device.cmake` of the folder of each API adds its sources to `haylen-gpu`, and an API whose folder holds no `device.cmake` stops the configuration.
 
-The device of the headless host, `gpu::NullDevice` in `engine/src/gpu/`, implements the same contract without a GPU and checks every call against it. So the tests of the engine catch a renderer that breaks the contract that every backend relies on, as the [testing guide](../tools/testing.md#the-headless-host) describes. The test `BackendIsolationTest` of `tools/test_haylen.py` keeps the layers apart: no Lua binding includes a backend, a host or a platform folder, and no file outside the folder of a backend and its tests includes the headers of a backend or calls its library.
-
-### The Sokol backend
-
-The Sokol backend is made of these classes. The C++ ones live in the namespace `haylen::sokol`.
-
-| Class | File | What it does |
-| --- | --- | --- |
-| `Host` | `Host.hpp` | The host, whose window `sokol_app` opens. |
-| `GpuDevice` | `GpuDevice.hpp` | The GPU device on `sokol_gfx`. It works with `Adapter`, which names the GPU, `ImageReadback`, which copies render targets back through the graphics API of the build, and `Precompiler`, which compiles the sources of programs ahead on the I/O pool through Metal on Apple platforms. Sokol keeps one global context, so a second device throws `Only one graphics device can exist at a time.`. |
-| `Runtime` | `Runtime.hpp` | The `sapp_desc` of the window, its callbacks and the entry points: `haylen_main` on Apple platforms, where `sokol_app` leaves `main` to the app, `sokol_main` on the web, `WinMain` on Windows and `main` on Linux. |
-| `Window` | `Window.hpp` | The native window of `sokol_app`. |
-| `Events` | `Events.hpp` | Turns the events of `sokol_app` into engine events. `engine/tests/backends/sokol/EventsTests.cpp` tests it. |
-| `HaylenAppDelegate`, `HaylenSceneDelegate` and `AppleClasses` | `apple/` | The application delegates of macOS and of iOS, tvOS and Mac Catalyst, which derive from those of `sokol_app` and hand the events of the app to native plugins, and the class that names them and the view controller of the window to `sokol_app`. |
+The device of the headless host, `gpu::NullDevice` in `engine/src/gpu/`, implements the same contract without a GPU and checks every call against it. So the tests of the engine catch a renderer that breaks the contract that every device relies on, as the [testing guide](../tools/testing.md#the-headless-host) describes, and the [GPU tests](../tools/testing.md#the-gpu-tests) run the same conformance suite on every real device. The test `LayerIsolationTest` of `tools/test_haylen.py` keeps the layers apart: no Lua binding includes a host or a platform folder, no file outside the SDL platform layer and its tests includes SDL or calls it, and no file outside the GPU devices and their tests includes the headers of a graphics API.
 
 ### The Android runtime
 
-Android apps run in `dev.haylen.HaylenActivity`, a GameActivity of AndroidX, and no backend runs them. The runtime of `engine/src/platform/android/` takes the native side of GameActivity through its callbacks. It does not use the native app glue of the games libraries, because the glue lets a key filter decide every key event on its own, while the press of a key must decide for its release. The classes live in the namespace `haylen::platform`.
+Android apps run in `dev.haylen.HaylenActivity`, a GameActivity of AndroidX, which the Android runtime runs instead of SDL. The runtime of `engine/src/platform/android/` takes the native side of GameActivity through its callbacks. It does not use the native app glue of the games libraries, because the glue lets a key filter decide every key event on its own, while the press of a key must decide for its release. The classes live in the namespace `haylen::platform`.
 
 | Class | File | What it does |
 | --- | --- | --- |
@@ -313,7 +302,7 @@ The Java side of `HaylenActivity` reports the insets, the density, the orientati
 
 ### The SDL platform layer
 
-The SDL platform layer in `engine/src/platform/sdl/` opens the window, runs the frames and reads the input on macOS, Windows, Linux, iOS, iPadOS, Mac Catalyst, tvOS, visionOS and the web, through SDL 3. Its classes live in the namespace `haylen::platform::sdl`, which names the folder inside the platform context, as the devices of each graphics API live in `haylen::gpu::<api>`, so its classes keep short names such as `Window` without meeting `platform::Window`. The GPU devices of `haylen-gpu` draw its frames, so it adds no device of its own.
+The SDL platform layer in `engine/src/platform/sdl/` opens the window, runs the frames and reads the input on macOS, Windows, Linux, iOS, iPadOS, Mac Catalyst, tvOS and the web, through SDL 3. Its classes live in the namespace `haylen::platform::sdl`, which names the folder inside the platform context, as the devices of each graphics API live in `haylen::gpu::<api>`, so its classes keep short names such as `Window` without meeting `platform::Window`. The GPU devices of `haylen-gpu` draw its frames, so it adds no device of its own.
 
 | Class | File | What it does |
 | --- | --- | --- |
@@ -428,7 +417,7 @@ Other threads hand their results to the frame thread:
 
 Code on the frame thread never iterates a container while the loop body can run Lua or a user callback. It copies the container first, into storage it reuses, the way `UiPlugin` copies its mounted GUIs. Or it reaches the elements by index up to the count they had before the loop, the way `Engine::frame` reaches the plugins, whose registry only grows while the app runs.
 
-The engine creates some static objects with `new` and never destroys them. Among them are the log listeners, the object counters and their registry, the default options and empty values that methods hand out, the state of the process that `platform::Player` keeps, the window of the Sokol backend, and the platform state behind the bridge, native calls and text input. The reason is that a process can end with an `exit()` on a thread other than the frame thread, as the iOS simulator does on a background queue when its render server dies. `exit()` runs the destructors of static objects on that thread while the frame thread still logs, counts objects and plays the app. The workers of the native WebSocket connections are the one exception: they stop their connections at exit and wait for them, so the static state of Poco and OpenSSL outlives every connection thread.
+The engine creates some static objects with `new` and never destroys them. Among them are the log listeners, the object counters and their registry, the default options and empty values that methods hand out, the state of the process that `platform::Player` keeps, and the platform state behind the bridge, native calls and text input. The reason is that a process can end with an `exit()` on a thread other than the frame thread, as the iOS simulator does on a background queue when its render server dies. `exit()` runs the destructors of static objects on that thread while the frame thread still logs, counts objects and plays the app. The workers of the native WebSocket connections are the one exception: they stop their connections at exit and wait for them, so the static state of Poco and OpenSSL outlives every connection thread.
 
 The web build has a single thread, like Varn. The poll of the event loop runs the pool jobs posted since the last frame, and `JobSystem::parallelFor` runs the whole range on the frame thread. So the page needs neither `SharedArrayBuffer` nor cross-origin isolation headers.
 
@@ -463,7 +452,7 @@ Due timers fire from a heap. So an update grows with the timers that fire, not w
 
 One `Engine` owns every service of one running app: the Varn runtime and its Lua state, the job system, the graphics device, audio, user storage, the bridge, the system, the dialogs, the renderer, assets, scenes and plugins. Restarting an app destroys the engine and creates a new one.
 
-The GPU device, the renderer and the interface keep state of the process, so only one engine runs at a time. Creating another while one runs throws `Only one engine can run at a time. Destroy the engine that runs before creating another.`. The GPU device of the Sokol backend also throws `Only one graphics device can exist at a time.` for a second device, since Sokol keeps one global context.
+The GPU device, the renderer and the interface keep state of the process, so only one engine runs at a time. Creating another while one runs throws `Only one engine can run at a time. Destroy the engine that runs before creating another.`.
 
 The engine holds the start of an app with `Engine::holdStart` while the content it needs to start downloads behind the update screen. The app then starts in the first frame after the last hold ends.
 
@@ -483,9 +472,9 @@ So a plugin releases every Lua value it holds in `stop`, because the Lua state i
 
 GPU objects are created only on the frame thread, through `graphics::Device` (`createTexture`, `createDynamicTexture`, `createDynamicDistanceTexture`, `createRenderTarget`, `replaceTexture`) and the renderer. Texture and render target handles share their resource. When the last handle dies, on any thread, the resource hands its GPU objects to the `ResourceGraveyard` in `engine/src/graphics/ResourceGraveyard.hpp`. `Device::collectGarbage()` then destroys them on the frame thread after the frame is submitted, so no queued draw ever uses a destroyed object.
 
-Replacing the pixels and the size of a texture with `replaceTexture` buries the old image the same way, and a dynamic texture stays dynamic. That is how the texture of a video stream follows a new frame size under every handle. Dynamic textures, such as the atlases of fonts and of the UI and the textures of video streams, otherwise change in place. `updateTexture` keeps the last pixels that a texture received, and the renderer sends every changed texture once per frame, before its passes, with `Device::uploadTextures`. The pixels of every changed texture reach the GPU device in one `writeImages` call. The device of the Sokol backend puts them into one staging buffer, which grows to the largest upload of a frame, and copies them from there into the images. So a changed texture uploads all of its pixels once per frame, however many glyphs its draws added.
+Replacing the pixels and the size of a texture with `replaceTexture` buries the old image the same way, and a dynamic texture stays dynamic. That is how the texture of a video stream follows a new frame size under every handle. Dynamic textures, such as the atlases of fonts and of the UI and the textures of video streams, otherwise change in place. `updateTexture` keeps the last pixels that a texture received, and the renderer sends every changed texture once per frame, before its passes, with `Device::uploadTextures`. The pixels of every changed texture reach the GPU device in one `writeImages` call. Each device copies them through upload memory of its own into the images. So a changed texture uploads all of its pixels once per frame, however many glyphs its draws added.
 
-The GPU device holds room for a bounded number of objects of each kind, which `gpu::Device::getPools()` reports. The device of the Sokol backend sets the pools of `sokol_gfx` up front with the sizes that `sokol::GpuDevice` declares in `engine/src/backends/sokol/GpuDevice.hpp`, and `gpu::NullDevice` of the headless host bounds its pools the same way.
+The GPU device keeps the objects of each kind in a pool, which `gpu::Device::getPools()` reports with how many objects it holds and the room it has. The pools of the real devices grow as the app makes objects, while `gpu::NullDevice` of the headless host bounds its pools with the sizes it declares in `engine/src/gpu/NullDevice.hpp`, so the tests catch an app or a renderer that makes objects without end.
 
 | Pool | Size | Bounds |
 | --- | --- | --- |
@@ -494,7 +483,7 @@ The GPU device holds room for a bounded number of objects of each kind, which `g
 | `programs` | 512 | Shader programs, those of the renderer and those of custom shaders. |
 | `pipelines` | 2048 | Pipelines, one per program, blend mode and kind of target. |
 
-Going past a limit throws an error that names it, such as `The graphics device has no room for another texture. At most 4096 textures and render targets can exist at once.`, and the app stops on the error screen.
+Going past a bound of the headless host throws an error that names it, such as `The graphics device has no room for another texture. At most 4096 textures and render targets can exist at once.`, and the app stops on the error screen.
 
 ### Assets and Lua values
 
@@ -552,7 +541,7 @@ How the runtime behaves:
 - The runtime draws into `Module.canvas`, which must be a canvas element with an id, and follows its size with a `ResizeObserver`.
 - It plays audio through an `AudioWorkletNode`. The processor `haylen-audio-worklet.js` loads from the folder of the script, and the engine mixes the blocks that the processor plays on the page thread, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes.
 - User data lives under `/persistent`, a file system kept in IndexedDB.
-- The command `haylen engine --platform web` builds the player for WebGPU and for WebGL2. The page of the web template picks WebGPU when the browser offers an adapter, and `?graphicsApi=webGpu` or `?graphicsApi=webGl2` forces one of them. The [distribution guide](../tools/distribution.md#web-loader) covers the page and the [build guide](../tools/build.md#web-builds) the web builds.
+- The command `haylen engine --platform web` builds the player with the devices of WebGPU and WebGL2. It draws through WebGPU, or through WebGL2 where WebGPU does not start, and a page that sets `Module.haylen.graphicsApi` to `webGpu` or `webGl2` has that API tried first, as `?graphicsApi=` of the address does on the page of the web template. The [distribution guide](../tools/distribution.md#web-loader) covers the page and the [build guide](../tools/build.md#web-builds) the web builds.
 
 ## Development and hot reload
 

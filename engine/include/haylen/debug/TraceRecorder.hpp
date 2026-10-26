@@ -12,7 +12,7 @@
 
 namespace haylen::debug {
 
-// Records spans of time from any thread into a bounded buffer and writes them in the trace event JSON format that the profilers of browsers and trace viewers open, with one lane per thread. The profiler records its scopes and frames into it on the frame thread, the job system records the jobs of its workers, and the renderer records how long the GPU took for each frame where the backend measures it. Recording stops taking spans once the buffer is full, and counts the spans it dropped.
+// Records spans of time from any thread into a bounded buffer and writes them in the trace event JSON format that the profilers of browsers and trace viewers open, with one lane per thread. The profiler records its scopes and frames into it on the frame thread, the job system records the jobs of its workers, and the renderer records how long the GPU took for each frame where the GPU device measures it. Recording stops taking spans once the buffer is full, and counts the spans it dropped.
 class TraceRecorder final {
   public:
     static constexpr std::size_t kDefaultCapacity = 262144;

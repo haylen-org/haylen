@@ -180,6 +180,8 @@ set(HAYLEN_TEST_SOURCES
   platform/PlatformTests.cpp
   platform/PluginLoadOrderTests.cpp
   platform/ScreensTests.cpp
+  platform/sdl/EventsTests.cpp
+  platform/sdl/FrameTimerTests.cpp
   platform/StreamTests.cpp
   platform/SystemTests.cpp
   platform/WebDialogJsonTests.cpp
@@ -243,10 +245,10 @@ set(HAYLEN_TEST_SOURCES
   ui/WheelTests.cpp
 )
 
-# The backend of the build brings its own tests with it.
-add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} ${HAYLEN_BACKEND_TEST_SOURCES})
+# The tests of the platform layer of SDL compile the translation of its events and the timing of the frames, which read only their own data.
+add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FrameTimer.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool ${HAYLEN_BACKEND_TEST_LIBRARIES} haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
+target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
 # The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.

@@ -17,7 +17,7 @@
 
 namespace haylen::platform {
 
-WNDPROC WindowsDesktop::backendProcedure = nullptr;
+WNDPROC WindowsDesktop::sdlProcedure = nullptr;
 Window::Passthrough WindowsDesktop::passthrough = Window::Passthrough::Off;
 std::vector<math::Polygon::Outline>& WindowsDesktop::regions = *new std::vector<math::Polygon::Outline>();
 math::Vec2 WindowsDesktop::pointer{};
@@ -143,14 +143,14 @@ void WindowsDesktop::setClickThrough(bool value) {
     SetWindowLongPtrW(window, GWL_EXSTYLE, value ? exStyle | WS_EX_TRANSPARENT : exStyle & ~WS_EX_TRANSPARENT);
 }
 
-// The move loop of the system runs the frames of the app from a timer of the backend, so the drag starts from the window procedure between frames.
+// The move loop of the system runs the frames of the app from a timer of SDL, so the drag starts from the window procedure between frames.
 void WindowsDesktop::startDrag() {
     PostMessageW(getWindow(), kStartDragMessage, 0, 0);
 }
 
 void WindowsDesktop::watch() {
     const HWND window = getWindow();
-    backendProcedure = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&windowProcedure)));
+    sdlProcedure = reinterpret_cast<WNDPROC>(SetWindowLongPtrW(window, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&windowProcedure)));
 }
 
 void WindowsDesktop::update() {
@@ -240,7 +240,7 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
     default:
         break;
     }
-    return CallWindowProcW(backendProcedure, window, message, wParam, lParam);
+    return CallWindowProcW(sdlProcedure, window, message, wParam, lParam);
 }
 
 } // namespace haylen::platform

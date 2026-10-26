@@ -51,7 +51,7 @@ struct GpuInstance {
     // Packs the effect of a sprite into the record that follows its own, which the effect program reads at the same instance. The reach grows the quad of the sprite by the outline and the glow, as a share of its source of `sourceSize` pixels.
     [[nodiscard]] static GpuInstance makeEffect(const SpriteEffect& effect, math::Vec2 sourceSize) noexcept;
 
-    // Packs a shape for the shape program, whose quad reaches past the edge of the shape by the margin, so the fade of the edge fits inside it. A flipped texture, a render target of a backend that starts at the bottom row, draws upright.
+    // Packs a shape for the shape program, whose quad reaches past the edge of the shape by the margin, so the fade of the edge fits inside it. A flipped texture, a render target of a GPU device that starts at the bottom row, draws upright.
     [[nodiscard]] static GpuInstance makeShape(const Shape& shape, float margin, bool flipped) noexcept;
 
     // Multiplies the alpha of the colors of a sprite or of a shape, such as by the strength of a distortion draw.

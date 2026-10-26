@@ -35,11 +35,11 @@ namespace haylen::platform {
 
 class DevelopmentSession;
 
-// Boundary between the portable engine and a platform. The host of a backend implements it for real devices, such as the host of the Sokol backend, and the headless host implements it for tests.
+// Boundary between the portable engine and a platform. The hosts of the platform layers implement it for real devices, the one of SDL and the one of Android, and the headless host implements it for tests.
 class Host : public Window {
   public:
     [[nodiscard]] virtual std::string_view getPlatformName() const noexcept = 0;
-    // Creates the GPU device of the backend, which draws into the window of the host. One exists while an app runs.
+    // Creates the GPU device, which draws into the window of the host. One exists while an app runs.
     [[nodiscard]] virtual std::unique_ptr<gpu::Device> createGpuDevice() = 0;
     [[nodiscard]] virtual audio::Mixer::Setup getAudioSetup() const = 0;
 

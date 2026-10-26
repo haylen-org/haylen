@@ -166,13 +166,12 @@ STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store acce
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
 RELEASE_MATCH_MINIMUM = 16
-# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches their C++ library in iOS and tvOS 16.3, and the `sokol_app` of the Sokol backend draws macOS frames through `-[NSView displayLinkWithTarget:selector:]`, which macOS 14.0 introduced.
+# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches the C++ library of the system in macOS 13.3 and in iOS and tvOS 16.3, later than SDL and the Metal device need.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
-APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "14.0"}
+APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "13.3"}
 
-PLATFORMS = ["macos", "linux", "windows", "ios", "tvos", "android", "web", "web-webgl2"]
+PLATFORMS = ["macos", "linux", "windows", "ios", "tvos", "android", "web"]
 DESKTOP_PLATFORMS = {"macos", "linux", "windows"}
-WEB_PLATFORMS = {"web", "web-webgl2"}
 CONFIGS = ["Debug", "Release", "RelWithDebInfo"]
 ARTIFACT_PLATFORMS = ["apple", "android", "web", "desktop"]
 FORMAT_EXTENSIONS = {".h", ".hpp", ".c", ".cpp", ".m", ".mm"}
@@ -615,27 +614,20 @@ def build_folder_name(folder: Path) -> str:
     return f"{folder.name}-{hashlib.sha256(str(folder).encode()).hexdigest()[:8]}"
 
 
-def requested_graphics_api(args: argparse.Namespace) -> str:
-    """Returns the `HAYLEN_GRAPHICS_API` a build asks for. Each web platform always uses its own graphics API."""
-    if args.platform in WEB_PLATFORMS:
-        return "WGPU" if args.platform == "web" else "GLES3"
-    return args.graphics_api or "AUTO"
-
-
 def requested_sanitizers(args: argparse.Namespace) -> str:
     """Returns the `HAYLEN_SANITIZERS` a build asks for: `OFF`, `ADDRESS` or `THREAD`."""
     return (args.sanitizers or "off").upper()
 
 
 def build_options(platform_name: str, config: str, target: str | None = None, jobs: int | None = None) -> argparse.Namespace:
-    return argparse.Namespace(platform=platform_name, config=config, graphics_api=None, xcode=False, sanitizers=None, coverage=False, target=target, jobs=jobs or default_jobs())
+    return argparse.Namespace(platform=platform_name, config=config, xcode=False, sanitizers=None, coverage=False, target=target, jobs=jobs or default_jobs())
 
 
 def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
     require_host(args.platform)
     directory = build_dir(args.platform, args.config, args.sanitizers)
     command = ["cmake", "-S", ROOT, "-B", directory, f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", f"-DCMAKE_BUILD_TYPE={args.config}"]
-    command += [f"-DHAYLEN_GRAPHICS_API={requested_graphics_api(args)}", f"-DHAYLEN_SANITIZERS={requested_sanitizers(args)}"]
+    command.append(f"-DHAYLEN_SANITIZERS={requested_sanitizers(args)}")
     env = os.environ.copy()
 
     if args.platform == "macos":
@@ -646,7 +638,7 @@ def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
         command += ["-G", "Xcode", f"-DCMAKE_SYSTEM_NAME={system}", "-DCMAKE_OSX_ARCHITECTURES=arm64", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS[system]}", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_PLAYER=OFF"]
     elif args.platform == "android":
         command += ["-G", "Ninja", *android_options("arm64-v8a"), "-DHAYLEN_BUILD_TESTS=OFF"]
-    elif args.platform in WEB_PLATFORMS:
+    elif args.platform == "web":
         command = [ensure_emsdk(), *command, "-G", "Ninja", "-DHAYLEN_BUILD_TESTS=OFF"]
     elif args.platform == "linux":
         command += ["-G", "Ninja"]
@@ -674,7 +666,7 @@ def command_configure(args: argparse.Namespace) -> None:
     command, env = configure_command(args)
     directory = build_dir(args.platform, args.config, args.sanitizers)
     terminal.step(f'Configuring the "{args.platform}" build in `{shown_path(directory)}`')
-    if args.platform in WEB_PLATFORMS:
+    if args.platform == "web":
         configure_web_tree(command, directory, env)
     else:
         run(command, env=env)
@@ -705,13 +697,13 @@ def ensure_configured(args: argparse.Namespace) -> Path:
 
 
 def is_stale_tree(directory: Path, args: argparse.Namespace) -> bool:
-    """Tells whether a build tree was configured for another graphics API, shader compiler or Python that runs haylen.py, or holds no value for one of them, or another version of Emscripten configured a web tree."""
+    """Tells whether a build tree was configured for another shader compiler or Python that runs haylen.py, or holds no value for one of them, or another version of Emscripten configured a web tree."""
     compiler = cmake_cache_entry(directory, "HAYLEN_SHADERC")
     if compiler is None or Path(compiler) != ensure_shaderc():
         return True
-    if cmake_cache_entry(directory, "HAYLEN_GRAPHICS_API") != requested_graphics_api(args) or cmake_cache_entry(directory, "Python3_EXECUTABLE") != python_executable():
+    if cmake_cache_entry(directory, "Python3_EXECUTABLE") != python_executable():
         return True
-    return args.platform in WEB_PLATFORMS and is_stale_web_tree(directory)
+    return args.platform == "web" and is_stale_web_tree(directory)
 
 
 def command_build(args: argparse.Namespace) -> None:
@@ -843,16 +835,16 @@ def check_web_memory(report: dict) -> None:
         raise BuildError(" ".join(problems))
 
 
-# The names of `gpu::Device::kApiNames` that the GPU tests run on, while the uppercase names of "--graphics-api" pick the graphics API of the backend.
+# The names of `gpu::Device::kApiNames`, which "--graphics-api" of "test" takes to run the GPU tests on one device.
 GPU_GRAPHICS_APIS = ("metal", "direct3D12", "direct3D11", "vulkan", "openGl", "openGlEs", "webGl2", "webGpu")
 
 
 def command_test(args: argparse.Namespace) -> None:
-    gpu = args.gpu or args.graphics_api in GPU_GRAPHICS_APIS
-    if args.platform in WEB_PLATFORMS and gpu:
+    gpu = args.gpu or args.graphics_api is not None
+    if args.platform == "web" and gpu:
         command_test_gpu_web(args)
         return
-    if args.platform in WEB_PLATFORMS:
+    if args.platform == "web":
         command_test_web(args)
         return
     if args.platform == "android":
@@ -873,8 +865,7 @@ def command_test(args: argparse.Namespace) -> None:
 
 def command_test_gpu(args: argparse.Namespace) -> None:
     """Builds and runs the GPU tests: the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, or on the one that "--graphics-api" names."""
-    api = args.graphics_api if args.graphics_api in GPU_GRAPHICS_APIS else None
-    args.graphics_api = None
+    api = args.graphics_api
     args.target = "haylen-gpu-tests"
     command_build(args)
     env = os.environ.copy()
@@ -893,7 +884,7 @@ WEB_GPU_BROWSER_FLAGS = ["--enable-unsafe-webgpu", "--enable-unsafe-swiftshader"
 
 def command_test_gpu_web(args: argparse.Namespace) -> None:
     """Builds the GPU tests for the browser and runs them in a page of a headless browser, on every device of the build or on the one that "--graphics-api" names, and stops when a test fails or the page does not finish."""
-    api = args.graphics_api if args.graphics_api in GPU_GRAPHICS_APIS else None
+    api = args.graphics_api
     directory = BUILD_ROOT / f"web-gpu-tests-{args.config.lower()}"
     if not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
         terminal.step(f"Configuring the GPU tests of the web in `{shown_path(directory)}`")
@@ -979,7 +970,7 @@ def android_test_device(requested: str | None):
 
 def command_test_gpu_android(args: argparse.Namespace) -> None:
     """Builds the GPU tests for the ABI of an Android device and runs them on it through adb, on every device of the build or on the one that "--graphics-api" names, keeps the images of the scenes that differ in the tree and removes everything it pushed. An emulator that it starts runs only while the tests do."""
-    api = args.graphics_api if args.graphics_api in GPU_GRAPHICS_APIS else None
+    api = args.graphics_api
     abi = android_test_abi(args.device)
     directory = BUILD_ROOT / f"android-gpu-tests-{abi}-{args.config.lower()}"
     if not (directory / "CMakeCache.txt").exists():
@@ -1052,7 +1043,6 @@ def command_coverage(args: argparse.Namespace) -> None:
     args.platform = host_name()
     args.config = "Debug"
     args.coverage = True
-    args.graphics_api = None
     args.xcode = False
     directory = BUILD_ROOT / "coverage"
 
@@ -1334,26 +1324,29 @@ def build_android_artifacts(config: str, jobs: int) -> None:
     run([ensure_gradle(), "-p", ANDROID_LIBRARY_PROJECT, *tasks, f"--max-workers={jobs}", f"-PhaylenNativeLibraries={libraries}", f"-PhaylenVarnSourceDir={varn}", f"-PhaylenMavenDir={maven}"])
 
 
-def web_sdk(api: str) -> Path:
-    """The SDK of the engine for the web with one graphics API, which links the release runtime of each app."""
-    return ARTIFACTS_DIR / "web" / f"sdk-{api}"
+def web_player() -> Path:
+    """The player of the web with the processor of its audio output and the worker of its content store, which draws through WebGPU or WebGL2, whichever starts first among the ones the page asks for."""
+    return ARTIFACTS_DIR / "web" / "player"
+
+
+def web_sdk() -> Path:
+    """The SDK of the engine for the web, which links the release runtime of each app."""
+    return ARTIFACTS_DIR / "web" / "sdk"
 
 
 def build_web_artifacts(config: str, jobs: int) -> None:
-    """Builds the player for WebGPU and for WebGL2, each next to the processor of its audio output and the worker of its content store, and the SDK of each graphics API. The player loads the app package at runtime, so one build serves every app in development, and a release links a runtime of its own against the SDK."""
-    for platform_name, api in (("web", "webgpu"), ("web-webgl2", "webgl2")):
-        command_build(build_options(platform_name, config, "haylen", jobs))
-        directory = build_dir(platform_name, config)
-        built = directory / "bin" / "haylen"
-        destination = ARTIFACTS_DIR / "web" / api
-        shutil.rmtree(destination, ignore_errors=True)
-        destination.mkdir(parents=True)
-        for name in WEB_RUNTIME_FILES:
-            shutil.copy2(built / name, destination)
-        run(["cmake", "-B", directory, "-DHAYLEN_BUILD_SDK=ON"])
-        run(["cmake", "--build", directory, "--target", "haylen-sdk", "--parallel", str(jobs)])
-        shutil.rmtree(web_sdk(api), ignore_errors=True)
-        run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", web_sdk(api)])
+    """Builds the player of the web with the devices of WebGPU and WebGL2, next to the processor of its audio output and the worker of its content store, and the SDK. The player loads the app package at runtime, so one build serves every app in development, and a release links a runtime of its own against the SDK."""
+    command_build(build_options("web", config, "haylen", jobs))
+    directory = build_dir("web", config)
+    built = directory / "bin" / "haylen"
+    shutil.rmtree(web_player(), ignore_errors=True)
+    web_player().mkdir(parents=True)
+    for name in WEB_RUNTIME_FILES:
+        shutil.copy2(built / name, web_player())
+    run(["cmake", "-B", directory, "-DHAYLEN_BUILD_SDK=ON"])
+    run(["cmake", "--build", directory, "--target", "haylen-sdk", "--parallel", str(jobs)])
+    shutil.rmtree(web_sdk(), ignore_errors=True)
+    run(["cmake", "--install", directory, "--config", config, "--component", "haylen-sdk", "--prefix", web_sdk()])
 
 
 def desktop_artifact(name: str = "haylen") -> Path:
@@ -3769,7 +3762,7 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
     splash = {"logo": logo_name, "background": css_color(app.background)}
     if app.dark_background:
         splash["darkBackground"] = css_color(app.dark_background)
-    sizes = {path: (site / path).stat().st_size for path in (*downloads, "webgpu/haylen.wasm", "webgl2/haylen.wasm")}
+    sizes = {path: (site / path).stat().st_size for path in (*downloads, "haylen.wasm")}
     config = {"name": app.name, "identifier": app.identifier, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": write_web_plugins(app, site)}
     if release is not None:
         config["release"] = {"files": release}
@@ -3789,7 +3782,7 @@ target_link_options(haylen-release PRIVATE --emit-symbol-map)
 
 
 def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[str]:
-    """Places the protected release of an app in `app/` of its site with a runtime of its own for each graphics API, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
+    """Places the protected release of an app in `app/` of its site with a runtime of its own, linked against the web SDK with the bootstrap of the app, and returns the files that download before the app starts: the manifests and the app domain, while the shards of the content stay on the site and stream by range."""
     release = build_release(app, CONTENT_PROFILES["web"], args.engine_config, args.jobs, args.previous_release)
     shutil.copytree(release_folder(app, CONTENT_PROFILES["web"]), site / "app")
     files = release_app_files(app, release_folder(app, CONTENT_PROFILES["web"]), args.engine_config, args.jobs)
@@ -3798,23 +3791,19 @@ def build_release_web(app: App, site: Path, args: argparse.Namespace) -> list[st
     project.mkdir(parents=True, exist_ok=True)
     write_bootstrap(app, CONTENT_PROFILES["web"], project / BOOTSTRAP_SOURCE, args.engine_config, args.jobs)
     write_if_changed(project / "CMakeLists.txt", RELEASE_WEB_PROJECT.format(bootstrap=BOOTSTRAP_SOURCE))
-    for api in ("webgpu", "webgl2"):
-        build = project / f"build-{api}"
-        terminal.step(f'Linking the release runtime of `{shown_path(app.folder)}` for "{api}"')
-        configure_web_tree([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk(api) / 'lib' / 'cmake' / 'haylen'}"], build)
-        run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
-        destination = site / api
-        shutil.rmtree(destination, ignore_errors=True)
-        destination.mkdir()
-        for name in ("haylen.js", "haylen.wasm"):
-            shutil.copy2(build / name, destination)
-        for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
-            shutil.copy2(web_sdk(api) / "share" / "haylen" / "platform" / "web" / name, destination)
+    build = project / "build"
+    terminal.step(f"Linking the release runtime of `{shown_path(app.folder)}`")
+    configure_web_tree([ensure_emsdk(), "cmake", "-S", project, "-B", build, "-G", "Ninja", "-DCMAKE_BUILD_TYPE=Release", f"-Dhaylen_DIR={web_sdk() / 'lib' / 'cmake' / 'haylen'}"], build)
+    run(["cmake", "--build", build, "--config", "Release", "--parallel", str(args.jobs)])
+    for name in ("haylen.js", "haylen.wasm"):
+        shutil.copy2(build / name, site)
+    for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
+        shutil.copy2(web_sdk() / "share" / "haylen" / "platform" / "web" / name, site)
     return files
 
 
 def prepare_web(app: App, args: argparse.Namespace) -> Path:
-    """Makes the site of an app again: the files of `platform/web` of the app, or of the template, as they are, and next to them the runtimes and the generated files. The Release configuration ships the protected release with runtimes linked for the app, and development the prebuilt players with the package as it is."""
+    """Makes the site of an app again: the files of `platform/web` of the app, or of the template, as they are, and next to them the runtime and the generated files. The Release configuration ships the protected release with a runtime linked for the app, and development the prebuilt player with the package as it is."""
     own = app.folder / "platform" / "web"
     site = app.build_folder / "web"
     terminal.step(f"Preparing the site `{shown_path(site)}`")
@@ -3824,8 +3813,7 @@ def prepare_web(app: App, args: argparse.Namespace) -> Path:
     if args.config == "Release":
         release = build_release_web(app, site, args)
     else:
-        for api in ("webgpu", "webgl2"):
-            shutil.copytree(ARTIFACTS_DIR / "web" / api, site / api)
+        copy_files({path.name: path for path in web_player().iterdir()}, site)
     write_web_settings(app, site, release)
     if args.config == "Release":
         minify_web_scripts(site)
@@ -5053,44 +5041,36 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
-    """Builds a CMake web target for WebGPU and WebGL2 in a build folder and bundles both into its web folder with the web parts of the plugins of its app, whose page runs the graphics API the browser supports, and returns that folder. A protected release, which both builds make byte for byte the same, goes once into `app/` of the site, where its content streams by range."""
+    """Builds a CMake web target in a build folder and bundles it into its web folder with the web parts of the plugins of its app, whose page draws through WebGPU or WebGL2, whichever starts first, and returns that folder. A protected release goes into `app/` of the site, where its content streams by range."""
     output = folder / "web"
     shutil.rmtree(output, ignore_errors=True)
-    releases = []
-    for platform_name, api in (("web", "webgpu"), ("web-webgl2", "webgl2")):
-        directory = folder / f"{platform_name}-{config.lower()}"
-        terminal.step(f'Building the target "{target}" for "{platform_name}" in `{shown_path(directory)}`')
-        if options is not None or not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
-            renderer = "WGPU" if platform_name == "web" else "GLES3"
-            configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_GRAPHICS_API={renderer}", *(options or [])], directory)
-        run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
-        built = directory / "bin" / target
-        destination = output / api
-        destination.mkdir(parents=True)
-        for suffix in (".js", ".wasm", ".data"):
-            if (built / f"{target}{suffix}").is_file():
-                shutil.copy2(built / f"{target}{suffix}", destination)
-        for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
-            shutil.copy2(built / name, destination)
-        if (built / "app").is_dir():
-            releases.append(built / "app")
-    if releases:
-        if {path.name: file_hash(path) for path in releases[0].iterdir()} != {path.name: file_hash(path) for path in releases[-1].iterdir()}:
-            raise BuildError(f'The WebGPU and WebGL2 builds of "{target}" made different protected releases, while the page serves one. Build them again from a clean build folder.')
-        shutil.copytree(releases[0], output / "app")
+    output.mkdir(parents=True)
+    directory = folder / f"web-{config.lower()}"
+    terminal.step(f'Building the target "{target}" for "web" in `{shown_path(directory)}`')
+    if options is not None or not (directory / "CMakeCache.txt").exists() or is_stale_web_tree(directory):
+        configure_web_tree([ensure_emsdk(), "cmake", "-S", source, "-B", directory, "-G", "Ninja", *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={config}", *(options or [])], directory)
+    run(["cmake", "--build", directory, "--target", target, "--parallel", str(jobs)])
+    built = directory / "bin" / target
+    for suffix in (".js", ".wasm", ".data"):
+        if (built / f"{target}{suffix}").is_file():
+            shutil.copy2(built / f"{target}{suffix}", output)
+    for name in (WEB_AUDIO_WORKLET, WEB_CONTENT_STORE):
+        shutil.copy2(built / name, output)
+    if (built / "app").is_dir():
+        shutil.copytree(built / "app", output / "app")
 
     # The web parts of the plugins of the app go next to the page, which imports and loads them before the app starts, as the loader of the web template does.
     package = Path((built / "package.txt").read_text(encoding="utf-8").strip())
     (output / CPP_WEB_PLUGINS).write_text(json.dumps(write_web_plugins(App(package, "web"), output), indent=4) + "\n", encoding="utf-8")
 
-    # The page is the shell of the target, with the script that picks the graphics API where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
+    # The page is the shell of the target, with the script that loads the plugins and the runtime where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text(encoding="utf-8")
-    picker = (ENGINE_DIR / "platform" / "web" / "graphics-api-picker.html").read_text(encoding="utf-8").replace("{{TARGET}}", target)
+    loader = (ENGINE_DIR / "platform" / "web" / "runtime-loader.html").read_text(encoding="utf-8").replace("{{TARGET}}", target)
     if "{{{ SCRIPT }}}" not in shell:
         raise BuildError(f'The web shell of "{target}" has no "{{{{{{ SCRIPT }}}}}}" placeholder, where the page loads the runtime. Add it to the shell that "WEB_SHELL" names.')
-    (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", picker.strip()), encoding="utf-8")
+    (output / "index.html").write_text(shell.replace("{{{ SCRIPT }}}", loader.strip()), encoding="utf-8")
     shutil.copy2(built / ENGINE_LOGO.name, output)
-    terminal.success(f'Bundled "{target}" for WebGPU and WebGL2 into `{shown_path(output)}`.')
+    terminal.success(f'Bundled "{target}" into `{shown_path(output)}`.')
     return output
 
 
@@ -5871,11 +5851,9 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
     parser.add_argument("--platform", default=host_name(), choices=PLATFORMS, help="Platform of the build tree, this machine by default.")
     parser.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the build tree, "Debug" by default.')
     if gpu_tests:
-        parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU", *GPU_GRAPHICS_APIS], help='Graphics API the backend draws through, the default of the platform otherwise, or a name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
+        parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
         parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default.')
-    else:
-        parser.add_argument("--graphics-api", choices=["METAL", "D3D11", "GLCORE", "GLES3", "WGPU"], help="Graphics API the backend draws through, the default of the platform otherwise.")
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)
     parser.add_argument("--target", help="CMake target to build, every target by default.")
@@ -6128,7 +6106,7 @@ def build_parser() -> argparse.ArgumentParser:
     bench.set_defaults(handler=command_bench)
 
     sdk = commands.add_parser("sdk", parents=[common], help='Build the engine SDK and install it for "find_package(haylen)", and check that other projects consume the engine.')
-    sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | WEB_PLATFORMS), help="Platform of the SDK, this machine by default.")
+    sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | {"web"}), help="Platform of the SDK, this machine by default.")
     sdk.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the SDK, "Release" by default.')
     sdk.add_argument("--output", help="Install prefix, build/sdk/haylen-<platform>-<config> by default.")
     sdk.add_argument("--check-consumers", nargs="*", choices=list(CONSUMER_MODES), metavar="mode", help='Then build a project that adds the engine in each listed way, "subdirectory", "cpm" or "package", or in every way without a list.')

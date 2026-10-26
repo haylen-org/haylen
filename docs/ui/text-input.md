@@ -2,7 +2,7 @@
 
 This guide explains how the text fields of the UI type through the native text input of each platform, and what each platform does. It is for developers who want to know why typing works the way it does, and for anyone who ports or debugs a platform host. The [UI guide](ui.md#text-entry) shows how an app uses text fields, and the [`haylen.ui` reference](../lua-api/ui.md#uitextfieldproperties) lists their keyboard options.
 
-A text field of the UI does not read keys on its own. A hidden native field of the platform edits its text. So phones, tablets and TVs open their on-screen keyboard. Every platform but Linux brings its input methods for languages such as Japanese and Chinese. Those platforms also bring their autocorrection, dictation, emoji picker and native paste, copy and undo. The UI still draws the field, its text, its selection and its caret.
+A text field of the UI does not read keys on its own. A hidden native field of the platform edits its text. So phones, tablets and TVs open their on-screen keyboard. Every platform brings its input methods for languages such as Japanese and Chinese, Linux through the input methods of IBus and Fcitx. The platforms with a native field also bring their autocorrection, dictation, emoji picker and native paste, copy and undo. The UI still draws the field, its text, its selection and its caret.
 
 ## How a field edits
 
@@ -64,11 +64,11 @@ The web runtime, `engine/platform/web/haylen-runtime.js`, edits through fields o
 
 The element reports its text on `input`, its composition on `compositionstart`, `compositionupdate` and `compositionend`, and its selection on `selectionchange`. Enter of a single line, Tab and Escape become the submit, next and cancel actions. Paste, copy, cut and undo stay native.
 
-The element stops the propagation of its key events, so the listeners of `sokol_app` on the window never apply a key twice. Any other element of the page that has the focus keeps its keys the same way. Examples are a field of an editor next to the canvas and a button of a plugin. The focus of elements never reaches `sokol_app`, which hears only the focus of the window. A key release still reaches `sokol_app` whenever its press did, even when an element took the focus in between, such as the field that a held Tab started editing. So no key stays held. The page forgets the pressed keys when the window loses the focus, where the engine releases them.
+The element stops the propagation of its key events, so the listeners of SDL on the window never apply a key twice. Any other element of the page that has the focus keeps its keys the same way. Examples are a field of an editor next to the canvas and a button of a plugin. The focus of elements never reaches SDL, which hears only the focus of the window. A key release still reaches SDL whenever its press did, even when an element took the focus in between, such as the field that a held Tab started editing. So no key stays held. The page forgets the pressed keys when the window loses the focus, where the engine releases them.
 
 A `blur` while the page keeps the focus means that the user left the field or closed the keyboard, which sends the dismissed action. The events `resize` and `scroll` of the `visualViewport` report the part of the canvas that the keyboard covers.
 
-Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture, but the engine learns about a tap only on its next frame. So the engine publishes the rectangles and options of every text field on screen. When a tap lands on one, the page focuses the right element at once, in `pointerup`. Desktop browsers take the same path, which gives them input methods as well. The plain keyboard of `window.setKeyboardVisible` leaves key events to `sokol_app` and takes only the text. On iOS, a page opens it only from such a tap, so a text field of the UI is the reliable way to type there.
+Safari on iOS opens the keyboard only when an element takes the focus inside a user gesture, but the engine learns about a tap only on its next frame. So the engine publishes the rectangles and options of every text field on screen. When a tap lands on one, the page focuses the right element at once, in `pointerup`. Desktop browsers take the same path, which gives them input methods as well. The plain keyboard of `window.setKeyboardVisible` leaves key events to SDL and takes only the text. On iOS, a page opens it only from such a tap, so a text field of the UI is the reliable way to type there.
 
 ## Android
 
@@ -92,7 +92,7 @@ The runtime adds a hidden `UITextField` for single lines and a hidden `UITextVie
 - They get `keyboardType`, `returnKeyType`, `secureTextEntry`, `autocorrectionType` and `autocapitalizationType` from the field, without smart quotes and dashes.
 - The editing changed event and `textFieldDidChangeSelection`, or their equivalents of the text view, send the text, the selection and the `markedTextRange` of the input method. The runtime converts them from UTF-16 offsets to code points.
 - Return sends the submit action. Tab and escape of a hardware keyboard send next and cancel. A field that stops editing on its own sends the dismissed action.
-- `UIKeyboardWillChangeFrameNotification` reports the keyboard frame. The module `sokol_app` no longer shows its own keyboard.
+- `UIKeyboardWillChangeFrameNotification` reports the keyboard frame. SDL shows no keyboard of its own, since the runtime starts no text input of SDL on UIKit.
 
 On tvOS, the text field presents the fullscreen keyboard of the system, and a text area edits in a text field too. Mac Catalyst uses the same path as iOS, with the keyboard of the Mac.
 
@@ -109,8 +109,8 @@ While a field edits, an invisible `NSTextView` over it is the first responder of
 
 Neither platform has a native field, so the UI edits the text itself:
 
-- Windows types through `WM_CHAR`, which `sokol_app` turns into character events. The input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow`, and the candidate list below the caret line with `ImmSetCandidateWindow`. So the input method never covers the text being typed.
-- Linux types through the key and character events of X11, which `sokol_app` reads without an input method of X11. So text that an input method composes, such as Japanese, Chinese or Korean, does not reach Linux apps, while the characters of the keyboard layout do.
+- Windows types through the text input of SDL, which turns `WM_CHAR` and the text that the input method commits into text events. The input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow`, and the candidate list below the caret line with `ImmSetCandidateWindow`. So the input method never covers the text being typed.
+- Linux types through the text input of SDL, which reads the characters of the keyboard layout and the text that the input methods of IBus and Fcitx commit over D-Bus, such as Japanese, Chinese or Korean. The input method composes in its own window.
 - The UI edits with Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z. It moves by word with Ctrl and the arrows, and to the ends of the line with Home and End.
 
 ## Complex scripts and right-to-left text

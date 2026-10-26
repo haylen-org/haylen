@@ -27,7 +27,7 @@ namespace haylen::graphics {
 
 struct DeviceState;
 
-// Creates textures and render targets on the GPU device of the backend, which it owns. Every method must be called on the frame thread.
+// Creates textures and render targets on the GPU device of the platform, which it owns. Every method must be called on the frame thread.
 class Device final {
   public:
     // Receives the pixels of a render target, or the reason they could not be read.

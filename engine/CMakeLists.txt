@@ -23,9 +23,6 @@ option(HAYLEN_BUILD_SDK "Merge the engine into the SDK that cmake --install --co
 option(HAYLEN_BUILD_FRAMEWORK "Merge the SDK and the player into the static library of one Haylen.xcframework slice. Apple platforms only." OFF)
 option(HAYLEN_ENABLE_COVERAGE "Instrument the engine and its tests for code coverage." OFF)
 option(HAYLEN_BUILD_FUZZERS "Build the fuzzer of the content formats with the tests, which needs a Clang that links libFuzzer." OFF)
-set(HAYLEN_BACKEND_DIR "${CMAKE_CURRENT_LIST_DIR}/src/backends/sokol" CACHE PATH "Folder of the backend that opens the window, runs the frames and draws them, whose backend.cmake adds its sources to the runtime.")
-set(HAYLEN_GRAPHICS_API "AUTO" CACHE STRING "Graphics API the backend draws through: AUTO, METAL, D3D11, GLCORE, GLES3 or WGPU.")
-set_property(CACHE HAYLEN_GRAPHICS_API PROPERTY STRINGS AUTO METAL D3D11 GLCORE GLES3 WGPU)
 set(HAYLEN_SANITIZERS "OFF" CACHE STRING "Sanitizers of desktop builds without MSVC: OFF, ADDRESS for AddressSanitizer and UndefinedBehaviorSanitizer, or THREAD for ThreadSanitizer.")
 set_property(CACHE HAYLEN_SANITIZERS PROPERTY STRINGS OFF ADDRESS THREAD)
 set(HAYLEN_SHADERC "" CACHE FILEPATH "Path to a build of the Haylen shader compiler haylen-shaderc, or empty for the pinned compiler that the build downloads or builds.")
@@ -816,7 +813,7 @@ target_link_libraries(haylen-platform PUBLIC haylen-engine haylen-gpu)
 haylen_enable_warnings(haylen-platform)
 haylen_enable_coverage(haylen-platform)
 
-# The runtime turns the engine into an app: the player, the native host and the services of the platform, with the backend that opens the window, runs the frames, draws them and holds the entry point. It is an object library so entry points always reach the final binary.
+# The runtime turns the engine into an app: the player, the native host, the services of the platform and the platform layer that opens the window, runs the frames, reads the input and holds the entry point, while the GPU devices of `haylen-gpu` draw the frames. It is an object library so entry points always reach the final binary.
 set(HAYLEN_RUNTIME_SOURCES
   src/platform/NativeHost.cpp
   src/platform/Player.cpp
@@ -870,7 +867,6 @@ if(APPLE)
     src/platform/apple/HaylenTextView.mm
     src/platform/apple/HaylenVideoLoader.mm
     src/platform/apple/HaylenThemeView.mm
-    src/platform/apple/HaylenViewController.mm
     src/platform/apple/HaylenVideoStream.mm
   )
   list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_APPLE_SOURCES})
@@ -885,13 +881,22 @@ else()
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGamepads.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
 
+# Every platform but Android runs apps through the platform layer of SDL. The application delegate of macOS is the runtime's own, so SDL leaves the menus, the quit requests and the events of plugins to it, the scene delegate of UIKit derives from the one of SDL, which runs the app in its scene, and the view controller of the window answers UIKit with the status bar of the app.
+if(NOT ANDROID)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/Window.cpp)
+  if(APPLE)
+    set(HAYLEN_SDL_APPLE_SOURCES src/platform/sdl/apple/AppleApplication.mm src/platform/sdl/apple/HaylenAppDelegate.mm src/platform/sdl/apple/HaylenRootViewController.mm src/platform/sdl/apple/HaylenSceneDelegate.mm)
+    list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_SDL_APPLE_SOURCES})
+    set_source_files_properties(${HAYLEN_SDL_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  endif()
+endif()
+
 add_library(haylen-runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
 add_library(haylen::runtime ALIAS haylen-runtime)
 target_include_directories(haylen-runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
 target_link_libraries(haylen-runtime PUBLIC haylen-platform haylen-gpu)
-# Android runs apps in GameActivity through the runtime of its platform folder, which holds the entry point, and the other platforms through the backend.
 if(NOT ANDROID)
-  include("${HAYLEN_BACKEND_DIR}/backend.cmake")
+  target_link_libraries(haylen-runtime PRIVATE SDL3::SDL3-static)
 endif()
 # The web host gives the mixer the audio output of the page, a backend of miniaudio.
 if(EMSCRIPTEN)
@@ -974,7 +979,7 @@ if(HAYLEN_BUILD_BENCHMARKS AND HAYLEN_DESKTOP)
   set_target_properties(haylen-procedural-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
   haylen_enable_warnings(haylen-procedural-benchmark)
 
-  # The algorithm benchmark times path finding, crowds, spatial queries and ray casts on the CPU, so it is a plain executable too. The physics world links the debug drawing of the renderer, whose GPU calls the dummy backend of the headless host satisfies.
+  # The algorithm benchmark times path finding, crowds, spatial queries and ray casts on the CPU, so it is a plain executable too. The physics world links the debug drawing of the renderer, whose GPU calls the null GPU device of the headless host satisfies.
   add_executable(haylen-algorithm-benchmark bench/AlgorithmBenchmark.cpp)
   target_link_libraries(haylen-algorithm-benchmark PRIVATE haylen::engine haylen::headless)
   set_target_properties(haylen-algorithm-benchmark PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")

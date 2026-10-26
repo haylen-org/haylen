@@ -7,15 +7,15 @@ This guide is for C++ developers who add Haylen to a CMake project of their own.
 | Name | Kind | Purpose |
 | --- | --- | --- |
 | `haylen::engine` | Library target, the alias of `haylen-engine` | The whole C++ API and every Lua binding. Its include folder is `engine/include`, and it carries the C++20 requirement to every target that links it. In browser builds it also carries `-fwasm-exceptions` and `-sSUPPORT_LONGJMP=wasm`, because Lua errors unwind as C++ exceptions and yields jump back to their resume with `longjmp`, both native to WebAssembly. |
-| `haylen::runtime` | Library target, the alias of `haylen-runtime` | The player, the native host, the platform services and the backend, which opens the window, runs and draws the frames and holds the entry point. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
+| `haylen::runtime` | Library target, the alias of `haylen-runtime` | The player, the native host, the platform services, the platform layer, which opens the window, runs the frames and holds the entry point, and the GPU devices, which draw the frames. Linking it turns an executable into a Haylen app, whose sources must define `haylen::core::Application::create()`. In a source build it is an object library, so the entry points always reach the final binary. |
 | `haylen_add_app` | CMake function | Builds the app of one package for the platform of the build, as [haylen_add_app](#haylen_add_app) explains. |
 
 The engine needs CMake 3.28 or newer and a C++20 compiler, and it downloads its dependencies with CPM. When the engine brings CPM itself, as it does under `add_subdirectory`, it keeps the sources in `CPM_SOURCE_CACHE` when that variable is set, and in `.cache/cpm` of the top-level project otherwise.
 
-When the engine is not the top-level project, its player, tests, benchmarks and tools stay off, because their options default to `PROJECT_IS_TOP_LEVEL`. The [CMake options](build.md#cmake-options) of the build guide shape a source build. The ones a project sets most often are `HAYLEN_GRAPHICS_API`, `HAYLEN_BACKEND_DIR` and `HAYLEN_SHADERC`. With `HAYLEN_SHADERC` empty, the configure downloads the pinned shader compiler, or builds it, as [the shader compiler](build.md#the-shader-compiler) explains.
+When the engine is not the top-level project, its player, tests, benchmarks and tools stay off, because their options default to `PROJECT_IS_TOP_LEVEL`. The [CMake options](build.md#cmake-options) of the build guide shape a source build. The ones a project sets most often are `HAYLEN_GRAPHICS_APIS` and `HAYLEN_SHADERC`. With `HAYLEN_SHADERC` empty, the configure downloads the pinned shader compiler, or builds it, as [the shader compiler](build.md#the-shader-compiler) explains.
 
 ```sh
-cmake -S . -B build -G Ninja -DHAYLEN_GRAPHICS_API=GLCORE -DHAYLEN_SHADERC=$HOME/tools/haylen-shaderc
+cmake -S . -B build -G Ninja -DHAYLEN_GRAPHICS_APIS=vulkan -DHAYLEN_SHADERC=$HOME/tools/haylen-shaderc
 ```
 
 ## add_subdirectory
@@ -65,7 +65,7 @@ A local checkout works the same way with `CPMAddPackage(NAME haylen SOURCE_DIR "
 
 ## find_package and the SDK
 
-The SDK is a prebuilt engine for one platform, one backend and one graphics API. A project that uses it needs neither the sources of the engine nor `haylen-shaderc`, because the shaders are compiled into it already. Every static library that the engine links, such as Varn, Lua and Box2D, is merged into one `haylen` library, and the runtime into `haylen-runtime`.
+The SDK is a prebuilt engine for one platform, with the GPU devices of its graphics APIs. A project that uses it needs neither the sources of the engine nor `haylen-shaderc`, because the shaders are compiled into it already. Every static library that the engine links, such as Varn, Lua and Box2D, is merged into one `haylen` library, and the runtime into `haylen-runtime`.
 
 | Installed path | Contents |
 | --- | --- |
@@ -92,13 +92,12 @@ haylen_add_app(my-app
 cmake -S . -B build -G Ninja -DCMAKE_PREFIX_PATH=/path/to/haylen-macos-release
 ```
 
-The package config imports `haylen::engine` and `haylen::runtime` and defines `haylen_add_app`. It sets four variables to the values that the SDK was built with:
+The package config imports `haylen::engine` and `haylen::runtime` and defines `haylen_add_app`. It sets three variables to the values that the SDK was built with:
 
 | Variable | Value |
 | --- | --- |
 | `HAYLEN_PLATFORM` | The platform, such as `macos`. |
-| `HAYLEN_BACKEND` | The name of the folder of the backend, such as `sokol`. |
-| `HAYLEN_GRAPHICS` | The graphics API, such as `METAL`. |
+| `HAYLEN_GRAPHICS_APIS` | The graphics APIs whose devices the SDK carries, such as `vulkan;openGl`. |
 | `HAYLEN_DESKTOP` | Whether the platform is a desktop. |
 
 Its version file accepts requests for the same major and minor version. Use a web SDK from a project that Emscripten's `emcmake` configures. Android, iOS and tvOS projects add the engine from source through `add_subdirectory`.
@@ -115,7 +114,7 @@ The command `sdk` builds the SDK of a platform and installs it where `find_packa
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--platform` | this machine | `macos`, `linux`, `windows`, `web` (WebGPU) or `web-webgl2`. |
+| `--platform` | this machine | `macos`, `linux`, `windows` or `web`. |
 | `--config` | `Release` | `Debug`, `Release` or `RelWithDebInfo`. |
 | `--output` | `build/sdk/haylen-<platform>-<config>` | The install prefix of the SDK. |
 | `--jobs` | the processors minus one | The parallel jobs of the build. |
@@ -157,7 +156,7 @@ haylen_add_app(<target> PACKAGE <folder> [SOURCES <files>...] [CPP] [APPLE_PROJE
 | `APPLE_PROJECT` | A folder with `mac/Info.plist.in`, `ios/Info.plist.in`, `ios/LaunchScreen.storyboard`, `tvos/Info.plist.in`, `tvos/LaunchScreen.storyboard` and `PrivacyInfo.xcprivacy`. The default is `engine/platform/apple`, whose privacy manifest declares the APIs with required reasons that the engine calls, as the [privacy manifest](distribution.md#privacy-manifest) lists them. |
 | `WEB_SHELL` | The HTML shell of the browser build. The default is `engine/platform/web/shell.html`. |
 
-The function links `haylen::runtime`, which brings the system libraries of the platform. On Apple platforms those are the system frameworks of `HAYLEN_APPLE_FRAMEWORKS_MACOS`, `_IOS`, `_MACCATALYST` and `_TVOS` in `engine/cmake/haylen-app.cmake`. The Apple artifacts publish the same lists as `haylen-frameworks.json` for the projects of Lua apps, so C++ apps and Lua apps link the same frameworks. On Apple platforms the function also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because the Sokol backend leaves `main` to the app there.
+The function links `haylen::runtime`, which brings the system libraries of the platform. On Apple platforms those are the system frameworks of `HAYLEN_APPLE_FRAMEWORKS_MACOS`, `_IOS`, `_MACCATALYST` and `_TVOS` in `engine/cmake/haylen-app.cmake`. The Apple artifacts publish the same lists as `haylen-frameworks.json` for the projects of Lua apps, so C++ apps and Lua apps link the same frameworks. On Apple platforms the function also adds `AppleMain.cpp`, whose `main` enters the runtime through `haylen_main`, because the SDL platform layer leaves `main` to the app there.
 
 The function deploys the package into the app of each platform. Only `app.json`, `source/` and `content/` ship, with `plugin.json` and `source/` of every plugin that `app.json` lists. So platform projects, notes and build files can share the package folder. The function also writes the absolute path of the package to `bin/<target>/package.txt`.
 
@@ -181,7 +180,7 @@ Lua apps embed the manifest of their Windows project instead, which selects the 
 
 ### Apple bundles
 
-C++ apps target iOS 16.3 on iPhone and iPad and tvOS 16.3, because the engine needs the C++ library of those releases. They sign automatically. macOS apps target macOS 14.0, the first release with the display link of `NSView` that `sokol_app` draws with. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources.
+C++ apps target iOS 16.3 on iPhone and iPad and tvOS 16.3, because the engine needs the C++ library of those releases. They sign automatically. macOS apps target macOS 13.3, the first release with that C++ library. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources.
 
 The function fills placeholders of the templates from `app.json`:
 

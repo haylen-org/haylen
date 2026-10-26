@@ -39,7 +39,7 @@ namespace haylen::platform {
 
 class DevelopmentSession;
 
-// Plays apps on a real device for the backend that hosts them. It reads the command line, plays the package it names or the bundled one, replaces the running app whenever a package restarts it and hands the app the events of the window and the platform. The backend opens the window for the app that `getOpeningConfig` describes, installs its `NativeWindow` and calls `initialize`, `frame` and `cleanup` while the window lives.
+// Plays apps on a real device for the platform layer that hosts them. It reads the command line, plays the package it names or the bundled one, replaces the running app whenever a package restarts it and hands the app the events of the window and the platform. The platform layer opens the window for the app that `getOpeningConfig` describes, installs its `NativeWindow` and calls `initialize`, `frame` and `cleanup` while the window lives.
 class Player final {
   public:
     // Where a press of the back button of the platform goes: to the system, which leaves the app, to the player, which quits a launched app to the one that launched it, or to the app, which receives it as an event.
@@ -51,13 +51,13 @@ class Player final {
 
     explicit Player(std::unique_ptr<NativeHost> nativeHost);
 
-    // Creates the player of the process for the command line with the host of the backend.
+    // Creates the player of the process for the command line with the host of the platform layer.
     static void create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHost);
 
     // The configuration of the app that the window opens for.
     [[nodiscard]] static const core::AppConfig& getOpeningConfig() noexcept;
 
-    // Where the window opens on the desktop, in desktop points, when `app.json` places it, which the backend opens it at.
+    // Where the window opens on the desktop, in desktop points, when `app.json` places it, which the platform layer opens it at.
     [[nodiscard]] static std::optional<math::Rect> getOpeningFrame();
 
     // The size in points that `app.json` gives the window the process opened with.
@@ -66,7 +66,7 @@ class Player final {
     // The graphics APIs the window tries in turn until one starts: the one that `--graphics-api` names, or else the ones of `window.graphicsApis` of `app.json`, then the other APIs of the build in the order of the platform.
     [[nodiscard]] static const std::vector<gpu::Device::Api>& getGraphicsApis() noexcept;
 
-    // Starts the app once the window of the backend is open.
+    // Starts the app once the window of the platform layer is open.
     static void initialize();
 
     // Plays one frame of the app, the seconds since the last one.
@@ -104,7 +104,7 @@ class Player final {
     // Hands the running app an event of the window or the platform, such as the keyboard and mouse of Mac Catalyst. It runs on the frame thread.
     static void handleEvent(const Event& event);
 
-    // Routes a press or a release of the back button of the platform, which the backend leaves to the system, swallows or hands to the app as an event. It runs on the frame thread.
+    // Routes a press or a release of the back button of the platform, which the platform layer leaves to the system, swallows or hands to the app as an event. It runs on the frame thread.
     [[nodiscard]] static Back routeBack(bool pressed);
 
     // Queues such an event from any thread, or from inside a call of the engine, such as the edits of a native text field. The running app receives it at the start of the next frame.
@@ -115,7 +115,7 @@ class Player final {
     // Whether the running app takes the next press of the back button of the platform instead of leaving, as the engine decides from its app and its open popups.
     [[nodiscard]] static bool isBackCaptured();
 
-    // The GPU device of the running app, which the backend tells when the surface of its window changes, or null while no app runs. It runs on the frame thread.
+    // The GPU device of the running app, which the platform layer tells when the surface of its window changes, or null while no app runs. It runs on the frame thread.
     [[nodiscard]] static gpu::Device* getGpuDevice() noexcept;
 
   private:
@@ -154,7 +154,7 @@ class Player final {
         std::string graphicsApi;
     };
 
-    // What outlives every player of the process: the player that plays, which the frame thread creates when the backend asks for the app and destroys when its window closes, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
+    // What outlives every player of the process: the player that plays, which the frame thread creates when the platform layer asks for the app and destroys when its window closes, the events other threads queue for it and the status the process exits with. It is never destroyed, because an exit() on another thread, such as the one the iOS simulator calls on a background queue when its render server dies, runs the destructors of static objects while the frame thread still plays the app.
     struct Process {
         std::unique_ptr<Player> current;
         std::mutex postedMutex;
@@ -199,7 +199,7 @@ class Player final {
     ReportedState reported;
     bool playing = false;
 
-    // Whether the window of the backend opened, from when on the player plays the apps that replace each other.
+    // Whether the window of the platform layer opened, from when on the player plays the apps that replace each other.
     bool initialized = false;
 
     // Whether the app took the last press of the back button, so its release goes to the same place.

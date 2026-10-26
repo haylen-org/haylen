@@ -19,10 +19,10 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/native/` | The file `NativeTest.c`, a plain C library that the native interop tests load through `haylen.native` and Varn's `ffi`. The CMake target `haylen-native-test` builds it as the library `native-test` next to `haylen-tests` and the headless player, where `native.load` finds it by name, copies it next to the desktop player in `bin/haylen`, and passes its path to the tests as `HAYLEN_NATIVE_TEST_LIBRARY`. The Native libraries tests of the test project build the same source for every platform. |
 | `engine/tests/gpu/` | The tests of the null device and of `gpu::DeviceFactory`, which `haylen-tests` runs, and the [GPU tests](#the-gpu-tests) of the real devices, which `haylen-gpu-tests` runs: the conformance suite of the contract, the reference scenes of the 2D renderer, their programs in `shaders/conformance.glsl` and their helpers in `support/`. |
 | `engine/tests/data/gpu/` | The reference images of the scenes of the 2D renderer, one PNG per scene, which hold for every graphics API. |
-| `engine/tests/backends/<backend>/` | The tests of a backend, which its `backend.cmake` names in `HAYLEN_BACKEND_TEST_SOURCES`, such as `backends/sokol/EventsTests.cpp`, which tests the translation of the events of `sokol_app`. |
-| `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`, which also compiles the tests of the backend of the build. |
+| `engine/tests/platform/sdl/` | The tests of the SDL platform layer: the translation of the events of SDL and the timing of the frames, which read only their own data, so `haylen-tests` compiles their sources with them. |
+| `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`. |
 
-The target `haylen-tests` links `haylen::engine`, `haylen::headless`, the libraries of the tests of the backend in `HAYLEN_BACKEND_TEST_LIBRARIES` and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
+The target `haylen-tests` links `haylen::engine`, `haylen::headless`, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
 
 The function `gtest_discover_tests` registers every test with CTest under its `Suite.Name`, with `engine/tests` as the working directory. Each test has a timeout of 120 seconds, far above the few seconds that the slowest test takes. So a test that hangs fails on its own, and the rest of the suite still runs.
 
@@ -176,7 +176,7 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` or `--platform web-webgl2` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web or on Android it runs [the GPU tests](#the-gpu-tests) there.
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web or on Android it runs [the GPU tests](#the-gpu-tests) there.
 
 Run one suite or one test through CTest or through the executable:
 
@@ -345,7 +345,7 @@ The module `tools/test_haylen.py` tests the rules that need no build, with the `
 - How it reads its arguments, such as the app folder of `run` and the options of `sdk --check-consumers` and `android-key`, how its launchers run it, and how its terminal output marks reserved expressions, paths and URLs with and without color.
 - How it provides the pinned shader compiler, XcodeGen and Emscripten, how it builds only the stale engine artifacts, and how the layers of the templates, the desktop projects, `run-cpp`, `plugin new` and native libraries behave.
 - That every tracked file and folder uses dashes where nothing requires an underscore, and so does every target, project and install component of the CMake files and of the CMake text that `haylen.py` writes.
-- That only the folder of a backend reaches its libraries and headers, that no Lua binding knows a backend or a host, and that comments and the texts of the interface are written as the project asks.
+- That only the SDL platform layer reaches SDL, that only the GPU devices include the headers of their graphics APIs, that no Lua binding knows a host, and that comments and the texts of the interface are written as the project asks.
 - That the animated sheets and the images of the samples hold their pivots and have clean edges.
 - The documentation, through `DocsTest`: the titles, the languages of code blocks, one line per paragraph, every relative link and its heading, the tables of the indexes, and that no long sentence repeats in another page.
 

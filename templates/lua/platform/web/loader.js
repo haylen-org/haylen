@@ -1,4 +1,4 @@
-// Loads a Haylen app into the page: checks what the browser supports, picks WebGPU or WebGL2, downloads the runtime with the manifests and the app domain of the protected release, or with `app.zip` in development, behind a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
+// Loads a Haylen app into the page: checks what the browser supports, downloads the runtime with the manifests and the app domain of the protected release, or with `app.zip` in development, behind a real progress bar, imports the web modules of the plugins, and hands everything to the runtime.
 // The script `haylen.py` writes `config.json` next to this file with the name, the identifier, the transparency, the splash logo and backgrounds of `app.json`, the files of the release that download before the app starts, the size of every download and the plugins with a web part, whose modules it copies to `plugins/<id>/`.
 
 var Module = {
@@ -25,24 +25,16 @@ var Module = {
         }
     };
 
-    // The folders of the builds of each graphics API, by the names the engine gives them, which `?graphicsApi=` takes.
-    const builds = { webGpu: "webgpu", webGl2: "webgl2" };
-
-    // Returns the folder of the WebGPU or WebGL2 build this browser can run, or of the one `?graphicsApi=` forces when the browser supports it.
-    const pickBuild = async () => {
+    // The runtime draws through WebGPU or WebGL2, whichever starts first, or tries first the one that `?graphicsApi=` names by the name the engine gives it, `webGpu` or `webGl2`. A browser with neither cannot run the app.
+    const checkGraphics = async () => {
         const adapter = navigator.gpu ? await navigator.gpu.requestAdapter().catch(() => null) : null;
-        const supported = { webGpu: adapter !== null, webGl2: document.createElement("canvas").getContext("webgl2") !== null };
-        const forced = new URLSearchParams(location.search).get("graphicsApi");
-        if (Object.hasOwn(builds, forced)) {
-            if (!supported[forced]) {
-                throw new Error("This browser cannot run the " + (forced === "webGpu" ? "WebGPU" : "WebGL2") + " build that the address asks for.");
-            }
-            return builds[forced];
+        if (adapter === null && document.createElement("canvas").getContext("webgl2") === null) {
+            throw new Error("This browser supports neither WebGPU nor WebGL2. Update it or turn on hardware acceleration to run this app.");
         }
-        if (supported.webGpu || supported.webGl2) {
-            return supported.webGpu ? builds.webGpu : builds.webGl2;
+        const requested = new URLSearchParams(location.search).get("graphicsApi");
+        if (requested) {
+            Module.haylen.graphicsApi = requested;
         }
-        throw new Error("This browser supports neither WebGPU nor WebGL2. Update it or turn on hardware acceleration to run this app.");
     };
 
     // Downloads every file into memory while one bar shows the progress of all of them. Compressed responses report their compressed length, so the sizes of `config.json` give the total whenever the length of the actual bytes is unknown.
@@ -182,11 +174,11 @@ var Module = {
     };
 
     try {
-        const build = await pickBuild();
+        await checkGraphics();
         status.textContent = "Loading " + config.name;
         // A protected release downloads only its manifests and its app domain before the app starts, and the content streams in as the app needs it, while development downloads the zipped package.
         const files = config.release ? config.release.files.map((name) => ({ url: "app/" + name, size: config.sizes["app/" + name] })) : [{ url: "app.zip", size: config.sizes["app.zip"] }];
-        const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: build + "/haylen.wasm", size: config.sizes[build + "/haylen.wasm"] }, ...files])]);
+        const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: "haylen.wasm", size: config.sizes["haylen.wasm"] }, ...files])]);
         status.textContent = "Starting " + config.name;
         // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once.
         Module.instantiateWasm = (imports, receive) => {
@@ -206,7 +198,7 @@ var Module = {
             Module.haylen.developmentServer = (location.protocol === "https:" ? "wss://" : "ws://") + location.host + config.development.path + "?token=" + encodeURIComponent(config.development.token);
         }
         loadPlugins(plugins);
-        await loadScript(build + "/haylen.js");
+        await loadScript("haylen.js");
     } catch (error) {
         fail("The app could not be loaded.", String(error.message || error));
     }

@@ -11,7 +11,7 @@
 
 namespace haylen::platform {
 
-// The status bar of an iPhone or iPad, which `HaylenViewController` shows as the app asks. Until the app sets it, the status bar stays as the Info.plist launched it from `app.json`.
+// The status bar of an iPhone or iPad, which `HaylenRootViewController` shows as the app asks. Until the app sets it, the status bar stays as the Info.plist launched it from `app.json`.
 class AppleStatusBar final {
   public:
     [[nodiscard]] static Window::StatusBar get();

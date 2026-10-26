@@ -22,7 +22,7 @@ class WebPage final {
     // Returns the CSS selector of the canvas the page handed to the runtime as `Module.canvas`.
     [[nodiscard]] static std::string getCanvasSelector();
 
-    // Puts the element that holds the canvas and the overlay of the page in fullscreen, or takes the page out of it. The window of the backend follows the change, so it reports whether the page is fullscreen.
+    // Puts the element that holds the canvas and the overlay of the page in fullscreen, or takes the page out of it. The window of SDL follows the change, so it reports whether the page is fullscreen.
     static void setFullscreen(bool value);
 
     // Tells the page when an app starts and stops, and passes it frame statistics about once per second.
