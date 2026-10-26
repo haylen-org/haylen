@@ -27,7 +27,7 @@ Event AppleScroll::translate(NSEvent* event) {
     const NSEventModifierFlags flags = event.modifierFlags;
     const input::KeyModifiers modifiers{.shift = (flags & NSEventModifierFlagShift) != 0, .control = (flags & NSEventModifierFlagControl) != 0, .alt = (flags & NSEventModifierFlagOption) != 0, .super = (flags & NSEventModifierFlagCommand) != 0};
     const math::Vec2 scroll{static_cast<float>(event.scrollingDeltaX), static_cast<float>(event.scrollingDeltaY)};
-    return {.type = Event::Type::MouseScroll, .modifiers = modifiers, .scroll = scroll, .preciseScroll = event.hasPreciseScrollingDeltas, .scrollPhase = toPhase(event)};
+    return {.type = Event::Type::MouseScroll, .modifiers = modifiers, .scroll = scroll, .preciseScroll = event.hasPreciseScrollingDeltas == YES, .scrollPhase = toPhase(event)};
 }
 
 // The momentum that the system adds once the fingers left the trackpad has a phase of its own, and the fingers that touch the trackpad may begin a gesture before they move.
