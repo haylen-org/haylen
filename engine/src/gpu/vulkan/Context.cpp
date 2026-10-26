@@ -11,7 +11,7 @@
 
 namespace haylen::gpu::vulkan {
 
-Context::Context(const Instance& owner, VkSurfaceKHR surface) : instance(owner.getHandle()), debugUtils(owner.hasDebugUtils()) {
+Context::Context(const Instance& owner, VkSurfaceKHR surface, Preference preference) : instance(owner.getHandle()), debugUtils(owner.hasDebugUtils()) {
     std::uint32_t count = 0;
     vkEnumeratePhysicalDevices(instance, &count, nullptr);
     std::vector<VkPhysicalDevice> devices(count);
@@ -19,7 +19,7 @@ Context::Context(const Instance& owner, VkSurfaceKHR surface) : instance(owner.g
 
     Candidate best;
     for (VkPhysicalDevice candidate : devices) {
-        const Candidate rated = rate(candidate, surface);
+        const Candidate rated = rate(candidate, surface, preference);
         if (rated.score > best.score) {
             best = rated;
         }
@@ -41,8 +41,8 @@ Context::~Context() {
     functions.vkDestroyDevice(device, nullptr);
 }
 
-// A GPU needs Vulkan 1.1 and a queue that draws, and presents to the surface when there is one. Discrete GPUs come first, then integrated, virtual and software ones.
-Context::Candidate Context::rate(VkPhysicalDevice candidate, VkSurfaceKHR surface) {
+// A GPU needs Vulkan 1.1 and a queue that draws, and presents to the surface when there is one.
+Context::Candidate Context::rate(VkPhysicalDevice candidate, VkSurfaceKHR surface, Preference preference) {
     VkPhysicalDeviceProperties described{};
     vkGetPhysicalDeviceProperties(candidate, &described);
     if (described.apiVersion < VK_API_VERSION_1_1) {
@@ -65,23 +65,25 @@ Context::Candidate Context::rate(VkPhysicalDevice candidate, VkSurfaceKHR surfac
             continue;
         }
 
-        int score = 1;
-        switch (described.deviceType) {
-        case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
-            score = 4;
-            break;
-        case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
-            score = 3;
-            break;
-        case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
-            score = 2;
-            break;
-        default:
-            break;
-        }
-        return {.device = candidate, .queueFamily = family, .score = score};
+        return {.device = candidate, .queueFamily = family, .score = score(described.deviceType, preference)};
     }
     return {};
+}
+
+// Discrete GPUs come first, then integrated, virtual and software ones, while a preference for low power puts integrated GPUs first and one for software puts the rasterizers that run on the CPU first.
+int Context::score(VkPhysicalDeviceType type, Preference preference) noexcept {
+    switch (type) {
+    case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+        return preference.lowPower ? 3 : 4;
+    case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+        return preference.lowPower ? 4 : 3;
+    case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+        return 2;
+    case VK_PHYSICAL_DEVICE_TYPE_CPU:
+        return preference.software ? 5 : 1;
+    default:
+        return 0;
+    }
 }
 
 void Context::createDevice() {

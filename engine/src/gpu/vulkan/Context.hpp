@@ -16,8 +16,13 @@ class Instance;
 // The GPU that a Vulkan device draws with: the physical device it picked, the logical device with its one queue for graphics, transfers and presentation, the table of its functions, the memory allocator, and what the GPU and its driver offer.
 class Context final {
   public:
-    // Picks the fastest GPU that runs Vulkan 1.1 and, when a surface is given, presents to it.
-    Context(const Instance& instance, VkSurfaceKHR surface);
+    // Which GPU the device prefers among those that run Vulkan 1.1 and present to the surface when one is given: the fastest one, the software rasterizer, or the one that uses the least power.
+    struct Preference {
+        bool software = false;
+        bool lowPower = false;
+    };
+
+    Context(const Instance& instance, VkSurfaceKHR surface, Preference preference);
     ~Context();
     Context(const Context&) = delete;
     Context& operator=(const Context&) = delete;
@@ -112,7 +117,8 @@ class Context final {
         int score = -1;
     };
 
-    [[nodiscard]] static Candidate rate(VkPhysicalDevice candidate, VkSurfaceKHR surface);
+    [[nodiscard]] static Candidate rate(VkPhysicalDevice candidate, VkSurfaceKHR surface, Preference preference);
+    [[nodiscard]] static int score(VkPhysicalDeviceType type, Preference preference) noexcept;
     void createDevice();
     void createAllocator();
 

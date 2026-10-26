@@ -21,10 +21,10 @@
 namespace haylen::gpu::vulkan {
 
 std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surface, const DeviceFactory::Options& options) {
-    return std::make_unique<Device>(surface, Settings{.validation = options.validation});
+    return std::make_unique<Device>(surface, Settings{.validation = options.validation, .software = options.software, .lowPower = options.lowPower});
 }
 
-Device::Device(const std::optional<Surface>& surface, const Settings& settings) : instance(std::make_unique<Instance>(settings.validation)), swapchain(surface ? std::make_unique<Swapchain>(instance->getHandle(), instance->createSurface(*surface)) : nullptr), context(std::make_unique<Context>(*instance, swapchain ? swapchain->getSurface() : VK_NULL_HANDLE)), releases(*context), layouts(*context), descriptors(*context, releases), renderPasses(*context, releases), staging(*context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, kStagingChunkSize, kFramesInFlight, "haylen-staging"), uniforms(*context, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, kUniformChunkSize, kFramesInFlight, "haylen-uniforms"), readbacks(*context), prepared(std::make_shared<PreparedModules>(*context)), vk(context->getFunctions()), dynamicRendering(settings.dynamicRendering && context->hasDynamicRendering()) {
+Device::Device(const std::optional<Surface>& surface, const Settings& settings) : instance(std::make_unique<Instance>(settings.validation)), swapchain(surface ? std::make_unique<Swapchain>(instance->getHandle(), instance->createSurface(*surface)) : nullptr), context(std::make_unique<Context>(*instance, swapchain ? swapchain->getSurface() : VK_NULL_HANDLE, Context::Preference{.software = settings.software, .lowPower = settings.lowPower})), releases(*context), layouts(*context), descriptors(*context, releases), renderPasses(*context, releases), staging(*context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, kStagingChunkSize, kFramesInFlight, "haylen-staging"), uniforms(*context, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, kUniformChunkSize, kFramesInFlight, "haylen-uniforms"), readbacks(*context), prepared(std::make_shared<PreparedModules>(*context)), vk(context->getFunctions()), dynamicRendering(settings.dynamicRendering && context->hasDynamicRendering()) {
     try {
         const VkPipelineCacheCreateInfo cacheInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
         Context::check(vk.vkCreatePipelineCache(context->getDevice(), &cacheInfo, nullptr, &pipelineCache), "make its pipeline cache");
@@ -93,6 +93,7 @@ void Device::fillCapabilities() {
         capabilities.textureFormats[index] = context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
         capabilities.renderFormats[index] = context->hasFormatFeatures(vulkanFormat, depth ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);
         capabilities.blendableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
+        capabilities.filterableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT);
     }
 }
 

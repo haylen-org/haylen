@@ -40,6 +40,10 @@ class Device final : public gpu::Device {
         // Turns on the validation layers when they are installed, whose messages become errors of the engine log.
         bool validation = false;
 
+        // Prefers the rasterizer that runs on the CPU, such as lavapipe, and the GPU that uses the least power, where the machine has a choice.
+        bool software = false;
+        bool lowPower = false;
+
         // Draws with dynamic rendering where the GPU has it. Turned off, the device records render passes on every GPU, which tests use to run that path where dynamic rendering exists.
         bool dynamicRendering = true;
     };
