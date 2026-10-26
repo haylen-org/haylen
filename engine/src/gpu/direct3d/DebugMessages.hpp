@@ -11,7 +11,7 @@
 
 namespace haylen::gpu::direct3d {
 
-// Moves what the debug layers of Direct3D and DXGI found into the log of the engine: corruptions and errors as errors, which fail the tests, and warnings as warnings. The queues of Direct3D 11 and 12 share their shape, so one template reads both. It keeps the storage of the messages, so a frame without new messages allocates nothing.
+// Moves what the debug layers of Direct3D and DXGI found into the log of the engine: corruptions, errors and warnings as errors, which fail the tests. The queues of Direct3D 11 and 12 share their shape, so one template reads both. It keeps the storage of the messages, so a frame without new messages allocates nothing.
 class DebugMessages final {
   public:
     // Takes the queue of DXGI, when its debug layer is present.

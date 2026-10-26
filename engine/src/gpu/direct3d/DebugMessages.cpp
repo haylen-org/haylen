@@ -33,12 +33,12 @@ void DebugMessages::drainDxgi() {
     dxgi->ClearStoredMessages(DXGI_DEBUG_ALL);
 }
 
-// The severities of every queue count from corruption, error and warning down to information and plain messages, which stay out of the log.
+// The severities of every queue count from corruption, error and warning down to information and plain messages, which stay out of the log. A warning of the debug layer names a use of the API that the engine never means to make, such as a draw whose scissor covers no pixel, so it is an error of the engine too, and the tests fail on it.
 void DebugMessages::write(int severity, std::string_view api, std::string_view description) {
     if (severity <= 1) {
         core::Log::error("The debug layer of {} found an error: {}", api, description);
     } else if (severity == 2) {
-        core::Log::warning("The debug layer of {} warns: {}", api, description);
+        core::Log::error("The debug layer of {} warns: {}", api, description);
     }
 }
 

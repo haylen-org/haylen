@@ -81,7 +81,7 @@ Compiling a shader takes time, so the engine asks the device to prepare programs
 
 ## Debugging
 
-The devices validate everything they do when validation is on, which debug builds and tests turn on. Validation turns on the debug layers of Direct3D and DXGI and moves every message they find into the log of the engine. Errors become errors of the log, which fail the tests, and warnings become warnings. The debug layers come with the optional feature Graphics Tools of Windows. On a machine without it, the device logs a warning that says how to add it and runs without validation.
+The devices validate everything they do when validation is on, which debug builds and tests turn on. Validation turns on the debug layers of Direct3D and DXGI and moves every message they find into the log of the engine. Errors and warnings both become errors of the log, which fail the tests, since a warning of a debug layer names a use of the API that the engine never means to make. The debug layers come with the optional feature Graphics Tools of Windows. On a machine without it, the device logs a warning that says how to add it and runs without validation.
 
 On Direct3D 12, validation also turns on the breadcrumbs and page faults of removed devices. When the GPU stops working, the device logs the last operation each command list finished and the address of a page fault.
 

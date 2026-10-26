@@ -4,6 +4,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <memory>
@@ -56,6 +57,8 @@ float4 main() : SV_Target0 { return color; }
         listener = core::Log::addListener([this](core::Log::Level level, std::string_view line) {
             if (level == core::Log::Level::Error) {
                 errors.emplace_back(line);
+            } else if (level == core::Log::Level::Warning) {
+                warnings.emplace_back(line);
             }
         });
         // clang-format on
@@ -186,6 +189,7 @@ float4 main() : SV_Target0 { return color; }
     std::vector<Buffer> buffers;
     std::vector<Image> images;
     std::vector<std::string> errors;
+    std::vector<std::string> warnings;
     std::uint64_t listener = 0;
     HWND window = nullptr;
 };
@@ -252,6 +256,30 @@ TEST_P(Direct3DDeviceTest, ComposesATransparentWindow) {
     device->resizeSurface(120, 60);
     drawFrames(pipeline, vertices, 3);
     EXPECT_FALSE(device->isLost());
+}
+
+// A warning of the debug layer reaches the log as an error, so the tests fail on it, as a draw whose scissor covers no pixel shows on Direct3D 12, whose debug layer warns about it.
+TEST_P(Direct3DDeviceTest, ReportsTheWarningsOfTheDebugLayerAsErrors) {
+    if (GetParam() != Device::Api::Direct3D12) {
+        GTEST_SKIP() << "Only the debug layer of Direct3D 12 warns about a scissor without pixels.";
+    }
+    start();
+    if (std::ranges::any_of(warnings, [](const std::string& line) { return line.find("without its debug layer") != std::string::npos; })) {
+        GTEST_SKIP() << "Windows lacks the Graphics Tools that bring the debug layer.";
+    }
+    images.push_back(device->makeImage({.width = kSize, .height = kSize, .kind = Device::ImageKind::RenderTarget, .label = "haylen-test-target"}));
+    const Pipeline pipeline = makePipeline(false);
+    const Buffer vertices = makeTriangle({-1.0F, -1.0F, -1.0F, 1.0F, 1.0F, -1.0F});
+
+    const Device::ColorAttachment color{.image = images.back()};
+    device->beginPass({.colors = std::span(&color, 1)});
+    device->applyScissor({0.0F, 0.0F, 0.0F, 0.0F});
+    drawTriangle(pipeline, vertices, {1.0F, 0.0F, 0.0F, 1.0F});
+    device->endPass();
+    device->commit();
+
+    EXPECT_TRUE(std::ranges::any_of(errors, [](const std::string& line) { return line.find("The debug layer of Direct3D 12 warns") != std::string::npos; }));
+    errors.clear();
 }
 
 TEST_P(Direct3DDeviceTest, ReportsTheErrorsOfAShaderThatDoesNotCompile) {
