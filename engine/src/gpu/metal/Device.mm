@@ -223,7 +223,7 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
     passDesc = [MTLRenderPassDescriptor new];
 }
 
-// Every Metal GPU blends into the color formats of the contract, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats.
+// Every Metal GPU samples and draws into every format of the contract, with `Depth24Stencil8` through its replacement where the GPU lacks it, and blends into its color formats, except Apple GPUs before the A14 and M1, which blend into no format of 32 bit floats.
 gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     Capabilities made;
     made.maxImageSize = [metal supportsFamily:MTLGPUFamilyApple3] || [metal supportsFamily:MTLGPUFamilyMac2] ? 16384 : 8192;
@@ -243,6 +243,8 @@ gpu::Device::Capabilities Device::Native::describe(id<MTLDevice> metal) {
     for (std::size_t index = 0; index < made.blendableFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
         const bool wide = format == PixelFormat::R32Float || format == PixelFormat::Rg32Float || format == PixelFormat::Rgba32Float;
+        made.textureFormats[index] = true;
+        made.renderFormats[index] = true;
         made.blendableFormats[index] = !Formats::isDepth(format) && (!wide || floats);
     }
     return made;
