@@ -940,24 +940,27 @@ void Device::commit() {
     }
     openFrame();
 
-    if (presentPending && swapchain != nullptr) {
-        if (multisampleColor != nullptr) {
-            ComPtr<ID3D11Resource> backBuffer;
-            backBufferView->GetResource(backBuffer.GetAddressOf());
-            context->ResolveSubresource(backBuffer.Get(), 0, multisampleColor.Get(), 0, Formats::kSwapchainColor);
-        }
-        const HRESULT result = swapchain->present();
-        if (HResult::isDeviceLoss(result)) {
-            loseDevice(result);
-        }
+    const bool presenting = presentPending && swapchain != nullptr;
+    if (presenting && multisampleColor != nullptr) {
+        ComPtr<ID3D11Resource> backBuffer;
+        backBufferView->GetResource(backBuffer.GetAddressOf());
+        context->ResolveSubresource(backBuffer.Get(), 0, multisampleColor.Get(), 0, Formats::kSwapchainColor);
     }
-    presentPending = false;
 
+    // The queries close the work of the frame before it is presented, so the time of the GPU leaves out the wait for the display.
     timer->end(*context.Get());
     context->End(frameFinished[frameIndex].Get());
     frameSubmitted[frameIndex] = true;
     frameIndex = (frameIndex + 1) % kFramesInFlight;
     frameOpen = false;
+    presentPending = false;
+
+    if (presenting) {
+        const HRESULT result = swapchain->present();
+        if (HResult::isDeviceLoss(result)) {
+            loseDevice(result);
+        }
+    }
 
     if (!lost && FAILED(device->GetDeviceRemovedReason())) {
         loseDevice(device->GetDeviceRemovedReason());
