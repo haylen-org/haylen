@@ -307,11 +307,12 @@ Events::Context Runtime::getContext() const noexcept {
     return {.density = window.getPixelDensity(), .framebuffer = window.getPixelSize(), .modifiers = SDL_GetModState()};
 }
 
-// The swapchain follows the drawable as its size or scale changes, and the frames slow down while the window shows nothing, since no display paces them then.
+// The swapchain follows the drawable as its size or scale changes, and the frames slow down while the window shows nothing, since no display paces them then. The Metal view of UIKit reports the size of its drawable on its own, such as when the scene turns to the orientation of the app after the window opened, before SDL reports the window resized.
 void Runtime::followWindow(const SDL_Event& event) {
     switch (event.type) {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-    case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED: {
+    case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+    case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED: {
         window.refresh();
         const math::Vec2 size = window.getPixelSize();
         if (gpu::Device* device = Player::getGpuDevice()) {

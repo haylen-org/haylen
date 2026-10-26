@@ -41,5 +41,7 @@
 @HAYLEN_ORIENTATIONS_IPAD@	</array>
 	<key>GCSupportsControllerUserInteraction</key>
 	<true/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
 @HAYLEN_PLUGIN_KEYS@</dict>
 </plist>

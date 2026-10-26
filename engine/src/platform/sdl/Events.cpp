@@ -101,6 +101,7 @@ std::optional<platform::Event> Events::translateWindow(const SDL_Event& source) 
     switch (source.type) {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
     case SDL_EVENT_WINDOW_DISPLAY_SCALE_CHANGED:
+    case SDL_EVENT_WINDOW_METAL_VIEW_RESIZED:
         return platform::Event{.type = platform::Event::Type::Resized};
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
         return kAppStates ? std::nullopt : std::optional<platform::Event>({.type = platform::Event::Type::FocusGained});

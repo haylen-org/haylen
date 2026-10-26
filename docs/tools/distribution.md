@@ -649,6 +649,7 @@ The `Info.plist` of each platform is complete. It holds `$(HAYLEN_DISPLAY_NAME)`
 - The scene manifest. It declares several scenes on iOS, so screens of plugins open windows of their own on Mac Catalyst and iPad while the app still draws in one window, and one scene on tvOS.
 - `ITSAppUsesNonExemptEncryption`, the statement on export compliance that App Store Connect asks about.
 - `GCSupportsControllerUserInteraction`, the hidden status bar of iOS, and the principal class and minimum system of macOS.
+- `UIApplicationSupportsIndirectInputEvents`, through which UIKit hands the mouse and the trackpad of an iPad or a Mac to the app as a pointer with its buttons, which SDL reads as the mouse.
 
 The orientations of iOS come from `app.json`, so the template leaves them out.
 
