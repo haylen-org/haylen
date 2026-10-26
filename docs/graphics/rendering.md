@@ -64,7 +64,7 @@ log.info('This device draws through ' .. graphics.apiName() .. '.')
 
 ## The shaders of the engine
 
-The shaders of the engine live in `engine/shaders`. They are written in the [Haylen shader language](shaders.md#the-haylen-shader-language) and compiled by the Haylen shader compiler `haylen-shaderc` when the engine builds. A build keeps only the code of the shader languages of its own graphics API. Each source holds the programs of one kind of draw:
+The shaders of the engine live in `engine/shaders`. They are written in the [Haylen shader language](shaders.md#the-haylen-shader-language) and compiled by the Haylen shader compiler `haylen-shaderc` when the engine builds. A build keeps only the code of the shader languages of its own graphics APIs. Each source holds the programs of one kind of draw:
 
 | Source | Programs |
 | --- | --- |

@@ -114,6 +114,7 @@ set(HAYLEN_TEST_SOURCES
   debug/InspectorTests.cpp
   debug/StatsTests.cpp
   debug/TraceRecorderTests.cpp
+  gpu/DeviceFactoryTests.cpp
   gpu/NullDeviceTests.cpp
   graphics/GradientTests.cpp
   graphics/GraphicsLuaTests.cpp
@@ -241,7 +242,7 @@ set(HAYLEN_TEST_SOURCES
 # The backend of the build brings its own tests with it.
 add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} ${HAYLEN_BACKEND_TEST_SOURCES})
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
-target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen-content-tool ${HAYLEN_BACKEND_TEST_LIBRARIES} haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
+target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool ${HAYLEN_BACKEND_TEST_LIBRARIES} haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")
 # The shader tests compile a material with `haylen.py shaders`, the way apps compile theirs, the font tests read subsets of open fonts in `data/fonts` that keep the characters the tests use, the audio tests read short tones made for them in `data/audio`, in every compressed format the engine decodes, and the video tests read a clip made for them in `data/video`.

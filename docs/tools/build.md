@@ -237,6 +237,7 @@ The script `haylen.py` sets these cache variables for you. A project that adds t
 | `HAYLEN_SHADERC` | empty | The path of a build of `haylen-shaderc`, which compiles the shaders of the engine. Empty, the configure provides the pinned compiler as [the shader compiler](#the-shader-compiler) explains, and configures again when the pins change. |
 | `HAYLEN_SHADERC_CACHE` | the CPM source cache, or `tools` of the build tree without one | The folder that keeps the compilers that the configure provides, so build trees share them. |
 | `HAYLEN_BACKEND_DIR` | `engine/src/backends/sokol` | The folder of the backend, which opens the window, runs and draws the frames and holds the entry point. Its `backend.cmake` adds its sources to the runtime, as the [architecture guide](../core/architecture.md#backends) describes. The backend takes the name of its folder, which `HAYLEN_BACKEND` holds. |
+| `HAYLEN_GRAPHICS_APIS` | every API of the platform | The graphics APIs whose GPU devices the static library `haylen-gpu` compiles, as a CMake list of the names of `gpu::Device::kApiNames`. The default is `metal` on Apple platforms, `direct3D12;direct3D11;vulkan;openGl` on Windows, `vulkan;openGl` on Linux, `vulkan;openGlEs` on Android and `webGpu;webGl2` on the web, and a name of another platform is an error. The engine includes the `device.cmake` of the folder of each device under `engine/src/gpu`, and `gpu::DeviceFactory` makes the devices in the default order of the platforms, whatever the order of the list. |
 | `HAYLEN_GRAPHICS_API` | `AUTO` | The graphics API that the backend draws through: `AUTO`, `METAL`, `D3D11`, `GLCORE`, `GLES3` or `WGPU`. The value `AUTO` picks Metal on Apple platforms, Direct3D 11 on Windows, OpenGL ES 3 on Android, WebGPU on the web and OpenGL core on Linux. The shaders of the engine carry the shader languages of that graphics API alone. |
 | `HAYLEN_BUILD_PLAYER` | on when the engine is the top-level project | Builds the `haylen` player: the executable on desktop and web, and the shared library of `HaylenActivity` on Android. |
 | `HAYLEN_BUILD_TESTS` | on when the engine is the top-level project | Builds the tests on desktop. |
@@ -273,12 +274,13 @@ With link-time optimization, the libraries and SDKs of the artifacts hold the in
 
 ### Shaders of the engine
 
-The shaders of the engine live in `engine/shaders`, in the Haylen shader language. The function `haylen_compile_shader` of `engine/cmake/haylen-shaders.cmake` compiles them with `haylen-shaderc` at build time into `.shader` packages, which the engine embeds. A package holds the code of the shader languages of the graphics API of the build alone, which `HAYLEN_SHADER_LANGUAGES` of `engine/cmake/haylen-platform.cmake` lists:
+The shaders of the engine live in `engine/shaders`, in the Haylen shader language. The function `haylen_compile_shader` of `engine/cmake/haylen-shaders.cmake` compiles them with `haylen-shaderc` at build time into `.shader` packages, which the engine embeds. A package holds the code of the shader languages of the graphics API of the backend and of every API of `HAYLEN_GRAPHICS_APIS`, which `HAYLEN_SHADER_LANGUAGES` lists, from `engine/cmake/haylen-platform.cmake` and `engine/cmake/haylen-gpu.cmake`:
 
 | Graphics API | Shader languages |
 | --- | --- |
 | Metal | The three Metal languages, for macOS, iOS and the iOS simulator. |
-| Direct3D 11 | HLSL 5. |
+| Direct3D 11 and 12 | HLSL 5. |
+| Vulkan | SPIR-V. |
 | OpenGL core | GLSL 4.30. |
 | OpenGL ES 3 and WebGL2 | GLSL 3.00 ES. |
 | WebGPU | WGSL. |

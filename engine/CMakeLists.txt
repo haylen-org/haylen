@@ -34,6 +34,7 @@ list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")
 
 include(cpm)
 include(haylen-platform)
+include(haylen-gpu)
 include(haylen-release)
 include(haylen-warnings)
 include(haylen-coverage)
@@ -750,6 +751,8 @@ haylen_embed_file(haylen-engine "${budoux_SOURCE_DIR}/budoux/models/th.json" get
 haylen_enable_warnings(haylen-engine)
 haylen_enable_coverage(haylen-engine)
 
+haylen_add_gpu_library()
+
 # GCC and MSVC link the intermediate code of a Release build only when the link asks for it, so every program that links the engine asks, whatever its own configuration, which a Debug app that links the prebuilt SDK has. GCC repeats its checks of string bounds at that link on code that it inlines from other files and reports bounds that no call reaches, while every file of the engine passes those checks where it compiles, so the link leaves them to the compile.
 if(HAYLEN_LINK_TIME_OPTIMIZATION AND CMAKE_BUILD_TYPE STREQUAL "Release")
   if(MSVC)
@@ -882,7 +885,7 @@ endif()
 add_library(haylen-runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
 add_library(haylen::runtime ALIAS haylen-runtime)
 target_include_directories(haylen-runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
-target_link_libraries(haylen-runtime PUBLIC haylen-platform)
+target_link_libraries(haylen-runtime PUBLIC haylen-platform haylen-gpu)
 include("${HAYLEN_BACKEND_DIR}/backend.cmake")
 # The web host gives the mixer the audio output of the page, a backend of miniaudio.
 if(EMSCRIPTEN)
