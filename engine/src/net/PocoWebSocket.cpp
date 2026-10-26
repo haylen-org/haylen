@@ -16,11 +16,11 @@
 #include <Poco/URI.h>
 
 #include <algorithm>
+#include <exception>
 #include <iterator>
-#include <stdexcept>
 #include <thread>
 
-#include "varn/tls/CaBundle.h"
+#include "varn/tls/SystemTrust.h"
 
 namespace haylen::net {
 
@@ -82,15 +82,10 @@ Poco::Net::Context::Ptr PocoWebSocket::Workers::getClientContext() {
     if (clientContext) {
         return clientContext;
     }
-#if defined(_WIN32)
-    clientContext = new Poco::Net::Context(Poco::Net::Context::TLS_CLIENT_USE, "", Poco::Net::Context::VERIFY_STRICT, Poco::Net::Context::OPT_DEFAULTS, Poco::Net::Context::CERT_STORE_ROOT);
-#else
-    const std::string& bundle = varn::tls::CaBundle::resolve();
-    if (bundle.empty()) {
-        throw std::runtime_error("No trust store was found to check the certificate of a \"wss://\" server: " + varn::tls::CaBundle::describeSearch() + ".");
-    }
-    clientContext = new Poco::Net::Context(Poco::Net::Context::TLS_CLIENT_USE, "", "", bundle, Poco::Net::Context::VERIFY_STRICT, 9, true, "DEFAULT@SECLEVEL=2");
-#endif
+    // The context trusts the roots of the system, the trust store of POSIX systems or the root store of Windows.
+    Poco::Net::Context::Ptr created = new Poco::Net::Context(Poco::Net::Context::TLS_CLIENT_USE, "", "", "", Poco::Net::Context::VERIFY_STRICT, 9, false, "DEFAULT@SECLEVEL=2");
+    varn::tls::SystemTrust::install(created->sslContext());
+    clientContext = created;
     return clientContext;
 }
 
@@ -280,14 +275,14 @@ bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& s
     return false;
 }
 
-// The handshake runs without blocking, so abandoning the connection interrupts it. A finished handshake returns 1 with OpenSSL and 0 on Windows, while OpenSSL returns 0 for a connection the server closed, so a result that is not negative counts as finished once the server presented its certificate. Verifying the host name of the certificate is the step a handshake that does not block leaves to the caller.
+// The handshake runs without blocking, so abandoning the connection interrupts it. A finished handshake returns 1, and a connection the server closed returns 0. Verifying the host name of the certificate is the step a handshake that does not block leaves to the caller.
 bool PocoWebSocket::completeHandshake(Connection& target, Poco::Net::SecureStreamSocket& socket, std::chrono::steady_clock::time_point deadline) {
     while (!target.stopping) {
         const int result = socket.completeHandshake();
-        if (result >= 0) {
-            if (!socket.havePeerCertificate()) {
-                throw Poco::Net::SSLConnectionUnexpectedlyClosedException();
-            }
+        if (result == 0) {
+            throw Poco::Net::SSLConnectionUnexpectedlyClosedException();
+        }
+        if (result > 0) {
             socket.verifyPeerCertificate();
             return true;
         }
@@ -299,7 +294,7 @@ bool PocoWebSocket::completeHandshake(Connection& target, Poco::Net::SecureStrea
     return false;
 }
 
-// A secure socket connects without its handshake on every TLS library of Poco, while attaching TLS to a connected socket runs the whole handshake at once on Windows.
+// A secure socket connects without its handshake, so the handshake runs afterwards without blocking.
 Poco::Net::StreamSocket PocoWebSocket::createSocket(const Connection& target, Workers& workers, const Poco::Net::SocketAddress& address) {
     if (!target.secure) {
         return Poco::Net::StreamSocket(address.family());

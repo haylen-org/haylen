@@ -712,13 +712,11 @@ target_include_directories(haylen-engine
 )
 
 target_link_libraries(haylen-engine
-  PUBLIC nlohmann_json::nlohmann_json varn_core haylen-imgui
+  PUBLIC nlohmann_json::nlohmann_json varn-core haylen-imgui
   PRIVATE box2d::box2d Clipper2 msdfgen::msdfgen-core haylen-harfbuzz haylen-sheenbidi haylen-unibreak haylen-miniaudio haylen-stb haylen-nanosvg haylen-fast-float haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static
 )
 
-if(WIN32)
-  target_link_libraries(haylen-engine PRIVATE Poco::NetSSLWin)
-elseif(NOT EMSCRIPTEN)
+if(NOT EMSCRIPTEN)
   target_link_libraries(haylen-engine PRIVATE Poco::NetSSL)
 endif()
 
