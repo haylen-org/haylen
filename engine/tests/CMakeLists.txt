@@ -159,8 +159,10 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
   platform/AndroidDialogJsonTests.cpp
+  platform/AndroidFramePacerTests.cpp
   platform/AndroidGamepadStatesTests.cpp
   platform/AndroidGlesVersionTests.cpp
+  platform/AndroidKeyClaimsTests.cpp
   platform/AndroidYuvImageTests.cpp
   platform/CrashGuardTests.cpp
   platform/DevelopmentConnectionTests.cpp

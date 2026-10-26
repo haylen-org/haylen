@@ -796,8 +796,10 @@ add_library(haylen-platform STATIC
   src/platform/android/AndroidBatteryStatus.cpp
   src/platform/android/AndroidDeviceInfo.cpp
   src/platform/android/AndroidDialogJson.cpp
+  src/platform/android/AndroidFramePacer.cpp
   src/platform/android/AndroidGamepadStates.cpp
   src/platform/android/AndroidGlesVersion.cpp
+  src/platform/android/AndroidKeyClaims.cpp
   src/platform/android/AndroidYuvImage.cpp
   src/platform/linux/LinuxFilePattern.cpp
   src/platform/linux/LinuxSystemReader.cpp
