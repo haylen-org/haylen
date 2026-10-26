@@ -125,8 +125,9 @@ float Window::queryScale() const noexcept {
     return scale.load();
 }
 
+// A desktop window opens hidden, so it first shows with the style that the app gives it as it starts. A window of UIKit shows at once under the launch screen, since a hidden one misses the turn of its scene to the orientation of the app.
 SDL_WindowFlags Window::getFlags(const core::AppConfig::Window& options, gpu::Device::Api api) noexcept {
-    SDL_WindowFlags flags = SDL_WINDOW_HIDDEN;
+    SDL_WindowFlags flags = kHidden ? SDL_WINDOW_HIDDEN : 0;
     if (options.highDpi) {
         flags |= SDL_WINDOW_HIGH_PIXEL_DENSITY;
     }

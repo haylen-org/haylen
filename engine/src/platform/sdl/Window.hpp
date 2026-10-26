@@ -12,6 +12,10 @@
 #include "platform/NativeWindow.hpp"
 #include "platform/sdl/GlContext.hpp"
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+
 namespace haylen::platform::sdl {
 
 // The window that SDL opens for the app, made for the graphics API that draws into it, as the system of each platform sees it. One object stands for the window of the process, which opens again whenever the runtime tries another graphics API whose window needs other flags.
@@ -20,7 +24,7 @@ class Window final : public platform::NativeWindow {
     Window() = default;
     ~Window() override;
 
-    // Opens the window hidden, with the options of the app and what the graphics API draws through: a Metal layer, a Vulkan surface or a context of OpenGL. Throws `std::runtime_error` when the system cannot make such a window, so the runtime tries the next graphics API.
+    // Opens the window, hidden on desktops, with the options of the app and what the graphics API draws through: a Metal layer, a Vulkan surface or a context of OpenGL. Throws `std::runtime_error` when the system cannot make such a window, so the runtime tries the next graphics API.
     void open(const core::AppConfig::Window& options, gpu::Device::Api api);
     void close() noexcept;
     void show();
@@ -51,6 +55,12 @@ class Window final : public platform::NativeWindow {
     [[nodiscard]] float queryScale() const noexcept override;
 
   private:
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    static constexpr bool kHidden = false;
+#else
+    static constexpr bool kHidden = true;
+#endif
+
     [[nodiscard]] static SDL_WindowFlags getFlags(const core::AppConfig::Window& options, gpu::Device::Api api) noexcept;
     static void describeGl(const core::AppConfig::Window& options, gpu::Device::Api api);
     void attachApi();
