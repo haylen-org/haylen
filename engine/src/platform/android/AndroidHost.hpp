@@ -32,6 +32,7 @@ class AndroidHost final : public NativeHost {
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return false;
     }
+    [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;

@@ -29,7 +29,7 @@ void NativeHost::setResizable(bool value) {
 
 // The plain keyboard edits an empty native field of its own, placed in the corner of the screen so no browser scrolls the page to show it.
 void NativeHost::setKeyboardVisible(bool value) {
-    TextInput& input = Services::getTextInput();
+    TextInput& input = getTextInput();
     if (!value) {
         input.finish();
         return;
@@ -74,10 +74,6 @@ Window::StatusBar NativeHost::getStatusBar() const noexcept {
 void NativeHost::setStatusBar(StatusBar value) {
     statusBar = value;
     Services::setStatusBar(value);
-}
-
-TextInput& NativeHost::getTextInput() noexcept {
-    return Services::getTextInput();
 }
 
 bool NativeHost::hasPointerDevice() const noexcept {

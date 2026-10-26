@@ -9,6 +9,9 @@
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
+#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
+#include "platform/Services.hpp"
+#endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
 #elif defined(__EMSCRIPTEN__)
@@ -95,6 +98,15 @@ std::string Host::getClipboard() const {
 // The window composes premultiplied alpha with the desktop when it opened transparent, and while it is opaque the frames keep alpha 1.
 bool Host::canBeTransparent() const noexcept {
     return runtime.isTransparent();
+}
+
+// Apple platforms and the web edit text in a native field of the services, while Windows and Linux type through the text events of SDL.
+platform::TextInput& Host::getTextInput() noexcept {
+#if defined(_WIN32) || defined(__linux__)
+    return runtime.getTextInput();
+#else
+    return Services::getTextInput();
+#endif
 }
 
 std::unique_ptr<gpu::Device> Host::createGpuDevice() {

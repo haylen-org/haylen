@@ -109,8 +109,9 @@ While a field edits, an invisible `NSTextView` over it is the first responder of
 
 Neither platform has a native field, so the UI edits the text itself:
 
-- Windows types through the text input of SDL, which turns `WM_CHAR` and the text that the input method commits into text events. The input method composes in its own window. The text input places the composition window at the caret of the focused field with `ImmSetCompositionWindow`, and the candidate list below the caret line with `ImmSetCandidateWindow`. So the input method never covers the text being typed.
-- Linux types through the text input of SDL, which reads the characters of the keyboard layout and the text that the input methods of IBus and Fcitx commit over D-Bus, such as Japanese, Chinese or Korean. The input method composes in its own window.
+- Windows types through the text input of SDL, which turns `WM_CHAR` and the text that the input method commits into text events.
+- Linux types through the text input of SDL, which reads the characters of the keyboard layout and the text that the input methods of IBus and Fcitx commit over D-Bus, such as Japanese, Chinese or Korean.
+- The input method composes in a window of its own. The text input of SDL, `platform::sdl::TextInput`, hands SDL the line of the caret of the focused field with `SDL_SetTextInputArea`, so the composition window opens at the caret and the candidate list below the line, and the input method never covers the text being typed.
 - The UI edits with Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V, Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z. It moves by word with Ctrl and the arrows, and to the ends of the line with Home and End.
 
 ## Complex scripts and right-to-left text

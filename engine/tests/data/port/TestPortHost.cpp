@@ -2,6 +2,7 @@
 
 #include "TestPortRuntime.hpp"
 #include "TestPortWindow.hpp"
+#include "platform/Services.hpp"
 
 namespace haylen::platform {
 
@@ -47,6 +48,10 @@ std::unique_ptr<gpu::Device> TestPortHost::createGpuDevice() {
 // The test port has no sound device, so its mixer plays into none.
 audio::Mixer::Setup TestPortHost::getAudioSetup() const {
     return {.device = false};
+}
+
+TextInput& TestPortHost::getTextInput() noexcept {
+    return Services::getTextInput();
 }
 
 void TestPortHost::closeWindow() {

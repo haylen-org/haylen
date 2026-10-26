@@ -1,6 +1,7 @@
 #include "platform/android/AndroidHost.hpp"
 
 #include "platform/NativeWindow.hpp"
+#include "platform/Services.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidRuntime.hpp"
@@ -31,6 +32,10 @@ std::unique_ptr<gpu::Device> AndroidHost::createGpuDevice() {
 
 void AndroidHost::closeWindow() {
     runtime.quit();
+}
+
+TextInput& AndroidHost::getTextInput() noexcept {
+    return Services::getTextInput();
 }
 
 void AndroidHost::pollGamepads(std::span<input::GamepadState> gamepads) {

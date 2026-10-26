@@ -25,7 +25,6 @@
 #include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsSystem.hpp"
-#include "platform/windows/WindowsTextInput.hpp"
 #include "platform/windows/WindowsVideoDecoder.hpp"
 
 namespace haylen::platform {
@@ -164,11 +163,6 @@ void Services::endSplashScreen(float) {}
 // Windows offers desktop apps no API for the fold or the hinge of a device.
 std::optional<Fold> Services::getFold() {
     return std::nullopt;
-}
-
-TextInput& Services::getTextInput() {
-    static WindowsTextInput& input = *new WindowsTextInput();
-    return input;
 }
 
 // Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.

@@ -31,7 +31,7 @@ function(haylen_link_runtime_platform target scope)
     list(TRANSFORM frameworks PREPEND "-framework ")
     target_link_libraries(${target} ${scope} ${frameworks})
   elseif(HAYLEN_PLATFORM STREQUAL "windows")
-    target_link_libraries(${target} ${scope} shell32 shcore shlwapi ole32 oleaut32 imm32 advapi32 uuid mfplat mfreadwrite mfuuid runtimeobject uiautomationcore)
+    target_link_libraries(${target} ${scope} shell32 shcore shlwapi ole32 oleaut32 advapi32 uuid mfplat mfreadwrite mfuuid runtimeobject uiautomationcore)
   elseif(HAYLEN_PLATFORM STREQUAL "android")
     # The context of OpenGL ES comes from EGL, through which the device of OpenGL ES loads its functions, the video streams of plugins read the pixels of bitmaps through `jnigraphics`, and videos decode through `mediandk`.
     target_link_libraries(${target} ${scope} android log EGL jnigraphics mediandk)

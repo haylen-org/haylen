@@ -102,7 +102,7 @@ class Services final {
     // Returns the fold of a foldable or dual-screen device across the window, as `Window::getFold` describes.
     [[nodiscard]] static std::optional<Fold> getFold();
 
-    // Returns the text input of the platform, which lives as long as the process.
+    // Returns the text input of the platforms whose native field edits the text, Apple platforms, Android and the web, which lives as long as the process. Windows and Linux type through the text input of SDL instead.
     [[nodiscard]] static TextInput& getTextInput();
 
     // Hands a call to the native handler registry with the byte buffers that its parameters refer to, which the registry copies before it returns, and it answers through the bridge relay. Methods without a handler fail with an error result.

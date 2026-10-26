@@ -31,7 +31,6 @@ class NativeHost : public Host {
     [[nodiscard]] std::optional<Fold> getFold() const override;
     [[nodiscard]] StatusBar getStatusBar() const noexcept override;
     void setStatusBar(StatusBar value) override;
-    [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool isTransparent() const noexcept override;
     void setTransparent(bool value) override;

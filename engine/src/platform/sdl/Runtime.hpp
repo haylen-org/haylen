@@ -22,6 +22,9 @@
 #if !defined(__APPLE__) || TARGET_OS_OSX
 #include "platform/sdl/Gamepads.hpp"
 #endif
+#if defined(_WIN32) || defined(__linux__)
+#include "platform/sdl/TextInput.hpp"
+#endif
 
 namespace haylen::platform::sdl {
 
@@ -51,6 +54,12 @@ class Runtime final {
 #if !defined(__APPLE__) || TARGET_OS_OSX
     [[nodiscard]] Gamepads& getGamepads() noexcept {
         return gamepads;
+    }
+#endif
+
+#if defined(_WIN32) || defined(__linux__)
+    [[nodiscard]] TextInput& getTextInput() noexcept {
+        return textInput;
     }
 #endif
 
@@ -109,6 +118,9 @@ class Runtime final {
     Events events;
 #if !defined(__APPLE__) || TARGET_OS_OSX
     Gamepads gamepads;
+#endif
+#if defined(_WIN32) || defined(__linux__)
+    TextInput textInput{window};
 #endif
     FrameTimer timer;
     std::vector<platform::Event> translated;

@@ -32,6 +32,7 @@ class Host final : public platform::NativeHost {
     void setClipboard(std::string_view value) override;
     [[nodiscard]] std::string getClipboard() const override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
+    [[nodiscard]] platform::TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;

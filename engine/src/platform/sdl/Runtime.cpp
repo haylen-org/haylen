@@ -362,6 +362,11 @@ void Runtime::followWindow(const SDL_Event& event) {
         }
         return;
     }
+#if defined(_WIN32) || defined(__linux__)
+    case SDL_EVENT_WINDOW_FOCUS_GAINED:
+        textInput.restore();
+        return;
+#endif
     default:
         return;
     }

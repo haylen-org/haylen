@@ -28,6 +28,7 @@ class TestPortHost final : public NativeHost {
     void setClipboard(std::string_view value) override;
     [[nodiscard]] std::string getClipboard() const override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
+    [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void closeWindow() override;
