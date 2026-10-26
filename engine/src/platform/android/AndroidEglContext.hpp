@@ -3,14 +3,17 @@
 #include <EGL/egl.h>
 #include <android/native_window.h>
 
+#include <vector>
+
 #include "haylen/gpu/Surface.hpp"
+#include "platform/android/AndroidGlesVersion.hpp"
 
 namespace haylen::platform {
 
 // The EGL context of OpenGL ES that an Android activity draws through, which lasts while the activity lives. It asks for the newest version of OpenGL ES that the device declares, since an emulator creates a context of exactly the version an app asks for. Its window surface comes and goes with the window of the activity, and without one the context stays current on no surface, so the ticks of a paused app still create and release the objects of the GPU. It runs on the frame thread.
 class AndroidEglContext final : public gpu::GlContext {
   public:
-    // Opens the display and creates the context for windows of the sample count, with a depth and stencil buffer, and with debug output when `validation` asks for it. Throws `std::runtime_error` with a clear sentence when EGL cannot.
+    // Opens the display and creates the context for windows of the sample count, with a depth and stencil buffer, robust where EGL can make it so, and with debug output when `validation` asks for it. Throws `std::runtime_error` with a clear sentence when EGL cannot.
     AndroidEglContext(int sampleCount, bool validation);
     ~AndroidEglContext() override;
 
@@ -31,6 +34,7 @@ class AndroidEglContext final : public gpu::GlContext {
     }
 
   private:
+    [[nodiscard]] std::vector<EGLint> describeContext(const AndroidGlesVersion& version, bool validation) const;
     [[nodiscard]] EGLConfig chooseConfig(int sampleCount) const;
     [[nodiscard]] bool isExact(EGLConfig candidate, EGLint samples) const;
     [[nodiscard]] EGLint readAttribute(EGLConfig candidate, EGLint attribute) const;

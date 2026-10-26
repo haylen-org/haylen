@@ -26,11 +26,7 @@ AndroidEglContext::AndroidEglContext(int sampleCount, bool validation) : display
     // Devices that predate OpenGL ES 3 declare an older version, and an app still asks for 3.0 there.
     const AndroidGlesVersion declared = AndroidGlesVersion::read();
     const AndroidGlesVersion version = declared.major >= 3 ? declared : AndroidGlesVersion{};
-    std::vector<EGLint> attributes{EGL_CONTEXT_MAJOR_VERSION_KHR, version.major, EGL_CONTEXT_MINOR_VERSION_KHR, version.minor};
-    if (validation && hasExtension("EGL_KHR_create_context")) {
-        attributes.insert(attributes.end(), {EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR});
-    }
-    attributes.push_back(EGL_NONE);
+    const std::vector<EGLint> attributes = describeContext(version, validation);
     context = eglCreateContext(display, config, EGL_NO_CONTEXT, attributes.data());
     if (context == EGL_NO_CONTEXT) {
         eglTerminate(display);
@@ -92,6 +88,19 @@ void AndroidEglContext::releaseWindow() noexcept {
     eglDestroySurface(display, surface);
     surface = EGL_NO_SURFACE;
     attached = nullptr;
+}
+
+// A robust context loses itself on a reset of the GPU, which the device of OpenGL ES then reports as lost, where EGL can make one.
+std::vector<EGLint> AndroidEglContext::describeContext(const AndroidGlesVersion& version, bool validation) const {
+    std::vector<EGLint> attributes{EGL_CONTEXT_MAJOR_VERSION_KHR, version.major, EGL_CONTEXT_MINOR_VERSION_KHR, version.minor};
+    if (hasExtension("EGL_EXT_create_context_robustness")) {
+        attributes.insert(attributes.end(), {EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT, EGL_LOSE_CONTEXT_ON_RESET_EXT});
+    }
+    if (validation && hasExtension("EGL_KHR_create_context")) {
+        attributes.insert(attributes.end(), {EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR});
+    }
+    attributes.push_back(EGL_NONE);
+    return attributes;
 }
 
 // The first configuration that EGL offers may carry more bits than asked for, so the one with exactly the asked sizes wins.
