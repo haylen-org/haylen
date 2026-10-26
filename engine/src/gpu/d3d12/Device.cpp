@@ -72,6 +72,7 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     textureTables = std::make_unique<DescriptorRing>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, kTextureHeapSize, D3D12_MAX_SHADER_VISIBLE_DESCRIPTOR_HEAP_SIZE_TIER_1, "haylen-texture-tables");
     samplerTables = std::make_unique<DescriptorRing>(*device.Get(), D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, D3D12_MAX_SHADER_VISIBLE_SAMPLER_HEAP_SIZE, "haylen-sampler-tables");
     uploads = std::make_unique<UploadAllocator>(*device.Get());
+    bufferArena = std::make_unique<BufferArena>(*device.Get());
     rootSignatures = std::make_unique<RootSignatures>(*device.Get());
     timer = std::make_unique<FrameTimer>(*device.Get(), *queue.Get(), kFramesInFlight);
     for (D3D12_CPU_DESCRIPTOR_HANDLE& view : backBufferViews) {
@@ -277,6 +278,7 @@ void Device::release(std::uint64_t completedValue) {
         if (garbage.front().heap != nullptr) {
             garbage.front().heap->free(garbage.front().handle);
         }
+        bufferArena->free(garbage.front().range);
         garbage.pop_front();
     }
     uploads->release(completedValue);
@@ -348,12 +350,16 @@ gpu::Device::Buffer Device::makeBuffer(const BufferDesc& desc) {
         throw std::logic_error(std::format("The immutable buffer \"{}\" has no data.", desc.label));
     }
 
-    BufferRecord record{.resource = makeBufferResource(D3D12_HEAP_TYPE_DEFAULT, size, D3D12_RESOURCE_STATE_COMMON, desc.label), .size = size, .usage = desc.usage};
-    record.address = record.resource->GetGPUVirtualAddress();
+    BufferArena::Allocation allocation = bufferArena->allocate(size);
+    BufferRecord record{.resource = std::move(allocation.resource), .range = allocation.range, .size = size, .usage = desc.usage};
+    record.address = record.resource->GetGPUVirtualAddress() + record.range.offset;
+    if (record.range.block == BufferArena::Range::kOwnResource) {
+        setName(*record.resource.Get(), desc.label);
+    }
     if (!desc.data.empty()) {
         const UploadAllocator::Allocation staged = uploads->allocate(size, 16);
         std::memcpy(staged.data, desc.data.data(), size);
-        getTransferList().CopyBufferRegion(record.resource.Get(), 0, staged.resource, staged.offset, size);
+        getTransferList().CopyBufferRegion(record.resource.Get(), record.range.offset, staged.resource, staged.offset, size);
     }
     return {buffers.insert(std::move(record))};
 }
@@ -579,7 +585,7 @@ void Device::rebuildSwapchainPipelines() {
 
 void Device::destroy(Buffer buffer) noexcept {
     if (std::optional<BufferRecord> record = buffers.erase(buffer.id)) {
-        retire(std::move(record->resource));
+        garbage.push_back({.fence = fenceValue + 1, .object = std::move(record->resource), .range = record->range});
     }
 }
 
@@ -627,7 +633,7 @@ void Device::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std:
     }
     const UploadAllocator::Allocation staged = uploads->allocate(data.size(), 16);
     std::memcpy(staged.data, data.data(), data.size());
-    getTransferList().CopyBufferRegion(record.resource.Get(), offset, staged.resource, staged.offset, data.size());
+    getTransferList().CopyBufferRegion(record.resource.Get(), record.range.offset + offset, staged.resource, staged.offset, data.size());
 }
 
 void Device::writeImages(std::span<const ImageWrite> writes) {

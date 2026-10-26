@@ -35,6 +35,8 @@ The Direct3D 12 device records each frame into two command lists. The transfer l
 
 The CPU runs at most two frames ahead of the GPU. A fence marks the end of each frame, and the device reuses the memory of a frame only once the GPU has finished it. Objects that the engine destroys wait for the same fence before they go, so the GPU never reads a destroyed object.
 
+Buffers up to a megabyte take a range of a large block of GPU memory instead of memory of their own, since memory of its own costs a call to the kernel and 64 kilobytes however small the buffer is. A range comes back to its block once the GPU finished the frames that used it, and free ranges next to each other join, so making and destroying many small buffers every frame stays cheap.
+
 The device keeps the data of each frame in memory that the CPU writes and the GPU reads. That memory stays mapped, so writing uniforms and buffers costs one copy and no call to the driver. Uniform blocks bind as root constant buffer views that point into this memory. Textures and samplers bind as descriptor tables in heaps that the shaders read. When a frame binds the same textures twice, the second draw reads the table of the first one, so redundant bindings cost nothing.
 
 The root signature of each program comes from the reflection of its shader package. Each uniform block becomes a root constant buffer view, and the textures and samplers of each stage become one descriptor table each. Programs with the same layout share one root signature, so switching between their pipelines keeps every binding.
@@ -95,4 +97,4 @@ A device is lost when the GPU is removed or reset, or when its driver fails or u
 - A multisampled attachment resolves into the first mip level and the first layer of its resolve image.
 - A readback copies the first mip level and the first layer of a render target of one sample.
 - The heap of samplers that shaders read holds 2048 descriptors, the most that Direct3D 12 allows, and a frame reuses the table of each set of samplers it binds, so a frame runs out of room only if it binds more than 2048 different samplers.
-- Each buffer and image of the Direct3D 12 device has memory of its own, so making many small objects in one frame costs more than on Direct3D 11.
+- Each image of the Direct3D 12 device has memory of its own, so making many images in one frame costs more than making buffers. Small buffers share large blocks, so GPU debuggers show them under the name of their block rather than their own label.

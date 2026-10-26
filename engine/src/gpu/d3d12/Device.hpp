@@ -16,6 +16,7 @@
 #include <vector>
 
 #include "gpu/DeviceFactory.hpp"
+#include "gpu/d3d12/BufferArena.hpp"
 #include "gpu/d3d12/DescriptorHeap.hpp"
 #include "gpu/d3d12/DescriptorRing.hpp"
 #include "gpu/d3d12/FrameTimer.hpp"
@@ -95,8 +96,10 @@ class Device final : public gpu::Device {
     static constexpr std::size_t kTables = 4;
 
     // Buffers rest in the common state, from which each list promotes them to what it does with them, and to which they return when the list ends.
+    // A buffer holds a range of a block of the arena, or a resource of its own when it is large, at the offset of the range.
     struct BufferRecord {
         Microsoft::WRL::ComPtr<ID3D12Resource> resource;
+        BufferArena::Range range;
         D3D12_GPU_VIRTUAL_ADDRESS address = 0;
         std::size_t size = 0;
         Usage usage = Usage::Immutable;
@@ -151,12 +154,13 @@ class Device final : public gpu::Device {
         std::uint64_t fence = 0;
     };
 
-    // An object, or a descriptor of a heap, that the GPU may use until the fence passes the value.
+    // An object, a descriptor of a heap or a range of the buffer arena, that the GPU may use until the fence passes the value.
     struct Garbage {
         std::uint64_t fence = 0;
         Microsoft::WRL::ComPtr<IUnknown> object;
         DescriptorHeap* heap = nullptr;
         D3D12_CPU_DESCRIPTOR_HANDLE handle{};
+        BufferArena::Range range;
     };
 
     // The state that the list of the frame holds, so a call that would set what it holds already is skipped.
@@ -236,6 +240,7 @@ class Device final : public gpu::Device {
     std::unique_ptr<DescriptorRing> textureTables;
     std::unique_ptr<DescriptorRing> samplerTables;
     std::unique_ptr<UploadAllocator> uploads;
+    std::unique_ptr<BufferArena> bufferArena;
     std::unique_ptr<RootSignatures> rootSignatures;
     std::unique_ptr<FrameTimer> timer;
 

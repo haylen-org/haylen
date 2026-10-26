@@ -2,6 +2,7 @@
 include("${CMAKE_CURRENT_LIST_DIR}/../direct3d/direct3d.cmake")
 
 target_sources(haylen-gpu PRIVATE
+  "${CMAKE_CURRENT_LIST_DIR}/BufferArena.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DescriptorHeap.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/DescriptorRing.cpp"
   "${CMAKE_CURRENT_LIST_DIR}/Device.cpp"
