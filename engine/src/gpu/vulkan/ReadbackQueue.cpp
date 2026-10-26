@@ -7,6 +7,7 @@
 #include <cstring>
 #include <stdexcept>
 
+#include "gpu/ImageInfo.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
@@ -30,14 +31,14 @@ ReadbackQueue::~ReadbackQueue() {
 }
 
 std::shared_ptr<ReadbackQueue::Copy> ReadbackQueue::start(const Source& source) {
-    if (Conversions::isDepth(source.format)) {
+    if (ImageInfo::isDepth(source.format)) {
         throw std::invalid_argument("The Vulkan device reads back color images only.");
     }
     auto copy = std::make_shared<Copy>(Copy{.queue = this, .width = source.width, .height = source.height, .format = source.format});
     const VolkDeviceTable& vk = context.getFunctions();
     const VkDevice device = context.getDevice();
 
-    const VkDeviceSize size = static_cast<VkDeviceSize>(source.width) * static_cast<VkDeviceSize>(source.height) * Conversions::getBytesPerPixel(source.format);
+    const VkDeviceSize size = static_cast<VkDeviceSize>(source.width) * static_cast<VkDeviceSize>(source.height) * ImageInfo::getBytesPerPixel(source.format);
     const VkBufferCreateInfo bufferInfo{.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO, .size = size, .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT, .sharingMode = VK_SHARING_MODE_EXCLUSIVE};
     const VmaAllocationCreateInfo memory{.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT | VMA_ALLOCATION_CREATE_MAPPED_BIT, .usage = VMA_MEMORY_USAGE_AUTO};
     VmaAllocationInfo allocated{};
@@ -140,7 +141,7 @@ std::vector<std::uint8_t> ReadbackQueue::convert(const std::byte* data, int widt
         return pixels;
     }
 
-    const std::size_t stride = Conversions::getBytesPerPixel(format);
+    const std::size_t stride = ImageInfo::getBytesPerPixel(format);
     for (std::size_t index = 0; index < count; ++index) {
         const std::byte* source = data + index * stride;
         std::array<float, 4> channels{0.0F, 0.0F, 0.0F, 1.0F};

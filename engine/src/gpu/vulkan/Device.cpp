@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "gpu/ImageInfo.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/ImageLayouts.hpp"
@@ -87,7 +88,11 @@ void Device::fillCapabilities() {
     capabilities.gpuTiming = context->getTimestampBits() > 0 && limits.timestampPeriod > 0.0F;
     for (std::size_t index = 0; index < capabilities.blendableFormats.size(); ++index) {
         const auto format = static_cast<PixelFormat>(index);
-        capabilities.blendableFormats[index] = !Conversions::isDepth(format) && context->hasFormatFeatures(Conversions::toFormat(format), VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
+        const VkFormat vulkanFormat = resolveFormat(format);
+        const bool depth = ImageInfo::isDepth(format);
+        capabilities.textureFormats[index] = context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT | VK_FORMAT_FEATURE_TRANSFER_DST_BIT);
+        capabilities.renderFormats[index] = context->hasFormatFeatures(vulkanFormat, depth ? VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT : VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT);
+        capabilities.blendableFormats[index] = !depth && context->hasFormatFeatures(vulkanFormat, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT);
     }
 }
 
@@ -519,7 +524,7 @@ gpu::Device::Image Device::makeImage(const ImageDesc& desc) {
     }
 
     const VkFormat format = resolveFormat(desc.format);
-    const bool depth = Conversions::isDepth(desc.format);
+    const bool depth = ImageInfo::isDepth(desc.format);
     const VkSampleCountFlagBits samples = Conversions::toSampleCount(desc.sampleCount);
     const VkPhysicalDeviceLimits& limits = context->getProperties().limits;
     const bool attachment = desc.kind == ImageKind::RenderTarget || desc.kind == ImageKind::DepthStencil;
@@ -597,7 +602,7 @@ void Device::uploadLevels(const ImageRecord& record, std::span<const std::span<c
         throw std::invalid_argument(std::format("The image has {} mip levels, not {}.", record.mipLevels, levels.size()));
     }
     const bool volume = record.type == TextureType::Volume;
-    const std::size_t pixelBytes = Conversions::getBytesPerPixel(record.pixelFormat);
+    const std::size_t pixelBytes = ImageInfo::getBytesPerPixel(record.pixelFormat);
     copyRegions.clear();
     for (std::size_t level = 0; level < levels.size(); ++level) {
         const auto width = static_cast<std::uint32_t>(std::max(record.width >> level, 1));
@@ -1045,7 +1050,7 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     for (const ImageWrite& write : writes) {
         const ImageRecord& record = requireImage(write.image);
         const bool volume = record.type == TextureType::Volume;
-        const std::size_t bytes = std::size_t{static_cast<std::uint32_t>(record.width)} * static_cast<std::uint32_t>(record.height) * static_cast<std::uint32_t>(record.layers) * Conversions::getBytesPerPixel(record.pixelFormat);
+        const std::size_t bytes = std::size_t{static_cast<std::uint32_t>(record.width)} * static_cast<std::uint32_t>(record.height) * static_cast<std::uint32_t>(record.layers) * ImageInfo::getBytesPerPixel(record.pixelFormat);
         if (write.pixels.size() != bytes) {
             throw std::invalid_argument(std::format("The pixels of the image {} hold {} bytes, not the {} it needs.", write.image.id, write.pixels.size(), bytes));
         }

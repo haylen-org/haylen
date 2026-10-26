@@ -16,8 +16,6 @@ class Conversions final {
 
     [[nodiscard]] static VkFormat toFormat(Device::PixelFormat format) noexcept;
     [[nodiscard]] static VkFormat toFormat(Device::VertexFormat format) noexcept;
-    [[nodiscard]] static std::size_t getBytesPerPixel(Device::PixelFormat format) noexcept;
-    [[nodiscard]] static bool isDepth(Device::PixelFormat format) noexcept;
     [[nodiscard]] static bool hasStencil(VkFormat format) noexcept;
     [[nodiscard]] static VkImageAspectFlags getAspects(VkFormat format) noexcept;
     [[nodiscard]] static VkPrimitiveTopology toTopology(Device::Primitive primitive) noexcept;

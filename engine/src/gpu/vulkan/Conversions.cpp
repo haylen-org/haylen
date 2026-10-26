@@ -70,37 +70,6 @@ VkFormat Conversions::toFormat(Device::VertexFormat format) noexcept {
     return VK_FORMAT_UNDEFINED;
 }
 
-std::size_t Conversions::getBytesPerPixel(Device::PixelFormat format) noexcept {
-    switch (format) {
-    case Device::PixelFormat::R8:
-        return 1;
-    case Device::PixelFormat::Rg8:
-    case Device::PixelFormat::R16Float:
-    case Device::PixelFormat::Depth16:
-        return 2;
-    case Device::PixelFormat::Rgba8:
-    case Device::PixelFormat::Rgba8Srgb:
-    case Device::PixelFormat::Bgra8:
-    case Device::PixelFormat::Rgb10A2:
-    case Device::PixelFormat::Rg16Float:
-    case Device::PixelFormat::R32Float:
-    case Device::PixelFormat::Depth32Float:
-    case Device::PixelFormat::Depth24Stencil8:
-        return 4;
-    case Device::PixelFormat::Rgba16Float:
-    case Device::PixelFormat::Rg32Float:
-    case Device::PixelFormat::Depth32FloatStencil8:
-        return 8;
-    case Device::PixelFormat::Rgba32Float:
-        return 16;
-    }
-    return 4;
-}
-
-bool Conversions::isDepth(Device::PixelFormat format) noexcept {
-    return format == Device::PixelFormat::Depth16 || format == Device::PixelFormat::Depth32Float || format == Device::PixelFormat::Depth24Stencil8 || format == Device::PixelFormat::Depth32FloatStencil8;
-}
-
 bool Conversions::hasStencil(VkFormat format) noexcept {
     return format == VK_FORMAT_D24_UNORM_S8_UINT || format == VK_FORMAT_D32_SFLOAT_S8_UINT;
 }
