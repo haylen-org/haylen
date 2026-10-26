@@ -40,6 +40,9 @@ struct Device::Native {
 
     static constexpr std::size_t kUploadRingSize = 256 * 1024;
 
+    // The entries of the texture argument table of the Apple2 and Apple3 families.
+    static constexpr int kLegacyTextureBindings = 31;
+
     // The id of a debug group pushed into the command buffer, and of one pushed while a pass that records nothing was open.
     static constexpr std::uint32_t kCommandBufferGroup = 0;
     static constexpr std::uint32_t kClosedGroup = UINT32_MAX;
@@ -149,6 +152,9 @@ struct Device::Native {
     bool labels = false;
     bool unifiedMemory = false;
     std::size_t uniformAlignment = 256;
+
+    // The texture indices that a stage binds, all the slots of the contract except on the A8 to A10X of the Apple TVs before the second Apple TV 4K, which bind 31. The simulator binds them on the GPU of the Mac.
+    int textureBindings = static_cast<int>(kMaxTextures);
     std::shared_ptr<Signals> signals = std::make_shared<Signals>();
     Graveyard graveyard;
     Swapchain swapchain;
@@ -194,6 +200,9 @@ Device::Native::Native(id<MTLDevice> metal, int swapchainSamples, bool debug) : 
 #if !TARGET_OS_SIMULATOR
     if ([metal supportsFamily:MTLGPUFamilyApple1]) {
         uniformAlignment = 16;
+    }
+    if ([metal supportsFamily:MTLGPUFamilyApple1] && ![metal supportsFamily:MTLGPUFamilyApple4]) {
+        textureBindings = kLegacyTextureBindings;
     }
 #endif
 
@@ -714,6 +723,9 @@ gpu::Device::Program Device::makeProgram(const ProgramDesc& desc) {
     for (const TextureBinding& texture : desc.textures) {
         if (texture.slot < 0 || texture.slot >= static_cast<int>(kMaxTextures) || texture.binding < 0 || texture.binding >= static_cast<int>(EncoderState::kTextureSlots)) {
             throw std::logic_error(std::format("The program \"{}\" has a texture at slot {} that the device cannot bind.", desc.label, texture.slot));
+        }
+        if (texture.binding >= native->textureBindings) {
+            throw std::runtime_error(std::format("The program \"{}\" binds a texture at index {}, and the GPU \"{}\" binds textures up to index {}.", desc.label, texture.binding, native->device.name.UTF8String, native->textureBindings - 1));
         }
         entry.textures.push_back({.slot = static_cast<std::size_t>(texture.slot), .stage = texture.stage, .binding = static_cast<NSUInteger>(texture.binding)});
     }

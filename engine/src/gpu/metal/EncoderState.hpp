@@ -15,9 +15,9 @@ namespace haylen::gpu::metal {
 // The render command encoder of the pass that records, with the state it holds, so the device sends Metal only what changes between draws.
 class EncoderState final {
   public:
-    // The entries of the argument tables of every Metal GPU, which bind the buffers, textures and samplers of each stage.
+    // The entries of the argument tables of every Metal GPU that bind the buffers and samplers of each stage, and the texture entries that the encoder tracks, one for each texture slot of the contract, which GPUs from the A11 on and every Mac GPU have.
     static constexpr std::size_t kBufferSlots = 31;
-    static constexpr std::size_t kTextureSlots = 31;
+    static constexpr std::size_t kTextureSlots = gpu::Device::kMaxTextures;
     static constexpr std::size_t kSamplerSlots = 16;
     static constexpr std::size_t kMaxBytes = 4096;
 
