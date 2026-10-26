@@ -13,6 +13,7 @@ namespace haylen::platform {
 
 // What the device and its operating system are, which the platform reports once when the app starts. Text the platform does not report stays empty and numbers stay zero, so nothing is guessed.
 struct SystemInfo {
+    // The operating system, where `Port` is the system of the platform of a port of the engine, which the platform name tells apart.
     enum class Os : std::uint8_t {
         MacOs,
         Windows,
@@ -22,6 +23,7 @@ struct SystemInfo {
         TvOs,
         Android,
         Web,
+        Port,
     };
 
     enum class DeviceKind : std::uint8_t {
@@ -90,7 +92,7 @@ struct SystemInfo {
     }
 
   private:
-    static const std::array<std::pair<std::string_view, Os>, 8> kOsNames;
+    static const std::array<std::pair<std::string_view, Os>, 9> kOsNames;
     static const std::array<std::pair<std::string_view, DeviceKind>, 5> kDeviceKindNames;
     static const std::array<std::pair<std::string_view, Architecture>, 6> kArchitectureNames;
 };

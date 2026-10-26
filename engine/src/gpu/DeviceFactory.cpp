@@ -4,6 +4,9 @@
 #include <format>
 #include <stdexcept>
 
+#if defined(HAYLEN_GPU_PORT)
+#include "gpu/PortDevice.hpp"
+#endif
 #if defined(HAYLEN_GPU_METAL)
 #include "gpu/metal/Device.hpp"
 #endif
@@ -29,6 +32,9 @@ const std::vector<Device::Api> DeviceFactory::kCompiledApis = listCompiledApis()
 
 std::vector<Device::Api> DeviceFactory::listCompiledApis() {
     std::vector<Device::Api> apis;
+#if defined(HAYLEN_GPU_PORT)
+    apis.push_back(Device::Api::Port);
+#endif
 #if defined(HAYLEN_GPU_METAL)
     apis.push_back(Device::Api::Metal);
 #endif
@@ -104,6 +110,10 @@ bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, [[maybe_unused]] c
 // The surface and the options reach only the devices that the build compiled.
 std::unique_ptr<Device> DeviceFactory::create(Device::Api api, [[maybe_unused]] const std::optional<Surface>& surface, [[maybe_unused]] const Options& options) {
     switch (api) {
+#if defined(HAYLEN_GPU_PORT)
+    case Device::Api::Port:
+        return PortDevice::create(surface, options);
+#endif
 #if defined(HAYLEN_GPU_METAL)
     case Device::Api::Metal:
         return metal::Device::create(surface, options);

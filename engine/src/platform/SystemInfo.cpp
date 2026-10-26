@@ -4,7 +4,7 @@
 
 namespace haylen::platform {
 
-const std::array<std::pair<std::string_view, SystemInfo::Os>, 8> SystemInfo::kOsNames{{{"macOs", Os::MacOs}, {"windows", Os::Windows}, {"linux", Os::Linux}, {"ios", Os::Ios}, {"ipadOs", Os::IpadOs}, {"tvOs", Os::TvOs}, {"android", Os::Android}, {"web", Os::Web}}};
+const std::array<std::pair<std::string_view, SystemInfo::Os>, 9> SystemInfo::kOsNames{{{"macOs", Os::MacOs}, {"windows", Os::Windows}, {"linux", Os::Linux}, {"ios", Os::Ios}, {"ipadOs", Os::IpadOs}, {"tvOs", Os::TvOs}, {"android", Os::Android}, {"web", Os::Web}, {"port", Os::Port}}};
 const std::array<std::pair<std::string_view, SystemInfo::DeviceKind>, 5> SystemInfo::kDeviceKindNames{{{"desktop", DeviceKind::Desktop}, {"phone", DeviceKind::Phone}, {"tablet", DeviceKind::Tablet}, {"tv", DeviceKind::Tv}, {"browser", DeviceKind::Browser}}};
 const std::array<std::pair<std::string_view, SystemInfo::Architecture>, 6> SystemInfo::kArchitectureNames{{{"arm64", Architecture::Arm64}, {"arm", Architecture::Arm}, {"x64", Architecture::X64}, {"x86", Architecture::X86}, {"wasm32", Architecture::Wasm32}, {"wasm64", Architecture::Wasm64}}};
 

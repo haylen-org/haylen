@@ -841,6 +841,11 @@ GPU_GRAPHICS_APIS = ("metal", "direct3D12", "direct3D11", "vulkan", "openGl", "o
 
 def command_test(args: argparse.Namespace) -> None:
     gpu = args.gpu or args.graphics_api is not None
+    if args.port:
+        if gpu or args.platform != host_name():
+            raise BuildError('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--platform".')
+        command_test_port(args)
+        return
     if args.platform == "web" and gpu:
         command_test_gpu_web(args)
         return
@@ -861,6 +866,27 @@ def command_test(args: argparse.Namespace) -> None:
     terminal.step("Running the engine tests")
     run(["ctest", "--test-dir", build_dir(args.platform, args.config, args.sanitizers), "-C", args.config, "--output-on-failure", "--parallel", str(args.jobs)], stream=True)
     terminal.success("The engine tests passed.")
+
+
+# The port of the engine tests and its app, which "test --port" builds and plays, so the folder that "HAYLEN_PORT_DIR" names adds a platform and a GPU device to the engine on every desktop.
+TEST_PORT_DIR = ENGINE_DIR / "tests" / "data" / "port"
+TEST_PORT_APP = ENGINE_DIR / "tests" / "data" / "port-app"
+
+
+def command_test_port(args: argparse.Namespace) -> None:
+    """Builds the player of the engine for the test port in a tree of its own and plays the app of the port on it, which quits with a failure when the platform, the operating system or the graphics API is not the one of the port or a frame fails."""
+    args.xcode = False
+    command, env = configure_command(args)
+    directory = BUILD_ROOT / f"{args.platform}-port-{args.config.lower()}"
+    command[command.index("-B") + 1] = str(directory)
+    command += [f"-DHAYLEN_PORT_DIR={TEST_PORT_DIR}", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF", "-DHAYLEN_BUILD_TOOLS=OFF"]
+    terminal.step(f"Configuring the test port in `{shown_path(directory)}`")
+    run(command, env=env)
+    terminal.step("Building the player of the test port")
+    run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen", "--parallel", str(args.jobs)])
+    terminal.step("Playing the app of the test port")
+    run([directory / "bin" / "haylen" / executable_name("haylen"), TEST_PORT_APP], stream=True)
+    terminal.success("The test port played its app.")
 
 
 def command_test_gpu(args: argparse.Namespace) -> None:
@@ -5854,6 +5880,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
         parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
         parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default.')
+        parser.add_argument("--port", action="store_true", help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.')
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)
     parser.add_argument("--target", help="CMake target to build, every target by default.")

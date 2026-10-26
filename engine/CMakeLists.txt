@@ -30,6 +30,7 @@ set(HAYLEN_SHADERC "" CACHE FILEPATH "Path to a build of the Haylen shader compi
 list(APPEND CMAKE_MODULE_PATH "${HAYLEN_CMAKE_DIR}")
 
 include(cpm)
+include(haylen-port)
 include(haylen-platform)
 include(haylen-gpu)
 include(haylen-release)
@@ -818,7 +819,10 @@ set(HAYLEN_RUNTIME_SOURCES
   src/platform/NativeHost.cpp
   src/platform/Player.cpp
 )
-if(APPLE)
+# A port brings the platform layer and the services of its platform.
+if(HAYLEN_PORT_PLATFORM)
+  list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_PORT_RUNTIME_SOURCES})
+elseif(APPLE)
   set(HAYLEN_APPLE_SOURCES
     src/platform/apple/AppleAccessibility.mm
     src/platform/apple/AppleBattery.mm
@@ -884,7 +888,7 @@ else()
 endif()
 
 # Every platform but Android runs apps through the platform layer of SDL. The application delegate of macOS is the runtime's own, so SDL leaves the menus, the quit requests and the events of plugins to it, the scene delegate of UIKit derives from the one of SDL, which runs the app in its scene, and the view controller of the window answers UIKit with the status bar of the app.
-if(NOT ANDROID)
+if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/Window.cpp)
   # UIKit apps read their controllers through `platform::AppleGamepads`, whose header speaks Objective-C, and the other platforms through the gamepads of SDL.
   if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$")
@@ -903,7 +907,10 @@ add_library(haylen-runtime OBJECT ${HAYLEN_RUNTIME_SOURCES})
 add_library(haylen::runtime ALIAS haylen-runtime)
 target_include_directories(haylen-runtime PRIVATE "${CMAKE_CURRENT_LIST_DIR}/src")
 target_link_libraries(haylen-runtime PUBLIC haylen-platform haylen-gpu)
-if(NOT ANDROID)
+if(HAYLEN_PORT_PLATFORM)
+  target_link_libraries(haylen-runtime PRIVATE ${HAYLEN_PORT_RUNTIME_LIBRARIES})
+  target_compile_definitions(haylen-runtime PRIVATE HAYLEN_PORT)
+elseif(NOT ANDROID)
   target_link_libraries(haylen-runtime PRIVATE SDL3::SDL3-static)
 endif()
 # The web host gives the mixer the audio output of the page, a backend of miniaudio.
@@ -915,9 +922,14 @@ if(ANDROID)
   target_link_libraries(haylen-runtime PRIVATE haylen-game-activity haylen-miniaudio EGL android log)
 endif()
 haylen_enable_warnings(haylen-runtime)
-haylen_link_runtime_platform(haylen-runtime PUBLIC)
+if(NOT HAYLEN_PORT_PLATFORM)
+  haylen_link_runtime_platform(haylen-runtime PUBLIC)
+endif()
 
-if(HAYLEN_BUILD_SDK)
+# A port builds its apps with the engine in one CMake project, since the SDK describes the platforms of the repository.
+if(HAYLEN_BUILD_SDK AND HAYLEN_PORT_PLATFORM)
+  message(FATAL_ERROR "The port of \"${HAYLEN_PORT_DIR}\" builds its apps with the engine through \"add_subdirectory\", so \"HAYLEN_BUILD_SDK\" stays off.")
+elseif(HAYLEN_BUILD_SDK)
   include(haylen-install)
 endif()
 
@@ -936,19 +948,20 @@ endif()
 
 # The player runs any package: a folder or zip from the command line on desktop, or what the page loads through Module.haylen on the web.
 # On Android it is the library that HaylenActivity of the haylen Android library loads, and it plays the package in the APK assets.
-if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN))
+if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM))
   add_executable(haylen src/platform/LuaPlayer.cpp)
   target_link_libraries(haylen PRIVATE haylen::runtime)
   # The generator expression keeps multi-config generators such as Xcode and Visual Studio from adding a folder per configuration.
   set_target_properties(haylen PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/haylen/$<0:>")
-  if(APPLE)
+  # The runtime of a port holds the entry point of its platform, while the Apple player starts from a main function of its own.
+  if(APPLE AND NOT HAYLEN_PORT_PLATFORM)
     target_sources(haylen PRIVATE src/platform/apple/AppleMain.cpp)
-  elseif(WIN32)
+  elseif(WIN32 AND NOT HAYLEN_PORT_PLATFORM)
     set_target_properties(haylen PROPERTIES WIN32_EXECUTABLE ON)
     target_sources(haylen PRIVATE platform/windows/haylen.manifest)
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(haylen "")
-  else()
+  elseif(NOT HAYLEN_PORT_PLATFORM)
     # Linux apps keep their native libraries in lib next to the player, where the libraries also find the ones they depend on.
     set_target_properties(haylen PROPERTIES BUILD_RPATH "$ORIGIN;$ORIGIN/lib")
     target_link_options(haylen PRIVATE "LINKER:--enable-new-dtags")

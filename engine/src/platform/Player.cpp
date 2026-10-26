@@ -27,7 +27,8 @@
 #include "platform/Services.hpp"
 #include "platform/native/NativeApi.hpp"
 
-#if defined(__APPLE__)
+// A port brings the services of its own platform, so the platform folders of the repository stay out of its builds even where its compiler targets their system, as a test port on a desktop does.
+#if defined(__APPLE__) && !defined(HAYLEN_PORT)
 #include "platform/apple/AppleRuntime.hpp"
 #elif defined(__ANDROID__)
 #include "platform/android/AndroidActivity.hpp"
@@ -36,7 +37,7 @@
 #include "platform/android/JavaBridge.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include "platform/web/WebPage.hpp"
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(HAYLEN_PORT)
 #include "platform/linux/LinuxAccessibility.hpp"
 #endif
 
@@ -431,7 +432,7 @@ void Player::launch() {
     }
 #elif defined(__ANDROID__)
     JavaBridge::setAppRunning(true);
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !defined(HAYLEN_PORT)
     AppleRuntime::setAppRunning(true);
 #endif
 }
@@ -443,7 +444,7 @@ void Player::close() noexcept {
 #if defined(__ANDROID__)
     // Native events wait in Java from here on, so the ones that come while the app stops reach the next app instead of none.
     JavaBridge::setAppRunning(false);
-#elif defined(__APPLE__)
+#elif defined(__APPLE__) && !defined(HAYLEN_PORT)
     AppleRuntime::setAppRunning(false);
 #endif
     getProcess().exitStatus = engine->getExitStatus();
@@ -462,7 +463,7 @@ void Player::deliver(const Event& event) {
     if (event.type == Event::Type::FocusLost) {
         AndroidGamepads::releaseAxes();
     }
-#elif defined(__linux__)
+#elif defined(__linux__) && !defined(HAYLEN_PORT)
     // Screen readers follow the focus of the window that is active, which the window tells them as it gains and loses the focus.
     if (event.type == Event::Type::FocusGained || event.type == Event::Type::FocusLost) {
         LinuxAccessibility::setActive(event.type == Event::Type::FocusGained);

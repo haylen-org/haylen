@@ -57,8 +57,8 @@ class NullDevice final : public Device {
         int bufferWrites = 0;
     };
 
-    // A device that runs a shader language asks every program for code in it, which tests use to see what a package lacks, and the capabilities say what the engine may use.
-    explicit NullDevice(Language runs = Language::None, const Capabilities& capabilities = getDefaultCapabilities()) noexcept : language(runs), features(capabilities) {}
+    // A device that runs a shader language asks every program for code in it, which tests use to see what a package lacks, the capabilities say what the engine may use, and the API is the one it reports, such as the API of a port that runs the engine on it before its own device draws.
+    explicit NullDevice(Language runs = Language::None, const Capabilities& capabilities = getDefaultCapabilities(), Api reported = Api::None) noexcept : language(runs), api(reported), features(capabilities) {}
 
     // The capabilities of a device that renders every color format, blends into all but the 32-bit floats, and resolves multisampled render targets, but blends every color of a pipeline alike, as OpenGL ES does.
     [[nodiscard]] static Capabilities getDefaultCapabilities() noexcept;
@@ -201,6 +201,7 @@ class NullDevice final : public Device {
     std::unordered_map<std::uint32_t, ProgramRecord> programs;
     std::unordered_map<std::uint32_t, PipelineState> pipelines;
     Language language = Language::None;
+    Api api = Api::None;
     Capabilities features;
     int preparedPrograms = 0;
     std::uint32_t nextId = 1;

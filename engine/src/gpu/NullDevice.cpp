@@ -44,7 +44,7 @@ Device::Language NullDevice::getLanguage() const noexcept {
 }
 
 Device::Api NullDevice::getApi() const noexcept {
-    return Api::None;
+    return api;
 }
 
 const Device::Capabilities& NullDevice::getCapabilities() const noexcept {
@@ -196,11 +196,14 @@ Device::Program NullDevice::makeProgram(const ProgramDesc& desc) {
         }
     }
 
-    // SPIR-V comes as the words of a module, and every other language as text.
+    // SPIR-V comes as the words of a module, the language of a port as the bytes its shader tool wrote, and every other language as text.
     if (language == Language::Spirv && (desc.vertex.bytecode.empty() || desc.fragment.bytecode.empty() || desc.vertex.bytecode.size() % 4 != 0 || desc.fragment.bytecode.size() % 4 != 0)) {
         throw std::logic_error(std::format("The program \"{}\" has no SPIR-V module of whole words for each stage.", desc.label));
     }
-    if (language != Language::None && language != Language::Spirv && (desc.vertex.source.empty() || desc.fragment.source.empty())) {
+    if (language == Language::Port && (desc.vertex.bytecode.empty() || desc.fragment.bytecode.empty())) {
+        throw std::logic_error(std::format("The program \"{}\" has no code of the port for each stage.", desc.label));
+    }
+    if (language != Language::None && language != Language::Spirv && language != Language::Port && (desc.vertex.source.empty() || desc.fragment.source.empty())) {
         throw std::logic_error(std::format("The program \"{}\" has no source for each stage.", desc.label));
     }
 

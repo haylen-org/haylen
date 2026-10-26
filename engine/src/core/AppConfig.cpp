@@ -207,7 +207,7 @@ std::vector<gpu::Device::Api> AppConfig::readGraphicsApis(const Json& value) {
         const std::string name = entry.is_string() ? entry.get<std::string>() : entry.dump();
         const auto found = std::ranges::find(gpu::Device::kApiNames, name, &std::pair<std::string_view, gpu::Device::Api>::first);
         if (found == gpu::Device::kApiNames.end() || found->second == gpu::Device::Api::None) {
-            throw std::invalid_argument("The \"window.graphicsApis\" value \"" + name + "\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
+            throw std::invalid_argument("The \"window.graphicsApis\" value \"" + name + "\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
         }
         if (std::ranges::find(apis, found->second) != apis.end()) {
             throw std::invalid_argument("The \"window.graphicsApis\" of \"app.json\" names \"" + name + "\" twice.");

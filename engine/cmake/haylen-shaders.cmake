@@ -17,7 +17,7 @@ else()
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_LIST_DIR}/haylen-shader-compiler.json")
 endif()
 
-# Compiles a source of the Haylen shader language into a shader package with the code of the shader languages that the build draws with, and embeds the package in the target as the static method `SYMBOL` of `haylen::core::EmbeddedFiles`. Each variant names a program and its defines, as `name=DEFINE,DEFINE`.
+# Compiles a source of the Haylen shader language into a shader package with the code of the shader languages that the build draws with, and embeds the package in the target as the static method `SYMBOL` of `haylen::core::EmbeddedFiles`. Each variant names a program and its defines, as `name=DEFINE,DEFINE`. The shader command of a port with a device of its own then writes the code of that device into the package.
 function(haylen_compile_shader target)
   cmake_parse_arguments(PARSE_ARGV 1 SHADER "" "SOURCE;SYMBOL" "VARIANTS")
   get_filename_component(name "${SHADER_SOURCE}" NAME_WE)
@@ -30,10 +30,15 @@ function(haylen_compile_shader target)
     list(APPEND arguments --target "${language}")
   endforeach()
   file(GLOB library "${HAYLEN_SHADER_LIBRARY_DIR}/haylen/*.glsl")
+  set(port_command "")
+  if("port" IN_LIST HAYLEN_GRAPHICS_APIS)
+    set(port_command COMMAND ${HAYLEN_PORT_SHADER_COMMAND} "${output}")
+  endif()
 
   add_custom_command(
     OUTPUT "${output}"
     COMMAND "${HAYLEN_SHADERC}" "${SHADER_SOURCE}" --output "${output}" --include "${HAYLEN_SHADER_LIBRARY_DIR}" ${arguments}
+    ${port_command}
     DEPENDS "${SHADER_SOURCE}" "${HAYLEN_SHADERC}" ${library}
     COMMENT "Compiling the shader \"${name}\""
     VERBATIM

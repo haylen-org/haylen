@@ -1,7 +1,12 @@
-# The GPU devices of the engine: the static library `haylen-gpu` with `gpu::DeviceFactory` and the device of every graphics API of `HAYLEN_GRAPHICS_APIS`. Each device folder under `src/gpu` holds a `device.cmake`, which adds its sources and libraries to `haylen-gpu`, defines `HAYLEN_GPU_<API>` on it, such as `HAYLEN_GPU_VULKAN`, and adds what the GPU tests need to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`.
+# The GPU devices of the engine: the static library `haylen-gpu` with `gpu::DeviceFactory` and the device of every graphics API of `HAYLEN_GRAPHICS_APIS`, with the device of a port that `HAYLEN_PORT_DIR` names. Each device folder under `src/gpu` holds a `device.cmake`, which adds its sources and libraries to `haylen-gpu`, defines `HAYLEN_GPU_<API>` on it, such as `HAYLEN_GPU_VULKAN`, and adds what the GPU tests need to `HAYLEN_GPU_TEST_SOURCES` and `HAYLEN_GPU_TEST_LIBRARIES`.
 
-# The graphics APIs of each platform in the order it prefers them, the names of `gpu::Device::kApiNames`.
-if(APPLE)
+# The graphics APIs of each platform in the order it prefers them, the names of `gpu::Device::kApiNames`. A port draws through the APIs of the engine it names and through `port`, the API of its own device, which it prefers.
+if(HAYLEN_PORT_PLATFORM)
+  set(haylen_platform_graphics_apis ${HAYLEN_PORT_GRAPHICS_APIS})
+  if(HAYLEN_PORT_DEVICE_SOURCES)
+    list(PREPEND haylen_platform_graphics_apis port)
+  endif()
+elseif(APPLE)
   set(haylen_platform_graphics_apis metal)
 elseif(WIN32)
   set(haylen_platform_graphics_apis direct3D12 direct3D11 vulkan openGl)
@@ -13,7 +18,7 @@ else()
   set(haylen_platform_graphics_apis vulkan openGl)
 endif()
 
-set(HAYLEN_GRAPHICS_APIS "${haylen_platform_graphics_apis}" CACHE STRING "Graphics APIs whose devices the build compiles, every API of the platform by default: metal, direct3D12, direct3D11, vulkan, openGl, openGlEs, webGpu and webGl2.")
+set(HAYLEN_GRAPHICS_APIS "${haylen_platform_graphics_apis}" CACHE STRING "Graphics APIs whose devices the build compiles, every API of the platform by default: metal, direct3D12, direct3D11, vulkan, openGl, openGlEs, webGpu, webGl2 and the port of HAYLEN_PORT_DIR.")
 if(NOT HAYLEN_GRAPHICS_APIS)
   message(FATAL_ERROR "The option \"HAYLEN_GRAPHICS_APIS\" names no graphics API. Name at least one of \"${haylen_platform_graphics_apis}\".")
 endif()
@@ -33,6 +38,7 @@ set(haylen_shader_languages_openGl glsl430)
 set(haylen_shader_languages_openGlEs glsl300es)
 set(haylen_shader_languages_webGl2 glsl300es)
 set(haylen_shader_languages_webGpu wgsl)
+set(haylen_shader_languages_port ${HAYLEN_PORT_SHADER_LANGUAGES})
 
 # The folder of the device of each API, where OpenGL, OpenGL ES and WebGL2 share one device.
 set(haylen_device_folder_metal metal)
@@ -44,9 +50,13 @@ set(haylen_device_folder_openGlEs opengl)
 set(haylen_device_folder_webGl2 opengl)
 set(haylen_device_folder_webGpu webgpu)
 
-# Every API of the list compiles its device, so a list that names an API whose device folder the tree lacks stops the configuration, and the shader packages of the engine carry the languages of every API of the list.
+# Every API of the list compiles its device, so a list that names an API whose device folder the tree lacks stops the configuration, and the shader packages of the engine carry the languages of every API of the list. The device of a port comes from the sources of the port instead of a folder of the engine.
 set(HAYLEN_SHADER_LANGUAGES "")
 foreach(api IN LISTS HAYLEN_GRAPHICS_APIS)
+  if(api STREQUAL "port")
+    list(APPEND HAYLEN_SHADER_LANGUAGES ${haylen_shader_languages_port})
+    continue()
+  endif()
   if(NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/../src/gpu/${haylen_device_folder_${api}}/device.cmake")
     message(FATAL_ERROR "The graphics API \"${api}\" of \"HAYLEN_GRAPHICS_APIS\" has no device, since the folder \"src/gpu/${haylen_device_folder_${api}}\" of the engine holds no \"device.cmake\".")
   endif()
@@ -65,7 +75,13 @@ function(haylen_add_gpu_library)
   set(HAYLEN_GPU_TEST_SOURCES "")
   set(HAYLEN_GPU_TEST_LIBRARIES "")
   foreach(api IN LISTS HAYLEN_GRAPHICS_APIS)
-    include("${HAYLEN_ENGINE_DIR}/src/gpu/${haylen_device_folder_${api}}/device.cmake")
+    if(api STREQUAL "port")
+      target_sources(haylen-gpu PRIVATE ${HAYLEN_PORT_DEVICE_SOURCES})
+      target_link_libraries(haylen-gpu PRIVATE ${HAYLEN_PORT_DEVICE_LIBRARIES})
+      target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_PORT)
+    else()
+      include("${HAYLEN_ENGINE_DIR}/src/gpu/${haylen_device_folder_${api}}/device.cmake")
+    endif()
   endforeach()
   set(HAYLEN_GPU_TEST_SOURCES "${HAYLEN_GPU_TEST_SOURCES}" PARENT_SCOPE)
   set(HAYLEN_GPU_TEST_LIBRARIES "${HAYLEN_GPU_TEST_LIBRARIES}" PARENT_SCOPE)

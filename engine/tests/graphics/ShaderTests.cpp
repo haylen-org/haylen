@@ -320,6 +320,36 @@ TEST_F(ShaderTest, DecodesTheSpirvModulesAndTheirDescriptorSets) {
     EXPECT_NE(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), "");
 }
 
+// The target of a port holds the code that the shader tool of the port wrote as Base64 text of bytes in any count, with the descriptor set and the binding of every slot, which reach the device of the port as they are.
+TEST_F(ShaderTest, DecodesTheCodeOfAPortAndItsBindings) {
+    const std::string program = "/programs/sprite";
+    core::Json document = core::Json::parse(kSmallShader);
+    document["sources"].push_back("UE9SVA==");
+    document[core::Json::json_pointer(program + "/targets/port")] = core::Json::parse(R"({"vertex": {"source": 1, "entry": "main"}, "fragment": {"source": 1, "entry": "main"},
+        "blocks": {"1": {"set": 2, "binding": 3}}, "textures": {"1": {"set": 4, "binding": 5}}, "samplers": {"1": {"set": 4, "binding": 6}}})");
+    const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
+
+    gpu::NullDevice port(gpu::Device::Language::Port, gpu::NullDevice::getDefaultCapabilities(), gpu::Device::Api::Port);
+    EXPECT_EQ(port.getApi(), gpu::Device::Api::Port);
+    const gpu::NullDevice::ProgramRecord& record = port.getProgramRecord(shader.getResource()->getProgram(port, "sprite").program);
+    EXPECT_EQ(record.vertexBytes, 4U);
+    EXPECT_EQ(record.fragmentBytes, 4U);
+    ASSERT_EQ(record.blocks.size(), 1U);
+    EXPECT_EQ(record.blocks.front().set, 2);
+    EXPECT_EQ(record.blocks.front().binding, 3);
+    ASSERT_EQ(record.textures.size(), 1U);
+    EXPECT_EQ(record.textures.front().set, 4);
+    EXPECT_EQ(record.textures.front().binding, 5);
+    ASSERT_EQ(record.samplers.size(), 1U);
+    EXPECT_EQ(record.samplers.front().binding, 6);
+
+    core::Json code = document.at(core::Json::json_pointer(program + "/targets/port"));
+    code["vertex"]["source"] = 0;
+    code["fragment"]["source"] = 0;
+    EXPECT_EQ(parseError({{"/sources/0", "@@@"}, {program + "/targets/port", code}}), "The shader file is malformed: The source 0 is not the Base64 text of the code of a port.");
+    EXPECT_EQ(parseError({{"/sources/0", "UE9SVA=="}, {program + "/targets/port", code}}), "");
+}
+
 TEST_F(ShaderTest, ReportsAFullShaderPool) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();

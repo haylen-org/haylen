@@ -26,7 +26,7 @@ namespace haylen::graphics {
 // The contents of a shader package that the Haylen shader compiler writes: the reflection and the code of every program for every shader language, read and checked once, and the GPU programs and pipelines made from them on the frame thread, which go to the device graveyard when the contents change or the last handle goes away.
 struct ShaderResource {
     // The names of the shader languages as the package writes them, in the order of `gpu::Device::Language`, the first naming none.
-    static constexpr std::array<std::string_view, 9> kLanguageNames{"", "msl-macos", "msl-ios", "msl-ios-simulator", "hlsl5", "glsl430", "glsl300es", "wgsl", "spirv"};
+    static constexpr std::array<std::string_view, 10> kLanguageNames{"", "msl-macos", "msl-ios", "msl-ios-simulator", "hlsl5", "glsl430", "glsl300es", "wgsl", "spirv", "port"};
 
     struct StageCode {
         std::size_t source = 0;
@@ -125,7 +125,7 @@ struct ShaderResource {
     std::vector<Shader::TextureSlot> textures;
     std::vector<std::string> sources;
 
-    // The SPIR-V modules of the package, which its sources hold as Base64 text, by the index of their source.
+    // The SPIR-V modules of the package and the code that the shader tool of a port wrote, which its sources hold as Base64 text, by the index of their source.
     std::unordered_map<std::size_t, std::vector<std::byte>> modules;
     std::unordered_map<std::string, ProgramInfo> programs;
     std::uint32_t version = 1;
@@ -163,6 +163,9 @@ struct ShaderResource {
     };
 
     [[nodiscard]] static std::optional<gpu::Device::Language> languageFromName(std::string_view value) noexcept;
+
+    // Whether the code of the language comes as bytes, which the sources of the package hold as Base64 text, rather than as source text.
+    [[nodiscard]] static bool isBinary(gpu::Device::Language language) noexcept;
     [[nodiscard]] static gpu::Device::Stage readStage(const core::Json& value);
     [[nodiscard]] static int readSlot(const core::Json& value, std::string_view kind, std::size_t limit);
     [[nodiscard]] static gpu::Device::TextureType readTextureType(const core::Json& value);
@@ -174,7 +177,7 @@ struct ShaderResource {
     [[nodiscard]] StageCode readStageCode(const core::Json& value) const;
     [[nodiscard]] ProgramInfo readProgram(const std::string& program, const core::Json& value) const;
     void readMaterialBindings(const ProgramInfo& program);
-    void readModules(const ProgramInfo& program);
+    void readModules(const ProgramInfo& program, gpu::Device::Language language);
 
     [[nodiscard]] gpu::Device::StageCode describeStage(const StageCode& stage, gpu::Device::Language language) const;
 

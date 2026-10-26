@@ -28,6 +28,10 @@ std::optional<gpu::Device::Language> ShaderResource::languageFromName(std::strin
     return static_cast<gpu::Device::Language>(found - kLanguageNames.begin());
 }
 
+bool ShaderResource::isBinary(gpu::Device::Language language) noexcept {
+    return language == gpu::Device::Language::Spirv || language == gpu::Device::Language::Port;
+}
+
 gpu::Device::Stage ShaderResource::readStage(const core::Json& value) {
     const std::string& stage = value.get_ref<const std::string&>();
     if (stage == "vertex") {
@@ -106,7 +110,7 @@ int ShaderResource::readNumber(const core::Json& value, std::string_view what, s
     return static_cast<int>(number);
 }
 
-// Every slot the program declares needs a binding in every language. SPIR-V names the descriptor set and the binding of each slot, WGSL places the uniform blocks in the bind group 0 and the textures and samplers in 1, and the other languages have no sets.
+// Every slot the program declares needs a binding in every language. SPIR-V and the language of a port name the descriptor set and the binding of each slot, WGSL places the uniform blocks in the bind group 0 and the textures and samplers in 1, and the other languages have no sets.
 std::vector<ShaderResource::Binding> ShaderResource::readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind, gpu::Device::Language language) {
     std::vector<Binding> bindings;
     if (slots.empty()) {
@@ -121,7 +125,7 @@ std::vector<ShaderResource::Binding> ShaderResource::readBindings(const core::Js
             throw std::invalid_argument(std::format("The {} at slot {} has no binding number.", kind, slot));
         }
         const core::Json& entry = entries.at(name);
-        if (language != gpu::Device::Language::Spirv) {
+        if (!isBinary(language)) {
             bindings.push_back({.slot = slot, .binding = readNumber(entry, "binding number", kind, slot), .set = group});
             continue;
         }
@@ -226,19 +230,20 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
     return info;
 }
 
-// The stages of the SPIR-V target name sources that hold the Base64 text of their modules, which are decoded once, when the package is read.
-void ShaderResource::readModules(const ProgramInfo& program) {
-    const std::optional<Target>& target = program.targets[static_cast<std::size_t>(gpu::Device::Language::Spirv)];
+// The stages of the SPIR-V target and of the target of a port name sources that hold the Base64 text of their code, which is decoded once, when the package is read. A SPIR-V module holds whole words of four bytes.
+void ShaderResource::readModules(const ProgramInfo& program, gpu::Device::Language language) {
+    const std::optional<Target>& target = program.targets[static_cast<std::size_t>(language)];
     if (!target) {
         return;
     }
+    const bool spirv = language == gpu::Device::Language::Spirv;
     for (const std::size_t source : {target->vertex.source, target->fragment.source}) {
         if (modules.contains(source)) {
             continue;
         }
         std::optional<std::vector<std::uint8_t>> decoded = core::Base64::decode(sources[source]);
-        if (!decoded || decoded->empty() || decoded->size() % 4 != 0) {
-            throw std::invalid_argument(std::format("The source {} is not the Base64 text of a SPIR-V module.", source));
+        if (!decoded || decoded->empty() || (spirv && decoded->size() % 4 != 0)) {
+            throw std::invalid_argument(std::format("The source {} is not the Base64 text of {}.", source, spirv ? "a SPIR-V module" : "the code of a port"));
         }
         std::vector<std::byte>& module = modules[source];
         module.resize(decoded->size());
@@ -307,7 +312,8 @@ void ShaderResource::read(const core::Json& document) {
     for (const auto& [program, value] : entries.items()) {
         ProgramInfo info = readProgram(program, value);
         readMaterialBindings(info);
-        readModules(info);
+        readModules(info, gpu::Device::Language::Spirv);
+        readModules(info, gpu::Device::Language::Port);
         programs.emplace(program, std::move(info));
     }
 }
@@ -326,7 +332,7 @@ ShaderResource::Binding ShaderResource::findBinding(const std::vector<Binding>& 
 }
 
 gpu::Device::StageCode ShaderResource::describeStage(const StageCode& stage, gpu::Device::Language language) const {
-    if (language == gpu::Device::Language::Spirv) {
+    if (isBinary(language)) {
         return {.bytecode = modules.at(stage.source), .entry = stage.entry};
     }
     return {.source = sources[stage.source], .entry = stage.entry, .profile = stage.profile};

@@ -24,7 +24,7 @@ namespace haylen::gpu {
 // The graphics device of the RHI of Haylen: the buffers, images, samplers, programs and pipelines that the renderers of the engine create, and the passes and draws they record, with no type of the graphics API behind it. Each graphics API has its device, which draws into the surface of the window the platform opened, and the renderers of every dimension share it. Every method runs on the frame thread. Methods that create an object throw `std::runtime_error` with a clear sentence when the device has no room for it or rejects it.
 class Device {
   public:
-    // The shader language that the device runs, which picks the code of a program in a shader package. The device of the headless host runs none.
+    // The shader language that the device runs, which picks the code of a program in a shader package. The device of the headless host runs none, and `Port` is the language of the device of a port, whose shader tool writes its code into the packages.
     enum class Language : std::uint8_t {
         None,
         MetalMacos,
@@ -35,9 +35,10 @@ class Device {
         Glsl300es,
         Wgsl,
         Spirv,
+        Port,
     };
 
-    // The graphics API that the device draws through, which every device names the same way. The device of the headless host draws through none.
+    // The graphics API that the device draws through, which every device names the same way. The device of the headless host draws through none, and `Port` is the API of the device that a port of the engine to another platform adds, since a build holds at most one port.
     enum class Api : std::uint8_t {
         None,
         Metal,
@@ -48,9 +49,10 @@ class Device {
         OpenGlEs,
         WebGl2,
         WebGpu,
+        Port,
     };
 
-    static constexpr std::array<std::pair<std::string_view, Api>, 9> kApiNames{{
+    static constexpr std::array<std::pair<std::string_view, Api>, 10> kApiNames{{
         {"none", Api::None},
         {"metal", Api::Metal},
         {"direct3D11", Api::Direct3D11},
@@ -60,6 +62,7 @@ class Device {
         {"openGlEs", Api::OpenGlEs},
         {"webGl2", Api::WebGl2},
         {"webGpu", Api::WebGpu},
+        {"port", Api::Port},
     }};
 
     // The formats of images. The depth formats belong to depth and stencil attachments, and a device that lacks `Depth24Stencil8` gives `Depth32FloatStencil8` its place.
@@ -358,7 +361,7 @@ class Device {
         std::string_view label;
     };
 
-    // One stage of a program in the language of the device, with the source it runs and its entry point, and the profile that HLSL compiles it for. SPIR-V comes as the bytes of the module.
+    // One stage of a program in the language of the device, with the source it runs and its entry point, and the profile that HLSL compiles it for. SPIR-V comes as the bytes of the module, and the language of a port as the bytes its shader tool wrote.
     struct StageCode {
         std::string_view source;
         std::span<const std::byte> bytecode;

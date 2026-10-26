@@ -264,8 +264,8 @@ TEST(AppConfigTest, ReadsTheGraphicsApisTheWindowTriesFirst) {
         return std::string();
     };
     // clang-format on
-    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["glide"]}})"), "The \"window.graphicsApis\" value \"glide\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
-    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["none"]}})"), "The \"window.graphicsApis\" value \"none\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
+    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["glide"]}})"), "The \"window.graphicsApis\" value \"glide\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
+    EXPECT_EQ(error(R"({"window": {"graphicsApis": ["none"]}})"), "The \"window.graphicsApis\" value \"none\" in \"app.json\" is not a graphics API. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
     EXPECT_EQ(error(R"({"window": {"graphicsApis": ["metal", "metal"]}})"), "The \"window.graphicsApis\" of \"app.json\" names \"metal\" twice.");
     EXPECT_EQ(error(R"({"window": {"graphicsApis": "metal"}})"), "The \"window.graphicsApis\" of \"app.json\" is not an array of graphics API names, such as [\"vulkan\", \"openGl\"].");
 }

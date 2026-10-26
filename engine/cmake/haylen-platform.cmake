@@ -9,7 +9,10 @@ else()
   set(HAYLEN_CATALYST OFF)
 endif()
 
-if(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR HAYLEN_CATALYST)
+# A port names its own platform, whatever the system of its toolchain is.
+if(HAYLEN_PORT_PLATFORM)
+  set(HAYLEN_PLATFORM "${HAYLEN_PORT_PLATFORM}")
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR HAYLEN_CATALYST)
   set(HAYLEN_PLATFORM "ios")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
   set(HAYLEN_PLATFORM "tvos")

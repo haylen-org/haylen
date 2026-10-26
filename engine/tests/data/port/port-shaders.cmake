@@ -1,0 +1,11 @@
+# The shader tool of the test port, which runs on each shader package that "haylen-shaderc" wrote, with the path of the package after the script. It gives every program a "port" target that holds its SPIR-V code, where a real port writes the code that the shader compiler of its SDK makes from the SPIR-V or the HLSL of the package.
+set(package "${CMAKE_ARGV3}")
+file(READ "${package}" document)
+string(JSON count LENGTH "${document}" programs)
+math(EXPR last "${count} - 1")
+foreach(index RANGE ${last})
+  string(JSON program MEMBER "${document}" programs ${index})
+  string(JSON spirv GET "${document}" programs "${program}" targets spirv)
+  string(JSON document SET "${document}" programs "${program}" targets port "${spirv}")
+endforeach()
+file(WRITE "${package}" "${document}")

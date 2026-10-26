@@ -25,7 +25,7 @@ class DeviceFactory final {
         bool lowPower = false;
     };
 
-    // The APIs this build compiled, in the default order of preference of the platforms: Metal, Direct3D 12, Direct3D 11, Vulkan, WebGPU, OpenGL, OpenGL ES and WebGL2.
+    // The APIs this build compiled, in the default order of preference of the platforms: the API of a port, Metal, Direct3D 12, Direct3D 11, Vulkan, WebGPU, OpenGL, OpenGL ES and WebGL2.
     [[nodiscard]] static std::span<const Device::Api> getCompiledApis() noexcept;
 
     // The APIs to try in order: the preferred ones that the build compiled, then the other compiled ones in the default order.

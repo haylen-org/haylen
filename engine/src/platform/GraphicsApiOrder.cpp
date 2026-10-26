@@ -18,7 +18,7 @@ std::vector<gpu::Device::Api> GraphicsApiOrder::resolve(std::string_view request
 
     const std::optional<gpu::Device::Api> api = gpu::DeviceFactory::findApi(requested);
     if (!api) {
-        throw std::invalid_argument(std::format("The graphics API \"{}\" of \"--graphics-api\" is unknown. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".", requested));
+        throw std::invalid_argument(std::format("The graphics API \"{}\" of \"--graphics-api\" is unknown. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".", requested));
     }
     const std::span<const gpu::Device::Api> compiled = gpu::DeviceFactory::getCompiledApis();
     if (std::ranges::find(compiled, *api) == compiled.end()) {

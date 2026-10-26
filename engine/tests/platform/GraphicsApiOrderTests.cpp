@@ -26,7 +26,7 @@ TEST(GraphicsApiOrderTest, RefusesANameThatIsNotAGraphicsApi) {
         (void)GraphicsApiOrder::resolve("glide", {});
         ADD_FAILURE() << "An unknown graphics API was taken.";
     } catch (const std::invalid_argument& error) {
-        EXPECT_STREQ(error.what(), "The graphics API \"glide\" of \"--graphics-api\" is unknown. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\" or \"webGl2\".");
+        EXPECT_STREQ(error.what(), "The graphics API \"glide\" of \"--graphics-api\" is unknown. It is \"metal\", \"direct3D12\", \"direct3D11\", \"vulkan\", \"openGl\", \"openGlEs\", \"webGpu\", \"webGl2\" or \"port\".");
     }
     EXPECT_THROW((void)GraphicsApiOrder::resolve("none", {}), std::invalid_argument);
 }

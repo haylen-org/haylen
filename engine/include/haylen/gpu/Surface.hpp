@@ -35,6 +35,8 @@ struct Surface {
         WebCanvas,
         // The context of OpenGL, OpenGL ES or WebGL2 in `gl`, which owns the drawable.
         Gl,
+        // The native handles of the window of a port in `window` and `display`, which only the device of the port reads.
+        Port,
     };
 
     Kind kind = Kind::MetalLayer;
