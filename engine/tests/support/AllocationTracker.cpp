@@ -8,6 +8,10 @@
 
 #if defined(__APPLE__)
 #include <dlfcn.h>
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten.h>
+
+#include <array>
 #elif defined(_MSC_VER) && !defined(__clang__)
 #include <intrin.h>
 #endif
@@ -38,9 +42,21 @@ void AllocationTracker::record(std::size_t size, const void* caller) noexcept {
     active->total += size;
 }
 
-// The GPU drivers of Apple platforms live in the extensions of the system, and Metal validates through the private framework of its tools.
+// The GPU drivers of Apple platforms live in the extensions of the system, and Metal validates through the private framework of its tools. On the web the WebGPU of the browser comes through its port, which makes a handle in the memory of the program for every command encoder, pass and command buffer, and the stack of an allocation names the functions of that port, which start with "wgpu" or "emwgpu".
 bool AllocationTracker::isSystemGraphics(const void* caller) noexcept {
-#if defined(__APPLE__)
+#if defined(__EMSCRIPTEN__)
+    static_cast<void>(caller);
+    std::array<char, kStackBytes> stack{};
+    emscripten_get_callstack(EM_LOG_JS_STACK, stack.data(), static_cast<int>(stack.size()));
+    const std::string_view frames(stack.data());
+    for (std::size_t found = frames.find("wgpu"); found != std::string_view::npos; found = frames.find("wgpu", found + 1)) {
+        const std::size_t next = found + 4;
+        if (next < frames.size() && frames[next] >= 'A' && frames[next] <= 'Z') {
+            return true;
+        }
+    }
+    return false;
+#elif defined(__APPLE__)
     Dl_info image{};
     if (dladdr(caller, &image) == 0 || image.dli_fname == nullptr) {
         return false;
@@ -59,6 +75,8 @@ bool AllocationTracker::isSystemGraphics(const void* caller) noexcept {
 void* operator new(std::size_t size) {
 #if defined(_MSC_VER) && !defined(__clang__)
     haylen::test::AllocationTracker::record(size, _ReturnAddress());
+#elif defined(__EMSCRIPTEN__)
+    haylen::test::AllocationTracker::record(size, nullptr);
 #else
     haylen::test::AllocationTracker::record(size, __builtin_return_address(0));
 #endif
@@ -75,6 +93,8 @@ void* operator new[](std::size_t size) {
 void* operator new(std::size_t size, const std::nothrow_t&) noexcept {
 #if defined(_MSC_VER) && !defined(__clang__)
     haylen::test::AllocationTracker::record(size, _ReturnAddress());
+#elif defined(__EMSCRIPTEN__)
+    haylen::test::AllocationTracker::record(size, nullptr);
 #else
     haylen::test::AllocationTracker::record(size, __builtin_return_address(0));
 #endif

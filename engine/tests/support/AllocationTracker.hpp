@@ -24,6 +24,9 @@ class AllocationTracker final {
     static void record(std::size_t size, const void* caller) noexcept;
 
   private:
+    // The bytes of the stack of an allocation that the web reads to see whether the WebGPU of the browser asked for it.
+    static constexpr std::size_t kStackBytes = 16384;
+
     // Whether the code at the address belongs to the GPU driver of the system or to the validation layer of its graphics API, which allocate for every command buffer that a device records, beyond what the engine can change.
     [[nodiscard]] static bool isSystemGraphics(const void* caller) noexcept;
 
