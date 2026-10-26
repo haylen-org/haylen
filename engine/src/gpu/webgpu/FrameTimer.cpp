@@ -27,7 +27,6 @@ FrameTimer::FrameTimer(WGPUDevice device) {
     for (Slot& slot : slots) {
         slot.readback = wgpuDeviceCreateBuffer(device, &readbackDescriptor);
     }
-    states->fill(State::Free);
     writes.querySet = queries;
 }
 
@@ -43,9 +42,8 @@ FrameTimer::~FrameTimer() {
 }
 
 void FrameTimer::receiveMapping(WGPUMapAsyncStatus status, WGPUStringView, void* first, void* second) {
-    const std::unique_ptr<std::shared_ptr<std::array<State, kSlots>>> held(static_cast<std::shared_ptr<std::array<State, kSlots>>*>(first));
-    const auto slot = reinterpret_cast<std::uintptr_t>(second);
-    (**held)[slot] = status == WGPUMapAsyncStatus_Success ? State::Mapped : State::Free;
+    auto& timer = *static_cast<FrameTimer*>(first);
+    timer.states[reinterpret_cast<std::uintptr_t>(second)] = status == WGPUMapAsyncStatus_Success ? State::Mapped : State::Free;
 }
 
 // The frame takes its slot only while the slot is free, so the queries of a slot that still waits for its mapping are never written again.
@@ -53,7 +51,7 @@ const WGPUPassTimestampWrites* FrameTimer::nextPass() noexcept {
     if (!started) {
         started = true;
         collect();
-        measuring = (*states)[current] == State::Free;
+        measuring = states[current] == State::Free;
     }
     Slot& slot = slots[current];
     if (!measuring || slot.passes == kMaxPasses) {
@@ -80,11 +78,11 @@ void FrameTimer::submitted() noexcept {
     Slot& slot = slots[current];
     if (slot.passes != 0) {
         slot.mapped = slot.passes;
-        (*states)[current] = State::Mapping;
+        states[current] = State::Mapping;
         WGPUBufferMapCallbackInfo callback = WGPU_BUFFER_MAP_CALLBACK_INFO_INIT;
         callback.mode = WGPUCallbackMode_AllowSpontaneous;
         callback.callback = &FrameTimer::receiveMapping;
-        callback.userdata1 = new std::shared_ptr<std::array<State, kSlots>>(states);
+        callback.userdata1 = this;
         callback.userdata2 = reinterpret_cast<void*>(static_cast<std::uintptr_t>(current));
         wgpuBufferMapAsync(slot.readback, WGPUMapMode_Read, 0, static_cast<std::size_t>(kSlotBytes), callback);
     }
@@ -97,14 +95,14 @@ void FrameTimer::submitted() noexcept {
 // The time of a frame adds up the times of its passes, which leaves out the gaps between them, when the GPU ran other work.
 void FrameTimer::collect() noexcept {
     for (std::uint32_t index = 0; index < kSlots; ++index) {
-        if ((*states)[index] != State::Mapped) {
+        if (states[index] != State::Mapped) {
             continue;
         }
         Slot& slot = slots[index];
         std::array<std::uint64_t, kMaxPasses * 2U> times{};
         std::memcpy(times.data(), wgpuBufferGetConstMappedRange(slot.readback, 0, static_cast<std::size_t>(kSlotBytes)), sizeof(times));
         wgpuBufferUnmap(slot.readback);
-        (*states)[index] = State::Free;
+        states[index] = State::Free;
 
         std::uint64_t total = 0;
         for (std::size_t pass = 0; pass < slot.mapped; ++pass) {

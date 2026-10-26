@@ -4,12 +4,11 @@
 
 #include <array>
 #include <cstdint>
-#include <memory>
 #include <optional>
 
 namespace haylen::gpu::webgpu {
 
-// The time the GPU takes for the passes of each frame, which timestamp queries at the start and the end of every pass measure. The queries of a frame resolve into a buffer that the CPU maps a few frames later, so measuring never waits for the GPU, and a frame whose buffer is still mapped goes unmeasured.
+// The time the GPU takes for the passes of each frame, which timestamp queries at the start and the end of every pass measure. The queries of a frame resolve into a buffer that the CPU maps a few frames later, so measuring never waits for the GPU, and a frame whose buffer is still mapped goes unmeasured. A buffer that is destroyed ends its mapping before the call returns, so the callbacks of the mappings never outlive the timer.
 class FrameTimer final {
   public:
     // The passes of one frame that the queries measure, and the frames whose queries can wait for their mapping at once.
@@ -56,7 +55,7 @@ class FrameTimer final {
     WGPUQuerySet queries = nullptr;
     WGPUBuffer resolved = nullptr;
     std::array<Slot, kSlots> slots{};
-    std::shared_ptr<std::array<State, kSlots>> states = std::make_shared<std::array<State, kSlots>>();
+    std::array<State, kSlots> states{};
     std::uint32_t current = 0;
     bool started = false;
     bool measuring = false;

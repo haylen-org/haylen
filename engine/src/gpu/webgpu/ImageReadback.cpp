@@ -42,7 +42,7 @@ ImageReadback::ImageReadback(WGPUDevice device, WGPUQueue queue, WGPUTexture tex
     WGPUBufferMapCallbackInfo callback = WGPU_BUFFER_MAP_CALLBACK_INFO_INIT;
     callback.mode = WGPUCallbackMode_AllowSpontaneous;
     callback.callback = &ImageReadback::receiveMapping;
-    callback.userdata1 = new std::shared_ptr<State>(state);
+    callback.userdata1 = &state;
     wgpuBufferMapAsync(buffer, WGPUMapMode_Read, 0, static_cast<std::size_t>(descriptor.size), callback);
 }
 
@@ -52,12 +52,11 @@ ImageReadback::~ImageReadback() {
 }
 
 void ImageReadback::receiveMapping(WGPUMapAsyncStatus status, WGPUStringView, void* first, void*) {
-    const std::unique_ptr<std::shared_ptr<State>> held(static_cast<std::shared_ptr<State>*>(first));
-    **held = status == WGPUMapAsyncStatus_Success ? State::Mapped : State::Failed;
+    *static_cast<State*>(first) = status == WGPUMapAsyncStatus_Success ? State::Mapped : State::Failed;
 }
 
 std::optional<std::vector<std::uint8_t>> ImageReadback::poll() {
-    switch (*state) {
+    switch (state) {
     case State::Mapping:
         return std::nullopt;
     case State::Failed:
