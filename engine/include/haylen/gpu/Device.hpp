@@ -216,7 +216,7 @@ class Device {
         Comparison,
     };
 
-    // A dynamic buffer takes new contents every frame through `writeBuffer`, and an immutable one keeps the data it was made with.
+    // A dynamic buffer takes new contents every frame through `writeBuffer` and holds in a frame only what that frame wrote into it, and an immutable one keeps the data it was made with.
     enum class Usage : std::uint8_t {
         Immutable,
         Dynamic,
@@ -500,7 +500,7 @@ class Device {
         std::uint8_t clearStencil = 0;
     };
 
-    // A pass draws into the swapchain of the frame when it names no attachment, clearing its color, depth and stencil as its loads say.
+    // A pass draws into the swapchain of the frame when it names no attachment, clearing its color, depth and stencil as its loads say. A swapchain pass that keeps the contents keeps the depth, the stencil and multisampled color only when it directly follows the swapchain pass whose contents it keeps, and otherwise keeps only the color of one sample.
     struct PassDesc {
         std::span<const ColorAttachment> colors;
         std::optional<DepthStencilAttachment> depthStencil;
@@ -533,7 +533,7 @@ class Device {
         int size = 0;
     };
 
-    // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, four bytes a pixel from the first row the device stores.
+    // A copy of the pixels of a render target to memory the CPU reads, which `poll` hands over once the GPU finished it, as RGBA8 whatever the format of the image, four bytes a pixel from the first row the device stores. A multisampled image is read through its resolve image.
     class Readback {
       public:
         virtual ~Readback() = default;
