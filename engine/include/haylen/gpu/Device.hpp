@@ -486,7 +486,7 @@ class Device {
         std::string_view label;
     };
 
-    // A color attachment of an offscreen pass, at a mip level and a layer of its image, with the image of one sample that resolves a multisampled attachment when the pass ends.
+    // A color attachment of an offscreen pass, at a mip level and a layer of its image, with the image of one sample that resolves a multisampled attachment into its first mip level and layer when the pass ends.
     struct ColorAttachment {
         Image image;
         int mipLevel = 0;
@@ -527,7 +527,7 @@ class Device {
         std::array<Sampler, kMaxSamplers> samplers{};
     };
 
-    // New pixels for a dynamic image, which replace all of its pixels.
+    // New pixels for a dynamic image, which replace the pixels of its first mip level, every layer at once.
     struct ImageWrite {
         Image image;
         std::span<const std::byte> pixels;
@@ -613,7 +613,7 @@ class Device {
     virtual void detachSurface() = 0;
     virtual void attachSurface(const Surface& surface) = 0;
 
-    // Starts copying the pixels of a render target, which must come after the frame that renders it was committed.
+    // Starts copying the pixels of the first mip level and layer of a render target, which must come after the frame that renders it was committed.
     [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;
 };
 
