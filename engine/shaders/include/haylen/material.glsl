@@ -365,10 +365,19 @@ vec4 haylen_sprite(vec2 point) {
     return shaded;
 }
 
+// How much the distance of the field changes across one pixel of the screen, as `fwidth` measures it, taken from the field half a pixel to each side of the point. The point moves linearly across the quad, so its derivatives give the same pixel on GPUs that take derivatives once for each block of four pixels and on those that take them for each pixel, while the derivatives of the distance itself would differ between them.
+float haylen_text_smoothing(vec2 point) {
+    vec2 across = 0.5 * dFdx(point);
+    vec2 down = 0.5 * dFdy(point);
+    float horizontal = haylen_texture(haylen_inside(point + across)).r - haylen_texture(haylen_inside(point - across)).r;
+    float vertical = haylen_texture(haylen_inside(point + down)).r - haylen_texture(haylen_inside(point - down)).r;
+    return abs(horizontal) + abs(vertical);
+}
+
 // A glyph of a text atlas, which stores a signed distance field whose edge is 0.5, filled with the draw color and outlined with the flash color. The weight moves the edge outward, which makes the glyph bolder, and the softness widens the edge into a blur for soft shadows and glows. With the smoothing of the edge on screen they shrink together to stop a sixteenth of the field short of 0, which the border of the quad of the glyph reaches, so a glyph never shows its quad at any size. The fill covers the outline in premultiplied colors, so each coverage counts once, and the result returns to straight colors.
 vec4 haylen_text(vec2 point) {
     float distance = haylen_texture(haylen_inside(point)).r;
-    float smoothing = max(fwidth(distance) * 0.7, 0.0001);
+    float smoothing = max(haylen_text_smoothing(point) * 0.7, 0.0001);
     float reach = max(haylen_text_style.y, 0.0) + haylen_text_style.x + haylen_text_style.z;
     float room = max(0.4375 - smoothing, 0.0);
     float fit = reach > room ? room / reach : 1.0;

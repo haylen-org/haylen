@@ -44,7 +44,7 @@ The class `text::TrueTypeFont` shapes text with HarfBuzz and draws through the d
 
 The class `text::BitmapFont` draws BMFont files and grids of equal cells from their own RGBA pages, pixel for pixel at their native size, through the sprite program.
 
-The text program draws the glyphs of distance field fonts. It smooths the edge of the field with the screen-space derivative, which keeps edges crisp when text is scaled. It reads four values of every glyph from its instance:
+The text program draws the glyphs of distance field fonts. It smooths the edge over how much the field changes across one pixel of the screen, which keeps edges crisp when text is scaled. It reads that change from the field half a pixel to each side of the point. The point moves linearly across the glyph, so its own derivatives are exact on every GPU, while the derivatives of the field itself differ between GPUs that take them for each pixel and GPUs that take them once for each block of four pixels. It reads four values of every glyph from its instance:
 
 - The weight moves the edge outward. This is how synthetic bold grows the strokes of a face that a family lacks.
 - The outline is a second threshold of the same field, filled with the flash color. The fill covers it with premultiplied colors, so every edge blends its coverage once.
