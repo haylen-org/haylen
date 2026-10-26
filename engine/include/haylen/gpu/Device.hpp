@@ -82,6 +82,7 @@ class Device {
         Depth32FloatStencil8,
     };
 
+    // The formats of vertex attributes. The normalized and float formats feed float inputs of the shader, and `UByte4`, `Short2` and `UInt` feed integer inputs.
     enum class VertexFormat : std::uint8_t {
         Float,
         Float2,
