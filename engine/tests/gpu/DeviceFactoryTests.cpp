@@ -45,7 +45,7 @@ TEST(DeviceFactoryTest, ReadsAndWritesTheNamesOfTheApis) {
 TEST(DeviceFactoryTest, PreparesTheApisThatStartAtOnce) {
     for (const auto& [name, api] : Device::kApiNames) {
         if (api != Device::Api::WebGpu) {
-            EXPECT_TRUE(DeviceFactory::prepare(api)) << name;
+            EXPECT_TRUE(DeviceFactory::prepare(api, {})) << name;
         }
     }
 }

@@ -8,6 +8,8 @@
 #include <string>
 #include <vector>
 
+#include "gpu/DeviceFactory.hpp"
+
 namespace haylen::gpu::webgpu {
 
 // The instance, the adapter, the device and the queue of WebGPU. The browser hands the adapter and the device over in later turns of its event loop, so the platform starts the request before the app starts, keeps running its frames while it is pending and creates the device once it is ready, which takes the connection. The web build has one thread, which every method runs on.
@@ -30,8 +32,8 @@ class Connection final {
     Connection& operator=(const Connection&) = delete;
     ~Connection();
 
-    // Starts requesting the adapter and the device unless a request runs or ended, and returns where it stands. A failed request stays failed until `take` reports it.
-    static Status request();
+    // Starts requesting the adapter and the device unless a request runs or ended, and returns where it stands. The software rasterizer of the browser, its fallback adapter, answers a request for software, and the GPU of the lowest power a request for low power. A failed request stays failed until `take` reports it.
+    static Status request(const DeviceFactory::Options& options);
 
     // Hands over the ready connection, leaving none. Throws `std::runtime_error` with the reason when the request failed, still runs or never started.
     [[nodiscard]] static std::unique_ptr<Connection> take();

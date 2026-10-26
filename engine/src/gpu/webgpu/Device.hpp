@@ -30,7 +30,7 @@ namespace haylen::gpu::webgpu {
 // The device of WebGPU, which draws through the WebGPU C API of the browser into the canvas of the page. The uniform blocks of a program live in bind group 0 with dynamic offsets into the uniform ring, and its textures and samplers in bind group 1, whose groups the device keeps by what they hold. Queue writes carry buffers and images to the GPU in the order of the frames, and WebGPU frees a destroyed object only once the GPU finished the frames that use it, so the device hands what is destroyed to WebGPU once the frame that may still record it is submitted.
 class Device final : public gpu::Device {
   public:
-    // Creates the device on the connection that `DeviceFactory::prepare` made ready, drawing into the canvas of the surface, or offscreen when there is none. Throws `std::runtime_error` with the reason when WebGPU cannot start, so the platform tries the next graphics API. WebGPU validates every call in every build and the device labels every object, so the options change nothing.
+    // Creates the device on the connection that `DeviceFactory::prepare` made ready, drawing into the canvas of the surface, or offscreen when there is none. Throws `std::runtime_error` with the reason when WebGPU cannot start, so the platform tries the next graphics API. The adapter followed the options when `DeviceFactory::prepare` requested it, and WebGPU validates every call and the device labels every object in every build.
     [[nodiscard]] static std::unique_ptr<gpu::Device> create(const std::optional<Surface>& surface, const DeviceFactory::Options& options);
 
     Device(std::unique_ptr<Connection> owned, const std::optional<Surface>& surface);

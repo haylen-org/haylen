@@ -92,10 +92,10 @@ std::optional<Device::Api> DeviceFactory::findApi(std::string_view name) noexcep
     return found->second;
 }
 
-bool DeviceFactory::prepare([[maybe_unused]] Device::Api api) {
+bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, [[maybe_unused]] const Options& options) {
 #if defined(HAYLEN_GPU_WEBGPU)
     if (api == Device::Api::WebGpu) {
-        return webgpu::Connection::request() != webgpu::Connection::Status::Pending;
+        return webgpu::Connection::request(options) != webgpu::Connection::Status::Pending;
     }
 #endif
     return true;

@@ -31,7 +31,7 @@ Connection::~Connection() {
 }
 
 // The callbacks run spontaneously, when the browser settles its promises between frames, and the adapter of a browser without WebGPU fails before the request returns.
-Connection::Status Connection::request() {
+Connection::Status Connection::request(const DeviceFactory::Options& options) {
     if (status != Status::Idle) {
         return status;
     }
@@ -44,12 +44,13 @@ Connection::Status Connection::request() {
     }
     status = Status::Pending;
 
-    WGPURequestAdapterOptions options = WGPU_REQUEST_ADAPTER_OPTIONS_INIT;
-    options.powerPreference = WGPUPowerPreference_HighPerformance;
+    WGPURequestAdapterOptions adapterOptions = WGPU_REQUEST_ADAPTER_OPTIONS_INIT;
+    adapterOptions.powerPreference = options.lowPower ? WGPUPowerPreference_LowPower : WGPUPowerPreference_HighPerformance;
+    adapterOptions.forceFallbackAdapter = options.software ? 1U : 0U;
     WGPURequestAdapterCallbackInfo callback = WGPU_REQUEST_ADAPTER_CALLBACK_INFO_INIT;
     callback.mode = WGPUCallbackMode_AllowSpontaneous;
     callback.callback = &Connection::receiveAdapter;
-    wgpuInstanceRequestAdapter(pending->instance, &options, callback);
+    wgpuInstanceRequestAdapter(pending->instance, &adapterOptions, callback);
     return status;
 }
 

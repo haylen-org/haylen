@@ -57,7 +57,7 @@ bool GpuFixture::isEnabled(const char* variable) {
 
 // The tests wait for an API whose device arrives in a later turn of the event loop, such as WebGPU, before they make its device.
 std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, const std::optional<gpu::Surface>& surface) {
-    while (!gpu::DeviceFactory::prepare(api)) {
+    while (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
         EventLoop::yield();
     }
     return gpu::DeviceFactory::create(api, surface, getDeviceOptions());
