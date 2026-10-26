@@ -102,6 +102,10 @@ if(NOT ANDROID)
   set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch")
   set(sdl_hash 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3)
   haylen_patched_package_key(sdl_cache_key ${sdl_hash} ${sdl_patches})
+  # SDL picks its UIKit backend by the system name, which Mac Catalyst builds name Darwin for the macOS SDK they compile against, so SDL configures with the name of iOS there.
+  if(HAYLEN_CATALYST)
+    set(CMAKE_SYSTEM_NAME iOS)
+  endif()
   CPMAddPackage(
     NAME SDL3
     VERSION 3.4.18
@@ -113,6 +117,9 @@ if(NOT ANDROID)
     EXCLUDE_FROM_ALL YES
     SYSTEM YES
   )
+  if(HAYLEN_CATALYST)
+    set(CMAKE_SYSTEM_NAME Darwin)
+  endif()
   haylen_disable_warnings(SDL3-static)
 endif()
 
