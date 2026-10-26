@@ -80,7 +80,7 @@ Every call that changes OpenGL state goes through a state cache. The cache knows
 | Capability | Where the device has it |
 | --- | --- |
 | Blend per target | On OpenGL, on OpenGL ES 3.2 and with `GL_OES_draw_buffers_indexed` or `GL_EXT_draw_buffers_indexed`. WebGL2 applies the blend and write mask of the first target to all of them. |
-| Float render targets | Always on OpenGL. OpenGL ES and WebGL2 draw into 16-bit float targets with `GL_EXT_color_buffer_half_float` or `GL_EXT_color_buffer_float`, and into 32-bit float targets with `GL_EXT_color_buffer_float`. Blending into 32-bit float targets needs `GL_EXT_float_blend`. |
+| Float render targets | Always on OpenGL. OpenGL ES and WebGL2 draw into 16-bit float targets with `GL_EXT_color_buffer_half_float` or `GL_EXT_color_buffer_float`, and into 32-bit float targets with `GL_EXT_color_buffer_float`. Blending into 32-bit float targets needs `GL_EXT_float_blend`, and filtering 32-bit float textures linearly needs `GL_OES_texture_float_linear`. |
 | GPU time | On OpenGL, on OpenGL ES with `GL_EXT_disjoint_timer_query` and on WebGL2 with `EXT_disjoint_timer_query_webgl2`. A frame whose timing the GPU disturbed is dropped. |
 | Lost context | Reported by `isLost` through `glGetGraphicsResetStatus` where the context has robustness, and on WebGL2 through the lost state of the WebGL context. |
 | Multisampling | Render targets and depth stencil images of up to `GL_MAX_SAMPLES` samples, fewer where a format allows fewer. Multisampled images are resolved, never sampled. |

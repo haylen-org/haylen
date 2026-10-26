@@ -104,12 +104,13 @@ void Device::readCapabilities() {
     capabilities.multisampledRenderTargets = true;
     capabilities.gpuTiming = timer.isAvailable();
 
-    // Every flavour makes and samples images of every format, and OpenGL ES and WebGL2 draw into float formats only with their extensions.
+    // Every flavour makes and samples images of every format, and OpenGL ES and WebGL2 draw into float formats and filter 32-bit floats only with their extensions.
     for (std::size_t index = 0; index < capabilities.textureFormats.size(); ++index) {
         const Conversions::Pixel pixel = Conversions::getPixel(static_cast<PixelFormat>(index), gl.isDesktop());
         capabilities.textureFormats[index] = true;
         capabilities.renderFormats[index] = isRenderable(pixel);
         capabilities.blendableFormats[index] = !pixel.depth && isRenderable(pixel) && (!pixel.floating || features.floatBlend);
+        capabilities.filterableFormats[index] = !pixel.depth && (!pixel.floating || features.textureFloatLinear);
     }
 
     if (features.anisotropicFiltering) {
