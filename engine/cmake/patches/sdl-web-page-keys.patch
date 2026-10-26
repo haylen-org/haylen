@@ -1,0 +1,38 @@
+Skips the keys whose time stamp the runtime names in Module.haylenIgnoredKey, which belong to elements of the page other than the canvas, the page itself and the fields of the runtime, such as the editor of a website next to the app, so those elements hear their keys while SDL listens for the keys of the whole page.
+
+--- a/src/video/emscripten/SDL_emscriptenevents.c
++++ b/src/video/emscripten/SDL_emscriptenevents.c
+@@ -378,6 +378,11 @@
+ /* This is a great tool to see web keyboard events live:
+  * https://w3c.github.io/uievents/tools/key-event-viewer.html
+  */
++/* A page that hosts the app next to elements of its own, such as an editor, keeps their keys from the app by naming the time stamp of each one in `Module.haylenIgnoredKey`, so those elements still hear their keys. */
++EM_JS(int, Emscripten_IsIgnoredKey, (double timestamp), {
++    return Module.haylenIgnoredKey === timestamp ? 1 : 0;
++});
++
+ static EM_BOOL Emscripten_HandleKey(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
+ {
+     SDL_WindowData *window_data = (SDL_WindowData *)userData;
+@@ -386,6 +391,10 @@
+     bool prevent_default = false;
+     bool is_nav_key = false;
+ 
++    if (Emscripten_IsIgnoredKey(keyEvent->timestamp)) {
++        return EM_FALSE;
++    }
++
+     if (scancode == SDL_SCANCODE_UNKNOWN) {
+         if (SDL_strcmp(keyEvent->key, "Sleep") == 0) {
+             scancode = SDL_SCANCODE_SLEEP;
+@@ -465,6 +474,10 @@
+ static EM_BOOL Emscripten_HandleKeyPress(int eventType, const EmscriptenKeyboardEvent *keyEvent, void *userData)
+ {
+     SDL_WindowData *window_data = (SDL_WindowData *)userData;
++
++    if (Emscripten_IsIgnoredKey(keyEvent->timestamp)) {
++        return EM_FALSE;
++    }
+ 
+     if (SDL_TextInputActive(window_data->window)) {
+         if (SDL_utf8strlen(keyEvent->key) == 1) {

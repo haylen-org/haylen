@@ -209,9 +209,9 @@ void Window::attachApi() {
     }
 }
 
-// Services read the window of the system: an `NSWindow` on macOS, a `UIWindow` on the other Apple platforms, an `HWND` on Windows and an X11 window with its display on Linux. A Wayland window has no handle that they read.
+// Services read the window of the system: an `NSWindow` on macOS, a `UIWindow` on the other Apple platforms, an `HWND` on Windows and an X11 window with its display on Linux. A Wayland window and the canvas of the web have no handle that they read.
 void Window::readHandles() noexcept {
-    const SDL_PropertiesID properties = SDL_GetWindowProperties(window);
+    [[maybe_unused]] const SDL_PropertiesID properties = SDL_GetWindowProperties(window);
 #if defined(__APPLE__) && TARGET_OS_OSX
     handle.store(SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_COCOA_WINDOW_POINTER, nullptr));
 #elif defined(__APPLE__)

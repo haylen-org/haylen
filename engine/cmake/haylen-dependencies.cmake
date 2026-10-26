@@ -93,8 +93,9 @@ set(haylen_sdl_options
   "SDL_OFFSCREEN OFF" "SDL_DUMMYVIDEO OFF" "SDL_KMSDRM OFF" "SDL_RPI OFF" "SDL_ROCKCHIP OFF" "SDL_VIVANTE OFF" "SDL_LIBUDEV OFF" "SDL_LIBURING OFF" "SDL_PIPEWIRE OFF" "SDL_OPENVR OFF"
 )
 # SDL turns the keys of hardware keyboards on iOS, iPadOS, Mac Catalyst and tvOS into keys only while GameController reads no keyboard, and the arrows and escape of a keyboard into key commands too, while the engine reads every key of a keyboard through GameController, so the patch leaves keyboards to GameController and turns the presses of remotes and game controllers into keys whether a keyboard is connected or not. It also drops the swipes of the Apple TV remote that SDL turns into arrows, since the engine reads the touch surface of the remote as its stick.
+# SDL reads the keys of the whole page on the web, so a page that hosts the app next to elements of its own, such as an editor, could keep their keys from the app only by stopping them before they reach those elements, so the next patch skips the keys that the runtime marks.
 if(NOT ANDROID)
-  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch")
+  set(sdl_patches "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-uikit-presses.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/sdl-web-page-keys.patch")
   set(sdl_hash 9c75cf16330322c217dedd2e0609f1124f1b54b8633e763467b4684d0f4334a3)
   haylen_patched_package_key(sdl_cache_key ${sdl_hash} ${sdl_patches})
   CPMAddPackage(

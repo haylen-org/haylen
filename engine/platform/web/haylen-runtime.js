@@ -1584,16 +1584,16 @@ Module.haylen = Module.haylen || {};
     // Other elements of the page own the keys they receive, such as the buttons of a plugin dialog or the fields of an editor next to the canvas, while the app owns the keys of the canvas, the body and the page.
     const isForeign = (target) => target instanceof Element && target !== Module.canvas && target !== document.body && target !== document.documentElement && !isElement(target);
 
-    // The keys whose press reached `sokol_app`, whose release reaches it too wherever the focus went in between, such as to the field that the press started editing, so no key stays held.
+    // The keys whose press reached the app, whose release reaches it too wherever the focus went in between, such as to the field that the press started editing, so no key stays held.
     const held = new Set();
 
-    // The library `sokol_app` listens for keys on the window in the capture phase, before the element sees them. The keys of other elements of the page reach those elements and never the app, which `sokol_app` skips by their time stamp. A field of the UI owns every key, so `sokol_app` never applies them twice, and its return, tab and escape become actions. The plain keyboard of `haylen.window.setKeyboardVisible` leaves keys to `sokol_app` and only takes their text.
+    // SDL listens for keys on the window once they leave the element that has the focus. The keys of other elements of the page reach those elements and never the app, which SDL skips by their time stamp. A field of the UI owns every key, so SDL never applies them twice, and its return, tab and escape become actions. The plain keyboard of `haylen.window.setKeyboardVisible` leaves keys to SDL and only takes their text.
     const onKey = (event) => {
         if (event.type === "keyup" && held.delete(event.code)) {
             return;
         }
         if (isForeign(event.target)) {
-            Module.sappIgnoredKey = event.timeStamp;
+            Module.haylenIgnoredKey = event.timeStamp;
             if (event.type === "keydown") {
                 keyOfDialog(event);
             }
@@ -1617,7 +1617,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, so `sokol_app` reports only the focus of the window. The engine releases every held key when the window loses the focus, so the page forgets them then too. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
+    // The focus moving to or from an element, such as a field, the canvas or the button of a plugin dialog, is no focus change of the page, so SDL reports only the focus of the window. The engine releases every held key when the window loses the focus, so the page forgets them then too. A blur of a field while the page keeps the focus means the user closed the keyboard or left the field, unless the engine ended the editing.
     const onFocus = (event) => {
         if (event.target === window) {
             if (event.type === "blur") {
@@ -1636,7 +1636,7 @@ Module.haylen = Module.haylen || {};
         });
     };
 
-    // These listeners are added when the page loads, before `sokol_app` adds its own, so they run first.
+    // These listeners are added when the page loads, before SDL adds its own, so they run first.
     for (const type of ["keydown", "keyup", "keypress"]) {
         window.addEventListener(type, onKey, true);
     }
@@ -2082,10 +2082,17 @@ Module.haylen = Module.haylen || {};
         orientation.lock(value === 1 ? "portrait" : "landscape").catch(() => {});
     };
 
-    // The library `sokol_app` follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize. The runtime now takes the work that waited for it.
+    // SDL follows window resizes only, so a canvas resized by the page layout announces its new size as a window resize. The scrolls of wheels and trackpads reach the engine with their units, which SDL leaves out: precise devices, which browsers report in pixels, move by the points of the page, and wheels by their steps, of three lines each. The runtime now takes the work that waited for it.
     Module.postRun = Module.postRun || [];
     Module.postRun.push(function () {
         new ResizeObserver(() => window.dispatchEvent(new Event("resize"))).observe(Module.canvas);
+        Module.canvas.addEventListener("wheel", (event) => {
+            const precise = event.deltaMode === WheelEvent.DOM_DELTA_PIXEL;
+            const scale = precise ? -1 : event.deltaMode === WheelEvent.DOM_DELTA_LINE ? -1 / 3 : -10;
+            const modifiers = (event.shiftKey ? 1 : 0) | (event.ctrlKey ? 2 : 0) | (event.altKey ? 4 : 0) | (event.metaKey ? 8 : 0);
+            Module._haylen_web_scroll(event.deltaX * scale, event.deltaY * scale, precise ? 1 : 0, modifiers);
+            event.preventDefault();
+        }, { passive: false });
         waiting.runtimeReady = true;
         for (const work of waiting.runtime.splice(0)) {
             work();

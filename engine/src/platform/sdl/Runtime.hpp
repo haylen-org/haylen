@@ -52,6 +52,9 @@ class Runtime final {
     // Queues an event that the platform read on its own, in the order of the events of SDL, such as the scrolls of macOS trackpads with their phases.
     void post(const platform::Event& event);
 
+    // Queues a scroll of the wheels and trackpads that the web page read over the canvas, in steps of a wheel or in points of the page for a precise device, with the bits of shift, control, alt and the super key held.
+    static void scroll(math::Vec2 value, bool precise, int modifiers);
+
     // Ends the app at once as its window closes, after telling it that the system asked it to quit, for the system that ends the process right after.
     void terminate();
 
@@ -70,7 +73,8 @@ class Runtime final {
     [[nodiscard]] static gpu::DeviceFactory::Options getDeviceOptions() noexcept;
 
     SDL_AppResult initialize(int argc, char* argv[]);
-    void openWindow(const core::AppConfig& config);
+    [[nodiscard]] SDL_AppResult start();
+    [[nodiscard]] bool openWindow();
     [[nodiscard]] SDL_AppResult iterate();
     [[nodiscard]] SDL_AppResult handle(const SDL_Event& event);
     void deliver(const SDL_Event& event);
@@ -84,6 +88,10 @@ class Runtime final {
     FrameTimer timer;
     std::vector<platform::Event> translated;
     std::unique_ptr<gpu::Device> openedDevice;
+
+    // The graphics APIs to try in order, and the next one to try.
+    std::vector<gpu::Device::Api> apis;
+    std::size_t nextApi = 0;
     bool highDpi = true;
     bool transparent = false;
     bool started = false;

@@ -22,6 +22,11 @@
 
 #include "haylen/platform/apple/HaylenMain.h"
 #include "platform/sdl/apple/AppleApplication.hpp"
+#elif defined(__EMSCRIPTEN__)
+#include <emscripten/emscripten.h>
+
+#include "platform/web/WebEntry.hpp"
+#include "platform/web/WebPage.hpp"
 #elif defined(_WIN32)
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -52,6 +57,14 @@ void Runtime::post(const platform::Event& event) {
     SDL_Event marker{};
     marker.type = postedType;
     SDL_PushEvent(&marker);
+}
+
+void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
+    if (running == nullptr || !running->started) {
+        return;
+    }
+    const input::KeyModifiers held{.shift = (modifiers & 1) != 0, .control = (modifiers & 2) != 0, .alt = (modifiers & 4) != 0, .super = (modifiers & 8) != 0};
+    running->post({.type = platform::Event::Type::MouseScroll, .modifiers = held, .scroll = value, .preciseScroll = precise});
 }
 
 void Runtime::terminate() {
@@ -90,7 +103,9 @@ void Runtime::describeApp(const core::AppConfig& config) {
     SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
-#if defined(__linux__)
+#if defined(__EMSCRIPTEN__)
+    SDL_SetHint(SDL_HINT_EMSCRIPTEN_CANVAS_SELECTOR, WebPage::getCanvasSelector().c_str());
+#elif defined(__linux__)
     // Linux apps open their window on X11 first, also through XWayland in a Wayland session, since Wayland lets no app place its window, keep it above the others, leave the taskbar or let clicks through. A session without X11 opens it on Wayland, and the variable `SDL_VIDEO_DRIVER` picks either one.
     SDL_SetHint(SDL_HINT_VIDEO_DRIVER, "x11,wayland");
 #endif
@@ -123,8 +138,16 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 
     // AppKit and UIKit lay out the views of the services over the window as soon as they create it, before the first frame initializes the app.
     platform::NativeWindow::install(&window);
+    apis = gpu::DeviceFactory::order(Player::getGraphicsApis());
+    return start();
+}
+
+// The app starts once its window opened, which may take some frames while a graphics API prepares, such as WebGPU, whose adapter the browser hands over in a later turn of its event loop.
+SDL_AppResult Runtime::start() {
     try {
-        openWindow(config);
+        if (!openWindow()) {
+            return SDL_APP_CONTINUE;
+        }
     } catch (const std::exception& error) {
         core::Log::error("{}", error.what());
         return SDL_APP_FAILURE;
@@ -132,7 +155,7 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 #if defined(__APPLE__)
     AppleApplication::finishLaunching(*this);
 #endif
-    // Desktops type text into the window itself, while UIKit apps type into the native fields of the services alone.
+    // Desktops and the web type text into the window itself, while UIKit apps type into the native fields of the services alone.
 #if !defined(__APPLE__) || TARGET_OS_OSX
     SDL_StartTextInput(window.get());
 #endif
@@ -144,18 +167,22 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 }
 
 // Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `app.json` puts it on the desktop, since they know the desktop points of each monitor.
-void Runtime::openWindow(const core::AppConfig& config) {
-    const std::optional<math::Rect> frame = Player::getOpeningFrame();
-    for (const gpu::Device::Api api : gpu::DeviceFactory::order(Player::getGraphicsApis())) {
+bool Runtime::openWindow() {
+    const core::AppConfig& config = Player::getOpeningConfig();
+    for (; nextApi < apis.size(); ++nextApi) {
+        const gpu::Device::Api api = apis[nextApi];
+        if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
+            return false;
+        }
         try {
             window.open(config.window, api);
-            if (frame) {
+            if (const std::optional<math::Rect> frame = Player::getOpeningFrame()) {
                 Services::setWindowFrame(*frame);
                 window.refresh();
             }
             openedDevice = gpu::DeviceFactory::create(api, window.getSurface(), getDeviceOptions());
             core::Log::info("The app draws through \"{}\".", gpu::DeviceFactory::getApiName(api));
-            return;
+            return true;
         } catch (const std::exception& error) {
             core::Log::warning("The graphics API \"{}\" could not start. {}", gpu::DeviceFactory::getApiName(api), error.what());
             window.close();
@@ -165,13 +192,20 @@ void Runtime::openWindow(const core::AppConfig& config) {
 }
 
 SDL_AppResult Runtime::iterate() {
+    if (!started) {
+        return start();
+    }
     if (!closing) {
         Player::frame(timer.next(SDL_GetTicksNS()));
     }
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
+// The events before the app started find no app to hear them.
 SDL_AppResult Runtime::handle(const SDL_Event& event) {
+    if (!started) {
+        return SDL_APP_CONTINUE;
+    }
     if (event.type == postedType) {
         Player::handleEvent(posted[postedRead++]);
         if (postedRead == posted.size()) {
@@ -234,6 +268,9 @@ bool Runtime::takes(const SDL_Event& event) const noexcept {
         return event.key.which == 0;
     case SDL_EVENT_TEXT_INPUT:
         return false;
+#elif defined(__EMSCRIPTEN__)
+    case SDL_EVENT_MOUSE_WHEEL:
+        return false;
 #endif
     case SDL_EVENT_FINGER_DOWN:
     case SDL_EVENT_FINGER_MOTION:
@@ -294,5 +331,15 @@ int WINAPI WinMain(_In_ HINSTANCE, _In_opt_ HINSTANCE, _In_ LPSTR, _In_ int) {
 #else
 int main(int argc, char* argv[]) {
     return haylen::platform::sdl::Runtime::run(argc, argv);
+}
+#endif
+
+#if defined(__EMSCRIPTEN__)
+extern "C" {
+
+// The page reads the scrolls of the wheels and trackpads over the canvas with their units, which SDL leaves out. The modifiers are the bits of shift, control, alt and the super key, from the lowest.
+EMSCRIPTEN_KEEPALIVE void haylen_web_scroll(float x, float y, int precise, int modifiers) {
+    haylen::platform::WebEntry::guard("haylen_web_scroll", [&] { haylen::platform::sdl::Runtime::scroll({x, y}, precise != 0, modifiers); });
+}
 }
 #endif

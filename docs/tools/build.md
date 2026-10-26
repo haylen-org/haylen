@@ -299,7 +299,7 @@ A patched package, such as Sokol, keys its place in the cache with `haylen_patch
 | nlohmann/json | 3.12.0 | Added first, so Varn reuses it and the build holds one copy. |
 | Varn | commit `7a20070` | The Lua runtime, the event loop, the worker pools and the modules `async`, `http`, `socket`, `json`, `fs`, `zip`, `crypto` and the others. `VARN_TARGET` is `cli` on desktop and Apple platforms, `android` on Android and `wasm` on the web. The `cli` target builds the static core that the engine links. Varn picks the HTTP client of each platform itself: the Apple one on iOS, tvOS and Mac Catalyst, the Android one on Android and `fetch` on the web. Lua, libuv, zlib, libzip, Poco and OpenSSL come in through Varn, each pinned with its hash. ThreadSanitizer builds tell Varn to keep the yields of Lua as exceptions, because the sanitizer cannot follow the `_longjmp` of a yield. |
 | Sokol | commit `5e94d12` | Headers only. The Sokol backend compiles the implementation for the chosen graphics API, with the [patches](#patches) of `engine/cmake/patches`. |
-| SDL | 3.4.18 | zlib license. The release archive of SDL 3, with the [patch](#sdl-uikit-pressespatch) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video and event subsystems, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. It opens the window, runs the frames and reads the input on every platform but Android. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts. |
+| SDL | 3.4.18 | zlib license. The release archive of SDL 3, with the [patches](#patches) of `engine/cmake/patches`. It builds as the static library `SDL3-static` with only its video and event subsystems, since the engine plays sound through miniaudio, reads gamepads through the services of each platform and draws through its own devices. It opens the window, runs the frames and reads the input on every platform but Android. Linux builds keep X11 and Wayland, whose libraries SDL loads when the app starts. |
 | GameActivity | 4.4.2 | Android only, Apache 2.0. The AAR of `androidx.games:games-activity` from Google Maven, pinned by its hash. Its prefab folder holds the static library and the headers of the native side of GameActivity for every ABI, which the runtime links. |
 | stb | commit `2c980bb` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images. It publishes no releases, so it is pinned to a commit of its default branch. |
@@ -355,6 +355,10 @@ SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS 
 - Leaves the presses that carry a key of a keyboard to GameController, and turns the other presses into keys whether a keyboard is connected or not. On tvOS it keeps the Menu press that the Escape key of a keyboard makes, so Escape goes back like the remote.
 - Removes the key commands of the arrows and escape.
 - Removes the swipe gestures of the Apple TV remote.
+
+#### sdl-web-page-keys.patch
+
+SDL listens for the keys of the whole page on the window of the browser. So a page that hosts the app next to elements of its own, such as the editor of a website, could keep their keys from the app only by stopping them before they reach those elements. The patch skips a key whose time stamp the runtime names in `Module.haylenIgnoredKey`. The runtime does this for the keys of elements that are not the canvas, the page or the fields of the runtime, so those elements still hear them.
 
 #### sokol-ios-view-size.patch
 
