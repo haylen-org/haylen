@@ -33,6 +33,7 @@ class Device {
         Glsl430,
         Glsl300es,
         Wgsl,
+        Spirv,
     };
 
     // The graphics API that the device draws through, which every backend names the same way. The device of the headless host draws through none.

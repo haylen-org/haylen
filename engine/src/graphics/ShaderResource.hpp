@@ -25,6 +25,9 @@ namespace haylen::graphics {
 
 // The contents of a shader package that the Haylen shader compiler writes: the reflection and the code of every program for every shader language, read and checked once, and the GPU programs and pipelines made from them on the frame thread, which go to the device graveyard when the contents change or the last handle goes away.
 struct ShaderResource {
+    // The names of the shader languages as the package writes them, in the order of `gpu::Device::Language`, the first naming none.
+    static constexpr std::array<std::string_view, 9> kLanguageNames{"", "msl-macos", "msl-ios", "msl-ios-simulator", "hlsl5", "glsl430", "glsl300es", "wgsl", "spirv"};
+
     struct StageCode {
         std::size_t source = 0;
         std::string entry;
@@ -91,7 +94,7 @@ struct ShaderResource {
         std::vector<SamplerInfo> samplers;
         std::vector<Pair> pairs;
         int outputs = 1;
-        std::array<std::optional<Target>, 8> targets;
+        std::array<std::optional<Target>, kLanguageNames.size()> targets;
 
         [[nodiscard]] const Attribute* findAttribute(std::string_view attribute) const noexcept;
     };
@@ -104,9 +107,6 @@ struct ShaderResource {
         std::vector<int> textures;
         std::vector<std::pair<int, int>> samplers;
     };
-
-    // The names of the shader languages as the package writes them, in the order of `gpu::Device::Language`, the first naming none.
-    static constexpr std::array<std::string_view, 8> kLanguageNames{"", "msl-macos", "msl-ios", "msl-ios-simulator", "hlsl5", "glsl430", "glsl300es", "wgsl"};
 
     // The uniform blocks and textures of the shader library, which the engine fills itself and materials never list.
     static constexpr std::array<std::string_view, 2> kEngineBlocks{"haylen_vs_params", "haylen_lit_params"};

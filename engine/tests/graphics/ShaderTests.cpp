@@ -224,7 +224,7 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{program + "/textures/0/sampleType", "half"}}), malformed + "Shaders have no textures that sample \"half\".");
     EXPECT_EQ(parseError({{program + "/samplers/0/type", "anisotropic"}}), malformed + "Shaders have no \"anisotropic\" samplers.");
     EXPECT_EQ(parseError({{program + "/blocks/0/members/0/type", "mat3"}}), malformed + "The uniform \"tint\" has the type \"mat3\", which materials do not set.");
-    EXPECT_EQ(parseError({{program + "/targets/spirv", core::Json::object()}}), malformed + "The program \"sprite\" has code for \"spirv\", which is not a shader language of the engine.");
+    EXPECT_EQ(parseError({{program + "/targets/dxil", core::Json::object()}}), malformed + "The program \"sprite\" has code for \"dxil\", which is not a shader language of the engine.");
 
     // Blocks hold whole vectors, OpenGL reads each one as an array that fills it, and every other language binds every slot.
     EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), malformed + "The uniform block \"params\" holds 24 bytes, which is not a multiple of 16.");

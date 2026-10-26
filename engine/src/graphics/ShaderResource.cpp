@@ -97,7 +97,7 @@ gpu::Device::SamplerType ShaderResource::readSamplerType(const core::Json& value
     throw std::invalid_argument(std::format("Shaders have no \"{}\" samplers.", type));
 }
 
-// Every slot the program declares needs a binding number in every language.
+// Every slot the program declares needs a binding number in every language. SPIR-V gives each binding with its descriptor set, as an object.
 std::vector<std::pair<int, int>> ShaderResource::readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind) {
     std::vector<std::pair<int, int>> bindings;
     if (slots.empty()) {
@@ -109,7 +109,8 @@ std::vector<std::pair<int, int>> ShaderResource::readBindings(const core::Json& 
         if (!numbers.contains(name)) {
             throw std::invalid_argument(std::format("The {} at slot {} has no binding number.", kind, slot));
         }
-        const auto binding = numbers.at(name).get<std::int64_t>();
+        const core::Json& value = numbers.at(name);
+        const auto binding = value.is_object() ? value.at("binding").get<std::int64_t>() : value.get<std::int64_t>();
         if (binding < 0 || binding > 255) {
             throw std::invalid_argument(std::format("The binding number {} of the {} at slot {} is out of range.", binding, kind, slot));
         }

@@ -108,6 +108,7 @@ Each program compiles for every target of the compiler, so one package runs on e
 | `glsl430` | Desktop OpenGL. |
 | `glsl300es` | Android and WebGL2. |
 | `wgsl` | WebGPU. |
+| `spirv` | Vulkan, whose SPIR-V the engine reads and checks, though no device of the engine draws with it. |
 
 A compile error stops the command with the file, the line and the column of every error:
 
@@ -338,7 +339,7 @@ A `.shader` file is a Haylen shader package: compact JSON that `haylen-shaderc` 
 | `format`, `version` | `"haylen-shader"` and `2`. |
 | `name` | The name of the source file without its folder and its extension. |
 | `sources` | The source of every stage of every program for every target, each text once. |
-| `programs` | Each of the ten programs under its name, with its `attributes`, its uniform `blocks` with their `members`, its `textures`, its `samplers`, the texture sampler `pairs` that its stages sample with, the number of color `outputs`, and its `targets`. The members have names, types, element counts and byte offsets that follow the std140 rules. For each of `msl-macos`, `msl-ios`, `msl-ios-simulator`, `hlsl5`, `glsl430`, `glsl300es` and `wgsl`, the targets give the source and entry point of each stage and the binding of each uniform block, texture and sampler in that language. |
+| `programs` | Each of the ten programs under its name, with its `attributes`, its uniform `blocks` with their `members`, its `textures`, its `samplers`, the texture sampler `pairs` that its stages sample with, the number of color `outputs`, and its `targets`. The members have names, types, element counts and byte offsets that follow the std140 rules. For each of `msl-macos`, `msl-ios`, `msl-ios-simulator`, `hlsl5`, `glsl430`, `glsl300es`, `wgsl` and `spirv`, the targets give the source and entry point of each stage and the binding of each uniform block, texture and sampler in that language, with the descriptor set of each binding for `spirv`. |
 
 The engine reads the file on a worker thread. The first time a draw uses a program, the engine creates it on the frame thread for the shader language of the GPU device. It creates the pipelines for each blend mode and kind of target the same way. As it reads the file, the engine hands the sources of that language of every program to the GPU device. On Metal the device starts compiling them on the I/O pool, as [load time](#load-time) explains.
 
