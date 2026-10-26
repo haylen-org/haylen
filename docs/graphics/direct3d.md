@@ -14,7 +14,7 @@ A Windows build compiles both devices. The player tries Direct3D 12 first and Di
 }
 ```
 
-Each device tries the GPUs of the machine in turn. It takes the most powerful GPU first, then the other GPUs, and last WARP, the software rasterizer of Windows. A machine without a GPU, such as a virtual machine of continuous integration, still runs both devices on WARP.
+Each device tries the GPUs of the machine in turn. It takes the most powerful GPU first, then the other GPUs, and last WARP, the software rasterizer of Windows. A machine without a GPU, such as a virtual machine of continuous integration, still runs both devices on WARP. The option `lowPower` of `gpu::DeviceFactory::Options` starts from the GPU that uses the least power instead, such as the integrated GPU of a laptop that has two, and the option `software` takes WARP alone, which draws the same pixels on every machine.
 
 ## What the machine needs
 

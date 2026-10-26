@@ -7,6 +7,7 @@
 #include <format>
 #include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <thread>
 #include <utility>
 
@@ -34,6 +35,15 @@ std::string GpuFixture::nameApi(const ::testing::TestParamInfo<gpu::Device::Api>
     return std::string(gpu::DeviceFactory::getApiName(info.param));
 }
 
+gpu::DeviceFactory::Options GpuFixture::getDeviceOptions() {
+    return {.validation = true, .software = isEnabled("HAYLEN_TEST_GPU_SOFTWARE"), .lowPower = isEnabled("HAYLEN_TEST_GPU_LOW_POWER")};
+}
+
+bool GpuFixture::isEnabled(const char* variable) {
+    const char* value = std::getenv(variable);
+    return value != nullptr && std::string_view(value) == "1";
+}
+
 ::testing::AssertionResult GpuFixture::isNear(math::Color actual, math::Color expected, int tolerance) {
     const std::array<float, 4> got{actual.r, actual.g, actual.b, actual.a};
     const std::array<float, 4> wanted{expected.r, expected.g, expected.b, expected.a};
@@ -54,7 +64,7 @@ void GpuFixture::SetUp() {
 
     try {
         surface = std::make_unique<OffscreenSurface>(GetParam());
-        made = gpu::DeviceFactory::create(GetParam(), surface->getSurface(), {.validation = true});
+        made = gpu::DeviceFactory::create(GetParam(), surface->getSurface(), getDeviceOptions());
     } catch (const std::runtime_error& error) {
         GTEST_SKIP() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\" cannot start on this machine: " << error.what();
     }

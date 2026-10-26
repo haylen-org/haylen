@@ -21,11 +21,12 @@ ComPtr<IDXGIFactory6> Adapter::createFactory(bool validation) {
     return factory;
 }
 
-std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory) {
+std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory, bool lowPower) {
+    const DXGI_GPU_PREFERENCE preference = lowPower ? DXGI_GPU_PREFERENCE_MINIMUM_POWER : DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;
     std::vector<ComPtr<IDXGIAdapter1>> adapters;
     for (UINT index = 0;; ++index) {
         ComPtr<IDXGIAdapter1> adapter;
-        if (factory.EnumAdapterByGpuPreference(index, DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE, IID_PPV_ARGS(adapter.GetAddressOf())) == DXGI_ERROR_NOT_FOUND) {
+        if (factory.EnumAdapterByGpuPreference(index, preference, IID_PPV_ARGS(adapter.GetAddressOf())) == DXGI_ERROR_NOT_FOUND) {
             break;
         }
         DXGI_ADAPTER_DESC1 desc{};
@@ -39,6 +40,15 @@ std::vector<ComPtr<IDXGIAdapter1>> Adapter::list(IDXGIFactory6& factory) {
     if (SUCCEEDED(factory.EnumWarpAdapter(IID_PPV_ARGS(warp.GetAddressOf())))) {
         adapters.push_back(std::move(warp));
     }
+    return adapters;
+}
+
+std::vector<ComPtr<IDXGIAdapter1>> Adapter::choose(IDXGIFactory6& factory, bool software, bool lowPower) {
+    if (!software) {
+        return list(factory, lowPower);
+    }
+    std::vector<ComPtr<IDXGIAdapter1>> adapters;
+    adapters.push_back(getSoftware(factory));
     return adapters;
 }
 
