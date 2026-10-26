@@ -2119,6 +2119,37 @@ Componentes e layout da UI:
 - [x] `ui.emptyState` com ícone e largura máxima de leitura, o sinal de menos de verdade no campo numérico e nenhum "-0" nos números formatados. Feito: o título e a mensagem do `emptyState` quebram na métrica de tema `readingWidth` (a imagem já existia e a página de não suportado passou a usá-la), os sinais do campo numérico são traços do mesmo peso, e nem os números que a engine entrega ao Lua nem os valores mostrados pela UI têm zero negativo.
 - [x] A janela (`GUI-033`) com sombra, folga entre o botão de fechar e a ponta da barra e posição dentro da área segura em qualquer escala, e o texto do overlay da área segura sem cobrir a interface. Feito: a janela tem sombra uma vez e meia a de um cartão, fica dentro da área segura em qualquer escala e põe o botão de fechar dentro do padding da superfície `titleBar`, e o overlay escreve os insets com nome na faixa sombreada fora da área segura.
 
+#### AY. Plataforma em SDL3 e RHI própria, sem Sokol
+
+Pedido do dono: tirar o Sokol inteiro e trocar por SDL3 para janela, eventos, input, gamepads e integração com as plataformas, com uma RHI própria da Haylen e backends próprios para cada API gráfica, sem bgfx, SDL_GPU, SDL_Renderer nem outra biblioteca intermediária, mais rápida que as alternativas e com todos os recursos de alto desempenho que a renderização precisa. O tamanho do trabalho não importa, e nada fica como protótipo, mock, TODO ou caminho Sokol.
+
+Decisões:
+
+- A RHI é o contrato `gpu::Device` de `engine/include/haylen/gpu/Device.hpp`, com a superfície da janela em `gpu::Surface`. Os renderizadores (o 2D de hoje e o 3D do futuro) só falam com esse contrato, e cada API gráfica tem o seu dispositivo em `engine/src/gpu/<api>/`, no namespace `haylen::gpu::<api>`.
+- O SDL3 é a camada de plataforma no macOS, Windows, Linux (X11 e Wayland), iOS, iPadOS, Mac Catalyst, tvOS, visionOS e web. O Android continua num host nativo sobre a `GameActivity` do AndroidX, porque a `SDLActivity` do SDL3 é uma `Activity` simples, com superfície, input e threads próprios, que não pode ser a `ComponentActivity` de que os plugins precisam para a Activity Result API, fragments e Compose.
+- Cada build compila todos os dispositivos da sua plataforma, e o app escolhe a API em tempo de execução, na ordem de `window.graphicsApis` do `app.json`, de `--graphics-api` na linha de comando ou da escolha da página na web, caindo para a próxima API que a máquina aceitar.
+- Nenhum binding Lua, script ou API pública de alto nível conhece a API gráfica.
+- O `haylen-shader-compiler` ganha o alvo SPIR-V para o Vulkan e continua na versão 1.0.0, com um único commit, uma única execução da CI para esse commit e uma única release.
+- Os consoles entram por uma pasta de port fora do repositório, que traz o host, os serviços e, quando a API do console não for uma das da Haylen, o dispositivo de GPU, sem nenhum SDK fechado no repositório.
+
+Checklist:
+
+- [ ] Contrato da RHI com buffers, texturas 2D, array, cubo e volume com mips, samplers, programas, pipelines, instancing, render passes com load e store, MRT com blend por alvo, depth e stencil, MSAA com resolve, uploads dinâmicos, readback assíncrono, marcadores de debug, tempo de GPU, capacidades do dispositivo, perda do dispositivo e da superfície, e a destruição dos objetos depois dos frames em voo.
+- [ ] Dispositivo Metal (macOS, iOS, iPadOS, Mac Catalyst, tvOS e visionOS).
+- [ ] Dispositivo Direct3D 11 (Windows).
+- [ ] Dispositivo Direct3D 12 (Windows).
+- [ ] Dispositivo Vulkan (Windows, Linux e Android).
+- [ ] Dispositivo OpenGL 4.3, OpenGL ES 3.0 e WebGL2 (Windows, Linux, Android e web).
+- [ ] Dispositivo WebGPU (web), com o WebGL2 como alternativa da página.
+- [ ] Escolha automática ou configurável da API gráfica, com a queda para a próxima API que a máquina aceitar.
+- [ ] Plataforma em SDL3 no desktop, nas plataformas da Apple e na web, com todas as integrações nativas de hoje: ciclo de vida, áreas seguras, overlays, teclado e campo de texto nativo, toque, controles remotos, janelas sem borda, transparentes, sempre no topo e que deixam o clique passar, e a rolagem com as fases do trackpad.
+- [ ] Host nativo do Android sobre a `GameActivity`, sem Sokol, com Vulkan e OpenGL ES.
+- [ ] Alvo SPIR-V no `haylen-shader-compiler`, mantido em 1.0.0 com um único commit, uma execução da CI e uma release.
+- [ ] Testes de conformidade da RHI e regressão visual do renderizador 2D em cada API, testes de estresse, validação dos recursos e benchmarks.
+- [ ] Remoção completa do Sokol: código, patches, configurações e dependência.
+- [ ] Estrutura de port para consoles documentada, com o Xbox pelo GDK, o SDL3 e o dispositivo Direct3D 12.
+- [ ] CMake, toolchains, `haylen.py`, CI, samples, `README.md`, docs e `AGENTS.md` atualizados, com a matriz de capacidades de cada API, os limites reais de cada plataforma e o que foi compilado e testado em cada uma.
+
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.

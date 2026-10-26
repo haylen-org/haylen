@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "haylen/gpu/Surface.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 
@@ -20,7 +21,7 @@ class JobSystem;
 
 namespace haylen::gpu {
 
-// The graphics device of a backend: the buffers, images, samplers, programs and pipelines that the renderers of the engine create, and the passes and draws they record, with no type of the library behind it. The host of a backend creates the one device of an app, and every method runs on the frame thread. Methods that create an object throw `std::runtime_error` with a clear sentence when the device has no room for it or rejects it.
+// The graphics device of the RHI of Haylen: the buffers, images, samplers, programs and pipelines that the renderers of the engine create, and the passes and draws they record, with no type of the graphics API behind it. Each graphics API has its device, which draws into the surface of the window the platform opened, and the renderers of every dimension share it. Every method runs on the frame thread. Methods that create an object throw `std::runtime_error` with a clear sentence when the device has no room for it or rejects it.
 class Device {
   public:
     // The shader language that the device runs, which picks the code of a program in a shader package. The device of the headless host runs none.
@@ -33,34 +34,52 @@ class Device {
         Glsl430,
         Glsl300es,
         Wgsl,
+        Spirv,
     };
 
-    // The graphics API that the device draws through, which every backend names the same way. The device of the headless host draws through none.
+    // The graphics API that the device draws through, which every device names the same way. The device of the headless host draws through none.
     enum class Api : std::uint8_t {
         None,
         Metal,
         Direct3D11,
+        Direct3D12,
+        Vulkan,
         OpenGl,
         OpenGlEs,
         WebGl2,
         WebGpu,
     };
 
-    static constexpr std::array<std::pair<std::string_view, Api>, 7> kApiNames{{
+    static constexpr std::array<std::pair<std::string_view, Api>, 9> kApiNames{{
         {"none", Api::None},
         {"metal", Api::Metal},
         {"direct3D11", Api::Direct3D11},
+        {"direct3D12", Api::Direct3D12},
+        {"vulkan", Api::Vulkan},
         {"openGl", Api::OpenGl},
         {"openGlEs", Api::OpenGlEs},
         {"webGl2", Api::WebGl2},
         {"webGpu", Api::WebGpu},
     }};
 
+    // The formats of images. The depth formats belong to depth and stencil attachments, and a device that lacks `Depth24Stencil8` gives `Depth32FloatStencil8` its place.
     enum class PixelFormat : std::uint8_t {
         R8,
+        Rg8,
         Rgba8,
-        R32Float,
+        Rgba8Srgb,
+        Bgra8,
+        Rgb10A2,
+        R16Float,
+        Rg16Float,
         Rgba16Float,
+        R32Float,
+        Rg32Float,
+        Rgba32Float,
+        Depth16,
+        Depth32Float,
+        Depth24Stencil8,
+        Depth32FloatStencil8,
     };
 
     enum class VertexFormat : std::uint8_t {
@@ -69,13 +88,21 @@ class Device {
         Float3,
         Float4,
         Half2,
+        Half4,
+        UByte4,
         UByte4Normalized,
+        Short2,
+        Short2Normalized,
         UShort4Normalized,
+        UInt,
     };
 
     enum class Primitive : std::uint8_t {
         Triangles,
         TriangleStrip,
+        Lines,
+        LineStrip,
+        Points,
     };
 
     enum class IndexType : std::uint8_t {
@@ -95,6 +122,9 @@ class Device {
         OneMinusDestinationColor,
         DestinationAlpha,
         OneMinusDestinationAlpha,
+        SourceAlphaSaturated,
+        BlendColor,
+        OneMinusBlendColor,
     };
 
     enum class BlendOperation : std::uint8_t {
@@ -114,6 +144,39 @@ class Device {
         Alpha = 8,
         Rgb = 7,
         All = 15,
+    };
+
+    enum class CompareFunction : std::uint8_t {
+        Never,
+        Less,
+        Equal,
+        LessEqual,
+        Greater,
+        NotEqual,
+        GreaterEqual,
+        Always,
+    };
+
+    enum class StencilOperation : std::uint8_t {
+        Keep,
+        Zero,
+        Replace,
+        IncrementClamp,
+        DecrementClamp,
+        Invert,
+        IncrementWrap,
+        DecrementWrap,
+    };
+
+    enum class CullMode : std::uint8_t {
+        None,
+        Front,
+        Back,
+    };
+
+    enum class FrontFace : std::uint8_t {
+        CounterClockwise,
+        Clockwise,
     };
 
     enum class Filter : std::uint8_t {
@@ -159,16 +222,24 @@ class Device {
         Dynamic,
     };
 
-    // A texture keeps the pixels it was made with, a dynamic image takes new pixels through `writeImages`, and a render target is the color attachment of offscreen passes that draws sample later.
+    // A texture keeps the pixels it was made with, a dynamic image takes new pixels through `writeImages`, a render target is a color attachment of offscreen passes that draws sample later, and a depth stencil image is the depth and stencil attachment of offscreen passes.
     enum class ImageKind : std::uint8_t {
         Texture,
         Dynamic,
         RenderTarget,
+        DepthStencil,
     };
 
     enum class Load : std::uint8_t {
         Clear,
         Keep,
+        DontCare,
+    };
+
+    // Whether a pass keeps what it drew into an attachment once it ends, which tile GPUs skip writing back to memory when the pass discards it.
+    enum class Store : std::uint8_t {
+        Store,
+        Discard,
     };
 
     // The handles of the objects of a device, whose id 0 names nothing.
@@ -219,6 +290,28 @@ class Device {
     static constexpr std::size_t kMaxSamplers = 12;
     static constexpr std::size_t kMaxAttributes = 16;
 
+    // What the device and its graphics API can do, which the renderers read instead of the API. A capability that a device lacks is never used by the engine.
+    struct Capabilities {
+        int maxImageSize = 0;
+        int maxArrayLayers = 0;
+        int maxSampleCount = 1;
+
+        // Whether the first row of a render target is its top row, as on Metal, Direct3D, Vulkan and WebGPU, rather than its bottom row, as on OpenGL.
+        bool originTopLeft = true;
+
+        // Whether each color target of a pipeline takes a blend and a write mask of its own, rather than all of them those of the first target.
+        bool independentBlend = false;
+
+        // Whether a render target of one sample can resolve a multisampled one at the end of a pass.
+        bool multisampledRenderTargets = false;
+
+        // Whether the device measures the time the GPU takes for each frame.
+        bool gpuTiming = false;
+
+        // The color formats that render targets can be drawn into with blending.
+        std::array<bool, 16> blendableFormats{};
+    };
+
     struct BufferDesc {
         std::size_t size = 0;
         std::span<const std::byte> data;
@@ -227,10 +320,14 @@ class Device {
         std::string_view label;
     };
 
-    // The pixels of a texture come with the image, one span per mip level from the largest, and the other kinds start without pixels.
+    // The pixels of a texture come with the image, one span per mip level from the largest, each holding every layer of its level, and the other kinds start without pixels. The layers count the slices of a volume, the layers of an array and the six faces of a cube.
     struct ImageDesc {
+        TextureType type = TextureType::Flat;
         int width = 0;
         int height = 0;
+        int layers = 1;
+        int mipLevels = 1;
+        int sampleCount = 1;
         PixelFormat format = PixelFormat::Rgba8;
         ImageKind kind = ImageKind::Texture;
         std::span<const std::span<const std::byte>> levels;
@@ -243,21 +340,29 @@ class Device {
         Filter mipmap = Filter::Nearest;
         Wrap wrapU = Wrap::ClampToEdge;
         Wrap wrapV = Wrap::ClampToEdge;
+        Wrap wrapW = Wrap::ClampToEdge;
+        float minLod = 0.0F;
+        float maxLod = 1000.0F;
+        int maxAnisotropy = 1;
+        std::optional<CompareFunction> compare;
+        std::string_view label;
     };
 
-    // One stage of a program in the language of the device, with the source it runs and its entry point, and the profile that HLSL compiles it for.
+    // One stage of a program in the language of the device, with the source it runs and its entry point, and the profile that HLSL compiles it for. SPIR-V comes as the bytes of the module.
     struct StageCode {
         std::string_view source;
+        std::span<const std::byte> bytecode;
         std::string_view entry;
         std::string_view profile;
     };
 
-    // A uniform block of a program at its bind slot, with the binding number that the language of the device gives it. The OpenGL languages read a block as one array of vectors, which `glslName`, `glslType` and `glslCount` describe.
+    // A uniform block of a program at its bind slot, with the binding number that the language of the device gives it and its descriptor set or bind group where the language has them. The OpenGL languages read a block as one array of vectors, which `glslName`, `glslType` and `glslCount` describe.
     struct BlockBinding {
         int slot = 0;
         Stage stage = Stage::Vertex;
         std::uint32_t size = 0;
         int binding = 0;
+        int set = 0;
         std::string_view glslName;
         bool glslIntegers = false;
         int glslCount = 0;
@@ -268,7 +373,9 @@ class Device {
         Stage stage = Stage::Fragment;
         TextureType type = TextureType::Flat;
         SampleType sampleType = SampleType::Float;
+        bool multisampled = false;
         int binding = 0;
+        int set = 0;
     };
 
     struct SamplerBinding {
@@ -276,6 +383,7 @@ class Device {
         Stage stage = Stage::Fragment;
         SamplerType type = SamplerType::Filtering;
         int binding = 0;
+        int set = 0;
     };
 
     // A texture and a sampler that the OpenGL languages combine into one sampler object under the name.
@@ -333,7 +441,28 @@ class Device {
         Blend blend;
     };
 
-    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its color target names, and the others draw into render targets of one sample without depth. All the color targets of a pipeline share one blend and one write mask, because OpenGL and WebGL2 apply those of the first target to every color of a pass.
+    struct StencilFace {
+        CompareFunction compare = CompareFunction::Always;
+        StencilOperation fail = StencilOperation::Keep;
+        StencilOperation depthFail = StencilOperation::Keep;
+        StencilOperation pass = StencilOperation::Keep;
+    };
+
+    // The depth and stencil tests of a pipeline, which draw into the depth stencil attachment of the format, or into none when it has no format.
+    struct DepthStencil {
+        std::optional<PixelFormat> format;
+        CompareFunction depthCompare = CompareFunction::Always;
+        bool depthWrite = false;
+        bool stencilEnabled = false;
+        StencilFace stencilFront;
+        StencilFace stencilBack;
+        std::uint8_t stencilReadMask = 0xFF;
+        std::uint8_t stencilWriteMask = 0xFF;
+        float depthBias = 0.0F;
+        float depthBiasSlope = 0.0F;
+    };
+
+    // A pipeline that draws into the swapchain takes the color format, the depth format and the sample count of the swapchain, whatever its targets name, and the others draw into the attachments their formats and sample count describe. A device without `independentBlend` applies the blend and the write mask of the first color target to all of them.
     struct PipelineDesc {
         Program program;
         std::span<const VertexBufferLayout> buffers;
@@ -341,21 +470,44 @@ class Device {
         Primitive primitive = Primitive::Triangles;
         IndexType indexType = IndexType::None;
         std::span<const ColorTarget> colors;
+        DepthStencil depthStencil;
+        CullMode cullMode = CullMode::None;
+        FrontFace frontFace = FrontFace::CounterClockwise;
+        int sampleCount = 1;
+        bool alphaToCoverage = false;
         bool swapchain = false;
         std::string_view label;
     };
 
+    // A color attachment of an offscreen pass, at a mip level and a layer of its image, with the image of one sample that resolves a multisampled attachment when the pass ends.
     struct ColorAttachment {
         Image image;
+        int mipLevel = 0;
+        int layer = 0;
         Load load = Load::Clear;
+        Store store = Store::Store;
         math::Color clear = math::Color::transparent();
+        Image resolve;
     };
 
-    // A pass draws into the swapchain of the frame when it names no attachment.
+    struct DepthStencilAttachment {
+        Image image;
+        Load depthLoad = Load::Clear;
+        Store depthStore = Store::Discard;
+        float clearDepth = 1.0F;
+        Load stencilLoad = Load::Clear;
+        Store stencilStore = Store::Discard;
+        std::uint8_t clearStencil = 0;
+    };
+
+    // A pass draws into the swapchain of the frame when it names no attachment, clearing its color, depth and stencil as its loads say.
     struct PassDesc {
         std::span<const ColorAttachment> colors;
+        std::optional<DepthStencilAttachment> depthStencil;
         Load load = Load::Clear;
         math::Color clear = math::Color::transparent();
+        float clearDepth = 1.0F;
+        std::uint8_t clearStencil = 0;
         std::string_view label;
     };
 
@@ -374,7 +526,7 @@ class Device {
         std::span<const std::byte> pixels;
     };
 
-    // How many objects of one kind exist, out of the room the device holds for them.
+    // How many objects of one kind exist, out of the room the device holds for them now.
     struct Pool {
         std::string_view name;
         int used = 0;
@@ -394,22 +546,18 @@ class Device {
     virtual ~Device() = default;
 
     [[nodiscard]] virtual Language getLanguage() const noexcept = 0;
-
     [[nodiscard]] virtual Api getApi() const noexcept = 0;
+    [[nodiscard]] virtual const Capabilities& getCapabilities() const noexcept = 0;
 
     // The name of the GPU as its API reports it, or an empty text where it reports none.
     [[nodiscard]] virtual std::string getAdapterName() const = 0;
-    [[nodiscard]] virtual int getMaxImageSize() const noexcept = 0;
-
-    // Whether the first row of a render target is its top row, as on Metal, Direct3D and WebGPU, rather than its bottom row, as on OpenGL.
-    [[nodiscard]] virtual bool isOriginTopLeft() const noexcept = 0;
-
-    // Whether a render target of the format can be drawn into with blending.
-    [[nodiscard]] virtual bool canBlendInto(PixelFormat format) const noexcept = 0;
 
     // The seconds the GPU took for the last frame it finished, where the API measures it.
     [[nodiscard]] virtual std::optional<double> getGpuFrameSeconds() const noexcept = 0;
     [[nodiscard]] virtual std::vector<Pool> getPools() const = 0;
+
+    // Whether the device stopped working, such as after a reset of the GPU or a lost context, after which the platform creates a new device and the app starts again.
+    [[nodiscard]] virtual bool isLost() const noexcept = 0;
 
     [[nodiscard]] virtual Buffer makeBuffer(const BufferDesc& desc) = 0;
     [[nodiscard]] virtual Image makeImage(const ImageDesc& desc) = 0;
@@ -420,6 +568,7 @@ class Device {
     // Starts compiling the stages of a program on the I/O pool where the API compiles them when the program is made, so making it later waits less. It may run on any thread, and copies what it needs from the description.
     virtual void prepareProgram(const ProgramDesc& desc, core::JobSystem& jobs) = 0;
 
+    // Destroys an object once the frames in flight that use it finished on the GPU.
     virtual void destroy(Buffer buffer) noexcept = 0;
     virtual void destroy(Image image) noexcept = 0;
     virtual void destroy(Sampler sampler) noexcept = 0;
@@ -438,11 +587,24 @@ class Device {
     virtual void applyPipeline(Pipeline pipeline) = 0;
     virtual void applyBindings(const Bindings& bindings) = 0;
     virtual void applyUniforms(int slot, std::span<const std::byte> data) = 0;
+    virtual void applyStencilReference(std::uint8_t value) = 0;
+    virtual void applyBlendColor(math::Color value) = 0;
     virtual void draw(int first, int count, int instances) = 0;
     virtual void endPass() = 0;
 
-    // Submits the passes of the frame.
+    // Names the commands until the matching pop in the captures and traces of GPU debuggers.
+    virtual void pushDebugGroup(std::string_view name) = 0;
+    virtual void popDebugGroup() = 0;
+
+    // Submits the passes of the frame and presents the swapchain when a pass drew into it.
     virtual void commit() = 0;
+
+    // Makes the swapchain follow a new size of the drawable in pixels, from the next frame.
+    virtual void resizeSurface(int width, int height) = 0;
+
+    // Lets go of the surface while the platform has none, such as an Android app in the background, and takes the new one when it comes back, keeping every object the device made. A frame without a surface records nothing into the swapchain.
+    virtual void detachSurface() = 0;
+    virtual void attachSurface(const Surface& surface) = 0;
 
     // Starts copying the pixels of a render target, which must come after the frame that renders it was committed.
     [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;
