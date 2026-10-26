@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include "core/Base64.hpp"
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/core/JsonValidator.hpp"
 
@@ -97,23 +98,35 @@ gpu::Device::SamplerType ShaderResource::readSamplerType(const core::Json& value
     throw std::invalid_argument(std::format("Shaders have no \"{}\" samplers.", type));
 }
 
-// Every slot the program declares needs a binding number in every language.
-std::vector<std::pair<int, int>> ShaderResource::readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind) {
-    std::vector<std::pair<int, int>> bindings;
+int ShaderResource::readNumber(const core::Json& value, std::string_view what, std::string_view kind, int slot) {
+    const auto number = value.get<std::int64_t>();
+    if (number < 0 || number > 255) {
+        throw std::invalid_argument(std::format("The {} {} of the {} at slot {} is out of range.", what, number, kind, slot));
+    }
+    return static_cast<int>(number);
+}
+
+// Every slot the program declares needs a binding in every language. SPIR-V names the descriptor set and the binding of each slot, WGSL places the uniform blocks in the bind group 0 and the textures and samplers in 1, and the other languages have no sets.
+std::vector<ShaderResource::Binding> ShaderResource::readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind, gpu::Device::Language language) {
+    std::vector<Binding> bindings;
     if (slots.empty()) {
         return bindings;
     }
-    const core::Json& numbers = target.at(key);
+    const bool images = std::string_view(key) != "blocks";
+    const int group = language == gpu::Device::Language::Wgsl && images ? 1 : 0;
+    const core::Json& entries = target.at(key);
     for (const int slot : slots) {
         const std::string name = std::to_string(slot);
-        if (!numbers.contains(name)) {
+        if (!entries.contains(name)) {
             throw std::invalid_argument(std::format("The {} at slot {} has no binding number.", kind, slot));
         }
-        const auto binding = numbers.at(name).get<std::int64_t>();
-        if (binding < 0 || binding > 255) {
-            throw std::invalid_argument(std::format("The binding number {} of the {} at slot {} is out of range.", binding, kind, slot));
+        const core::Json& entry = entries.at(name);
+        if (language != gpu::Device::Language::Spirv) {
+            bindings.push_back({.slot = slot, .binding = readNumber(entry, "binding number", kind, slot), .set = group});
+            continue;
         }
-        bindings.emplace_back(slot, static_cast<int>(binding));
+        core::JsonValidator::requireKnownKeys(entry, {"set", "binding"}, "a binding");
+        bindings.push_back({.slot = slot, .binding = readNumber(entry.at("binding"), "binding number", kind, slot), .set = readNumber(entry.at("set"), "descriptor set", kind, slot)});
     }
     return bindings;
 }
@@ -202,15 +215,35 @@ ShaderResource::ProgramInfo ShaderResource::readProgram(const std::string& progr
                 read.glslBlocks.push_back({.slot = block.slot, .name = flattened.at("name").get<std::string>(), .integers = type == "ivec4", .count = count});
             }
         } else {
-            read.blockBindings = readBindings(target, "blocks", blockSlots, "uniform block");
+            read.blockBindings = readBindings(target, "blocks", blockSlots, "uniform block", *language);
         }
         if (!glsl) {
-            read.textureBindings = readBindings(target, "textures", textureSlots, "texture");
-            read.samplerBindings = readBindings(target, "samplers", samplerSlots, "sampler");
+            read.textureBindings = readBindings(target, "textures", textureSlots, "texture", *language);
+            read.samplerBindings = readBindings(target, "samplers", samplerSlots, "sampler", *language);
         }
         info.targets[static_cast<std::size_t>(*language)] = std::move(read);
     }
     return info;
+}
+
+// The stages of the SPIR-V target name sources that hold the Base64 text of their modules, which are decoded once, when the package is read.
+void ShaderResource::readModules(const ProgramInfo& program) {
+    const std::optional<Target>& target = program.targets[static_cast<std::size_t>(gpu::Device::Language::Spirv)];
+    if (!target) {
+        return;
+    }
+    for (const std::size_t source : {target->vertex.source, target->fragment.source}) {
+        if (modules.contains(source)) {
+            continue;
+        }
+        std::optional<std::vector<std::uint8_t>> decoded = core::Base64::decode(sources[source]);
+        if (!decoded || decoded->empty() || decoded->size() % 4 != 0) {
+            throw std::invalid_argument(std::format("The source {} is not the Base64 text of a SPIR-V module.", source));
+        }
+        std::vector<std::byte>& module = modules[source];
+        module.resize(decoded->size());
+        std::ranges::transform(*decoded, module.begin(), [](std::uint8_t value) { return static_cast<std::byte>(value); });
+    }
 }
 
 // Materials fill the fragment blocks that the shader library does not own, which every program of the package reads with the same slot and size, and bind the textures it does not own.
@@ -274,6 +307,7 @@ void ShaderResource::read(const core::Json& document) {
     for (const auto& [program, value] : entries.items()) {
         ProgramInfo info = readProgram(program, value);
         readMaterialBindings(info);
+        readModules(info);
         programs.emplace(program, std::move(info));
     }
 }
@@ -286,9 +320,16 @@ const ShaderResource::ProgramInfo& ShaderResource::getInfo(std::string_view prog
     return found->second;
 }
 
-int ShaderResource::findBinding(const std::vector<std::pair<int, int>>& bindings, int slot) noexcept {
-    const auto found = std::ranges::find(bindings, slot, &std::pair<int, int>::first);
-    return found == bindings.end() ? 0 : found->second;
+ShaderResource::Binding ShaderResource::findBinding(const std::vector<Binding>& bindings, int slot) noexcept {
+    const auto found = std::ranges::find(bindings, slot, &Binding::slot);
+    return found == bindings.end() ? Binding{.slot = slot} : *found;
+}
+
+gpu::Device::StageCode ShaderResource::describeStage(const StageCode& stage, gpu::Device::Language language) const {
+    if (language == gpu::Device::Language::Spirv) {
+        return {.bytecode = modules.at(stage.source), .entry = stage.entry};
+    }
+    return {.source = sources[stage.source], .entry = stage.entry, .profile = stage.profile};
 }
 
 void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language language, std::string_view label, Described& described) const {
@@ -303,7 +344,9 @@ void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language 
     for (const Block& block : program.blocks) {
         gpu::Device::BlockBinding binding{.slot = block.slot, .stage = block.stage, .size = block.size};
         if (target) {
-            binding.binding = findBinding(target->blockBindings, block.slot);
+            const Binding found = findBinding(target->blockBindings, block.slot);
+            binding.binding = found.binding;
+            binding.set = found.set;
             if (const auto glsl = std::ranges::find(target->glslBlocks, block.slot, &GlslBlock::slot); glsl != target->glslBlocks.end()) {
                 binding.glslName = glsl->name;
                 binding.glslIntegers = glsl->integers;
@@ -313,10 +356,12 @@ void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language 
         described.blocks.push_back(binding);
     }
     for (const TextureInfo& texture : program.textures) {
-        described.textures.push_back({.slot = texture.slot, .stage = texture.stage, .type = texture.type, .sampleType = texture.sampleType, .binding = target ? findBinding(target->textureBindings, texture.slot) : 0});
+        const Binding found = target ? findBinding(target->textureBindings, texture.slot) : Binding{};
+        described.textures.push_back({.slot = texture.slot, .stage = texture.stage, .type = texture.type, .sampleType = texture.sampleType, .binding = found.binding, .set = found.set});
     }
     for (const SamplerInfo& sampler : program.samplers) {
-        described.samplers.push_back({.slot = sampler.slot, .stage = sampler.stage, .type = sampler.type, .binding = target ? findBinding(target->samplerBindings, sampler.slot) : 0});
+        const Binding found = target ? findBinding(target->samplerBindings, sampler.slot) : Binding{};
+        described.samplers.push_back({.slot = sampler.slot, .stage = sampler.stage, .type = sampler.type, .binding = found.binding, .set = found.set});
     }
     for (const Pair& pair : program.pairs) {
         described.pairs.push_back({.stage = pair.stage, .texture = pair.texture, .sampler = pair.sampler, .glslName = pair.name});
@@ -329,8 +374,8 @@ void ShaderResource::describe(const ProgramInfo& program, gpu::Device::Language 
     described.desc.pairs = described.pairs;
     described.desc.label = label;
     if (target) {
-        described.desc.vertex = {.source = sources[target->vertex.source], .entry = target->vertex.entry, .profile = target->vertex.profile};
-        described.desc.fragment = {.source = sources[target->fragment.source], .entry = target->fragment.entry, .profile = target->fragment.profile};
+        described.desc.vertex = describeStage(target->vertex, language);
+        described.desc.fragment = describeStage(target->fragment, language);
     }
 }
 

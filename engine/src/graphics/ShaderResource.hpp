@@ -25,6 +25,9 @@ namespace haylen::graphics {
 
 // The contents of a shader package that the Haylen shader compiler writes: the reflection and the code of every program for every shader language, read and checked once, and the GPU programs and pipelines made from them on the frame thread, which go to the device graveyard when the contents change or the last handle goes away.
 struct ShaderResource {
+    // The names of the shader languages as the package writes them, in the order of `gpu::Device::Language`, the first naming none.
+    static constexpr std::array<std::string_view, 9> kLanguageNames{"", "msl-macos", "msl-ios", "msl-ios-simulator", "hlsl5", "glsl430", "glsl300es", "wgsl", "spirv"};
+
     struct StageCode {
         std::size_t source = 0;
         std::string entry;
@@ -39,13 +42,20 @@ struct ShaderResource {
         int count = 0;
     };
 
-    // The code of a program in one shader language, with the binding number that the language gives every slot.
+    // The binding number that a language gives a slot, and the descriptor set or bind group that holds it where the language has them.
+    struct Binding {
+        int slot = 0;
+        int binding = 0;
+        int set = 0;
+    };
+
+    // The code of a program in one shader language, with the binding of every slot.
     struct Target {
         StageCode vertex;
         StageCode fragment;
-        std::vector<std::pair<int, int>> blockBindings;
-        std::vector<std::pair<int, int>> textureBindings;
-        std::vector<std::pair<int, int>> samplerBindings;
+        std::vector<Binding> blockBindings;
+        std::vector<Binding> textureBindings;
+        std::vector<Binding> samplerBindings;
         std::vector<GlslBlock> glslBlocks;
     };
 
@@ -91,7 +101,7 @@ struct ShaderResource {
         std::vector<SamplerInfo> samplers;
         std::vector<Pair> pairs;
         int outputs = 1;
-        std::array<std::optional<Target>, 8> targets;
+        std::array<std::optional<Target>, kLanguageNames.size()> targets;
 
         [[nodiscard]] const Attribute* findAttribute(std::string_view attribute) const noexcept;
     };
@@ -105,9 +115,6 @@ struct ShaderResource {
         std::vector<std::pair<int, int>> samplers;
     };
 
-    // The names of the shader languages as the package writes them, in the order of `gpu::Device::Language`, the first naming none.
-    static constexpr std::array<std::string_view, 8> kLanguageNames{"", "msl-macos", "msl-ios", "msl-ios-simulator", "hlsl5", "glsl430", "glsl300es", "wgsl"};
-
     // The uniform blocks and textures of the shader library, which the engine fills itself and materials never list.
     static constexpr std::array<std::string_view, 2> kEngineBlocks{"haylen_vs_params", "haylen_lit_params"};
     static constexpr std::array<std::string_view, 8> kEngineTextures{"sprite_texture", "sprite_texture_1", "sprite_texture_2", "sprite_texture_3", "sprite_texture_4", "sprite_texture_5", "sprite_texture_6", "sprite_texture_7"};
@@ -117,6 +124,9 @@ struct ShaderResource {
     std::vector<Shader::Uniform> uniforms;
     std::vector<Shader::TextureSlot> textures;
     std::vector<std::string> sources;
+
+    // The SPIR-V modules of the package, which its sources hold as Base64 text, by the index of their source.
+    std::unordered_map<std::size_t, std::vector<std::byte>> modules;
     std::unordered_map<std::string, ProgramInfo> programs;
     std::uint32_t version = 1;
     std::unordered_map<std::string, Compiled> compiled;
@@ -158,11 +168,15 @@ struct ShaderResource {
     [[nodiscard]] static gpu::Device::TextureType readTextureType(const core::Json& value);
     [[nodiscard]] static gpu::Device::SampleType readSampleType(const core::Json& value);
     [[nodiscard]] static gpu::Device::SamplerType readSamplerType(const core::Json& value);
-    [[nodiscard]] static int findBinding(const std::vector<std::pair<int, int>>& bindings, int slot) noexcept;
-    [[nodiscard]] static std::vector<std::pair<int, int>> readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind);
+    [[nodiscard]] static Binding findBinding(const std::vector<Binding>& bindings, int slot) noexcept;
+    [[nodiscard]] static int readNumber(const core::Json& value, std::string_view what, std::string_view kind, int slot);
+    [[nodiscard]] static std::vector<Binding> readBindings(const core::Json& target, const char* key, std::span<const int> slots, std::string_view kind, gpu::Device::Language language);
     [[nodiscard]] StageCode readStageCode(const core::Json& value) const;
     [[nodiscard]] ProgramInfo readProgram(const std::string& program, const core::Json& value) const;
     void readMaterialBindings(const ProgramInfo& program);
+    void readModules(const ProgramInfo& program);
+
+    [[nodiscard]] gpu::Device::StageCode describeStage(const StageCode& stage, gpu::Device::Language language) const;
 
     // Describes a program for a device, or for the language of none, which gives no code.
     void describe(const ProgramInfo& program, gpu::Device::Language language, std::string_view label, Described& described) const;

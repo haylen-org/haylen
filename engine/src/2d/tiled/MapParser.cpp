@@ -5,12 +5,12 @@
 
 #include <algorithm>
 #include <array>
-#include <cctype>
 #include <cmath>
 #include <ranges>
 #include <stdexcept>
 #include <utility>
 
+#include "core/Base64.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/math/Math.hpp"
 
@@ -67,35 +67,6 @@ Map MapParser::parse(const core::Json& document, std::string_view file, const Ma
 
 std::string MapParser::resolve(std::string_view directory, std::string_view relative) {
     return relative.empty() ? std::string{} : io::Path::join(directory, relative);
-}
-
-std::vector<std::uint8_t> MapParser::decodeBase64(std::string_view text) {
-    std::array<int, 256> table{};
-    table.fill(-1);
-    const std::string_view alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-    for (std::size_t index = 0; index < alphabet.size(); ++index) {
-        table[static_cast<unsigned char>(alphabet[index])] = static_cast<int>(index);
-    }
-
-    std::vector<std::uint8_t> bytes;
-    std::uint32_t buffer = 0;
-    int bits = 0;
-    for (const char character : text) {
-        if (character == '=' || std::isspace(static_cast<unsigned char>(character)) != 0) {
-            continue;
-        }
-        const int value = table[static_cast<unsigned char>(character)];
-        if (value < 0) {
-            throw std::invalid_argument("Tile layer data is not valid base64.");
-        }
-        buffer = (buffer << 6U) | static_cast<std::uint32_t>(value);
-        bits += 6;
-        if (bits >= 8) {
-            bits -= 8;
-            bytes.push_back(static_cast<std::uint8_t>((buffer >> static_cast<unsigned>(bits)) & 0xFFU));
-        }
-    }
-    return bytes;
 }
 
 std::vector<std::uint8_t> MapParser::inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected) {
@@ -175,7 +146,11 @@ std::vector<std::uint32_t> MapParser::readTileData(const core::Json& layer, cons
         return gids;
     }
 
-    std::vector<std::uint8_t> bytes = decodeBase64(data.get<std::string>());
+    std::optional<std::vector<std::uint8_t>> decoded = core::Base64::decode(data.get_ref<const std::string&>());
+    if (!decoded) {
+        throw std::invalid_argument("Tile layer data is not valid base64.");
+    }
+    std::vector<std::uint8_t> bytes = std::move(*decoded);
     const std::string compression = layer.value("compression", std::string{});
     if (compression == "zlib" || compression == "gzip") {
         bytes = inflate(bytes, compression == "gzip", cells * 4);

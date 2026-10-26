@@ -3,6 +3,7 @@
 #include <memory>
 #include <utility>
 
+#include "gpu/ImageInfo.hpp"
 #include "graphics/RenderTargetResource.hpp"
 #include "graphics/TextureResource.hpp"
 
@@ -56,7 +57,7 @@ gpu::Device::Image DeviceState::createTextureImage(const Image& image, bool mipm
         pixels.push_back(std::as_bytes(level.getPixels()));
         bytes += level.getPixels().size();
     }
-    return gpu->makeImage({.width = image.getWidth(), .height = image.getHeight(), .format = gpu::Device::PixelFormat::Rgba8, .kind = gpu::Device::ImageKind::Texture, .levels = pixels, .label = "haylen-texture"});
+    return gpu->makeImage({.width = image.getWidth(), .height = image.getHeight(), .mipLevels = static_cast<int>(pixels.size()), .format = gpu::Device::PixelFormat::Rgba8, .kind = gpu::Device::ImageKind::Texture, .levels = pixels, .label = "haylen-texture"});
 }
 
 gpu::Device::Image DeviceState::createDynamicImage(int width, int height, gpu::Device::PixelFormat format) {
@@ -88,13 +89,7 @@ void DeviceState::stagePixels(const std::shared_ptr<TextureResource>& resource, 
 }
 
 std::size_t DeviceState::getImageBytes(int width, int height, gpu::Device::PixelFormat format) {
-    std::size_t pixel = 4;
-    if (format == gpu::Device::PixelFormat::R8) {
-        pixel = 1;
-    } else if (format == gpu::Device::PixelFormat::Rgba16Float) {
-        pixel = 8;
-    }
-    return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * pixel;
+    return static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * gpu::ImageInfo::getBytesPerPixel(format);
 }
 
 RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options) {
@@ -107,7 +102,7 @@ RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device:
     texture->id = nextTextureId++;
     texture->options = options;
     texture->format = format;
-    texture->flipped = !gpu->isOriginTopLeft();
+    texture->flipped = !gpu->getCapabilities().originTopLeft;
     texture->graveyard = graveyard;
 
     auto resource = std::make_shared<RenderTargetResource>();

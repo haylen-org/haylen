@@ -116,7 +116,9 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     state->loadPrograms();
 
     // Light maps hold light in floating point where the device renders and blends it, so lights can brighten the scene beyond its unlit colors.
-    state->lightFormat = device.getGpu().canBlendInto(gpu::Device::PixelFormat::Rgba16Float) ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
+    const gpu::Device::Capabilities& capabilities = device.getGpu().getCapabilities();
+    const auto halfFloat = static_cast<std::size_t>(gpu::Device::PixelFormat::Rgba16Float);
+    state->lightFormat = capabilities.renderFormats[halfFloat] && capabilities.blendableFormats[halfFloat] ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
 
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});
     state->metaball = device.createTexture(graphics::Image(RendererState::kMetaballTextureSize, RendererState::kMetaballTextureSize, metaballKernel(RendererState::kMetaballTextureSize)), {.filter = graphics::Texture::Filter::Linear});

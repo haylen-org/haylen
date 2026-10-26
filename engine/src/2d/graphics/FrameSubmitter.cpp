@@ -621,7 +621,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
         .fade = {post.fade.r, post.fade.g, post.fade.b, post.fade.a},
         .grading = {post.saturation, post.brightness, post.contrast, grades ? post.colorLutStrength : 0.0F},
         .vignette = {post.vignetteStrength, post.vignetteRadius, post.vignetteSoftness, blooms ? post.bloomStrength : 0.0F},
-        .flags = {lit ? 1.0F : 0.0F, state.getGpu().isOriginTopLeft() ? 0.0F : 1.0F, stageFlag, distorts ? 1.0F : 0.0F},
+        .flags = {lit ? 1.0F : 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, stageFlag, distorts ? 1.0F : 0.0F},
         .view = {canvas.viewSize.x, canvas.viewSize.y, post.distortion, post.chromaticAberration},
         .shape = {post.pixelate, grades ? post.colorLut.getSize().y : 0.0F, 0.0F, 0.0F},
         .visionRed = {vision[0][0], vision[0][1], vision[0][2], 0.0F},
@@ -645,7 +645,7 @@ void FrameSubmitter::filter(const graphics::RenderTarget& source, const graphics
 
     const bool shrinks = step.isZero();
     const FilterParams params{
-        .settings = {shrinks ? 0.0F : 1.0F, threshold, state.getGpu().isOriginTopLeft() ? 0.0F : 1.0F, 0.0F},
+        .settings = {shrinks ? 0.0F : 1.0F, threshold, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F},
         .offset = {step.x / size.x, step.y / size.y, 0.5F / size.x, 0.5F / size.y},
     };
     applyBlock(0, params);
@@ -661,7 +661,7 @@ void FrameSubmitter::copy(const graphics::RenderTarget& source, const graphics::
     bindings.textures[RendererState::kFilterSource] = source.getTexture().getResource()->image;
     bindings.samplers[0] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Nearest});
     state.getGpu().applyBindings(bindings);
-    const FilterParams params{.settings = {2.0F, 0.0F, state.getGpu().isOriginTopLeft() ? 0.0F : 1.0F, 0.0F}, .offset = {}};
+    const FilterParams params{.settings = {2.0F, 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F}, .offset = {}};
     applyBlock(0, params);
     state.getGpu().draw(0, 3, 1);
     ++state.stats.drawCalls;

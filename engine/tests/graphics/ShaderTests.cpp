@@ -224,7 +224,7 @@ TEST_F(ShaderTest, RejectsProgramsAndReflectionThatBreakTheGpuLimits) {
     EXPECT_EQ(parseError({{program + "/textures/0/sampleType", "half"}}), malformed + "Shaders have no textures that sample \"half\".");
     EXPECT_EQ(parseError({{program + "/samplers/0/type", "anisotropic"}}), malformed + "Shaders have no \"anisotropic\" samplers.");
     EXPECT_EQ(parseError({{program + "/blocks/0/members/0/type", "mat3"}}), malformed + "The uniform \"tint\" has the type \"mat3\", which materials do not set.");
-    EXPECT_EQ(parseError({{program + "/targets/spirv", core::Json::object()}}), malformed + "The program \"sprite\" has code for \"spirv\", which is not a shader language of the engine.");
+    EXPECT_EQ(parseError({{program + "/targets/dxil", core::Json::object()}}), malformed + "The program \"sprite\" has code for \"dxil\", which is not a shader language of the engine.");
 
     // Blocks hold whole vectors, OpenGL reads each one as an array that fills it, and every other language binds every slot.
     EXPECT_EQ(parseError({{program + "/blocks/0/size", 24}}), malformed + "The uniform block \"params\" holds 24 bytes, which is not a multiple of 16.");
@@ -284,6 +284,40 @@ TEST_F(ShaderTest, NamesTheLanguageAProgramLacks) {
     shader.getResource()->prepare(metal, jobs);
     EXPECT_EQ(metal.getPreparedPrograms(), 1);
     EXPECT_NE(shader.getResource()->getProgram(metal, "sprite").program.id, 0U);
+}
+
+// The SPIR-V target holds each module as the Base64 text of its words and names the descriptor set and the binding of every slot, which reach the device as they are.
+TEST_F(ShaderTest, DecodesTheSpirvModulesAndTheirDescriptorSets) {
+    const std::string program = "/programs/sprite";
+    core::Json document = core::Json::parse(kSmallShader);
+    document["sources"].push_back("AwIjBwAAAQA=");
+    document[core::Json::json_pointer(program + "/targets/spirv")] = core::Json::parse(R"({"vertex": {"source": 1, "entry": "main"}, "fragment": {"source": 1, "entry": "main"},
+        "blocks": {"1": {"set": 0, "binding": 1}}, "textures": {"1": {"set": 1, "binding": 1}}, "samplers": {"1": {"set": 1, "binding": 65}}})");
+    const graphics::Shader shader = graphics::Shader::parse(test::TestFiles::bytes(document.dump()));
+
+    gpu::NullDevice vulkan(gpu::Device::Language::Spirv);
+    const gpu::NullDevice::ProgramRecord& record = vulkan.getProgramRecord(shader.getResource()->getProgram(vulkan, "sprite").program);
+    EXPECT_EQ(record.vertexBytes, 8U);
+    EXPECT_EQ(record.fragmentBytes, 8U);
+    ASSERT_EQ(record.blocks.size(), 1U);
+    EXPECT_EQ(record.blocks.front().set, 0);
+    EXPECT_EQ(record.blocks.front().binding, 1);
+    ASSERT_EQ(record.textures.size(), 1U);
+    EXPECT_EQ(record.textures.front().set, 1);
+    EXPECT_EQ(record.textures.front().binding, 1);
+    ASSERT_EQ(record.samplers.size(), 1U);
+    EXPECT_EQ(record.samplers.front().set, 1);
+    EXPECT_EQ(record.samplers.front().binding, 65);
+
+    // The cases below give the small shader one source, which the SPIR-V target reads too.
+    core::Json spirv = document.at(core::Json::json_pointer(program + "/targets/spirv"));
+    spirv["vertex"]["source"] = 0;
+    spirv["fragment"]["source"] = 0;
+    const std::string malformed = "The shader file is malformed: ";
+    EXPECT_EQ(parseError({{"/sources/0", "AwIj"}, {program + "/targets/spirv", spirv}}), malformed + "The source 0 is not the Base64 text of a SPIR-V module.");
+    EXPECT_EQ(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), "");
+    spirv["samplers"]["1"] = 65;
+    EXPECT_NE(parseError({{"/sources/0", "AwIjBwAAAQA="}, {program + "/targets/spirv", spirv}}), "");
 }
 
 TEST_F(ShaderTest, ReportsAFullShaderPool) {

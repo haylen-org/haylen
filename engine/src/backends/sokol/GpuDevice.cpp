@@ -1,5 +1,6 @@
 #include "backends/sokol/GpuDevice.hpp"
 
+#include <algorithm>
 #include <bit>
 #include <chrono>
 #include <deque>
@@ -10,6 +11,7 @@
 #include "backends/sokol/Adapter.hpp"
 #include "backends/sokol/ImageReadback.hpp"
 #include "backends/sokol/Precompiler.hpp"
+#include "gpu/ImageInfo.hpp"
 #include "haylen/core/Log.hpp"
 
 namespace haylen::sokol {
@@ -32,6 +34,7 @@ GpuDevice::GpuDevice(Setup setup) : swapchain(std::move(setup.swapchain)) {
     if (!sg_isvalid()) {
         throw std::runtime_error("The graphics device could not be initialized.");
     }
+    capabilities = queryCapabilities();
 }
 
 GpuDevice::~GpuDevice() {
@@ -45,31 +48,63 @@ double GpuDevice::millisecondsSince(std::chrono::steady_clock::time_point start)
     return std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
 }
 
+// Sokol reads its limits, its features and what each pixel format does from the graphics API, and measures the GPU only on Metal. It names no largest sample count, so a device that multisamples takes the four samples that every such graphics API guarantees, and its formats of depth hold no 16-bit depth, which no image of this device then has.
+gpu::Device::Capabilities GpuDevice::queryCapabilities() noexcept {
+    const sg_limits limits = sg_query_limits();
+    const sg_features features = sg_query_features();
+    const sg_backend backend = sg_query_backend();
+    Capabilities made{.maxImageSize = limits.max_image_size_2d, .maxArrayLayers = limits.max_image_array_layers, .originTopLeft = features.origin_top_left, .independentBlend = features.mrt_independent_blend_state && features.mrt_independent_write_mask, .multisampledRenderTargets = true};
+    made.gpuTiming = backend == SG_BACKEND_METAL_MACOS || backend == SG_BACKEND_METAL_IOS || backend == SG_BACKEND_METAL_SIMULATOR;
+    made.maxSampleCount = sg_query_pixelformat(SG_PIXELFORMAT_RGBA8).msaa ? 4 : 1;
+
+    for (std::size_t format = 0; format < made.textureFormats.size(); ++format) {
+        const sg_pixel_format pixelFormat = toPixelFormat(static_cast<PixelFormat>(format));
+        if (pixelFormat == SG_PIXELFORMAT_NONE) {
+            continue;
+        }
+        const sg_pixelformat_info info = sg_query_pixelformat(pixelFormat);
+        made.textureFormats[format] = info.sample;
+        made.renderFormats[format] = info.render;
+        made.blendableFormats[format] = info.render && info.blend && !info.depth;
+    }
+    return made;
+}
+
 sg_pixel_format GpuDevice::toPixelFormat(PixelFormat format) noexcept {
     switch (format) {
     case PixelFormat::R8:
         return SG_PIXELFORMAT_R8;
+    case PixelFormat::Rg8:
+        return SG_PIXELFORMAT_RG8;
     case PixelFormat::Rgba8:
         return SG_PIXELFORMAT_RGBA8;
-    case PixelFormat::R32Float:
-        return SG_PIXELFORMAT_R32F;
+    case PixelFormat::Rgba8Srgb:
+        return SG_PIXELFORMAT_SRGB8A8;
+    case PixelFormat::Bgra8:
+        return SG_PIXELFORMAT_BGRA8;
+    case PixelFormat::Rgb10A2:
+        return SG_PIXELFORMAT_RGB10A2;
+    case PixelFormat::R16Float:
+        return SG_PIXELFORMAT_R16F;
+    case PixelFormat::Rg16Float:
+        return SG_PIXELFORMAT_RG16F;
     case PixelFormat::Rgba16Float:
         return SG_PIXELFORMAT_RGBA16F;
-    }
-    return SG_PIXELFORMAT_RGBA8;
-}
-
-std::size_t GpuDevice::getBytesPerPixel(PixelFormat format) noexcept {
-    switch (format) {
-    case PixelFormat::R8:
-        return 1;
-    case PixelFormat::Rgba8:
     case PixelFormat::R32Float:
-        return 4;
-    case PixelFormat::Rgba16Float:
-        return 8;
+        return SG_PIXELFORMAT_R32F;
+    case PixelFormat::Rg32Float:
+        return SG_PIXELFORMAT_RG32F;
+    case PixelFormat::Rgba32Float:
+        return SG_PIXELFORMAT_RGBA32F;
+    case PixelFormat::Depth32Float:
+        return SG_PIXELFORMAT_DEPTH;
+    case PixelFormat::Depth24Stencil8:
+    case PixelFormat::Depth32FloatStencil8:
+        return SG_PIXELFORMAT_DEPTH_STENCIL;
+    case PixelFormat::Depth16:
+        break;
     }
-    return 4;
+    return SG_PIXELFORMAT_NONE;
 }
 
 sg_vertex_format GpuDevice::toVertexFormat(VertexFormat format) noexcept {
@@ -84,10 +119,20 @@ sg_vertex_format GpuDevice::toVertexFormat(VertexFormat format) noexcept {
         return SG_VERTEXFORMAT_FLOAT4;
     case VertexFormat::Half2:
         return SG_VERTEXFORMAT_HALF2;
+    case VertexFormat::Half4:
+        return SG_VERTEXFORMAT_HALF4;
+    case VertexFormat::UByte4:
+        return SG_VERTEXFORMAT_UBYTE4;
     case VertexFormat::UByte4Normalized:
         return SG_VERTEXFORMAT_UBYTE4N;
+    case VertexFormat::Short2:
+        return SG_VERTEXFORMAT_SHORT2;
+    case VertexFormat::Short2Normalized:
+        return SG_VERTEXFORMAT_SHORT2N;
     case VertexFormat::UShort4Normalized:
         return SG_VERTEXFORMAT_USHORT4N;
+    case VertexFormat::UInt:
+        return SG_VERTEXFORMAT_UINT;
     }
     return SG_VERTEXFORMAT_FLOAT;
 }
@@ -114,6 +159,12 @@ sg_blend_factor GpuDevice::toBlendFactor(BlendFactor factor) noexcept {
         return SG_BLENDFACTOR_DST_ALPHA;
     case BlendFactor::OneMinusDestinationAlpha:
         return SG_BLENDFACTOR_ONE_MINUS_DST_ALPHA;
+    case BlendFactor::SourceAlphaSaturated:
+        return SG_BLENDFACTOR_SRC_ALPHA_SATURATED;
+    case BlendFactor::BlendColor:
+        return SG_BLENDFACTOR_BLEND_COLOR;
+    case BlendFactor::OneMinusBlendColor:
+        return SG_BLENDFACTOR_ONE_MINUS_BLEND_COLOR;
     }
     return SG_BLENDFACTOR_ONE;
 }
@@ -201,6 +252,110 @@ sg_sampler_type GpuDevice::toSamplerType(SamplerType type) noexcept {
     return SG_SAMPLERTYPE_FILTERING;
 }
 
+sg_primitive_type GpuDevice::toPrimitive(Primitive primitive) noexcept {
+    switch (primitive) {
+    case Primitive::Triangles:
+        return SG_PRIMITIVETYPE_TRIANGLES;
+    case Primitive::TriangleStrip:
+        return SG_PRIMITIVETYPE_TRIANGLE_STRIP;
+    case Primitive::Lines:
+        return SG_PRIMITIVETYPE_LINES;
+    case Primitive::LineStrip:
+        return SG_PRIMITIVETYPE_LINE_STRIP;
+    case Primitive::Points:
+        return SG_PRIMITIVETYPE_POINTS;
+    }
+    return SG_PRIMITIVETYPE_TRIANGLES;
+}
+
+sg_index_type GpuDevice::toIndexType(IndexType type) noexcept {
+    switch (type) {
+    case IndexType::None:
+        return SG_INDEXTYPE_NONE;
+    case IndexType::UInt16:
+        return SG_INDEXTYPE_UINT16;
+    case IndexType::UInt32:
+        return SG_INDEXTYPE_UINT32;
+    }
+    return SG_INDEXTYPE_NONE;
+}
+
+sg_compare_func GpuDevice::toCompare(CompareFunction function) noexcept {
+    switch (function) {
+    case CompareFunction::Never:
+        return SG_COMPAREFUNC_NEVER;
+    case CompareFunction::Less:
+        return SG_COMPAREFUNC_LESS;
+    case CompareFunction::Equal:
+        return SG_COMPAREFUNC_EQUAL;
+    case CompareFunction::LessEqual:
+        return SG_COMPAREFUNC_LESS_EQUAL;
+    case CompareFunction::Greater:
+        return SG_COMPAREFUNC_GREATER;
+    case CompareFunction::NotEqual:
+        return SG_COMPAREFUNC_NOT_EQUAL;
+    case CompareFunction::GreaterEqual:
+        return SG_COMPAREFUNC_GREATER_EQUAL;
+    case CompareFunction::Always:
+        return SG_COMPAREFUNC_ALWAYS;
+    }
+    return SG_COMPAREFUNC_ALWAYS;
+}
+
+sg_stencil_op GpuDevice::toStencilOperation(StencilOperation operation) noexcept {
+    switch (operation) {
+    case StencilOperation::Keep:
+        return SG_STENCILOP_KEEP;
+    case StencilOperation::Zero:
+        return SG_STENCILOP_ZERO;
+    case StencilOperation::Replace:
+        return SG_STENCILOP_REPLACE;
+    case StencilOperation::IncrementClamp:
+        return SG_STENCILOP_INCR_CLAMP;
+    case StencilOperation::DecrementClamp:
+        return SG_STENCILOP_DECR_CLAMP;
+    case StencilOperation::Invert:
+        return SG_STENCILOP_INVERT;
+    case StencilOperation::IncrementWrap:
+        return SG_STENCILOP_INCR_WRAP;
+    case StencilOperation::DecrementWrap:
+        return SG_STENCILOP_DECR_WRAP;
+    }
+    return SG_STENCILOP_KEEP;
+}
+
+sg_stencil_face_state GpuDevice::toStencilFace(const StencilFace& face) noexcept {
+    return {.compare = toCompare(face.compare), .fail_op = toStencilOperation(face.fail), .depth_fail_op = toStencilOperation(face.depthFail), .pass_op = toStencilOperation(face.pass)};
+}
+
+sg_cull_mode GpuDevice::toCullMode(CullMode mode) noexcept {
+    switch (mode) {
+    case CullMode::None:
+        return SG_CULLMODE_NONE;
+    case CullMode::Front:
+        return SG_CULLMODE_FRONT;
+    case CullMode::Back:
+        return SG_CULLMODE_BACK;
+    }
+    return SG_CULLMODE_NONE;
+}
+
+sg_load_action GpuDevice::toLoadAction(Load load) noexcept {
+    switch (load) {
+    case Load::Clear:
+        return SG_LOADACTION_CLEAR;
+    case Load::Keep:
+        return SG_LOADACTION_LOAD;
+    case Load::DontCare:
+        return SG_LOADACTION_DONTCARE;
+    }
+    return SG_LOADACTION_CLEAR;
+}
+
+sg_store_action GpuDevice::toStoreAction(Store store) noexcept {
+    return store == Store::Store ? SG_STOREACTION_STORE : SG_STOREACTION_DONTCARE;
+}
+
 sg_color GpuDevice::toColor(math::Color color) noexcept {
     return {color.r, color.g, color.b, color.a};
 }
@@ -254,21 +409,17 @@ gpu::Device::Api GpuDevice::getApi() const noexcept {
     return Api::None;
 }
 
+const gpu::Device::Capabilities& GpuDevice::getCapabilities() const noexcept {
+    return capabilities;
+}
+
 std::string GpuDevice::getAdapterName() const {
     return Adapter::getName();
 }
 
-int GpuDevice::getMaxImageSize() const noexcept {
-    return sg_query_limits().max_image_size_2d;
-}
-
-bool GpuDevice::isOriginTopLeft() const noexcept {
-    return sg_query_features().origin_top_left;
-}
-
-bool GpuDevice::canBlendInto(PixelFormat format) const noexcept {
-    const sg_pixelformat_info info = sg_query_pixelformat(toPixelFormat(format));
-    return info.render && info.blend;
+// Sokol reports no reset of the GPU and no loss of its context.
+bool GpuDevice::isLost() const noexcept {
+    return false;
 }
 
 std::optional<double> GpuDevice::getGpuFrameSeconds() const noexcept {
@@ -313,18 +464,23 @@ gpu::Device::Buffer GpuDevice::makeBuffer(const BufferDesc& desc) {
 
 gpu::Device::Image GpuDevice::makeImage(const ImageDesc& desc) {
     sg_image_desc made{};
+    made.type = toImageType(desc.type);
     made.width = desc.width;
     made.height = desc.height;
+    made.num_slices = desc.layers;
+    made.num_mipmaps = desc.mipLevels;
     made.pixel_format = toPixelFormat(desc.format);
+    made.sample_count = desc.sampleCount;
     made.usage.copy_dst = desc.kind == ImageKind::Dynamic;
     made.usage.color_attachment = desc.kind == ImageKind::RenderTarget;
-    made.usage.copy_src = desc.kind == ImageKind::RenderTarget;
-    made.sample_count = 1;
-    if (desc.kind == ImageKind::Texture) {
-        made.num_mipmaps = static_cast<int>(desc.levels.size());
-        for (std::size_t level = 0; level < desc.levels.size(); ++level) {
-            made.data.mip_levels[level] = {.ptr = desc.levels[level].data(), .size = desc.levels[level].size()};
-        }
+    made.usage.resolve_attachment = desc.kind == ImageKind::RenderTarget && desc.sampleCount == 1;
+    made.usage.depth_stencil_attachment = desc.kind == ImageKind::DepthStencil;
+    made.usage.copy_src = desc.kind == ImageKind::RenderTarget && desc.sampleCount == 1;
+    if (made.pixel_format == SG_PIXELFORMAT_NONE) {
+        throw std::runtime_error(std::format("The graphics device has no format for the image \"{}\".", desc.label));
+    }
+    for (std::size_t level = 0; level < desc.levels.size(); ++level) {
+        made.data.mip_levels[level] = {.ptr = desc.levels[level].data(), .size = desc.levels[level].size()};
     }
     const std::string label(desc.label);
     made.label = label.c_str();
@@ -338,16 +494,15 @@ gpu::Device::Image GpuDevice::makeImage(const ImageDesc& desc) {
         throw std::runtime_error(std::format("The graphics device could not create a {}x{} texture.", desc.width, desc.height));
     }
 
-    ImageRecord record{.width = desc.width, .height = desc.height, .format = desc.format};
-    sg_view_desc texture{};
-    texture.texture.image = image;
-    record.texture = sg_make_view(&texture);
-    if (desc.kind == ImageKind::RenderTarget) {
-        sg_view_desc attachment{};
-        attachment.color_attachment.image = image;
-        record.attachment = sg_make_view(&attachment);
+    ImageRecord record{.desc = desc};
+    record.desc.levels = {};
+    record.desc.label = {};
+    if (desc.sampleCount == 1 || sg_query_features().msaa_texture_bindings) {
+        sg_view_desc texture{};
+        texture.texture.image = image;
+        record.texture = sg_make_view(&texture);
     }
-    images.emplace(image.id, record);
+    images.emplace(image.id, std::move(record));
     return {image.id};
 }
 
@@ -358,7 +513,13 @@ gpu::Device::Sampler GpuDevice::makeSampler(const SamplerDesc& desc) {
     made.mipmap_filter = toFilter(desc.mipmap);
     made.wrap_u = toWrap(desc.wrapU);
     made.wrap_v = toWrap(desc.wrapV);
-    made.label = "haylen-sampler";
+    made.wrap_w = toWrap(desc.wrapW);
+    made.min_lod = desc.minLod;
+    made.max_lod = desc.maxLod;
+    made.max_anisotropy = static_cast<std::uint32_t>(desc.maxAnisotropy);
+    made.compare = desc.compare ? toCompare(*desc.compare) : SG_COMPAREFUNC_NEVER;
+    const std::string label(desc.label.empty() ? "haylen-sampler" : desc.label);
+    made.label = label.c_str();
     const sg_sampler sampler = sg_make_sampler(&made);
     if (sampler.id == SG_INVALID_ID) {
         throw std::runtime_error(std::format("The graphics device has no room for another sampler. At most {} samplers can exist at once.", kSamplerPoolSize));
@@ -403,6 +564,7 @@ gpu::Device::Program GpuDevice::makeProgram(const ProgramDesc& desc) {
         target.stage = toStage(texture.stage);
         target.image_type = toImageType(texture.type);
         target.sample_type = toSampleType(texture.sampleType);
+        target.multisampled = texture.multisampled;
         target.hlsl_register_t_n = static_cast<std::uint8_t>(texture.binding);
         target.msl_texture_n = static_cast<std::uint8_t>(texture.binding);
         target.wgsl_group1_binding_n = static_cast<std::uint8_t>(texture.binding);
@@ -444,8 +606,11 @@ gpu::Device::Pipeline GpuDevice::makePipeline(const PipelineDesc& desc) {
     for (const VertexAttribute& attribute : desc.attributes) {
         made.layout.attrs[static_cast<std::size_t>(attribute.location)] = {.buffer_index = attribute.buffer, .offset = attribute.offset, .format = toVertexFormat(attribute.format)};
     }
-    made.primitive_type = desc.primitive == Primitive::Triangles ? SG_PRIMITIVETYPE_TRIANGLES : SG_PRIMITIVETYPE_TRIANGLE_STRIP;
-    made.index_type = desc.indexType == IndexType::UInt32 ? SG_INDEXTYPE_UINT32 : (desc.indexType == IndexType::UInt16 ? SG_INDEXTYPE_UINT16 : SG_INDEXTYPE_NONE);
+    made.primitive_type = toPrimitive(desc.primitive);
+    made.index_type = toIndexType(desc.indexType);
+    made.cull_mode = toCullMode(desc.cullMode);
+    made.face_winding = desc.frontFace == FrontFace::CounterClockwise ? SG_FACEWINDING_CCW : SG_FACEWINDING_CW;
+    made.alpha_to_coverage_enabled = desc.alphaToCoverage;
     made.color_count = static_cast<int>(desc.colors.size());
     for (std::size_t index = 0; index < desc.colors.size(); ++index) {
         const ColorTarget& color = desc.colors[index];
@@ -456,9 +621,12 @@ gpu::Device::Pipeline GpuDevice::makePipeline(const PipelineDesc& desc) {
         target.write_mask = toColorMask(color.writeMask);
         target.blend = {.enabled = color.blend.enabled, .src_factor_rgb = toBlendFactor(color.blend.sourceColor), .dst_factor_rgb = toBlendFactor(color.blend.destinationColor), .op_rgb = toBlendOperation(color.blend.colorOperation), .src_factor_alpha = toBlendFactor(color.blend.sourceAlpha), .dst_factor_alpha = toBlendFactor(color.blend.destinationAlpha), .op_alpha = toBlendOperation(color.blend.alphaOperation)};
     }
+    const DepthStencil& depth = desc.depthStencil;
+    made.depth = {.compare = toCompare(depth.depthCompare), .write_enabled = depth.depthWrite, .bias = depth.depthBias, .bias_slope_scale = depth.depthBiasSlope};
+    made.stencil = {.enabled = depth.stencilEnabled, .front = toStencilFace(depth.stencilFront), .back = toStencilFace(depth.stencilBack), .read_mask = depth.stencilReadMask, .write_mask = depth.stencilWriteMask};
     if (!desc.swapchain) {
-        made.depth.pixel_format = SG_PIXELFORMAT_NONE;
-        made.sample_count = 1;
+        made.depth.pixel_format = depth.format ? toPixelFormat(*depth.format) : SG_PIXELFORMAT_NONE;
+        made.sample_count = desc.sampleCount;
     }
     const std::string label(desc.label);
     made.label = label.c_str();
@@ -487,9 +655,11 @@ void GpuDevice::destroy(Buffer buffer) noexcept {
 void GpuDevice::destroy(Image image) noexcept {
     const auto found = images.find(image.id);
     if (found != images.end()) {
-        sg_destroy_view(found->second.texture);
-        if (found->second.attachment.id != SG_INVALID_ID) {
-            sg_destroy_view(found->second.attachment);
+        if (found->second.texture.id != SG_INVALID_ID) {
+            sg_destroy_view(found->second.texture);
+        }
+        for (const AttachmentView& attachment : found->second.attachments) {
+            sg_destroy_view(attachment.view);
         }
         images.erase(found);
     }
@@ -514,6 +684,32 @@ const GpuDevice::ImageRecord& GpuDevice::getRecord(Image image) const {
         throw std::logic_error(std::format("The image {} does not exist.", image.id));
     }
     return found->second;
+}
+
+// Sokol makes a view for every mip level and layer of an image that a pass renders into, so each is made the first time a pass needs it and kept with the image.
+sg_view GpuDevice::getAttachment(Image image, AttachmentKind kind, int mipLevel, int layer) {
+    const auto found = images.find(image.id);
+    if (found == images.end()) {
+        throw std::logic_error(std::format("The image {} does not exist.", image.id));
+    }
+    std::vector<AttachmentView>& attachments = found->second.attachments;
+    const auto known = std::ranges::find_if(attachments, [&](const AttachmentView& view) { return view.kind == kind && view.mipLevel == mipLevel && view.layer == layer; });
+    if (known != attachments.end()) {
+        return known->view;
+    }
+
+    const sg_image_view_desc target{.image = {image.id}, .mip_level = mipLevel, .slice = layer};
+    sg_view_desc desc{};
+    if (kind == AttachmentKind::Color) {
+        desc.color_attachment = target;
+    } else if (kind == AttachmentKind::Resolve) {
+        desc.resolve_attachment = target;
+    } else {
+        desc.depth_stencil_attachment = target;
+    }
+    const sg_view view = sg_make_view(&desc);
+    attachments.push_back({.kind = kind, .mipLevel = mipLevel, .layer = layer, .view = view});
+    return view;
 }
 
 void GpuDevice::writeBuffer(Buffer buffer, std::size_t offset, std::span<const std::byte> data) {
@@ -567,12 +763,29 @@ void GpuDevice::writeImages(std::span<const ImageWrite> writes) {
         sg_copy_buffer_to_image_desc copy{};
         copy.src.buffer = staging;
         copy.src.offset = offset;
-        copy.src.bytes_per_row = static_cast<int>(static_cast<std::size_t>(record.width) * getBytesPerPixel(record.format));
+        copy.src.bytes_per_row = static_cast<int>(static_cast<std::size_t>(record.desc.width) * gpu::ImageInfo::getBytesPerPixel(record.desc.format));
         copy.src.bytes_per_slice = static_cast<int>(write.pixels.size());
         copy.dst.image = {write.image.id};
-        copy.size = {.width = record.width, .height = record.height, .num_slices = 1};
+        copy.size = {.width = record.desc.width, .height = record.desc.height, .num_slices = 1};
         sg_copy_buffer_to_image(&copy);
         offset += (write.pixels.size() + 3U) & ~std::size_t{3U};
+    }
+}
+
+void GpuDevice::describeOffscreenPass(const PassDesc& desc, sg_pass& pass) {
+    for (std::size_t index = 0; index < desc.colors.size(); ++index) {
+        const ColorAttachment& color = desc.colors[index];
+        pass.action.colors[index] = {.load_action = toLoadAction(color.load), .store_action = toStoreAction(color.store), .clear_value = toColor(color.clear)};
+        pass.attachments.colors[index] = getAttachment(color.image, AttachmentKind::Color, color.mipLevel, color.layer);
+        if (color.resolve.isValid()) {
+            pass.attachments.resolves[index] = getAttachment(color.resolve, AttachmentKind::Resolve, 0, 0);
+        }
+    }
+    if (desc.depthStencil) {
+        const DepthStencilAttachment& depth = *desc.depthStencil;
+        pass.action.depth = {.load_action = toLoadAction(depth.depthLoad), .store_action = toStoreAction(depth.depthStore), .clear_value = depth.clearDepth};
+        pass.action.stencil = {.load_action = toLoadAction(depth.stencilLoad), .store_action = toStoreAction(depth.stencilStore), .clear_value = depth.clearStencil};
+        pass.attachments.depth_stencil = getAttachment(depth.image, AttachmentKind::DepthStencil, 0, 0);
     }
 }
 
@@ -580,19 +793,15 @@ void GpuDevice::beginPass(const PassDesc& desc) {
     sg_pass pass{};
     const std::string label(desc.label);
     pass.label = label.c_str();
-    if (desc.colors.empty()) {
-        pass.action.colors[0].load_action = desc.load == Load::Clear ? SG_LOADACTION_CLEAR : SG_LOADACTION_LOAD;
-        pass.action.colors[0].clear_value = toColor(desc.clear);
-        pass.swapchain = swapchain();
+    if (!desc.colors.empty() || desc.depthStencil) {
+        describeOffscreenPass(desc, pass);
         sg_begin_pass(&pass);
         return;
     }
-    for (std::size_t index = 0; index < desc.colors.size(); ++index) {
-        const ColorAttachment& color = desc.colors[index];
-        pass.action.colors[index].load_action = color.load == Load::Clear ? SG_LOADACTION_CLEAR : SG_LOADACTION_LOAD;
-        pass.action.colors[index].clear_value = toColor(color.clear);
-        pass.attachments.colors[index] = getRecord(color.image).attachment;
-    }
+    pass.action.colors[0] = {.load_action = toLoadAction(desc.load), .clear_value = toColor(desc.clear)};
+    pass.action.depth = {.load_action = toLoadAction(desc.load), .clear_value = desc.clearDepth};
+    pass.action.stencil = {.load_action = toLoadAction(desc.load), .clear_value = desc.clearStencil};
+    pass.swapchain = swapchain();
     sg_begin_pass(&pass);
 }
 
@@ -631,6 +840,15 @@ void GpuDevice::applyUniforms(int slot, std::span<const std::byte> data) {
     sg_apply_uniforms(slot, {.ptr = data.data(), .size = data.size()});
 }
 
+// Sokol takes the stencil reference and the blend color with the pipeline, so it changes neither between draws.
+void GpuDevice::applyStencilReference(std::uint8_t) {
+    throw std::logic_error("The graphics device of the Sokol backend takes the stencil reference only with a pipeline.");
+}
+
+void GpuDevice::applyBlendColor(math::Color) {
+    throw std::logic_error("The graphics device of the Sokol backend takes the blend color only with a pipeline.");
+}
+
 void GpuDevice::draw(int first, int count, int instances) {
     sg_draw(first, count, instances);
 }
@@ -639,12 +857,32 @@ void GpuDevice::endPass() {
     sg_end_pass();
 }
 
+void GpuDevice::pushDebugGroup(std::string_view name) {
+    debugGroup.assign(name);
+    sg_push_debug_group(debugGroup.c_str());
+}
+
+void GpuDevice::popDebugGroup() {
+    sg_pop_debug_group();
+}
+
 void GpuDevice::commit() {
     sg_commit();
     for (const sg_buffer buffer : retired) {
         sg_destroy_buffer(buffer);
     }
     retired.clear();
+}
+
+// The swapchain of `sokol_app` follows the drawable of its window by itself every frame.
+void GpuDevice::resizeSurface(int, int) {}
+
+void GpuDevice::detachSurface() {
+    throw std::logic_error("The window of the Sokol backend keeps its surface itself.");
+}
+
+void GpuDevice::attachSurface(const gpu::Surface&) {
+    throw std::logic_error("The window of the Sokol backend keeps its surface itself.");
 }
 
 std::unique_ptr<gpu::Device::Readback> GpuDevice::readImage(Image image, int width, int height) {

@@ -302,6 +302,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/conversation/ConversationState.cpp
   src/conversation/Expression.cpp
   src/core/AppConfig.cpp
+  src/core/Base64.cpp
   src/core/Application.cpp
   src/core/ClassLua.cpp
   src/core/CollectionsLua.cpp

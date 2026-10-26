@@ -308,6 +308,12 @@ class Device {
         // Whether the device measures the time the GPU takes for each frame.
         bool gpuTiming = false;
 
+        // The formats that images can be made in and sampled, by `PixelFormat`.
+        std::array<bool, 16> textureFormats{};
+
+        // The formats that render targets and depth stencil images can be made in and drawn into.
+        std::array<bool, 16> renderFormats{};
+
         // The color formats that render targets can be drawn into with blending.
         std::array<bool, 16> blendableFormats{};
     };

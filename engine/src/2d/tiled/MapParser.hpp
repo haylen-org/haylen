@@ -45,7 +45,6 @@ class MapParser final {
     MapParser(const Map::JsonReader& reader, Map& target) noexcept : read(reader), map(target) {}
 
     [[nodiscard]] static std::size_t countCells(int width, int height, std::string_view layer);
-    [[nodiscard]] static std::vector<std::uint8_t> decodeBase64(std::string_view text);
     [[nodiscard]] static std::vector<std::uint8_t> inflate(const std::vector<std::uint8_t>& compressed, bool gzip, std::size_t expected);
     [[nodiscard]] static std::vector<std::uint8_t> decompressZstd(const std::vector<std::uint8_t>& compressed, std::size_t expected);
     [[nodiscard]] static std::vector<std::uint32_t> readTileData(const core::Json& layer, const core::Json& data, std::size_t cells);

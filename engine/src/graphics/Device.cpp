@@ -242,7 +242,7 @@ std::string Device::getAdapterName() const {
 }
 
 int Device::getMaxTextureSize() const noexcept {
-    return state->gpu->getMaxImageSize();
+    return state->gpu->getCapabilities().maxImageSize;
 }
 
 std::vector<Device::Pool> Device::getPools() const {
