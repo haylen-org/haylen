@@ -387,8 +387,9 @@ def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None, e
         return
     if echo:
         terminal.command(parts)
+    # The input of the terminal belongs to haylen.py, which reads the lines of the developer console from it, so a command that also reads it, such as the console of an app that devicectl or simctl launches, never takes those lines.
     try:
-        subprocess.run(parts, cwd=cwd, env=env, check=True)
+        subprocess.run(parts, cwd=cwd, env=env, stdin=subprocess.DEVNULL, check=True)
     except FileNotFoundError as error:
         raise BuildError(missing_command(parts[0])) from error
     except subprocess.CalledProcessError as error:

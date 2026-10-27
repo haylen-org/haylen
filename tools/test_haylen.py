@@ -1090,6 +1090,13 @@ class ConsumerArgumentTest(unittest.TestCase):
             haylen.consumer_modes(haylen.build_parser().parse_args(["sdk", "--platform", "web", "--check-consumers"]))
 
 
+class RunTest(unittest.TestCase):
+    def test_a_streamed_command_leaves_the_input_of_the_terminal_to_the_developer_console(self):
+        with mock.patch.object(haylen.subprocess, "run") as started, mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.run(["xcrun", "devicectl", "device", "process", "launch", "--console"], stream=True)
+        self.assertIs(started.call_args.kwargs["stdin"], haylen.subprocess.DEVNULL)
+
+
 class AppShadersTest(unittest.TestCase):
     def test_a_new_pin_of_the_shader_compiler_compiles_the_shaders_of_an_app_again(self):
         with tempfile.TemporaryDirectory() as scratch:
