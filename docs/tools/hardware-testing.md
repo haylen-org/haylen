@@ -1,6 +1,6 @@
 # 🧪 Hardware testing
 
-This page explains how to test Haylen on every platform and GPU it supports, from the command line, without continuous integration. It covers what runs on a machine you have, what runs on simulators and emulators, and how to rent real GPUs and real phones on Amazon Web Services and Microsoft Azure, with the approximate cost of each.
+This page explains how to test Haylen on every platform and GPU it supports, from the command line, without continuous integration, in three places: locally, on machines, simulators, emulators and devices you have, in the browser, and remotely in the cloud, on GPUs and phones rented from Amazon Web Services and Microsoft Azure, with the approximate cost of each.
 
 The tests themselves are described in [Testing](testing.md). This page is about where to run them.
 
@@ -21,7 +21,9 @@ Two variables change which GPU a device takes:
 | `HAYLEN_TEST_GPU_SOFTWARE=1` | The devices take the software rasterizer of their API, such as WARP on Direct3D. |
 | `HAYLEN_TEST_GPU_LOW_POWER=1` | The devices take the GPU that uses the least power, such as the integrated GPU of a laptop with two GPUs. |
 
-## Machines you have
+## Local
+
+### Machines you have
 
 | Machine | What it tests | Commands |
 | --- | --- | --- |
@@ -29,11 +31,10 @@ Two variables change which GPU a device takes:
 | A Windows PC | Direct3D 12, Direct3D 11, Vulkan and OpenGL, on each GPU of the machine. | `haylen test --gpu`, then again with `HAYLEN_TEST_GPU_LOW_POWER=1` and `HAYLEN_TEST_GPU_SOFTWARE=1` |
 | A Linux PC | Vulkan and OpenGL on the GPU of the machine, on X11 and Wayland. | `haylen test --gpu` |
 | Any machine with Docker | Linux with Vulkan on Mesa lavapipe and OpenGL on Mesa llvmpipe, which are software rasterizers. | Run `haylen test --gpu` inside an Ubuntu container with the Mesa packages that the CI workflow installs. |
-| Any machine with Chrome | WebGPU and WebGL2 in headless Chrome, on SwiftShader. | `haylen test --gpu --platform web` |
 
 The windowed runs of the test project need a desktop session that nobody is using, since the app opens a window. GPU tests draw offscreen and need none, except OpenGL on Windows, whose hidden window needs an interactive session.
 
-## Simulators and emulators
+### Simulators and emulators
 
 | Target | Command |
 | --- | --- |
@@ -44,7 +45,7 @@ The windowed runs of the test project need a desktop session that nobody is usin
 
 Run the test project with `haylen run samples/tests --platform <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
 
-## Real devices
+### Real devices
 
 | Device | Command |
 | --- | --- |
@@ -55,11 +56,25 @@ Run the test project with `haylen run samples/tests --platform <target>`. Start 
 
 Each run installs a signed test app, runs it, copies the results back and uninstalls it.
 
-## Amazon Web Services
+## Browser
+
+The web runs in Chrome, which `haylen.py` starts without a window. Install Chrome or Chromium first.
+
+| What | Command |
+| --- | --- |
+| GPU tests on WebGPU and WebGL2 | `haylen test --gpu --platform web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
+| The checks of the page | `haylen test --platform web` runs the wake lock check and the memory check, which only a browser can show. |
+| The test project | `haylen run samples/tests --platform web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
+
+Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen run` too, for a check by hand.
+
+## Cloud
+
+### Amazon Web Services
 
 Amazon rents GPU machines by the hour and real Android and iOS devices by the minute. The tools are the AWS command line (`aws`) with your access keys in the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Never write the keys into a file, a log or the repository.
 
-### GPU machines on EC2
+#### GPU machines on EC2
 
 | Instance | GPU | Tests | Approximate cost |
 | --- | --- | --- | --- |
@@ -71,7 +86,7 @@ Amazon rents GPU machines by the hour and real Android and iOS devices by the mi
 - On Windows, turn off the basic display adapter of the machine before the OpenGL tests, or the window gets the software driver.
 - Give the disk at least 80 GB on Windows, where the driver installer needs room.
 
-### Real devices on Device Farm
+#### Real devices on Device Farm
 
 Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes.
 
@@ -80,7 +95,7 @@ Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A ru
 3. Choose devices of different GPUs, such as Adreno, Mali, PowerVR and Xclipse, and of old and new Android versions. The free call `aws devicefarm get-device-pool-compatibility` shows which devices accept the app before you pay.
 4. Give every job a short timeout, so a hang cannot bill its full default time.
 
-## Microsoft Azure
+### Microsoft Azure
 
 Azure rents the AMD Radeon PRO V620, which covers AMD GPUs. The tool is the Azure command line (`az`), logged in with `az login`.
 
