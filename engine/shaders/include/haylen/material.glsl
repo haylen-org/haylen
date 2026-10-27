@@ -126,14 +126,15 @@ void haylen_vertex_main() {
     vec2 world = instance_position + turned;
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
 
-    // Text reads the outline, the weight and the softness from its parameters, and sprites read flip flags that follow Tiled: bit 0 flips horizontally, bit 1 vertically and bit 2 swaps the axes. Tiled swaps the image first and flips the result, so the lookup flips first and swaps last.
+    // Text reads the outline, the weight and the softness from its parameters and takes the rectangle of its glyph as it is, since glyphs never flip or repeat. Sprites read flip flags that follow Tiled: bit 0 flips horizontally, bit 1 vertically and bit 2 swaps the axes. Tiled swaps the image first and flips the result, so the lookup flips first and swaps last.
 #ifdef HAYLEN_TEXT
     float flags = 0.0;
     haylen_text_style = vec3(instance_parameters.x * 0.5, haylen_signed_byte(instance_parameters.y) / 256.0, instance_parameters.w * 0.5);
+    vec2 texel = corner;
+    vec4 source = instance_uv;
 #else
     float flags = floor(instance_parameters.x * 255.0 + 0.5);
     haylen_text_style = vec3(0.0);
-#endif
     vec2 texel = corner;
     if (mod(flags, 2.0) >= 1.0) {
         texel.x = 1.0 - texel.x;
@@ -144,8 +145,8 @@ void haylen_vertex_main() {
     if (mod(floor(flags / 4.0), 2.0) >= 1.0) {
         texel = texel.yx;
     }
-
     vec4 source = haylen_instance_source(flags);
+#endif
     uv = mix(source.xy, source.zw, texel);
     haylen_source = vec4(min(source.xy, source.zw), max(source.xy, source.zw));
     color = instance_color;
