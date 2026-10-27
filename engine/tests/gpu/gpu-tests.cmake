@@ -23,21 +23,50 @@ add_executable(haylen-gpu-tests
   ${HAYLEN_GPU_TEST_SOURCES}
   ${HAYLEN_GPU_OFFSCREEN_SOURCES}
 )
-# The simulators of iOS and tvOS run the tests as a plain executable that `simctl spawn` starts, never as an app bundle.
-set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" MACOSX_BUNDLE OFF)
-target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES} GTest::gtest_main)
+target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
-# Android runs the tests from the folder of the device that `haylen.py` pushes them into, with the reference images next to them.
-if(ANDROID)
-  set(haylen_gpu_references "${HAYLEN_ANDROID_GPU_TESTS_DIR}/data/gpu")
-  set(haylen_gpu_output "${HAYLEN_ANDROID_GPU_TESTS_DIR}/gpu-test-output")
-else()
-  set(haylen_gpu_references "${haylen_tests_dir}/data/gpu")
-  set(haylen_gpu_output "${CMAKE_BINARY_DIR}/gpu-test-output")
-endif()
-target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_gpu_references}" HAYLEN_GPU_TEST_OUTPUT="${haylen_gpu_output}")
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
 haylen_enable_warnings(haylen-gpu-tests)
+
+# An iOS or tvOS device starts no plain executable, so there the tests are a signed app that carries the reference images and keeps its results in its container, which `haylen.py` installs, launches and copies the results back from.
+if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_OSX_SYSROOT MATCHES "simulator")
+  file(GLOB haylen_gpu_references CONFIGURE_DEPENDS "${haylen_tests_dir}/data/gpu/*.png")
+  target_sources(haylen-gpu-tests PRIVATE
+    "${haylen_tests_dir}/gpu/apple/GpuTestApp.mm"
+    "${haylen_tests_dir}/gpu/apple/GpuTestFiles.mm"
+    "${haylen_tests_dir}/gpu/apple/GpuTestMain.cpp"
+    "${haylen_tests_dir}/gpu/apple/HaylenGpuTestSceneDelegate.mm"
+    ${haylen_gpu_references}
+  )
+  set_source_files_properties(${haylen_gpu_references} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources/gpu")
+  set_target_properties(haylen-gpu-tests PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>"
+    MACOSX_BUNDLE ON
+    MACOSX_BUNDLE_INFO_PLIST "${haylen_tests_dir}/gpu/apple/Info.plist.in"
+    MACOSX_BUNDLE_BUNDLE_NAME "Haylen GPU Tests"
+    MACOSX_BUNDLE_GUI_IDENTIFIER "com.haylen.gputests"
+    MACOSX_BUNDLE_SHORT_VERSION_STRING "1.0"
+    MACOSX_BUNDLE_BUNDLE_VERSION "1"
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "com.haylen.gputests"
+    XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
+  )
+  target_link_libraries(haylen-gpu-tests PRIVATE GTest::gtest "-framework UIKit")
+else()
+  # The simulators of iOS and tvOS run the tests as a plain executable that `simctl spawn` starts, never as an app bundle.
+  set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" MACOSX_BUNDLE OFF)
+  target_sources(haylen-gpu-tests PRIVATE "${haylen_tests_dir}/gpu/support/GpuTestFiles.cpp")
+  target_link_libraries(haylen-gpu-tests PRIVATE GTest::gtest_main)
+
+  # Android runs the tests from the folder of the device that `haylen.py` pushes them into, with the reference images next to them.
+  if(ANDROID)
+    set(haylen_gpu_references "${HAYLEN_ANDROID_GPU_TESTS_DIR}/data/gpu")
+    set(haylen_gpu_output "${HAYLEN_ANDROID_GPU_TESTS_DIR}/gpu-test-output")
+  else()
+    set(haylen_gpu_references "${haylen_tests_dir}/data/gpu")
+    set(haylen_gpu_output "${CMAKE_BINARY_DIR}/gpu-test-output")
+  endif()
+  target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_gpu_references}" HAYLEN_GPU_TEST_OUTPUT="${haylen_gpu_output}")
+endif()
 
 # On the web the tests run in the page of `tests/web/gpu-tests.html`, which names the API through the environment and whose files the driver of the page reads the images of the scenes that differ from. They wait for the GPU in turns of the event loop of the browser through the promise integration of WebAssembly, and read the reference images that the page preloads at their paths on this machine.
 if(EMSCRIPTEN)

@@ -178,7 +178,7 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators or on Mac Catalyst it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port).
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS or tvOS device it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port).
 
 Run one suite or one test through CTest or through the executable:
 
@@ -233,6 +233,13 @@ haylen test --gpu --platform ios-simulator
 haylen test --gpu --platform ios-simulator --device "iPad Pro 11-inch (M5)"
 haylen test --gpu --platform tvos-simulator
 haylen test --gpu --platform catalyst
+```
+
+On iOS and tvOS devices, `haylen test --gpu --platform ios` and `--platform tvos` with `--device` and the name or the id of a device, which `xcrun devicectl list devices` lists, build the GPU tests in `build/<platform>-gpu-tests-debug` as an app, since a device starts no plain executable. The Xcode generator builds the app `com.haylen.gputests` and signs it for the development team that `HAYLEN_APPLE_TEAM` names. The app carries the reference images in its bundle, shows an empty window and runs the tests once its scene is active, because Metal takes no work from an app in the background. The command installs it with `xcrun devicectl`, launches it with the variables that start with `HAYLEN_` or `GTEST_` through the prefix `DEVICECTL_CHILD_` and prints what the tests print. The app writes its results to `results.xml` and keeps the scenes that differ next to it in `Library/Caches/gpu-test-output` of its container, the one folder that tvOS lets an app write. The class `test::GpuTestFiles` finds both folders, in the bundle and the container there and in the source and build trees elsewhere. When the app quits, the command copies that folder into `gpu-test-output` of the tree, uninstalls the app and fails when a test failed or the app quit before it wrote its results. An iPhone or iPad must be unlocked to launch the app. An Apple TV must be awake and show no screen saver, because tvOS refuses to launch an app while it sleeps and keeps an app that launches behind the screen saver in the background, where the tests wait. The app keeps the idle timer off, so no screen saver starts while the tests run.
+
+```sh
+haylen test --gpu --platform ios --device "iPhone"
+haylen test --gpu --platform tvos --device "Living Room"
 ```
 
 ## The test port

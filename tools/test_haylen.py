@@ -922,6 +922,40 @@ class AppleGpuTestsTest(unittest.TestCase):
             with self.assertRaisesRegex(haylen.BuildError, "only the GPU tests"):
                 haylen.command_test(arguments)
 
+    def test_a_device_builds_the_tests_as_an_app_that_xcode_signs_for_the_team(self):
+        for platform_name, system, sdk in (("ios", "iOS", "iphoneos"), ("tvos", "tvOS", "appletvos")):
+            with mock.patch.object(haylen, "ensure_shaderc", return_value=Path("/tools/haylen-shaderc")), mock.patch.dict(os.environ, {"HAYLEN_APPLE_TEAM": "TEAM123456"}):
+                command = [str(part) for part in haylen.apple_device_gpu_tests_configure_command(Path("/build/apple"), platform_name, "Debug")]
+            self.assertEqual(command[command.index("-G") + 1], "Xcode")
+            self.assertIn(f"-DCMAKE_SYSTEM_NAME={system}", command)
+            self.assertIn(f"-DCMAKE_OSX_SYSROOT={sdk}", command)
+            self.assertIn("-DCMAKE_OSX_ARCHITECTURES=arm64", command)
+            self.assertIn("-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM=TEAM123456", command)
+            self.assertIn("-DHAYLEN_BUILD_TESTS=ON", command)
+
+    def test_a_device_launches_the_app_and_hands_it_the_variables_of_the_tests_alone(self):
+        command, env = haylen.apple_device_gpu_tests_command("iPhone", "metal", {"GTEST_FILTER": "GpuBlendTest.*", "HOME": "/Users/me"})
+        self.assertEqual(command, ["xcrun", "devicectl", "device", "process", "launch", "--console", "--terminate-existing", "--device", "iPhone", haylen.APPLE_GPU_TEST_APP])
+        self.assertEqual(env["DEVICECTL_CHILD_HAYLEN_TEST_GRAPHICS_API"], "metal")
+        self.assertEqual(env["DEVICECTL_CHILD_GTEST_FILTER"], "GpuBlendTest.*")
+        self.assertNotIn("DEVICECTL_CHILD_HOME", env)
+
+    def test_the_results_of_a_device_say_whether_the_tests_failed_or_never_finished(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            results = Path(scratch) / "results.xml"
+            self.assertIn("quit before it wrote its results", haylen.apple_device_gpu_tests_problem(results))
+            results.write_text('<testsuites tests="40" failures="2" errors="1"></testsuites>', encoding="utf-8")
+            self.assertEqual(haylen.apple_device_gpu_tests_problem(results), "3 of the 40 GPU tests failed on the device.")
+            results.write_text('<testsuites tests="40" failures="0" errors="0"></testsuites>', encoding="utf-8")
+            self.assertIsNone(haylen.apple_device_gpu_tests_problem(results))
+
+    def test_the_devices_take_only_the_gpu_tests_and_a_named_device(self):
+        for platform_name in ("ios", "tvos"):
+            with self.assertRaisesRegex(haylen.BuildError, "only the GPU tests"):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--platform", platform_name]))
+            with mock.patch.object(haylen, "require_host"), self.assertRaisesRegex(haylen.BuildError, "Name the device"):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--gpu", "--platform", platform_name]))
+
 
 class CleanTest(unittest.TestCase):
     def test_clean_removes_the_build_folder_and_says_when_it_was_already_clean(self):

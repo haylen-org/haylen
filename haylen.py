@@ -880,6 +880,11 @@ def command_test(args: argparse.Namespace) -> None:
             raise BuildError('The Apple simulators and Mac Catalyst run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
         command_test_gpu_apple(args)
         return
+    if args.platform in {"ios", "tvos"}:
+        if not gpu:
+            raise BuildError('The iOS and tvOS devices run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
+        command_test_gpu_apple_device(args)
+        return
     args.platform = host_name()
     if gpu:
         command_test_gpu(args)
@@ -1112,6 +1117,78 @@ def command_test_gpu_apple(args: argparse.Namespace) -> None:
             if output.is_dir():
                 terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
     terminal.success(f"The GPU tests passed in {where}.")
+
+
+# The GPU tests of iOS and tvOS devices: a tree of their own builds them as an app that Xcode signs for the development team, devicectl installs and launches it, and the app keeps its results and the images of the scenes that differ in the caches of its container, which devicectl copies back before it uninstalls the app.
+APPLE_GPU_TEST_APP = "com.haylen.gputests"
+APPLE_GPU_TEST_DEVICE_OUTPUT = "Library/Caches/gpu-test-output"
+
+
+def apple_device_gpu_tests_configure_command(directory: Path, platform_name: str, config: str) -> list:
+    """The CMake command that configures the tree of the GPU tests of an iOS or tvOS device with the Xcode generator, which signs the app with the team that "HAYLEN_APPLE_TEAM" names, and builds the tests alone."""
+    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Xcode", *apple_slice_options(platform_name, "arm64"), f"-DCMAKE_BUILD_TYPE={config}", f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+
+
+def apple_device_gpu_tests_command(device: str, api: str | None, environment: dict[str, str]) -> tuple[list, dict[str, str]]:
+    """The command and the environment that launch the GPU test app on a device and wait for it to quit, which takes the variables of the tests through the prefix of devicectl."""
+    env = dict(environment)
+    if api:
+        env["HAYLEN_TEST_GRAPHICS_API"] = api
+    env.update({f"DEVICECTL_CHILD_{name}": value for name, value in list(env.items()) if name.startswith(APPLE_GPU_TEST_VARIABLES)})
+    return ["xcrun", "devicectl", "device", "process", "launch", "--console", "--terminate-existing", "--device", device, APPLE_GPU_TEST_APP], env
+
+
+def apple_device_gpu_tests_problem(results: Path) -> str | None:
+    """Reads the results that the GPU test app wrote, and says what went wrong when the tests failed or the app quit before it wrote them."""
+    if not results.is_file():
+        return "The GPU test app quit before it wrote its results, so a test crashed it or the system stopped it. Its output above and the crash logs of the device tell why."
+    suites = xml.etree.ElementTree.parse(results).getroot()
+    failed = int(suites.get("failures", "0")) + int(suites.get("errors", "0"))
+    if failed:
+        return f"{failed} of the {suites.get('tests', '0')} GPU tests failed on the device."
+    return None
+
+
+def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
+    """Builds the GPU tests as a signed app for an iOS or tvOS device and runs it there through devicectl, on Metal or on the API that "--graphics-api" names, copies its results and the images of the scenes that differ into the tree and uninstalls it."""
+    require_host("apple")
+    if not args.device:
+        raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
+    api = args.graphics_api
+    directory = BUILD_ROOT / f"{args.platform}-gpu-tests-{args.config.lower()}"
+    if not is_configured(directory):
+        terminal.step(f"Configuring the GPU tests of \"{args.platform}\" in `{shown_path(directory)}`")
+        configure_tree(apple_device_gpu_tests_configure_command(directory, args.platform, args.config), directory)
+    terminal.step(f"Building the GPU test app of \"{args.platform}\" in `{shown_path(directory)}`")
+    run(["cmake", "--build", directory, "--config", args.config, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs), "--", "-allowProvisioningUpdates"])
+
+    output = directory / "gpu-test-output"
+    shutil.rmtree(output, ignore_errors=True)
+    devicectl = ["xcrun", "devicectl", "device"]
+    terminal.step(f'Installing the GPU test app on "{args.device}"')
+    run([*devicectl, "install", "app", "--device", args.device, directory / "bin" / "haylen-gpu-tests.app"])
+    command, env = apple_device_gpu_tests_command(args.device, api, os.environ)
+    terminal.step(f'Running the GPU tests on "{api}" on "{args.device}"' if api else f'Running the GPU tests on every device of the build on "{args.device}"')
+    failure: BuildError | None = None
+    try:
+        run(command, env=env, stream=True)
+    except BuildError as error:
+        failure = error
+    finally:
+        # The folder exists only once the tests wrote into it, so an app that crashed before has nothing to copy back.
+        subprocess.run(["xcrun", "devicectl", "device", "copy", "from", "--device", args.device, "--domain-type", "appDataContainer", "--domain-identifier", APPLE_GPU_TEST_APP, "--source", APPLE_GPU_TEST_DEVICE_OUTPUT, "--destination", str(output)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        run([*devicectl, "uninstall", "app", "--device", args.device, APPLE_GPU_TEST_APP])
+
+    # The command of devicectl exits with the status of the app, so the results say which tests failed, and only a launch that left no results stops with its own error.
+    results = output / "results.xml"
+    if failure is not None and not results.is_file():
+        raise failure
+    problem = apple_device_gpu_tests_problem(results)
+    if output.is_dir() and any(entry.is_dir() for entry in output.iterdir()):
+        terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
+    if problem:
+        raise BuildError(problem)
+    terminal.success(f'The GPU tests passed on "{args.device}".')
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
@@ -6001,7 +6078,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
     if gpu_tests:
         parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
-        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, or the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default.')
+        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default, or the name or id of the device of "--platform ios" or "tvos", which "xcrun devicectl list devices" lists.')
         parser.add_argument("--port", action="store_true", help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.')
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)

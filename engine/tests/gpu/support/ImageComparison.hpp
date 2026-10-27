@@ -7,7 +7,7 @@
 
 namespace haylen::test {
 
-// Compares the images that GPU devices draw with the pixels a test expects and with the reference images in `engine/tests/data/gpu`, which hold for every graphics API. A run with the environment variable `HAYLEN_GPU_REFERENCES` set to `write` writes the references instead of comparing with them, and a run that fails keeps the image it drew and the difference in `gpu-test-output` of the build tree.
+// Compares the images that GPU devices draw with the pixels a test expects and with the reference images in `engine/tests/data/gpu`, which hold for every graphics API and which `GpuTestFiles` finds. A run with the environment variable `HAYLEN_GPU_REFERENCES` set to `write` writes the references instead of comparing with them, and a run that fails keeps the image it drew and the difference in the output folder of `GpuTestFiles`.
 class ImageComparison final {
   public:
     // How many pixels differ in a channel by more than the tolerance, and the largest difference of any channel.

@@ -12,6 +12,7 @@
 #include <string>
 #include <vector>
 
+#include "gpu/support/GpuTestFiles.hpp"
 #include "support/Environment.hpp"
 
 namespace haylen::test {
@@ -62,7 +63,7 @@ void ImageComparison::write(const graphics::Image& image, const std::filesystem:
 }
 
 void ImageComparison::expectReference(const graphics::Image& actual, std::string_view name, int tolerance, int allowedPixels) {
-    const std::filesystem::path reference = std::filesystem::path(HAYLEN_GPU_REFERENCES_DIR) / (std::string(name) + ".png");
+    const std::filesystem::path reference = GpuTestFiles::getReferencesDirectory() / (std::string(name) + ".png");
     if (isWritingReferences()) {
         write(actual, reference);
         std::cout << "Wrote the reference image \"" << reference.generic_string() << "\". Look at it before you commit it.\n";
@@ -81,7 +82,7 @@ void ImageComparison::expectReference(const graphics::Image& actual, std::string
         return;
     }
 
-    const std::filesystem::path output = std::filesystem::path(HAYLEN_GPU_TEST_OUTPUT) / std::string(name);
+    const std::filesystem::path output = GpuTestFiles::getOutputDirectory() / std::string(name);
     write(actual, output / "drawn.png");
     if (actual.getWidth() == expected.getWidth() && actual.getHeight() == expected.getHeight()) {
         write(makeDifference(actual, expected), output / "difference.png");
