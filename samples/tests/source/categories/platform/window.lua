@@ -1,4 +1,4 @@
--- What the engine reports about the platform, the graphics API, the window, the visible and safe areas, the orientation and the pointer, with fullscreen, the on-screen keyboard and a simulated safe area to change, a picture of the screen with its safe area and keyboard, and the window, keyboard and network events as they happen.
+-- What the engine reports about the platform, the graphics API, the window, the visible and safe areas, the orientation and the pointer, with fullscreen, the on-screen keyboard, keeping the screen on and a simulated safe area to change, a picture of the screen with its safe area and keyboard, and the window, keyboard and network events as they happen.
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -13,7 +13,7 @@ local Window = haylen.class('Window', Test)
 Window.code = [[
 print(haylen.platform, haylen.graphicsApi, window.orientation(), window.hasPointerDevice(), haylen.appState())
 local safe = viewport.safeRect()  -- The visible area minus notches, bars and rounded corners.
-window.setFullscreen(true)
+window.setFullscreen(true) window.setKeepScreenOn(true)
 window.setKeyboardVisible(true)
 viewport.setSafeAreaSimulation('iphoneNotch')
 events.on('keyboardShown', function(frame) print(frame.y, frame.height) end, {owner = self})
@@ -30,7 +30,7 @@ Window.simulations = {
 Window.properties = {
     {'platform', 'Platform'}, {'graphicsApi', 'Graphics API'}, {'version', 'Engine version'}, {'app', 'App'},
     {'framebuffer', 'Framebuffer'}, {'design', 'Design size'}, {'visible', 'Visible area'}, {'safe', 'Safe area'},
-    {'orientation', 'Orientation'}, {'pointer', 'Pointer device'}, {'fullscreen', 'Fullscreen'}, {'state', 'App state'},
+    {'orientation', 'Orientation'}, {'pointer', 'Pointer device'}, {'fullscreen', 'Fullscreen'}, {'screenOn', 'Screen kept on'}, {'state', 'App state'},
     {'keyboard', 'On-screen keyboard'}, {'network', 'Network'},
 }
 Window.preview = '@window-preview'
@@ -55,6 +55,7 @@ function Window:enter()
     self.simulation = viewport.safeAreaSimulation()
     self.safeAreaVisible = ui.safeAreaVisible()
     self.fullscreen = window.fullscreen()
+    self.screenKeptOn = window.keepScreenOn()
     self.network = 'Online until the platform says otherwise'
     self.lines = {}
     self.logged = 0
@@ -81,6 +82,7 @@ function Window:enter()
         focus = 'fullscreen',
         controls = {
             ui.toggle{id = 'fullscreen', text = 'Fullscreen', checked = self.fullscreen, onChange = function(event) window.setFullscreen(event.checked) end},
+            ui.toggle{id = 'screenOn', text = 'Keep the screen on', checked = self.screenKeptOn, onChange = function(event) window.setKeepScreenOn(event.checked) end},
             ui.button{id = 'showKeyboard', text = 'Show the keyboard', onClick = function() window.setKeyboardVisible(true) end},
             ui.button{id = 'hideKeyboard', text = 'Hide the keyboard', onClick = function() window.setKeyboardVisible(false) end},
             ui.formField{label = 'A text field opens the keyboard too', ui.textField{id = 'typing', placeholder = 'Type here'}},
@@ -122,6 +124,7 @@ end
 function Window:exit()
     window.setKeyboardVisible(false)
     window.setFullscreen(self.fullscreen)
+    window.setKeepScreenOn(self.screenKeptOn)
     viewport.setSafeAreaSimulation(self.simulation)
     ui.setSafeAreaVisible(self.safeAreaVisible)
     ui.removeImage(Window.preview)
@@ -171,6 +174,7 @@ function Window:values()
         orientation = quoted(window.orientation()),
         pointer = yesNo(window.hasPointerDevice()),
         fullscreen = yesNo(window.fullscreen()),
+        screenOn = yesNo(window.keepScreenOn()),
         state = quoted(haylen.appState()),
         keyboard = self.keyboard and 'Shown over ' .. rectText(self.keyboard) or 'Hidden',
         network = self.network,

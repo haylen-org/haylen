@@ -68,4 +68,6 @@ void TestPortHost::requestWindowClose() {
 
 void TestPortHost::setWindowFocusable(bool) {}
 
+void TestPortHost::setScreenSaverSuspended(bool) {}
+
 } // namespace haylen::platform

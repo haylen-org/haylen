@@ -48,6 +48,7 @@ struct AppConfig {
         bool showInTaskbar = true;
         bool focusable = true;
         bool mousePassthrough = false;
+        bool keepScreenOn = false;
         std::optional<platform::WindowPlacement> position;
         platform::Window::StatusBar statusBar = platform::Window::StatusBar::Hidden;
         std::optional<math::Color> statusBarColor;

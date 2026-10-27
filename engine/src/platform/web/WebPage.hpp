@@ -25,6 +25,9 @@ class WebPage final {
     // Puts the element that holds the canvas and the overlay of the page in fullscreen, or takes the page out of it. The window of SDL follows the change, so it reports whether the page is fullscreen.
     static void setFullscreen(bool value);
 
+    // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go.
+    static void setScreenKeptOn(bool value);
+
     // Tells the page when an app starts and stops, and passes it frame statistics about once per second.
     static void reportStarted(const core::AppConfig& config);
     static void reportStopped() noexcept;

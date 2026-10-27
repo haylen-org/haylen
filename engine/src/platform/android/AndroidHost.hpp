@@ -41,6 +41,7 @@ class AndroidHost final : public NativeHost {
   protected:
     void requestWindowClose() override;
     void setWindowFocusable(bool) override {}
+    void setScreenSaverSuspended(bool value) override;
 
   private:
     AndroidRuntime& runtime;

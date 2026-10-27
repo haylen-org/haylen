@@ -1,4 +1,4 @@
--- Runs every test that this platform supports, one after the other for a few seconds each, and lists the tests that raised an error, failed a check or whose scene failed to load with their codes. The menu starts it with "Run all", and the headless platform starts it by itself and quits once every test ran.
+-- Runs every test that this platform supports, one after the other for a few seconds each, and lists the tests that raised an error, failed a check or whose scene failed to load with their codes. The menu starts it with "Run all", and the headless platform starts it by itself and quits once every test ran. The run takes no input, so it keeps the screen on until it ends.
 local events = require('haylen.events')
 local haylen = require('haylen')
 local log = require('haylen.log')
@@ -67,6 +67,8 @@ function runner.start()
     end
     runner.index = 0
     runner.failures = {}
+    runner.screenKeptOn = window.keepScreenOn()
+    window.setKeepScreenOn(true)
 
     -- An error of a test is written down with its code, and the run goes on from the progress screen with the next test.
     runner.connections = {}
@@ -142,6 +144,7 @@ function runner.finish()
         codes[index] = failure.test.code
     end
     runner.disconnect()
+    window.setKeepScreenOn(runner.screenKeptOn)
     if #codes == 0 then
         log.info(string.format('Ran %d tests, and none failed.', #runner.queue))
     else
@@ -166,6 +169,7 @@ function runner.stop()
         runner.timer = nil
     end
     runner.disconnect()
+    window.setKeepScreenOn(runner.screenKeptOn)
     navigation.reopen(nil)
 end
 

@@ -32,6 +32,8 @@ class NativeHost : public Host {
     [[nodiscard]] StatusBar getStatusBar() const noexcept override;
     void setStatusBar(StatusBar value) override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
+    [[nodiscard]] bool isScreenKeptOn() const noexcept override;
+    void setKeepScreenOn(bool value) override;
     [[nodiscard]] bool isTransparent() const noexcept override;
     void setTransparent(bool value) override;
     [[nodiscard]] bool isDecorated() const noexcept override;
@@ -119,6 +121,7 @@ class NativeHost : public Host {
     // Asks the window to close as its close button does, which the app hears before it closes.
     virtual void requestWindowClose() = 0;
     virtual void setWindowFocusable(bool value) = 0;
+    virtual void setScreenSaverSuspended(bool value) = 0;
 
     // Fullscreen windows keep the style of the platform, and leaving fullscreen brings this one back.
     void applyStyle();
@@ -132,6 +135,7 @@ class NativeHost : public Host {
     Passthrough passthrough = Passthrough::Off;
     StatusBar statusBar = StatusBar::Hidden;
     bool focusable = true;
+    bool screenKeptOn = false;
 };
 
 } // namespace haylen::platform

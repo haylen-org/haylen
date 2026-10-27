@@ -2054,6 +2054,37 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // The browser releases a wake lock whenever the page hides, so the page asks for it again each time it shows while the app keeps the screen on. Browsers without the Screen Wake Lock API leave the screen to the system.
+    let screenKeptOn = false;
+    let wakeLock = null;
+    let requestingWakeLock = false;
+    const requestWakeLock = function () {
+        if (!screenKeptOn || wakeLock || requestingWakeLock || document.visibilityState !== "visible" || !navigator.wakeLock) {
+            return;
+        }
+        requestingWakeLock = true;
+        navigator.wakeLock.request("screen").finally(() => {
+            requestingWakeLock = false;
+        }).then((lock) => {
+            wakeLock = lock;
+            lock.addEventListener("release", () => {
+                wakeLock = null;
+            });
+            if (!screenKeptOn) {
+                lock.release();
+            }
+        }).catch((error) => console.warn("The page could not keep the screen on: " + error.message));
+    };
+    document.addEventListener("visibilitychange", requestWakeLock);
+    haylen.keepScreenOn = function (value) {
+        screenKeptOn = value;
+        if (value) {
+            requestWakeLock();
+        } else if (wakeLock) {
+            wakeLock.release();
+        }
+    };
+
     haylen.lockOrientation = function (value) {
         const orientation = screen.orientation;
         if (!orientation || !orientation.lock) {

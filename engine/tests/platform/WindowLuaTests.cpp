@@ -44,6 +44,22 @@ TEST(WindowLuaTest, ShowsTheStatusBarWithItsContentAndColor) {
     EXPECT_NE(fixture.lua("window.setStatusBar('white')").find("error: "), std::string::npos);
 }
 
+// The screen stays on from the start when app.json asks for it, a script changes that later, and a restarted app starts again with the value of app.json.
+TEST(WindowLuaTest, KeepsTheScreenOnAsTheAppAsks) {
+    test::EngineFixture fixture({{"app.json", R"({"window": {"keepScreenOn": true}})"}});
+    fixture.runLua("window = require('haylen.window')");
+    EXPECT_TRUE(fixture.host().isScreenKeptOn());
+    EXPECT_EQ(fixture.lua("return window.keepScreenOn()"), "true");
+
+    fixture.runLua("window.setKeepScreenOn(false)");
+    EXPECT_FALSE(fixture.host().isScreenKeptOn());
+    EXPECT_EQ(fixture.lua("return window.keepScreenOn()"), "false");
+    EXPECT_NE(fixture.lua("window.setKeepScreenOn('on')").find("error: "), std::string::npos);
+
+    fixture.restart();
+    EXPECT_TRUE(fixture.host().isScreenKeptOn());
+}
+
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::EngineFixture fixture;
     fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");

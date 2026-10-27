@@ -106,6 +106,10 @@ class Window {
     [[nodiscard]] virtual StatusBar getStatusBar() const noexcept = 0;
     virtual void setStatusBar(StatusBar value) = 0;
 
+    // Keeps the screen on and its saver away while the app shows, or leaves them to the settings of the system. Game controllers keep neither the idle timer of iOS and tvOS nor the screen saver of desktops from running, so an app that players drive with them or that plays without input keeps the screen on.
+    [[nodiscard]] virtual bool isScreenKeptOn() const noexcept = 0;
+    virtual void setKeepScreenOn(bool value) = 0;
+
     [[nodiscard]] virtual TextInput& getTextInput() noexcept = 0;
 
     // Whether the player can point at the screen with a mouse or a touch screen, which a TV remote cannot.

@@ -59,6 +59,10 @@ EM_JS(void, haylen_js_set_fullscreen, (int value), {
     Module.haylen.setFullscreen(value !== 0);
 });
 
+EM_JS(void, haylen_js_keep_screen_on, (int value), {
+    Module.haylen.keepScreenOn(value !== 0);
+});
+
 EM_JS(void, haylen_js_console_result, (double id, int ok, const char* output), {
     Module.haylen.reportConsoleResult(id, ok !== 0, UTF8ToString(output));
 });
@@ -85,6 +89,10 @@ template <typename Body> int WebPage::answer(Body&& body) {
 
 void WebPage::setFullscreen(bool value) {
     haylen_js_set_fullscreen(value ? 1 : 0);
+}
+
+void WebPage::setScreenKeptOn(bool value) {
+    haylen_js_keep_screen_on(value ? 1 : 0);
 }
 
 std::string WebPage::getCanvasSelector() {

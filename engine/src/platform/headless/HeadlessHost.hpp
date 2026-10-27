@@ -139,6 +139,12 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool hasPointerDevice() const noexcept override {
         return pointerDevice;
     }
+    [[nodiscard]] bool isScreenKeptOn() const noexcept override {
+        return screenKeptOn;
+    }
+    void setKeepScreenOn(bool value) override {
+        screenKeptOn = value;
+    }
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return transparencySupported;
     }
@@ -531,6 +537,7 @@ class HeadlessHost final : public Host {
     bool keyboardVisible = false;
     bool quitRequested = false;
     bool pointerDevice = true;
+    bool screenKeptOn = false;
     bool transparencySupported = false;
     bool transparent = false;
     bool decorated = true;

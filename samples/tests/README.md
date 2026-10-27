@@ -16,7 +16,7 @@ build/macos-debug/bin/haylen-headless samples/tests --frames 60000
 
 ## Using the project
 
-The menu lists the categories by section with their prefixes and the number of their tests. The search field finds tests by code or title, and Enter in it opens the first match. `Continue with` opens the test opened last, which the project remembers between launches in the preference `tests.last`, `Run all` runs every test of the platform one after the other and lists the failures with their codes, and `Quit` closes the project where `haylen.canQuit()` says that quitting closes the app.
+The menu lists the categories by section with their prefixes and the number of their tests. The search field finds tests by code or title, and Enter in it opens the first match. `Continue with` opens the test opened last, which the project remembers between launches in the preference `tests.last`, `Run all` runs every test of the platform one after the other with the screen kept on and lists the failures with their codes, and `Quit` closes the project where `haylen.canQuit()` says that quitting closes the app.
 
 - Mouse, touch, keyboard, gamepads and TV remotes reach every screen. A test goes back to its list with Escape, the east gamepad button, the Menu button of a TV remote, the back button of Android or the Back button in the safe area, and the list goes back to the menu the same way.
 - A test that reads the keyboard, gamepads or remotes as game input gives its play area the first focus, so the arrows, WASD, the d-pad, the sticks, Space and Enter move the game while the controls of the test stay out of the way. Tab walks the controls and the play area, and the View button of gamepads, the pause key and the Play/Pause button of TV remotes move the focus between the play area and the controls. A click or a tap on a control gives it the focus, and one on the play area gives the focus back to the game.
@@ -743,7 +743,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | --- | --- | --- | --- |
 | `PLT-001` | Native events | The ticks of a native ticker and an event sent from Lua through the plugin "platform-sample", next to the events of the platform. |  |
 | `PLT-002` | Custom handler | The method "platform-sample.echo", answered by Java, Objective-C or JavaScript, and its failure without a text. |  |
-| `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, the on-screen keyboard and the network. |  |
+| `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, keeping the screen on, the on-screen keyboard and the network. |  |
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme and battery with their changes, an address to open and a vibration. |  |
 | `PLT-005` | Dialogs | A native message, the pickers of files, of a place to save and of a folder, and a message that the app gives up. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |

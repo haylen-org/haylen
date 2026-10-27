@@ -50,4 +50,8 @@ void AndroidHost::requestWindowClose() {
     runtime.requestQuit();
 }
 
+void AndroidHost::setScreenSaverSuspended(bool value) {
+    JavaBridge::keepScreenOn(value);
+}
+
 } // namespace haylen::platform

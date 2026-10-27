@@ -38,6 +38,7 @@ class TestPortHost final : public NativeHost {
   protected:
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
+    void setScreenSaverSuspended(bool value) override;
 
   private:
     TestPortRuntime& runtime;

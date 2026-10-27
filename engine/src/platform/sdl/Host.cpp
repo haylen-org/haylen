@@ -3,6 +3,7 @@
 #include <SDL3/SDL_clipboard.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_video.h>
 
 #include "platform/sdl/Runtime.hpp"
 
@@ -142,6 +143,19 @@ void Host::requestWindowClose() {
 
 void Host::setWindowFocusable(bool value) {
     SDL_SetWindowFocusable(runtime.getWindow().get(), value);
+}
+
+// SDL keeps the screen on through the idle timer of UIKit, the power assertions of macOS, the execution state of Windows and the inhibitors of Linux desktops, and the page asks the browser for a wake lock.
+void Host::setScreenSaverSuspended(bool value) {
+#if defined(__EMSCRIPTEN__)
+    WebPage::setScreenKeptOn(value);
+#else
+    if (value) {
+        SDL_DisableScreenSaver();
+    } else {
+        SDL_EnableScreenSaver();
+    }
+#endif
 }
 
 SDL_SystemCursor Host::toSystemCursor(Cursor cursor) noexcept {

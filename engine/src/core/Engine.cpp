@@ -224,6 +224,7 @@ void Engine::applyWindowOptions() {
     host.setShowInTaskbar(window.showInTaskbar);
     host.setFocusable(window.focusable);
     host.setStatusBar(window.statusBar);
+    host.setKeepScreenOn(window.keepScreenOn);
     current.statusBarColor = window.statusBarColor;
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
     host.setMouseLocked(false);

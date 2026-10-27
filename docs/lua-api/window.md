@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the clipboard, the orientation and the status bar of phones, the back button and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows, their frame and the monitors. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the clipboard, the orientation and the status bar of phones, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows, their frame and the monitors. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -344,6 +344,38 @@ function Shop:exit()
 end
 
 scene.push(setmetatable({}, Shop))
+```
+
+## Screen saver and sleep
+
+### window.keepScreenOn()
+
+Returns whether the app keeps the screen on. It starts as `window.keepScreenOn` of `app.json` says, `false` by default.
+
+```lua
+local window = require('haylen.window')
+
+print('Screen kept on:', window.keepScreenOn())
+```
+
+### window.setKeepScreenOn(enabled)
+
+Keeps the screen on while the app shows, or leaves it to the settings of the system again. While it is `true`, the screen saver of a desktop or an Apple TV does not start, an iPhone or an iPad does not lock and an Android device does not turn its screen off. The input of game controllers does not count as activity for iOS, tvOS and desktops, so an app that players drive with them keeps the screen on while they play, and so does an app that plays a cutscene or runs a long task without input. iOS, tvOS and Mac Catalyst turn the idle timer of the app off, macOS, Windows and Linux hold off the screen saver of the desktop, Android keeps the screen of the activity on, and a browser keeps it on through its Screen Wake Lock API while the page shows, where the browser offers that API. The setting ends with the app, and a restarted app starts with the value of `app.json` again.
+
+```lua
+local window = require('haylen.window')
+
+-- The race plays with a game controller, so the screen stays on until it ends.
+local function startRace()
+    window.setKeepScreenOn(true)
+end
+
+local function endRace()
+    window.setKeepScreenOn(false)
+end
+
+startRace()
+endRace()
 ```
 
 ## Folds and dual screens

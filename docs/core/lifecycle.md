@@ -132,6 +132,18 @@ haylen.setLifecycle({muteOnFocusLoss = false})
 print(haylen.lifecycle().pauseOnFocusLoss, haylen.halted())
 ```
 
+### Keeping the screen on
+
+The system dims, locks or covers an app that gets no input for a while: the screen saver of a desktop or an Apple TV, the lock of an iPhone or an iPad and the screen timeout of Android. On iOS and tvOS the app then turns `'inactive'` or goes to the background, so a game that players drive with a controller would stop in the middle of a level, since the system counts no controller input as activity. An app that plays without touches or keys keeps the screen on with `"keepScreenOn": true` in the `window` section of `app.json`, or turns it on and off with [`window.setKeepScreenOn`](../lua-api/window.md#windowsetkeepscreenonenabled), such as only during a level or a cutscene. Menus and pause screens can leave the screen to the system, so the device still sleeps when the player walks away.
+
+```lua
+local events = require('haylen.events')
+local window = require('haylen.window')
+
+events.on('levelStarted', function() window.setKeepScreenOn(true) end)
+events.on('levelEnded', function() window.setKeepScreenOn(false) end)
+```
+
 ### Frames while the app is away
 
 The event loop and the platform bridge run inside the frames of the app. So nothing arrives while the platform runs no frames at all. Each platform runs frames differently while the app is away.

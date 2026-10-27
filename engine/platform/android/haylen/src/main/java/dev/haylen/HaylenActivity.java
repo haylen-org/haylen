@@ -75,6 +75,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private HaylenFold fold;
     private OnBackPressedCallback backCallback;
     private int statusBar;
+    // Whether the app keeps the screen on, which outlives the activity, so an activity that the system creates again keeps the screen on too.
+    private static volatile boolean screenKeptOn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -147,6 +149,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         statusBar = launchStatusBar();
         applyStatusBar();
+        applyScreenKeptOn();
+    }
+
+    private void applyScreenKeptOn() {
+        if (screenKeptOn) {
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
     }
 
     // The meta-data `dev.haylen.statusBar` of the activity, which the template fills from `app.json`, launches the app with its status bar until the engine applies the same value, and without it the status bar starts hidden.
@@ -310,6 +321,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             activity.statusBar = value;
             activity.applyStatusBar();
         });
+    }
+
+    // Called from the frame thread of the engine when the app keeps the screen on or leaves it to the system.
+    static void keepScreenOn(boolean value) {
+        screenKeptOn = value;
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity != null) {
+            activity.runOnUiThread(activity::applyScreenKeptOn);
+        }
     }
 
     // Called from the frame thread of the engine whenever the app starts or stops taking the back button, which it takes while it captures back or edits a text field. The back callback takes back while it is enabled, and otherwise Android leaves the app with its predictive back animation.

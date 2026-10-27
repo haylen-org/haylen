@@ -80,6 +80,18 @@ bool NativeHost::hasPointerDevice() const noexcept {
     return Services::hasPointerDevice();
 }
 
+bool NativeHost::isScreenKeptOn() const noexcept {
+    return screenKeptOn;
+}
+
+void NativeHost::setKeepScreenOn(bool value) {
+    if (screenKeptOn == value) {
+        return;
+    }
+    screenKeptOn = value;
+    setScreenSaverSuspended(value);
+}
+
 bool NativeHost::isTransparent() const noexcept {
     return style.transparent;
 }

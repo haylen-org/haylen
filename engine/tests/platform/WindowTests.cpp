@@ -71,7 +71,7 @@ class SwapchainPasses final {
 
 TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
-        "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true,
+        "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "keepScreenOn": true,
                    "position": {"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}}
     })"));
     EXPECT_FALSE(config.window.decorated);
@@ -80,6 +80,7 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_FALSE(config.window.showInTaskbar);
     EXPECT_FALSE(config.window.focusable);
     EXPECT_TRUE(config.window.mousePassthrough);
+    EXPECT_TRUE(config.window.keepScreenOn);
     ASSERT_TRUE(config.window.position.has_value());
     EXPECT_EQ(config.window.position->resolve(twoMonitors(), {400.0F, 100.0F}), (math::Rect{0.0F, 932.0F, 1920.0F, 100.0F}));
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
@@ -96,6 +97,7 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_TRUE(defaults.window.showInTaskbar);
     EXPECT_TRUE(defaults.window.focusable);
     EXPECT_FALSE(defaults.window.mousePassthrough);
+    EXPECT_FALSE(defaults.window.keepScreenOn);
     EXPECT_FALSE(defaults.window.position.has_value());
     EXPECT_FALSE(defaults.toJson().at("window").contains("position"));
 }
