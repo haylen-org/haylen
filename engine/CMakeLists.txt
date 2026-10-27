@@ -828,7 +828,6 @@ elseif(APPLE)
     src/platform/apple/AppleAccessibility.mm
     src/platform/apple/AppleBattery.mm
     src/platform/apple/AppleBridge.mm
-    src/platform/apple/AppleClipboard.mm
     src/platform/apple/AppleDesktop.mm
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleKeyboard.mm
