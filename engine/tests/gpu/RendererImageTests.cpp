@@ -20,6 +20,8 @@
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/SpriteData.hpp"
+#include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/lighting/Light.hpp"
 #include "haylen/2d/lighting/Occluder.hpp"
 #include "haylen/2d/particles/Emitter.hpp"
@@ -74,8 +76,19 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
         }
     }
 
+    using Draw = std::function<void(core::Engine&, graphics2d::Renderer&, const graphics::RenderTarget&)>;
+
     // Draws the scene into the render target in one frame of the engine, reads the target back and compares it with the reference of the name.
-    void expectScene(std::string_view name, std::function<void(core::Engine&, graphics2d::Renderer&, const graphics::RenderTarget&)> draw) {
+    void expectScene(std::string_view name, Draw draw) {
+        std::optional<graphics::Image> image;
+        readScene(name, std::move(draw), image);
+        if (image) {
+            test::ImageComparison::expectReference(*image, name, kTolerance, kAllowedPixels);
+        }
+    }
+
+    // Draws the scene into the render target in one frame of the engine and reads the target back into the image.
+    void readScene(std::string_view name, Draw draw, std::optional<graphics::Image>& image) {
         // clang-format off
         fixture->engine().getScenes().replace(std::make_shared<test::DrawingScene>([this, draw = std::move(draw)](core::Engine& engine) {
             draw(engine, engine.getRenderer2D(), target);
@@ -83,7 +96,6 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
         // clang-format on
         fixture->frames(2);
 
-        std::optional<graphics::Image> image;
         std::string failure;
         bool done = false;
         // clang-format off
@@ -95,7 +107,11 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
         // clang-format on
         ASSERT_TRUE(fixture->frameUntil([&done] { return done; })) << "The read of the scene \"" << name << "\" never finished.";
         ASSERT_TRUE(image.has_value()) << failure;
-        test::ImageComparison::expectReference(*image, name, kTolerance, kAllowedPixels);
+    }
+
+    // The center of the cell of a sprite in a grid of four columns and two rows that fills the target.
+    [[nodiscard]] static math::Vec2 cellCenter(std::size_t index) {
+        return {static_cast<float>(index % 4) * 32.0F + 16.0F, static_cast<float>(index / 4) * 64.0F + 32.0F};
     }
 
     // A camera that shows the target with the world origin at its top-left corner.
@@ -151,6 +167,33 @@ TEST_P(GpuRendererTest, DrawsSprites) {
         renderer.draw({.texture = nearest, .position = {104.0F, 104.0F}, .size = {40.0F, 40.0F}, .order = {.layer = 1, .blend = graphics::BlendMode::Type::Additive}});
     });
     // clang-format on
+}
+
+// A batch of eight textures in one draw call, whose last texture takes slot 31. The Metal device binds that slot at a compact index, since the Apple TV 4K of the first generation binds only the texture indices 0 to 30.
+TEST_P(GpuRendererTest, DrawsBatchesThatReachEveryTextureOfTheBatch) {
+    const std::array<math::Color, graphics2d::SpriteData::kMaxTextures> colors{math::Color::fromHex(0xFF0000FFU), math::Color::fromHex(0x00FF00FFU), math::Color::fromHex(0x0000FFFFU), math::Color::fromHex(0xFFFF00FFU), math::Color::fromHex(0xFF00FFFFU), math::Color::fromHex(0x00FFFFFFU), math::Color::fromHex(0xFFFFFFFFU), math::Color::fromHex(0xFF8000FFU)};
+    std::vector<graphics::Texture> textures;
+    std::vector<graphics2d::SpriteInstance> sprites;
+    std::vector<graphics2d::SpriteData> data;
+    for (std::size_t index = 0; index < colors.size(); ++index) {
+        textures.push_back(fixture->engine().getGraphics().createTexture(graphics::Image(2, 2, colors[index]), {.filter = graphics::Texture::Filter::Nearest}));
+        sprites.push_back({.position = cellCenter(index), .size = {24.0F, 24.0F}});
+        data.push_back({.texture = static_cast<std::uint8_t>(index)});
+    }
+
+    std::optional<graphics::Image> image;
+    // clang-format off
+    readScene("batch", [&](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::black()});
+        renderer.drawBatch(textures, sprites, data);
+    }, image);
+    // clang-format on
+    ASSERT_TRUE(image.has_value());
+
+    for (std::size_t index = 0; index < colors.size(); ++index) {
+        const math::Vec2 center = cellCenter(index);
+        EXPECT_EQ(image->getPixel(static_cast<int>(center.x), static_cast<int>(center.y)).toHex(), colors[index].toHex()) << "The sprite of the texture " << index << " drew the wrong color.";
+    }
 }
 
 // Text of the font that the engine embeds, with an outline and a shadow.
