@@ -145,6 +145,8 @@ std::string_view ApplePlugins::getDestination() noexcept {
     return "tvos";
 #elif TARGET_OS_OSX
     return "macos";
+#elif TARGET_OS_VISION
+    return "visionos";
 #else
     return "ios";
 #endif

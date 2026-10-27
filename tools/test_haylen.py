@@ -796,7 +796,7 @@ class PluginTemplateTest(unittest.TestCase):
             with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
                 haylen.command_plugin_new(argparse.Namespace(folder=str(folder), id=None, features=[]))
             manifest = json.loads((folder / "plugin.json").read_text())
-            self.assertEqual(manifest["platforms"], ["ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux"])
+            self.assertEqual(manifest["platforms"], ["ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux"])
             self.assertEqual(manifest["native"], {"cmake": "native", "platforms": ["macos", "windows", "linux"]})
 
             # The desktop library takes the id, the name that "native.load" finds, and its init function takes the id with underscores, since a C function is named with an identifier.
@@ -992,6 +992,21 @@ class VisionOSTest(unittest.TestCase):
         self.assertEqual(haylen.RUN_TARGETS["visionos-simulator"].plugins, "visionos")
         self.assertEqual(haylen.APPLE_RUNS["visionos"]["template"], "HaylenVisionOS")
         self.assertNotIn("visionos", haylen.CPP_RUN_PLATFORMS)
+
+    def test_the_visionos_target_embeds_the_native_libraries_of_ios(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            generated = Path(scratch) / "haylen"
+            library = haylen.NativeLibrary("native-test", {}, Path(scratch), ("ios",), False, ())
+            app = mock.Mock(plugins=[], native=[library])
+            frameworks = {"iOS": [], "macCatalyst": [], "tvOS": [], "visionOS": [], "macOS": []}
+            with mock.patch.object(haylen, "apple_spec", return_value={"targets": {}}), mock.patch.object(haylen, "apple_frameworks", return_value=frameworks):
+                haylen.write_apple_spec(app, Path(scratch), generated, {template: {} for template in haylen.APPLE_TEMPLATES}, False)
+            text = (generated / "project.yml").read_text()
+            templates = json.loads(text[text.index("{"):])["targetTemplates"]
+        embeds = {template: [script["inputFileLists"] for script in entry.get("postBuildScripts", [])] for template, entry in templates.items()}
+        self.assertEqual(embeds["HaylenVisionOS"], [["$(PROJECT_DIR)/haylen/native/visionos-$(PLATFORM_NAME).xcfilelist"]])
+        self.assertEqual(embeds["HaylenIOS"], [["$(PROJECT_DIR)/haylen/native/ios-$(PLATFORM_NAME).xcfilelist"]])
+        self.assertEqual(embeds["HaylenTVOS"], [])
 
     def test_a_missing_runtime_names_the_platform_that_xcodebuild_downloads(self):
         with mock.patch.object(haylen, "capture", return_value=json.dumps({"devices": {}})), self.assertRaisesRegex(haylen.BuildError, '"xcodebuild -downloadPlatform visionOS"'):

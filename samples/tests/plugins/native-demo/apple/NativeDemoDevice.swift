@@ -345,6 +345,12 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
         super.init()
         #if os(macOS)
         let device = AVCaptureDevice.default(for: .video)
+        #elseif os(visionOS)
+        // Apple Vision Pro gives apps the camera of the persona of the wearer, which visionOS lists from version 2.1.
+        guard #available(visionOS 2.1, *) else {
+            throw HaylenFailure("visionOS gives apps a camera from version 2.1.", code: "unsupported")
+        }
+        let device = AVCaptureDevice.default(for: .video)
         #else
         let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: facing == "front" ? .front : .back) ?? AVCaptureDevice.default(for: .video)
         #endif
@@ -352,7 +358,10 @@ final class NativeDemoCamera: NSObject, AVCaptureVideoDataOutputSampleBufferDele
             throw HaylenFailure("This device has no camera.", code: "unsupported")
         }
         session.beginConfiguration()
+        // The persona camera of visionOS chooses its own format.
+        #if !os(visionOS)
         session.sessionPreset = .vga640x480
+        #endif
         session.addInput(input)
         let output = AVCaptureVideoDataOutput()
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: Self.width, kCVPixelBufferHeightKey as String: Self.height]
@@ -417,14 +426,14 @@ final class NativeDemoMicrophone: @unchecked Sendable {
     private let stream: HaylenAudioStream
     private var measured = 0
     private var squares: Float = 0
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
     private let category: AVAudioSession.Category
     private let options: AVAudioSession.CategoryOptions
     #endif
 
     @MainActor
     init(context: HaylenPluginContext, level: @escaping (Double) -> Void) throws {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         // Recording needs a session that records, which mixes with the sound of the app, and the session of the app comes back when the microphone stops.
         let session = AVAudioSession.sharedInstance()
         category = session.category
@@ -464,7 +473,7 @@ final class NativeDemoMicrophone: @unchecked Sendable {
     func stop() {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         try? AVAudioSession.sharedInstance().setCategory(category, options: options)
         #endif
     }

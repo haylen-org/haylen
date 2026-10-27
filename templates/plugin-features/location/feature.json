@@ -52,6 +52,7 @@
                     "ios",
                     "catalyst",
                     "tvos",
+                    "visionos",
                     "macos"
                 ],
                 "default": "The app uses the location.",

@@ -85,6 +85,12 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
         super.init()
         #if os(macOS)
         let device = AVCaptureDevice.default(for: .video)
+        #elseif os(visionOS)
+        // Apple Vision Pro gives apps the camera of the persona of the wearer, which visionOS lists from version 2.1.
+        guard #available(visionOS 2.1, *) else {
+            throw HaylenFailure("visionOS gives apps a camera from version 2.1.", code: "unsupported")
+        }
+        let device = AVCaptureDevice.default(for: .video)
         #else
         let device = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: facing == "front" ? .front : .back) ?? AVCaptureDevice.default(for: .video)
         #endif
@@ -92,7 +98,10 @@ final class {{NAME}}CameraCapture: NSObject, AVCaptureVideoDataOutputSampleBuffe
             throw HaylenFailure("This device has no camera.", code: "unsupported")
         }
         session.beginConfiguration()
+        // The persona camera of visionOS chooses its own format.
+        #if !os(visionOS)
         session.sessionPreset = .vga640x480
+        #endif
         session.addInput(input)
         let output = AVCaptureVideoDataOutput()
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA, kCVPixelBufferWidthKey as String: Self.width, kCVPixelBufferHeightKey as String: Self.height]

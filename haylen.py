@@ -3194,7 +3194,9 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         if symbols and folder != "macos":
             sources.append({"path": "HaylenNativeSymbols.mm"})
         scripts = templates[template]["postBuildScripts"]
-        if any(library.ships_to(folder) for library in app.native):
+        # The visionOS target embeds the libraries of iOS, which its slices build.
+        native_platform = APPLE_SLICE_NATIVE_PLATFORMS[APPLE_NATIVE_SLICES[folder]]
+        if any(library.ships_to(native_platform) for library in app.native):
             scripts = [apple_embed_script(folder), *scripts]
         settings = {"INFOPLIST_FILE": f"{GENERATED_FOLDER}/{folder}/Info.plist", **entitlements[template]}
         # The embed phase copies and signs whole library bundles, whose files the script sandbox would need listed one by one together with the temporary files of codesign, and the scripts of plugins read files of the build, so scripts run without it.

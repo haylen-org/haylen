@@ -582,7 +582,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
             return "provisional"
         case .notDetermined:
             return "notDetermined"
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         case .ephemeral:
             return "ephemeral"
         #endif
@@ -598,6 +598,8 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         return "catalyst"
         #elseif os(tvOS)
         return "tvos"
+        #elseif os(visionOS)
+        return "visionos"
         #else
         return "ios"
         #endif

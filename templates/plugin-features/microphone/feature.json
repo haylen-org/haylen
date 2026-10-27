@@ -46,6 +46,7 @@
                 "platforms": [
                     "ios",
                     "catalyst",
+                    "visionos",
                     "macos"
                 ],
                 "default": "The app listens to the microphone.",

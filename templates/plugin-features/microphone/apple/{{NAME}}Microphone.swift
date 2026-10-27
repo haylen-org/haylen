@@ -50,14 +50,14 @@ final class {{NAME}}MicrophoneRecording: @unchecked Sendable {
 
     private let engine = AVAudioEngine()
     private let stream: HaylenAudioStream
-    #if os(iOS)
+    #if os(iOS) || os(visionOS)
     private let category: AVAudioSession.Category
     private let options: AVAudioSession.CategoryOptions
     #endif
 
     @MainActor
     init(context: HaylenPluginContext) throws {
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         // Recording needs a session that records, which mixes with the sound of the app, and the session of the app comes back when the microphone stops.
         let session = AVAudioSession.sharedInstance()
         category = session.category
@@ -85,7 +85,7 @@ final class {{NAME}}MicrophoneRecording: @unchecked Sendable {
     func stop() {
         engine.inputNode.removeTap(onBus: 0)
         engine.stop()
-        #if os(iOS)
+        #if os(iOS) || os(visionOS)
         try? AVAudioSession.sharedInstance().setCategory(category, options: options)
         #endif
     }

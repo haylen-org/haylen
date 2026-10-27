@@ -16,11 +16,11 @@ enum NativeDemoPicker {
         return response == .OK ? panel.url?.lastPathComponent : nil
     }
 }
-#elseif os(iOS)
+#elseif os(iOS) || os(visionOS)
 import UIKit
 import UniformTypeIdentifiers
 
-// Lets the person pick a file with the document picker of UIKit presented over the app, on iOS, iPadOS and Mac Catalyst. The picker is its own delegate, since a picker keeps its delegate weakly.
+// Lets the person pick a file with the document picker of UIKit presented over the app, on iOS, iPadOS, Mac Catalyst and visionOS. The picker is its own delegate, since a picker keeps its delegate weakly.
 final class NativeDemoPicker: UIDocumentPickerViewController, UIDocumentPickerDelegate {
     private var picked: ((String?) -> Void)?
 
