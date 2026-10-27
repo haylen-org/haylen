@@ -29,7 +29,9 @@ BenchmarkGpu::BenchmarkGpu(int argc, char** argv) {
 
 BenchmarkGpu::~BenchmarkGpu() = default;
 
+// The output goes out unbuffered, so a benchmark whose output goes to a file or a pipe keeps every row it printed even when it stops early.
 int BenchmarkGpu::run(int argc, char** argv, const std::function<int(BenchmarkGpu&)>& benchmark) {
+    std::setvbuf(stdout, nullptr, _IONBF, 0);
     try {
         BenchmarkGpu gpu(argc, argv);
         return benchmark(gpu);
