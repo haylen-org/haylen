@@ -267,18 +267,18 @@ This table separates what is implemented, what compiles and what was tested, on 
 
 | Device | Platform | Implemented | Compiled | Tested |
 | --- | --- | --- | --- | --- |
-| Metal | macOS | Yes | Yes | On the Apple GPU of a Mac. No Intel Mac. |
-| Metal | iOS and iPadOS | Yes | For devices and the simulator | An app ran through SDL on the iOS simulator. The GPU tests did not run, and no physical device ran it. |
-| Metal | Mac Catalyst | Yes | Yes | An app ran through SDL. The GPU tests did not run. |
-| Metal | tvOS | Yes | For devices and the simulator | An app ran through SDL on the tvOS simulator. No Apple TV ran it. |
+| Metal | macOS | Yes | Yes | On the Apple GPU of a Mac, with the engine tests, the headless test project, the test port and the SDK check. No Intel Mac. |
+| Metal | iOS and iPadOS | Yes | For devices and the simulator | On the iPhone and iPad simulators of iOS 27 with `haylen test --gpu --platform ios-simulator`. No physical device. |
+| Metal | Mac Catalyst | Yes | Yes | On the Apple GPU of a Mac with `haylen test --gpu --platform catalyst`. |
+| Metal | tvOS | Yes | For devices and the simulator | On the Apple TV simulator of tvOS 27 with `haylen test --gpu --platform tvos-simulator`. No Apple TV. |
 | Metal | visionOS | Yes | For devices and the simulator | Not tested. The engine builds no visionOS slice, so visionOS runs the iPad app. |
-| Direct3D 12 | Windows | Yes | Yes | On NVIDIA and Intel GPUs and on WARP. No AMD GPU. |
-| Direct3D 11 | Windows | Yes | Yes | On NVIDIA and Intel GPUs and on WARP. No AMD GPU. |
-| Vulkan | Windows | Yes | Yes | On an NVIDIA GPU. |
-| Vulkan | Linux | Yes | Yes | On Mesa lavapipe, the software rasterizer. No hardware GPU. |
+| Direct3D 12 | Windows | Yes | Yes, with MSVC in one build with the other three APIs of Windows | On an NVIDIA GPU, on an Intel GPU with `HAYLEN_TEST_GPU_LOW_POWER=1` and on WARP with `HAYLEN_TEST_GPU_SOFTWARE=1`. The whole test project passed in a window. No AMD GPU. |
+| Direct3D 11 | Windows | Yes | Yes, in the same build | On an NVIDIA GPU, on an Intel GPU and on WARP, as Direct3D 12. The whole test project passed in a window. No AMD GPU. |
+| Vulkan | Windows | Yes | Yes, in the same build | On an NVIDIA GPU, and on an Intel GPU with `HAYLEN_TEST_GPU_LOW_POWER=1`. The whole test project passed in a window. |
+| Vulkan | Linux | Yes | Yes | On Mesa lavapipe, the software rasterizer, in a container, with the engine tests, the headless test project and the test port. No hardware GPU. |
 | Vulkan | Android | Yes | Yes | On the Android emulator. No physical device. |
-| OpenGL | Windows | Yes | Yes | On an Intel GPU. |
-| OpenGL | Linux | Yes | Yes | On Mesa llvmpipe, the software rasterizer. |
+| OpenGL | Windows | Yes | Yes, in the same build | On the GPU that the OpenGL driver of the laptop gives a hidden window. The whole test project passed in a window. |
+| OpenGL | Linux | Yes | Yes | On Mesa llvmpipe, the software rasterizer, through EGL without a display. |
 | OpenGL ES | Android | Yes | Yes | On the Android emulator. No physical device. |
 | WebGL2 | Web | Yes | Yes | In headless Chrome. No other browser. |
 | WebGPU | Web | Yes | Yes | In headless Chrome on SwiftShader and on the Apple GPU of a Mac. No other browser. |
