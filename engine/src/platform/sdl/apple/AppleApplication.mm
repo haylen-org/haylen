@@ -65,6 +65,25 @@ void AppleApplication::finishLaunching(Runtime&) {
     AppleTheme::observe(window);
     [static_cast<HaylenSceneDelegate*>(window.windowScene.delegate) connectPlugins];
 }
+
+void AppleApplication::checkSurface(SurfaceCheck& check) {
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
+    UIView* view = window.rootViewController.view;
+    CALayer* layer = view.layer;
+    // The layer of the view is the Metal layer that SDL made, which the platform layer reads through key-value coding, since only the GPU devices see the headers of their graphics APIs.
+    if (![layer respondsToSelector:@selector(drawableSize)]) {
+        return;
+    }
+    const CGSize windowSize = window.bounds.size;
+    const CGSize viewSize = view.bounds.size;
+    const CGSize drawable = [[layer valueForKey:@"drawableSize"] CGSizeValue];
+    check.check({
+        .window = {static_cast<float>(windowSize.width), static_cast<float>(windowSize.height)},
+        .view = {static_cast<float>(viewSize.width), static_cast<float>(viewSize.height)},
+        .scale = static_cast<float>(layer.contentsScale),
+        .drawable = {static_cast<float>(drawable.width), static_cast<float>(drawable.height)},
+    });
+}
 #endif
 
 } // namespace haylen::platform::sdl

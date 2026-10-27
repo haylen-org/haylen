@@ -187,6 +187,7 @@ set(HAYLEN_TEST_SOURCES
   platform/sdl/FrameTimerTests.cpp
   platform/StreamTests.cpp
   platform/SupportedOrientationsTests.cpp
+  platform/SurfaceCheckTests.cpp
   platform/SystemTests.cpp
   platform/WebDialogJsonTests.cpp
   platform/WebEntryTests.cpp

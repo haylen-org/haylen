@@ -1,0 +1,18 @@
+Keeps the frame that SDL gives the view of a window in a scene on iOS, iPadOS and Mac Catalyst at the bounds of the window, which follow the orientation of the scene, instead of turning it by the orientation of the status bar, which stays portrait after an app in portrait ran and turned the view of a landscape app to portrait whenever the keyboard showed.
+
+--- a/src/video/uikit/SDL_uikitvideo.m
++++ b/src/video/uikit/SDL_uikitvideo.m
+@@ -229,6 +229,13 @@
+     }
+ 
+ #ifndef SDL_PLATFORM_TVOS
++    // A window in a scene always has the bounds of the orientation of its scene, while the orientation of the status bar can be stale, such as after an app in another orientation ran, so only a window without a scene turns its frame.
++    if (@available(iOS 13.0, *)) {
++        if (data != nil && data.uiwindow.windowScene != nil) {
++            return frame;
++        }
++    }
++
+     /* iOS 10 seems to have a bug where, in certain conditions, putting the
+      * device to sleep with the a landscape-only app open, re-orienting the
+      * device to portrait, and turning it back on will result in the screen

@@ -230,6 +230,9 @@ SDL_AppResult Runtime::iterate() {
     if (!closing && recover()) {
         Player::frame(timer.next(SDL_GetTicksNS()));
     }
+#if defined(__APPLE__) && !TARGET_OS_OSX && !defined(NDEBUG)
+    AppleApplication::checkSurface(surfaceCheck);
+#endif
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 

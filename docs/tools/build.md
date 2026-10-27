@@ -359,6 +359,10 @@ SDL turns the keys of a hardware keyboard on iOS, iPadOS, Mac Catalyst and tvOS 
 - Removes the swipe gestures of the Apple TV remote.
 - Reads whether the joystick subsystem opened the Siri Remote only where SDL builds that subsystem, which the UIKit builds of the engine leave out.
 
+#### sdl-uikit-view-frame.patch
+
+SDL sets the frame of the view of its UIKit window itself whenever the keyboard shows or hides and whenever the window changes its border or fullscreen. It computes that frame from the bounds of the window and turns it when the orientation of the status bar disagrees with them. That orientation is stale in an app with scenes, such as portrait right after an app in portrait ran. So a landscape app on an iPhone took a portrait view as soon as the keyboard showed, and drew only the left part of the screen from then on. The patch keeps the view of a window in a scene at the bounds of the window, which always follow the orientation of the scene, and leaves the turn to windows without a scene. Debug builds of the UIKit platforms check at every frame that the view of the window covers the window and that its drawable has the pixels of the view, and log an error when they part, through `platform::SurfaceCheck`.
+
 #### sdl-web-page-keys.patch
 
 SDL listens for the keys of the whole page on the window of the browser. So a page that hosts the app next to elements of its own, such as the editor of a website, could keep their keys from the app only by stopping them before they reach those elements. The patch skips a key whose time stamp the runtime names in `Module.haylenIgnoredKey`. The runtime does this for the keys of elements that are not the canvas, the page or the fields of the runtime, so those elements still hear them.

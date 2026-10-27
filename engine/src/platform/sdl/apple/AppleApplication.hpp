@@ -2,6 +2,10 @@
 
 #include <TargetConditionals.h>
 
+#if !TARGET_OS_OSX
+#include "platform/SurfaceCheck.hpp"
+#endif
+
 namespace haylen::platform::sdl {
 
 class Runtime;
@@ -14,6 +18,11 @@ class AppleApplication final {
 
     // Places the views of the services over the window once it opened, and lets the application finish launching.
     static void finishLaunching(Runtime& runtime);
+
+#if !TARGET_OS_OSX
+    // Checks that the view of the window covers the window and that its drawable has the pixels of the bounds of the view, which debug builds do every frame.
+    static void checkSurface(SurfaceCheck& check);
+#endif
 
 #if TARGET_OS_OSX
     // Whether the native field that edits a text field of the UI holds the keyboard, whose keys then belong to that field alone.

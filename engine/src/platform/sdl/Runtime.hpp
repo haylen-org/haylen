@@ -25,6 +25,9 @@
 #if defined(_WIN32) || defined(__linux__)
 #include "platform/sdl/TextInput.hpp"
 #endif
+#if defined(__APPLE__) && !TARGET_OS_OSX
+#include "platform/SurfaceCheck.hpp"
+#endif
 
 namespace haylen::platform::sdl {
 
@@ -139,6 +142,11 @@ class Runtime final {
 
     // Whether the frames run at the rate of a window that shows nothing.
     bool paced = false;
+#if defined(__APPLE__) && !TARGET_OS_OSX
+
+    // The check of debug builds that the view and the drawable of the window cover the window at every frame.
+    SurfaceCheck surfaceCheck;
+#endif
 
     // The presses and releases of the back button that the player took as they arrived, which reach no app.
     int takenBacks = 0;
