@@ -14,7 +14,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 // A native dialog that shows: its id, the folder that the engine gave it and the UI that shows it, which a cancel closes. On iOS, iPadOS and Mac Catalyst it is the delegate of its document picker and of the presentation of the picker, so the picked documents, the `Cancel` button and the swipe that dismisses the picker each answer the dialog.
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_VISION
 @interface HaylenDialog : NSObject <UIDocumentPickerDelegate, UIAdaptivePresentationControllerDelegate>
 #else
 @interface HaylenDialog : NSObject
@@ -26,7 +26,7 @@ NS_ASSUME_NONNULL_BEGIN
 // The alert, the panel or the picker that shows the dialog.
 @property(nonatomic, nullable) id view;
 
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_VISION
 // Receives the documents that the picker returns.
 @property(nonatomic, copy, nullable) void (^picked)(NSArray<NSURL*>* urls);
 #endif

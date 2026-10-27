@@ -102,7 +102,12 @@ using haylen::platform::AccessibilityElement;
     id element = self.window != nil ? static_cast<id>(self.window) : static_cast<id>(NSApp);
     NSAccessibilityPostNotificationWithUserInfo(element, NSAccessibilityAnnouncementRequestedNotification, @{NSAccessibilityAnnouncementKey : text, NSAccessibilityPriorityKey : @(interrupt ? NSAccessibilityPriorityHigh : NSAccessibilityPriorityMedium)});
 #else
-    NSAttributedString* announcement = [[NSAttributedString alloc] initWithString:text attributes:@{UIAccessibilitySpeechAttributeQueueAnnouncement : @(!interrupt)}];
+#if TARGET_OS_VISION
+    NSDictionary* attributes = @{UIAccessibilitySpeechAttributeAnnouncementPriority : interrupt ? UIAccessibilityPriorityHigh : UIAccessibilityPriorityDefault};
+#else
+    NSDictionary* attributes = @{UIAccessibilitySpeechAttributeQueueAnnouncement : @(!interrupt)};
+#endif
+    NSAttributedString* announcement = [[NSAttributedString alloc] initWithString:text attributes:attributes];
     UIAccessibilityPostNotification(UIAccessibilityAnnouncementNotification, announcement);
 #endif
 }

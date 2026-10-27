@@ -19,7 +19,7 @@ class AppleBattery final {
 
     // The callback of the run loop source that IOKit signals whenever a power source changes.
     static void powerSourcesChanged(void* context);
-#elif TARGET_OS_IOS
+#elif TARGET_OS_IOS || TARGET_OS_VISION
     [[nodiscard]] static Battery readDevice();
 #endif
 };

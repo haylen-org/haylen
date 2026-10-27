@@ -9,10 +9,17 @@ else()
   set(HAYLEN_CATALYST OFF)
 endif()
 
+# Apps of visionOS run the iPhone and iPad API of UIKit, so the engine treats them as iOS too, and scripts see them as iOS apps.
+if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+  set(HAYLEN_VISIONOS ON)
+else()
+  set(HAYLEN_VISIONOS OFF)
+endif()
+
 # A port names its own platform, whatever the system of its toolchain is.
 if(HAYLEN_PORT_PLATFORM)
   set(HAYLEN_PLATFORM "${HAYLEN_PORT_PLATFORM}")
-elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR HAYLEN_CATALYST)
+elseif(CMAKE_SYSTEM_NAME STREQUAL "iOS" OR HAYLEN_CATALYST OR HAYLEN_VISIONOS)
   set(HAYLEN_PLATFORM "ios")
 elseif(CMAKE_SYSTEM_NAME STREQUAL "tvOS")
   set(HAYLEN_PLATFORM "tvos")

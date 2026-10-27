@@ -5,7 +5,7 @@
 #if TARGET_OS_OSX || TARGET_OS_MACCATALYST
 #import <IOKit/ps/IOPSKeys.h>
 #import <IOKit/ps/IOPowerSources.h>
-#elif TARGET_OS_IOS
+#elif TARGET_OS_IOS || TARGET_OS_VISION
 #import <UIKit/UIKit.h>
 #endif
 
@@ -54,7 +54,7 @@ Battery AppleBattery::readPowerSources() {
     CFRelease(info);
     return battery;
 }
-#elif TARGET_OS_IOS
+#elif TARGET_OS_IOS || TARGET_OS_VISION
 // The class `UIDevice` reports the level in steps of 5 percent and posts its notifications about once a minute.
 void AppleBattery::observe() {
     UIDevice.currentDevice.batteryMonitoringEnabled = YES;

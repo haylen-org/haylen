@@ -265,14 +265,23 @@ using haylen::platform::TextInput;
 
 // The keyboard frame reaches the engine in framebuffer pixels of the view of the app, and a hidden keyboard covers nothing.
 - (void)keyboardChanged:(NSNotification*)notification {
-    UIView* host = ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).rootViewController.view;
-    CGRect frame = CGRectZero;
-    if (![notification.name isEqualToString:UIKeyboardWillHideNotification] && host.window != nil) {
-        const CGRect screen = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
-        frame = CGRectIntersection([host convertRect:screen fromCoordinateSpace:host.window.windowScene.screen.coordinateSpace], host.bounds);
-    }
+    const CGRect frame = [self coveredFrame:notification];
     const haylen::math::Rect area = CGRectIsNull(frame) || CGRectIsEmpty(frame) ? haylen::math::Rect{} : AppleTextInput::toPixels(frame);
     haylen::platform::Player::postEvent({.type = haylen::platform::Event::Type::KeyboardChanged, .keyboardFrame = area});
+}
+
+// The part of the view of the app that the keyboard covers, in points. The keyboard of visionOS floats apart from the window of the app and covers nothing of it.
+- (CGRect)coveredFrame:(NSNotification*)notification {
+#if TARGET_OS_VISION
+    return CGRectZero;
+#else
+    UIView* host = ((__bridge UIWindow*)haylen::platform::NativeWindow::getHandle()).rootViewController.view;
+    if ([notification.name isEqualToString:UIKeyboardWillHideNotification] || host.window == nil) {
+        return CGRectZero;
+    }
+    const CGRect screen = [notification.userInfo[UIKeyboardFrameEndUserInfoKey] CGRectValue];
+    return CGRectIntersection([host convertRect:screen fromCoordinateSpace:host.window.windowScene.screen.coordinateSpace], host.bounds);
+#endif
 }
 #endif
 

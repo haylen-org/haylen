@@ -53,7 +53,7 @@ This file is binding for every change. It describes the project as it is and the
 
 ## Platforms
 
-- The engine runs on macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, Android (phones, tablets and Android TV from one APK) and the web (WebGPU with WebGL2 as the alternative where WebGPU does not start). visionOS runs the iPad app, and watchOS is not possible because its SDK lacks the graphics, input and audio frameworks the engine needs. The file `docs/tools/distribution.md` records the support table and the minimum versions.
+- The engine runs on macOS, Windows, Linux, iOS and iPadOS, Mac Catalyst, tvOS, visionOS, Android (phones, tablets and Android TV from one APK) and the web (WebGPU with WebGL2 as the alternative where WebGPU does not start). Scripts see Mac Catalyst and visionOS apps as iOS apps, and watchOS is not possible because its SDK lacks the graphics, input and audio frameworks the engine needs. The file `docs/tools/distribution.md` records the support table and the minimum versions.
 - Minimum operating system versions are as low as the toolchain and the dependencies allow, and each limit is explained in `docs/tools/distribution.md`.
 - Every feature works on every platform, or the docs say exactly where it does not and why. Input covers mouse, touch, keyboard, gamepads and TV remotes, and text input uses the native text field of each platform so input methods, composition and on-screen keyboards work everywhere.
 - The native text field that edits a field of the UI stays hidden on every platform, never transparent, so the system draws none of its caret, selection, autocorrection bubbles or predictions. A finger edits a field only once it taps it, a drag that starts on a field scrolls the area around it, and the GUIs hold their place under the keyboard while a press is down, so a press that closes the keyboard lands on what it pressed.
@@ -163,7 +163,7 @@ templates/
     platform/android/     Gradle app project without C++ that depends on the haylen AAR and reads haylen/haylen.properties.
     platform/web/app.js   Page code of the web, which a Lua page loads and a C++ app links with --pre-js.
   lua/                    The layer of Lua apps: source/main.lua and the platform projects that only Lua apps build.
-    platform/apple/       XcodeGen project.yml that includes haylen/project.yml, with the generated App.xcodeproj next to it: iOS and iPadOS with Mac Catalyst, tvOS and macOS.
+    platform/apple/       XcodeGen project.yml that includes haylen/project.yml, with the generated App.xcodeproj next to it: iOS and iPadOS with Mac Catalyst, tvOS, visionOS and macOS.
     platform/windows/     CMake project of the Windows executable with its icon, version resource, manifest, signing and installer.
     platform/linux/       CMake project of the Linux executable with its desktop entry, AppStream metainfo, icons, `.deb` and AppImage.
     platform/web/         Loading page with the app or engine logo, the progress bar, the graphics API that the address asks for and the error screen.

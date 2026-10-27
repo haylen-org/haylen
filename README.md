@@ -39,7 +39,7 @@ Haylen is built so that coding agents write correct apps and extend the engine w
 | 📺 | tvOS | Metal |
 | 🤖 | Android phones, tablets and TVs from one APK | Vulkan and OpenGL ES |
 | 🌐 | Web | WebGPU and WebGL2 |
-| 🥽 | visionOS | Metal, running the iPad app |
+| 🥽 | visionOS | Metal |
 
 Each build carries every graphics API of its platform and uses the first one that starts on the machine, in the order of the table, while the app or its player can ask for another. Game consoles need a port in a private repository, which the engine is built to take.
 

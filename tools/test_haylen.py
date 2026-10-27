@@ -894,7 +894,7 @@ class AppleGpuTestsTest(unittest.TestCase):
             return [str(part) for part in haylen.apple_gpu_tests_configure_command(Path("/build/apple"), platform_name, "Debug")]
 
     def test_the_tests_build_alone_for_the_sdk_of_each_simulator_and_for_mac_catalyst(self):
-        for platform_name, system, sdk in (("ios-simulator", "iOS", "iphonesimulator"), ("tvos-simulator", "tvOS", "appletvsimulator")):
+        for platform_name, system, sdk in (("ios-simulator", "iOS", "iphonesimulator"), ("tvos-simulator", "tvOS", "appletvsimulator"), ("visionos-simulator", "visionOS", "xrsimulator")):
             command = self.configure(platform_name)
             self.assertIn(f"-DCMAKE_SYSTEM_NAME={system}", command)
             self.assertIn(f"-DCMAKE_OSX_SYSROOT={sdk}", command)
@@ -923,7 +923,7 @@ class AppleGpuTestsTest(unittest.TestCase):
                 haylen.command_test(arguments)
 
     def test_a_device_builds_the_tests_as_an_app_that_xcode_signs_for_the_team(self):
-        for platform_name, system, sdk in (("ios", "iOS", "iphoneos"), ("tvos", "tvOS", "appletvos")):
+        for platform_name, system, sdk in (("ios", "iOS", "iphoneos"), ("tvos", "tvOS", "appletvos"), ("visionos", "visionOS", "xros")):
             with mock.patch.object(haylen, "ensure_shaderc", return_value=Path("/tools/haylen-shaderc")), mock.patch.dict(os.environ, {"HAYLEN_APPLE_TEAM": "TEAM123456"}):
                 command = [str(part) for part in haylen.apple_device_gpu_tests_configure_command(Path("/build/apple"), platform_name, "Debug")]
             self.assertEqual(command[command.index("-G") + 1], "Xcode")
@@ -950,11 +950,30 @@ class AppleGpuTestsTest(unittest.TestCase):
             self.assertIsNone(haylen.apple_device_gpu_tests_problem(results))
 
     def test_the_devices_take_only_the_gpu_tests_and_a_named_device(self):
-        for platform_name in ("ios", "tvos"):
+        for platform_name in ("ios", "tvos", "visionos"):
             with self.assertRaisesRegex(haylen.BuildError, "only the GPU tests"):
                 haylen.command_test(haylen.build_parser().parse_args(["test", "--platform", platform_name]))
             with mock.patch.object(haylen, "require_host"), self.assertRaisesRegex(haylen.BuildError, "Name the device"):
                 haylen.command_test(haylen.build_parser().parse_args(["test", "--gpu", "--platform", platform_name]))
+
+
+class VisionOSTest(unittest.TestCase):
+    def test_visionos_builds_its_own_slices_and_runs_as_an_apple_platform(self):
+        device = [str(part) for part in haylen.apple_slice_options("xros", "arm64")]
+        self.assertIn("-DCMAKE_SYSTEM_NAME=visionOS", device)
+        self.assertIn("-DCMAKE_OSX_SYSROOT=xros", device)
+        self.assertIn(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={haylen.APPLE_MINIMUM_VERSIONS['visionOS']}", device)
+        self.assertIn("-DCMAKE_OSX_SYSROOT=xrsimulator", [str(part) for part in haylen.apple_slice_options("xros-simulator", "arm64")])
+        self.assertEqual(haylen.APPLE_NATIVE_SLICES["visionos"], "xros")
+        self.assertEqual(haylen.APPLE_NATIVE_SLICES["visionos-simulator"], "xros-simulator")
+        self.assertEqual(haylen.APPLE_SLICE_NATIVE_PLATFORMS["xros"], "ios")
+        self.assertEqual(haylen.RUN_TARGETS["visionos-simulator"].plugins, "visionos")
+        self.assertEqual(haylen.APPLE_RUNS["visionos"]["template"], "HaylenVisionOS")
+        self.assertNotIn("visionos", haylen.CPP_RUN_PLATFORMS)
+
+    def test_a_missing_runtime_names_the_platform_that_xcodebuild_downloads(self):
+        with mock.patch.object(haylen, "capture", return_value=json.dumps({"devices": {}})), self.assertRaisesRegex(haylen.BuildError, '"xcodebuild -downloadPlatform visionOS"'):
+            haylen.apple_simulator("xrOS", None)
 
 
 class CleanTest(unittest.TestCase):

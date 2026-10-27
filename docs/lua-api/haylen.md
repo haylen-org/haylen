@@ -20,7 +20,7 @@ print('Running on Haylen ' .. haylen.version .. '.')
 
 ### haylen.platform
 
-The platform that the app runs on, as a string. It is `'windows'`, `'macos'`, `'linux'`, `'ios'`, `'tvos'`, `'android'` or `'web'`. iPhones, iPads and Mac Catalyst apps report `'ios'`. The headless host that the engine tests use reports `'headless'`, and a [port](../platform/ports.md) to another platform reports the name of its platform. The module [`haylen.system`](system.md) tells more about the device.
+The platform that the app runs on, as a string. It is `'windows'`, `'macos'`, `'linux'`, `'ios'`, `'tvos'`, `'android'` or `'web'`. iPhones, iPads, Mac Catalyst apps and visionOS apps report `'ios'`. The headless host that the engine tests use reports `'headless'`, and a [port](../platform/ports.md) to another platform reports the name of its platform. The module [`haylen.system`](system.md) tells more about the device.
 
 ```lua
 local haylen = require('haylen')

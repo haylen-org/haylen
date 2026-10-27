@@ -24,7 +24,7 @@ add_custom_target(haylen-framework ALL DEPENDS "${framework_library}")
 
 # The system frameworks of every Apple platform, by the names of the SDK, which haylen.py links into the projects of Lua apps.
 set(frameworks_json "{}")
-foreach(platform IN ITEMS iOS macCatalyst tvOS macOS)
+foreach(platform IN ITEMS iOS macCatalyst tvOS visionOS macOS)
   string(TOUPPER "${platform}" key)
   set(names ${HAYLEN_APPLE_FRAMEWORKS_${key}})
   list(TRANSFORM names REPLACE "^(.+)$" "\"\\1.framework\"")

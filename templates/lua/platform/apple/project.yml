@@ -1,5 +1,5 @@
 # XcodeGen spec of App.xcodeproj, which is committed next to it. After changing it, run "haylen xcodegen <app>", which runs the XcodeGen that haylen.py pins.
-# The script haylen.py writes the gitignored folder haylen/ and nothing else: haylen/project.yml defines the target templates HaylenIOS, HaylenTVOS and HaylenMacOS with the engine, its system frameworks, the package, the splash assets, the merged Info.plist, entitlements and privacy manifest, the native libraries and the native parts of the plugins of the app.
+# The script haylen.py writes the gitignored folder haylen/ and nothing else: haylen/project.yml defines the target templates HaylenIOS, HaylenTVOS, HaylenVisionOS and HaylenMacOS with the engine, its system frameworks, the package, the splash assets, the merged Info.plist, entitlements and privacy manifest, the native libraries and the native parts of the plugins of the app.
 # Each target takes its template in "templates", and a setting or a list of the target itself adds to the template or wins over it. Deleting "templates" leaves the target without the engine, which the target then links itself.
 # Every file in source/ builds into every target, so apps add Objective-C, C++ and Swift files there, and Swift reaches the engine through HaylenBridging.h.
 # The Info.plist of each platform stays out of the resources, since the template completes it into haylen/ and the target builds the completed one.
@@ -10,6 +10,7 @@ options:
   deploymentTarget:
     iOS: "16.3"
     tvOS: "16.3"
+    visionOS: "1.0"
     macOS: "13.3"
 settings:
   base:
@@ -69,6 +70,27 @@ targets:
         PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
         PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
         TARGETED_DEVICE_FAMILY: "3"
+        ASSETCATALOG_COMPILER_APPICON_NAME: app-icon
+    scheme: {}
+  visionOS:
+    type: application
+    platform: visionOS
+    templates: [HaylenVisionOS]
+    configFiles:
+      Debug: App.xcconfig
+      Release: App.xcconfig
+    sources:
+      - path: source
+        type: syncedFolder
+      - path: visionos
+        excludes: [Info.plist]
+      - path: visionos/Info.plist
+        buildPhase: none
+    settings:
+      base:
+        PRODUCT_NAME: $(HAYLEN_PRODUCT_NAME)
+        PRODUCT_BUNDLE_IDENTIFIER: $(HAYLEN_BUNDLE_IDENTIFIER)
+        TARGETED_DEVICE_FAMILY: "7"
         ASSETCATALOG_COMPILER_APPICON_NAME: app-icon
     scheme: {}
   macOS:

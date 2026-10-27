@@ -26,7 +26,7 @@ using haylen::platform::AppleDialogs;
     return root;
 }
 
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_VISION
 - (void)documentPicker:(UIDocumentPickerViewController*)controller didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls {
     self.picked(urls);
 }

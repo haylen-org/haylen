@@ -69,4 +69,4 @@ The device is lost when the system revokes the access of the app to the GPU, whe
 
 - The GPUs of the Apple TV HD and the first Apple TV 4K bind 31 textures in each stage, so the device refuses a program that binds a texture at a higher index there. The shader compiler numbers the textures of each stage from zero, so the sprite batch programs, whose last texture takes slot 31, bind it at index 7, and they draw on the A10X of the first Apple TV 4K.
 - Mac Catalyst apps run the `msl-ios` code, since they run the iOS slice of the engine.
-- visionOS runs the iPad app, since the engine builds no visionOS slice.
+- visionOS runs the `msl-ios` code on Apple Vision Pro and the `msl-ios-simulator` code in its simulator, from the visionOS slices of the engine.

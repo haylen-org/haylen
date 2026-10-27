@@ -15,7 +15,7 @@
 @class HaylenDialog;
 @class UTType;
 
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_VISION
 @class UIDocumentPickerViewController;
 #endif
 
@@ -43,7 +43,7 @@ class AppleDialogs final {
 
     [[nodiscard]] static DialogResult makeFailure(DialogResult::Code code, const std::string& message);
 
-#if TARGET_OS_IOS
+#if TARGET_OS_IOS || TARGET_OS_VISION
     // Shows the document picker of the dialog, whose delegate and presentation delegate the dialog is.
     static void presentPicker(HaylenDialog* dialog, UIDocumentPickerViewController* picker);
 

@@ -15,6 +15,7 @@ set(HAYLEN_APPLE_FRAMEWORKS_MACOS Cocoa Carbon CoreFoundation CoreGraphics Quart
 set(HAYLEN_APPLE_FRAMEWORKS_IOS Foundation UIKit CoreGraphics QuartzCore Metal MetalKit GameController AVFoundation AudioToolbox CoreAudio CoreMedia Network CoreVideo UniformTypeIdentifiers)
 set(HAYLEN_APPLE_FRAMEWORKS_MACCATALYST ${HAYLEN_APPLE_FRAMEWORKS_IOS} IOKit)
 set(HAYLEN_APPLE_FRAMEWORKS_TVOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
+set(HAYLEN_APPLE_FRAMEWORKS_VISIONOS ${HAYLEN_APPLE_FRAMEWORKS_IOS})
 
 # Adds the system libraries and link options every runtime needs, with PUBLIC for the runtime the engine builds and INTERFACE for the one an installed SDK imports.
 function(haylen_link_runtime_platform target scope)

@@ -131,7 +131,7 @@ CONTENT_TOOL = "haylen-content"
 # The variable that names the folder of the key folders of apps, as continuous integration gives it, instead of the configuration folder of the user.
 KEYS_VARIABLE = "HAYLEN_KEYS_DIR"
 # The content profile of each run platform, which a protected release is built for. The Apple platforms share one release, since their targets share one project.
-CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-simulator": "apple", "tvos": "apple", "tvos-simulator": "apple", "android": "android", "web": "web", "windows": "windows", "linux": "linux"}
+CONTENT_PROFILES = {"macos": "apple", "catalyst": "apple", "ios": "apple", "ios-simulator": "apple", "tvos": "apple", "tvos-simulator": "apple", "visionos": "apple", "visionos-simulator": "apple", "android": "android", "web": "web", "windows": "windows", "linux": "linux"}
 # A compaction of a publication tree keeps the current generation of every channel and the one before it.
 CONTENT_KEPT_GENERATIONS = 2
 # The source of the bootstrap that a release build compiles in, which the content tool writes from the key folder of the app.
@@ -170,11 +170,13 @@ STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store acce
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
 # A file of the package smaller than this may match an unrelated file of a release by chance, such as an empty file, so the check of raw files leaves it out.
 RELEASE_MATCH_MINIMUM = 16
-# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches the C++ library of the system in macOS 13.3 and in iOS and tvOS 16.3, later than SDL and the Metal device need.
+# The oldest Apple systems the engine runs on: `std::format` with floating point, which the engine formats text and logs with, reaches the C++ library of the system in macOS 13.3 and in iOS and tvOS 16.3, later than SDL and the Metal device need. visionOS has it from its first release.
 # Mac Catalyst takes its minimum, the iOS version, from `engine/cmake/haylen-catalyst.toolchain.cmake`.
-APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "macOS": "13.3"}
+APPLE_MINIMUM_VERSIONS = {"iOS": "16.3", "tvOS": "16.3", "visionOS": "1.0", "macOS": "13.3"}
+# The system of each Apple platform whose devices build from this Mac.
+APPLE_DEVICE_SYSTEMS = {"ios": "iOS", "tvos": "tvOS", "visionos": "visionOS"}
 
-PLATFORMS = ["macos", "linux", "windows", "ios", "tvos", "android", "web"]
+PLATFORMS = ["macos", "linux", "windows", "ios", "tvos", "visionos", "android", "web"]
 DESKTOP_PLATFORMS = {"macos", "linux", "windows"}
 CONFIGS = ["Debug", "Release", "RelWithDebInfo"]
 ARTIFACT_PLATFORMS = ["apple", "android", "web", "desktop"]
@@ -200,7 +202,7 @@ GPU_BENCHMARKS = {"sprites", "physics", "ui", "render", "particles", "nodes", "a
 # The exit status of a benchmark whose device cannot start on this machine, `BenchmarkGpu::kUnavailable`.
 BENCHMARK_UNAVAILABLE = 3
 
-# The slices of `Haylen.xcframework` and the architectures each one joins with lipo.
+# The slices of `Haylen.xcframework` and the architectures each one joins with lipo. The visionOS simulator runs arm64 alone, since the OpenSSL that Varn builds for visionOS takes no architecture and comes out arm64.
 APPLE_SLICES = {
     "macos": ["arm64", "x86_64"],
     "ios": ["arm64"],
@@ -208,7 +210,12 @@ APPLE_SLICES = {
     "ios-maccatalyst": ["arm64", "x86_64"],
     "tvos": ["arm64"],
     "tvos-simulator": ["arm64", "x86_64"],
+    "xros": ["arm64"],
+    "xros-simulator": ["arm64"],
 }
+
+# The name of the platform of each family of simulators that "xcodebuild -downloadPlatform" installs the runtime of.
+SIMULATOR_DOWNLOAD_PLATFORMS = {"iOS": "iOS", "tvOS": "tvOS", "xrOS": "visionOS"}
 
 # How each Apple run platform builds the Apple project: its scheme, the xcodebuild destination or the simulator family it boots, the suffix of the folder of its products, its target template and the platform of its engine frameworks.
 APPLE_RUNS = {
@@ -218,6 +225,8 @@ APPLE_RUNS = {
     "ios-simulator": {"scheme": "iOS", "simulator": "iOS", "products": "-iphonesimulator", "template": "HaylenIOS", "frameworks": "iOS"},
     "tvos": {"scheme": "tvOS", "destination": "generic/platform=tvOS", "products": "-appletvos", "template": "HaylenTVOS", "frameworks": "tvOS"},
     "tvos-simulator": {"scheme": "tvOS", "simulator": "tvOS", "products": "-appletvsimulator", "template": "HaylenTVOS", "frameworks": "tvOS"},
+    "visionos": {"scheme": "visionOS", "destination": "generic/platform=visionOS", "products": "-xros", "template": "HaylenVisionOS", "frameworks": "visionOS"},
+    "visionos-simulator": {"scheme": "visionOS", "simulator": "xrOS", "products": "-xrsimulator", "template": "HaylenVisionOS", "frameworks": "visionOS"},
 }
 
 ANDROID_ORIENTATIONS = {"landscape": "sensorLandscape", "portrait": "sensorPortrait", "any": "fullSensor"}
@@ -619,7 +628,7 @@ def android_options(abi: str) -> list[str]:
 
 
 def require_host(platform_name: str) -> None:
-    apple = {"macos", "ios", "tvos", "apple", "ios-simulator", "tvos-simulator", "catalyst"}
+    apple = {"macos", "ios", "tvos", "visionos", "apple", "ios-simulator", "tvos-simulator", "visionos-simulator", "catalyst"}
     required = "macos" if platform_name in apple else {"linux": "linux", "windows": "windows"}.get(platform_name)
     if required is not None and host_name() != required:
         raise BuildError(f'Builds for "{platform_name}" need a "{required}" host, and this one is "{host_name()}".')
@@ -654,8 +663,8 @@ def configure_command(args: argparse.Namespace) -> tuple[list, dict[str, str]]:
     if args.platform == "macos":
         command += ["-G", "Xcode"] if args.xcode else ["-G", "Ninja"]
         command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
-    elif args.platform in {"ios", "tvos"}:
-        system = "iOS" if args.platform == "ios" else "tvOS"
+    elif args.platform in APPLE_DEVICE_SYSTEMS:
+        system = APPLE_DEVICE_SYSTEMS[args.platform]
         command += ["-G", "Xcode", f"-DCMAKE_SYSTEM_NAME={system}", "-DCMAKE_OSX_ARCHITECTURES=arm64", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS[system]}", "-DHAYLEN_BUILD_TESTS=OFF", "-DHAYLEN_BUILD_PLAYER=OFF"]
     elif args.platform == "android":
         command += ["-G", "Ninja", *android_options("arm64-v8a"), "-DHAYLEN_BUILD_TESTS=OFF"]
@@ -930,9 +939,9 @@ def command_test(args: argparse.Namespace) -> None:
             raise BuildError('The Apple simulators and Mac Catalyst run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
         command_test_gpu_apple(args)
         return
-    if args.platform in {"ios", "tvos"}:
+    if args.platform in APPLE_DEVICE_SYSTEMS:
         if not gpu:
-            raise BuildError('The iOS and tvOS devices run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
+            raise BuildError('The iOS, tvOS and visionOS devices run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
         command_test_gpu_apple_device(args)
         return
     args.platform = host_name()
@@ -1101,8 +1110,8 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
 
 
 # The GPU tests of the Apple simulators and Mac Catalyst: a tree of their own builds them for the slice of the platform, and they read the reference images and keep the images of the scenes that differ at their paths on this Mac, whose files the simulators share.
-APPLE_GPU_TEST_SLICES = {"ios-simulator": "ios-simulator", "tvos-simulator": "tvos-simulator", "catalyst": "ios-maccatalyst"}
-APPLE_GPU_TEST_FAMILIES = {"ios-simulator": "iOS", "tvos-simulator": "tvOS"}
+APPLE_GPU_TEST_SLICES = {"ios-simulator": "ios-simulator", "tvos-simulator": "tvos-simulator", "visionos-simulator": "xros-simulator", "catalyst": "ios-maccatalyst"}
+APPLE_GPU_TEST_FAMILIES = {"ios-simulator": "iOS", "tvos-simulator": "tvOS", "visionos-simulator": "xrOS"}
 # The variables of the tests and of GoogleTest that a run hands to the tests inside a simulator, which simctl passes to its child without the prefix "SIMCTL_CHILD_".
 APPLE_GPU_TEST_VARIABLES = ("HAYLEN_", "GTEST_")
 
@@ -1173,8 +1182,8 @@ APPLE_GPU_TEST_DEVICE_OUTPUT = "Library/Caches/gpu-test-output"
 
 
 def apple_device_gpu_tests_configure_command(directory: Path, platform_name: str, config: str) -> list:
-    """The CMake command that configures the tree of the GPU tests of an iOS or tvOS device with the Xcode generator, which signs the app with the team that "HAYLEN_APPLE_TEAM" names, and builds the tests alone."""
-    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Xcode", *apple_slice_options(platform_name, "arm64"), f"-DCMAKE_BUILD_TYPE={config}", f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+    """The CMake command that configures the tree of the GPU tests of an iOS, tvOS or visionOS device with the Xcode generator, which signs the app with the team that "HAYLEN_APPLE_TEAM" names, and builds the tests alone."""
+    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Xcode", *apple_slice_options(APPLE_NATIVE_SLICES[platform_name], "arm64"), f"-DCMAKE_BUILD_TYPE={config}", f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
 
 
 def apple_device_gpu_tests_command(device: str, api: str | None, environment: dict[str, str]) -> tuple[list, dict[str, str]]:
@@ -1517,7 +1526,7 @@ def write_manifest(platform_name: str, entry: dict) -> None:
 def apple_slice_options(slice_name: str, arch: str) -> list[str]:
     if slice_name == "ios-maccatalyst":
         return [f"-DCMAKE_TOOLCHAIN_FILE={ENGINE_DIR / 'cmake' / 'haylen-catalyst.toolchain.cmake'}", f"-DCMAKE_OSX_ARCHITECTURES={arch}"]
-    systems = {"macos": ("macOS", "macosx"), "ios": ("iOS", "iphoneos"), "ios-simulator": ("iOS", "iphonesimulator"), "tvos": ("tvOS", "appletvos"), "tvos-simulator": ("tvOS", "appletvsimulator")}
+    systems = {"macos": ("macOS", "macosx"), "ios": ("iOS", "iphoneos"), "ios-simulator": ("iOS", "iphonesimulator"), "tvos": ("tvOS", "appletvos"), "tvos-simulator": ("tvOS", "appletvsimulator"), "xros": ("visionOS", "xros"), "xros-simulator": ("visionOS", "xrsimulator")}
     system, sdk = systems[slice_name]
     options = [f"-DCMAKE_OSX_ARCHITECTURES={arch}", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS[system]}", f"-DCMAKE_OSX_SYSROOT={sdk}"]
     if system != "macOS":
@@ -1848,14 +1857,18 @@ def package_folder(folder: Path, output: Path) -> None:
 # Native libraries: what the `native` section of `app.json` lists, prebuilt or built from a CMake project, placed where each platform package loads it.
 
 NATIVE_PLATFORMS = ("macos", "ios", "tvos", "android", "windows", "linux")
+# The native platform of `app.json` whose libraries each Apple slice builds or takes. Mac Catalyst and visionOS run the iOS API, so they ship the iOS libraries built for their slices.
+APPLE_SLICE_NATIVE_PLATFORMS = {"macos": "macos", "ios-maccatalyst": "ios", "ios": "ios", "ios-simulator": "ios", "tvos": "tvos", "tvos-simulator": "tvos", "xros": "ios", "xros-simulator": "ios"}
 # The slice of `APPLE_SLICES` that each Apple run platform builds, the target template and platform whose embed phase ships its libraries, and the SDK of the setting that links its static libraries.
-APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator"}
-APPLE_NATIVE_KEYS = {"macos": "macos-macosx", "ios-maccatalyst": "ios-macosx", "ios": "ios-iphoneos", "ios-simulator": "ios-iphonesimulator", "tvos": "tvos-appletvos", "tvos-simulator": "tvos-appletvsimulator"}
-APPLE_STATIC_SDKS = {"ios-maccatalyst": "macosx", "ios": "iphoneos", "ios-simulator": "iphonesimulator", "tvos": "appletvos", "tvos-simulator": "appletvsimulator"}
-# The condition of each platform whose apps may link native libraries statically, which keeps their symbols in the table of the app. The iOS one holds for Mac Catalyst too.
-APPLE_STATIC_CONDITIONS = {"ios": "TARGET_OS_IOS", "tvos": "TARGET_OS_TV"}
-XCFRAMEWORK_SLICES = {"macos": ("macos", None), "ios-maccatalyst": ("ios", "maccatalyst"), "ios": ("ios", None), "ios-simulator": ("ios", "simulator"), "tvos": ("tvos", None), "tvos-simulator": ("tvos", "simulator")}
-FRAMEWORK_PLATFORMS = {"ios": "iPhoneOS", "ios-simulator": "iPhoneSimulator", "tvos": "AppleTVOS", "tvos-simulator": "AppleTVSimulator"}
+APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator", "visionos": "xros", "visionos-simulator": "xros-simulator"}
+APPLE_NATIVE_KEYS = {"macos": "macos-macosx", "ios-maccatalyst": "ios-macosx", "ios": "ios-iphoneos", "ios-simulator": "ios-iphonesimulator", "tvos": "tvos-appletvos", "tvos-simulator": "tvos-appletvsimulator", "xros": "visionos-xros", "xros-simulator": "visionos-xrsimulator"}
+APPLE_STATIC_SDKS = {"ios-maccatalyst": "macosx", "ios": "iphoneos", "ios-simulator": "iphonesimulator", "tvos": "appletvos", "tvos-simulator": "appletvsimulator", "xros": "xros", "xros-simulator": "xrsimulator"}
+# The condition of each platform whose apps may link native libraries statically, which keeps their symbols in the table of the app. The iOS one holds for Mac Catalyst and visionOS too.
+APPLE_STATIC_CONDITIONS = {"ios": "TARGET_OS_IOS || TARGET_OS_VISION", "tvos": "TARGET_OS_TV"}
+XCFRAMEWORK_SLICES = {"macos": ("macos", None), "ios-maccatalyst": ("ios", "maccatalyst"), "ios": ("ios", None), "ios-simulator": ("ios", "simulator"), "tvos": ("tvos", None), "tvos-simulator": ("tvos", "simulator"), "xros": ("xros", None), "xros-simulator": ("xros", "simulator")}
+FRAMEWORK_PLATFORMS = {"ios": "iPhoneOS", "ios-simulator": "iPhoneSimulator", "tvos": "AppleTVOS", "tvos-simulator": "AppleTVSimulator", "xros": "XROS", "xros-simulator": "XRSimulator"}
+# The system of each Apple slice whose minimum version a framework of a native library declares.
+FRAMEWORK_SYSTEMS = {"ios": "iOS", "ios-simulator": "iOS", "tvos": "tvOS", "tvos-simulator": "tvOS", "xros": "visionOS", "xros-simulator": "visionOS"}
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1935,7 +1948,7 @@ def build_apple_native(app: App, library: NativeLibrary, slice_name: str, jobs: 
     framework.mkdir()
     shutil.copy2(joined, framework / library.name)
     run(["install_name_tool", "-id", f"@rpath/{library.name}.framework/{library.name}", framework / library.name])
-    system = "iOS" if slice_name.startswith("ios") else "tvOS"
+    system = FRAMEWORK_SYSTEMS[slice_name]
     info = {
         "CFBundleDevelopmentRegion": "en",
         "CFBundleExecutable": library.name,
@@ -1978,7 +1991,7 @@ def prepare_apple_native(app: App, generated: Path, run_platform: str, jobs: int
     """Places the libraries of an Apple run platform in `native/` of the generated folder, writes the file lists of the embed phase of every target template and platform and returns the `Haylen.xcconfig` setting that links the static libraries."""
     slice_name = APPLE_NATIVE_SLICES[run_platform]
     key = APPLE_NATIVE_KEYS[slice_name]
-    platform = "macos" if slice_name == "macos" else slice_name.split("-")[0]
+    platform = APPLE_SLICE_NATIVE_PLATFORMS[slice_name]
     folder = generated / "native"
     shutil.rmtree(folder, ignore_errors=True)
     embedded: list[Path] = []
@@ -2077,7 +2090,7 @@ def prepare_host_native(app: App, folder: Path, jobs: int) -> list[Path]:
 
 # Plugins: folders under `plugins/` of an app that give Lua a capability implemented natively on each platform, which `haylen.py` validates, packages and assembles into the platform projects.
 
-PLUGIN_PLATFORMS = ("ios", "catalyst", "tvos", "macos", "android", "web", "windows", "linux")
+PLUGIN_PLATFORMS = ("ios", "catalyst", "tvos", "visionos", "macos", "android", "web", "windows", "linux")
 PLUGIN_KEYS = {"id", "name", "version", "description", "platforms", "requires", "parameters", "apple", "android", "web", "native"}
 PLUGIN_ID = re.compile(r"[a-z][a-z0-9]*(-[a-z0-9]+)*")
 PARAMETER_NAME = re.compile(r"[a-z][A-Za-z0-9]*")
@@ -2105,12 +2118,13 @@ GRADLE_PLUGIN_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)
 GRADLE_PLUGIN_VERSION = re.compile(r"[0-9A-Za-z._+-]+")
 PLACEHOLDER_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 # The target templates of `haylen/project.yml`, each with the folder of its `Info.plist`, the plugin platforms it builds for, since the iOS target also builds the Mac Catalyst app, and the platform of its engine frameworks.
-APPLE_TEMPLATES = {"HaylenIOS": ("ios", ("ios", "catalyst"), "iOS"), "HaylenTVOS": ("tvos", ("tvos",), "tvOS"), "HaylenMacOS": ("macos", ("macos",), "macOS")}
+APPLE_TEMPLATES = {"HaylenIOS": ("ios", ("ios", "catalyst"), "iOS"), "HaylenTVOS": ("tvos", ("tvos",), "tvOS"), "HaylenVisionOS": ("visionos", ("visionos",), "visionOS"), "HaylenMacOS": ("macos", ("macos",), "macOS")}
 # The entitlements file of each Apple plugin platform, in the project of the developer and in `haylen/`, with the target template and the setting that sign with it.
 APPLE_ENTITLEMENTS = {
     "ios": ("ios/App.entitlements", "HaylenIOS", "CODE_SIGN_ENTITLEMENTS[sdk=iphone*]"),
     "catalyst": ("ios/Catalyst.entitlements", "HaylenIOS", "CODE_SIGN_ENTITLEMENTS[sdk=macosx*]"),
     "tvos": ("tvos/App.entitlements", "HaylenTVOS", "CODE_SIGN_ENTITLEMENTS"),
+    "visionos": ("visionos/App.entitlements", "HaylenVisionOS", "CODE_SIGN_ENTITLEMENTS"),
     "macos": ("macos/App.entitlements", "HaylenMacOS", "CODE_SIGN_ENTITLEMENTS"),
 }
 # The keys of a privacy manifest that the `privacy` section of a plugin may give.
@@ -2286,8 +2300,8 @@ class PluginManifestCheck:
         apple = self.manifest.get("apple")
         if "apple" not in self.manifest or not self.is_object("apple", apple, "must be an object with the Apple part of the plugin."):
             return
-        if not any(platform in self.platforms for platform in ("ios", "catalyst", "tvos", "macos")):
-            self.report("apple", 'needs "ios", "catalyst", "tvos" or "macos" in "platforms".')
+        if not any(platform in self.platforms for platform in ("ios", "catalyst", "tvos", "visionos", "macos")):
+            self.report("apple", 'needs "ios", "catalyst", "tvos", "visionos" or "macos" in "platforms".')
         self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "infoPlist", "entitlements", "privacy", "resources", "buildScripts", "extensions", "assetPacks"}, set())
         if "class" in apple and not (isinstance(apple["class"], str) and OBJC_CLASS.fullmatch(apple["class"])):
             self.report("apple.class", 'must be the Objective-C name of the plugin class, such as "HaylenCameraScannerPlugin".')
@@ -2876,7 +2890,7 @@ def write_apple_plists(app: App, root: Path, generated: Path) -> None:
     """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with and the Dock setting of `app.json` and the `infoPlist` keys of the plugins, where the values of the developer win."""
     phone, pad = IOS_ORIENTATIONS[app.orientation]
     status_bar = {"UIStatusBarHidden": True} if app.status_bar == "hidden" else {"UIStatusBarHidden": False, "UIStatusBarStyle": IOS_STATUS_BAR_STYLES[app.status_bar]}
-    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, **status_bar}, "tvos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
+    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, **status_bar}, "tvos": {}, "visionos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
     warnings: list[str] = []
     for template, (folder, platforms, _) in APPLE_TEMPLATES.items():
         own = root / folder / "Info.plist"
@@ -3081,7 +3095,8 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
             dependencies.append({**entry, **({"destinationFilters": destinations} if destinations else {})})
 
         sources = [{"path": "app", "type": "folder", "buildPhase": "resources"}, {"path": "PrivacyInfo.xcprivacy", "buildPhase": "resources"}, {"path": BOOTSTRAP_SOURCE}, {"path": APPLE_SWIFT_HELPERS}]
-        if folder != "macos":
+        # The launch screens of iOS and tvOS show the splash assets, and macOS and visionOS have no launch screen.
+        if folder in {"ios", "tvos"}:
             sources.append({"path": "Splash.xcassets"})
         if symbols and folder != "macos":
             sources.append({"path": "HaylenNativeSymbols.mm"})
@@ -3291,7 +3306,7 @@ def apple_simulator(family: str, requested: str | None) -> dict:
             raise BuildError(f'No available {family} simulator is named "{requested}". Use the command "xcrun simctl list devices available" to list them.')
         return matches[0]
     if not candidates:
-        raise BuildError(f'No {family} simulator is installed. Install the runtime with "xcodebuild -downloadPlatform {family}".')
+        raise BuildError(f'No {family} simulator is installed. Install the runtime with "xcodebuild -downloadPlatform {SIMULATOR_DOWNLOAD_PLATFORMS[family]}".')
     booted = [device for device in candidates if device["state"] == "Booted"]
     preferred = [device for device in candidates if device["name"].startswith("iPhone")] if family == "iOS" else candidates
     return (booted or preferred or candidates)[0]
@@ -3377,7 +3392,7 @@ def build_apple(app: App, root: Path, args: argparse.Namespace) -> tuple[Path, d
     if args.platform in {"macos", "catalyst"}:
         destination += f",arch={'arm64' if host_arch() == 'arm64' else 'x86_64'}"
     command = ["xcodebuild", "-project", root / "App.xcodeproj", "-scheme", settings["scheme"], "-configuration", args.config, "-destination", destination, "-derivedDataPath", app.build_folder / "xcode", "-jobs", str(args.jobs), "build"]
-    if args.platform in {"ios", "tvos"}:
+    if args.platform in APPLE_DEVICE_SYSTEMS:
         command += ["-allowProvisioningUpdates", f"DEVELOPMENT_TEAM={apple_team()}"]
     terminal.step(f'Building the "{settings["scheme"]}" scheme for "{args.platform}" in the "{args.config}" configuration')
     run(command)
@@ -4142,7 +4157,7 @@ def start_web_development(app: App, site: Path) -> DevelopmentServer:
 
 
 # Apps that a launch starts on a device, a simulator, an emulator or this Mac in the Debug configuration connect to a development server of their own with "--dev-server", so every file saved in the app reloads in them as it does in the player and in the pages of the web.
-REMOTE_PLATFORMS = {"ios", "tvos"}
+REMOTE_PLATFORMS = {"ios", "tvos", "visionos"}
 ANDROID_DEVELOPMENT_EXTRA = "dev.haylen.developmentServer"
 
 
@@ -4638,6 +4653,8 @@ RUN_TARGETS = {
     "ios-simulator": RunTarget("apple", "apple", "ios", prepare_apple_run, run_apple, check_apple),
     "tvos": RunTarget("apple", "apple", "tvos", prepare_apple_run, run_apple, check_apple),
     "tvos-simulator": RunTarget("apple", "apple", "tvos", prepare_apple_run, run_apple, check_apple),
+    "visionos": RunTarget("apple", "apple", "visionos", prepare_apple_run, run_apple, check_apple),
+    "visionos-simulator": RunTarget("apple", "apple", "visionos", prepare_apple_run, run_apple, check_apple),
     "android": RunTarget("android", "android", "android", prepare_android_run, run_android, check_android),
     "web": RunTarget("web", "web", "web", prepare_web, run_web, check_web),
     "windows": RunTarget("windows", "desktop", "windows", prepare_desktop, run_desktop, check_desktop),
@@ -5136,8 +5153,8 @@ def command_plugin_new(args: argparse.Namespace) -> None:
     terminal.info(f'Add it to an app with "{TOOL} plugin add {shown_path(folder)} --app <app folder>".')
 
 
-# The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android.
-CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name != "macos"), "android"]
+# The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android. The bundles of `haylen_add_app` have no visionOS variant yet, so C++ apps run on visionOS as iPad apps.
+CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name not in {"macos", "visionos", "visionos-simulator"}), "android"]
 
 
 def cpp_engine_options() -> list[str]:
