@@ -312,6 +312,30 @@ TEST_P(GpuTextureTest, SamplesTheNewPixelsOfDynamicImagesEachFrame) {
     }
 }
 
+// Every color format that the device samples reads back the color that a write of a dynamic image of the format gave it, which reaches the image the way the glyph atlases of text do.
+TEST_P(GpuTextureTest, SamplesEveryFormatThatDynamicImagesWrite) {
+    const Device::Sampler sampler = makeSampler(kNearest);
+    for (const Device::PixelFormat format : kColorFormats) {
+        if (!capabilities().textureFormats[static_cast<std::size_t>(format)]) {
+            continue;
+        }
+        const std::vector<std::byte> texel = encode(format);
+        std::vector<std::byte> texels;
+        for (int index = 0; index < 64; ++index) {
+            texels.insert(texels.end(), texel.begin(), texel.end());
+        }
+        const Device::Image texture = makeImage({.width = 8, .height = 8, .format = format, .kind = Device::ImageKind::Dynamic, .label = "haylen-test-dynamic"});
+        const std::array<Device::ImageWrite, 1> writes{{{.image = texture, .pixels = texels}}};
+        device().writeImages(writes);
+        math::Color expected = sampledColor(format);
+        if (format == Device::PixelFormat::Rgba8Srgb) {
+            expected = {toLinear(expected.r), toLinear(expected.g), toLinear(expected.b), expected.a};
+        }
+        const Pixels pixels = sample(samplingProgram(format), texture, sampler, {0.0F, 0.0F, 0.0F, 1.0F});
+        EXPECT_TRUE(isNear(pixels.at(0, 0), expected, 3)) << static_cast<int>(format);
+    }
+}
+
 INSTANTIATE_TEST_SUITE_P(Devices, GpuTextureTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);
 GTEST_ALLOW_UNINSTANTIATED_PARAMETERIZED_TEST(GpuTextureTest);
 
