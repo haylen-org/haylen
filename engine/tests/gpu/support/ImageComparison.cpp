@@ -12,6 +12,8 @@
 #include <string>
 #include <vector>
 
+#include "support/Environment.hpp"
+
 namespace haylen::test {
 
 ImageComparison::Result ImageComparison::compare(const graphics::Image& actual, const graphics::Image& expected, int tolerance) {
@@ -33,8 +35,7 @@ ImageComparison::Result ImageComparison::compare(const graphics::Image& actual, 
 }
 
 bool ImageComparison::isWritingReferences() {
-    const char* mode = std::getenv("HAYLEN_GPU_REFERENCES");
-    return mode != nullptr && std::string_view(mode) == "write";
+    return Environment::get("HAYLEN_GPU_REFERENCES") == "write";
 }
 
 // The difference shows each pixel in the gray of its largest difference, opaque, so a pixel that differs stands out on black.

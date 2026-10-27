@@ -16,6 +16,7 @@ add_executable(haylen-gpu-tests
   "${haylen_tests_dir}/gpu/support/OffscreenSurface.cpp"
   "${haylen_tests_dir}/support/AllocationTracker.cpp"
   "${haylen_tests_dir}/support/EngineFixture.cpp"
+  "${haylen_tests_dir}/support/Environment.cpp"
   "${haylen_tests_dir}/support/EventLoop.cpp"
   "${haylen_tests_dir}/support/TemporaryDirectory.cpp"
   "${haylen_tests_dir}/support/TestFiles.cpp"

@@ -3,7 +3,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdlib>
 #include <format>
 #include <optional>
 #include <stdexcept>
@@ -12,6 +11,7 @@
 
 #include "core/EmbeddedFiles.hpp"
 #include "gpu/DeviceFactory.hpp"
+#include "support/Environment.hpp"
 #include "support/EventLoop.hpp"
 
 namespace haylen::test {
@@ -23,8 +23,8 @@ math::Color GpuFixture::Pixels::at(int x, int y) const {
 
 // A name that is not a graphics API runs once as the API of none, which fails with the name.
 std::vector<gpu::Device::Api> GpuFixture::getTestedApis() {
-    const char* requested = std::getenv("HAYLEN_TEST_GRAPHICS_API");
-    if (requested == nullptr || *requested == '\0') {
+    const std::string requested = Environment::get("HAYLEN_TEST_GRAPHICS_API");
+    if (requested.empty()) {
         const std::span<const gpu::Device::Api> compiled = gpu::DeviceFactory::getCompiledApis();
         return {compiled.begin(), compiled.end()};
     }
@@ -36,8 +36,7 @@ std::string GpuFixture::nameApi(const ::testing::TestParamInfo<gpu::Device::Api>
 }
 
 bool GpuFixture::isApiRequired() {
-    const char* requested = std::getenv("HAYLEN_TEST_GRAPHICS_API");
-    return requested != nullptr && *requested != '\0';
+    return !Environment::get("HAYLEN_TEST_GRAPHICS_API").empty();
 }
 
 gpu::DeviceFactory::Options GpuFixture::getDeviceOptions() {
@@ -45,8 +44,7 @@ gpu::DeviceFactory::Options GpuFixture::getDeviceOptions() {
 }
 
 bool GpuFixture::isEnabled(const char* variable) {
-    const char* value = std::getenv(variable);
-    return value != nullptr && std::string_view(value) == "1";
+    return Environment::get(variable) == "1";
 }
 
 ::testing::AssertionResult GpuFixture::isNear(math::Color actual, math::Color expected, int tolerance) {
@@ -70,7 +68,7 @@ std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, const 
 
 void GpuFixture::SetUp() {
     if (GetParam() == gpu::Device::Api::None) {
-        FAIL() << "The variable \"HAYLEN_TEST_GRAPHICS_API\" names \"" << std::getenv("HAYLEN_TEST_GRAPHICS_API") << "\", which is not a graphics API of \"gpu::Device::kApiNames\".";
+        FAIL() << "The variable \"HAYLEN_TEST_GRAPHICS_API\" names \"" << Environment::get("HAYLEN_TEST_GRAPHICS_API") << "\", which is not a graphics API of \"gpu::Device::kApiNames\".";
     }
 
     errors = std::make_unique<LoggedErrors>();
