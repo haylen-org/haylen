@@ -104,10 +104,15 @@ TEST_F(WindowsAccessibilityTest, GivesEachKindItsControlTypeAndPatterns) {
     volume->SetValue(55.0);
     volume->SetValue(10.0);
 
+    // A field tells that it can be edited, since a person types into the native field that it opens.
+    const Microsoft::WRL::ComPtr<IValueProvider> name = getPattern<IValueProvider>(5, UIA_ValuePatternId);
     BSTR text = nullptr;
-    getPattern<IValueProvider>(5, UIA_ValuePatternId)->get_Value(&text);
+    name->get_Value(&text);
     EXPECT_EQ(std::wstring(text), L"Ana");
     SysFreeString(text);
+    BOOL readOnly = TRUE;
+    name->get_IsReadOnly(&readOnly);
+    EXPECT_EQ(readOnly, FALSE);
 
     ASSERT_EQ(requests.size(), 4U);
     EXPECT_EQ(requests[0].element, 2U);
@@ -115,6 +120,38 @@ TEST_F(WindowsAccessibilityTest, GivesEachKindItsControlTypeAndPatterns) {
     EXPECT_EQ(requests[1].element, 3U);
     EXPECT_EQ(requests[2].action, AccessibilityElement::Increment);
     EXPECT_EQ(requests[3].action, AccessibilityElement::Decrement);
+}
+
+// Narrator says the number of a range as a share of its minimum and maximum, which the engine does not know, so a slider gives its text through the value pattern as well, the way the other screen readers read it.
+TEST_F(WindowsAccessibilityTest, GivesASliderItsValueAsText) {
+    const Microsoft::WRL::ComPtr<IValueProvider> volume = getPattern<IValueProvider>(4, UIA_ValuePatternId);
+    ASSERT_TRUE(volume);
+    BSTR text = nullptr;
+    volume->get_Value(&text);
+    EXPECT_EQ(std::wstring(text), L"40");
+    SysFreeString(text);
+
+    volume->SetValue(L"55");
+    EXPECT_EQ(volume->SetValue(L"loud"), E_INVALIDARG);
+    ASSERT_EQ(requests.size(), 1U);
+    EXPECT_EQ(requests[0].action, AccessibilityElement::Increment);
+}
+
+// The UI checks the option that a radio group holds, which UI Automation reads as the selected item of the group.
+TEST_F(WindowsAccessibilityTest, SelectsTheRadioButtonThatIsChecked) {
+    const auto bits = [](int value) { return static_cast<std::uint8_t>(value); };
+    const std::vector<AccessibilityElement> elements{
+        {.id = 1, .role = Role::RadioGroup, .label = "Quality"},
+        {.id = 2, .parent = 1, .role = Role::RadioButton, .label = "Low", .actions = bits(AccessibilityElement::Focus | AccessibilityElement::Activate)},
+        {.id = 3, .parent = 1, .role = Role::RadioButton, .label = "High", .states = bits(AccessibilityElement::Checked), .actions = bits(AccessibilityElement::Focus | AccessibilityElement::Activate)},
+    };
+    tree->update(elements, 2, {800.0F, 600.0F});
+    BOOL low = TRUE;
+    getPattern<ISelectionItemProvider>(2, UIA_SelectionItemPatternId)->get_IsSelected(&low);
+    EXPECT_EQ(low, FALSE);
+    BOOL high = FALSE;
+    getPattern<ISelectionItemProvider>(3, UIA_SelectionItemPatternId)->get_IsSelected(&high);
+    EXPECT_EQ(high, TRUE);
 }
 
 TEST_F(WindowsAccessibilityTest, TellsTheFocusAndTheElementUnderAPoint) {

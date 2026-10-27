@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <array>
 #include <charconv>
+#include <cwchar>
 #include <string>
 #include <vector>
 
@@ -269,11 +270,17 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_Value(double* value) {
     return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
 }
 
-// A range moves while the control takes steps, and the text of a field changes through the native field that edits it, never through UI Automation.
+// A range moves while the control takes steps. A field takes what a person types into the native field that it opens, so screen readers hear that it can be edited, while UI Automation itself sets no text.
 IFACEMETHODIMP WindowsAccessibilityElement::get_IsReadOnly(BOOL* readOnly) {
     const std::optional<AccessibilityElement> element = read();
-    *readOnly = element && hasRange(*element) && element->can(AccessibilityElement::Increment) ? FALSE : TRUE;
-    return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
+    if (!element) {
+        *readOnly = TRUE;
+        return UIA_E_ELEMENTNOTAVAILABLE;
+    }
+    const bool steps = hasRange(*element) && element->can(AccessibilityElement::Increment);
+    const bool editable = element->role == AccessibilityElement::Role::TextField && !element->has(AccessibilityElement::Disabled);
+    *readOnly = steps || editable ? FALSE : TRUE;
+    return S_OK;
 }
 
 IFACEMETHODIMP WindowsAccessibilityElement::get_Maximum(double* value) {
@@ -294,8 +301,18 @@ IFACEMETHODIMP WindowsAccessibilityElement::get_SmallChange(double* value) {
     return S_OK;
 }
 
-IFACEMETHODIMP WindowsAccessibilityElement::SetValue(LPCWSTR) {
-    return UIA_E_INVALIDOPERATION;
+// A range takes a new number as text as well, and moves a step toward it.
+IFACEMETHODIMP WindowsAccessibilityElement::SetValue(LPCWSTR value) {
+    const std::optional<AccessibilityElement> element = read();
+    if (!element) {
+        return UIA_E_ELEMENTNOTAVAILABLE;
+    }
+    if (!hasRange(*element)) {
+        return UIA_E_INVALIDOPERATION;
+    }
+    wchar_t* end = nullptr;
+    const double number = std::wcstod(value, &end);
+    return end != value ? SetValue(number) : E_INVALIDARG;
 }
 
 IFACEMETHODIMP WindowsAccessibilityElement::get_Value(BSTR* value) {
@@ -318,7 +335,7 @@ IFACEMETHODIMP WindowsAccessibilityElement::RemoveFromSelection() {
 
 IFACEMETHODIMP WindowsAccessibilityElement::get_IsSelected(BOOL* selected) {
     const std::optional<AccessibilityElement> element = read();
-    *selected = element && element->has(AccessibilityElement::Selected) ? TRUE : FALSE;
+    *selected = element && isSelected(*element) ? TRUE : FALSE;
     return element ? S_OK : UIA_E_ELEMENTNOTAVAILABLE;
 }
 
@@ -398,7 +415,7 @@ bool WindowsAccessibilityElement::hasPattern(const AccessibilityElement& element
     case UIA_RangeValuePatternId:
         return hasRange(element);
     case UIA_ValuePatternId:
-        return element.role == Role::TextField || (!hasRange(element) && !element.value.empty() && element.role != Role::ComboBox);
+        return element.role == Role::TextField || hasRange(element) || (!element.value.empty() && element.role != Role::ComboBox);
     case UIA_SelectionItemPatternId:
         return element.role == Role::Tab || element.role == Role::RadioButton;
     case UIA_ExpandCollapsePatternId:
@@ -410,6 +427,10 @@ bool WindowsAccessibilityElement::hasPattern(const AccessibilityElement& element
 
 bool WindowsAccessibilityElement::hasRange(const AccessibilityElement& element) noexcept {
     return element.role == AccessibilityElement::Role::Slider || element.role == AccessibilityElement::Role::ProgressBar;
+}
+
+bool WindowsAccessibilityElement::isSelected(const AccessibilityElement& element) noexcept {
+    return element.has(AccessibilityElement::Selected) || (element.role == AccessibilityElement::Role::RadioButton && element.has(AccessibilityElement::Checked));
 }
 
 double WindowsAccessibilityElement::readNumber(const std::string& text) noexcept {

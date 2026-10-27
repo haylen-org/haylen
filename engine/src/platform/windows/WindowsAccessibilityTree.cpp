@@ -188,12 +188,17 @@ std::vector<WindowsAccessibilityTree::Change> WindowsAccessibilityTree::compare(
     if (before.value != after.value && WindowsAccessibilityElement::hasRange(after)) {
         changes.push_back({.id = after.id, .property = UIA_RangeValueValuePropertyId, .numberBefore = WindowsAccessibilityElement::readNumber(before.value), .numberAfter = WindowsAccessibilityElement::readNumber(after.value)});
     }
-    const auto flag = [](const AccessibilityElement& element, AccessibilityElement::State state) -> BOOL { return element.has(state) ? TRUE : FALSE; };
     if (before.has(AccessibilityElement::Checked) != after.has(AccessibilityElement::Checked) && WindowsAccessibilityElement::hasPattern(after, UIA_TogglePatternId)) {
         changes.push_back({.id = after.id, .property = UIA_ToggleToggleStatePropertyId, .stateBefore = before.has(AccessibilityElement::Checked) ? ToggleState_On : ToggleState_Off, .stateAfter = after.has(AccessibilityElement::Checked) ? ToggleState_On : ToggleState_Off});
     }
-    if (before.has(AccessibilityElement::Selected) != after.has(AccessibilityElement::Selected) && WindowsAccessibilityElement::hasPattern(after, UIA_SelectionItemPatternId)) {
-        changes.push_back({.id = after.id, .property = UIA_SelectionItemIsSelectedPropertyId, .flagBefore = flag(before, AccessibilityElement::Selected), .flagAfter = flag(after, AccessibilityElement::Selected)});
+    const bool selectedBefore = WindowsAccessibilityElement::isSelected(before);
+    const bool selectedAfter = WindowsAccessibilityElement::isSelected(after);
+    if (selectedBefore != selectedAfter && WindowsAccessibilityElement::hasPattern(after, UIA_SelectionItemPatternId)) {
+        changes.push_back({.id = after.id, .property = UIA_SelectionItemIsSelectedPropertyId, .flagBefore = selectedBefore ? TRUE : FALSE, .flagAfter = selectedAfter ? TRUE : FALSE});
+        // Screen readers say that an item was picked when it raises the event of its selection, beside the property that changed.
+        if (selectedAfter) {
+            changes.push_back({.id = after.id, .event = UIA_SelectionItem_ElementSelectedEventId});
+        }
     }
     if (before.has(AccessibilityElement::Expanded) != after.has(AccessibilityElement::Expanded) && WindowsAccessibilityElement::hasPattern(after, UIA_ExpandCollapsePatternId)) {
         changes.push_back({.id = after.id, .property = UIA_ExpandCollapseExpandCollapseStatePropertyId, .stateBefore = before.has(AccessibilityElement::Expanded) ? ExpandCollapseState_Expanded : ExpandCollapseState_Collapsed, .stateAfter = after.has(AccessibilityElement::Expanded) ? ExpandCollapseState_Expanded : ExpandCollapseState_Collapsed});
@@ -205,6 +210,10 @@ std::vector<WindowsAccessibilityTree::Change> WindowsAccessibilityTree::compare(
 }
 
 void WindowsAccessibilityTree::raise(const Change& change) {
+    if (change.event != 0) {
+        UiaRaiseAutomationEvent(getProvider(change.id).Get(), change.event);
+        return;
+    }
     VARIANT before{};
     VARIANT after{};
     if (change.flagBefore) {

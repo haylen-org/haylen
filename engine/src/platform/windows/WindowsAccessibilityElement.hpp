@@ -76,6 +76,9 @@ class WindowsAccessibilityElement final : public IRawElementProviderSimple, publ
     [[nodiscard]] static CONTROLTYPEID getControlType(AccessibilityElement::Role role) noexcept;
     [[nodiscard]] static bool hasPattern(const AccessibilityElement& element, PATTERNID pattern) noexcept;
     [[nodiscard]] static bool hasRange(const AccessibilityElement& element) noexcept;
+
+    // Whether a selection item is selected: a radio button is selected while it is checked, the state the UI gives the option a group holds.
+    [[nodiscard]] static bool isSelected(const AccessibilityElement& element) noexcept;
     [[nodiscard]] static double readNumber(const std::string& text) noexcept;
 
   private:

@@ -71,10 +71,11 @@ class WindowsAccessibilityTree final : public std::enable_shared_from_this<Windo
     [[nodiscard]] static std::wstring toWide(std::string_view text);
 
   private:
-    // A change of an element whose event goes out once the lock is released.
+    // A change of an element whose event goes out once the lock is released: a property that changed, or an event of its own when `event` names one.
     struct Change {
         std::uint64_t id = 0;
         PROPERTYID property = 0;
+        EVENTID event = 0;
         std::wstring before{};
         std::wstring after{};
         std::optional<BOOL> flagBefore{};
