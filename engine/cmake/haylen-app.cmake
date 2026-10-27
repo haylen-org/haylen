@@ -278,8 +278,7 @@ function(haylen_add_app target)
 
   if(ANDROID)
     add_library(${target} SHARED ${sources})
-    # The activity loads the library by its exact name, while Poco forces a Debug postfix into the cache for every library after it.
-    set_target_properties(${target} PROPERTIES DEBUG_POSTFIX "" LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
+    set_target_properties(${target} PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/$<0:>")
   else()
     add_executable(${target} ${sources})
     # The generator expression keeps multi-config generators such as Xcode and Visual Studio from adding a folder per configuration.

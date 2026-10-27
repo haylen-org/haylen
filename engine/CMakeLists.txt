@@ -972,8 +972,6 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM
 elseif(HAYLEN_BUILD_PLAYER AND ANDROID)
   add_library(haylen SHARED src/platform/LuaPlayer.cpp)
   target_link_libraries(haylen PRIVATE haylen::runtime)
-  # The activity loads the library by its exact name, while Poco forces a Debug postfix into the cache for every library after it.
-  set_target_properties(haylen PROPERTIES DEBUG_POSTFIX "")
 endif()
 
 # The headless player runs any package without a window, GPU or audio device on the host of the engine tests, which suits automatic runs of apps such as the test project in continuous integration.

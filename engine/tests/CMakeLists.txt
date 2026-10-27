@@ -271,9 +271,9 @@ haylen_enable_coverage(haylen-tests)
 
 include("${CMAKE_CURRENT_LIST_DIR}/gpu/gpu-tests.cmake")
 
-# The native library that the native interop tests call. It sits next to the test executable and the headless player, where `native.load` finds it by its exact name, which the Debug postfix that Poco forces would change.
+# The native library that the native interop tests call. It sits next to the test executable and the headless player, where `native.load` finds it by its exact name.
 add_library(haylen-native-test SHARED native/NativeTest.c)
-set_target_properties(haylen-native-test PROPERTIES OUTPUT_NAME native-test DEBUG_POSTFIX "" C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+set_target_properties(haylen-native-test PROPERTIES OUTPUT_NAME native-test C_VISIBILITY_PRESET hidden LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 target_include_directories(haylen-native-test PRIVATE "${HAYLEN_ENGINE_DIR}/include")
 if(NOT WIN32)
   find_package(Threads REQUIRED)

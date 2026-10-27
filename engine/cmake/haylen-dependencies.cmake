@@ -63,6 +63,11 @@ if(TARGET uv_a)
 endif()
 haylen_disable_warnings(${varn_compiled_targets})
 
+# Poco, which Varn builds on desktops, forces the library suffixes of its own naming into the cache, such as "md" for the release libraries of MSVC and "d" for every debug library, which would rename each library that the build defines after it, so the libraries keep the names their targets give.
+foreach(config DEBUG RELEASE MINSIZEREL RELWITHDEBINFO)
+  set(CMAKE_${config}_POSTFIX "" CACHE STRING "The suffix of the library files of the configuration." FORCE)
+endforeach()
+
 # The headers of Poco ask MSVC to link every Poco library by its file name, which no longer exists once the SDK merges the libraries into one, while CMake links them by their targets anyway.
 if(MSVC AND TARGET Poco::Foundation)
   get_target_property(poco_foundation Poco::Foundation ALIASED_TARGET)
