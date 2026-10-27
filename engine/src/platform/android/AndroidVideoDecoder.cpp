@@ -137,7 +137,7 @@ AMediaFormat* AndroidVideoDecoder::openTrack(Track& track, std::string_view pref
     return nullptr;
 }
 
-// Pictures decode into the surface of the image reader.
+// Pictures decode into the surface of the image reader, in the flexible YUV that its planes describe. Asked for nothing, a decoder draws in a layout of its own: the Exynos ones in a compressed one, whose planes the reader describes as plain and longer than their memory, and the MediaTek ones in a private one without planes.
 void AndroidVideoDecoder::startCodec(Track& track, AMediaFormat* format, bool isPicture) {
     const char* name = nullptr;
     AMediaFormat_getString(format, AMEDIAFORMAT_KEY_MIME, &name);
@@ -145,6 +145,7 @@ void AndroidVideoDecoder::startCodec(Track& track, AMediaFormat* format, bool is
     track.codec = AMediaCodec_createDecoderByType(mime.c_str());
     ANativeWindow* window = nullptr;
     if (isPicture) {
+        AMediaFormat_setInt32(format, AMEDIAFORMAT_KEY_COLOR_FORMAT, kFlexibleYuv);
         AImageReader_getWindow(images, &window);
     }
     const bool started = track.codec != nullptr && AMediaCodec_configure(track.codec, format, window, nullptr, 0) == AMEDIA_OK && AMediaCodec_start(track.codec) == AMEDIA_OK;

@@ -53,6 +53,8 @@ class AndroidVideoDecoder final : public VideoDecoder {
     static constexpr std::int64_t kWaitMicroseconds = 10000;
     static constexpr int kPatience = 300;
     static constexpr int kImagePatience = 100;
+    // The `COLOR_FormatYUV420Flexible` of `MediaCodecInfo.CodecCapabilities`, which the NDK does not name.
+    static constexpr std::int32_t kFlexibleYuv = 0x7F420888;
 
     // The media data source and the extractor that reads from it came with Android 9, after the oldest version the engine runs on, so the decoder finds them in `libmediandk.so` when the first video opens.
     static AMediaDataSource* (*newSource)();
