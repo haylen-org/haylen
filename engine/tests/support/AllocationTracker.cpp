@@ -47,7 +47,7 @@ void AllocationTracker::record(std::size_t size, const void* caller) noexcept {
     active->total += size;
 }
 
-// The GPU drivers of Apple platforms live in the extensions of the system, and Metal validates through the private framework of its tools. On the web the WebGPU of the browser comes through its port, which makes a handle in the memory of the program for every command encoder, pass and command buffer, and the stack of an allocation names the functions of that port, which start with "wgpu" or "emwgpu". On Linux the Vulkan loader, its layers and the drivers, with the compiler that software drivers build their shaders with, are libraries of the system that allocate through the allocation functions of the program, and so are the libraries of EGL, OpenGL ES and Vulkan of Android, which the emulator and the vendors of GPUs bring.
+// The GPU drivers of Apple platforms live in the extensions of the system, the simulators draw through the private frameworks of their Metal driver, and Metal validates through the private framework of its tools. On the web the WebGPU of the browser comes through its port, which makes a handle in the memory of the program for every command encoder, pass and command buffer, and the stack of an allocation names the functions of that port, which start with "wgpu" or "emwgpu". On Linux the Vulkan loader, its layers and the drivers, with the compiler that software drivers build their shaders with, are libraries of the system that allocate through the allocation functions of the program, and so are the libraries of EGL, OpenGL ES and Vulkan of Android, which the emulator and the vendors of GPUs bring.
 bool AllocationTracker::isSystemGraphics(const void* caller) noexcept {
 #if defined(__EMSCRIPTEN__)
     static_cast<void>(caller);
@@ -66,8 +66,14 @@ bool AllocationTracker::isSystemGraphics(const void* caller) noexcept {
     if (dladdr(caller, &image) == 0 || image.dli_fname == nullptr) {
         return false;
     }
-    const std::string_view path(image.dli_fname);
-    return path.starts_with("/System/Library/Extensions/") || path.starts_with("/System/Library/PrivateFrameworks/MetalTools.framework/");
+    // The simulators load the system from the root of their runtime, so the folders of the system start inside that root there.
+    std::string_view path(image.dli_fname);
+    const std::size_t system = path.find("/System/Library/");
+    if (system == std::string_view::npos) {
+        return false;
+    }
+    path.remove_prefix(system);
+    return path.starts_with("/System/Library/Extensions/") || path.starts_with("/System/Library/PrivateFrameworks/MetalTools.framework/") || path.starts_with("/System/Library/PrivateFrameworks/MTLSim");
 #elif defined(__linux__)
     return isLinuxGraphics(caller);
 #else

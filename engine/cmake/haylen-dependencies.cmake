@@ -293,7 +293,7 @@ if("vulkan" IN_LIST HAYLEN_GRAPHICS_APIS)
   )
 endif()
 
-if(HAYLEN_BUILD_TESTS AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR ANDROID))
+if(HAYLEN_BUILD_TESTS AND (HAYLEN_DESKTOP OR HAYLEN_GPU_TESTS_ALONE))
   CPMAddPackage(
     NAME googletest
     URL "https://github.com/google/googletest/archive/refs/tags/v1.18.0.tar.gz"

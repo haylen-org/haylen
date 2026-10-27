@@ -22,7 +22,8 @@ add_executable(haylen-gpu-tests
   ${HAYLEN_GPU_TEST_SOURCES}
   ${HAYLEN_GPU_OFFSCREEN_SOURCES}
 )
-set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+# The simulators of iOS and tvOS run the tests as a plain executable that `simctl spawn` starts, never as an app bundle.
+set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" MACOSX_BUNDLE OFF)
 target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES} GTest::gtest_main)
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
 # Android runs the tests from the folder of the device that `haylen.py` pushes them into, with the reference images next to them.

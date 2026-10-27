@@ -875,6 +875,11 @@ def command_test(args: argparse.Namespace) -> None:
             raise BuildError('Android runs only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
         command_test_gpu_android(args)
         return
+    if args.platform in APPLE_GPU_TEST_SLICES:
+        if not gpu:
+            raise BuildError('The Apple simulators and Mac Catalyst run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
+        command_test_gpu_apple(args)
+        return
     args.platform = host_name()
     if gpu:
         command_test_gpu(args)
@@ -1040,6 +1045,73 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
                 terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
             run([*shell, f"rm -rf {ANDROID_GPU_TESTS_DIR}"])
     terminal.success("The GPU tests of Android passed.")
+
+
+# The GPU tests of the Apple simulators and Mac Catalyst: a tree of their own builds them for the slice of the platform, and they read the reference images and keep the images of the scenes that differ at their paths on this Mac, whose files the simulators share.
+APPLE_GPU_TEST_SLICES = {"ios-simulator": "ios-simulator", "tvos-simulator": "tvos-simulator", "catalyst": "ios-maccatalyst"}
+APPLE_GPU_TEST_FAMILIES = {"ios-simulator": "iOS", "tvos-simulator": "tvOS"}
+# The variables of the tests and of GoogleTest that a run hands to the tests inside a simulator, which simctl passes to its child without the prefix "SIMCTL_CHILD_".
+APPLE_GPU_TEST_VARIABLES = ("HAYLEN_", "GTEST_")
+
+
+def apple_gpu_tests_configure_command(directory: Path, platform_name: str, config: str) -> list:
+    """The CMake command that configures the tree of the GPU tests of an Apple simulator or Mac Catalyst for the architecture of this Mac, which builds the tests alone."""
+    arch = "arm64" if host_arch() == "arm64" else "x86_64"
+    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", *apple_slice_options(APPLE_GPU_TEST_SLICES[platform_name], arch), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+
+
+def apple_gpu_tests_command(executable: Path, simulator: str | None, api: str | None, environment: dict[str, str]) -> tuple[list, dict[str, str]]:
+    """The command and the environment that run the GPU tests: the executable itself on Mac Catalyst, or the executable spawned inside the simulator of that id, which takes the variables of the tests through the prefix of simctl."""
+    env = dict(environment)
+    if api:
+        env["HAYLEN_TEST_GRAPHICS_API"] = api
+    if simulator is None:
+        return [executable], env
+    env.update({f"SIMCTL_CHILD_{name}": value for name, value in list(env.items()) if name.startswith(APPLE_GPU_TEST_VARIABLES)})
+    return ["xcrun", "simctl", "spawn", simulator, executable], env
+
+
+@contextlib.contextmanager
+def apple_test_simulator(family: str, requested: str | None):
+    """Yields the simulator the GPU tests run on, the one that "--device" names or else a booted one or the first iPhone or Apple TV, which it boots without a window when it is shut down and shuts down afterwards."""
+    simulator = apple_simulator(family, requested)
+    booted = simulator["state"] == "Booted"
+    if not booted:
+        terminal.step(f'Booting the simulator "{simulator["name"]}" without a window')
+        run(["xcrun", "simctl", "bootstatus", simulator["udid"], "-b"])
+    try:
+        yield simulator
+    finally:
+        if not booted:
+            run(["xcrun", "simctl", "shutdown", simulator["udid"]])
+
+
+def command_test_gpu_apple(args: argparse.Namespace) -> None:
+    """Builds the GPU tests for an Apple simulator or Mac Catalyst and runs them, inside the simulator through simctl or on this Mac, on Metal or on the API that "--graphics-api" names, and keeps the images of the scenes that differ in the tree."""
+    require_host("apple")
+    api = args.graphics_api
+    directory = BUILD_ROOT / f"{args.platform}-gpu-tests-{args.config.lower()}"
+    if not is_configured(directory):
+        terminal.step(f"Configuring the GPU tests of \"{args.platform}\" in `{shown_path(directory)}`")
+        configure_tree(apple_gpu_tests_configure_command(directory, args.platform, args.config), directory)
+    terminal.step(f"Building the GPU tests of \"{args.platform}\" in `{shown_path(directory)}`")
+    run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
+
+    output = directory / "gpu-test-output"
+    shutil.rmtree(output, ignore_errors=True)
+    executable = directory / "bin" / "haylen-gpu-tests"
+    family = APPLE_GPU_TEST_FAMILIES.get(args.platform)
+    with contextlib.ExitStack() as stack:
+        simulator = stack.enter_context(apple_test_simulator(family, args.device)) if family else None
+        command, env = apple_gpu_tests_command(executable, simulator["udid"] if simulator else None, api, os.environ)
+        where = f'the simulator "{simulator["name"]}"' if simulator else "Mac Catalyst"
+        terminal.step(f'Running the GPU tests on "{api}" in {where}' if api else f"Running the GPU tests on every device of the build in {where}")
+        try:
+            run(command, cwd=ENGINE_DIR / "tests", env=env, stream=True)
+        finally:
+            if output.is_dir():
+                terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
+    terminal.success(f"The GPU tests passed in {where}.")
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
@@ -5924,12 +5996,12 @@ def add_jobs_option(parser: argparse.ArgumentParser) -> None:
 
 
 def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) -> None:
-    parser.add_argument("--platform", default=host_name(), choices=PLATFORMS, help="Platform of the build tree, this machine by default.")
+    parser.add_argument("--platform", default=host_name(), choices=[*PLATFORMS, *APPLE_GPU_TEST_SLICES] if gpu_tests else PLATFORMS, help='Platform of the build tree, this machine by default. The GPU tests also run on "ios-simulator", "tvos-simulator" and "catalyst".' if gpu_tests else "Platform of the build tree, this machine by default.")
     parser.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the build tree, "Debug" by default.')
     if gpu_tests:
         parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
-        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default.')
+        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, or the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default.')
         parser.add_argument("--port", action="store_true", help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.')
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)

@@ -36,6 +36,13 @@ else()
   set(HAYLEN_DESKTOP OFF)
 endif()
 
+# The web, Android, iOS and tvOS build the GPU tests alone, which run in a page of a browser, on a device or an emulator, and on the simulators and Mac Catalyst.
+if(HAYLEN_PLATFORM MATCHES "^(web|android|ios|tvos)$")
+  set(HAYLEN_GPU_TESTS_ALONE ON)
+else()
+  set(HAYLEN_GPU_TESTS_ALONE OFF)
+endif()
+
 # The function `haylen_add_app` runs in the folders of the apps, which do not see the variables of the engine folder.
 set(HAYLEN_PLATFORM "${HAYLEN_PLATFORM}" CACHE INTERNAL "Platform the engine is built for.")
 set(HAYLEN_DESKTOP "${HAYLEN_DESKTOP}" CACHE INTERNAL "Whether the platform is a desktop.")

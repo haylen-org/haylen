@@ -888,6 +888,41 @@ class AndroidGpuTestsTest(unittest.TestCase):
                 self.assertEqual(haylen.android_virtual_device_abi("Phone"), "arm64-v8a")
 
 
+class AppleGpuTestsTest(unittest.TestCase):
+    def configure(self, platform_name: str) -> list[str]:
+        with mock.patch.object(haylen, "ensure_shaderc", return_value=Path("/tools/haylen-shaderc")), mock.patch.object(haylen, "host_arch", return_value="arm64"):
+            return [str(part) for part in haylen.apple_gpu_tests_configure_command(Path("/build/apple"), platform_name, "Debug")]
+
+    def test_the_tests_build_alone_for_the_sdk_of_each_simulator_and_for_mac_catalyst(self):
+        for platform_name, system, sdk in (("ios-simulator", "iOS", "iphonesimulator"), ("tvos-simulator", "tvOS", "appletvsimulator")):
+            command = self.configure(platform_name)
+            self.assertIn(f"-DCMAKE_SYSTEM_NAME={system}", command)
+            self.assertIn(f"-DCMAKE_OSX_SYSROOT={sdk}", command)
+            self.assertIn("-DCMAKE_OSX_ARCHITECTURES=arm64", command)
+            self.assertIn("-DHAYLEN_BUILD_TESTS=ON", command)
+            self.assertIn("-DHAYLEN_BUILD_PLAYER=OFF", command)
+        self.assertIn(f"-DCMAKE_TOOLCHAIN_FILE={haylen.ENGINE_DIR / 'cmake' / 'haylen-catalyst.toolchain.cmake'}", self.configure("catalyst"))
+
+    def test_a_simulator_spawns_the_tests_and_hands_them_the_variables_of_the_tests_alone(self):
+        command, env = haylen.apple_gpu_tests_command(Path("/build/haylen-gpu-tests"), "SIMULATOR-ID", "metal", {"GTEST_FILTER": "GpuBlendTest.*", "HAYLEN_TEST_GPU_LOW_POWER": "1", "HOME": "/Users/me"})
+        self.assertEqual([str(part) for part in command], ["xcrun", "simctl", "spawn", "SIMULATOR-ID", "/build/haylen-gpu-tests"])
+        self.assertEqual(env["SIMCTL_CHILD_HAYLEN_TEST_GRAPHICS_API"], "metal")
+        self.assertEqual(env["SIMCTL_CHILD_GTEST_FILTER"], "GpuBlendTest.*")
+        self.assertEqual(env["SIMCTL_CHILD_HAYLEN_TEST_GPU_LOW_POWER"], "1")
+        self.assertNotIn("SIMCTL_CHILD_HOME", env)
+
+    def test_mac_catalyst_runs_the_tests_on_this_mac(self):
+        command, env = haylen.apple_gpu_tests_command(Path("/build/haylen-gpu-tests"), None, None, {"HOME": "/Users/me"})
+        self.assertEqual(command, [Path("/build/haylen-gpu-tests")])
+        self.assertNotIn("HAYLEN_TEST_GRAPHICS_API", env)
+
+    def test_the_simulators_and_mac_catalyst_take_only_the_gpu_tests(self):
+        for platform_name in haylen.APPLE_GPU_TEST_SLICES:
+            arguments = haylen.build_parser().parse_args(["test", "--platform", platform_name])
+            with self.assertRaisesRegex(haylen.BuildError, "only the GPU tests"):
+                haylen.command_test(arguments)
+
+
 class CleanTest(unittest.TestCase):
     def test_clean_removes_the_build_folder_and_says_when_it_was_already_clean(self):
         with tempfile.TemporaryDirectory() as scratch:
