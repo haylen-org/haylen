@@ -3,6 +3,7 @@
 #if !TARGET_OS_OSX
 #include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleNotifications.hpp"
+#import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
@@ -10,6 +11,9 @@
 #import "platform/apple/HaylenScreenSceneDelegate.h"
 
 using haylen::platform::AppleNotifications;
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+using haylen::platform::AppleOrientation;
+#endif
 using haylen::platform::ApplePlugins;
 using haylen::platform::AppleScreens;
 using haylen::platform::NativeWindow;
@@ -40,6 +44,13 @@ using haylen::platform::NativeWindow;
     }
     return YES;
 }
+
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+// UIKit reads which questions the application delegate answers once, as the app launches, so the delegate answers this one from the start with the orientations of the Info.plist, and with those of the lock once the app locks the orientation.
+- (UIInterfaceOrientationMask)application:(UIApplication*)application supportedInterfaceOrientationsForWindow:(UIWindow*)window {
+    return AppleOrientation::getSupported();
+}
+#endif
 
 // The windows of screens connect with a delegate of their own, so they never become the window of the app.
 - (UISceneConfiguration*)application:(UIApplication*)application configurationForConnectingSceneSession:(UISceneSession*)connectingSceneSession options:(UISceneConnectionOptions*)options {

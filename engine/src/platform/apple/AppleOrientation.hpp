@@ -15,10 +15,14 @@ class AppleOrientation final {
     [[nodiscard]] static Orientation get();
     static void lock(Orientation value);
 
+    // The orientations the app allows now, which the application delegate answers UIKit with: those of the lock, or those of the Info.plist before any lock.
+    [[nodiscard]] static UIInterfaceOrientationMask getSupported();
+
   private:
     static UIInterfaceOrientationMask mask;
 
     [[nodiscard]] static UIInterfaceOrientationMask toMask(Orientation value);
+    [[nodiscard]] static UIInterfaceOrientationMask readInfoPlist();
 };
 
 } // namespace haylen::platform

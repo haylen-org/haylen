@@ -1,8 +1,7 @@
 #import "platform/apple/AppleOrientation.hpp"
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
-#import <objc/runtime.h>
-
+#include "haylen/core/Log.hpp"
 #include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
@@ -32,19 +31,34 @@ UIInterfaceOrientationMask AppleOrientation::toMask(Orientation value) {
     return UIInterfaceOrientationMaskAll;
 }
 
-// UIKit asks the application delegate for the allowed orientations whenever it rotates, so the lock holds after the geometry update turns the screen. The delegate of SDL may not answer that question, so the first lock gives it the answer.
 void AppleOrientation::lock(Orientation value) {
-    const bool installed = mask != 0;
     mask = toMask(value);
-    if (!installed) {
-        IMP answer = imp_implementationWithBlock(^UIInterfaceOrientationMask(id, UIApplication*, UIWindow*) { return mask; });
-        class_addMethod(object_getClass(UIApplication.sharedApplication.delegate), @selector(application:supportedInterfaceOrientationsForWindow:), answer, "Q@:@@");
-    }
-
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     [window.rootViewController setNeedsUpdateOfSupportedInterfaceOrientations];
     UIWindowSceneGeometryPreferencesIOS* preferences = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask];
-    [window.windowScene requestGeometryUpdateWithPreferences:preferences errorHandler:nil];
+    [window.windowScene requestGeometryUpdateWithPreferences:preferences errorHandler:^(NSError* error) { core::Log::warning("The screen did not turn to the locked orientation. {}", error.localizedDescription.UTF8String); }];
+}
+
+UIInterfaceOrientationMask AppleOrientation::getSupported() {
+    return mask != 0 ? mask : readInfoPlist();
+}
+
+// The keys of iPads come first on an iPad, as UIKit reads them.
+UIInterfaceOrientationMask AppleOrientation::readInfoPlist() {
+    NSDictionary* info = NSBundle.mainBundle.infoDictionary;
+    const bool pad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
+    NSArray<NSString*>* names = (pad ? info[@"UISupportedInterfaceOrientations~ipad"] : nil) ?: info[@"UISupportedInterfaceOrientations"];
+    NSDictionary<NSString*, NSNumber*>* masks = @{
+        @"UIInterfaceOrientationPortrait" : @(UIInterfaceOrientationMaskPortrait),
+        @"UIInterfaceOrientationPortraitUpsideDown" : @(UIInterfaceOrientationMaskPortraitUpsideDown),
+        @"UIInterfaceOrientationLandscapeLeft" : @(UIInterfaceOrientationMaskLandscapeLeft),
+        @"UIInterfaceOrientationLandscapeRight" : @(UIInterfaceOrientationMaskLandscapeRight),
+    };
+    UIInterfaceOrientationMask supported = 0;
+    for (NSString* name in names) {
+        supported |= masks[name].unsignedIntegerValue;
+    }
+    return supported != 0 ? supported : UIInterfaceOrientationMaskAll;
 }
 
 } // namespace haylen::platform
