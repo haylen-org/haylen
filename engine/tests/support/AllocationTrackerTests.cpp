@@ -1,20 +1,25 @@
 #include <gtest/gtest.h>
 
-#include <memory>
 #include <new>
 
 #include "support/AllocationTracker.hpp"
 
 namespace haylen::test {
 
+// The test calls the allocation functions themselves, since an optimizing compiler may leave out the allocation of a new-expression whose storage nothing reads.
 TEST(AllocationTrackerTest, CountsEveryFormOfAllocation) {
     const AllocationTracker tracker;
-    const std::unique_ptr<int> single(new int(1));
-    const std::unique_ptr<int[]> array(new int[64]);
-    const std::unique_ptr<int> quiet(new (std::nothrow) int(2));
-    const std::unique_ptr<int[]> quietArray(new (std::nothrow) int[128]);
+    void* single = ::operator new(sizeof(int));
+    void* array = ::operator new[](64 * sizeof(int));
+    void* quiet = ::operator new(sizeof(int), std::nothrow);
+    void* quietArray = ::operator new[](128 * sizeof(int), std::nothrow);
     EXPECT_EQ(tracker.getLargest(), 128 * sizeof(int));
     EXPECT_EQ(tracker.getTotal(), (2 + 64 + 128) * sizeof(int));
+
+    ::operator delete[](quietArray, std::nothrow);
+    ::operator delete(quiet, std::nothrow);
+    ::operator delete[](array);
+    ::operator delete(single);
 }
 
 } // namespace haylen::test
