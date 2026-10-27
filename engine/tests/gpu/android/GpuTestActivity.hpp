@@ -1,0 +1,33 @@
+#pragma once
+
+#include <android/native_activity.h>
+#include <jni.h>
+
+#include <filesystem>
+#include <thread>
+
+namespace haylen::test {
+
+// Runs the GPU tests as an app of Android, since a program that adb starts reaches the Vulkan driver of some devices only from an app. The activity takes the variables of the tests from the string array extra `environment` of its intent, copies the reference images from its assets into its files and runs the tests on a thread of their own, whose output reaches the log under the tag `haylen-gpu-tests`. The tests write their results as `results.xml` next to the images of the scenes that differ, and the app quits with their status.
+class GpuTestActivity final {
+  public:
+    GpuTestActivity() = delete;
+
+    static void create(ANativeActivity* activity);
+    [[nodiscard]] static std::filesystem::path getFilesDirectory();
+
+  private:
+    static constexpr const char* kLogTag = "haylen-gpu-tests";
+
+    static inline bool started = false;
+    static inline std::filesystem::path filesDirectory;
+    static inline std::thread output;
+
+    static void check(JNIEnv* env, const char* method);
+    static void readEnvironment(ANativeActivity* activity);
+    static void copyReferences(AAssetManager* assets);
+    static void forwardOutput();
+    [[noreturn]] static void runTests();
+};
+
+} // namespace haylen::test

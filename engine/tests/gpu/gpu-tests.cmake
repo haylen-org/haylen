@@ -1,7 +1,6 @@
 # The GPU tests run the conformance suite of the GPU devices and the reference scenes of the 2D renderer on every device the build compiled, or on the one that `HAYLEN_TEST_GRAPHICS_API` names, with what the devices add to `HAYLEN_GPU_TEST_SOURCES`, `HAYLEN_GPU_TEST_LIBRARIES` and the offscreen contexts of `HAYLEN_GPU_OFFSCREEN_SOURCES` and `HAYLEN_GPU_OFFSCREEN_LIBRARIES`. They need a GPU, so CTest leaves them to `haylen.py test --gpu`.
 set(haylen_tests_dir "${HAYLEN_ENGINE_DIR}/tests")
-set(HAYLEN_ANDROID_GPU_TESTS_DIR "/data/local/tmp/haylen-gpu-tests" CACHE STRING "Folder of the Android device that the GPU tests run from, which haylen.py pushes them into.")
-add_executable(haylen-gpu-tests
+set(haylen_gpu_test_sources
   "${haylen_tests_dir}/gpu/BlendTests.cpp"
   "${haylen_tests_dir}/gpu/DepthStencilTests.cpp"
   "${haylen_tests_dir}/gpu/DrawTests.cpp"
@@ -24,6 +23,12 @@ add_executable(haylen-gpu-tests
   ${HAYLEN_GPU_TEST_SOURCES}
   ${HAYLEN_GPU_OFFSCREEN_SOURCES}
 )
+# Android starts the tests as an app, whose NativeActivity loads them as a library, since a program that adb starts reaches the Vulkan driver of some devices only from an app.
+if(ANDROID)
+  add_library(haylen-gpu-tests SHARED ${haylen_gpu_test_sources})
+else()
+  add_executable(haylen-gpu-tests ${haylen_gpu_test_sources})
+endif()
 target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
@@ -52,21 +57,27 @@ if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_
     XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
   )
   target_link_libraries(haylen-gpu-tests PRIVATE GTest::gtest "-framework UIKit")
+elseif(ANDROID)
+  # The library goes into an APK that `haylen.py` packages with the reference images as assets, installs and launches, and whose results it copies back from the files of the app.
+  set_target_properties(haylen-gpu-tests PROPERTIES LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+  target_sources(haylen-gpu-tests PRIVATE
+    "${haylen_tests_dir}/gpu/android/GpuTestActivity.cpp"
+    "${haylen_tests_dir}/gpu/android/GpuTestFiles.cpp"
+    "${haylen_tests_dir}/gpu/android/GpuTestMain.cpp"
+  )
+  target_link_libraries(haylen-gpu-tests PRIVATE GTest::gtest android log)
+  # The APK carries the library without its debug information, which would not fit the storage of small devices and emulators, while the tree keeps the whole library for the symbols of crashes.
+  add_custom_command(TARGET haylen-gpu-tests POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" -E make_directory "${CMAKE_BINARY_DIR}/bin/stripped"
+    COMMAND "${CMAKE_STRIP}" --strip-debug "$<TARGET_FILE:haylen-gpu-tests>" -o "${CMAKE_BINARY_DIR}/bin/stripped/libhaylen-gpu-tests.so"
+    VERBATIM
+  )
 else()
   # The simulators of iOS and tvOS run the tests as a plain executable that `simctl spawn` starts, never as an app bundle.
   set_target_properties(haylen-gpu-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>" MACOSX_BUNDLE OFF)
   target_sources(haylen-gpu-tests PRIVATE "${haylen_tests_dir}/gpu/support/GpuTestFiles.cpp")
   target_link_libraries(haylen-gpu-tests PRIVATE GTest::gtest_main)
-
-  # Android runs the tests from the folder of the device that `haylen.py` pushes them into, with the reference images next to them.
-  if(ANDROID)
-    set(haylen_gpu_references "${HAYLEN_ANDROID_GPU_TESTS_DIR}/data/gpu")
-    set(haylen_gpu_output "${HAYLEN_ANDROID_GPU_TESTS_DIR}/gpu-test-output")
-  else()
-    set(haylen_gpu_references "${haylen_tests_dir}/data/gpu")
-    set(haylen_gpu_output "${CMAKE_BINARY_DIR}/gpu-test-output")
-  endif()
-  target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_gpu_references}" HAYLEN_GPU_TEST_OUTPUT="${haylen_gpu_output}")
+  target_compile_definitions(haylen-gpu-tests PRIVATE HAYLEN_GPU_REFERENCES_DIR="${haylen_tests_dir}/data/gpu" HAYLEN_GPU_TEST_OUTPUT="${CMAKE_BINARY_DIR}/gpu-test-output")
 endif()
 
 # On the web the tests run in the page of `tests/web/gpu-tests.html`, which names the API through the environment and whose files the driver of the page reads the images of the scenes that differ from. They wait for the GPU in turns of the event loop of the browser through the promise integration of WebAssembly, and read the reference images that the page preloads at their paths on this machine.

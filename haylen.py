@@ -13,6 +13,7 @@ import difflib
 import functools
 import hashlib
 import http.server
+import io
 import json
 import os
 import platform as host_platform
@@ -1017,15 +1018,33 @@ def command_test_gpu_web(args: argparse.Namespace) -> None:
     terminal.success("The GPU tests of the web passed.")
 
 
-# The GPU tests of Android: a tree of their own builds them for the ABI of the device, and adb runs them from a folder of the device that holds the reference images next to them and goes away afterwards.
-ANDROID_GPU_TESTS_DIR = "/data/local/tmp/haylen-gpu-tests"
+# The variables of the tests and of GoogleTest that a run hands to the tests in a simulator, on a device or in the test app of Android.
+GPU_TEST_VARIABLES = ("HAYLEN_", "GTEST_")
+
+
+def gpu_test_app_problem(results: Path) -> str | None:
+    """Reads the results that a GPU test app wrote, and says what went wrong when the tests failed or the app quit before it wrote them."""
+    if not results.is_file():
+        return "The GPU test app quit before it wrote its results, so a test crashed it or the system stopped it. Its output above and the crash logs of the device tell why."
+    suites = xml.etree.ElementTree.parse(results).getroot()
+    failed = int(suites.get("failures", "0")) + int(suites.get("errors", "0"))
+    if failed:
+        return f"{failed} of the {suites.get('tests', '0')} GPU tests failed on the device."
+    return None
+
+
+# The GPU tests of Android: a tree of their own builds them for the ABI of the device as the library of a NativeActivity, since a program that adb starts reaches the Vulkan driver of some devices only from an app. An APK carries the library with the reference images as assets, runs the tests once it starts, writes their output to the log and their results into its files, and quits with their status.
+ANDROID_GPU_TEST_APP = "com.haylen.gputests"
+ANDROID_GPU_TEST_LOG_TAG = "haylen-gpu-tests"
+# The key only signs the test app of a build tree, so its password keeps nothing secret.
+ANDROID_GPU_TEST_KEY_PASSWORD = "haylen-gpu-tests"
 ANDROID_EMULATOR_PORT = 5554
 ANDROID_EMULATOR_BOOT_SECONDS = 300
 
 
 def android_gpu_tests_configure_command(directory: Path, abi: str, config: str) -> list:
-    """The CMake command that configures the tree of the GPU tests of Android for an ABI, which builds the tests alone."""
-    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", *android_options(abi), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", f"-DHAYLEN_ANDROID_GPU_TESTS_DIR={ANDROID_GPU_TESTS_DIR}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
+    """The CMake command that configures the tree of the GPU tests of Android for an ABI, which builds the library of the test app alone."""
+    return ["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", *android_options(abi), f"-DCMAKE_BUILD_TYPE={config}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}", "-DHAYLEN_BUILD_TESTS=ON", "-DHAYLEN_BUILD_PLAYER=OFF", "-DHAYLEN_BUILD_SDK=OFF", "-DHAYLEN_BUILD_TOOLS=OFF", "-DHAYLEN_BUILD_BENCHMARKS=OFF"]
 
 
 def connected_android_devices() -> list[str]:
@@ -1080,40 +1099,125 @@ def android_test_device(requested: str | None):
         process.wait()
 
 
+def android_platform_jar() -> tuple[Path, int]:
+    """The `android.jar` of the newest platform of the Android SDK and its API level, which the test app compiles against and targets."""
+    platforms = [(int(match.group(1)), path) for path in (android_sdk() / "platforms").glob("android-*/android.jar") if (match := re.fullmatch(r"android-(\d+)(\.\d+)?", path.parent.name))]
+    if not platforms:
+        raise BuildError('The Android SDK has no platform. Install one with the SDK Manager of Android Studio or with "sdkmanager".')
+    api, jar = max(platforms, key=lambda platform: (platform[0], platform[1].parent.name))
+    return jar, api
+
+
+def android_gpu_test_apk(directory: Path, abi: str) -> Path:
+    """Packages the library of the GPU tests without its debug information, which the build strips, and the reference images into the APK of the test app, aligned and signed with a key that the tree keeps."""
+    folder = directory / "apk"
+    assets = folder / "assets"
+    shutil.rmtree(assets, ignore_errors=True)
+    shutil.copytree(ENGINE_DIR / "tests" / "data" / "gpu", assets / "gpu")
+    jar, api = android_platform_jar()
+    unsigned = folder / "unsigned.apk"
+    run([android_build_tool("aapt2"), "link", "--manifest", ENGINE_DIR / "tests" / "gpu" / "android" / "AndroidManifest.xml", "-I", jar, "--min-sdk-version", str(ANDROID_MIN_SDK), "--target-sdk-version", str(api), "-A", assets, "-o", unsigned])
+    with zipfile.ZipFile(unsigned, "a", compression=zipfile.ZIP_DEFLATED) as apk:
+        apk.write(directory / "bin" / "stripped" / "libhaylen-gpu-tests.so", f"lib/{abi}/libhaylen-gpu-tests.so")
+    aligned = folder / "aligned.apk"
+    run([android_build_tool("zipalign"), "-f", "-p", "4", unsigned, aligned])
+
+    # The password reaches the tools through the environment, as for the keys of apps.
+    key = folder / "debug.jks"
+    environment = {**os.environ, "HAYLEN_KEY_PASSWORD": ANDROID_GPU_TEST_KEY_PASSWORD}
+    if not key.is_file():
+        run([jdk_tool("keytool"), "-genkeypair", "-keystore", key, "-storetype", "PKCS12", "-alias", "haylen-gpu-tests", "-keyalg", "RSA", "-keysize", str(ANDROID_KEY_SIZE), "-validity", str(ANDROID_KEY_DAYS), "-dname", "CN=Haylen GPU Tests", "-storepass:env", "HAYLEN_KEY_PASSWORD"], env=environment)
+    signed = folder / "haylen-gpu-tests.apk"
+    run([android_build_tool("apksigner"), "sign", "--ks", key, "--ks-pass", "env:HAYLEN_KEY_PASSWORD", "--out", signed, aligned], env=environment)
+    return signed
+
+
+def android_gpu_tests_launch_command(device: str, api: str | None, environment: Mapping[str, str]) -> list:
+    """The adb command that starts the test app and waits for its activity, with the variables of the tests as the string array extra `environment`, whose items `am` splits at commas they do not escape."""
+    variables = {name: value for name, value in environment.items() if name.startswith(GPU_TEST_VARIABLES)}
+    if api:
+        variables["HAYLEN_TEST_GRAPHICS_API"] = api
+    items = ",".join(f"{name}={value}".replace(",", "\\,") for name, value in sorted(variables.items()))
+    extra = ["--esa", "environment", shlex.quote(items)] if items else []
+    return [adb(), "-s", device, "shell", "am", "start", "-W", "-n", f"{ANDROID_GPU_TEST_APP}/android.app.NativeActivity", *extra]
+
+
+def android_process(device: str, package: str) -> str:
+    """The id of the process of an app on the device, or an empty text when it does not run."""
+    return capture([adb(), "-s", device, "shell", f"pidof {package} || true"]).strip()
+
+
+def android_gpu_tests_follow(device: str) -> None:
+    """Prints the output of the test app from the log of the device while it runs and returns once its process ends, with the lines that the log took after the last one it printed."""
+    process = android_process(device, ANDROID_GPU_TEST_APP)
+    if not process:
+        return
+    log = [adb(), "-s", device, "logcat", "-v", "raw", f"--pid={process}", "-s", f"{ANDROID_GPU_TEST_LOG_TAG}:I"]
+    printed: list[str] = []
+
+    def forward(lines: TextIO) -> None:
+        for line in lines:
+            if not line.startswith("--------- beginning of"):
+                printed.append(line.rstrip("\n"))
+                print(printed[-1], flush=True)
+
+    with subprocess.Popen([str(part) for part in log], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, encoding="utf-8", errors="replace") as reader:
+        follower = threading.Thread(target=forward, args=(reader.stdout,), daemon=True)
+        follower.start()
+        while android_process(device, ANDROID_GPU_TEST_APP) == process:
+            time.sleep(1)
+        reader.terminate()
+        follower.join()
+    lines = [line for line in capture([*log[:4], "-d", *log[4:]]).splitlines() if not line.startswith("--------- beginning of")]
+    for line in lines[len(printed):]:
+        print(line, flush=True)
+
+
+def android_gpu_tests_copy_results(device: str, output: Path) -> None:
+    """Copies the results of the test app and the images of the scenes that differ into the tree through `run-as`, since the files of an app are its own. A run that wrote nothing leaves nothing to copy."""
+    archive = subprocess.run([str(adb()), "-s", device, "exec-out", "run-as", ANDROID_GPU_TEST_APP, "tar", "-c", "-C", "files", output.name], capture_output=True, check=False)
+    if archive.returncode != 0 or not archive.stdout:
+        return
+    with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as files:
+        files.extractall(output.parent, filter="data")
+
+
 def command_test_gpu_android(args: argparse.Namespace) -> None:
-    """Builds the GPU tests for the ABI of an Android device and runs them on it through adb, on every device of the build or on the one that "--graphics-api" names, keeps the images of the scenes that differ in the tree and removes everything it pushed. An emulator that it starts runs only while the tests do."""
+    """Builds the GPU tests for the ABI of an Android device as an app, installs it and runs it there, on every device of the build or on the one that "--graphics-api" names, prints what the tests print, copies their results and the images of the scenes that differ into the tree and uninstalls it. An emulator that it starts runs only while the tests do."""
     api = args.graphics_api
     abi = android_test_abi(args.device)
     directory = BUILD_ROOT / f"android-gpu-tests-{abi}-{args.config.lower()}"
     if not is_configured(directory):
         terminal.step(f"Configuring the GPU tests of Android in `{shown_path(directory)}`")
         configure_tree(android_gpu_tests_configure_command(directory, abi, args.config), directory)
-    terminal.step(f"Building the GPU tests of Android in `{shown_path(directory)}`")
+    terminal.step(f"Building the GPU test app of Android in `{shown_path(directory)}`")
     run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
+    apk = android_gpu_test_apk(directory, abi)
 
+    output = directory / "gpu-test-output"
+    shutil.rmtree(output, ignore_errors=True)
     with android_test_device(args.device) as device:
-        shell = [adb(), "-s", device, "shell"]
-        run([*shell, f"rm -rf {ANDROID_GPU_TESTS_DIR} && mkdir -p {ANDROID_GPU_TESTS_DIR}/data"])
+        terminal.step(f'Installing the GPU test app on "{device}"')
+        run([adb(), "-s", device, "install", "-r", apk])
         try:
-            run([adb(), "-s", device, "push", directory / "bin" / "haylen-gpu-tests", f"{ANDROID_GPU_TESTS_DIR}/haylen-gpu-tests"])
-            run([adb(), "-s", device, "push", ENGINE_DIR / "tests" / "data" / "gpu", f"{ANDROID_GPU_TESTS_DIR}/data/gpu"])
             terminal.step(f'Running the GPU tests of Android on "{api}" on "{device}"' if api else f'Running the GPU tests of Android on every device of the build on "{device}"')
-            run([*shell, f"cd {ANDROID_GPU_TESTS_DIR} && HAYLEN_TEST_GRAPHICS_API={api or ''} ./haylen-gpu-tests"], stream=True)
+            run(android_gpu_tests_launch_command(device, api, os.environ))
+            android_gpu_tests_follow(device)
         finally:
-            output = directory / "gpu-test-output"
-            shutil.rmtree(output, ignore_errors=True)
-            if capture([*shell, f"ls {ANDROID_GPU_TESTS_DIR}/gpu-test-output 2>/dev/null; true"]).strip():
-                run([adb(), "-s", device, "pull", f"{ANDROID_GPU_TESTS_DIR}/gpu-test-output", output])
-                terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
-            run([*shell, f"rm -rf {ANDROID_GPU_TESTS_DIR}"])
+            android_gpu_tests_copy_results(device, output)
+            run([adb(), "-s", device, "uninstall", ANDROID_GPU_TEST_APP])
+
+    problem = gpu_test_app_problem(output / "results.xml")
+    if output.is_dir() and any(entry.is_dir() for entry in output.iterdir()):
+        terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
+    if problem:
+        raise BuildError(problem)
     terminal.success("The GPU tests of Android passed.")
 
 
 # The GPU tests of the Apple simulators and Mac Catalyst: a tree of their own builds them for the slice of the platform, and they read the reference images and keep the images of the scenes that differ at their paths on this Mac, whose files the simulators share.
 APPLE_GPU_TEST_SLICES = {"ios-simulator": "ios-simulator", "tvos-simulator": "tvos-simulator", "visionos-simulator": "xros-simulator", "catalyst": "ios-maccatalyst"}
 APPLE_GPU_TEST_FAMILIES = {"ios-simulator": "iOS", "tvos-simulator": "tvOS", "visionos-simulator": "xrOS"}
-# The variables of the tests and of GoogleTest that a run hands to the tests inside a simulator, which simctl passes to its child without the prefix "SIMCTL_CHILD_".
-APPLE_GPU_TEST_VARIABLES = ("HAYLEN_", "GTEST_")
 
 
 def apple_gpu_tests_configure_command(directory: Path, platform_name: str, config: str) -> list:
@@ -1129,7 +1233,7 @@ def apple_gpu_tests_command(executable: Path, simulator: str | None, api: str | 
         env["HAYLEN_TEST_GRAPHICS_API"] = api
     if simulator is None:
         return [executable], env
-    env.update({f"SIMCTL_CHILD_{name}": value for name, value in list(env.items()) if name.startswith(APPLE_GPU_TEST_VARIABLES)})
+    env.update({f"SIMCTL_CHILD_{name}": value for name, value in list(env.items()) if name.startswith(GPU_TEST_VARIABLES)})
     return ["xcrun", "simctl", "spawn", simulator, executable], env
 
 
@@ -1191,19 +1295,8 @@ def apple_device_gpu_tests_command(device: str, api: str | None, environment: di
     env = dict(environment)
     if api:
         env["HAYLEN_TEST_GRAPHICS_API"] = api
-    env.update({f"DEVICECTL_CHILD_{name}": value for name, value in list(env.items()) if name.startswith(APPLE_GPU_TEST_VARIABLES)})
+    env.update({f"DEVICECTL_CHILD_{name}": value for name, value in list(env.items()) if name.startswith(GPU_TEST_VARIABLES)})
     return ["xcrun", "devicectl", "device", "process", "launch", "--console", "--terminate-existing", "--device", device, APPLE_GPU_TEST_APP], env
-
-
-def apple_device_gpu_tests_problem(results: Path) -> str | None:
-    """Reads the results that the GPU test app wrote, and says what went wrong when the tests failed or the app quit before it wrote them."""
-    if not results.is_file():
-        return "The GPU test app quit before it wrote its results, so a test crashed it or the system stopped it. Its output above and the crash logs of the device tell why."
-    suites = xml.etree.ElementTree.parse(results).getroot()
-    failed = int(suites.get("failures", "0")) + int(suites.get("errors", "0"))
-    if failed:
-        return f"{failed} of the {suites.get('tests', '0')} GPU tests failed on the device."
-    return None
 
 
 def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
@@ -1240,7 +1333,7 @@ def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
     results = output / "results.xml"
     if failure is not None and not results.is_file():
         raise failure
-    problem = apple_device_gpu_tests_problem(results)
+    problem = gpu_test_app_problem(results)
     if output.is_dir() and any(entry.is_dir() for entry in output.iterdir()):
         terminal.info(f"The images of the scenes that differ are in `{shown_path(output)}`.")
     if problem:
@@ -3735,10 +3828,11 @@ def android_device(requested: str | None) -> str:
     return devices[0]
 
 
-def aapt2() -> Path:
-    tools = sorted((android_sdk() / "build-tools").glob("*/aapt2"), key=lambda path: [int(part) if part.isdigit() else 0 for part in path.parent.name.split(".")])
+def android_build_tool(name: str) -> Path:
+    """A tool of the newest build tools of the Android SDK that hold it, such as `aapt2`, `zipalign` or `apksigner`, which is a script on Windows."""
+    tools = sorted((path for path in (android_sdk() / "build-tools").glob(f"*/{name}*") if path.stem == name and path.suffix in ("", ".exe", ".bat")), key=lambda path: [int(part) if part.isdigit() else 0 for part in path.parent.name.split(".")])
     if not tools:
-        raise BuildError('The Android SDK has no build tools with "aapt2". Install them with the SDK Manager of Android Studio or with "sdkmanager".')
+        raise BuildError(f'The Android SDK has no build tools with "{name}". Install them with the SDK Manager of Android Studio or with "sdkmanager".')
     return tools[-1]
 
 
@@ -3839,7 +3933,7 @@ def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | Non
 
 def launch_android(app: App, root: Path, apk: Path, args: argparse.Namespace, device: str, arguments: list[str]) -> None:
     """Installs an APK on a device, starts it and streams the log of its process until it ends. A release with asset packs that Google Play delivers after the install installs its bundle in the local testing mode of Play instead, which delivers them from the device as Play would. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
-    package = capture([aapt2(), "dump", "packagename", apk]).strip()
+    package = capture([android_build_tool("aapt2"), "dump", "packagename", apk]).strip()
     terminal.step(f'Launching "{package}" on the Android device "{device}"')
     if args.config == "Release" and android_store_packs(root):
         install_android_bundle(android_bundle(app, args.config), root, device)
@@ -3857,7 +3951,7 @@ def android_manifest(apk: Path) -> dict[str, set[str]]:
     """Reads the merged manifest of an APK with `aapt2` and returns the names of its elements by tag, such as the permissions, the activities, the providers and the meta-data."""
     elements: dict[str, set[str]] = {}
     tag = ""
-    for line in capture([aapt2(), "dump", "xmltree", "--file", "AndroidManifest.xml", apk]).splitlines():
+    for line in capture([android_build_tool("aapt2"), "dump", "xmltree", "--file", "AndroidManifest.xml", apk]).splitlines():
         if found := re.match(r"\s*E: (\S+)", line):
             tag = found[1]
         elif found := re.match(r'\s*A: http://schemas.android.com/apk/res/android:name\(0x[0-9a-f]+\)="([^"]*)"', line):

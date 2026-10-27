@@ -16,6 +16,7 @@ import json
 import os
 import plistlib
 import re
+import shlex
 import shutil
 import socket
 import subprocess
@@ -872,13 +873,34 @@ class PluginTemplateTest(unittest.TestCase):
 
 
 class AndroidGpuTestsTest(unittest.TestCase):
-    def test_the_tests_build_alone_for_the_abi_and_run_from_the_folder_the_device_holds_them_in(self):
+    def test_the_tests_build_alone_for_the_abi_as_the_library_of_the_test_app(self):
         with mock.patch.object(haylen, "ensure_shaderc", return_value=Path("/tools/haylen-shaderc")), mock.patch.object(haylen, "android_ndk", return_value=Path("/sdk/ndk")):
             command = [str(part) for part in haylen.android_gpu_tests_configure_command(Path("/build/android"), "x86_64", "Debug")]
         self.assertIn("-DANDROID_ABI=x86_64", command)
         self.assertIn("-DHAYLEN_BUILD_TESTS=ON", command)
         self.assertIn("-DHAYLEN_BUILD_PLAYER=OFF", command)
-        self.assertIn(f"-DHAYLEN_ANDROID_GPU_TESTS_DIR={haylen.ANDROID_GPU_TESTS_DIR}", command)
+        self.assertFalse(any("GPU_TESTS_DIR" in part for part in command))
+
+    def test_the_app_starts_with_the_variables_of_the_tests_alone_and_escapes_their_commas(self):
+        with mock.patch.object(haylen, "adb", return_value=Path("/sdk/adb")):
+            command = [str(part) for part in haylen.android_gpu_tests_launch_command("SERIAL", "vulkan", {"GTEST_FILTER": "GpuBlendTest.*:Gpu*Test.Draws*", "HAYLEN_PROBE": "a,b", "HOME": "/home/me"})]
+        self.assertEqual(command[:9], ["/sdk/adb", "-s", "SERIAL", "shell", "am", "start", "-W", "-n", f"{haylen.ANDROID_GPU_TEST_APP}/android.app.NativeActivity"])
+        self.assertEqual(command[9:11], ["--esa", "environment"])
+        self.assertEqual(shlex.split(command[11]), ["GTEST_FILTER=GpuBlendTest.*:Gpu*Test.Draws*,HAYLEN_PROBE=a\\,b,HAYLEN_TEST_GRAPHICS_API=vulkan"])
+
+    def test_the_app_starts_without_an_extra_when_no_variable_reaches_it(self):
+        with mock.patch.object(haylen, "adb", return_value=Path("/sdk/adb")):
+            command = haylen.android_gpu_tests_launch_command("SERIAL", None, {"HOME": "/home/me"})
+        self.assertNotIn("--esa", command)
+
+    def test_the_app_compiles_against_the_newest_platform_of_the_sdk(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            for name in ("android-34", "android-37.0", "android-37.2", "android-Baklava"):
+                (Path(scratch) / "platforms" / name).mkdir(parents=True)
+                (Path(scratch) / "platforms" / name / "android.jar").write_bytes(b"")
+            with mock.patch.object(haylen, "android_sdk", return_value=Path(scratch)):
+                jar, api = haylen.android_platform_jar()
+        self.assertEqual((jar.parent.name, api), ("android-37.2", 37))
 
     def test_a_virtual_device_builds_for_the_abi_of_its_configuration(self):
         with tempfile.TemporaryDirectory() as scratch:
@@ -943,11 +965,11 @@ class AppleGpuTestsTest(unittest.TestCase):
     def test_the_results_of_a_device_say_whether_the_tests_failed_or_never_finished(self):
         with tempfile.TemporaryDirectory() as scratch:
             results = Path(scratch) / "results.xml"
-            self.assertIn("quit before it wrote its results", haylen.apple_device_gpu_tests_problem(results))
+            self.assertIn("quit before it wrote its results", haylen.gpu_test_app_problem(results))
             results.write_text('<testsuites tests="40" failures="2" errors="1"></testsuites>', encoding="utf-8")
-            self.assertEqual(haylen.apple_device_gpu_tests_problem(results), "3 of the 40 GPU tests failed on the device.")
+            self.assertEqual(haylen.gpu_test_app_problem(results), "3 of the 40 GPU tests failed on the device.")
             results.write_text('<testsuites tests="40" failures="0" errors="0"></testsuites>', encoding="utf-8")
-            self.assertIsNone(haylen.apple_device_gpu_tests_problem(results))
+            self.assertIsNone(haylen.gpu_test_app_problem(results))
 
     def test_the_devices_take_only_the_gpu_tests_and_a_named_device(self):
         for platform_name in ("ios", "tvos", "visionos"):

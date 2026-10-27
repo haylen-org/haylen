@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The GPU test app of Android: a NativeActivity without Java code that runs the GPU tests of its library and quits with their status. It is debuggable, so "run-as" copies its results back. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.haylen.gputests" android:versionCode="1" android:versionName="1.0">
+    <application android:label="Haylen GPU Tests" android:hasCode="false" android:debuggable="true" android:extractNativeLibs="true">
+        <activity android:name="android.app.NativeActivity" android:exported="true" android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density">
+            <meta-data android:name="android.app.lib_name" android:value="haylen-gpu-tests" />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
