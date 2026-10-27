@@ -2,59 +2,86 @@
 
 namespace haylen::gpu::opengl {
 
-GpuTimer::GpuTimer(Gl& functions) : gl(functions), available(functions.getFeatures().timerQuery) {
-    if (available) {
-        gl.genQueries(static_cast<Gl::Sizei>(kQueries), queries.data());
-    }
-}
+GpuTimer::GpuTimer(Gl& functions) : gl(functions), available(functions.getFeatures().timerQuery) {}
 
 GpuTimer::~GpuTimer() {
-    if (available) {
-        gl.deleteQueries(static_cast<Gl::Sizei>(kQueries), queries.data());
+    for (const Frame& frame : frames) {
+        if (!frame.queries.empty()) {
+            gl.deleteQueries(static_cast<Gl::Sizei>(frame.queries.size()), frame.queries.data());
+        }
     }
 }
 
-void GpuTimer::begin() {
+void GpuTimer::beginFrame() {
     if (!available) {
         return;
     }
     collect();
-    if (pending[next]) {
+    measuring = !frames[next].pending;
+    if (measuring) {
+        frames[next].used = 0;
+    }
+}
+
+void GpuTimer::beginPass() {
+    if (!measuring) {
         return;
     }
-    gl.beginQuery(Gl::kTimeElapsed, queries[next]);
+    Frame& frame = frames[next];
+    if (frame.used == frame.queries.size()) {
+        Gl::Uint query = 0;
+        gl.genQueries(1, &query);
+        frame.queries.push_back(query);
+    }
+    gl.beginQuery(Gl::kTimeElapsed, frame.queries[frame.used]);
     running = true;
 }
 
-void GpuTimer::end() {
+void GpuTimer::endPass() {
     if (!running) {
         return;
     }
     gl.endQuery(Gl::kTimeElapsed);
     running = false;
-    pending[next] = true;
-    next = (next + 1) % kQueries;
+    ++frames[next].used;
 }
 
-// A disjoint event, such as a change of the clock of the GPU, makes the results of the queries that ran meanwhile meaningless, so they are dropped.
+void GpuTimer::endFrame() {
+    if (!measuring || frames[next].used == 0) {
+        return;
+    }
+    frames[next].pending = true;
+    next = (next + 1) % kFrames;
+    measuring = false;
+}
+
+// A disjoint event, such as a change of the clock of the GPU, makes the results of the queries that ran meanwhile meaningless, so their frame is dropped.
 void GpuTimer::collect() {
-    while (pending[oldest]) {
-        Gl::Uint ready = 0;
-        gl.getQueryObjectuiv(queries[oldest], Gl::kQueryResultAvailable, &ready);
-        if (ready == 0) {
-            return;
+    while (frames[oldest].pending) {
+        Frame& frame = frames[oldest];
+        for (std::size_t index = 0; index < frame.used; ++index) {
+            Gl::Uint ready = 0;
+            gl.getQueryObjectuiv(frame.queries[index], Gl::kQueryResultAvailable, &ready);
+            if (ready == 0) {
+                return;
+            }
         }
-        Gl::Uint64 nanoseconds = 0;
-        gl.getQueryObjectui64v(queries[oldest], Gl::kQueryResult, &nanoseconds);
+
+        Gl::Uint64 total = 0;
+        for (std::size_t index = 0; index < frame.used; ++index) {
+            Gl::Uint64 nanoseconds = 0;
+            gl.getQueryObjectui64v(frame.queries[index], Gl::kQueryResult, &nanoseconds);
+            total += nanoseconds;
+        }
         Gl::Int disjoint = 0;
         if (!gl.isDesktop()) {
             gl.getIntegerv(Gl::kGpuDisjoint, &disjoint);
         }
         if (disjoint == 0) {
-            seconds = static_cast<double>(nanoseconds) * 1e-9;
+            seconds = static_cast<double>(total) * 1e-9;
         }
-        pending[oldest] = false;
-        oldest = (oldest + 1) % kQueries;
+        frame.pending = false;
+        oldest = (oldest + 1) % kFrames;
     }
 }
 

@@ -476,7 +476,7 @@ void Device::beginFrame() {
         waitForFrame(frameIndex % kFramesInFlight);
         ring->beginFrame(frameIndex);
     }
-    timer.begin();
+    timer.beginFrame();
 }
 
 // The region of the upload ring that the frame writes was read by the frame that ran as many frames ago as there are frames in flight, so the CPU waits for its fence, which bounds how far it runs ahead of the GPU.
@@ -617,6 +617,7 @@ void Device::beginPass(const PassDesc& desc) {
         throw std::logic_error("A pass began while another pass was open.");
     }
     beginFrame();
+    timer.beginPass();
     pass = {.open = true};
     applied = nullptr;
 
@@ -927,8 +928,12 @@ void Device::endPass() {
     if (!pass.skipped && pass.swapchain) {
         drewSwapchain = true;
     }
-    if (!pass.skipped && !pass.swapchain) {
+    const bool offscreen = !pass.skipped && !pass.swapchain;
+    if (offscreen) {
         resolveAttachments();
+    }
+    timer.endPass();
+    if (offscreen) {
         discardAttachments();
     }
     if (flushEachPass) {
@@ -956,7 +961,7 @@ void Device::commit() {
         throw std::logic_error("The frame was committed while a pass was open.");
     }
     beginFrame();
-    timer.end();
+    timer.endFrame();
     if (drewSwapchain) {
         const std::array<Gl::Enum, 2> attachments{Gl::kDepth, Gl::kStencil};
         state.bindDrawFramebuffer(0);

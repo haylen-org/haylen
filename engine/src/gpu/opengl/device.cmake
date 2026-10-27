@@ -29,6 +29,7 @@ else()
   list(APPEND HAYLEN_GPU_TEST_SOURCES
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DebugOutputTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DeviceTests.cpp"
+    "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/GpuTimerTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ShaderProgramTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/StateCacheTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/UploadRingTests.cpp"
