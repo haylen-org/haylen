@@ -115,6 +115,8 @@ class Context final {
         VkPhysicalDevice device = VK_NULL_HANDLE;
         std::uint32_t queueFamily = 0;
         int score = -1;
+        // The reason of the driver issue that rules the GPU out, when one does.
+        std::string_view avoided;
     };
 
     [[nodiscard]] static Candidate rate(VkPhysicalDevice candidate, VkSurfaceKHR surface, Preference preference);

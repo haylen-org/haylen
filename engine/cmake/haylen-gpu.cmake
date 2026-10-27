@@ -65,7 +65,7 @@ endforeach()
 list(REMOVE_DUPLICATES HAYLEN_SHADER_LANGUAGES)
 
 function(haylen_add_gpu_library)
-  add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp")
+  add_library(haylen-gpu STATIC "${HAYLEN_ENGINE_DIR}/src/gpu/DeviceFactory.cpp" "${HAYLEN_ENGINE_DIR}/src/gpu/DriverIssues.cpp")
   add_library(haylen::gpu ALIAS haylen-gpu)
   target_include_directories(haylen-gpu PRIVATE "${HAYLEN_ENGINE_DIR}/src")
   target_link_libraries(haylen-gpu PUBLIC haylen-engine)

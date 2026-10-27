@@ -3,9 +3,13 @@
 #include <algorithm>
 #include <cstring>
 #include <format>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 #include <vector>
 
+#include "gpu/DriverIssues.hpp"
 #include "gpu/vulkan/Conversions.hpp"
 #include "gpu/vulkan/Instance.hpp"
 
@@ -18,11 +22,16 @@ Context::Context(const Instance& owner, VkSurfaceKHR surface, Preference prefere
     vkEnumeratePhysicalDevices(instance, &count, devices.data());
 
     Candidate best;
+    std::string_view avoided;
     for (VkPhysicalDevice candidate : devices) {
         const Candidate rated = rate(candidate, surface, preference);
+        avoided = rated.avoided.empty() ? avoided : rated.avoided;
         if (rated.score > best.score) {
             best = rated;
         }
+    }
+    if (best.score < 0 && !avoided.empty()) {
+        throw std::runtime_error(std::string(avoided));
     }
     if (best.score < 0) {
         throw std::runtime_error(surface == VK_NULL_HANDLE ? "No GPU of this machine runs Vulkan 1.1." : "No GPU of this machine runs Vulkan 1.1 and presents to the window.");
@@ -41,12 +50,16 @@ Context::~Context() {
     functions.vkDestroyDevice(device, nullptr);
 }
 
-// A GPU needs Vulkan 1.1 and a queue that draws, and presents to the surface when there is one.
+// A GPU needs Vulkan 1.1, a driver without a known issue that rules Vulkan out and a queue that draws, and presents to the surface when there is one.
 Context::Candidate Context::rate(VkPhysicalDevice candidate, VkSurfaceKHR surface, Preference preference) {
     VkPhysicalDeviceProperties described{};
     vkGetPhysicalDeviceProperties(candidate, &described);
     if (described.apiVersion < VK_API_VERSION_1_1) {
         return {};
+    }
+    const DriverIssues::Driver driver{.api = gpu::Device::Api::Vulkan, .renderer = described.deviceName, .versionNumber = described.driverVersion};
+    if (const std::optional<std::string_view> reason = DriverIssues::find(driver, DriverIssues::Issue::AvoidApi)) {
+        return {.avoided = *reason};
     }
 
     std::uint32_t count = 0;

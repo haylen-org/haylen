@@ -4,8 +4,12 @@
 #include <cmath>
 #include <cstring>
 #include <format>
+#include <optional>
 #include <stdexcept>
+#include <string>
+#include <string_view>
 
+#include "gpu/DriverIssues.hpp"
 #include "gpu/opengl/PixelReadback.hpp"
 #include "haylen/core/Log.hpp"
 
@@ -92,6 +96,11 @@ void Device::copyPixels(std::byte* destination, std::span<const std::byte> sourc
 
 void Device::readCapabilities() {
     const Gl::Features& features = gl.getFeatures();
+    const DriverIssues::Driver driver{.api = api, .renderer = adapterName};
+    const std::optional<std::string_view> noFloatFiltering = DriverIssues::find(driver, DriverIssues::Issue::NoFloatFiltering);
+    if (noFloatFiltering) {
+        core::Log::info("The OpenGL device works around its driver. {}", *noFloatFiltering);
+    }
     Gl::Int value = 0;
     gl.getIntegerv(Gl::kMaxTextureSize, &value);
     capabilities.maxImageSize = value;
@@ -110,7 +119,7 @@ void Device::readCapabilities() {
         capabilities.textureFormats[index] = true;
         capabilities.renderFormats[index] = isRenderable(pixel);
         capabilities.blendableFormats[index] = !pixel.depth && isRenderable(pixel) && (!pixel.floating || features.floatBlend);
-        capabilities.filterableFormats[index] = !pixel.depth && (!pixel.floating || features.textureFloatLinear);
+        capabilities.filterableFormats[index] = !pixel.depth && (!pixel.floating || (features.textureFloatLinear && !noFloatFiltering));
     }
 
     if (features.anisotropicFiltering) {
