@@ -48,4 +48,6 @@ haylen bench --suite render --gpu
 
 ## Comparing runs
 
+The first line of each table names the GPU, which matters on a laptop with two GPUs. Direct3D and Vulkan take the most powerful GPU, while OpenGL on Windows draws on the GPU that the driver gives the process, often the integrated one. So the tables of two APIs can come from two GPUs of one machine.
+
 Numbers compare well only on one machine at a time, in the Release build that `bench` makes, with the machine idle and plugged in. Compare `Frame ms` to see what each API costs the frame thread, and `GPU ms` to see what it costs the GPU. A frame whose `Frame ms` stays well above its `GPU ms` is bound by the CPU, and one whose `Frame ms` follows its `GPU ms` is bound by the GPU.
