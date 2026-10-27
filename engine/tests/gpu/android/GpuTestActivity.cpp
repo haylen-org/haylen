@@ -7,7 +7,9 @@
 #include <jni.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
@@ -15,6 +17,8 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "gpu/support/GpuTestFiles.hpp"
 
@@ -72,11 +76,23 @@ void GpuTestActivity::readEnvironment(ANativeActivity* activity) {
         const char* characters = env->GetStringUTFChars(value, nullptr);
         const std::string_view variable(characters);
         if (const std::size_t equals = variable.find('='); equals != std::string_view::npos) {
-            setenv(std::string(variable.substr(0, equals)).c_str(), std::string(variable.substr(equals + 1)).c_str(), 1);
+            take(std::string(variable.substr(0, equals)), std::string(variable.substr(equals + 1)));
         }
         env->ReleaseStringUTFChars(value, characters);
         env->DeleteLocalRef(value);
     }
+}
+
+// GoogleTest reads its variables when the library loads, before the activity starts, so they reach it as the arguments they stand for.
+void GpuTestActivity::take(const std::string& name, const std::string& value) {
+    constexpr std::string_view kGoogleTest = "GTEST_";
+    if (!name.starts_with(kGoogleTest)) {
+        setenv(name.c_str(), value.c_str(), 1);
+        return;
+    }
+    std::string flag = "--gtest_" + name.substr(kGoogleTest.size()) + "=" + value;
+    std::transform(flag.begin(), flag.begin() + static_cast<std::ptrdiff_t>(flag.find('=')), flag.begin(), [](char character) { return static_cast<char>(std::tolower(static_cast<unsigned char>(character))); });
+    flags.push_back(std::move(flag));
 }
 
 void GpuTestActivity::copyReferences(AAssetManager* assets) {
@@ -129,8 +145,12 @@ void GpuTestActivity::runTests() {
     std::filesystem::remove_all(results);
     GTEST_FLAG_SET(output, "xml:" + (results / "results.xml").string());
     std::string name = "haylen-gpu-tests";
-    std::array<char*, 2> arguments{name.data(), nullptr};
-    int count = 1;
+    std::vector<char*> arguments{name.data()};
+    for (std::string& flag : flags) {
+        arguments.push_back(flag.data());
+    }
+    int count = static_cast<int>(arguments.size());
+    arguments.push_back(nullptr);
     testing::InitGoogleTest(&count, arguments.data());
     const int status = RUN_ALL_TESTS();
 
