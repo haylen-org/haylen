@@ -30,7 +30,7 @@ haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/c
 haylen_enable_warnings(haylen-gpu-tests)
 
 # An iOS or tvOS device starts no plain executable, so there the tests are a signed app that carries the reference images and keeps its results in its container, which `haylen.py` installs, launches and copies the results back from.
-if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_OSX_SYSROOT MATCHES "simulator")
+if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_OSX_SYSROOT MATCHES "[Ss]imulator")
   file(GLOB haylen_gpu_references CONFIGURE_DEPENDS "${haylen_tests_dir}/data/gpu/*.png")
   target_sources(haylen-gpu-tests PRIVATE
     "${haylen_tests_dir}/gpu/apple/GpuTestApp.mm"
