@@ -298,6 +298,7 @@ These rules apply to every text the project writes: code comments, documentation
 - Test data lives in `engine/tests/data/`, so engine tests never read files of the samples.
 - The test program replaces the global allocation functions for `test::AllocationTracker`, so tests show that an operation never allocates a whole file or package.
 - Run `haylen test`. Changes to threading, lifetimes or memory handling also pass `haylen test --sanitizers thread` and `--sanitizers address`.
+- Every platform, GPU and device runs its tests from the command line, without continuous integration, as `docs/tools/hardware-testing.md` explains: machines at hand, simulators, emulators, real devices, and GPUs and phones rented on Amazon Web Services and Microsoft Azure. Rented machines run only after every binary is built, in one batch, with a shutdown timer, and everything they created is deleted and checked right after. Credentials stay in environment variables and never reach a file, a log or the repository.
 - The rules of `haylen.py` that need no build are tested by `tools/test_haylen.py`, with `python3 -m unittest discover -s tools -p "test_*.py"`, which CI runs.
 - Engine coverage is kept as close to 100 percent as the code allows. Run `haylen coverage`.
 
