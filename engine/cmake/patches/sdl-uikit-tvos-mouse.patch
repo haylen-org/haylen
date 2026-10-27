@@ -1,0 +1,17 @@
+Lets SDL read mice on tvOS without the key UIApplicationSupportsIndirectInputEvents, which only iOS and iPadOS define, since tvOS has no pointer touches to tell apart from mouse events. Without it SDL logged at every launch of a tvOS app that the key is missing.
+
+--- a/src/video/uikit/SDL_uikitevents.m
++++ b/src/video/uikit/SDL_uikitevents.m
+@@ -396,7 +396,12 @@
+             /* iOS will not send the new pointer touch events if you don't have this key,
+              * and we need them to differentiate between mouse events and real touch events.
+              */
++#ifdef SDL_PLATFORM_TVOS
++            // tvOS has no pointer touches to tell apart from mouse events, and no such key in its Info.plist, so mice need nothing there.
++            BOOL indirect_input_available = YES;
++#else
+             BOOL indirect_input_available = [[[[NSBundle mainBundle] infoDictionary] objectForKey:@"UIApplicationSupportsIndirectInputEvents"] boolValue];
++#endif
+             if (indirect_input_available) {
+                 NSNotificationCenter *center = [NSNotificationCenter defaultCenter];
+ 
