@@ -70,6 +70,24 @@ Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU t
 
 ## Cloud
 
+Every platform but the Apple TV and the Apple Vision Pro, which no cloud rents as devices, can be tested on rented machines. Prices change, so check them before a session. The ones below are on demand, in US dollars, at the time of writing.
+
+| Platform | Where | How | Approximate cost |
+| --- | --- | --- | --- |
+| Linux, software rasterizers | Any small Linux machine, such as an EC2 `t3.large` or an Azure `D2s_v5` | Run the GPU tests on Mesa lavapipe and llvmpipe, as in a container. | About US$ 0.08 to 0.10 an hour |
+| Linux, NVIDIA | EC2 `g4dn.xlarge` | [GPU machines on EC2](#gpu-machines-on-ec2) | About US$ 0.53 an hour |
+| Linux, AMD | Azure `Standard_NG8ads_V620_v1` | [Microsoft Azure](#microsoft-azure) | About US$ 0.70 to 1.00 an hour |
+| Windows, NVIDIA | EC2 `g4dn.xlarge` with Windows | [GPU machines on EC2](#gpu-machines-on-ec2) | About US$ 0.71 an hour |
+| Windows, AMD | Azure `Standard_NG8ads_V620_v1` with Windows | [Microsoft Azure](#microsoft-azure) | A little more than the Linux machine |
+| Windows, WARP | Any Windows machine without a GPU, such as an Azure `D2s_v5` | Run the GPU tests with `HAYLEN_TEST_GPU_SOFTWARE=1`. | About US$ 0.15 to 0.20 an hour |
+| macOS, Mac Catalyst and the Apple simulators | EC2 Mac, such as `mac2.metal` (Apple M1) or `mac2-m2.metal` (Apple M2) | [Macs on EC2](#macs-on-ec2) | About US$ 0.65 to 0.90 an hour, for at least 24 hours |
+| iPhone and iPad | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
+| Android, emulator | A Linux machine that runs KVM, such as an Azure `D4s_v5` with nested virtualization or an EC2 `.metal` instance | Install the Android SDK and run `haylen test --gpu --platform android`, which starts the emulator without a window. | About US$ 0.20 an hour on Azure, much more on an EC2 `.metal` instance |
+| Android, real devices | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
+| Browser, software | Any small Linux machine with Chrome | `haylen test --gpu --platform web` and `haylen test --platform web` | About US$ 0.08 to 0.10 an hour |
+| Browser, real GPU | EC2 `g4dn.xlarge` or Azure `Standard_NG8ads_V620_v1`, with Chrome started with `--enable-gpu` | The same pages as [Browser](#browser). | The price of the machine |
+| Browsers on Device Farm | Device Farm desktop browsers, such as Chrome, Firefox and Edge | A Selenium session that opens the page of `haylen run --platform web`, served where the browsers reach it. | About US$ 0.005 per browser minute |
+
 ### Amazon Web Services
 
 Amazon rents GPU machines by the hour and real Android and iOS devices by the minute. The tools are the AWS command line (`aws`) with your access keys in the environment variables `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`. Never write the keys into a file, a log or the repository.
@@ -86,9 +104,20 @@ Amazon rents GPU machines by the hour and real Android and iOS devices by the mi
 - On Windows, turn off the basic display adapter of the machine before the OpenGL tests, or the window gets the software driver.
 - Give the disk at least 80 GB on Windows, where the driver installer needs room.
 
+#### Macs on EC2
+
+EC2 rents whole Macs on dedicated hosts. Apple's license makes the shortest allocation of a host 24 hours, so a session costs at least a day of the host, about US$ 16 to 22. Batch every Apple test into that day.
+
+1. Allocate a host with `aws ec2 allocate-hosts --instance-type mac2.metal`, and start a macOS instance on it.
+2. Install Xcode and the platforms you need, such as `xcodebuild -downloadPlatform visionOS`.
+3. Run `haylen test --gpu`, `haylen test --gpu --platform catalyst`, and the simulator commands of [Simulators and emulators](#simulators-and-emulators).
+4. Terminate the instance and release the host with `aws ec2 release-hosts` once 24 hours have passed.
+
+The paravirtual GPU of a virtual Mac is not the GPU of a real one, while an EC2 Mac runs on a real Mac, so its Metal results count as hardware results.
+
 #### Real devices on Device Farm
 
-Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes.
+Device Farm runs in `us-west-2` and costs about US$ 0.17 per device minute. A run of the test project and the GPU app on one device takes about 5 to 20 minutes. It rents real iPhones and iPads too: build the test project and the GPU test app as signed `.ipa` files for your team, upload them, and run them the same way.
 
 1. Build the debug APK of the test project with `haylen run samples/tests --platform android --build-only`, and the GPU test app with `haylen test --gpu --platform android`.
 2. Create a project, upload the APKs and a custom test spec that starts the app in its run-all mode, and collect logcat.
