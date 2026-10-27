@@ -85,6 +85,8 @@ ANDROID_KEY_PASSWORD_LENGTH = 6
 # The script that provides the Haylen shader compiler that `engine/cmake/haylen-shader-compiler.json` pins, and the variable that points at another build of it, such as while the compiler itself is being made.
 SHADER_COMPILER_SCRIPT = ENGINE_DIR / "cmake" / "haylen-shader-compiler.cmake"
 SHADER_COMPILER_VARIABLE = "HAYLEN_SHADER_COMPILER"
+# The pin of the shader compiler, whose change compiles the shaders of apps again, since a new compiler can write other code or bindings.
+SHADER_COMPILER_PIN = ENGINE_DIR / "cmake" / "haylen-shader-compiler.json"
 # App shaders include the shader library as `haylen/material.glsl`.
 SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
 # Every material compiles once per kind of draw and once more for lit canvases, and the engine picks the program of a draw by these names.
@@ -2546,12 +2548,12 @@ def shader_sources(folder: Path) -> list[Path]:
 
 
 def newest_shader_source(folder: Path) -> float:
-    """Returns the time of the newest shader source of an app or the shader library, which every compiled shader of the app must be newer than."""
-    return max(path.stat().st_mtime for path in [*(folder / "content" / "shaders").rglob("*.glsl"), *SHADER_LIBRARY_DIR.rglob("*.glsl")])
+    """Returns the time of the newest shader source of an app or the shader library, or of the pin of the shader compiler, which every compiled shader of the app must be newer than."""
+    return max(path.stat().st_mtime for path in [*(folder / "content" / "shaders").rglob("*.glsl"), *SHADER_LIBRARY_DIR.rglob("*.glsl"), SHADER_COMPILER_PIN])
 
 
 def compile_app_shaders(folder: Path) -> None:
-    """Compiles the shaders of an app whose `.shader` file is older than its source, the other sources of the app that it may include or the shader library."""
+    """Compiles the shaders of an app whose `.shader` file is older than its source, the other sources of the app that it may include, the shader library or the pin of the shader compiler."""
     if not (folder / "content" / "shaders").is_dir():
         return
     newest = newest_shader_source(folder)

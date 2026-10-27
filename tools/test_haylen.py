@@ -1090,6 +1090,26 @@ class ConsumerArgumentTest(unittest.TestCase):
             haylen.consumer_modes(haylen.build_parser().parse_args(["sdk", "--platform", "web", "--check-consumers"]))
 
 
+class AppShadersTest(unittest.TestCase):
+    def test_a_new_pin_of_the_shader_compiler_compiles_the_shaders_of_an_app_again(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch) / "app"
+            (app / "content" / "shaders").mkdir(parents=True)
+            source = app / "content" / "shaders" / "glow.glsl"
+            source.write_text("@program glow haylen_vs glow_fs\n", encoding="utf-8")
+            compiled = source.with_suffix(".shader")
+            compiled.write_text("{}", encoding="utf-8")
+            pin = Path(scratch) / "haylen-shader-compiler.json"
+            pin.write_text("{}", encoding="utf-8")
+            newest = max(path.stat().st_mtime for path in haylen.SHADER_LIBRARY_DIR.rglob("*.glsl"))
+            os.utime(source, (newest, newest))
+            os.utime(compiled, (newest + 10, newest + 10))
+            os.utime(pin, (newest + 20, newest + 20))
+            with mock.patch.object(haylen, "SHADER_COMPILER_PIN", pin), mock.patch.object(haylen, "compile_shader") as compile_shader:
+                haylen.compile_app_shaders(app)
+            compile_shader.assert_called_once_with(source, compiled)
+
+
 class ShaderCompilerTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp())

@@ -82,7 +82,7 @@ The command `haylen.py shaders <app>` compiles every `.glsl` file under `content
 
 The command runs `haylen-shaderc`, the Haylen shader compiler. Unless the environment variable `HAYLEN_SHADER_COMPILER` names a build of it, `haylen.py` uses the release that `engine/cmake/haylen-shader-compiler.json` pins and keeps it in `.tools/`. It downloads the binary of that release for the machine and checks its SHA-256. Only on a machine that the release ships no binary for does it build the compiler from the source of the pinned commit, as the [build guide](../tools/build.md#tools) describes.
 
-The command passes `engine/shaders/include` with `--include`, which is how `@include haylen/material.glsl` finds the shader library. It writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or of the shader library, and `--force` compiles them all. An `@include` path of the app resolves against the folder of the file that includes it first, and then against the shader library.
+The command passes `engine/shaders/include` with `--include`, which is how `@include haylen/material.glsl` finds the shader library. It writes a `.shader` file next to each source, so the files ship in the package like any asset. A source compiles again when its `.shader` file is older than any source of the app or of the shader library, or than the pin of the shader compiler in `engine/cmake/haylen-shader-compiler.json`, and `--force` compiles them all. An `@include` path of the app resolves against the folder of the file that includes it first, and then against the shader library.
 
 ```sh
 haylen shaders my-game

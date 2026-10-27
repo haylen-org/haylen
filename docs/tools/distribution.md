@@ -256,7 +256,7 @@ haylen shaders ~/apps/my-game --force
 
 Compiles every source under `content/shaders/` that declares an `@program` into a `.shader` package next to it. The package holds the code of every shader language that the engine runs. The command uses the Haylen shader compiler `haylen-shaderc`, which haylen.py provides as [the shader compiler](build.md#the-shader-compiler) explains. Sources without a program are files that the others include.
 
-A shader compiles again when its `.shader` file is older than any shader source of the app or of the shader library, and `--force` compiles them all. A compile error names the file, the line and the column, and fails the command. The [shader guide](../graphics/shaders.md) explains the sources and the files. The web editor cannot compile shaders, so apps ship their `.shader` files in their package.
+A shader compiles again when its `.shader` file is older than any shader source of the app or of the shader library, or than the pin of the shader compiler in `engine/cmake/haylen-shader-compiler.json`, and `--force` compiles them all. A compile error names the file, the line and the column, and fails the command. The [shader guide](../graphics/shaders.md) explains the sources and the files. The web editor cannot compile shaders, so apps ship their `.shader` files in their package.
 
 ### serve
 
