@@ -4,13 +4,20 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 3> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 4> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
         .renderer = "PowerVR Rogue GE8320",
         .lastVersionNumber = 5776728,
         .reason = "The Vulkan driver of the PowerVR Rogue GE8320 fails some pipelines with \"VK_ERROR_OUT_OF_HOST_MEMORY\" and stops for good inside \"vkCreateGraphicsPipelines\" on others, which the driver 1.13@5776728 of Android 13 showed.",
+    },
+    {
+        .api = Device::Api::Vulkan,
+        .issue = Issue::StoreKeptDepth,
+        .renderer = "Adreno (TM) 630",
+        .lastVersionNumber = 0x8014B000,
+        .reason = "The Vulkan driver of the Adreno 630 reads the depth that a pass keeps as cleared when the pass discards that depth and clears the stencil of a format without stencil, which the driver 512.331 of Android 9 showed, while a pass that also stores the depth and keeps the stencil reads the depth it kept.",
     },
     {
         .api = Device::Api::OpenGlEs,

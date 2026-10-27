@@ -31,4 +31,12 @@ TEST(DriverIssuesTest, FlushesEachPassOnlyOnTheMaliG72DriverThatDroppedPasses) {
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Mali-G72", .version = "OpenGL ES 3.2 v1.r19p0"}, Issue::FlushEachPass).has_value());
 }
 
+// Only the Vulkan driver of the Adreno 630 that read kept depth as cleared, up to its version, stores the depth that a pass keeps.
+TEST(DriverIssuesTest, StoresKeptDepthOnlyOnTheAdreno630DriverThatLostIt) {
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Adreno (TM) 630", .versionNumber = 0x8014B000}, Issue::StoreKeptDepth).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Adreno (TM) 630", .versionNumber = 0x8014B001}, Issue::StoreKeptDepth).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Adreno (TM) 830", .versionNumber = 0x8014B000}, Issue::StoreKeptDepth).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 630", .versionNumber = 0x8014B000}, Issue::StoreKeptDepth).has_value());
+}
+
 } // namespace haylen::gpu

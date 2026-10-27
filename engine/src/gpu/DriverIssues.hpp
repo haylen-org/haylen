@@ -19,6 +19,8 @@ class DriverIssues final {
         NoFloatFiltering,
         // Every pass ends with a flush, which hands its commands to the GPU before the next pass records.
         FlushEachPass,
+        // A pass that keeps the depth of a format without stencil also stores the depth and keeps the stencil it has no plane for.
+        StoreKeptDepth,
     };
 
     // A driver as its graphics API describes it: the name of its GPU, its version text and its version number, which is 0 where the API gives none.
@@ -42,7 +44,7 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 3> kEntries;
+    static const std::array<Entry, 4> kEntries;
 
     [[nodiscard]] static bool matches(const Entry& entry, const Driver& driver, Issue issue) noexcept;
 };

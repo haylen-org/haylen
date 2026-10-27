@@ -277,6 +277,7 @@ class Device final : public gpu::Device {
 
     void createFrames();
     void fillCapabilities();
+    void readDriverIssues();
     void shutdown() noexcept;
 
     [[nodiscard]] bool ensureFrame();
@@ -335,6 +336,8 @@ class Device final : public gpu::Device {
     PFN_vkCmdEndRendering endRenderingCommand = nullptr;
     bool dynamicRendering = false;
     bool labels = false;
+    // Whether a pass that keeps the depth of a format without stencil also stores it and keeps the stencil, which the driver issues ask of a driver that reads such depth as cleared otherwise.
+    bool storeKeptDepth = false;
     Capabilities capabilities;
 
     HandlePool<BufferRecord> buffers;

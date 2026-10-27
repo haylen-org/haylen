@@ -5,9 +5,12 @@
 #include <cmath>
 #include <cstring>
 #include <format>
+#include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
+#include "gpu/DriverIssues.hpp"
 #include "gpu/ImageInfo.hpp"
 #include "gpu/vulkan/Context.hpp"
 #include "gpu/vulkan/Conversions.hpp"
@@ -36,6 +39,7 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
         labels = instance->hasDebugUtils() && vkCmdBeginDebugUtilsLabelEXT != nullptr;
         createFrames();
         fillCapabilities();
+        readDriverIssues();
         swapchainTarget.depth = context->getDepthStencilFormat();
 
         if (surface) {
@@ -49,6 +53,16 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
         throw;
     }
     core::Log::info("The Vulkan device draws with \"{}\" through Vulkan {}.{} with {}.", context->getProperties().deviceName, VK_API_VERSION_MAJOR(context->getApiVersion()), VK_API_VERSION_MINOR(context->getApiVersion()), dynamicRendering ? "dynamic rendering" : "render passes");
+}
+
+void Device::readDriverIssues() {
+    const VkPhysicalDeviceProperties& properties = context->getProperties();
+    const DriverIssues::Driver driver{.api = Api::Vulkan, .renderer = properties.deviceName, .versionNumber = properties.driverVersion};
+    const std::optional<std::string_view> keptDepth = DriverIssues::find(driver, DriverIssues::Issue::StoreKeptDepth);
+    if (keptDepth) {
+        core::Log::info("The Vulkan device works around its driver. {}", *keptDepth);
+    }
+    storeKeptDepth = keptDepth.has_value();
 }
 
 Device::~Device() {
@@ -1196,6 +1210,11 @@ void Device::beginOffscreenPass(const PassDesc& desc) {
         target.hasDepth = true;
         target.depth = {.view = getAttachmentView(record, 0, 0), .format = record.format, .samples = record.samples, .load = Conversions::toLoad(attachment.depthLoad), .store = Conversions::toStore(attachment.depthStore), .stencilLoad = Conversions::toLoad(attachment.stencilLoad), .stencilStore = Conversions::toStore(attachment.stencilStore)};
         target.depth.clear.depthStencil = {.depth = attachment.clearDepth, .stencil = attachment.clearStencil};
+        if (storeKeptDepth && attachment.depthLoad == Load::Keep && !Conversions::hasStencil(record.format)) {
+            target.depth.store = VK_ATTACHMENT_STORE_OP_STORE;
+            target.depth.stencilLoad = VK_ATTACHMENT_LOAD_OP_LOAD;
+            target.depth.stencilStore = VK_ATTACHMENT_STORE_OP_STORE;
+        }
         const bool keeps = attachment.depthLoad == Load::Keep || attachment.stencilLoad == Load::Keep;
         addTransition(record, 0, 0, keeps);
         if (desc.colors.empty()) {
