@@ -2054,12 +2054,20 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // The browser releases a wake lock whenever the page hides, so the page asks for it again each time it shows while the app keeps the screen on. Browsers without the Screen Wake Lock API leave the screen to the system.
+    // The browser releases a wake lock whenever the page hides, so the page asks for it again each time it shows while the app keeps the screen on. A browser without the Screen Wake Lock API leaves the screen to the system, which the log says once.
     let screenKeptOn = false;
     let wakeLock = null;
     let requestingWakeLock = false;
+    let warnedWithoutWakeLock = false;
     const requestWakeLock = function () {
-        if (!screenKeptOn || wakeLock || requestingWakeLock || document.visibilityState !== "visible" || !navigator.wakeLock) {
+        if (!screenKeptOn || wakeLock || requestingWakeLock || document.visibilityState !== "visible") {
+            return;
+        }
+        if (!navigator.wakeLock) {
+            if (!warnedWithoutWakeLock) {
+                warnedWithoutWakeLock = true;
+                console.warn("The page cannot keep the screen on, because this browser has no Screen Wake Lock API, so the screen follows the settings of the system.");
+            }
             return;
         }
         requestingWakeLock = true;

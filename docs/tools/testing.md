@@ -178,7 +178,7 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS or tvOS device it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port).
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the wake lock check of the web](#the-wake-lock-check-of-the-web) and [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS or tvOS device it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port).
 
 Run one suite or one test through CTest or through the executable:
 
@@ -253,11 +253,20 @@ The option `--port` of `haylen test` checks the mechanism of [ports](../platform
 
 The app fails the run with the status `1` when `haylen.platform` is not `'test-port'`, when the operating system of `haylen.system` is not `'port'` or when `haylen.graphicsApi` is not `'port'`. The runtime fails it too when the app does not quit within 600 frames, such as an app stuck on the error screen. Otherwise the app draws ten frames of shapes, sprites and text and quits with the status `0`.
 
-## The memory check of the web
+## The wake lock check of the web
 
 ```sh
 haylen test --platform web
 ```
+
+A web page keeps the screen on through the Screen Wake Lock API of the browser, which releases the lock whenever the page hides. So `haylen test --platform web` first runs this check in a browser:
+
+1. It builds the release site of the app `engine/tests/data/web-wake-lock`, whose `app.json` keeps the screen on from the start and whose script lets the screen sleep when the space key is pressed, and serves it.
+2. The driver `engine/tests/web/wake-lock-check.mjs` opens the page in a headless Chrome and watches the locks that the browser grants and releases through a script that it adds to the page.
+3. The page must take the lock, give it up when another tab hides it, take it again when it shows and release it once the app lets the screen sleep.
+4. Then a browser that refuses every request and one without the API open the page, which must only warn in its log while the app runs on, without an error.
+
+## The memory check of the web
 
 A web page reads content through a worker and keeps records in memory within a budget, which only a browser shows. So this check runs one:
 
@@ -393,7 +402,7 @@ Every job runs `haylen.py` with `--verbose`. The variable `LINUX_PACKAGES` of th
 | `web-gpu` | Ubuntu | Runs `test --gpu --platform web` with `--graphics-api webGpu` and `--graphics-api webGl2`, the GPU tests in the headless Chrome of the runner, where WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader. |
 | `android-gpu` | Ubuntu | Installs the NDK, the emulator and the Android 36 image for x86-64, lets the emulator use KVM and creates a virtual device. Runs `test --gpu --platform android` with `HAYLEN_TEST_GPU_SOFTWARE=1`, which starts that device without a window, drawing through SwiftShader, and runs the GPU tests on every device of the Android build that starts there. |
 | `coverage` | macOS | Runs `coverage`, whose report table shows in the log. |
-| `web` | Ubuntu | Installs the Linux development packages of `LINUX_PACKAGES`, which the content tool of the release needs. Runs `engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, then `test --platform web`, the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner. |
+| `web` | Ubuntu | Installs the Linux development packages of `LINUX_PACKAGES`, which the content tool of the release needs. Runs `engine --platform web`, which builds the prebuilt WebGPU and WebGL2 player, then `test --platform web`, the [wake lock check](#the-wake-lock-check-of-the-web) and the [memory check of the web](#the-memory-check-of-the-web) in the Chrome of the runner. |
 | `android` | Ubuntu | Installs Java 25, NDK 30.0.16248370, CMake 4.1.2, the Android 37.2 platform and the Linux development packages of `LINUX_PACKAGES`. Runs `engine --platform android`, which builds the Android libraries into the local Maven repository. Then it creates the starter app with `new build/starter`, gives it an upload key with `android-key build/starter` and runs `run build/starter --platform android --config Release --build-only`. That builds the protected release with the content tool of the desktop artifacts, the library of the app for every ABI and the signed APK, and checks it for anything a release never holds. |
 | `apple` | macOS | Installs Ninja and runs `engine --platform apple`, which builds `Haylen.xcframework`. Then it creates the starter app and runs `run build/starter --platform ios-simulator --config Release --build-only`, which builds and checks its protected release for the iOS simulator. |
 | `desktop-apps` | Ubuntu and Windows | Installs the Linux development packages of `LINUX_PACKAGES`, `dpkg-dev`, `desktop-file-utils` and the newest CMake on Linux, and the MSVC environment on Windows. Creates the starter app with `new build/starter`. Adds to it a plugin that `plugin new build/echo-check` creates from the plugin template, with `plugin add build/echo-check --app build/starter`. Runs `dist build/starter --output build/dist` for the platform, which builds the desktop artifacts, the C library of the plugin, the starter app from the Linux or Windows template in the Release configuration, and its `.deb` and AppImage or its installer. Then it checks the installed app with `check --config Release`, and on Linux validates its desktop entry with `desktop-file-validate`. Last it creates the starter C++ app with `new build/starter-cpp --kind cpp`, builds it with `run-cpp build/starter-cpp --build-only`, which compiles the engine with the app, and again with `--config Release`, which ships and checks its protected release. |

@@ -745,6 +745,15 @@ WEB_MEMORY_MEDIUM_SIZE = 16 * 1024**2
 WEB_MEMORY_WASM_LIMIT = WEB_MEMORY_FILE_SIZE // 2
 WEB_MEMORY_BUFFER_LIMIT = 64 * 1024**2
 WEB_MEMORY_SECONDS = 600
+# The wake lock check of the web: an app that keeps the screen on from its start and lets it sleep at a key, whose page a headless browser opens three times. One grants the wake lock, which the page takes, gives up when it hides, takes again when it shows and releases when the app lets the screen sleep, and the others refuse it or lack its API, which only warns in the log while the app runs on.
+WEB_WAKE_LOCK_APP = ENGINE_DIR / "tests" / "data" / "web-wake-lock"
+WEB_WAKE_LOCK_DRIVER = ENGINE_DIR / "tests" / "web" / "wake-lock-check.mjs"
+WEB_WAKE_LOCK_STEPS = {
+    "granted": ["ready", "taken", "released when hidden", "taken when shown", "released when the app lets the screen sleep"],
+    "refused": ["ready", "warned", "runs on"],
+    "missing": ["ready", "warned", "runs on"],
+}
+WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
 CHROME_PATHS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
 
 
@@ -753,7 +762,7 @@ def find_chrome() -> str:
     for candidate in [os.environ.get("HAYLEN_CHROME", ""), *CHROME_PATHS]:
         if candidate and (Path(candidate).is_file() or shutil.which(candidate)):
             return shutil.which(candidate) or candidate
-    raise BuildError('No Chrome or Chromium was found for the memory check of the web. Install one, or name it with "HAYLEN_CHROME".')
+    raise BuildError('No Chrome or Chromium was found for the checks of the web. Install one, or name it with "HAYLEN_CHROME".')
 
 
 def free_port() -> int:
@@ -763,6 +772,53 @@ def free_port() -> int:
 
 
 def command_test_web(args: argparse.Namespace) -> None:
+    """Runs the wake lock check and the memory check of the web in headless browsers."""
+    args.config = "Release"
+    args.engine_config = "Release"
+    args.previous_release = None
+    target = RUN_TARGETS["web"]
+    ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
+    check_web_wake_lock(args, target)
+    check_web_memory_pages(args, target)
+
+
+def serve_site(site: Path) -> LocalServer:
+    """Serves a site on a free port of this machine from a thread of its own until the caller shuts the server down."""
+    handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(site))
+    server = LocalServer(("127.0.0.1", 0), handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
+def check_web_wake_lock(args: argparse.Namespace, target) -> None:
+    """Builds the site of the wake lock check app, opens it in a headless browser that grants the wake lock, one that refuses it and one without its API, and stops when a page misses a step or reports an error."""
+    site = target.prepare(App(WEB_WAKE_LOCK_APP, target.plugins), args)
+    server = serve_site(site)
+    try:
+        for mode, steps in WEB_WAKE_LOCK_STEPS.items():
+            with headless_browser([], "the wake lock check of the web") as debugging:
+                terminal.step(f"Running the wake lock check of the web in a headless browser that {WEB_WAKE_LOCK_BROWSERS[mode]}")
+                report = json.loads(capture([emsdk_node(), WEB_WAKE_LOCK_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", mode]))
+            check_web_wake_lock_report(report, mode, steps)
+    finally:
+        server.shutdown()
+        server.server_close()
+    terminal.success("The page took the wake lock while the app kept the screen on, gave it up when it hid, took it again when it showed and released it when the app let the screen sleep, and a browser that refused it or lacked it only warned.")
+
+
+def check_web_wake_lock_report(report: dict, mode: str, steps: list[str]) -> None:
+    """Stops on a page of the wake lock check that reported an error or missed one of the steps of its mode, with the last lines of its log."""
+    reached = [entry["name"] for entry in report["steps"] if entry["reached"]]
+    if not report["failure"] and reached == steps:
+        return
+    log = "\n".join(report["log"][-20:])
+    if report["failure"]:
+        raise BuildError(f'The page of the wake lock check in a browser that {WEB_WAKE_LOCK_BROWSERS[mode]} reported an error: {report["failure"]} The last lines of its log follow.\n{log}')
+    missed = next(step for step in steps if step not in reached)
+    raise BuildError(f'The page of the wake lock check in a browser that {WEB_WAKE_LOCK_BROWSERS[mode]} missed the step "{missed}". The last lines of its log follow.\n{log}')
+
+
+def check_web_memory_pages(args: argparse.Namespace, target) -> None:
     """Builds the release site of the memory check app with a medium and a large file in its content, serves it, opens it in a headless browser with the files of the browser and without them, and stops when the page holds memory that grows with what it downloads or a page without files misses its room."""
     folder = BUILD_ROOT / "tests" / "web-memory"
     shutil.rmtree(folder, ignore_errors=True)
@@ -772,17 +828,8 @@ def command_test_web(args: argparse.Namespace) -> None:
         with open(folder / "content" / "large" / name, "wb") as file:
             for _ in range(size // (1024**2)):
                 file.write(os.urandom(1024**2))
-    args.config = "Release"
-    args.engine_config = "Release"
-    args.previous_release = None
-    target = RUN_TARGETS["web"]
-    app = App(folder, target.plugins)
-    ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
-    site = target.prepare(app, args)
-
-    handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(site))
-    server = LocalServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    site = target.prepare(App(folder, target.plugins), args)
+    server = serve_site(site)
     try:
         reports = {store: run_web_memory_page(f"http://127.0.0.1:{server.server_address[1]}/", store) for store in ("files", "memory")}
     finally:
@@ -949,9 +996,7 @@ def command_test_gpu_web(args: argparse.Namespace) -> None:
     terminal.step(f"Building the GPU tests of the web in `{shown_path(directory)}`")
     run(["cmake", "--build", directory, "--target", "haylen-gpu-tests", "--parallel", str(args.jobs)])
 
-    handler = functools.partial(type("Handler", (WebHandler,), {"log_message": lambda *arguments: None}), directory=str(directory / "bin"))
-    server = LocalServer(("127.0.0.1", 0), handler)
-    threading.Thread(target=server.serve_forever, daemon=True).start()
+    server = serve_site(directory / "bin")
     try:
         with headless_browser(WEB_GPU_BROWSER_FLAGS, "the GPU tests of the web") as debugging:
             terminal.step(f'Running the GPU tests of the web on "{api}"' if api else "Running the GPU tests of the web on every device of the build")

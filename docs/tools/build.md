@@ -21,7 +21,7 @@ The option `--version` prints `Haylen` and the version that `engine/VERSION` hol
 | `build` | Configures the engine when needed and builds it. | [build](#build) |
 | `bench` | Builds and runs a benchmark of the engine. | [bench](#bench) |
 | `clean` | Removes every build tree, the engine artifacts and the build folders of apps. | [clean](#clean) |
-| `test` | Builds and runs the engine tests, or the memory check of the web. | [Testing](testing.md#running-the-tests) |
+| `test` | Builds and runs the engine tests, or the wake lock and memory checks of the web. | [Testing](testing.md#running-the-tests) |
 | `coverage` | Measures the code coverage of the engine. | [Testing](testing.md#coverage) |
 | `fuzz` | Runs the fuzzers of the parsers that read untrusted bytes. | [Testing](testing.md#fuzzing) |
 | `format` | Formats the C, C++ and Objective-C sources. | [Testing](testing.md#formatting) |
@@ -147,7 +147,7 @@ The commands `configure`, `build` and `test` take these options:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--platform` | this machine | `macos`, `linux`, `windows`, `ios`, `tvos`, `android` or `web`. The command `test` always runs on this machine, except that `web` runs the memory check of the web and `android` runs the GPU tests on a device. |
+| `--platform` | this machine | `macos`, `linux`, `windows`, `ios`, `tvos`, `android` or `web`. The command `test` always runs on this machine, except that `web` runs the wake lock and memory checks of the web and `android` runs the GPU tests on a device. |
 | `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. |
 | `--graphics-api` | every device | Only for `test`: a name of `gpu::Device::kApiNames`, such as `vulkan`, which runs the [GPU tests](testing.md#the-gpu-tests) on that device alone. |
 | `--gpu` | off | Only for `test`: runs the [GPU tests](testing.md#the-gpu-tests) on every device of the build instead of the engine tests. |

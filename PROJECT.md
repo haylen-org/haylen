@@ -2183,7 +2183,7 @@ Plataformas e drivers:
 - [ ] visionOS nativo: hoje roda o app de iPad. Gerar a fatia `xros` e `xrsimulator` do `Haylen.xcframework` com o SDL3 e o Metal, rodar o projeto de testes e a suíte de GPU no simulador de visionOS, ou deixar escrito o motivo exato de não dar.
 - [ ] Avisos do UIKit em todo lançamento no iOS e tvOS: "Unbalanced calls to begin/end appearance transitions" do `HaylenRootViewController` e o aviso do SDL sobre `UIApplicationSupportsIndirectInputEvents`. Corrigir as causas.
 - [ ] Tamanhos de iPad em Split View e Stage Manager: conferir no simulador do iPad que a área de desenho segue a janela, com a checagem de superfície do Debug sem erros.
-- [ ] Wake Lock na web: conferir num navegador de verdade que `window.keepScreenOn` segura a tela e solta quando o app pede.
+- [x] Wake Lock na web: conferir num navegador de verdade que `window.keepScreenOn` segura a tela e solta quando o app pede. Feito: o `haylen test --platform web` roda agora a verificação do wake lock antes da de memória, com o app `engine/tests/data/web-wake-lock` e o driver `engine/tests/web/wake-lock-check.mjs` num Chrome headless, que concede o wake lock. A página pega o lock enquanto o app mantém a tela ligada, solta quando outra aba a esconde, pega de novo quando ela volta e solta quando o app deixa a tela dormir; num navegador que recusa o pedido e num sem a API o app segue rodando e a página só avisa no log. O navegador sem a API não avisava nada, e agora avisa uma vez.
 - [ ] Narrator no Windows: conferir no notebook com Windows que o Narrator lê a árvore de acessibilidade da UI pelo UI Automation, como os outros leitores de tela já leem nas outras plataformas.
 
 Integração e entrega:

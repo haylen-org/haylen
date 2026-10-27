@@ -1,0 +1,8 @@
+{
+    "name": "Web Wake Lock",
+    "identifier": "com.haylen.webwakelock",
+    "version": "1.0.0",
+    "window": {
+        "keepScreenOn": true
+    }
+}
