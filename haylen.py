@@ -4389,6 +4389,8 @@ def desktop_cmake(platform: str, engine_config: str, values: dict[str, str]) -> 
     if platform == "windows":
         runtime = "MultiThreadedDebugDLL" if engine_config == "Debug" else "MultiThreadedDLL"
         lines += [
+            "  # The drivers of a laptop with two GPUs read which one the app wants from variables of the executable itself.",
+            '  target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")',
             f"  # The engine links the C runtime of its {engine_config} build, so every configuration of the app does too.",
             f"  set_target_properties(${{target}} PROPERTIES MSVC_RUNTIME_LIBRARY {runtime})",
             "  # Windows links folders as junctions, which need no privileges.",

@@ -247,6 +247,14 @@ TEST(AppConfigTest, RejectsInvalidValues) {
     }
 }
 
+// An app asks for the GPU that uses the least power of a machine that has two, and draws on the most powerful one otherwise.
+TEST(AppConfigTest, ReadsWhetherTheAppWantsTheGpuOfLowPower) {
+    EXPECT_FALSE(core::AppConfig::fromJson(core::Json::object()).window.lowPowerGpu);
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"lowPowerGpu": true}})"));
+    EXPECT_TRUE(config.window.lowPowerGpu);
+    EXPECT_EQ(config.toJson().at("window").at("lowPowerGpu"), true);
+}
+
 // The window tries the graphics APIs of the list first, each named once, and an empty list leaves the order of the platform.
 TEST(AppConfigTest, ReadsTheGraphicsApisTheWindowTriesFirst) {
     EXPECT_TRUE(core::AppConfig::fromJson(core::Json::object()).window.graphicsApis.empty());

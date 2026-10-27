@@ -55,6 +55,9 @@ struct AppConfig {
 
         // The graphics APIs the window tries first, in order, before the other APIs of the build in the order of the platform, which an empty list leaves as it is.
         std::vector<gpu::Device::Api> graphicsApis;
+
+        // Whether the app draws on the GPU that uses the least power, such as the integrated GPU of a laptop that has two, rather than on the most powerful one.
+        bool lowPowerGpu = false;
     };
 
     // The launch screen that every platform shows while the app starts, with a logo relative to the content folder, or the Haylen logo when it is empty, over a background color that defaults to the clear color, and another one while the system uses dark colors. It stays until the app drew its first frame and at least the duration in seconds since the launch, and fades out into the app over the fade-out in seconds. The script `haylen.py` turns it into the launch storyboard on Apple platforms, the splash screen on Android and the loading page on the web.

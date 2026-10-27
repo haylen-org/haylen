@@ -51,8 +51,7 @@ class GpuRendererTest : public ::testing::TestWithParam<Device::Api> {
 
         // clang-format off
         const auto makeDevice = [this]() -> std::unique_ptr<Device> {
-            surface = std::make_unique<test::OffscreenSurface>(GetParam());
-            return test::GpuFixture::makeDevice(GetParam(), surface->getSurface());
+            return test::GpuFixture::makeDevice(GetParam(), surface);
         };
         // clang-format on
         try {

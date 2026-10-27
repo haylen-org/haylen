@@ -272,6 +272,10 @@ function(haylen_add_app target)
   if(NOT arg_CPP)
     list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp")
   endif()
+  # The drivers of a laptop with two GPUs read which one the app wants from variables of the executable itself.
+  if(WIN32)
+    list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+  endif()
   # The Apple runtime leaves main to the app, which enters it through haylen_main.
   if(APPLE)
     list(APPEND sources "${HAYLEN_ENGINE_DIR}/src/platform/apple/AppleMain.cpp")

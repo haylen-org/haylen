@@ -46,8 +46,8 @@ class GpuFixture : public ::testing::TestWithParam<gpu::Device::Api> {
     // The options the tests make devices with: validation on, the software rasterizer of the API when the environment variable `HAYLEN_TEST_GPU_SOFTWARE` is `1`, and the GPU that uses the least power when `HAYLEN_TEST_GPU_LOW_POWER` is `1`.
     [[nodiscard]] static gpu::DeviceFactory::Options getDeviceOptions();
 
-    // Makes the device of the API with its validation on, drawing into the surface or offscreen, once the API is ready to make it.
-    [[nodiscard]] static std::unique_ptr<gpu::Device> makeDevice(gpu::Device::Api api, const std::optional<gpu::Surface>& surface);
+    // Makes what the API draws into and the device of the API with its validation on, once the API is ready to make it. The API prepares before the surface opens, since the drivers of a laptop with two GPUs pick the GPU of OpenGL when its first context opens.
+    [[nodiscard]] static std::unique_ptr<gpu::Device> makeDevice(gpu::Device::Api api, std::unique_ptr<OffscreenSurface>& surface);
 
     // Whether the channels of a color lie within the tolerance in 255ths of the expected ones.
     [[nodiscard]] static ::testing::AssertionResult isNear(math::Color actual, math::Color expected, int tolerance = 2);

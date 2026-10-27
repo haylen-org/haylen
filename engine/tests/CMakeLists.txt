@@ -116,6 +116,7 @@ set(HAYLEN_TEST_SOURCES
   debug/TraceRecorderTests.cpp
   gpu/DeviceFactoryTests.cpp
   gpu/direct3d/CompileQueueTests.cpp
+  gpu/GpuPreferenceTests.cpp
   gpu/NullDeviceTests.cpp
   graphics/GradientTests.cpp
   graphics/GraphicsLuaTests.cpp
@@ -253,6 +254,10 @@ set(HAYLEN_TEST_SOURCES
 # The tests of the platform layer of SDL compile the translation of its events, the controllers, which virtual controllers of SDL stand in for, and the timing of the frames, which need no window.
 add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FrameTimer.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+# The tests export the variables that the drivers of a laptop with two GPUs read, like the player and the apps.
+if(WIN32)
+  target_sources(haylen-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+endif()
 target_link_libraries(haylen-tests PRIVATE haylen::engine haylen::headless haylen::gpu haylen-content-tool SDL3::SDL3-static haylen-miniaudio haylen-stb haylen-monocypher libzip::zip ZLIB::ZLIB libzstd_static Poco::Net GTest::gtest_main)
 # The tests reach into the engine's private headers on purpose, to check internals the public API hides.
 target_include_directories(haylen-tests PRIVATE "${CMAKE_CURRENT_LIST_DIR}" "${HAYLEN_ENGINE_DIR}/src")

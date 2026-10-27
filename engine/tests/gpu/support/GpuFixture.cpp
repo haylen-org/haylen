@@ -59,11 +59,12 @@ bool GpuFixture::isEnabled(const char* variable) {
 }
 
 // The tests wait for an API whose device arrives in a later turn of the event loop, such as WebGPU, before they make its device.
-std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, const std::optional<gpu::Surface>& surface) {
+std::unique_ptr<gpu::Device> GpuFixture::makeDevice(gpu::Device::Api api, std::unique_ptr<OffscreenSurface>& surface) {
     while (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
         EventLoop::yield();
     }
-    return gpu::DeviceFactory::create(api, surface, getDeviceOptions());
+    surface = std::make_unique<OffscreenSurface>(api);
+    return gpu::DeviceFactory::create(api, surface->getSurface(), getDeviceOptions());
 }
 
 void GpuFixture::SetUp() {
@@ -74,8 +75,7 @@ void GpuFixture::SetUp() {
     errors = std::make_unique<LoggedErrors>();
 
     try {
-        surface = std::make_unique<OffscreenSurface>(GetParam());
-        made = makeDevice(GetParam(), surface->getSurface());
+        made = makeDevice(GetParam(), surface);
     } catch (const std::runtime_error& error) {
         if (isApiRequired()) {
             FAIL() << "The device of \"" << gpu::DeviceFactory::getApiName(GetParam()) << "\", which \"HAYLEN_TEST_GRAPHICS_API\" names, cannot start on this machine: " << error.what();

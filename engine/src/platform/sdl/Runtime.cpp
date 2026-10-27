@@ -140,12 +140,14 @@ void Runtime::describeApp(const core::AppConfig& config) {
 #endif
 }
 
+// Debug builds validate every call of the graphics API, and the app picks the GPU of a machine that has two.
 gpu::DeviceFactory::Options Runtime::getDeviceOptions() noexcept {
 #if defined(NDEBUG)
-    return {.validation = false};
+    constexpr bool validation = false;
 #else
-    return {.validation = true};
+    constexpr bool validation = true;
 #endif
+    return {.validation = validation, .lowPower = Player::getOpeningConfig().window.lowPowerGpu};
 }
 
 SDL_AppResult Runtime::initialize(int argc, char* argv[]) {

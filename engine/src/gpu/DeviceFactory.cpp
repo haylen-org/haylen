@@ -4,6 +4,8 @@
 #include <format>
 #include <stdexcept>
 
+#include "gpu/GpuPreference.hpp"
+
 #if defined(HAYLEN_GPU_PORT)
 #include "gpu/PortDevice.hpp"
 #endif
@@ -98,7 +100,8 @@ std::optional<Device::Api> DeviceFactory::findApi(std::string_view name) noexcep
     return found->second;
 }
 
-bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, [[maybe_unused]] const Options& options) {
+bool DeviceFactory::prepare([[maybe_unused]] Device::Api api, const Options& options) {
+    GpuPreference::request(options.lowPower);
 #if defined(HAYLEN_GPU_WEBGPU)
     if (api == Device::Api::WebGpu) {
         return webgpu::Connection::request(options) != webgpu::Connection::Status::Pending;

@@ -962,7 +962,7 @@ if(HAYLEN_BUILD_PLAYER AND (HAYLEN_DESKTOP OR EMSCRIPTEN OR HAYLEN_PORT_PLATFORM
     target_sources(haylen PRIVATE src/platform/apple/AppleMain.cpp)
   elseif(WIN32 AND NOT HAYLEN_PORT_PLATFORM)
     set_target_properties(haylen PROPERTIES WIN32_EXECUTABLE ON)
-    target_sources(haylen PRIVATE platform/windows/haylen.manifest)
+    target_sources(haylen PRIVATE platform/windows/haylen.manifest src/gpu/GpuPreferenceExports.cpp)
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(haylen "")
   elseif(NOT HAYLEN_PORT_PLATFORM)

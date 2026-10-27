@@ -259,7 +259,21 @@ haylen --dev my-app --graphics-api openGl
 
 Some APIs need other window flags than others, such as an OpenGL context or a Metal layer, so the platform layer opens the window again for each API it tries. WebGPU gets its adapter and device from the browser in a later turn of the event loop, so `gpu::DeviceFactory::prepare` starts the request and the platform layer keeps running frames until it is ready.
 
-The options `software` and `lowPower` of `gpu::DeviceFactory::Options` ask a device for the software rasterizer of its API, such as WARP on Direct3D, Mesa lavapipe on Vulkan or the fallback adapter of WebGPU, or for the GPU that uses the least power. The GPU tests set them through `HAYLEN_TEST_GPU_SOFTWARE` and `HAYLEN_TEST_GPU_LOW_POWER`, as the [testing guide](../tools/testing.md#the-gpu-tests) describes. The player takes the GPU that each device prefers.
+The options `software` and `lowPower` of `gpu::DeviceFactory::Options` ask a device for the software rasterizer of its API, such as WARP on Direct3D, Mesa lavapipe on Vulkan or the fallback adapter of WebGPU, or for the GPU that uses the least power. The GPU tests set them through `HAYLEN_TEST_GPU_SOFTWARE` and `HAYLEN_TEST_GPU_LOW_POWER`, as the [testing guide](../tools/testing.md#the-gpu-tests) describes.
+
+### Machines with two GPUs
+
+Many laptops have two GPUs: an integrated GPU that saves power and a discrete GPU that draws faster. The player and the apps draw on the discrete GPU unless the app asks for the other one with the key `window.lowPowerGpu` of `app.json`, which sets the option `lowPower` of every device it makes.
+
+```json
+{
+  "window": {
+    "lowPowerGpu": true
+  }
+}
+```
+
+Direct3D, Vulkan and WebGPU list every GPU, and each device takes the one that the option asks for. OpenGL lists no GPU. On Windows, the drivers of NVIDIA and AMD pick the GPU of OpenGL for the whole process from two variables that the executable exports, `NvOptimusEnablement` and `AmdPowerXpressRequestHighPerformance`. Every executable of the engine on Windows exports them: the player, the apps that `haylen.py` and `haylen_add_app` build, and the test programs. The drivers read them when the process starts and again when the first context of OpenGL opens, and a 1 in either read takes the discrete GPU. So the executable exports them at 0, and `gpu::DeviceFactory::prepare` sets them before the first context opens: to 1 for an app that wants the discrete GPU, and left at 0 for an app with `lowPowerGpu`, so OpenGL draws on the integrated GPU as well. An executable that a project builds in another way compiles the file `src/gpu/GpuPreferenceExports.cpp` of the engine to get the same choice. The settings of the driver and the graphics settings of Windows, where a person picks the GPU of an app, come before what the app asks for.
 
 ## Driver issues
 

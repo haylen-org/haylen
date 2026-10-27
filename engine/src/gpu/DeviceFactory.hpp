@@ -34,7 +34,7 @@ class DeviceFactory final {
     // Whether the API draws through a `GlContext` that the platform creates with the window.
     [[nodiscard]] static bool usesGlContext(Device::Api api) noexcept;
 
-    // Starts what the API needs before `create` that arrives in a later turn of the event loop, such as the adapter and the device that the browser hands to WebGPU, which follow the options that ask for a software rasterizer or a GPU of low power, and returns whether `create` can run now. The platform keeps running its frames while it returns false, and `create` then reports a request that failed.
+    // Starts what the API needs before `create` that arrives in a later turn of the event loop, such as the adapter and the device that the browser hands to WebGPU, which follow the options that ask for a software rasterizer or a GPU of low power, and returns whether `create` can run now. The platform keeps running its frames while it returns false, and `create` then reports a request that failed. It also tells the drivers of a laptop with two GPUs which one the options ask for, through `GpuPreference`, so the platform calls it before it opens the window of the API.
     [[nodiscard]] static bool prepare(Device::Api api, const Options& options);
 
     // Creates the device of the API, drawing into the surface or offscreen when there is none. Throws `std::runtime_error` with a clear sentence when the API cannot start on this machine, so the platform tries the next one.

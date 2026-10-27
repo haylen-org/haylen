@@ -33,6 +33,10 @@ target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless h
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
 haylen_enable_warnings(haylen-gpu-tests)
+# The drivers of a laptop with two GPUs read which one the tests want from variables of the executable itself, which the variable `HAYLEN_TEST_GPU_LOW_POWER` turns to the integrated GPU.
+if(WIN32)
+  target_sources(haylen-gpu-tests PRIVATE "${HAYLEN_ENGINE_DIR}/src/gpu/GpuPreferenceExports.cpp")
+endif()
 
 # An iOS or tvOS device starts no plain executable, so there the tests are a signed app that carries the reference images and keeps its results in its container, which `haylen.py` installs, launches and copies the results back from.
 if(HAYLEN_PLATFORM MATCHES "^(ios|tvos)$" AND NOT HAYLEN_CATALYST AND NOT CMAKE_OSX_SYSROOT MATCHES "[Ss]imulator")
