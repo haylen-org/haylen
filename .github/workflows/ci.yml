@@ -1,14 +1,16 @@
 name: CI
 
-# The workflow only tests: it publishes nothing, and tags and releases start no run.
+# The workflow only tests: it publishes nothing, and tags and releases start no run. A change that touches only Markdown, the docs or the brand images starts no run either, since the tools tests check the docs on every machine before a commit.
 on:
   push:
     branches: ["**"]
+    paths-ignore: ["**.md", "docs/**", "extras/**"]
   pull_request:
+    paths-ignore: ["**.md", "docs/**", "extras/**"]
 
-# Every commit of `main` gets a complete run of its own, while a newer push to another branch or pull request supersedes the run in progress.
+# A newer push to the same branch or pull request supersedes the run in progress, so only the run of the newest commit goes on.
 concurrency:
-  group: ci-${{ github.ref == 'refs/heads/main' && github.sha || github.ref }}
+  group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
