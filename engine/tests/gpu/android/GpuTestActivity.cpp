@@ -25,6 +25,9 @@
 namespace haylen::test {
 
 void GpuTestActivity::create(ANativeActivity* activity) {
+    shown = activity;
+    activity->callbacks->onDestroy = &GpuTestActivity::destroy;
+
     // A change of configuration creates the activity again in the same process, while the tests already run.
     if (started) {
         return;
@@ -152,14 +155,23 @@ void GpuTestActivity::runTests() {
     int count = static_cast<int>(arguments.size());
     arguments.push_back(nullptr);
     testing::InitGoogleTest(&count, arguments.data());
-    const int status = RUN_ALL_TESTS();
+    status = RUN_ALL_TESTS();
 
     // The log takes the last lines once both ends of the pipe close.
     std::fflush(stdout);
     close(STDOUT_FILENO);
     close(STDERR_FILENO);
     output.join();
-    std::_Exit(status);
+
+    // A process that quits while its activity shows makes the system start the activity again with the intent it had, so the activity finishes first and the process quits once it is gone.
+    finished = true;
+    ANativeActivity_finish(shown.load());
+}
+
+void GpuTestActivity::destroy(ANativeActivity*) {
+    if (finished) {
+        std::_Exit(status);
+    }
 }
 
 } // namespace haylen::test

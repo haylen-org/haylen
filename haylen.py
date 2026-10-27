@@ -1133,13 +1133,13 @@ def android_gpu_test_apk(directory: Path, abi: str) -> Path:
 
 
 def android_gpu_tests_launch_command(device: str, api: str | None, environment: Mapping[str, str]) -> list:
-    """The adb command that starts the test app and waits for its activity, with the variables of the tests as the string array extra `environment`, whose items `am` splits at commas they do not escape."""
+    """The adb command that stops the test app if it runs, starts it again and waits for its activity, with the variables of the tests as the string array extra `environment`, whose items `am` splits at commas they do not escape."""
     variables = {name: value for name, value in environment.items() if name.startswith(GPU_TEST_VARIABLES)}
     if api:
         variables["HAYLEN_TEST_GRAPHICS_API"] = api
     items = ",".join(f"{name}={value}".replace(",", "\\,") for name, value in sorted(variables.items()))
     extra = ["--esa", "environment", shlex.quote(items)] if items else []
-    return [adb(), "-s", device, "shell", "am", "start", "-W", "-n", f"{ANDROID_GPU_TEST_APP}/android.app.NativeActivity", *extra]
+    return [adb(), "-s", device, "shell", "am", "start", "-S", "-W", "-n", f"{ANDROID_GPU_TEST_APP}/android.app.NativeActivity", *extra]
 
 
 def android_process(device: str, package: str) -> str:

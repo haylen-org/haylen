@@ -884,9 +884,9 @@ class AndroidGpuTestsTest(unittest.TestCase):
     def test_the_app_starts_with_the_variables_of_the_tests_alone_and_escapes_their_commas(self):
         with mock.patch.object(haylen, "adb", return_value=Path("/sdk/adb")):
             command = [str(part) for part in haylen.android_gpu_tests_launch_command("SERIAL", "vulkan", {"GTEST_FILTER": "GpuBlendTest.*:Gpu*Test.Draws*", "HAYLEN_PROBE": "a,b", "HOME": "/home/me"})]
-        self.assertEqual(command[:9], ["/sdk/adb", "-s", "SERIAL", "shell", "am", "start", "-W", "-n", f"{haylen.ANDROID_GPU_TEST_APP}/android.app.NativeActivity"])
-        self.assertEqual(command[9:11], ["--esa", "environment"])
-        self.assertEqual(shlex.split(command[11]), ["GTEST_FILTER=GpuBlendTest.*:Gpu*Test.Draws*,HAYLEN_PROBE=a\\,b,HAYLEN_TEST_GRAPHICS_API=vulkan"])
+        self.assertEqual(command[:10], ["/sdk/adb", "-s", "SERIAL", "shell", "am", "start", "-S", "-W", "-n", f"{haylen.ANDROID_GPU_TEST_APP}/android.app.NativeActivity"])
+        self.assertEqual(command[10:12], ["--esa", "environment"])
+        self.assertEqual(shlex.split(command[12]), ["GTEST_FILTER=GpuBlendTest.*:Gpu*Test.Draws*,HAYLEN_PROBE=a\\,b,HAYLEN_TEST_GRAPHICS_API=vulkan"])
 
     def test_the_app_starts_without_an_extra_when_no_variable_reaches_it(self):
         with mock.patch.object(haylen, "adb", return_value=Path("/sdk/adb")):
