@@ -9,7 +9,7 @@
 @interface SDL_uikitviewcontroller : UIViewController
 @end
 
-// The view controller of the window of the app, which answers UIKit with the status bar that the app asks for. The runtime turns the view controller that SDL created into this class once the window opened, which adds no state to it.
+// The view controller of the window of the app, which answers UIKit with the status bar and the orientations that the app asks for. The runtime turns the view controller that SDL created into this class once the window opened, which adds no state to it.
 @interface HaylenRootViewController : SDL_uikitviewcontroller
 @end
 #endif

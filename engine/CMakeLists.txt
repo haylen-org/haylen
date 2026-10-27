@@ -803,6 +803,7 @@ add_library(haylen-platform STATIC
   src/platform/linux/LinuxSystemReader.cpp
   src/platform/MemoryWarning.cpp
   src/platform/ReportedState.cpp
+  src/platform/SupportedOrientations.cpp
   src/platform/web/WebDialogJson.cpp
   src/platform/windows/WindowsPowerStatus.cpp
 )

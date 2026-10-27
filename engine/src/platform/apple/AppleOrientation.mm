@@ -1,12 +1,13 @@
 #import "platform/apple/AppleOrientation.hpp"
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+#include <string_view>
+#include <vector>
+
 #include "haylen/core/Log.hpp"
 #include "platform/NativeWindow.hpp"
 
 namespace haylen::platform {
-
-UIInterfaceOrientationMask AppleOrientation::mask = 0;
 
 Orientation AppleOrientation::get() {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
@@ -18,21 +19,9 @@ Orientation AppleOrientation::get() {
     return UIInterfaceOrientationIsPortrait(orientation) ? Orientation::Portrait : Orientation::Landscape;
 }
 
-UIInterfaceOrientationMask AppleOrientation::toMask(Orientation value) {
-    const bool pad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-    switch (value) {
-    case Orientation::Landscape:
-        return UIInterfaceOrientationMaskLandscape;
-    case Orientation::Portrait:
-        return pad ? UIInterfaceOrientationMaskPortrait | UIInterfaceOrientationMaskPortraitUpsideDown : UIInterfaceOrientationMaskPortrait;
-    case Orientation::Any:
-        return pad ? UIInterfaceOrientationMaskAll : UIInterfaceOrientationMaskAllButUpsideDown;
-    }
-    return UIInterfaceOrientationMaskAll;
-}
-
 void AppleOrientation::lock(Orientation value) {
-    mask = toMask(value);
+    getOrientations().lock(value, UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
+    const UIInterfaceOrientationMask mask = getOrientations().get();
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     [window.rootViewController setNeedsUpdateOfSupportedInterfaceOrientations];
     UIWindowSceneGeometryPreferencesIOS* preferences = [[UIWindowSceneGeometryPreferencesIOS alloc] initWithInterfaceOrientations:mask];
@@ -40,26 +29,29 @@ void AppleOrientation::lock(Orientation value) {
 }
 
 UIInterfaceOrientationMask AppleOrientation::getSupported() {
-    return mask != 0 ? mask : readInfoPlist();
+    return getOrientations().get();
+}
+
+SupportedOrientations& AppleOrientation::getOrientations() {
+    static SupportedOrientations orientations = readInfoPlist();
+    return orientations;
 }
 
 // The keys of iPads come first on an iPad, as UIKit reads them.
-UIInterfaceOrientationMask AppleOrientation::readInfoPlist() {
+SupportedOrientations AppleOrientation::readInfoPlist() {
     NSDictionary* info = NSBundle.mainBundle.infoDictionary;
     const bool pad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
     NSArray<NSString*>* names = (pad ? info[@"UISupportedInterfaceOrientations~ipad"] : nil) ?: info[@"UISupportedInterfaceOrientations"];
-    NSDictionary<NSString*, NSNumber*>* masks = @{
-        @"UIInterfaceOrientationPortrait" : @(UIInterfaceOrientationMaskPortrait),
-        @"UIInterfaceOrientationPortraitUpsideDown" : @(UIInterfaceOrientationMaskPortraitUpsideDown),
-        @"UIInterfaceOrientationLandscapeLeft" : @(UIInterfaceOrientationMaskLandscapeLeft),
-        @"UIInterfaceOrientationLandscapeRight" : @(UIInterfaceOrientationMaskLandscapeRight),
-    };
-    UIInterfaceOrientationMask supported = 0;
+    std::vector<std::string_view> listed;
     for (NSString* name in names) {
-        supported |= masks[name].unsignedIntegerValue;
+        listed.emplace_back(name.UTF8String);
     }
-    return supported != 0 ? supported : UIInterfaceOrientationMaskAll;
+    SupportedOrientations orientations;
+    orientations.setListed(SupportedOrientations::fromInfoPlist(listed));
+    return orientations;
 }
+
+static_assert(SupportedOrientations::kPortrait == UIInterfaceOrientationMaskPortrait && SupportedOrientations::kPortraitUpsideDown == UIInterfaceOrientationMaskPortraitUpsideDown && SupportedOrientations::kLandscapeLeft == UIInterfaceOrientationMaskLandscapeLeft && SupportedOrientations::kLandscapeRight == UIInterfaceOrientationMaskLandscapeRight);
 
 } // namespace haylen::platform
 #endif

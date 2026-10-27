@@ -6,6 +6,7 @@
 #import <UIKit/UIKit.h>
 
 #include "haylen/platform/Orientation.hpp"
+#include "platform/SupportedOrientations.hpp"
 
 namespace haylen::platform {
 
@@ -15,14 +16,12 @@ class AppleOrientation final {
     [[nodiscard]] static Orientation get();
     static void lock(Orientation value);
 
-    // The orientations the app allows now, which the application delegate answers UIKit with: those of the lock, or those of the Info.plist before any lock.
+    // The orientations the app allows now, which the application delegate and the view controller of the window answer UIKit with.
     [[nodiscard]] static UIInterfaceOrientationMask getSupported();
 
   private:
-    static UIInterfaceOrientationMask mask;
-
-    [[nodiscard]] static UIInterfaceOrientationMask toMask(Orientation value);
-    [[nodiscard]] static UIInterfaceOrientationMask readInfoPlist();
+    [[nodiscard]] static SupportedOrientations& getOrientations();
+    [[nodiscard]] static SupportedOrientations readInfoPlist();
 };
 
 } // namespace haylen::platform

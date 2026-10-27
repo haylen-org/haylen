@@ -186,6 +186,7 @@ set(HAYLEN_TEST_SOURCES
   platform/sdl/GamepadsTests.cpp
   platform/sdl/FrameTimerTests.cpp
   platform/StreamTests.cpp
+  platform/SupportedOrientationsTests.cpp
   platform/SystemTests.cpp
   platform/WebDialogJsonTests.cpp
   platform/WebEntryTests.cpp

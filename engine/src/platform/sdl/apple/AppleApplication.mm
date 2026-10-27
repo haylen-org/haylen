@@ -45,14 +45,14 @@ bool AppleApplication::isTextFieldFocused() noexcept {
     return [window.firstResponder isKindOfClass:HaylenFieldEditor.class];
 }
 #else
-// SDL names the class that UIKit creates as the delegate of the application through a class method of its own delegate, which names the delegate of Haylen instead. Every orientation reaches the view controller of SDL, so the orientations of the app follow its `Info.plist` and the lock of the app alone.
+// SDL names the class that UIKit creates as the delegate of the application through a class method of its own delegate, which names the delegate of Haylen instead. SDL takes every orientation, so it never turns the size of the window it opens, and once the window opened its view controller and the application delegate answer UIKit with the orientations of the `Info.plist` or of the lock of the app.
 void AppleApplication::prepare() {
     const IMP name = imp_implementationWithBlock(^NSString*(id) { return NSStringFromClass(HaylenSceneDelegate.class); });
     class_replaceMethod(object_getClass(HaylenSceneDelegate.superclass), @selector(getSceneDelegateClassName), name, "@@:");
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight Portrait PortraitUpsideDown");
 }
 
-// The window that SDL opened lies under the overlay of the plugins and the elements of screen readers, and under the launch screen until the splash ends. The view controller of SDL answers UIKit with the status bar of the app, and the plugins hear the scene connect once the window of the app is in it.
+// The window that SDL opened lies under the overlay of the plugins and the elements of screen readers, and under the launch screen until the splash ends. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.
 void AppleApplication::finishLaunching(Runtime&) {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
