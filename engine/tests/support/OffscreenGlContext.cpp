@@ -6,6 +6,7 @@
 #include <array>
 #include <format>
 #include <stdexcept>
+#include <string_view>
 
 namespace haylen::test {
 
@@ -38,9 +39,11 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
         throw std::runtime_error("EGL could not make the pixel buffer of the context.");
     }
 
-    // The attributes of `EGL_KHR_create_context` reach EGL 1.4 too, as on Android, and the OpenGL ES context needs no debug flag for the debug output the device turns on.
+    // The attributes of `EGL_KHR_create_context` reach EGL 1.4 too, as on Android, and the OpenGL ES context needs no debug flag for the debug output the device turns on. An OpenGL ES context asks to be lost when the GPU resets, as the contexts of Android apps do, so a pass that the GPU drops ends as a lost device that the test reports instead of as a target that kept its old pixels.
     const std::array<EGLint, 9> desktopAttributes{EGL_CONTEXT_MAJOR_VERSION_KHR, 4, EGL_CONTEXT_MINOR_VERSION_KHR, 3, EGL_CONTEXT_OPENGL_PROFILE_MASK_KHR, EGL_CONTEXT_OPENGL_CORE_PROFILE_BIT_KHR, EGL_CONTEXT_FLAGS_KHR, EGL_CONTEXT_OPENGL_DEBUG_BIT_KHR, EGL_NONE};
-    const std::array<EGLint, 5> embeddedAttributes{EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGL_CONTEXT_MINOR_VERSION_KHR, 0, EGL_NONE};
+    const char* extensions = eglQueryString(made, EGL_EXTENSIONS);
+    const bool resets = extensions != nullptr && std::string_view(extensions).find("EGL_EXT_create_context_robustness") != std::string_view::npos;
+    const std::array<EGLint, 7> embeddedAttributes{EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGL_CONTEXT_MINOR_VERSION_KHR, 0, resets ? EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT : EGL_NONE, EGL_LOSE_CONTEXT_ON_RESET_EXT, EGL_NONE};
     context = eglCreateContext(made, config, EGL_NO_CONTEXT, desktop ? desktopAttributes.data() : embeddedAttributes.data());
     if (context == EGL_NO_CONTEXT) {
         eglDestroySurface(made, surface);
