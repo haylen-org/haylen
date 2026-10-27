@@ -41,6 +41,20 @@ class ShaderProgramTest : public OpenGlTest {
     std::array<Device::TexturePair, 1> pairs{{{.texture = 0, .sampler = 0, .glslName = "picture"}}};
 };
 
+// A new program stays in use after it sets its units, and the NVIDIA driver warns at a clear when the units of the program in use hold textures it cannot sample, such as a color target made after a program with a shadow sampler, so a clear runs with no program and the next draw uses its own again.
+TEST_P(ShaderProgramTest, LeavesNoProgramInUseForAClear) {
+    const ShaderProgram program(opened.gl, opened.state, describe());
+    GlCallCounter counter(opened.gl);
+    counter.watch<&Gl::useProgram>();
+
+    opened.state.prepareClear();
+    EXPECT_EQ(counter.getCalls(), 1);
+    opened.state.prepareClear();
+    EXPECT_EQ(counter.getCalls(), 1);
+    opened.state.useProgram(program.getName());
+    EXPECT_EQ(counter.getCalls(), 2);
+}
+
 TEST_P(ShaderProgramTest, SendsAUniformBlockOnlyWhenItsBytesChange) {
     ShaderProgram program(opened.gl, opened.state, describe());
     opened.state.useProgram(program.getName());

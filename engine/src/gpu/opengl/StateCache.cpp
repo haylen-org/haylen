@@ -257,6 +257,7 @@ void StateCache::prepareClear() {
         gl.stencilMaskSeparate(Gl::kFrontAndBack, stencilWriteMask);
     }
     setScissorTest(false);
+    useProgram(0);
 }
 
 void StateCache::setViewport(const Rectangle& value) {

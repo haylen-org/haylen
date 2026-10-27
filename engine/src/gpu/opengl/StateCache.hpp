@@ -76,7 +76,7 @@ class StateCache final {
     void applyStencilReference(std::uint8_t value);
     void applyBlendColor(const math::Color& value);
 
-    // Opens every color channel and the depth and stencil writes and turns the scissor test off, since they limit what a clear touches.
+    // Opens every color channel and the depth and stencil writes and turns the scissor test off, since they limit what a clear touches. It also leaves no program bound, since some drivers check the program in use against the textures of its units at a clear, though no draw follows with them.
     void prepareClear();
 
     void setViewport(const Rectangle& value);
