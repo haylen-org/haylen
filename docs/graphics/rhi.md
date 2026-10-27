@@ -280,7 +280,7 @@ This table separates what is implemented, what compiles and what was tested, on 
 | Device | Platform | Implemented | Compiled | Tested |
 | --- | --- | --- | --- | --- |
 | Metal | macOS | Yes | Yes, also for Intel Macs in the `macos-intel` job of CI | On the Apple GPU of a Mac, with the engine tests, the headless test project, the test port and the SDK check. No Intel Mac, since the Intel runners of GitHub have no Metal device, so CI runs only the engine tests there. |
-| Metal | iOS and iPadOS | Yes | For devices and the simulator, with the GPU test app signed for an iPhone | On the iPhone and iPad simulators of iOS 27 with `haylen test --gpu --platform ios-simulator`. No physical device, since the iPhone 13 that was given stayed locked, which keeps `devicectl` from launching apps. |
+| Metal | iOS and iPadOS | Yes | For devices and the simulator, with the GPU test app signed for an iPhone | On the iPhone and iPad simulators of iOS 27 with `haylen test --gpu --platform ios-simulator`, and on an iPhone 13, an A15 with iOS 27.0.1, with `haylen test --gpu --platform ios`: the GPU tests, the whole test project in Debug, turns between landscape and portrait, Tiny Island, an app in portrait and the protected release of the test project. No physical iPad. |
 | Metal | Mac Catalyst | Yes | Yes | On the Apple GPU of a Mac with `haylen test --gpu --platform catalyst`. |
 | Metal | tvOS | Yes | For devices and the simulator | On the Apple TV simulator of tvOS 27 with `haylen test --gpu --platform tvos-simulator`, and on the first Apple TV 4K, an A10X of the Apple3 family with tvOS 26.6, with `haylen test --gpu --platform tvos`: the GPU tests, a sprite batch whose last texture binds at slot 31, the whole test project in Debug, Tiny Island and the protected release of the test project in Release. |
 | Metal | visionOS | Yes | For devices and the simulator | Not tested. The engine builds no visionOS slice, so visionOS runs the iPad app. |
@@ -295,7 +295,7 @@ This table separates what is implemented, what compiles and what was tested, on 
 | WebGL2 | Web | Yes | Yes | In headless Chrome. No other browser. |
 | WebGPU | Web | Yes | Yes | In headless Chrome on SwiftShader and on the Apple GPU of a Mac. No other browser. |
 
-No device has met a real lost device on any API yet. The paths that replace a lost device run in code, but no GPU reset, removed adapter or lost context drove them. No AMD GPU ran any device, since the cloud machines with AMD GPUs are gone, and no physical iOS or visionOS device did.
+No device has met a real lost device on any API yet. The paths that replace a lost device run in code, but no GPU reset, removed adapter or lost context drove them. No AMD GPU ran any device, since the cloud machines with AMD GPUs are gone, and no physical iPad or visionOS device did.
 
 ## Writing a device
 
