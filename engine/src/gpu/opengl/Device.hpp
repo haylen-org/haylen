@@ -174,6 +174,8 @@ class Device final : public gpu::Device {
     bool surfaceAttached = false;
     std::string adapterName;
     Capabilities capabilities;
+    // Whether each pass ends with a flush, which the driver issues ask of a driver that drops passes otherwise.
+    bool flushEachPass = false;
     DebugOutput debug;
     GpuTimer timer;
     std::unique_ptr<UploadRing> ring;

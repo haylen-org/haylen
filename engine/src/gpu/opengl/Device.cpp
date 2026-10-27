@@ -96,11 +96,16 @@ void Device::copyPixels(std::byte* destination, std::span<const std::byte> sourc
 
 void Device::readCapabilities() {
     const Gl::Features& features = gl.getFeatures();
-    const DriverIssues::Driver driver{.api = api, .renderer = adapterName};
+    const std::string version = gl.getString(Gl::kVersion);
+    const DriverIssues::Driver driver{.api = api, .renderer = adapterName, .version = version};
     const std::optional<std::string_view> noFloatFiltering = DriverIssues::find(driver, DriverIssues::Issue::NoFloatFiltering);
-    if (noFloatFiltering) {
-        core::Log::info("The OpenGL device works around its driver. {}", *noFloatFiltering);
+    const std::optional<std::string_view> passFlushes = DriverIssues::find(driver, DriverIssues::Issue::FlushEachPass);
+    for (const std::optional<std::string_view>& reason : {noFloatFiltering, passFlushes}) {
+        if (reason) {
+            core::Log::info("The OpenGL device works around its driver. {}", *reason);
+        }
     }
+    flushEachPass = passFlushes.has_value();
     Gl::Int value = 0;
     gl.getIntegerv(Gl::kMaxTextureSize, &value);
     capabilities.maxImageSize = value;
@@ -925,6 +930,9 @@ void Device::endPass() {
     if (!pass.skipped && !pass.swapchain) {
         resolveAttachments();
         discardAttachments();
+    }
+    if (flushEachPass) {
+        gl.flush();
     }
     if (pass.grouped) {
         debug.popGroup();

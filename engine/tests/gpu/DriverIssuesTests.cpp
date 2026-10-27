@@ -23,4 +23,12 @@ TEST(DriverIssuesTest, KeepsFloatFilteringFromTheOpenGlEsOfXclipseGpus) {
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 830"}, Issue::NoFloatFiltering).has_value());
 }
 
+// Only the OpenGL ES driver r19p0 of the Mali-G72, whose passes the GPU dropped with a reset of the context, flushes after each pass.
+TEST(DriverIssuesTest, FlushesEachPassOnlyOnTheMaliG72DriverThatDroppedPasses) {
+    const DriverIssues::Driver seen{.api = Device::Api::OpenGlEs, .renderer = "Mali-G72", .version = "OpenGL ES 3.2 v1.r19p0-01rel0.###other-sha0123456789ABCDEF0###"};
+    EXPECT_TRUE(DriverIssues::find(seen, Issue::FlushEachPass).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Mali-G72", .version = "OpenGL ES 3.2 v1.r38p1-01eac0"}, Issue::FlushEachPass).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = "Mali-G72", .version = "OpenGL ES 3.2 v1.r19p0"}, Issue::FlushEachPass).has_value());
+}
+
 } // namespace haylen::gpu
