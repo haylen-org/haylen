@@ -367,20 +367,21 @@ std::vector<std::string> JavaBridge::toStrings(JNIEnv& env, jobjectArray texts) 
 }
 
 // A direct `ByteBuffer` that Java sliced to its remaining bytes starts at its address and ends at its capacity, and anything else is a byte array.
+// A buffer is a `byte[]` or a direct `ByteBuffer`. Arrays are told apart first, since `GetDirectBufferAddress` takes only a `java.nio.Buffer`, and the checks of JNI abort the app when it gets an array, as Android 10 does in debuggable apps.
 std::vector<std::vector<std::byte>> JavaBridge::toBuffers(JNIEnv& env, jobjectArray buffers) {
     const jsize count = env.GetArrayLength(buffers);
     std::vector<std::vector<std::byte>> copies(static_cast<std::size_t>(count));
     for (jsize index = 0; index < count; ++index) {
         const JavaLocalRef buffer(env, env.GetObjectArrayElement(buffers, index));
         std::vector<std::byte>& copy = copies[static_cast<std::size_t>(index)];
-        if (const void* address = env.GetDirectBufferAddress(buffer.get())) {
-            const auto* bytes = static_cast<const std::byte*>(address);
-            copy.assign(bytes, bytes + env.GetDirectBufferCapacity(buffer.get()));
-        } else {
+        if (env.IsInstanceOf(buffer.get(), byteArrayClass) == JNI_TRUE) {
             const auto array = static_cast<jbyteArray>(buffer.get());
             copy.resize(static_cast<std::size_t>(env.GetArrayLength(array)));
             env.GetByteArrayRegion(array, 0, static_cast<jsize>(copy.size()), reinterpret_cast<jbyte*>(copy.data()));
+            continue;
         }
+        const auto* bytes = static_cast<const std::byte*>(env.GetDirectBufferAddress(buffer.get()));
+        copy.assign(bytes, bytes + env.GetDirectBufferCapacity(buffer.get()));
     }
     return copies;
 }
