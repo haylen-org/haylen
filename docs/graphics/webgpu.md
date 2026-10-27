@@ -45,8 +45,16 @@ Shader packages carry WGSL, the `wgsl` language, with uniform blocks in bind gro
 | Blend into a format | Every color format, and the 32-bit floats only with the feature `float32-blendable`. |
 | Filter a format | Every color format, and the 32-bit floats only with the feature `float32-filterable`. |
 | Separate blend for each color target | Yes. |
-| GPU time of a frame | Timestamp queries at the start and end of every pass, with the feature `timestamp-query`. The time of a frame adds up its passes, and a frame whose buffer is still mapped goes unmeasured. |
+| GPU time of a frame | Timestamp queries at the start and end of every pass, with the feature `timestamp-query`, which the [GPU time](#gpu-time) explains. |
 | First row of a render target | The top row. |
+
+## GPU time
+
+The device measures the time of a frame with timestamp queries at the start and the end of each pass. WebGPU lets the timestamp at the start of a pass be taken before the work ahead of the pass finished. The tile-based GPUs of Apple do so while they still shade the pass before, so the spans of the passes overlap, and adding them up counted the same work more than once, more than twice the time of a frame of four passes.
+
+So the device counts the work of each pass only from the end of the pass before it, since the queue runs the passes in order, and the first pass of a frame counts from the last pass of the frame before when that frame was measured. A frame with a timestamp of zero, which the queries never wrote, or with one that runs backwards gives no time, and the readouts keep the time of the last frame that gave one. Chrome rounds the timestamps of a page without its developer features to a tenth of a millisecond, so the time of light frames moves in such steps.
+
+SwiftShader, the software rasterizer that Chrome uses for WebGPU where it has no GPU, such as a headless Chrome without `--enable-gpu`, draws on the processor. Its timestamps measure how long the processor takes to draw the passes, which matches how far apart its frames come, so the time of a frame on SwiftShader measures the processor and the rasterizer, not a GPU, and grows with the pixels of the page and with whatever else the processor runs. A page of thirty thousand sprites at the size of a desktop takes a third of a second a frame there.
 
 ## Debugging
 

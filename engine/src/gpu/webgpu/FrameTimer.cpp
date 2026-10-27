@@ -1,7 +1,9 @@
 #include "gpu/webgpu/FrameTimer.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstring>
+#include <span>
 
 #include "gpu/webgpu/Conversion.hpp"
 
@@ -76,8 +78,10 @@ void FrameTimer::resolve(WGPUCommandEncoder encoder) noexcept {
 
 void FrameTimer::submitted() noexcept {
     Slot& slot = slots[current];
+    ++submissions;
     if (slot.passes != 0) {
         slot.mapped = slot.passes;
+        slot.frame = submissions;
         states[current] = State::Mapping;
         WGPUBufferMapCallbackInfo callback = WGPU_BUFFER_MAP_CALLBACK_INFO_INIT;
         callback.mode = WGPUCallbackMode_AllowSpontaneous;
@@ -92,25 +96,29 @@ void FrameTimer::submitted() noexcept {
     measuring = false;
 }
 
-// The time of a frame adds up the times of its passes, which leaves out the gaps between them, when the GPU ran other work.
+// The slots finish their mappings in any order, while the timeline takes the frames in the order they were submitted.
 void FrameTimer::collect() noexcept {
+    std::array<Slot*, kSlots> mapped{};
+    std::size_t count = 0;
     for (std::uint32_t index = 0; index < kSlots; ++index) {
-        if (states[index] != State::Mapped) {
-            continue;
+        if (states[index] == State::Mapped) {
+            mapped[count++] = &slots[index];
+            states[index] = State::Free;
         }
-        Slot& slot = slots[index];
-        std::array<std::uint64_t, kMaxPasses * 2U> times{};
-        std::memcpy(times.data(), wgpuBufferGetConstMappedRange(slot.readback, 0, static_cast<std::size_t>(kSlotBytes)), sizeof(times));
-        wgpuBufferUnmap(slot.readback);
-        states[index] = State::Free;
+    }
+    std::sort(mapped.begin(), mapped.begin() + static_cast<std::ptrdiff_t>(count), [](const Slot* first, const Slot* second) { return first->frame < second->frame; });
+    for (std::size_t index = 0; index < count; ++index) {
+        read(*mapped[index]);
+    }
+}
 
-        std::uint64_t total = 0;
-        for (std::size_t pass = 0; pass < slot.mapped; ++pass) {
-            const std::uint64_t begin = times[pass * 2U];
-            const std::uint64_t end = times[pass * 2U + 1U];
-            total += end > begin ? end - begin : 0U;
-        }
-        seconds = static_cast<double>(total) * 1e-9;
+// A frame whose timestamps cannot tell its time leaves the time of the last frame that could.
+void FrameTimer::read(Slot& slot) noexcept {
+    std::array<std::uint64_t, kMaxPasses * 2U> times{};
+    std::memcpy(times.data(), wgpuBufferGetConstMappedRange(slot.readback, 0, static_cast<std::size_t>(kSlotBytes)), sizeof(times));
+    wgpuBufferUnmap(slot.readback);
+    if (const std::optional<double> frame = timeline.addFrame(slot.frame, std::span(times).first(std::size_t{slot.mapped} * 2U))) {
+        seconds = frame;
     }
 }
 
