@@ -115,6 +115,23 @@ jobs:
         if: runner.os == 'macOS'
         run: python haylen.py --verbose test --gpu --config Debug --graphics-api metal
 
+  # The Intel runners of macOS are virtual machines without a Metal device, so they build the engine for x86-64 and run the engine tests on the null device alone, and the Metal paths of Intel Macs stay untested in CI. The report of the displays shows whether a runner gained a Metal device.
+  macos-intel:
+    runs-on: macos-26-intel
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.15"
+      - uses: actions/cache@v6
+        with:
+          path: .cache/cpm
+          key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+      - name: Show the displays of the runner and whether they support Metal
+        run: system_profiler SPDisplaysDataType
+      - name: Test
+        run: python haylen.py --verbose test --config Debug
+
   # WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader in the headless Chrome of the runner.
   web-gpu:
     runs-on: ubuntu-latest
