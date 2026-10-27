@@ -27,6 +27,7 @@ if(EMSCRIPTEN)
   list(APPEND HAYLEN_GPU_OFFSCREEN_SOURCES "${HAYLEN_ENGINE_DIR}/tests/support/web/OffscreenGlContext.cpp")
 else()
   list(APPEND HAYLEN_GPU_TEST_SOURCES
+    "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DebugOutputTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/DeviceTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/ShaderProgramTests.cpp"
     "${HAYLEN_ENGINE_DIR}/tests/gpu/opengl/StateCacheTests.cpp"

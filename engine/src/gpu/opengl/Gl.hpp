@@ -233,7 +233,6 @@ class Gl final {
     static constexpr Enum kDebugTypeUndefinedBehavior = 0x824E;
     static constexpr Enum kDebugTypePushGroup = 0x8269;
     static constexpr Enum kDebugTypePopGroup = 0x826A;
-    static constexpr Enum kDebugSeverityHigh = 0x9146;
     static constexpr Enum kDebugSeverityNotification = 0x826B;
     static constexpr Enum kDontCare = 0x1100;
     static constexpr Enum kBuffer = 0x82E0;
