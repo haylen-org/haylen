@@ -6,7 +6,7 @@ This file is binding for every change. It describes the project as it is and the
 
 ## Core principles
 
-- No workarounds, hacks, hidden fallbacks, dead code, legacy code, backward-compatibility branches or speculative abstractions. Implement the current design cleanly and directly.
+- No shortcuts, hacks, kludges, ad hoc workarounds, silent fallbacks, dead or obsolete code, legacy compatibility paths, backward-compatibility shims, or speculative abstractions. Fix root causes instead of masking symptoms. Implement the intended design directly, using the simplest correct, robust, and maintainable solution. Remove superseded implementations rather than preserving parallel code paths. Introduce abstractions only when justified by concrete requirements. Handle errors explicitly, never conceal failures, and never sacrifice correctness or architectural integrity for convenience.
 - Replace or refactor code that no longer fits instead of carrying it forward, whatever the size of the change. There are no aliases for old names and no checks for how something used to work.
 - Only change what makes sense to change. Do not add code, tests, comments or files just to show work, and do not guard against situations that cannot happen.
 - Every change is finished only when it is implemented, exported to Lua, tested and documented.
