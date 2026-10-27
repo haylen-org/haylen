@@ -2164,6 +2164,38 @@ Checklist:
 - [x] Estrutura de port para consoles documentada, com o Xbox pelo GDK, o SDL3 e o dispositivo Direct3D 12. Feito: a pasta que `HAYLEN_PORT_DIR` nomeia traz um `port.cmake` com `haylen_port`, que dá a plataforma, o runtime com host, janela e serviços, as APIs da engine que o port compila e, para uma API que a engine não tem, o dispositivo da API reservada `gpu::Device::Api::Port` com a linguagem reservada `Language::Port`, cujo código o comando de shaders do port escreve no alvo `port` de cada pacote. Os valores reservados no lugar de um registro em tempo de execução mantêm uma só tabela de nomes por enum e a validação do `app.json` na biblioteca da engine. O port de teste de `engine/tests/data/port`, com dispositivo sobre o `gpu::NullDevice` e um runtime sem janela, roda com `haylen test --port`, testado no macOS e no Linux (container Ubuntu arm64). Falta rodar no Windows e pôr o passo na CI. O guia `docs/platform/ports.md` cobre o Xbox, o Nintendo Switch e o PlayStation, os shaders e a CI privada.
 - [ ] CMake, toolchains, `haylen.py`, CI, samples, `README.md`, docs e `AGENTS.md` atualizados, com a matriz de capacidades de cada API, os limites reais de cada plataforma e o que foi compilado e testado em cada uma. Docs feitas: `docs/graphics/rhi.md` com as camadas, o contrato, a matriz de capacidades, a escolha da API e a tabela do que foi implementado, compilado e testado, as páginas de Metal, Direct3D, Vulkan, OpenGL e WebGPU, o `README.md` com as APIs de cada plataforma e o `AGENTS.md` com as camadas e os ports. Falta a parte da CI.
 
+#### AZ. Mega lista para terminar a engine, os backends e tudo o que falta
+
+Pedido do dono: terminar toda a engine, os backends e tudo o mais, sem gambiarras, sem caminhos de reserva escondidos, sem código legado nem compatível com versões anteriores, com código organizado, legível (linhas vazias separando os blocos, nada embolado), comentários só onde fazem falta, código e comentários em inglês, frases sem ponto e vírgula, tudo testado e documentado e o que for relevante no `AGENTS.md`. Cada item abaixo diz o que falta, onde e como se prova que ficou pronto. Os testes em máquinas que cobram por hora (AWS e Device Farm) rodam juntos, numa sessão só por rodada, e as máquinas são desligadas e conferidas logo depois.
+
+Android em aparelhos de verdade (uma sessão do Device Farm com tudo junto):
+
+- [ ] Texto invisível no OpenGL ES da PowerVR GE8320 (Galaxy Tab A7 Lite, Android 13). Toda leitura do atlas de glifos dentro da engine volta zero, enquanto uma sonda fora da engine lê o mesmo formato. Achar a diferença real entre a engine e a sonda (estado de textura e sampler ligado no desenho do texto, unidade de textura, tamanho e formato do atlas, ordem de upload pelo anel e o primeiro uso, completude da textura) com sondas que reproduzem o caminho da engine passo a passo, corrigir na engine ou no dispositivo de OpenGL e provar com a cena de texto conferida por pixel no aparelho.
+- [ ] Teste de tempo de GPU que falha no OpenGL ES da Mali-G72 (Galaxy A51, Android 10) depois do `glFlush` por passada. Provar a causa no aparelho e corrigir de forma geral (por exemplo, a consulta de tempo que cobre o frame inteiro mesmo com flushes) sem desligar a medição às cegas.
+- [ ] Suíte de GPU no Vulkan dos aparelhos onde um programa do `adb shell` não acha GPU Vulkan (Mali-G72 do A51): rodar a suíte de dentro de um app de teste instalado, como no iOS, em vez de um executável solto, e usar esse caminho em todos os aparelhos Android.
+- [ ] Um aparelho de Android 8.1 ou 9, que o Device Farm recusou dizendo que o SDK mínimo do app era maior que o do aparelho: conferir o `minSdkVersion` real do APK e o motivo da recusa, corrigir se for nosso e rodar o projeto de testes e a suíte de GPU num aparelho dessas versões.
+
+Plataformas e drivers:
+
+- [ ] GPU AMD: a AWS não oferece mais as máquinas g4ad. Achar uma forma barata de rodar a suíte de GPU numa Radeon (outra nuvem por hora, ou o que existir) e rodar Vulkan, OpenGL, Direct3D 11 e 12 nela, ou deixar escrito o motivo exato de não ter rodado.
+- [ ] Mac Intel: o job `macos-intel` da CI roda os testes da engine no runner Intel da GitHub. Conferir na primeira execução se o runner tem Metal e, se tiver, rodar também a suíte de GPU nele.
+- [ ] Notebooks com duas GPUs: o OpenGL no Windows desenha na GPU integrada enquanto o Direct3D e o Vulkan usam a dedicada. Fazer o player e os apps pedirem a GPU dedicada da forma que os drivers definem para isso, respeitando a opção de baixo consumo, e provar no notebook com a NVIDIA MX110.
+- [ ] visionOS nativo: hoje roda o app de iPad. Gerar a fatia `xros` e `xrsimulator` do `Haylen.xcframework` com o SDL3 e o Metal, rodar o projeto de testes e a suíte de GPU no simulador de visionOS, ou deixar escrito o motivo exato de não dar.
+- [ ] Avisos do UIKit em todo lançamento no iOS e tvOS: "Unbalanced calls to begin/end appearance transitions" do `HaylenRootViewController` e o aviso do SDL sobre `UIApplicationSupportsIndirectInputEvents`. Corrigir as causas.
+- [ ] Tamanhos de iPad em Split View e Stage Manager: conferir no simulador do iPad que a área de desenho segue a janela, com a checagem de superfície do Debug sem erros.
+- [ ] Wake Lock na web: conferir num navegador de verdade que `window.keepScreenOn` segura a tela e solta quando o app pede.
+- [ ] Narrator no Windows: conferir no notebook com Windows que o Narrator lê a árvore de acessibilidade da UI pelo UI Automation, como os outros leitores de tela já leem nas outras plataformas.
+
+Integração e entrega:
+
+- [ ] Merge do `rhi` no `main` e push, com a CI inteira verde: os jobs de desktop, `gpu` (lavapipe, llvmpipe, WARP e Metal), `web-gpu`, `android-gpu`, `macos-intel`, o port e todos os que já existiam. Corrigir de verdade cada job que falhar.
+- [ ] Mandar para o SDL3 as issues dos patches que a Haylen aplica (a moldura da view do UIKit, as teclas do UIKit, as teclas da página web e a composição de janelas transparentes no Windows), em Markdown, para o dono cadastrar.
+
+Revisão final, depois do merge:
+
+- [ ] Retomar a revisão visual de todos os testes do projeto de testes, dos jogos, dos apps e das amostras de estresse, agora desenhados pela RHI nova, nas capturas da web e de cada plataforma, com as correções das sete worktrees da revisão levadas para cima do `main` novo, até nenhum teste ter defeito.
+- [ ] Revisar esta lista inteira e a seção AY de novo, item por item, conferindo que cada pedido está feito, testado e documentado, e só então marcar.
+
 #### AT. Documentação
 
 - [x] Documentação organizada por módulo da engine (núcleo, gráficos, 2D com cada módulo, UI, áudio, input, plataforma, rede, conteúdo, ferramentas), com um índice claro. Os guias ficam numa pasta por módulo (`docs/core`, `docs/graphics`, `docs/2d`, `docs/ui`, `docs/audio`, `docs/input`, `docs/platform`, `docs/network`, `docs/content`, `docs/tools`), o índice único é `docs/README.md` com os guias e as referências de cada módulo, cada módulo 2D ganhou o seu guia (nós, animação, luz, navegação, espacial e geração procedural), e um verificador de links não acha nenhum link quebrado.
