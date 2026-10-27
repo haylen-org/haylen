@@ -16,6 +16,6 @@ target_sources(haylen-gpu PRIVATE
 target_compile_definitions(haylen-gpu PRIVATE WIN32_LEAN_AND_MEAN NOMINMAX)
 target_link_libraries(haylen-gpu PRIVATE dxgi dxguid)
 
-# The tests of both devices on WARP and in windows, which run on every Windows machine.
-list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/gpu/direct3d/Direct3DDeviceTests.cpp")
+# The tests of both devices on WARP and in windows, and of the shader compiler they share, which run on every Windows machine.
+list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/gpu/direct3d/Direct3DDeviceTests.cpp" "${HAYLEN_ENGINE_DIR}/tests/gpu/direct3d/ShaderCompilerTests.cpp")
 list(APPEND HAYLEN_GPU_TEST_LIBRARIES dxgi dxguid)
