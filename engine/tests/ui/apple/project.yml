@@ -1,0 +1,35 @@
+# XcodeGen spec of the UI test runner of apps, which "haylen test --ui" generates into the build folder with the Swift tests of the folder that "HAYLEN_UI_TESTS" names, the folder "ui-tests" of the app.
+name: HaylenUITests
+options:
+  deploymentTarget:
+    iOS: "17.0"
+    visionOS: "1.0"
+settings:
+  base:
+    PRODUCT_NAME: HaylenUITests
+    PRODUCT_BUNDLE_IDENTIFIER: com.haylen.uitests
+    GENERATE_INFOPLIST_FILE: YES
+    SWIFT_VERSION: "5.0"
+    CODE_SIGN_IDENTITY: "-"
+targets:
+  iOS:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: &sources
+      - support
+      - path: ${HAYLEN_UI_TESTS}
+        name: ui-tests
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "1,2"
+    scheme:
+      testTargets: [iOS]
+  visionOS:
+    type: bundle.ui-testing
+    platform: visionOS
+    sources: *sources
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "7"
+    scheme:
+      testTargets: [visionOS]

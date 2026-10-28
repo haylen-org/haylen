@@ -988,6 +988,44 @@ class AppleGpuTestsTest(unittest.TestCase):
                 haylen.command_test(haylen.build_parser().parse_args(["test", "--gpu", "--platform", platform_name]))
 
 
+class UiTestsTest(unittest.TestCase):
+    def test_the_runner_runs_the_scheme_of_the_platform_on_the_simulator_and_names_the_app_to_it(self):
+        project = (Path("/build/HaylenUITests.xcodeproj"), "visionos-simulator", "SIMULATOR-ID", Path("/build/derived"))
+        common = ["-project", "/build/HaylenUITests.xcodeproj", "-scheme", "visionOS", "-destination", "id=SIMULATOR-ID", "-derivedDataPath", "/build/derived"]
+        self.assertEqual([str(part) for part in haylen.ui_test_command("build-for-testing", *project)], ["xcodebuild", "build-for-testing", *common])
+        self.assertEqual([str(part) for part in haylen.ui_test_command("test-without-building", *project)], ["xcodebuild", "test-without-building", *common, "-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", "600", "-collect-test-diagnostics", "never"])
+        env = haylen.ui_test_environment({"HOME": "/Users/me"}, "com.haylen.tests", Path("/build/screenshots"))
+        self.assertEqual(env["TEST_RUNNER_HAYLEN_UI_APP"], "com.haylen.tests")
+        self.assertEqual(env["TEST_RUNNER_HAYLEN_UI_OUTPUT"], "/build/screenshots")
+        self.assertEqual(env["HOME"], "/Users/me")
+
+    def test_the_runner_builds_for_ios_and_visionos_with_the_tests_of_the_app(self):
+        spec = (haylen.UI_TEST_PROJECT / "project.yml").read_text(encoding="utf-8")
+        for platform_name in haylen.UI_TEST_PLATFORMS:
+            self.assertIn(f"  {haylen.APPLE_RUNS[platform_name]['scheme']}:\n    type: bundle.ui-testing", spec)
+        self.assertIn("path: ${HAYLEN_UI_TESTS}", spec)
+        self.assertIn(f"PRODUCT_BUNDLE_IDENTIFIER: {haylen.UI_TEST_RUNNER.removesuffix('.xctrunner')}", spec)
+
+    def test_the_ui_tests_take_a_simulator_of_ios_or_visionos_and_an_app_with_tests(self):
+        with mock.patch.object(haylen, "require_host"):
+            with self.assertRaisesRegex(haylen.BuildError, "neither"):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", "samples/tests", "--gpu", "--platform", "ios-simulator"]))
+            with self.assertRaisesRegex(haylen.BuildError, '"ios-simulator" and "visionos-simulator"'):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", "samples/tests", "--platform", "tvos-simulator"]))
+            with tempfile.TemporaryDirectory() as scratch:
+                (Path(scratch) / "app.json").write_text("{}", encoding="utf-8")
+                with self.assertRaisesRegex(haylen.BuildError, "has no UI tests"):
+                    haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", scratch, "--platform", "ios-simulator"]))
+
+    def test_the_unified_log_keeps_the_errors_it_relays(self):
+        events = [json.dumps({"messageType": "Default", "eventMessage": "Started."}), json.dumps({"messageType": "Error", "eventMessage": "The view parted."}), "Filtering the log data."]
+        errors: list[str] = []
+        with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()) as stderr:
+            haylen.relay_unified_log(mock.Mock(stdout=iter(line + "\n" for line in events)), errors)
+        self.assertEqual(errors, ["The view parted."])
+        self.assertEqual(stderr.getvalue(), "The view parted.\n")
+
+
 class VisionOSTest(unittest.TestCase):
     def test_visionos_builds_its_own_slices_and_runs_as_an_apple_platform(self):
         device = [str(part) for part in haylen.apple_slice_options("xros", "arm64")]

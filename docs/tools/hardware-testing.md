@@ -45,6 +45,8 @@ The windowed runs of the test project need a desktop session that nobody is usin
 | visionOS simulator | `haylen test --gpu --platform visionos-simulator --device <name>`. Install the visionOS platform first with `xcodebuild -downloadPlatform visionOS`. |
 | Android emulator | `haylen test --gpu --platform android` builds the GPU test app, installs it, runs it on Vulkan and OpenGL ES, reads the results back and uninstalls it. It starts an emulator without a window when none is running. |
 
+The UI tests of an app run on the iOS, iPadOS and visionOS simulators with `haylen test --ui <app> --platform ios-simulator|visionos-simulator --device <name>`, which taps, drags and arranges windows there without a window on the Mac, as [the UI tests](testing.md#the-ui-tests) describe.
+
 Run the test project with `haylen run samples/tests --platform <target>`. Start its run-all mode from the developer console of the run with `lua require('harness.runner').start()`, so no input reaches the device.
 
 ### Real devices

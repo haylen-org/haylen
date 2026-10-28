@@ -919,6 +919,11 @@ GPU_GRAPHICS_APIS = ("metal", "direct3D12", "direct3D11", "vulkan", "openGl", "o
 
 def command_test(args: argparse.Namespace) -> None:
     gpu = args.gpu or args.graphics_api is not None
+    if args.ui:
+        if gpu or args.port:
+            raise BuildError('The option "--ui" runs the UI tests of an app, so it takes neither "--gpu", "--graphics-api" nor "--port".')
+        command_test_ui(args)
+        return
     if args.port:
         if gpu or args.platform != host_name():
             raise BuildError('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--platform".')
@@ -1355,6 +1360,70 @@ def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
     if problem:
         raise BuildError(problem)
     terminal.success(f'The GPU tests passed on "{args.device}".')
+
+
+# The UI tests of apps on the Apple simulators: the XCUITest runner that `engine/tests/ui/apple/project.yml` defines builds with the Swift tests in the folder `ui-tests` of an app, and drives the app that "run --build-only" built, taps, drags and the system UI included.
+UI_TEST_PROJECT = ENGINE_DIR / "tests" / "ui" / "apple"
+UI_TEST_FOLDER = "ui-tests"
+UI_TEST_PLATFORMS = ("ios-simulator", "visionos-simulator")
+UI_TEST_RUNNER = "com.haylen.uitests.xctrunner"
+# The longest that one UI test runs before xcodebuild stops it, so a gesture that the system never finishes fails the test instead of the run waiting forever.
+UI_TEST_SECONDS = 600
+
+
+def ui_test_command(action: str, project: Path, platform_name: str, simulator: str, derived: Path) -> list:
+    """The command that builds the UI test runner of a platform with "build-for-testing", or runs its tests on the simulator of that id with "test-without-building", whose output holds only the tests."""
+    command = ["xcodebuild", action, "-project", project, "-scheme", APPLE_RUNS[platform_name]["scheme"], "-destination", f"id={simulator}", "-derivedDataPath", derived]
+    if action == "test-without-building":
+        command += ["-test-timeouts-enabled", "YES", "-maximum-test-execution-time-allowance", str(UI_TEST_SECONDS), "-collect-test-diagnostics", "never"]
+    return command
+
+
+def ui_test_environment(environment: dict[str, str], identifier: str, output: Path) -> dict[str, str]:
+    """The environment of the UI tests, which xcodebuild hands to the runner through the prefix `TEST_RUNNER_`: the identifier of the app they drive and the folder of their screenshots."""
+    return {**environment, "TEST_RUNNER_HAYLEN_UI_APP": identifier, "TEST_RUNNER_HAYLEN_UI_OUTPUT": str(output)}
+
+
+def command_test_ui(args: argparse.Namespace) -> None:
+    """Builds an app for an iOS or visionOS simulator as "run --build-only" does, installs it, runs the UI tests of its folder `ui-tests` on it, and fails on a failed test or on an error that the engine logged meanwhile. It uninstalls the app and the runner afterwards, and shuts down a simulator it booted."""
+    require_host("apple")
+    if args.platform not in UI_TEST_PLATFORMS:
+        raise BuildError(f'The UI tests run on "{UI_TEST_PLATFORMS[0]}" and "{UI_TEST_PLATFORMS[1]}". Pick one with "--platform".')
+    folder = resolve_lua_app(args.ui)
+    tests = folder / UI_TEST_FOLDER
+    if not any(tests.glob("*.swift")):
+        raise BuildError(f"The app `{shown_path(folder)}` has no UI tests. Write them in Swift in `{shown_path(tests)}`, as \"{TOOL} test --ui\" describes in the docs of testing.")
+    command_run(argparse.Namespace(app=str(folder), platform=args.platform, device=args.device, config="Debug", engine_config=args.config, build_only=True, jobs=args.jobs, previous_release=None))
+
+    app = App(folder, RUN_TARGETS[args.platform].plugins)
+    bundle = apple_product(app, args.platform, "Debug")
+    info = plistlib.loads((bundle / "Info.plist").read_bytes())
+    directory = BUILD_ROOT / f"{args.platform}-ui-tests"
+    output = app.build_folder / "ui-tests" / args.platform
+    shutil.rmtree(output, ignore_errors=True)
+    output.mkdir(parents=True)
+    directory.mkdir(parents=True, exist_ok=True)
+    terminal.step(f"Generating the UI test runner in `{shown_path(directory)}`")
+    run([ensure_xcodegen(), "generate", "--quiet", "--spec", UI_TEST_PROJECT / "project.yml", "--project", directory], env={**os.environ, "HAYLEN_UI_TESTS": str(tests)})
+
+    with apple_test_simulator(APPLE_RUNS[args.platform]["simulator"], args.device) as simulator:
+        udid = simulator["udid"]
+        project = (directory / "HaylenUITests.xcodeproj", args.platform, udid, directory / "derived")
+        terminal.step("Building the UI test runner")
+        run(ui_test_command("build-for-testing", *project))
+        run(["xcrun", "simctl", "install", udid, bundle])
+        terminal.step(f'Running the UI tests of `{shown_path(folder)}` on the simulator "{simulator["name"]}"')
+        try:
+            with unified_log(info["CFBundleExecutable"], ["xcrun", "simctl", "spawn", udid]) as errors:
+                run(ui_test_command("test-without-building", *project), env=ui_test_environment(os.environ, info["CFBundleIdentifier"], output), stream=True)
+        finally:
+            for identifier in (info["CFBundleIdentifier"], UI_TEST_RUNNER):
+                subprocess.run(["xcrun", "simctl", "uninstall", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+            if any(output.iterdir()):
+                terminal.info(f"The screenshots of the UI tests are in `{shown_path(output)}`.")
+    if errors:
+        raise BuildError(f"The UI tests passed, but the engine logged {len(errors)} errors meanwhile, the first being: {errors[0]}")
+    terminal.success(f'The UI tests passed on the simulator "{simulator["name"]}".')
 
 
 # The fuzzers of the parsers that read hostile bytes, which `fuzz` builds with a Clang that links libFuzzer and runs for a while each.
@@ -3430,28 +3499,32 @@ def apple_team() -> str:
     return team
 
 
-def relay_unified_log(stream: subprocess.Popen) -> None:
-    """Prints the message of every event of a log stream in the `ndjson` style, with warnings and errors on `stderr` like the engine on a desktop."""
+def relay_unified_log(stream: subprocess.Popen, errors: list[str]) -> None:
+    """Prints the message of every event of a log stream in the `ndjson` style, with warnings and errors on `stderr` like the engine on a desktop, and keeps the errors in the list."""
     for line in stream.stdout:
         try:
             event = json.loads(line)
         except json.JSONDecodeError:
             print(line.rstrip(), flush=True)
             continue
-        target = sys.stderr if event.get("messageType") in ("Error", "Fault") else sys.stdout
-        print(event.get("eventMessage", ""), file=target, flush=True)
+        message = event.get("eventMessage", "")
+        failed = event.get("messageType") in ("Error", "Fault")
+        if failed:
+            errors.append(message)
+        print(message, file=sys.stderr if failed else sys.stdout, flush=True)
 
 
 @contextlib.contextmanager
-def unified_log(executable: str, prefix: list):
-    """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs. The prefix runs `log` inside a simulator."""
+def unified_log(executable: str, prefix: list) -> Iterator[list[str]]:
+    """Relays what the engine of an app process writes to the unified log, where it logs on iOS, tvOS and Mac Catalyst, while the block runs, and yields the list of the errors it logged, which fills as they arrive. The prefix runs `log` inside a simulator."""
     predicate = f'process == "{executable}" AND category == "{APPLE_LOG_CATEGORY}"'
     stream = subprocess.Popen([str(part) for part in [*prefix, "log", "stream", "--style", "ndjson", "--level", "debug", "--predicate", predicate]], stdout=subprocess.PIPE, text=True)
     # The stream names its filter on the first line and delivers events from then on, so the app starts after that line.
     stream.stdout.readline()
-    threading.Thread(target=relay_unified_log, args=(stream,), daemon=True).start()
+    errors: list[str] = []
+    threading.Thread(target=relay_unified_log, args=(stream, errors), daemon=True).start()
     try:
-        yield
+        yield errors
     finally:
         # Events reach the stream a moment after the app writes them, so the last lines of an app that ended still arrive.
         time.sleep(LOG_STREAM_GRACE_SECONDS)
@@ -6258,6 +6331,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
         parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
         parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default, or the name or id of the device of "--platform ios" or "tvos", which "xcrun devicectl list devices" lists.')
+        parser.add_argument("--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--platform ios-simulator" or "visionos-simulator", instead of the engine tests. The configuration is the one of the engine artifacts the app uses.')
         parser.add_argument("--port", action="store_true", help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.')
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)

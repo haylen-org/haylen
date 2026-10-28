@@ -21,6 +21,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/data/gpu/` | The reference images of the scenes of the 2D renderer, one PNG per scene, which hold for every graphics API. |
 | `engine/tests/data/port/`, `engine/tests/data/port-app/` | The test port, the smallest [port](../platform/ports.md) of the engine, and the app that [the test port](#the-test-port) plays on it. |
 | `engine/tests/platform/sdl/` | The tests of the SDL platform layer: the translation of the events of SDL and the timing of the frames, which read only their own data, so `haylen-tests` compiles their sources with them. |
+| `engine/tests/ui/apple/` | The runner of [the UI tests](#the-ui-tests) of apps on the Apple simulators: its XcodeGen spec `project.yml` and the base class `HaylenUITestCase` in `support/`. |
 | `engine/tests/CMakeLists.txt` | The list `HAYLEN_TEST_SOURCES`, which names every test file, and the target `haylen-tests`. |
 
 The target `haylen-tests` links `haylen::engine`, `haylen::headless`, SDL for the tests of the SDL platform layer and GoogleTest's `gtest_main`. It includes `engine/tests`, so tests include `support/EngineFixture.hpp`. It also adds `engine/src` to its own include folders, so a test may include internal headers such as `platform/headless/HeadlessHost.hpp`. Apps never see those folders, because the engine libraries keep them private.
@@ -178,7 +179,7 @@ haylen test
 haylen test --config Release --jobs 4
 ```
 
-The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the wake lock check of the web](#the-wake-lock-check-of-the-web) and [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS, tvOS or visionOS device it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port).
+The command `test` builds `haylen-tests` for this machine and runs CTest with `--output-on-failure` in parallel. It configures `build/<host>-<config>` when needed, as the [build trees](build.md#build-trees) describe. It takes the [build options](build.md#build-options), of which `--config` (`Debug` by default), `--jobs` and `--sanitizers` matter here. With `--platform web` it runs [the wake lock check of the web](#the-wake-lock-check-of-the-web) and [the memory check of the web](#the-memory-check-of-the-web) instead, and with `--gpu` on the web, on Android, on the Apple simulators, on Mac Catalyst or on an iOS, tvOS or visionOS device it runs [the GPU tests](#the-gpu-tests) there. With `--port` it builds and plays [the test port](#the-test-port), and with `--ui` it runs [the UI tests](#the-ui-tests) of an app on a simulator.
 
 Run one suite or one test through CTest or through the executable:
 
@@ -303,6 +304,53 @@ On the headless platform the test project runs every test that supports the plat
 - It ends with a summary, and quits with the status 1 when any test failed.
 
 So the headless player exits with 1 when a test raised an error, failed a check or its scene failed to load. A test that needs a person, a device or a native part that the headless host does not load lists `headless` among its unsupported platforms in its manifest.
+
+## The UI tests
+
+The UI tests drive an app on a simulator the way a person does: they tap, drag and use the system UI, such as the controls that arrange the windows of iPadOS. They run on the iOS and iPadOS simulators and on the Apple Vision Pro simulator, where a tap arrives as a look and a pinch.
+
+```sh
+haylen test --ui samples/tests --platform ios-simulator --device "iPad Pro 13-inch (M5)"
+haylen test --ui samples/tests --platform visionos-simulator --device "Apple Vision Pro"
+haylen test --ui samples/games/tiny-island --platform visionos-simulator
+```
+
+An app keeps its UI tests in Swift in its folder `ui-tests`, which is not part of its package. Each test is an XCUITest case that derives from `HaylenUITestCase`. The GUIs of the app expose their components through the accessibility tree, so a test finds a button or a label by the text it shows:
+
+```swift
+import XCTest
+
+class MenuTests: HaylenUITestCase {
+    func testATapOnACategoryOpensItsTests() throws {
+        tap("Sprites")
+        waitFor(element(matching: "SPR-001\\s+Sprite basics"))
+        try saveScreenshot("sprites-category")
+    }
+}
+```
+
+The command `haylen test --ui <app>` runs these steps:
+
+- It builds the app for the simulator as `haylen run --build-only` does, in the Debug configuration with the engine artifacts of `--config`, `Debug` by default. A Debug engine checks at every frame on UIKit that the view and its drawable cover the window, through `platform::SurfaceCheck`.
+- It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/<platform>-ui-tests`, with the tests of the app, and builds it with `xcodebuild build-for-testing`.
+- It boots the simulator that `--device` names without a window, or else a booted one or the first iPhone or Apple Vision Pro, and installs the app.
+- It runs the tests with `xcodebuild test-without-building`, which prints each test and each failure. The runner receives the identifier of the app and the folder of the screenshots through the prefix `TEST_RUNNER_` of xcodebuild. A test that runs longer than 10 minutes stops and fails.
+- It relays the log of the app meanwhile and fails when the engine logged an error, even when every test passed, so a layout that leaves the drawable behind the window fails the run.
+- It uninstalls the app and the runner, and shuts the simulator down when it booted it.
+
+The class `HaylenUITestCase` starts the app again for each test and gives the tests these helpers:
+
+| Helper | What it does |
+| --- | --- |
+| `element(_:)`, `element(matching:)` | The first element of the app whose label is the text or matches the regular expression. |
+| `waitFor(_:)`, `tap(_:)` | Waits until an element exists, and taps the element with the text. |
+| `waitUntil(_:_:)` | Waits until a condition holds, and fails with the message when it never does. |
+| `saveScreenshot(_:)` | Saves a picture of the window of the app, never the whole screen, in `ui-tests/<platform>` of the build folder of the app. |
+| `setMultitasking(_:)` | Chooses Full Screen Apps, Windowed Apps or Stage Manager in the settings of iPadOS, and returns the mode it replaced, so a test puts it back. |
+| `arrangeWindow(_:)` | Picks an arrangement of the window controls of iPadOS, such as `Left`, `Right` or `Fill`. |
+| `resizeWindow(by:)` | Drags the bottom right corner of the window of the app, which resizes it. |
+
+The test project checks with them that a tap opens a category on every simulator, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays.
 
 ## Sanitizers
 
