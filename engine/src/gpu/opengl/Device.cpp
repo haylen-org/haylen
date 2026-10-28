@@ -267,6 +267,9 @@ Gl::Uint Device::makeTexture(const ImageDesc& desc, const Conversions::Pixel& pi
     } else {
         gl.texStorage3D(target, desc.mipLevels, pixel.internalFormat, desc.width, desc.height, desc.layers);
     }
+
+    // The texture names its last level itself, since the OpenGL ES translator of the Android emulator stores immutable textures without their level count and samples a texture of one level as incomplete under the default mipmap filter, which reads zero.
+    gl.texParameteri(target, Gl::kTextureMaxLevel, desc.mipLevels - 1);
     return name;
 }
 

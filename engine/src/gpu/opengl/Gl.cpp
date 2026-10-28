@@ -147,6 +147,7 @@ void Gl::loadCore(GlContext& context) {
     require(context, bindTexture, "glBindTexture");
     require(context, activeTexture, "glActiveTexture");
     require(context, texParameteri, "glTexParameteri");
+    require(context, getTexParameteriv, "glGetTexParameteriv");
     require(context, texStorage2D, "glTexStorage2D");
     require(context, texStorage3D, "glTexStorage3D");
     require(context, texSubImage2D, "glTexSubImage2D");

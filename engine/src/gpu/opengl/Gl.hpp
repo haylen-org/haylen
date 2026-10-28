@@ -329,6 +329,7 @@ class Gl final {
     void (*bindTexture)(Enum target, Uint texture) = nullptr;
     void (*activeTexture)(Enum unit) = nullptr;
     void (*texParameteri)(Enum target, Enum name, Int value) = nullptr;
+    void (*getTexParameteriv)(Enum target, Enum name, Int* value) = nullptr;
     void (*texStorage2D)(Enum target, Sizei levels, Enum format, Sizei width, Sizei height) = nullptr;
     void (*texStorage3D)(Enum target, Sizei levels, Enum format, Sizei width, Sizei height, Sizei depth) = nullptr;
     void (*texSubImage2D)(Enum target, Int level, Int x, Int y, Sizei width, Sizei height, Enum format, Enum type, const void* pixels) = nullptr;

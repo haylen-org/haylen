@@ -20,6 +20,7 @@ class OpenGlDeviceTest : public OpenGlTest {
   protected:
     static constexpr Gl::Enum kResetNotificationStrategy = 0x8256;
     static constexpr Gl::Int kLoseContextOnReset = 0x8252;
+    static constexpr Gl::Enum kTexture2D = 0x0DE1;
 
     void SetUp() override {
         OpenGlTest::SetUp();
@@ -128,6 +129,17 @@ TEST_P(OpenGlDeviceTest, DrawsThroughAContextThatIsLostWhenTheGpuResets) {
     Gl::Int strategy = 0;
     opened.gl.getIntegerv(kResetNotificationStrategy, &strategy);
     EXPECT_EQ(strategy, kLoseContextOnReset);
+}
+
+// A texture names its last level, so a driver that ignores the level count of immutable storage still samples a texture of one level as complete.
+TEST_P(OpenGlDeviceTest, LimitsTheLevelsOfATextureToTheLevelsItHas) {
+    const Device::Image image = device->makeImage({.width = 4, .height = 4, .kind = Device::ImageKind::Dynamic, .label = "level-count"});
+    Context opened;
+    opened.gl.load(*context, GetParam());
+    Gl::Int lastLevel = -1;
+    opened.gl.getTexParameteriv(kTexture2D, Gl::kTextureMaxLevel, &lastLevel);
+    EXPECT_EQ(lastLevel, 0);
+    device->destroy(image);
 }
 
 // The objects of the device live in its context, so a surface that brings another context cannot take the place of the one it lost.
