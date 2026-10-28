@@ -2,7 +2,7 @@
 
 namespace haylen::gpu::opengl {
 
-GpuTimer::GpuTimer(Gl& functions) : gl(functions), available(functions.getFeatures().timerQuery) {}
+GpuTimer::GpuTimer(Gl& functions) : gl(functions), available(functions.getFeatures().timerQuery), readsDisjoint(!functions.isDesktop()) {}
 
 GpuTimer::~GpuTimer() {
     for (const Frame& frame : frames) {
@@ -74,7 +74,7 @@ void GpuTimer::collect() {
             total += nanoseconds;
         }
         Gl::Int disjoint = 0;
-        if (!gl.isDesktop()) {
+        if (readsDisjoint) {
             gl.getIntegerv(Gl::kGpuDisjoint, &disjoint);
         }
         if (disjoint == 0) {

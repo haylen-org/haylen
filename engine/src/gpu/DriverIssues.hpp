@@ -21,6 +21,8 @@ class DriverIssues final {
         FlushEachPass,
         // A pass that keeps the depth of a format without stencil also stores the depth and keeps the stencil it has no plane for.
         StoreKeptDepth,
+        // The GPU timer reads no disjoint state, since the driver names the extension of disjoint timer queries but refuses its `GL_GPU_DISJOINT_EXT`.
+        NoGpuDisjoint,
     };
 
     // A driver as its graphics API describes it: the name of its GPU, its version text and its version number, which is 0 where the API gives none.
@@ -44,7 +46,7 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 4> kEntries;
+    static const std::array<Entry, 5> kEntries;
 
     [[nodiscard]] static bool matches(const Entry& entry, const Driver& driver, Issue issue) noexcept;
 };

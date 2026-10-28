@@ -9,7 +9,7 @@
 
 namespace haylen::gpu::opengl {
 
-// Measures the time the GPU takes for the passes of each frame with a `GL_TIME_ELAPSED` query around each pass, from OpenGL, `EXT_disjoint_timer_query` on OpenGL ES or `EXT_disjoint_timer_query_webgl2` on WebGL2, and adds them up. A query ends with its pass, so none spans the flush that ends a pass, which the OpenGL ES driver r19p0 of the Mali-G72 never finishes. It reads the queries of earlier frames only once all their results are there, so it never waits for the GPU, and a frame that finds every earlier frame still running on the GPU goes unmeasured.
+// Measures the time the GPU takes for the passes of each frame with a `GL_TIME_ELAPSED` query around each pass, from OpenGL, `EXT_disjoint_timer_query` on OpenGL ES or `EXT_disjoint_timer_query_webgl2` on WebGL2, and adds them up. A query ends with its pass, so none spans the flush that ends a pass, which the OpenGL ES driver r19p0 of the Mali-G72 never finishes. It reads the queries of earlier frames only once all their results are there, so it never waits for the GPU, and a frame that finds every earlier frame still running on the GPU goes unmeasured. OpenGL ES and WebGL2 also read whether a disjoint event spoiled the results, except on a driver that refuses that state, and OpenGL has no such state.
 class GpuTimer final {
   public:
     static constexpr std::size_t kFrames = 4;
@@ -32,6 +32,10 @@ class GpuTimer final {
         return available;
     }
 
+    void setReadsDisjoint(bool value) noexcept {
+        readsDisjoint = value;
+    }
+
   private:
     // The queries a frame keeps for its passes, which grow to the most passes a frame drew and are made again by no later frame.
     struct Frame {
@@ -44,6 +48,7 @@ class GpuTimer final {
 
     Gl& gl;
     bool available = false;
+    bool readsDisjoint = false;
     std::array<Frame, kFrames> frames;
     std::size_t next = 0;
     std::size_t oldest = 0;

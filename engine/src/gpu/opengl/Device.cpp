@@ -46,6 +46,7 @@ Device::Device(Api flavour, const Surface& surface, bool validation) : context(m
     }
     gl.genVertexArrays(1, &uploadVertexArray);
     surfaceContext->setSwapInterval(surface.vsync ? 1 : 0);
+    applyDriverIssues();
     readCapabilities();
 }
 
@@ -94,18 +95,27 @@ void Device::copyPixels(std::byte* destination, std::span<const std::byte> sourc
     }
 }
 
-void Device::readCapabilities() {
-    const Gl::Features& features = gl.getFeatures();
+void Device::applyDriverIssues() {
     const std::string version = gl.getString(Gl::kVersion);
     const DriverIssues::Driver driver{.api = api, .renderer = adapterName, .version = version};
-    const std::optional<std::string_view> noFloatFiltering = DriverIssues::find(driver, DriverIssues::Issue::NoFloatFiltering);
+    const std::optional<std::string_view> floatFiltering = DriverIssues::find(driver, DriverIssues::Issue::NoFloatFiltering);
     const std::optional<std::string_view> passFlushes = DriverIssues::find(driver, DriverIssues::Issue::FlushEachPass);
-    for (const std::optional<std::string_view>& reason : {noFloatFiltering, passFlushes}) {
+    const std::optional<std::string_view> noGpuDisjoint = DriverIssues::find(driver, DriverIssues::Issue::NoGpuDisjoint);
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
     }
+
+    noFloatFiltering = floatFiltering.has_value();
     flushEachPass = passFlushes.has_value();
+    if (noGpuDisjoint) {
+        timer.setReadsDisjoint(false);
+    }
+}
+
+void Device::readCapabilities() {
+    const Gl::Features& features = gl.getFeatures();
     Gl::Int value = 0;
     gl.getIntegerv(Gl::kMaxTextureSize, &value);
     capabilities.maxImageSize = value;

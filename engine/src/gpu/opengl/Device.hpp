@@ -137,6 +137,7 @@ class Device final : public gpu::Device {
     [[nodiscard]] static int getLevelSize(int size, int level) noexcept;
     [[nodiscard]] StateCache::Rectangle toWindow(const math::Rect& pixels) const noexcept;
 
+    void applyDriverIssues();
     void readCapabilities();
     [[nodiscard]] bool isRenderable(const Conversions::Pixel& pixel) const noexcept;
     void checkSampleCount(const ImageDesc& desc, const Conversions::Pixel& pixel) const;
@@ -174,6 +175,7 @@ class Device final : public gpu::Device {
     bool surfaceAttached = false;
     std::string adapterName;
     Capabilities capabilities;
+    bool noFloatFiltering = false;
     // Whether each pass ends with a flush, which the driver issues ask of a driver that drops passes otherwise.
     bool flushEachPass = false;
     DebugOutput debug;

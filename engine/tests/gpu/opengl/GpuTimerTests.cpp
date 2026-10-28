@@ -70,6 +70,21 @@ TEST_P(GpuTimerTest, MeasuresTheFramesWhosePassesFinished) {
     EXPECT_GE(*timer.getSeconds(), 0.0);
 }
 
+// A driver that refuses the disjoint state, as the OpenGL ES driver 25.10 of AMD does, is never asked for it and still has its frames measured.
+TEST_P(GpuTimerTest, MeasuresWithoutAskingForTheDisjointStateWhereTheDriverRefusesIt) {
+    GpuTimer timer(opened.gl);
+    timer.setReadsDisjoint(false);
+    GlCallCounter counter(opened.gl);
+    counter.watch<&Gl::getIntegerv>();
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(10);
+    while (!timer.getSeconds() && std::chrono::steady_clock::now() < deadline) {
+        drawFrame(timer);
+    }
+    ASSERT_TRUE(timer.getSeconds().has_value());
+    EXPECT_EQ(counter.getCalls(), 0);
+    EXPECT_EQ(opened.gl.getError(), Gl::kNoError);
+}
+
 INSTANTIATE_TEST_SUITE_P(Flavours, GpuTimerTest, ::testing::Values(Device::Api::OpenGl, Device::Api::OpenGlEs), OpenGlTest::getFlavourName);
 
 } // namespace haylen::gpu::opengl

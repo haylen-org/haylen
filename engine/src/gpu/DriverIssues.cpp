@@ -4,7 +4,7 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 4> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 5> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -31,6 +31,13 @@ const std::array<DriverIssues::Entry, 4> DriverIssues::kEntries{{
         .renderer = "Mali-G72",
         .version = "v1.r19p0",
         .reason = "The OpenGL ES driver r19p0 of the Mali-G72 resets the context as guilty in some draws of a pass that follows another pass whose commands it still holds, and loses the frame, which the Mali-G72 of Android 10 showed, while a flush at the end of each pass keeps every pass.",
+    },
+    {
+        .api = Device::Api::OpenGlEs,
+        .issue = Issue::NoGpuDisjoint,
+        .renderer = "AMD Radeon",
+        .version = "25.10.",
+        .reason = "The OpenGL ES driver of AMD names \"GL_EXT_disjoint_timer_query\" and measures its queries, but refuses \"GL_GPU_DISJOINT_EXT\" in every getter with \"GL_INVALID_ENUM\", which the driver 25.10 of the AMD Radeon PRO V620 on Linux showed, so the GPU timer reads no disjoint state there, as on OpenGL.",
     },
 }};
 
