@@ -74,6 +74,8 @@ void Gl::readFeatures() {
         features.floatBlend = true;
         features.textureFloatLinear = true;
         features.anisotropicFiltering = version >= 46 || hasExtension("GL_ARB_texture_filter_anisotropic") || hasExtension("GL_EXT_texture_filter_anisotropic");
+        features.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile") || hasExtension("GL_ARB_parallel_shader_compile");
+        suffixes.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile") ? "KHR" : "ARB";
         return;
     }
 
@@ -93,10 +95,12 @@ void Gl::readFeatures() {
     features.timerQuery = hasExtension("GL_EXT_disjoint_timer_query");
     features.debug = version >= 32 || hasExtension("GL_KHR_debug");
     features.robustness = version >= 32 || hasExtension("GL_KHR_robustness") || hasExtension("GL_EXT_robustness");
+    features.parallelShaderCompile = hasExtension("GL_KHR_parallel_shader_compile");
 
     // The loader of Android answers every name of OpenGL ES 3.2 even on older contexts, with functions that do nothing there, so an older context takes the names of the extension it has.
     suffixes.bufferStorage = "EXT";
     suffixes.timerQuery = "EXT";
+    suffixes.parallelShaderCompile = "KHR";
     if (version >= 32) {
         return;
     }
@@ -272,6 +276,11 @@ void Gl::loadOptional(GlContext& context) {
     if (features.robustness) {
         bindSuffixed(context, getGraphicsResetStatus, "glGetGraphicsResetStatus", suffixes.robustness);
         features.robustness = getGraphicsResetStatus != nullptr;
+    }
+
+    if (features.parallelShaderCompile) {
+        bindSuffixed(context, maxShaderCompilerThreads, "glMaxShaderCompilerThreads", suffixes.parallelShaderCompile);
+        features.parallelShaderCompile = maxShaderCompilerThreads != nullptr;
     }
 }
 

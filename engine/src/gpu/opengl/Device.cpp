@@ -95,13 +95,15 @@ void Device::copyPixels(std::byte* destination, std::span<const std::byte> sourc
     }
 }
 
+// The issues are applied before the device makes any program, since the compiling of the context follows one of them.
 void Device::applyDriverIssues() {
     const std::string version = gl.getString(Gl::kVersion);
     const DriverIssues::Driver driver{.api = api, .renderer = adapterName, .version = version};
     const std::optional<std::string_view> floatFiltering = DriverIssues::find(driver, DriverIssues::Issue::NoFloatFiltering);
     const std::optional<std::string_view> passFlushes = DriverIssues::find(driver, DriverIssues::Issue::FlushEachPass);
     const std::optional<std::string_view> noGpuDisjoint = DriverIssues::find(driver, DriverIssues::Issue::NoGpuDisjoint);
-    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint}) {
+    const std::optional<std::string_view> callingThread = DriverIssues::find(driver, DriverIssues::Issue::CompileOnCallingThread);
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
@@ -111,6 +113,9 @@ void Device::applyDriverIssues() {
     flushEachPass = passFlushes.has_value();
     if (noGpuDisjoint) {
         timer.setReadsDisjoint(false);
+    }
+    if (callingThread && gl.getFeatures().parallelShaderCompile) {
+        gl.maxShaderCompilerThreads(0);
     }
 }
 

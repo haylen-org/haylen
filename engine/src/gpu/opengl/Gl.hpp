@@ -260,6 +260,7 @@ class Gl final {
         bool floatBlend = false;
         bool textureFloatLinear = false;
         bool anisotropicFiltering = false;
+        bool parallelShaderCompile = false;
     };
 
     // Loads every entry point of the flavour from the context, which must be current, and throws `std::runtime_error` when the context is older than the flavour needs or lacks one of them.
@@ -417,6 +418,8 @@ class Gl final {
 
     Enum (*getGraphicsResetStatus)() = nullptr;
 
+    void (*maxShaderCompilerThreads)(Uint count) = nullptr;
+
   private:
     // The suffixes of the names of the entry points of the optional features, which a context takes from the extension that brings each of them when its version lacks it.
     struct Suffixes {
@@ -425,6 +428,7 @@ class Gl final {
         std::string_view timerQuery;
         std::string_view debug;
         std::string_view robustness;
+        std::string_view parallelShaderCompile;
     };
 
     // Points the entry point at the function of the name and the suffix, and leaves it null when the context knows no such function.

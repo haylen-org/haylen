@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 
+#include "gpu/opengl/Context.hpp"
 #include "gpu/opengl/Device.hpp"
 #include "gpu/opengl/OpenGlTest.hpp"
 #include "support/AllocationTracker.hpp"
@@ -17,6 +18,9 @@ namespace haylen::gpu::opengl {
 
 class OpenGlDeviceTest : public OpenGlTest {
   protected:
+    static constexpr Gl::Enum kResetNotificationStrategy = 0x8256;
+    static constexpr Gl::Int kLoseContextOnReset = 0x8252;
+
     void SetUp() override {
         OpenGlTest::SetUp();
         if (IsSkipped()) {
@@ -112,6 +116,18 @@ TEST_P(OpenGlDeviceTest, ReportsTheBottomRowAsTheFirstRow) {
     EXPECT_FALSE(device->getCapabilities().originTopLeft);
     EXPECT_EQ(device->getApi(), GetParam());
     EXPECT_EQ(device->getLanguage(), GetParam() == Device::Api::OpenGl ? Device::Language::Glsl430 : Device::Language::Glsl300es);
+}
+
+// The context of the tests and the benchmarks is lost when the GPU resets, as the contexts of apps are, so the device sees the reset instead of waiting for frames that the GPU never finishes.
+TEST_P(OpenGlDeviceTest, DrawsThroughAContextThatIsLostWhenTheGpuResets) {
+    Context opened;
+    opened.gl.load(*context, GetParam());
+    if (!opened.gl.getFeatures().robustness) {
+        GTEST_SKIP() << "The context reports no reset of the GPU.";
+    }
+    Gl::Int strategy = 0;
+    opened.gl.getIntegerv(kResetNotificationStrategy, &strategy);
+    EXPECT_EQ(strategy, kLoseContextOnReset);
 }
 
 // The objects of the device live in its context, so a surface that brings another context cannot take the place of the one it lost.

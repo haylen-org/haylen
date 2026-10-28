@@ -9,14 +9,17 @@
 
 namespace haylen::test {
 
-// Windows makes OpenGL contexts on the device context of a window, so the context draws into a hidden window, and the attributes of `WGL_ARB_create_context` come from a first context that exists only to load them. The display holds the device context and the surface holds the window.
+// Windows makes OpenGL contexts on the device context of a window, so the context draws into a hidden window, and the attributes of `WGL_ARB_create_context` come from a first context that exists only to load them. The context asks to be lost when the GPU resets, as the contexts of apps do, so a reset ends as a lost device instead of a wait for a frame the GPU will not finish. The display holds the device context and the surface holds the window.
 class OffscreenGlContext::Native final {
   public:
     static constexpr int kContextMajorVersion = 0x2091;
     static constexpr int kContextMinorVersion = 0x2092;
     static constexpr int kContextFlags = 0x2094;
     static constexpr int kContextProfileMask = 0x9126;
+    static constexpr int kContextResetNotificationStrategy = 0x8256;
     static constexpr int kContextDebugBit = 0x0001;
+    static constexpr int kContextRobustAccessBit = 0x0004;
+    static constexpr int kLoseContextOnReset = 0x8252;
     static constexpr int kContextCoreProfileBit = 0x0001;
 
     using CreateContextAttribs = HGLRC(WINAPI*)(HDC, HGLRC, const int*);
@@ -66,7 +69,7 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     const HGLRC loader = wglCreateContext(deviceContext);
     wglMakeCurrent(deviceContext, loader);
     const auto createContextAttribs = reinterpret_cast<Native::CreateContextAttribs>(reinterpret_cast<void*>(wglGetProcAddress("wglCreateContextAttribsARB")));
-    const std::array<int, 9> attributes{Native::kContextMajorVersion, 4, Native::kContextMinorVersion, 3, Native::kContextProfileMask, Native::kContextCoreProfileBit, Native::kContextFlags, Native::kContextDebugBit, 0};
+    const std::array<int, 11> attributes{Native::kContextMajorVersion, 4, Native::kContextMinorVersion, 3, Native::kContextProfileMask, Native::kContextCoreProfileBit, Native::kContextFlags, Native::kContextDebugBit | Native::kContextRobustAccessBit, Native::kContextResetNotificationStrategy, Native::kLoseContextOnReset, 0};
     const HGLRC made = createContextAttribs == nullptr ? nullptr : createContextAttribs(deviceContext, nullptr, attributes.data());
     wglMakeCurrent(nullptr, nullptr);
     wglDeleteContext(loader);

@@ -41,6 +41,9 @@ int BenchmarkGpu::run(int argc, char** argv, const std::function<int(BenchmarkGp
     } catch (const Unavailable& error) {
         std::fprintf(stderr, "%s\n", error.what());
         return kUnavailable;
+    } catch (const Lost& error) {
+        std::fprintf(stderr, "%s\n", error.what());
+        return kLost;
     }
 }
 
@@ -57,7 +60,9 @@ void BenchmarkGpu::install(platform::HeadlessHost& host) {
 std::unique_ptr<gpu::Device> BenchmarkGpu::makeDevice() {
     try {
         surface = std::make_unique<test::OffscreenSurface>(*api);
-        return std::make_unique<OffscreenSwapchain>(gpu::DeviceFactory::create(*api, surface->getSurface(), {}), width, height);
+        auto made = std::make_unique<OffscreenSwapchain>(gpu::DeviceFactory::create(*api, surface->getSurface(), {}), width, height);
+        device = made.get();
+        return made;
     } catch (const std::runtime_error& error) {
         throw Unavailable(std::format("The device of \"{}\" cannot start on this machine: {}", gpu::DeviceFactory::getApiName(*api), error.what()));
     }
@@ -80,7 +85,10 @@ void BenchmarkGpu::resetFrames() noexcept {
     gpuFrames = 0;
 }
 
-void BenchmarkGpu::addFrame(core::Engine& engine, double milliseconds) noexcept {
+void BenchmarkGpu::addFrame(core::Engine& engine, double milliseconds) {
+    if (device != nullptr && device->isLost()) {
+        throw Lost(std::format("The GPU lost the device of \"{}\", so the benchmark stops.", gpu::DeviceFactory::getApiName(*api)));
+    }
     frameMilliseconds += milliseconds;
     ++frames;
     if (const std::optional<double> seconds = engine.getGraphics().getGpuFrameSeconds()) {

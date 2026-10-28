@@ -4,7 +4,7 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 5> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 6> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -38,6 +38,13 @@ const std::array<DriverIssues::Entry, 5> DriverIssues::kEntries{{
         .renderer = "AMD Radeon",
         .version = "25.10.",
         .reason = "The OpenGL ES driver of AMD names \"GL_EXT_disjoint_timer_query\" and measures its queries, but refuses \"GL_GPU_DISJOINT_EXT\" in every getter with \"GL_INVALID_ENUM\", which the driver 25.10 of the AMD Radeon PRO V620 on Linux showed, so the GPU timer reads no disjoint state there, as on OpenGL.",
+    },
+    {
+        .api = Device::Api::OpenGl,
+        .issue = Issue::CompileOnCallingThread,
+        .renderer = "Radeon",
+        .version = "Core Profile Context",
+        .reason = "The OpenGL driver of AMD hangs the GPU in the first frames that draw with new programs while its compiler threads still work on shaders it compiled before, so a GPU reset loses the context, which the driver 25.10 of the AMD Radeon PRO V620 on Linux showed in every run with an empty shader cache, while the same frames finish with the compiling on the thread that asks for it.",
     },
 }};
 

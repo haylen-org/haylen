@@ -47,4 +47,13 @@ TEST(DriverIssuesTest, ReadsNoDisjointStateOnlyOnTheOpenGlEsDriverOfAmdThatRefus
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 630", .version = "OpenGL ES 3.2 V@415.0"}, Issue::NoGpuDisjoint).has_value());
 }
 
+// The OpenGL driver of AMD compiles on the thread that asks for it, whatever its version, while Mesa on the same GPU, its OpenGL ES and other drivers keep their compiler threads.
+TEST(DriverIssuesTest, CompilesOnTheCallingThreadOnlyOnTheOpenGlDriverOfAmd) {
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "AMD Radeon Pro V620 MxGPU", .version = "4.6.0 Core Profile Context 25.10.251024"}, Issue::CompileOnCallingThread).has_value());
+    EXPECT_TRUE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "AMD Radeon RX 6800 XT", .version = "4.6.0 Core Profile Context 25.1.1.250115"}, Issue::CompileOnCallingThread).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "AMD Radeon Pro V620 MxGPU (radeonsi, navi21, LLVM 20.1.2, DRM 3.57, 6.8.0-1071-azure)", .version = "4.6 (Core Profile) Mesa 25.2.8"}, Issue::CompileOnCallingThread).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "AMD Radeon Pro V620 MxGPU", .version = "OpenGL ES 3.2.0 25.10.251024"}, Issue::CompileOnCallingThread).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "NVIDIA GeForce MX110/PCIe/SSE2", .version = "4.6.0 NVIDIA 596.86"}, Issue::CompileOnCallingThread).has_value());
+}
+
 } // namespace haylen::gpu
