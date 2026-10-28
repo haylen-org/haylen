@@ -134,8 +134,10 @@ end
 function Window:record(name, value)
     local detail = 'At frame ' .. haylen.frameIndex() .. '.'
     if type(value) == 'table' then
-        if value.width then
+        if value.x then
             detail = 'The area is ' .. rectText(value) .. '.'
+        elseif value.width then
+            detail = string.format('The framebuffer is %.0f by %.0f pixels.', value.width, value.height)
         elseif value.fullscreen ~= nil then
             detail = value.fullscreen and 'The window is fullscreen.' or 'The window left fullscreen.'
             self:set('fullscreen', {checked = value.fullscreen})
