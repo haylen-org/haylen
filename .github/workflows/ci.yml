@@ -172,7 +172,7 @@ jobs:
           distribution: temurin
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
-      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-36;default;x86_64"
+      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
       - run: sudo apt-get update && sudo apt-get install -y ninja-build
       - name: Let the emulator use KVM
         run: |
@@ -182,7 +182,7 @@ jobs:
       - name: Create the virtual device that the tests start
         run: |
           mkdir -p "$ANDROID_AVD_HOME"
-          echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-36;default;x86_64"
+          echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
       - uses: actions/cache@v6
         with:
           path: .cache/cpm

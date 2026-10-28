@@ -293,6 +293,8 @@ Two problems that the AMD Radeon PRO V620 showed have no entry yet, since their 
 - On the OpenGL ES 3.2 context of the OpenGL driver of AMD 25.10 on Linux, the test `OpenGlDeviceTest.AllocatesNothingForAFrameThatRepeatsTheOneBeforeIt` gets three errors from the debug output in the frame that reuses the GPU timer queries of the first frame, and the log of those errors allocates. The driver gives no detail, since the context of the test is not a debug context, and a replay of the same calls through a Wayland window reports no error. The desktop OpenGL context passes the same test.
 - The render benchmark stopped in its scene of shapes on the OpenGL driver of AMD: on Linux once in three runs, and on Windows in its one run with the driver 25.1.1. The same scene finished on Vulkan, Direct3D 11 and Direct3D 12, the renderer test of shapes passed on OpenGL, and the stress tours, which draw shapes in a window, finished on OpenGL on both systems.
 
+The Vulkan driver of the Android 16 (API 36) emulator images crashes inside `vkSetDebugUtilsObjectNameEXT` when the device names an image, which it does only with validation on, in Debug builds and tests. The driver of the Android 17 (API 37) images names every object correctly, so the GPU tests of CI run on an API 37 image, and an app that draws through Vulkan with validation on an older emulator image needs a newer image.
+
 ## Status of the devices
 
 This table separates what is implemented, what compiles and what was tested, on each platform. "Tested" means that the GPU tests, the conformance suite and the reference images of the 2D renderer, passed there, unless the row says otherwise.
