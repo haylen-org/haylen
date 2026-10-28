@@ -1178,6 +1178,14 @@ def android_gpu_tests_follow(device: str) -> None:
         print(line, flush=True)
 
 
+def android_gpu_tests_print_renderer(device: str) -> None:
+    """Prints the OpenGL ES renderer that the system of the device reports, so the results of a run name the driver that they come from."""
+    surfaces = capture([adb(), "-s", device, "shell", "dumpsys", "SurfaceFlinger"]).splitlines()
+    renderer = next((line.strip() for line in surfaces if line.strip().startswith("GLES:")), None)
+    if renderer:
+        terminal.info(f'The device draws OpenGL ES through "{renderer.removeprefix("GLES:").strip()}".')
+
+
 def android_gpu_tests_print_crash(device: str) -> None:
     """Prints the crash log of the device when the test app crashed during the run, which names the signal and the native frames of the crash."""
     crash = capture([adb(), "-s", device, "logcat", "-d", "-b", "crash"]).splitlines()
@@ -1218,6 +1226,7 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
     with android_test_device(args.device) as device:
         terminal.step(f'Installing the GPU test app on "{device}"')
         run([adb(), "-s", device, "install", "-r", apk])
+        android_gpu_tests_print_renderer(device)
         try:
             terminal.step(f'Running the GPU tests of Android on "{api}" on "{device}"' if api else f'Running the GPU tests of Android on every device of the build on "{device}"')
             run([adb(), "-s", device, "logcat", "-b", "crash", "-c"])
