@@ -208,7 +208,11 @@ math::Insets Services::getSafeAreaInsets() {
     if (window == nil) {
         return {};
     }
-    const UIEdgeInsets insets = window.safeAreaInsets;
+    UIEdgeInsets insets = window.safeAreaInsets;
+    // The controls of a window of iPadOS sit in its top corner, so the safe area starts below them.
+    if (@available(iOS 26.0, tvOS 26.0, visionOS 26.0, *)) {
+        insets = [window edgeInsetsForLayoutRegion:[UIViewLayoutRegion safeAreaLayoutRegionWithCornerAdaptation:UIViewLayoutRegionAdaptivityAxisVertical]];
+    }
     return {.left = static_cast<float>(insets.left) * scale, .top = static_cast<float>(insets.top) * scale, .right = static_cast<float>(insets.right) * scale, .bottom = static_cast<float>(insets.bottom) * scale};
 #endif
 }

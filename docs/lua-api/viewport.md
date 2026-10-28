@@ -113,7 +113,7 @@ Where nothing covers the window, the safe area is the whole visible region. Each
 | Platform | What it reports |
 | --- | --- |
 | macOS | The camera housing of a notched Mac, for a fullscreen or borderless window that reaches it. |
-| iOS, iPadOS and Mac Catalyst | The insets of the window. |
+| iOS, iPadOS and Mac Catalyst | The insets of the window. On iPadOS the top inset also clears the controls of a window that the system draws in its top corner, so nothing anchored to the safe area sits under them. |
 | Android | The cutout and the system bars that stay visible. |
 | Web | The part of the CSS `env(safe-area-inset-*)` insets that reaches into the canvas. |
 | Windows and Linux | Nothing. |
