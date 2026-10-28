@@ -881,6 +881,15 @@ class AndroidGpuTestsTest(unittest.TestCase):
         self.assertIn("-DHAYLEN_BUILD_PLAYER=OFF", command)
         self.assertFalse(any("GPU_TESTS_DIR" in part for part in command))
 
+    def test_a_run_that_wrote_no_results_copies_nothing(self):
+        # The command exec-out of adb ends with status 0 even when the command on the device fails, and hands its error text as the output.
+        def device(command, **_):
+            return subprocess.CompletedProcess(command, 1 if "test" in command else 0, b"" if "test" in command else b"tar: gpu-test-output: No such file or directory", b"")
+
+        with mock.patch.object(haylen, "adb", return_value=Path("/sdk/adb")), mock.patch.object(haylen.subprocess, "run", side_effect=device), mock.patch.object(haylen.tarfile, "open") as opening:
+            haylen.android_gpu_tests_copy_results("SERIAL", Path("/build/android/gpu-test-output"))
+        opening.assert_not_called()
+
     def test_the_app_starts_with_the_variables_of_the_tests_alone_and_escapes_their_commas(self):
         with mock.patch.object(haylen, "adb", return_value=Path("/sdk/adb")):
             command = [str(part) for part in haylen.android_gpu_tests_launch_command("SERIAL", "vulkan", {"GTEST_FILTER": "GpuBlendTest.*:Gpu*Test.Draws*", "HAYLEN_PROBE": "a,b", "HOME": "/home/me"})]

@@ -1173,8 +1173,22 @@ def android_gpu_tests_follow(device: str) -> None:
         print(line, flush=True)
 
 
+def android_gpu_tests_print_crash(device: str) -> None:
+    """Prints the crash log of the device when the test app crashed during the run, which names the signal and the native frames of the crash."""
+    crash = capture([adb(), "-s", device, "logcat", "-d", "-b", "crash"]).splitlines()
+    lines = [line for line in crash if not line.startswith("--------- beginning of")]
+    if not lines:
+        return
+    terminal.warning("The GPU test app crashed. The crash log of the device follows.")
+    for line in lines[-80:]:
+        print(line, flush=True)
+
+
 def android_gpu_tests_copy_results(device: str, output: Path) -> None:
-    """Copies the results of the test app and the images of the scenes that differ into the tree through `run-as`, since the files of an app are its own. A run that wrote nothing leaves nothing to copy."""
+    """Copies the results of the test app and the images of the scenes that differ into the tree through `run-as`, since the files of an app are its own. A run that wrote nothing, such as one that crashed first, leaves nothing to copy."""
+    present = subprocess.run([str(adb()), "-s", device, "shell", "run-as", ANDROID_GPU_TEST_APP, "test", "-d", f"files/{output.name}"], capture_output=True, check=False)
+    if present.returncode != 0:
+        return
     archive = subprocess.run([str(adb()), "-s", device, "exec-out", "run-as", ANDROID_GPU_TEST_APP, "tar", "-c", "-C", "files", output.name], capture_output=True, check=False)
     if archive.returncode != 0 or not archive.stdout:
         return
@@ -1201,8 +1215,10 @@ def command_test_gpu_android(args: argparse.Namespace) -> None:
         run([adb(), "-s", device, "install", "-r", apk])
         try:
             terminal.step(f'Running the GPU tests of Android on "{api}" on "{device}"' if api else f'Running the GPU tests of Android on every device of the build on "{device}"')
+            run([adb(), "-s", device, "logcat", "-b", "crash", "-c"])
             run(android_gpu_tests_launch_command(device, api, os.environ))
             android_gpu_tests_follow(device)
+            android_gpu_tests_print_crash(device)
         finally:
             android_gpu_tests_copy_results(device, output)
             run([adb(), "-s", device, "uninstall", ANDROID_GPU_TEST_APP])
