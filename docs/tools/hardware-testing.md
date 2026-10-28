@@ -32,6 +32,8 @@ Two variables change which GPU a device takes:
 | A Linux PC | Vulkan and OpenGL on the GPU of the machine, on X11 and Wayland. | `haylen test --gpu` |
 | Any machine with Docker | Linux with Vulkan on Mesa lavapipe and OpenGL on Mesa llvmpipe, which are software rasterizers. | Run `haylen test --gpu` inside an Ubuntu container with the Mesa packages that the CI workflow installs. |
 
+Drivers keep the shaders they compiled in a cache on the disk, so a problem that comes with compiling shows up only while the cache is empty, as in the first run on a new machine. Clear the cache of the driver before each run of a batch that checks such a problem, such as `~/.cache/AMD` on Linux and `%LOCALAPPDATA%\AMD` on Windows for the drivers of AMD.
+
 The windowed runs of the test project need a desktop session that nobody is using, since the app opens a window. GPU tests draw offscreen and need none, except OpenGL on Windows, whose hidden window needs an interactive session.
 
 ### Simulators and emulators

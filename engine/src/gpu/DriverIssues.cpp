@@ -44,7 +44,7 @@ const std::array<DriverIssues::Entry, 6> DriverIssues::kEntries{{
         .issue = Issue::CompileOnCallingThread,
         .renderer = "Radeon",
         .version = "Core Profile Context",
-        .reason = "The OpenGL driver of AMD hangs the GPU in the first frames that draw with new programs while its compiler threads still work on shaders it compiled before, so a GPU reset loses the context, which the driver 25.10 of the AMD Radeon PRO V620 on Linux showed in every run with an empty shader cache, while the same frames finish with the compiling on the thread that asks for it.",
+        .reason = "The OpenGL driver of AMD hangs the GPU in the first frames that draw with new programs while its compiler threads still work on shaders it compiled before, so a GPU reset loses the context, which the drivers 25.10 on Linux and 25.1.1 on Windows of the AMD Radeon PRO V620 showed in every run with an empty shader cache, while the same frames finish with the compiling on the thread that asks for it.",
     },
 }};
 
