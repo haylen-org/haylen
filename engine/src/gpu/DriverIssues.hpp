@@ -25,6 +25,8 @@ class DriverIssues final {
         NoGpuDisjoint,
         // The context compiles shaders and links programs on the thread that asks for them, without the compiler threads of the driver.
         CompileOnCallingThread,
+        // The clears of a pass reach only the first layer of an array or a volume texture, so a pass clears an attachment at a later layer by drawing.
+        ClearLayersByDrawing,
     };
 
     // A driver as its graphics API describes it: the name of its GPU, its version text and its version number, which is 0 where the API gives none.
@@ -48,7 +50,7 @@ class DriverIssues final {
         std::string_view reason;
     };
 
-    static const std::array<Entry, 6> kEntries;
+    static const std::array<Entry, 7> kEntries;
 
     [[nodiscard]] static bool matches(const Entry& entry, const Driver& driver, Issue issue) noexcept;
 };

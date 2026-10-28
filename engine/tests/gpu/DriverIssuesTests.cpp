@@ -56,4 +56,13 @@ TEST(DriverIssuesTest, CompilesOnTheCallingThreadOnlyOnTheOpenGlDriverOfAmd) {
     EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGl, .renderer = "NVIDIA GeForce MX110/PCIe/SSE2", .version = "4.6.0 NVIDIA 596.86"}, Issue::CompileOnCallingThread).has_value());
 }
 
+// Only the OpenGL ES translator of the Android emulator on SwiftShader 4.0.0, whose clears reach only the first layer, clears later layers by drawing, while the translator on ANGLE and other drivers clear them.
+TEST(DriverIssuesTest, ClearsLayersByDrawingOnlyOnTheTranslatorOfTheEmulatorOnSwiftShader) {
+    const DriverIssues::Driver translator{.api = Device::Api::OpenGlEs, .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)", .version = "OpenGL ES 3.0 (OpenGL ES 3.0 SwiftShader 4.0.0.1)"};
+    EXPECT_TRUE(DriverIssues::find(translator, Issue::ClearLayersByDrawing).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Android Emulator OpenGL ES Translator (ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (LLVM 10.0.0) (0x0000C0DE)), SwiftShader driver-5.0.0))", .version = "OpenGL ES 3.1 (OpenGL ES 3.1.0 (ANGLE 2.1.1 git hash: fbf66f49c7cc))"}, Issue::ClearLayersByDrawing).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::Vulkan, .renderer = translator.renderer, .version = translator.version}, Issue::ClearLayersByDrawing).has_value());
+    EXPECT_FALSE(DriverIssues::find({.api = Device::Api::OpenGlEs, .renderer = "Adreno (TM) 830", .version = "OpenGL ES 3.2 V@0800.37"}, Issue::ClearLayersByDrawing).has_value());
+}
+
 } // namespace haylen::gpu

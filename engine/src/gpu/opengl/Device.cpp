@@ -103,7 +103,8 @@ void Device::applyDriverIssues() {
     const std::optional<std::string_view> passFlushes = DriverIssues::find(driver, DriverIssues::Issue::FlushEachPass);
     const std::optional<std::string_view> noGpuDisjoint = DriverIssues::find(driver, DriverIssues::Issue::NoGpuDisjoint);
     const std::optional<std::string_view> callingThread = DriverIssues::find(driver, DriverIssues::Issue::CompileOnCallingThread);
-    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread}) {
+    const std::optional<std::string_view> layerClears = DriverIssues::find(driver, DriverIssues::Issue::ClearLayersByDrawing);
+    for (const std::optional<std::string_view>& reason : {floatFiltering, passFlushes, noGpuDisjoint, callingThread, layerClears}) {
         if (reason) {
             core::Log::info("The OpenGL device works around its driver. {}", *reason);
         }
@@ -116,6 +117,9 @@ void Device::applyDriverIssues() {
     }
     if (callingThread && gl.getFeatures().parallelShaderCompile) {
         gl.maxShaderCompilerThreads(0);
+    }
+    if (layerClears) {
+        layerClear = std::make_unique<LayerClear>(gl, state);
     }
 }
 
@@ -758,10 +762,11 @@ void Device::loadAttachments() {
         return;
     }
 
+    clearLayersByDrawing();
     state.prepareClear();
     for (std::size_t index = 0; index < pass.colorCount; ++index) {
         const ColorAttachment& color = pass.colors[index];
-        if (color.load == Load::Clear) {
+        if (color.load == Load::Clear && !isClearedByDrawing(color)) {
             const std::array<Gl::Float, 4> value{color.clear.r, color.clear.g, color.clear.b, color.clear.a};
             gl.clearBufferfv(Gl::kColor, static_cast<Gl::Int>(index), value.data());
         }
@@ -782,6 +787,23 @@ void Device::loadAttachments() {
         const Gl::Int stencil = depth.clearStencil;
         gl.clearBufferiv(Gl::kStencil, 0, &stencil);
     }
+}
+
+void Device::clearLayersByDrawing() {
+    for (std::size_t index = 0; index < pass.colorCount; ++index) {
+        const ColorAttachment& color = pass.colors[index];
+        if (color.load == Load::Clear && isClearedByDrawing(color)) {
+            layerClear->clear(index, pass.colorCount, color.clear, pass.width, pass.height);
+        }
+    }
+}
+
+bool Device::isClearedByDrawing(const ColorAttachment& color) {
+    if (!layerClear || color.layer == 0) {
+        return false;
+    }
+    const Gl::Enum target = images.get(color.image.id).target;
+    return target == Gl::kTexture2dArray || target == Gl::kTexture3d;
 }
 
 StateCache::Rectangle Device::toWindow(const math::Rect& pixels) const noexcept {

@@ -4,7 +4,7 @@
 
 namespace haylen::gpu {
 
-const std::array<DriverIssues::Entry, 6> DriverIssues::kEntries{{
+const std::array<DriverIssues::Entry, 7> DriverIssues::kEntries{{
     {
         .api = Device::Api::Vulkan,
         .issue = Issue::AvoidApi,
@@ -45,6 +45,13 @@ const std::array<DriverIssues::Entry, 6> DriverIssues::kEntries{{
         .renderer = "Radeon",
         .version = "Core Profile Context",
         .reason = "The OpenGL driver of AMD hangs the GPU in the first frames that draw with new programs while its compiler threads still work on shaders it compiled before, so a GPU reset loses the context, which the drivers 25.10 on Linux and 25.1.1 on Windows of the AMD Radeon PRO V620 showed in every run with an empty shader cache, while the same frames finish with the compiling on the thread that asks for it.",
+    },
+    {
+        .api = Device::Api::OpenGlEs,
+        .issue = Issue::ClearLayersByDrawing,
+        .renderer = "Android Emulator OpenGL ES Translator (Google SwiftShader)",
+        .version = "SwiftShader 4.0.0",
+        .reason = "The OpenGL ES translator of the Android emulator on SwiftShader 4.0.0.1 clears, reads and blits the first layer of an array or a volume texture whatever layer the framebuffer attaches, while its draws reach that layer, which the x86_64 images of Android 17 showed on a Linux host, so a pass clears an attachment at a later layer by drawing.",
     },
 }};
 

@@ -16,6 +16,7 @@
 #include "gpu/opengl/DebugOutput.hpp"
 #include "gpu/opengl/FramebufferCache.hpp"
 #include "gpu/opengl/GpuTimer.hpp"
+#include "gpu/opengl/LayerClear.hpp"
 #include "gpu/opengl/ObjectTable.hpp"
 #include "gpu/opengl/ShaderProgram.hpp"
 #include "gpu/opengl/UploadRing.hpp"
@@ -161,6 +162,8 @@ class Device final : public gpu::Device {
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
     void loadAttachments();
+    void clearLayersByDrawing();
+    [[nodiscard]] bool isClearedByDrawing(const ColorAttachment& color);
     void resolveAttachments();
     void discardAttachments();
     void checkLost();
@@ -182,6 +185,8 @@ class Device final : public gpu::Device {
     GpuTimer timer;
     std::unique_ptr<UploadRing> ring;
     FramebufferCache framebuffers;
+    // The clear of the attachments at a later layer of an array or a volume, which the driver issues ask of a driver whose clears reach only the first layer.
+    std::unique_ptr<LayerClear> layerClear;
     Gl::Uint uploadVertexArray = 0;
 
     ObjectTable<BufferRecord> buffers{"buffers"};
