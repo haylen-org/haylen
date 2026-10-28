@@ -121,7 +121,7 @@ void main() {
 }
 @end
 
-// Reads the middle of the face of a cube in the order +X, -X, +Y, -Y, +Z and -Z.
+// Reads the middle of the face of a cube in the order +X, -X, +Y, -Y, +Z and -Z. The direction comes from arithmetic and not from a constant array, since the OpenGL ES translator of the Android emulator on SwiftShader reads one element of a constant array whatever index a shader computes.
 @fs cube_fs
 @include_block sample_params
 layout(binding=0) uniform textureCube cube_texture;
@@ -131,8 +131,10 @@ in vec2 uv;
 out vec4 frag_color;
 
 void main() {
-    const vec3 directions[6] = vec3[6](vec3(1.0, 0.0, 0.0), vec3(-1.0, 0.0, 0.0), vec3(0.0, 1.0, 0.0), vec3(0.0, -1.0, 0.0), vec3(0.0, 0.0, 1.0), vec3(0.0, 0.0, -1.0));
-    frag_color = textureLod(samplerCube(cube_texture, cube_sampler), directions[int(lookup.y + 0.5)], lookup.x);
+    int face = int(lookup.y + 0.5);
+    float facing = face % 2 == 0 ? 1.0 : -1.0;
+    vec3 direction = vec3(face / 2 == 0 ? facing : 0.0, face / 2 == 1 ? facing : 0.0, face / 2 == 2 ? facing : 0.0);
+    frag_color = textureLod(samplerCube(cube_texture, cube_sampler), direction, lookup.x);
 }
 @end
 

@@ -290,6 +290,8 @@ Some drivers have bugs that the tests on their GPUs showed, which the devices wo
 
 A new entry comes with the evidence of a test on the GPU, a unit test in `DriverIssuesTest` and a row in this table.
 
+The same translator of the Android emulator on SwiftShader 4.0.0.1 compiles a constant array that a shader indexes with a value it computes, such as `const vec3 directions[6]` read at `directions[face]`, into a read of one fixed element, whether the array is global or local and whatever type it holds, while arrays that are not constant and uniform arrays read the element of their index. No shader of the engine indexes a constant array that way, and a shader of an app that must run on that emulator computes the value or keeps the array in a uniform block instead.
+
 The Vulkan driver of the Android 16 (API 36) emulator images crashes inside `vkSetDebugUtilsObjectNameEXT` when the device names an image, which it does only with validation on, in Debug builds and tests. The driver of the Android 17 (API 37) images names every object correctly, so the GPU tests of CI run on an API 37 image, and an app that draws through Vulkan with validation on an older emulator image needs a newer image.
 
 ## Status of the devices
