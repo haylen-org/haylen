@@ -1758,6 +1758,7 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
         if library.is_file():
             command += ["-library", library, "-headers", headers]
     run(command + ["-output", output])
+    run(["codesign", "-s", "-", "--timestamp=none", "--force", output])
     # Apps link the system frameworks of the engine and declare its privacy reasons from the files next to the framework.
     shutil.copy2(headers.parent.parent / "framework" / "share" / "haylen" / "haylen-frameworks.json", output.parent)
     shutil.copy2(ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy", output.parent)

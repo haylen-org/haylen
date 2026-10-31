@@ -469,7 +469,8 @@ The framework holds one static library per slice, `libhaylen.a`, and the public 
 2. The script `haylen-install.cmake` merges the engine and the runtime, as it does for the [SDK](embedding.md#find_package-and-the-sdk).
 3. The script `haylen-framework.cmake` merges both with the player. It writes `haylen-frameworks.json` from the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into C++ apps.
 4. The tool `lipo` joins the architectures of a slice, and `xcodebuild -create-xcframework` joins the slices.
-5. haylen.py copies `haylen-frameworks.json`, the privacy manifest of the engine and its Swift helpers next to the framework.
+5. The tool `codesign` signs `Haylen.xcframework` ad hoc with `-s -` and `--timestamp=none` so Xcode accepts it as signed.
+6. haylen.py copies `haylen-frameworks.json`, the privacy manifest of the engine and its Swift helpers next to the framework.
 
 | Slice | Architectures | Built with |
 | --- | --- | --- |
