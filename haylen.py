@@ -190,8 +190,8 @@ PACKAGE_FOLDERS = ("source", "content")
 # The CMake file that tells haylen_add_app the Apple parts of the plugins of a C++ app, and the kinds of source files it compiles.
 CPP_PLUGINS_FILE = "haylen-plugins.cmake"
 CPP_APPLE_PLUGIN_SOURCES = {".swift", ".m", ".mm", ".c", ".cpp"}
-# The list of the web parts of the plugins of a C++ app, which the page of the app reads next to it.
-CPP_WEB_PLUGINS = "plugins.json"
+# The list of the web parts of the plugins of an app, which the page reads next to it.
+WEB_PLUGINS_FILE = "plugins.json"
 # Build outputs and Finder files that never travel with a copied platform folder or plugin.
 COPY_IGNORED = shutil.ignore_patterns(".DS_Store", ".git", "build", ".gradle", ".cxx", ".kotlin")
 # Engine files that never reach an artifact, so editing them keeps the artifacts fresh.
@@ -4251,7 +4251,7 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
     if release is not None:
         config["release"] = {"files": release}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n", encoding="utf-8")
-    (site / CPP_WEB_PLUGINS).write_text(json.dumps(plugins, indent=4) + "\n", encoding="utf-8")
+    (site / WEB_PLUGINS_FILE).write_text(json.dumps(plugins, indent=4) + "\n", encoding="utf-8")
 
 
 RELEASE_WEB_PROJECT = """# Written by haylen.py for the release build of the app: the runtime of the page with the bootstrap of the app, linked against the web SDK of the prebuilt engine.
@@ -5550,7 +5550,7 @@ def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, 
 
     # The web parts of the plugins of the app go next to the page, which imports and loads them before the app starts, as the loader of the web template does.
     package = Path((built / "package.txt").read_text(encoding="utf-8").strip())
-    (output / CPP_WEB_PLUGINS).write_text(json.dumps(write_web_plugins(App(package, "web"), output), indent=4) + "\n", encoding="utf-8")
+    (output / WEB_PLUGINS_FILE).write_text(json.dumps(write_web_plugins(App(package, "web"), output), indent=4) + "\n", encoding="utf-8")
 
     # The page is the shell of the target, with the script that loads the plugins and the runtime where Emscripten would put its own script, next to the engine logo that the default shell shows as its icon.
     shell = (built / f"{target}.shell.html").read_text(encoding="utf-8")
@@ -5917,7 +5917,7 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
     def send_head(self):
         # A request for a file that also exists as `.br` or `.gz` is answered with the compressed copy the browser accepts.
         path = Path(self.translate_path(self.path))
-        if path.is_dir() and (path / "index.html").is_file():
+        if self.path.endswith("/") and path.is_dir() and (path / "index.html").is_file():
             path = path / "index.html"
         accepted = self.headers.get("Accept-Encoding", "")
         for suffix, encoding in ((".br", "br"), (".gz", "gzip")):
