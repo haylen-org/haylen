@@ -4246,10 +4246,12 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
     if app.dark_background:
         splash["darkBackground"] = css_color(app.dark_background)
     sizes = {path: (site / path).stat().st_size for path in (*downloads, "haylen.wasm")}
-    config = {"name": app.name, "identifier": app.identifier, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": write_web_plugins(app, site)}
+    plugins = write_web_plugins(app, site)
+    config = {"name": app.name, "identifier": app.identifier, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": plugins}
     if release is not None:
         config["release"] = {"files": release}
     (site / "config.json").write_text(json.dumps(config, indent=4) + "\n", encoding="utf-8")
+    (site / CPP_WEB_PLUGINS).write_text(json.dumps(plugins, indent=4) + "\n", encoding="utf-8")
 
 
 RELEASE_WEB_PROJECT = """# Written by haylen.py for the release build of the app: the runtime of the page with the bootstrap of the app, linked against the web SDK of the prebuilt engine.
@@ -5906,7 +5908,7 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header("Cross-Origin-Embedder-Policy", self.coep)
         self.send_header("Cross-Origin-Resource-Policy", "cross-origin")
         self.send_header("Access-Control-Allow-Origin", "*")
-        self.send_header("Cache-Control", "no-cache")
+        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
         super().end_headers()
 
     def guess_type(self, path: str) -> str:
@@ -5915,6 +5917,8 @@ class WebHandler(http.server.SimpleHTTPRequestHandler):
     def send_head(self):
         # A request for a file that also exists as `.br` or `.gz` is answered with the compressed copy the browser accepts.
         path = Path(self.translate_path(self.path))
+        if path.is_dir() and (path / "index.html").is_file():
+            path = path / "index.html"
         accepted = self.headers.get("Accept-Encoding", "")
         for suffix, encoding in ((".br", "br"), (".gz", "gzip")):
             compressed = path.with_name(path.name + suffix)
