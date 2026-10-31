@@ -132,15 +132,51 @@ var Module = {
         return;
     }
     document.title = config.name;
+    const isLightColor = (color) => {
+        if (!color) {
+            return false;
+        }
+        let r = 0, g = 0, b = 0;
+        const rgba = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
+        if (rgba) {
+            r = Number(rgba[1]);
+            g = Number(rgba[2]);
+            b = Number(rgba[3]);
+        } else if (color.startsWith("#")) {
+            const hex = color.slice(1);
+            if (hex.length >= 6) {
+                r = parseInt(hex.slice(0, 2), 16);
+                g = parseInt(hex.slice(2, 4), 16);
+                b = parseInt(hex.slice(4, 6), 16);
+            }
+        }
+        return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
+    };
     // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of `app.json`, which has a dark variant while the system uses dark colors.
-    const dark = config.splash.darkBackground && matchMedia("(prefers-color-scheme: dark)").matches;
-    const background = dark ? config.splash.darkBackground : config.splash.background;
-    if (config.transparent) {
-        document.documentElement.style.background = "transparent";
-        document.body.style.background = "transparent";
-        splash.style.background = background;
-    } else {
-        document.body.style.background = background;
+    const updateTheme = () => {
+        const dark = config.splash.darkBackground && matchMedia("(prefers-color-scheme: dark)").matches;
+        const background = dark ? config.splash.darkBackground : config.splash.background;
+        if (config.transparent) {
+            document.documentElement.style.background = "transparent";
+            document.body.style.background = "transparent";
+            splash.style.background = background;
+        } else {
+            document.body.style.background = background;
+        }
+        splash.classList.toggle("light", isLightColor(background));
+    };
+    updateTheme();
+    if (config.splash.darkBackground) {
+        matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateTheme);
+    }
+    if (config.splash.color) {
+        splash.style.setProperty("--splash-color", config.splash.color);
+        if (!isLightColor(config.splash.color)) {
+            splash.style.setProperty("--splash-text-shadow", "none");
+        }
+    }
+    if (config.splash.indicatorColor) {
+        splash.style.setProperty("--splash-bar", config.splash.indicatorColor);
     }
     // The splash and the icon of the page show the logo from a single download.
     logo.alt = config.name;

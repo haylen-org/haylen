@@ -1008,6 +1008,8 @@ The object `splash` of `app.json` sets the launch screen of every platform:
 | `logo` | the Haylen symbol | An image relative to `content/`. |
 | `background` | `clearColor` | A color as `#RRGGBB` or `#AARRGGBB`. By default the launch screen blends into the first frame of the app. |
 | `darkBackground` | `background` | The background while the system uses dark colors, which the asset catalog of Apple platforms, the night resources of Android and the media query `prefers-color-scheme` of the web page pick. |
+| `color` | light or dark by background | The text color of the web splash screen, chosen by default from the luminance of the background. |
+| `indicatorColor` | light or dark by background | The progress bar color of the web splash screen, chosen by default from the luminance of the background. |
 | `duration` | `0` | The least time in seconds that the launch screen stays from the launch of the app. It always stays until the app drew its first frame. |
 | `fadeOut` | `0.25` | The seconds the launch screen takes to fade out into the app. |
 
@@ -1031,7 +1033,7 @@ The script `haylen.py` writes the splash into each project:
 
 - In the Apple project, it writes the logo into the image set `splash-logo` of `haylen/Splash.xcassets`, and the background into its color set `splash-background`, with the dark background as its dark appearance. When the app names no logo, the image set holds `engine/platform/web/haylen-logo.svg`, the SVG of the Haylen symbol, with its vector data preserved. The launch screens of iOS and tvOS find both in the catalogs of their target.
 - On Android, it writes the background into `haylen/res/values/haylen_splash.xml` and the dark background into `haylen/res/values-night/haylen_splash.xml`. It copies the logo to `haylen/res/drawable/haylen_splash_logo.<ext>`. These replace the defaults of the library, the Haylen symbol as a vector drawable over `#FF101418`. Android splash logos are PNG, WebP or JPEG images.
-- On the web, it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`, and writes both backgrounds into `config.json`.
+- On the web, it copies the logo, or the Haylen symbol, next to the files of the page as `splash.<ext>`, and writes both backgrounds and the optional text and indicator colors into `config.json`.
 
 ## Development mode
 

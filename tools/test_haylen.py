@@ -26,6 +26,7 @@ import tempfile
 import threading
 import time
 import tokenize
+import types
 import unicodedata
 import unittest
 import urllib.parse
@@ -239,6 +240,49 @@ class SplashTest(unittest.TestCase):
             self.assertFalse((resources / "values-night").exists())
             haylen.write_android_splash(mock.Mock(background=(16, 20, 24, 255), dark_background=(0, 0, 0, 128), splash_logo=None), resources)
             self.assertIn("#80000000", (resources / "values-night" / "haylen_splash.xml").read_text())
+
+    def test_the_web_splash_writes_colors_and_indicators_into_config(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            site = Path(scratch)
+            (site / "haylen.wasm").write_bytes(b"\x00asm")
+            app = types.SimpleNamespace(
+                folder=site,
+                name="App",
+                identifier="com.example.app",
+                transparent=False,
+                splash_logo=None,
+                background=(250, 250, 248, 255),
+                dark_background=(16, 20, 24, 255),
+                splash_color=(18, 20, 23, 255),
+                splash_indicator_color=(91, 66, 243, 255),
+                plugin_values={},
+                plugins=[],
+            )
+            haylen.write_web_settings(app, site, release=[])
+            config = json.loads((site / "config.json").read_text(encoding="utf-8"))
+            splash = config["splash"]
+            self.assertEqual(splash["background"], "rgba(250, 250, 248, 1.000)")
+            self.assertEqual(splash["darkBackground"], "rgba(16, 20, 24, 1.000)")
+            self.assertEqual(splash["color"], "rgba(18, 20, 23, 1.000)")
+            self.assertEqual(splash["indicatorColor"], "rgba(91, 66, 243, 1.000)")
+
+    def test_app_json_reads_splash_color_and_indicator_color(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch)
+            (folder / "app.json").write_text(json.dumps({
+                "name": "App",
+                "identifier": "com.example.app",
+                "version": "1.0.0",
+                "splash": {
+                    "background": "#FFFAFAF8",
+                    "color": "#121417",
+                    "indicatorColor": "#FF5B42F3",
+                },
+            }))
+            app = haylen.App(folder, "web")
+            self.assertEqual(app.background, (250, 250, 248, 255))
+            self.assertEqual(app.splash_color, (18, 20, 23, 255))
+            self.assertEqual(app.splash_indicator_color, (91, 66, 243, 255))
 
 
 class PropertiesTest(unittest.TestCase):
