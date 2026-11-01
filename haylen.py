@@ -1959,8 +1959,6 @@ class App:
         splash = document.get("splash", {})
         self.background = parse_color(splash.get("background", document.get("clearColor", "#00000000" if self.transparent else "#FF000000")))
         self.dark_background = parse_color(splash["darkBackground"]) if "darkBackground" in splash else None
-        self.splash_color = parse_color(splash["color"]) if "color" in splash else None
-        self.splash_indicator_color = parse_color(splash["indicatorColor"]) if "indicatorColor" in splash else None
         self.splash_logo: Path | None = None
         if splash.get("logo"):
             self.splash_logo = folder / "content" / splash["logo"]
@@ -4247,10 +4245,6 @@ def write_web_settings(app: App, site: Path, release: list[str] | None) -> None:
     splash = {"logo": logo_name, "background": css_color(app.background)}
     if app.dark_background:
         splash["darkBackground"] = css_color(app.dark_background)
-    if app.splash_color:
-        splash["color"] = css_color(app.splash_color)
-    if app.splash_indicator_color:
-        splash["indicatorColor"] = css_color(app.splash_indicator_color)
     sizes = {path: (site / path).stat().st_size for path in (*downloads, "haylen.wasm")}
     plugins = write_web_plugins(app, site)
     config = {"name": app.name, "identifier": app.identifier, "transparent": app.transparent, "splash": splash, "sizes": sizes, "plugins": plugins}

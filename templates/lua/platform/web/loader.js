@@ -169,15 +169,6 @@ var Module = {
     if (config.splash.darkBackground) {
         matchMedia("(prefers-color-scheme: dark)").addEventListener("change", updateTheme);
     }
-    if (config.splash.color) {
-        splash.style.setProperty("--splash-color", config.splash.color);
-        if (!isLightColor(config.splash.color)) {
-            splash.style.setProperty("--splash-text-shadow", "none");
-        }
-    }
-    if (config.splash.indicatorColor) {
-        splash.style.setProperty("--splash-bar", config.splash.indicatorColor);
-    }
     // The splash and the icon of the page show the logo from a single download.
     logo.alt = config.name;
     fetch(config.splash.logo)
