@@ -15,7 +15,7 @@ local grading = graphics2d.newMaterial(assets.shader('shaders/grading.shader'), 
 grading:set('shadows', '#FF2A6A80')
 grading:set('highlights', '#FFFFB070')
 local crt = graphics2d.newMaterial(assets.shader('shaders/crt.shader'), {curvature = 0.08, scanlines = 0.25})
-local chain = {vignetteStrength = 0.7, materials = {blurX, blurY, grading, crt}}
+local chain = {vignetteStrength = 0.35, materials = {blurX, blurY, grading, crt}}
 graphics2d.beginWorld(camera, {clear = '#FF203048', postProcess = chain})]]
 
 PostProcessing.view = {1920, 1080}
@@ -101,7 +101,7 @@ function PostProcessing:render()
         return
     end
     local materials = self:chain()
-    graphics2d.beginWorld(self.camera, {clear = '#FF203048', postProcess = {vignetteStrength = self.enabled.vignette and 0.7 or 0, materials = materials}})
+    graphics2d.beginWorld(self.camera, {clear = '#FF203048', postProcess = {vignetteStrength = self.enabled.vignette and 0.35 or 0, materials = materials}})
     local time = haylen.elapsed()
     self.scenery:draw(false)
     -- Three walkers run in place on the grass while coins spin over them, so every pass has edges, colors and motion to work on.

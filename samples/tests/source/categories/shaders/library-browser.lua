@@ -201,7 +201,7 @@ end
 function LibraryBrowser:draw(area)
     local order = {material = self.material, blend = self.shader.blend == 'additive' and 'additive' or 'alpha'}
     local target = self.shader.target
-    local width, height = ShaderTest.layout[1], ShaderTest.layout[2]
+    local width, height = self.layoutWidth, ShaderTest.layout[2]
     if target ~= 'picture' then
         local bounds = graphics2d.canvasBounds()
         self:drawCard({rect = {bounds.x, bounds.y, bounds.width, bounds.height}}, self.shader.name, target ~= 'sprite' and target ~= 'disc')

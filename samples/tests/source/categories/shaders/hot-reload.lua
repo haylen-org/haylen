@@ -27,7 +27,7 @@ HotReload.reloads = {macos = true, windows = true, linux = true}
 
 function HotReload:init(entry)
     HotReload.super.init(self, entry)
-    self.cells = ShaderTest.cells(3, 3, 420)
+    self.cellGrid = {3, 3, 420}
     self.material = ShaderTest.material('live')
     local uniforms = {}
     for _, uniform in ipairs(self.material.shader.uniforms) do
@@ -66,7 +66,7 @@ function HotReload:draw(area)
         top = top + 68
     end
     for index, line in ipairs(HotReload.steps) do
-        Test.caption(line, left, top + (index - 1) * 42, {size = 26, color = index == #HotReload.steps and Test.muted or Test.ink, maxWidth = ShaderTest.layout[1] - 48})
+        Test.caption(line, left, top + (index - 1) * 42, {size = 26, color = index == #HotReload.steps and Test.muted or Test.ink, maxWidth = self.layoutWidth - 48})
     end
 end
 

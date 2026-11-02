@@ -59,7 +59,7 @@ function Materials:init(entry)
         pixelate = ShaderTest.material('pixelate'),
         rainbow = ShaderTest.material('rainbow', {spread = 0.004}),
     }
-    self.cells = ShaderTest.cells(#Materials.shown, 4)
+    self.cellGrid = {#Materials.shown, 4}
 end
 
 function Materials:enter()

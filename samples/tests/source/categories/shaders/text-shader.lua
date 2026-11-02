@@ -41,8 +41,8 @@ end
 -- The text stands on a title screen at night, on a card that fills the layout.
 function TextShader:draw(area)
     local layout = ShaderTest.layout
-    self:drawCard({rect = {24, 24, layout[1] - 48, layout[2] - 48}}, 'Three materials on text', true)
-    local x = layout[1] / 2
+    self:drawCard({rect = {24, 24, self.layoutWidth - 48, layout[2] - 48}}, 'Three materials on text', true)
+    local x = self.layoutWidth / 2
     graphics2d.drawText(self:font(), 'Isle of Tests', x, 190, {size = 170, anchor = {0.5, 0.5}, outlineWidth = 8, outlineColor = '#FF15172A', material = self.rainbow, layer = 5})
     graphics2d.drawText(nil, 'Words that burn away and come back', x, 380, {size = 64, anchor = {0.5, 0.5}, color = '#FFFFE0B0', material = self.dissolve, layer = 5})
     graphics2d.drawText(self:font(), 'Hit flash on text', x, 530, {size = 84, anchor = {0.5, 0.5}, color = '#FFF0473E', outlineWidth = 5, outlineColor = '#FF200808', material = self.flash, layer = 5})

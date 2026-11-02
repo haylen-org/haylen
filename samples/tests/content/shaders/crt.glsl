@@ -1,4 +1,4 @@
-// A post-processing pass that looks like an old tube screen: curved glass with rounded corners whose edge fades out over a pixel, scanlines, a color split and dark corners.
+// A pass that looks like an old tube screen: curved glass with rounded corners whose edge fades out over a pixel, scanlines, a color split and soft dark corners. Outside the glass it draws nothing, so a sprite keeps its shape and a canvas shows a black frame around its screen.
 @include haylen/material.glsl
 
 @fs crt_fs
@@ -20,10 +20,11 @@ void main() {
     float pixel = max(fwidth(centered.x), fwidth(centered.y));
     float glass = 1.0 - smoothstep(-pixel, pixel, outside);
     vec2 inside = clamp(point, 0.0, 1.0);
-    vec3 image = vec3(haylen_texture(inside + vec2(split, 0.0)).r, haylen_texture(inside).g, haylen_texture(inside - vec2(split, 0.0)).b);
+    vec4 middle = haylen_texture(inside);
+    vec3 image = vec3(haylen_texture(inside + vec2(split, 0.0)).r, middle.g, haylen_texture(inside - vec2(split, 0.0)).b);
     float line = 1.0 - scanlines * (0.5 + 0.5 * sin(inside.y * 900.0 + time * 4.0));
     float corners = smoothstep(1.0, 0.7, length(centered * vec2(0.9, 1.0)));
-    haylen_output(vec4(image * line * (0.6 + 0.4 * corners), glass));
+    haylen_output(vec4(image * line * (0.75 + 0.25 * corners) * glass, glass * middle.a));
 }
 @end
 

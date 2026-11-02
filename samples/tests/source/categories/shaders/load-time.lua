@@ -45,7 +45,7 @@ function LoadTime:uniforms(name)
         dissolve = {amount = 0.45, edge_color = '#FFFFB347', edge_width = 0.1, noise_scale = 1, noise_texture = assets.texture('shaders/images/noise.png', {filter = 'linear', wrap = 'repeat'})},
         flash = {flash_color = '#FFFFFFFF', amount = 0.6},
         grading = {shadows = '#FF2A6A80', highlights = '#FFFFB070', strength = 0.9, contrast = 1.2},
-        hologram = {tint = '#FF40E0FF', lines = 1.2, texel = texel},
+        hologram = {tint = '#FF9CF6FF', lines = 1.2, texel = texel},
         outline = {outline_color = '#FFFFC93C', texel = texel, thickness = 6},
         palette = {source_colors = LoadTime.colors({'#FF2F7FE0', '#FF5DBB3A', '#FFFFFFFF', '#FF000000'}), target_colors = LoadTime.colors({'#FFC04CE0', '#FFF0A030', '#FFFFFFFF', '#FF000000'})},
         pixelate = {blocks = {16, 16}},

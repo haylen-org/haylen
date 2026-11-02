@@ -1,4 +1,4 @@
--- The base of the shader tests: the painted art and the materials of the category, a layout of a fixed size fitted into the play area with 0, 0 at its top-left corner, the grid of cards the tests show their materials in, each a little scene with a sky, the ground and a title, and a press that a click or a tap on the play area, E, Enter, Space or the south or west button makes.
+-- The base of the shader tests: the painted art and the materials of the category, a layout of a fixed height fitted into the play area with 0, 0 at its top-left corner, which widens with a wide play area so its cards fill it, the grid of cards the tests show their materials in, each a little scene with a sky, the ground and a title, and a press that a click or a tap on the play area, E, Enter, Space or the south or west button makes.
 local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
@@ -10,7 +10,9 @@ local Test = require('harness.test')
 
 local ShaderTest = haylen.class('ShaderTest', Test)
 
+-- The least size of the layout, and how much wider than that a wide play area makes it.
 ShaderTest.layout = {1340, 760}
+ShaderTest.widest = 1.5
 ShaderTest.actions = {actions = {
     Pointer.actions[1],
     Pointer.actions[2],
@@ -78,17 +80,18 @@ function ShaderTest.sky(night)
 end
 
 -- Returns the centers and sizes of `count` cells in rows of `columns` over the layout, or over its top `room` units, each with the rectangle of its card.
-function ShaderTest.cells(count, columns, room)
+function ShaderTest:layoutCells(count, columns, room)
     local rows = math.ceil(count / columns)
     local gap, margin = 24, 24
-    local width = (ShaderTest.layout[1] - margin * 2 - gap * (columns - 1)) / columns
+    local layoutWidth = self.layoutWidth
+    local width = (layoutWidth - margin * 2 - gap * (columns - 1)) / columns
     local height = ((room or ShaderTest.layout[2]) - margin * 2 - gap * (rows - 1)) / rows
     local cells = {}
     for index = 1, count do
         local column, row = (index - 1) % columns, (index - 1) // columns
         -- A last row with fewer cells sits in the middle.
         local inRow = math.min(columns, count - row * columns)
-        local left = margin + (ShaderTest.layout[1] - margin * 2 - inRow * width - (inRow - 1) * gap) / 2 + column * (width + gap)
+        local left = margin + (layoutWidth - margin * 2 - inRow * width - (inRow - 1) * gap) / 2 + column * (width + gap)
         local top = margin + row * (height + gap)
         cells[index] = {x = left + width / 2, y = top + height * 0.48, size = math.min(width, height) * 0.62, rect = {left, top, width, height}}
     end
@@ -104,7 +107,8 @@ function ShaderTest:drawCard(cell, title, night)
     graphics2d.pushMask(self.maskCard, {layer = 0})
     graphics2d.drawShape(rect, {texture = ShaderTest.sky(night)})
     self.ground = self.ground or assets.texture('camera/ground.png', ShaderTest.linear)
-    local groundHeight = rect[4] * 0.26
+    -- The strip reaches past the bottom edge of the card, which the mask cuts, so no sky shows under it.
+    local groundHeight = rect[4] * 0.29
     local groundWidth = groundHeight * self.ground.width / self.ground.height
     local top = rect[2] + rect[4] * ShaderTest.feet - groundHeight * ShaderTest.footing
     for x = rect[1], rect[1] + rect[3], groundWidth do
@@ -142,6 +146,7 @@ end
 function ShaderTest:init(entry)
     ShaderTest.super.init(self, entry)
     self.pointer = Pointer()
+    self.layoutWidth = ShaderTest.layout[1]
 end
 
 -- Mounts the frame of `Test:frame` with the layout of the category fitted into the play area. With `presses = true` the test reads presses, which take the action map and the first focus.
@@ -152,10 +157,25 @@ function ShaderTest:frame(options)
         options.play = true
     end
     options.presses = nil
-    options.view = options.view or ShaderTest.layout
+    self.fitsLayout = options.view == nil
+    options.view = options.view or {ShaderTest.layout[1], ShaderTest.layout[2]}
     ShaderTest.super.frame(self, options)
-    if options.view == ShaderTest.layout then
+    if self.fitsLayout then
         self.camera.position = {ShaderTest.layout[1] / 2, ShaderTest.layout[2] / 2}
+    end
+end
+
+-- Widens the layout to the shape of the play area, within its bounds, and lays out the cells that the test asked for with `cellGrid`, which holds their count, their columns and the room they take.
+function ShaderTest:resize(area)
+    if not self.fitsLayout then
+        return
+    end
+    local layout = ShaderTest.layout
+    self.layoutWidth = math.max(layout[1], math.min(layout[1] * ShaderTest.widest, layout[2] * area.width / area.height))
+    self.view = {self.layoutWidth, layout[2]}
+    self.camera.position = {self.layoutWidth / 2, layout[2] / 2}
+    if self.cellGrid then
+        self.cells = self:layoutCells(self.cellGrid[1], self.cellGrid[2], self.cellGrid[3])
     end
 end
 

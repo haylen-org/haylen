@@ -38,7 +38,7 @@ function TweenedUniforms:init(entry)
         timeline = ShaderTest.material('dissolve', {edge_color = '#FFFFD040', edge_width = 0.12, noise_scale = 1, noise_texture = ShaderTest.noise()}),
         timelineFlash = ShaderTest.material('flash', {flash_color = '#FFFFFFFF'}),
     }
-    self.cells = ShaderTest.cells(#TweenedUniforms.shown, 3)
+    self.cellGrid = {#TweenedUniforms.shown, 3}
 end
 
 function TweenedUniforms:enter()

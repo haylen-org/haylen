@@ -26,7 +26,7 @@ function TextureUniforms:init(entry)
     self.patterns = {stripes = ShaderTest.pattern(), noise = ShaderTest.noise()}
     self.ramp = 'fire'
     self.material = ShaderTest.material('texture-map', {pattern_strength = 0.2, pattern_scale = 3, ramp_texture = self.ramps.fire, pattern_texture = self.patterns.stripes})
-    self.cells = ShaderTest.cells(3, 3)
+    self.cellGrid = {3, 3}
     self.textureNames = '"' .. table.concat(self.material.shader.textures, '" and "') .. '"'
 end
 
