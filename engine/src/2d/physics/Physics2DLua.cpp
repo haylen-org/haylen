@@ -21,6 +21,7 @@
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
+#include "lua/Owners.hpp"
 #include "plugins/Physics2DPlugin.hpp"
 
 namespace haylen::physics2d {
@@ -57,10 +58,11 @@ void Physics2DLua::setManifold(lua_State* L, const ContactManifold& manifold) {
     lua_setfield(L, -2, "points");
 }
 
-// Creates a world with `newWorld({gravity = {0, 980}, pixelsPerMeter = 64, subSteps = 4, threads, continuous, sleepEnabled, interpolate, ...})`, stepped on the job system of the engine.
+// Creates a world with `newWorld({gravity = {0, 980}, pixelsPerMeter = 64, subSteps = 4, threads, continuous, sleepEnabled, interpolate, owner, ...})`, stepped on the job system of the engine. The debug drawing shows the world until its owner ends.
 int Physics2DLua::newWorld(lua_State* L) {
     core::JobSystem& jobs = lua::Runtime::getEngine(L).getJobs();
     World::Settings settings{.threads = std::min(static_cast<int>(jobs.getWorkerCount()), kDefaultThreads)};
+    int owner = 0;
     if (!lua_isnoneornil(L, 1)) {
         luaL_checktype(L, 1, LUA_TTABLE);
         lua::Table::checkFields(L, 1, {kWorldFields});
@@ -77,9 +79,23 @@ int Physics2DLua::newWorld(lua_State* L) {
         lua::Table::readField(L, 1, "maxSpeed", settings.maxSpeed);
         lua::Table::readField(L, 1, "restitutionThreshold", settings.restitutionThreshold);
         lua::Table::readField(L, 1, "hitThreshold", settings.hitThreshold);
+        if (lua_getfield(L, 1, "owner") == LUA_TNIL) {
+            lua_pop(L, 1);
+        } else {
+            lua::Owners::checkOwner(L, -1);
+            owner = lua_gettop(L);
+        }
     }
+    if (owner == 0) {
+        owner = lua::Owners::pushDefault(L);
+    }
+
     const std::shared_ptr<World> world = std::make_shared<World>(settings, &jobs);
-    lua::Runtime::getEngine(L).getPlugin<plugins::Physics2DPlugin>().track(world);
+    const std::shared_ptr<plugins::Physics2DPlugin::TrackedWorld> tracked = lua::Runtime::getEngine(L).getPlugin<plugins::Physics2DPlugin>().track(world);
+    if (owner != 0) {
+        lua::Owners::add(L, owner, tracked);
+        lua_remove(L, owner);
+    }
     lua::Userdata::emplace<World>(L, world);
     lua_createtable(L, 0, 6);
     lua_newtable(L);

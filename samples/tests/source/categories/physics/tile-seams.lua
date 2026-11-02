@@ -67,7 +67,7 @@ function TileSeams:build()
     for index, merged in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
         local left, right = origin - TileSeams.tiles * tile / 2, origin + TileSeams.tiles * tile / 2
-        local world = physics2d.newWorld()
+        local world = physics2d.newWorld({owner = self})
         local floor = world:createBody({type = 'static'})
         for _, top in ipairs(TileSeams.rows) do
             if merged then

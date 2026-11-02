@@ -78,7 +78,7 @@ function Claw:enter()
 end
 
 function Claw:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.prizes, self.won, self.closed = {}, 0, false
     self.demo, self.step, self.wait, self.target = true, 'seek', 0, nil
 

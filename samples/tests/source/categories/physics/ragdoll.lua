@@ -50,7 +50,7 @@ function Ragdoll:enter()
 end
 
 function Ragdoll:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.dolls, self.groups = {}, 0
 

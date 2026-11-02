@@ -61,7 +61,7 @@ function OneWay:enter()
 end
 
 function OneWay:build()
-    self.world = physics2d.newWorld({gravity = {0, 2200}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 2200}})
     self.platforms = {}
     self.time = 0
 

@@ -53,7 +53,7 @@ function Sleeping:build()
     local size = Sleeping.size
     for index, sleeping in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
-        local world = physics2d.newWorld({sleepEnabled = sleeping})
+        local world = physics2d.newWorld({owner = self, sleepEnabled = sleeping})
         local ground = world:createBody({type = 'static', x = origin, y = Sleeping.ground + 30})
         ground:addBox(780, 60)
         local blocks = {}

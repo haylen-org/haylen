@@ -57,7 +57,7 @@ function Cloth:enter()
 end
 
 function Cloth:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.loads, self.torn = {}, 0
 

@@ -63,7 +63,7 @@ end
 
 -- Grows new hills whose samples fade over one cell at the surface, so the outline follows the hills between the samples, and digs the caves.
 function Terrain:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.crates = {}
     self.terrain = physics2d.newTerrain(self.world, {columns = Terrain.columns, rows = Terrain.rows, cellSize = Terrain.cellSize, x = Terrain.origin.x, y = Terrain.origin.y})
     local noise = m.noise(self.random:integer(1, 1000))

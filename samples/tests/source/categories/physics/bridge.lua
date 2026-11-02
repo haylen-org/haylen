@@ -63,7 +63,7 @@ function Bridge:enter()
 end
 
 function Bridge:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.loads = {}
 

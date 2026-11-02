@@ -88,7 +88,7 @@ function SlopesSteps:build()
     self.halves = {}
     for index = 1, 2 do
         local origin = index == 1 and -400 or 400
-        local world = physics2d.newWorld({gravity = {0, SlopesSteps.gravity}})
+        local world = physics2d.newWorld({owner = self, gravity = {0, SlopesSteps.gravity}})
         local ground = world:createBody({type = 'static', x = origin})
         ground:addChain(SlopesSteps.outline, false, {friction = 0.6})
         self.halves[index] = {world = world, origin = origin}

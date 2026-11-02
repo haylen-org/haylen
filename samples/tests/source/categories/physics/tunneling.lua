@@ -54,7 +54,7 @@ function Tunneling:build()
     self.halves = {}
     for index, fixed in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
-        local world = physics2d.newWorld({continuous = fixed})
+        local world = physics2d.newWorld({owner = self, continuous = fixed})
         local ground = world:createBody({type = 'static', x = origin, y = Tunneling.ground + 30})
         ground:addBox(800, 60)
         local wall = world:createBody({type = 'static'})

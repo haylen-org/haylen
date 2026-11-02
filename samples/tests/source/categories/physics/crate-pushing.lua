@@ -93,7 +93,7 @@ function CratePushing:inside(column, row)
 end
 
 function CratePushing:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.crates, self.goals, self.moveX, self.moveY = {}, {}, 0, 0
     self.walls = self.world:createBody({type = 'static'})
 

@@ -89,9 +89,9 @@ function TwoWorlds:enter()
 end
 
 -- Makes a world for a planet with the planet itself and the bubble of its pull.
-function TwoWorlds.makePlanet(spec)
+function TwoWorlds:makePlanet(spec)
     local planet = {spec = spec, pull = spec.pull}
-    planet.world = physics2d.newWorld({gravity = {0, 0}})
+    planet.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     planet.body = planet.world:createBody({type = 'static', x = spec.x, y = spec.y})
     planet.body:addCircle(spec.radius, {friction = spec.friction})
     planet.field = physics2d.newForceField(planet.world, {kind = 'radial', x = spec.x, y = spec.y, radius = spec.reach, strength = spec.pull, linearDrag = spec.drag})
@@ -99,8 +99,8 @@ function TwoWorlds.makePlanet(spec)
 end
 
 function TwoWorlds:build()
-    self.home = TwoWorlds.makePlanet(TwoWorlds.planets.home)
-    self.moon = TwoWorlds.makePlanet(TwoWorlds.planets.moon)
+    self.home = self:makePlanet(TwoWorlds.planets.home)
+    self.moon = self:makePlanet(TwoWorlds.planets.moon)
     self.bodies, self.shots = {}, {}
     self.critters, self.popped, self.launched, self.crossings = 0, 0, 0, 0
 

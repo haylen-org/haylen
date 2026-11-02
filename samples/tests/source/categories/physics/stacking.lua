@@ -68,7 +68,7 @@ function Stacking:enter()
 end
 
 function Stacking:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     local ground = self.world:createBody({type = 'static'})
     ground:addBox(4000, 40, {offsetY = Stacking.ground + 20})
     ground:addBox(320, 30, {offsetY = Stacking.baseTop + 15, friction = 0.9})

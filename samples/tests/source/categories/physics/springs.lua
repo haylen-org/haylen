@@ -55,7 +55,7 @@ function Springs:enter()
     self.legs = {[-1] = {}, [1] = {}}
     self.legStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', layer = 0}
     self.matStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', layer = 2}
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.bodies, self.springs, self.pads = {}, {}, {}
     self.bounces, self.launches, self.clock, self.next = 0, 0, 0, 'crate'

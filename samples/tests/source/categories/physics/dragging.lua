@@ -56,7 +56,7 @@ function Dragging:build()
     self.halves = {}
     for index, grabber in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
-        local world = physics2d.newWorld()
+        local world = physics2d.newWorld({owner = self})
         local ground = world:createBody({type = 'static', x = origin, y = Dragging.ground + 30})
         ground:addBox(800, 60)
         ground:addBox(20, 800, {offsetX = -380, offsetY = -430})

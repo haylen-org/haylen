@@ -56,7 +56,7 @@ function Water:enter()
 end
 
 function Water:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.bodies, self.crates, self.logs, self.anvils = {}, {}, {}, {}
 

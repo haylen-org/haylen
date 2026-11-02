@@ -66,7 +66,7 @@ function Bowling:enter()
         },
     }
     self.camera.position = {0, -70}
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     local alley = self.world:createBody({type = 'static'})
     local outer = Bowling.laneHalf + Bowling.gutter
     local length = Bowling.finish - Bowling.start

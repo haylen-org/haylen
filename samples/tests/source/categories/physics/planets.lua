@@ -69,7 +69,7 @@ function Planets:enter()
 end
 
 function Planets:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.planets, self.orbiters, self.ships = {}, {}, {}
     self.crashed, self.lost, self.steps = 0, 0, 0
 

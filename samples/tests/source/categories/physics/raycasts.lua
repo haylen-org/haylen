@@ -60,7 +60,7 @@ function Raycasts:enter()
 end
 
 function Raycasts:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.bodies = {}
     local function add(kind, x, y, build, category, material, name)
         local body = self.world:createBody({type = kind, x = x, y = y})

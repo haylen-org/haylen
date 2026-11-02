@@ -48,7 +48,7 @@ function BouncesHits:build()
     self.halves = {}
     for index, low in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
-        local options = {pixelsPerMeter = BouncesHits.pixelsPerMeter}
+        local options = {pixelsPerMeter = BouncesHits.pixelsPerMeter, owner = self}
         if low then
             options.restitutionThreshold, options.hitThreshold = 4, 8
         end

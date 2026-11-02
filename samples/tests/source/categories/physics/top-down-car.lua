@@ -125,7 +125,7 @@ end
 -- The outer wall is a loop listed counterclockwise on screen, which holds the car inside it, and the inner wall a loop listed clockwise, which is solid from the outside.
 function TopDownCar:build()
     local outer, inner = TopDownCar.outerRadius, TopDownCar.innerRadius
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.outer = TopDownCar.ellipse(outer, 64, false)
     self.inner = TopDownCar.ellipse(inner, 48, true)
     self.outerEdge = TopDownCar.flatten(self.outer)

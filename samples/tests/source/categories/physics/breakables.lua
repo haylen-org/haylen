@@ -92,7 +92,7 @@ function Breakables.smoothOutline(outline, steps)
 end
 
 function Breakables:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.whole, self.vases, self.pieces, self.balls, self.lastImpact = {}, {}, {}, {}, 0
 
     local ground = self.world:createBody({type = 'static'})

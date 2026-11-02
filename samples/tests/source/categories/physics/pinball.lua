@@ -84,7 +84,7 @@ function Pinball:enter()
 end
 
 function Pinball:build()
-    self.world = physics2d.newWorld({gravity = {0, 700}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 700}})
     self.score, self.balls, self.autoPull = 0, 1, 0
 
     -- The outer wall is one chain that runs counter-clockwise on screen, so it holds the ball on its inner side.

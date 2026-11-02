@@ -78,7 +78,7 @@ function DebugDrawings:exit()
 end
 
 function DebugDrawings:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.bodies = {}
     local random = m.random(5)

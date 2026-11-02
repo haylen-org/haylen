@@ -77,7 +77,7 @@ function Wind:enter()
 end
 
 function Wind:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.bodies, self.leaves, self.balloons = {}, {}, {}
 

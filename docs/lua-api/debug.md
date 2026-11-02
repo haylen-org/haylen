@@ -172,11 +172,11 @@ end)
 
 ## Drawings
 
-Drawings show what the app draws and simulates. They draw over every canvas that the app draws, in the coordinates of that canvas, on top of everything else and unlit. Each drawing has a name:
+Drawings show what the app draws and simulates. They draw over every canvas that the app draws, in the coordinates of that canvas, on top of everything else and unlit. The canvas of the UI, whose units are not those of the app, gets none, and so does a canvas that the app begins with the [canvas option](graphics2d.md#canvas-options) `debugDrawings = false`. Each drawing has a name:
 
 | Drawing | What shows |
 | --- | --- |
-| `'physics'` | The bodies, shapes, joints and contact points of every physics world that [`physics2d.newWorld`](physics2d.md) made, in world and render target canvases, with lines of the same width on the screen at any zoom. Bodies take the colors of their state: awake, sleeping, static or kinematic. |
+| `'physics'` | The bodies, shapes, joints and contact points of every live physics world that [`physics2d.newWorld`](physics2d.md) made, in world and render target canvases. A world whose `owner` ended, such as the world of a scene that unloaded, never draws again, even before the collector frees it. The lines keep the same width on the screen at any zoom. Bodies take the colors of their state: awake, sleeping, static or kinematic. |
 | `'bounds'` | An outline around every sprite, sprite of a batch, nine-slice piece and baked batch, named after the path of the texture that the assets loaded it from, and a fainter outline around every text block, in every canvas. |
 | Any other name | The drawers that the app or a plugin adds with [`debug.addDrawer`](#debugadddrawername-fn-options). |
 

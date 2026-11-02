@@ -51,7 +51,7 @@ function MovingPlatforms:build()
     self.halves = {}
     for index = 1, 2 do
         local origin = index == 1 and -400 or 400
-        local world = physics2d.newWorld({gravity = {0, MovingPlatforms.gravity}})
+        local world = physics2d.newWorld({owner = self, gravity = {0, MovingPlatforms.gravity}})
         local ground = world:createBody({type = 'static', x = origin, y = MovingPlatforms.ground + 30})
         ground:addBox(800, 60)
         ground:addBox(20, 140, {offsetX = -390, offsetY = -100})

@@ -88,7 +88,7 @@ function Pool:enter()
 end
 
 function Pool:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     local width, height, depth = Pool.halfWidth, Pool.halfHeight, Pool.cushionDepth
     local rails = self.world:createBody({type = 'static'})
 

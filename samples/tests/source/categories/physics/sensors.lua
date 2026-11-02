@@ -60,7 +60,7 @@ function Sensors:enter()
 end
 
 function Sensors:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.balls = {}
 

@@ -48,7 +48,7 @@ function Collision:enter()
 end
 
 function Collision:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.walls = self.map:buildCollision(self.world)
     self.balls = {}
     -- Only balls carry data, while the shapes of the map that touch a sensor count for nothing.

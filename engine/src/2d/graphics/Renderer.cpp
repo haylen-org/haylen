@@ -770,6 +770,10 @@ void Renderer::removeCanvasOverlay(std::uint64_t id) {
     std::erase_if(state->overlays, [id](const auto& entry) { return entry.first == id; });
 }
 
+const Renderer::CanvasOptions& Renderer::getCanvasOptions() const {
+    return state->getCanvas().options;
+}
+
 Renderer::CanvasKind Renderer::getCanvasKind() const {
     switch (state->getCanvas().kind) {
     case Canvas::Kind::World:

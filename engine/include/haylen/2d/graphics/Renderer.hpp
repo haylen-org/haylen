@@ -95,6 +95,9 @@ class Renderer final {
         std::optional<math::Color> ambientLight;
         std::optional<PostProcess> postProcess;
         std::optional<math::Color> clear;
+
+        // Shows the debug drawings of `haylen.debug` over the canvas when it finishes. A canvas of an interface, such as the one the UI draws in, turns them off, since its units are not the units of the worlds and sprites they outline.
+        bool debugDrawings = true;
     };
 
     // How `drawMetaballs` shows the surface where its soft circles meet: the fill color, and an outline in the band of the field just above the threshold. The field adds up to 1 at the center of a lone circle, whose surface reaches the radius at the default threshold.
@@ -235,6 +238,9 @@ class Renderer final {
 
     // Returns the kind of the open canvas. It needs an active canvas.
     [[nodiscard]] CanvasKind getCanvasKind() const;
+
+    // Returns the options the open canvas began with. It needs an active canvas.
+    [[nodiscard]] const CanvasOptions& getCanvasOptions() const;
 
     // Names the canvas kinds `world`, `screen` and `target`.
     [[nodiscard]] static std::string_view canvasKindName(CanvasKind value) noexcept;

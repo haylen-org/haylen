@@ -101,7 +101,7 @@ function AirHockey:airHoles()
 end
 
 function AirHockey:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}, maxSpeed = 2400})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}, maxSpeed = 2400})
     local rink = self.world:createBody({type = 'static'})
     rink:addChain(self:rinkOutline(), true, {restitution = 0.9, friction = 0})
     for _, goal in ipairs({{-1, 'computer'}, {1, 'player'}}) do

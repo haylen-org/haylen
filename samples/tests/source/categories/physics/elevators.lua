@@ -67,7 +67,7 @@ function Elevators:enter()
 end
 
 function Elevators:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     local building = self.world:createBody({type = 'static'})
     local half = Elevators.shaftWidth / 2
     local shafts, floors = Elevators.shafts, Elevators.floors

@@ -938,11 +938,11 @@ void Backend::drawLists(graphics2d::Renderer& renderer, std::span<const ImDrawLi
     if (empty && renderCalls.empty() && draws.empty()) {
         return;
     }
-    // The canvas maps UI coordinates to the visible area at the scale of the UI, so the meshes of ImGui and the draws of the components keep their UI coordinates.
+    // The canvas maps UI coordinates to the visible area at the scale of the UI, so the meshes of ImGui and the draws of the components keep their UI coordinates. The debug drawings, in the units of the worlds of the app, stay out of it.
     graphics2d::Camera camera;
     camera.anchor = graphics2d::Camera::Anchor::TopLeft;
     camera.setZoom({scale, scale});
-    renderer.beginWorld(camera);
+    renderer.beginWorld(camera, {.debugDrawings = false});
     rendering = &renderer;
     for (const ImDrawList* list : lists) {
         drawList(*list);

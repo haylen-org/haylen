@@ -52,7 +52,7 @@ function CenterOfMass:build()
     self.halves = {}
     for index, weighted in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
-        local world = physics2d.newWorld()
+        local world = physics2d.newWorld({owner = self})
         local ground = world:createBody({type = 'static', x = origin, y = CenterOfMass.ground + 30})
         ground:addBox(800, 60)
         local blocks = {}

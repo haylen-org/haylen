@@ -67,6 +67,7 @@ Renderer::CanvasOptions Graphics2DLua::readCanvasOptions(lua_State* L, int index
     lua::Table::readField(L, table, "visibilityMask", options.visibilityMask);
     lua::Table::readField(L, table, "ambientLight", options.ambientLight);
     lua::Table::readField(L, table, "clear", options.clear);
+    lua::Table::readField(L, table, "debugDrawings", options.debugDrawings);
 
     lua_getfield(L, table, "postProcess");
     if (!lua_isnil(L, -1)) {

@@ -63,7 +63,7 @@ function Collisions:enter()
 end
 
 function Collisions:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self:fixture('the ground'):addBox(4000, 40, {offsetY = Collisions.ground + 20})
     local walls = self:fixture('a wall')

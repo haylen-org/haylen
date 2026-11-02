@@ -74,7 +74,7 @@ function SpaceShip:enter()
 end
 
 function SpaceShip:build()
-    self.world = physics2d.newWorld({gravity = {0, 0}})
+    self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.rocks, self.bullets, self.impacts = {}, {}, {}
     self.score, self.bumps, self.cooldown, self.wave, self.seed, self.throttle = 0, 0, 0, 0, 0, 0
     self.autopilot = true

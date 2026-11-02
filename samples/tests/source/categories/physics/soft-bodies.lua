@@ -60,7 +60,7 @@ function SoftBodies:enter()
 end
 
 function SoftBodies:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.blobs, self.groups = {}, 0
 

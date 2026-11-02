@@ -70,7 +70,7 @@ function GrapplingHook:enter()
 end
 
 function GrapplingHook:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.statics, self.crates = {}, {}
     for index, block in ipairs(GrapplingHook.blocks) do
         local body = self.world:createBody({type = 'static', x = block[1], y = block[2]})

@@ -48,7 +48,7 @@ function Conveyors:enter()
     }
     self.random = m.random(29)
     self.speed, self.direction, self.spawning = 1, 1, true
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.breaks = Burst('level/crate-break', {count = 3, scale = 0.6, layer = 30})
     self.crates = {}

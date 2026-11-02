@@ -63,7 +63,7 @@ function Collision:init(entry)
 
     self.balls = particles2d.newEmitter({texture = self.ballTexture, rate = 6, lifetime = {6, 8}, speed = {300, 600}, spread = m.tau, gravity = {0, 500}, startSize = 44, endSize = 44, colors = {'#00FFFFFF', '#FFFFFFFF', '#FFFFFFFF', '#00FFFFFF'}, colorTimes = {0, 0.05, 0.9, 1}, tints = {'#FFFF8080', '#FFFFD060', '#FF80E0A0', '#FF80B0FF', '#FFD090FF'}, collision = {type = 'bounds', area = Collision.area, bounce = 0.9}, maxParticles = 64, layer = 2, seed = 232})
 
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.round = self.world:createBody({type = 'static', x = 540, y = -170})
     self.round:addCircle(70)
     self.plank = self.world:createBody({type = 'static', x = 790, y = -10, rotation = -0.35})

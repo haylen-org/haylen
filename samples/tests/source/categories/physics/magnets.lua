@@ -54,7 +54,7 @@ function Magnets:enter()
 end
 
 function Magnets:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.crates, self.held = {}, nil
 
     local ground = self.world:createBody({type = 'static', x = 0, y = Magnets.ground + 20})

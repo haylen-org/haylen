@@ -49,7 +49,7 @@ function Filtering:enter()
     self.random = m.random(31)
     self.raining = true
     self.social = {false, false, false}
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.balls = {}
     self:build()

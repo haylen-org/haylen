@@ -76,7 +76,7 @@ function Interpolation:enter()
 end
 
 function Interpolation:build()
-    self.world = physics2d.newWorld({interpolate = true})
+    self.world = physics2d.newWorld({owner = self, interpolate = true})
     local pivot, hub = Interpolation.pivot, Interpolation.hub
     local anchor = self.world:createBody({type = 'static', x = pivot[1], y = pivot[2]})
     self.pendulum = self.world:createBody({x = pivot[1] + Interpolation.length, y = pivot[2]})

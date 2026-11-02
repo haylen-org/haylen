@@ -70,6 +70,7 @@ Creates an empty world and returns it. The table `options` is optional, and an u
 | `maxSpeed` | number | `400 * pixelsPerMeter` | Speed limit of every body in world units per second, 25600 at the default scale. |
 | `restitutionThreshold` | number | `pixelsPerMeter` | Impacts slower than this, in world units per second, never bounce, whatever the restitution. |
 | `hitThreshold` | number | `pixelsPerMeter` | Impacts slower than this, in world units per second, call no `onHit`. |
+| `owner` | table or userdata | the default owner | The owner of the world, such as the scene that simulates it. The [physics drawing](debug.md#drawings) shows the world until its owner ends. |
 
 The scale, the threads and `interpolate` stay as the world was created. Every other option is also a [world property](#world-properties) that changes while the world runs. The speeds you leave out keep the values Box2D is tuned for in meters. That is a speed limit of 400 meters per second, overlaps pushed apart at up to 3 meters per second, and bounces and hits from 1 meter per second.
 

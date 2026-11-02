@@ -98,7 +98,7 @@ class Physics2DLua final {
     }
 
   private:
-    static constexpr std::array<std::string_view, 13> kWorldFields{"gravity", "pixelsPerMeter", "subSteps", "threads", "continuous", "sleepEnabled", "interpolate", "contactHertz", "contactDampingRatio", "contactPushSpeed", "maxSpeed", "restitutionThreshold", "hitThreshold"};
+    static constexpr std::array<std::string_view, 14> kWorldFields{"gravity", "pixelsPerMeter", "subSteps", "threads", "continuous", "sleepEnabled", "interpolate", "contactHertz", "contactDampingRatio", "contactPushSpeed", "maxSpeed", "restitutionThreshold", "hitThreshold", "owner"};
 
     // Worlds step on at most this many threads unless their options ask for more, because the solver gains little from more workers and slow cores hold it back.
     static constexpr int kDefaultThreads = 4;

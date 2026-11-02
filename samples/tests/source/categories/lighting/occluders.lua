@@ -38,7 +38,7 @@ function Occluders:init(entry)
     Occluders.super.init(self, entry)
     self.ambientLight = '#FF1A1E2A'
     self.map = tiled.newMapRenderer(assets.load('lighting/walls.tmj'))
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.map:buildCollision(self.world)
     self.walls = Occluders.shadeBehind(lighting2d.occludersFromMap(self.map, 'walls'))
     self.lamp = lighting2d.newLight({radius = 1100, color = '#FFFFE4B8', intensity = 1.3, shadows = true, shadowFilter = 'pcf5', shadowSmoothness = 1})

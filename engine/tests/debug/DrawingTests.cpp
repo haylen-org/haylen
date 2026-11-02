@@ -136,6 +136,59 @@ TEST_F(DebugDrawingTest, DrawsThePhysicsWorldsOfLuaInWorldCanvases) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+// The world of an owner that ended leaves the physics drawing at once, even before the collector frees it, so the world of a scene that unloaded never draws over the scene after it.
+TEST_F(DebugDrawingTest, DrawsOnlyTheWorldsOfLiveOwners) {
+    // clang-format off
+    fixture.runLua(R"(
+        physics2d = require('haylen.physics2d') graphics2d = require('haylen.graphics2d') scene = require('haylen.scene')
+        camera = graphics2d.newCamera()
+        render = function() graphics2d.beginWorld(camera) graphics2d.drawRect({0, 0, 10, 10}, '#FFFFFFFF') end
+        scene.push({render = render})
+        level = {render = render}
+        world = physics2d.newWorld({gravity = {0, 0}, owner = level})
+        crate = world:createBody({x = 100, y = 100})
+        crate:addBox(40, 40)
+        scene.push(level)
+    )");
+    // clang-format on
+    fixture.frames(1);
+    getPlugin().setDrawing("physics", true);
+    fixture.frames(1);
+    const std::size_t drawn = fixture.engine().getRenderer2D().getStats().vertices;
+
+    fixture.runLua("scene.pop()");
+    fixture.frames(2);
+    EXPECT_LT(fixture.engine().getRenderer2D().getStats().vertices, drawn);
+    EXPECT_EQ(fixture.lua("return world.bodyCount"), "1");
+    EXPECT_NE(fixture.lua("physics2d.newWorld({owner = 3})").find("An owner must be a table or a userdata, not number."), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// The debug drawings stay out of a canvas that turns them off, such as the canvas of the UI, whose units are not those of the worlds and the sprites of the app.
+TEST_F(DebugDrawingTest, KeepsTheDrawingsOutOfCanvasesThatTurnThemOff) {
+    // clang-format off
+    fixture.runLua(R"(
+        debugging = require('haylen.debug') graphics2d = require('haylen.graphics2d') scene = require('haylen.scene') ui = require('haylen.ui')
+        camera = graphics2d.newCamera()
+        calls = 0
+        debugging.addDrawer('marks', function() calls = calls + 1 end)
+        debugging.setDrawing('marks', true)
+        ui.mount(ui.column{ui.label{text = 'Score'}})
+        scene.push({render = function()
+            graphics2d.beginWorld(camera)
+            graphics2d.drawRect({0, 0, 10, 10}, '#FFFFFFFF')
+            graphics2d.beginWorld(camera, {debugDrawings = false})
+            graphics2d.drawRect({0, 0, 10, 10}, '#FFFFFFFF')
+        end})
+    )");
+    // clang-format on
+    fixture.frames(2);
+    fixture.runLua("calls = 0");
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return calls"), "1");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST_F(DebugDrawingTest, SwitchesDrawingsFromLua) {
     fixture.runLua("debugging = require('haylen.debug') graphics2d = require('haylen.graphics2d')");
     EXPECT_EQ(fixture.lua("return tostring(debugging.drawing('bounds')) .. ' ' .. #debugging.drawings() .. ' ' .. table.concat(debugging.drawingNames(), ',') .. ' ' .. debugging.drawKey()"), "false 0 bounds,physics f4");

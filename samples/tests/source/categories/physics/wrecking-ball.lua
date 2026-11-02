@@ -66,7 +66,7 @@ function WreckingBall:enter()
 end
 
 function WreckingBall:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     local ground = WreckingBall.ground
     local floor = self.world:createBody({type = 'static', x = 0, y = ground + 30})
     floor:addBox(8000, 60)

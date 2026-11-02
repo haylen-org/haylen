@@ -76,7 +76,7 @@ end
 
 -- Builds the room: a floor, walls and a ceiling, so bodies that fall up stay inside, a ramp and a row of pegs, and two bodies to start with.
 function Playground:build()
-    self.world = physics2d.newWorld({gravity = {self.values.gravityX, self.values.gravityY}})
+    self.world = physics2d.newWorld({owner = self, gravity = {self.values.gravityX, self.values.gravityY}})
     self.grab = Grab(self.world)
     self.bodies, self.shots = {}, {}
     local room = self.world:createBody({type = 'static'})

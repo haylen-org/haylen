@@ -52,7 +52,7 @@ function JointStability:build()
     }
     for _, case in ipairs(layout) do
         case.top = JointStability.top
-        case.world = physics2d.newWorld({subSteps = case.subSteps})
+        case.world = physics2d.newWorld({owner = self, subSteps = case.subSteps})
         case.grab = Grab(case.world)
         case.anchor = case.world:createBody({type = 'static', x = case.x, y = case.top})
         case.anchor:addBox(80, 14)

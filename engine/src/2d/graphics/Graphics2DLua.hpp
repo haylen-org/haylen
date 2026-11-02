@@ -39,7 +39,7 @@ class Graphics2DLua final {
     [[nodiscard]] static Renderer::CanvasOptions readCanvasOptions(lua_State* L, int index);
 
   private:
-    static constexpr std::array<std::string_view, 6> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess"};
+    static constexpr std::array<std::string_view, 7> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess", "debugDrawings"};
     static constexpr std::array<std::string_view, 8> kImageBlendFields{"pattern", "progress", "center", "cellSize", "blockSize", "color", "reversed", "angle"};
     static constexpr std::array<std::string_view, 22> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "distortion", "chromaticAberration", "pixelate", "blur", "bloomStrength", "bloomThreshold", "bloomRadius", "colorLut", "colorLutStrength", "colorVision", "correctColorVision", "grain", "dither", "materials"};
     static constexpr std::array<std::string_view, 4> kMetaballFields{"color", "outlineColor", "outlineWidth", "threshold"};

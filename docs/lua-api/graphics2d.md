@@ -151,6 +151,7 @@ scene.push({
 | `ambientLight` | Color | none | Turns on lighting. The canvas is multiplied by a light map that starts at this color and receives every `graphics2d.drawLight`, and occluders cast the shadows of its lights. |
 | `clear` | Color | see the meaning | The background of offscreen canvases. Render target canvases are transparent by default. World canvases with `ambientLight` or `postProcess` take the `clearColor` of `app.json` by default. Screen canvases and other world canvases draw straight onto the screen, so they raise an error when given a clear color. |
 | `postProcess` | table | none | Adjustments of the whole image, applied when the canvas reaches its destination, with the [post-process options](#post-process-options). |
+| `debugDrawings` | boolean | `true` | Shows the [drawings of `haylen.debug`](debug.md#drawings) over the canvas, such as the physics shapes. A canvas of an interface in units of its own, such as a heads-up display, turns them off. |
 
 ### Post-process options
 

@@ -66,7 +66,7 @@ function RopeCutting:enter()
 end
 
 function RopeCutting:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     self.trail, self.cuts, self.state = {}, 0, 'hanging'
 
     local spot = RopeCutting.basket

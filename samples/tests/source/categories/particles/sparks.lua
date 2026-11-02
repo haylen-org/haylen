@@ -24,7 +24,7 @@ Sparks.contact = {85 / 429, 206 / 258}
 function Sparks:init(entry)
     Sparks.super.init(self, entry)
     self.onlyHeld = false
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({owner = self})
     local floor = self.world:createBody({type = 'static', x = 0, y = Sparks.floor + 100})
     floor:addBox(8000, 200)
     self.sparks = particles2d.newEmitter(ParticleTest.look('spark-streak', {rate = 300, lifetime = {0.5, 1.2}, speed = {500, 1000}, direction = -2.4, spread = 0.6, gravity = {0, 1400}, damping = 1, startSize = {16, 24}, endSize = 6, alignToVelocity = true, stretch = 0.035, colors = {'#FFFFFFE0', '#FFFFD060', '#FFFF7010', '#00A02000'}, collision = {type = 'world', bounce = 0.4, friction = 0.2, sizeScale = 0}, shape = 'cone', shapeSize = {10, 0}, blend = 'additive', maxParticles = 2048, layer = 3, seed = 8}))

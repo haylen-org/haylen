@@ -122,9 +122,9 @@ core::Connection DebugPlugin::addDrawer(std::string name, Drawer drawer) {
     return core::Connection(std::weak_ptr<core::Connection::Link>(entry));
 }
 
-// A drawer may add or remove drawers while it draws, so the loop walks a copy and skips the ones removed meanwhile, and the bounds come last, around everything the canvas holds. The copy goes back into a member, which keeps its capacity for the next canvas.
+// A drawer may add or remove drawers while it draws, so the loop walks a copy and skips the ones removed meanwhile, and the bounds come last, around everything the canvas holds. The copy goes back into a member, which keeps its capacity for the next canvas. A canvas that turns its debug drawings off, such as the one of the UI, gets none.
 void DebugPlugin::drawOverlay(core::Engine& engine, graphics2d::Renderer& renderer) {
-    if (drawings.empty()) {
+    if (drawings.empty() || !renderer.getCanvasOptions().debugDrawings) {
         return;
     }
     std::vector<std::shared_ptr<DrawerEntry>> snapshot = std::exchange(drawerSnapshot, {});
