@@ -1,5 +1,5 @@
 # The Linux project of the app. It takes the engine, the package, the native libraries and the values of `app.json` from `haylen/haylen.cmake`, which `haylen.py` writes every time it prepares the project, and everything else here belongs to the developer.
-cmake_minimum_required(VERSION 3.28)
+cmake_minimum_required(VERSION 3.28...4.4)
 project(App LANGUAGES C CXX)
 
 include(haylen/haylen.cmake)
