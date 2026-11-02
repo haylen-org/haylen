@@ -1,4 +1,4 @@
--- A pinball table in its wooden cabinet: flippers on revolute joints with motors and limits, mushroom bumpers that kick the ball and light up when it touches them, rubber kickers, a plunger on a spring, steel rails from a chain and a one-way gate at the top of the launch lane, with the score on a board beside the table.
+-- A pinball table in its wooden cabinet: flippers on revolute joints with motors and limits, mushroom bumpers that kick the ball and light up when it touches them, rubber kickers, a plunger on a spring, steel rails from a chain and a one-way gate at the top of the launch lane, with the score on a board beside the table and a card of its parts on its other side.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -12,12 +12,12 @@ local Scenery = require('categories.physics.scenery')
 local Pinball = haylen.class('Pinball', PhysicsTest)
 
 Pinball.code = [[
-local flipper = world:createJoint('revolute', cabinet, paddle, {ax = -125, ay = 330, enableLimit = true, lower = -0.95, upper = 0, enableMotor = true, maxMotorTorque = 5e6})
+local hinge = {ax = -125, ay = 330, enableLimit = true, lower = -0.95, enableMotor = true}
+local flipper = world:createJoint('revolute', cabinet, paddle, hinge)
 flipper.motorSpeed = input.down('leftFlipper') and -20 or 12
-local plunger = world:createJoint('prismatic', cabinet, rod, {ax = 315, ay = 350, axisY = 1, enableLimit = true, upper = 70, enableSpring = true, hertz = 3.6, motorSpeed = 160})
-plunger.enableMotor = input.down('plunger')  -- The spring launches the ball on release.
+plunger.enableMotor = input.down('plunger')  -- Its spring launches the ball on release.
 gate:addBox(62, 8, {oneWay = {0, -1}})
-world.onContactBegin = function(a, b) if b.data.bumper then a:applyImpulse(awayX * a.mass * 520, awayY * a.mass * 520) end end]]
+ball:applyImpulse(awayX * ball.mass * 520, awayY * ball.mass * 520)  -- A bumper kicks.]]
 
 Pinball.actions = {
     {name = 'leftFlipper', type = 'button', bindings = {'key:a', 'key:left', 'key:leftShift', 'button:leftShoulder', 'axis:leftTrigger+', 'virtual:leftFlipper'}},
@@ -36,6 +36,15 @@ Pinball.kick = 520
 Pinball.litTime = 0.18
 Pinball.pullTime = 0.7
 Pinball.kickers = {{{-250, 150}, {-250, 230}, {-180, 268}}, {{180, 268}, {250, 230}, {250, 150}}}
+-- The card of the parts beside the table, with its top-left corner, and each part with what it does.
+Pinball.card = {x = 460, y = -80, width = 450, height = 420}
+Pinball.parts = {
+    {icon = 'bumper', text = 'Bumper, 100 points'},
+    {icon = 'kicker', text = 'Kicker, 10 points'},
+    {icon = 'flipper', text = 'Flipper on a motor'},
+    {icon = 'plunger', text = 'Plunger on a spring'},
+    {icon = 'gate', text = 'One-way gate'},
+}
 -- Lamps set into the playfield, which blink between their lit and their dim color.
 Pinball.lamps = {
     {-200, -40, '#FFFF7FB0', '#FF6A3F6E'},
@@ -58,16 +67,18 @@ function Pinball:enter()
         play = true,
         pointer = false,
         actions = Pinball.actions,
-        view = {1400, 960},
+        view = {1840, 1040},
         overlay = {
             ui.touchButton{action = 'leftFlipper', text = 'Left', size = 150, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
             ui.touchButton{action = 'rightFlipper', text = 'Right', size = 150, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
             ui.touchButton{action = 'plunger', text = 'Plunger', size = 120, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 204, 0}},
         },
     }
-    self.camera.position = {25, 0}
+    self.camera.position = {25, 10}
     self.best = 0
     self.glow = Scenery.glow()
+    local kx, ky = Pinball.partIcon(2)
+    self.kickerIcon = Look.newShape({{kx - 22, ky - 26}, {kx - 22, ky + 14}, {kx + 22, ky + 26}}, 'teal')
     self:build()
     self.autoPull = Pinball.pullTime
 end
@@ -255,14 +266,45 @@ function Pinball:drawBumpers()
     end
 end
 
--- The score board stands beside the table like the back box of a cabinet, with the score in large digits over the best score and the ball in play.
+-- The score board stands beside the table like the back box of a cabinet, with the score in large digits over the best score and the ball in play, its letters sized in world units so they keep to the board at any zoom.
 function Pinball:drawBoard()
     local unit = Look.pixel
-    graphics2d.drawShape({-780, -250, 320, 250}, {radius = 26, color = '#FFA86B3C', borderWidth = 5 * unit, borderColor = Look.ink, layer = -20})
-    graphics2d.drawShape({-762, -232, 284, 214}, {radius = 16, color = '#FF15172A', layer = -20})
-    self:tag('Score', -620, -196, {size = 22, color = '#FFFFC93C'})
-    self:tag(tostring(self.score), -620, -138, {size = 56})
-    self:tag(string.format('Ball %d    Best %d', self.balls, self.best), -620, -62, {size = 22, color = '#FFC9D3E2'})
+    graphics2d.drawShape({-820, -250, 360, 270}, {radius = 26, color = '#FFA86B3C', borderWidth = 5 * unit, borderColor = Look.ink, layer = -20})
+    graphics2d.drawShape({-802, -232, 324, 234}, {radius = 16, color = '#FF15172A', layer = -20})
+    self:tag('Score', -640, -192, {size = 40 / unit, color = '#FFFFC93C'})
+    self:tag(tostring(self.score), -640, -124, {size = 108 / unit})
+    self:tag(string.format('Ball %d    Best %d', self.balls, self.best), -640, -44, {size = 36 / unit, color = '#FFC9D3E2'})
+end
+
+-- The card of the parts on the other side of the table shows each part as it looks on the playfield with what it does, as the cards on the apron of a real table do.
+function Pinball:drawCard()
+    local unit = Look.pixel
+    local card = Pinball.card
+    graphics2d.drawShape({card.x, card.y, card.width, card.height}, {radius = 26, color = '#FFA86B3C', borderWidth = 5 * unit, borderColor = Look.ink, layer = -20})
+    graphics2d.drawShape({card.x + 18, card.y + 18, card.width - 36, card.height - 36}, {radius = 16, color = '#FF15172A', layer = -20})
+    for index, part in ipairs(Pinball.parts) do
+        local x, y = Pinball.partIcon(index)
+        if part.icon == 'bumper' then
+            graphics2d.drawShape({x - 24, y - 24, 48, 48}, {kind = 'ellipse', color = '#FFF2F3FF', borderWidth = 3 * unit, borderColor = Look.ink, layer = -19})
+            Look.disc(x, y, 17, 'red', -19)
+        elseif part.icon == 'kicker' then
+            Look.drawShape(self.kickerIcon, -19)
+        elseif part.icon == 'flipper' then
+            Look.block(x, y, 64, 16, 'yellow', -19, -0.35)
+        elseif part.icon == 'plunger' then
+            Look.spring(x, y - 8, x, y + 26, 22, 4, '#FFC9D3E2', -19)
+            Look.block(x, y - 16, 40, 16, 'steel', -19)
+        else
+            Look.block(x, y, 56, 10, 'yellow', -19, -0.61)
+        end
+        self:tag(part.text, x + 46, y, {size = 32 / unit, anchor = {0, 0.5}})
+    end
+end
+
+-- Returns the middle of the icon of a part of the card.
+function Pinball.partIcon(index)
+    local card = Pinball.card
+    return card.x + 68, card.y + 18 + (index - 0.5) * (card.height - 36) / #Pinball.parts
 end
 
 function Pinball:draw(area)
@@ -278,7 +320,7 @@ function Pinball:draw(area)
     Look.draw(plunger, {layer = 2})
     Look.draw(self.ball, {layer = 3})
     self:drawBoard()
-    self:label('One-way gate', 470, -168, {size = 17})
+    self:drawCard()
 end
 
 return Pinball

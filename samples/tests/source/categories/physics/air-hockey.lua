@@ -13,11 +13,11 @@ local AirHockey = haylen.class('AirHockey', PhysicsTest)
 
 AirHockey.code = [[
 local paddle = world:createBody({type = 'kinematic', x = -500, y = 0})
-paddle:moveTo(targetX, targetY)  -- Once per fixed step, so the paddle hits the puck instead of teleporting.
+paddle:moveTo(targetX, targetY)  -- Every step, so it hits the puck.
 local puck = world:createBody({linearDamping = 0.15, bullet = true})
-rink:addChain(outline, true, {restitution = 0.9, friction = 0})  -- One loop with the goals cut into its ends.
+rink:addChain(outline, true, {restitution = 0.9})  -- The goals are cut into its ends.
 net:addBox(40, 220, {sensor = true})
-world.onSensorBegin = function(sensor, visitor) if visitor == puck then score = score + 1 end end]]
+world.onSensorBegin = function(net, body) if body == puck then score = score + 1 end end]]
 
 AirHockey.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
@@ -246,8 +246,8 @@ end
 -- A score board stands beside each end of the table, in the color of the paddle of its side.
 function AirHockey:drawScore(name, score, x, plate)
     local unit = Look.pixel
-    graphics2d.drawShape({x - 90, -130, 180, 220}, {radius = 22, color = plate, borderWidth = 4 * unit, borderColor = Look.ink, layer = -20})
-    self:tag(name, x, -92, {size = 24})
+    graphics2d.drawShape({x - 105, -130, 210, 220}, {radius = 22, color = plate, borderWidth = 4 * unit, borderColor = Look.ink, layer = -20})
+    self:tag(name, x, -92, {size = 22})
     self:tag(tostring(score), x, 10, {size = 96})
 end
 

@@ -1,4 +1,4 @@
--- A wrapped candy hanging from braided ropes made by `physics2d.newRope`, cut by swiping across them, where a ray cast along each move of the pointer finds the rope segments it crosses, so the candy swings and falls into a wicker basket with a sensor. The right rope snaps by itself when the test opens.
+-- A wrapped candy hanging from braided ropes made by `physics2d.newRope` under the beam of a wooden frame, cut by swiping across them, where a ray cast along each move of the pointer finds the rope segments it crosses, so the candy swings and falls into a wicker basket with a sensor. The right rope snaps by itself when the test opens.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -15,14 +15,21 @@ local Scenery = require('categories.physics.scenery')
 local RopeCutting = haylen.class('RopeCutting', PhysicsTest)
 
 RopeCutting.code = [[
-local rope = physics2d.newRope(world, {from = {-300, -380}, to = {0, -60}, segments = 14, thickness = 6, density = 0.5, pinStart = true, endBody = candy, limitLength = false, category = kRope})
-for _, hit in ipairs(world:raycastAll(lastX, lastY, x, y, {mask = kRope})) do cut(hit.body) end  -- The segments the swipe crossed.
-rope:joints()[index]:destroy()  -- Cuts the rope after that segment.
+local rope = physics2d.newRope(world, {from = {-300, -380}, to = {0, -60}, segments = 18, thickness = 6,
+    angularDamping = 2, pinStart = true, endBody = candy, limitLength = false, category = kRope})
+for _, hit in ipairs(world:raycastAll(lastX, lastY, x, y, {mask = kRope})) do
+    rope:joints()[hit.body.data.index]:destroy()  -- Cuts the rope after each segment the swipe crossed.
+end
 basket:addBox(180, 80, {sensor = true})]]
 
 RopeCutting.ropeCategory = 2
 RopeCutting.candySpot = {0, -60, 30}
-RopeCutting.pins = {{-300, -380}, {40, -400}, {330, -360}}
+RopeCutting.pins = {{-300, -380}, {40, -380}, {330, -380}}
+-- The frame is a beam on two posts, by the middle of the beam, the half width between the posts and the thickness of its timbers.
+RopeCutting.frame = {beam = -405, half = 640, timber = 26}
+RopeCutting.segments = 18
+-- Each stretch of a rope between two joints bends through this many points, so a loose end hangs in a curve.
+RopeCutting.smoothness = 4
 RopeCutting.basket = {-420, 340, 220, 110}
 RopeCutting.bumper = {150, 200, 40}
 RopeCutting.ground = 400
@@ -43,13 +50,15 @@ function RopeCutting:enter()
             ui.button{id = 'reset', text = 'Hang a new candy', onClick = function() self:build() end},
         },
         focus = 'left',
-        view = {1700, 840},
+        view = {1700, 880},
     }
     self.camera.position = {0, -10}
     self.delivered = 0
     self.candyPicture = assets.texture('physics/candy.png', {filter = 'linear'})
     self.cheers = Burst('celebration/confetti-pop', {count = 3, scale = 0.8, layer = 30})
-    self.piece = {}
+    self.piece, self.curve = {}, {}
+    self.wicker, self.wickerFlat, self.rim = {}, {}, {0, 0, 0, 0}
+    self.wickerStroke = {width = 1, color = Look.ink, join = 'round', closed = true, layer = 4}
     self.trailStroke = {width = 1, color = '#FFFFFFFF', cap = 'round', layer = 40}
     self.trailLine = {0, 0, 0, 0}
     self:build()
@@ -79,7 +88,7 @@ function RopeCutting:build()
     -- Every segment knows its rope and its place in it, which the swipe reads from the bodies its ray hits.
     self.ropes = {}
     for index, pin in ipairs(RopeCutting.pins) do
-        local rope = physics2d.newRope(self.world, {from = pin, to = {self.candy.x, self.candy.y}, segments = 14, thickness = 6, density = 0.5, pinStart = true, endBody = self.candy, limitLength = false, category = RopeCutting.ropeCategory})
+        local rope = physics2d.newRope(self.world, {from = pin, to = {self.candy.x, self.candy.y}, segments = RopeCutting.segments, thickness = 6, density = 0.5, angularDamping = 2, pinStart = true, endBody = self.candy, limitLength = false, category = RopeCutting.ropeCategory})
         local entry = {rope = rope, joints = rope:joints(), cut = false}
         for place, body in ipairs(rope:bodies()) do
             body.data = {rope = entry, index = place}
@@ -192,38 +201,95 @@ function RopeCutting:drawRope(entry)
     self:flushRope(count)
 end
 
+-- Draws a piece of a rope as a smooth Catmull-Rom curve through the ends of its segments, so a loose end that swings hangs in a curve and never folds in a sharp corner.
 function RopeCutting:flushRope(count)
-    local piece = self.piece
-    for index = #piece, count + 1, -1 do
-        piece[index] = nil
+    if count < 4 then
+        return
     end
-    if count >= 4 then
-        Look.rope(piece, RopeCutting.ropeWidth, 1)
+    local piece, curve = self.piece, self.curve
+    local points, steps = count // 2, RopeCutting.smoothness
+    local size = 0
+    for index = 1, points - 1 do
+        local i0, i1, i2, i3 = math.max(index - 1, 1), index, index + 1, math.min(index + 2, points)
+        for step = 0, steps - 1 do
+            local t = step / steps
+            local t2, t3 = t * t, t * t * t
+            for axis = 1, 2 do
+                local p0, p1, p2, p3 = piece[i0 * 2 - 2 + axis], piece[i1 * 2 - 2 + axis], piece[i2 * 2 - 2 + axis], piece[i3 * 2 - 2 + axis]
+                curve[size + axis] = 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (3 * p1 - p0 - 3 * p2 + p3) * t3)
+            end
+            size = size + 2
+        end
+    end
+    curve[size + 1], curve[size + 2] = piece[count - 1], piece[count]
+    size = size + 2
+    for index = #curve, size + 1, -1 do
+        curve[index] = nil
+    end
+    Look.rope(curve, RopeCutting.ropeWidth, 1)
+end
+
+-- The frame is a wooden beam on two posts with braces in its corners, and every rope hangs from a steel eye under the beam.
+function RopeCutting:drawFrame()
+    local frame = RopeCutting.frame
+    local timber, beam = frame.timber, frame.beam
+    local postTop = beam - timber / 2
+    for _, side in ipairs({-1, 1}) do
+        local x = side * frame.half
+        Look.block(x, (postTop + RopeCutting.ground) / 2, timber, RopeCutting.ground - postTop, 'darkWood', 0)
+        Look.block(x - side * 46, beam + 46, 16, 108, 'darkWood', 0, side * math.pi / 4)
+    end
+    Look.block(0, beam, frame.half * 2 + timber * 2, timber, 'darkWood', 1)
+    for _, pin in ipairs(RopeCutting.pins) do
+        Look.line(pin[1], beam + timber / 2 - 2, pin[1], pin[2], 6, '#FF9AA5BE', 1)
     end
 end
 
--- The basket is woven wicker seen from the side, with bands of reeds between upright stakes under a rolled rim, in front of what falls into it.
+-- The basket is wicker seen from the side, wider at its mouth: rows of reeds woven over and under the stakes, each row shifted by half a stake, under a braided rim, in front of what falls into it.
 function RopeCutting:drawBasket()
     local unit = Look.pixel
     local spot = RopeCutting.basket
     local x, y, width, height = spot[1], spot[2], spot[3], spot[4]
-    local left, top = x - width / 2 - 8, y - height / 2
-    graphics2d.drawShape({left, top, width + 16, height + 8}, {radius = {4, 4, 26, 26}, color = '#FFB8743A', borderWidth = Look.outlinePixels * unit, borderColor = Look.ink, layer = 4})
-    for band = 0, 4 do
-        local by = top + 12 + band * (height - 12) / 5
-        graphics2d.drawShape({left + 6 + (band % 2) * 6, by, width + 4 - (band % 2) * 12, (height - 12) / 5 - 4}, {radius = 7, color = band % 2 == 0 and '#FFE9A65B' or '#FFD18A45', layer = 4})
+    local top, bottom = y - height / 2, y + height / 2 + 8
+    local mouth, base = width / 2 + 12, width / 2 - 8
+    local outline = self.wicker
+    outline[1], outline[2], outline[3], outline[4] = {x - mouth, top}, {x + mouth, top}, {x + base, bottom - 12}, {x + base - 14, bottom}
+    outline[5], outline[6] = {x - base + 14, bottom}, {x - base, bottom - 12}
+    graphics2d.drawPolygon(outline, '#FF7A4724', {layer = 4})
+
+    local rows, stakes = 5, 7
+    local rowHeight = (bottom - top - 16) / rows
+    for row = 0, rows - 1 do
+        local rowTop = top + 12 + row * rowHeight
+        local share = (rowTop + rowHeight / 2 - top) / (bottom - top)
+        local half = mouth + (base - mouth) * share - 5
+        local length = half * 2 / stakes
+        local shift = row % 2 == 0 and 0 or length / 2
+        for stake = -1, stakes do
+            local left = math.max(x - half, x - half + stake * length + shift)
+            local right = math.min(x + half, x - half + (stake + 1) * length + shift - 3)
+            if right - left > 6 then
+                graphics2d.drawShape({left, rowTop, right - left, rowHeight - 3}, {radius = (rowHeight - 3) / 2, color = row % 2 == 0 and '#FFE0A35A' or '#FFD39450', layer = 4})
+                graphics2d.drawShape({left + 3, rowTop + 2, right - left - 6, (rowHeight - 3) * 0.35}, {radius = rowHeight * 0.2, color = '#B3F7D49A', layer = 4})
+            end
+        end
     end
-    for stake = 1, 7 do
-        local sx = left + stake * (width + 16) / 8
-        graphics2d.drawLine(sx, top + 10, sx, top + height, 3 * unit, '#998C5A32', {layer = 4})
+
+    local flat = self.wickerFlat
+    for index, point in ipairs(outline) do
+        flat[index * 2 - 1], flat[index * 2] = point[1], point[2]
     end
-    Look.block(x, top, width + 28, 16, Look.tint('wood', '#FFD18A45', '#FFA86B3C', '#FFF2C88E'), 4)
+    self.wickerStroke.width = Look.outlinePixels * unit
+    graphics2d.drawStroke(flat, self.wickerStroke)
+    local rim = self.rim
+    rim[1], rim[2], rim[3], rim[4] = x - mouth - 8, top, x + mouth + 8, top
+    Look.rope(rim, 20, 4)
 end
 
 function RopeCutting:draw(area)
-    local bounds = graphics2d.canvasBounds()
     Scenery.sky(self.camera, RopeCutting.ground)
     Scenery.ground(RopeCutting.ground)
+    self:drawFrame()
     self:drawBasket()
     local bumper = RopeCutting.bumper
     Look.block(bumper[1], (bumper[2] + RopeCutting.ground) / 2 + 20, 18, RopeCutting.ground - bumper[2] - 40, 'darkWood', 0)
@@ -232,7 +298,6 @@ function RopeCutting:draw(area)
 
     for index, entry in ipairs(self.ropes) do
         local pin = RopeCutting.pins[index]
-        Look.line(pin[1], bounds.y, pin[1], pin[2], 6, '#FF9AA5BE', 1)
         self:drawRope(entry)
         Look.pin(pin[1], pin[2], 11, 2)
     end

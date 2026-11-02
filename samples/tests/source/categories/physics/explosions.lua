@@ -1,4 +1,5 @@
 -- Radial blasts from `physics2d.explode` with a falloff and optional occlusion, set off by a tap or a click on a tower of crates and on barrels behind a stone wall, with the impulse each body took drawn as an arrow.
+local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local m = require('haylen.math')
@@ -23,6 +24,8 @@ camera:addTrauma(0.6)  -- Shakes the view.]]
 Explosions.ground = 330
 Explosions.radius = 280
 Explosions.arrowLife = 2.4
+-- The shock wave runs out to the radius of the blast in this many seconds, and the radius stays marked while the arrows show.
+Explosions.waveTime = 0.35
 
 function Explosions:enter()
     self:frame{
@@ -44,7 +47,7 @@ function Explosions:enter()
     self.arrows, self.arrowTime = {}, 0
     self.blast = Burst('explosions/explosion-large', {count = 3, scale = 0.7, layer = 30})
     self:build()
-    timer.after(1.6, function() self:explode(-110, 300) end, {owner = self})
+    timer.after(2.4, function() self:explode(-110, 300) end, {owner = self})
 end
 
 function Explosions:build()
@@ -78,6 +81,7 @@ function Explosions:explode(x, y)
     self.blast:fire(x, y, 0.6 + self.impulse / 2000)
     self.camera:addTrauma(0.35 + self.impulse / 4000)
     self.arrows, self.arrowTime = {}, 0
+    self.center = {x = x, y = y}
     for _, hit in ipairs(hits) do
         self.arrows[#self.arrows + 1] = {x = hit.x, y = hit.y, dx = hit.impulseX / hit.body.mass, dy = hit.impulseY / hit.body.mass}
     end
@@ -107,24 +111,43 @@ function Explosions:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- Each arrow starts where the blast reached a body and points the way it pushed, as long as the speed it gave, for a while after the blast.
+-- The blast is a shock wave that runs out to its radius, and the radius stays marked with a dashed ring while the arrows show. Each arrow starts where the blast reached a body and points the way it pushed, as long as the speed it gave.
 function Explosions:drawArrows()
     if self.arrowTime <= 0 then
         return
     end
     local unit = Look.pixel
+    local age = Explosions.arrowLife - self.arrowTime
+    local fade = math.min(1, self.arrowTime / 0.6)
+    local center, radius = self.center, Explosions.radius
+    if age < Explosions.waveTime then
+        local reach = age / Explosions.waveTime
+        graphics2d.drawRing(center.x, center.y, radius * reach, 18 * (1 - reach) + 4, {1, 0.93, 0.7, 0.8 * (1 - reach)}, {layer = 29, blend = 'additive'})
+    end
+    graphics2d.drawStroke(self:ring(center.x, center.y, radius), {width = 3 * unit, color = {1, 1, 1, 0.75 * fade}, closed = true, dashes = {12 * unit, 10 * unit}, layer = 39})
     local color = '#FFFFD93D'
     for _, arrow in ipairs(self.arrows) do
         local length = math.sqrt(arrow.dx * arrow.dx + arrow.dy * arrow.dy)
         if length > 60 then
-            local scale = math.min(140, length * 0.12) / length
+            local scale = math.min(90, length * 0.08) / length
             local tx, ty = arrow.x + arrow.dx * scale, arrow.y + arrow.dy * scale
             local ux, uy = arrow.dx / length, arrow.dy / length
-            Look.line(arrow.x, arrow.y, tx, ty, 4 * unit, color, 40)
-            Look.line(tx, ty, tx - (ux * 12 - uy * 8) * unit, ty - (uy * 12 + ux * 8) * unit, 4 * unit, color, 40)
-            Look.line(tx, ty, tx - (ux * 12 + uy * 8) * unit, ty - (uy * 12 - ux * 8) * unit, 4 * unit, color, 40)
+            Look.line(arrow.x, arrow.y, tx, ty, 3 * unit, color, 40)
+            Look.line(tx, ty, tx - (ux * 10 - uy * 7) * unit, ty - (uy * 10 + ux * 7) * unit, 3 * unit, color, 40)
+            Look.line(tx, ty, tx - (ux * 10 + uy * 7) * unit, ty - (uy * 10 - ux * 7) * unit, 3 * unit, color, 40)
         end
     end
+end
+
+-- Returns the points of a circle as a closed stroke, reusing one list.
+function Explosions:ring(x, y, radius)
+    local points = self.ringPoints or {}
+    for index = 0, 63 do
+        local angle = index / 64 * math.pi * 2
+        points[index * 2 + 1], points[index * 2 + 2] = x + math.cos(angle) * radius, y + math.sin(angle) * radius
+    end
+    self.ringPoints = points
+    return points
 end
 
 function Explosions:draw(area)

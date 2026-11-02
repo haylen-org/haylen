@@ -22,6 +22,8 @@ BouncesHits.radius = 24
 BouncesHits.heights = {20, 45, 90, 180, 330}
 BouncesHits.flash = 0.25
 BouncesHits.colors = {'teal', 'green', 'yellow', 'orange', 'red'}
+-- A meter is this many units in both worlds, so the heights read in centimeters.
+BouncesHits.pixelsPerMeter = 300
 
 function BouncesHits:enter()
     self:frame{
@@ -37,6 +39,8 @@ function BouncesHits:enter()
         focus = 'drop',
     }
     self.restitution = 0.9
+    self.mark = {0, 0, 0, 0}
+    self.markStroke = {width = 1, color = '#FFFFFFFF', cap = 'round', dashes = {1, 1}, layer = 0}
     self:build()
 end
 
@@ -44,7 +48,7 @@ function BouncesHits:build()
     self.halves = {}
     for index, low in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400
-        local options = {pixelsPerMeter = 300}
+        local options = {pixelsPerMeter = BouncesHits.pixelsPerMeter}
         if low then
             options.restitutionThreshold, options.hitThreshold = 4, 8
         end
@@ -119,6 +123,21 @@ function BouncesHits:fixedUpdate(step)
     end
 end
 
+-- The height a ball starts from is a white dashed line with the bold outline of the art, and its value in centimeters above it.
+function BouncesHits:drawHeight(x, slot)
+    local unit = Look.pixel
+    local start = BouncesHits.ground - BouncesHits.radius - BouncesHits.heights[slot]
+    local mark, stroke = self.mark, self.markStroke
+    mark[1], mark[2], mark[3], mark[4] = x - 40, start, x + 40, start
+    stroke.dashes[1], stroke.dashes[2] = 12 * unit, 9 * unit
+    stroke.width, stroke.color = 8 * unit, Look.ink
+    graphics2d.drawStroke(mark, stroke)
+    stroke.width, stroke.color = 4 * unit, '#FFFFFFFF'
+    graphics2d.drawStroke(mark, stroke)
+    local centimeters = math.floor(BouncesHits.heights[slot] / BouncesHits.pixelsPerMeter * 100 + 0.5)
+    self:tag(string.format('%d cm', centimeters), x, start - BouncesHits.radius - 16, {size = 18})
+end
+
 function BouncesHits:draw(area)
     Scenery.sky(self.camera, BouncesHits.ground)
     Scenery.ground(BouncesHits.ground)
@@ -127,9 +146,7 @@ function BouncesHits:draw(area)
     for _, half in ipairs(self.halves) do
         self:label(string.format('%d hits reported', half.hits), half.origin, -300, {size = 18})
         for slot, ball in ipairs(half.balls) do
-            local start = BouncesHits.ground - BouncesHits.radius - BouncesHits.heights[slot]
-            Look.dashed(ball.x - 34, start, ball.x + 34, start, '#B32F3352', 0)
-            self:tag(string.format('%d', BouncesHits.heights[slot]), ball.x, start - BouncesHits.radius - 14, {size = 16})
+            self:drawHeight(ball.x, slot)
             Look.draw(ball, {layer = 1})
             local flash = ball.data.flash / BouncesHits.flash
             if flash > 0 then

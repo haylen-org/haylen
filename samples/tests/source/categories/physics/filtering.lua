@@ -1,4 +1,4 @@
--- Collision filtering: every color is a category, each floor only stops its own color, and groups make pairs that always or never collide.
+-- Collision filtering: every color is a category, each floor is an open steel girder of its color that stops only the balls of that color, and groups make pairs that always or never collide.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local m = require('haylen.math')
@@ -14,7 +14,7 @@ local Scenery = require('categories.physics.scenery')
 local Filtering = haylen.class('Filtering', PhysicsTest)
 
 Filtering.code = [[
-floor:addBox(820, 20, {category = 2, mask = 2})  -- The red floor stops only red bodies.
+floor:addBox(820, 44, {category = 2, mask = 2})  -- The red floor stops only red bodies.
 ball:addCircle(18, {category = 2, mask = 1 | 2})  -- A red ball meets the ground and its floor.
 shape.mask = 1 | 2 | 4 | 8  -- Now it hits the other balls too.
 box:addBox(70, 70, {category = 16, mask = 1 | 16, group = -1})  -- A shared negative group never collides.
@@ -30,11 +30,13 @@ Filtering.maxBalls = 45
 Filtering.ground = 360
 Filtering.pairs = {{x = 470, group = -1, caption = 'Group -1\nnever collide'}, {x = 680, group = 1, caption = 'Group 1\nalways collide'}}
 Filtering.ghost = Look.tint('purple', '#889A6BE0', '#996E44B0', '#AAD6BEFF')
+-- The floors are girders this long and this tall, with a brace every this many units between their chords.
+Filtering.floorLength, Filtering.floorHeight, Filtering.braceSpacing = 820, 44, 41
 
 function Filtering:enter()
     self:frame{
         code = Filtering.code,
-        hint = 'Each floor masks every color but its own. The switches let a color hit the other balls too.',
+        hint = 'Each floor stops only the balls of its color and lets the others fall through. The switches let a color hit the other balls too.',
         controls = {
             ui.toggle{id = 'red', text = 'Red hits other balls', onChange = function(event) self:setSocial(1, event.checked) end},
             ui.toggle{id = 'green', text = 'Green hits other balls', onChange = function(event) self:setSocial(2, event.checked) end},
@@ -64,9 +66,8 @@ function Filtering:build()
     ground:addBox(8000, 60, {category = Filtering.groundCategory})
     for index, color in ipairs(Filtering.colors) do
         local floor = self.world:createBody({type = 'static', x = -200 + index * 30, y = color.floor, rotation = index % 2 == 0 and -0.12 or 0.12})
-        floor:addBox(820, 20, {category = color.category, mask = color.category})
-        Look.dress(floor, color.name)
-        self.statics[#self.statics + 1] = floor
+        floor:addBox(Filtering.floorLength, Filtering.floorHeight, {category = color.category, mask = color.category})
+        self.statics[#self.statics + 1] = {body = floor, material = Look.material(color.name)}
     end
 
     -- The pair of group -1 would collide by its masks but never does, and the pair of group 1 would not but always does. The top box of each pair starts half a box to the side, so the first passes through the lower box in plain view.
@@ -139,10 +140,45 @@ function Filtering:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
+-- Returns the point of a floor at `u` along it and `v` across it in the world.
+function Filtering.point(body, u, v)
+    local cos, sin = math.cos(body.rotation), math.sin(body.rotation)
+    return body.x + u * cos - v * sin, body.y + u * sin + v * cos
+end
+
+-- A floor is an open girder in the paint of its color: two chords with braces between them and a steel plate at each end, so the balls of other colors read as falling through its gaps.
+function Filtering:drawFloor(floor)
+    local body, material = floor.body, floor.material
+    local unit = Look.pixel
+    local point = Filtering.point
+    local half, chord = Filtering.floorLength / 2, Filtering.floorHeight / 2 - 5.8 * unit
+    local braces = math.floor(Filtering.floorLength / Filtering.braceSpacing)
+    for index = 0, braces - 1 do
+        local u1 = -half + index * Filtering.floorLength / braces
+        local u2 = u1 + Filtering.floorLength / braces
+        local v = index % 2 == 0 and chord or -chord
+        local x1, y1 = point(body, u1, v)
+        local x2, y2 = point(body, u2, -v)
+        Look.line(x1, y1, x2, y2, 4 * unit, material.shade, 0)
+    end
+    for _, v in ipairs({-chord, chord}) do
+        local x1, y1 = point(body, -half, v)
+        local x2, y2 = point(body, half, v)
+        Look.line(x1, y1, x2, y2, 6 * unit, material.fill, 0)
+    end
+    for _, u in ipairs({-half, half}) do
+        local x, y = point(body, u, 0)
+        Look.block(x, y, 22, Filtering.floorHeight + 12, 'steel', 0, body.rotation)
+    end
+end
+
 function Filtering:draw(area)
     Scenery.sky(self.camera, Filtering.ground)
     Scenery.ground(Filtering.ground)
-    Look.drawAll(self.statics)
+    for _, floor in ipairs(self.statics) do
+        self:drawFloor(floor)
+    end
+
     Look.drawAll(self.balls, {layer = 1})
     Look.drawAll(self.groups, {layer = 2})
     for _, pair in ipairs(Filtering.pairs) do

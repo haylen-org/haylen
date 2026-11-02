@@ -1,4 +1,4 @@
--- Every cast of a physics world aimed from a laser at the pointer: closest and all hits, filters, piercing, bounces, fans, shape casts, batched rays on the job system and picking with line of sight. Until the pointer comes over the room, the laser sweeps across it by itself.
+-- Every cast of a physics world aimed from a laser turret at the pointer: closest and all hits, filters, piercing, bounces, fans, shape casts, batched rays on the job system and picking with line of sight. Until the pointer comes over the room, the turret sweeps across it by itself.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -18,12 +18,12 @@ local pierced = world:raycastAll(x1, y1, x2, y2, {limit = 3})
 local bounces, endX, endY = world:bounceRay(x, y, dx, dy, 4000, 8)
 local fan = world:rayFan(x, y, angle, math.rad(70), 31, 900)
 local swept = world:castCircle(x, y, 24, dx * 1500, dy * 1500)
-world:raycastBatch(rays)
-local visible = world:lineOfSight(x1, y1, x2, y2, {mask = kWalls})]]
+world:raycastBatch(rays)]]
 
 Raycasts.walls, Raycasts.glass, Raycasts.crates = 2, 4, 8
-Raycasts.names = {[2] = 'a wall', [4] = 'a glass pane', [8] = 'a crate'}
 Raycasts.origin = {-660, 0}
+-- The beams leave the turret at the tip of its barrel, this far from the middle of the turret.
+Raycasts.muzzle = 52
 Raycasts.length = 1500
 Raycasts.modes = {
     {id = 'closest', text = 'Closest hit'},
@@ -62,27 +62,28 @@ end
 function Raycasts:build()
     self.world = physics2d.newWorld({gravity = {0, 0}})
     self.bodies = {}
-    local function add(kind, x, y, build, category, material)
+    local function add(kind, x, y, build, category, material, name)
         local body = self.world:createBody({type = kind, x = x, y = y})
         build(body, {category = category})
         Look.dress(body, material)
+        body.data.name = name
         self.bodies[#self.bodies + 1] = body
     end
     local walls, glass, crates = Raycasts.walls, Raycasts.glass, Raycasts.crates
-    add('static', 0, -330, function(body, o) body:addBox(1560, 30, o) end, walls, 'slate')
-    add('static', 0, 330, function(body, o) body:addBox(1560, 30, o) end, walls, 'slate')
-    add('static', 765, 0, function(body, o) body:addBox(30, 690, o) end, walls, 'slate')
-    add('static', -765, 0, function(body, o) body:addBox(30, 690, o) end, walls, 'slate')
-    add('static', 200, -165, function(body, o) body:addBox(40, 300, o) end, walls, 'stone')
-    add('static', -200, 200, function(body, o) body:addPolygon({{-80, 60}, {0, -80}, {80, 60}}, o) end, walls, 'stone')
-    add('static', 450, 150, function(body, o) body:addCircle(70, o) end, walls, 'stone')
+    add('static', 0, -330, function(body, o) body:addBox(1560, 30, o) end, walls, 'slate', 'a wall')
+    add('static', 0, 330, function(body, o) body:addBox(1560, 30, o) end, walls, 'slate', 'a wall')
+    add('static', 765, 0, function(body, o) body:addBox(30, 690, o) end, walls, 'slate', 'a wall')
+    add('static', -765, 0, function(body, o) body:addBox(30, 690, o) end, walls, 'slate', 'a wall')
+    add('static', 200, -165, function(body, o) body:addBox(40, 300, o) end, walls, 'stone', 'the stone pillar')
+    add('static', -200, 200, function(body, o) body:addPolygon({{-80, 60}, {0, -80}, {80, 60}}, o) end, walls, 'stone', 'the stone triangle')
+    add('static', 450, 150, function(body, o) body:addCircle(70, o) end, walls, 'stone', 'the stone ball')
     for index = 0, 2 do
-        add('static', -350 + index * 130, -40, function(body, o) body:addBox(16, 200, o) end, glass, 'glass')
+        add('static', -350 + index * 130, -40, function(body, o) body:addBox(16, 200, o) end, glass, 'glass', 'a glass pane')
     end
     for index = 0, 3 do
-        add('dynamic', 350 + index * 80, -60 + index * 50, function(body, o) body:addBox(50, 50, o) end, crates, 'woodCrate')
+        add('dynamic', 350 + index * 80, -60 + index * 50, function(body, o) body:addBox(50, 50, o) end, crates, 'woodCrate', 'a crate')
     end
-    add('dynamic', -500, -230, function(body, o) body:addCapsule(-40, 0, 40, 0, 22, o) end, crates, 'wood')
+    add('dynamic', -500, -230, function(body, o) body:addCapsule(-40, 0, 40, 0, 22, o) end, crates, 'wood', 'the log')
 end
 
 function Raycasts:update(dt)
@@ -131,14 +132,14 @@ function Raycasts:ends()
     return origin[1], origin[2], origin[1] + dx * Raycasts.length, origin[2] + dy * Raycasts.length
 end
 
-function Raycasts.nameOf(hit)
-    return Raycasts.names[hit.shape.category] or 'a body'
+function Raycasts.nameOf(shape)
+    return shape.body.data.name
 end
 
 function casts.closest(test)
     local x1, y1, x2, y2 = test:ends()
     local hit = test.world:raycast(x1, y1, x2, y2)
-    return {rays = {{x1, y1, x2, y2, hit}}, summary = hit and string.format('The ray hits %s %d units away.', Raycasts.nameOf(hit), math.floor(hit.distance + 0.5)) or 'The ray hits nothing.'}
+    return {rays = {{x1, y1, x2, y2, hit}}, normal = hit, summary = hit and string.format('The ray hits %s %d units away.', Raycasts.nameOf(hit.shape), math.floor(hit.distance + 0.5)) or 'The ray hits nothing.'}
 end
 
 function casts.all(test)
@@ -235,7 +236,7 @@ function casts.pick(test)
     local visible = test.world:lineOfSight(origin[1], origin[2], test.target[1], test.target[2], {mask = Raycasts.walls})
     local names = {}
     for _, shape in ipairs(picked) do
-        names[#names + 1] = Raycasts.names[shape.category] or 'a body'
+        names[#names + 1] = Raycasts.nameOf(shape)
     end
     return {picked = picked, sight = visible, summary = string.format('Under the pointer: %s. The laser %s.', #names > 0 and table.concat(names, ', ') or 'nothing', visible and 'sees the pointer' or 'has a wall between it and the pointer')}
 end
@@ -244,19 +245,42 @@ function Raycasts:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- A beam is a glowing line with the bold outline, and a hit is a ring with the normal of the surface as a short line.
+-- Returns where a line from the middle of the turret leaves its barrel, so a beam shows from the tip of the barrel, and any other start as it is.
+function Raycasts.fromBarrel(x1, y1, x2, y2)
+    local origin = Raycasts.origin
+    local dx, dy = x2 - x1, y2 - y1
+    local length = math.sqrt(dx * dx + dy * dy)
+    if math.abs(x1 - origin[1]) + math.abs(y1 - origin[2]) > 40 or length <= Raycasts.muzzle then
+        return x1, y1
+    end
+    return x1 + dx / length * Raycasts.muzzle, y1 + dy / length * Raycasts.muzzle
+end
+
+-- A beam is a glowing line with the bold outline, and a hit is a yellow pin.
 function Raycasts:drawBeam(x1, y1, x2, y2, hit, thin)
     local unit = Look.pixel
     local width = (thin and 3 or 5) * unit
     if hit then
         x2, y2 = hit.x, hit.y
     end
+    x1, y1 = Raycasts.fromBarrel(x1, y1, x2, y2)
     Look.line(x1, y1, x2, y2, width, Raycasts.laser, 30)
     graphics2d.drawLine(x1, y1, x2, y2, width * 3, '#40FF5A4E', {layer = 29, blend = 'additive'})
     if hit then
-        Look.line(hit.x, hit.y, hit.x + hit.normalX * 40, hit.y + hit.normalY * 40, 3 * unit, '#FFFFFFFF', 31)
         Look.pin(hit.x, hit.y, 7 * unit, 32, Raycasts.hitColor)
     end
+end
+
+-- The normal that the closest hit reports points out of the surface as a white arrow with its name.
+function Raycasts:drawNormal(hit)
+    local unit = Look.pixel
+    local nx, ny = hit.normalX, hit.normalY
+    local tipX, tipY = hit.x + nx * 70, hit.y + ny * 70
+    Look.line(hit.x, hit.y, tipX, tipY, 4 * unit, '#FFFFFFFF', 31)
+    local backX, backY = tipX - nx * 14, tipY - ny * 14
+    Look.line(tipX, tipY, backX - ny * 10, backY + nx * 10, 4 * unit, '#FFFFFFFF', 31)
+    Look.line(tipX, tipY, backX + ny * 10, backY - nx * 10, 4 * unit, '#FFFFFFFF', 31)
+    self:tag('Normal', tipX + nx * 40, tipY + ny * 24, {size = 18, layer = 33})
 end
 
 function Raycasts:drawShape(shape)
@@ -280,18 +304,25 @@ function Raycasts:drawShape(shape)
     end
 end
 
--- The laser is a small turret on the wall with a red lens.
+-- The laser is a turret on an arm from the wall, whose barrel turns to where it aims, with a red lens at its tip.
 function Raycasts:drawLaser()
-    local origin = Raycasts.origin
+    local x, y = Raycasts.origin[1], Raycasts.origin[2]
     local unit = Look.pixel
-    Look.block(origin[1] - 50, origin[2], 70, 40, 'iron', 20)
-    graphics2d.drawCircle(origin[1], origin[2], 14, Raycasts.laser, {layer = 21})
-    graphics2d.drawRing(origin[1], origin[2], 14, 3.5 * unit, Look.ink, {layer = 21})
-    graphics2d.drawCircle(origin[1] - 4, origin[2] - 4, 4, '#FFFFD6D0', {layer = 21})
+    local dx, dy = self:direction()
+    Look.block(-728, y, 44, 76, 'iron', 20)
+    Look.block(-694, y, 56, 18, 'steel', 20)
+    Look.disc(x, y, 26, 'steel', 21)
+    Look.block(x + dx * 28, y + dy * 28, 48, 18, 'iron', 22, math.atan(dy, dx))
+    local lensX, lensY = x + dx * Raycasts.muzzle, y + dy * Raycasts.muzzle
+    graphics2d.drawCircle(lensX, lensY, 22, '#40FF5A4E', {layer = 23, blend = 'additive'})
+    graphics2d.drawCircle(lensX, lensY, 8, Raycasts.laser, {layer = 23})
+    graphics2d.drawRing(lensX, lensY, 8, 3 * unit, Look.ink, {layer = 23})
+    graphics2d.drawCircle(lensX - 2.5, lensY - 2.5, 2.5, '#FFFFD6D0', {layer = 23})
 end
 
+-- The sky lies low behind the room, so its clouds pass behind the room and never peek over its walls.
 function Raycasts:draw(area)
-    Scenery.sky(self.camera, 330)
+    Scenery.sky(self.camera, 420)
     graphics2d.drawRect({-750, -315, 1500, 630}, '#FF3A3F66', {layer = -20})
     local unit = Look.pixel
     for x = -700, 700, 100 do
@@ -309,6 +340,9 @@ function Raycasts:draw(area)
         for _, ray in ipairs(drawn.rays or {}) do
             self:drawBeam(ray[1], ray[2], ray[3], ray[4], ray[5], drawn.thin)
         end
+        if drawn.normal then
+            self:drawNormal(drawn.normal)
+        end
     end
     for index, hit in ipairs(drawn.points or {}) do
         Look.pin(hit.x, hit.y, 9 * Look.pixel, 32, Raycasts.hitColor)
@@ -325,7 +359,8 @@ function Raycasts:draw(area)
         graphics2d.drawShape({bounds.x - 6, bounds.y - 6, bounds.width + 12, bounds.height + 12}, {radius = 8, color = '#00000000', borderWidth = 4 * unit, borderColor = Raycasts.hitColor, layer = 31})
     end
     if drawn.sight ~= nil then
-        Look.line(Raycasts.origin[1], Raycasts.origin[2], self.target[1], self.target[2], 4 * unit, drawn.sight and '#FF4CD45A' or Raycasts.laser, 30)
+        local x1, y1 = Raycasts.fromBarrel(Raycasts.origin[1], Raycasts.origin[2], self.target[1], self.target[2])
+        Look.line(x1, y1, self.target[1], self.target[2], 4 * unit, drawn.sight and '#FF4CD45A' or Raycasts.laser, 30)
     end
 end
 

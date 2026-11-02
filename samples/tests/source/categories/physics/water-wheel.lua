@@ -1,4 +1,4 @@
--- Water from `physics2d.newFluid` held in a stone reservoir behind a sluice gate, pouring down a wooden chute onto a paddle wheel on a revolute joint that it turns, and pumped from the basin up a pipe back into the reservoir. The gate opens by itself when the test opens.
+-- Water from `physics2d.newFluid` held in a stone reservoir behind a sluice gate, pouring down a wooden chute onto the far side of a paddle wheel on a revolute joint that it turns, and pumped from the basin up a pipe back into the reservoir by a pump with a flywheel. The gate opens by itself when the test opens.
 local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -18,22 +18,28 @@ local WaterWheel = haylen.class('WaterWheel', PhysicsTest)
 WaterWheel.code = [[
 local water = physics2d.newFluid(world, {radius = 4, smoothingRadius = 16, maxParticles = 2600, viscosity = 0.2})
 water:fill({-705, -250, 370, 125})  -- The reservoir behind the dam.
-world:createJoint('revolute', axle, wheel, {ax = 110, ay = 120, enableMotor = true, motorSpeed = 0, maxMotorTorque = 3000})  -- Friction in the bearing.
+world:createJoint('revolute', axle, wheel, {ax = 20, ay = 120, enableMotor = true, maxMotorTorque = 2000})
 gate:moveTo(-320, gate.y - 400 * step, 0)  -- Slides the dam open.
-water:positions(buffer)  water:remove(index)  water:spawn(x, y)  -- The pump.]]
+water:remove(index)  -- The pump takes a drop out of the basin.
+water:spawn(x, y, 0, 220)  -- And pours it from the spout.]]
 
 WaterWheel.particleRadius = 4
 WaterWheel.maxParticles = 2600
 WaterWheel.ground = 390
-WaterWheel.wheelSpot = {110, 120}
-WaterWheel.gatePath = {x = -320, closed = -200, open = -310, speed = 400}
+-- The wheel stands left of where the chute pours, so the water falls on its far side and turns it, against the friction of its bearing.
+WaterWheel.wheelSpot = {20, 120}
+WaterWheel.bearing = 2000
+WaterWheel.gatePath = {x = -320, closed = -200, open = -290, speed = 400}
 WaterWheel.pumpLine = 300
 WaterWheel.pumpRate = 5
 WaterWheel.pumpEvery = 2
-WaterWheel.firstOpening = 1
--- The pipe of the pump climbs outside the reservoir, crosses over its wall and pours from a spout over the water.
-WaterWheel.pipe = {-772, 340, -772, -374, -690, -374, -690, -350}
-WaterWheel.spout = {-690, -344}
+WaterWheel.firstOpening = 0.5
+-- The pipe of the pump climbs outside the reservoir, crosses over its wall and pours from a spout a little over the water, in a thin stream.
+WaterWheel.pipe = {-772, 316, -772, -374, -690, -374, -690, -326}
+WaterWheel.spout = {-690, -320}
+WaterWheel.pourSpeed = 220
+-- The pump stands in the basin by the foot of its pipe: an iron cylinder whose piston a flywheel drives through a rod.
+WaterWheel.pump = {x = -730, y = 340, flywheel = {-688, 322, 24}}
 WaterWheel.chute = {x = -140, y = -90, width = 372, rotation = 0.11}
 
 function WaterWheel:enter()
@@ -46,7 +52,7 @@ function WaterWheel:enter()
             ui.button{id = 'reset', text = 'Refill', onClick = function() self:build() end},
         },
         focus = 'dam',
-        view = {1600, 800},
+        view = {1600, 840},
     }
     self.random = m.random(59)
     self.pumping = true
@@ -86,7 +92,7 @@ function WaterWheel:build()
         local angle = paddle * math.pi / 4
         self.wheel:addBox(100, 12, {offsetX = math.cos(angle) * 80, offsetY = math.sin(angle) * 80, rotation = angle, density = 0.5})
     end
-    self.world:createJoint('revolute', axle, self.wheel, {ax = spot[1], ay = spot[2], enableMotor = true, motorSpeed = 0, maxMotorTorque = 3000})
+    self.world:createJoint('revolute', axle, self.wheel, {ax = spot[1], ay = spot[2], enableMotor = true, motorSpeed = 0, maxMotorTorque = WaterWheel.bearing})
 
     self.water = physics2d.newFluid(self.world, {radius = WaterWheel.particleRadius, smoothingRadius = 16, maxParticles = WaterWheel.maxParticles, viscosity = 0.2})
     self.water:fill({-705, -250, 370, 125})
@@ -109,7 +115,7 @@ function WaterWheel:pump()
         end
         if self.positions[index * 2] > WaterWheel.pumpLine then
             self.water:remove(index)
-            self.water:spawn(spout[1] + self.random:range(-14, 14), spout[2] + self.random:range(0, 30), 0, 120)
+            self.water:spawn(spout[1] + self.random:range(-4, 4), spout[2] + self.random:range(0, 10), 0, WaterWheel.pourSpeed)
             moved = moved + 1
         end
     end
@@ -142,7 +148,31 @@ function WaterWheel:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The reservoir and the basin are stone, the chute a wooden trough, the gate slides in two steel guides, and the pump is an iron box with a steel pipe.
+-- The pump is an iron cylinder on a stone slab with a domed cap, whose piston rod a spoked flywheel drives round while it pumps, and a short pipe from its side to the foot of the riser.
+function WaterWheel:drawPump()
+    local unit = Look.pixel
+    local pump = WaterWheel.pump
+    local x, y = pump.x, pump.y
+    local wheelX, wheelY, radius = pump.flywheel[1], pump.flywheel[2], pump.flywheel[3]
+    local turn = self.damOpen and self.pumping and haylen.elapsed() * 5 or 0
+    Look.block(x + 14, WaterWheel.ground - 8, 104, 16, 'stone', 5)
+    Look.line(x - 22, WaterWheel.pipe[2], WaterWheel.pipe[1], WaterWheel.pipe[2], 12, '#FF9AA5BE', 5)
+    graphics2d.drawShape({x - 22, y - 34, 44, 76}, {radius = 12, color = '#FF66708A', borderWidth = Look.outlinePixels * unit, borderColor = Look.ink, layer = 5})
+    graphics2d.drawShape({x - 14, y - 26, 8, 58}, {radius = 4, color = '#FF9AA5BE', layer = 5})
+    graphics2d.drawShape({x - 18, y - 50, 36, 30}, {kind = 'ellipse', startAngle = math.pi, sweep = math.pi, color = '#FFA9BCD3', borderWidth = Look.outlinePixels * unit, borderColor = Look.ink, layer = 5})
+    local crankX, crankY = wheelX + math.cos(turn) * radius * 0.6, wheelY + math.sin(turn) * radius * 0.6
+    Look.line(x, y - 44, crankX, crankY, 5, '#FFA9BCD3', 6)
+    graphics2d.drawRing(wheelX, wheelY, radius - 3, 6 + Look.outlinePixels * unit * 2, Look.ink, {layer = 6})
+    graphics2d.drawRing(wheelX, wheelY, radius - 3, 6, '#FF474F66', {layer = 6})
+    for spoke = 0, 3 do
+        local angle = turn + spoke * math.pi / 2
+        graphics2d.drawLine(wheelX, wheelY, wheelX + math.cos(angle) * (radius - 4), wheelY + math.sin(angle) * (radius - 4), 4 * unit, '#FF474F66', {layer = 6})
+    end
+    Look.pin(wheelX, wheelY, 6, 6)
+    Look.pin(crankX, crankY, 4, 6)
+end
+
+-- The reservoir and the basin are stone, the chute a wooden trough, and the gate slides in two steel guides under a crossbar.
 function WaterWheel:drawWorks()
     local unit = Look.pixel
     Look.block(-515, -105, 420, 30, 'stone', 4)
@@ -154,16 +184,16 @@ function WaterWheel:drawWorks()
     Look.block(chute.x, chute.y, chute.width, 20, 'wood', 0, chute.rotation)
     local path = WaterWheel.gatePath
     for _, side in ipairs({-1, 1}) do
-        Look.line(path.x + side * 18, path.open - 80, path.x + side * 18, -126, 5, '#FFA9BCD3', 0)
+        Look.line(path.x + side * 18, path.open - 84, path.x + side * 18, -126, 5, '#FFA9BCD3', 0)
     end
+    Look.block(path.x, path.open - 86, 56, 12, 'steel', 1)
     Look.draw(self.gate, {layer = 1})
     local stroke = self.pipeStroke
     stroke.width, stroke.color, stroke.layer = 16 + Look.outlinePixels * unit * 2, Look.ink, 4
     graphics2d.drawStroke(WaterWheel.pipe, stroke)
     stroke.width, stroke.color = 16, '#FF9AA5BE'
     graphics2d.drawStroke(WaterWheel.pipe, stroke)
-    Look.block(-735, 340, 70, 46, 'iron', 5)
-    Look.disc(-735, 340, 12, 'steel', 5, haylen.elapsed() * 6)
+    self:drawPump()
 end
 
 -- The water wheel is two wooden rims joined by spokes behind eight paddles on a steel hub.

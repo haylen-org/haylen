@@ -42,6 +42,12 @@ CratePushing.strength = 3000
 CratePushing.onGoal = 22
 -- The four neighbors of a cell, which the outline of the walls checks.
 CratePushing.sides = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}}
+-- Every wall is laid in courses of bricks that run through the whole room, so the courses of every wall line up, and every other course starts half a brick along. The last course of a wall in front of the floor is its front face, in darker bricks.
+CratePushing.brick = {length = 50, course = 25, gap = 4, radius = 3}
+CratePushing.mortar = '#FF7E3A28'
+CratePushing.brickColors = {'#FFE57A55', '#FFDA6E4C', '#FFEC8964', '#FFD2654A'}
+CratePushing.faceColors = {'#FFB4553A', '#FFA54C33', '#FFBD5D41'}
+CratePushing.brickLight = '#73FFC9AE'
 
 function CratePushing:enter()
     self:frame{
@@ -63,6 +69,8 @@ function CratePushing:enter()
     self.damping = 4
     self.facing, self.stride = 0, 0
     self.glow = Scenery.glow()
+    self.brickShape = {radius = CratePushing.brick.radius, color = '#FFFFFFFF', layer = 0}
+    self.brickRect = {0, 0, 0, 0}
     self.star = {}
     for index = 1, 10 do
         self.star[index] = {0, 0}
@@ -191,21 +199,74 @@ function CratePushing:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- Draws the floor as worn stone tiles and the walls as one continuous block of brick, whose outline and front face show only where a wall meets the floor.
+-- Whether the wall cell at `column`, `row` shows its front face, which it does over a cell of floor.
+function CratePushing:hasFace(column, row)
+    return not self:isWall(column, row + 1) and self:inside(column, row + 1)
+end
+
+-- Lays the bricks of one course from `left` to `right`, cut at both ends, each with a tone of its own and a lit top edge.
+function CratePushing:layBricks(course, top, left, right, colors)
+    local brick = CratePushing.brick
+    local shape, rect = self.brickShape, self.brickRect
+    local shift = course % 2 * brick.length / 2
+    local first = math.floor((left - CratePushing.left - shift) / brick.length)
+    local last = math.ceil((right - CratePushing.left - shift) / brick.length) - 1
+    for index = first, last do
+        local start = CratePushing.left + shift + index * brick.length
+        local from, to = math.max(start, left) + brick.gap / 2, math.min(start + brick.length, right) - brick.gap / 2
+        if to - from > brick.gap then
+            rect[1], rect[2], rect[3], rect[4] = from, top + brick.gap / 2, to - from, brick.course - brick.gap
+            shape.color = colors[(index * 7 + course * 3) % #colors + 1]
+            graphics2d.drawShape(rect, shape)
+            rect[1], rect[2], rect[3], rect[4] = from + 3, top + brick.gap / 2 + 2, to - from - 6, 3
+            shape.color = CratePushing.brickLight
+            graphics2d.drawShape(rect, shape)
+        end
+    end
+end
+
+-- Lays the courses of a run of wall cells in one row, from `first` to `last`, where the last course of each cell over the floor is its front face.
+function CratePushing:layRun(row, first, last)
+    local cell, brick = CratePushing.cell, CratePushing.brick
+    local courses = cell // brick.course
+    local top = CratePushing.top + (row - 1) * cell
+    local left = CratePushing.left + (first - 1) * cell
+    graphics2d.drawRect({left, top, (last - first + 1) * cell, cell}, CratePushing.mortar, {layer = 0})
+    for course = 0, courses - 2 do
+        self:layBricks((row - 1) * courses + course, top + course * brick.course, left, left + (last - first + 1) * cell, CratePushing.brickColors)
+    end
+
+    -- The last course splits where the front face starts or ends, so a face never shares a brick with the top of a wall.
+    local course, y = row * courses - 1, top + (courses - 1) * brick.course
+    local start = first
+    for column = first, last do
+        local face = self:hasFace(column, row)
+        if column == last or self:hasFace(column + 1, row) ~= face then
+            local from, to = CratePushing.left + (start - 1) * cell, CratePushing.left + column * cell
+            self:layBricks(course, y, from, to, face and CratePushing.faceColors or CratePushing.brickColors)
+            start = column + 1
+        end
+    end
+end
+
+-- Draws the floor as worn stone tiles with the shadow of the walls on them, and the walls as courses of brick, whose outline shows only where a wall meets the floor.
 function CratePushing:drawRoom()
     local unit = Look.pixel
     local cell = CratePushing.cell
     for row, line in ipairs(CratePushing.level) do
+        local run
+        for column = 1, #line + 1 do
+            local wall = self:isWall(column, row)
+            if wall then
+                run = run or column
+            elseif run then
+                self:layRun(row, run, column - 1)
+                run = nil
+            end
+        end
         for column = 1, #line do
             local x, y = self:cellCenter(column, row)
             if self:isWall(column, row) then
-                graphics2d.drawRect({x - cell / 2, y - cell / 2, cell, cell}, '#FFB4553A', {layer = 0})
-                graphics2d.drawRect({x - cell / 2 + 6, y - cell / 2 + 4, cell - 12, cell / 2 - 8}, '#FFE57A55', {layer = 0})
-                graphics2d.drawRect({x - cell / 2 + 6, y + 4, cell / 2 - 10, cell / 2 - 10}, '#FFE57A55', {layer = 0})
-                graphics2d.drawRect({x + 4, y + 4, cell / 2 - 10, cell / 2 - 10}, '#FFE57A55', {layer = 0})
-                if not self:isWall(column, row + 1) and row < #CratePushing.level then
-                    graphics2d.drawRect({x - cell / 2, y + cell / 2 - 18, cell, 18}, '#FF7E3524', {layer = 1})
-                end
                 for _, side in ipairs(CratePushing.sides) do
                     if not self:isWall(column + side[1], row + side[2]) and self:inside(column + side[1], row + side[2]) then
                         local ex, ey = x + side[1] * cell / 2, y + side[2] * cell / 2
@@ -215,8 +276,11 @@ function CratePushing:drawRoom()
                 end
             else
                 local light = (column + row) % 2 == 0
-                graphics2d.drawRect({x - cell / 2, y - cell / 2, cell, cell}, light and '#FFD9CFC0' or '#FFCBC0AF', {layer = -1})
-                graphics2d.drawRectOutline({x - cell / 2, y - cell / 2, cell, cell}, 2 * unit, '#33806A50', {layer = -1})
+                graphics2d.drawRect({x - cell / 2, y - cell / 2, cell, cell}, light and '#FFD9CFC0' or '#FFCBC0AF', {layer = -2})
+                graphics2d.drawRectOutline({x - cell / 2, y - cell / 2, cell, cell}, 2 * unit, '#33806A50', {layer = -2})
+                if self:isWall(column, row - 1) then
+                    graphics2d.drawRect({x - cell / 2, y - cell / 2, cell, 14}, '#2E1E1B33', {layer = -1})
+                end
             end
         end
     end

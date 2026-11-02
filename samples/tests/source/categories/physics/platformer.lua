@@ -16,12 +16,12 @@ local Scenery = require('categories.physics.scenery')
 local Platformer = haylen.class('Platformer', PhysicsTest)
 
 Platformer.code = [[
-local hero = physics2d.newMover(world, {x = 0, y = 330, radius = 18, height = 76, stepHeight = 22, snapDistance = 16, maxSlope = math.rad(50)})
+local hero = physics2d.newMover(world, {radius = 18, height = 76, stepHeight = 22})
 local velocity = hero:clip(vx, vy + 2400 * step)
 if jumpPressed and (hero.grounded or coyote > 0) then velocity.y = -900 end
 hero:move(velocity.x * step, velocity.y * step)
 velocity = hero:clip(velocity.x, velocity.y)
-camera.limits = {-200, -800, 3300, 1400}  -- The view never leaves the level.]]
+camera.limits = {-200, -800, 3300, 1400}  -- The view stays in the level.]]
 
 Platformer.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
@@ -33,10 +33,14 @@ Platformer.runSpeed, Platformer.acceleration, Platformer.airAcceleration = 420, 
 Platformer.jumpSpeed, Platformer.cutSpeed = 900, 300
 Platformer.coyoteTime, Platformer.bufferTime = 0.1, 0.12
 Platformer.radius, Platformer.height = 18, 76
-Platformer.outline = {{-200, -800}, {-200, 400}, {600, 400}, {900, 250}, {1150, 250}, {1150, 270}, {1190, 270}, {1190, 290}, {1230, 290}, {1230, 310}, {1270, 310}, {1270, 400}, {1900, 400}, {1900, 520}, {2300, 520}, {2300, 400}, {3100, 400}, {3100, -800}}
--- The grassy stretches of the ground, which the stone steps and the walls of the pit break.
-Platformer.lawns = {{{-200, 400}, {600, 400}, {900, 250}, {1150, 250}}, {{1270, 400}, {1900, 400}}, {{1900, 520}, {2300, 520}}, {{2300, 400}, {3100, 400}}}
-Platformer.steps = {{1150, 270}, {1190, 290}, {1230, 310}}
+-- The stone stairs lead down from the plateau to the lawn in steps the hero walks up and down: a top step at the edge of the plateau and then treads of the same run, each a rise lower.
+Platformer.stairs = {x = 1110, top = 250, bottom = 400, run = 40, count = 8}
+-- The ground: the lawn, a slope up to the plateau, the stairs down, a pit with the lift in it, and the lawn to the flag.
+Platformer.outline = {{-200, -800}, {-200, 400}, {600, 400}, {900, 250}, {1150, 250}, {1150, 268.75}, {1190, 268.75}, {1190, 287.5}, {1230, 287.5}, {1230, 306.25}, {1270, 306.25}, {1270, 325}, {1310, 325}, {1310, 343.75}, {1350, 343.75}, {1350, 362.5}, {1390, 362.5}, {1390, 381.25}, {1430, 381.25}, {1430, 400}, {1900, 400}, {1900, 520}, {2300, 520}, {2300, 400}, {3100, 400}, {3100, -800}}
+-- The grassy stretches of the ground, which runs under the stairs along the line of their inner corners, breaks at the walls of the pit and goes on past the wall at the end of the level.
+Platformer.lawns = {{{-200, 400}, {600, 400}, {900, 250}, {1110, 250}, {1430, 400}, {1900, 400}}, {{1900, 520}, {2300, 520}}, {{2300, 400}, {3400, 400}}}
+-- The stone walls of the pit rise a little above the lawn, so they hold the ends of its grass.
+Platformer.pitWalls = {1890, 2310}
 Platformer.ledges = {{300, 260, 200}, {430, 120, 160}, {1500, 240, 220}, {1650, 100, 180}, {2700, 250, 200}}
 Platformer.coins = {{300, 220}, {430, 80}, {760, 280}, {1210, 220}, {1500, 200}, {1650, 60}, {2100, 380}, {2450, 300}, {2700, 210}, {2900, 340}}
 Platformer.flag = {3000, 400}
@@ -73,14 +77,6 @@ function Platformer:enter()
     for index, lawn in ipairs(Platformer.lawns) do
         self.lawns[index] = Scenery.newTerrain(lawn, 1400)
     end
-    local fill = {}
-    for index = 2, #Platformer.outline - 1 do
-        fill[#fill + 1] = Platformer.outline[index]
-    end
-    fill[#fill + 1] = {3100, 1400}
-    fill[#fill + 1] = {-200, 1400}
-    self.fill = fill
-    self.dirt = {layer = -10}
     self:build()
 end
 
@@ -219,16 +215,20 @@ function Platformer:fixedUpdate(step)
     end
 end
 
+-- Each stone step sits on the slope of the lawn under the stairs, and reaches down past the line of the inner corners so the slope shows only under the stairs.
 function Platformer:drawLevel()
-    graphics2d.drawPolygon(self.fill, Scenery.dirt, self.dirt)
     for _, lawn in ipairs(self.lawns) do
         Scenery.drawTerrain(lawn, -10)
     end
-    for _, step in ipairs(Platformer.steps) do
-        Look.block(step[1] + 20, (step[2] + 400) / 2, 40, 400 - step[2], 'stone', -8)
+    local stairs = Platformer.stairs
+    local rise = (stairs.bottom - stairs.top) / stairs.count
+    for step = 0, stairs.count - 1 do
+        local top = stairs.top + step * rise
+        local height = rise * 2 + 24
+        Look.block(stairs.x + (step + 0.5) * stairs.run, top + height / 2, stairs.run, height, 'stone', -8)
     end
-    for _, x in ipairs({1890, 2310}) do
-        Look.block(x, 460, 20, 120, 'stone', -8)
+    for _, x in ipairs(Platformer.pitWalls) do
+        Look.block(x, 450, 20, 160, 'stone', -8)
     end
     for _, x in ipairs({-230, 3130}) do
         Look.block(x, -200, 60, 1200, 'stone', -8)

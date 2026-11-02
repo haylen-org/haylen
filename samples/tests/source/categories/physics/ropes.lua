@@ -23,7 +23,7 @@ rope:joints()[7]:destroy()  -- Cuts the rope in the middle.]]
 
 Ropes.ground = 330
 Ropes.beam = -330
-Ropes.captions = {{-560, Ropes.beam + 46}, {-380, Ropes.beam + 46}, {-100, 262}, {300, 120}, {580, 248}}
+Ropes.captions = {{-560, Ropes.beam + 46}, {-380, Ropes.beam + 46}, {-100, 262}, {300, Ropes.beam + 46}, {580, 248}}
 
 function Ropes:enter()
     self:frame{
@@ -164,6 +164,7 @@ function Ropes:drawRope(entry)
     end
 end
 
+-- The lamp is a teal dome with a dark rim across its opening, a warm bulb under it and the warm light it throws down.
 function Ropes:drawLamp()
     local lamp = self.lamp
     local points = self.ropes[1].points
@@ -175,10 +176,13 @@ function Ropes:drawLamp()
     end
     local angle = math.atan(upY, upX) + math.pi / 2
     local unit = Look.pixel
-    graphics2d.draw(self.glow, lamp.x - upX * 40, lamp.y - upY * 40, {width = 190, height = 190, blend = 'additive', layer = 1})
-    graphics2d.drawCircle(lamp.x - upX * 6, lamp.y - upY * 6, 15, '#FFFFF4C0', {layer = 2})
+    local acrossX, acrossY = -upY, upX
+    graphics2d.draw(self.glow, lamp.x - upX * 46, lamp.y - upY * 46, {width = 150, height = 150, color = '#B3FFC45C', blend = 'additive', layer = 1})
+    graphics2d.drawShape({lamp.x - upX * 10 - 13, lamp.y - upY * 10 - 13, 26, 26}, {kind = 'ellipse', color = '#FFFFE9A8', borderWidth = 3 * unit, borderColor = Look.ink, layer = 2})
     graphics2d.drawShape({lamp.x - 34, lamp.y - 34, 68, 68}, {kind = 'ellipse', startAngle = math.pi, sweep = math.pi, rotation = angle, color = '#FF2FB3C4', borderWidth = 3.5 * unit, borderColor = Look.ink, layer = 2})
-    Look.pin(lamp.x + upX * 30, lamp.y + upY * 30, 6 * unit, 2)
+    graphics2d.drawShape({lamp.x - 22 + upX * 14, lamp.y - 9 + upY * 14, 30, 12}, {kind = 'ellipse', rotation = angle, color = '#FF9BE9F2', layer = 2})
+    Look.line(lamp.x - acrossX * 33, lamp.y - acrossY * 33, lamp.x + acrossX * 33, lamp.y + acrossY * 33, 7 * unit, '#FF1E8494', 2)
+    Look.pin(lamp.x + upX * 32, lamp.y + upY * 32, 6 * unit, 2)
 end
 
 function Ropes:draw(area)

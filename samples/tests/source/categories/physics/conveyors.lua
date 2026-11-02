@@ -1,4 +1,4 @@
--- Conveyor belts made with the tangent speed of their surface, carrying crates down a zigzag of belts that can speed up, slow down and turn around.
+-- Conveyor belts made with the tangent speed of their surface, carrying crates down a zigzag of belts that can speed up, slow down and turn around, into a bin at the end of the line. A crate that falls off the line onto the grass breaks.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -7,6 +7,7 @@ local physics2d = require('haylen.physics2d')
 local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
+local Burst = require('categories.physics.burst')
 local Grab = require('categories.physics.grab')
 local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
@@ -26,6 +27,8 @@ Conveyors.chevronGap = 46
 Conveyors.maxCrates = 30
 Conveyors.ground = 360
 Conveyors.post = 690
+-- The bin under the end of the lowest belt, with its middle, its width and the top of its sides.
+Conveyors.bin = {x = -240, width = 250, top = 290}
 -- The rollers are steel with a hub whose bolts turn with the belt.
 Conveyors.roller = Look.tint('steel', '#FFA9BCD3', '#FF7088A6', '#FFE9F2FB')
 Conveyors.roller.hub, Conveyors.roller.hubShade = '#FFD6E0EE', '#FF5A6E8A'
@@ -47,6 +50,7 @@ function Conveyors:enter()
     self.speed, self.direction, self.spawning = 1, 1, true
     self.world = physics2d.newWorld()
     self.grab = Grab(self.world)
+    self.breaks = Burst('level/crate-break', {count = 3, scale = 0.6, layer = 30})
     self.crates = {}
     self.belts = {}
     for _, spec in ipairs(Conveyors.belts) do
@@ -56,6 +60,10 @@ function Conveyors:enter()
     end
     local floor = self.world:createBody({type = 'static', x = 0, y = Conveyors.ground + 30})
     floor:addBox(8000, 60)
+    local bin = Conveyors.bin
+    for _, side in ipairs({-1, 1}) do
+        floor:addBox(14, Conveyors.ground - bin.top, {offsetX = bin.x + side * (bin.width / 2 - 7), offsetY = (bin.top - Conveyors.ground) / 2 - 30})
+    end
     for _, belt in ipairs(self.belts) do
         for index = 0, 2 do
             self:dropCrate(belt.body.x - 240 + index * 240, belt.body.y - 40)
@@ -88,6 +96,23 @@ function Conveyors:dropCrate(x, y)
     end
 end
 
+-- A crate that drops into the bin goes once the front of the bin hides it, and a crate that lands on the grass breaks.
+function Conveyors:collect()
+    local bin = Conveyors.bin
+    for index = #self.crates, 1, -1 do
+        local crate = self.crates[index]
+        local inBin = math.abs(crate.x - bin.x) < bin.width / 2
+        if inBin and crate.y > bin.top + 26 then
+            crate:destroy()
+            table.remove(self.crates, index)
+        elseif not inBin and crate.y > Conveyors.ground - 26 then
+            self.breaks:fire(crate.x, crate.y)
+            crate:destroy()
+            table.remove(self.crates, index)
+        end
+    end
+end
+
 function Conveyors:clear()
     for _, crate in ipairs(self.crates) do
         crate:destroy()
@@ -101,6 +126,8 @@ function Conveyors:update(dt)
         self:clear()
     end
     self.grab:update(self.pointer, self.camera)
+    self:collect()
+    self.breaks:update(dt)
     for _, belt in ipairs(self.belts) do
         belt.travel = belt.travel + belt.shape.tangentSpeed * dt
     end
@@ -140,27 +167,40 @@ function Conveyors:drawBelt(belt)
     graphics2d.popClip()
 end
 
--- The belts hang from two posts at the ends of the hall, each from the end the crates do not fall from.
+-- The belts hang from two posts at the ends of the hall, each from the end the crates do not fall from, on an arm with a brace that runs from the post up to the underside of the belt.
 function Conveyors:drawFrame()
-    for _, side in ipairs({-1, 1}) do
-        Look.block(side * Conveyors.post, (Conveyors.ground - 330) / 2, 30, Conveyors.ground + 330, 'steel', 0)
-    end
     for _, belt in ipairs(self.belts) do
         local endX = belt.body.x + belt.post * belt.width / 2
         local postX = belt.post * Conveyors.post
+        local fromY, toX, toY = belt.body.y + 80, endX - belt.post * 60, belt.body.y + Conveyors.height / 2
+        local dx, dy = toX - postX, toY - fromY
+        Look.block((postX + toX) / 2, (fromY + toY) / 2, math.sqrt(dx * dx + dy * dy), 10, 'iron', 0, math.atan(dy, dx))
         Look.block((endX + postX) / 2, belt.body.y, math.abs(postX - endX) + 20, 14, 'iron', 0)
-        Look.block(endX + belt.post * 30, belt.body.y + 30, 90, 10, 'iron', 0, belt.post * 0.7)
     end
+    for _, side in ipairs({-1, 1}) do
+        Look.block(side * Conveyors.post, (Conveyors.ground - 330) / 2, 30, Conveyors.ground + 330, 'steel', 0)
+    end
+end
+
+-- The bin is a wooden box whose back shows behind the crates that drop in and whose front hides them.
+function Conveyors:drawBin()
+    local bin = Conveyors.bin
+    local height = Conveyors.ground - bin.top
+    local y = bin.top + height / 2
+    Look.block(bin.x, y - 6, bin.width - 20, height - 12, 'darkWood', 2)
+    Look.block(bin.x, y, bin.width, height, 'wood', 4)
 end
 
 function Conveyors:draw(area)
     Scenery.sky(self.camera, Conveyors.ground)
     Scenery.ground(Conveyors.ground)
     self:drawFrame()
+    self:drawBin()
     for _, belt in ipairs(self.belts) do
         self:drawBelt(belt)
     end
     Look.drawAll(self.crates, {layer = 3})
+    self.breaks:draw()
     self.grab:draw()
 end
 

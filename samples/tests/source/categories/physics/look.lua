@@ -2,6 +2,8 @@
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 
+local Scenery = require('categories.physics.scenery')
+
 local Look = {}
 
 Look.ink = '#FF1E1B33'
@@ -18,13 +20,13 @@ local function tones(fill, shade, light, detail, extra)
     return material
 end
 
--- Every material has a fill, the shade of the side away from the light, a highlight and the detail it draws on its shapes.
+-- Every material has a fill, the shade of the side away from the light, a highlight and the detail it draws on its shapes. A material with a `surface` of the scenery fills the large shapes that no body holds with that painted surface, tinted by its `surfaceColor`, such as a rock face.
 Look.materials = {
     wood = tones('#FFE9A65B', '#FFB8743A', '#FFFFD9A3', 'planks', {grain = '#C08E4A22'}),
     crate = tones('#FFE9A65B', '#FFB8743A', '#FFFFD9A3', 'crate', {panel = '#FFD18A45', grain = '#C08E4A22'}),
     darkWood = tones('#FFA86B3C', '#FF7A4724', '#FFD39A62', 'planks', {grain = '#C05A3418'}),
-    stone = tones('#FFB9B5D0', '#FF8D88AD', '#FFE6E4F4', 'cracks'),
-    slate = tones('#FF7C82A6', '#FF585E80', '#FFA6ACCC', 'cracks'),
+    stone = tones('#FFB9B5D0', '#FF8D88AD', '#FFE6E4F4', 'cracks', {surface = 'rock', surfaceColor = '#FFFFFFFF'}),
+    slate = tones('#FF7C82A6', '#FF585E80', '#FFA6ACCC', 'cracks', {surface = 'rock', surfaceColor = '#FFBFCEE1'}),
     brick = tones('#FFE57A55', '#FFB4553A', '#FFFFAE8E', 'bevel'),
     steel = tones('#FFA9BCD3', '#FF7088A6', '#FFE9F2FB', 'rivets'),
     iron = tones('#FF66708A', '#FF474F66', '#FF9AA5BE', 'rivets'),
@@ -89,8 +91,18 @@ function Look.tint(material, fill, shade, light)
     for key, value in pairs(Look.material(material)) do
         copy[key] = value
     end
-    copy.fill, copy.shade, copy.light = fill, shade or copy.shade, light or copy.light
+    copy.fill, copy.shade, copy.light, copy.face = fill, shade or copy.shade, light or copy.light, nil
     return copy
+end
+
+-- Mixes two colors of the form `#AARRGGBB`, such as the raised face of a bevel between the fill and the highlight of a material.
+local function mix(a, b, amount)
+    local channels = {}
+    for index = 2, 8, 2 do
+        local from, to = tonumber(a:sub(index, index + 1), 16), tonumber(b:sub(index, index + 1), 16)
+        channels[#channels + 1] = string.format('%02X', math.floor(from + (to - from) * amount + 0.5))
+    end
+    return '#' .. table.concat(channels)
 end
 
 local function signedArea(points)
@@ -260,7 +272,7 @@ local function boxHighlight(x, y, width, height, angle, k, color, layer)
     local cos, sin = math.cos(a), math.sin(a)
     local nx, ny = math.cos(a - math.pi / 2), math.sin(a - math.pi / 2)
     local thickness = math.max(2 * Look.pixel, math.min(across * 0.09, 6))
-    local length = along * 0.34
+    local length = math.min(along * 0.34, across * 0.8 + 24)
     local offset = across / 2 - k - thickness * 0.9
     local start = -along / 2 + k + thickness
     if cos < 0 then
@@ -357,9 +369,9 @@ local function boxDetail(part, material, bx, by, cos, sin, angle, ow, layer)
     elseif detail == 'bevel' and size >= 18 then
         local x, y = boxPoint(part, 0, 0, bx, by, cos, sin)
         local frame = size * 0.2
-        shape.borderColor = material.light
-        drawShapeAt('rectangle', x, y, w - frame * 2, h - frame * 2, 2, angle, '#00000000', math.max(1.2, size * 0.045), layer)
-        shape.borderColor = Look.ink
+        material.face = material.face or mix(material.fill, material.light, 0.4)
+        drawShapeAt('rectangle', x, y, w - frame * 2, h - frame * 2, size * 0.1, angle, material.face, 0, layer)
+        boxHighlight(x, y, w - frame * 2, h - frame * 2, angle, size * 0.07, material.light, layer)
     end
 end
 
@@ -376,7 +388,10 @@ local function drawBox(part, material, look, bx, by, cos, sin, rotation, layer)
         drawShapeAt('rectangle', x - s, y - s, w - k * 2, h - k * 2, math.max(0, radius - k), angle, material.fill, 0, layer)
     end
     boxDetail(part, material, bx, by, cos, sin, angle, ow, layer)
-    boxHighlight(x - s, y - s, w, h, angle, k, material.light, layer)
+    -- A bevel lights its raised face instead of the edge.
+    if material.detail ~= 'bevel' or size < 18 then
+        boxHighlight(x - s, y - s, w, h, angle, k, material.light, layer)
+    end
 end
 
 -- A round body is lit the same way however it turns, and only its detail, such as the hub of a wheel or the spots of a ball, turns with it.
@@ -432,6 +447,40 @@ local function transform(source, target, bx, by, cos, sin, dx, dy)
     end
 end
 
+-- The highlight of a polygon lies along the edge of its lit face that looks up the most, near its end toward the light, as on a box.
+local function polygonHighlight(points, size, color, layer)
+    local count = #points
+    local wound = signedArea(points) > 0 and 1 or -1
+    local best, bestUp = nil, 0.5
+    for index = 1, count do
+        local a, b = points[index], points[index % count + 1]
+        local dx, dy = b[1] - a[1], b[2] - a[2]
+        local length = math.sqrt(dx * dx + dy * dy)
+        local up = length > 1e-3 and dx * wound / length or 0
+        if up > bestUp then
+            best, bestUp = index, up
+        end
+    end
+    if not best then
+        return
+    end
+    local a, b = points[best], points[best % count + 1]
+    if b[1] < a[1] then
+        a, b = b, a
+    end
+    local dx, dy = b[1] - a[1], b[2] - a[2]
+    local length = math.sqrt(dx * dx + dy * dy)
+    local ux, uy = dx / length, dy / length
+    local thickness = math.max(2 * Look.pixel, math.min(size * 0.09, 6))
+    local span = math.min(length * 0.34, size * 0.8 + 24)
+    if span < thickness * 1.5 then
+        return
+    end
+    local along, inward = thickness + span / 2, thickness * 0.9
+    local cx, cy = a[1] + ux * along - uy * inward, a[2] + uy * along + ux * inward
+    drawShapeAt('rectangle', cx, cy, span, thickness, thickness / 2, math.atan(uy, ux), color, 0, layer)
+end
+
 local function drawPolygon(part, material, look, bx, by, cos, sin, layer)
     local ow = outlineWidth(part.size)
     local s = math.min(math.max(part.size * 0.05, 0.6), 3.5)
@@ -445,6 +494,7 @@ local function drawPolygon(part, material, look, bx, by, cos, sin, layer)
     if part.size > k * 2 then
         transform(part.inset, part.lit, bx, by, cos, sin, -s, -s)
         graphics2d.drawPolygon(part.lit, material.fill, order)
+        polygonHighlight(part.lit, part.size, material.light, layer)
     end
     local flat = part.flat
     for index, p in ipairs(part.world) do
@@ -547,9 +597,12 @@ end
 
 local coil = {}
 local coilStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', count = 2, layer = 0}
+local springShades = {}
 
--- Draws a coil spring from one point to another with `coils` turns, which stretches and squeezes with the distance between them.
+-- Draws a coil spring from one point to another with `coils` turns, which stretches and squeezes with the distance between them. The wire runs behind in the shade of its color and turns in front in its color, so it reads as a coil.
 function Look.spring(x1, y1, x2, y2, width, coils, color, layer)
+    color = color or '#FFA9BCD3'
+    layer = layer or 0
     local dx, dy = x2 - x1, y2 - y1
     local length = math.max(math.sqrt(dx * dx + dy * dy), 1e-3)
     local ux, uy = dx / length, dy / length
@@ -566,12 +619,20 @@ function Look.spring(x1, y1, x2, y2, width, coils, color, layer)
     local count = steps + 4
     coil[count * 2 - 3], coil[count * 2 - 2] = x2 - ux * lead, y2 - uy * lead
     coil[count * 2 - 1], coil[count * 2] = x2, y2
-    local thickness = math.max(2 * Look.pixel, width * 0.16)
-    coilStroke.count, coilStroke.layer = count, layer or 0
-    coilStroke.width, coilStroke.color = thickness + math.min(Look.outlinePixels * Look.pixel * 0.8, thickness) * 2, Look.ink
+
+    local thickness = math.max(3 * Look.pixel, width * 0.2)
+    local outlined = thickness + math.min(Look.outlinePixels * Look.pixel * 0.7, thickness * 0.8) * 2
+    springShades[color] = springShades[color] or mix(color, Look.ink, 0.4)
+    coilStroke.count, coilStroke.layer = count, layer
+    coilStroke.width, coilStroke.color = outlined, Look.ink
     graphics2d.drawStroke(coil, coilStroke)
-    coilStroke.width, coilStroke.color = thickness, color or '#FFA9BCD3'
+    coilStroke.width, coilStroke.color = thickness, springShades[color]
     graphics2d.drawStroke(coil, coilStroke)
+    for index = 1, steps - 1, 2 do
+        local ax, ay, bx, by = coil[index * 2 + 3], coil[index * 2 + 4], coil[index * 2 + 5], coil[index * 2 + 6]
+        drawLine(ax, ay, bx, by, outlined, Look.ink, layer)
+        drawLine(ax, ay, bx, by, thickness, color, layer)
+    end
 end
 
 local dash = {0, 0, 0, 0}
@@ -613,13 +674,36 @@ function Look.disc(x, y, radius, material, layer, rotation)
     drawPart(disc, Look.material(material), discLook, x, y, math.cos(rotation), math.sin(rotation), rotation, layer or 0)
 end
 
+-- Shapes at least this many world units across take the painted surface of their material.
+Look.surfaceSize = 90
+
 -- Returns a polygon of a material that no body holds, in world units, such as a ramp or a rock face, which `Look.drawShape` draws every frame.
 function Look.newShape(points, material)
     return {part = polygonPart(points), material = Look.material(material), look = {}}
 end
 
+-- A large shape of a material with a painted surface shows it inside its rim, under its outline.
 function Look.drawShape(shape, layer)
-    drawPart(shape.part, shape.material, shape.look, 0, 0, 1, 0, 0, layer or 0)
+    local part, material = shape.part, shape.material
+    layer = layer or 0
+    if not material.surface or part.size < Look.surfaceSize then
+        drawPart(part, material, shape.look, 0, 0, 1, 0, 0, layer)
+        return
+    end
+    local ow = outlineWidth(part.size)
+    local k = ow + 3 * Look.pixel
+    if not part.inset or part.insetWidth ~= k then
+        part.inset, part.insetWidth = inset(part.points, k), k
+    end
+    order.layer = layer
+    graphics2d.drawPolygon(part.points, material.shade, order)
+    Scenery.drawSurface(part.inset, material.surface, material.surfaceColor, layer)
+    local flat = part.flat
+    for index, p in ipairs(part.points) do
+        flat[index * 2 - 1], flat[index * 2] = p[1], p[2]
+    end
+    stroke.width, stroke.color, stroke.closed, stroke.layer = ow, Look.ink, true, layer
+    graphics2d.drawStroke(flat, stroke)
 end
 
 return Look

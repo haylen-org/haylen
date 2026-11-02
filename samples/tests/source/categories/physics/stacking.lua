@@ -16,7 +16,8 @@ Stacking.code = [[
 local block = world:createBody({type = 'kinematic', x = trolleyX, y = magnetY + 15})
 shape.mask = 0  -- Hangs under the magnet and collides with nothing.
 block:setTransform(trolleyX, magnetY + 15, 0)
-block.type = 'dynamic'  shape.mask = -1  -- Drops it.
+block.type = 'dynamic'  -- Drops it.
+shape.mask = -1
 local top = shape.bounds.y  -- The top of a settled block measures the tower.]]
 
 Stacking.actions = {
@@ -240,7 +241,7 @@ function Stacking:draw(area)
     Scenery.sky(self.camera, Stacking.ground)
     Scenery.ground(Stacking.ground)
     Look.block(0, Stacking.baseTop + 52, 60, 45, 'stone', 0)
-    Look.block(0, Stacking.baseTop + 15, 320, 30, 'stone', 0)
+    Look.block(0, Stacking.baseTop + 15, 320, 30, 'darkWood', 0)
     Look.drawAll(self.blocks, {layer = 1})
     self:drawCrane()
     Look.draw(self.held, {layer = 2})

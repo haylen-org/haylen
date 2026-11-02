@@ -13,7 +13,8 @@ local Scenery = require('categories.physics.scenery')
 local Magnets = haylen.class('Magnets', PhysicsTest)
 
 Magnets.code = [[
-local magnet = physics2d.newForceField(world, {kind = 'radial', x = -300, y = 80, radius = 340, strength = 2600, falloff = 'linear', linearDrag = 1.5, mask = kSteel})
+local magnet = physics2d.newForceField(world, {kind = 'radial', x = -300, y = 80, radius = 340, strength = 2600,
+    falloff = 'linear', linearDrag = 1.5, mask = kSteel})
 crate:addBox(54, 54, {category = kSteel, density = 2})  -- Wood takes another category and feels nothing.
 magnet.strength = -2600  -- Pushes instead of pulling.
 magnet.enabled = false

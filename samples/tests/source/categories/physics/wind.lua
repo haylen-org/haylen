@@ -14,7 +14,8 @@ local Scenery = require('categories.physics.scenery')
 local Wind = haylen.class('Wind', PhysicsTest)
 
 Wind.code = [[
-local fan = physics2d.newForceField(world, {kind = 'directional', x = -175, y = 320, width = 1030, height = 140, direction = {1, 0}, strength = 14, acceleration = false})
+local fan = physics2d.newForceField(world, {kind = 'directional', x = -175, y = 320, width = 1030, height = 140,
+    direction = {1, 0}, strength = 14, acceleration = false})
 fan.strength = 14 * (1 + 0.9 * noise:perlin(time * 0.6, 7))  -- A gust.
 physics2d.newForceField(world, {kind = 'vortex', x = 450, y = -140, radius = 150, strength = 7, acceleration = false})
 leaf:addBox(34, 10, {density = 0.1})  -- The same force throws a leaf far and leaves a crate still.]]
@@ -30,6 +31,15 @@ Wind.fans = {
 Wind.vortexSpot = {450, -140, 150}
 Wind.leafColors = {{'#FF7BC74D', '#FF4E9A32'}, {'#FFFFC93C', '#FFD99A12'}, {'#FFFF9A3C', '#FFD06E1E'}, {'#FFF0473E', '#FFB9302A'}}
 Wind.maxLeaves = 40
+-- The stone pillars at the sides end in capitals this far above the ground, under the top of the stage.
+Wind.pillarTop = -285
+-- A gust is a streak of this many points along its fan, and every fan blows this many at a time.
+Wind.streakPoints, Wind.streaks = 12, 3
+-- The outline of a leaf from its stem to its tip along its upper edge, as shares of its length and of its half width, which the lower edge mirrors.
+Wind.leafEdge = {{0, 0}, {0.08, 0.55}, {0.2, 0.9}, {0.35, 1}, {0.5, 0.95}, {0.65, 0.78}, {0.8, 0.5}, {0.92, 0.22}, {1, 0}}
+Wind.leafSize = {length = 44, half = 10}
+Wind.veinColor = '#73301C10'
+Wind.veins = {-0.1, 0.12}
 Wind.cardboard = Look.tint('orange', '#FFE0B47C', '#FFB98A50', '#FFF5D5A5')
 
 function Wind:enter()
@@ -56,10 +66,13 @@ function Wind:enter()
     self.random = m.random(50)
     self.string = {0, 0, 0, 0, 0, 0, 0, 0}
     self.stringStroke = {width = 1, color = '#E6FFFFFF', join = 'round', cap = 'round', layer = 1}
-    self.gust = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0}
-    self.gustStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', layer = 5}
-    self.leafShape = {kind = 'ellipse', rotation = 0, color = '#FFFFFFFF', borderWidth = 0, borderColor = Look.ink, layer = 2}
-    self.leafRect = {0, 0, 0, 0}
+    self.gust, self.gustWidths, self.gustColors = {}, {}, {}
+    for point = 1, Wind.streakPoints do
+        self.gust[point * 2 - 1], self.gust[point * 2] = 0, 0
+        self.gustWidths[point], self.gustColors[point] = 1, {1, 1, 1, 0}
+    end
+    self.gustStroke = {widths = self.gustWidths, colors = self.gustColors, join = 'round', cap = 'round', layer = 5}
+    self:makeLeaf()
     self:build()
 end
 
@@ -102,6 +115,29 @@ function Wind:build()
     self:dropLeaves(14)
 end
 
+-- Builds the outline of a leaf around its middle and the points that a leaf reuses every time it draws: the whole leaf, its upper half and the flat list its outline strokes.
+function Wind:makeLeaf()
+    local size, edge = Wind.leafSize, Wind.leafEdge
+    local outline, upper = {}, {}
+    for index, point in ipairs(edge) do
+        outline[index] = {(point[1] - 0.5) * size.length, -point[2] * size.half}
+        upper[index] = outline[index]
+    end
+    for index = #edge - 1, 2, -1 do
+        outline[#outline + 1] = {(edge[index][1] - 0.5) * size.length, edge[index][2] * size.half}
+    end
+    self.leafOutline, self.leafUpper = outline, upper
+    self.leafPoints, self.leafHalf, self.leafFlat = {}, {}, {}
+    for index = 1, #outline do
+        self.leafPoints[index] = {0, 0}
+        self.leafFlat[index * 2 - 1], self.leafFlat[index * 2] = 0, 0
+    end
+    for index = 1, #upper do
+        self.leafHalf[index] = {0, 0}
+    end
+    self.leafStroke = {width = 1, color = Look.ink, join = 'round', closed = true, layer = 2}
+end
+
 function Wind:dropLeaves(count)
     for _ = 1, count do
         local leaf = self.world:createBody({x = self.random:range(-700, 300), y = self.random:range(-350, 100), rotation = self.random:range(0, math.pi), linearDamping = 3, angularDamping = 1.5})
@@ -134,7 +170,8 @@ function Wind:update(dt)
     end
     self.grab:update(self.pointer, self.camera)
     local floor, updraft = self.fanList[1].field, self.fanList[3].field
-    local blowing = floor.enabled and string.format('The floor fan blows with a force of %d on %d bodies', math.floor(floor.strength + 0.5), floor.bodyCount) or 'The floor fans are off'
+    local gust = self.gusts and ' in this gust' or ''
+    local blowing = floor.enabled and string.format('The floor fan blows with a force of %d%s on %d bodies', math.floor(floor.strength + 0.5), gust, floor.bodyCount) or 'The floor fans are off'
     local lifting = updraft.enabled and string.format('the updraft lifts %d', updraft.bodyCount) or 'the updraft is off'
     local swirling = self.vortex.enabled and string.format('the vortex swirls %d', self.vortex.bodyCount) or 'the vortex is off'
     self:status(string.format('%s, %s and %s.', blowing, lifting, swirling))
@@ -152,29 +189,33 @@ function Wind:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- Gusts of wind are short wavy strokes that drift along a fan, faster when it blows harder, and fade in and out over their way.
+-- Gusts of wind are long soft streaks that drift along a fan, faster when it blows harder, each a gentle bow that tapers and fades toward both ends, and fade in and out over their way.
 function Wind:drawGusts(fan)
     local spec, field = fan.spec, fan.field
     local dx, dy = spec.direction[1], spec.direction[2]
     local length = math.abs(dx) > 0 and spec.width or spec.height
     local across = math.abs(dx) > 0 and spec.height or spec.width
+    local streak = math.min(260, length * 0.5)
     local unit = Look.pixel
-    local stroke, gust = self.gustStroke, self.gust
-    stroke.width = 5 * unit
-    for lane = 1, 4 do
-        local side = (lane / 5 - 0.5) * across
-        local travel = self.time * (120 + field.strength * 10) / length + lane * 0.37
-        local phase = travel % 1
-        local along = phase * length - length / 2
-        local alpha = math.sin(phase * math.pi) * math.min(0.9, 0.45 + field.strength / 40)
-        for point = 0, 4 do
-            local ahead = along + point * 18
-            local wave = math.sin(point * 1.4 + self.time * 6 + lane) * 6
-            gust[point * 2 + 1] = spec.x + dx * ahead - dy * (side + wave)
-            gust[point * 2 + 2] = spec.y + dy * ahead + dx * (side + wave)
+    local gust, widths, colors = self.gust, self.gustWidths, self.gustColors
+    local last = Wind.streakPoints - 1
+    for lane = 1, Wind.streaks do
+        local side = (lane / (Wind.streaks + 1) - 0.5) * across
+        local phase = (self.time * (120 + field.strength * 10) / length + lane * 0.37) % 1
+        local along = phase * (length - streak) - length / 2
+        local alpha = math.sin(phase * math.pi) * math.min(0.8, 0.35 + field.strength / 40)
+        local bow = (lane % 2 == 0 and 1 or -1) * 12
+        for point = 0, last do
+            local t = point / last
+            local swell = math.sin(t * math.pi)
+            local ahead = along + t * streak
+            local offset = side + swell * bow + math.sin(self.time * 2.2 + lane * 1.7) * 5 * t
+            gust[point * 2 + 1] = spec.x + dx * ahead - dy * offset
+            gust[point * 2 + 2] = spec.y + dy * ahead + dx * offset
+            widths[point + 1] = (1.5 + 5 * swell) * unit
+            colors[point + 1][4] = alpha * math.sqrt(swell)
         end
-        stroke.color = {1, 1, 1, alpha}
-        graphics2d.drawStroke(gust, stroke)
+        graphics2d.drawStroke(gust, self.gustStroke)
     end
 end
 
@@ -246,27 +287,46 @@ function Wind:drawBalloon(balloon)
     graphics2d.drawShape({x - 16, y - 22, 10, 18}, {kind = 'ellipse', rotation = 0.4, color = material.light, layer = 1})
 end
 
--- A leaf is a pointed oval in two tones with a midrib, which turns with its body.
+-- A leaf is pointed at its tip and round near its stem, its lower half in the shade of its color and its upper half lit, with a midrib, two pairs of veins and a short stem, and turns with its body.
 function Wind:drawLeaf(leaf)
     local unit = Look.pixel
     local colors = leaf.data.colors
-    local shape, rect = self.leafShape, self.leafRect
-    local angle = leaf.rotation
-    rect[1], rect[2], rect[3], rect[4] = leaf.x - 20, leaf.y - 8, 40, 16
-    shape.rotation, shape.color, shape.borderWidth = angle, colors[2], 2.5 * unit
-    graphics2d.drawShape(rect, shape)
-    rect[1], rect[2], rect[3], rect[4] = leaf.x - 18.5, leaf.y - 6, 34, 9
-    shape.color, shape.borderWidth = colors[1], 0
-    graphics2d.drawShape(rect, shape)
-    local cos, sin = math.cos(angle), math.sin(angle)
-    graphics2d.drawLine(leaf.x - cos * 15, leaf.y - sin * 15, leaf.x + cos * 15, leaf.y + sin * 15, 1.5 * unit, colors[2], {layer = 2})
+    local x, y = leaf.x, leaf.y
+    local cos, sin = math.cos(leaf.rotation), math.sin(leaf.rotation)
+    local points, half, flat = self.leafPoints, self.leafHalf, self.leafFlat
+    for index, source in ipairs(self.leafOutline) do
+        local point = points[index]
+        point[1], point[2] = x + source[1] * cos - source[2] * sin, y + source[1] * sin + source[2] * cos
+        flat[index * 2 - 1], flat[index * 2] = point[1], point[2]
+    end
+    for index, source in ipairs(self.leafUpper) do
+        local point = half[index]
+        point[1], point[2] = x + source[1] * cos - source[2] * sin, y + source[1] * sin + source[2] * cos
+    end
+    local size = Wind.leafSize
+    local stemX, stemY = x - cos * size.length / 2, y - sin * size.length / 2
+    graphics2d.drawLine(stemX, stemY, stemX - cos * 8 + sin * 2, stemY - sin * 8 - cos * 2, 2.5 * unit, Look.ink, {layer = 2})
+    graphics2d.drawPolygon(points, colors[2], {layer = 2})
+    graphics2d.drawPolygon(half, colors[1], {layer = 2})
+    self.leafStroke.width = 2.5 * unit
+    graphics2d.drawStroke(flat, self.leafStroke)
+    graphics2d.drawLine(stemX, stemY, x + cos * size.length * 0.42, y + sin * size.length * 0.42, 1.5 * unit, Wind.veinColor, {layer = 2})
+    for _, along in ipairs(Wind.veins) do
+        local vx, vy = x + cos * size.length * along, y + sin * size.length * along
+        for _, side in ipairs({-1, 1}) do
+            local reach = size.half * 0.6
+            graphics2d.drawLine(vx, vy, vx + cos * reach - sin * side * reach, vy + sin * reach + cos * side * reach, 1.2 * unit, Wind.veinColor, {layer = 2})
+        end
+    end
 end
 
 function Wind:draw(area)
     Scenery.sky(self.camera, Wind.ground)
     Scenery.ground(Wind.ground)
     for _, side in ipairs({-1, 1}) do
-        Look.block(side * (Wind.wall + 30), Wind.ground - 450, 60, 900, 'stone', 0)
+        local x = side * (Wind.wall + 30)
+        Look.block(x, (Wind.pillarTop + Wind.ground) / 2 + 10, 60, Wind.ground - Wind.pillarTop + 20, 'stone', 0)
+        Look.block(x, Wind.pillarTop, 84, 22, 'stone', 1)
     end
     for _, fan in ipairs(self.fanList) do
         if fan.field.enabled then

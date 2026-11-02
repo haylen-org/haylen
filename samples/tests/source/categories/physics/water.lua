@@ -14,7 +14,8 @@ local Scenery = require('categories.physics.scenery')
 local Water = haylen.class('Water', PhysicsTest)
 
 Water.code = [[
-local pool = physics2d.newForceField(world, {kind = 'buoyancy', x = 0, y = 185, width = 1480, height = 410, density = 1, linearDrag = 1.5, angularDrag = 1.5})
+local pool = physics2d.newForceField(world, {kind = 'buoyancy', x = 0, y = 185, width = 1480, height = 410,
+    density = 1, linearDrag = 1.5, angularDrag = 1.5})
 crate:addBox(70, 70, {density = 0.4})  -- Floats, deeper the denser it is.
 anvil:addPolygon(points, {density = 7})  -- Sinks.
 pool.flow = {current + math.sin(time * 1.6) * 60, math.cos(time * 1.6) * 45}  -- A current with waves.]]
@@ -25,6 +26,8 @@ Water.tile = 46
 Water.waveSpeed = 1.6
 Water.maxBodies = 30
 Water.dropY = -240
+-- The water is a deep tint behind what floats and sinks in it and a light one in front of it, so a body under water keeps its color and its material.
+Water.backAlpha, Water.frontAlpha = 0.62, 0.26
 Water.anvilOutline = {{-62, -30}, {52, -30}, {52, -12}, {24, -4}, {32, 26}, {-32, 26}, {-24, -4}, {-44, -16}}
 Water.hull = {{-95, -12}, {95, -12}, {70, 24}, {-70, 24}}
 Water.cabin = Look.tint('steel', '#FFF2F3FF', '#FFC9CCE0', '#FFFFFFFF')
@@ -187,9 +190,10 @@ function Water:draw(area)
     end
     self:drawBoat()
 
-    -- The water fills the tank between its walls and above its floor, and shows what floats and sinks in it.
+    -- The water fills the tank between its walls and above its floor.
     graphics2d.pushClip({Water.left, bounds.y, Water.right - Water.left, Water.bottom - bounds.y})
-    Scenery.water(Water.left, Water.right, Water.surface, {layer = 3, alpha = 0.72})
+    Scenery.water(Water.left, Water.right, Water.surface, {layer = -4, alpha = Water.backAlpha})
+    Scenery.water(Water.left, Water.right, Water.surface, {layer = 3, alpha = Water.frontAlpha})
     graphics2d.popClip()
     local height = Water.bottom - Water.rim
     for _, side in ipairs({-1, 1}) do

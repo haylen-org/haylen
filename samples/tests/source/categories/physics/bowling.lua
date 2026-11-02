@@ -41,6 +41,11 @@ Bowling.firstThrow = {aim = 0.02, power = 0.8}
 -- The score board above the lane, with its top and the width and height of each frame.
 Bowling.board = {top = -360, width = 116, height = 100}
 Bowling.frames = 10
+-- A pin seen a little from the front, as the half widths of its outline at heights up from its foot: its base, its belly, its neck with two red stripes and its head.
+Bowling.pinProfile = {{0, 9}, {6, 13}, {14, 14.5}, {22, 12}, {28, 7}, {32, 5.5}, {36, 6.5}, {41, 8}, {46, 6}, {49, 2.5}}
+Bowling.pinHeight = 50
+Bowling.stripes = {30, 34.5}
+Bowling.shadow = '#40101018'
 -- The finger holes of the ball, as their distance from its center in radii and their angle.
 Bowling.holes = {{0.42, 0}, {0.42, 0.55}, {0.38, -1.9}}
 Bowling.ballMaterial = Look.tint('purple', '#FF7B57D6', '#FF553AA8', '#FFC4B2FF')
@@ -68,18 +73,23 @@ function Bowling:enter()
     alley:addBox(length, Bowling.wall, {offsetX = (Bowling.start + Bowling.finish) / 2, offsetY = -outer - Bowling.wall / 2, restitution = 0.3})
     alley:addBox(length, Bowling.wall, {offsetX = (Bowling.start + Bowling.finish) / 2, offsetY = outer + Bowling.wall / 2, restitution = 0.3})
     alley:addBox(Bowling.wall, outer * 2 + Bowling.wall * 2, {offsetX = Bowling.finish - Bowling.wall / 2, restitution = 0.1})
-    -- The gutters end where the pit begins, so a ball that rolls into the pit is not in a gutter.
+    -- The gutters end where the pit begins, so a ball that rolls into the pit is not in a gutter, and their sensors start a radius of the ball past the edge of the lane, so the ball is in a gutter once its middle leaves the lane.
     local pit = Bowling.finish - Bowling.wall - Bowling.pit
+    local depth = Bowling.gutter - Bowling.ballRadius
     for _, side in ipairs({-1, 1}) do
-        local gutter = self.world:createBody({type = 'static', x = (Bowling.start + pit) / 2, y = side * (Bowling.laneHalf + Bowling.gutter / 2)})
-        gutter:addBox(pit - Bowling.start, Bowling.gutter, {sensor = true})
+        local gutter = self.world:createBody({type = 'static', x = (Bowling.start + pit) / 2, y = side * (outer - depth / 2)})
+        gutter:addBox(pit - Bowling.start, depth, {sensor = true})
     end
     self.world.onSensorBegin = function(sensor, visitor, shapes)
         if visitor == self.ball then
-            self.inGutter = true
+            self.inGutter = sensor.y > 0 and 1 or -1
         end
     end
     self.boardRect = {0, 0, 0, 0}
+    self.pinOutline, self.pinFill, self.pinShape, self.pinOrder = {}, {}, {}, {}
+    self.pinStroke = {width = 1, color = Look.ink, closed = true, join = 'round', layer = 1}
+    self.stripeStroke = {width = 1, color = '#FFF0473E', cap = 'round', layer = 1}
+    self.stripe = {0, 0, 0, 0}
     self.boardShape = {radius = 10, color = '#FF2F3352', borderWidth = 0, borderColor = Look.ink, layer = -20}
     self:newGame()
     self.auto = true
@@ -196,14 +206,15 @@ function Bowling:describe()
         return string.format('The ball waits on the line, aimed %s, with %d percent of its power.', aim, math.floor(self.power * 100 + 0.5))
     end
     local speed = math.floor(self.ball.velocity:length() + 0.5)
-    return string.format('The ball rolls at %d units per second%s, and %d of the 10 pins are down.', speed, self.inGutter and ' in the gutter' or '', self:pinsDown())
+    return string.format('The ball rolls at %d units per second%s, and %d of the 10 pins are down.', speed, self.inGutter and ' down the gutter' or '', self:pinsDown())
 end
 
--- A ball in a gutter runs straight down it, and once the ball stops or reaches the pit the pins settle, are counted into the next frame and are set again.
+-- A ball in a gutter drops into it and runs straight down it, and once the ball stops or reaches the pit the pins settle, are counted into the next frame and are set again.
 function Bowling:fixedUpdate(step)
     local ball = self.ball
     if self.inGutter then
-        ball.velocity = {ball.velocity.x, 0}
+        local middle = self.inGutter * (Bowling.laneHalf + Bowling.gutter - Bowling.ballRadius)
+        ball.velocity = {ball.velocity.x, (middle - ball.y) * 8}
     end
     if self.state == 'rolling' and (ball.x > Bowling.headPin + 200 or ball.velocity:length() < 10) then
         self.state, self.settle = 'settling', Bowling.settleTime
@@ -243,16 +254,64 @@ function Bowling:drawLane()
     end
 end
 
--- A pin seen from above is its white belly with the red stripes of its neck and its round head on top.
+-- A standing pin stands up from its spot, seen a little from the front with its shadow, and a pin that is down lies on the lane pointing away from its spot, so the two read apart at a glance.
 function Bowling:drawPin(index)
-    local pin = self.pins[index]
-    local unit = Look.pixel
+    local pin, spot = self.pins[index], self.spots[index]
     local x, y = pin.x, pin.y
-    local shade = self.state ~= 'aiming' and self:isDown(index) and '#FFC9C2D8' or '#FFDCD6E8'
-    graphics2d.drawShape({x - 15, y - 15, 30, 30}, {kind = 'ellipse', color = shade, borderWidth = 3 * unit, borderColor = Look.ink, layer = 1})
-    graphics2d.drawCircle(x - 1, y - 1, 11.5, '#FFFBF8F2', {layer = 1})
-    graphics2d.drawRing(x - 1, y - 1, 9, 2.5, '#FFF0473E', {layer = 1})
-    graphics2d.drawShape({x - 7, y - 7, 12, 12}, {kind = 'ellipse', color = '#FFFFFFFF', borderWidth = 1.5 * unit, borderColor = '#FFC9C2D8', layer = 1})
+    local down = self.state ~= 'aiming' and self:isDown(index)
+    local angle, lift = 0, 0
+    if down then
+        angle, lift = math.atan(y - spot[2], x - spot[1]) + math.pi / 2, Bowling.pinHeight / 2
+        graphics2d.drawEllipse(x + 3, y + 4, 16, 16, Bowling.shadow, {layer = 1})
+    else
+        graphics2d.drawEllipse(x + 5, y + 4, 16, 9, Bowling.shadow, {layer = 1})
+    end
+    local cos, sin = math.cos(angle), math.sin(angle)
+    local profile, outline, fill = Bowling.pinProfile, self.pinOutline, self.pinFill
+    local count = #profile
+    for side = 0, 1 do
+        for step = 1, count do
+            local point = profile[side == 0 and step or count - step + 1]
+            local width, height = point[2] * (side == 0 and 1 or -1), lift - point[1]
+            local slot = side * count + step
+            outline[slot * 2 - 1], outline[slot * 2] = x + width * cos - height * sin, y + width * sin + height * cos
+            local inner = width * 0.78 - 1.5
+            fill[slot] = fill[slot] or {0, 0}
+            fill[slot][1], fill[slot][2] = x + inner * cos - height * sin, y + inner * sin + height * cos
+        end
+    end
+    local shape = self.pinShape
+    for slot = 1, count * 2 do
+        shape[slot] = shape[slot] or {0, 0}
+        shape[slot][1], shape[slot][2] = outline[slot * 2 - 1], outline[slot * 2]
+    end
+    graphics2d.drawPolygon(shape, '#FFD9D0BC', {layer = 1})
+    graphics2d.drawPolygon(fill, '#FFFBF8F2', {layer = 1})
+    for _, height in ipairs(Bowling.stripes) do
+        local half, level = 6, lift - height
+        local stripe = self.stripe
+        stripe[1], stripe[2] = x - half * cos - level * sin, y - half * sin + level * cos
+        stripe[3], stripe[4] = x + half * cos - level * sin, y + half * sin + level * cos
+        self.stripeStroke.width = 2.5
+        graphics2d.drawStroke(stripe, self.stripeStroke)
+    end
+    self.pinStroke.width = 3 * Look.pixel
+    graphics2d.drawStroke(outline, self.pinStroke)
+end
+
+-- Standing pins draw from the back of the rack to its front, so each stands in front of the pins behind it.
+function Bowling:drawPins()
+    local order = self.pinOrder
+    for index = 1, #self.pins do
+        order[index] = index
+    end
+    for index = #self.pins + 1, #order do
+        order[index] = nil
+    end
+    table.sort(order, function(a, b) return self.pins[a].y < self.pins[b].y end)
+    for _, index in ipairs(order) do
+        self:drawPin(index)
+    end
 end
 
 -- The ball is a purple disc with its three finger holes, which turn with it.
@@ -284,12 +343,19 @@ function Bowling:drawBoard()
         total = total + (score or 0)
         local x = left + (frame - 1) * board.width
         rect[1], rect[2], rect[3], rect[4] = x + 4, board.top, board.width - 8, board.height
-        shape.color = frame == #self.scores + 1 and '#FF3A4170' or '#FF2F3352'
+        local current = frame == #self.scores + 1
+        shape.color = current and '#FF3A4170' or '#FF2F3352'
         graphics2d.drawShape(rect, shape)
         self:tag(tostring(frame), x + board.width / 2, board.top + 22, {size = 16, color = '#FFA9BCD3'})
+        -- The frame in play counts the pins down as they fall, in the color of a count that is not final yet.
+        local live = current and self.state ~= 'aiming'
+        if live then
+            score = self:pinsDown()
+        end
         if score then
             local text = score == 10 and 'X' or score == 0 and '-' or tostring(score)
-            self:tag(text, x + board.width / 2, board.top + 64, {size = 34, color = score == 10 and '#FFFFC93C' or '#FFFFFFFF'})
+            local color = live and '#FFC9D3E2' or score == 10 and '#FFFFC93C' or '#FFFFFFFF'
+            self:tag(text, x + board.width / 2, board.top + 64, {size = 34, color = color})
         end
     end
     rect[1], rect[2], rect[3], rect[4] = left + Bowling.frames * board.width + 4, board.top, 172, board.height
@@ -301,9 +367,7 @@ end
 
 function Bowling:draw(area)
     self:drawLane()
-    for index = 1, #self.pins do
-        self:drawPin(index)
-    end
+    self:drawPins()
     self:drawBall()
     if self.state == 'aiming' then
         local ball, dx, dy = self.ball, math.cos(self.aim), math.sin(self.aim)

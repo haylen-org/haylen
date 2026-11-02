@@ -1,4 +1,4 @@
--- Fast bodies side by side in two worlds: on the left cannons shoot balls through a thin steel wall and a thin moving plate and crates fall through a thin shelf, and on the right continuous collision stops them at the static wall and the shelf and `bullet = true` stops them at the moving plate.
+-- Fast bodies side by side in two worlds: on the left cannons on a wooden tower shoot balls through a thin steel wall and a thin moving plate and crates fall through a thin shelf, and on the right continuous collision stops them at the static wall and the shelf and `bullet = true` stops them at the moving plate. The plates over the targets and the status show the same counts.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -14,7 +14,8 @@ local Tunneling = haylen.class('Tunneling', PhysicsTest)
 
 Tunneling.code = [[
 local world = physics2d.newWorld({continuous = true})  -- Fast bodies stop at thin static walls.
-local ball = world:createBody({x = -330, y = 0, vx = 6000, gravityScale = 0, bullet = true})  -- Also stops at moving bodies.
+-- A bullet also stops at moving bodies.
+local ball = world:createBody({x = -330, y = 0, vx = 6000, gravityScale = 0, bullet = true})
 ball:addCircle(15)
 wall:addSegment(210, -240, 210, -100)]]
 
@@ -26,6 +27,8 @@ Tunneling.cannonX = -300
 Tunneling.staticLane, Tunneling.movingLane, Tunneling.shelfY = -170, 10, 250
 Tunneling.ground = 350
 Tunneling.names = {'The wall', 'The moving plate', 'The shelf'}
+-- The tower of the cannons, its posts this far to each side of the cannons, with a deck under each cannon.
+Tunneling.towerPosts = 30
 
 function Tunneling:enter()
     self:frame{
@@ -41,6 +44,7 @@ function Tunneling:enter()
         focus = 'speed',
     }
     self.speed = 6000
+    self.shown = {}
     self.cannon = assets.texture('physics/cannon.png', {filter = 'linear'})
     self:build()
 end
@@ -65,6 +69,7 @@ function Tunneling:build()
         Look.dress(plate, 'steel')
         world:createJoint('revolute', hinge, plate, {ax = origin + Tunneling.wallX, ay = Tunneling.movingLane - 80, enableSpring = true, hertz = 2, dampingRatio = 0.5})
         self.halves[index] = {world = world, origin = origin, bullet = fixed, statics = {wall, shelf, plate}, plate = plate, shots = {}, through = {0, 0, 0}, stopped = {0, 0, 0}}
+        self.shown[index] = {through = {0, 0, 0}, stopped = {0, 0, 0}}
     end
     self.clock = 0
 end
@@ -121,7 +126,16 @@ function Tunneling:update(dt)
         self:build()
     end
     local left, right = self.halves[1], self.halves[2]
-    self:status(string.format('Through on the left: %d balls past the wall, %d past the plate and %d crates past the shelf. On the right: %d, %d and %d.', left.through[1], left.through[2], left.through[3], right.through[1], right.through[2], right.through[3]))
+    local text = string.format('Through on the left: %d balls past the wall, %d past the plate and %d crates past the shelf. On the right: %d, %d and %d.', left.through[1], left.through[2], left.through[3], right.through[1], right.through[2], right.through[3])
+    self:status(text)
+    -- The plates take the counts that the status shows, so both read the same numbers in every frame.
+    if self.statusText == text then
+        for index, half in ipairs(self.halves) do
+            for lane = 1, 3 do
+                self.shown[index].through[lane], self.shown[index].stopped[lane] = half.through[lane], half.stopped[lane]
+            end
+        end
+    end
 end
 
 function Tunneling:fixedUpdate(step)
@@ -158,25 +172,45 @@ function Tunneling:drawShot(shot)
     end
 end
 
+-- The cannons lie on the decks of a wooden tower with crossed braces between its two posts.
+function Tunneling:drawTower(origin)
+    local x, ground = origin + Tunneling.cannonX, Tunneling.ground
+    local top = Tunneling.staticLane + 26
+    for _, side in ipairs({-1, 1}) do
+        Look.block(x + side * Tunneling.towerPosts, (top + ground) / 2, 14, ground - top, 'darkWood', 0)
+    end
+    local spans = {{top, Tunneling.movingLane + 26}, {Tunneling.movingLane + 26, ground}}
+    for _, span in ipairs(spans) do
+        for _, side in ipairs({-1, 1}) do
+            local x1, y1, x2, y2 = x - side * Tunneling.towerPosts, span[1] + 14, x + side * Tunneling.towerPosts, span[2] - 14
+            Look.block((x1 + x2) / 2, (y1 + y2) / 2, math.sqrt((x2 - x1) ^ 2 + (y2 - y1) ^ 2), 8, 'darkWood', 0, math.atan(y2 - y1, x2 - x1))
+        end
+    end
+    for _, y in ipairs({Tunneling.staticLane, Tunneling.movingLane}) do
+        Look.block(x, y + 32, 110, 12, 'wood', 1)
+        graphics2d.draw(self.cannon, x, y, {width = 100, height = 52, layer = 3})
+    end
+end
+
 function Tunneling:draw(area)
     Scenery.sky(self.camera, Tunneling.ground)
     Scenery.ground(Tunneling.ground)
     self:compare('Without continuous collision', 'Continuous collision and bullets', 0, -335)
-    for _, half in ipairs(self.halves) do
+    for index, half in ipairs(self.halves) do
         local origin = half.origin
         Look.drawAll(half.statics, {layer = 1})
-        for _, y in ipairs({Tunneling.staticLane, Tunneling.movingLane}) do
-            graphics2d.draw(self.cannon, origin + Tunneling.cannonX, y, {width = 100, height = 52, layer = 3})
-        end
+        self:drawTower(origin)
         Look.block(origin - 160, (Tunneling.shelfY + Tunneling.ground) / 2, 16, Tunneling.ground - Tunneling.shelfY, 'darkWood', 0)
         Look.block(origin + 160, (Tunneling.shelfY + Tunneling.ground) / 2, 16, Tunneling.ground - Tunneling.shelfY, 'darkWood', 0)
         Look.pin(origin + Tunneling.wallX, Tunneling.movingLane - 80, 6 * Look.pixel, 3)
         for _, shot in ipairs(half.shots) do
             self:drawShot(shot)
         end
-        for lane, spot in ipairs({{Tunneling.wallX - 10, Tunneling.staticLane - 100}, {Tunneling.wallX - 10, Tunneling.movingLane + 110}, {0, Tunneling.shelfY + 52}}) do
-            self:label(string.format('%s: %d through, %d stopped', Tunneling.names[lane], half.through[lane], half.stopped[lane]), origin + spot[1], spot[2], {size = 17})
+        local shown = self.shown[index]
+        for lane, spot in ipairs({{Tunneling.wallX - 10, Tunneling.staticLane - 100}, {Tunneling.wallX - 10, Tunneling.movingLane + 110}}) do
+            self:label(string.format('%s: %d through, %d stopped', Tunneling.names[lane], shown.through[lane], shown.stopped[lane]), origin + spot[1], spot[2], {size = 17})
         end
+        self:label(string.format('%s\n%d through, %d stopped', Tunneling.names[3], shown.through[3], shown.stopped[3]), origin + 290, Tunneling.shelfY + 20, {size = 17})
     end
 end
 

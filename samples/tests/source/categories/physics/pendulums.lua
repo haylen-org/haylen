@@ -15,8 +15,9 @@ local Pendulums = haylen.class('Pendulums', PhysicsTest)
 Pendulums.code = [[
 local world = physics2d.newWorld({restitutionThreshold = 20})
 ball:addCircle(30, {density = 8, friction = 0, restitution = 1})
-world:createJoint('distance', bar, ball, {ax = x, ay = -300, bx = x, by = 60})  -- The string of a cradle ball.
-world:createJoint('revolute', arm, tip, {ax = elbowX, ay = elbowY})  -- The elbow of the double pendulum.
+-- The string of a cradle ball, and the elbow of the double pendulum.
+world:createJoint('distance', bar, ball, {ax = x, ay = -290, bx = x, by = 70})
+world:createJoint('revolute', arm, tip, {ax = elbowX, ay = elbowY})
 seat:applyImpulse(seat.mass * 140, 0)  -- A push along the swing.]]
 
 Pendulums.actions = {
@@ -174,7 +175,7 @@ function Pendulums:drawTrail()
     graphics2d.drawStroke(points, {width = 6 * Look.pixel, colors = shown, join = 'round', cap = 'round', layer = 1})
 end
 
--- The frames: a wooden cradle on two posts, a post that holds the double pendulum and an A-frame for the swing.
+-- The frames: a wooden cradle on two posts, and an A-frame of two braced legs for the double pendulum and for the swing.
 function Pendulums:drawFrames()
     local ground = Pendulums.ground
     local cradleWidth = Pendulums.balls * Pendulums.ballSpacing + 60
@@ -184,26 +185,28 @@ function Pendulums:drawFrames()
         Look.block(x, (Pendulums.cradleTop + ground) / 2, 20, ground - Pendulums.cradleTop, 'darkWood', -1)
     end
     Look.block(Pendulums.cradleX, ground - 10, cradleWidth + 80, 20, 'darkWood', -1)
-
-    local pivotX, pivotY = Pendulums.pivot[1], Pendulums.pivot[2]
-    Look.block(pivotX, (pivotY + ground) / 2, 22, ground - pivotY, 'stone', -1)
-
-    local sx, sy = Pendulums.swingPivot[1], Pendulums.swingPivot[2]
-    for _, side in ipairs({-1, 1}) do
-        local footX = sx + side * 150
-        local length = math.sqrt((footX - sx) ^ 2 + (ground - sy) ^ 2)
-        Look.block((sx + footX) / 2, (sy + ground) / 2, 20, length, 'darkWood', -1, math.atan(-(footX - sx), ground - sy))
-    end
-    Look.block(sx, sy, 60, 20, 'darkWood', 0)
+    self:drawAFrame(Pendulums.pivot[1], Pendulums.pivot[2], 130)
+    self:drawAFrame(Pendulums.swingPivot[1], Pendulums.swingPivot[2], 150)
 end
 
--- Every ball of the cradle hangs on two strings that meet it, so it swings in the plane of the frame.
+-- Draws two legs from a pivot at `x`, `y` to feet `spread` units to each side on the ground, a brace between them and a cap that holds the pivot.
+function Pendulums:drawAFrame(x, y, spread)
+    local ground = Pendulums.ground
+    for _, side in ipairs({-1, 1}) do
+        local footX = x + side * spread
+        local length = math.sqrt((footX - x) ^ 2 + (ground - y) ^ 2)
+        Look.block((x + footX) / 2, (y + ground) / 2, 20, length, 'darkWood', -1, math.atan(-(footX - x), ground - y))
+    end
+    local brace = 0.82
+    Look.block(x, y + (ground - y) * brace, spread * brace * 2 + 16, 14, 'darkWood', -1)
+    Look.block(x, y, 60, 20, 'darkWood', 0)
+end
+
+-- Every ball of the cradle hangs on a string straight above it, so the row reads level at rest, and the seat of the swing hangs on two ropes from one pivot.
 function Pendulums:drawStrings()
     local unit = Look.pixel
     for _, ball in ipairs(self.balls) do
-        for _, side in ipairs({-18, 18}) do
-            Look.line(ball.x + side, Pendulums.cradleTop + 10, ball.body.x, ball.body.y, 2.5 * unit, Pendulums.string, 0)
-        end
+        Look.line(ball.x, Pendulums.cradleTop + 10, ball.body.x, ball.body.y, 2.5 * unit, Pendulums.string, 0)
     end
     local cos, sin = math.cos(self.seat.rotation), math.sin(self.seat.rotation)
     for _, side in ipairs({-60, 60}) do

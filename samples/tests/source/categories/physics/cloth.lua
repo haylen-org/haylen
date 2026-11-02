@@ -20,8 +20,9 @@ Cloth.code = [[
 knot:addCircle(6, {group = -1, density = 0.5})
 world:createJoint('distance', a, b, {ax = a.x, ay = a.y, bx = b.x, by = b.y, breakForce = 3000})
 world:createJoint('revolute', bar, knot, {ax = knot.x, ay = knot.y, breakForce = 9000})  -- Hangs the top row.
-world.onJointBreak = function(joint, info) tear(info.bodyB.x, info.bodyB.y) end
-world:readTransforms(knots, buffer)  -- Every knot in one call to draw the threads.]]
+world.onJointBreak = function(joint, info)
+    tear(info.bodyB.x, info.bodyB.y)
+end]]
 
 Cloth.columns, Cloth.rows, Cloth.spacing = 31, 12, 30
 Cloth.left, Cloth.top = -450, -260

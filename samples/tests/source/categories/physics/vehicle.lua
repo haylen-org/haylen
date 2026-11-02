@@ -137,7 +137,12 @@ function Vehicle:update(dt)
     local speed = math.floor(math.abs(self.car.speed) * Vehicle.metersPerUnit * 3.6 + 0.5)
     local where = self.car.grounded and 'on the road' or 'in the air'
     local driving = self.car.brake > 0 and 'braking' or self.car.throttle > 0.05 and 'speeding up' or self.car.throttle < -0.05 and 'reversing' or 'coasting'
-    self:status(string.format('The car is %s at %d km/h %s, %d m down the road.', driving, speed, where, math.max(0, math.floor(chassis.x * Vehicle.metersPerUnit + 0.5))))
+    local distance = math.max(0, math.floor(chassis.x * Vehicle.metersPerUnit + 0.5))
+    if speed == 0 and driving == 'coasting' then
+        self:status(distance == 0 and 'The car waits at the start of the road for the pedals.' or string.format('The car stands still %d m down the road.', distance))
+        return
+    end
+    self:status(string.format('The car is %s at %d km/h %s, %d m down the road.', driving, speed, where, distance))
 end
 
 function Vehicle:fixedUpdate(step)

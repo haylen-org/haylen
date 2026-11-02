@@ -28,6 +28,10 @@ Dominoes.floor = 300
 Dominoes.valleyFrom, Dominoes.valleyTo, Dominoes.valleyDepth = -440, 160, 34
 Dominoes.stairs = {x = 200, run = 40, rise = 16, count = 6}
 Dominoes.edge = 790
+-- The stone blocks of the landing are this wide in this many courses, and the landing and the ground under it run to this x, past the edge of the view.
+Dominoes.stone = 92
+Dominoes.courses = 2
+Dominoes.landingEnd = 1000
 Dominoes.push = 120
 Dominoes.firstPush = 1
 Dominoes.ivory = Look.tint('yellow', '#FFFBF4E2', '#FFD9CCB0', '#FFFFFFFF')
@@ -73,7 +77,7 @@ function Dominoes:build()
     for x = Dominoes.valleyFrom, Dominoes.valleyTo, 30 do
         lawn[#lawn + 1] = {x, (Dominoes.valley(x))}
     end
-    lawn[#lawn + 1] = {Dominoes.edge, floor}
+    lawn[#lawn + 1] = {Dominoes.landingEnd, floor}
     self.lawn = Scenery.newTerrain(lawn)
     local profile = {}
     for index = 1, #lawn - 1 do
@@ -84,7 +88,7 @@ function Dominoes:build()
         profile[#profile + 1] = {x, floor - (step - 1) * stairs.rise}
         profile[#profile + 1] = {x, floor - step * stairs.rise}
     end
-    profile[#profile + 1] = {Dominoes.edge, top}
+    profile[#profile + 1] = {Dominoes.landingEnd, top}
     self.ground = self.world:createBody({type = 'static'})
     self.ground:addChain(profile, false, {friction = 0.8})
 
@@ -103,7 +107,7 @@ function Dominoes:build()
     for x = stairsEnd + 38, 690, 38 do
         self:stand(x, top, 0)
     end
-    self.clock, self.running, self.finished = 0, false, false
+    self.clock, self.shown, self.running, self.finished = 0, 0, false, false
 end
 
 -- Stands a domino on the ground point `x`, `y`, square to a slope of `angle`, with the pips of its two halves.
@@ -153,12 +157,18 @@ function Dominoes:update(dt)
         end
     end
     local fallen, total = self:fallen(), #self.dominoes
+    local text
     if self.finished then
-        self:status(string.format('The chain toppled %d of the %d dominoes in %.2f seconds.', fallen, total, self.clock))
+        text = string.format('The chain toppled %d of the %d dominoes in %.2f seconds.', fallen, total, self.clock)
     elseif self.running then
-        self:status(string.format('%d of the %d dominoes have fallen, %.2f seconds into the chain.', fallen, total, self.clock))
+        text = string.format('%d of the %d dominoes have fallen, %.2f seconds into the chain.', fallen, total, self.clock)
     else
-        self:status(string.format('%d dominoes stand and wait for a push.', total))
+        text = string.format('%d dominoes stand and wait for a push.', total)
+    end
+    -- The plate over the stage shows the time of the status that shows, so the two always read the same.
+    self:status(text)
+    if self.statusText == text then
+        self.shown = self.clock
     end
 end
 
@@ -181,6 +191,22 @@ function Dominoes:drawPips(body, count, along, cos, sin)
     end
 end
 
+-- The landing above the steps is a wall of stone blocks in courses, each shifted by half a block, that runs on past the edge of the view.
+function Dominoes:drawLanding()
+    local floor, stairs = Dominoes.floor, Dominoes.stairs
+    local left = stairs.x + stairs.run * stairs.count
+    local height = stairs.rise * stairs.count / Dominoes.courses
+    for course = 1, Dominoes.courses do
+        local top = floor - course * height
+        local x = left - (course % 2) * Dominoes.stone / 2
+        while x < Dominoes.landingEnd do
+            local from, to = math.max(x, left), math.min(x + Dominoes.stone, Dominoes.landingEnd)
+            Look.block((from + to) / 2, top + height / 2, to - from, height, 'stone', 0)
+            x = x + Dominoes.stone
+        end
+    end
+end
+
 function Dominoes:draw(area)
     local floor, stairs = Dominoes.floor, Dominoes.stairs
     Scenery.sky(self.camera, floor)
@@ -189,9 +215,7 @@ function Dominoes:draw(area)
         local height = step * stairs.rise
         Look.block(stairs.x + (step - 0.5) * stairs.run, floor - height / 2, stairs.run, height, 'stone', 0)
     end
-    local stairsEnd = stairs.x + stairs.run * stairs.count
-    local height = stairs.rise * stairs.count
-    Look.block((stairsEnd + Dominoes.edge) / 2, floor - height / 2, Dominoes.edge - stairsEnd, height, 'stone', 0)
+    self:drawLanding()
 
     local unit = Look.pixel
     for _, domino in ipairs(self.dominoes) do
@@ -203,7 +227,7 @@ function Dominoes:draw(area)
         self:drawPips(body, domino.top, -Dominoes.height / 4, cos, sin)
         self:drawPips(body, domino.bottom, Dominoes.height / 4, cos, sin)
     end
-    local text = self.finished and string.format('The chain took %.2f seconds', self.clock) or string.format('%.2f seconds', self.clock)
+    local text = self.finished and string.format('The chain took %.2f seconds', self.shown) or string.format('%.2f seconds', self.shown)
     self:label(text, 0, -110, {size = 30})
 end
 

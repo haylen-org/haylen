@@ -1,4 +1,4 @@
--- Glass marbles rolling down wooden rails made of chains on a toy board, through a funnel, over a paddle wheel turned by a revolute motor and back up in a kinematic lift that `body:moveTo` drives, in an endless loop.
+-- Glass marbles rolling down wooden rails made of chains on a toy board, through a funnel, over a paddle wheel turned by a revolute motor, back and forth along the lower rails to a gate and back up in a kinematic lift cage that `body:moveTo` drives on its cable, in an endless loop.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -14,29 +14,35 @@ local Scenery = require('categories.physics.scenery')
 local MarbleRun = haylen.class('MarbleRun', PhysicsTest)
 
 MarbleRun.code = [[
-track:addChain({{-680, -240}, {-660, -160}, {-100, -90}}, false, {friction = 0.4})  -- Solid on top, listed from left to right.
-world:createJoint('revolute', hub, wheel, {ax = 60, ay = 120, enableMotor = true, motorSpeed = 2, maxMotorTorque = 1e7})
+track:addChain({{-680, -255}, {-660, -180}, {-100, -130}}, false)  -- Solid on top, listed from left to right.
+world:createJoint('revolute', hub, wheel, {ax = 60, ay = 45, enableMotor = true, motorSpeed = 2, maxMotorTorque = 1e7})
 lift:moveTo(680, y, rotation)  -- A kinematic lift that carries the marbles up.
 marble:addCircle(14, {density = 2, friction = 0.4, restitution = 0.15, rollingResistance = 0.02})
 gate.enabled = false  -- Lets the waiting marbles roll onto the lift.]]
 
 -- Chains collide on their upper side when listed from left to right, and the short first segments are lips that turn marbles back.
 MarbleRun.track = {
-    {{-520, -190}, {600, -295}},
-    {{-680, -240}, {-660, -160}, {-100, -90}},
-    {{-160, -100}, {-22, -10}},
-    {{22, -10}, {160, -100}},
-    {{-150, 160}, {-130, 235}, {600, 330}},
+    {{-520, -205}, {600, -295}},
+    {{-680, -255}, {-660, -180}, {-100, -130}},
+    {{-160, -137}, {-22, -57}},
+    {{22, -57}, {160, -137}},
+    {{-440, 220}, {230, 165}, {250, 128}},
+    {{-580, 228}, {-560, 268}, {600, 340}},
 }
 MarbleRun.rail = 14
 MarbleRun.ground = 390
-MarbleRun.board = {left = -790, right = 596, top = -380, bottom = 375}
-MarbleRun.wheelSpot = {60, 120}
+MarbleRun.board = {left = -790, right = 596, top = -366, bottom = 375}
+MarbleRun.wheelSpot = {60, 45}
+-- The gate holds the marbles at the end of the lowest rail and lifts into its housing while the lift loads.
+MarbleRun.gateSpot = {604, 326}
+MarbleRun.gateLift = 50
 MarbleRun.liftPath = {x = 680, bottom = 370, top = -330, speed = 300, carry = 0.12, dump = -0.4, turn = 1.5}
 -- The lift is a floor with a wall at its far end, drawn as one outline, and its cable runs down the outer face of the wall to the corner of the floor.
 MarbleRun.cabin = {{-75, -7}, {63, -7}, {63, -77}, {75, -77}, {75, 7}, {-75, 7}}
 MarbleRun.hitch = {75, 7}
 MarbleRun.pulley = {755, -362}
+-- The back of the cage is a mesh behind the marbles, from its floor up to the top of its wall.
+MarbleRun.mesh = {left = -72, right = 63, top = -77, bottom = -7, bars = 5}
 MarbleRun.loadTime, MarbleRun.dumpTime = 2.5, 1.6
 MarbleRun.marbleRadius = 14
 MarbleRun.maxMarbles = 24
@@ -68,6 +74,8 @@ function MarbleRun:enter()
     end
     self.railStroke = {width = 1, color = Look.ink, join = 'round', cap = 'round', layer = 0}
     self.cable = {0, 0, 0, 0}
+    self.meshShape = {rotation = 0, radius = 6, color = '#592F3352', borderWidth = 1, borderColor = '#FF2F3352', layer = 0}
+    self.meshRect = {0, 0, 0, 0}
     self:build()
 end
 
@@ -92,7 +100,7 @@ function MarbleRun:build()
     end
     self.motor = self.world:createJoint('revolute', hub, self.wheel, {ax = spot[1], ay = spot[2], enableMotor = true, motorSpeed = self.wheelSpeed, maxMotorTorque = 1e7})
 
-    self.gate = self.world:createBody({type = 'static', x = 604, y = 296})
+    self.gate = self.world:createBody({type = 'static', x = MarbleRun.gateSpot[1], y = MarbleRun.gateSpot[2]})
     self.gate:addBox(8, 56)
     local path = MarbleRun.liftPath
     self.lift = self.world:createBody({type = 'kinematic', x = path.x, y = path.bottom, rotation = path.carry})
@@ -192,7 +200,7 @@ function MarbleRun:drawBoard()
     end
 end
 
--- The paddle wheel is a wooden plate behind six paddles on a steel hub, and the gate a red bar that lifts while the lift loads.
+-- The paddle wheel is a wooden plate behind six paddles on a steel hub.
 function MarbleRun:drawWheel()
     local wheel = self.wheel
     Look.disc(wheel.x, wheel.y, 48, 'darkWood', 0, wheel.rotation)
@@ -204,17 +212,30 @@ function MarbleRun:drawWheel()
     Look.pin(wheel.x, wheel.y, 8, 1)
 end
 
--- The lift runs in a steel shaft with braces, on a cable from a pulley at the top.
+-- The lift is a cage with a mesh back in a steel shaft with braces, hung on a cable that runs down the outer face of its wall from a pulley at the top, clear of the rails of the shaft.
 function MarbleRun:drawLift()
     local path, lift = MarbleRun.liftPath, self.lift
-    local left, right = path.x - 84, path.x + 82
+    local left, right = path.x - 84, path.x + 104
     Look.line(right, -420, right, MarbleRun.ground, 8, '#FF66708A', -2)
-    Look.line(left, -420, left, -300, 8, '#FF66708A', -2)
-    Look.line(left, -230, left, 250, 8, '#FF66708A', -2)
+    Look.line(left, -420, left, -345, 8, '#FF66708A', -2)
+    Look.line(left, -265, left, 250, 8, '#FF66708A', -2)
     for y = -200, 200, 120 do
         Look.line(left, y, right, y + 120, 4, '#FF474F66', -3)
     end
+
     local cos, sin = math.cos(lift.rotation), math.sin(lift.rotation)
+    local mesh, shape, rect = MarbleRun.mesh, self.meshShape, self.meshRect
+    local mx, my = (mesh.left + mesh.right) / 2, (mesh.top + mesh.bottom) / 2
+    local cx, cy = lift.x + mx * cos - my * sin, lift.y + mx * sin + my * cos
+    local width, height = mesh.right - mesh.left, mesh.bottom - mesh.top
+    rect[1], rect[2], rect[3], rect[4] = cx - width / 2, cy - height / 2, width, height
+    shape.rotation, shape.borderWidth = lift.rotation, 3 * Look.pixel
+    graphics2d.drawShape(rect, shape)
+    for bar = 1, mesh.bars - 1 do
+        local bx = mesh.left + bar * width / mesh.bars
+        graphics2d.drawLine(lift.x + bx * cos - mesh.top * sin, lift.y + bx * sin + mesh.top * cos, lift.x + bx * cos - mesh.bottom * sin, lift.y + bx * sin + mesh.bottom * cos, 3 * Look.pixel, '#B32F3352', {layer = 0})
+    end
+
     local hitch = MarbleRun.hitch
     local cable = self.cable
     cable[1], cable[2] = MarbleRun.pulley[1], MarbleRun.pulley[2]
@@ -223,8 +244,19 @@ function MarbleRun:drawLift()
     Look.disc(MarbleRun.pulley[1] - 14, MarbleRun.pulley[2], 16, 'steel', 1, haylen.elapsed())
     Look.pin(cable[3], cable[4], 5, 2)
     Look.draw(lift, {layer = 1})
+end
+
+-- The gate is a striped bar under a steel housing, which slides up into the housing while the lift loads, with a plate that names it.
+function MarbleRun:drawGate()
     local gate = self.gate
-    Look.block(gate.x, gate.y - (gate.enabled and 0 or 50), 10, 56, 'red', 1)
+    local x, y = MarbleRun.gateSpot[1], MarbleRun.gateSpot[2]
+    local barY = y - (gate.enabled and 0 or MarbleRun.gateLift)
+    Look.block(x, barY, 12, 56, 'red', 1)
+    for _, band in ipairs({-12, 12}) do
+        graphics2d.drawRect({x - 4.5, barY + band - 5, 9, 10}, '#FFFBF6EA', {layer = 1})
+    end
+    Look.block(x, y - 66, 26, 34, 'iron', 2)
+    self:label('Gate', x - 70, y - 66, {size = 18})
 end
 
 function MarbleRun:draw(area)
@@ -233,6 +265,7 @@ function MarbleRun:draw(area)
     self:drawBoard()
     self:drawWheel()
     self:drawLift()
+    self:drawGate()
     Look.drawAll(self.marbles, {layer = 2})
     self.grab:draw()
 end

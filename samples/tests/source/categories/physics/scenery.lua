@@ -3,6 +3,7 @@ local assets = require('haylen.assets')
 local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local m = require('haylen.math')
 
 local Scenery = {}
 
@@ -13,6 +14,12 @@ Scenery.skyBottom = '#FFD4F1FB'
 -- The ground strip draws at this many world units per pixel of its image, with its grass surface this many pixels below its top.
 Scenery.groundScale = 0.6
 Scenery.groundSurface = 54
+
+-- The painted surfaces that fill shapes of any outline and repeat in world space, at `scale` world units for each pixel of their image.
+Scenery.surfaces = {
+    soil = {path = 'physics/soil.png', scale = 0.7},
+    rock = {path = 'physics/rock.png', scale = 0.8},
+}
 
 -- The clouds of the strip one by one, by the area of each in its image, placed above the ground in a pattern that repeats every period.
 Scenery.cloudPeriod = 2600
@@ -41,7 +48,7 @@ local function gradient(name, stops)
     return textures[name]
 end
 
--- A band of rows of the ground strip, which strokes along terrain of any outline: the grass at its top or the layers of dirt under it. The band takes `padding` clear rows under it, so the clear top of the grass never takes the color of its bottom where the texture repeats.
+-- A band of rows of the ground strip, which strokes along terrain of any outline: the grass at its top or the layers of dirt under it. The band takes `padding` clear rows under it, so neither edge of the band takes the color of the other edge where the texture repeats across it.
 local function band(name, top, height, padding)
     if not textures[name] then
         local image = graphics.newImage(1076, height + padding)
@@ -56,6 +63,7 @@ local area = {0, 0, 0, 0}
 local fillOrder = {layer = 0}
 local cloudOptions = {source = {0, 0, 0, 0}, width = 0, height = 0, pivotX = 0, pivotY = 0, color = '#F2FFFFFF', layer = 0}
 local options = {width = 0, height = 0, pivotX = 0, pivotY = 0, color = '#FFFFFFFF', layer = 0}
+local surfaceOptions = {source = {0, 0, 0, 0}, width = 0, height = 0, pivotX = 0, pivotY = 0, color = '#FFFFFFFF', layer = 0}
 
 local function drawImage(image, x, y, width, height, color, layer)
     options.width, options.height, options.color, options.layer = width, height, color or '#FFFFFFFF', layer
@@ -117,9 +125,12 @@ function Scenery.ground(y, left, right, layer)
         drawImage(image, x, top, width, height, nil, layer)
     end
     graphics2d.popClip()
-    area[1], area[2], area[3], area[4] = left, top + height - 1, right - left, math.max(0, bounds.y + bounds.height - top - height + 1)
-    fillOrder.layer = layer
-    graphics2d.drawRect(area, Scenery.dirt, fillOrder)
+    local soil = Scenery.surfaces.soil
+    local below, depth = top + height - 1, math.max(0, bounds.y + bounds.height - top - height + 1)
+    local source = surfaceOptions.source
+    source[1], source[2], source[3], source[4] = left / soil.scale, below / soil.scale, (right - left) / soil.scale, depth / soil.scale
+    surfaceOptions.width, surfaceOptions.height, surfaceOptions.color, surfaceOptions.layer = right - left, depth, '#FFFFFFFF', layer
+    graphics2d.draw(texture('soil', soil.path), left, below, surfaceOptions)
 end
 
 -- A stroke along a surface runs from right to left, so the top of a band of the ground strip faces up.
@@ -135,7 +146,7 @@ end
 -- Returns the painted grass along `points`, a list of `{x, y}` from left to right, which `Scenery.drawGrass` draws on top of ground of any material.
 function Scenery.newGrass(points)
     local scale = Scenery.groundScale
-    return {surface = along(points, (126 / 2 - Scenery.groundSurface) * scale), stroke = {width = 126 * scale, texture = band('grass', 0, 124, 2), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', layer = 0}}
+    return {surface = along(points, (126 / 2 - Scenery.groundSurface) * scale), stroke = {width = 126 * scale, texture = band('grass', 0, 124, 2), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', cap = 'round', layer = 0}}
 end
 
 function Scenery.drawGrass(grass, layer)
@@ -143,9 +154,31 @@ function Scenery.drawGrass(grass, layer)
     graphics2d.drawStroke(grass.surface, grass.stroke)
 end
 
--- Returns terrain whose surface follows `points`, a list of `{x, y}` from left to right, which `Scenery.drawTerrain` draws: the layers of dirt of the ground strip along the surface, the deep dirt down to `bottom`, far below the surface by default, and the painted grass along the top.
-function Scenery.newTerrain(points, bottom)
+-- Returns a mesh that fills a polygon, a list of `{x, y}`, with a painted surface of `Scenery.surfaces`, which repeats in world space so neighboring shapes meet without a seam.
+function Scenery.newSurface(points, name)
+    local surface = Scenery.surfaces[name]
+    local image = texture(name, surface.path)
+    local units = image.width * surface.scale
+    local vertices = {}
+    for index, point in ipairs(points) do
+        vertices[index] = {x = point[1], y = point[2], u = point[1] / units, v = point[2] / units}
+    end
+    return graphics2d.newMesh(image, vertices, m.triangulate(points))
+end
+
+-- Returns the layers of dirt of the ground strip along a surface, a list of `{x, y}` from left to right, which `Scenery.drawLayers` draws under the grass.
+function Scenery.newLayers(points)
     local scale = Scenery.groundScale
+    return {surface = along(points, (112 + 146 / 2 - Scenery.groundSurface) * scale), stroke = {width = 146 * scale, texture = band('dirt', 112, 144, 2), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', layer = 0}}
+end
+
+function Scenery.drawLayers(layers, layer)
+    layers.stroke.layer = layer or -10
+    graphics2d.drawStroke(layers.surface, layers.stroke)
+end
+
+-- Returns terrain whose surface follows `points`, a list of `{x, y}` from left to right, which `Scenery.drawTerrain` draws: the layers of dirt along the surface, the deep soil down to `bottom`, far below the surface by default, and the painted grass along the top.
+function Scenery.newTerrain(points, bottom)
     local lowest = -math.huge
     local fill = {}
     for index, point in ipairs(points) do
@@ -155,17 +188,41 @@ function Scenery.newTerrain(points, bottom)
     bottom = bottom or lowest + 4000
     fill[#fill + 1] = {points[#points][1], bottom}
     fill[#fill + 1] = {points[1][1], bottom}
-    local dirt = {surface = along(points, (112 + 72 - Scenery.groundSurface) * scale), stroke = {width = 144 * scale, texture = band('dirt', 112, 144, 0), textureMode = 'tile', textureLength = 1076 * scale, join = 'round', layer = 0}}
-    return {fill = fill, dirt = dirt, grass = Scenery.newGrass(points)}
+    return {fill = Scenery.newSurface(fill, 'soil'), layers = Scenery.newLayers(points), grass = Scenery.newGrass(points)}
 end
 
 function Scenery.drawTerrain(terrain, layer)
     layer = layer or -10
     fillOrder.layer = layer
-    graphics2d.drawPolygon(terrain.fill, Scenery.dirt, fillOrder)
-    terrain.dirt.stroke.layer = layer
-    graphics2d.drawStroke(terrain.dirt.surface, terrain.dirt.stroke)
+    terrain.fill:draw(0, 0, fillOrder)
+    Scenery.drawLayers(terrain.layers, layer)
     Scenery.drawGrass(terrain.grass, layer + 1)
+end
+
+local maskShape
+local maskOrder = {layer = 0}
+
+local function drawMaskShape()
+    graphics2d.drawPolygon(maskShape, '#FFFFFFFF')
+end
+
+-- Draws a painted surface of `Scenery.surfaces` over all the camera shows, tinted by `color`, such as inside a mask that gives it its outline.
+function Scenery.drawPattern(name, color, layer)
+    local surface = Scenery.surfaces[name]
+    local bounds = graphics2d.canvasBounds()
+    local source = surfaceOptions.source
+    source[1], source[2], source[3], source[4] = bounds.x / surface.scale, bounds.y / surface.scale, bounds.width / surface.scale, bounds.height / surface.scale
+    surfaceOptions.width, surfaceOptions.height, surfaceOptions.color, surfaceOptions.layer = bounds.width, bounds.height, color or '#FFFFFFFF', layer or 0
+    graphics2d.draw(texture(name, surface.path), bounds.x, bounds.y, surfaceOptions)
+end
+
+-- Fills a shape that changes, a polygon or a list of outlines with holes, with a painted surface of `Scenery.surfaces` tinted by `color`, through a mask, so its edges stay smooth however the outline moves.
+function Scenery.drawSurface(shape, name, color, layer)
+    maskShape, maskOrder.layer = shape, layer or 0
+    graphics2d.pushMask(drawMaskShape, maskOrder)
+    Scenery.drawPattern(name, color, 0)
+    graphics2d.popMask()
+    maskShape = nil
 end
 
 local wave = {}

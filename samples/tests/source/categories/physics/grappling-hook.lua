@@ -1,4 +1,5 @@
 -- A hero who fires a grappling hook toward the pointer or along the aim of a stick, hangs from the stone ceiling on a distance joint with a limit, swings, reels in and out and lets go. The hero opens hanging and swinging.
+local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local physics2d = require('haylen.physics2d')
@@ -12,10 +13,10 @@ local Scenery = require('categories.physics.scenery')
 local GrapplingHook = haylen.class('GrapplingHook', PhysicsTest)
 
 GrapplingHook.code = [[
-local hit = world:raycast(hero.x, hero.y, hero.x + dx * 760, hero.y + dy * 760, {mask = kSolid})
--- A spring of 0 hertz with a limit is a rope that goes slack.
-local rope = world:createJoint('distance', hit.body, hero, {ax = hit.x, ay = hit.y, bx = hero.x, by = hero.y, enableSpring = true, enableLimit = true, lower = 20, upper = hit.distance})
-rope.upper = rope.upper + moveY * 420 * dt  -- Reels in and out.
+local hit = world:raycast(hero.x, hero.y, hero.x + dx * reach, hero.y + dy * reach, {mask = kSolid})
+local rope = world:createJoint('distance', hit.body, hero, {ax = hit.x, ay = hit.y, bx = hero.x, by = hero.y,
+    enableSpring = true, enableLimit = true, lower = 20, upper = hit.distance})  -- A rope that goes slack.
+rope.upper = rope.upper + moveY * reelSpeed * dt  -- Reels in and out.
 hero:applyForce(moveX * hero.mass * 900, 0)  -- Swings.
 rope:destroy()  -- Lets go.]]
 
@@ -34,7 +35,9 @@ GrapplingHook.reach = 760
 GrapplingHook.hookSpeed = 2600
 GrapplingHook.shortest = 40
 GrapplingHook.ground = 360
-GrapplingHook.radius, GrapplingHook.height = 18, 80
+GrapplingHook.radius, GrapplingHook.height = 22, 100
+-- The hero opens hanging from this point of the ceiling, to the left of it, so the rope swings it through the middle of the room.
+GrapplingHook.start = {x = -380, y = 40, anchorX = -230}
 -- The ceiling, the ledges, the ground and the walls, as the middle and the size of each block.
 GrapplingHook.blocks = {{0, -350, 1640, 40}, {-450, -110, 180, 36}, {0, -200, 220, 36}, {420, -70, 180, 36}, {640, -250, 140, 36}, {620, 140, 300, 30}, {0, GrapplingHook.ground + 30, 8000, 60}, {-800, 0, 30, 760}, {800, 0, 30, 760}}
 
@@ -45,6 +48,9 @@ function GrapplingHook:enter()
         controls = {
             ui.label{text = 'Walk with A and D or the left stick, and jump with Space or the south button.', font = 'caption', color = 'textMuted'},
             ui.label{text = 'While hanging, W and S reel the rope in and out, sideways swings and jumping lets go.', font = 'caption', color = 'textMuted'},
+            ui.formField{label = 'Reach of the hook', ui.slider{id = 'reach', min = 400, max = 1000, step = 20, value = GrapplingHook.reach, showValue = true, decimals = 0, onChange = function(event) self.reach = event.value end}},
+            ui.formField{label = 'Reel speed, in units a second', ui.slider{id = 'reel', min = 100, max = 800, step = 20, value = GrapplingHook.reelSpeed, showValue = true, decimals = 0, onChange = function(event) self.reelSpeed = event.value end}},
+            ui.toggle{id = 'aim', text = 'Show where the hook will catch', checked = true, onChange = function(event) self.showAim = event.checked end},
             ui.button{id = 'release', text = 'Let go', onClick = function() self:release() end},
             ui.button{id = 'reset', text = 'Start over', onClick = function() self:build() end},
         },
@@ -58,6 +64,8 @@ function GrapplingHook:enter()
     }
     self.heroArt = Hero(GrapplingHook.height)
     self.rope = {0, 0, 0, 0}
+    self.aim = {0, 0, 0, 0}
+    self.reach, self.reelSpeed, self.showAim = GrapplingHook.reach, GrapplingHook.reelSpeed, true
     self:build()
 end
 
@@ -79,16 +87,17 @@ function GrapplingHook:build()
         self.crates[#self.crates + 1] = crate
     end
     local reach = GrapplingHook.height / 2 - GrapplingHook.radius
-    self.hero = self.world:createBody({x = -520, y = -10, fixedRotation = true, sleepEnabled = false})
+    local start = GrapplingHook.start
+    self.hero = self.world:createBody({x = start.x, y = start.y, fixedRotation = true, sleepEnabled = false})
     self.hero:addCapsule(0, -reach, 0, reach, GrapplingHook.radius, {friction = 0, category = GrapplingHook.heroCategory})
     self.facing = 1
     self.line, self.hook = nil, nil
 
-    -- The hero starts hanging from the ceiling and swinging.
-    local hit = self.world:raycast(-520, -10, -300, -400, {mask = GrapplingHook.solid})
+    -- The hero starts hanging from the ceiling, held to one side, and swings down through the middle of the room.
+    local hit = self.world:raycast(start.x, start.y, start.anchorX, -400, {mask = GrapplingHook.solid})
     if hit then
         self:attach(hit)
-        self.hero.velocity = {420, 0}
+        self.hero.velocity = {320, 0}
     end
 end
 
@@ -101,9 +110,8 @@ function GrapplingHook:fire(dx, dy)
     self:release()
     dx, dy = dx / length, dy / length
     local x, y = self.hero.x, self.hero.y
-    local reach = GrapplingHook.reach
-    local hit = self.world:raycast(x, y, x + dx * reach, y + dy * reach, {mask = GrapplingHook.solid})
-    self.hook = {dx = dx, dy = dy, travel = 0, distance = hit and hit.distance or reach, hit = hit}
+    local hit = self.world:raycast(x, y, x + dx * self.reach, y + dy * self.reach, {mask = GrapplingHook.solid})
+    self.hook = {dx = dx, dy = dy, travel = 0, distance = hit and hit.distance or self.reach, hit = hit}
 end
 
 -- Ties a rope from the point the hook caught to the hero, as long as the distance between them now.
@@ -173,7 +181,7 @@ function GrapplingHook:update(dt)
         end
     end
     if self.line then
-        self.line.length = math.max(GrapplingHook.shortest, math.min(GrapplingHook.reach, self.line.length + moveY * GrapplingHook.reelSpeed * dt))
+        self.line.length = math.max(GrapplingHook.shortest, math.min(self.reach, self.line.length + moveY * self.reelSpeed * dt))
         self.line.joint.upper = self.line.length
     elseif grounded then
         velocity.x = moveX * GrapplingHook.speed
@@ -187,8 +195,22 @@ function GrapplingHook:update(dt)
     end
 
     local speed = math.floor(velocity:length() + 0.5)
-    local state = self.line and string.format('hangs on %d units of rope', math.floor(self.line.length + 0.5)) or self.hook and 'fires the hook' or grounded and 'stands on the ground' or 'flies through the air'
-    self:status(string.format('The hero %s at %d per second.', state, speed))
+    local state = self.line and string.format('swings on %d units of rope', math.floor(self.line.length + 0.5)) or self.hook and 'fires the hook' or grounded and 'stands on the ground' or 'flies through the air'
+    self:status(string.format('The hero %s, moving %d units a second.', state, speed))
+    self:aimAt(self.pointer.worldX - self.hero.x, self.pointer.worldY - self.hero.y)
+end
+
+-- Finds where a hook fired along a direction would catch, for the guide that shows it.
+function GrapplingHook:aimAt(dx, dy)
+    local length = math.sqrt(dx * dx + dy * dy)
+    self.target = nil
+    if length < 1 or not self.showAim or self.hook then
+        return
+    end
+    local x, y = self.hero.x, self.hero.y
+    local tx, ty = x + dx / length * self.reach, y + dy / length * self.reach
+    local hit = self.world:raycast(x, y, tx, ty, {mask = GrapplingHook.solid})
+    self.target = {x = hit and hit.x or tx, y = hit and hit.y or ty, hit = hit ~= nil}
 end
 
 function GrapplingHook:fixedUpdate(step)
@@ -226,23 +248,41 @@ function GrapplingHook:drawHook(hx, hy, tx, ty)
     Look.pin(tx, ty, 7 * unit, 3, '#FFA9BCD3')
 end
 
+-- The guide is a dashed line from the hero to where the hook would catch, with a ring there, or fading out where the reach ends in the air.
+function GrapplingHook:drawAim(x, y)
+    local target = self.target
+    if not target then
+        return
+    end
+    local unit = Look.pixel
+    Look.dashed(x, y, target.x, target.y, target.hit and '#CCFFFFFF' or '#66FFFFFF', 2)
+    if target.hit then
+        graphics2d.drawRing(target.x, target.y, 12 * unit, 5 * unit, '#CC1E1B33', {layer = 2})
+        graphics2d.drawRing(target.x, target.y, 12 * unit, 3 * unit, '#FFFFC93C', {layer = 2})
+    end
+end
+
+-- A hanging hero turns around the harness on its chest, where the rope ties, so the rope, the chest and the feet stay on one line as it swings.
 function GrapplingHook:draw(area)
     Scenery.sky(self.camera, GrapplingHook.ground)
     Scenery.ground(GrapplingHook.ground)
     Look.drawAll(self.statics)
     Look.drawAll(self.crates)
     local hero = self.hero
-    local hand = hero.y - GrapplingHook.height * 0.2
-    local rotation = 0
+    local height = GrapplingHook.height
+    local chestX, chestY = hero.x, hero.y - height * 0.2
+    local feetX, feetY, rotation = hero.x, hero.y + height / 2, 0
+    self:drawAim(chestX, chestY)
     if self.line then
         local ax, ay = self:anchor()
-        self:drawHook(hero.x, hand, ax, ay)
-        rotation = math.atan(ax - hero.x, hero.y - ay) * 0.6
+        self:drawHook(chestX, chestY, ax, ay)
+        rotation = math.atan(ax - chestX, chestY - ay)
+        feetX, feetY = chestX - height * 0.7 * math.sin(rotation), chestY + height * 0.7 * math.cos(rotation)
     elseif self.hook then
         local travel = math.min(self.hook.travel, self.hook.distance)
-        self:drawHook(hero.x, hand, hero.x + self.hook.dx * travel, hero.y + self.hook.dy * travel)
+        self:drawHook(chestX, chestY, hero.x + self.hook.dx * travel, hero.y + self.hook.dy * travel)
     end
-    self.heroArt:draw(hero.x, hero.y + GrapplingHook.height / 2, 3, rotation)
+    self.heroArt:draw(feetX, feetY, 3, rotation)
 end
 
 return GrapplingHook

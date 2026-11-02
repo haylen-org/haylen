@@ -29,8 +29,6 @@ Bridge.right = {{574, 0}, {1700, 0}, {1700, 420}, {620, 420}, {570, 230}, {586, 
 -- The far wall of the gorge fades from the haze of its top into the shadow of the depths.
 Bridge.gorge = {{-640, 30}, {-430, 10}, {-250, 50}, {-60, 20}, {130, 60}, {340, 24}, {640, 40}}
 Bridge.gorgeTop, Bridge.gorgeBottom = '#FFC6C5E4', '#FF5C5890'
--- Ledges that break up the faces of the cliffs, as two points each.
-Bridge.ledges = {{-600, 70, -660, 74}, {-585, 170, -680, 160}, {-600, 300, -700, 310}, {600, 90, 680, 96}, {590, 200, 700, 190}, {610, 330, 690, 336}}
 Bridge.rock = Look.tint('stone', '#FF9F98C2', '#FF77709C', '#FFCAC4E2')
 
 function Bridge:enter()
@@ -46,8 +44,9 @@ function Bridge:enter()
         focus = 'crate',
     }
     self.random = m.random(11)
-    self.leftGrass = Scenery.newGrass({{-1700, 0}, {-566, 0}})
-    self.rightGrass = Scenery.newGrass({{566, 0}, {1700, 0}})
+    self.leftGrass = Scenery.newGrass({{-1700, 0}, {-570, 0}})
+    self.rightGrass = Scenery.newGrass({{570, 0}, {1700, 0}})
+    self.cliffs = {Look.newShape(Bridge.left, Bridge.rock), Look.newShape(Bridge.right, Bridge.rock)}
     self.rail = {}
     self.gorge = {vertices = {}, indices = {}}
     for index, point in ipairs(Bridge.gorge) do
@@ -68,13 +67,9 @@ function Bridge:build()
     self.grab = Grab(self.world)
     self.loads = {}
 
-    local left = self.world:createBody({type = 'static'})
-    left:addPolygon(Bridge.left)
-    Look.dress(left, Bridge.rock, {outline = Bridge.left})
-    local right = self.world:createBody({type = 'static'})
-    right:addPolygon(Bridge.right)
-    Look.dress(right, Bridge.rock, {outline = Bridge.right})
-    self.statics = {left, right}
+    for _, outline in ipairs({Bridge.left, Bridge.right}) do
+        self.world:createBody({type = 'static'}):addPolygon(outline)
+    end
     self.bridge = physics2d.newBridge(self.world, {from = {-560, Bridge.deck}, to = {560, Bridge.deck}, segments = 22, thickness = Bridge.thickness, density = 2, friction = 0.8})
 
     for index = 1, 3 do
@@ -134,10 +129,8 @@ function Bridge:draw(area)
     Scenery.sky(self.camera, 30)
     graphics2d.drawMesh(nil, self.gorge.vertices, self.gorge.indices, {layer = -14})
     Scenery.water(-900, 900, Bridge.river, {layer = -12})
-    Look.drawAll(self.statics, {layer = -8})
-    local unit = Look.pixel
-    for _, ledge in ipairs(Bridge.ledges) do
-        Look.line(ledge[1], ledge[2], ledge[3], ledge[4], 3 * unit, '#FF77709C', -8)
+    for _, cliff in ipairs(self.cliffs) do
+        Look.drawShape(cliff, -8)
     end
     Scenery.drawGrass(self.leftGrass, -7)
     Scenery.drawGrass(self.rightGrass, -7)

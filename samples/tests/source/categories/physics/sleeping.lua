@@ -1,4 +1,4 @@
--- The same pyramid of blocks in two worlds: with sleeping off every block stays awake and the solver works on the settled pile every step, and with sleeping on the pile falls asleep once it rests, costs almost nothing, and wakes where something touches it.
+-- The same pyramid of blocks in two worlds: with sleeping off every block stays awake and the solver works on the settled pile every step, and with sleeping on the pile falls asleep once it rests, costs almost nothing, and wakes where something touches it. The cost of each world is the average time of its steps over half a second, which the plates and the status show alike.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -19,10 +19,12 @@ local block = world:createBody({x = 0, y = 345, sleepThreshold = 3.2})
 local asleep = not block.awake
 world:wakeAll()
 local stats = world:stats()
-print(stats.awakeBodies, stats.solveMilliseconds)]]
+print(stats.awakeBodies, stats.stepMilliseconds)]]
 
-Sleeping.rows = 16
-Sleeping.size = 32
+Sleeping.rows = 22
+Sleeping.size = 24
+-- The plates and the status show the average step of each world over this many seconds.
+Sleeping.sampleInterval = 0.5
 Sleeping.ground = 360
 Sleeping.awake = Look.material('orange')
 Sleeping.asleep = Look.tint('orange', '#FF8E9AC0', '#FF6A7398', '#FFB4BEDC')
@@ -42,6 +44,7 @@ function Sleeping:enter()
     }
     self.random = m.random(31)
     self.threshold = 3.2
+    self.sampleClock = 0
     self:build()
 end
 
@@ -63,7 +66,7 @@ function Sleeping:build()
                 blocks[#blocks + 1] = {body = block, look = block.data.look}
             end
         end
-        self.halves[index] = {world = world, origin = origin, blocks = blocks, grab = Grab(world), balls = {}}
+        self.halves[index] = {world = world, origin = origin, blocks = blocks, grab = Grab(world), balls = {}, total = 0, steps = 0, awake = #blocks, cost = 0}
     end
 end
 
@@ -99,15 +102,30 @@ function Sleeping:update(dt)
     end
     for _, half in ipairs(self.halves) do
         half.grab:update(self.pointer, self.camera)
-        half.stats = half.world:stats()
     end
-    local left, right = self.halves[1].stats, self.halves[2].stats
-    self:status(string.format('The solver works on %d awake bodies in %.2f ms without sleeping, and on %d in %.2f ms with it.', left.awakeBodies, left.solveMilliseconds, right.awakeBodies, right.solveMilliseconds))
+    self.sampleClock = self.sampleClock + dt
+    if self.sampleClock >= Sleeping.sampleInterval then
+        self.sampleClock = 0
+        self:sample()
+    end
+end
+
+-- Takes the awake bodies of each world and the average time of its steps since the last sample, which the plates and the status show together.
+function Sleeping:sample()
+    for _, half in ipairs(self.halves) do
+        half.awake = half.world:stats().awakeBodies
+        half.cost = half.steps > 0 and half.total / half.steps or 0
+        half.total, half.steps = 0, 0
+    end
+    local left, right = self.halves[1], self.halves[2]
+    self:status(string.format('A step takes %.2f ms on average for %d awake bodies without sleeping, and %.2f ms for %d with it.', left.cost, left.awake, right.cost, right.awake))
 end
 
 function Sleeping:fixedUpdate(step)
     for _, half in ipairs(self.halves) do
         self:simulate(half.world, step)
+        half.total = half.total + half.world:stats().stepMilliseconds
+        half.steps = half.steps + 1
     end
 end
 
@@ -117,8 +135,7 @@ function Sleeping:draw(area)
     self:compare('Sleeping off', 'Sleeping on', 0, -340)
     local time = haylen.elapsed()
     for _, half in ipairs(self.halves) do
-        local stats = half.stats or half.world:stats()
-        self:label(string.format('%d of %d awake', stats.awakeBodies, #half.blocks + #half.balls), half.origin, -290, {size = 18})
+        self:label(string.format('%d of %d awake, %.2f ms a step', half.awake, #half.blocks + #half.balls, half.cost), half.origin, -290, {size = 18})
         local sleepers = 0
         for _, block in ipairs(half.blocks) do
             local awake = block.body.awake
@@ -127,10 +144,11 @@ function Sleeping:draw(area)
             Look.draw(block.body)
         end
         Look.drawAll(half.balls, {layer = 1})
+        -- The sleeping marks rise beside the top of the pyramid, below the clouds.
         if sleepers > #half.blocks / 2 then
             for index = 0, 2 do
                 local rise = (time * 0.6 + index / 3) % 1
-                self:tag('z', half.origin + 30 + rise * 60 + index * 6, -170 - rise * 90, {size = 20 + index * 6, color = {1, 1, 1, 1 - rise}})
+                self:tag('z', half.origin + 110 + rise * 50 + index * 6, -40 - rise * 70, {size = 22 + index * 6, color = {1, 1, 1, 1 - rise}})
             end
         end
         half.grab:draw()

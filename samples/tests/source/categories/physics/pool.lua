@@ -13,11 +13,10 @@ local Pool = haylen.class('Pool', PhysicsTest)
 
 Pool.code = [[
 local world = physics2d.newWorld({gravity = {0, 0}})
-local ball = world:createBody({x = 300, y = 0, linearDamping = 0.9, angularDamping = 1.5, sleepThreshold = 12})
+local ball = world:createBody({x = 300, y = 0, linearDamping = 0.9, sleepThreshold = 12})
 ball:addCircle(22, {restitution = 0.95, friction = 0.05, category = kBall})
-cushion:addPolygon({{44, -330}, {608, -330}, {638, -360}, {30, -360}}, {restitution = 0.8})  -- Cut at the pockets.
-local hit = world:castCircle(cue.x, cue.y, 22, dx * 1600, dy * 1600, {mask = kCushion | kBall})  -- Where the guide ends.
 pocket:addCircle(30, {sensor = true, category = kPocket})
+local hit = world:castCircle(cue.x, cue.y, 22, dx * 1600, dy * 1600)  -- The guide.
 cue:applyImpulse(dx * power * cue.mass, dy * power * cue.mass)]]
 
 Pool.actions = {
@@ -36,6 +35,8 @@ Pool.maxSpeed = 2400
 Pool.chargeTime = 1.2
 Pool.ready = 40
 Pool.head = {-330, 0}
+-- The spot where the front ball of the rack stands.
+Pool.foot = {300, 0}
 Pool.breakPower = 0.85
 -- The colors of the balls 1 to 8 with their shade, and the balls 9 to 15 take the colors of 1 to 7 on a stripe.
 Pool.colors = {
@@ -81,6 +82,7 @@ function Pool:enter()
     self.cueOrder = {layer = 6}
     self.sight = {kind = 'rectangle', rotation = math.pi / 4, color = '#FFF2EEDF', borderWidth = 0, borderColor = Look.ink, layer = -20}
     self.sightRect = {0, 0, 14, 14}
+    self.printStyle = {size = 1, color = '#73FFFFFF', anchor = {0, 0}, layer = -18}
     self:build()
     self.breaking = true
 end
@@ -122,7 +124,7 @@ function Pool:build()
         for column = 0, row do
             count = count + 1
             local number = numbers[count]
-            self:addBall(300 + row * spacing * 0.866, (column - row / 2) * spacing, number, Pool.ballCategory)
+            self:addBall(Pool.foot[1] + row * spacing * 0.866, Pool.foot[2] + (column - row / 2) * spacing, number, Pool.ballCategory)
         end
     end
     self.cueBall = self:addBall(Pool.head[1], Pool.head[2], 0, Pool.cueCategory)
@@ -215,6 +217,13 @@ function Pool:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
+-- Prints a mark of the cloth in faint letters, as the head string and the foot spot are printed on a real table, with the top of the text at `y` and `anchorX` from its left at `x`.
+function Pool:printOnCloth(text, x, y, anchorX)
+    local style = self.printStyle
+    style.size, style.anchor[1] = 15 * Look.pixel, anchorX
+    graphics2d.drawText(self.labelFont, text, x, y, style)
+end
+
 -- The table is a wooden rail with pearl sights around the cloth, which darkens toward the cushions, and pockets with a brass rim cut into the corners and the middle of the long sides.
 function Pool:drawTable()
     local unit = Look.pixel
@@ -227,7 +236,9 @@ function Pool:drawTable()
     graphics2d.drawShape({-width - rail + 16, -height - rail + 14, (width + rail) * 2 - 34, 10}, {radius = 5, color = '#59FFD39A', layer = -20})
     graphics2d.drawShape({-width, -height, width * 2, height * 2}, {texture = self.cloth, borderWidth = 3 * unit, borderColor = '#FF1E5A34', layer = -19})
     graphics2d.drawLine(Pool.head[1], -Pool.halfHeight, Pool.head[1], Pool.halfHeight, 3 * unit, '#4DFFFFFF', {layer = -18})
-    graphics2d.drawCircle(300, 0, 6 * unit, '#80FFFFFF', {layer = -18})
+    graphics2d.drawCircle(Pool.foot[1], Pool.foot[2], 6 * unit, '#80FFFFFF', {layer = -18})
+    self:printOnCloth('Head string', Pool.head[1] + 14 * unit, -Pool.halfHeight + 12 * unit, 0)
+    self:printOnCloth('Foot spot', Pool.foot[1], Pool.foot[2] + 16 * unit, 0.5)
 
     self.sight.borderWidth = 2 * unit
     for _, share in ipairs(Pool.longSights) do

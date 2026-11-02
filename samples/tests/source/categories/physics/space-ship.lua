@@ -15,12 +15,12 @@ local Scenery = require('categories.physics.scenery')
 local SpaceShip = haylen.class('SpaceShip', PhysicsTest)
 
 SpaceShip.code = [[
-local world = physics2d.newWorld({gravity = {0, 0}})
-ship.angularVelocity = turn * 4
 ship:applyForce(math.cos(ship.rotation) * ship.mass * 520, math.sin(ship.rotation) * ship.mass * 520)
 local shot = world:createBody({x = noseX, y = noseY, vx = dx * 900, vy = dy * 900, bullet = true})
 physics2d.fracture(rock, {pieces = 3, impact = {shot.x, shot.y}, minimumArea = 300})
-if body.x > bounds.x + bounds.width + radius then body.x = bounds.x - radius end  -- Wraps around the edge.]]
+if body.x > right then
+    body.x = left  -- Comes back at the other edge, out of sight.
+end]]
 
 SpaceShip.actions = {
     {name = 'turn', type = 'axis', positive = {'key:d', 'key:right', 'axis:leftX+', 'button:dpadRight', 'virtual:turnRight'}, negative = {'key:a', 'key:left', 'axis:leftX-', 'button:dpadLeft', 'virtual:turnLeft'}},
@@ -35,15 +35,16 @@ SpaceShip.bulletSpeed = 900
 SpaceShip.bulletLife = 1.1
 SpaceShip.fireEvery = 0.18
 SpaceShip.lastLevel = 3
--- The rocks of each level, from the big ones of a new wave to the smallest pieces, with their size and their stone.
+-- The rocks of each level, from the big ones of a new wave to the smallest pieces, with their size and their stone, which pales as the rocks break.
 SpaceShip.levels = {
     {radius = 70, material = 'slate'},
-    {radius = 42, material = 'stone'},
-    {radius = 24, material = Look.tint('stone', '#FFB58E6B', '#FF8A6448', '#FFD9B596')},
+    {radius = 42, material = Look.tint('stone', '#FF9A9BBE', '#FF72749A', '#FFC6C8E2')},
+    {radius = 24, material = 'stone'},
 }
 -- The craters of a rock, by their place and size as shares of its radius.
 SpaceShip.craters = {{-0.3, -0.2, 0.24}, {0.32, 0.26, 0.17}, {0.12, -0.46, 0.12}}
-SpaceShip.shipSize = {width = 56, height = 43, nozzle = 26}
+SpaceShip.shipSize = {width = 90, height = 69, nozzle = 42}
+SpaceShip.hull = {{42, 0}, {-26, -24}, {-14, 0}, {-26, 24}}
 
 function SpaceShip:enter()
     self:frame{
@@ -79,8 +80,8 @@ function SpaceShip:build()
     self.autopilot = true
 
     self.ship = self.world:createBody({linearDamping = 0.3})
-    self.ship:addPolygon({{26, 0}, {-16, -15}, {-9, 0}, {-16, 15}}, {category = SpaceShip.shipCategory, mask = SpaceShip.rockCategory})
-    self.ship.data = {radius = 28}
+    self.ship:addPolygon(SpaceShip.hull, {category = SpaceShip.shipCategory, mask = SpaceShip.rockCategory})
+    self.ship.data = {radius = 45}
     self:newWave()
 
     self.world.onContactBegin = function(a, b)
@@ -151,7 +152,7 @@ function SpaceShip:fire()
     local cos, sin = math.cos(ship.rotation), math.sin(ship.rotation)
     local velocity = ship.velocity
     local speed = SpaceShip.bulletSpeed
-    local bullet = self.world:createBody({x = ship.x + cos * 30, y = ship.y + sin * 30, vx = velocity.x + cos * speed, vy = velocity.y + sin * speed, bullet = true})
+    local bullet = self.world:createBody({x = ship.x + cos * 48, y = ship.y + sin * 48, vx = velocity.x + cos * speed, vy = velocity.y + sin * speed, bullet = true})
     bullet:addCircle(4, {category = SpaceShip.bulletCategory, mask = SpaceShip.rockCategory})
     bullet.data = {bullet = true, life = SpaceShip.bulletLife, radius = 4}
     self.bullets[#self.bullets + 1] = bullet
@@ -201,7 +202,13 @@ function SpaceShip:update(dt)
     end
     local rocks = #self.rocks
     local pilot = self.autopilot and 'The ship aims and fires by itself until you steer it. ' or ''
-    self:status(string.format('%sWave %d has %d %s left after %d hits, and the ship bumped into rocks %d times.', pilot, self.wave, rocks, rocks == 1 and 'rock' or 'rocks', self.score, self.bumps))
+    local text = string.format('%sWave %d has %d %s left after %d hits, and the ship bumped into rocks %d times.', pilot, self.wave, rocks, rocks == 1 and 'rock' or 'rocks', self.score, self.bumps)
+
+    -- The status changes in the frame the plates of the wave and the hits do, so both always read the same numbers.
+    if text ~= self.shownStatus then
+        self.shownStatus = text
+        self:set('status', {text = text})
+    end
 end
 
 -- A body that leaves one edge of what the camera shows comes back at the other once it is out of sight, keeping its motion.
@@ -297,10 +304,10 @@ function SpaceShip:draw(area)
     local ship, picture = self.ship, SpaceShip.shipSize
     local cos, sin = math.cos(ship.rotation), math.sin(ship.rotation)
     if self.throttle > 0 then
-        local length = 14 + self.throttle * self.random:range(14, 26)
+        local length = 22 + self.throttle * self.random:range(22, 40)
         local x, y = ship.x - cos * (picture.nozzle + length / 2), ship.y - sin * (picture.nozzle + length / 2)
-        graphics2d.drawShape({x - length / 2, y - 7, length, 14}, {kind = 'ellipse', rotation = ship.rotation, color = '#E6FF9A3C', layer = 2})
-        graphics2d.drawShape({x - length * 0.3, y - 4, length * 0.6, 8}, {kind = 'ellipse', rotation = ship.rotation, color = '#FFFFF0A0', layer = 2})
+        graphics2d.drawShape({x - length / 2, y - 10, length, 20}, {kind = 'ellipse', rotation = ship.rotation, color = '#E6FF9A3C', layer = 2})
+        graphics2d.drawShape({x - length * 0.3, y - 6, length * 0.6, 12}, {kind = 'ellipse', rotation = ship.rotation, color = '#FFFFF0A0', layer = 2})
     end
     graphics2d.draw(self.picture, ship.x, ship.y, {width = picture.width, height = picture.height, rotation = ship.rotation, layer = 3})
     self.dust:draw()

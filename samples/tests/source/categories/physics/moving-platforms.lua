@@ -1,4 +1,5 @@
 -- The same moving platforms in two worlds: on the left they jump to their next place every step with `body:setTransform`, so they slide out from under their loads and knock them away, and on the right `body:moveTo` gives them the velocity that reaches that place in one step, so friction carries crates and balls and a hero rides them.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -20,7 +21,7 @@ platform:setTransform(x, y, rotation)  -- A teleport slides out from under them.
 local riding = mover.groundBody == platform  -- A mover rides it too.]]
 
 MovingPlatforms.gravity = 1600
-MovingPlatforms.radius, MovingPlatforms.height = 16, 72
+MovingPlatforms.radius, MovingPlatforms.height = 20, 90
 MovingPlatforms.ground = 360
 MovingPlatforms.kinds = {slider = 'the sliding platform', lift = 'the lift', turner = 'the seesaw'}
 
@@ -39,6 +40,10 @@ function MovingPlatforms:enter()
     }
     self.speed = 1
     self.hero = Hero(MovingPlatforms.height)
+    self.codeFont = assets.font('fonts/space-mono-regular.ttf', {bakeSize = 64, spread = 16})
+    self.codeText = {size = 1, color = '#FFE8EAF2', anchor = {0.5, 0.5}, layer = 41}
+    self.codePlate = {kind = 'rectangle', radius = 0, color = '#E6232938', borderWidth = 0, borderColor = '#FF15172A', layer = 40}
+    self.codeRect = {0, 0, 0, 0}
     self:build()
 end
 
@@ -60,7 +65,7 @@ function MovingPlatforms:build()
     self.time = 0
     self:drop()
     local right = self.halves[2]
-    self.mover = physics2d.newMover(right.world, {x = right.origin - 150, y = -230, radius = MovingPlatforms.radius, height = MovingPlatforms.height, snapDistance = 12})
+    self.mover = physics2d.newMover(right.world, {x = right.origin - 150, y = -240, radius = MovingPlatforms.radius, height = MovingPlatforms.height, snapDistance = 12})
     self.velocity = {x = 0, y = 0}
 end
 
@@ -121,8 +126,7 @@ function MovingPlatforms:update(dt)
         end
     end
     self.hero:update(dt, self.mover.groundVelocity.x, self.mover.grounded)
-    local speed = math.floor(self.mover.groundVelocity:length() + 0.5)
-    self:status(string.format('The hero %s. Loads that fell off: %d on the left and %d on the right.', kind and string.format('rides %s at %d per second', kind, speed) or 'stands on the ground', self.halves[1].lost, self.halves[2].lost))
+    self:status(string.format('The hero %s. Loads that fell off: %d on the left and %d on the right.', kind and 'rides ' .. kind or 'stands on the ground', self.halves[1].lost, self.halves[2].lost))
 end
 
 -- A load that falls to the ground counts as lost once.
@@ -162,15 +166,27 @@ function MovingPlatforms:drawPaths(half)
     Look.block(origin - 120, 200 + (MovingPlatforms.ground - 200) / 2, 18, MovingPlatforms.ground - 200, 'darkWood', -2)
 end
 
+-- Draws a call of the API in the monospace font of the code card, on a dark pill at `x`, `y` of the world, which keeps its size on the screen at any zoom.
+function MovingPlatforms:codeTag(text, x, y)
+    local unit = Look.pixel
+    local style = self.codeText
+    style.size = 16 * unit
+    local width, height = graphics2d.measureText(self.codeFont, text, style)
+    local plateWidth, plateHeight = width + 22 * unit, height + 10 * unit
+    local rect = self.codeRect
+    rect[1], rect[2], rect[3], rect[4] = x - plateWidth / 2, y - plateHeight / 2, plateWidth, plateHeight
+    self.codePlate.radius, self.codePlate.borderWidth = plateHeight / 2, 2 * unit
+    graphics2d.drawShape(rect, self.codePlate)
+    graphics2d.drawText(self.codeFont, text, x, y, style)
+end
+
 function MovingPlatforms:draw(area)
     Scenery.sky(self.camera, MovingPlatforms.ground)
     Scenery.ground(MovingPlatforms.ground)
     self:compare('Teleported every step', 'Moved by its velocity', 0, -330)
     for index, half in ipairs(self.halves) do
-        self:tag(index == 1 and 'body:setTransform(x, y, rotation)' or 'body:moveTo(x, y, rotation)', half.origin, -290, {size = 16})
+        self:codeTag(index == 1 and 'body:setTransform(x, y, rotation)' or 'body:moveTo(x, y, rotation)', half.origin, -288)
         self:drawPaths(half)
-        Look.block(half.origin - 390, MovingPlatforms.ground - 100, 20, 140, 'stone', 0)
-        Look.block(half.origin + 390, MovingPlatforms.ground - 100, 20, 140, 'stone', 0)
         for _, platform in ipairs(half.platforms) do
             Look.draw(platform.body, {layer = 1})
         end
@@ -178,6 +194,11 @@ function MovingPlatforms:draw(area)
             Look.draw(load.body, {layer = 2})
         end
     end
+    -- The low walls at the ends of the two sides meet in one post at the middle.
+    for _, x in ipairs({-790, 0, 790}) do
+        Look.block(x, MovingPlatforms.ground - 100, x == 0 and 40 or 20, 140, 'stone', 0)
+    end
+
     self.hero:draw(self.mover.x, self.mover.y + MovingPlatforms.height / 2, 3)
 end
 

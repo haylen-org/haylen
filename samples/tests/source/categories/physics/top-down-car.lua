@@ -13,11 +13,11 @@ local TopDownCar = haylen.class('TopDownCar', PhysicsTest)
 
 TopDownCar.code = [[
 local world = physics2d.newWorld({gravity = {0, 0}})
-local car = physics2d.newTopDownVehicle(world, {x = 0, y = 660, rotation = math.pi, length = 84, width = 42, drive = 'rear', grip = 1400})
+local car = physics2d.newTopDownVehicle(world, {length = 96, width = 48, grip = 1400})
 car.throttle = input.value('throttle')
 car.steering = input.value('steer')
 car.handbrake = input.down('handbrake')
-walls:addChain(outer, true, {restitution = 0.3})  -- Listed counterclockwise, so it holds the car inside.]]
+walls:addChain(outer, true, {restitution = 0.3})  -- Counterclockwise, it holds the car in.]]
 
 TopDownCar.actions = {
     {name = 'throttle', type = 'axis', positive = {'key:w', 'key:up', 'axis:rightTrigger+', 'virtual:gas'}, negative = {'key:s', 'key:down', 'axis:leftTrigger+', 'virtual:reverse'}},
@@ -26,13 +26,18 @@ TopDownCar.actions = {
 }
 
 TopDownCar.outerRadius = {x = 1500, y = 900}
-TopDownCar.innerRadius = {x = 1000, y = 420}
-TopDownCar.length, TopDownCar.width = 84, 42
+TopDownCar.innerRadius = {x = 1060, y = 480}
+TopDownCar.length, TopDownCar.width = 96, 48
+TopDownCar.axle = 30
 TopDownCar.maxMarks = 600
-TopDownCar.grass = '#FF6CBF3E'
-TopDownCar.asphalt = '#FF5C6178'
 -- The race car picture covers this many world units, a little more than the body so the tires show.
-TopDownCar.picture = {112, 72}
+TopDownCar.picture = {128, 82}
+-- The asphalt and the lawn repeat every this many world units, and the track and the infield are meshes of this many slices around the ellipse.
+TopDownCar.tile = 384
+TopDownCar.slices = 96
+TopDownCar.texture = 512
+TopDownCar.coneRadius, TopDownCar.barrelRadius = 20, 26
+TopDownCar.shadow = '#40101018'
 
 function TopDownCar:enter()
     self:frame{
@@ -53,7 +58,7 @@ function TopDownCar:enter()
         play = true,
         pointer = false,
         actions = TopDownCar.actions,
-        view = {1100, 520},
+        view = {980, 470},
         overlay = {
             ui.touchButton{action = 'left', text = 'Left', size = 130, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}},
             ui.touchButton{action = 'right', text = 'Right', size = 130, touchOnly = true, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 174}},
@@ -65,6 +70,11 @@ function TopDownCar:enter()
     self.drive = 'rear'
     self.grip = 1400
     self.racer = assets.texture('physics/race-car.png', {filter = 'linear'})
+    self.asphalt = assets.texture('physics/asphalt.png', {filter = 'linear', wrap = 'repeat'})
+    self.lawn = assets.texture('physics/lawn.png', {filter = 'linear', wrap = 'repeat'})
+    self.lawnSource = {0, 0, 0, 0}
+    self.lawnOptions = {width = 0, height = 0, pivotX = 0, pivotY = 0, source = self.lawnSource, layer = -20}
+    self:buildGround()
     self.camera.positionSmoothing = true
     self.camera.positionSmoothingSpeed = 5
     self:build()
@@ -88,6 +98,30 @@ function TopDownCar.flatten(points)
     return flat
 end
 
+-- The asphalt is a ring of slices between the edges of the track, and the infield is a fan inside it, both with their texture laid out in world units so it repeats along them.
+function TopDownCar:buildGround()
+    local outer, inner = TopDownCar.outerRadius, TopDownCar.innerRadius
+    local tile, count = TopDownCar.tile, TopDownCar.slices
+    local ring, field, ringIndices, fieldIndices = {}, {{x = 0, y = 0, u = 0, v = 0}}, {}, {}
+    for index = 0, count - 1 do
+        local angle = index / count * math.pi * 2
+        local cos, sin = math.cos(angle), math.sin(angle)
+        local ox, oy, ix, iy = cos * outer.x, sin * outer.y, cos * inner.x, sin * inner.y
+        ring[#ring + 1] = {x = ox, y = oy, u = ox / tile, v = oy / tile}
+        ring[#ring + 1] = {x = ix, y = iy, u = ix / tile, v = iy / tile}
+        field[#field + 1] = {x = ix, y = iy, u = ix / tile, v = iy / tile}
+        local following = (index + 1) % count
+        for _, corner in ipairs({index * 2 + 1, index * 2 + 2, following * 2 + 1, index * 2 + 2, following * 2 + 2, following * 2 + 1}) do
+            ringIndices[#ringIndices + 1] = corner
+        end
+        for _, corner in ipairs({1, index + 2, following + 2}) do
+            fieldIndices[#fieldIndices + 1] = corner
+        end
+    end
+    self.track = graphics2d.newMesh(self.asphalt, ring, ringIndices)
+    self.infield = graphics2d.newMesh(self.lawn, field, fieldIndices)
+end
+
 -- The outer wall is a loop listed counterclockwise on screen, which holds the car inside it, and the inner wall a loop listed clockwise, which is solid from the outside.
 function TopDownCar:build()
     local outer, inner = TopDownCar.outerRadius, TopDownCar.innerRadius
@@ -108,9 +142,9 @@ function TopDownCar:build()
         local cone = index % 3 == 0
         local prop = self.world:createBody({x = math.cos(angle) * radius.x, y = math.sin(angle) * radius.y, linearDamping = cone and 3 or 1.5, angularDamping = 3})
         if cone then
-            prop:addCircle(16, {density = 0.5})
+            prop:addCircle(TopDownCar.coneRadius, {density = 0.5})
         else
-            prop:addCircle(22, {density = 1})
+            prop:addCircle(TopDownCar.barrelRadius, {density = 1})
         end
         self.props[#self.props + 1] = {body = prop, cone = cone}
     end
@@ -127,7 +161,7 @@ function TopDownCar:place(start)
         end
         self.car:destroy()
     end
-    self.car = physics2d.newTopDownVehicle(self.world, {x = x, y = y, rotation = rotation, length = TopDownCar.length, width = TopDownCar.width, frontAxle = 26, rearAxle = -26, drive = self.drive, grip = self.grip, topSpeed = 1100, acceleration = 800})
+    self.car = physics2d.newTopDownVehicle(self.world, {x = x, y = y, rotation = rotation, length = TopDownCar.length, width = TopDownCar.width, frontAxle = TopDownCar.axle, rearAxle = -TopDownCar.axle, drive = self.drive, grip = self.grip, topSpeed = 1100, acceleration = 800})
     if start then
         self.camera:snapTo(x, y)
     end
@@ -167,7 +201,7 @@ function TopDownCar:fixedUpdate(step)
         local body = car.body
         local cos, sin = math.cos(body.rotation), math.sin(body.rotation)
         for _, side in ipairs({-1, 1}) do
-            self.marks[#self.marks + 1] = {body.x - cos * 26 - sin * side * 18, body.y - sin * 26 + cos * side * 18}
+            self.marks[#self.marks + 1] = {body.x - cos * TopDownCar.axle - sin * side * 20, body.y - sin * TopDownCar.axle + cos * side * 20}
         end
         while #self.marks > TopDownCar.maxMarks do
             table.remove(self.marks, 1)
@@ -175,12 +209,18 @@ function TopDownCar:fixedUpdate(step)
     end
 end
 
--- The track is asphalt between kerbs of red and white, with a dashed middle line and a chequered start line across the bottom straight.
+-- The track is asphalt between kerbs of red and white on a lawn, with a dashed middle line and a chequered start line across the bottom straight.
 function TopDownCar:drawTrack()
     local unit = Look.pixel
-    graphics2d.drawRect(graphics2d.canvasBounds(), TopDownCar.grass, {layer = -20})
-    graphics2d.drawPolygon(self.outer, TopDownCar.asphalt, {layer = -19})
-    graphics2d.drawPolygon(self.inner, TopDownCar.grass, {layer = -18})
+    local bounds = graphics2d.canvasBounds()
+    local scale = TopDownCar.texture / TopDownCar.tile
+    local source, lawn = self.lawnSource, self.lawnOptions
+    source[1], source[2] = bounds.x * scale % TopDownCar.texture, bounds.y * scale % TopDownCar.texture
+    source[3], source[4] = bounds.width * scale, bounds.height * scale
+    lawn.width, lawn.height = bounds.width, bounds.height
+    graphics2d.draw(self.lawn, bounds.x, bounds.y, lawn)
+    self.track:draw(0, 0, {layer = -19})
+    self.infield:draw(0, 0, {layer = -18})
     for _, edge in ipairs({self.outerEdge, self.innerEdge}) do
         graphics2d.drawStroke(edge, {width = 30, color = '#FFF2F3FF', closed = true, join = 'round', layer = -17})
         graphics2d.drawStroke(edge, {width = 30, color = '#FFF0473E', closed = true, dashes = {44, 44}, layer = -17})
@@ -200,18 +240,32 @@ function TopDownCar:drawTrack()
     end
 end
 
--- Cones are orange with a white band seen from above, and barrels are wooden tops with iron hoops.
+-- Seen from above, a cone is an orange cone with a white reflective band on its square base, and a barrel is a wooden lid with planks, a bung and an iron hoop, both with a shadow on the ground.
 function TopDownCar:drawProps()
     local unit = Look.pixel
+    local ow = Look.outlinePixels * unit
     for _, prop in ipairs(self.props) do
         local body = prop.body
+        local x, y = body.x, body.y
         if prop.cone then
-            graphics2d.drawShape({body.x - 16, body.y - 16, 32, 32}, {kind = 'ellipse', color = '#FFFF7A2E', borderWidth = 3.5 * unit, borderColor = Look.ink, layer = 2})
-            graphics2d.drawRing(body.x, body.y, 9, 5, '#FFF2F3FF', {layer = 2})
-            graphics2d.drawCircle(body.x, body.y, 4, '#FFFF7A2E', {layer = 2})
+            local r = TopDownCar.coneRadius
+            graphics2d.drawShape({x - r * 1.1 + 6, y - r * 1.1 + 8, r * 2.2, r * 2.2}, {radius = r * 0.5, rotation = body.rotation, color = TopDownCar.shadow, layer = 1})
+            graphics2d.drawShape({x - r * 1.1, y - r * 1.1, r * 2.2, r * 2.2}, {radius = r * 0.45, rotation = body.rotation, color = '#FFD0581E', borderWidth = ow, borderColor = Look.ink, layer = 2})
+            graphics2d.drawShape({x - r * 0.85, y - r * 0.85, r * 1.7, r * 1.7}, {kind = 'ellipse', color = '#FFFF7A2E', borderWidth = ow, borderColor = Look.ink, layer = 2})
+            graphics2d.drawRing(x, y, r * 0.52, r * 0.24, '#FFF7F7FF', {layer = 2})
+            graphics2d.drawCircle(x, y, r * 0.24, '#FFFFA35C', {layer = 2})
+            graphics2d.drawCircle(x - r * 0.3, y - r * 0.38, r * 0.14, '#B3FFFFFF', {layer = 2})
         else
-            Look.disc(body.x, body.y, 22, 'darkWood', 2, body.rotation)
-            graphics2d.drawRing(body.x, body.y, 15, 3, '#FF5A6070', {layer = 2})
+            local r = TopDownCar.barrelRadius
+            graphics2d.drawCircle(x + 6, y + 8, r, TopDownCar.shadow, {layer = 1})
+            Look.disc(x, y, r, 'darkWood', 2, body.rotation)
+            local cos, sin = math.cos(body.rotation), math.sin(body.rotation)
+            for _, offset in ipairs({-0.34, 0.34}) do
+                local px, py = -sin * offset * r, cos * offset * r
+                graphics2d.drawLine(x + px - cos * r * 0.7, y + py - sin * r * 0.7, x + px + cos * r * 0.7, y + py + sin * r * 0.7, 2.5 * unit, '#FF7A4724', {layer = 2})
+            end
+            graphics2d.drawRing(x, y, r * 0.86, r * 0.16, '#FF5A6070', {layer = 2})
+            graphics2d.drawCircle(x + cos * r * 0.45, y + sin * r * 0.45, r * 0.13, '#FF4A2A16', {layer = 2})
         end
     end
 end

@@ -1,4 +1,4 @@
--- One-way platforms: the hero jumps up through them and lands on them, drops down through them with `body:dropThrough`, and rides one that moves.
+-- One-way platforms on wooden posts: the hero jumps up through them and lands on them, drops down through them with `body:dropThrough`, and rides a lift that moves up and down between steel rails.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -13,22 +13,25 @@ local Scenery = require('categories.physics.scenery')
 local OneWay = haylen.class('OneWay', PhysicsTest)
 
 OneWay.code = [[
-platform:addBox(260, 22, {oneWay = {0, -1}, friction = 0.8})  -- Solid only from above.
+platform:addBox(300, 22, {oneWay = {0, -1}, friction = 0.8})  -- Solid only from above.
 hero:dropThrough(0.3)  -- Falls through the platform it stands on.
 shape.oneWay = nil  -- Makes the platform solid from every side.
-lift.velocity = {math.cos(time * 0.8) * 100, 0}  -- A kinematic one-way platform that the hero rides.]]
+lift.velocity = {0, math.cos(time * 0.8) * 120}  -- A lift that the hero rides.]]
 
 OneWay.heroCategory = 1
 OneWay.solidCategory = 2
 OneWay.oneWayCategory = 4
-OneWay.speed = 360
-OneWay.jumpSpeed = 900
+OneWay.speed = 380
+OneWay.jumpSpeed = 1000
 OneWay.dropTime = 0.3
 OneWay.groundY = 360
 OneWay.thickness = 22
-OneWay.platforms = {{-520, 250, 280}, {-140, 135, 260}, {240, 20, 260}, {-140, -95, 260}, {-520, -210, 260}, {-140, -325, 260}}
-OneWay.lift = {470, -95, 220}
-OneWay.radius, OneWay.height = 20, 84
+-- Each platform with its middle, its height and its width, one jump above the one before it.
+OneWay.platforms = {{-440, 221, 300}, {-40, 71, 300}, {360, -79, 280}}
+OneWay.lift = {640, 71, 200}
+OneWay.liftTravel = 150
+OneWay.radius, OneWay.height = 24, 112
+OneWay.wallX, OneWay.wallTop = 780, -330
 
 OneWay.actions = {
     {name = 'move', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:move'}},
@@ -38,7 +41,7 @@ OneWay.actions = {
 function OneWay:enter()
     self:frame{
         code = OneWay.code,
-        hint = 'Move with A and D, the arrows or the left stick, jump with Space, W or the south button, and hold down while jumping to drop through a platform. Climb up to the top platform, or ride the moving one.',
+        hint = 'Move with A and D, the arrows or the left stick, jump with Space, W or the south button, and hold down while jumping to drop through a platform. Climb up to the top platform, or ride the lift.',
         controls = {
             ui.checkbox{id = 'solid', text = 'Make the platforms solid', onChange = function(event) self:setSolid(event.checked) end},
             ui.button{id = 'reset', text = 'Start over', onClick = function() self:build() end},
@@ -62,14 +65,11 @@ function OneWay:build()
     self.platforms = {}
     self.time = 0
 
+    -- The walls reach far above the stage, so the hero never jumps over them, while only their pillars up to the caps show.
     local ground = self.world:createBody({type = 'static', x = 0, y = OneWay.groundY + 30})
     ground:addBox(8000, 60, {category = OneWay.solidCategory})
-    self.walls = {}
-    for _, x in ipairs({-790, 790}) do
-        local wall = self.world:createBody({type = 'static', x = x, y = OneWay.groundY - 380})
-        wall:addBox(24, 760, {category = OneWay.solidCategory})
-        Look.dress(wall, 'stone')
-        self.walls[#self.walls + 1] = wall
+    for _, side in ipairs({-1, 1}) do
+        ground:addBox(40, 2000, {offsetX = side * OneWay.wallX, offsetY = -1030, category = OneWay.solidCategory})
     end
 
     -- Each platform lies one jump above the one before it and less than a jump away to the side, zigzagging up to the top one.
@@ -80,7 +80,7 @@ function OneWay:build()
     self.lift = self:platform('kinematic', OneWay.lift[1], OneWay.lift[2], OneWay.lift[3])
 
     local reach = OneWay.height / 2 - OneWay.radius
-    self.hero = self.world:createBody({x = -700, y = OneWay.groundY - OneWay.height / 2 - 4, fixedRotation = true, sleepEnabled = false})
+    self.hero = self.world:createBody({x = -660, y = OneWay.groundY - OneWay.height / 2 - 4, fixedRotation = true, sleepEnabled = false})
     self.hero:addCapsule(0, -reach, 0, reach, OneWay.radius, {friction = 0, category = OneWay.heroCategory})
 end
 
@@ -124,7 +124,7 @@ function OneWay:place(ground)
         return 'The hero is in the air'
     end
     if ground == self.lift then
-        return 'The hero rides the moving platform'
+        return 'The hero rides the lift'
     end
     for index, platform in ipairs(self.platforms) do
         if platform.body == ground then
@@ -158,7 +158,7 @@ end
 
 function OneWay:fixedUpdate(step)
     self.time = self.time + step
-    self.lift.velocity = {math.cos(self.time * 0.8) * 100, 0}
+    self.lift.velocity = {0, math.cos(self.time * 0.8) * OneWay.liftTravel * 0.8}
     self:simulate(self.world, step)
 end
 
@@ -176,17 +176,39 @@ function OneWay:drawChevrons(platform)
     end
 end
 
+-- The static platforms stand on wooden posts behind them that reach down to the ground, the lift slides between two steel rails, and a stone pillar with a cap stands at each side.
+function OneWay:drawFrame()
+    local ground = OneWay.groundY
+    for _, spot in ipairs(OneWay.platforms) do
+        local top = spot[2] + OneWay.thickness / 2
+        for _, side in ipairs({-1, 1}) do
+            Look.block(spot[1] + side * (spot[3] / 2 - 30), (top + ground) / 2, 16, ground - top, 'darkWood', 0)
+        end
+    end
+    local lift = OneWay.lift
+    local railTop = lift[2] - OneWay.liftTravel - OneWay.height - 40
+    for _, side in ipairs({-1, 1}) do
+        Look.block(lift[1] + side * (lift[3] / 2 + 6), (railTop + ground) / 2, 12, ground - railTop, 'steel', 0)
+    end
+    Look.block(lift[1], railTop, lift[3] + 40, 16, 'iron', 0)
+    for _, side in ipairs({-1, 1}) do
+        local x = side * OneWay.wallX
+        Look.block(x, (OneWay.wallTop + ground) / 2, 40, ground - OneWay.wallTop, 'stone', 0)
+        Look.block(x, OneWay.wallTop - 10, 64, 24, 'stone', 0)
+    end
+end
+
 function OneWay:draw(area)
     Scenery.sky(self.camera, OneWay.groundY)
     Scenery.ground(OneWay.groundY)
-    Look.drawAll(self.walls)
+    self:drawFrame()
     for _, platform in ipairs(self.platforms) do
         Look.draw(platform.body, {layer = 1})
         if platform.shape.oneWay then
             self:drawChevrons(platform)
         end
     end
-    self:label('A moving platform', self.lift.x, self.lift.y + 36, {size = 17})
+    self:label('The lift', self.lift.x, self.lift.y + 36, {size = 17})
     self.heroArt:draw(self.hero.x, self.hero.y + OneWay.height / 2, 3)
 end
 

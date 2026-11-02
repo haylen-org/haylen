@@ -15,21 +15,22 @@ local Scenery = require('categories.physics.scenery')
 local Terrain = haylen.class('Terrain', PhysicsTest)
 
 Terrain.code = [[
-local terrain = physics2d.newTerrain(world, {columns = 361, rows = 161, cellSize = 5, x = -900, y = -380, chunkSize = 32})
-terrain.samples = function(column, row) return row * 5 > surface(column) and 1 or 0 end
+local terrain = physics2d.newTerrain(world, {columns = 481, rows = 161, cellSize = 5, x = -1200, y = -380})
+terrain.samples = function(column, row) return (row * 5 - surface(column)) / 5 + 0.5 end
 terrain:explode(x, y, 60, {impulse = 900})  -- Blows a crater and pushes the crates.
-terrain:carve(x, y, 36)  terrain:fill(x, y, 36)
+terrain:carve(x, y, 36)  -- Digs, and terrain:fill adds dirt the same way.
 local rebuilt = terrain:update()  -- Only the chunks that changed.
-graphics2d.drawPolygon(terrain:outlines(), dirt)  -- One shape, whose chunks join without a seam around open caves.]]
+local outlines = terrain:outlines()  -- One shape, with open caves and no seams.]]
 
 Terrain.cellSize = 5
-Terrain.columns, Terrain.rows = 361, 161
-Terrain.origin = {x = -900, y = -380}
+Terrain.columns, Terrain.rows = 481, 161
+Terrain.origin = {x = -1200, y = -380}
 Terrain.tools = {bomb = 60, dig = 36, fill = 36}
-Terrain.dirt = '#FFA0582A'
-Terrain.grass = '#FF6CBF3E'
-Terrain.cave = '#FF4A2A1A'
-Terrain.grassDepth = 16
+-- Pockets dug into the ground when it grows, as `{x, y, radius}`, which show the earth behind it.
+Terrain.caves = {{-560, 250, 46}, {90, 310, 58}, {600, 270, 40}}
+-- The earth behind the ground is the same soil in the shade.
+Terrain.shade = '#FF8C6E5E'
+Terrain.white = '#FFFFFFFF'
 
 function Terrain:enter()
     self:frame{
@@ -47,28 +48,48 @@ function Terrain:enter()
     self.tool = 'bomb'
     self.rebuilt = 0
     self.blast = Burst('explosions/explosion-small', {count = 4, scale = 0.6, layer = 30})
-    self.order = {layer = 0}
+    self.groundMask, self.grassMask = {layer = -6}, {layer = -4}
+    self.drawGround = function()
+        graphics2d.drawPolygon(self.ground, Terrain.white)
+    end
+    -- The grass shows where the ground is and above the surface the hills grew with, so its band never hangs into a crater.
+    self.drawGrassMask = function()
+        graphics2d.drawPolygon(self.ground, Terrain.white)
+        graphics2d.drawPolygon(self.above, Terrain.white)
+    end
     self:build()
     timer.after(1, function() self:apply('bomb', -120, self:surfaceAt(-120)) end, {owner = self})
 end
 
+-- Grows new hills whose samples fade over one cell at the surface, so the outline follows the hills between the samples, and digs the caves.
 function Terrain:build()
     self.world = physics2d.newWorld()
     self.crates = {}
-    self.terrain = physics2d.newTerrain(self.world, {columns = Terrain.columns, rows = Terrain.rows, cellSize = Terrain.cellSize, x = Terrain.origin.x, y = Terrain.origin.y, chunkSize = 32})
+    self.terrain = physics2d.newTerrain(self.world, {columns = Terrain.columns, rows = Terrain.rows, cellSize = Terrain.cellSize, x = Terrain.origin.x, y = Terrain.origin.y})
     local noise = m.noise(self.random:integer(1, 1000))
-    self.surface = {}
-    self.backfill = {}
+    local size = Terrain.cellSize
+    local surface, backfill, above, top = {}, {}, {}, {}
     for column = 0, Terrain.columns - 1 do
-        self.surface[column] = 260 + noise:fractal(column / 70, 0.3, 4) * 140
-        self.backfill[#self.backfill + 1] = {Terrain.origin.x + column * Terrain.cellSize, Terrain.origin.y + self.surface[column] + 6}
+        surface[column] = 260 + noise:fractal(column / 70, 0.3, 4) * 140
+        local x, y = Terrain.origin.x + column * size, Terrain.origin.y + surface[column]
+        backfill[#backfill + 1] = {x, y + 6}
+        above[#above + 1] = {x, y + 2}
+        top[#top + 1] = {x, y}
     end
-    local bottom = Terrain.origin.y + Terrain.rows * Terrain.cellSize + 200
-    self.backfill[#self.backfill + 1] = {Terrain.origin.x + (Terrain.columns - 1) * Terrain.cellSize, bottom}
-    self.backfill[#self.backfill + 1] = {Terrain.origin.x, bottom}
+    local left, right = Terrain.origin.x, Terrain.origin.x + (Terrain.columns - 1) * size
+    local bottom = Terrain.origin.y + Terrain.rows * size + 200
+    backfill[#backfill + 1] = {right, bottom}
+    backfill[#backfill + 1] = {left, bottom}
+    above[#above + 1] = {right, Terrain.origin.y - 1000}
+    above[#above + 1] = {left, Terrain.origin.y - 1000}
+    self.surface, self.backfill, self.above = surface, backfill, above
+    self.layers = Scenery.newLayers(top)
+
     self.terrain.samples = function(column, row)
-        local cave = noise:fractal(column / 30, row / 30 + 5, 2) > 0.45 and row * Terrain.cellSize > self.surface[column] + 60
-        return (row * Terrain.cellSize > self.surface[column] and not cave) and 1 or 0
+        return (row * size - surface[column]) / size + 0.5
+    end
+    for _, cave in ipairs(Terrain.caves) do
+        self.terrain:carve(cave[1], cave[2], cave[3])
     end
     self:rebuild()
     self:dropCrates()
@@ -106,21 +127,77 @@ function Terrain:apply(tool, x, y)
     end
 end
 
--- Rebuilds the collision of the changed chunks and keeps the outlines that draw the ground, which fill as one shape with its caves open, and the lawn, a copy of its solid outlines a little higher.
+-- Rebuilds the collision of the changed chunks and keeps the outlines that draw the ground and the grass along its top.
 function Terrain:rebuild()
     local rebuilt = self.terrain:update()
     self.rebuilt = self.rebuilt + rebuilt
-    self.ground, self.lawn = self.terrain:outlines(), {}
+    self.ground = self.terrain:outlines()
+    self:growGrass()
+    return rebuilt
+end
+
+-- Returns whether the edge from `a` to `b` of a solid outline is a top face of the ground: it faces up, open air lies above it and it is no deeper than the surface the hills grew with, so craters and caves show bare dirt.
+function Terrain:isLawn(a, b)
+    local dx, dy = b.x - a.x, b.y - a.y
+    if dx <= 0 or dx < math.abs(dy) * 0.6 then
+        return false
+    end
+    local x, y = (a.x + b.x) / 2, (a.y + b.y) / 2
+    if y > self:surfaceAt(x) + 3 then
+        return false
+    end
+    local column = math.floor((x - Terrain.origin.x) / Terrain.cellSize + 0.5)
+    local row = math.floor((y - Terrain.origin.y) / Terrain.cellSize) - 1
+    return row < 0 or self.terrain:sample(column, row) < 0.5
+end
+
+-- Finds the runs of top faces along the solid outlines and joins the runs that meet at the edges of chunks, so each stretch of lawn draws as one band of grass.
+function Terrain:growGrass()
+    local runs = {}
     for _, outline in ipairs(self.ground) do
-        if m.polygonSignedArea(outline) >= 0 then
-            local lawn = {}
-            for index, point in ipairs(outline) do
-                lawn[index] = {point.x, point.y - Terrain.grassDepth}
+        local count = #outline
+        if count >= 3 and m.polygonSignedArea(outline) > 0 then
+            local first = 1
+            while first <= count and self:isLawn(outline[(first - 2) % count + 1], outline[first]) do
+                first = first + 1
             end
-            self.lawn[#self.lawn + 1] = lawn
+            local run
+            for step = 0, count - 1 do
+                local index = (first - 1 + step) % count + 1
+                local a, b = outline[index], outline[index % count + 1]
+                if self:isLawn(a, b) then
+                    run = run or {{a.x, a.y}}
+                    run[#run + 1] = {b.x, b.y}
+                elseif run then
+                    runs[#runs + 1] = run
+                    run = nil
+                end
+            end
+            if run then
+                runs[#runs + 1] = run
+            end
         end
     end
-    return rebuilt
+    table.sort(runs, function(a, b) return a[1][1] < b[1][1] end)
+
+    local joined = {}
+    for _, run in ipairs(runs) do
+        local last = joined[#joined]
+        local tail = last and last[#last]
+        if tail and math.abs(tail[1] - run[1][1]) < 0.5 and math.abs(tail[2] - run[1][2]) < 0.5 then
+            for index = 2, #run do
+                last[#last + 1] = run[index]
+            end
+        else
+            joined[#joined + 1] = run
+        end
+    end
+    self.lawns = {}
+    for _, run in ipairs(joined) do
+        if run[#run][1] - run[1][1] > 8 then
+            self.lawns[#self.lawns + 1] = Scenery.newGrass(run)
+        end
+    end
 end
 
 function Terrain:update(dt)
@@ -143,16 +220,19 @@ function Terrain:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The grass is the ground drawn once more a little higher under the dirt, so it shows along every face that looks up above the hills the ground grew with, and the earth behind the ground covers it below them and shows through every cave, crater and tunnel the dirt leaves open. Each is one shape, so its chunks join without a seam.
+-- The earth behind the ground shows through every cave, crater and tunnel. The ground is the soil with the layers of the hills along the surface they grew with, which craters cut, and the grass grows along every top face at or above that surface.
 function Terrain:draw(area)
-    local order = self.order
     Scenery.sky(self.camera, 40)
-    order.layer = -7
-    graphics2d.drawPolygon(self.lawn, Terrain.grass, order)
-    order.layer = -6
-    graphics2d.drawPolygon(self.backfill, Terrain.cave, order)
-    order.layer = -5
-    graphics2d.drawPolygon(self.ground, Terrain.dirt, order)
+    Scenery.drawSurface(self.backfill, 'soil', Terrain.shade, -7)
+    graphics2d.pushMask(self.drawGround, self.groundMask)
+    Scenery.drawPattern('soil', nil, 0)
+    Scenery.drawLayers(self.layers, 1)
+    graphics2d.popMask()
+    graphics2d.pushMask(self.drawGrassMask, self.grassMask)
+    for _, lawn in ipairs(self.lawns) do
+        Scenery.drawGrass(lawn, 0)
+    end
+    graphics2d.popMask()
     Look.drawAll(self.crates, {layer = 3})
     self.blast:draw()
     local pointer = self.pointer

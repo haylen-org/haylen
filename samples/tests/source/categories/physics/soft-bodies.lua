@@ -1,4 +1,4 @@
--- Jelly blobs made of a ring of small bodies held around a center by springy distance joints, which squash when they land and spring back, read in one call each with `world:readTransforms` and stiffened while they run. Their skin is a smooth curve through the ring, and they bounce down a grassy slope, over wooden posts and onto a stone block.
+-- Jelly blobs made of a ring of small bodies held around a center by springy distance joints, which squash when they land and spring back, read in one call each with `world:readTransforms` and stiffened while they run. Their skin is a smooth curve through the ring, and they bounce down a grassy slope, over short wooden bollards and onto a crate.
 local collections = require('haylen.collections')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -16,9 +16,10 @@ local SoftBodies = haylen.class('SoftBodies', PhysicsTest)
 
 SoftBodies.code = [[
 node:addCircle(9, {group = -1, friction = 0.8})  -- The parts of one blob never collide.
-world:createJoint('distance', center, node, {ax = center.x, ay = center.y, bx = node.x, by = node.y, enableSpring = true, hertz = 5, dampingRatio = 0.4, enableLimit = true, lower = 28, upper = 87.5})
-world:createJoint('distance', node, neighbor, {ax = node.x, ay = node.y, bx = neighbor.x, by = neighbor.y, enableSpring = true, hertz = 10, dampingRatio = 0.4})
-world:readTransforms(blob, buffer)  -- Every node of the blob in one call.
+world:createJoint('distance', center, node, {ax = center.x, ay = center.y, bx = node.x, by = node.y,
+    enableSpring = true, hertz = 5, dampingRatio = 0.4, enableLimit = true, lower = 28, upper = 87.5})
+world:createJoint('distance', node, neighbor, {ax = node.x, ay = node.y, bx = neighbor.x, by = neighbor.y,
+    enableSpring = true, hertz = 10, dampingRatio = 0.4})
 joint.hertz = 8  -- Stiffens the spring while it runs.]]
 
 SoftBodies.nodes = 16
@@ -29,7 +30,9 @@ SoftBodies.smoothness = 4
 SoftBodies.maxBlobs = 6
 SoftBodies.ground = 390
 SoftBodies.slope = {{-1600, -40}, {-800, -40}, {-220, 390}, {1600, 390}}
-SoftBodies.posts = {{-80, 150}, {80, 230}, {240, 150}}
+-- The bollards stand on the ground by their middle and their top, low enough that a blob that lands on one drapes over it to the ground.
+SoftBodies.posts = {{-40, 300}, {250, 312}}
+SoftBodies.postRadius = 22
 SoftBodies.block = {520, 300, 180}
 SoftBodies.restArea = SoftBodies.nodes * SoftBodies.radius ^ 2 * math.sin(math.pi * 2 / SoftBodies.nodes) / 2
 
@@ -65,12 +68,17 @@ function SoftBodies:build()
     ground:addChain(SoftBodies.slope, false, {friction = 0.8})
     local block = SoftBodies.block
     ground:addBox(block[3], block[3], {offsetX = block[1], offsetY = block[2]})
+    self.posts = {}
     for _, post in ipairs(SoftBodies.posts) do
-        ground:addCircle(22, {offsetX = post[1], offsetY = post[2]})
+        local radius, half = SoftBodies.postRadius, (SoftBodies.ground - post[2]) / 2
+        local bollard = self.world:createBody({type = 'static', x = post[1], y = post[2] + half})
+        bollard:addCapsule(0, radius - half, 0, half - radius, radius)
+        Look.dress(bollard, 'darkWood')
+        self.posts[#self.posts + 1] = bollard
     end
 
     self:blob(-620, -240)
-    self:blob(80, -260)
+    self:blob(20, -260)
     self:blob(500, -220)
 end
 
@@ -211,11 +219,8 @@ function SoftBodies:draw(area)
     Scenery.sky(self.camera, SoftBodies.ground)
     Scenery.drawTerrain(self.terrain)
     local block = SoftBodies.block
-    Look.block(block[1], block[2], block[3], block[3], 'stone', 0)
-    for _, post in ipairs(SoftBodies.posts) do
-        Look.block(post[1], (post[2] + SoftBodies.ground) / 2 + 10, 16, SoftBodies.ground - post[2] - 10, 'darkWood', 0)
-        Look.disc(post[1], post[2], 22, 'steel', 0)
-    end
+    Look.block(block[1], block[2], block[3], block[3], 'woodCrate', 0)
+    Look.drawAll(self.posts, {layer = 0})
     for _, blob in ipairs(self.blobs) do
         self:drawBlob(blob)
     end

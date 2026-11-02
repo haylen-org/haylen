@@ -1,4 +1,4 @@
--- Hundreds of crates and coins in one pile, drawn with two sprite batches, with the body count and the time of every physics step on a readout over the stage.
+-- Hundreds of crates and coins in one pile between two stone pillars, drawn with two sprite batches, with the body count and the time of the physics steps on a readout over the stage, which the status repeats with the same numbers.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -24,9 +24,16 @@ print(world.bodyCount, world:stats().stepMilliseconds)]]
 
 Stress.box = 22
 Stress.coin = 12
-Stress.spawnPerFrame = 40
+-- New bodies arrive in rows this often, each falling far enough before the next row that none starts inside another.
+Stress.rowSize = 40
+Stress.rowInterval = 0.1
+Stress.dropSpeed = 400
 Stress.ground = 360
 Stress.left, Stress.right = -760, 760
+-- The pillars reach this high, and the physics walls reach far above them, so nothing leaves the pile over the top.
+Stress.pillarTop = -290
+-- The readout and the status show the same numbers, taken this often.
+Stress.sampleInterval = 0.5
 -- The crate and the coin cover this share of their pictures.
 Stress.crateCover = 152 / 160
 Stress.coinCover = 88 / 96
@@ -44,6 +51,8 @@ function Stress:enter()
         focus = 'boxes',
     }
     self.random = m.random(37)
+    self.rowClock = 0
+    self.sampleClock = Stress.sampleInterval
     self.crate = assets.texture('physics/crate.png', {filter = 'linear'})
     self.coin = assets.texture('physics/coin.png', {filter = 'linear'})
     self:build()
@@ -57,13 +66,9 @@ function Stress:build()
     self.pending = {}
     local walls = self.world:createBody({type = 'static'})
     walls:addBox(8000, 60, {offsetY = Stress.ground + 30})
-    walls:addBox(40, 760, {offsetX = Stress.left - 20, offsetY = Stress.ground - 380})
-    walls:addBox(40, 760, {offsetX = Stress.right + 20, offsetY = Stress.ground - 380})
+    walls:addBox(40, 2000, {offsetX = Stress.left - 20, offsetY = Stress.ground - 1000})
+    walls:addBox(40, 2000, {offsetX = Stress.right + 20, offsetY = Stress.ground - 1000})
     walls:addPolygon({{-200, Stress.ground}, {0, Stress.ground - 140}, {200, Stress.ground}})
-    self.walls = {}
-    for _, x in ipairs({Stress.left - 20, Stress.right + 20}) do
-        self.walls[#self.walls + 1] = {x = x}
-    end
     self.wedge = Look.newShape({{-200, Stress.ground}, {0, Stress.ground - 140}, {200, Stress.ground}}, 'stone')
 end
 
@@ -73,12 +78,17 @@ function Stress:queue(kind, count)
     end
 end
 
--- New bodies arrive a few per frame in a row above the pile, so they never start inside each other.
-function Stress:spawnPending()
-    for slot = 1, math.min(Stress.spawnPerFrame, #self.pending) do
+-- New bodies arrive in rows above the pile, thrown down so each row is clear of the stage top before the next one comes.
+function Stress:spawnPending(dt)
+    self.rowClock = self.rowClock + dt
+    if self.rowClock < Stress.rowInterval or #self.pending == 0 then
+        return
+    end
+    self.rowClock = 0
+    for slot = 1, math.min(Stress.rowSize, #self.pending) do
         local kind = table.remove(self.pending)
         local x = Stress.left + 40 + slot * 36 + self.random:range(-4, 4)
-        local body = self.world:createBody({x = x, y = -420, rotation = self.random:range(0, math.pi)})
+        local body = self.world:createBody({x = x, y = -420, vy = Stress.dropSpeed, rotation = self.random:range(0, math.pi)})
         if kind == 'box' then
             body:addBox(Stress.box, Stress.box, {friction = 0.5})
             self.boxes[#self.boxes + 1] = body
@@ -93,15 +103,43 @@ function Stress:spawnPending()
     end
 end
 
+-- Removes the bodies that a full pile pushed out over a pillar.
+function Stress:dropEscaped(bodies, sprites)
+    for index = #bodies, 1, -1 do
+        local x = bodies[index].x
+        if x < Stress.left - 40 or x > Stress.right + 40 then
+            bodies[index]:destroy()
+            table.remove(bodies, index)
+            table.remove(sprites, index)
+        end
+    end
+end
+
+-- The readout and the status take the same sample of the counts and the times, so they always agree. The work of a frame is the time the engine spends on it, which is much less than the time between the frames the display shows.
+function Stress:sample()
+    local frame = profiler.frame()
+    local bodies, step = self.world.bodyCount - 1, self:stepTime()
+    local work = string.format('Engine work %.1f ms a frame', frame.average)
+    if frame.fps > 0 then
+        work = string.format('Engine work %.1f ms of each %d ms frame', frame.average, math.floor(1000 / frame.fps + 0.5))
+    end
+    self.readout = string.format('%d bodies, %d waiting\nPhysics step %.1f ms\n%s', bodies, #self.pending, step, work)
+    self:status(string.format('%d bodies in the pile, simulated in %.1f ms a step.', bodies, step))
+end
+
 function Stress:update(dt)
     Stress.super.update(self, dt)
     if input.pressed('reset') then
         self:build()
     end
-    self:spawnPending()
-    local frame = profiler.frame()
-    self.readout = string.format('%d bodies, %d waiting\nPhysics step %.2f ms\nFrame %.2f ms, %d frames a second', self.world.bodyCount - 1, #self.pending, self:stepTime(), frame.milliseconds, math.floor(frame.fps + 0.5))
-    self:status(string.format('%d bodies in the pile, simulated in %.2f ms a step.', self.world.bodyCount - 1, self:stepTime()))
+    self:spawnPending(dt)
+    self:dropEscaped(self.boxes, self.boxSprites)
+    self:dropEscaped(self.balls, self.ballSprites)
+    self.sampleClock = self.sampleClock + dt
+    if self.sampleClock >= Stress.sampleInterval then
+        self.sampleClock = 0
+        self:sample()
+    end
 end
 
 function Stress:fixedUpdate(step)
@@ -118,9 +156,11 @@ end
 function Stress:draw(area)
     Scenery.sky(self.camera, Stress.ground)
     Scenery.ground(Stress.ground)
-    for _, wall in ipairs(self.walls) do
-        Look.block(wall.x, Stress.ground - 380, 40, 760, 'stone', 0)
+    for _, x in ipairs({Stress.left - 20, Stress.right + 20}) do
+        Look.block(x, (Stress.pillarTop + Stress.ground) / 2, 40, Stress.ground - Stress.pillarTop, 'stone', 0)
+        Look.block(x, Stress.pillarTop - 10, 64, 24, 'stone', 0)
     end
+
     Look.drawShape(self.wedge, 0)
     place(self.boxes, self.boxSprites)
     place(self.balls, self.ballSprites)

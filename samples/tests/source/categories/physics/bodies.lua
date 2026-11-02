@@ -104,7 +104,7 @@ function Bodies:update(dt)
         self:build()
     end
     self.grab:update(self.pointer, self.camera)
-    self:status(string.format('%d bodies on the stage, simulated in %.2f ms a step.', self.world.bodyCount - 4, self:stepTime()))
+    self:status(string.format('%d bodies on the stage, simulated in %.1f ms a step.', self.world.bodyCount - 4, self:stepTime()))
 end
 
 function Bodies:fixedUpdate(step)

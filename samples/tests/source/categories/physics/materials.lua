@@ -35,7 +35,7 @@ function Materials:enter()
             ui.slider{id = 'friction', value = 0.1, min = 0, max = 1, step = 0.05, showValue = true, decimals = 2, onChange = function(event) self:setFriction(event.value) end},
             ui.label{text = 'Bounce of your ball', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'restitution', value = 0.6, min = 0, max = 1, step = 0.05, showValue = true, decimals = 2, onChange = function(event) self:setRestitution(event.value) end},
-            ui.label{text = 'Density of the iron weight', font = 'caption', color = 'textMuted'},
+            ui.label{text = 'Density of your iron weight', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'density', value = 12, min = 1, max = 20, step = 1, showValue = true, decimals = 0, onChange = function(event) self:setDensity(event.value) end},
             ui.button{id = 'replay', text = 'Replay', onClick = function() self:build() end},
         },
@@ -56,6 +56,7 @@ function Materials:build()
     self:buildFriction()
     self:buildRestitution()
     self:buildDensity()
+    self.yours = {self.mine, self.ball, self.iron}
 end
 
 -- Blocks start on a gentle ramp with the most slippery one lowest: the grippy ones stay, and the slippery ones slide down against the wall.
@@ -196,6 +197,12 @@ function Materials:draw(area)
     end
     for _, title in ipairs(self.titles) do
         self:label(title.text, title.x, Materials.titleY, {size = 26})
+    end
+    -- The bodies that the sliders change carry a plate that names them.
+    for _, body in ipairs(self.yours) do
+        if body.valid then
+            self:label('Yours', body.x, body.y - 52, {size = 16, plate = '#EEB8860B'})
+        end
     end
     self.grab:draw()
 end

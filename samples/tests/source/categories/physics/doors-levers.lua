@@ -1,4 +1,4 @@
--- Mechanisms made of joints in a castle yard: flap doors on limited hinges that rolling balls push open and springs close, a lever that opens an iron gate on a prismatic motor when pulled to its end, and a pressure plate sensor that raises a drawbridge over a moat.
+-- Mechanisms made of joints in a castle yard: flap doors on limited hinges that rolling balls push open and springs close, a lever that opens an iron gate on a prismatic motor when pulled to its end, and a pressure plate sensor that lowers a drawbridge over a moat, which stands raised while nothing presses the plate.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -14,11 +14,12 @@ local Scenery = require('categories.physics.scenery')
 local DoorsLevers = haylen.class('DoorsLevers', PhysicsTest)
 
 DoorsLevers.code = [[
-world:createJoint('revolute', beam, door, {ax = x, ay = -170, enableLimit = true, lower = -1.3, upper = 1.3, enableSpring = true, hertz = 1.5})
-local gate = world:createJoint('prismatic', beam, slab, {ax = 40, ay = -115, axisY = 1, enableLimit = true, lower = -120, upper = 0, enableMotor = true})
-local lever = world:createJoint('revolute', ground, handle, {ax = -560, ay = 300, enableLimit = true, upper = 1.2, enableMotor = true, maxMotorTorque = 8e4})
-gate.motorSpeed = lever.angle >= 1.15 and -300 or 300
-drawbridge.motorSpeed = #plate:overlaps() > 0 and -1.5 or 1.5  -- The plate holds the bridge up.]]
+local hinge = {ax = x, ay = -170, enableLimit = true, enableSpring = true, hertz = 1.5}
+world:createJoint('revolute', beam, door, hinge)
+local gate = world:createJoint('prismatic', beam, slab, {ax = 40, ay = -115, axisY = 1})
+gate.motorSpeed = lever.angle >= 1.15 and -300 or 300  -- The lever opens the gate.
+local pressed = #plate:overlaps() > 0
+drawbridge.motorSpeed = pressed and 1.5 or -1.5  -- The plate lowers the bridge.]]
 
 DoorsLevers.worldCategory, DoorsLevers.beamCategory = 1, 2
 DoorsLevers.ground = 300
@@ -32,12 +33,19 @@ DoorsLevers.hinge = {430, 300}
 DoorsLevers.spawnInterval = 1.6
 DoorsLevers.maxBalls = 14
 DoorsLevers.moat = {430, 630, 340}
+-- The stone floor of the moat, under its water.
+DoorsLevers.moatFloor = 410
+-- The tower beside the far bank: its middle, its width, its top under the battlements, and the bricks of its courses.
+DoorsLevers.tower = {x = 820, width = 80, top = -230, courses = 20, brick = 40}
+-- The bridge stands this far raised while nothing presses the plate.
+DoorsLevers.raised = 1.45
+DoorsLevers.chainTop = 30
 DoorsLevers.ramp = {{-790, -290}, {-420, -70}, {-420, -50}, {-790, -270}}
 
 function DoorsLevers:enter()
     self:frame{
         code = DoorsLevers.code,
-        hint = 'Balls roll down through the flap doors. Drag the lever to its right end to open the gate and back to close it, and put a crate on the plate to raise the drawbridge. R or the X button starts over.',
+        hint = 'Balls roll down through the flap doors. Drag the lever to its right end to open the gate and back to close it, and put a crate on the plate to lower the drawbridge over the moat. R or the X button starts over.',
         controls = {
             ui.toggle{id = 'rain', text = 'Roll balls', checked = true, onChange = function(event) self.raining = event.checked end},
             ui.button{id = 'ball', text = 'Roll a ball', onClick = function() self:rollBall() end},
@@ -47,10 +55,12 @@ function DoorsLevers:enter()
         },
         focus = 'rain',
     }
-    self.camera.position = {0, 30}
+    self.camera.position = {0, 70}
     self.raining = true
     self.random = m.random(43)
     self.ramp = Look.newShape(DoorsLevers.ramp, 'wood')
+    local moat = DoorsLevers.moat
+    self.moatBed = Scenery.newSurface({{moat[1], DoorsLevers.moatFloor + 20}, {moat[2], DoorsLevers.moatFloor + 20}, {moat[2], 1400}, {moat[1], 1400}}, 'soil')
     self.chain = {0, 0, 0, 0}
     self:build()
 end
@@ -65,7 +75,10 @@ function DoorsLevers:build()
     self.ground = self.world:createBody({type = 'static'})
     self.ground:addBox(1230, 400, {offsetX = -185, offsetY = ground + 200})
     self.ground:addBox(170, 400, {offsetX = 715, offsetY = ground + 200})
-    self.ground:addBox(24, 760, {offsetX = 790, offsetY = ground - 380})
+    local tower = DoorsLevers.tower
+    self.ground:addBox(24, ground - tower.top, {offsetX = tower.x - tower.width / 2 + 12, offsetY = (tower.top + ground) / 2})
+    local moat = DoorsLevers.moat
+    self.ground:addBox(moat[2] - moat[1], 20, {offsetX = (moat[1] + moat[2]) / 2, offsetY = DoorsLevers.moatFloor + 10})
     self.ground:addPolygon(DoorsLevers.ramp)
     self.ground:addBox(680, 20, {offsetX = -80, offsetY = -50})
     local beam = self.world:createBody({type = 'static'})
@@ -99,7 +112,7 @@ function DoorsLevers:build()
     self.bridge = self.world:createBody({x = hinge[1], y = hinge[2]})
     self.bridge:addBox(200, 18, {offsetX = 100, offsetY = 9, friction = 0.8})
     Look.dress(self.bridge, 'wood')
-    self.drawbridge = self.world:createJoint('revolute', self.ground, self.bridge, {ax = hinge[1], ay = hinge[2], enableLimit = true, lower = 0, upper = 1.25, enableMotor = true, motorSpeed = 1.5, maxMotorTorque = 2e7})
+    self.drawbridge = self.world:createJoint('revolute', self.ground, self.bridge, {ax = hinge[1], ay = hinge[2], enableLimit = true, lower = -DoorsLevers.raised, upper = 0, enableMotor = true, motorSpeed = -1.5, maxMotorTorque = 2e7})
     self:rollBall()
 end
 
@@ -133,11 +146,11 @@ function DoorsLevers:update(dt)
     self.grab:update(self.pointer, self.camera)
     local pressed = #self.plateShape:overlaps()
     local gate = self.open and 'the lever is pulled and the gate open' or 'the lever is up and the gate shut'
-    local bridge = pressed > 0 and 'the plate holds the drawbridge up' or 'the drawbridge lies down'
+    local bridge = pressed > 0 and 'the plate lowers the drawbridge' or 'the drawbridge stands raised'
     self:status(string.format('Now %s, and %s. %d balls crossed the moat.', gate, bridge, self.across))
 end
 
--- The lever switches the gate only at the ends of its travel, and the plate holds the bridge up while anything presses it.
+-- The lever switches the gate only at the ends of its travel, and the plate holds the bridge down over the moat while anything presses it.
 function DoorsLevers:fixedUpdate(step)
     self.clock = self.clock + step
     if self.raining and self.clock >= DoorsLevers.spawnInterval then
@@ -155,7 +168,7 @@ function DoorsLevers:fixedUpdate(step)
     lever.motorSpeed = self.pulling and self.pulling * 3 or 0
     lever.maxMotorTorque = self.pulling and 1e6 or DoorsLevers.leverFriction
     self.slider.motorSpeed = self.open and -300 or 300
-    self.drawbridge.motorSpeed = #self.plateShape:overlaps() > 0 and -1.5 or 1.5
+    self.drawbridge.motorSpeed = #self.plateShape:overlaps() > 0 and 1.5 or -1.5
     self:simulate(self.world, step)
     for index = #self.balls, 1, -1 do
         local ball = self.balls[index]
@@ -169,17 +182,19 @@ function DoorsLevers:fixedUpdate(step)
     end
 end
 
--- The castle: a grassy yard on both banks of the moat between stone walls, a tower, the frame of the shelf and the beam on posts, the gate in its frame, the lever on its base, the plate set into the ground and the chains of the drawbridge on a post.
+-- The castle: a grassy yard on both banks of the moat with its stone floor, a brick tower, the frame of the shelf and the beam on posts, the gate in its frame, the lever on its base, the plate set into the ground and the chain of the drawbridge on a post.
 function DoorsLevers:drawCastle()
     local ground = DoorsLevers.ground
     local unit = Look.pixel
     local moat = DoorsLevers.moat
     Scenery.ground(ground, nil, moat[1])
     Scenery.ground(ground, moat[2], nil)
+    self.moatBed:draw(0, 0, {layer = -8})
+    Look.block((moat[1] + moat[2]) / 2, DoorsLevers.moatFloor + 12, moat[2] - moat[1], 24, 'stone', -8)
     for _, x in ipairs({moat[1] + 8, moat[2] - 8}) do
-        Look.block(x, ground + 200, 16, 400, 'stone', -7)
+        Look.block(x, (ground + DoorsLevers.moatFloor + 24) / 2, 16, DoorsLevers.moatFloor + 24 - ground, 'stone', -7)
     end
-    Look.block(812, ground - 380, 70, 760, 'brick', -7)
+    self:drawTower()
     Look.drawShape(self.ramp, -7)
     Look.block(-80, -50, 680, 20, 'wood', -7)
     Look.block(-80, -182, 680, 24, 'darkWood', -7)
@@ -195,13 +210,34 @@ function DoorsLevers:drawCastle()
     local pressed = #self.plateShape:overlaps() > 0
     local plate = DoorsLevers.plate
     Look.block(plate[1], ground - (pressed and 3 or 6), 110, pressed and 6 or 12, pressed and 'green' or 'yellow', 1)
-    Look.block(390, (ground + 130) / 2, 22, ground - 130, 'darkWood', 0)
+    local top = DoorsLevers.chainTop
+    Look.block(390, (ground + top) / 2 - 10, 22, ground - top + 20, 'darkWood', 0)
     local bridge = self.bridge
     local cos, sin = math.cos(bridge.rotation), math.sin(bridge.rotation)
-    self.chain[1], self.chain[2] = 390, 140
+    self.chain[1], self.chain[2] = 390, top
     self.chain[3], self.chain[4] = bridge.x + cos * 196, bridge.y + sin * 196
     Look.line(self.chain[1], self.chain[2], self.chain[3], self.chain[4], 5 * unit, '#FF9AA5BE', 0)
-    Look.pin(390, 140, 7 * unit, 1)
+    Look.pin(390, top, 7 * unit, 1)
+end
+
+-- The tower is laid in courses of bricks, each course shifted by half a brick, under battlements of three merlons.
+function DoorsLevers:drawTower()
+    local tower, ground = DoorsLevers.tower, DoorsLevers.ground
+    local left, right = tower.x - tower.width / 2, tower.x + tower.width / 2
+    local height = (ground - tower.top) / tower.courses
+    for course = 0, tower.courses - 1 do
+        local y = ground - (course + 0.5) * height
+        local x = left - (course % 2) * tower.brick / 2
+        while x < right do
+            local from, to = math.max(x, left), math.min(x + tower.brick, right)
+            Look.block((from + to) / 2, y, to - from, height, 'brick', -7)
+            x = x + tower.brick
+        end
+    end
+    local merlon = tower.width / 4
+    for index = 0, 2 do
+        Look.block(left + merlon / 2 + index * merlon * 1.5, tower.top - height / 2, merlon, height, 'brick', -7)
+    end
 end
 
 function DoorsLevers:draw(area)

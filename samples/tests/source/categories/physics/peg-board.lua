@@ -14,10 +14,11 @@ local PegBoard = haylen.class('PegBoard', PhysicsTest)
 
 PegBoard.code = [[
 board:addCircle(8, {offsetX = x, offsetY = y, restitution = 0.4})  -- One static body holds every peg.
-funnel:addSegment(-480, -340, -360, -270)  -- Pours every ball into the middle.
 slot:addBox(40, 16, {sensor = true})
 slot.data = {slot = 3}
-world.onSensorBegin = function(sensor, visitor) counts[sensor.data.slot] = counts[sensor.data.slot] + 1 end]]
+world.onSensorBegin = function(sensor, visitor)
+    counts[sensor.data.slot] = counts[sensor.data.slot] + 1
+end]]
 
 PegBoard.center = -330
 PegBoard.spacing = 48
@@ -138,7 +139,13 @@ function PegBoard:update(dt)
         end
     end
     local busiest = most > 0 and string.format(', and slot %d holds the most with %d', slot, most) or ''
-    self:status(string.format('%d balls poured and %d counted in the slots%s.', self.dropped, self.counted, busiest))
+    local text = string.format('%d balls poured and %d counted in the slots%s.', self.dropped, self.counted, busiest)
+
+    -- The status changes in the frame the histogram does, so both always read the same counts.
+    if text ~= self.shownStatus then
+        self.shownStatus = text
+        self:set('status', {text = text})
+    end
 end
 
 -- Balls that a slot counted settle in it for a moment and are then taken off the board.

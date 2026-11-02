@@ -1,7 +1,8 @@
--- Ceramic vases, glass panes and wooden crates that `physics2d.fracture` breaks into pieces when `world.onHit` reports an impact faster than what each one stands, hit by iron balls that a launcher throws along the arc that `world:predictPath` shows. The launcher throws its first balls by itself when the test opens.
+-- Ceramic vases, glass panes and wooden crates that `physics2d.fracture` breaks into pieces when `world.onHit` reports an impact faster than what each one stands, hit by iron balls that a mortar fires along the arc that `world:predictPath` shows. The mortar fires its first balls by itself when the test opens.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
+local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local timer = require('haylen.timer')
 local ui = require('haylen.ui')
@@ -14,9 +15,11 @@ local Breakables = haylen.class('Breakables', PhysicsTest)
 
 Breakables.code = [[
 world.onHit = function(a, b, contact)
-    if a == vase and contact.speed > 220 then physics2d.fracture(vase, {pieces = 7, impact = {contact.x, contact.y}}) end
+    if a == vase and contact.speed > 220 then
+        physics2d.fracture(vase, {pieces = 7, impact = {contact.x, contact.y}})
+    end
 end
-local points, hit = world:predictPath(-720, 300, vx, vy, {steps = 120, radius = 20})]]
+local points, hit = world:predictPath(muzzleX, muzzleY, vx, vy, {steps = 120, radius = 20})]]
 
 -- Each kind breaks above its impact speed into its number of pieces, which keep the material of the whole.
 Breakables.kinds = {
@@ -28,7 +31,10 @@ Breakables.vase = {{-14, -60}, {14, -60}, {12, -50}, {30, -20}, {34, 10}, {22, 5
 -- The painted bands of a vase, as the corners of each band in the coordinates of the vase.
 Breakables.bands = {{{-31, -18}, {31, -18}, {33, -8}, {-33, -8}}, {{-33, 14}, {33, 14}, {30, 24}, {-30, 24}}}
 Breakables.ground = 390
+-- The mortar turns its barrel around this pivot and fires from its mouth, the length of the barrel ahead of the pivot.
 Breakables.launcher = {-720, 300}
+Breakables.barrel = {length = 96, width = 46, back = 26}
+Breakables.bandColor = '#FFFFC93C'
 Breakables.ballRadius = 20
 Breakables.reload = 0.4
 Breakables.maxBalls = 10
@@ -49,7 +55,7 @@ function Breakables:enter()
         view = {1520, 660},
     }
     self.camera.position = {-60, 100}
-    self.speed, self.seed, self.loaded = 900, 0, 0
+    self.speed, self.seed, self.loaded, self.aim = 900, 0, 0, -0.6
     self.vaseSkin = Breakables.smoothOutline(Breakables.vase, 4)
     self.vaseLit = {}
     self.vasePoints, self.litPoints, self.vaseOutline = {}, {}, {}
@@ -139,11 +145,15 @@ function Breakables:check(body, contact)
     end
 end
 
--- The pieces take the material of the whole, so the shards of a vase stay glazed and the splinters of a crate stay wooden.
+-- The pieces take the material of the whole, so the shards of a vase stay glazed and keep their share of its painted bands, and the splinters of a crate stay wooden.
 function Breakables:shatter(body, kind, x, y)
+    local vase = body.data.kind == 'vase'
     self.seed = self.seed + 1
     for _, piece in ipairs(physics2d.fracture(body, {pieces = kind.pieces, impact = {x, y}, seed = self.seed, minimumArea = 30})) do
         Look.dress(piece, kind.material)
+        if vase then
+            piece.data.bands = Breakables.bandsOf(piece)
+        end
         self.pieces[#self.pieces + 1] = piece
     end
     while #self.pieces > Breakables.maxPieces do
@@ -151,21 +161,55 @@ function Breakables:shatter(body, kind, x, y)
     end
 end
 
--- The velocity that reaches the target after a flight time set by the throw speed, so the ball lands where it aims whatever the gravity.
+-- The pieces keep the space of the vase they come from, so the bands of the vase cut by the outline of a piece, a little inside it, are the bands the piece shows.
+function Breakables.bandsOf(piece)
+    local outline = {}
+    for index, point in ipairs(piece:shapes()[1].points) do
+        outline[index] = {point.x, point.y}
+    end
+    local inside = m.polygon.offset(outline, -3, {join = 'miter'})
+    local bands = {}
+    for _, band in ipairs(Breakables.bands) do
+        for _, part in ipairs(m.polygon.intersect(inside, band)) do
+            local corners, world = {}, {}
+            for index, point in ipairs(part) do
+                corners[index], world[index] = {point.x, point.y}, {0, 0}
+            end
+            bands[#bands + 1] = {corners = corners, world = world}
+        end
+    end
+    return bands
+end
+
+-- Returns where a ball leaves the mouth of the barrel when the barrel points at `angle`.
+function Breakables.muzzle(angle)
+    local launcher, length = Breakables.launcher, Breakables.barrel.length
+    return launcher[1] + math.cos(angle) * length, launcher[2] + math.sin(angle) * length
+end
+
+-- Returns the velocity that reaches the target from the mouth of the barrel after a flight time set by the throw speed, so the ball lands where it aims whatever the gravity, and the angle the barrel turns to for it. Turning the barrel moves its mouth, so a few rounds settle the velocity and the angle together.
 function Breakables:aimAt(x, y)
     local launcher = Breakables.launcher
-    local dx, dy = x - launcher[1], y - launcher[2]
-    local time = math.max(0.15, math.sqrt(dx * dx + dy * dy) / self.speed)
-    return dx / time, dy / time - 0.5 * self.world.gravity.y * time
+    local angle = math.atan(y - launcher[2], x - launcher[1])
+    local vx, vy = 0, 0
+    for _ = 1, 3 do
+        local fromX, fromY = Breakables.muzzle(angle)
+        local dx, dy = x - fromX, y - fromY
+        local time = math.max(0.15, math.sqrt(dx * dx + dy * dy) / self.speed)
+        vx, vy = dx / time, dy / time - 0.5 * self.world.gravity.y * time
+        angle = math.atan(vy, vx)
+    end
+    return vx, vy, angle
 end
 
 function Breakables:throw(x, y)
     if self.loaded > 0 then
         return
     end
-    local vx, vy = self:aimAt(x, y)
-    local launcher = Breakables.launcher
-    local ball = self.world:createBody({x = launcher[1], y = launcher[2], vx = vx, vy = vy, bullet = true})
+    local vx, vy, angle = self:aimAt(x, y)
+    self.aim = angle
+    local fromX, fromY = Breakables.muzzle(angle)
+    local ball = self.world:createBody({x = fromX, y = fromY, vx = vx, vy = vy, bullet = true})
     ball:addCircle(Breakables.ballRadius, {density = 4, restitution = 0.3})
     Look.dress(ball, 'iron')
     self.balls[#self.balls + 1] = ball
@@ -193,6 +237,10 @@ function Breakables:update(dt)
     local pointer = self.pointer
     if pointer.pressed and not ui.usingPointer() then
         self.aiming = true
+    end
+    if self.aiming and pointer.down then
+        local _, _, angle = self:aimAt(pointer.worldX, pointer.worldY)
+        self.aim = angle
     end
     if self.aiming and pointer.released then
         self.aiming = false
@@ -230,20 +278,47 @@ function Breakables:drawVase(vase)
             local point = self.bandPoints[index]
             point[1], point[2] = x + corner[1] * cos - corner[2] * sin, y + corner[1] * sin + corner[2] * cos
         end
-        graphics2d.drawPolygon(self.bandPoints, '#FFFFC93C', {layer = 1})
+        graphics2d.drawPolygon(self.bandPoints, Breakables.bandColor, {layer = 1})
     end
     local sx, sy = x + (-18 * cos - -6 * sin), y + (-18 * sin + -6 * cos)
     graphics2d.drawShape({sx - 5, sy - 18, 10, 36}, {kind = 'ellipse', rotation = vase.rotation, color = material.light, layer = 1})
 end
 
--- The launcher is a stone post with an iron cup on top, which holds the next ball until it is thrown.
+-- The mortar is a riveted iron barrel on a wooden carriage with two wheels, which turns toward its aim around a pivot on an iron mount and shows the next ball in its mouth until it fires.
 function Breakables:drawLauncher()
-    local launcher = Breakables.launcher
+    local launcher, barrel = Breakables.launcher, Breakables.barrel
     local x, y = launcher[1], launcher[2]
-    Look.block(x, (y + Breakables.ground) / 2 + 13, 50, Breakables.ground - y - 26, 'stone', 0)
-    graphics2d.drawShape({x - 34, y - 26, 68, 52}, {kind = 'ellipse', startAngle = 0, sweep = math.pi, color = '#FF474F66', borderWidth = Look.outlinePixels * Look.pixel, borderColor = Look.ink, layer = 3})
+    local ground = Breakables.ground
+    Look.block(x, ground - 30, 120, 36, 'darkWood', 0)
+    for _, side in ipairs({-1, 1}) do
+        Look.disc(x + side * 42, ground - 18, 18, 'darkWood', 1)
+        Look.pin(x + side * 42, ground - 18, 6, 1)
+    end
+    Look.block(x, (y + ground - 48) / 2, 36, ground - 48 - y + 20, 'iron', 0)
+
+    local cos, sin = math.cos(self.aim), math.sin(self.aim)
+    local middle = (barrel.length - barrel.back) / 2
+    Look.block(x + cos * middle, y + sin * middle, barrel.length + barrel.back, barrel.width, 'iron', 2, self.aim)
+    local mouth = barrel.length - 8
+    Look.block(x + cos * mouth, y + sin * mouth, 16, barrel.width + 10, 'steel', 3, self.aim)
+    Look.block(x - cos * (barrel.back - 6), y - sin * (barrel.back - 6), 14, barrel.width - 6, 'steel', 3, self.aim)
     if self.loaded == 0 then
-        Look.disc(x, y, Breakables.ballRadius, 'iron', 2)
+        local ballX, ballY = Breakables.muzzle(self.aim)
+        Look.disc(ballX, ballY, Breakables.ballRadius, 'iron', 1)
+    end
+    Look.pin(x, y, 9, 3)
+end
+
+-- A shard of a vase draws its share of the painted bands over its glaze, turning with it.
+function Breakables.drawBands(piece)
+    local cos, sin = math.cos(piece.rotation), math.sin(piece.rotation)
+    local x, y = piece.x, piece.y
+    for _, band in ipairs(piece.data.bands) do
+        for index, corner in ipairs(band.corners) do
+            local point = band.world[index]
+            point[1], point[2] = x + corner[1] * cos - corner[2] * sin, y + corner[1] * sin + corner[2] * cos
+        end
+        graphics2d.drawPolygon(band.world, Breakables.bandColor, {layer = 1})
     end
 end
 
@@ -259,15 +334,20 @@ function Breakables:draw(area)
         end
     end
     Look.drawAll(self.whole, {layer = 1})
-    Look.drawAll(self.pieces, {layer = 1})
+    for _, piece in ipairs(self.pieces) do
+        Look.draw(piece, {layer = 1})
+        if piece.valid and piece.data.bands then
+            Breakables.drawBands(piece)
+        end
+    end
     Look.drawAll(self.balls, {layer = 2})
     self:drawLauncher()
 
     -- While the pointer aims, the predicted path of the ball shows as dots along its arc.
     if self.aiming and self.pointer.down then
-        local vx, vy = self:aimAt(self.pointer.worldX, self.pointer.worldY)
-        local launcher = Breakables.launcher
-        local points = self.world:predictPath(launcher[1], launcher[2], vx, vy, {steps = 120, radius = Breakables.ballRadius})
+        local vx, vy, angle = self:aimAt(self.pointer.worldX, self.pointer.worldY)
+        local fromX, fromY = Breakables.muzzle(angle)
+        local points = self.world:predictPath(fromX, fromY, vx, vy, {steps = 120, radius = Breakables.ballRadius})
         local arc = self.arc
         local count = 0
         for index = 1, #points, 3 do

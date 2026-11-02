@@ -1,4 +1,4 @@
--- A particle fluid from `physics2d.newFluid` poured into a stone tank where light crates float and a heavy one sinks, stepped in C++ inside the world step and drawn as metaballs straight from its arrays with `fluid:draw`, between the crates and the walls of the tank.
+-- A particle fluid from `physics2d.newFluid` poured into a stone tank where light wooden crates float and a heavy steel crate sinks, stepped in C++ inside the world step and drawn as metaballs straight from its arrays with `fluid:draw`, behind the crates and the walls of the tank, whose outlines stay crisp where the water meets them.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -17,7 +17,7 @@ Liquids.code = [[
 local water = physics2d.newFluid(world, {radius = 6, smoothingRadius = 22, maxParticles = 4000, viscosity = 0.25})
 water:fill({-620, -20, 380, 320})
 water:spawn(x, y, 0, 120)  -- Pours where the pointer holds.
-crate:addBox(70, 50, {density = 0.4})  -- Lighter than the water, so it floats.
+crate:addBox(56, 56, {density = 0.4})  -- Lighter than the water, so it floats.
 water:draw({radius = 10, color = '#D838B8E0', outlineColor = '#FFD8F6FF', outlineWidth = 0.06, layer = 4})]]
 
 Liquids.radius = 6
@@ -29,7 +29,7 @@ Liquids.ground = 340
 function Liquids:enter()
     self:frame{
         code = Liquids.code,
-        hint = 'Hold on the stage to pour water where you point, and drag the crates into it: the light ones float and the heavy one sinks. R or the X button refills the tank.',
+        hint = 'Hold on the stage to pour water where you point, and drag the crates into it: the wooden ones float and the steel one sinks. R or the X button refills the tank.',
         controls = {
             ui.button{id = 'flood', text = 'Pour a wave', onClick = function() self.water:fill({-560, -380, 300, 160}, 200, 0) end},
             ui.checkbox{id = 'particles', text = 'Show the particles', onChange = function(event) self.showParticles = event.checked end},
@@ -71,8 +71,8 @@ function Liquids:build()
     for index = 0, 3 do
         local heavy = index == 3
         local crate = self.world:createBody({x = -300 + index * 200, y = heavy and 80 or -290})
-        crate:addBox(70, 50, {density = heavy and 4 or 0.4})
-        Look.dress(crate, heavy and 'iron' or 'wood')
+        crate:addBox(56, 56, {density = heavy and 4 or 0.4})
+        Look.dress(crate, heavy and 'steelCrate' or 'woodCrate')
         self.crates[#self.crates + 1] = crate
     end
 end
@@ -89,7 +89,7 @@ function Liquids:update(dt)
             self.water:spawn(pointer.worldX + self.random:range(-12, 12), pointer.worldY + self.random:range(-12, 12), self.random:range(-40, 40), 120)
         end
     end
-    self:status(string.format('%d drops of water of %d, simulated in %.2f ms of a physics step of %.2f ms.', self.water.size, Liquids.maxParticles, self.water.stepMilliseconds, self:stepTime()))
+    self:status(string.format('%d drops of water of %d, simulated in %.1f ms of a physics step of %.1f ms.', self.water.size, Liquids.maxParticles, self.water.stepMilliseconds, self:stepTime()))
 end
 
 function Liquids:fixedUpdate(step)
@@ -112,9 +112,9 @@ function Liquids:draw(area)
     Scenery.sky(self.camera, Liquids.ground)
     Scenery.ground(Liquids.ground)
     self:drawTiles()
-    Look.drawAll(self.crates, {layer = 2})
     self.drawOptions.threshold = self.threshold
     self.water:draw(self.drawOptions)
+    Look.drawAll(self.crates, {layer = 5})
     Look.drawAll(self.statics, {layer = 6})
     if self.showParticles then
         self.buffer = self.water:positions(self.buffer)

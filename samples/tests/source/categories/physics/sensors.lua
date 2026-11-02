@@ -91,7 +91,7 @@ function Sensors:build()
         if contact.speed > 260 then
             self.sparks:fire(contact.x, contact.y, math.min(1.4, 0.5 + contact.speed / 900))
         end
-        self:note(string.format('A ball hit %s at %.0f per second.', self:struck(a, b), contact.speed))
+        self:note(string.format('A ball hit %s at %.0f units a second.', self:struck(a, b), contact.speed))
     end
     self.world.onSensorBegin = function(sensor, visitor, shapes)
         visitor.data.inside = true
@@ -156,6 +156,7 @@ function Sensors:update(dt)
     self.sparks:update(dt)
     self.pulse = math.max(0, self.pulse - dt * 3)
     local inside = self:visitors()
+    self.inside = inside
     self:status(string.format('%d %s in the zone. Contacts began %d times and ended %d times, with %d hits.', inside, inside == 1 and 'ball' or 'balls', self.counts.begin, self.counts.finish, self.counts.hits))
     if self.logChanged then
         self.logChanged = false
@@ -167,10 +168,10 @@ function Sensors:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The zone is a field of light that brightens while it holds balls and flashes when one enters, with its count in the middle.
+-- The zone is a field of light that brightens while it holds balls and flashes when one enters, with the count of the status in the middle.
 function Sensors:drawZone()
     local zone = Sensors.zone
-    local inside = self:visitors()
+    local inside = self.inside or 0
     local unit = Look.pixel
     local glow = (inside > 0 and 0.32 or 0.18) + self.pulse * 0.25
     local area = {zone[1] - zone[3] / 2, zone[2] - zone[4] / 2, zone[3], zone[4]}

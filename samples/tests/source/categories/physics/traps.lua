@@ -16,13 +16,16 @@ local Traps = haylen.class('Traps', PhysicsTest)
 
 Traps.code = [[
 blade:moveTo(-60, 380, blade.rotation + 6 * step)  -- A kinematic blade turned each fixed step.
-local piston = world:createJoint('prismatic', ground, crusher, {ax = 500, ay = -100, axisX = 0, axisY = 1, enableLimit = true, lower = 0, upper = 430, enableMotor = true, motorSpeed = 700, maxMotorForce = 4e4})
+local piston = world:createJoint('prismatic', ground, crusher, {ax = 500, ay = -100, axisX = 0, axisY = 1,
+    enableLimit = true, lower = 0, upper = 430, enableMotor = true, motorSpeed = 700, maxMotorForce = 4e4})
 piston.motorSpeed = -160  -- Lifts the crusher again.
-physics2d.newRagdoll(world, {x = 20, y = -330, height = 140, group = -1, stiffness = 0.3})
+physics2d.newRagdoll(world, {x = 20, y = -260, height = 160, group = -1, stiffness = 0.3, vx = 120})
 boulder:addCircle(50, {density = 3, friction = 0.8})]]
 
 Traps.ground = 390
-Traps.girder = -390
+Traps.girder = -370
+-- The pillars at the sides carry the girder and end in capitals above it.
+Traps.pillar = {x = 800, width = 44, capital = 64, rise = 34}
 Traps.blades = {{x = -60, y = 380, radius = 80, speed = 6}, {x = 180, y = 20, radius = 70, speed = -4}}
 Traps.teeth = 6
 Traps.crusherPath = {x = 500, top = -100, depth = 430, down = 700, up = 160, slam = 1, cycle = 3}
@@ -30,7 +33,9 @@ Traps.boulderStart = {-730, -140}
 Traps.boulderTime = 8
 Traps.hardHit = 500
 Traps.maxDolls, Traps.maxCrates = 6, 10
-Traps.dollHeight = 140
+Traps.dollHeight = 160
+-- A ragdoll falls in with a sideways speed and a push of its head, so it tumbles instead of landing upright.
+Traps.dollPush = {speed = 160, head = 70}
 Traps.hill = {{-1600, -60}, {-780, -60}, {-300, 390}, {1600, 390}}
 Traps.saw = Look.tint('steel', '#FFC9D3E2', '#FF8090A8', '#FFF2F6FB')
 
@@ -46,7 +51,7 @@ function Traps:enter()
             ui.button{id = 'reset', text = 'Clear', onClick = function() self:build() end},
         },
         focus = 'ragdoll',
-        view = {1700, 840},
+        view = {1700, 880},
     }
     self.random = m.random(62)
     self.bladeScale = 1
@@ -106,7 +111,9 @@ end
 -- Every ragdoll gets its own negative group, so its parts ignore each other but collide with the other ragdolls.
 function Traps:dropRagdoll(x)
     self.groups = self.groups + 1
-    local doll = physics2d.newRagdoll(self.world, {x = x or self.random:range(-500, 650), y = -300, height = Traps.dollHeight, group = -self.groups, stiffness = 0.3})
+    local side = self.groups % 2 == 0 and 1 or -1
+    local doll = physics2d.newRagdoll(self.world, {x = x or self.random:range(-500, 650), y = -260, height = Traps.dollHeight, group = -self.groups, stiffness = 0.3, vx = side * self.random:range(60, Traps.dollPush.speed)})
+    doll:body('head'):applyImpulse(side * doll.mass * Traps.dollPush.head, 0)
     self.dolls[#self.dolls + 1] = {doll = doll, outfit = Figure.dress(doll, self.groups)}
     if #self.dolls > Traps.maxDolls then
         table.remove(self.dolls, 1).doll:destroy()
@@ -196,13 +203,16 @@ function Traps:drawCrusher()
 end
 
 function Traps:draw(area)
-    local bounds = graphics2d.canvasBounds()
     Scenery.sky(self.camera, Traps.ground)
     Scenery.drawTerrain(self.terrain)
-    for _, x in ipairs({-800, 800}) do
-        Look.block(x, (bounds.y + Traps.ground) / 2, 40, Traps.ground - bounds.y + 20, 'stone', -12)
+    local pillar = Traps.pillar
+    local top = Traps.girder - pillar.rise
+    for _, side in ipairs({-1, 1}) do
+        local x = side * pillar.x
+        Look.block(x, (top + Traps.ground) / 2 + 10, pillar.width, Traps.ground - top + 20, 'stone', -12)
+        Look.block(x, top, pillar.capital, 18, 'stone', -11)
     end
-    Look.block(0, Traps.girder, 1620, 30, 'iron', 1)
+    Look.block(0, Traps.girder, pillar.x * 2 + pillar.width, 30, 'iron', 1)
 
     -- The floor blade turns behind the ground and shows through a slot, and the hanging blade hangs on a rod from the girder.
     local floor, hanging = self.saws[1], self.saws[2]

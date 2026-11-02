@@ -1,6 +1,7 @@
 -- A crane with a cab, a counterweight and a lattice boom that turns on a revolute motor and swings a heavy iron ball on a chain from `physics2d.newRope` into a wall of bricks, which breaks into a cloud of dust.
 local haylen = require('haylen')
 local input = require('haylen.input')
+local m = require('haylen.math')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
@@ -12,10 +13,12 @@ local Scenery = require('categories.physics.scenery')
 local WreckingBall = haylen.class('WreckingBall', PhysicsTest)
 
 WreckingBall.code = [[
-local boom = world:createJoint('revolute', mast, arm, {ax = -560, ay = 10, enableLimit = true, upper = 1.4, enableMotor = true, maxMotorTorque = 5e7})
-boom.motorSpeed = swing * 1.0
-physics2d.newRope(world, {from = tip, to = hook, segments = 12, thickness = 10, startBody = arm, endBody = ball, group = -1})
-ball:addCircle(48, {density = 12, group = -1})  -- Shares the group of the boom and the chain, so they never collide.]]
+local options = {ax = -560, ay = 10, enableLimit = true, upper = 0.61, enableMotor = true}
+local boom = world:createJoint('revolute', mast, arm, options)
+boom.maxMotorTorque, boom.motorSpeed = 5e7, (target - boom.angle) * 10
+local rope = {from = tip, to = hook, segments = 12, endBody = ball, group = -1}
+physics2d.newRope(world, rope)
+ball:addCircle(48, {density = 12, group = -1})  -- The crane never hits its own ball.]]
 
 WreckingBall.actions = {
     {name = 'swing', type = 'axis', positive = {'key:d', 'key:right', 'button:dpadRight', 'axis:leftX+', 'virtual:right'}, negative = {'key:a', 'key:left', 'button:dpadLeft', 'axis:leftX-', 'virtual:left'}},
@@ -24,8 +27,13 @@ WreckingBall.actions = {
 WreckingBall.ground = 390
 WreckingBall.pivot = {-560, 10}
 WreckingBall.boomLength = 360
-WreckingBall.restAngle = -2.2
-WreckingBall.sweep = 1.4
+-- The boom swings between 55 and 20 degrees above the ground on the side of the wall, so the ball always hangs clear of the boom and the mast.
+WreckingBall.restAngle = -0.96
+WreckingBall.sweep = 0.61
+-- By itself the boom eases down to the wall, holds while the ball swings into it, eases back up and holds again, in a cycle of this many seconds at the speed 1, and its motor follows that motion with this gain.
+WreckingBall.cycle = 4.5
+WreckingBall.gain = 10
+WreckingBall.wallX = -28
 WreckingBall.chainLength = 300
 WreckingBall.ballRadius = 48
 WreckingBall.brick = {64, 32}
@@ -51,8 +59,8 @@ function WreckingBall:enter()
             ui.touchButton{action = 'right', text = 'Right', size = 140, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
         },
     }
-    self.camera.position = {0, 0}
-    self.auto, self.speed, self.direction = true, 1, 1
+    self.camera.position = {-120, 0}
+    self.auto, self.speed, self.clock = true, 1, 0
     self.dust = Burst('environment/landing-dust', {count = 6, scale = 0.8, layer = 30})
     self:build()
 end
@@ -64,7 +72,7 @@ function WreckingBall:build()
     floor:addBox(8000, 60)
     local pivot = WreckingBall.pivot
     local mast = self.world:createBody({type = 'static', x = pivot[1], y = pivot[2]})
-    mast:addBox(40, ground - pivot[2], {offsetY = (ground - pivot[2]) / 2})
+    mast:addBox(40, ground - pivot[2], {offsetY = (ground - pivot[2]) / 2, group = WreckingBall.crane})
 
     -- The boom, its chain and the ball share a negative group, so they never collide with each other.
     self.boom = self.world:createBody({x = pivot[1], y = pivot[2], rotation = WreckingBall.restAngle})
@@ -84,7 +92,7 @@ function WreckingBall:build()
         local y = ground - height / 2 - row * height
         local offset = row % 2 == 0 and 0 or width / 2
         for column = 0, 4 - (row % 2) do
-            local x = 0 + column * width + offset
+            local x = WreckingBall.wallX + column * width + offset
             local body = self.world:createBody({x = x, y = y})
             body:addBox(width - 2, height - 2, {friction = 0.7})
             Look.dress(body, 'brick', {radius = 2})
@@ -120,29 +128,38 @@ function WreckingBall:update(dt)
         self:build()
     end
     self.dust:update(dt)
-    self:status(string.format('The boom is raised %d degrees, the ball flies at %d per second, and %d of %d bricks are down.', PhysicsTest.degrees(self.motor.angle), math.floor(self.ball.velocity:length() + 0.5), self:bricksDown(), #self.bricks))
+    self:status(string.format('The boom points %d degrees up, the ball flies at %d per second, and %d of %d bricks are down.', PhysicsTest.degrees(-self.boom.rotation), math.floor(self.ball.velocity:length() + 0.5), self:bricksDown(), #self.bricks))
 end
 
--- Input turns the boom, and without input the boom swings by itself from one limit to the other.
+-- Input turns the boom, and without input the boom follows its cycle by itself, eased at both ends so the chain stays taut and the ball swings into the wall instead of whipping.
 function WreckingBall:fixedUpdate(step)
     local swing = input.value('swing')
-    local angle = self.motor.angle
     if math.abs(swing) > 0.1 then
         self.motor.motorSpeed = swing * self.speed
     elseif self.auto then
-        if angle >= WreckingBall.sweep - 0.02 then
-            self.direction = -1
-        elseif angle <= 0.02 then
-            self.direction = 1
-        end
-        self.motor.motorSpeed = self.direction * self.speed
+        self.clock = self.clock + step * self.speed
+        local target = WreckingBall.sweep * WreckingBall.profile(self.clock / WreckingBall.cycle % 1)
+        local limit = self.speed * 1.5
+        self.motor.motorSpeed = m.clamp((target - self.motor.angle) * WreckingBall.gain, -limit, limit)
     else
         self.motor.motorSpeed = 0
     end
     self:simulate(self.world, step)
 end
 
--- The crane: a cab with a window and a counterweight on crawler tracks, a steel mast, and a lattice boom of two chords with braces between them.
+-- Returns how far down the boom is, from 0 to 1, at a share of its cycle: easing down, holding at the wall, easing back up and holding at the top.
+function WreckingBall.profile(share)
+    if share < 0.3 then
+        return m.smoothstep(0, 1, share / 0.3)
+    elseif share < 0.55 then
+        return 1
+    elseif share < 0.85 then
+        return 1 - m.smoothstep(0, 1, (share - 0.55) / 0.3)
+    end
+    return 0
+end
+
+-- The crane: a cab with a window and a counterweight on crawler tracks, a lattice mast and a lattice boom of two chords with braces between them.
 function WreckingBall:drawCrane()
     local pivot, ground = WreckingBall.pivot, WreckingBall.ground
     local unit = Look.pixel
@@ -154,21 +171,30 @@ function WreckingBall:drawCrane()
     Look.block(x - 10, ground - 96, 180, 100, 'yellow', 1)
     Look.block(x + 40, ground - 104, 70, 50, Look.tint('glass', '#CC9BE7FF', '#CC6FB8D8', '#FFFFFFFF'), 2)
     Look.block(x - 105, ground - 90, 70, 80, 'iron', 2)
-    Look.block(x, (pivot[2] + ground - 140) / 2, 36, ground - 140 - pivot[2], 'steel', 0)
+    self:drawLattice(x, ground - 146, x, pivot[2], 24, 12, 6, 0)
+    Look.block(x, ground - 146, 64, 14, 'iron', 1)
 
     local boom = self.boom
-    local cos, sin = math.cos(boom.rotation), math.sin(boom.rotation)
-    local nx, ny = -sin * 12, cos * 12
     local length = WreckingBall.boomLength
-    for _, side in ipairs({-1, 1}) do
-        Look.line(boom.x + nx * side, boom.y + ny * side, boom.x + cos * length + nx * side, boom.y + sin * length + ny * side, 6 * unit, '#FFFFC93C', 3)
-    end
-    for index = 0, 8 do
-        local a, b = index / 9 * length, (index + 1) / 9 * length
-        local side = index % 2 == 0 and 1 or -1
-        Look.line(boom.x + cos * a + nx * side, boom.y + sin * a + ny * side, boom.x + cos * b - nx * side, boom.y + sin * b - ny * side, 4 * unit, '#FFE09A1E', 3)
-    end
+    self:drawLattice(boom.x, boom.y, boom.x + math.cos(boom.rotation) * length, boom.y + math.sin(boom.rotation) * length, 14, 8, 9, 3)
     Look.pin(pivot[1], pivot[2], 12 * unit, 4)
+end
+
+-- Draws a lattice from `ax`, `ay` to `bx`, `by`: two chords this far from its middle at each end, which taper toward the end, with braces that zigzag between them in `bays` bays.
+function WreckingBall:drawLattice(ax, ay, bx, by, baseHalf, tipHalf, bays, layer)
+    local unit = Look.pixel
+    local dx, dy = bx - ax, by - ay
+    local length = math.sqrt(dx * dx + dy * dy)
+    local nx, ny = -dy / length, dx / length
+    for _, side in ipairs({-1, 1}) do
+        Look.line(ax + nx * baseHalf * side, ay + ny * baseHalf * side, bx + nx * tipHalf * side, by + ny * tipHalf * side, 6 * unit, '#FFFFC93C', layer)
+    end
+    for index = 0, bays - 1 do
+        local from, to = index / bays, (index + 1) / bays
+        local side = index % 2 == 0 and 1 or -1
+        local halfFrom, halfTo = baseHalf + (tipHalf - baseHalf) * from, baseHalf + (tipHalf - baseHalf) * to
+        Look.line(ax + dx * from + nx * halfFrom * side, ay + dy * from + ny * halfFrom * side, ax + dx * to - nx * halfTo * side, ay + dy * to - ny * halfTo * side, 4 * unit, '#FFE09A1E', layer)
+    end
 end
 
 function WreckingBall:drawChain()

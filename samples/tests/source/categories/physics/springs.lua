@@ -15,19 +15,23 @@ local Scenery = require('categories.physics.scenery')
 local Springs = haylen.class('Springs', PhysicsTest)
 
 Springs.code = [[
-trampoline:addBox(280, 14, {restitution = 1, friction = 0.4})  -- Keeps the speed of what lands on it.
-local spring = world:createJoint('prismatic', base, platform, {ax = -150, ay = 210, axisY = 1, enableSpring = true, hertz = 2.5, enableLimit = true, lower = -40, upper = 100})
+trampoline:addBox(280, 14, {restitution = 1})  -- Keeps the speed of what lands on it.
+local options = {ax = -150, ay = 210, axisY = 1, enableSpring = true, hertz = 2.5}
+local spring = world:createJoint('prismatic', base, platform, options)
+spring.hertz = 4  -- Stiffens the spring while it runs.
 pad:addBox(110, 30, {offsetY = -22, sensor = true})
-world.onSensorBegin = function(sensor, visitor) visitor.velocity = {-420, -1150} end  -- A jump pad.
-spring.hertz = 4  -- Stiffens the spring while it runs.]]
+world.onSensorBegin = function(sensor, body) body.velocity = {-420, -1150} end]]
 
 Springs.ground = 360
 Springs.spawnInterval = 0.7
 Springs.maxBodies = 20
 Springs.flashLife = 0.35
+Springs.matPoints = 13
 Springs.springs = {{-150, 1}, {150, 1.6}}
 Springs.pads = {{430, -420, -1150}, {640, -250, -1250}}
 Springs.trampoline = {-540, 250}
+-- The bed of the trampoline sags under what lands on it and springs back, as a damped spring with this stiffness and damping that a hit sets moving at this share of its speed, at most this deep.
+Springs.sag = {stiffness = 260, damping = 9, give = 0.5, depth = 36}
 
 function Springs:enter()
     self:frame{
@@ -48,10 +52,18 @@ function Springs:enter()
     self.random = m.random(37)
     self.raining = true
     self.boosts = Burst('movement/spring-bounce', {count = 4, scale = 0.6, layer = 30})
+    self.legs = {[-1] = {}, [1] = {}}
+    self.legStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', layer = 0}
+    self.matStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', layer = 2}
     self.world = physics2d.newWorld()
     self.grab = Grab(self.world)
     self.bodies, self.springs, self.pads = {}, {}, {}
     self.bounces, self.launches, self.clock, self.next = 0, 0, 0, 'crate'
+    self.sag, self.sagSpeed = 0, 0
+    self.mat = {}
+    for index = 1, Springs.matPoints * 2 do
+        self.mat[index] = 0
+    end
 
     local ground = Springs.ground
     local room = self.world:createBody({type = 'static'})
@@ -85,6 +97,7 @@ function Springs:enter()
     self.world.onHit = function(a, b, contact)
         if a.data and a.data.bed or b.data and b.data.bed then
             self.bounces = self.bounces + 1
+            self.sagSpeed = self.sagSpeed + contact.speed * Springs.sag.give
         end
     end
     -- The pads are the only sensors, and each one throws what enters it along its own launch velocity.
@@ -138,8 +151,26 @@ function Springs:update(dt)
     for _, pad in ipairs(self.pads) do
         pad.flash = math.max(0, pad.flash - dt)
     end
-    local first, second = self.springs[1].joint.translation, self.springs[2].joint.translation
-    self:status(string.format('%d bounces on the trampoline and %d launches from the pads. The springs sink %d and %d units under their loads.', self.bounces, self.launches, math.floor(math.max(0, first) + 0.5), math.floor(math.max(0, second) + 0.5)))
+    self:updateSag(dt)
+    local first, second = self:sink(self.springs[1]), self:sink(self.springs[2])
+    self:status(string.format('%s on the trampoline and %s from the pads. Loads press the springs down %d and %d units.', Springs.count(self.bounces, 'bounce', 'bounces'), Springs.count(self.launches, 'launch', 'launches'), first, second))
+end
+
+-- Returns how far the loads on a platform press its spring past where the platform rests on it alone, which is the gravity over the square of the angular frequency of the spring.
+function Springs:sink(spring)
+    local omega = 2 * math.pi * spring.joint.hertz
+    local rest = self.world.gravity.y / (omega * omega)
+    return math.floor(math.max(0, spring.joint.translation - rest) + 0.5)
+end
+
+function Springs.count(value, one, many)
+    return string.format('%d %s', value, value == 1 and one or many)
+end
+
+function Springs:updateSag(dt)
+    local sag = Springs.sag
+    self.sagSpeed = self.sagSpeed - (self.sag * sag.stiffness + self.sagSpeed * sag.damping) * dt
+    self.sag = m.clamp(self.sag + self.sagSpeed * dt, -sag.depth * 0.3, sag.depth)
 end
 
 function Springs:fixedUpdate(step)
@@ -152,18 +183,38 @@ function Springs:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The trampoline is a round frame on legs with a dark bed held by springs along its edge.
+-- The trampoline is a black bed that sags under what lands on it, between blue safety pads over its springs, on a steel frame that stands on two bent legs.
 function Springs:drawTrampoline()
     local x, y = Springs.trampoline[1], Springs.trampoline[2]
+    local ground = Springs.ground
     local unit = Look.pixel
+    local ow = Look.outlinePixels * unit
     for _, side in ipairs({-1, 1}) do
-        Look.block(x + side * 118, (y + Springs.ground) / 2 + 4, 14, Springs.ground - y - 8, 'steel', 0, side * 0.12)
+        local legs = self.legs[side]
+        local outer, inner = x + side * 150, x + side * 96
+        legs[1], legs[2], legs[3], legs[4] = outer, y + 8, outer, ground - 26
+        legs[5], legs[6], legs[7], legs[8] = outer - side * 10, ground - 8, (outer + inner) / 2, ground - 4
+        legs[9], legs[10], legs[11], legs[12] = inner + side * 10, ground - 8, inner, ground - 26
+        legs[13], legs[14] = inner, y + 8
+        self.legStroke.width, self.legStroke.color = 10 + ow * 2, Look.ink
+        graphics2d.drawStroke(legs, self.legStroke)
+        self.legStroke.width, self.legStroke.color = 10, '#FFA9BCD3'
+        graphics2d.drawStroke(legs, self.legStroke)
     end
-    Look.block(x, y + 6, 300, 16, 'steel', 1)
-    graphics2d.drawShape({x - 134, y - 9, 268, 14}, {radius = 7, color = '#FF2F3352', borderWidth = 3 * unit, borderColor = Look.ink, layer = 2})
-    for spring = -5, 5 do
-        local sx = x + spring * 24
-        Look.line(sx - 6, y + 4, sx + 6, y + 4, 2 * unit, '#FFE9F2FB', 2)
+    Look.block(x, y + 12, 310, 12, 'steel', 1)
+
+    -- The bed hangs between the pads and dips the deepest in its middle.
+    local count, half = Springs.matPoints, 120
+    for index = 1, count do
+        local share = (index - 1) / (count - 1)
+        self.mat[index * 2 - 1], self.mat[index * 2] = x - half + share * half * 2, y + math.sin(share * math.pi) * self.sag
+    end
+    self.matStroke.width, self.matStroke.color = 12 + ow * 2, Look.ink
+    graphics2d.drawStroke(self.mat, self.matStroke)
+    self.matStroke.width, self.matStroke.color = 12, '#FF2F3352'
+    graphics2d.drawStroke(self.mat, self.matStroke)
+    for _, side in ipairs({-1, 1}) do
+        Look.block(x + side * 138, y + 2, 46, 18, 'blue', 3)
     end
 end
 

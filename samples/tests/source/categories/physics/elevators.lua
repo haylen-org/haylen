@@ -14,11 +14,11 @@ local Scenery = require('categories.physics.scenery')
 local Elevators = haylen.class('Elevators', PhysicsTest)
 
 Elevators.code = [[
-local lift = world:createJoint('prismatic', rail, platform, {ax = -300, ay = 370, axisY = 1, enableLimit = true, lower = -560, upper = 0, enableMotor = true, maxMotorForce = 2e6})
-lift.motorSpeed = m.clamp((floorTop - 360 - lift.translation) * 5, -220, 220)  -- Slows down at the floor.
-local hero = physics2d.newMover(world, {x = -650, y = 323, radius = 18, height = 72, stepHeight = 12, snapDistance = 10, pushForce = 30000})
-local velocity = hero:clip(moveX * 320, fall + 1800 * step)
-hero:move(velocity.x * step, velocity.y * step)
+local options = {ax = -300, ay = 360, axisY = 1, enableLimit = true, lower = -480}
+local lift = world:createJoint('prismatic', rail, platform, options)
+lift.enableMotor, lift.maxMotorForce = true, 2e6
+lift.motorSpeed = m.clamp((floorTop - 350 - lift.translation) * 5, -220, 220)
+local hero = physics2d.newMover(world, {radius = 18, height = 72, pushForce = 30000})
 local riding = hero.groundBody == platform]]
 
 Elevators.actions = {
@@ -26,7 +26,9 @@ Elevators.actions = {
     {name = 'jump', type = 'button', bindings = {'key:space', 'button:south', 'virtual:jump'}},
 }
 
-Elevators.floors = {360, 80, -200}
+Elevators.floors = {350, 110, -130}
+-- The roof of the building, above the top floor.
+Elevators.roof = -310
 Elevators.shafts = {-300, 300}
 Elevators.shaftWidth = 160
 Elevators.liftSpeed = 220
@@ -57,8 +59,10 @@ function Elevators:enter()
             ui.touchButton{action = 'jump', text = 'Jump', size = 150, touchOnly = true, anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}},
         },
     }
+    self.camera.position = {0, 30}
     self.auto = true
     self.heroArt = Hero(Elevators.heroHeight)
+    self.glow = Scenery.glow()
     self:build()
 end
 
@@ -69,7 +73,7 @@ function Elevators:build()
     local shafts, floors = Elevators.shafts, Elevators.floors
     self.slabs = {}
     for index, top in ipairs(floors) do
-        local thickness = index == 1 and 60 or 24
+        local thickness = index == 1 and 40 or 24
         for _, span in ipairs({{-780, shafts[1] - half}, {shafts[1] + half, shafts[2] - half}, {shafts[2] + half, 780}}) do
             building:addBox(span[2] - span[1], thickness, {offsetX = (span[1] + span[2]) / 2, offsetY = top + thickness / 2})
             self.slabs[#self.slabs + 1] = {(span[1] + span[2]) / 2, top + thickness / 2, span[2] - span[1], thickness}
@@ -78,9 +82,11 @@ function Elevators:build()
     for _, x in ipairs(shafts) do
         building:addBox(Elevators.shaftWidth, 10, {offsetX = x, offsetY = floors[1] + 30})
     end
-    building:addBox(24, 800, {offsetX = -792, offsetY = floors[1] - 380})
-    building:addBox(24, 800, {offsetX = 792, offsetY = floors[1] - 380})
-    local rail = self.world:createBody({type = 'static', y = -420})
+    local wall = floors[1] - Elevators.roof
+    building:addBox(24, wall, {offsetX = -792, offsetY = Elevators.roof + wall / 2})
+    building:addBox(24, wall, {offsetX = 792, offsetY = Elevators.roof + wall / 2})
+    building:addBox(1608, 24, {offsetY = Elevators.roof + 12})
+    local rail = self.world:createBody({type = 'static', y = Elevators.roof})
 
     self.lifts = {}
     for _, x in ipairs(shafts) do
@@ -212,37 +218,56 @@ function Elevators:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The building: a papered back wall with the shafts dark behind it, concrete floors, a cage around each lift on its cables and a call panel beside every door with an arrow that lights while the lift comes.
+-- The building: a papered back wall under a roof with the shafts dark behind it, concrete floors, brick walls, a cage around each lift on its cables and a call lamp beside every door, green where the lift waits and amber, blinking, where it is called.
 function Elevators:drawBuilding()
     local unit = Look.pixel
     local half = Elevators.shaftWidth / 2
-    local floors = Elevators.floors
-    graphics2d.drawRect({-780, floors[3] - 220, 1560, floors[1] - floors[3] + 260}, '#FFF3E3C4', {layer = -20})
+    local floors, roof = Elevators.floors, Elevators.roof
+    graphics2d.drawRect({-780, roof, 1560, floors[1] - roof}, '#FFF3E3C4', {layer = -20})
     for x = -780, 780, 120 do
-        graphics2d.drawLine(x, floors[3] - 220, x, floors[1], 3 * unit, '#FFE6D2AE', {layer = -19})
+        graphics2d.drawLine(x, roof, x, floors[1], 3 * unit, '#FFE6D2AE', {layer = -19})
     end
     for _, slab in ipairs(self.slabs) do
         Look.block(slab[1], slab[2], slab[3], slab[4], 'slate', -8)
     end
     for _, x in ipairs({-792, 792}) do
-        Look.block(x, floors[1] - 380, 24, 800, 'brick', -7)
+        Look.block(x, (roof + floors[1]) / 2, 24, floors[1] - roof, 'brick', -7)
     end
+    Look.block(0, roof + 12, 1640, 24, 'slate', -6)
+    Look.block(0, roof - 10, 1680, 20, 'brick', -6)
     for _, lift in ipairs(self.lifts) do
-        graphics2d.drawRect({lift.x - half, floors[3] - 220, Elevators.shaftWidth, floors[1] - floors[3] + 260}, '#FF3A3F5E', {layer = -18})
+        graphics2d.drawRect({lift.x - half, roof + 24, Elevators.shaftWidth, floors[1] - roof - 24}, '#FF3A3F5E', {layer = -18})
         local top = lift.body.y - 10
         for _, side in ipairs({-half + 14, half - 14}) do
-            Look.line(lift.x + side, floors[3] - 220, lift.x + side, top - 110, 3 * unit, '#FF9AA5BE', -6)
+            Look.line(lift.x + side, roof + 24, lift.x + side, top - 110, 3 * unit, '#FF9AA5BE', -6)
         end
         Look.block(lift.x, top - 110, Elevators.shaftWidth - 6, 14, 'iron', 1)
         for _, side in ipairs({-half + 4, half - 4}) do
             Look.block(lift.x + side, top - 55, 8, 110, 'iron', 1)
         end
         for floor, level in ipairs(floors) do
-            local calling = lift.target == floor and self:liftFloor(lift) ~= floor
-            local side = lift.x < 0 and -half - 34 or half + 34
-            Look.block(lift.x + side, level - 64, 26, 40, 'iron', -5)
-            graphics2d.drawCircle(lift.x + side, level - 64, 8, calling and '#FFFFC93C' or '#FF5A6070', {layer = -4})
+            self:drawLamp(lift, floor, level)
         end
+    end
+end
+
+-- A call lamp is a round lamp on a steel plate beside the door of a floor: green and glowing where the lift waits with its doors open, amber and blinking where it is called, and dark glass otherwise.
+function Elevators:drawLamp(lift, floor, level)
+    local unit = Look.pixel
+    local half = Elevators.shaftWidth / 2
+    local x = lift.x + (lift.x < 0 and -half - 34 or half + 34)
+    local y = level - 64
+    local here = self:liftFloor(lift) == floor and lift.target == floor
+    local called = lift.target == floor and not here
+    local lit = here or called and math.sin(haylen.elapsed() * 8) > -0.3
+    local color = here and '#FF6FDC8C' or called and '#FFFFC93C' or '#FF3A3F5E'
+    Look.block(x, y, 32, 46, 'steel', -5)
+    if lit then
+        graphics2d.draw(self.glow, x, y, {width = 70, height = 70, color = color, blend = 'additive', layer = -4})
+    end
+    graphics2d.drawShape({x - 10, y - 10, 20, 20}, {kind = 'ellipse', color = color, borderWidth = 3 * unit, borderColor = Look.ink, layer = -4})
+    if lit then
+        graphics2d.drawCircle(x - 3, y - 3, 3.5, '#CCFFFFFF', {layer = -4})
     end
 end
 

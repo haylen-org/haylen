@@ -19,8 +19,9 @@ Cannon.code = [[
 local shot = world:createBody({x = muzzleX, y = muzzleY, bullet = true})
 shot:addCircle(14, {density = 10, restitution = 0.1})
 shot.velocity = {dx * power, dy * power}
-carriage:applyImpulse(-dx * shot.mass * power, -dy * shot.mass * power, trunnionX, trunnionY)  -- The recoil.
-world:createJoint('distance', stake, carriage, {ax = -760, ay = 340, bx = -650, by = 326, enableSpring = true, hertz = 1.2})]]
+carriage:applyImpulse(-dx * shot.mass * power, -dy * shot.mass * power, x, y)
+local spring = {ax = -760, ay = 340, bx = -650, by = 326, enableSpring = true, hertz = 1.2}
+world:createJoint('distance', stake, carriage, spring)]]
 
 Cannon.actions = {
     {name = 'adjust', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:adjust'}},
@@ -31,6 +32,8 @@ Cannon.ground = 390
 Cannon.trunnion = {14, -36}
 Cannon.barrelLength = 110
 Cannon.bulletRadius = 14
+-- The radius of the arc that shows the angle of the barrel.
+Cannon.arc = 150
 Cannon.cooldown = 0.4
 Cannon.maxBullets = 12
 -- The barrel picture turns around its trunnion, this share of its width from its back, and reaches the muzzle this many pixels further.
@@ -95,7 +98,7 @@ function Cannon:build()
         for column = 0, 2 do
             local block = self.world:createBody({x = 420 + column * 52, y = Cannon.ground - 25 - row * 50})
             block:addBox(50, 50, {density = 0.6})
-            Look.dress(block, row < 3 and 'stone' or 'woodCrate')
+            Look.dress(block, row < 3 and 'steelCrate' or 'woodCrate')
             block.data.block = true
             self.blocks[#self.blocks + 1] = {body = block, x = block.x, y = block.y}
         end
@@ -186,6 +189,19 @@ function Cannon:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
+-- The angle of the barrel shows as an arc from the line of the carriage up to the barrel, with its degrees beside it, the same angle the slider and the status give.
+function Cannon:drawAngle(x, y, rotation)
+    local unit = Look.pixel
+    local radius = Cannon.arc
+    local up = math.rad(self.angle)
+    local cos, sin = math.cos(rotation), math.sin(rotation)
+    Look.dashed(x, y, x + cos * (radius + 40), y + sin * (radius + 40), '#E6FFFFFF', 5)
+    graphics2d.drawArc(x, y, radius, 9 * unit, rotation - up, rotation, Look.ink, {layer = 5})
+    graphics2d.drawArc(x, y, radius, 4 * unit, rotation - up, rotation, '#FFFFC93C', {layer = 5})
+    local middle = rotation - up / 2
+    self:tag(string.format('%d degrees', math.floor(self.angle + 0.5)), x + math.cos(middle) * (radius + 70), y + math.sin(middle) * (radius + 70), {size = 20, color = '#FFFFC93C', layer = 5})
+end
+
 function Cannon:draw(area)
     Scenery.sky(self.camera, Cannon.ground)
     Scenery.ground(Cannon.ground)
@@ -196,7 +212,7 @@ function Cannon:draw(area)
     Look.drawAll(self.bullets, {layer = 1})
     local carriage = self.carriage
     local cos, sin = math.cos(carriage.rotation), math.sin(carriage.rotation)
-    Look.spring(-760, Cannon.ground - 50, carriage.x - 85 * cos, carriage.y - 85 * sin, 20, 6, '#FFA9BCD3', 1)
+    Look.spring(-760, Cannon.ground - 50, carriage.x - 85 * cos, carriage.y - 85 * sin, 32, 6, '#FFA9BCD3', 1)
     Look.draw(carriage, {layer = 2})
 
     -- The barrel turns around its trunnion, drawn so its muzzle lies the length of the barrel ahead.
@@ -205,6 +221,7 @@ function Cannon:draw(area)
     local scale = Cannon.barrelLength / picture.muzzle
     graphics2d.draw(self.barrelTexture, x, y, {width = picture.width * scale, height = picture.height * scale, pivotX = picture.pivot, pivotY = 0.5, rotation = math.atan(dy, dx), layer = 3})
     Look.drawAll(self.wheels, {layer = 4})
+    self:drawAngle(x, y, carriage.rotation)
     self.flash:draw()
     self.impacts:draw()
 end

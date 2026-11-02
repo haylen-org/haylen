@@ -42,7 +42,7 @@ return {
         {code = 'PHY-036', title = 'Cannon', description = 'A cannon aimed by angle and power that fires bullets at a tower, with recoil on its carriage and a count of hits.', module = 'cannon'},
         {code = 'PHY-037', title = 'Springs', description = 'A trampoline, spring platforms on prismatic joints and jump pads that launch crates and balls.', module = 'springs'},
         {code = 'PHY-038', title = 'Seesaw and catapult', description = 'A seesaw that tips toward the heavier end and a catapult that throws a stone when a weight falls on its arm.', module = 'seesaw'},
-        {code = 'PHY-039', title = 'Doors and levers', description = 'Flap doors that close with springs, a lever that opens a gate and a pressure plate that raises a drawbridge.', module = 'doors-levers'},
+        {code = 'PHY-039', title = 'Doors and levers', description = 'Flap doors that close with springs, a lever that opens a gate and a pressure plate that lowers a drawbridge.', module = 'doors-levers'},
         {code = 'PHY-040', title = 'Elevators', description = 'Lifts on prismatic motors that carry crates and a character between floors, called with buttons.', module = 'elevators'},
         {code = 'PHY-041', title = 'Pinball', description = 'A pinball table with flippers on motors, bumpers that kick, a plunger on a spring, chain walls and a one-way lane.', module = 'pinball'},
         {code = 'PHY-042', title = 'Pool', description = 'A top-down pool table without gravity, a cue aimed with the pointer or a stick and pockets that take the balls.', module = 'pool'},

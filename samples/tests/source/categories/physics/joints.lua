@@ -14,13 +14,11 @@ local Joints = haylen.class('Joints', PhysicsTest)
 
 Joints.code = [[
 world:createJoint('distance', beam, ball, {ax = ax, ay = ay, enableSpring = true, hertz = 1.5})
-world:createJoint('revolute', hub, blades, {ax = x, ay = y, enableMotor = true, motorSpeed = 1.5})
-world:createJoint('revolute', post, door, {ax = x, ay = y, enableLimit = true, upper = 1.2})
+world:createJoint('revolute', hub, blades, {ax = x, ay = y, enableMotor = true, motorSpeed = 1.5})  -- Or enableLimit.
 world:createJoint('prismatic', rail, lift, {axisY = 1, enableMotor = true, motorSpeed = -120})
 world:createJoint('weld', wall, plank, {ax = x, ay = y, hertz = 24, dampingRatio = 0.7})
 world:createJoint('wheel', cart, wheel, {axisY = 1, enableSpring = true, hertz = 3})
-world:createJoint('motor', leader, follower, {maxMotorForce = 3000})
-world:createJoint('filter', lower, upper)  -- The pair never collides.]]
+world:createJoint('motor', leader, follower, {maxMotorForce = 3000})  -- And 'filter' lets a pair pass.]]
 
 Joints.ground = 330
 Joints.beam = -360
@@ -181,7 +179,7 @@ end
 function Joints:motor(x, y)
     self:title('Motor', x, Joints.shelf + 46)
     self.leader = self.world:createBody({type = 'kinematic', x = x + 80, y = y + 20})
-    self.leader:addCircle(16)
+    self.leader:addCircle(20)
     Look.dress(self.leader, 'gold')
     self.statics[#self.statics + 1] = self.leader
     self.leaderCenter = {x = x, y = y + 20}
@@ -283,11 +281,11 @@ function Joints:drawJoints()
         local cart = self.cart
         local cos, sin = math.cos(cart.rotation), math.sin(cart.rotation)
         local ax, ay = cart.x + wheel.side * cos, cart.y + wheel.side * sin
-        Look.spring(ax, ay, wheel.body.x, wheel.body.y, 16, 4, '#FFFFC93C', -1)
+        Look.spring(ax, ay, wheel.body.x, wheel.body.y, 24, 4, '#FFFFC93C', -1)
     end
 
     graphics2d.drawStroke(self.leaderPath, {width = 3 * unit, color = '#992F3352', closed = true, dashes = {10 * unit, 8 * unit}, layer = -1})
-    Look.dashed(self.leader.x, self.leader.y, self.follower.x, self.follower.y, '#CC2F3352', 2)
+    Look.spring(self.leader.x, self.leader.y, self.follower.x, self.follower.y, 14, 5, '#FFD6BEFF', -1)
 
     for _, weld in ipairs(self.welds) do
         local b = weld.b
@@ -308,6 +306,8 @@ function Joints:draw(area)
     for _, caption in ipairs(self.filterCaptions) do
         self:tag(caption.text, caption.x, Joints.ground - 150, {size = 17})
     end
+    self:tag('Leads on a path', self.leader.x, self.leader.y - 40, {size = 17})
+    self:tag('Follows', self.follower.x, self.follower.y - 46, {size = 17})
     self.grab:draw()
     if self.debug then
         self.world:debugDraw({layer = 20})

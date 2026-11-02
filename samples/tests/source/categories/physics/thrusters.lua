@@ -10,15 +10,18 @@ local ui = require('haylen.ui')
 local Look = require('categories.physics.look')
 local PhysicsTest = require('categories.physics.physics-test')
 local Scenery = require('categories.physics.scenery')
+local Test = require('harness.test')
 
 local Thrusters = haylen.class('Thrusters', PhysicsTest)
 
 Thrusters.code = [[
-local lander = world:createBody({x = -560, y = -300, angularDamping = 4})
-lander:applyForce(math.sin(lander.rotation) * force, -math.cos(lander.rotation) * force, nozzleX, nozzleY)  -- Off center, so one thruster also turns it.
-pad:addBox(200, 60, {offsetY = -38, sensor = true})
-world.onSensorBegin = function(sensor, visitor) if visitor == lander then over = over + 1 end end
-world.onHit = function(a, b, contact) if contact.speed > 150 then crashed = true end end]]
+local upX, upY = math.sin(lander.rotation), -math.cos(lander.rotation)
+lander:applyForce(upX * force, upY * force, nozzleX, nozzleY)  -- Off center, so one thruster also turns it.
+local sensor = pad:addBox(200, 60, {offsetY = -38, sensor = true})
+local overPad = #sensor:overlaps() > 0
+world.onHit = function(a, b, contact)
+    crashed = crashed or contact.speed > 150
+end]]
 
 Thrusters.actions = {
     {name = 'leftThruster', type = 'button', bindings = {'key:a', 'key:left', 'axis:leftTrigger+', 'button:dpadLeft', 'virtual:leftThruster'}},
@@ -82,7 +85,8 @@ end
 
 function Thrusters:build()
     self.world = physics2d.newWorld({gravity = {0, Thrusters.gravity}})
-    self.fuel, self.state, self.onPad, self.still, self.touchdown = Thrusters.fuelTank, 'flying', 0, 0, 0
+    self.fuel, self.state, self.still, self.touchdown = Thrusters.fuelTank, 'flying', 0, 0
+    self.readoutTime, self.fuelShown = Test.statusInterval, 100
     self.throttles = {0, 0}
     self.autopilot = true
 
@@ -91,7 +95,7 @@ function Thrusters:build()
     local pad = Thrusters.pad
     self.padBody = self.world:createBody({type = 'static', x = pad[1], y = pad[2]})
     self.padBody:addBox(pad[3], 16, {friction = 0.9})
-    self.padBody:addBox(pad[3], 60, {offsetY = -38, sensor = true})
+    self.padSensor = self.padBody:addBox(pad[3], 60, {offsetY = -38, sensor = true})
 
     local start = Thrusters.start
     self.lander = self.world:createBody({x = start[1], y = start[2], angularDamping = 4})
@@ -99,17 +103,6 @@ function Thrusters:build()
     self.lander:addCapsule(-30, 10, -50, 40, 5)
     self.lander:addCapsule(30, 10, 50, 40, 5)
 
-    -- Every shape of the lander enters and leaves the sensor on its own, so a count tells whether any part is over the pad.
-    self.world.onSensorBegin = function(sensor, visitor)
-        if visitor == self.lander then
-            self.onPad = self.onPad + 1
-        end
-    end
-    self.world.onSensorEnd = function(sensor, visitor)
-        if visitor == self.lander then
-            self.onPad = self.onPad - 1
-        end
-    end
     self.world.onHit = function(a, b, contact)
         if (a == self.lander or b == self.lander) and self.state ~= 'crashed' then
             self.touchdown = math.max(self.touchdown, contact.speed)
@@ -166,17 +159,29 @@ function Thrusters:update(dt)
     self.throttles[1] = active and left or 0
     self.throttles[2] = active and right or 0
 
+    self.readoutTime = self.readoutTime + dt
+    if self.readoutTime >= Test.statusInterval then
+        self.readoutTime = 0
+        self:showReadout()
+    end
+end
+
+-- The status and the gauge show the fuel of the same moment, a few times a second, so the numbers stay readable and always agree.
+function Thrusters:showReadout()
     local speed = math.floor(self.lander.velocity:length() + 0.5)
     local fuel = math.floor(self.fuel / Thrusters.fuelTank * 100 + 0.5)
+    local text
     if self.state == 'crashed' then
-        self:status(string.format('The lander crashed at %d units per second, faster than the safe %d. Start over to fly again.', math.floor(self.touchdown + 0.5), Thrusters.crashSpeed))
+        text = string.format('The lander crashed at %d units per second, faster than the safe %d. Start over to fly again.', math.floor(self.touchdown + 0.5), Thrusters.crashSpeed)
     elseif self.state == 'landed' then
-        self:status(string.format('The lander stands on the pad, set down at %d units per second with %d percent of its fuel left.', math.floor(self.touchdown + 0.5), fuel))
+        text = string.format('The lander stands on the pad, set down at %d units per second with %d percent of its fuel left.', math.floor(self.touchdown + 0.5), fuel)
     elseif self.autopilot then
-        self:status(string.format('The autopilot flies the lander to the pad at %d units per second until you fire a thruster, with %d percent of the fuel left.', speed, fuel))
+        text = string.format('The autopilot flies the lander to the pad at %d units per second until you fire a thruster, with %d percent of the fuel left.', speed, fuel)
     else
-        self:status(string.format('The lander flies at %d units per second, tilted %d degrees, with %d percent of the fuel left.', speed, PhysicsTest.degrees(self.lander.rotation), fuel))
+        text = string.format('The lander flies at %d units per second, tilted %d degrees, with %d percent of the fuel left.', speed, PhysicsTest.degrees(self.lander.rotation), fuel)
     end
+    self.fuelShown = fuel
+    self:set('status', {text = text})
 end
 
 -- Each thruster pushes along the up direction of the lander at its own point, so a single one also turns it.
@@ -195,10 +200,11 @@ function Thrusters:fixedUpdate(step)
 
     local velocity = lander.velocity
     local resting = velocity:length() < Thrusters.landSpeed and math.abs(lander.rotation) < 0.25
-    self.still = resting and self.onPad > 0 and self.still + step or 0
+    local overPad = #self.padSensor:overlaps() > 0
+    self.still = resting and overPad and self.still + step or 0
     if self.state == 'flying' and self.still > Thrusters.landTime then
         self.state = 'landed'
-    elseif self.state == 'landed' and self.onPad == 0 then
+    elseif self.state == 'landed' and not overPad then
         self.state = 'flying'
     end
 end
@@ -247,7 +253,7 @@ function Thrusters:drawFuel()
     local unit = Look.pixel
     local share = self.fuel / Thrusters.fuelTank
     graphics2d.drawShape({-780, -370, 300, 76}, {radius = 14, color = '#EE2F3352', borderWidth = 2 * unit, borderColor = '#FF15172A', layer = 40})
-    self:tag(string.format('Fuel %d%%', math.floor(share * 100 + 0.5)), -630, -346, {size = 22, layer = 41})
+    self:tag(string.format('Fuel %d%%', self.fuelShown), -630, -346, {size = 22, layer = 41})
     graphics2d.drawShape({-764, -326, 268, 18}, {radius = 9, color = '#FF15172A', layer = 41})
     if share > 0 then
         graphics2d.drawShape({-764, -326, 268 * share, 18}, {radius = 9, color = share > 0.2 and '#FF7BC74D' or '#FFF0473E', layer = 41})

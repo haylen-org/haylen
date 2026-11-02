@@ -1,4 +1,4 @@
--- Explosive barrels in a wooden warehouse that blow up with `physics2d.explode` when they are clicked or hit hard enough, lighting the fuses of the barrels their blast reaches in a chain reaction that scatters the crates. The first barrel goes off by itself when the test opens.
+-- Explosive barrels in a wooden warehouse that blow up with `physics2d.explode` when they are clicked or hit hard enough, lighting the fuses of the barrels their blast reaches in a chain reaction that scatters the crates. The warehouse has three shelves under a roof beam with two lamps and a warning sign, and the first barrel goes off by itself when the test opens.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -15,16 +15,23 @@ local Scenery = require('categories.physics.scenery')
 local Barrels = haylen.class('Barrels', PhysicsTest)
 
 Barrels.code = [[
+local world = physics2d.newWorld({hitThreshold = 600})  -- Only hard hits call onHit.
 local hits = physics2d.explode(world, {x = barrel.x, y = barrel.y, radius = 300, impulse = 700, falloff = 'linear'})
-for _, hit in ipairs(hits) do if hit.body.data.barrel then hit.body.data.fuse = 0.2 end end  -- Lights the barrels it reached.
-world.onHit = function(a, b, contact) if contact.speed > 600 then light(a, b) end end]]
+for _, hit in ipairs(hits) do
+    light(hit.body)  -- A barrel the blast reaches goes off a moment later.
+end
+world.onHit = light  -- So does a barrel that a hard hit reaches.]]
 
 Barrels.radius = 300
 Barrels.hitSpeed = 600
 Barrels.blastLife = 0.6
 Barrels.floor = 390
-Barrels.shelves = {{-300, 160}, {350, 40}}
+Barrels.shelves = {{-300, 160}, {350, 40}, {-400, -20}}
 Barrels.shelfWidth = 400
+-- The roof beam runs along the top of the wall, the lamps hang from it by their cords, and the warning sign hangs between them.
+Barrels.beam = -160
+Barrels.lamps = {{-90, -100}, {560, -110}}
+Barrels.sign = {80, -70, 46}
 Barrels.firstBlast = 1.2
 
 function Barrels:enter()
@@ -51,7 +58,7 @@ function Barrels:enter()
 end
 
 function Barrels:build()
-    self.world = physics2d.newWorld()
+    self.world = physics2d.newWorld({hitThreshold = Barrels.hitSpeed})
     self.barrels, self.crates = {}, {}
     self.exploded, self.longest, self.depth = 0, 0, 0
 
@@ -69,7 +76,8 @@ function Barrels:build()
     self:barrel(-420, 115)
     self:barrel(-180, 115)
     self:barrel(350, -5)
-    for _, stack in ipairs({{-450, 390, 3}, {-150, 390, 2}, {150, 390, 3}, {450, 390, 2}, {-300, 150, 2}, {250, 30, 2}, {450, 30, 1}}) do
+    self:barrel(-300, -65)
+    for _, stack in ipairs({{-450, 390, 3}, {-150, 390, 2}, {150, 390, 3}, {450, 390, 2}, {-300, 150, 2}, {250, 30, 2}, {450, 30, 1}, {-500, -30, 2}, {-400, -30, 1}}) do
         for level = 1, stack[3] do
             local crate = self.world:createBody({x = stack[1], y = stack[2] - 30 - (level - 1) * 61})
             crate:addBox(60, 60)
@@ -78,11 +86,9 @@ function Barrels:build()
         end
     end
 
-    self.world.onHit = function(a, b, contact)
-        if contact.speed > Barrels.hitSpeed then
-            self:hit(a)
-            self:hit(b)
-        end
+    self.world.onHit = function(a, b)
+        self:hit(a)
+        self:hit(b)
     end
 end
 
@@ -164,7 +170,29 @@ function Barrels:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The warehouse is a wall of dark planks between two posts, with a plank floor and wooden shelves on iron brackets.
+-- A lamp hangs from the roof beam by a cord: a green metal shade over a warm bulb that lights the wall around it.
+function Barrels:drawLamp(x, y)
+    local unit = Look.pixel
+    Look.line(x, Barrels.beam + 15, x, y - 24, 3, '#FF2F3352', -26)
+    graphics2d.draw(self.glow, x, y + 20, {width = 340, height = 300, color = '#59FFC970', blend = 'additive', layer = -25})
+    graphics2d.drawShape({x - 34, y - 26, 68, 52}, {kind = 'ellipse', startAngle = math.pi, sweep = math.pi, color = '#FF3E7A5A', borderWidth = Look.outlinePixels * unit, borderColor = Look.ink, layer = -24})
+    graphics2d.drawCircle(x, y + 2, 11, '#FFFFF2B0', {layer = -24})
+    graphics2d.drawShape({x - 20, y - 18, 16, 8}, {kind = 'ellipse', rotation = -0.4, color = '#995FA884', layer = -24})
+end
+
+-- The warning sign is a yellow diamond with a black border and a flame, which hangs from two nails.
+function Barrels:drawSign()
+    local unit = Look.pixel
+    local x, y, size = Barrels.sign[1], Barrels.sign[2], Barrels.sign[3]
+    graphics2d.drawShape({x - size, y - size, size * 2, size * 2}, {radius = 10, rotation = math.pi / 4, color = '#FFFFC93C', borderWidth = Look.outlinePixels * unit, borderColor = Look.ink, layer = -24})
+    graphics2d.drawShape({x - size + 9, y - size + 9, size * 2 - 18, size * 2 - 18}, {radius = 6, rotation = math.pi / 4, color = '#00000000', borderWidth = 4 * unit, borderColor = '#FF2F2B45', layer = -24})
+    graphics2d.drawShape({x - 16, y - 22, 32, 44}, {kind = 'ellipse', color = '#FFF0473E', layer = -24})
+    graphics2d.drawShape({x - 13, y - 34, 18, 30}, {kind = 'ellipse', rotation = 0.35, color = '#FFF0473E', layer = -24})
+    graphics2d.drawShape({x - 9, y - 6, 18, 24}, {kind = 'ellipse', color = '#FFFF9A3C', layer = -24})
+    graphics2d.drawShape({x - 5, y + 4, 10, 12}, {kind = 'ellipse', color = '#FFFFF0A0', layer = -24})
+end
+
+-- The warehouse is a wall of dark planks between two posts under a roof beam, with a plank floor, wooden shelves on iron brackets, lamps and a warning sign.
 function Barrels:drawWarehouse()
     local unit = Look.pixel
     local bounds = graphics2d.canvasBounds()
@@ -176,6 +204,11 @@ function Barrels:drawWarehouse()
     for _, x in ipairs({-760, 760}) do
         Look.block(x, (bounds.y + Barrels.floor) / 2, 40, Barrels.floor - bounds.y + 40, 'darkWood', -28)
     end
+    Look.block(0, Barrels.beam, bounds.width + 200, 30, 'darkWood', -27)
+    for _, lamp in ipairs(Barrels.lamps) do
+        self:drawLamp(lamp[1], lamp[2])
+    end
+    self:drawSign()
     Look.block(0, Barrels.floor + 30, bounds.width + 200, 60, 'wood', -28)
     for _, shelf in ipairs(Barrels.shelves) do
         Look.block(shelf[1], shelf[2], Barrels.shelfWidth, 20, 'wood', 0)

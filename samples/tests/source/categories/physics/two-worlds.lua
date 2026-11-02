@@ -15,10 +15,12 @@ local Scenery = require('categories.physics.scenery')
 local TwoWorlds = haylen.class('TwoWorlds', PhysicsTest)
 
 TwoWorlds.code = [[
-local home = physics2d.newWorld({gravity = {0, 0}})  -- Each planet has a world of its own.
-physics2d.newForceField(home, {kind = 'radial', x = -470, y = 120, radius = 310, strength = 520})  -- A bubble of constant pull.
+local home = physics2d.newWorld({gravity = {0, 0}})  -- Each planet has a world of its own, without gravity.
+physics2d.newForceField(home, {kind = 'radial', x = -470, y = 120, radius = 310, strength = 520})
 physics2d.newForceField(moon, {kind = 'radial', x = 430, y = -30, radius = 330, strength = 820, linearDrag = 0.35})
-if shot.world == home and insideBubble(moonPlanet, shot) then shot = shot:moveToWorld(moon) end]]
+if shot.world == home and insideBubble(moonPlanet, shot) then
+    shot = shot:moveToWorld(moon)  -- It keeps its speed and spin.
+end]]
 
 TwoWorlds.actions = {
     {name = 'aim', type = 'vector', up = {'key:w', 'key:up', 'button:dpadUp'}, down = {'key:s', 'key:down', 'button:dpadDown'}, left = {'key:a', 'key:left', 'button:dpadLeft'}, right = {'key:d', 'key:right', 'button:dpadRight'}, bindings = {'stick:left', 'virtualStick:aim'}},
@@ -41,6 +43,10 @@ TwoWorlds.towers = {
     {angle = math.pi * 1.22, blocks = {{20, 80}, {80, 18}}},
 }
 TwoWorlds.pouchHeight = 70
+-- The fork of the slingshot: the half width between the tips of its arms, how far the tips rise above the pouch and how far below it the arms meet.
+TwoWorlds.fork = {half = 34, rise = 16, joint = 22}
+-- The dotted flight starts past the fork, this far beyond the pouch.
+TwoWorlds.dotsAfter = 50
 TwoWorlds.maxPull = 120
 TwoWorlds.power = 5.2
 TwoWorlds.shotRadius = 16
@@ -77,8 +83,8 @@ function TwoWorlds:enter()
     self.poofs = Burst('explosions/poof', {count = 4, scale = 0.6, layer = 30})
     self.dots = {}
     self.trailStroke = {width = 1, color = '#66FFFFFF', join = 'round', cap = 'round', layer = 1}
-    self.band = {0, 0, 0, 0, 0, 0}
-    self.bandStroke = {width = 1, color = '#FF5D3A22', join = 'round', cap = 'round', layer = 3}
+    self.band = {0, 0, 0, 0}
+    self.bandStroke = {width = 1, color = '#FF4A2C1A', join = 'round', cap = 'round', layer = 3}
     self:build()
 end
 
@@ -217,13 +223,14 @@ function TwoWorlds:cross()
     end
 end
 
--- Predicts the flight of a launch through both bubbles the way the worlds move it: a constant pull toward the planet whose bubble holds the point, the drag of its air, and a straight line between them, until it reaches a planet.
+-- Predicts the flight of a launch through both bubbles the way the worlds move it: a constant pull toward the planet whose bubble holds the point, the drag of its air, and a straight line between them, until it reaches a planet or, in the bubble of the moon, the first tower or critter that a circle as wide as the shot sweeps into.
 function TwoWorlds:predict(x, y, vx, vy)
     local points = self.path or {}
     local step = 1 / 60
     local count = 0
     for _ = 1, TwoWorlds.predictSteps do
         local planet = self:bubbleAt(x, y)
+        local reach = 1
         if planet then
             local spec = planet.spec
             local dx, dy = spec.x - x, spec.y - y
@@ -234,11 +241,16 @@ function TwoWorlds:predict(x, y, vx, vy)
             vx, vy = vx + dx / distance * planet.pull * step, vy + dy / distance * planet.pull * step
             local keep = math.max(0, 1 - spec.drag * step)
             vx, vy = vx * keep, vy * keep
+            local hit = planet == self.moon and planet.world:castCircle(x, y, TwoWorlds.shotRadius, vx * step, vy * step)
+            reach = hit and hit.fraction or 1
         end
-        x, y = x + vx * step, y + vy * step
+        x, y = x + vx * step * reach, y + vy * step * reach
         count = count + 1
         points[count] = points[count] or {}
         points[count][1], points[count][2] = x, y
+        if reach < 1 then
+            break
+        end
     end
     self.path, self.pathCount = points, count
 end
@@ -340,22 +352,32 @@ function TwoWorlds:drawCritter(critter)
     end
 end
 
--- The slingshot is a wooden fork on the top of the near planet, with its band around the shot.
+-- The slingshot is a sturdy wooden fork on the top of the near planet, its arms bent out from a thick trunk, with a rubber band from each tip to a leather pouch around the shot, the far band behind the fork and the near one in front.
 function TwoWorlds:drawSlingshot()
     local pouchX, pouchY = self:pouch()
-    local home = self.home.spec
-    local wood = '#FFA86B3C'
-    Look.line(pouchX, home.y - home.radius + 6, pouchX, pouchY + 14, 10, wood, 2)
-    Look.line(pouchX - 26, pouchY - 6, pouchX, pouchY + 14, 8, wood, 2)
-    Look.line(pouchX + 26, pouchY - 6, pouchX, pouchY + 14, 8, wood, 2)
-    local band, stroke = self.band, self.bandStroke
-    local bx, by = pouchX, pouchY - 6
+    local home, fork = self.home.spec, TwoWorlds.fork
+    local jointY = pouchY + fork.joint
+    local tipY = pouchY - fork.rise
+    Look.line(pouchX, home.y - home.radius + 8, pouchX, jointY, 20, '#FF8C5A32', 2)
+    Look.line(pouchX - 4, home.y - home.radius + 4, pouchX - 4, jointY + 4, 5, '#FFC08A52', 2)
+    for _, side in ipairs({-1, 1}) do
+        local elbowX, elbowY = pouchX + side * fork.half * 0.75, pouchY + 4
+        Look.line(pouchX, jointY, elbowX, elbowY, 15, '#FFA86B3C', 2)
+        Look.line(elbowX, elbowY, pouchX + side * fork.half, tipY, 13, '#FFA86B3C', 2)
+    end
+
+    local bx, by = pouchX, pouchY
     if self.shot then
         bx, by = self.shot.x, self.shot.y
+        graphics2d.drawShape({bx - 13, by - 19, 26, 38}, {kind = 'ellipse', rotation = math.atan(by - pouchY, bx - pouchX), color = '#FF6A4426', borderWidth = 2.5 * Look.pixel, borderColor = Look.ink, layer = 3})
     end
-    band[1], band[2], band[3], band[4], band[5], band[6] = pouchX - 26, pouchY - 6, bx, by, pouchX + 26, pouchY - 6
-    stroke.width = 5
-    graphics2d.drawStroke(band, stroke)
+    local band, stroke = self.band, self.bandStroke
+    stroke.width = 7
+    for _, side in ipairs({-1, 1}) do
+        band[1], band[2], band[3], band[4] = pouchX + side * fork.half, tipY, bx, by
+        stroke.layer = side < 0 and 1 or 3
+        graphics2d.drawStroke(band, stroke)
+    end
 end
 
 function TwoWorlds:draw(area)
@@ -380,9 +402,16 @@ function TwoWorlds:draw(area)
         Look.draw(self.shot, {layer = 4})
         if self.showPath then
             local dots, count = self.dots, 0
+            local pouchX, pouchY = self:pouch()
+            local clear = TwoWorlds.dotsAfter ^ 2
+            local past = false
             for index = 4, self.pathCount, 4 do
-                dots[count * 2 + 1], dots[count * 2 + 2] = self.path[index][1], self.path[index][2]
-                count = count + 1
+                local x, y = self.path[index][1], self.path[index][2]
+                past = past or ((x - pouchX) * self.pull.x + (y - pouchY) * self.pull.y < 0 and (x - pouchX) ^ 2 + (y - pouchY) ^ 2 > clear)
+                if past then
+                    dots[count * 2 + 1], dots[count * 2 + 2] = x, y
+                    count = count + 1
+                end
             end
             if count > 0 then
                 graphics2d.drawPoints(dots, {radius = 4 * Look.pixel, color = '#CCFFFFFF', count = count, layer = 4})

@@ -1,4 +1,5 @@
--- Bodies sliding over the same rows of stone tiles in two worlds: on the left every tile is a box of its own and sliding boxes catch on the joints between them, and on the right each row is one chain loop around its tiles, as `map:buildCollision` merges the tiles of a Tiled map, so they slide to the end.
+-- Bodies sliding over the same rows of painted stone tiles in two worlds: on the left every tile is a box of its own and sliding boxes catch on the joints between them, where a red mark shows, and on the right each row is one chain loop around its tiles, as `map:buildCollision` merges the tiles of a Tiled map, so they slide to the end. The bars under the rows and the status show the same shares.
+local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -12,9 +13,12 @@ local Scenery = require('categories.physics.scenery')
 local TileSeams = haylen.class('TileSeams', PhysicsTest)
 
 TileSeams.code = [[
-floor:addBox(40, 40, {offsetX = x, offsetY = y})  -- One box per tile catches sliding boxes on the joints.
-floor:addChain({{left, top}, {right, top}, {right, top + 40}, {left, top + 40}}, true)  -- One loop per row lets them slide.
-local walls = map:buildCollision(world)  -- Merges the tiles of a Tiled map into loops like this.]]
+-- One box per tile catches sliding boxes on the joints.
+floor:addBox(40, 40, {offsetX = x, offsetY = y})
+-- One loop per row lets them slide.
+floor:addChain({{left, top}, {right, top}, {right, top + 40}, {left, top + 40}}, true)
+-- Merges the tiles of a Tiled map into loops like this.
+local walls = map:buildCollision(world)]]
 
 TileSeams.tile = 40
 TileSeams.tiles = 17
@@ -24,6 +28,14 @@ TileSeams.interval = 1.2
 TileSeams.lifetime = 3
 TileSeams.markLife = 2.5
 TileSeams.ground = 350
+-- A body that loses this share of its speed in one step has caught on a joint.
+TileSeams.catchLoss = 0.5
+-- A shot ends once it rests this long, and then fades away over this time.
+TileSeams.restTime = 0.5
+TileSeams.fade = 0.3
+-- Every tile shows one slab of the stone tile of the Tiled tests, whose four slabs are a quarter of the tile each.
+TileSeams.stoneTile = {530, 2}
+TileSeams.slab = 64
 
 function TileSeams:enter()
     self:frame{
@@ -39,6 +51,12 @@ function TileSeams:enter()
         focus = 'speed',
     }
     self.speed = 700
+    self.tiles = assets.texture('tiled/tiles/terrain.png', {filter = 'linear', mipmaps = true})
+    self.slabs = {}
+    for index = 0, 3 do
+        self.slabs[index + 1] = {source = {TileSeams.stoneTile[1] + index % 2 * TileSeams.slab, TileSeams.stoneTile[2] + index // 2 * TileSeams.slab, TileSeams.slab, TileSeams.slab}, width = TileSeams.tile, height = TileSeams.tile, pivotX = 0, pivotY = 0, layer = 0}
+    end
+    self.shown = {{0, 0, 0}, {0, 0, 0}}
     self:build()
 end
 
@@ -79,27 +97,24 @@ function TileSeams:launch()
                 body:addBox(36, 36, {friction = 0})
                 Look.dress(body, kind == 1 and 'red' or 'teal')
             end
-            half.shots[#half.shots + 1] = {body = body, kind = kind, age = 0, start = x, top = top}
+            half.shots[#half.shots + 1] = {body = body, kind = kind, age = 0, start = x, top = top, furthest = x, speed = self.speed, rest = 0}
         end
     end
 end
 
--- A shot ends at the end of its row or when its time runs out, adds how far it went, and leaves a mark where it caught short of the end.
+-- A shot ends at the end of its row, when it falls off its row, once it rests or when its time runs out, adds how far along its row it got and fades away, so the row is clear before the next launch.
 function TileSeams:count(half, step)
     for index = #half.shots, 1, -1 do
         local shot = half.shots[index]
         shot.age = shot.age + step
-        local body = shot.body
-        if body.x > half.right or shot.age > TileSeams.lifetime then
-            local reached = math.min(body.x, half.right)
-            half.distances[shot.kind] = half.distances[shot.kind] + reached - shot.start
-            half.launched[shot.kind] = half.launched[shot.kind] + 1
-            if reached < half.right - TileSeams.tile then
-                local joint = half.left + math.floor((body.x - half.left) / TileSeams.tile + 0.5) * TileSeams.tile
-                half.marks[#half.marks + 1] = {x = joint, y = shot.top, life = TileSeams.markLife}
+        if shot.fade then
+            shot.fade = shot.fade + step
+            if shot.fade > TileSeams.fade then
+                shot.body:destroy()
+                table.remove(half.shots, index)
             end
-            body:destroy()
-            table.remove(half.shots, index)
+        else
+            self:follow(half, shot, step)
         end
     end
     for index = #half.marks, 1, -1 do
@@ -108,6 +123,26 @@ function TileSeams:count(half, step)
         if mark.life <= 0 then
             table.remove(half.marks, index)
         end
+    end
+end
+
+-- A shot that suddenly loses most of its speed has caught on the joint ahead of it, which a red mark shows at once.
+function TileSeams:follow(half, shot, step)
+    local body = shot.body
+    local speed = body.velocity.x
+    if not shot.caught and shot.speed > 150 and speed < shot.speed * (1 - TileSeams.catchLoss) and body.x < half.right then
+        shot.caught = true
+        local joint = half.left + math.floor((body.x + 18 - half.left) / TileSeams.tile + 0.5) * TileSeams.tile
+        half.marks[#half.marks + 1] = {x = joint, y = shot.top, life = TileSeams.markLife}
+    end
+    shot.speed = math.max(speed, 0)
+    shot.furthest = math.max(shot.furthest, body.x)
+    shot.rest = body.velocity:length() < 15 and shot.rest + step or 0
+    local fell = body.y > shot.top or body.x < half.left
+    if body.x > half.right or fell or shot.rest > TileSeams.restTime or shot.age > TileSeams.lifetime then
+        half.distances[shot.kind] = half.distances[shot.kind] + math.min(shot.furthest, half.right) - shot.start
+        half.launched[shot.kind] = half.launched[shot.kind] + 1
+        shot.fade = 0
     end
 end
 
@@ -126,7 +161,20 @@ function TileSeams:update(dt)
         self:build()
     end
     local left, right = self.halves[1], self.halves[2]
-    self:status(string.format('Tumbling boxes get %d%% of the way on the tiles and %d%% on the chains, upright boxes %d%% and %d%%.', math.floor(self:share(left, 1) * 100 + 0.5), math.floor(self:share(right, 1) * 100 + 0.5), math.floor(self:share(left, 2) * 100 + 0.5), math.floor(self:share(right, 2) * 100 + 0.5)))
+    local text = string.format('Tumbling boxes get %d%% of the way on the tiles and %d%% on the chains, upright boxes %d%% and %d%%.', TileSeams.percent(self:share(left, 1)), TileSeams.percent(self:share(right, 1)), TileSeams.percent(self:share(left, 2)), TileSeams.percent(self:share(right, 2)))
+    self:status(text)
+    -- The bars take the shares that the status shows, so both read the same numbers in every frame.
+    if self.statusText == text then
+        for index, half in ipairs(self.halves) do
+            for kind = 1, 3 do
+                self.shown[index][kind] = self:share(half, kind)
+            end
+        end
+    end
+end
+
+function TileSeams.percent(share)
+    return math.floor(share * 100 + 0.5)
 end
 
 function TileSeams:fixedUpdate(step)
@@ -141,21 +189,21 @@ function TileSeams:fixedUpdate(step)
     end
 end
 
--- Each row draws as its stone tiles, and under it a bar fills with the share of the row its bodies get along on average.
-function TileSeams:drawRow(half, kind, top)
+-- Each row draws as its painted stone slabs, one for every tile, and under it a bar fills with the share of the row its bodies get along on average.
+function TileSeams:drawRow(half, index, kind, top)
     local tile = TileSeams.tile
     for column = 0, TileSeams.tiles - 1 do
-        Look.block(half.left + (column + 0.5) * tile, top + tile / 2, tile, tile, 'stone', 0)
+        graphics2d.draw(self.tiles, half.left + column * tile, top, self.slabs[(column + kind) % 4 + 1])
     end
     local unit = Look.pixel
     local width = half.right - half.left
     local y = top + tile + 34
     graphics2d.drawShape({half.left, y - 7, width, 14}, {radius = 7, color = '#B32F3352', borderWidth = 2 * unit, borderColor = '#FF15172A', layer = 30})
-    local share = self:share(half, kind)
+    local share = self.shown[index][kind]
     if share > 0 then
         graphics2d.drawShape({half.left + 2 * unit, y - 5, math.max(10, (width - 4 * unit) * share), 10}, {radius = 5, color = '#FFFFC93C', layer = 31})
     end
-    self:label(string.format('%s: %d%% of the way', TileSeams.kinds[kind], math.floor(share * 100 + 0.5)), half.left, y + 26, {anchor = {0, 0.5}, size = 16})
+    self:label(string.format('%s: %d%% of the way', TileSeams.kinds[kind], TileSeams.percent(share)), half.left, y + 26, {anchor = {0, 0.5}, size = 16})
 end
 
 function TileSeams:draw(area)
@@ -163,9 +211,9 @@ function TileSeams:draw(area)
     Scenery.ground(TileSeams.ground)
     self:compare('One box for every tile', 'One chain around every row', 0, -330)
     local unit = Look.pixel
-    for _, half in ipairs(self.halves) do
+    for index, half in ipairs(self.halves) do
         for kind, top in ipairs(TileSeams.rows) do
-            self:drawRow(half, kind, top)
+            self:drawRow(half, index, kind, top)
         end
         for _, mark in ipairs(half.marks) do
             local alpha = math.min(1, mark.life)
@@ -173,7 +221,13 @@ function TileSeams:draw(area)
             graphics2d.drawRing(mark.x, mark.y, 8 * unit, 2.5 * unit, {0.12, 0.11, 0.2, alpha}, {layer = 32})
         end
         for _, shot in ipairs(half.shots) do
-            Look.draw(shot.body, {layer = 2})
+            if shot.fade then
+                graphics2d.beginGroup({opacity = 1 - shot.fade / TileSeams.fade, layer = 2})
+                Look.draw(shot.body, {layer = 2})
+                graphics2d.endGroup()
+            else
+                Look.draw(shot.body, {layer = 2})
+            end
         end
     end
 end

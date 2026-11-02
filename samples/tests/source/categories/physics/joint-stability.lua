@@ -1,5 +1,4 @@
--- Joints under heavy loads side by side, the problems on the left and their solutions on the right. A rope of light segments holds a heavy weight: without `limitLength` it stretches like rubber, and with it a slack joint between its ends keeps its length. A heavy ball hangs from a chain: with links nine hundred times lighter than the ball the chain stretches, and with links ten times denser, eight sub-steps and stiffer joints through `constraintHertz` it holds. A dashed line marks where each load hangs at rest, and red marks how far below it the load sags.
-local graphics2d = require('haylen.graphics2d')
+-- Joints under heavy loads side by side, the problems on the left and their solutions on the right. A rope of light segments holds a heavy weight: without `limitLength` it stretches like rubber, and with it a slack joint between its ends keeps its length. A heavy ball hangs from a chain: with links nine hundred times lighter than the ball the chain stretches, and with links ten times denser, eight sub-steps and stiffer joints through `constraintHertz` it holds. A dashed line marks where each load hangs at rest, and an arrow how far below it the load sags. The plates under the loads and the status show the same stretch.
 local haylen = require('haylen')
 local input = require('haylen.input')
 local physics2d = require('haylen.physics2d')
@@ -14,11 +13,11 @@ local JointStability = haylen.class('JointStability', PhysicsTest)
 
 JointStability.code = [[
 local world = physics2d.newWorld({subSteps = 8})
-physics2d.newRope(world, {from = top, to = bottom, segments = 16, startBody = beam, endBody = weight, limitLength = true})
+physics2d.newRope(world, {from = top, to = bottom, startBody = beam, endBody = weight, limitLength = true})
 link:addBox(10, 22, {density = 10})  -- Links closer in mass to the load.
 joint.constraintHertz = 240  -- Stiffer than the default of 60.]]
 
-JointStability.top = -270
+JointStability.top = -236
 JointStability.ground = 360
 JointStability.ropeLength, JointStability.ropeSegments = 300, 16
 JointStability.links, JointStability.linkLength = 12, 22
@@ -26,7 +25,7 @@ JointStability.links, JointStability.linkLength = 12, 22
 function JointStability:enter()
     self:frame{
         code = JointStability.code,
-        hint = 'Drag the weights and the balls to load the joints harder, or make the loads heavier. R or the X button starts over.',
+        hint = 'A dashed line marks where each load hangs at rest, and an arrow how far below it the load sags. Drag the weights and the balls to load the joints harder, or make the loads heavier. R or the X button starts over.',
         controls = {
             ui.label{text = 'Density of the loads', font = 'caption', color = 'textMuted'},
             ui.slider{id = 'density', value = 15, min = 5, max = 100, step = 5, showValue = true, decimals = 0, onChange = function(event)
@@ -39,6 +38,7 @@ function JointStability:enter()
     }
     self.density = 15
     self.rope = {}
+    self.shown = {0, 0, 0, 0}
     self:build()
 end
 
@@ -116,7 +116,18 @@ function JointStability:update(dt)
         case.grab:update(self.pointer, self.camera)
     end
     local cases = self.cases
-    self:status(string.format('The ropes stretch by %d%% and %d%%, and the chains by %d%% and %d%%, under loads of %d kilograms.', math.floor(self:stretch(cases[1]) * 100 + 0.5), math.floor(self:stretch(cases[3]) * 100 + 0.5), math.floor(self:stretch(cases[2]) * 100 + 0.5), math.floor(self:stretch(cases[4]) * 100 + 0.5), math.floor(cases[1].load.mass + 0.5)))
+    local text = string.format('The ropes stretch by %d%% and %d%%, and the chains by %d%% and %d%%, under loads of %d kilograms.', self:percent(cases[1]), self:percent(cases[3]), self:percent(cases[2]), self:percent(cases[4]), math.floor(cases[1].load.mass + 0.5))
+    self:status(text)
+    -- The plates take the stretch that the status shows, so both read the same numbers in every frame.
+    if self.statusText == text then
+        for index, case in ipairs(cases) do
+            self.shown[index] = self:percent(case)
+        end
+    end
+end
+
+function JointStability:percent(case)
+    return math.max(0, math.floor(self:stretch(case) * 100 + 0.5))
 end
 
 function JointStability:fixedUpdate(step)
@@ -125,7 +136,7 @@ function JointStability:fixedUpdate(step)
     end
 end
 
-function JointStability:drawCase(case)
+function JointStability:drawCase(case, index)
     local unit = Look.pixel
     self:label(case.title, case.x, case.top - 38, {size = 19})
     Look.block(case.x, case.top, 80, 14, 'darkWood', 1)
@@ -145,26 +156,29 @@ function JointStability:drawCase(case)
     end
     Look.draw(case.load, {layer = 2})
 
-    -- The dashed line is the place of the load at rest, and the red bar how far below it the load sags.
+    -- The dashed line is the place of the load at rest, and a red arrow beside the load measures how far below it the load sags.
     Look.dashed(case.x - 80, case.rest, case.x + 80, case.rest, '#CC2F3352', 3)
     local sag = case.load.y - case.rest
-    if sag > 2 then
-        graphics2d.drawShape({case.x + 74, case.rest, 10 * unit, sag}, {radius = 5 * unit, color = '#FFF0473E', borderWidth = 2 * unit, borderColor = Look.ink, layer = 3})
+    if sag > 16 then
+        local x, tip = case.x + 82, case.load.y
+        Look.line(x, case.rest, x, tip - 8, 4 * unit, '#FFF0473E', 3)
+        Look.line(x - 10, tip - 12, x, tip, 4 * unit, '#FFF0473E', 3)
+        Look.line(x + 10, tip - 12, x, tip, 4 * unit, '#FFF0473E', 3)
     end
-    self:label(string.format('%d%% longer', math.max(0, math.floor(self:stretch(case) * 100 + 0.5))), case.x, math.min(math.max(case.load.y, case.rest) + 78, JointStability.ground - 30), {size = 18, plate = sag > 6 and PhysicsTest.problemPlate or PhysicsTest.solutionPlate})
+    self:label(string.format('%d%% longer', self.shown[index]), case.x, math.min(math.max(case.load.y, case.rest) + 78, JointStability.ground - 30), {size = 18, plate = sag > 6 and PhysicsTest.problemPlate or PhysicsTest.solutionPlate})
     case.grab:draw()
 end
 
 function JointStability:draw(area)
     Scenery.sky(self.camera, JointStability.ground)
     Scenery.ground(JointStability.ground)
-    self:compare('The problems', 'Their solutions', 0, -358)
+    self:compare('The problems', 'Their solutions', 0, -334)
     Look.block(0, JointStability.top - 12, 1620, 16, 'darkWood', 0)
     for _, x in ipairs({-795, 795}) do
         Look.block(x, (JointStability.top + JointStability.ground) / 2 - 10, 22, JointStability.ground - JointStability.top + 20, 'darkWood', 0)
     end
-    for _, case in ipairs(self.cases) do
-        self:drawCase(case)
+    for index, case in ipairs(self.cases) do
+        self:drawCase(case, index)
     end
 end
 

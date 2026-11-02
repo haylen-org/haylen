@@ -15,15 +15,17 @@ local Scenery = require('categories.physics.scenery')
 local Ragdoll = haylen.class('Ragdoll', PhysicsTest)
 
 Ragdoll.code = [[
-local doll = physics2d.newRagdoll(world, {x = -740, y = -260, height = 240, stiffness = 0.2, group = -1, vx = 260})
-local other = physics2d.newRagdoll(world, {x = -100, y = -250, height = 240, group = -2})  -- Its own group, so the two collide.
+local doll = physics2d.newRagdoll(world, {x = -740, y = -280, height = 280, stiffness = 0.2, group = -1, vx = 260})
+local other = physics2d.newRagdoll(world, {x = -100, y = -250, height = 280, group = -2})  -- Collides with the first.
 local chest = doll:body('chest')
 chest:applyImpulse(chest.mass * 500, -chest.mass * 600)  -- Throws the figure.
 for part, body in pairs(doll:bodies()) do drawLimb(part, body) end]]
 
 Ragdoll.maxDolls = 6
 Ragdoll.height = 280
-Ragdoll.wall = 740
+-- The courtyard ends in a stone wall on the right, this many rows of blocks tall, which stops the ragdolls that tumble away.
+Ragdoll.wall = 660
+Ragdoll.wallRows = 4
 Ragdoll.steps, Ragdoll.stepWidth, Ragdoll.stepHeight = 6, 100, 72
 Ragdoll.stairLeft = -800
 Ragdoll.ground = 330
@@ -63,10 +65,9 @@ function Ragdoll:build()
         stairs:addBox(right - left, Ragdoll.ground - top, {offsetX = (left + right) / 2, offsetY = (top + Ragdoll.ground) / 2, friction = 0.2})
     end
 
-    local wall = self.world:createBody({type = 'static', x = Ragdoll.wall, y = Ragdoll.ground - 100})
-    wall:addBox(60, 200)
-    Look.dress(wall, 'stone')
-    self.wall = wall
+    local wallHeight = Ragdoll.wallRows * Ragdoll.stepHeight
+    local wall = self.world:createBody({type = 'static', x = Ragdoll.wall + 450, y = Ragdoll.ground - wallHeight / 2})
+    wall:addBox(900, wallHeight)
 
     self:drop(Ragdoll.stairLeft + 60, Ragdoll.ground - Ragdoll.steps * Ragdoll.stepHeight - 180)
     self:drop(-60, -250)
@@ -110,30 +111,37 @@ function Ragdoll:fixedUpdate(step)
     self:simulate(self.world, step)
 end
 
--- The stairs are laid of stone blocks in rows whose joints alternate, each row reaching out to the edge of its step.
-function Ragdoll:drawStairs()
-    local left = graphics2d.canvasBounds().x
+-- Lays a row of stone blocks from `from` toward `to`, in either direction, whose joints alternate with the rows next to it: odd rows start with a block half as long again.
+function Ragdoll:drawRow(row, from, to)
     local width, height = Ragdoll.stepWidth, Ragdoll.stepHeight
+    local direction = to > from and 1 or -1
+    local y = Ragdoll.ground - (row + 0.5) * height
+    local x = from
+    if row % 2 == 1 then
+        Look.block(x + direction * width * 0.75, y, width * 1.5, height, 'stone', -8)
+        x = x + direction * width * 1.5
+    end
+    while (to - x) * direction > 0 do
+        Look.block(x + direction * width / 2, y, width, height, 'stone', -8)
+        x = x + direction * width
+    end
+end
+
+-- The stairs and the wall are laid of stone blocks, each row of the stairs reaching out to the edge of its step.
+function Ragdoll:drawStones()
+    local bounds = graphics2d.canvasBounds()
     for row = 0, Ragdoll.steps - 1 do
-        local right = Ragdoll.stairLeft + (Ragdoll.steps - row) * width
-        local y = Ragdoll.ground - (row + 0.5) * height
-        local x = right
-        if row % 2 == 1 then
-            Look.block(right - width / 4, y, width / 2, height, 'stone', -8)
-            x = right - width / 2
-        end
-        while x > left do
-            Look.block(x - width / 2, y, width, height, 'stone', -8)
-            x = x - width
-        end
+        self:drawRow(row, Ragdoll.stairLeft + (Ragdoll.steps - row) * Ragdoll.stepWidth, bounds.x)
+    end
+    for row = 0, Ragdoll.wallRows - 1 do
+        self:drawRow(row, Ragdoll.wall, bounds.x + bounds.width)
     end
 end
 
 function Ragdoll:draw(area)
     Scenery.sky(self.camera, Ragdoll.ground)
     Scenery.ground(Ragdoll.ground)
-    self:drawStairs()
-    Look.draw(self.wall, {layer = -8})
+    self:drawStones()
     for index, entry in ipairs(self.dolls) do
         Figure.draw(entry.doll, entry.outfit, index)
     end

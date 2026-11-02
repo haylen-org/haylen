@@ -16,9 +16,11 @@ local Collisions = haylen.class('Collisions', PhysicsTest)
 Collisions.code = [[
 world.onContactBegin = function(a, b, contact)
     mark(contact.points, contact.normalX, contact.normalY, contact.relativeVelocityX, contact.relativeVelocityY)
-    print(contact.speed, contact.force)  -- How fast they met and how hard they press.
+    label(contact.speed, contact.force)  -- How fast they met and how hard they press.
 end
-for _, contact in ipairs(crate:contacts()) do if contact.normalY > 0.5 then weight = weight + contact.force end end]]
+for _, contact in ipairs(crate:contacts()) do
+    weight = weight + (contact.normalY > 0.5 and contact.force or 0)  -- Only what holds it from below.
+end]]
 
 -- Impacts slower than this many units per second only push, so the marks show the landings and not the settling.
 Collisions.slowest = 40
@@ -27,8 +29,12 @@ Collisions.markSeconds = 2.5
 Collisions.normalLength = 48
 Collisions.velocityScale = 0.12
 Collisions.ground = 390
+Collisions.wall = 780
 Collisions.ramp = {{-780, 390}, {-380, 390}, {-780, 170}}
-Collisions.block = {360, 330, 160, 120}
+Collisions.block = {{280, 270}, {440, 270}, {440, 390}, {280, 390}}
+-- The values written on the stage are this many pixels of the screen tall, and a value that would cover another moves up until it is clear.
+Collisions.tagSize = 18
+Collisions.tagTries = 6
 Collisions.firstThrows = 8
 Collisions.throwEvery = 1.1
 Collisions.maxBodies = 16
@@ -51,27 +57,36 @@ function Collisions:enter()
     self.camera.position = {0, 90}
     self.random = m.random(64)
     self.rampShape = Look.newShape(Collisions.ramp, 'stone')
+    self.blockShape = Look.newShape(Collisions.block, 'stone')
+    self.placed = {}
     self:build()
 end
 
 function Collisions:build()
     self.world = physics2d.newWorld()
     self.grab = Grab(self.world)
-    local room = self.world:createBody({type = 'static'})
-    room:addBox(4000, 40, {offsetY = Collisions.ground + 20})
-    room:addBox(20, 1000, {offsetX = -790})
-    room:addBox(20, 1000, {offsetX = 790})
-    room:addPolygon(Collisions.ramp)
-    local block = Collisions.block
-    room:addBox(block[3], block[4], {offsetX = block[1], offsetY = block[2]})
+    self:fixture('the ground'):addBox(4000, 40, {offsetY = Collisions.ground + 20})
+    local walls = self:fixture('a wall')
+    walls:addBox(20, 1000, {offsetX = -Collisions.wall - 10})
+    walls:addBox(20, 1000, {offsetX = Collisions.wall + 10})
+    self:fixture('the ramp'):addPolygon(Collisions.ramp)
+    self:fixture('the stone block'):addPolygon(Collisions.block)
     self.bodies = {}
     self.impacts = {}
-    self.last = nil
+    self.last, self.shownImpact = nil, nil
+    self:set('status', {text = 'Throw a ball or drop a crate to see its impact.'})
     self.time, self.clock, self.thrown = 0, 0, 0
     self.world.onContactBegin = function(a, b, contact) self:record(a, b, contact) end
     for index, x in ipairs({-180, 60, 600}) do
         self:addCrate(x, Collisions.ground - 30 - index * 5, 50 + index * 10)
     end
+end
+
+-- Returns a static body of the room with the name the status gives it.
+function Collisions:fixture(name)
+    local body = self.world:createBody({type = 'static'})
+    body.data.name = name
+    return body
 end
 
 function Collisions:addCrate(x, y, size)
@@ -105,36 +120,38 @@ function Collisions:throw(kind)
     end
 end
 
--- Keeps the newest impacts, each with what its contact table told.
+-- Keeps the newest impacts, each with what its contact table told, seen from the body that moved into the other: the body that is not part of the room, or the upper one of two that move. The normal points from the other body toward it, out into the open, and the velocity is the one it kept against the other.
 function Collisions:record(a, b, contact)
     if contact.speed < Collisions.slowest then
         return
     end
+    local normalX, normalY = contact.normalX, contact.normalY
+    local velocityX, velocityY = contact.relativeVelocityX, contact.relativeVelocityY
+    local mover, other = b, a
+    if b.type == 'static' or (a.type ~= 'static' and normalY > 0.5) then
+        mover, other = a, b
+        normalX, normalY, velocityX, velocityY = -normalX, -normalY, -velocityX, -velocityY
+    end
     local points = {}
     for index, point in ipairs(contact.points) do
-        points[index] = {point.x, point.y, point.separation}
+        points[index] = {point.x, point.y}
     end
     local impact = {
-        x = contact.x, y = contact.y, normalX = contact.normalX, normalY = contact.normalY,
-        velocityX = contact.relativeVelocityX, velocityY = contact.relativeVelocityY,
-        speed = contact.speed, force = contact.force, points = points, time = self.time,
-        first = Collisions.nameOf(a), second = Collisions.nameOf(b),
+        x = contact.x, y = contact.y, normalX = normalX, normalY = normalY, velocityX = velocityX, velocityY = velocityY,
+        speed = contact.speed, force = contact.force, weight = mover.mass * self.world.gravity.y, points = points, time = self.time,
+        mover = mover.data.name, other = other.data.name,
     }
     table.insert(self.impacts, 1, impact)
     self.impacts[Collisions.marks + 1] = nil
     self.last = impact
 end
 
-function Collisions.nameOf(body)
-    return body and body.data and body.data.name or 'the ground'
-end
-
--- The side of the second body that took the impact, the opposite of where the normal points.
+-- The side the moving body came from, where the normal points.
 function Collisions.side(impact)
     if math.abs(impact.normalY) >= math.abs(impact.normalX) then
-        return impact.normalY > 0 and 'from above' or 'from below'
+        return impact.normalY < 0 and 'from above' or 'from below'
     end
-    return impact.normalX > 0 and 'from the left' or 'from the right'
+    return impact.normalX < 0 and 'from the left' or 'from the right'
 end
 
 -- The force with which the body presses down on what holds it, from its contacts whose normal points down from it.
@@ -163,12 +180,13 @@ function Collisions:update(dt)
         self:throw(self.thrown % 2 == 1 and 'ball' or 'crate')
     end
 
+    -- The status tells the last impact in the frame its marks appear, so it always reads the speed written beside them.
     local last = self.last
-    if last then
+    if last ~= self.shownImpact then
+        self.shownImpact = last
         local points = #last.points == 1 and 'point' or 'points'
-        self:status(string.format('The last impact: %s met %s at %d units per second %s, at %d %s, pressing with %d and sliding on at %d units per second.', last.first, last.second, PhysicsTest.round(last.speed), Collisions.side(last), #last.points, points, PhysicsTest.round(last.force), PhysicsTest.round(math.sqrt(last.velocityX ^ 2 + last.velocityY ^ 2))))
-    else
-        self:status('Throw a ball or drop a crate to see its impact.')
+        local kept = PhysicsTest.round(math.sqrt(last.velocityX ^ 2 + last.velocityY ^ 2))
+        self:set('status', {text = string.format('The last impact: %s hit %s at %d units per second %s, at %d %s, pressed on it with %.1f times its weight and kept %d units per second.', last.mover, last.other, PhysicsTest.round(last.speed), Collisions.side(last), #last.points, points, last.force / last.weight, kept)})
     end
 end
 
@@ -188,11 +206,34 @@ function Collisions.arrow(x, y, dx, dy, color)
     graphics2d.drawPolygon({{tipX, tipY}, {tipX - ux * 16 - uy * 9, tipY - uy * 16 + ux * 9}, {tipX - ux * 16 + uy * 9, tipY - uy * 16 - ux * 9}}, color, {layer = 31})
 end
 
--- The legend names the colors of the marks in a corner of the stage.
+-- Draws a value on the stage where it covers none of the values placed before it in this frame, moving up from `x`, `y` as far as it must.
+function Collisions:place(text, x, y, color)
+    local unit = Look.pixel
+    local height = Collisions.tagSize * 1.3 * unit
+    local half = #text * Collisions.tagSize * 0.33 * unit + 4 * unit
+    local placed = self.placed
+    for _ = 1, Collisions.tagTries do
+        local clear = true
+        for index = 1, #placed, 3 do
+            if math.abs(placed[index] - x) < placed[index + 2] + half and math.abs(placed[index + 1] - y) < height then
+                clear = false
+                break
+            end
+        end
+        if clear then
+            break
+        end
+        y = y - height
+    end
+    placed[#placed + 1], placed[#placed + 2], placed[#placed + 3] = x, y, half
+    self:tag(text, x, y, {size = Collisions.tagSize, color = color, layer = 32})
+end
+
+-- The legend names the colors of the marks in the corner of the room, inside its wall.
 function Collisions:drawLegend()
     local unit = Look.pixel
     local bounds = graphics2d.canvasBounds()
-    local x, y = bounds.x + 24 * unit, bounds.y + 24 * unit
+    local x, y = math.max(bounds.x, -Collisions.wall) + 24 * unit, bounds.y + 24 * unit
     local row = 36 * unit
     graphics2d.drawShape({x, y, 330 * unit, row * #Collisions.legend + 56 * unit}, {radius = 12 * unit, color = '#EE2F3352', layer = 40})
     for index, entry in ipairs(Collisions.legend) do
@@ -212,16 +253,19 @@ function Collisions:draw(area)
     Scenery.sky(self.camera, Collisions.ground)
     Scenery.ground(Collisions.ground)
     Look.drawShape(self.rampShape, 0)
-    local block = Collisions.block
-    Look.block(block[1], block[2], block[3], block[4], 'stone', 0)
-    for _, x in ipairs({-800, 800}) do
-        Look.block(x, (bounds.y + Collisions.ground) / 2, 40, Collisions.ground - bounds.y + 20, 'stone', -12)
+    Look.drawShape(self.blockShape, 0)
+    for _, side in ipairs({-1, 1}) do
+        Look.block(side * (Collisions.wall + 20), (bounds.y + Collisions.ground) / 2, 40, Collisions.ground - bounds.y + 20, 'stone', -12)
     end
     Look.drawAll(self.bodies, {layer = 1})
+    local placed = self.placed
+    for index = #placed, 1, -1 do
+        placed[index] = nil
+    end
     for _, body in ipairs(self.bodies) do
         local force = body.valid and body.data.name == 'a crate' and Collisions.weight(body) or 0
         if force > 0 then
-            self:tag(tostring(PhysicsTest.round(force)), body.x, body.y, {size = 18, layer = 32})
+            self:place(tostring(PhysicsTest.round(force)), body.x, body.y)
         end
     end
 
@@ -233,7 +277,7 @@ function Collisions:draw(area)
             end
             Collisions.arrow(impact.x, impact.y, impact.normalX * Collisions.normalLength, impact.normalY * Collisions.normalLength, m.color('#FFFFC93C'):withAlpha(fade))
             Collisions.arrow(impact.x, impact.y, impact.velocityX * Collisions.velocityScale, impact.velocityY * Collisions.velocityScale, m.color('#FF64B5F6'):withAlpha(fade))
-            self:tag(tostring(PhysicsTest.round(impact.speed)), impact.x + 30, impact.y - 26, {size = 16, color = m.color(1, 1, 1, fade), layer = 32})
+            self:place(tostring(PhysicsTest.round(impact.speed)), impact.x + 30, impact.y - 26, m.color(1, 1, 1, fade))
         end
     end
     self:drawLegend()

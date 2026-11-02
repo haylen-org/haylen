@@ -17,18 +17,20 @@ Playground.code = [[
 world.gravity = {0, 980}  -- Writing it wakes every body.
 local body = world:createBody({x = x, y = y, linearDamping = 0.2, angularDamping = 0.5, gravityScale = 1})
 body:addBox(60, 60, {density = 1, friction = 0.6, restitution = 0.3})
-for _, shape in ipairs(body:shapes()) do shape.restitution = 0.9 end  -- The material changes while it moves.
-body:applyImpulse(dragX * strength, dragY * strength)  print(body.mass, body.velocity:length())]]
+body:shapes()[1].restitution = 0.9  -- The material changes while it moves.
+body:applyImpulse(dragX * strength, dragY * strength)
+print(body.mass, body.velocity:length())]]
 
 Playground.tools = {{id = 'drop', text = 'Drop'}, {id = 'grab', text = 'Grab'}, {id = 'push', text = 'Push'}, {id = 'shoot', text = 'Shoot'}}
 Playground.kinds = {{id = 'box', text = 'Box'}, {id = 'ball', text = 'Ball'}, {id = 'triangle', text = 'Triangle'}}
 Playground.ground = 400
 Playground.ramp = {{200, 400}, {780, 160}, {780, 400}}
 Playground.materials = {box = 'blue', ball = 'yellow', triangle = 'green'}
--- The cannon in the corner turns its barrel around the trunnion toward the pointer, and its picture reaches the muzzle the length of the barrel ahead.
+-- The cannon in the corner turns its barrel around the trunnion toward the pointer, and its picture reaches the muzzle the length of the barrel ahead. It rides a wooden carriage on a spoked wheel whose axle lies this far under the trunnion.
 Playground.cannon = {-720, 340}
 Playground.barrelLength = 90
 Playground.picture = {width = 320, height = 166, pivot = 0.425, muzzle = 180}
+Playground.wheel = {drop = 30, radius = 30, spokes = 6}
 Playground.cardLines = 7
 
 function Playground:enter()
@@ -229,6 +231,27 @@ function Playground:drawCard(body)
     Look.dashed(body.x, body.y, x, y + height / 2, '#CCFFFFFF', 29)
 end
 
+-- The carriage is a wooden trail that rests on the floor behind a spoked wheel with an iron tire, and a cheek that holds the trunnion over the axle.
+function Playground:drawCarriage(x, y)
+    local unit = Look.pixel
+    local wheel = Playground.wheel
+    local axleY, radius = y + wheel.drop, wheel.radius
+    local tailX, tailY = x - 54, Playground.ground - 8
+    Look.block((x + tailX) / 2, (axleY + tailY) / 2, math.sqrt((x - tailX) ^ 2 + (axleY - tailY) ^ 2) + 16, 16, 'darkWood', 1, math.atan(axleY - tailY, x - tailX))
+    Look.block(x, (y + axleY) / 2, 18, wheel.drop + 12, 'darkWood', 1)
+
+    local ow = Look.outlinePixels * unit
+    graphics2d.drawRing(x, axleY, radius - 5, 10 + ow * 2, Look.ink, {layer = 3})
+    graphics2d.drawRing(x, axleY, radius - 2.5, 5, '#FF5A6278', {layer = 3})
+    graphics2d.drawRing(x, axleY, radius - 7.5, 5, '#FFA86B3C', {layer = 3})
+    for spoke = 0, wheel.spokes - 1 do
+        local angle = spoke * math.pi * 2 / wheel.spokes + 0.3
+        Look.line(x, axleY, x + math.cos(angle) * (radius - 10), axleY + math.sin(angle) * (radius - 10), 4, '#FFD39A62', 3)
+    end
+    Look.disc(x, axleY, 8, 'darkWood', 3)
+    Look.pin(x, axleY, 3.5, 3)
+end
+
 function Playground:draw(area)
     local bounds = graphics2d.canvasBounds()
     Scenery.sky(self.camera, Playground.ground)
@@ -243,12 +266,12 @@ function Playground:draw(area)
     Look.drawAll(self.bodies, {layer = 1})
     Look.drawAll(self.shots, {layer = 1})
 
-    -- The cannon is a barrel that turns toward the pointer on a wooden wheel.
+    -- The cannon is a barrel that turns toward the pointer on a wooden carriage.
     local x, y, dx, dy = self:muzzle()
     local picture = Playground.picture
     local scale = Playground.barrelLength / picture.muzzle
     graphics2d.draw(self.barrel, x, y, {width = picture.width * scale, height = picture.height * scale, pivotX = picture.pivot, pivotY = 0.5, rotation = self.aim, layer = 2})
-    Look.disc(x, y + 30, 30, 'wheel', 3)
+    self:drawCarriage(x, y)
     if self.tool == 'shoot' then
         local length = Playground.barrelLength
         Look.dashed(x + dx * length, y + dy * length, self.pointer.worldX, self.pointer.worldY, '#B3F0473E', 2)

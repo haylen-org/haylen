@@ -4,6 +4,7 @@ local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local linear = {filter = 'linear'}
+local repeating = {filter = 'linear', wrap = 'repeat'}
 
 local Backdrop = haylen.class('Backdrop')
 
@@ -20,8 +21,10 @@ function Backdrop:init()
     local sky = graphics.newImage(4, 256)
     sky:fillGradient({angle = math.pi / 2, stops = {{0, '#FF5FB4EC'}, {0.75, '#FFAEDDF6'}, {1, '#FFE4F5FB'}}})
     self.sky = graphics.newTexture(sky, linear)
-    self.clouds = assets.texture('camera/clouds.png', linear)
-    self.hills = assets.texture('camera/hills.png', linear)
+    self.clouds = assets.texture('camera/clouds.png', repeating)
+    self.hills = assets.texture('camera/hills.png', repeating)
+    self.cloudsDraw = {source = {0, 0, Backdrop.cloudsSize[1], Backdrop.cloudsSize[2]}, width = 0, height = 0, pivotX = 0, pivotY = 1, color = '#E6FFFFFF', layer = -30}
+    self.hillsDraw = {source = {0, 0, Backdrop.hillsSize[1], Backdrop.hillsSize[2]}, width = 0, height = 0, pivotX = 0, pivotY = 1, layer = -29}
     self.ground = assets.texture('camera/ground.png', linear)
 end
 
@@ -41,27 +44,32 @@ function Backdrop:draw(bounds, ground, height, offset, ledge)
     local horizon = ledge and ledge.ground - ledge.height * Backdrop.footing or top
     graphics2d.draw(self.sky, bounds.x, bounds.y, {width = bounds.width, height = horizon - bounds.y + height * 0.5, pivotX = 0, pivotY = 0, layer = -31})
 
-    -- Bands of clouds rise from behind the hills to the top of the view, each shifted and drifting a little faster than the one below it.
+    -- Bands of clouds rise from behind the hills to the top of the view, each shifted and drifting a little faster than the one below it. Each band, like the hills, is one draw whose source repeats the strip, so its copies join without a seam.
     local cloudsHeight = height * 0.6
     local cloudsWidth = cloudsHeight * Backdrop.cloudsSize[1] / Backdrop.cloudsSize[2]
     local band, bottom = 0, horizon - height * 0.3
     while bottom > bounds.y do
         local shift = band * cloudsWidth * 0.37 + offset * 0.1 - haylen.elapsed() * Backdrop.drift * (1 + band * 0.3)
-        for x = bounds.x - (bounds.x + shift) % cloudsWidth, bounds:right(), cloudsWidth do
-            graphics2d.draw(self.clouds, x, bottom, {width = cloudsWidth + 1, height = cloudsHeight, pivotX = 0, pivotY = 1, color = '#E6FFFFFF', layer = -30})
-        end
+        self:repeatAcross(self.clouds, self.cloudsDraw, bounds, shift, bottom, cloudsWidth, cloudsHeight)
         band, bottom = band + 1, bottom - height * 1.6
     end
 
     local hillsHeight = height * 1.5
     local hillsWidth = hillsHeight * Backdrop.hillsSize[1] / Backdrop.hillsSize[2]
-    for x = bounds.x - (bounds.x + offset * 0.25) % hillsWidth, bounds:right(), hillsWidth do
-        graphics2d.draw(self.hills, x, horizon + height * 0.4, {width = hillsWidth + 1, height = hillsHeight, pivotX = 0, pivotY = 1, layer = -29})
-    end
+    self:repeatAcross(self.hills, self.hillsDraw, bounds, offset * 0.25, horizon + height * 0.4, hillsWidth, hillsHeight)
     if ledge then
         self:strip(bounds, ledge.ground, ledge.height, offset * 0.6, Backdrop.haze, -28)
     end
     self:strip(bounds, ground, height, offset, nil, -27)
+end
+
+-- Draws a strip that repeats across `bounds`, scrolled by `shift`, with copies `width` by `height` units whose bottom lies at `bottom`.
+function Backdrop:repeatAcross(texture, options, bounds, shift, bottom, width, height)
+    local first = bounds.x - (bounds.x + shift) % width
+    local copies = math.ceil((bounds:right() - first) / width)
+    options.source[3] = copies * texture.width
+    options.width, options.height = copies * width, height
+    graphics2d.draw(texture, first, bottom, options)
 end
 
 function Backdrop:strip(bounds, ground, height, offset, haze, layer)

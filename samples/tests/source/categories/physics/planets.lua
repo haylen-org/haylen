@@ -17,21 +17,22 @@ local Planets = haylen.class('Planets', PhysicsTest)
 
 Planets.code = [[
 local world = physics2d.newWorld({gravity = {0, 0}})
-physics2d.newForceField(world, {kind = 'radial', x = -330, y = 40, radius = 560, strength = 1400, falloff = 'inverseSquare', minDistance = 120})
+physics2d.newForceField(world, {kind = 'radial', x = -330, y = 40, radius = 560, strength = 1400,
+    falloff = 'inverseSquare', minDistance = 120})
 local speed = math.sqrt(1400 * 120 ^ 2 / distance)  -- The speed of a circular orbit.
 local moon = world:createBody({x = -330, y = 40 - distance, vx = speed})]]
 
 -- The gravity of each planet is the acceleration at its surface, and its moons are listed by orbit radius and size.
 Planets.worlds = {
-    {x = -330, y = 40, radius = 120, reach = 560, gravity = 1400, picture = 'physics/planet-grass.png', glow = '#594FA8E0', moons = {{220, 18}, {320, 14}}},
-    {x = 440, y = -60, radius = 70, reach = 300, gravity = 900, picture = 'physics/planet-desert.png', glow = '#59F0A040', moons = {{160, 12}}},
+    {x = -330, y = 40, radius = 120, reach = 560, gravity = 1400, picture = 'physics/planet-grass.png', glow = '#594FA8E0', moons = {{220, 24}, {320, 19}}},
+    {x = 440, y = -60, radius = 70, reach = 300, gravity = 900, picture = 'physics/planet-desert.png', glow = '#59F0A040', moons = {{165, 16}}},
 }
 -- The share of each picture of a planet that its disc covers.
 Planets.cover = 376 / 384
 Planets.dock = {-710, 40}
-Planets.shipRadius = 9
-Planets.shipSize = {48, 36.75}
-Planets.nozzle = 21
+Planets.shipRadius = 13
+Planets.shipSize = {70, 53.6}
+Planets.nozzle = 30
 Planets.maxShips = 8
 Planets.trailEvery = 4
 Planets.trailLength = 90
@@ -234,10 +235,10 @@ function Planets:drawShip(ship)
         return
     end
     local flicker = 0.8 + 0.2 * math.sin(haylen.elapsed() * 40 + ship.x)
-    local length = 22 * flicker
+    local length = 30 * flicker
     local x, y = ship.x - cos * (Planets.nozzle + length / 2), ship.y - sin * (Planets.nozzle + length / 2)
-    graphics2d.drawShape({x - length / 2, y - 7, length, 14}, {kind = 'ellipse', rotation = angle, color = '#E6FF9A3C', layer = 2})
-    graphics2d.drawShape({x - length * 0.3 + cos * 4, y - 4 + sin * 4, length * 0.6, 8}, {kind = 'ellipse', rotation = angle, color = '#FFFFF0A0', layer = 2})
+    graphics2d.drawShape({x - length / 2, y - 9, length, 18}, {kind = 'ellipse', rotation = angle, color = '#E6FF9A3C', layer = 2})
+    graphics2d.drawShape({x - length * 0.3 + cos * 5, y - 5.5 + sin * 5, length * 0.6, 11}, {kind = 'ellipse', rotation = angle, color = '#FFFFF0A0', layer = 2})
 end
 
 function Planets:draw(area)
