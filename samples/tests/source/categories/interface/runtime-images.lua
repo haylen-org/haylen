@@ -37,15 +37,18 @@ function RuntimeImages:enter()
         hint = 'The minimap renders every frame into a render target that the image component shows, and the portrait and the badge were made in code.',
         code = RuntimeImages.code,
         content = {layout.columns{
-            ui.column{grow = 1, gap = 24,
-                layout.section('A render target', {ui.image{id = 'minimap', image = '@minimap', width = 480, height = 320, radius = 16}}),
+            ui.column{grow = 1, gap = 24, align = 'stretch',
+                layout.section('A render target', {grow = 1, ui.image{id = 'minimap', image = '@minimap', align = 'stretch', aspectRatio = 1.5, radius = 16}}),
             },
-            ui.column{grow = 1, gap = 24,
-                layout.section('An image composed on the CPU', {ui.row{gap = 24, ui.avatar{image = '@portrait', size = 128}, ui.image{image = '@portrait', width = 128, height = 128, radius = 16}}}),
-                layout.section('A vector image built in code', {ui.row{gap = 16, ui.icon{image = '@badge', size = 56}, ui.button{text = 'With the badge', icon = '@badge'}}}),
+            ui.column{grow = 1, gap = 24, align = 'stretch',
+                layout.section('An image composed on the CPU', {ui.row{gap = 24, ui.avatar{image = '@portrait', size = 160}, ui.image{image = '@portrait', width = 160, height = 160, radius = 16}}}),
+                layout.section('A vector image built in code', {grow = 1,
+                    ui.row{gap = 24, alignItems = 'center', ui.icon{image = '@badge', size = 32}, ui.icon{image = '@badge', size = 56}, ui.icon{image = '@badge', size = 96}},
+                    ui.button{text = 'With the badge', icon = '@badge'},
+                }),
             },
-            ui.column{grow = 1, gap = 24,
-                layout.section('List items', {ui.list{id = 'list', items = {
+            ui.column{grow = 1, gap = 24, align = 'stretch',
+                layout.section('List items', {grow = 1, ui.list{id = 'list', items = {
                     {id = 'map', text = 'Minimap', caption = 'Rendered every frame', image = '@minimap', iconColor = false},
                     {id = 'portrait', text = 'Portrait', caption = 'Composed on the CPU', image = '@portrait', iconColor = false},
                     {id = 'badge', text = 'Badge', caption = 'A vector image', image = '@badge', iconColor = false},
@@ -93,7 +96,7 @@ function RuntimeImages:render()
     graphics2d.draw(self.island, 0, 0, {width = 512, height = 320})
     for index, chest in ipairs(RuntimeImages.chests) do
         local bob = math.sin(self.time * 3 + index) * 3
-        graphics2d.drawCircle(chest[1], chest[2] + 14, 14, '#50000000')
+        graphics2d.drawShape({chest[1] - 12, chest[2] + 13, 24, 8}, {kind = 'ellipse', color = '#66102030', softness = 4})
         graphics2d.draw(self.coin, chest[1], chest[2] + bob, {width = 34, height = 34})
     end
     local angle = self.time * 0.35

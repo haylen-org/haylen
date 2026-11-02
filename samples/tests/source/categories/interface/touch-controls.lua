@@ -1,4 +1,4 @@
--- Two touch sticks and touch buttons drive virtual controls that actions of the action map read, next to keys and a gamepad, so gameplay code reads one action for every device. The stick that moves follows the finger and draws with images, and the stick that aims stays in place and draws with circles.
+-- Two touch sticks and touch buttons drive virtual controls that actions of the action map read, next to keys and a gamepad, so gameplay code reads one action for every device. The stick that moves follows the finger, and the stick that aims stays in place, both drawn with the images of a style, over a boat that sails around a painted island.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -19,7 +19,6 @@ local x, y = input.vector('move')  -- The same for the touch stick, the keys and
 
 TouchControls.speed = 520
 TouchControls.radius = 70
-TouchControls.sea = '#FF1E8DA6'
 TouchControls.devices = {keyboardMouse = 'the keyboard and mouse', gamepad = 'a gamepad', touch = 'touch'}
 TouchControls.directions = {'right', 'down and right', 'down', 'down and left', 'left', 'up and left', 'up', 'up and right'}
 TouchControls.actions = {actions = {
@@ -37,15 +36,11 @@ TouchControls.art = {
 
 function TouchControls:init(entry)
     TouchControls.super.init(self, entry)
-    self.ball = {height = 0, lift = 0, dash = 0, aimX = 1, aimY = 0, heading = -math.pi / 2, speed = 0}
+    -- The boat starts with its bow and its aim pointing up.
+    self.ball = {height = 0, lift = 0, dash = 0, aimX = 0, aimY = -1, heading = -math.pi / 2, speed = 0}
     self.last = 'Nothing was pressed yet.'
     self.boat = assets.texture('interface/images/boat-top.png', {filter = 'linear'})
-    -- Ripples drift on the sea at places a seed picks, so the water reads as water without an image.
-    local random = m.random(5)
-    self.ripples = {}
-    for index = 1, 36 do
-        self.ripples[index] = {x = random:nextFloat(), y = random:nextFloat(), size = random:range(14, 30), phase = random:range(0, math.pi * 2)}
-    end
+    self.map = assets.texture('interface/images/island-map.png', {filter = 'linear'})
 end
 
 function TouchControls:enter()
@@ -56,9 +51,9 @@ function TouchControls:enter()
         play = true,
         overlay = {
             ui.touchStick{id = 'stick', action = 'move', mode = 'following', radius = 130, width = 520, height = 320, anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 64, 24}, style = {surfaces = TouchControls.art}},
-            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 44, 84, 0}, gap = 32, align = 'end',
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 44, 84, 0}, gap = 32, align = 'end', style = {surfaces = TouchControls.art},
                 ui.touchStick{id = 'aim', action = 'aim', radius = 100, deadZone = 0.25},
-                ui.column{gap = 24, style = {surfaces = TouchControls.art},
+                ui.column{gap = 24,
                     ui.touchButton{action = 'dash', image = 'interface/icons/dash.svg', size = 130, accessibilityLabel = 'Dash', onPress = function() self.last = 'Dash was pressed.' end},
                     ui.touchButton{action = 'jump', image = 'interface/icons/jump.svg', size = 170, accessibilityLabel = 'Jump', onPress = function() self.last = 'Jump was pressed.' end, onRelease = function() self.last = 'Jump was released.' end},
                 },
@@ -107,22 +102,12 @@ function TouchControls:update(dt)
     self:status(string.format('The boat sails at %d percent of its speed and aims %s, with %s. %s', math.floor(ball.speed * 100 + 0.5), TouchControls.directions[sector], TouchControls.devices[input.lastDevice()] or 'an unknown device', self.last))
 end
 
-function TouchControls:render()
-    if not self.area then
-        return
-    end
-    graphics2d.beginWorld(self.camera)
-    graphics2d.drawRect(graphics2d.canvasBounds(), TouchControls.sea, {layer = -1000})
-    self:draw(self.area)
-end
-
+-- The painted island fills the play area, cropped to its shape.
 function TouchControls:draw(area)
-    local time = haylen.elapsed()
-    for _, ripple in ipairs(self.ripples) do
-        local x = (ripple.x * area.width + time * 18) % (area.width + 80) - 40
-        local y = ripple.y * area.height + math.sin(time + ripple.phase) * 6
-        graphics2d.drawArc(x, y, ripple.size, 3, math.pi * 1.15, math.pi * 1.85, '#40FFFFFF', {layer = -10})
-    end
+    local map = self.map
+    local cover = math.max(area.width / map.width, area.height / map.height)
+    local sourceWidth, sourceHeight = area.width / cover, area.height / cover
+    graphics2d.draw(map, 0, 0, {source = {(map.width - sourceWidth) / 2, (map.height - sourceHeight) / 2, sourceWidth, sourceHeight}, width = area.width, height = area.height, pivotX = 0, pivotY = 0, layer = -10})
 
     local ball, radius = self.ball, TouchControls.radius
     local lift = ball.height / 220
@@ -134,7 +119,9 @@ function TouchControls:draw(area)
         local backX, backY = ball.x - math.cos(ball.heading) * radius, ball.y - math.sin(ball.heading) * radius
         graphics2d.drawStroke({ball.x, ball.y, backX - math.cos(ball.heading) * 90, backY - math.sin(ball.heading) * 90}, {widths = {34, 4}, color = ball.dash > 0 and '#B0FFFFFF' or '#70FFFFFF', cap = 'round', layer = 1})
     end
-    graphics2d.drawEllipse(ball.x + 10 + lift * 30, ball.y + 14 + lift * 40, radius * (0.9 - lift * 0.2), radius * (0.55 - lift * 0.1), '#40102030', {layer = 2})
+    -- The shadow is the shape of the hull, turned with it, and drifts away as the boat jumps.
+    local shadowWidth, shadowLength = radius * (0.62 - lift * 0.12), radius * (1.9 - lift * 0.3)
+    graphics2d.drawShape({ball.x + 6 + lift * 30 - shadowWidth / 2, ball.y + 10 + lift * 40 - shadowLength / 2, shadowWidth, shadowLength}, {kind = 'ellipse', rotation = ball.heading + math.pi / 2, color = '#55102030', softness = 10, layer = 2})
     local scale = (radius * 2.4 / self.boat.height) * (1 + lift * 0.35)
     graphics2d.draw(self.boat, ball.x, ball.y - ball.height * 0.25, {rotation = ball.heading + math.pi / 2, scaleX = scale, scaleY = scale, layer = 3})
 end

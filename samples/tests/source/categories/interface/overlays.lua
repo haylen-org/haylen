@@ -9,12 +9,12 @@ local layout = require('categories.interface.layout')
 local Overlays = haylen.class('Overlays', Test)
 
 Overlays.code = [[
-ui.dialog{id = 'confirm', title = 'Delete the save?', buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}},
-    onAnswer = function(event) if event.button == 'delete' then erase() end end}
+ui.dialog{id = 'confirm', title = 'Delete the save?', buttons = {{id = 'keep', text = 'Keep it'}, {id = 'delete', text = 'Delete', variant = 'destructive'}}}
 gui:set('confirm', {open = true})
 gui:set('notice', {open = true, tone = 'success', text = 'Saved.'})  -- The toast is ui.toast{id = 'notice', duration = 3}.
 ui.button{text = 'Hover me', tooltip = 'Shows after the pointer rests.'}
-ui.contextMenu{items = {{id = 'rename', text = 'Rename'}, {id = 'erase', text = 'Erase'}}, onSelect = function(event) act(event.item) end, ui.button{text = 'Save slot 1'}}]]
+ui.contextMenu{items = {{id = 'rename', text = 'Rename'}, {id = 'erase', text = 'Erase'}}, onSelect = function(event) act(event.item) end, slotButton}
+ui.popover{text = 'Wind', icon = 'interface/icons/wind.svg', contentWidth = 560, windControls}]]
 
 function Overlays:enter()
     self:frame{
@@ -54,8 +54,8 @@ function Overlays:columns()
                     event.gui:set('terms', {open = true})
                 end},
             }),
-            layout.section('Component "toast"', {
-                ui.row{gap = 12, children = toneButtons},
+            layout.section('Component "toast"', {grow = 1,
+                ui.row{wrap = true, gap = 12, children = toneButtons},
                 ui.row{wrap = true, gap = 12,
                     ui.button{text = 'Toast at the bottom', onClick = self:toast('bottom', 'Saved at the bottom of the safe area')},
                     ui.button{text = 'Toast until closed', onClick = self:toast('sticky', 'This toast stays until the link closes it')},
@@ -63,31 +63,28 @@ function Overlays:columns()
                 },
             }),
         },
-        ui.column{grow = 1, gap = 24,
-            -- The slot keeps the room under it free, so its menu opens inside the card.
-            layout.section('Component "contextMenu"', {
-                ui.row{gap = 24, align = 'start',
-                    ui.column{height = 270,
-                        ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/icons/flag-white.svg', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/icons/save.svg', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/themes/fantasy/icons/heart.png', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
-                            onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
-                            ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/icons/save.svg'},
-                        },
-                    },
-                    ui.column{grow = 1, gap = 12,
-                        ui.label{text = 'A right click, a long press or the menu key opens the menu of the slot.', color = 'textMuted'},
-                        ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.gui:command('slot-menu', 'open') end},
-                    },
+        -- The slot keeps the room under it free, so its menu opens inside the card.
+        layout.section('Component "contextMenu"', {grow = 1, align = 'stretch',
+            ui.label{text = 'A right click, a long press or the menu key opens the menu of the slot.', color = 'textMuted'},
+            ui.button{text = 'Open the menu from code', variant = 'link', onClick = function(event) event.gui:command('slot-menu', 'open') end},
+            ui.column{height = 300,
+                ui.contextMenu{id = 'slot-menu', items = {{id = 'rename', text = 'Rename', image = 'interface/icons/pencil.svg', iconColor = false}, {id = 'copy', text = 'Duplicate', image = 'interface/icons/copy.svg', iconColor = false}, {id = 'erase', text = 'Erase', image = 'interface/icons/trash.svg', iconColor = false}, {id = 'upload', text = 'Upload', enabled = false}},
+                    onSelect = function(event) self:report('The context menu picked "' .. event.item .. '".') end,
+                    ui.button{id = 'slot', text = 'Save slot 1', icon = 'interface/icons/save.svg'},
                 },
-            }),
+            },
+        }),
+        ui.column{grow = 1, gap = 24,
             layout.section('Component "tooltip"', {
-                ui.row{wrap = true, gap = 16,
+                ui.row{wrap = true, gap = 16, alignItems = 'center',
                     ui.button{text = 'Hover me', tooltip = 'Tooltips show after the pointer rests for half a second.'},
                     ui.button{icon = 'interface/themes/fantasy/icons/gear.png', variant = 'icon', tooltip = 'Settings'},
-                    ui.icon{image = 'interface/themes/fantasy/icons/coin.png', size = 56, tooltip = 'Twelve gold coins'},
+                    ui.button{icon = 'interface/themes/fantasy/icons/coin.png', variant = 'icon', tooltip = 'Twelve gold coins'},
                     ui.badge{text = 'New', tone = 'accent', tooltip = 'Any node takes a tooltip, badges too.'},
                 },
+                ui.label{text = 'Each of these four has a tooltip.', font = 'caption', color = 'textMuted'},
             }),
-            layout.section('Component "popover"', {
+            layout.section('Component "popover"', {grow = 1,
                 ui.popover{text = 'Wind', icon = 'interface/icons/wind.svg', contentWidth = 560,
                     ui.column{gap = 12,
                         ui.label{text = 'A popover holds any child, such as these controls.'},

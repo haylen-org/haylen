@@ -10,17 +10,17 @@ local layout = require('categories.interface.layout')
 local GameControls = haylen.class('GameControls', Test)
 
 GameControls.code = [[
-ui.stepper{value = 2, min = 1, max = 4, onChange = function(event) players = event.value end}
-ui.segmentedControl{items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}}, selected = 'daily'}
-ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, step = 10, onChange = function(event) filter(event.low, event.high) end}
-ui.keyCapture{value = 'key:space', sources = {'key', 'mouse', 'button'}, onChange = function(event)
+ui.stepper{value = 2, min = 1, max = 4, onChange = setPlayers}
+ui.segmentedControl{items = boards, selected = 'daily', onChange = showBoard}
+ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, onChange = filter}
+ui.keyCapture{value = 'key:space', onChange = function(event)
     input.defineAction({name = 'jump', type = 'button', bindings = {event.value}})
 end}]]
 
 GameControls.bindings = {
-    {action = 'jump', label = 'Jump', value = 'key:space', sources = {'key', 'mouse', 'button'}},
-    {action = 'dash', label = 'Dash', value = 'button:west', sources = {'button', 'axis'}},
-    {action = 'pause', label = 'Pause', value = 'key:p', sources = {'key'}},
+    {action = 'jump', label = 'Jump', value = 'key:space', sources = {'key', 'mouse', 'button'}, caption = 'Keys, mouse and pad'},
+    {action = 'dash', label = 'Dash', value = 'button:west', sources = {'button', 'axis'}, caption = 'Pad buttons and sticks'},
+    {action = 'pause', label = 'Pause', value = 'key:p', sources = {'key'}, caption = 'Keys only'},
 }
 
 function GameControls:init(entry)
@@ -41,7 +41,7 @@ function GameControls:enter()
         hint = 'Left and right change a focused stepper, segmented control or range slider, and Enter or the south button moves on or switches the knob. Press a binding field, then a key, a mouse button or a gamepad button to rebind its action, and press the binding on the play area to see the action fire. Escape cancels a capture.',
         code = GameControls.code,
         focus = 'players',
-        panelWidth = 820,
+        panelWidth = 900,
         controls = self:controls(),
     }
 end
@@ -60,8 +60,8 @@ end
 function GameControls:captureRows()
     local rows = {}
     for index, binding in ipairs(GameControls.bindings) do
-        rows[index] = ui.settingsRow{label = binding.label, caption = 'Takes "' .. table.concat(binding.sources, '", "') .. '"',
-            ui.keyCapture{id = 'bind-' .. binding.action, value = binding.value, prompt = 'Press a ' .. binding.sources[1], sources = binding.sources, width = 360,
+        rows[index] = ui.settingsRow{label = binding.label, caption = binding.caption,
+            ui.keyCapture{id = 'bind-' .. binding.action, value = binding.value, prompt = 'Press a ' .. binding.sources[1], sources = binding.sources, width = 240,
                 onChange = function(event)
                     input.defineAction({name = binding.action, type = 'button', bindings = {event.value}})
                     self.fired[binding.action].value = event.value
@@ -74,26 +74,31 @@ function GameControls:captureRows()
     return rows
 end
 
+-- The controls stand in two columns of the panel, so every one of them shows at once.
 function GameControls:controls()
     local difficulties = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}}
-    return {
-        layout.section('Component "stepper"', {
-            ui.settingsRow{label = 'Players', ui.stepper{id = 'players', value = 2, min = 1, max = 4, width = 360, onChange = self:report('players')}},
-            ui.settingsRow{label = 'Difficulty', caption = 'Wraps around', ui.stepper{items = difficulties, selected = 'normal', wrap = true, width = 360, onChange = self:report('difficulty')}},
-            ui.settingsRow{label = 'Gamma', ui.stepper{value = 1, min = 0.5, max = 2, step = 0.1, decimals = 1, width = 360, onChange = self:report('gamma')}},
-        }),
-        layout.section('Component "segmentedControl"', {
-            ui.segmentedControl{items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}, {id = 'all', text = 'All time'}}, selected = 'daily', onChange = self:report('leaderboard')},
-            ui.segmentedControl{items = {{id = 'map', text = 'Map'}, {id = 'quests', text = 'Quests'}, {id = 'crafting', text = 'Crafting', enabled = false}, {id = 'bag', text = 'Bag'}}, selected = 'bag', onChange = self:report('view')},
-        }),
-        layout.section('Component "rangeSlider"', {
-            ui.label{text = 'Price filter in steps of 10'},
-            ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, step = 10, showValue = true, decimals = 0, onChange = self:report('price')},
-            ui.label{text = 'Free range with two decimals'},
-            ui.rangeSlider{low = 0.2, high = 0.6, showValue = true, onChange = self:report('range')},
-        }),
-        layout.section('Component "keyCapture"', self:captureRows()),
-    }
+    return {ui.row{gap = 24, alignItems = 'start',
+        ui.column{grow = 1, gap = 12,
+            layout.section('Component "stepper"', {
+                ui.settingsRow{label = 'Players', ui.stepper{id = 'players', value = 2, min = 1, max = 4, width = 240, onChange = self:report('players')}},
+                ui.settingsRow{label = 'Difficulty', caption = 'Wraps around', ui.stepper{items = difficulties, selected = 'normal', wrap = true, width = 240, onChange = self:report('difficulty')}},
+                ui.settingsRow{label = 'Gamma', ui.stepper{value = 1, min = 0.5, max = 2, step = 0.1, decimals = 1, width = 240, onChange = self:report('gamma')}},
+            }),
+            layout.section('Component "segmentedControl"', {
+                ui.segmentedControl{items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}, {id = 'all', text = 'All time'}}, selected = 'daily', onChange = self:report('leaderboard')},
+                ui.segmentedControl{items = {{id = 'map', text = 'Map'}, {id = 'quests', text = 'Quests'}, {id = 'crafting', text = 'Crafting', enabled = false}, {id = 'bag', text = 'Bag'}}, selected = 'bag', onChange = self:report('view')},
+            }),
+        },
+        ui.column{grow = 1, gap = 12,
+            layout.section('Component "rangeSlider"', {
+                ui.label{text = 'Price filter in steps of 10'},
+                ui.rangeSlider{min = 0, max = 500, low = 50, high = 300, step = 10, showValue = true, decimals = 0, onChange = self:report('price')},
+                ui.label{text = 'Free range with two decimals'},
+                ui.rangeSlider{low = 0.2, high = 0.6, showValue = true, onChange = self:report('range')},
+            }),
+            layout.section('Component "keyCapture"', self:captureRows()),
+        },
+    }}
 end
 
 function GameControls:update(dt)
@@ -122,19 +127,20 @@ function GameControls.bindingName(value)
     return #words == 1 and words:upper() or words
 end
 
--- One key cap per action, pressed while the action is down and glowing for a moment after it fires, with the action, its binding and how often it fired.
+-- One key cap per action, pressed while the action is down and glowing for a moment after it fires, with the action, its binding and how often it fired, in a block centered in the play area.
 function GameControls:draw(area)
     local count = #GameControls.bindings
     local rowHeight = math.min(150, (area.height - 40) / count)
     local top = (area.height - rowHeight * count) / 2
     local now = haylen.elapsed()
+    local left = math.max(56, (area.width - 600) / 2)
     for index, binding in ipairs(GameControls.bindings) do
         local fired = self.fired[binding.action]
         local name = GameControls.bindingName(fired.value)
         local down = input.down(binding.action)
         local y = top + (index - 1) * rowHeight + rowHeight / 2
         local width = math.max(110, graphics2d.measureText(nil, name, {size = 30}) + 48)
-        local x = 56
+        local x = left
         local glow = fired.at and math.max(0, 1 - (now - fired.at) / 0.5) or 0
         local sink = down and 5 or 0
         if glow > 0 then

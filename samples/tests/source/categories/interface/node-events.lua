@@ -16,7 +16,9 @@ ui.card{id = 'box', width = 320, height = 200, onMount = note, onUnmount = note,
         shape.offset = shape.offset + m.vec2(event.deltaX, event.deltaY)
     end}]]
 
-NodeEvents.logSize = 12
+NodeEvents.logSize = 10
+-- The tone of the badge of each event in the log.
+NodeEvents.tones = {mount = 'success', unmount = 'danger', show = 'success', hide = 'warning', hover = 'information', press = 'accent', drag = 'accent', release = 'accent', scroll = 'information'}
 
 function NodeEvents:init(entry)
     NodeEvents.super.init(self, entry)
@@ -39,21 +41,23 @@ function NodeEvents:enter()
                     ui.button{text = 'Clear the log', variant = 'link', onClick = function() self:clear() end},
                 },
             }),
-            layout.section('Events in order', {grow = 1, align = 'stretch', ui.label{id = 'log', text = '', font = 'monospace'}}),
+            layout.section('Events in order', {grow = 1, align = 'stretch', ui.column{id = 'log', gap = 10, align = 'stretch'}}),
         }},
     }
 end
 
 function NodeEvents:card()
     local note = function(event) self:note(event) end
-    return ui.card{id = 'box', width = 320, height = 200, align = 'center', padding = 20, justify = 'center', style = {colors = {raised = '#FF39405C', border = '#FF8FB0FF'}},
+    return ui.card{id = 'box', width = 340, align = 'center', padding = {12, 20, 20, 20}, gap = 8, alignItems = 'center', style = {colors = {raised = '#FF39405C', border = '#FF8FB0FF'}},
         onMount = note, onUnmount = note, onShow = note, onHide = note, onHover = note, onPress = note, onRelease = note, onScroll = note,
         onDrag = function(event)
             local shape = event.gui:transform('box')
             shape.offset = shape.offset + m.vec2(event.deltaX, event.deltaY)
             self:note(event)
         end,
-        ui.label{text = string.format('Card %d', self.generation), font = 'heading', textAlign = 'center', align = 'stretch'},
+        ui.icon{image = 'interface/icons/grip.svg', size = 32, color = 'textMuted'},
+        ui.image{image = 'interface/images/island-map.png', height = 110, fit = 'cover', radius = 10, align = 'stretch'},
+        ui.label{text = string.format('Map %d', self.generation), font = 'heading', textAlign = 'center', align = 'stretch'},
         ui.label{text = 'Drag me around', color = 'textMuted', textAlign = 'center', align = 'stretch'},
     }
 end
@@ -65,35 +69,45 @@ end
 
 function NodeEvents:clear()
     self.lines = {}
-    self:set('log', {text = ''})
+    self.gui:replaceChildren('log', {})
 end
 
--- Writes an event with its values, merging the drags of one gesture into one line.
-function NodeEvents:note(event)
-    local text
+-- Describes an event with its values in a sentence.
+function NodeEvents.describe(event)
     if event.name == 'hover' then
-        text = string.format('Hover %s', tostring(event.hovered))
-    elseif event.name == 'press' or event.name == 'drag' then
-        text = string.format('%s %s at %.0f, %.0f', event.name == 'press' and 'Press' or 'Drag', event.button, event.x, event.y)
+        return event.hovered and 'The pointer came over the card.' or 'The pointer left the card.'
+    elseif event.name == 'press' then
+        return string.format('The %s button pressed at %.0f, %.0f.', event.button, event.x, event.y)
+    elseif event.name == 'drag' then
+        return string.format('The %s button dragged it to %.0f, %.0f.', event.button, event.x, event.y)
     elseif event.name == 'release' then
-        text = string.format('Release %s, inside %s', event.button, tostring(event.inside))
+        return string.format('The %s button let go %s the card.', event.button, event.inside and 'inside' or 'outside')
     elseif event.name == 'scroll' then
-        text = string.format('Scroll %.1f, %.1f', event.deltaX, event.deltaY)
-    else
-        text = event.name:sub(1, 1):upper() .. event.name:sub(2)
+        return string.format('A scroll of %.1f across and %.1f down.', event.deltaX, event.deltaY)
     end
-    if event.name == 'drag' and self.lines[#self.lines] and self.lines[#self.lines]:find('^Drag') then
-        self.lines[#self.lines] = text
+    return ({mount = 'The card joined the GUI.', unmount = 'The card left the GUI.', show = 'The card became visible.', hide = 'The card was hidden.'})[event.name]
+end
+
+-- Writes an event as a row of the log, the newest at the bottom, merging the drags of one gesture into one row.
+function NodeEvents:note(event)
+    local line = {name = event.name, text = NodeEvents.describe(event)}
+    local last = self.lines[#self.lines]
+    if event.name == 'drag' and last and last.name == 'drag' then
+        self.lines[#self.lines] = line
     else
-        self.lines[#self.lines + 1] = text
+        self.lines[#self.lines + 1] = line
     end
     while #self.lines > NodeEvents.logSize do
         table.remove(self.lines, 1)
     end
     if self.gui and self.gui:has('log') then
-        self:set('log', {text = table.concat(self.lines, '\n')})
+        local rows = {}
+        for index, entry in ipairs(self.lines) do
+            rows[index] = ui.row{gap = 16, ui.badge{text = entry.name:sub(1, 1):upper() .. entry.name:sub(2), tone = NodeEvents.tones[entry.name], width = 120}, ui.label{text = entry.text, color = 'textMuted', grow = 1}}
+        end
+        self.gui:replaceChildren('log', rows)
     end
-    self:set('status', {text = string.format('Card %d reported the event "%s".', self.generation, event.name)})
+    self:set('status', {text = string.format('Map %d reported the event "%s".', self.generation, event.name)})
 end
 
 return NodeEvents

@@ -8,10 +8,11 @@ local layout = require('categories.interface.layout')
 local WindowsPages = haylen.class('WindowsPages', Test)
 
 WindowsPages.code = [[
-ui.window{id = 'bag', title = 'Bag', x = 1320, y = 410, width = 540, closable = true, onClose = function() log.info('The bag closed.') end}
-gui:set('bag', {open = true})
+ui.window{id = 'bag', title = 'Bag', closable = true, onClose = function() log.info('The bag closed.') end, bagSections}
+local dock = gui:bounds('dock')
+gui:set('bag', {open = true, x = dock.x, y = dock.y, width = dock.width})
 ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food'}, foodRow, toolsRow}
-ui.carousel{height = 250, loop = true, interval = 5, dayPage, duskPage, nightPage}
+ui.carousel{height = 230, loop = true, interval = 5, dayPage, duskPage, nightPage}
 ui.scroll{axis = 'horizontal', snap = true, ui.row{gap = 24, children = levelCards}}]]
 
 local function levels()
@@ -27,7 +28,7 @@ end
 
 -- A page of the carousel: the landscape at a time of day, which a tint gives the light of that hour, kept clear of the arrows on the sides.
 local function page(tint, caption)
-    return ui.column{gap = 8, padding = {0, 80}, ui.image{image = 'interface/images/landscape.png', tint = tint, height = 180, fit = 'cover', radius = 12, align = 'stretch'}, ui.label{text = caption, align = 'center'}}
+    return ui.column{gap = 8, padding = {0, 80}, ui.image{image = 'interface/images/landscape.png', tint = tint, height = 160, fit = 'cover', radius = 12, align = 'stretch'}, ui.label{text = caption, align = 'center'}}
 end
 
 function WindowsPages:enter()
@@ -43,15 +44,40 @@ function WindowsPages:report(text)
     self:set('status', {text = text})
 end
 
+-- The window opens docked over its place in the first card, and follows that place through changes of the layout until the player moves it.
+function WindowsPages:update(dt)
+    WindowsPages.super.update(self, dt)
+    local dock = self.gui:bounds('dock')
+    if not dock or self.moved then
+        return
+    end
+    local key = string.format('%.0f %.0f %.0f', dock.x, dock.y, dock.width)
+    if key ~= self.docked then
+        self.docked = key
+        self.gui:set('bag', {x = dock.x, y = dock.y, width = dock.width})
+    end
+end
+
+-- Opens the window again in its place.
+function WindowsPages:openWindow()
+    self.moved = false
+    self.docked = nil
+    self.gui:set('bag', {open = true})
+end
+
+-- Three columns: the window over its place in the first card, the accordion, and the carousel over the scroll of levels.
 function WindowsPages:columns()
     local sections = {{id = 'controls', text = 'Controls'}, {id = 'goals', text = 'Goals'}, {id = 'secrets', text = 'Secrets', enabled = false}}
     return layout.columns{
-        ui.column{grow = 1, gap = 24,
-            layout.section('Component "window"', {
+        ui.column{grow = 1, align = 'stretch',
+            layout.section('Component "window"', {grow = 1,
+                ui.panel{id = 'dock', height = 330, align = 'stretch', justify = 'center', alignItems = 'center', ui.label{text = 'The window opens here.', color = 'textMuted'}},
                 ui.label{text = 'The window floats over the page and takes no room in it.', color = 'textMuted'},
-                ui.button{id = 'open-window', text = 'Open the window', onClick = function(event) event.gui:set('bag', {open = true}) end},
+                ui.button{id = 'open-window', text = 'Open the window', onClick = function() self:openWindow() end},
             }),
-            layout.section('Component "accordion"', {
+        },
+        ui.column{grow = 1, align = 'stretch',
+            layout.section('Component "accordion"', {grow = 1,
                 ui.accordion{items = sections, expanded = {'controls'}, onToggle = function(event)
                     self:report(string.format('The section "%s" %s.', event.item, event.expanded and 'opened' or 'closed'))
                 end,
@@ -63,18 +89,21 @@ function WindowsPages:columns()
         },
         ui.column{grow = 2, gap = 24,
             layout.section('Component "carousel"', {
-                ui.carousel{height = 250, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
+                ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
                     page('#FFFFFFFF', 'Day'),
                     page('#FFFFB08A', 'Dusk'),
                     page('#FF5A6AB8', 'Night'),
                 },
             }),
             layout.section('Component "scroll" with snapping', {
-                ui.scroll{axis = 'horizontal', snap = true, height = 150, ui.row{gap = 24, children = levels()}},
+                ui.scroll{axis = 'horizontal', snap = true, height = 140, ui.row{gap = 24, children = levels()}},
             }),
         },
-        ui.window{id = 'bag', title = 'Bag', x = 1320, y = 410, width = 540, closable = true,
-            onMove = function(event) self:report(string.format('The window moved to %.0f, %.0f.', event.x, event.y)) end,
+        ui.window{id = 'bag', title = 'Bag', closable = true,
+            onMove = function(event)
+                self.moved = true
+                self:report(string.format('The window moved to %.0f, %.0f.', event.x, event.y))
+            end,
             onClose = function() self:report('The window closed.') end,
             ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food'},
                 ui.row{gap = 12, ui.icon{image = 'interface/icons/apple.png', size = 56}, ui.icon{image = 'interface/icons/fish.png', size = 56}, ui.button{text = 'Eat an apple', onClick = function() self:report('Ate an apple.') end}},

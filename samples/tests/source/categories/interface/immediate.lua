@@ -215,7 +215,7 @@ function Immediate:textField(id, rect, state)
     graphics2d.popClip()
 end
 
--- A list draws only inside its box and scrolls with the wheel, a dragging finger or the arrows while it has the focus, and returns the row the player picked.
+-- A list draws only inside the border of its box, with a line between its rows, scrolls with the wheel, a dragging finger or the arrows while it has the focus, and returns the row the player picked.
 function Immediate:list(id, rect, rows, state)
     local over = self:control(id, rect)
     local rowHeight = 48
@@ -231,7 +231,7 @@ function Immediate:list(id, rect, rows, state)
     self:frame(id, rect, false)
 
     local picked
-    graphics2d.pushClip(rect)
+    graphics2d.pushClip({rect[1] + 4, rect[2] + 4, rect[3] - 8, rect[4] - 8})
     for index, row in ipairs(rows) do
         local top = rect[2] + (index - 1) * rowHeight - state.scroll
         if top + rowHeight >= rect[2] and top <= rect[2] + rect[4] then
@@ -242,6 +242,9 @@ function Immediate:list(id, rect, rows, state)
             end
             if state.selected == index or hit then
                 graphics2d.drawShape(rowRect, {radius = 8, color = state.selected == index and Immediate.colors.pressed or Immediate.colors.hover, layer = 1})
+            end
+            if index > 1 then
+                graphics2d.drawRect({rect[1] + 18, top, rect[3] - 36, 1}, Immediate.colors.line)
             end
             self:label(row, rowRect[1] + 12, rowRect[2] + 6)
         end

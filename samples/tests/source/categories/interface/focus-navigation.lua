@@ -19,12 +19,11 @@ local focus = ui.focused()  -- The GUI and the id of the focused node.]]
 FocusNavigation.help = [==[
 [ul]
 A direction goes to the nearest control that way, preferring controls in line with the focused one.
-The properties [color=gold]focusLeft[/color], [color=gold]focusRight[/color], [color=gold]focusUp[/color] and [color=gold]focusDown[/color] name the neighbour instead.
-A node with [color=gold]focusScope[/color] keeps the focus until the player leaves it, and hears cancel.
-The property [color=gold]focusWrap[/color] wraps a move off one end of a row or a column to its other end.
-The property [color=gold]focusRing[/color] set to false hides the ring, so a node shows its focus its own way from its focus and blur events.
-Cancel reaches the innermost scope, and then the root of the GUI, which goes back to the test list.
-The ring shows once the player navigates, and always on a TV, where there is no pointer.
+[code]focusLeft[/code], [code]focusRight[/code], [code]focusUp[/code] and [code]focusDown[/code] name a neighbour instead.
+[code]focusScope[/code] keeps the focus inside a node until the player cancels.
+[code]focusWrap[/code] wraps a move off one end of a row to its other end.
+[code]focusRing = false[/code] lets a node draw its own focus from its focus and blur events.
+The ring shows once the player navigates, and always on a TV.
 [/ul]]==]
 
 FocusNavigation.devices = {keyboardMouse = 'the keyboard and mouse', gamepad = 'a gamepad', touch = 'a touch screen'}
@@ -50,17 +49,14 @@ function FocusNavigation:pressed(event)
     self.last = ' You pressed ' .. event.id:upper() .. '.'
 end
 
--- Buttons of different sizes and places, so the nearest control in each direction is easy to follow.
+-- A grid of buttons, where each direction moves to the next button that way.
 function FocusNavigation:neighbours()
-    local press = function(event) self:pressed(event) end
-    local function cell(id, width, align)
-        return ui.button{id = id, text = id:upper(), width = width, align = align, onClick = press}
+    local cells = {}
+    for index = 1, 8 do
+        local id = 'n' .. index
+        cells[index] = ui.button{id = id, text = id:upper(), align = 'stretch', onClick = function(event) self:pressed(event) end}
     end
-    return layout.section('Nearest control', {grow = 1,
-        ui.row{gap = 16, cell('n1', 110), cell('n2', 200), cell('n3', 110, 'end')},
-        ui.row{gap = 16, cell('n4', 170), cell('n5', 110), cell('n6', 140)},
-        ui.row{gap = 16, cell('n7', 110), ui.spacer{width = 150}, cell('n8', 160)},
-    })
+    return layout.section('Nearest control', {grow = 1, ui.grid{columns = 4, gap = 16, children = cells}})
 end
 
 function FocusNavigation:explicit()
@@ -87,10 +83,13 @@ function FocusNavigation:scope()
             self.last = ' Cancel left the scope.'
         end,
             ui.label{text = 'Moves stay inside this panel. Cancel leaves it.', color = 'textMuted'},
-            ui.row{wrap = true, gap = 12, ui.button{id = 'scoped-1', text = 'Inside 1', onClick = press}, ui.button{id = 'scoped-2', text = 'Inside 2', onClick = press}},
-            ui.button{id = 'leave-scope', text = 'Leave', variant = 'link', onClick = function(event)
-                event.gui:command('enter-scope', 'focus')
-            end},
+            ui.row{wrap = true, gap = 12,
+                ui.button{id = 'scoped-1', text = 'Inside 1', onClick = press},
+                ui.button{id = 'scoped-2', text = 'Inside 2', onClick = press},
+                ui.button{id = 'leave-scope', text = 'Leave', variant = 'link', onClick = function(event)
+                    event.gui:command('enter-scope', 'focus')
+                end},
+            },
         },
     })
 end
@@ -106,7 +105,7 @@ function FocusNavigation:wrap()
         }
     end
     return layout.section('Wrapping row with its own focus', {grow = 1,
-        ui.label{text = 'Right from 5 wraps to 1, and left from 1 to 5. The cards hide the ring and show the focus themselves.', color = 'textMuted'},
+        ui.label{text = 'Right from 5 wraps to 1. The cards hide the ring and grow when they take the focus.', color = 'textMuted'},
         ui.row{gap = 12, focusWrap = 'horizontal', focusRing = false, children = cards},
     })
 end

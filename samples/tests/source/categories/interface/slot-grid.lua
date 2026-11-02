@@ -115,6 +115,7 @@ function SlotGrid:enter()
         ui.slotGrid{id = 'hotbar', columns = SlotGrid.hotbarSize, slotSize = 88, slots = slots(self.hotbar, 'hotbar', SlotGrid.hotbarSize), onDrop = onDrop},
     }, {owner = self})
     self:keepInRegion(self.hotbarGui, 'hotbar-panel', 24)
+    self:set('status', {text = 'Drag an item to another slot, to the hotbar or into the chest.'})
 end
 
 return SlotGrid

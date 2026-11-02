@@ -599,7 +599,7 @@ Every component of "haylen.ui" with its themes, focus navigation, tweens, text e
 | `GUI-020` | Layouts | Justify, alignItems, growing within bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and aspect ratios. |  |
 | `GUI-021` | Recycled lists | Recycled cells of mixed types in a list with sticky sections, a grid and a shelf, with inserts, moves, drags, cell menus and scrolling. |  |
 | `GUI-022` | Long lists | A hundred thousand entries loaded in pages with placeholders, and a number field that scrolls to any entry. |  |
-| `GUI-023` | Toast stacks | Toasts at every position as lists or decks, a queue past the limit, variants, indicators, actions, an upload and the events of a notice. |  |
+| `GUI-023` | Toast stacks | Toasts at every position as lists or decks, a queue, variants, indicators, actions, an upload and their events. |  |
 | `GUI-024` | Theme overrides | Styles that replace the colors, metrics, fonts and surfaces of a subtree, styles that nest, subtrees in other themes and cursors. |  |
 | `GUI-025` | Node events | The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log. |  |
 | `GUI-026` | UI scale | The design and physical scale modes and the scale factor, with the size of a control in points on the screen. |  |

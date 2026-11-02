@@ -32,7 +32,7 @@ function ToastStacks:enter()
     end
     local toasts = {}
     for index, position in ipairs(ToastStacks.positions) do
-        toasts[index] = ui.toast{id = position, position = position, duration = 4,
+        toasts[index] = ui.toast{id = position, position = position, duration = 4, arrangement = 'deck', expandable = true,
             onNoticeShow = function(event) self:report(event, 'came on screen') end,
             onClick = function(event) self:report(event, 'was pressed') end,
             onAction = function(event) self:report(event, 'ran its action') end,
@@ -51,13 +51,18 @@ function ToastStacks:enter()
         content = {layout.columns{
             ui.column{grow = 1, gap = 24,
                 layout.section('Command "show" at every position', {
-                    ui.segmentedControl{id = 'arrangement', items = {{id = 'list', text = 'List'}, {id = 'deck', text = 'Deck that opens'}, {id = 'depth', text = 'Deck'}}, selected = 'list', onChange = function(event) self:arrange(event.value) end},
-                    ui.panel{height = 240, justify = 'spaceBetween', padding = 16,
+                    ui.segmentedControl{id = 'arrangement', items = {{id = 'list', text = 'List'}, {id = 'deck', text = 'Deck that opens'}, {id = 'depth', text = 'Deck'}}, selected = 'deck', onChange = function(event) self:arrange(event.value) end},
+                    ui.panel{height = 220, justify = 'spaceBetween', padding = 16,
                         ui.row{justify = 'spaceBetween', buttons[1], buttons[2], buttons[3]},
                         ui.label{text = 'The screen', align = 'center', color = 'textMuted'},
                         ui.row{justify = 'spaceBetween', buttons[4], buttons[5], buttons[6]},
                     },
                 }),
+                layout.section('A dialog and its backdrop', {grow = 1,
+                    ui.button{id = 'ask', text = 'Open the dialog', onClick = function(event) event.gui:set('question', {open = true}) end},
+                }),
+            },
+            ui.column{grow = 1, gap = 24,
                 layout.section('Variants, indicators and actions', {
                     ui.grid{columns = 3, gap = 12,
                         ui.button{id = 'solid', text = 'Solid with an icon', onClick = function() self:show('top', {text = 'Operation completed', tone = 'success', indicator = 'icon'}) end},
@@ -67,16 +72,13 @@ function ToastStacks:enter()
                         ui.button{id = 'upload', text = 'Upload with progress', onClick = function() self:upload() end},
                     },
                 }),
-                layout.section('A queue', {
+                layout.section('A queue', {grow = 1,
                     ui.row{wrap = true, gap = 12,
                         ui.button{id = 'burst', text = 'Six at the top', onClick = function() self:burst() end},
                         ui.button{text = 'One that stays', onClick = function(event) event.gui:set('sticky', {open = true}) end},
                         ui.button{text = 'Let it go', variant = 'link', onClick = function(event) event.gui:set('sticky', {open = false}) end},
                         ui.button{id = 'clear', text = 'Hide every notice', variant = 'link', onClick = function() self:clear() end},
                     },
-                }),
-                layout.section('A dialog and its backdrop', {
-                    ui.button{id = 'ask', text = 'Open the dialog', onClick = function(event) event.gui:set('question', {open = true}) end},
                 }),
             },
             ui.dialog{id = 'question', title = 'Set sail now?', message = 'The backdrop fades in and out together with the dialog.', buttons = {{id = 'wait', text = 'Wait'}, {id = 'sail', text = 'Sail', variant = 'primary'}},
@@ -85,7 +87,7 @@ function ToastStacks:enter()
             table.unpack(toasts),
         }},
     }
-    -- A deck of two notices shows as the test opens, so the stacks show from the first frame.
+    -- A deck of two notices shows as the test opens, so the stacks show from the first frame in the room of one notice.
     self:show('topEnd', {text = 'Wood stored in the camp', tone = 'success', indicator = 'icon', duration = 8})
     self:show('topEnd', {title = 'Weather', text = 'A storm comes at dusk', tone = 'warning', variant = 'soft', indicator = 'icon', duration = 8})
 end

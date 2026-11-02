@@ -19,7 +19,7 @@ list:setItems(rows)  list:insert(1, {{id = 'new-1', type = 'note', title = 'New 
 RecycledLists.sections = {'Harbor', 'Forest', 'Cliffs', 'Village', 'Caves', 'Lighthouse'}
 RecycledLists.rowsPerSection = 40
 RecycledLists.tiles = 600
-RecycledLists.shelf = 300
+RecycledLists.shelf = 40
 
 function RecycledLists:init(entry)
     RecycledLists.super.init(self, entry)
@@ -77,8 +77,9 @@ function RecycledLists:enter()
     self.tileItems = self:buildTiles()
     self.list = self.gui:collection('list')
     self.list:setItems(self.rows)
+    -- The badge of an entry shows the row its recycled cell draws right now, which follows every insert, removal and move.
     self.list:setBinder('entry', function(cell, item, index)
-        cell:set('index', {text = '#' .. index})
+        cell:set('index', {text = 'Row ' .. index})
     end)
     self.gui:collection('tiles'):setItems(self.tileItems)
     self.gui:collection('shelf'):setItems(self:buildShelf())
@@ -97,11 +98,11 @@ function RecycledLists:columns()
             ui.collection{id = 'list', grow = 1, gap = 8, focusAlign = 'nearest', reorderable = true, types = {
                 header = {template = ui.sectionTitle{part = 'title', bind = {text = 'title'}}, sticky = true, interactive = false},
                 note = {template = ui.panel{padding = {12, 16},
-                    ui.row{gap = 16, ui.stack{width = 72, ui.icon{image = 'sprites/vector/leaf.svg', size = 36, align = 'center'}}, ui.label{part = 'title', bind = {text = 'title'}, grow = 1}},
+                    ui.row{gap = 16, ui.stack{width = 104, ui.icon{image = 'sprites/vector/leaf.svg', size = 36, align = 'center'}}, ui.label{part = 'title', bind = {text = 'title'}, grow = 1}},
                 }},
                 entry = {template = ui.panel{padding = {12, 16},
                     ui.row{gap = 16,
-                        ui.badge{part = 'index', text = '', tone = 'accent', width = 72},
+                        ui.badge{part = 'index', text = '', tone = 'accent', width = 104},
                         ui.column{grow = 1, ui.label{part = 'title', bind = {text = 'title'}}, ui.label{part = 'caption', bind = {text = 'caption'}, font = 'caption', color = 'textMuted'}},
                     },
                 }},
@@ -117,19 +118,18 @@ function RecycledLists:columns()
         }),
         ui.column{grow = 2, gap = 24, align = 'stretch',
             layout.section('Grid with full width headers', {grow = 1,
-                ui.collection{id = 'tiles', grow = 1, layout = 'grid', minCellSize = 150, cellAspect = 2, gap = 10, selection = 'multiple', types = {
+                ui.collection{id = 'tiles', grow = 1, layout = 'grid', minCellSize = 190, cellAspect = 0.5, gap = 10, selection = 'multiple', types = {
                     header = {template = ui.label{part = 'title', bind = {text = 'title'}, font = 'heading'}, span = 'full', sticky = true, interactive = false},
-                    tile = {template = ui.card{gap = 4,
+                    tile = {template = ui.card{gap = 4, padding = {12, 16},
                         ui.label{part = 'title', bind = {text = 'title'}},
-                        ui.label{part = 'weight', bind = {text = 'weight'}, font = 'caption', color = 'textMuted'},
-                        ui.badge{part = 'chosen', text = 'Chosen', tone = 'accent', bind = {visible = '$selected'}},
+                        ui.row{gap = 8, ui.label{part = 'weight', bind = {text = 'weight'}, font = 'caption', color = 'textMuted', grow = 1}, ui.badge{part = 'chosen', text = 'Chosen', tone = 'accent', bind = {visible = '$selected'}}},
                     }},
                 }, onSelect = function(event)
                     self.last = string.format(' The tile "%s" is %s.', event.item, event.selected and 'chosen' or 'not chosen')
                 end},
             }),
             layout.section('Horizontal shelf', {
-                ui.collection{id = 'shelf', axis = 'horizontal', height = 120, gap = 12, snap = 'item', rememberFocus = true, types = {
+                ui.collection{id = 'shelf', axis = 'horizontal', height = 110, gap = 12, snap = 'item', rememberFocus = true, types = {
                     shell = {template = ui.card{width = 180, gap = 4,
                         ui.label{part = 'title', bind = {text = 'title'}},
                         ui.contextMenu{part = 'menu', items = {{id = 'polish', text = 'Polish'}, {id = 'sell', text = 'Sell'}}, ui.button{part = 'more', text = 'More', variant = 'link'}},

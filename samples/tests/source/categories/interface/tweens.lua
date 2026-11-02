@@ -41,28 +41,29 @@ function Tweens:report(text)
     self:set('status', {text = text})
 end
 
+-- The buttons in a card on the left, and on the right the treasure and the panel that the buttons move, both as wide as the column.
 function Tweens:columns()
     local cards = {}
     for index, icon in ipairs(Tweens.icons) do
-        cards[index] = ui.card{id = 'card-' .. index, width = 170, gap = 8, align = 'start', alignItems = 'center',
-            ui.icon{image = layout.icon(icon), size = 72},
+        cards[index] = ui.card{id = 'card-' .. index, grow = 1, gap = 12, alignItems = 'center', justify = 'center', padding = {28, 12},
+            ui.icon{image = layout.icon(icon), size = 96},
             ui.label{text = icon:sub(1, 1):upper() .. icon:sub(2)},
         }
     end
     return layout.columns{
-        ui.column{width = 460, gap = 16,
+        layout.section('Tweens of the panel', {width = 460, gap = 16,
             ui.button{id = 'replay', text = 'Replay the entrance', variant = 'primary', align = 'stretch', onClick = function() self:entrance() end},
             ui.button{text = 'Shake the panel', align = 'stretch', onClick = function() self:shake() end},
             ui.button{text = 'Fade the panel', align = 'stretch', onClick = function() self:fade() end},
             ui.button{text = 'Tint the panel', align = 'stretch', onClick = function() self:cycleTint() end},
-            ui.button{id = 'pulse', text = 'Pulsing forever', align = 'stretch', margin = {8, 16}},
-        },
+            ui.button{id = 'pulse', text = 'Pulsing forever', align = 'stretch', margin = {12, 24}},
+        }),
         ui.column{grow = 1, gap = 24,
-            ui.card{gap = 20, align = 'start',
+            ui.card{gap = 20, align = 'stretch',
                 ui.row{gap = 16, ui.icon{image = layout.icon('star'), size = 56}, ui.label{id = 'title', text = 'Treasure found!', font = 'title'}},
-                ui.row{gap = 16, children = cards},
+                ui.row{gap = 16, align = 'stretch', children = cards},
             },
-            ui.panel{id = 'target', width = 820, gap = 12,
+            ui.panel{id = 'target', gap = 12, align = 'stretch',
                 ui.label{text = 'A panel with its children', font = 'heading'},
                 ui.label{text = 'Transforms reach every child of the node, and a scroll or a popup keeps its own look.', color = 'textMuted'},
                 ui.progress{value = 0.65, tone = 'success', text = 'Health'},

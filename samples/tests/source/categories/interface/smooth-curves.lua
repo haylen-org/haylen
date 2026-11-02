@@ -21,13 +21,13 @@ ui.setScaleMode('physical')  ui.setScale(2)  -- Every edge still fades over one 
 SmoothCurves.scales = {{id = 'design', text = 'Design 1x'}, {id = 'double', text = 'Design 2x'}, {id = 'physical', text = 'Physical'}}
 SmoothCurves.settings = {design = {mode = 'design', factor = 1}, double = {mode = 'design', factor = 2}, physical = {mode = 'physical', factor = 1}}
 
--- The side of a crop in pixels of the screen.
+-- The side of a crop in pixels of the screen, and the side of its slot.
 SmoothCurves.cropPixels = 18
+SmoothCurves.slot = 88
 
 -- The nodes the crops magnify and the part of each that holds a curve: the top-left corner of rounded rectangles, the left side of the circles and pills that start their node in the middle of its height, or the upper left of a round node.
 SmoothCurves.zooms = {
-    {id = 'button', text = 'Button', part = 'corner'},
-    {id = 'primary', text = 'Primary', part = 'corner'},
+    {id = 'primary', text = 'Button', part = 'corner'},
     {id = 'chip', text = 'Chip', part = 'corner'},
     {id = 'badge', text = 'Badge', part = 'corner'},
     {id = 'toggle', text = 'Switch', part = 'side'},
@@ -53,7 +53,7 @@ function SmoothCurves:enter()
     local crops = {}
     for index, zoom in ipairs(SmoothCurves.zooms) do
         crops[index] = ui.column{gap = 4, align = 'center',
-            ui.spacer{id = 'zoom-' .. zoom.id, width = 112, height = 112},
+            ui.spacer{id = 'zoom-' .. zoom.id, width = SmoothCurves.slot, height = SmoothCurves.slot},
             ui.label{text = zoom.text, font = 'caption', color = 'textMuted'},
         }
     end
@@ -68,38 +68,43 @@ function SmoothCurves:enter()
                 ui.label{id = 'density', grow = 1, color = 'textMuted'},
             },
             ui.row{grow = 1, gap = 16,
-                ui.scroll{id = 'cards', grow = 2, align = 'stretch', ui.grid{minColumnWidth = 360, gap = 16, children = self:cards()}},
-                ui.panel{grow = 1, align = 'stretch', ui.scroll{id = 'crops', grow = 1, height = 0, ui.grid{minColumnWidth = 112, gap = 12, children = crops}}},
+                ui.scroll{id = 'cards', grow = 1, align = 'stretch', ui.grid{minColumnWidth = 360, gap = 16, children = self:cards()}},
+                ui.panel{width = 560, padding = 16, align = 'stretch', ui.scroll{id = 'crops', grow = 1, height = 0, ui.grid{columns = 5, gap = 10, rowGap = 8, children = crops}}},
             },
         },
     }
 end
 
+-- The cards stand in three stacks, which the grid places side by side at the normal scale and wraps when the scale grows, so every crop finds its control in view at the normal scale.
 function SmoothCurves:cards()
     return {
-        layout.section('Shapes of "graphics2d"', {
-            ui.spacer{id = 'shapes', height = 150},
-        }),
-        layout.section('Buttons and badges', {
-            ui.row{wrap = true, gap = 12, ui.button{id = 'button', text = 'Default'}, ui.button{id = 'primary', text = 'Primary', variant = 'primary'}},
-            ui.row{gap = 12, ui.chip{id = 'chip', text = 'Chip', selected = true, removable = true}, ui.badge{id = 'badge', text = '12', tone = 'danger', solid = true}, ui.badge{text = 'New', tone = 'accent'}},
-        }),
-        layout.section('Choices', {
-            ui.toggle{id = 'toggle', text = 'Switch', checked = true},
-            ui.toggle{text = 'Off'},
-            ui.checkbox{id = 'checkbox', text = 'Check box', checked = true},
-            ui.radioGroup{id = 'radio', items = {{id = 'one', text = 'Radio'}, {id = 'two', text = 'Other'}}, selected = 'one', horizontal = true},
-        }),
-        layout.section('Values', {
-            ui.slider{id = 'slider', value = 0},
-            ui.progress{id = 'progress', value = 0.6, tone = 'success'},
-            ui.row{gap = 16, ui.circularProgress{id = 'ring', value = 0.7}, ui.busyIndicator{}, ui.statusIndicator{text = 'Online'}},
-        }),
-        layout.section('Fields and panels', {
-            ui.textField{id = 'field', placeholder = 'Name'},
-            ui.row{gap = 12, ui.avatar{id = 'avatar', name = 'Ana Souza'}, ui.card{id = 'card', grow = 1, ui.label{text = 'Card'}}},
-            ui.alert{id = 'alert', title = 'Alert', message = 'A rounded alert with its tone bar.', tone = 'warning'},
-        }),
+        ui.column{gap = 16,
+            layout.section('Shapes of "graphics2d"', {
+                ui.spacer{id = 'shapes', height = 150},
+            }),
+            layout.section('Buttons and badges', {
+                ui.row{wrap = true, gap = 12, ui.button{id = 'button', text = 'Default'}, ui.button{id = 'primary', text = 'Primary', variant = 'primary'}},
+                ui.row{gap = 12, ui.chip{id = 'chip', text = 'Chip', selected = true, removable = true}, ui.badge{id = 'badge', text = '12', tone = 'danger', solid = true}, ui.badge{text = 'New', tone = 'accent'}},
+            }),
+        },
+        ui.column{gap = 16,
+            layout.section('Choices', {
+                ui.row{gap = 24, ui.toggle{id = 'toggle', text = 'On', checked = true}, ui.toggle{text = 'Off'}},
+                ui.row{gap = 24, ui.checkbox{id = 'checkbox', text = 'Check', checked = true}, ui.radioGroup{id = 'radio', items = {{id = 'one', text = 'One'}, {id = 'two', text = 'Two'}}, selected = 'one', horizontal = true}},
+            }),
+            layout.section('Values', {
+                ui.slider{id = 'slider', value = 0},
+                ui.progress{id = 'progress', value = 0.6, tone = 'success'},
+                ui.row{gap = 16, ui.circularProgress{id = 'ring', value = 0.7, size = 56}, ui.busyIndicator{}, ui.statusIndicator{text = 'Online'}},
+            }),
+        },
+        ui.column{gap = 16,
+            layout.section('Fields and panels', {
+                ui.textField{id = 'field', placeholder = 'Name'},
+                ui.row{gap = 12, ui.avatar{id = 'avatar', name = 'Ana Souza'}, ui.card{id = 'card', grow = 1, ui.label{text = 'Card'}}},
+                ui.alert{id = 'alert', title = 'Alert', message = 'A rounded alert with its tone bar.', tone = 'warning'},
+            }),
+        },
     }
 end
 

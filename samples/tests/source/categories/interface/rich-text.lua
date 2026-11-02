@@ -20,7 +20,7 @@ RichText.styles = [==[
 [color=#FF6A6A]Colors[/color], [bgcolor=#604C7DFF] backgrounds [/bgcolor], [size=150%]sizes[/size] and [alpha=0.5]alpha[/alpha].
 [outline=3 color=#FF402000][color=gold]Outline[/color][/outline], [shadow=3,3 color=#C0000000 blur=2]shadow[/shadow] and [glow=6 color=#FF8000]glow[/glow].
 [font=lilitaOne]A font the fantasy theme registered[/font] next to the body font.
-Twelve coins [img=interface/themes/fantasy/icons/coin.png height=28] or press [icon=confirm] to open the chest [icon=coin].
+Twelve coins [img=interface/themes/fantasy/icons/coin.png height=34] or press [icon=confirm height=34] to open the chest [icon=coin height=34].
 Read the [url=manual]manual[/url], the [url=map]map[/url] or the [hint=Frequently asked questions]FAQ[/hint].]==]
 
 RichText.blocks = [==[
@@ -33,14 +33,14 @@ Light the beacon
 Wait for the ship
 [/ol]
 [hr width=100% height=2 color=#3A4058]
-[table=2][cell bg=#33FFFFFF padding=10][b]Item[/b][/cell][cell bg=#33FFFFFF padding=10][b]Count[/b][/cell][cell padding=10]Wood[/cell][cell padding=10]12[/cell][cell bg=#14FFFFFF padding=10]Stone[/cell][cell bg=#14FFFFFF padding=10]4[/cell][cell padding=10]Rope[/cell][cell padding=10]2[/cell][/table]]==]
+[table=3][cell bg=#33FFFFFF padding=12][b]Item[/b][/cell][cell bg=#33FFFFFF padding=12][b]Count[/b][/cell][cell bg=#33FFFFFF padding=12][b]Found at[/b][/cell][cell padding=12]Wood[/cell][cell padding=12]12[/cell][cell padding=12]The palm grove[/cell][cell bg=#14FFFFFF padding=12]Stone[/cell][cell bg=#14FFFFFF padding=12]4[/cell][cell bg=#14FFFFFF padding=12]The cliffs[/cell][cell padding=12]Rope[/cell][cell padding=12]2[/cell][cell padding=12]The old dock[/cell][/table]]==]
 
 RichText.effects = '[wave]Wave[/wave]  [shake]Shake[/shake]  [tornado radius=4]Tornado[/tornado]  [rainbow]Rainbow[/rainbow]  [pulse]Pulse[/pulse]  [fade length=6]Fading out[/fade]'
 
 RichText.dialogue = {
     '[b]Keeper:[/b] You made it through the storm.[pause=0.5] Few do.',
     '[b]Keeper:[/b] The beacon went dark three nights ago.[pause=0.4] [shake]Something[/shake] is out there.',
-    '[b]Keeper:[/b] Take this [img=interface/themes/fantasy/icons/key.png height=28] and [speed=0.4]be careful[/speed]...[pause=0.4] [rainbow]good luck![/rainbow]',
+    '[b]Keeper:[/b] Take this [img=interface/themes/fantasy/icons/key.png height=36] and [speed=0.4]be careful[/speed]...[pause=0.4] [rainbow]good luck![/rainbow]',
 }
 
 function RichText:init(entry)
@@ -65,9 +65,10 @@ function RichText:report(text)
     self:set('status', {text = text})
 end
 
+-- Three columns whose last cards stretch to one line: the styles over the effects, the blocks, and the typewriter over the fill alignment.
 function RichText:columns()
     return layout.columns{
-        ui.column{grow = 3, gap = 24,
+        ui.column{grow = 2, gap = 24, align = 'stretch',
             layout.section('Styles, links, hints, images and icons', {
                 ui.richText{id = 'styles', text = RichText.styles, onLink = function(event)
                     self:report('Followed the link "' .. event.link .. '".')
@@ -75,13 +76,10 @@ function RichText:columns()
                     self:report(string.format('%s the link "%s".', event.hovered and 'Hovered' or 'Left', event.link))
                 end},
             }),
-            layout.section('Effects', {ui.richText{text = RichText.effects, font = 'heading'}}),
-            layout.section('Fill alignment', {
-                ui.richText{text = 'Fill stretches the spaces of every wrapped line to both edges, except the last line of the paragraph, which stays at the start like the text of a book.', textAlign = 'fill'},
-            }),
+            layout.section('Effects', {grow = 1, ui.richText{text = RichText.effects, font = 'heading'}}),
         },
-        ui.column{grow = 2, gap = 24,
-            layout.section('Lists, rules and tables', {ui.richText{text = RichText.blocks}}),
+        layout.section('Lists, rules and tables', {grow = 1, align = 'stretch', ui.richText{text = RichText.blocks, align = 'stretch'}}),
+        ui.column{grow = 1, gap = 24, align = 'stretch',
             layout.section('Typewriter reveal', {
                 ui.richText{id = 'dialogue', text = RichText.dialogue[1], revealSpeed = 30, font = 'heading'},
                 ui.row{wrap = true, gap = 12,
@@ -94,6 +92,9 @@ function RichText:columns()
                         event.gui:set('dialogue', {visibleCharacters = -1})
                     end},
                 },
+            }),
+            layout.section('Fill alignment', {grow = 1,
+                ui.richText{text = 'Fill stretches the spaces of every wrapped line to both edges, except the last line of the paragraph, which stays at the start like the text of a book.', textAlign = 'fill'},
             }),
         },
     }

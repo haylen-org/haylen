@@ -20,6 +20,13 @@ entries:scrollTo(50000, {align = 'center'})]]
 LongLists.count = 100000
 LongLists.pageSize = 100
 
+-- Writes a whole number with a comma between each group of three digits, such as "100,000".
+function LongLists.number(value)
+    local text = tostring(math.floor(value))
+    local grouped = text:reverse():gsub('(%d%d%d)', '%1,'):reverse()
+    return (grouped:gsub('^,', ''))
+end
+
 function LongLists:init(entry)
     LongLists.super.init(self, entry)
     self.loads = 0
@@ -48,7 +55,7 @@ function LongLists:loadPage(first, count)
         local page = {}
         for index = first, first + count - 1 do
             local chests, palms = index * 7 % 5 + 1, index * 13 % 40 + 10
-            page[#page + 1] = {id = 'entry-' .. index, type = 'entry', title = 'Island ' .. index, details = string.format('%d chests and %d palms', chests, palms)}
+            page[#page + 1] = {id = 'entry-' .. index, type = 'entry', number = LongLists.number(index), title = 'Island ' .. LongLists.number(index), details = string.format('%d %s and %d palms', chests, chests == 1 and 'chest' or 'chests', palms)}
             jobs.checkpoint()
         end
         return page
@@ -61,16 +68,16 @@ function LongLists:columns()
             ui.collection{id = 'entries', grow = 1, gap = 4, placeholder = 'loading', focusAlign = 'center', types = {
                 entry = {template = ui.panel{padding = {10, 16},
                     ui.row{gap = 16,
-                        ui.label{part = 'number', bind = {text = '$index'}, width = 110, textAlign = 'end', color = 'textMuted'},
+                        ui.label{part = 'number', bind = {text = 'number'}, width = 96, textAlign = 'end', color = 'textMuted'},
                         ui.column{grow = 1, ui.label{part = 'title', bind = {text = 'title'}}, ui.label{part = 'details', bind = {text = 'details'}, font = 'caption', color = 'textMuted'}},
                     },
                 }, estimatedSize = 88},
                 loading = {template = ui.panel{padding = {10, 16}, ui.row{gap = 16, height = 64, ui.busyIndicator{size = 32}, ui.label{text = 'Loading', color = 'textMuted'}}}, interactive = false},
             }, onSelect = function(event)
-                self:set('picked', {text = 'You picked island ' .. event.index .. '.'})
+                self:set('picked', {text = 'You picked island ' .. LongLists.number(event.index) .. '.'})
             end},
         }),
-        layout.section('Scroll to an entry', {grow = 1,
+        layout.section('Scroll to an entry', {grow = 1, align = 'stretch',
             ui.numberField{id = 'target', value = self.target, min = 1, max = LongLists.count, onChange = function(event) self.target = event.value end},
             ui.segmentedControl{id = 'align', items = {{id = 'start', text = 'Start'}, {id = 'center', text = 'Center'}, {id = 'end', text = 'End'}}, selected = self.align, onChange = function(event)
                 self.align = event.value
@@ -80,6 +87,9 @@ function LongLists:columns()
                 self.entries:focus(math.floor(self.target))
             end},
             ui.label{id = 'picked', text = 'Press an island to pick it.', color = 'textMuted'},
+            ui.spacer{grow = 1},
+            ui.divider{},
+            ui.label{text = 'Each page of a hundred islands builds in a job, and its rows show a placeholder until it arrives, so a fling never waits for them.', font = 'caption', color = 'textMuted'},
         }),
     }
 end
@@ -88,7 +98,7 @@ function LongLists:update(dt)
     LongLists.super.update(self, dt)
     local first, last = self.entries:visibleRange()
     local cells = debug.stats().objects.UiCell or {alive = 0, created = 0}
-    local view = first and string.format('shows islands %d to %d of %d', first, last, self.entries.count) or 'loads its first page'
+    local view = first and string.format('shows islands %s to %s of %s', LongLists.number(first), LongLists.number(last), LongLists.number(self.entries.count)) or 'loads its first page'
     self:status(string.format('The list %s, with %d %s loaded and %d recycled cells.', view, self.loads, self.loads == 1 and 'page' or 'pages', cells.alive))
 end
 

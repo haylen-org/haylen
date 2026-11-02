@@ -13,12 +13,12 @@ ui.grid{columns = 4, gap = 12, children = cells}
 ui.scroll{id = 'log', height = 260, ui.column{gap = 6, children = lines}}
 gui:command('log', 'scrollTo', {node = 'day-25', align = 'center'})
 ui.tabs{items = {{id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}}, selected = 'quests', questsPage, mapPage}
-ui.splitter{height = 200, ratio = 0.35, onResize = function(event) log.info(event.ratio) end, list, details}]]
+ui.splitter{height = 200, ratio = 0.4, onResize = function(event) log.info(event.ratio) end, list, details}]]
 
 local function cells()
     local list = {}
     for index = 1, 8 do
-        list[index] = ui.panel{padding = 12, ui.label{text = 'Cell ' .. index, textAlign = 'center', align = 'stretch'}}
+        list[index] = ui.panel{padding = 12, ui.label{text = tostring(index), font = 'heading', textAlign = 'center', align = 'stretch'}}
     end
     return list
 end
@@ -41,35 +41,26 @@ function Containers:enter()
     }
 end
 
+-- Four columns that fit the region: rows and the grid, the stack and the tabs, the scroll and a panel, and the form field and the splitter.
 function Containers:columns()
     return layout.columns{
         ui.column{grow = 1, gap = 24,
             layout.section('Rows, spacers and dividers', {
-                ui.row{ui.label{text = 'Start'}, ui.spacer{grow = 1}, ui.label{text = 'A spacer pushes this to the end'}},
+                ui.row{ui.label{text = 'Start'}, ui.spacer{grow = 1}, ui.label{text = 'End'}},
                 ui.divider{},
                 ui.row{gap = 16, ui.label{text = 'Wood 12'}, ui.divider{vertical = true, height = 40, color = 'borderStrong'}, ui.label{text = 'Stone 4'}, ui.divider{vertical = true, height = 40}, ui.label{text = 'Rope 2'}},
                 ui.row{wrap = true, gap = 12, ui.button{id = 'grow-one', text = 'Grow 1', grow = 1}, ui.button{text = 'Grow 2', grow = 2}},
             }),
-            layout.section('Component "grid" with four columns', {ui.grid{columns = 4, gap = 12, children = cells()}}),
-            ui.panel{gap = 8, ui.label{text = 'A panel', font = 'button'}, ui.label{text = 'Panels and cards keep the pointer from reaching the app behind them.', color = 'textMuted'}},
+            layout.section('Component "grid"', {ui.grid{columns = 4, gap = 12, children = cells()}}),
         },
         ui.column{grow = 1, gap = 24,
             layout.section('Component "stack"', {
-                ui.stack{height = 220,
+                ui.stack{height = 200,
                     ui.image{image = 'interface/images/landscape.png', fit = 'cover', align = 'stretch', radius = 12, tint = '#FFFFC8A0'},
-                    ui.label{text = 'Over the picture', font = 'heading', align = 'center', color = 'onAccent', outline = '#B01E1B33', outlineWidth = 2},
+                    ui.label{text = 'Over the picture', font = 'heading', anchor = 'bottomLeft', anchorTo = 'parent', margin = 16, color = 'onAccent', outline = '#B01E1B33', outlineWidth = 2},
                     ui.badge{text = 'Top right', tone = 'accent', solid = true, anchor = 'topRight', anchorTo = 'parent', margin = 12},
                 },
             }),
-            layout.section('Component "scroll"', {
-                ui.scroll{id = 'log', height = 260, ui.column{gap = 6, children = logLines()}},
-                ui.row{wrap = true, gap = 12,
-                    ui.button{text = 'Day 25', onClick = function(event) event.gui:command('log', 'scrollTo', {node = 'day-25', align = 'center'}) end},
-                    ui.button{text = 'Top', onClick = function(event) event.gui:command('log', 'scrollTo', {offset = 0}) end},
-                },
-            }),
-        },
-        ui.column{grow = 1, gap = 24,
             layout.section('Component "tabs"', {
                 ui.tabs{id = 'journal', items = {{id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}, {id = 'notes', text = 'Notes', enabled = false}}, selected = 'quests', onSelect = function(event)
                     self:set('status', {text = 'The tabs picked "' .. event.item .. '".'})
@@ -79,6 +70,18 @@ function Containers:columns()
                     ui.label{text = 'Disabled tabs cannot be picked.'},
                 },
             }),
+        },
+        ui.column{grow = 1, gap = 24,
+            layout.section('Component "scroll"', {
+                ui.scroll{id = 'log', height = 250, ui.column{gap = 6, children = logLines()}},
+                ui.row{wrap = true, gap = 12,
+                    ui.button{text = 'Day 25', grow = 1, onClick = function(event) event.gui:command('log', 'scrollTo', {node = 'day-25', align = 'center'}) end},
+                    ui.button{text = 'Top', grow = 1, onClick = function(event) event.gui:command('log', 'scrollTo', {offset = 0}) end},
+                },
+            }),
+            ui.panel{gap = 8, ui.label{text = 'A panel', font = 'button'}, ui.label{text = 'Panels and cards keep the pointer from reaching the app behind them.', color = 'textMuted'}},
+        },
+        ui.column{grow = 1, gap = 24,
             layout.section('Component "formField"', {
                 ui.formField{id = 'nameField', label = 'Captain', help = 'Shown on the leaderboard', required = true,
                     ui.textField{id = 'captain', placeholder = 'Your name', maxLength = 16, onChange = function(event)
@@ -87,11 +90,11 @@ function Containers:columns()
                 },
             }),
             layout.section('Component "splitter"', {
-                ui.splitter{id = 'split', height = 200, ratio = 0.35, onResize = function(event)
+                ui.splitter{id = 'split', height = 200, ratio = 0.4, onResize = function(event)
                     self:set('status', {text = string.format('The splitter ratio is %.2f.', event.ratio)})
                 end,
                     ui.list{items = {{id = 'north', text = 'North'}, {id = 'south', text = 'South'}, {id = 'east', text = 'East'}}},
-                    ui.label{text = 'The first child takes the ratio of the width, and the handle between them moves it.', color = 'textMuted'},
+                    ui.label{text = 'The handle moves the share of each side.', color = 'textMuted'},
                 },
             }),
         },

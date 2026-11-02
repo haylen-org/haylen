@@ -12,7 +12,7 @@ ui.textField{keyboard = 'email', returnKey = 'send', placeholder = 'captain@isla
 ui.textField{placeholder = 'Short code', maxLength = 12, autocorrect = false, autocapitalize = 'characters'}
 ui.secretField{placeholder = 'Password', returnKey = 'go'}
 ui.filterField{placeholder = 'Filter recipes', onChange = function(event) filter(event.value) end}
-ui.textArea{rows = 6, value = 'Dear diary,\nthe raft is ready and the wind turns west at dawn.'}  -- Long lines wrap.]]
+ui.textArea{rows = 5, value = 'Dear diary,\nthe raft is ready and the wind turns west at dawn.'}  -- Long lines wrap.]]
 
 -- Every keyboard of `textField`, each with one of the return key labels.
 TextFields.fields = {
@@ -49,30 +49,29 @@ function TextFields:columns()
             ui.textField{id = 'field-' .. field.keyboard, keyboard = field.keyboard, returnKey = field.returnKey, placeholder = field.placeholder, autocapitalize = field.autocapitalize, onChange = self:report(field.keyboard), onSubmit = self:report(field.keyboard)},
         }
     end
-    local others = {
-        ui.formField{label = 'Twelve characters at most', help = 'No autocorrection',
-            ui.textField{placeholder = 'Short code', maxLength = 12, autocorrect = false, autocapitalize = 'characters', onChange = self:report('code'), onSubmit = self:report('code')},
-        },
-        ui.formField{label = 'Component "secretField"', help = 'The password keyboard',
-            ui.secretField{placeholder = 'Password', returnKey = 'go', onSubmit = function(event)
-                self:set('status', {text = string.format('The password was submitted with %d characters.', utf8.len(event.value))})
-            end},
-        },
-        ui.formField{label = 'Component "filterField"', help = 'The search keyboard and a clear button',
-            ui.filterField{placeholder = 'Filter recipes', onChange = self:report('filter')},
-        },
+    keyboards[#keyboards + 1] = ui.formField{label = 'Twelve characters at most', help = 'No autocorrection',
+        ui.textField{placeholder = 'Short code', maxLength = 12, autocorrect = false, autocapitalize = 'characters', onChange = self:report('code'), onSubmit = self:report('code')},
+    }
+    keyboards[#keyboards + 1] = ui.formField{label = 'Component "secretField"', help = 'The password keyboard',
+        ui.secretField{placeholder = 'Password', returnKey = 'go', onSubmit = function(event)
+            self:set('status', {text = string.format('The password was submitted with %d characters.', utf8.len(event.value))})
+        end},
     }
     return layout.columns{
-        ui.column{grow = 3, gap = 24,
-            layout.section('Keyboards and return keys', {ui.grid{columns = 3, gap = 20, rowGap = 28, children = keyboards}}),
-            layout.section('Limits, secrets and filters', {ui.grid{columns = 3, gap = 20, rowGap = 28, children = others}}),
+        layout.section('Keyboards, return keys, limits and secrets', {grow = 3, ui.grid{columns = 3, gap = 20, rowGap = 28, children = keyboards}}),
+        ui.column{grow = 1, gap = 24,
+            layout.section('Component "textArea"', {
+                ui.textArea{rows = 5, value = TextFields.diary, onChange = function(event)
+                    self:set('status', {text = string.format('The diary has %d characters.', utf8.len(event.value))})
+                end},
+                ui.label{text = 'Enter starts a new line, so a text area never submits.', color = 'textMuted'},
+            }),
+            layout.section('Component "filterField"', {
+                ui.formField{help = 'The search keyboard and a clear button',
+                    ui.filterField{placeholder = 'Filter recipes', onChange = self:report('filter')},
+                },
+            }),
         },
-        layout.section('Component "textArea"', {grow = 1,
-            ui.textArea{rows = 6, value = TextFields.diary, onChange = function(event)
-                self:set('status', {text = string.format('The diary has %d characters.', utf8.len(event.value))})
-            end},
-            ui.label{text = 'Long lines wrap at the width of the area, and Enter starts a new line, so a text area never submits.', color = 'textMuted'},
-        }),
     }
 end
 

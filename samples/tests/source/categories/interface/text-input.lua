@@ -16,14 +16,15 @@ end}  -- It edits through a hidden native field, and the GUIs move above the key
 events.on('keyboardShown', function(frame) log.info('The keyboard starts at ' .. frame.y .. '.') end, {owner = self})
 window.setKeyboardVisible(true)  -- The plain keyboard sends "character" and "keyDown" events.]]
 
-TextInput.platforms = '[table=2]'
-    .. '[cell padding=8][b]Web[/b][/cell][cell padding=8]A hidden [code]textarea[/code], or an [code]input[/code] for passwords[/cell]'
-    .. '[cell padding=8][b]Android[/b][/cell][cell padding=8]A hidden [code]EditText[/code] with suggestions and the keyboard insets[/cell]'
-    .. '[cell padding=8][b]iPhone, iPad[/b][/cell][cell padding=8]A hidden [code]UITextField[/code] or [code]UITextView[/code] with dictation[/cell]'
-    .. '[cell padding=8][b]Apple TV[/b][/cell][cell padding=8]The same field opens the fullscreen keyboard[/cell]'
-    .. '[cell padding=8][b]Mac[/b][/cell][cell padding=8]A hidden [code]NSTextView[/code] with dead keys and emoji[/cell]'
-    .. '[cell padding=8][b]Windows, Linux[/b][/cell][cell padding=8]Key and character events, with the input method at the caret[/cell]'
-    .. '[/table]'
+-- Each platform and the native field that edits there, whose names of native classes show as code.
+TextInput.platforms = {
+    {'Web', 'A hidden [code]textarea[/code], or an [code]input[/code] for passwords'},
+    {'Android', 'A hidden [code]EditText[/code] with suggestions and the keyboard insets'},
+    {'iPhone, iPad', 'A hidden [code]UITextField[/code] or [code]UITextView[/code] with dictation'},
+    {'Apple TV', 'The same field opens the fullscreen keyboard'},
+    {'Mac', 'A hidden [code]NSTextView[/code] with dead keys and emoji'},
+    {'Windows, Linux', 'Key and character events, with the input method at the caret'},
+}
 TextInput.platformNames = {web = 'the web', android = 'Android', ios = 'iOS', tvos = 'tvOS', macos = 'macOS', windows = 'Windows', linux = 'Linux', headless = 'the headless host'}
 TextInput.devices = {keyboardMouse = 'the keyboard and mouse', gamepad = 'a gamepad', touch = 'a touch screen'}
 
@@ -59,7 +60,7 @@ function TextInput:exit()
 end
 
 function TextInput:record(line)
-    table.insert(self.lines, 1, string.format('%6.2f  %s', haylen.elapsed(), line))
+    table.insert(self.lines, 1, string.format('%s at %.1f seconds.', line, haylen.elapsed()))
     self.lines[TextInput.lineCount + 1] = nil
     self:set('events', {text = table.concat(self.lines, '\n')})
 end
@@ -77,7 +78,7 @@ function TextInput:columns()
                 ui.textArea{rows = 2, placeholder = 'A text area, which wraps its long lines'},
             }),
             layout.section('Plain keyboard', {
-                ui.label{id = 'typed', text = 'Nothing typed yet', font = 'monospace'},
+                ui.label{id = 'typed', text = 'Nothing typed yet.', color = 'textMuted'},
                 ui.button{id = 'plain', text = 'Show the plain keyboard', onClick = function(event)
                     self.plain = not self.plain
                     window.setKeyboardVisible(self.plain)
@@ -86,10 +87,22 @@ function TextInput:columns()
             }),
         },
         ui.column{grow = 1, gap = 24,
-            layout.section('Events', {ui.label{id = 'events', text = 'Keyboard and text events show here.', font = 'monospace', color = 'textMuted'}}),
-            layout.section('Where the hidden field lives', {ui.richText{text = TextInput.platforms}}),
+            layout.section('Events', {ui.label{id = 'events', text = 'Keyboard and text events show here.', color = 'textMuted'}}),
+            layout.section('Where the hidden field lives', {grow = 1, TextInput.platformTable()}),
         },
     }
+end
+
+-- The platforms in rows split by dividers, with the name and its description on one baseline.
+function TextInput.platformTable()
+    local rows = {}
+    for _, platform in ipairs(TextInput.platforms) do
+        if #rows > 0 then
+            rows[#rows + 1] = ui.divider{align = 'stretch'}
+        end
+        rows[#rows + 1] = ui.row{gap = 24, alignItems = 'start', ui.label{text = platform[1], width = 210}, ui.richText{text = platform[2], color = 'textMuted', grow = 1}}
+    end
+    return ui.column{gap = 10, align = 'stretch', children = rows}
 end
 
 -- The platform events behind the fields, and the typing of the plain keyboard, which arrives as characters and editing keys.
@@ -104,7 +117,7 @@ function TextInput:event(event)
         elseif event.type == 'keyDown' and event.key == 'backspace' and #self.typed > 0 then
             self.typed = self.typed:sub(1, utf8.offset(self.typed, -1) - 1)
         end
-        self:set('typed', {text = self.typed == '' and 'Nothing typed yet' or self.typed})
+        self:set('typed', {text = self.typed == '' and 'Nothing typed yet.' or self.typed, color = self.typed == '' and 'textMuted' or 'text'})
     end
 end
 

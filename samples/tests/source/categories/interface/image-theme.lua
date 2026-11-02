@@ -81,7 +81,6 @@ function ImageTheme:choices()
         ui.row{gap = 24, wrap = true, ui.toggle{id = 'music', text = 'Music', checked = true}, ui.toggle{text = 'Sound'}, ui.toggle{text = 'Off', enabled = false}},
         ui.textField{placeholder = 'Name of the hero'},
         ui.combo{items = {{id = 'warrior', text = 'Warrior'}, {id = 'archer', text = 'Archer'}, {id = 'mage', text = 'Mage'}, {id = 'lancer', text = 'Lancer'}}, selected = 'warrior'},
-        ui.stepper{items = {{id = 'small', text = 'Small island'}, {id = 'large', text = 'Large island'}}, selected = 'small'},
     })
 end
 
@@ -92,6 +91,7 @@ function ImageTheme:bars()
         ui.progress{value = 0.55, text = 'Loading'},
         ui.slider{value = 0.6, showValue = true},
         ui.rangeSlider{low = 0.2, high = 0.7},
+        ui.stepper{items = {{id = 'small', text = 'Small island'}, {id = 'large', text = 'Large island'}}, selected = 'small'},
     })
 end
 
@@ -103,27 +103,48 @@ function ImageTheme:collections()
     end
     return layout.section('Tabs, lists and scroll bars', {
         ui.tabs{items = {{id = 'bag', text = 'Bag'}, {id = 'quests', text = 'Quests'}, {id = 'map', text = 'Map'}}, selected = 'bag',
-            ui.scroll{height = 300, ui.list{items = rows, selected = 'item-2', onSelect = function(event) self:report('The list picked "' .. event.item .. '".') end}},
+            ui.scroll{height = 280, ui.list{items = rows, selected = 'item-2', onSelect = function(event) self:report('The list picked "' .. event.item .. '".') end}},
             ui.label{text = 'No quests yet.', color = 'textMuted'},
             ui.label{text = 'The map is still folded.', color = 'textMuted'},
         },
     })
 end
 
+-- The overlays and the icons, with a place where the window opens as the test starts, so its title bar, close button and shadow show at once.
 function ImageTheme:overlays()
     local icons = {}
     for index, name in ipairs(ImageTheme.icons) do
-        icons[index] = ui.icon{image = ImageTheme.icon(name), size = 56, tooltip = name:sub(1, 1):upper() .. name:sub(2)}
+        icons[index] = ui.icon{image = ImageTheme.icon(name), size = 48, tooltip = name:sub(1, 1):upper() .. name:sub(2)}
     end
     return layout.section('Overlays and icons', {
         ui.row{gap = 12, wrap = true,
             ui.button{text = 'Dialog', onClick = function(event) event.gui:set('dialog', {open = true}) end},
-            ui.button{text = 'Window', onClick = function(event) event.gui:set('window', {open = true}) end},
+            ui.button{text = 'Window', tooltip = 'Tooltips take the tooltip piece of the atlas.', onClick = function() self:openWindow() end},
             ui.button{text = 'Toast', onClick = function(event) event.gui:command('toast', 'show', {text = 'The chest is open.', tone = 'success'}) end},
         },
-        ui.button{text = 'Rest here for a tooltip', tooltip = 'Tooltips take the tooltip piece of the atlas.'},
-        ui.row{gap = 12, wrap = true, children = icons},
+        ui.row{gap = 8, wrap = true, children = icons},
+        ui.panel{id = 'window-dock', height = 230, align = 'stretch', justify = 'center', alignItems = 'center', ui.label{text = 'The window opens here.', color = 'textMuted'}},
     })
+end
+
+function ImageTheme:openWindow()
+    self.moved = false
+    self.docked = nil
+    self.gui:set('window', {open = true})
+end
+
+-- The window follows its place through changes of the layout and the scale until the player moves it.
+function ImageTheme:update(dt)
+    ImageTheme.super.update(self, dt)
+    local dock = self.gui:bounds('window-dock')
+    if not dock or self.moved then
+        return
+    end
+    local key = string.format('%.0f %.0f %.0f', dock.x, dock.y, dock.width)
+    if key ~= self.docked then
+        self.docked = key
+        self.gui:set('window', {x = dock.x, y = dock.y, width = dock.width})
+    end
 end
 
 function ImageTheme:nodes()
@@ -141,12 +162,12 @@ function ImageTheme:nodes()
             end},
         },
         ui.scroll{grow = 1, height = 0,
-            ui.grid{minColumnWidth = 560, gap = 24, self:buttons(), self:choices(), self:collections(), self:bars(), self:overlays()},
+            ui.grid{minColumnWidth = 560, gap = 24, self:buttons(), self:choices(), self:overlays(), self:collections(), self:bars()},
         },
         ui.dialog{id = 'dialog', title = 'Open the chest?', message = 'The key breaks once the chest opens.', buttons = {{id = 'leave', text = 'Leave it'}, {id = 'open', text = 'Open', variant = 'primary'}},
             onAnswer = function(event) self:report('The dialog answered "' .. event.button .. '".') end,
         },
-        ui.window{id = 'window', title = 'Satchel', open = false, x = 1180, y = 300, width = 560, closable = true,
+        ui.window{id = 'window', title = 'Satchel', closable = true, onMove = function() self.moved = true end,
             ui.label{text = 'A window with a title bar from the atlas.', color = 'textMuted'},
             ui.row{gap = 12, ui.icon{image = ImageTheme.icon('potion'), size = 56}, ui.icon{image = ImageTheme.icon('key'), size = 56}, ui.button{text = 'Drink', variant = 'primary'}},
         },

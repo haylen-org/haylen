@@ -10,9 +10,9 @@ local layout = require('categories.interface.layout')
 local ScrollBars = haylen.class('ScrollBars', Test)
 
 ScrollBars.code = [[
-ui.scroll{height = 160, ui.column{gap = 8, children = rows}}  -- The bar runs in a lane of its own beside the rows.
+ui.scroll{height = 90, ui.column{gap = 8, children = rows}}  -- The bar runs in a lane of its own beside the rows.
 ui.scroll{axis = 'horizontal', ui.row{gap = 12, children = buttons}}
-ui.scroll{height = 120, style = {metrics = {scrollbarGap = 0}}, ui.column{children = rows}}  -- The engine still keeps 4 points.
+ui.scroll{height = 90, style = {metrics = {scrollbarGap = 0}}, ui.column{children = rows}}  -- The engine still keeps 4 points.
 ui.setScaleMode('physical')  ui.setScale(2)
 local gap = ui.themeMetric('scrollbarGap')]]
 
@@ -85,50 +85,55 @@ function ScrollBars:enter()
     self.gui:collection('shelf'):setItems(tiles)
 end
 
+-- The cards stand in four stacks, which the grid places side by side at the normal scale and two by two when the scale doubles, so every card shows whole at the normal scale.
 function ScrollBars:cards()
     local buttons = {}
     for index = 1, 16 do
         buttons[index] = ui.button{text = 'Item ' .. index}
     end
+    local scroll = layout.section('Component "scroll"', {
+        ui.scroll{height = 90, ui.column{gap = 8, children = ScrollBars.rows('Quest log entry', 30)}},
+        ui.scroll{axis = 'horizontal', align = 'stretch', ui.row{gap = 12, children = buttons}},
+    })
+    local noGap = layout.section('A style that asks for no gap', {
+        ui.label{text = 'It asks for 0, and the engine keeps 4 points.', font = 'caption', color = 'textMuted'},
+        ui.scroll{height = 90, style = {metrics = {scrollbarGap = 0}}, ui.column{gap = 8, children = ScrollBars.rows('Close entry', 20)}},
+    })
+    local collection = layout.section('Component "collection"', {
+        ui.collection{id = 'entries', height = 90, gap = 8, types = {
+            row = {template = ui.panel{padding = {6, 12}, ui.label{part = 'title', bind = {text = 'title'}}}},
+        }},
+        ui.collection{id = 'shelf', axis = 'horizontal', align = 'stretch', gap = 12, types = {
+            tile = {template = ui.card{width = 140, ui.label{part = 'title', bind = {text = 'title'}}}},
+        }},
+    })
+    local lists = layout.section('Lists in a scroll', {
+        ui.scroll{height = 110, ui.column{gap = 12,
+            ui.list{items = ScrollBars.choices('Save slot', 5), selected = 'save-slot-1'},
+            ui.tree{items = {{id = 'tools', text = 'Tools', children = ScrollBars.choices('Tool', 3)}, {id = 'food', text = 'Food', children = ScrollBars.choices('Fruit', 3)}}, expanded = {'tools', 'food'}},
+            ui.table{columns = {{text = 'Player'}, {text = 'Score', width = 120, align = 'end'}}, rows = {{id = 'ana', cells = {'Ana', 1200}}, {id = 'bia', cells = {'Bia', 950}}, {id = 'caio', cells = {'Caio', 870}}}},
+        }},
+    })
+    local immediate = layout.section('Immediate window', {
+        ui.spacer{id = 'immediate', height = 150},
+    })
+    local textArea = layout.section('Component "textArea"', {
+        ui.textArea{rows = 4, value = 'A line of the diary long enough to wrap onto the next line of the field\n' .. table.concat(ScrollBars.lines('A line of the diary', 24), '\n')},
+    })
+    local popups = layout.section('Popups and the dialog', {grow = 1,
+        ui.combo{id = 'combo', items = ScrollBars.choices('Choice', 80), selected = 'choice-1'},
+        ui.row{gap = 12, wrap = true, lineGap = 12,
+            ui.menuButton{id = 'menu', text = 'Menu', items = ScrollBars.choices('Command', 60)},
+            ui.popover{id = 'popover', text = 'Popover', contentWidth = 360, ui.column{gap = 8, children = ScrollBars.labels('Popover line', 60)}},
+            ui.button{text = 'Dialog', onClick = function(event) event.gui:set('credits', {open = true}) end},
+        },
+        ui.contextMenu{id = 'actions', items = ScrollBars.choices('Action', 60), ui.card{ui.label{text = 'A quest card with a long context menu'}}},
+    })
     return {
-        layout.section('Component "scroll"', {
-            ui.scroll{height = 160, ui.column{gap = 8, children = ScrollBars.rows('Quest log entry', 30)}},
-            ui.scroll{axis = 'horizontal', align = 'stretch', ui.row{gap = 12, children = buttons}},
-        }),
-        layout.section('Component "collection"', {
-            ui.collection{id = 'entries', height = 160, gap = 8, types = {
-                row = {template = ui.panel{padding = {6, 12}, ui.label{part = 'title', bind = {text = 'title'}}}},
-            }},
-            ui.collection{id = 'shelf', axis = 'horizontal', align = 'stretch', gap = 12, types = {
-                tile = {template = ui.card{width = 140, ui.label{part = 'title', bind = {text = 'title'}}}},
-            }},
-        }),
-        layout.section('Immediate window', {
-            ui.spacer{id = 'immediate', height = 200},
-        }),
-        layout.section('Component "textArea"', {
-            ui.textArea{rows = 5, value = 'A line of the diary long enough to wrap onto the next line of the field\n' .. table.concat(ScrollBars.lines('A line of the diary', 24), '\n')},
-        }),
-        layout.section('Lists in a scroll', {
-            ui.scroll{height = 230, ui.column{gap = 12,
-                ui.list{items = ScrollBars.choices('Save slot', 5), selected = 'save-slot-1'},
-                ui.tree{items = {{id = 'tools', text = 'Tools', children = ScrollBars.choices('Tool', 3)}, {id = 'food', text = 'Food', children = ScrollBars.choices('Fruit', 3)}}, expanded = {'tools', 'food'}},
-                ui.table{columns = {{text = 'Player'}, {text = 'Score', width = 120, align = 'end'}}, rows = {{id = 'ana', cells = {'Ana', 1200}}, {id = 'bia', cells = {'Bia', 950}}, {id = 'caio', cells = {'Caio', 870}}}},
-            }},
-        }),
-        layout.section('Popups and the dialog', {
-            ui.combo{id = 'combo', items = ScrollBars.choices('Choice', 80), selected = 'choice-1'},
-            ui.row{gap = 12,
-                ui.menuButton{id = 'menu', text = 'Menu', items = ScrollBars.choices('Command', 60)},
-                ui.popover{id = 'popover', text = 'Popover', contentWidth = 360, ui.column{gap = 8, children = ScrollBars.labels('Popover line', 60)}},
-                ui.button{text = 'Dialog', onClick = function(event) event.gui:set('credits', {open = true}) end},
-            },
-            ui.contextMenu{id = 'actions', items = ScrollBars.choices('Action', 60), ui.card{ui.label{text = 'A quest card with a long context menu'}}},
-        }),
-        layout.section('A style that asks for no gap', {
-            ui.label{text = 'This scroll asks for a gap of 0, and the engine keeps 4 points.', wrap = true, color = 'textMuted'},
-            ui.scroll{height = 120, style = {metrics = {scrollbarGap = 0}}, ui.column{gap = 8, children = ScrollBars.rows('Close entry', 20)}},
-        }),
+        ui.column{gap = 16, scroll, noGap},
+        ui.column{gap = 16, collection, lists},
+        ui.column{gap = 16, immediate, textArea},
+        ui.column{gap = 16, popups},
     }
 end
 

@@ -40,29 +40,34 @@ function Buttons:chip(name)
     end
 end
 
+-- The ink of the text on the wooden signs, dark on the light wood.
+Buttons.signStyle = {colors = {onAccent = '#FF3B2412'}}
+
 function Buttons:columns()
     return layout.columns{
-        ui.column{grow = 1, gap = 24,
+        ui.column{grow = 3, gap = 24,
             layout.section('Button variants', {
                 ui.row{wrap = true, gap = 16,
                     ui.button{id = 'default', text = 'Default', onClick = self:pressed('"default"')},
                     ui.button{text = 'Primary', variant = 'primary', onClick = self:pressed('"primary"')},
                     ui.button{text = 'Destructive', variant = 'destructive', onClick = self:pressed('"destructive"')},
-                },
-                ui.row{wrap = true, gap = 16,
                     ui.button{text = 'With icon', icon = 'interface/icons/sword.png', onClick = self:pressed('the button with an icon')},
                     ui.button{text = 'Link', variant = 'link', onClick = self:pressed('"link"')},
                     ui.button{text = 'Disabled', enabled = false},
                 },
-                ui.row{wrap = true, gap = 8,
-                    ui.button{id = 'hammer', icon = 'interface/icons/hammer.png', variant = 'toolbar', checked = true, tooltip = 'Build', onClick = function(event)
-                        local checked = not event.gui:get('hammer').checked
-                        event.gui:set('hammer', {checked = checked})
-                        self:report('The hammer is ' .. (checked and 'checked.' or 'unchecked.'))
-                    end},
-                    ui.button{icon = 'interface/themes/fantasy/icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('"toolbar"')},
-                    ui.button{id = 'favorite', icon = 'interface/themes/fantasy/icons/star.png', variant = 'icon', tooltip = 'Favorite', onClick = self:pressed('the icon button')},
-                    ui.button{icon = 'interface/themes/fantasy/icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
+                -- A toolbar groups its buttons on one bar: a checked toggle, a button with a label and two icon buttons.
+                ui.panel{padding = 6, align = 'start',
+                    ui.row{gap = 6,
+                        ui.button{id = 'hammer', icon = 'interface/icons/hammer.png', variant = 'toolbar', checked = true, tooltip = 'Build', onClick = function(event)
+                            local checked = not event.gui:get('hammer').checked
+                            event.gui:set('hammer', {checked = checked})
+                            self:report('The hammer is ' .. (checked and 'checked.' or 'unchecked.'))
+                        end},
+                        ui.button{icon = 'interface/themes/fantasy/icons/gear.png', text = 'Toolbar', variant = 'toolbar', onClick = self:pressed('"toolbar"')},
+                        ui.divider{vertical = true, align = 'stretch'},
+                        ui.button{id = 'favorite', icon = 'interface/themes/fantasy/icons/star.png', variant = 'icon', tooltip = 'Favorite', onClick = self:pressed('the icon button')},
+                        ui.button{icon = 'interface/themes/fantasy/icons/heart.png', variant = 'icon', tooltip = 'Like', onClick = self:pressed('the heart icon button')},
+                    },
                 },
             }),
             layout.section('Icon placement and justify', {
@@ -74,15 +79,15 @@ function Buttons:columns()
                 ui.button{text = 'Search the island', icon = 'interface/icons/search.svg', justify = 'start', align = 'stretch', onClick = self:pressed('the search bar')},
             }),
         },
-        ui.column{grow = 1, gap = 24,
+        ui.column{grow = 2, gap = 24,
             layout.section('Component "imageButton"', {
-                ui.row{gap = 24,
-                    ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign-hover.png', pressedImage = 'interface/images/sign-pressed.png', scale = 0.5, text = 'Start', onClick = self:pressed('the sign')},
-                    ui.imageButton{image = 'interface/images/sign.png', scale = 0.75, text = 'Big', onClick = self:pressed('the big sign')},
+                ui.row{gap = 24, style = Buttons.signStyle,
+                    ui.imageButton{image = 'interface/images/sign.png', hoverImage = 'interface/images/sign-hover.png', pressedImage = 'interface/images/sign-pressed.png', scale = 0.65, text = 'Start', onClick = self:pressed('the sign')},
+                    ui.imageButton{image = 'interface/images/sign.png', scale = 0.8, text = 'Big', onClick = self:pressed('the big sign')},
                     ui.imageButton{image = 'interface/themes/fantasy/icons/potion.png', scale = 0.75, tint = '#FFB0FFB0', tooltip = 'Tinted, without hover or pressed pictures', onClick = self:pressed('the potion')},
                 },
             }),
-            layout.section('Component "chip"', {
+            layout.section('Components "chip" and "menuButton"', {
                 ui.row{gap = 12,
                     ui.chip{text = 'Wood', selected = true, onChange = self:chip('Wood')},
                     ui.chip{text = 'Stone', onChange = self:chip('Stone')},
@@ -96,8 +101,6 @@ function Buttons:columns()
                         event.gui:set('tag-coast', {visible = true})
                     end},
                 },
-            }),
-            layout.section('Component "menuButton"', {
                 ui.menuButton{id = 'file', text = 'File', icon = 'interface/icons/save.svg', items = {{id = 'save', text = 'Save'}, {id = 'load', text = 'Load'}, {id = 'cloud', text = 'Cloud sync', enabled = false}}, onSelect = function(event)
                     self:report('The menu picked "' .. event.item .. '".')
                 end},

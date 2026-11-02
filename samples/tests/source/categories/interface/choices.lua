@@ -25,27 +25,42 @@ function Choices:enter()
         hint = 'Click or tap a choice, or focus it and press Enter, Space or the south button. In a radio group the arrows move between the options.',
         code = Choices.code,
         focus = 'hints',
-        content = {layout.columns{grow = 0,
+        content = {layout.columns{
             layout.section('Component "checkbox"', {grow = 1, align = 'stretch',
-                ui.checkbox{id = 'hints', text = 'Show hints', checked = true, onChange = self:change('hints')},
-                ui.checkbox{text = 'Invert the camera', onChange = self:change('camera')},
-                ui.checkbox{text = 'Remember the island I visited last between sessions', onChange = self:change('remember')},
-                ui.checkbox{text = 'Disabled', checked = true, enabled = false},
+                ui.column{gap = 0, align = 'stretch',
+                    ui.checkbox{id = 'hints', text = 'Show hints', checked = true, onChange = self:change('hints')},
+                    ui.checkbox{text = 'Invert the camera', onChange = self:change('camera')},
+                    ui.checkbox{text = 'Remember the island I visited last between sessions', onChange = self:change('remember')},
+                    ui.checkbox{text = 'Disabled', checked = true, enabled = false},
+                },
+                ui.spacer{grow = 1},
+                Choices.note('A press flips "checked" and reports "change".'),
             }),
             layout.section('Component "toggle"', {grow = 1, align = 'stretch',
-                ui.toggle{text = 'Music', checked = true, onChange = self:change('music')},
-                ui.toggle{text = 'Vibration', onChange = self:change('vibration')},
-                ui.toggle{text = 'Subtitles in a larger size for the dialogue', onChange = self:change('subtitles')},
-                ui.toggle{text = 'Disabled', enabled = false},
+                ui.column{gap = 0, align = 'stretch',
+                    ui.toggle{text = 'Music', checked = true, onChange = self:change('music')},
+                    ui.toggle{text = 'Vibration', onChange = self:change('vibration')},
+                    ui.toggle{text = 'Subtitles in a larger size for the dialogue', onChange = self:change('subtitles')},
+                    ui.toggle{text = 'Disabled', enabled = false},
+                },
+                ui.spacer{grow = 1},
+                Choices.note('The knob slides across, and "change" reports "checked".'),
             }),
             layout.section('Component "radioGroup"', {grow = 1, align = 'stretch',
                 ui.radioGroup{items = difficulties, selected = 'normal', onChange = self:change('difficulty')},
                 ui.divider{},
                 ui.label{text = 'Horizontal', color = 'textMuted'},
                 ui.radioGroup{items = {{id = 'left', text = 'Left hand'}, {id = 'right', text = 'Right hand'}}, selected = 'right', horizontal = true, onChange = self:change('hand')},
+                ui.spacer{grow = 1},
+                Choices.note('Picking an option reports "change" with its id as "value".'),
             }),
         }},
     }
+end
+
+-- A muted line at the foot of a card that says what its component reports.
+function Choices.note(text)
+    return ui.label{text = text, font = 'caption', color = 'textMuted', align = 'stretch'}
 end
 
 function Choices:change(key)

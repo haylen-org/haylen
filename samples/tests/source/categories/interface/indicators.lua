@@ -28,7 +28,7 @@ local function toneGrid(make)
     for index, tone in ipairs(Indicators.tones) do
         nodes[index] = make(tone:sub(1, 1):upper() .. tone:sub(2), tone)
     end
-    return ui.grid{columns = 3, gap = 10, children = nodes}
+    return ui.grid{columns = 2, gap = 10, children = nodes}
 end
 
 function Indicators:enter()
@@ -52,49 +52,52 @@ function Indicators:ability(name)
 end
 
 -- A picture wider than its box, shown with one fit over a panel that marks the box.
-function Indicators:fit(fit, tint)
+function Indicators:fit(fit)
     return ui.column{gap = 4, align = 'center',
-        ui.stack{width = 150, height = 110, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape.png', fit = fit, tint = tint, align = 'stretch'}},
-        ui.label{text = tint and 'Fit "' .. fit .. '", tinted' or 'Fit "' .. fit .. '"', font = 'caption'},
+        ui.stack{width = 118, height = 90, ui.panel{align = 'stretch'}, ui.image{image = 'interface/images/landscape.png', fit = fit, align = 'stretch'}},
+        ui.label{text = 'Fit "' .. fit .. '"', font = 'caption'},
     }
 end
 
+-- Four columns whose last cards stretch, so every column ends on the same line.
 function Indicators:columns()
     return layout.columns{
-        ui.column{grow = 1, gap = 24,
+        ui.column{grow = 1, gap = 24, align = 'stretch',
             layout.section('Component "badge"', {
                 toneGrid(function(text, tone) return ui.badge{text = text, tone = tone} end),
                 toneGrid(function(text, tone) return ui.badge{text = text, tone = tone, solid = true} end),
             }),
-            layout.section('Components "statusIndicator" and "busyIndicator"', {
+            layout.section('Status and busy indicators', {grow = 1,
                 ui.row{gap = 24, ui.statusIndicator{text = 'Online'}, ui.statusIndicator{text = 'Away', tone = 'warning'}, ui.statusIndicator{text = 'Offline', tone = 'danger'}},
                 ui.row{gap = 32, ui.busyIndicator{}, ui.busyIndicator{size = 64, color = 'success'}, ui.busyIndicator{size = 32, color = 'warning'}},
             }),
         },
-        ui.column{grow = 1, gap = 24,
+        ui.column{grow = 1, gap = 24, align = 'stretch',
             layout.section('Component "circularProgress"', {
-                ui.row{gap = 24,
-                    ui.circularProgress{id = 'ring', size = 96, text = '0%'},
-                    ui.circularProgress{id = 'ring-big', size = 96, thickness = 14, tone = 'success'},
-                    ui.circularProgress{value = 0.6, size = 96, tone = 'danger', text = '3'},
-                    ui.circularProgress{id = 'plain', variant = 'cooldown', image = layout.icon('shield'), size = 96, tone = 'warning'},
+                ui.row{gap = 20,
+                    ui.circularProgress{id = 'ring', size = 80, text = '0%'},
+                    ui.circularProgress{id = 'ring-big', size = 80, thickness = 14, tone = 'success'},
+                    ui.circularProgress{value = 0.6, size = 80, tone = 'danger', text = '3'},
+                    ui.circularProgress{id = 'level', size = 80, thickness = 6, tone = 'warning', text = 'Lv 4'},
                 },
             }),
-            layout.section('Cooldowns', {ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),
+            layout.section('Cooldowns', {grow = 1, ui.row{gap = 32, self:ability('sword'), self:ability('potion'), self:ability('gem')}}),
+        },
+        ui.column{grow = 1, gap = 24, align = 'stretch',
             layout.section('Component "progress"', {
                 ui.progress{id = 'loading', text = 'Loading'},
                 ui.progress{id = 'health', tone = 'success'},
                 ui.progress{value = 0.35, tone = 'warning', text = 'Fuel 35%'},
             }),
-        },
-        ui.column{grow = 1, gap = 24,
-            layout.section('Component "icon"', {
+            layout.section('Component "icon"', {grow = 1,
                 ui.row{gap = 24, ui.icon{image = 'interface/themes/fantasy/icons/coin.png', size = 56}, ui.icon{image = 'interface/themes/fantasy/icons/heart.png', size = 56}, ui.icon{image = 'sprites/vector/bolt.svg', size = 56, color = 'warning'}, ui.icon{image = 'sprites/vector/bolt.svg', size = 56, color = 'accent'}},
             }),
+        },
+        ui.column{grow = 1, gap = 24, align = 'stretch',
             layout.section('Image fits', {
-                ui.row{gap = 12, self:fit('contain'), self:fit('cover'), self:fit('fill', '#FFFFC080')},
+                ui.row{gap = 12, self:fit('contain'), self:fit('cover'), self:fit('fill')},
             }),
-            layout.section('Component "avatar"', {
+            layout.section('Component "avatar"', {grow = 1,
                 ui.row{gap = 16, ui.avatar{name = 'Ana Souza'}, ui.avatar{image = 'interface/images/avatar-ana.png'}, ui.avatar{image = 'interface/images/avatar-leo.png', size = 96}, ui.avatar{name = 'Leo', size = 48}},
             }),
         },
@@ -110,7 +113,7 @@ function Indicators:update(dt)
     gui:set('health', {value = 0.5 + 0.5 * math.cos(self.time), tone = math.cos(self.time) < -0.4 and 'danger' or 'success'})
     gui:set('ring', {value = fill, text = math.floor(fill * 100) .. '%'})
     gui:set('ring-big', {value = 1 - fill})
-    gui:set('plain', {value = fill})
+    gui:set('level', {value = fill})
     for name, left in pairs(self.left) do
         self.left[name] = math.max(0, left - dt)
         gui:set('cooldown-' .. name, {value = self.left[name] / Indicators.cooldowns[name], text = left > 0 and math.ceil(left) or ''})

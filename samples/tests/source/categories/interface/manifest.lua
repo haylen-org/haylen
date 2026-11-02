@@ -26,7 +26,7 @@ return {
         {code = 'GUI-020', title = 'Layouts', description = 'Justify, alignItems, growing within bounds, margins, padding, rows that wrap, grids that fit their columns, stacks and aspect ratios.', module = 'layouts'},
         {code = 'GUI-021', title = 'Recycled lists', description = 'Recycled cells of mixed types in a list with sticky sections, a grid and a shelf, with inserts, moves, drags, cell menus and scrolling.', module = 'recycled-lists'},
         {code = 'GUI-022', title = 'Long lists', description = 'A hundred thousand entries loaded in pages with placeholders, and a number field that scrolls to any entry.', module = 'long-lists'},
-        {code = 'GUI-023', title = 'Toast stacks', description = 'Toasts at every position as lists or decks, a queue past the limit, variants, indicators, actions, an upload and the events of a notice.', module = 'toast-stacks'},
+        {code = 'GUI-023', title = 'Toast stacks', description = 'Toasts at every position as lists or decks, a queue, variants, indicators, actions, an upload and their events.', module = 'toast-stacks'},
         {code = 'GUI-024', title = 'Theme overrides', description = 'Styles that replace the colors, metrics, fonts and surfaces of a subtree, styles that nest, subtrees in other themes and cursors.', module = 'theme-overrides'},
         {code = 'GUI-025', title = 'Node events', description = 'The events every kind reports: mount, unmount, show, hide, hover, press, drag, release and scroll, in a log.', module = 'node-events'},
         {code = 'GUI-026', title = 'UI scale', description = 'The design and physical scale modes and the scale factor, with the size of a control in points on the screen.', module = 'ui-scale'},

@@ -26,6 +26,8 @@ function Pickers:report(name)
     return function(event)
         if name == 'flag' then
             event.gui:set('flag-preview', {tint = event.value})
+        elseif name == 'glass' then
+            event.gui:set('glass-preview', {style = {colors = {panel = event.value}}})
         end
         local value = type(event.value) == 'number' and tostring(event.value) or '"' .. tostring(event.value) .. '"'
         self:set('status', {text = string.format('The %s changed to %s.', name, value)})
@@ -42,23 +44,24 @@ function Pickers:columns()
                 ui.combo{items = regions, placeholder = 'Pick a region', onChange = self:report('region')},
             }),
             layout.section('Component "colorField"', {
-                ui.row{gap = 16, ui.label{text = 'Flag', width = 160}, ui.colorField{value = '#FF2E7D32', alpha = false, grow = 1, onChange = self:report('flag')}},
-                ui.row{gap = 16, ui.label{text = 'Glass', width = 160}, ui.colorField{value = '#804FC3F7', grow = 1, onChange = self:report('glass')}},
-                ui.row{gap = 16, ui.image{id = 'flag-preview', image = 'interface/icons/flag-white.svg', scale = 1.5, tint = '#FF2E7D32'}, ui.label{text = 'The white flag takes the color of the first field as its tint.', color = 'textMuted', grow = 1}},
+                ui.row{gap = 16, ui.label{text = 'Flag', width = 120}, ui.colorField{value = '#FF2E7D32', alpha = false, grow = 1, onChange = self:report('flag')}},
+                ui.row{gap = 16, ui.label{text = 'Glass', width = 120}, ui.colorField{value = '#804FC3F7', grow = 1, onChange = self:report('glass')}},
+                ui.row{gap = 16,
+                    ui.panel{id = 'glass-preview', padding = 10, style = {colors = {panel = '#804FC3F7'}}, ui.image{id = 'flag-preview', image = 'interface/icons/flag-white.svg', scale = 1.4, tint = '#FF2E7D32'}},
+                    ui.label{text = 'The white flag takes the first color, and the glass behind it the second.', color = 'textMuted', grow = 1},
+                },
             }),
         },
-        ui.column{grow = 1, gap = 24,
-            layout.section('Component "numberField"', {
-                ui.settingsRow{label = 'Players', caption = 'From 1 to 8', ui.numberField{value = 2, min = 1, max = 8, width = 320, onChange = self:report('players')}},
-                ui.settingsRow{label = 'Sail area', caption = 'Half steps with one decimal', ui.numberField{value = 12.5, min = 0, max = 40, step = 0.5, decimals = 1, width = 320, onChange = self:report('sail area')}},
-                ui.settingsRow{label = 'Depth', caption = 'A negative minimum types on the text keyboard', ui.numberField{value = -20, min = -200, max = 0, step = 10, width = 320, onChange = self:report('depth')}},
-            }),
-            layout.section('Component "slider"', {
-                ui.formField{label = 'Volume', ui.slider{id = 'volume', value = 0.8, showValue = true, onChange = self:report('volume')}},
-                ui.formField{label = 'Wind in knots, in steps of 10', ui.slider{value = 30, min = 0, max = 100, step = 10, showValue = true, decimals = 0, onChange = self:report('wind')}},
-                ui.formField{label = 'Disabled', ui.slider{value = 0.3, showValue = true, enabled = false}},
-            }),
-        },
+        layout.section('Component "numberField"', {grow = 1,
+            ui.settingsRow{label = 'Players', caption = 'From 1 to 8', ui.numberField{value = 2, min = 1, max = 8, width = 240, onChange = self:report('players')}},
+            ui.settingsRow{label = 'Sail area', caption = 'Half steps with one decimal', ui.numberField{value = 12.5, min = 0, max = 40, step = 0.5, decimals = 1, width = 240, onChange = self:report('sail area')}},
+            ui.settingsRow{label = 'Depth', caption = 'A negative minimum types on the text keyboard', ui.numberField{value = -20, min = -200, max = 0, step = 10, width = 240, onChange = self:report('depth')}},
+        }),
+        layout.section('Component "slider"', {grow = 1,
+            ui.formField{label = 'Wind in knots, in steps of 10', ui.slider{value = 30, min = 0, max = 100, step = 10, showValue = true, decimals = 0, onChange = self:report('wind')}},
+            ui.formField{label = 'Volume', ui.slider{id = 'volume', value = 0.8, showValue = true, onChange = self:report('volume')}},
+            ui.formField{label = 'Disabled', ui.slider{value = 0.3, showValue = true, enabled = false}},
+        }),
     }
 end
 

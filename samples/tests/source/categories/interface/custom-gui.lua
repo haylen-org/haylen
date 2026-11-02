@@ -26,7 +26,7 @@ function CustomGui:init(entry)
     CustomGui.super.init(self, entry)
     self.clicks, self.sound, self.volume = 0, true, 0.6
     self.name = {text = '', caret = 0, placeholder = 'Name of the ship'}
-    self.places = {scroll = 0}
+    self.places = {scroll = 0, selected = 3}
 end
 
 function CustomGui:enter()
@@ -61,7 +61,10 @@ function CustomGui:draw(area)
         self.clicks, self.volume, self.name.text, self.name.caret = 0, 0.6, '', 0
     end
     self.sound = gui:checkbox('sound', {left, top + 110, 400, 56}, 'Sound effects', self.sound)
-    self.volume = gui:slider('volume', {left + 10, top + 200, 540, 56}, self.volume, 0, 1)
+    local _, textHeight = graphics2d.measureText(nil, 'Volume', {size = Immediate.size})
+    gui:label('Volume', left, top + 228 - textHeight / 2)
+    self.volume = gui:slider('volume', {left + 130, top + 200, 330, 56}, self.volume, 0, 1)
+    gui:label(string.format('%d%%', math.floor(self.volume * 100 + 0.5)), left + 490, top + 228 - textHeight / 2, Immediate.colors.muted)
     gui:textField('name', {left, top + 290, 560, 72}, self.name)
     local ship = self.name.text == '' and 'a ship without a name' or 'the ' .. self.name.text
     local times = self.clicks == 1 and 'once' or self.clicks .. ' times'

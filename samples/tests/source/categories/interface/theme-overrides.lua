@@ -20,6 +20,8 @@ ThemeOverrides.accents = {
     {id = 'violet', text = 'Violet', accent = '#FF8A5CE0', hover = '#FFA27AF0', strong = '#FF6E44C0'},
 }
 ThemeOverrides.cursors = {'pointingHand', 'iBeam', 'crosshair', 'resizeHorizontal', 'resizeAll', 'notAllowed'}
+-- The short names the cursor buttons show.
+ThemeOverrides.cursorNames = {pointingHand = 'Hand', iBeam = 'Text', crosshair = 'Crosshair', resizeHorizontal = 'Resize', resizeAll = 'Move', notAllowed = 'Blocked'}
 -- The primary button of the fantasy atlas, which the painted button takes in place of the surfaces of its theme.
 ThemeOverrides.painted = {image = 'interface/themes/fantasy/atlas.png', source = {0, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6, filter = 'linear'}
 ThemeOverrides.paintedHover = {image = 'interface/themes/fantasy/atlas.png', source = {0, 392, 360, 120}, slice = {44, 56, 40, 56}, scale = 0.6, filter = 'linear', tint = '#FFE4EEFF'}
@@ -42,6 +44,7 @@ function ThemeOverrides:enter()
     self:apply()
 end
 
+-- Three columns that fit the region: the styled row, the nested styles with the painted surfaces and the cursors, and the subtrees in other themes.
 function ThemeOverrides:columns()
     local accents = {}
     for index, accent in ipairs(ThemeOverrides.accents) do
@@ -49,63 +52,60 @@ function ThemeOverrides:columns()
     end
     local cursors = {}
     for index, name in ipairs(ThemeOverrides.cursors) do
-        cursors[index] = ui.button{text = name:sub(1, 1):upper() .. name:sub(2), cursor = name, grow = 1}
+        cursors[index] = ui.button{text = ThemeOverrides.cursorNames[name], cursor = name, grow = 1}
     end
     return layout.columns{
-        ui.column{grow = 1, gap = 24,
-            layout.section('A style on a row', {
-                ui.formField{label = 'Corner radius', ui.slider{id = 'radius', value = self.radius, min = 0, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event)
-                    self.radius = event.value
-                    self:apply()
-                end}},
-                ui.formField{label = 'Accent', ui.segmentedControl{id = 'accent', items = accents, selected = self.accent.id, onChange = function(event)
-                    for _, accent in ipairs(ThemeOverrides.accents) do
-                        if accent.id == event.value then
-                            self.accent = accent
-                        end
+        layout.section('A style on a row', {grow = 1, align = 'stretch',
+            ui.formField{label = 'Corner radius', ui.slider{id = 'radius', value = self.radius, min = 0, max = 40, step = 2, showValue = true, decimals = 0, onChange = function(event)
+                self.radius = event.value
+                self:apply()
+            end}},
+            ui.formField{label = 'Accent', ui.segmentedControl{id = 'accent', items = accents, selected = self.accent.id, onChange = function(event)
+                for _, accent in ipairs(ThemeOverrides.accents) do
+                    if accent.id == event.value then
+                        self.accent = accent
                     end
-                    self:apply()
-                end}},
-                ui.row{wrap = true, gap = 12, ui.label{text = 'Theme', width = 110, color = 'textMuted'}, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}},
-                ui.row{id = 'styled', gap = 12, wrap = true, lineGap = 12,
-                    ui.label{text = 'Style', width = 110, color = 'textMuted'},
-                    ui.button{text = 'Default'},
-                    ui.button{text = 'Primary', variant = 'primary'},
-                    ui.toggle{text = 'On', checked = true},
-                    ui.checkbox{text = 'Checked', checked = true},
-                    ui.button{text = 'Disabled', variant = 'primary', enabled = false},
-                },
-            }),
-            layout.section('Styles that nest', {
-                ui.column{gap = 12, style = {fonts = {button = {size = 29, bold = true}}, metrics = {controlHeight = 84}},
+                end
+                self:apply()
+            end}},
+            ui.row{wrap = true, gap = 12, ui.label{text = 'Theme', width = 90, color = 'textMuted'}, ui.button{text = 'Default'}, ui.button{text = 'Primary', variant = 'primary'}},
+            ui.row{id = 'styled', gap = 12, wrap = true, lineGap = 12,
+                ui.label{text = 'Style', width = 90, color = 'textMuted'},
+                ui.button{text = 'Default'},
+                ui.button{text = 'Primary', variant = 'primary'},
+                ui.toggle{text = 'On', checked = true},
+                ui.checkbox{text = 'Checked', checked = true},
+                ui.button{text = 'Disabled', enabled = false},
+            },
+        }),
+        ui.column{grow = 1, gap = 24, align = 'stretch',
+            layout.section('Styles that nest, and surfaces', {
+                ui.column{gap = 12, style = {fonts = {button = {size = 29, bold = true}}, metrics = {controlHeight = 80}},
                     ui.row{gap = 12, ui.button{text = 'Large and bold'}, ui.progress{value = 0.6, grow = 1, tone = 'success'}},
                     ui.row{gap = 12, style = {colors = {success = '#FFF2B23A'}, metrics = {controlHeight = 56, progressHeight = 24}},
                         ui.button{text = 'Short and bold'},
                         ui.progress{value = 0.6, grow = 1, tone = 'success'},
                     },
                 },
-            }),
-            layout.section('Surfaces from a style', {
                 ui.row{gap = 12,
                     ui.button{text = 'Painted', style = {surfaces = {button = ThemeOverrides.painted, buttonHover = ThemeOverrides.paintedHover, buttonPressed = ThemeOverrides.paintedPressed}}},
-                    ui.card{theme = 'fantasy', style = {surfaces = {card = false}}, ui.label{text = 'Fantasy with a flat card'}},
+                    ui.card{theme = 'fantasy', grow = 1, padding = {12, 16}, style = {surfaces = {card = false}}, ui.label{text = 'Fantasy with a flat card'}},
                 },
             }),
+            layout.section('The cursor of each node', {grow = 1, ui.grid{columns = 3, gap = 12, children = cursors}}),
         },
-        ui.column{grow = 1, gap = 24,
-            layout.section('A subtree in the light theme', {self:sampler('light')}),
-            layout.section('A subtree in the fantasy theme', {self:sampler('fantasy')}),
-            layout.section('The cursor of each node', {ui.grid{columns = 3, gap = 12, children = cursors}}),
+        ui.column{grow = 1, gap = 24, align = 'stretch',
+            layout.section('A subtree in the light theme', {grow = 1, self:sampler('light')}),
+            layout.section('A subtree in the fantasy theme', {grow = 1, self:sampler('fantasy')}),
         },
     }
 end
 
--- A card in another theme with controls in their normal, selected, focused and disabled states.
+-- A card in another theme with controls in their normal, selected and disabled states.
 function ThemeOverrides:sampler(theme)
-    return ui.card{theme = theme, gap = 12,
-        ui.row{wrap = true, gap = 12, ui.button{text = 'Button'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Off', enabled = false}},
-        ui.row{gap = 24, ui.checkbox{text = 'Check', checked = true}, ui.toggle{text = 'Toggle', checked = true}, ui.toggle{text = 'Off', enabled = false}},
-        ui.row{gap = 12, ui.textField{placeholder = 'A field', grow = 1}, ui.chip{text = 'Chip', selected = true}, ui.badge{text = '7', tone = 'danger', solid = true}},
+    return ui.card{theme = theme, gap = 12, padding = 20,
+        ui.row{wrap = true, gap = 12, ui.button{text = 'Button'}, ui.button{text = 'Primary', variant = 'primary'}, ui.button{text = 'Off', enabled = false}, ui.chip{text = 'Chip', selected = true}, ui.badge{text = '7', tone = 'danger', solid = true}},
+        ui.row{wrap = true, gap = 24, ui.checkbox{text = 'Check', checked = true}, ui.toggle{text = 'Toggle', checked = true}, ui.toggle{text = 'Off', enabled = false}},
     }
 end
 
