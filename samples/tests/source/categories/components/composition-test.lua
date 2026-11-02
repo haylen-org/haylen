@@ -53,6 +53,7 @@ function CompositionTest:enter()
     self.gem = Composition.entity('Gem', gems.texture, 0, 0, 1, gems:source('gem-blue.png'))
     self.gem:add(Composition.orbit({center = self.knight, radius = 170, speed = 0.35})):add(Composition.bob({height = 10, speed = 2})):add(Composition.health({maximum = 20, width = 80, onHit = onHit}))
     self.entities = {self.bunny, self.knight, self.rock, self.gem}
+    self.drawOrder = {self.bunny, self.knight, self.rock, self.gem}
 
     self:frame{
         hint = 'Move the cursor to lead the knight, and click, tap or press E or the south button on an entity to hit it. The switches give the bunny behaviors of the others while it runs.',
@@ -172,11 +173,17 @@ function CompositionTest:draw(area)
             end
         end
     end
-    for _, entity in ipairs(self.entities) do
+    table.sort(self.drawOrder, CompositionTest.isFarther)
+    for _, entity in ipairs(self.drawOrder) do
         entity:draw()
         ComponentTest.name(entity.name, entity.x, entity.y - entity.lift + 10)
     end
     self.labels:draw()
+end
+
+-- The entities stand on a meadow seen from above, so the one whose feet stand higher is farther away and draws first, and the gem passes behind the knight on the far side of its orbit.
+function CompositionTest.isFarther(a, b)
+    return a.y < b.y
 end
 
 return CompositionTest
