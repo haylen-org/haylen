@@ -56,14 +56,14 @@ abstract class VarnSourceTask : DefaultTask() {
     abstract val source: RegularFileProperty
 
     @get:Input
-    abstract val path: Property<String>
+    abstract val destination: Property<String>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
     @TaskAction
     fun copy() {
-        val target = outputDir.file(path.get()).get().asFile
+        val target = outputDir.file(destination.get()).get().asFile
         target.parentFile.mkdirs()
         source.get().asFile.copyTo(target, overwrite = true)
     }
@@ -71,12 +71,12 @@ abstract class VarnSourceTask : DefaultTask() {
 
 val varnTransport = tasks.register<VarnSourceTask>("copyVarnTransport") {
     source.set(File(varnSourceDir, "android/varn/src/main/kotlin/com/varn/VarnHttp.kt"))
-    path.set("com/varn/VarnHttp.kt")
+    destination.set("com/varn/VarnHttp.kt")
 }
 
 val varnDataView = tasks.register<VarnSourceTask>("copyVarnDataView") {
     source.set(File(varnSourceDir, "android/varn/src/main/java/com/varn/VarnDataView.java"))
-    path.set("com/varn/VarnDataView.java")
+    destination.set("com/varn/VarnDataView.java")
 }
 
 androidComponents {

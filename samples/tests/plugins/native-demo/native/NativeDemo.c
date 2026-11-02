@@ -1139,7 +1139,7 @@ static void native_demo_app_failed(void* user, const char* reportJson) {
 
 // Registers the methods of the plugin, its screens and the error handler, declares the library the native part of `native-demo` and sends `loaded` retained, so the first listener of the app receives it however late it connects.
 NATIVE_DEMO_EXPORT int native_demo_haylen_init(const HaylenNativeApi* api) {
-    static const char* const methods[] = {"echo", "echoBytes", "generatedImage", "compute", "fail", "ticks", "startVideo", "stopVideo", "startTone", "stopTone", "burst", "config", "start", "showBanner", "setBannerVisible", "removeBanner", "showScreen", "pickFile", "products", "restorePurchases", "currentUser", "signOut", "openApp", "startCamera", "stopCamera", "takePhoto", "startMicrophone", "stopMicrophone", "location", "share", "showMap", "removeMap"};
+    static const char* const methods[] = {"echo", "echoBytes", "generatedImage", "captureFrame", "checksumView", "compute", "fail", "ticks", "startVideo", "stopVideo", "startTone", "stopTone", "burst", "config", "start", "showBanner", "setBannerVisible", "removeBanner", "showScreen", "pickFile", "products", "restorePurchases", "currentUser", "signOut", "openApp", "startCamera", "stopCamera", "takePhoto", "startMicrophone", "stopMicrophone", "location", "share", "showMap", "removeMap"};
     if (api->version != HAYLEN_NATIVE_API_VERSION) {
         return 1;
     }
