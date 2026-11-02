@@ -2193,7 +2193,7 @@ Plataformas e drivers:
 
 Integração e entrega:
 
-- [ ] Merge do `rhi` no `main` e push, com a CI inteira verde: os jobs de desktop, `gpu` (lavapipe, llvmpipe, WARP e Metal), `web-gpu`, `android-gpu`, `macos-intel`, o port e todos os que já existiam. Corrigir de verdade cada job que falhar.
+- [x] Merge do `rhi` no `main` e push, com a CI inteira verde: os jobs de desktop, `gpu` (lavapipe, llvmpipe, WARP e Metal), `web-gpu`, `android-gpu`, `macos-intel`, o port e todos os que já existiam. Corrigir de verdade cada job que falhar. Feito: o `rhi` entrou no `main` no commit `0cb5115d`, e a CI passou inteira no `3acdef8d`, com todos os jobs.
 - [x] Mandar para o SDL3 as issues dos patches que a Haylen aplica (a moldura da view do UIKit, as teclas do UIKit, as teclas da página web e a composição de janelas transparentes no Windows), em Markdown, para o dono cadastrar. Feito, em `haylen-review/handoff/`: `sdl-issue-uikit-view-frame.md`, `sdl-issue-uikit-presses.md` (as teclas do controle remoto somem com um teclado conectado e o SDL não liga sem o subsistema de joystick), `sdl-issue-uikit-tvos-mouse.md` e `sdl-issue-windows-composition.md` (falta uma propriedade para criar a janela sem a superfície de redirecionamento). O `sdl-web-page-keys.patch` é uma necessidade da Haylen, já que o SDL tem a dica `SDL_HINT_EMSCRIPTEN_KEYBOARD_ELEMENT` para escolher o elemento das teclas, e não virou issue.
 
 - [x] Dois testes de OpenGL ES falhavam no emulador x86_64 da CI (imagem `android-37.0;default;x86_64`, renderer "Android Emulator OpenGL ES Translator (Google SwiftShader), OpenGL ES 3.0 SwiftShader 4.0.0.1"), e passavam no emulador ARM do macOS: `GpuTextureTest.SamplesArraysVolumesAndCubes` e `GpuPassTest.DrawsIntoMipLevelsAndLayers`. Feito, reproduzido numa VM `Standard_D4ds_v4` da Azure com KVM aninhado e sondas em C++ com EGL rodadas pelo `adb shell`. O upload das faces do cubo estava certo: o tradutor compila um array constante indexado por um valor calculado como a leitura de um elemento fixo, então o shader do teste calcula a direção da face sem array, e o `docs/graphics/rhi.md` avisa os autores de shaders. Nas camadas, `glClear`, `glClearBufferfv`, `glReadPixels` e `glBlitFramebuffer` desse tradutor só alcançam a primeira camada de um array ou de um volume, enquanto os desenhos alcançam a camada certa, então a entrada `ClearLayersByDrawing` de `gpu::DriverIssues` faz o dispositivo OpenGL limpar os anexos de camadas posteriores desenhando a cor com `opengl::LayerClear`, com testes em `LayerClearTest` e `DriverIssuesTest`. A suíte de GPU inteira de OpenGL ES passou no emulador x86_64 sem falhas, e a de Vulkan e OpenGL ES passou no emulador ARM do macOS. O Vulkan do emulador x86_64 não rodou na VM, porque o emulador desliga o recurso `Vulkan` nesse host com KVM aninhado da Intel e, forçado, o driver gfxstream aborta ao alocar memória coerente, então o job `android-gpu` da CI confere esse caso.
@@ -2202,6 +2202,96 @@ Revisão final, depois do merge:
 
 - [ ] Retomar a revisão visual de todos os testes do projeto de testes, dos jogos, dos apps e das amostras de estresse, agora desenhados pela RHI nova, nas capturas da web e de cada plataforma, com as correções das sete worktrees da revisão levadas para cima do `main` novo, até nenhum teste ter defeito.
 - [ ] Revisar esta lista inteira e a seção AY de novo, item por item, conferindo que cada pedido está feito, testado e documentado, e só então marcar.
+
+#### BA. Pedidos de novembro: texto, teclado, samples, ferramenta, templates, plugins, repositórios e revisão geral
+
+Pedido do dono de 02/11/2026: continuar de onde parou (a revisão visual dos 452 testes, dos jogos e dos apps pela RHI nova, com as sete worktrees pausadas) e resolver todos os pontos abaixo, cada um implementado, testado nas plataformas que afeta e documentado, sem gambiarras, sem caminhos de reserva, sem código legado ou compatível com versões anteriores, com código legível (uma linha vazia entre blocos de responsabilidades diferentes, nada de `if` grudado em `if`), comentários só onde fazem falta, código e comentários em inglês e frases sem ponto e vírgula. Fazer só o que faz sentido, nunca para mostrar trabalho. Máquinas da AWS e da Azure podem ser usadas pelas CLIs, numa sessão só por rodada, com tudo apagado e conferido no fim. As ideias de outras engines (a pasta de engines do dono) servem só de consulta e nunca são citadas no repositório.
+
+Texto e teclado:
+
+- [ ] Teclas duplicadas ao digitar num campo no desktop do macOS: digitar "oi" vira "ooii". Achar a causa (o evento de tecla e o de texto do SDL entregues os dois como caractere, o campo nativo escondido que repete o texto, ou duas fontes de texto ligadas ao mesmo tempo), corrigir na engine e provar com um teste que digita pelo caminho real dos eventos e confere o texto do campo, nas outras plataformas também.
+- [ ] A digitação para de funcionar: quando aparece a caixa de sugestão do sistema (a sugestão em linha do macOS) e o usuário apaga com Backspace e volta a digitar, o cursor pisca mas nada entra, nem o Backspace, até clicar no campo de novo. Tirar a sugestão em linha, a correção automática e as previsões do campo nativo escondido em todas as plataformas (como nos apps do sistema, que não mostram essa caixa nos campos de jogo), e corrigir a perda do texto depois de uma composição ou sugestão, com testes da composição, da sugestão aceita, da sugestão recusada e do Backspace logo depois.
+- [ ] O balão de acentos do macOS (segurar uma letra e aparecer á ã à â) surge enquanto se joga. Ele só pode existir quando um campo de texto edita: fora do campo a engine não liga a entrada de texto do sistema, e dentro do campo o comportamento é o do sistema. Provar no player do macOS segurando uma tecla de letra com e sem campo focado.
+- [ ] Entrada de texto revisada a fundo em todos os sistemas (macOS, Windows, Linux, iOS, iPadOS, Mac Catalyst, tvOS, Android e web): digitar, apagar, segurar Backspace, composição de métodos de entrada, colar, selecionar, trocar de campo, perder e ganhar o foco da janela, abrir e fechar o teclado virtual. Consultar como outras engines resolvem o campo de edição (pasta de engines do dono) só como ideia, sem citar.
+- [ ] Teclado do Android que abre e fecha logo ao tocar no campo: achar a causa (foco que se perde no `SurfaceView`, o toque que também conta como toque fora do campo, a view de texto escondida que perde o foco) e corrigir, conferido no emulador `emulator-5554` com o teclado virtual digitando de verdade.
+- [ ] Tela com rolagem que vibra violentamente no iOS assim que o teclado aparece para digitar. Achar a causa (o ajuste da área segura ou do teclado que alterna a cada frame, a rolagem que segue o campo e o campo que segue a rolagem) e corrigir, conferido no simulador e no iPhone, e no Android e no iPad, onde pode acontecer igual.
+- [ ] Simulação de mouse pelo toque (`input.touchAsMouse`) ligada impedia arrastar uma lista no celular. Revisar: arrastar sempre rola a área com o dedo, com ou sem a simulação de mouse, e a simulação só gera os eventos de mouse para o app, sem tirar o gesto da UI. Teste do caso e conferência no simulador e no emulador.
+
+Rotação e apps:
+
+- [ ] Ao girar o aparelho, o app esticava tudo em vez de refazer o layout para a outra orientação (app de exemplo do dono, `/Users/paulo/Downloads/nexo-haylen`, com `orientation: any` e `design.scaling: expand`). A troca de orientação muda a resolução de design e a área segura, e a UI se arruma de novo, como num app nativo. Conferir que os campos mantêm o texto, o foco e o teclado depois de girar, nos simuladores de iPhone e iPad e no emulador Android, com o projeto de testes, os apps de exemplo e o app do dono.
+- [ ] Barra de status preta no Android com `window.statusBar` e `statusBarColor`: o app desenha por baixo da barra e a engine pinta a cor pedida atrás dela. Corrigir e conferir no emulador com as cores clara e escura.
+- [ ] Apps que piscam muito (o app do dono troca o conteúdo da tela a cada mudança). Conferir se a engine causa algum quadro vazio ao trocar componentes de uma GUI (um quadro sem a árvore nova, o layout de um quadro atrasado, a fonte que ainda não carregou), corrigir o que for da engine e escrever no guia de UI a forma certa de montar telas que mudam (atualizar o estado dos componentes em vez de recriar a GUI inteira), com a orientação para o app do dono.
+- [ ] Fechar o simulador à força para o app no Xcode em `return haylen_main(argc, argv);` com `SIGTERM`. Conferir se é só o depurador parando no sinal que o sistema manda ao matar o processo ou se a engine trata mal o fim do processo, e corrigir o que for da engine (por exemplo, terminar de forma limpa ao receber `SIGTERM`), com a explicação no guia da Apple.
+
+Desenho e algoritmos:
+
+- [ ] Desenho por caminhos (path) para formas complexas: mover, linha, curva quadrática, curva cúbica, arco, fechar, preencher com regra par-ímpar ou não nula, contorno com junções e pontas, traço tracejado, tudo com a borda suave de um pixel da regra das curvas, em C++ e Lua, com testes, referência, guia, benchmark e um teste do projeto de testes. Conferir que as primitivas (linhas, polilinhas, retângulos arredondados, círculos, anéis, arcos, polígonos, setas, malhas) cobrem tudo o que um desenhista de formas de uma engine madura cobre, sem citar nenhuma.
+- [ ] Algoritmo de distribuição de entidades num mapa: colocar X árvores, Y pedras e outros, cada uma com a forma que ocupa de verdade (retângulo, círculo, polígono) em vez do tamanho do sprite, com distância mínima entre elas e de áreas proibidas, ao acaso com semente, e quando não couber tudo colocar o que der e devolver quantas de cada tipo ficaram de fora. Em `procedural2d`, com Lua, testes, referência, guia e um teste do projeto de testes.
+
+Testes do projeto de testes apontados pelo dono:
+
+- [ ] Faixa preta atrás da vila do teste de dia e noite (`LIT-010` e `LIT-013`): o céu não cobre a região entre o céu e as colinas.
+- [ ] `NSL-003`: a borda de madeira do nine-slice aparece cortada e montada com emendas de cor e encaixe diferentes em todas as escalas. Achar se é a imagem ou o código (margens declaradas, filtro, mipmaps, sangria entre as fatias) e corrigir.
+- [ ] `NSL-004`: defeitos nas barras, no switch e na borda arredondada que fica preta. Corrigir a imagem e o código da UI com temas de nine-slice.
+- [ ] `PRT-008`: o centro da magia fica acima do cursor em vez de seguir o mouse.
+- [ ] `SHD-008`: erro "The sampler slot 0 of the program is empty." ao escolher "Neon trail", "Laser beam", "Electric arc" e outros. Corrigir na engine ou no teste, e garantir que todo efeito da lista rode sem erro, com um teste que passe por todos.
+- [ ] `AUD-001`: as linhas do gráfico tremem enquanto são desenhadas, sobretudo nas pontas e nas bordas, e o retângulo do fundo mostra uma linha e depois uma borda. Revisar o traço da polilinha que cresce (as pontas, a junção e a suavização estáveis de um quadro para o outro) e o fundo.
+- [ ] `CMP-004`: a gema que gira em volta do cavaleiro não tem ordenação por Y e fica por cima dele mesmo atrás.
+- [ ] `EVT-005`: a quantidade de moedas continua aparecendo na tela de carregamento de "Push a scene that loads".
+- [ ] Teste de física de dois mundos (`two-worlds.lua`): erro "attempt to index a nil value (field 'data')" em `TwoWorlds:pop` depois de atirar e o corpo girar no outro mundo. Corrigir a causa (corpo sem `data` criado no outro mundo) e conferir a API de `data` dos corpos.
+- [ ] `TLD-001`: sprites cortados no mapa de orientações. Achar o motivo (objetos fora do retângulo do mapa cortados pela região do teste, ou o recorte errado de tiles e objetos) e corrigir.
+- [ ] `TLD-008`: os colisores não batem com a imagem (o lago, o tronco e as pedras). Corrigir a leitura das formas do Tiled ou o desenho do teste.
+- [ ] `TLD-015`: o slime fica atrás do chão.
+- [ ] Sombra nas pontas de toda lista: o `scrollFade` só pode aparecer na borda onde o conteúdo continua, nunca numa lista parada no começo ou que cabe inteira. Conferir em todas as listas do projeto de testes e dos apps, corrigir o que estiver errado e explicar ao dono quando ele aparece.
+
+Revisão pendente:
+
+- [ ] Levar para o `main` as correções das sete worktrees pausadas da revisão (`agent-a048f0fbe2d1d4e2c`, `agent-a59b49949c18a46f0`, `agent-a6c7ddfd87caa336f`, `agent-a692f931afaad4a75`, `agent-a38a2aee9235fd7a3`, `agent-a8de4351b9812abc6` e `agent-ab23669eaf4bc87f9`), adaptadas à RHI nova, cada uma terminada, testada e commitada em blocos.
+- [ ] Revisão visual dos 452 testes, dos jogos, dos apps e das amostras de estresse pela RHI nova, na web e nas plataformas, até nenhum ter defeito.
+
+Ferramenta `haylen.py`:
+
+- [ ] A saída sublinha coisas demais. Sublinhado só para URLs que o terminal abre, e caminhos sem sublinhado, com as cores de expressões reservadas mais calmas, numa saída limpa e amigável em todos os comandos.
+- [ ] A saída do `run` depois de lançar o app fica embolada. Organizar como as ferramentas de apps móveis maduras: os passos em linhas curtas, e depois que o app roda um bloco com as teclas disponíveis (recarregar, reiniciar, abrir o console do desenvolvedor, limpar, sair, ajuda), uma por linha, com o app, o aparelho e a configuração.
+- [ ] Listar os aparelhos como as ferramentas de apps móveis fazem (`haylen devices`), com nome, identificador, plataforma, versão do sistema e se é simulador, emulador ou aparelho, de todas as plataformas da máquina, e mensagens do `--device` que mandam usar esse comando.
+- [ ] Depois do deploy no Android não abrir o logcat cru: mostrar o log do app filtrado e as mesmas teclas do `run` das outras plataformas (recarregar, reiniciar e as outras).
+- [ ] Comandos que lidam com empresas, como o Steam, viram subcomandos do grupo do que fazem (por exemplo `haylen distribution steam`), e a lista inteira de comandos fica consistente, com os nomes que o mercado usa, subcomandos agrupados, ajuda clara, documentação e testes no `tools/test_haylen.py`.
+- [ ] Simulador do iOS que recusava o `Haylen.xcframework` do app do dono como "unsigned" e "no library for this platform was found" em `platform/apple/haylen/Haylen.xcframework`. Conferir que o `prepare` e o `run` sempre dão o framework assinado e com as fatias do destino (o simulador também), corrigir e provar com o app do dono e um app novo.
+
+Web:
+
+- [ ] Carregamento da web que mostra só "Loading...": uma barra de progresso minimalista com a porcentagem e o logo, centralizada em qualquer navegador, fácil de o desenvolvedor mudar no próprio projeto. Validar as mudanças recentes do dono (`loader.css`, as cores pela luminância do fundo e o indicador próprio) quanto à arquitetura e à facilidade de personalizar, e manter ou refazer o que for preciso.
+- [ ] "Copy Report" na tela de erro da web diz que copiou mas não copia, e clicar ou apertar R deixa a página toda branca. Corrigir a cópia (com a área de transferência do navegador e o retorno certo quando ela é recusada) e o reinício, com teste no Chrome headless.
+
+Bridge e plugins:
+
+- [ ] Transferir ponteiros entre as plataformas pela bridge: um `DataView` com ponteiro e tamanho dentro do JSON, para dados grandes em tempo real (como a imagem da câmera) sem copiar os bytes, entre C++, Lua (Varn), Swift e Objective-C, Kotlin e Java (buffers diretos) e JavaScript (memória do WebAssembly), com dono e tempo de vida claros, testes em cada plataforma, a demo do plugin do projeto de testes e a documentação.
+- [ ] O template de projeto Lua e o C++ 100% prontos e perfeitos: criar, rodar e empacotar em todas as plataformas a partir de `haylen new`, revisado arquivo por arquivo.
+- [ ] Adicionar plugins é fácil e sem limites, qualquer que seja a complexidade: os projetos do Xcode, do Visual Studio (CMake) e do Android Studio nunca impedem o desenvolvedor de criar ou adicionar plugins, com dependências, recursos, extensões e código próprio. Revisar o fluxo inteiro de `plugin new` e `plugin add` em cada plataforma e corrigir o que limitar.
+
+Repositórios irmãos:
+
+- [ ] `haylen-shader-compiler` 100% perfeito e funcional, com a release nomeada só pela versão (por exemplo `1.0.0`), nunca por um texto.
+- [ ] Repositório do runner com o nome `haylen-runner` (hoje `haylen-org/runner`), que segue o padrão de `haylen-shader-compiler`. O runner é a última etapa: depois de tudo corrigido e testado, ele vai para as lojas da Apple e do Google como o player de qualquer projeto pelo endereço do zip, e precisa estar perfeito e funcionando.
+- [ ] O `README.md` de cada repositório segue o padrão do Haylen, com o título do projeto ("Haylen Shader Compiler", "Haylen Runner"), e cada repositório tem o About e os tópicos (keywords) no GitHub.
+- [ ] Cada repositório tem o seu `AGENTS.md` completo: descrição, organização, o que pode e o que não pode, arquitetura, padrão de código, comandos e capacidades, sempre como as coisas estão agora, sem histórico.
+- [ ] Nenhum repositório cita que se baseou num projeto A ou B.
+
+Engines de consulta:
+
+- [ ] Ler as atualizações recentes dos repositórios da pasta de engines do dono e trazer para a Haylen o que fizer sentido, sem citar a origem.
+
+Consoles e ports:
+
+- [ ] Testar o port do Xbox no Windows em modo de desenvolvimento, se der sem o kit, e ampliar `docs/platform/ports.md` com o passo a passo para PlayStation 4 e 5, Nintendo Switch e outras plataformas: o que o port precisa trazer, como se consegue o acesso ao SDK, como se organiza a pasta do port e a CI privada.
+
+Código e revisão geral:
+
+- [ ] Limpeza de legibilidade em todos os arquivos da engine: blocos de responsabilidades diferentes separados por uma linha vazia, nada embolado, funções com começo, meio e fim claros, comentários só onde fazem falta, sem mudar comportamento.
+- [ ] Revisão do projeto inteiro em busca de bugs, código legado, código sem uso, erros, condições de corrida e falhas que derrubam o app, corrigindo só o que de fato precisa, com teste de regressão para cada correção.
+- [ ] O `AGENTS.md` com tudo o que for relevante do projeto que mudar nesta rodada.
+- [ ] Revisar este grupo inteiro no fim, item por item, conferindo que cada pedido está feito, testado e documentado.
 
 #### AT. Documentação
 
