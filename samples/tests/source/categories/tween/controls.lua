@@ -88,8 +88,10 @@ end
 
 function Controls:update(dt)
     Controls.super.update(self, dt)
+    -- The slider follows the progress whenever it changes, so it shows the end once the tween completes.
     local handle = self.handle
-    if handle.playing then
+    if handle.progress ~= self.shownProgress then
+        self.shownProgress = handle.progress
         self:set('seek', {value = handle.progress})
     end
     local current = self:current()
@@ -105,20 +107,24 @@ function Controls:update(dt)
     self:set('calls', {text = string.format('Calls of "onStart" %d and "onUpdate" %d\nCalls of "onComplete" %d and "onKill" %d', calls.start, calls.update, calls.complete, calls.kill)})
 end
 
+-- A thick track that fills with the progress, its marks right under it, and the box that the tween moves, turns and colors.
 function Controls:draw(area)
-    local left, right, y = 140, area.width - 140, area.height / 2
-    graphics2d.drawShape({left - 16, y - 8, right - left + 32, 16}, {radius = 8, color = TweenTest.groove, borderWidth = 2, borderColor = TweenTest.grooveEdge})
+    local left, right, y = 160, area.width - 160, area.height / 2
+    local progress = self.handle.progress
+    graphics2d.drawShape({left - 12, y - 12, right - left + 24, 24}, {radius = 12, color = TweenTest.groove, borderWidth = 2, borderColor = TweenTest.grooveEdge})
+    graphics2d.drawShape({left - 12, y - 12, (right - left) * progress + 24, 24}, {radius = 12, color = m.color(Test.accent):withAlpha(0.7), layer = 1})
     for _, mark in ipairs({0, 0.5, 1}) do
         local x = left + (right - left) * mark
-        graphics2d.drawShape({x - 2, y + 80, 4, 14}, {radius = 2, color = TweenTest.tick})
-        graphics2d.drawText(nil, string.format('Progress %g', mark), x, y + 100, {size = 18, color = Test.muted, anchor = {0.5, 0}})
+        graphics2d.drawShape({x - 2, y + 24, 4, 14}, {radius = 2, color = TweenTest.tick})
+        graphics2d.drawText(nil, string.format('Progress %g', mark), x, y + 44, {size = 22, color = Test.muted, anchor = {0.5, 0}})
     end
     local x = left + (right - left) * self.box.x / 1000
     local alpha = self.handle.alive and 1 or 0.35
-    graphics2d.drawShape({x - 60, y - 60, 120, 120}, {radius = 26, rotation = self.box.angle, color = self.box.color:withAlpha(alpha), borderWidth = 5, borderColor = m.color('#FF1E1B33'):withAlpha(alpha), layer = 1})
-    graphics2d.draw(self.star, x, y, {width = 72, height = 72, rotation = self.box.angle, color = m.color(1, 1, 1, alpha), layer = 2})
+    graphics2d.drawShape({x - 70, y - 64, 140, 140}, {radius = 30, rotation = self.box.angle, color = m.color(0, 0, 0, 0.3 * alpha), softness = 18, layer = 1})
+    graphics2d.drawShape({x - 70, y - 70, 140, 140}, {radius = 30, rotation = self.box.angle, color = self.box.color:withAlpha(alpha), borderWidth = 5, borderColor = m.color('#FF1E1B33'):withAlpha(alpha), layer = 2})
+    graphics2d.draw(self.star, x, y, {width = 84, height = 84, rotation = self.box.angle, color = m.color(1, 1, 1, alpha), layer = 3})
     if not self.handle.alive then
-        graphics2d.drawText(nil, 'Killed', x, y - 110, {size = 34, color = Test.red, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, 'Killed', x, y - 120, {size = 34, color = Test.red, anchor = {0.5, 0.5}})
     end
 end
 

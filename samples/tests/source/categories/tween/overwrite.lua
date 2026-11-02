@@ -15,20 +15,21 @@ local Overwrite = haylen.class('Overwrite', TweenTest)
 
 local kTrail = 24
 local kCode = [[
-tween.to(ball, 1.6, {x = target.x, y = target.y}, {ease = 'sineInOut', overwrite = true})]]
+tween.to(ball, 1.6, {x = target.x, y = target.y}, {ease = 'sineInOut', overwrite = false})  -- With true, the newest takes over.]]
 
 function Overwrite:enter()
     self.ball = {x = 400, y = 300}
     self.targets = {}
-    self.overwrite = true
+    -- The test opens with overwrite off, so the tweens fight from the first targets.
+    self.overwrite = false
     self.gem = TweenTest.icon('gem')
     self.trail = collections.newRingBuffer(kTrail)
     self.pointer = Pointer()
     self:frame({
-        hint = 'Click or tap the stage to send the gem somewhere, or let the timer pick targets. Turn overwrite off to see the tweens fight.',
+        hint = 'Click or tap the stage to send the gem somewhere, or let the timer pick targets. Turn overwrite on to let the newest tween take the gem over.',
         code = kCode,
         controls = {
-            ui.toggle{id = 'overwrite', text = 'Overwrite', checked = true, onChange = function(event) self.overwrite = event.checked end},
+            ui.toggle{id = 'overwrite', text = 'Overwrite', checked = false, onChange = function(event) self.overwrite = event.checked end},
             ui.button{id = 'burst', text = 'Send three targets at once', onClick = function() self:burst() end},
             ui.label{id = 'pulling', text = ''},
         },
@@ -89,10 +90,17 @@ function Overwrite:draw(area)
         graphics2d.drawShape({target.x - 22, target.y - 22, 44, 44}, {kind = 'ellipse', color = '#00000000', borderWidth = 5, borderColor = newest and Test.warm or '#FF8A7A55'})
         graphics2d.drawShape({target.x - 7, target.y - 7, 14, 14}, {kind = 'ellipse', color = newest and Test.warm or '#FF8A7A55'})
     end
-    for index = 1, self.trail.size - 1 do
-        local point = self.trail:get(index)
-        local share = index / self.trail.size
-        graphics2d.draw(self.gem, point.x, point.y, {width = 60 * share, height = 60 * share, color = m.color(1, 1, 1, share * 0.25), layer = 1})
+    -- The trail is one streak that tapers and fades toward where the gem was.
+    local count = self.trail.size
+    if count > 1 then
+        local points, widths, colors = {}, {}, {}
+        for index = 1, count do
+            local point, share = self.trail:get(index), (index - 1) / (count - 1)
+            points[index * 2 - 1], points[index * 2] = point.x, point.y
+            widths[index] = 6 + share * 30
+            colors[index] = m.color(Test.accent):withAlpha(share * 0.5)
+        end
+        graphics2d.drawStroke(points, {widths = widths, colors = colors, cap = 'round', join = 'round', layer = 1})
     end
     graphics2d.drawShape({self.ball.x - 34, self.ball.y + 26, 68, 16}, {kind = 'ellipse', color = '#40000000', layer = 1})
     graphics2d.draw(self.gem, self.ball.x, self.ball.y, {width = 76, height = 76, layer = 2})

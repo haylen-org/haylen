@@ -88,14 +88,25 @@ function TweenTest.drawLane(lane, spec)
     end
 
     local size = spec.size or 52
-    if spec.trail then
-        local count = spec.trail.size
-        for index = 1, count - 1 do
-            local share = index / count
-            graphics2d.draw(spec.icon, TweenTest.laneX(lane, spec.trail:get(index), spec), middle, {width = size * (0.5 + share * 0.4), height = size * (0.5 + share * 0.4), pivotX = 0.5, pivotY = 0.5, color = m.color(1, 1, 1, share * 0.22), layer = 1})
-        end
+    if spec.trail and spec.trail.size > 1 then
+        TweenTest.drawTrail(lane, spec, middle, size * 0.5, color)
     end
     graphics2d.draw(spec.icon, TweenTest.laneX(lane, spec.value, spec), middle, {width = size, height = size, pivotX = 0.5, pivotY = 0.5, rotation = spec.rotation or 0, color = m.color(1, 1, 1, spec.alpha or 1), layer = 2})
+end
+
+-- The trail is one streak through the last values of a lane that tapers and fades toward the oldest, so a still frame shows where the icon came from without copies of it.
+function TweenTest.drawTrail(lane, spec, middle, width, color)
+    local trail = spec.trail
+    local count = trail.size
+    local points, widths, colors = {}, {}, {}
+    for index = 1, count do
+        local share = (index - 1) / (count - 1)
+        points[index * 2 - 1] = TweenTest.laneX(lane, trail:get(index), spec)
+        points[index * 2] = middle
+        widths[index] = width * (0.2 + share * 0.8)
+        colors[index] = color:withAlpha(share * 0.5)
+    end
+    graphics2d.drawStroke(points, {widths = widths, colors = colors, cap = 'round', join = 'round', layer = 1})
 end
 
 -- Samples an easing curve, a function or any curve that `m.ease` takes, and returns its values with the lowest and highest of them, never above 0 and never under 1, so a plot that spans them shows the curve whole with its lines of 0 and 1.

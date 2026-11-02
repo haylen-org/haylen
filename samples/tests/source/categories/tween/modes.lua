@@ -33,7 +33,12 @@ function Modes:enter()
     self:frame({
         hint = 'The tweens replay every few seconds, or now with the button, R or the X button. The "by" icon moves on from where it stopped.',
         code = kCode,
-        controls = {ui.button{id = 'replay', text = 'Replay', variant = 'primary', onClick = function() self:play() end}},
+        controls = {
+            ui.button{id = 'replay', text = 'Replay', variant = 'primary', align = 'stretch', onClick = function() self:play() end},
+            ui.sectionTitle{text = 'Where each one goes'},
+            ui.table{id = 'ends', columns = {{text = 'Tween'}, {text = 'Starts', width = 110, align = 'end'}, {text = 'Ends', width = 110, align = 'end'}}},
+            ui.label{text = 'The rails run from 0 to 1000, and the hollow mark is the start of each motion.', color = 'textMuted'},
+        },
         focus = 'replay',
     })
     self:play()
@@ -50,6 +55,11 @@ function Modes:play()
         c.x = 100
     end
     self.ends = {{100, 900}, {900, 100}, {c.x, c.x + 250}, {100, 700}}
+    local rows = {}
+    for index, lane in ipairs(kLanes) do
+        rows[index] = {id = lane.icon, cells = {lane.title, string.format('%.0f', self.ends[index][1]), string.format('%.0f', self.ends[index][2])}}
+    end
+    self:set('ends', {rows = rows})
 
     local options = {owner = self, ease = 'quadInOut', delay = 0.2}
     tween.to(a, 1.2, {x = 900}, options)
@@ -67,7 +77,7 @@ function Modes:update(dt)
         self.trails[index]:push(box.x)
     end
     local a, b, c, d = table.unpack(self.boxes)
-    self:status(string.format('The icons stand at %.0f, %.0f, %.0f and %.0f.', a.x, b.x, c.x, d.x))
+    self:status(string.format('The coin stands at %.0f, the gem at %.0f, the star at %.0f and the heart at %.0f of their rails.', a.x, b.x, c.x, d.x))
 end
 
 function Modes:draw(area)

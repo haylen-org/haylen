@@ -15,17 +15,17 @@ local ReadyMade = haylen.class('ReadyMade', TweenTest)
 local kColumns = 4
 local kBand = 46
 local kKinds = {
-    {kind = 'move', title = 'Move', icon = 'coin'},
-    {kind = 'scale', title = 'Scale', icon = 'gem'},
-    {kind = 'rotate', title = 'Rotate', icon = 'key'},
-    {kind = 'fade', title = 'Fade', icon = 'potion'},
-    {kind = 'tint', title = 'Tint', icon = 'star'},
-    {kind = 'jump', title = 'Jump', icon = 'coin'},
-    {kind = 'path', title = 'Path', image = 'physics/ship.png', width = 1.3, height = 1},
-    {kind = 'bezier', title = 'Bezier', icon = 'gem'},
-    {kind = 'blink', title = 'Blink', icon = 'shield'},
-    {kind = 'shake', title = 'Shake', icon = 'heart'},
-    {kind = 'punch', title = 'Punch', icon = 'star'},
+    {kind = 'move', title = 'Move', caption = 'There and back', icon = 'coin'},
+    {kind = 'scale', title = 'Scale', caption = 'To 1.6 times', icon = 'gem'},
+    {kind = 'rotate', title = 'Rotate', caption = 'A quarter turn each time', icon = 'key'},
+    {kind = 'fade', title = 'Fade', caption = 'To a quarter', icon = 'potion'},
+    {kind = 'tint', title = 'Tint', caption = 'From white to red', icon = 'star'},
+    {kind = 'jump', title = 'Jump', caption = 'Three hops', icon = 'coin'},
+    {kind = 'path', title = 'Path', caption = 'Around a loop', image = 'physics/ship.png', width = 1.3, height = 1},
+    {kind = 'bezier', title = 'Bezier', caption = 'Along two handles', icon = 'gem'},
+    {kind = 'blink', title = 'Blink', caption = 'Five times', icon = 'shield'},
+    {kind = 'shake', title = 'Shake', caption = 'In place', icon = 'heart'},
+    {kind = 'punch', title = 'Punch', caption = 'Up and back', icon = 'star'},
 }
 local kCode = [[
 tween.move(sprite, 1.2, {x + 90, y}, {loopMode = 'yoyo', repeatCount = -1})
@@ -42,7 +42,7 @@ function ReadyMade:enter()
         self.sprites[index] = graphics2d.newSprite(texture, {layer = 2})
     end
     self:frame({
-        hint = 'Every sprite property animates in C++ without running Lua each frame. The faint copy marks where each tween starts, and R or the X button replays them.',
+        hint = 'Every sprite property animates in C++ without running Lua each frame. The hollow ring marks where a moving tween starts, and R or the X button replays them.',
         code = kCode,
         controls = {ui.button{id = 'replay', text = 'Replay', variant = 'primary', onClick = function() self:play() end}},
         focus = 'replay',
@@ -71,13 +71,14 @@ function ReadyMade:play()
         local sprite = self.sprites[index]
         local x, y, _, s = self:cell(index)
         tween.killTarget(sprite)
-        local size = 64 * s
+        local size = 76 * s
         sprite.width, sprite.height = size * (entry.width or 1), size * (entry.height or 1)
         sprite.x, sprite.y, sprite.scaleX, sprite.scaleY, sprite.rotation, sprite.color = x, y, 1, 1, 0, '#FFFFFFFF'
         local loop = {owner = self, loopMode = 'yoyo', repeatCount = -1, repeatDelay = 0.2, ease = 'sineInOut'}
         local again = {owner = self, repeatCount = -1, repeatDelay = 0.6}
         local shape = {start = {x, y}}
         local kind = entry.kind
+        shape.moves = kind == 'move' or kind == 'jump' or kind == 'path' or kind == 'bezier'
 
         if kind == 'move' then
             shape.start = {x - 90 * s, y}
@@ -107,7 +108,7 @@ function ReadyMade:play()
             sprite.x, sprite.y = x, y - 50 * s
             tween.path(sprite, 3, points, {owner = self, closed = true, orient = true, repeatCount = -1})
         elseif kind == 'bezier' then
-            local first, second, finish = {x - 40 * s, y - 80 * s}, {x + 40 * s, y + 80 * s}, {x + 90 * s, y}
+            local first, second, finish = {x - 40 * s, y - 55 * s}, {x + 40 * s, y + 55 * s}, {x + 90 * s, y}
             shape.start = {x - 90 * s, y}
             shape.spline = m.spline({{x - 90 * s, y}, first, second, finish}, {kind = 'bezier'})
             shape.handles = {{x - 90 * s, y, first[1], first[2]}, {finish[1], finish[2], second[1], second[2]}}
@@ -180,7 +181,9 @@ function ReadyMade:drawGuide(index)
         graphics2d.drawStroke({shape.start[1], shape.start[2], shape.target[1], shape.target[2]}, {width = 3, color = guide, cap = 'round', dashes = {8, 7}})
         graphics2d.drawShape({shape.target[1] - 8, shape.target[2] - 8, 16, 16}, {kind = 'ellipse', color = guide})
     end
-    graphics2d.draw(sprite.texture, shape.start[1], shape.start[2], {width = shape.size[1], height = shape.size[2], color = m.color(1, 1, 1, 0.22), layer = 1})
+    if shape.moves then
+        graphics2d.drawShape({shape.start[1] - 10, shape.start[2] - 10, 20, 20}, {kind = 'ellipse', color = '#00000000', borderWidth = 3, borderColor = Test.accent, layer = 1})
+    end
 end
 
 function ReadyMade:draw(area)
@@ -188,6 +191,7 @@ function ReadyMade:draw(area)
         local _, _, rect = self:cell(index)
         graphics2d.drawShape({rect[1] + 6, rect[2] + 6, rect[3] - 12, rect[4] - 12}, {radius = 16, color = '#FF1C2130', borderWidth = 2, borderColor = Test.line})
         graphics2d.drawText(nil, entry.title, rect[1] + 26, rect[2] + 16, {size = 24, color = Test.ink})
+        graphics2d.drawText(nil, entry.caption, rect[1] + rect[3] - 26, rect[2] + 20, {size = 19, color = Test.muted, anchor = {1, 0}})
         self:drawGuide(index)
         self.sprites[index]:draw()
     end

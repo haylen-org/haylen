@@ -76,13 +76,24 @@ function Repeats:update(dt)
         self.loopText = text
         self:set('loops', {text = text})
     end
-    self:status(string.format('The icons stand at %.0f, %.0f and %.0f.', self.boxes[1].x, self.boxes[2].x, self.boxes[3].x))
+    local back = self.plays[2] % 2 == 0
+    self:status(string.format('On its play %d, the yoyo gem runs %s, while the coin starts again at 100 and the star goes on from %d.', self.plays[2], back and 'back toward 100' or 'out toward 700', 100 + (self.plays[3] - 1) * 200))
+end
+
+-- The arrow of a lane points the way its current play runs, so the yoyo lane turns around on every other play.
+function Repeats:direction(index)
+    local spec = kLanes[index]
+    if spec.mode == 'yoyo' and self.plays[index] % 2 == 0 then
+        return spec.marks[#spec.marks], spec.marks[1]
+    end
+    return spec.marks[1], spec.marks[#spec.marks]
 end
 
 function Repeats:draw(area)
     for index, lane in ipairs(TweenTest.lanes(area, #kLanes)) do
         local spec = kLanes[index]
-        TweenTest.drawLane(lane, {title = spec.title, caption = spec.caption, value = self.boxes[index].x, marks = spec.marks, from = spec.marks[1], to = spec.marks[#spec.marks], color = spec.color, icon = self.icons[index], trail = self.trails[index], ticks = {0, 250, 500, 750, 1000}})
+        local from, to = self:direction(index)
+        TweenTest.drawLane(lane, {title = spec.title, caption = spec.caption, value = self.boxes[index].x, marks = spec.marks, from = from, to = to, color = spec.color, icon = self.icons[index], trail = self.trails[index], ticks = {0, 250, 500, 750, 1000}})
     end
 end
 

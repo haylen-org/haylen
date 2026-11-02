@@ -52,16 +52,22 @@ function Stress:build()
     end
 end
 
--- The readout of the stress test, in a panel at the top-left corner of the play area.
+-- Writes a whole number with a comma between each group of three digits, as the stepper names the counts.
+function Stress.grouped(value)
+    local text = tostring(math.floor(value)):reverse():gsub('(%d%d%d)', '%1,'):reverse()
+    return (text:gsub('^,', ''))
+end
+
+-- The readout of the stress test, in an opaque panel at the top-left corner of the play area. Times show a tenth of a millisecond, the precision that browsers give.
 function Stress:drawReadout()
     local frame = debugging.frame()
     local rows = {
-        {'Sprites', string.format('%d', #self.sprites)},
-        {'Tweens', string.format('%d', tween.size())},
+        {'Sprites', Stress.grouped(#self.sprites)},
+        {'Tweens', Stress.grouped(tween.size())},
         {'Frames shown per second', string.format('%.0f', frame.fps)},
-        {'Work of a frame', string.format('%.2f ms', frame.milliseconds)},
+        {'Work of a frame', string.format('%.1f ms', frame.milliseconds)},
     }
-    graphics2d.drawShape({16, 16, 380, 32 + #rows * 36}, {radius = 16, color = '#E61C2130', borderWidth = 2, borderColor = Test.line, layer = 10})
+    graphics2d.drawShape({16, 16, 380, 32 + #rows * 36}, {radius = 16, color = '#FF1C2130', borderWidth = 2, borderColor = Test.line, layer = 10})
     for index, row in ipairs(rows) do
         local y = 32 + (index - 1) * 36
         graphics2d.drawText(nil, row[1], 36, y, {size = 22, color = Test.muted, layer = 11})

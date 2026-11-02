@@ -93,10 +93,17 @@ function Nested:drawSquare()
     local x, y, size = kSquare[1], kSquare[2], kSquare[3]
     graphics2d.drawText(nil, 'Square and glow', x + size / 2, 20, {size = 24, color = Test.ink, anchor = {0.5, 0}})
     graphics2d.drawStroke({x, y, x + size, y, x + size, y + size, x, y + size}, {width = 4, color = TweenTest.grooveEdge, closed = true, join = 'round', dashes = {14, 10}})
-    for index = 1, self.trail.size - 1 do
-        local point = self.trail:get(index)
-        local share = index / self.trail.size
-        graphics2d.draw(self.coin, x + point.x, y + point.y, {width = 50 * share, height = 50 * share, color = m.color(1, 1, 1, share * 0.25), layer = 1})
+    -- The trail is one streak that tapers and fades toward where the coin was.
+    local count = self.trail.size
+    if count > 1 then
+        local points, widths, colors = {}, {}, {}
+        for index = 1, count do
+            local point, share = self.trail:get(index), (index - 1) / (count - 1)
+            points[index * 2 - 1], points[index * 2] = x + point.x, y + point.y
+            widths[index] = 6 + share * 26
+            colors[index] = m.color(Test.warm):withAlpha(share * 0.5)
+        end
+        graphics2d.drawStroke(points, {widths = widths, colors = colors, cap = 'round', join = 'round', layer = 1})
     end
     local cx, cy = x + self.a.x, y + self.a.y
     graphics2d.drawShape({cx - 52, cy - 52, 104, 104}, {kind = 'ellipse', color = self.c.color:withAlpha(0.55), softness = 36, layer = 1})
@@ -123,16 +130,16 @@ function Nested:drawChart()
     for half = 0, total * 2 do
         local x = toX(half / 2)
         graphics2d.drawLine(x, 482, x, 664, 1, '#FF2A3043')
-        graphics2d.drawText(nil, string.format('%.1f s', half / 2), x, 668, {size = 16, color = Test.muted, anchor = {0.5, 0}})
+        graphics2d.drawText(nil, string.format('%.1f s', half / 2), x, 666, {size = 20, color = Test.muted, anchor = {0.5, 0}})
     end
     for index, row in ipairs(kRows) do
         local y = 488 + (index - 1) * 56
-        graphics2d.drawText(nil, row.title, 28, y + 20, {size = 22, color = Test.ink, anchor = {0, 0.5}})
+        graphics2d.drawText(nil, row.title, 28, y + 20, {size = 24, color = Test.ink, anchor = {0, 0.5}})
         local at = row.from
         for step, seconds in ipairs(row.steps) do
-            local rect = {toX(at) + 2, y + 4, toX(at + seconds) - toX(at) - 4, 32}
-            graphics2d.drawShape(rect, {radius = 16, color = index == 3 and Test.violet or (index == 2 and Test.warm or Test.accent)})
-            graphics2d.drawText(nil, row.names[step], rect[1] + rect[3] / 2, y + 20, {size = 16, color = '#FF14213D', anchor = {0.5, 0.5}, layer = 1})
+            local rect = {toX(at) + 2, y + 2, toX(at + seconds) - toX(at) - 4, 36}
+            graphics2d.drawShape(rect, {radius = 18, color = index == 3 and Test.violet or (index == 2 and Test.warm or Test.accent)})
+            graphics2d.drawText(nil, row.names[step], rect[1] + rect[3] / 2, y + 20, {size = 21, color = '#FF14213D', anchor = {0.5, 0.5}, layer = 1})
             at = at + seconds
         end
     end

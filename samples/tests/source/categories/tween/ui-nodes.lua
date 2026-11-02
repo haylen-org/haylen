@@ -11,7 +11,7 @@ local UiNodes = haylen.class('UiNodes', TweenTest)
 local kCode = [[
 local card = gui:transform('card')
 tween.fromTo(card, 0.7, {offset = m.vec2(0, -400), opacity = 0}, {offset = m.vec2(0, 0), opacity = 1}, {ease = 'backOut'})
-tween.to(gui:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {loopMode = 'yoyo', repeatCount = -1})
+tween.to(gui:transform('claim'), 0.4, {scale = m.vec2(1.06, 1.06)}, {loopMode = 'yoyo', repeatCount = -1})
 tween.to(gui:transform('title'), 0.5, {tint = '#FFFFD166'}, {loopMode = 'yoyo', repeatCount = 3})]]
 
 function UiNodes:enter()
@@ -44,7 +44,7 @@ function UiNodes:enter()
         },
     }, {owner = self, layer = 1})
     self:keepInRegion(self.card, 'card')
-    tween.to(self.card:transform('claim'), 0.4, {scale = m.vec2(1.12, 1.12)}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
+    tween.to(self.card:transform('claim'), 0.4, {scale = m.vec2(1.06, 1.06)}, {owner = self, loopMode = 'yoyo', repeatCount = -1, ease = 'sineInOut'})
     self:slideIn()
 end
 

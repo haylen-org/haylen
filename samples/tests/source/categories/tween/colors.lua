@@ -70,18 +70,18 @@ function Colors:drawRow(title, caption, color, trail, y, area)
     graphics2d.drawText(nil, caption, 60, y + 56, {size = 18, color = Test.muted, maxWidth = 150})
     graphics2d.drawShape({220, y, 120, 120}, {radius = 22, color = color, borderWidth = 4, borderColor = '#FF1E1B33'})
 
-    local width = (right - left) / kTrail
+    -- The colors so far share the whole strip, so it fills from end to end from the first frame.
+    local width = (right - left) / math.max(1, trail.size)
     graphics2d.pushMask(function()
         graphics2d.drawShape({left, y + 20, right - left, 80}, {radius = 16})
     end)
-    local start = kTrail - trail.size
     for index = 1, trail.size do
-        graphics2d.drawRect({left + (start + index - 1) * width, y + 20, width + 1, 80}, trail:get(index))
+        graphics2d.drawRect({left + (index - 1) * width, y + 20, width + 1, 80}, trail:get(index))
     end
     graphics2d.popMask()
     graphics2d.drawShape({left - 2, y + 18, right - left + 4, 84}, {radius = 18, color = '#00000000', borderWidth = 4, borderColor = '#FF1E1B33', layer = 1})
-    graphics2d.drawText(nil, 'Earlier', left, y + 112, {size = 17, color = Test.muted})
-    graphics2d.drawText(nil, 'Now', right, y + 112, {size = 17, color = Test.muted, anchor = {1, 0}})
+    graphics2d.drawText(nil, 'Earlier', left, y + 112, {size = 21, color = Test.muted})
+    graphics2d.drawText(nil, 'Now', right, y + 112, {size = 21, color = Test.ink, anchor = {1, 0}})
 end
 
 function Colors:draw(area)

@@ -27,6 +27,7 @@ function Angles:enter()
         controls = {
             ui.button{id = 'turn', text = 'Next heading', variant = 'primary', onClick = function() self:turn() end},
             ui.label{id = 'target', text = ''},
+            ui.label{text = 'The needle on the left lists "heading" in the option "angles", so it never turns more than half a circle. The one on the right takes the number as it is.', color = 'textMuted'},
         },
         focus = 'turn',
     })
@@ -62,12 +63,19 @@ function Angles:drawDial(x, y, radius, start, heading, title, color)
     end
     for quarter = 0, 3 do
         local angle = quarter * m.tau / 4
-        graphics2d.drawText(nil, tostring(quarter * 90), x + math.cos(angle) * (radius - 48), y + math.sin(angle) * (radius - 48), {size = 18, color = Test.muted, anchor = {0.5, 0.5}})
+        graphics2d.drawText(nil, tostring(quarter * 90), x + math.cos(angle) * (radius - 64), y + math.sin(angle) * (radius - 64), {size = 18, color = Test.muted, anchor = {0.5, 0.5}})
     end
 
+    -- The swept arc runs between the ticks and the numbers, with round ends.
     local low, high = math.min(start, heading), math.max(start, heading)
     if high - low > 0.01 then
-        graphics2d.drawArc(x, y, radius - 30, 12, low, high, m.color(color):withAlpha(0.45))
+        local points, count, reach = {}, math.max(8, math.ceil((high - low) * 24)), radius - 37
+        for step = 0, count do
+            local angle = low + (high - low) * step / count
+            points[step * 2 + 1] = x + math.cos(angle) * reach
+            points[step * 2 + 2] = y + math.sin(angle) * reach
+        end
+        graphics2d.drawStroke(points, {width = 10, color = m.color(color):withAlpha(0.85), cap = 'round', join = 'round'})
     end
     local target = math.rad(kHeadings[self.step])
     local rim, inward = radius + 4, radius - 18

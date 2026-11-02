@@ -27,9 +27,9 @@ function Fields:enter()
         controls = {
             ui.button{id = 'replay', text = 'Replay', variant = 'primary', onClick = function() self:play() end},
             ui.sectionTitle{text = 'Paths into card "a"'},
-            ui.label{id = 'fieldsA', text = '', font = 'monospace'},
+            ui.richText{id = 'fieldsA', text = '', font = 'monospace'},
             ui.sectionTitle{text = 'Fields of card "b"'},
-            ui.label{id = 'fieldsB', text = '', font = 'monospace'},
+            ui.richText{id = 'fieldsB', text = '', font = 'monospace'},
         },
         view = kView,
         focus = 'replay',
@@ -57,9 +57,10 @@ function Fields:update(dt)
         self:play()
     end
     local a, b = self.a, self.b
+    local color = b.color:toHex()
     self:set('fieldsA', {text = string.format('position.x    %4.0f\nsize.height   %4.0f\nstyle.color.a %4.2f', a.position.x, a.size.height, a.style.color.a)})
-    self:set('fieldsB', {text = string.format('x       %4.0f\ny       %4.0f\nwidth   %4.0f\nheight  %4.0f\ncolor   %s', b.x, b.y, b.width, b.height, b.color:toHex())})
-    self:status(string.format('Card "a" stands at %.0f with a height of %.0f, and card "b" at %.0f, %.0f with a size of %.0f by %.0f.', a.position.x, a.size.height, b.x, b.y, b.width, b.height))
+    self:set('fieldsB', {text = string.format('x       %4.0f\ny       %4.0f\nwidth   %4.0f\nheight  %4.0f\ncolor   [bgcolor=%s]    [/bgcolor] %s', b.x, b.y, b.width, b.height, color, color)})
+    self:status('One tween writes three fields inside the tables of card "a", and another the five fields of card "b".')
 end
 
 -- The outline of a place a card passes, dashed so it never reads as a card.
@@ -68,11 +69,17 @@ local function ghost(rect, color)
     graphics2d.drawStroke({x, y, x + width, y, x + width, y + height, x, y + height}, {width = 3, color = color, closed = true, join = 'round', dashes = {12, 9}})
 end
 
--- A card with rounded corners, a dark outline and its icon in the middle, as opaque as its color.
+-- A card of the art style, as opaque as its color: a soft shadow, a body with a darker lower band and a dark outline, a light sheen along its top and its icon in the middle.
 local function card(rect, color, icon)
-    graphics2d.drawShape(rect, {radius = 18, color = color, borderWidth = 4, borderColor = m.color('#FF1E1B33'):withAlpha(color.a), layer = 1})
-    local size = math.min(rect[3], rect[4]) * 0.6
-    graphics2d.draw(icon, rect[1] + rect[3] / 2, rect[2] + rect[4] / 2, {width = size, height = size, color = m.color(1, 1, 1, color.a), layer = 2})
+    local x, y, width, height = rect[1], rect[2], rect[3], rect[4]
+    local alpha = color.a
+    graphics2d.drawShape({x + 4, y + 10, width, height}, {radius = 18, color = m.color(0, 0, 0, 0.35 * alpha), softness = 14})
+    graphics2d.drawShape(rect, {radius = 18, color = color:lerp(m.color(0, 0, 0, alpha), 0.25), layer = 1})
+    graphics2d.drawShape({x, y, width, height - 8}, {radius = 18, color = color, layer = 1})
+    graphics2d.drawShape({x + 12, y + 8, width - 24, math.min(16, height * 0.18)}, {radius = 8, color = m.color(1, 1, 1, 0.3 * alpha), layer = 1})
+    graphics2d.drawShape(rect, {radius = 18, color = '#00000000', borderWidth = 4, borderColor = m.color('#FF1E1B33'):withAlpha(alpha), layer = 1})
+    local size = math.min(width, height) * 0.6
+    graphics2d.draw(icon, x + width / 2, y + height / 2 - 4, {width = size, height = size, color = m.color(1, 1, 1, alpha), layer = 2})
 end
 
 function Fields:draw(area)

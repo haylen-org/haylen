@@ -12,7 +12,7 @@ local code = require('harness.code')
 local Easing = haylen.class('Easing', TweenTest)
 
 local kColumns = 8
-local kSamples = 48
+local kSamples = 160
 local kFamilies = {'sine', 'quad', 'cubic', 'quart', 'quint', 'expo', 'circ', 'back', 'elastic', 'bounce'}
 
 -- Every curve of the gallery with the text that writes it in code.
@@ -65,12 +65,13 @@ function Easing:select(index)
     self:set('curve', {selected = tostring(index)})
 end
 
--- The cells fill the area in rows of `kColumns`, each with a band for its name above its plot.
+-- The cells fill the area inside a margin in rows of `kColumns`, each with a band for its name above its plot.
 function Easing:cell(area, index)
+    local margin = 10
     local rows = math.ceil(#self.curves / kColumns)
-    local width, height = area.width / kColumns, area.height / rows
+    local width, height = (area.width - margin * 2) / kColumns, (area.height - margin * 2) / rows
     local column, row = (index - 1) % kColumns, (index - 1) // kColumns
-    return column * width, row * height, width, height
+    return margin + column * width, margin + row * height, width, height
 end
 
 function Easing:update(dt)

@@ -10,12 +10,12 @@ local ProcessModes = haylen.class('ProcessModes', TweenTest)
 ProcessModes.processMode = 'always'
 
 local kLanes = {
-    {title = 'Pausable', caption = 'Stops while the game is paused', icon = 'coin', options = {processMode = 'pausable'}, runs = function(paused) return not paused end},
-    {title = 'When paused', caption = 'Runs only while the game is paused', icon = 'gem', options = {processMode = 'whenPaused'}, runs = function(paused) return paused end},
+    {title = 'Pausable', caption = 'Stops in a pause', icon = 'coin', options = {processMode = 'pausable'}, runs = function(paused) return not paused end},
+    {title = 'When paused', caption = 'Runs only in a pause', icon = 'gem', options = {processMode = 'whenPaused'}, runs = function(paused) return paused end},
     {title = 'Always', caption = 'Runs paused or not', icon = 'star', options = {processMode = 'always'}, runs = function() return true end},
     {title = 'Disabled', caption = 'Never runs', icon = 'shield', options = {processMode = 'disabled'}, runs = function() return false end},
-    {title = 'Inherit', caption = 'Follows this scene, which always runs', icon = 'heart', options = {}, runs = function() return true end},
-    {title = 'Unscaled', caption = 'Real time, whatever the time scale', icon = 'potion', options = {processMode = 'always', unscaled = true}, runs = function() return true end},
+    {title = 'Inherit', caption = 'Follows this scene', icon = 'heart', options = {}, runs = function() return true end},
+    {title = 'Unscaled', caption = 'Ignores the time scale', icon = 'potion', options = {processMode = 'always', unscaled = true}, runs = function() return true end},
 }
 local kCode = [[
 tween.to(box, 1.5, {x = 1000}, {processMode = 'whenPaused'})  -- Or "pausable", "always", "disabled" or "inherit".
@@ -29,11 +29,12 @@ function ProcessModes:enter()
         self.boxes[index] = {x = 0}
         self.trails[index] = TweenTest.trail()
         self.icons[index] = TweenTest.icon(lane.icon)
-        local options = {owner = self, ease = 'sineInOut', loopMode = 'yoyo', repeatCount = -1}
+        -- Each lane starts a little after the one above, so the icons that run stand apart from those that wait.
+        local options = {owner = self, ease = 'sineInOut', loopMode = 'yoyo', repeatCount = -1, delay = (index - 1) * 0.2}
         for key, value in pairs(lane.options) do
             options[key] = value
         end
-        tween.to(self.boxes[index], 1.5, {x = 1000}, options)
+        tween.to(self.boxes[index], 1.3, {x = 1000}, options)
     end
     haylen.setPaused(true)
     self:frame({
@@ -41,7 +42,7 @@ function ProcessModes:enter()
         code = kCode,
         controls = {
             ui.toggle{id = 'pause', text = 'Pause the game', checked = true, onChange = function(event) haylen.setPaused(event.checked) end},
-            ui.formField{label = 'Time scale', help = 'From 0 to 2 times the speed', ui.slider{id = 'scale', min = 0, max = 2, value = 1, step = 0.05, showValue = true, onChange = function(event) haylen.setTimeScale(event.value) end}},
+            ui.formField{label = 'Time scale, from 0 to 2 times the speed', ui.slider{id = 'scale', min = 0, max = 2, value = 1, step = 0.05, showValue = true, onChange = function(event) haylen.setTimeScale(event.value) end}},
         },
         focus = 'pause',
     })
@@ -66,7 +67,7 @@ function ProcessModes:draw(area)
     for index, lane in ipairs(TweenTest.lanes(area, #kLanes)) do
         local spec = kLanes[index]
         local runs = spec.runs(paused)
-        TweenTest.drawLane(lane, {title = spec.title, caption = spec.caption, value = self.boxes[index].x, color = runs and Test.green or Test.muted, icon = self.icons[index], trail = runs and self.trails[index] or nil, alpha = runs and 1 or 0.4, ticks = {0, 500, 1000}, size = 44})
+        TweenTest.drawLane(lane, {title = spec.title, caption = spec.caption, value = self.boxes[index].x, color = runs and Test.green or Test.muted, icon = self.icons[index], trail = runs and self.trails[index] or nil, alpha = runs and 1 or 0.4, ticks = {0, 500, 1000}, min = -90, max = 1090, size = 44})
     end
 end
 

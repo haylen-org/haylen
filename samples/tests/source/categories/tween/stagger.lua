@@ -1,6 +1,7 @@
 -- Stagger: the same hop and the same bar growth on a row of targets, each one starting a little after the one before, from the start, the end or the center, with a mark under the target the wave starts from.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local m = require('haylen.math')
 local timer = require('haylen.timer')
 local tween = require('haylen.tween')
 local ui = require('haylen.ui')
@@ -16,7 +17,7 @@ local kColors = {'#FF2F86F6', '#FFFFC93C', '#FF2FB3C4', '#FFF0473E'}
 local kCode = [[
 tween.stagger(gems, 0.05, function(gem, index)
     return tween.to(gem, 0.35, {lift = 1}, {ease = 'quadOut', loopMode = 'yoyo', repeatCount = 1})
-end, {origin = 'center'})]]
+end, {origin = 'start'})  -- Or "end" and "center".]]
 
 function Stagger:enter()
     self.dots, self.bars, self.icons = {}, {}, {}
@@ -71,10 +72,12 @@ function Stagger:draw(area)
         local kind = (index - 1) % #kIcons + 1
         local dot, bar = self.dots[index], self.bars[index]
         local lift = dot.lift * 110
-        graphics2d.drawShape({x - 22, iconY + 30, 44, 12}, {kind = 'ellipse', color = '#40000000'})
+        local shadow = 44 * (1 - dot.lift * 0.45)
+        graphics2d.drawShape({x - shadow / 2, iconY + 26, shadow, 10}, {kind = 'ellipse', color = m.color(0, 0, 0, 0.3 * (1 - dot.lift * 0.6)), softness = 4})
         graphics2d.draw(self.icons[kind], x, iconY - lift, {width = 54, height = 54, layer = 1})
 
-        local height = (barBottom - barTop) * bar.fill
+        -- A full bar fills most of its groove, so the overshoot of "backOut" stays inside it.
+        local height = (barBottom - barTop) * bar.fill * 0.86
         graphics2d.drawShape({x - 18, barTop, 36, barBottom - barTop}, {radius = 18, color = TweenTest.groove, borderWidth = 2, borderColor = TweenTest.grooveEdge})
         graphics2d.drawShape({x - 14, barBottom - 4 - math.max(28, height - 8), 28, math.max(28, height - 8)}, {radius = 14, color = kColors[kind], borderWidth = 3, borderColor = '#FF1E1B33', layer = 1})
         if index == origin then

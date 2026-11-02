@@ -13,7 +13,9 @@ local TweenTest = require('categories.tween.tween-test')
 
 local Timelines = haylen.class('Timelines', TweenTest)
 
-local kView = {1400, 760}
+local kView = {1720, 760}
+-- The scene stands in the middle of the view, which is as wide as the play area.
+local kOffset = 160
 local kGround = 470
 local kHouse = {source = {262, 4, 272, 280}, door = {129, 162, 61, 76}, x = 60}
 local kFrame = 256
@@ -23,7 +25,7 @@ local kLogLines = 9
 -- The tweens and calls of the cutscene in time, the rows of the chart under the scene.
 local kRows = {
     {title = 'Door', spans = {{0, 0.6, 'Opens'}}},
-    {title = 'Hero', spans = {{0.6, 1.8, 'Runs'}, {0.6, 1.0, 'Fades in'}, {2.1, 3.1, 'Hops'}}},
+    {title = 'Hero', spans = {{0.6, 1.8, 'Runs and fades in'}, {0.6, 1.0, 'Fades in'}, {2.1, 3.1, 'Hops'}}},
     {title = 'Sky', spans = {{2.1, 3.1, 'Dusk'}}},
     {title = 'Calls', calls = {{1.0, 'The door creaks'}, {2.1, 'The hero waves'}}},
 }
@@ -141,13 +143,15 @@ function Timelines:drawScene()
     local shade = m.color(1 - dusk * 0.45, 1 - dusk * 0.5, 1 - dusk * 0.3, 1)
     for copy = 0, 1 do
         graphics2d.draw(self.hills, copy * 877, kGround + 10, {width = 877, height = 430, pivotX = 0, pivotY = 1, color = shade, layer = 1})
+    end
+    for copy = 0, 2 do
         graphics2d.draw(self.ground, copy * 860 - 40, kGround - 36, {width = 860, height = 205, pivotX = 0, pivotY = 0, color = shade, layer = 2})
     end
 
     local house, door = kHouse.source, kHouse.door
     local top = kGround - house[4] + 12
-    graphics2d.draw(self.props, kHouse.x, top, {source = house, width = house[3], height = house[4], pivotX = 0, pivotY = 0, color = shade, layer = 3})
-    local doorway = {kHouse.x + door[1], top + door[2], door[3], door[4]}
+    graphics2d.draw(self.props, kOffset + kHouse.x, top, {source = house, width = house[3], height = house[4], pivotX = 0, pivotY = 0, color = shade, layer = 3})
+    local doorway = {kOffset + kHouse.x + door[1], top + door[2], door[3], door[4]}
     graphics2d.drawShape(doorway, {radius = {28, 28, 0, 0}, color = '#FF1A1210', layer = 4})
     local open = self.door.open
     if open < 0.98 then
@@ -162,9 +166,9 @@ function Timelines:drawScene()
         graphics2d.drawText(nil, 'Creak!', doorway[1] + door[3] + 16, doorway[2] - 10, {size = 28, color = '#FFFFF3C4', outlineWidth = 4, outlineColor = '#FF1E1B33', rotation = -0.15, layer = 6})
     end
 
-    graphics2d.draw(self.dummy, 1150, kGround + 18, {width = 100, height = 237, pivotX = 0.5, pivotY = 1, color = shade, layer = 5})
+    graphics2d.draw(self.dummy, kOffset + 1150, kGround + 18, {width = 100, height = 237, pivotX = 0.5, pivotY = 1, color = shade, layer = 5})
     local hero = self.hero
-    local x, y = kHeroLeft + hero.x, kGround + 22 - hero.hop * 80
+    local x, y = kOffset + kHeroLeft + hero.x, kGround + 22 - hero.hop * 80
     graphics2d.drawShape({x - 46, kGround + 10, 92, 20}, {kind = 'ellipse', color = m.color(0, 0, 0, 0.25 * hero.alpha * (1 - hero.hop * 0.5)), layer = 5})
     graphics2d.draw(self.walker, x, y, {source = self:heroFrame(), width = kHeroSize, height = kHeroSize, pivotX = 0.5, pivotY = 0.94, flipHorizontal = self.facingLeft, color = m.color(1, 1, 1, hero.alpha), layer = 6})
     if self.waved and haylen.elapsed() - self.waved < 1.2 then
@@ -174,45 +178,45 @@ function Timelines:drawScene()
     end
 end
 
--- The chart of the cutscene: a row of spans and calls for each target, the label "fight", and the cursor at the time of the timeline.
+-- The chart of the cutscene: a row of spans and calls for each target, the label "fight", and the cursor at the time of the timeline. The fade of the hero joins its run, so it shows as a band along the top of the run.
 function Timelines:drawChart()
     local line = self.cutscene
     local card = {0, 572, kView[1], kView[2] - 572}
     graphics2d.drawShape(card, {radius = 18, color = '#FF1C2130', borderWidth = 2, borderColor = Test.line})
-    local left, right = 150, kView[1] - 40
+    local left, right = 170, kView[1] - 48
     local function toX(seconds)
         return left + (right - left) * seconds / line.duration
     end
     for second = 0, math.floor(line.duration * 2) do
         local x = toX(second / 2)
-        graphics2d.drawLine(x, 594, x, 728, 1, '#FF2A3043')
+        graphics2d.drawLine(x, 604, x, 738, 1, '#FF2A3043')
         if second % 2 == 0 then
-            graphics2d.drawText(nil, string.format('%d s', second // 2), x, 730, {size = 16, color = Test.muted, anchor = {0.5, 0}})
+            graphics2d.drawText(nil, string.format('%d s', second // 2), x, 738, {size = 19, color = Test.muted, anchor = {0.5, 0}})
         end
     end
     for index, row in ipairs(kRows) do
-        local y = 598 + (index - 1) * 34
-        graphics2d.drawText(nil, row.title, 28, y + 15, {size = 21, color = Test.ink, anchor = {0, 0.5}})
+        local y = 604 + (index - 1) * 33
+        graphics2d.drawText(nil, row.title, 28, y + 14, {size = 23, color = Test.ink, anchor = {0, 0.5}})
         for _, span in ipairs(row.spans or {}) do
             local from, to = toX(span[1]), toX(span[2])
-            local thin = span[3] == 'Fades in'
-            local rect = thin and {from, y + 22, to - from, 8} or {from, y + 2, to - from, 26}
-            graphics2d.drawShape(rect, {radius = rect[4] / 2, color = thin and Test.violet or Test.accent, layer = thin and 2 or 1})
-            if not thin then
-                graphics2d.drawText(nil, span[3], from + 14, y + 15, {size = 16, color = '#FF14213D', anchor = {0, 0.5}, layer = 2})
+            local fade = span[3] == 'Fades in'
+            local rect = fade and {from + 4, y + 2, to - from - 8, 7} or {from, y + 1, to - from, 27}
+            graphics2d.drawShape(rect, {radius = rect[4] / 2, color = fade and Test.violet or Test.accent, layer = fade and 2 or 1})
+            if not fade then
+                graphics2d.drawText(nil, span[3], from + 14, y + 16, {size = 19, color = '#FF14213D', anchor = {0, 0.5}, layer = 2})
             end
         end
         for _, call in ipairs(row.calls or {}) do
             local x = toX(call[1])
-            graphics2d.drawPolygon({{x, y + 4}, {x + 11, y + 15}, {x, y + 26}, {x - 11, y + 15}}, Test.warm, {layer = 3})
-            graphics2d.drawText(nil, call[2], x + 16, y + 15, {size = 16, color = Test.warm, anchor = {0, 0.5}, layer = 3})
+            graphics2d.drawPolygon({{x, y + 3}, {x + 11, y + 14}, {x, y + 25}, {x - 11, y + 14}}, Test.warm, {layer = 3})
+            graphics2d.drawText(nil, call[2], x + 16, y + 14, {size = 19, color = Test.warm, anchor = {0, 0.5}, layer = 3})
         end
     end
     local fight = toX(kFight)
-    graphics2d.drawStroke({fight, 588, fight, 724}, {width = 2, color = Test.warm, dashes = {6, 5}, layer = 3})
-    graphics2d.drawText(nil, 'Label "fight"', fight + 8, 582, {size = 17, color = Test.warm, anchor = {0, 0}, layer = 3})
+    graphics2d.drawStroke({fight, 600, fight, 734}, {width = 2, color = Test.warm, dashes = {6, 5}, layer = 3})
+    graphics2d.drawText(nil, 'Label "fight"', fight + 8, 578, {size = 19, color = Test.warm, anchor = {0, 0}, layer = 3})
     local cursor = toX(line.time)
-    graphics2d.drawShape({cursor - 2, 584, 4, 148}, {radius = 2, color = Test.ink, layer = 4})
+    graphics2d.drawShape({cursor - 2, 584, 4, 152}, {radius = 2, color = Test.ink, layer = 4})
     graphics2d.drawShape({cursor - 8, 578, 16, 16}, {kind = 'ellipse', color = Test.ink, borderWidth = 3, borderColor = '#FF1E1B33', layer = 4})
 end
 

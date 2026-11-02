@@ -22,7 +22,7 @@ handle.timeScale = 2  -- One tween.
 haylen.setTimeScale(0.5)  -- The whole app, except tweens with "unscaled = true".]]
 
 local function slider(id, label, value, onChange)
-    return ui.formField{label = label, help = 'From 0 to 3 times the speed', ui.slider{id = id, min = 0, max = 3, value = value, step = 0.05, showValue = true, onChange = onChange}}
+    return ui.formField{label = label, ui.slider{id = id, min = 0, max = 3, value = value, step = 0.05, showValue = true, onChange = onChange}}
 end
 
 function TimeScale:enter()
@@ -39,9 +39,12 @@ function TimeScale:enter()
         hint = 'The enemies share a tag, the own scale belongs to one tween and the last one runs on real time, whatever the app scale says.',
         code = kCode,
         controls = {
-            slider('enemies', 'Tag "enemies"', kEnemies, function(event) tween.setTimeScale('enemies', event.value) end),
-            slider('own', 'Own scale', kOwn, function(event) self.handles[4].timeScale = event.value end),
-            slider('app', 'Whole app', 1, function(event) haylen.setTimeScale(event.value) end),
+            ui.label{text = 'Each slider goes from 0 to 3 times the speed.', color = 'textMuted'},
+            ui.column{gap = 28, align = 'stretch',
+                slider('enemies', 'Tag "enemies"', kEnemies, function(event) tween.setTimeScale('enemies', event.value) end),
+                slider('own', 'Own scale', kOwn, function(event) self.handles[4].timeScale = event.value end),
+                slider('app', 'Whole app', 1, function(event) haylen.setTimeScale(event.value) end),
+            },
         },
         focus = 'enemies',
     })
@@ -57,7 +60,7 @@ end
 function TimeScale:speed(index)
     local lane = kLanes[index]
     if lane.unscaled then
-        return 'Real time, whatever the app scale'
+        return 'Ignores the app scale'
     end
     local app = haylen.timeScale()
     if lane.tag ~= '' then

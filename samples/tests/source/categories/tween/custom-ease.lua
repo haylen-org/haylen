@@ -35,7 +35,11 @@ function CustomEase:enter()
     self:frame({
         hint = 'Every rail runs past 0 and 1000, so the curves that overshoot stay in view. Replay with the button, R or the X button.',
         code = kCode,
-        controls = {ui.button{id = 'replay', text = 'Replay', variant = 'primary', onClick = function() self:play() end}},
+        controls = {
+            ui.button{id = 'replay', text = 'Replay', variant = 'primary', align = 'stretch', onClick = function() self:play() end},
+            ui.sectionTitle{text = 'A curve is a function'},
+            ui.label{text = 'An easing takes the progress of the tween, from 0 to 1, and returns the share of the way the value has gone. A result above 1 overshoots the end, and one under 0 backs up past the start.', color = 'textMuted'},
+        },
         focus = 'replay',
     })
     self:play()

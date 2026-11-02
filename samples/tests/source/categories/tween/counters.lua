@@ -90,12 +90,15 @@ function Counters:draw(area)
     graphics2d.draw(self.portrait, portrait[1] + 76, portrait[2] + 76, {width = 152, height = 152})
     graphics2d.popMask()
     graphics2d.drawShape(portrait, {radius = 24, color = '#00000000', borderWidth = 5, borderColor = '#FF6B4426', layer = 1})
-    graphics2d.drawText(nil, 'Ana', box[1] + 224, box[2] + 44, {size = 30, color = '#FF8A3B12', bold = true})
-    graphics2d.drawText(nil, self.dialog.text, box[1] + 224, box[2] + 88, {size = 32, color = kInk, maxWidth = box[3] - 290, layer = 1})
+    graphics2d.drawText(nil, 'Ana', box[1] + 224, box[2] + 58, {size = 30, color = '#FF8A3B12', bold = true})
+    graphics2d.drawText(nil, self.dialog.text, box[1] + 224, box[2] + 100, {size = 32, color = kInk, maxWidth = box[3] - 320, layer = 1})
+    -- A gold arrow bobs inside the parchment, clear of the frame, once the line is whole.
     if utf8.len(self.dialog.text) == utf8.len(kLines[self.lineIndex]) then
-        local bob = math.abs(math.sin(haylen.elapsed() * 4)) * 8
-        local x, y = box[1] + box[3] - 56, box[2] + box[4] - 54 + bob
-        graphics2d.drawPolygon({{x - 14, y - 8}, {x + 14, y - 8}, {x, y + 10}}, kInk, {layer = 1})
+        local bob = math.abs(math.sin(haylen.elapsed() * 4)) * 6
+        local x, y = box[1] + box[3] - 100, box[2] + box[4] - 84 + bob
+        local arrow = {x - 15, y - 9, x + 15, y - 9, x, y + 11}
+        graphics2d.drawPolygon({{arrow[1], arrow[2]}, {arrow[3], arrow[4]}, {arrow[5], arrow[6]}}, '#FFF2B23A', {layer = 1})
+        graphics2d.drawStroke(arrow, {width = 3, color = kInk, closed = true, join = 'round', layer = 2})
     end
 end
 
