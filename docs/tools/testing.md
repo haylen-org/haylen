@@ -266,6 +266,7 @@ A web page writes the clipboard only through the asynchronous clipboard API of t
 2. The driver `engine/tests/web/error-screen-check.mjs` opens the page in a headless Chrome that lets the page write the clipboard, stops the app and presses C on the error screen. The clipboard must then hold the report of the error.
 3. It presses R, and the app must start again and draw its magenta. Then it stops the app again, finds the restart button in a screenshot of the page and clicks it, with the same result.
 4. Then a browser that refuses every write of the clipboard and one without the clipboard API open the page. The copy must warn in the log of the page and leave the clipboard alone, and R must still bring the app back.
+5. Every page opens twice, with `?graphicsApi=webGpu` and with `?graphicsApi=webGl2`, and the app must draw through the API that the address names, since each restart makes a new GPU device of that API.
 
 ## The wake lock check of the web
 

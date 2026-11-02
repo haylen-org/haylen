@@ -1,6 +1,7 @@
-// Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. With "granted" the browser lets the page write the clipboard, and the check expects the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R.
+// Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. The page address names the graphics API with `?graphicsApi=`, which the app must draw through, since a restart makes a new GPU device. With "granted" the browser lets the page write the clipboard, and the check expects the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R.
 // Run it with Node: node error-screen-check.mjs <debugging port> <page address> <granted|refused|missing>
 const [port, url, mode] = process.argv.slice(2);
+const api = new URL(url).searchParams.get("graphicsApi");
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
 const socket = new WebSocket(version.webSocketDebuggerUrl);
 const pending = new Map();
@@ -166,7 +167,8 @@ const restart = async (name, action) => {
 
 const pressR = () => press("r", "KeyR", 82);
 
-if (step("ready", (await logged("The error screen check is ready.", { seconds: 60, since: 0 })) && (await shows(magenta))) && (await stop("stopped"))) {
+const ready = (await logged("The error screen check is ready.", { seconds: 60, since: 0 })) && (await logged(`The app draws through "${api}".`, { since: 0 }));
+if (step("ready", ready && (await shows(magenta))) && (await stop("stopped"))) {
     if (mode === "granted") {
         await press("c", "KeyC", 67);
         await pause(500);

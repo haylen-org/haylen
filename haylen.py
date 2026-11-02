@@ -794,7 +794,7 @@ WEB_WAKE_LOCK_STEPS = {
     "missing": ["ready", "warned", "runs on"],
 }
 WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
-# The error screen check of the web: an app that stops with an error at a key, whose page a headless browser opens three times. One lets the page write the clipboard, where the copy of the error screen puts its report, and the app draws again after the key R and after a click on the restart button. The others refuse the write or lack the clipboard API, which warns in the log, leaves the clipboard alone and still restarts the app.
+# The error screen check of the web: an app that stops with an error at a key, whose page a headless browser opens three times on WebGPU and three times on WebGL2, since a restart makes a new GPU device. One lets the page write the clipboard, where the copy of the error screen puts its report, and the app draws again after the key R and after a click on the restart button. The others refuse the write or lack the clipboard API, which warns in the log, leaves the clipboard alone and still restarts the app.
 WEB_ERROR_SCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-error-screen"
 WEB_ERROR_SCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "error-screen-check.mjs"
 WEB_ERROR_SCREEN_STEPS = {
@@ -841,15 +841,16 @@ def serve_site(site: Path) -> LocalServer:
 
 
 def check_web_error_screen(args: argparse.Namespace, target) -> None:
-    """Builds the site of the error screen check app, opens it in a headless browser that lets the page write the clipboard, one that refuses it and one without its API, and stops when a page misses a step or reports an error."""
+    """Builds the site of the error screen check app, opens it on WebGPU and on WebGL2 in a headless browser that lets the page write the clipboard, one that refuses it and one without its API, and stops when a page misses a step or reports an error."""
     site = target.prepare(App(WEB_ERROR_SCREEN_APP, target.plugins), args)
     server = serve_site(site)
     try:
-        for mode, steps in WEB_ERROR_SCREEN_STEPS.items():
-            with headless_browser([], "the error screen check of the web") as debugging:
-                terminal.step(f"Running the error screen check of the web in a headless browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}")
-                report = json.loads(capture([emsdk_node(), WEB_ERROR_SCREEN_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", mode]))
-            check_web_page_steps(report, steps, f"The page of the error screen check in a browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}")
+        for api in ("webGpu", "webGl2"):
+            for mode, steps in WEB_ERROR_SCREEN_STEPS.items():
+                with headless_browser([], "the error screen check of the web") as debugging:
+                    terminal.step(f'Running the error screen check of the web on "{api}" in a headless browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}')
+                    report = json.loads(capture([emsdk_node(), WEB_ERROR_SCREEN_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/?graphicsApi={api}", mode]))
+                check_web_page_steps(report, steps, f'The page of the error screen check on "{api}" in a browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}')
     finally:
         server.shutdown()
         server.server_close()
