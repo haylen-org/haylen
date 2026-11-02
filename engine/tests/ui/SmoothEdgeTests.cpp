@@ -103,6 +103,20 @@ TEST_F(SmoothEdgeTest, CentersTheSeparatorsOfASegmentedControlOnTheirEdges) {
     EXPECT_FLOAT_EQ(separator->bounds.getCenter().x, std::floor(chosen->bounds.x + chosen->bounds.width * 2.0F));
 }
 
+// The picked segment of a flat control is a pill inset from the border of the track, with all its corners concentric with the corners of the track, wherever it stands.
+TEST_F(SmoothEdgeTest, InsetsThePickedSegmentAsAPillConcentricWithTheTrack) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "segmentedControl", "id": "view", "width": 600, "items": [{"id": "a", "text": "A"}, {"id": "b", "text": "B"}, {"id": "c", "text": "C"}], "selected": "b"}]})");
+    frames(2);
+    const math::Color accent = getColor(Theme::Color::Accent);
+    const std::optional<graphics2d::Shape> chosen = findShape([&accent](const graphics2d::Shape& shape) { return shape.color == accent; });
+    ASSERT_TRUE(chosen.has_value());
+    const math::Rect track = getBounds(*gui, "view");
+    const float inset = getMetric(Theme::Metric::BorderWidth) + getMetric(Theme::Metric::ToggleKnobInset);
+    EXPECT_FLOAT_EQ(chosen->bounds.y, track.y + inset);
+    EXPECT_FLOAT_EQ(chosen->bounds.getBottom(), track.getBottom() - inset);
+    EXPECT_EQ(chosen->radii, round(getMetric(Theme::Metric::ControlRadius) - inset));
+}
+
 // A cooldown wider than its dial draws its backdrop as the circle of the dial, never as a pill across its whole width.
 TEST_F(SmoothEdgeTest, DrawsTheBackdropOfACooldownAsItsDial) {
     auto gui = mount(R"({"kind": "column", "align": "start", "children": [{"kind": "circularProgress", "id": "cooldown", "variant": "cooldown", "value": 0.5, "size": 96, "width": 200}]})");

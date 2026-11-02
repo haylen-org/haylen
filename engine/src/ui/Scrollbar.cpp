@@ -102,22 +102,25 @@ std::optional<double> Scrollbar::interact(Context& context, const math::Rect& ar
     return (reversed ? 1.0 - ratio : ratio) * maximum;
 }
 
-// The thumb runs in a groove as wide as itself with the same round ends, painted by the image of the track surface or by the track color. A hovered or held thumb takes the hover surface, or the normal one when the theme has no hover image.
 void Scrollbar::draw(Context& context, float alpha) const {
     if (alpha <= 0.0F || thumb.isEmpty()) {
         return;
     }
     ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * alpha);
-    const float radius = std::min(thumb.width, thumb.height) * 0.5F;
-    if (const Theme::Image* image = context.getSurface(Theme::Surface::ScrollbarTrack)) {
-        Surfaces::drawNineSlice(context, *image, track, context.getColor(Theme::Color::Track));
-    } else if (const math::Color groove = context.getColor(Theme::Color::ScrollbarTrack); groove.a > 0.0F) {
-        Surfaces::fill(context, track, groove, radius);
-    }
-    const bool active = hovered || held;
-    const Theme::Surface surface = active && context.getSurface(Theme::Surface::ScrollbarHover) != nullptr ? Theme::Surface::ScrollbarHover : Theme::Surface::Scrollbar;
-    Surfaces::draw(context, surface, thumb, context.getColor(active ? Theme::Color::ScrollbarHover : Theme::Color::Scrollbar), std::nullopt, radius);
+    paint(context, track, thumb, hovered || held);
     ImGui::PopStyleVar();
+}
+
+// The thumb runs in a groove as wide as itself with the same round ends, painted by the image of the track surface or by the track color. A hovered or held thumb takes the hover surface, or the normal one when the theme has no hover image.
+void Scrollbar::paint(Context& context, const math::Rect& groove, const math::Rect& handle, bool active) {
+    const float radius = std::min(handle.width, handle.height) * 0.5F;
+    if (const Theme::Image* image = context.getSurface(Theme::Surface::ScrollbarTrack)) {
+        Surfaces::drawNineSlice(context, *image, groove, context.getColor(Theme::Color::Track));
+    } else if (const math::Color color = context.getColor(Theme::Color::ScrollbarTrack); color.a > 0.0F) {
+        Surfaces::fill(context, groove, color, radius);
+    }
+    const Theme::Surface surface = active && context.getSurface(Theme::Surface::ScrollbarHover) != nullptr ? Theme::Surface::ScrollbarHover : Theme::Surface::Scrollbar;
+    Surfaces::draw(context, surface, handle, context.getColor(active ? Theme::Color::ScrollbarHover : Theme::Color::Scrollbar), std::nullopt, radius);
 }
 
 } // namespace haylen::ui

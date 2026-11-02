@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <optional>
 
 #include <imgui.h>
@@ -38,12 +39,12 @@ math::Vec2 SegmentedControl::measureContent(Context& context, float availableWid
     return {width, height};
 }
 
-// The segments sit inside the border of a flat control, or inside the padding of the image of a themed one.
+// The segments sit the knob inset of the theme inside the border of a flat control, as the knob of a switch sits inside its track, or inside the padding of the image of a themed one.
 math::Insets SegmentedControl::getPadding(Context& context) const {
     if (context.getSurface(Theme::Surface::Segment) != nullptr) {
         return Surfaces::getPadding(context, Theme::Surface::Segment);
     }
-    return math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth) * 2.0F);
+    return math::Insets::uniform(context.getMetric(Theme::Metric::BorderWidth) + context.getMetric(Theme::Metric::ToggleKnobInset));
 }
 
 // Segments share the width equally while every label fits with the tab padding on both sides. With less room each segment takes its label and the padding and the rest is shared equally, and with less still the padding shrinks to the content spacing and the labels draw smaller, down to the least scale. Below it the labels wrap between their words at that scale, or smaller when their longest words do not fit side by side, and each segment takes its longest word and a share of the room left in proportion to the rest of its label, so no word ever breaks. Returns the padding the labels keep.
@@ -115,21 +116,6 @@ text::Style SegmentedControl::getLabelStyle(Context& context, float width) const
     return style;
 }
 
-// A segment rounds only the corners it shares with the control, with the curve of the control inside its padding, so a picked segment never leaves empty corners in the control around it.
-ImDrawFlags SegmentedControl::getCorners(const Context& context, std::size_t index) const noexcept {
-    const bool first = index == 0;
-    const bool last = index + 1 == items.size();
-    const bool left = context.isRightToLeft() ? last : first;
-    const bool right = context.isRightToLeft() ? first : last;
-    if (left && right) {
-        return ImDrawFlags_RoundCornersAll;
-    }
-    if (left) {
-        return ImDrawFlags_RoundCornersLeft;
-    }
-    return right ? ImDrawFlags_RoundCornersRight : ImDrawFlags_RoundCornersNone;
-}
-
 void SegmentedControl::render(Context& context, const math::Rect& bounds) {
     const float outer = context.getMetric(Theme::Metric::ControlRadius);
     Surfaces::draw(context, Theme::Surface::Segment, bounds, context.getColor(Theme::Color::Raised), context.getColor(Theme::Color::Border), outer);
@@ -137,7 +123,7 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
         return;
     }
 
-    // Segments share the width as `layOut` divides it, each picks itself on a click, and the whole control takes the focus on top of them. The segments sit inside the border of a flat control, or inside the padding of the image of a themed one, so a picked segment never covers the rim of the control.
+    // Segments share the width as `layOut` divides it, each picks itself on a click, and the whole control takes the focus on top of them. The picked and the hovered segments are pills inside the padding of the control, rounded on every corner with the curve of the control inside that padding, so they never cover its rim and their corners stay concentric with its corners.
     const int current = ChoiceItem::indexOf(items, selected);
     const math::Insets padding = getPadding(context);
     const math::Rect inner = bounds.inset(padding);
@@ -151,14 +137,13 @@ void SegmentedControl::render(Context& context, const math::Rect& bounds) {
         const math::Rect segment = context.mirror({std::floor(inner.x + offset), inner.y, std::floor(inner.x + offset + width) - std::floor(inner.x + offset), inner.height}, inner);
         offset += width;
         const bool chosen = static_cast<int>(index) == current;
-        const ImDrawFlags corners = getCorners(context, index);
         ImGui::PushID(item.id.c_str());
         ImGui::BeginDisabled(!item.enabled);
         const Widgets::Interaction state = Widgets::interact(context, segment, radius, "##segment", ImGuiButtonFlags_NoNavFocus);
         if (chosen) {
-            Surfaces::draw(context, Theme::Surface::SegmentSelected, segment, context.getColor(Theme::Color::Accent), std::nullopt, radius, corners);
+            Surfaces::draw(context, Theme::Surface::SegmentSelected, segment, context.getColor(Theme::Color::Accent), std::nullopt, radius);
         } else if (state.hovered) {
-            Surfaces::fill(context, segment, context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover), radius, corners);
+            Surfaces::fill(context, segment, context.getColor(state.held ? Theme::Color::Pressed : Theme::Color::Hover), radius);
         }
         if (index > 0 && !chosen && static_cast<int>(index) != current + 1) {
             const float thickness = context.getMetric(Theme::Metric::BorderWidth);

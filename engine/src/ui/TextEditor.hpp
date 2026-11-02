@@ -31,6 +31,9 @@ class TextEditor final {
         float reserveStart = 0.0F;
         float reserveEnd = 0.0F;
 
+        // Centers the text of an editor of one line while it fits the area, such as the value of a number field between its buttons.
+        bool centered = false;
+
         // The scroll bar of an editor of many lines, which shows while its text is taller than its area.
         Scrollbar* scrollbar = nullptr;
     };
@@ -58,6 +61,7 @@ class TextEditor final {
         bool rightToLeft = false;
         bool password = false;
         bool multiline = false;
+        bool centered = false;
         int cursor = -1;
         int anchor = -1;
 
@@ -72,8 +76,9 @@ class TextEditor final {
     static int callback(ImGuiInputTextCallbackData* data);
     static void placeCaret(ImGuiInputTextCallbackData& data, const Editing& editing);
 
-    // Returns the top-left of the text block in the area, aligned where its direction starts and moved by the scroll.
-    [[nodiscard]] static math::Vec2 getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline);
+    // Returns the top-left of the text block in the area, in its middle while a centered line fits it and otherwise aligned where its direction starts, and moved by the scroll.
+    [[nodiscard]] static math::Vec2 getOrigin(const text::Layout& laid, const math::Rect& area, math::Vec2 scroll, bool rightToLeft, bool multiline, bool centered);
+    [[nodiscard]] static bool isCentered(math::Vec2 size, const math::Rect& area, bool multiline, bool centered) noexcept;
 
     // Moves the scroll so the caret stays inside the area, without leaving room at an end the text does not fill.
     static void follow(math::Vec2& scroll, const TextFieldLayout& field, const math::Rect& caret, const math::Rect& area, bool rightToLeft, bool multiline);

@@ -10,7 +10,7 @@ local imgui = require('haylen.imgui')
 
 Every call must happen while a frame runs. That covers the `update`, `fixedUpdate`, `render` and `renderUi` callbacks of scenes, the callbacks of timers and tweens, and the handlers of [`haylen.ui`](ui.md). The `renderUi` callback of a scene is the usual place. A call anywhere else, such as at the top level of `source/main.lua` or in a callback of [`haylen.platform`](platform.md), raises `The module "haylen.imgui" can only be used while a frame is running.`.
 
-Positions and sizes are design units, with the origin at the top left of the visible area. Windows draw over the app. They use the colors, metrics and body font of the active [`haylen.ui`](ui.md) theme, and their scroll bars keep the [gap](ui.md#scroll-bars) of the theme from their content. While the pointer is over a window, `ui.usingPointer()` returns `true`.
+Positions and sizes are design units, with the origin at the top left of the visible area. Windows draw over the app. They use the colors, metrics and body font of the active [`haylen.ui`](ui.md) theme. Their scroll bars keep the [gap](ui.md#scroll-bars) of the theme from their content and draw as the bars of the components do, with a thumb in a groove of the theme color `scrollbarTrack` that never gets shorter than the thumbs of the components. While the pointer is over a window, `ui.usingPointer()` returns `true`.
 
 A widget is known by its label within the current window. Text after `##` in a label is part of that identity, but it does not show. So `'Delete##slot1'` and `'Delete##slot2'` are two buttons that both read `Delete`. The function `imgui.pushId` keeps apart the widgets of a loop.
 
@@ -47,7 +47,7 @@ scene.push({
 
 ### imgui.beginWindow(name, options)
 
-Starts a window and returns two booleans: whether its content is visible, and whether it is still open. The content is not visible while the window is collapsed. The argument `name` is the title and the identity of the window. The function `imgui.endWindow` must follow every `beginWindow`, whatever it returned. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
+Starts a window and returns two booleans: whether its content is visible, and whether it is still open. The content is not visible while the window is collapsed. The title bar holds the title and the close button, as the windows of [`haylen.ui`](ui.md) do, and a double press on it folds the window to its title bar and opens it again. The argument `name` is the title and the identity of the window. The function `imgui.endWindow` must follow every `beginWindow`, whatever it returned. The options table is optional, and unknown keys raise `Unknown option "<key>".`.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |

@@ -148,6 +148,9 @@ class Widgets final {
     // Returns the step a horizontal direction the player pressed takes along a control that grows toward the end of the UI: one forward when it points toward the end and one back otherwise.
     [[nodiscard]] static int getStep(const Context& context, FocusDirection direction) noexcept;
 
+    // Paints overlay on top of base the way a translucent layer would, such as the hover color of the theme over the fill of a control.
+    [[nodiscard]] static math::Color mix(math::Color base, math::Color overlay) noexcept;
+
   private:
     struct SurfaceSet {
         Theme::Surface normal;
@@ -155,8 +158,6 @@ class Widgets final {
         Theme::Surface pressed;
     };
 
-    // Paints overlay on top of base the way a translucent layer would.
-    [[nodiscard]] static math::Color mix(math::Color base, math::Color overlay) noexcept;
     [[nodiscard]] static SurfaceSet getSurfaces(ButtonVariant variant) noexcept;
 
     // A theme may leave out the hover or pressed image of a surface, and then the normal image stands in for it.
@@ -167,6 +168,9 @@ class Widgets final {
 
     // Draws the label of a choice in the bounds of its row beside a mark of the width, wrapped and centered across the height of the row.
     static void drawChoiceLabel(Context& context, const math::Rect& bounds, float mark, std::string_view label);
+
+    // Returns the room content keeps from each edge of a button whose surface leaves the inner width free.
+    [[nodiscard]] static float getContentEdge(Context& context, float innerWidth, float contentWidth);
 
     // Draws the icon and the label of a button inside the space its surface leaves free.
     static void drawButtonContent(Context& context, const math::Rect& inner, std::string_view label, const graphics::Texture* icon, math::Color textColor, math::Color iconColor, const ButtonContent& content);

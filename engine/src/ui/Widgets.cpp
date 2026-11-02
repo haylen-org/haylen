@@ -141,20 +141,29 @@ math::Vec2 Widgets::measureButton(Context& context, std::string_view label, bool
     }
 
     const math::Insets padding = Surfaces::getPadding(context, getSurfaces(variant).normal);
-    const float paddingX = context.getMetric(Theme::Metric::ControlPaddingX) * 2.0F + padding.getHorizontal();
+    const float inner = std::max(0.0F, availableWidth - padding.getHorizontal());
     if (content.iconPlacement == IconPlacement::Top && hasIcon) {
         const float labelHeight = label.empty() ? 0.0F : Typography::getLineHeight(context, Theme::Font::Button) + context.getMetric(Theme::Metric::ContentSpacing) * 0.5F;
         const float stacked = icon + labelHeight + context.getMetric(Theme::Metric::ControlPaddingY) + padding.getVertical();
-        return {std::max(std::max(textWidth, icon) + paddingX, height), std::max(stacked, height)};
+        const float widest = std::max(textWidth, icon);
+        return {std::max(widest + getContentEdge(context, inner, widest) * 2.0F + padding.getHorizontal(), height), std::max(stacked, height)};
     }
     const float iconRoom = hasIcon ? icon + (label.empty() ? 0.0F : context.getMetric(Theme::Metric::ContentSpacing)) : 0.0F;
-    const float room = std::max(0.0F, availableWidth - paddingX - iconRoom);
+    const float edges = getContentEdge(context, inner, textWidth + iconRoom) * 2.0F + padding.getHorizontal();
+    const float room = std::max(0.0F, availableWidth - edges - iconRoom);
     if (textWidth > room && room > 0.0F) {
         const math::Vec2 wrapped = Typography::measure(context, Theme::Font::Button, label, room);
         const float wrappedHeight = wrapped.y + context.getMetric(Theme::Metric::ControlPaddingY) * 2.0F + padding.getVertical();
-        return {std::max(wrapped.x + paddingX + iconRoom, height), std::max(wrappedHeight, height)};
+        return {std::max(wrapped.x + edges + iconRoom, height), std::max(wrappedHeight, height)};
     }
-    return {std::max(textWidth + paddingX + iconRoom, height), height};
+    return {std::max(textWidth + edges + iconRoom, height), height};
+}
+
+// Content keeps the control padding from both edges while it fits that way, and otherwise the content spacing, so a label that nearly fills its button stays on one line before it wraps.
+float Widgets::getContentEdge(Context& context, float innerWidth, float contentWidth) {
+    const float padding = context.getMetric(Theme::Metric::ControlPaddingX);
+    const float edge = contentWidth + padding * 2.0F <= innerWidth ? padding : context.getMetric(Theme::Metric::ContentSpacing);
+    return std::min(edge, innerWidth * 0.5F);
 }
 
 bool Widgets::button(Context& context, const math::Rect& bounds, std::string_view label, const graphics::Texture* icon, ButtonVariant variant, bool checked, const IconColor& iconColor, const ButtonContent& content) {
@@ -207,16 +216,18 @@ bool Widgets::button(Context& context, const math::Rect& bounds, std::string_vie
     return state.clicked;
 }
 
-// The icon and the label sit together where `justify` puts them, the icon on the side the UI starts or above the label, and away from the edges by the control padding unless they sit in the middle.
+// The icon and the label sit together where `justify` puts them, the icon on the side the UI starts or above the label, and away from the edges by the room `measureButton` keeps for them, so the label wraps exactly when the button grew taller for it.
 void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::string_view label, const graphics::Texture* icon, math::Color textColor, math::Color iconColor, const ButtonContent& content) {
     const float iconSize = icon != nullptr ? context.getMetric(Theme::Metric::IconSize) : 0.0F;
     const float spacing = context.getMetric(Theme::Metric::ContentSpacing);
-    const float edge = content.justify == Alignment::Center ? 0.0F : std::min(context.getMetric(Theme::Metric::ControlPaddingX), inner.width * 0.5F);
+    const float measured = label.empty() ? 0.0F : Typography::measure(context, Theme::Font::Button, label).x;
+    const bool stacked = content.iconPlacement == IconPlacement::Top && iconSize > 0.0F;
+    const float iconRoom = iconSize > 0.0F ? iconSize + (label.empty() ? 0.0F : spacing) : 0.0F;
+    const float edge = getContentEdge(context, inner.width, stacked ? std::max(measured, iconSize) : measured + iconRoom);
     const float start = inner.x + edge;
     const float room = std::max(0.0F, inner.width - edge * 2.0F);
-    const float measured = label.empty() ? 0.0F : Typography::measure(context, Theme::Font::Button, label).x;
 
-    if (content.iconPlacement == IconPlacement::Top && iconSize > 0.0F) {
+    if (stacked) {
         const float lineHeight = label.empty() ? 0.0F : Typography::getLineHeight(context, Theme::Font::Button);
         const float gap = label.empty() ? 0.0F : spacing * 0.5F;
         const float top = std::floor(inner.getCenter().y - (iconSize + gap + lineHeight) * 0.5F);
@@ -231,7 +242,7 @@ void Widgets::drawButtonContent(Context& context, const math::Rect& inner, std::
     }
 
     // A label wider than its room wraps there, on lines that keep the alignment of the content.
-    const float textRoom = std::max(0.0F, room - (iconSize > 0.0F ? iconSize + spacing : 0.0F));
+    const float textRoom = std::max(0.0F, room - iconRoom);
     const bool wrapped = measured > textRoom && textRoom > 0.0F;
     const math::Vec2 text = wrapped ? Typography::measure(context, Theme::Font::Button, label, textRoom) : math::Vec2{std::min(measured, textRoom), Typography::getLineHeight(context, Theme::Font::Button)};
     const float contentWidth = iconSize + text.x + (iconSize > 0.0F && text.x > 0.0F ? spacing : 0.0F);

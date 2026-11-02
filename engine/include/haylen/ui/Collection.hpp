@@ -253,6 +253,7 @@ class Collection final : public Component {
     [[nodiscard]] bool isAnimating(const CollectionCell& cell) const noexcept;
     void noteEntering(std::size_t first, std::size_t count);
     void animate();
+    [[nodiscard]] bool isCovered(const CollectionCell& cell) const;
     void releaseOutside(const Range& window, std::optional<std::size_t> sticky);
     void bindCell(const std::shared_ptr<CollectionCell>& cell, std::size_t index, bool withBinders);
     void bindRange(std::size_t first, std::size_t last, bool withBinders);

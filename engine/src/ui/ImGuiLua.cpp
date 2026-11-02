@@ -1,7 +1,10 @@
 #include "ui/ImGuiLua.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cfloat>
+#include <cmath>
+#include <cstddef>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -19,6 +22,9 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Context.hpp"
+#include "ui/ImGuiConverter.hpp"
+#include "ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 
@@ -38,6 +44,49 @@ const char* ImGuiLua::readLabel(lua_State* L, int index) {
 
 ImVec2 ImGuiLua::readOptionalSize(lua_State* L, int first) {
     return {static_cast<float>(luaL_optnumber(L, first, 0.0)), static_cast<float>(luaL_optnumber(L, first + 1, 0.0))};
+}
+
+// ImGui moves the scroll bars of the windows it begins with a thumb at least as long as the thumbs of the components, which it paints in no color, so the window paints them with the theme once it began.
+void ImGuiLua::hideBars() {
+    for (const ImGuiCol color : {ImGuiCol_ScrollbarGrab, ImGuiCol_ScrollbarGrabHovered, ImGuiCol_ScrollbarGrabActive}) {
+        ImGui::PushStyleColor(color, ImVec4(0.0F, 0.0F, 0.0F, 0.0F));
+    }
+    ImGui::PushStyleVar(ImGuiStyleVar_GrabMinSize, Scrollbar::kMinThumb);
+}
+
+// Each bar of the window that began paints its groove and its thumb in the places ImGui gives them, so the thumb the theme paints is the one the pointer drags, over the lane outside the clip of the content.
+void ImGuiLua::paintBars(lua_State* L, bool visible) {
+    ImGui::PopStyleVar();
+    ImGui::PopStyleColor(3);
+
+    ImGuiWindow& window = *ImGui::GetCurrentWindow();
+    if (!visible || (!window.ScrollbarX && !window.ScrollbarY)) {
+        return;
+    }
+
+    Context& context = lua::Runtime::getEngine(L).getPlugin<plugins::UiPlugin>().getContext();
+    const ImGuiContext& state = *GImGui;
+    window.DrawList->PushClipRect(window.OuterRectClipped.Min, window.OuterRectClipped.Max);
+    for (const ImGuiAxis axis : {ImGuiAxis_X, ImGuiAxis_Y}) {
+        const auto along = static_cast<std::size_t>(axis);
+        const ImRect frame = ImGui::GetWindowScrollbarRect(&window, axis);
+        const float padding = std::floor(std::min(state.Style.ScrollbarPadding, std::min(frame.GetWidth(), frame.GetHeight()) * 0.5F));
+        const ImRect groove(frame.Min + ImVec2(padding, padding), frame.Max - ImVec2(padding, padding));
+        const float length = groove.GetSize()[along];
+        if ((axis == ImGuiAxis_X ? !window.ScrollbarX : !window.ScrollbarY) || length < 1.0F) {
+            continue;
+        }
+
+        const float shown = std::trunc(window.InnerRect.Max[along] - window.InnerRect.Min[along]);
+        const float content = std::max({std::trunc(window.ContentSize[along] + window.WindowPadding[along] * 2.0F), shown, 1.0F});
+        const float thumb = std::floor(std::clamp(length * shown / content, std::min(length, Scrollbar::kMinThumb), length));
+        const float progress = std::clamp(std::trunc(window.Scroll[along]) / std::max(1.0F, content - shown), 0.0F, 1.0F);
+        const float start = groove.Min[along] + progress * (length - thumb);
+        const math::Rect handle = axis == ImGuiAxis_X ? math::Rect{start, groove.Min.y, thumb, groove.GetHeight()} : math::Rect{groove.Min.x, start, groove.GetWidth(), thumb};
+        const ImGuiID id = ImGui::GetWindowScrollbarID(&window, axis);
+        Scrollbar::paint(context, ImGuiConverter::toRect(groove), handle, state.HoveredId == id || state.ActiveId == id);
+    }
+    window.DrawList->PopClipRect();
 }
 
 int ImGuiLua::returnChanged(lua_State* L, bool changed, int values) {
@@ -83,7 +132,10 @@ int ImGuiLua::beginWindow(lua_State* L) {
         flags |= autoResize ? ImGuiWindowFlags_AlwaysAutoResize : ImGuiWindowFlags_None;
     }
     bool open = true;
-    const bool visible = ImGui::Begin(readLabel(L, 1), closable ? &open : nullptr, flags);
+    const char* name = readLabel(L, 1);
+    hideBars();
+    const bool visible = ImGui::Begin(name, closable ? &open : nullptr, flags);
+    paintBars(L, visible);
     backend.markImmediateWindow();
     lua::Stack::push(L, visible);
     lua::Stack::push(L, open);
@@ -280,7 +332,12 @@ int ImGuiLua::dummy(lua_State* L) {
 
 int ImGuiLua::beginChild(lua_State* L) {
     (void)requireFrame(L);
-    lua::Stack::push(L, ImGui::BeginChild(readLabel(L, 1), readOptionalSize(L, 2), lua_toboolean(L, 4) != 0 ? ImGuiChildFlags_Borders : ImGuiChildFlags_None));
+    const char* name = readLabel(L, 1);
+    const ImVec2 size = readOptionalSize(L, 2);
+    hideBars();
+    const bool visible = ImGui::BeginChild(name, size, lua_toboolean(L, 4) != 0 ? ImGuiChildFlags_Borders : ImGuiChildFlags_None);
+    paintBars(L, visible);
+    lua::Stack::push(L, visible);
     return 1;
 }
 
@@ -429,7 +486,11 @@ int ImGuiLua::openPopup(lua_State* L) {
 
 int ImGuiLua::beginPopup(lua_State* L) {
     (void)requireFrame(L);
-    lua::Stack::push(L, ImGui::BeginPopup(readLabel(L, 1)));
+    const char* name = readLabel(L, 1);
+    hideBars();
+    const bool open = ImGui::BeginPopup(name);
+    paintBars(L, open);
+    lua::Stack::push(L, open);
     return 1;
 }
 

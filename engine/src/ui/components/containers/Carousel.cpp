@@ -128,6 +128,7 @@ void Carousel::drawPages(Context& context, const math::Rect& area) {
     ImGui::PopClipRect();
 }
 
+// The arrows are round buttons of the theme, raised and bordered like the other buttons, and lit and pressed the way they are.
 int Carousel::drawArrows(Context& context, const math::Rect& area, std::size_t count) {
     const float radius = context.getMetric(Theme::Metric::ControlHeight) * 0.4F;
     const float margin = context.getMetric(Theme::Metric::ItemSpacing);
@@ -142,9 +143,10 @@ int Carousel::drawArrows(Context& context, const math::Rect& area, std::size_t c
         ImGui::PushID(direction);
         const Widgets::Interaction state = Widgets::interact(context, button, radius, "##arrow", ImGuiButtonFlags_NoNavFocus);
         ImGui::PopID();
-        const math::Color fill = context.getColor(Theme::Color::Overlay);
-        Surfaces::fill(context, button, state.hovered ? fill.withAlpha(std::min(1.0F, fill.a + 0.2F)) : fill, radius);
-        Widgets::arrow(context, button.getCenter(), radius * 0.7F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(Theme::Color::OnAccent));
+        const math::Color raised = context.getColor(Theme::Color::Raised);
+        const math::Color fill = state.held ? Widgets::mix(raised, context.getColor(Theme::Color::Pressed)) : state.hovered ? Widgets::mix(raised, context.getColor(Theme::Color::Hover)) : raised;
+        Surfaces::draw(context, Theme::Surface::Button, button, fill, context.getColor(Theme::Color::Border), radius);
+        Widgets::arrow(context, button.getCenter(), radius * 0.7F, Widgets::mirror(context, direction < 0 ? ImGuiDir_Left : ImGuiDir_Right), context.getColor(Theme::Color::Text));
         if (state.clicked) {
             moved = direction;
         }

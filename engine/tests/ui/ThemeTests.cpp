@@ -37,6 +37,7 @@ struct Loader {
 
 // The last name of every family reads as its last role, so no role is left without a name.
 TEST(ThemeTest, ReadsEveryRoleByName) {
+    EXPECT_EQ(Theme::colorFromName("background"), Theme::Color::Background);
     EXPECT_EQ(Theme::colorFromName("window"), Theme::Color::Window);
     EXPECT_EQ(Theme::colorFromName("accentText"), Theme::Color::AccentText);
     EXPECT_EQ(Theme::colorFromName("informationText"), Theme::Color::InformationText);
@@ -57,6 +58,7 @@ TEST(ThemeTest, ShipsDarkAndLightThemes) {
     EXPECT_EQ(dark.getName(), "dark");
     EXPECT_EQ(light.getName(), "light");
     EXPECT_NE(dark.getColor(Theme::Color::Window), light.getColor(Theme::Color::Window));
+    EXPECT_NE(dark.getColor(Theme::Color::Background), light.getColor(Theme::Color::Background));
     EXPECT_EQ(dark.getMetric(Theme::Metric::ControlHeight), light.getMetric(Theme::Metric::ControlHeight));
     EXPECT_EQ(dark.getFont(Theme::Font::Title).size, 48.0F);
     EXPECT_EQ(dark.getFont(Theme::Font::Body).font, "default");
@@ -189,6 +191,7 @@ TEST(ThemeTest, SyncsTheImGuiStyle) {
     EXPECT_EQ(style.WindowRounding, theme.getMetric(Theme::Metric::PanelRadius));
     EXPECT_EQ(style.DisabledAlpha, theme.getMetric(Theme::Metric::DisabledOpacity));
     EXPECT_EQ(style.InputTextCursorSize, theme.getMetric(Theme::Metric::CaretWidth));
+    EXPECT_EQ(style.WindowMenuButtonPosition, ImGuiDir_None);
 
     // ImGui pads the grab of a scroll bar by the gap on every side, and a scale that shrinks the gap below four points widens it.
     const float size = theme.getMetric(Theme::Metric::ScrollbarSize);

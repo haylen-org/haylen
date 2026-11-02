@@ -45,7 +45,7 @@ void PlayArea::drawCorners(Context& context, const math::Rect& bounds) const {
     const float reach = corner * 2.0F;
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
-    Surfaces::drawShape(context, {.bounds = bounds.inset(math::Insets::uniform(-corner)), .radii = {reach, reach, reach, reach}, .color = math::Color::transparent(), .borderWidth = corner, .borderColor = cornerColor.value_or(context.getColor(Theme::Color::Window))});
+    Surfaces::drawShape(context, {.bounds = bounds.inset(math::Insets::uniform(-corner)), .radii = {reach, reach, reach, reach}, .color = math::Color::transparent(), .borderWidth = corner, .borderColor = cornerColor.value_or(context.getColor(Theme::Color::Background))});
     list.PopClipRect();
 }
 

@@ -14,6 +14,7 @@
 #include "haylen/input/Key.hpp"
 #include "haylen/platform/Event.hpp"
 #include "haylen/text/Direction.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/CollectionCell.hpp"
 #include "haylen/ui/CollectionItems.hpp"
@@ -85,6 +86,17 @@ class CollectionTest : public ::testing::Test, public test::UiFixture {
     // The first press of a player who could not see the ring only shows it, so tests that navigate show it with a direction that leads nowhere.
     void showRing() {
         key(input::Key::Left);
+    }
+
+    // The opacity the last frame drew a text with, or -1 when it drew no such text.
+    [[nodiscard]] float getTextAlpha(std::string_view content) {
+        const Backend& backend = getUi().getBackend();
+        for (const Backend::Text& text : backend.getTexts()) {
+            if (backend.getContent(text) == content) {
+                return text.style.color.a;
+            }
+        }
+        return -1.0F;
     }
 
     [[nodiscard]] std::size_t countEvents(std::string_view name) const {
@@ -500,6 +512,46 @@ TEST_F(CollectionTest, AnimatesMovesInsertionsAndRemovals) {
     frames(2);
     EXPECT_FLOAT_EQ(getItemBounds(list, 4).y, top + 240.0F);
     EXPECT_FLOAT_EQ(getItemBounds(list, 0).y, top);
+}
+
+// A feed that sticks to its end and drops its first item as a new one arrives moves the new row in with the row before it, so the two never overlap while they slide.
+TEST_F(CollectionTest, MovesANewItemInWithTheItemBeforeIt) {
+    auto gui = mountCollection(R"({"kind": "collection", "id": "list", "height": 600, "gap": 0, "prefetch": 0, "stickToEnd": true, "types": {"row": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "height": 60}, "estimatedSize": 60}}})");
+    Collection& list = gui->getCollection("list");
+    const std::shared_ptr<CountingSource> source = show(list, makeItems(20));
+    list.setScrollOffset(1.0e9);
+    frames(2);
+    const float bottom = list.getBounds().getBottom();
+    ASSERT_FLOAT_EQ(getItemBounds(list, 19).getBottom(), bottom);
+
+    source->insert(20, makeItems(1, 21));
+    source->remove(0);
+    for (int frame = 0; frame < 30; ++frame) {
+        frames();
+        const math::Rect before = getItemBounds(list, 18);
+        const math::Rect added = getItemBounds(list, 19);
+        EXPECT_FLOAT_EQ(added.y, before.getBottom()) << frame;
+    }
+    EXPECT_FLOAT_EQ(getItemBounds(list, 19).getBottom(), bottom);
+}
+
+// A new item between items that move away from its place waits until they leave it before it fades in, so it never shows under them.
+TEST_F(CollectionTest, WaitsForTheItemsThatLeaveThePlaceOfANewItem) {
+    auto gui = mountCollection(kRows);
+    Collection& list = gui->getCollection("list");
+    const std::shared_ptr<CountingSource> source = show(list, makeItems(20));
+    source->insert(3, makeItems(1, 21));
+    bool waited = false;
+    for (int frame = 0; frame < 60; ++frame) {
+        frames();
+        const float shown = getTextAlpha("i21");
+        if (getItemBounds(list, 4).y < getItemBounds(list, 3).getBottom() - 0.5F) {
+            waited = true;
+            EXPECT_EQ(shown, 0.0F) << frame;
+        }
+    }
+    EXPECT_TRUE(waited);
+    EXPECT_EQ(getTextAlpha("i21"), 1.0F);
 }
 
 TEST_F(CollectionTest, ReportsPartEventsWithTheirCell) {

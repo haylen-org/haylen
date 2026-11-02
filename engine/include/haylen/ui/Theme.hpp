@@ -24,6 +24,7 @@ class Theme final {
   public:
     // Colors come in families: surfaces, states, borders, text, the accent and four tones. A tone has its fill, the ink written on that fill, a subtle background and a text color readable on the window.
     enum class Color : std::uint8_t {
+        Background,
         Window,
         Panel,
         Raised,
@@ -310,6 +311,7 @@ class Theme final {
 
     // clang-format off
     static constexpr std::array<ColorRole, kColorCount> kColorRoles{{
+        {"background", 0x101418FF, 0xDDE2ECFF, 0x000000FF, 0xFFFFFFFF},
         {"window", 0x1B1E2BFF, 0xF4F5F9FF, 0x000000FF, 0xFFFFFFFF},
         {"panel", 0x232739FF, 0xFFFFFFFF, 0x000000FF, 0xFFFFFFFF},
         {"raised", 0x2C3147FF, 0xFFFFFFFF, 0x101010FF, 0xFFFFFFFF},

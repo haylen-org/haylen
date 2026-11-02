@@ -357,7 +357,7 @@ ui.mount(ui.accordion{
 
 ### ui.carousel(properties)
 
-A carousel shows pages one at a time that slide sideways, such as a tutorial or a level picker. Each child is one page. A swipe or a drag of the pages changes the page, and so do the arrow buttons and the page dots. The arrows draw above pages that fill the carousel. The page dots take the focus, and left and right turn the pages from there. The controls of the other pages stay out of navigation. A new page reports `change`, with the page number from 1 as `page`.
+A carousel shows pages one at a time that slide sideways, such as a tutorial or a level picker. Each child is one page. A swipe or a drag of the pages changes the page, and so do the arrow buttons and the page dots. The arrows are round buttons of the theme, raised and bordered like the other buttons, and they draw above pages that fill the carousel. The page dots take the focus, and left and right turn the pages from there. The controls of the other pages stay out of navigation. A new page reports `change`, with the page number from 1 as `page`.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -589,7 +589,7 @@ Buttons answer a press. They all take the focus.
 
 ### ui.button(properties)
 
-A button reports `click` when the player presses it. A label longer than the width of the button wraps onto more lines, and the button grows taller to hold them, such as in a narrow panel.
+A button reports `click` when the player presses it. A label that does not fit inside the theme `controlPaddingX` of a narrow button keeps only the theme `contentSpacing` from its edges, so it stays on one line and the button keeps the height of a control. A label longer than that room wraps onto more lines, and the button grows taller to hold them, such as in a narrow panel.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -808,7 +808,7 @@ The segments fit their labels into the room they get, so every label shows whole
 - With less room still, the segments share the room in proportion to their labels, which draw smaller, down to three quarters of their font size.
 - Below that, the labels wrap between their words onto more lines, and the control grows taller to hold them. Every segment keeps room for the longest word of its label, which draws smaller still when the longest words do not fit side by side. No word breaks.
 
-The segments sit inside the border of the control, or inside the padding of the theme `segment` surface, so the picked segment never covers the rim of the control.
+The picked segment is a pill inside the track of the control, the theme `toggleKnobInset` inside its border as the knob of a switch sits inside its track, or inside the padding of the theme `segment` surface. Its corners round with the curve of the track inside that inset, so they stay concentric with the corners of the track and the pill never covers its rim.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -841,7 +841,7 @@ The focused field edits through the native text input of the platform. On phones
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `value` | string | `''` | The text. The text the player typed stays when `set` changes other properties. |
-| `placeholder` | text | none | A hint shown while the field is empty. |
+| `placeholder` | text | none | A hint shown while the field is empty, where its text starts. The caret of the focused empty field stands before the hint, a theme `caretWidth` apart from it. |
 | `maxLength` | integer from 0 to 1048576 | `0` | The largest length in characters, which are Unicode code points. The value `0` sets no limit. |
 | `keyboard` | string | `'text'` | The on-screen keyboard: `'text'` for letters, `'number'` for digits, `'decimal'` for digits with a decimal separator, `'phone'` for a phone pad, and `'email'`, `'url'` or `'search'` for letters with the keys of addresses, links or searches. Text areas and secret fields have keyboards of their own. |
 | `returnKey` | string | `'default'` | The label of the return key of the on-screen keyboard: `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'`. With `'next'`, the return key moves the focus to the next field, like Tab, instead of reporting `submit`. |
@@ -886,7 +886,7 @@ end})
 
 A text area is a text entry of several lines. Enter, and the return key of the on-screen keyboard, start a new line. It takes the properties of `textField` except `keyboard`, plus `rows`. It reports `change` and never reports `submit`. It shows its `placeholder` while it is empty.
 
-A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways. Text taller than the field scrolls with the wheel and with the caret. A [scroll bar](#scroll-bars) then shows inside the border of the field, from the frame after the text grew taller. The bar narrows the lines that wrap.
+A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways. Text taller than the field scrolls with the wheel and with the caret. A [scroll bar](#scroll-bars) then shows inside the border of the field, from the frame after the text grew taller. The bar narrows the lines that wrap. The lines fade into the theme color `scrollFade` along the edges where more text continues.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -914,7 +914,7 @@ end})
 
 ### ui.numberField(properties)
 
-A number field holds a number between a minimum and a maximum. Its minus and plus buttons change it, and the player can also type it in the middle. The signs of the buttons are strokes of one weight. A number that rounds to zero shows without a sign, as the values of sliders do. A change reports `change`, with the number as `value`.
+A number field holds a number between a minimum and a maximum. Its minus and plus buttons change it, and the player can also type it in the middle. The number shows centered between the buttons, however wide the field is, and a number too long for the room scrolls from its start as the player types. The signs of the buttons are strokes of one weight. A number that rounds to zero shows without a sign, as the values of sliders do. A change reports `change`, with the number as `value`.
 
 A typed number inside the range reports at once. A number outside the range waits until the player submits or leaves the field, which brings it into the range. Text that is not a finite number, such as `nan`, changes nothing, and the field shows the number again once the editing ends.
 
@@ -1427,7 +1427,7 @@ The player scrolls a collection in these ways:
 | `refreshable` | boolean | `false` | Lets a touch drag past the start of a vertical collection report `refresh`. |
 | `refreshing` | boolean | `false` | Shows the busy indicator at the start. A pull sets it, and the app sets it back to `false` with `gui:set` when the refresh ends. |
 | `endThreshold` | integer from 0 to 10000 | `5` | How many items from either end `endReached` and `startReached` report. |
-| `animateChanges` | boolean | `true` | Slides the items that a change moves, fades in the items it inserts and fades out the items it removes, for the items in view. |
+| `animateChanges` | boolean | `true` | Slides the items that a change moves, fades in the items it inserts and fades out the items it removes, for the items in view. An inserted item never shows under an item that moves: it slides in with the item before it, such as a new row at the end of a feed whose rows move up, and it fades in once no moving item covers its place. |
 | `reorderable` | boolean | `false` | Lets the player move items to other places, as [reordering](#reordering) describes. |
 
 The common properties apply too. The property `focusWrap` along the axis wraps the focus from the last item to the first and back, even when they do not show. The property `focusScope` keeps the focus inside the collection.
@@ -1788,7 +1788,7 @@ A play area is the part of a screen where the game shows, as a place the focus c
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `radius` | number from 0 to 10000 | `0` | Rounds the corners of the area and of its focus ring. The game draws below every GUI, so the area covers the corners of the game outside the curve with `cornerColor`. |
-| `cornerColor` | color | the theme `window` color | The color around the area, which its rounded corners take, such as the `clearColor` of the app or the fill of the card the area sits in. |
+| `cornerColor` | color | the theme `background` color | The color around the area, which its rounded corners take, such as the `clearColor` of the app or the fill of the card the area sits in. Without it the corners take the theme `background`, the color of the screen behind the GUIs, so an app that paints that screen with it gets matching corners in every theme. |
 
 ```lua
 local haylen = require('haylen')
@@ -1918,7 +1918,7 @@ The lane takes room from the content only while the content is longer than its a
 
 The layout never changes back and forth as the bar comes and goes. A scroll and a dialog decide from the size of their content at the whole width. A popup decides before it opens. A collection and a text area take the lane from the frame after their content grew longer than the view, and show the bar from then on.
 
-A `scroll` and a `collection` also fade their content into the theme color `scrollFade` along each edge where the content continues past the area. The fade is as long as the theme metric `scrollFade`, and it shows whether the bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. A theme sets the metric to `0` to draw no fade.
+A `scroll`, a `collection` and a `textArea` also fade their content into the theme color `scrollFade` along each edge where the content continues past the area. The fade is as long as the theme metric `scrollFade`, and it shows whether the bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. A theme sets the metric to `0` to draw no fade.
 
 The thumb runs in a groove along the whole bar, as wide as the thumb and with the same round ends. So the bar shows how long the content is and where the view lies in it. The colors `scrollbar` and `scrollbarHover` paint the thumb, and `scrollbarTrack` paints the groove, which a transparent color leaves out. The [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint the thumb and its groove with images in the same place. A `style` changes all of them for one node and the nodes inside it.
 
@@ -2243,6 +2243,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 
 | Role | Dark | Light | Used for |
 | --- | --- | --- | --- |
+| `background` | `#FF101418` | `#FFDDE2EC` | The screen behind the GUIs, which an app paints where no game shows, such as behind a menu, and the corners around a rounded `playArea`. The engine paints nothing with it on its own. |
 | `window` | `#FF1B1E2B` | `#FFF4F5F9` | The background of ImGui windows and the outline of progress text. |
 | `panel` | `#FF232739` | `#FFFFFFFF` | The fill of panels and dialogs. |
 | `raised` | `#FF2C3147` | `#FFFFFFFF` | The fill of cards, buttons, fields and chips. |
@@ -2289,7 +2290,7 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `onInformation` | `#FFFFFFFF` | `#FFFFFFFF` | The ink on the information fill. |
 | `informationBackground` | `#263AA8E0` | `#1F2A8CC0` | The subtle background of the information tone. |
 | `informationText` | `#FF7FCBF2` | `#FF1D6A93` | The text of the information tone. |
-| `scrollFade` | `#CC0F111A` | `#CCF4F5F9` | The color that the content of a `scroll` or a `collection` fades into along an edge where it continues past the area. |
+| `scrollFade` | `#CC0F111A` | `#CCF4F5F9` | The color that the content of a `scroll`, a `collection` or a `textArea` fades into along an edge where it continues past the area. |
 
 ### ui.themeColor(role)
 
@@ -2316,7 +2317,7 @@ Metrics size the parts of the components. Both built-in themes share these value
 | --- | --- | --- |
 | `controlHeight` | `64` | The height of buttons, fields, combos, sliders and the tab strip, and the least height of the rows of check boxes, radio buttons and toggles. So every control is a touch target of the same size, the size that the accessibility audits of the platforms ask for at the scales of phones. |
 | `controlRadius` | `12` | The corner radius of controls, panels and windows. |
-| `controlPaddingX` | `24` | The horizontal padding inside buttons, fields, alerts and toasts. |
+| `controlPaddingX` | `24` | The horizontal padding inside buttons, fields, alerts and toasts. A button too narrow for its label with this padding keeps `contentSpacing` instead. |
 | `controlPaddingY` | `12` | The vertical padding of settings rows, alerts, toasts and text areas. |
 | `itemSpacing` | `16` | The default gap of columns, rows and grids, and the space between the parts of a component. |
 | `panelPadding` | `28` | The default padding of cards, panels and dialogs, and the margin of toasts. |
@@ -2346,7 +2347,7 @@ Metrics size the parts of the components. Both built-in themes share these value
 | `slotSize` | `96` | The size of the slots of slot grids without a slot size. |
 | `windowTitleHeight` | `56` | The height of the title bar of windows. |
 | `pageIndicatorSize` | `14` | The size of the page dots of carousels. |
-| `toggleKnobInset` | `4` | The space between the knob of a switch and the edge of its track. |
+| `toggleKnobInset` | `4` | The space between the knob of a switch and the edge of its track, and between the picked segment of a segmented control and the border of its track. |
 | `transitionDuration` | `0.15` | The seconds the transitions of the UI take: the knob of a switch, the fades of dialogs and their backdrops, and the fades and moves of toasts. |
 | `toastLimit` | `3` | The notices one list of toasts shows at once, while the others wait, and the notices a closed deck shows, while older ones hide behind them. The value `0` shows them all. |
 | `toastRadius` | `999` | The corner radius of toasts, at most half the height of a toast of one line. So the default rounds every toast of one line into a pill. |
@@ -2369,7 +2370,7 @@ Metrics size the parts of the components. Both built-in themes share these value
 | `splitterSize` | `10` | The thickness of the handle of splitters. |
 | `scrollLine` | `64` | The distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
 | `sliderValueWidth` | `96` | The least room a slider or a range slider keeps for the value it shows. So the tracks of the sliders of one column line up, whatever their ends. |
-| `scrollFade` | `32` | The length of the fade along an edge of a `scroll` or a `collection` where the content continues past the area. The value `0` draws none. |
+| `scrollFade` | `32` | The length of the fade along an edge of a `scroll`, a `collection` or a `textArea` where the content continues past the area. The value `0` draws none. |
 | `readingWidth` | `880` | The widest line of the title and the message of an empty state, which keeps a long message easy to read on a wide screen. |
 | `cellRadius` | `12` | The corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
 | `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |

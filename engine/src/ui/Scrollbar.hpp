@@ -14,6 +14,9 @@ class Scrollbar final {
     // The fewest points of the screen between the content and the bar, whatever scale shrinks the UI.
     static constexpr float kMinimumGap = 4.0F;
 
+    // The shortest a thumb gets, however long the content is.
+    static constexpr float kMinThumb = 32.0F;
+
     // Returns the gap between the content and the bar in UI units: the theme metric, or the units that span the fewest points when the metric spans fewer on this screen.
     [[nodiscard]] static float getGap(float metric, float pointsPerUnit) noexcept;
     [[nodiscard]] static float getGap(const Context& context);
@@ -36,9 +39,10 @@ class Scrollbar final {
     // Draws the track and the thumb, faded by `alpha`.
     void draw(Context& context, float alpha) const;
 
-  private:
-    static constexpr float kMinThumb = 32.0F;
+    // Paints a thumb in its groove with the theme, lit while the pointer hovers or holds it, such as the bars that ImGui moves in the windows of `haylen.imgui`.
+    static void paint(Context& context, const math::Rect& groove, const math::Rect& handle, bool active);
 
+  private:
     math::Rect track;
     math::Rect thumb;
     bool hovered = false;

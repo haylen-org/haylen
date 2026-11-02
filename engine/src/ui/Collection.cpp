@@ -719,7 +719,7 @@ void Collection::noteEntering(std::size_t first, std::size_t count) {
     }
 }
 
-// Moved cells slide from where they drew before the change to their new place, new cells fade in, and the cells of removed items fade out and go back to their pools.
+// Moved cells slide from where they drew before the change to their new place, new cells fade in, and the cells of removed items fade out and go back to their pools. A new cell never shows under a cell that moves: it takes the slide of the cell before it, so a block of cells that moves carries it along, such as a feed whose rows move up as a row arrives at its end, and it fades in only once no moving cell covers its place.
 void Collection::animate() {
     const float decay = std::exp(-kSlideSpeed * delta);
     const double far = getMainLength() * 2.0;
@@ -734,8 +734,22 @@ void Collection::animate() {
                 cell->slide = {};
             }
         }
-        cell->opacity = std::min(1.0F, cell->opacity + delta * kFadeSpeed);
     }
+
+    for (std::size_t position = 1; position < cells.size(); ++position) {
+        CollectionCell& cell = *cells[position];
+        const CollectionCell& before = *cells[position - 1];
+        if (before.index + 1 == cell.index && std::ranges::find(entering, cell.item) != entering.end()) {
+            cell.slide = before.slide;
+        }
+    }
+
+    for (const std::shared_ptr<CollectionCell>& cell : cells) {
+        if (cell->opacity < 1.0F && !isCovered(*cell)) {
+            cell->opacity = std::min(1.0F, cell->opacity + delta * kFadeSpeed);
+        }
+    }
+
     // clang-format off
     std::erase_if(leaving, [this](const std::shared_ptr<CollectionCell>& cell) {
         cell->opacity -= delta * kFadeSpeed;
@@ -749,6 +763,23 @@ void Collection::animate() {
     });
     // clang-format on
     entering.clear();
+}
+
+// A cell that slides covers the place where another cell draws when the two overlap by more than the distance a slide settles within.
+bool Collection::isCovered(const CollectionCell& cell) const {
+    const math::Rect place = getItemRect(cell.index).translated(cell.slide);
+    for (const std::shared_ptr<CollectionCell>& other : cells) {
+        if (other.get() == &cell || (other->slide.x == 0.0F && other->slide.y == 0.0F)) {
+            continue;
+        }
+
+        const math::Rect drawn = getItemRect(other->index).translated(other->slide);
+        const math::Rect shared = place.intersection(drawn);
+        if (shared.width > kSettleDistance && shared.height > kSettleDistance) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // Cells a line beyond the window stay bound, so a player who turns back rebinds nothing, and so do the current sticky item and the item that waits for the focus.

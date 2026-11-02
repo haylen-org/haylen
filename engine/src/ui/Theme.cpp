@@ -365,6 +365,8 @@ void Theme::applyTo(ImGuiStyle& style, float pointsPerUnit) const {
     style.WindowBorderSize = getMetric(Metric::BorderWidth) * 0.5F;
     style.FrameBorderSize = 0.0F;
     style.InputTextCursorSize = getMetric(Metric::CaretWidth);
+    // Windows keep their title bar for the title and the close button, as the windows of the UI do, and fold with a double press on it.
+    style.WindowMenuButtonPosition = ImGuiDir_None;
 
     ImVec4* palette = style.Colors;
     palette[ImGuiCol_Text] = ImGuiConverter::toImVec4(getColor(Color::Text));

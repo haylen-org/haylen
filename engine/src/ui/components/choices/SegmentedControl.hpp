@@ -1,11 +1,8 @@
 #pragma once
 
-#include <cstddef>
 #include <string>
 #include <string_view>
 #include <vector>
-
-#include <imgui.h>
 
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Insets.hpp"
@@ -44,7 +41,6 @@ class SegmentedControl final : public Component {
     // Labels too wide for their segments draw smaller, down to this share of the size of their font, and wrap onto more lines below it.
     static constexpr float kMinLabelScale = 0.75F;
 
-    [[nodiscard]] ImDrawFlags getCorners(const Context& context, std::size_t index) const noexcept;
     [[nodiscard]] math::Insets getPadding(Context& context) const;
     [[nodiscard]] float layOut(Context& context, float width);
     [[nodiscard]] static float getLongestWord(Context& context, std::string_view label);

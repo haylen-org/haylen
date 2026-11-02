@@ -525,12 +525,13 @@ TEST_F(ComponentTest, RefusesTableRowsWithMoreCellsThanColumns) {
     EXPECT_EQ(getEngine().getError(), nullptr);
 }
 
-// Typing reports only numbers inside the range, and the end of the editing brings any other number into it. Text that is not a finite number changes nothing.
+// Typing reports only numbers inside the range, and the end of the editing brings any other number into it. Text that is not a finite number changes nothing. The value shows centered, so a click on the field lands inside it and End moves the caret past it.
 TEST_F(ComponentTest, CommitsTypedNumbersInsideTheRange) {
     auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "numberField", "id": "count", "value": 20, "min": 10, "max": 100}]})");
     // clang-format off
     const auto retype = [this, &gui](std::u32string_view text) {
         click(*gui, "count");
+        key(input::Key::End);
         key(input::Key::Backspace);
         key(input::Key::Backspace);
         type(text);

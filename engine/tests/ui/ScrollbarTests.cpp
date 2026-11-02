@@ -28,6 +28,7 @@
 #include "haylen/ui/Theme.hpp"
 #include "support/TestFiles.hpp"
 #include "support/UiFixture.hpp"
+#include "ui/Scrollbar.hpp"
 
 namespace haylen::ui {
 
@@ -51,10 +52,12 @@ enum class Side : std::uint8_t {
 
 class ScrollbarTest : public ::testing::Test, public test::UiFixture {
   protected:
-    // The bars draw in magenta and the selected rows of popups in cyan, which nothing else in these GUIs draws.
+    // The bars draw in magenta and the selected rows of popups in cyan, which nothing else in these GUIs draws, and the tests that mark a fade or a groove mark it in green.
     static constexpr const char* kMarks = R"("style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF", "selection": "#00FFFF"}})";
     static constexpr std::uint32_t kBarColor = 0xFF00FFU;
     static constexpr std::uint32_t kRowColor = 0xFFFF00U;
+    static constexpr std::uint32_t kFadeColor = 0x00FF00U;
+    static constexpr std::uint32_t kGrooveColor = 0x00FF00U;
 
     // Twenty lines of text, four of which a text area shows at once.
     static constexpr const char* kNotes = R"(Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6\nLine 7\nLine 8\nLine 9\nLine 10\nLine 11\nLine 12\nLine 13\nLine 14\nLine 15\nLine 16\nLine 17\nLine 18\nLine 19\nLine 20)";
@@ -388,6 +391,25 @@ TEST_F(ScrollbarTest, ScrollsTheTextOfATextAreaWithItsBar) {
     EXPECT_LT(top, before - field.height);
 }
 
+// A text area fades its text into the theme color along the edge where more of it continues, like the other areas that scroll, and only there.
+TEST_F(ScrollbarTest, FadesTheTextOfATextAreaWhereItContinues) {
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollFade": "#00FF00"}}, "children": [{"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("}]})");
+    frames(2);
+    const math::Rect field = getBounds(*gui, "notes");
+    const math::Rect clip = findTextClip(field);
+    const std::optional<math::Rect> below = findDrawn(kFadeColor, field);
+    ASSERT_TRUE(below.has_value());
+    EXPECT_NEAR(below->y, clip.getBottom(), 0.5F);
+    EXPECT_NEAR(below->getBottom(), clip.getBottom(), 0.5F);
+
+    wheel(field.getCenter(), -40.0F);
+    frames(60);
+    const std::optional<math::Rect> above = findDrawn(kFadeColor, field);
+    ASSERT_TRUE(above.has_value());
+    EXPECT_NEAR(above->y, clip.y, 0.5F);
+    EXPECT_NEAR(above->getBottom(), clip.y, 0.5F);
+}
+
 // A text area has no motion of its own, so the momentum that the system adds to a trackpad once its fingers left keeps scrolling its text.
 TEST_F(ScrollbarTest, ScrollsATextAreaWithTheMomentumOfATrackpad) {
     using Phase = platform::Event::ScrollPhase;
@@ -536,6 +558,36 @@ TEST_F(ScrollbarTest, KeepsTheGapInImmediateWindowsAndTheirChildren) {
             expectApart(content, findBar(area), area, Side::End);
         }
     }
+}
+
+// The bars of immediate windows run in a groove of the track color with a thumb no shorter than the thumbs of the components, the way the bars of the components draw.
+TEST_F(ScrollbarTest, DrawsTheBarsOfImmediateWindowsInAGroove) {
+    // clang-format off
+    getFixture().runLua(R"(
+        local imgui = require('haylen.imgui')
+        local scene = require('haylen.scene')
+        local ui = require('haylen.ui')
+        ui.setTheme(ui.addTheme({name = 'marked', colors = {scrollbar = '#FF00FF', scrollbarHover = '#FF00FF', scrollbarTrack = '#00FF00'}}, 'dark'))
+        scene.push({renderUi = function()
+            if imgui.beginWindow('Log', {x = 20, y = 20, width = 300, height = 200}) then
+                for index = 1, 200 do
+                    imgui.text('Line ' .. index)
+                end
+            end
+            imgui.endWindow()
+        end})
+    )");
+    // clang-format on
+    frames(3);
+    const ImGuiWindow* window = ImGui::FindWindowByName("Log");
+    ASSERT_NE(window, nullptr);
+    const math::Rect area{window->Pos.x, window->Pos.y, window->Size.x, window->Size.y};
+    const std::optional<math::Rect> groove = findDrawn(kGrooveColor, area);
+    ASSERT_TRUE(groove.has_value());
+    const math::Rect thumb = findBar(area);
+    EXPECT_TRUE(groove->contains(thumb));
+    EXPECT_NEAR(groove->width, thumb.width, 0.01F);
+    EXPECT_GE(thumb.height, Scrollbar::kMinThumb);
 }
 
 TEST_F(ScrollbarTest, KeepsTheGapForBarsDrawnWithThemeImages) {

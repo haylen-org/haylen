@@ -1,9 +1,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <format>
 #include <memory>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -660,7 +662,7 @@ TEST_F(GameComponentTest, KeepsTheLabelsOfSnugSegmentsWhole) {
         labels += Typography::measure(getUi().getContext(), Theme::Font::Button, text).x;
     }
     const float padding = (theme.getMetric(Theme::Metric::ContentSpacing) + theme.getMetric(Theme::Metric::TabPaddingX)) * 3.0F;
-    const float border = theme.getMetric(Theme::Metric::BorderWidth) * 4.0F;
+    const float border = (theme.getMetric(Theme::Metric::BorderWidth) + theme.getMetric(Theme::Metric::ToggleKnobInset)) * 2.0F;
     for (float offset = 0.0F; offset < 1.0F; offset += 0.125F) {
         const float width = labels + padding + border + offset * 3.0F;
         auto gui = mount(std::format(R"({{"kind": "column", "padding": {}, "children": [{{"kind": "segmentedControl", "width": {}, "selected": "floating", "items": [{{"id": "fixed", "text": "Fixed"}}, {{"id": "floating", "text": "Floating"}}, {{"id": "following", "text": "Following"}}]}}]}})", 20.0F + offset, width));
@@ -669,6 +671,53 @@ TEST_F(GameComponentTest, KeepsTheLabelsOfSnugSegmentsWhole) {
             EXPECT_EQ(getUi().getBackend().getContent(text).find("\xE2\x80\xA6"), std::string_view::npos) << width;
         }
     }
+}
+
+// The arrows of a carousel are round buttons of the theme over its pages, raised and bordered like its other buttons.
+TEST_F(GameComponentTest, DrawsTheArrowsOfACarouselAsButtonsOfTheTheme) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "carousel", "id": "pages", "width": 800, "loop": true, "children": [{"kind": "spacer", "height": 300}, {"kind": "spacer", "height": 300}]}]})");
+    frames(2);
+    const Theme& theme = getUi().getTheme();
+    const math::Rect pages = getBounds(*gui, "pages");
+    const float side = theme.getMetric(Theme::Metric::ControlHeight) * 0.8F;
+    std::size_t arrows = 0;
+    for (const graphics2d::Shape& shape : getUi().getBackend().getShapes()) {
+        const bool button = std::fabs(shape.bounds.width - side) < 0.01F && std::fabs(shape.bounds.height - side) < 0.01F && pages.contains(shape.bounds);
+        if (button && shape.color == theme.getColor(Theme::Color::Raised) && shape.borderColor == theme.getColor(Theme::Color::Border)) {
+            ++arrows;
+        }
+    }
+    EXPECT_EQ(arrows, 2U);
+}
+
+// A number field shows its value in the middle between its buttons, however wide it is.
+TEST_F(GameComponentTest, CentersTheValueOfANumberField) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "numberField", "id": "count", "width": 600, "value": 42}]})");
+    frames(2);
+    const math::Rect field = getBounds(*gui, "count");
+    const Backend& backend = getUi().getBackend();
+    const std::span<const Backend::Text> texts = backend.getTexts();
+    const auto value = std::ranges::find_if(texts, [&backend](const Backend::Text& text) { return backend.getContent(text) == "42"; });
+    ASSERT_NE(value, texts.end());
+    const float width = Typography::measure(getUi().getContext(), Theme::Font::Body, "42").x;
+    EXPECT_NEAR(value->origin.x + width * 0.5F, field.getCenter().x, 1.0F);
+}
+
+// A label that fits once the padding of its button shrinks to the content spacing stays on one line, so the button keeps the height of a control beside the buttons around it.
+TEST_F(GameComponentTest, KeepsTheHeightOfAButtonWhoseLabelFitsInsideTheContentSpacing) {
+    frames();
+    const Theme& theme = getUi().getTheme();
+    const float spacing = theme.getMetric(Theme::Metric::ContentSpacing);
+    const float label = Typography::measure(getUi().getContext(), Theme::Font::Button, "Remove 1,000").x;
+    auto gui = mount(std::format(R"({{"kind": "column", "children": [{{"kind": "button", "id": "remove", "text": "Remove 1,000", "width": {}}}]}})", std::ceil(label + spacing * 2.0F) + 2.0F));
+    frames(2);
+    const math::Rect button = getBounds(*gui, "remove");
+    EXPECT_EQ(button.height, theme.getMetric(Theme::Metric::ControlHeight));
+    const Backend& backend = getUi().getBackend();
+    const std::span<const Backend::Text> texts = backend.getTexts();
+    const auto drawn = std::ranges::find_if(texts, [&backend](const Backend::Text& text) { return backend.getContent(text) == "Remove 1,000"; });
+    ASSERT_NE(drawn, texts.end());
+    EXPECT_GE(drawn->origin.x, button.x + spacing);
 }
 
 // A color field writes its color with the opacity only when the player can change it, so a field without opacity shows six digits.

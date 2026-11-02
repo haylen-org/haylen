@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -273,6 +275,16 @@ TEST_F(PlayAreaTest, CoversTheCornersOfARoundedPlayArea) {
         }
     }
     EXPECT_TRUE(covered);
+}
+
+// Without a corner color the corners take the background of the theme, the color of the screen behind the GUIs, which a theme or a style changes.
+TEST_F(PlayAreaTest, CoversTheCornersWithTheBackgroundOfTheTheme) {
+    getUi().unmount(*gui);
+    mount(R"({"kind": "column", "padding": 40, "style": {"colors": {"background": "#FFE9DCC0"}}, "children": [{"kind": "playArea", "width": 600, "height": 400, "radius": 16}]})");
+    frames();
+    const math::Color background = *math::Color::parse("#FFE9DCC0");
+    const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
+    EXPECT_TRUE(std::ranges::any_of(shapes, [&background](const graphics2d::Shape& shape) { return shape.borderColor == background && shape.borderWidth == 16.0F; }));
 }
 
 } // namespace haylen::ui

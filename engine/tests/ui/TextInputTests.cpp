@@ -18,6 +18,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "haylen/ui/Theme.hpp"
 #include "support/EngineFixture.hpp"
 #include "ui/TextSession.hpp"
 
@@ -574,6 +575,20 @@ TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
     const std::span<const graphics2d::Shape> shapes = getUi().getBackend().getShapes();
     const auto caret = std::ranges::find_if(shapes, [&field](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU) && field.contains(shape.bounds.getCenter()); });
     EXPECT_NE(caret, shapes.end());
+}
+
+// The caret of a focused empty field stands before its placeholder with a caret width of room between them, so it never touches the first letter.
+TEST_F(TextInputTest, KeepsTheCaretOfAnEmptyFieldClearOfItsPlaceholder) {
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name", "placeholder": "Island name"}]})");
+    focus(*gui, "name");
+    const Backend& backend = getUi().getBackend();
+    const std::span<const graphics2d::Shape> shapes = backend.getShapes();
+    const auto caret = std::ranges::find_if(shapes, [](const graphics2d::Shape& shape) { return shape.color == math::Color::fromHex(0xFF0000FFU); });
+    const std::span<const Backend::Text> texts = backend.getTexts();
+    const auto placeholder = std::ranges::find_if(texts, [&backend](const Backend::Text& text) { return backend.getContent(text) == "Island name"; });
+    ASSERT_NE(caret, shapes.end());
+    ASSERT_NE(placeholder, texts.end());
+    EXPECT_FLOAT_EQ(placeholder->origin.x - caret->bounds.getRight(), getUi().getTheme().getMetric(Theme::Metric::CaretWidth));
 }
 
 // An anchored bar moves up with every other GUI, so its field rises above the keyboard and the lift settles there instead of growing every frame.

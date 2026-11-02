@@ -24,6 +24,8 @@ class ImGuiLua final {
     [[nodiscard]] static ImVec2 readOptionalSize(lua_State* L, int first);
     [[nodiscard]] static const char* readNumberFormat(lua_State* L, int index);
     static int returnChanged(lua_State* L, bool changed, int values);
+    static void hideBars();
+    static void paintBars(lua_State* L, bool visible);
     static int plot(lua_State* L, bool histogram);
 
     static int beginWindow(lua_State* L);
