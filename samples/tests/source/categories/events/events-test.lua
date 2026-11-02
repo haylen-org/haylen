@@ -2,6 +2,7 @@
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local scene = require('haylen.scene')
 
 local Test = require('harness.test')
 
@@ -33,7 +34,6 @@ function EventsTest:frame(options)
     self.logStyle = {size = EventsTest.logSize, color = Test.ink, maxWidth = 0, layer = 2}
     self.frameStyle = {size = EventsTest.logSize, color = Test.muted, anchor = {1, 0}, layer = 2}
     EventsTest.super.frame(self, options)
-    haylen.autoloads.playerData.counterShown = self.coinCounter
 end
 
 function EventsTest:exit()
@@ -41,12 +41,19 @@ function EventsTest:exit()
     haylen.autoloads.playerData.counterShown = false
 end
 
--- The counter of the autoload follows the top-right corner of the play area wherever the layout puts it.
+-- The counter of the autoload follows the top-right corner of the play area wherever the layout puts it, and belongs to the play area alone, so it hides while a scene change covers the test, a loading view included.
 function EventsTest:update(dt)
     EventsTest.super.update(self, dt)
+    local playerData = haylen.autoloads.playerData
+    playerData.counterShown = self.coinCounter and not scene.transitioning()
     if self.coinCounter and self.stage then
-        haylen.autoloads.playerData.counterCorner = {self.stage.x + self.stage.width, self.stage.y}
+        playerData.counterCorner = {self.stage.x + self.stage.width, self.stage.y}
     end
+end
+
+-- A scene pushed over the test, such as the shop, covers the counter with the rest of the test.
+function EventsTest:pause()
+    haylen.autoloads.playerData.counterShown = false
 end
 
 -- Draws the icon `name` centered at `x`, `y`, `size` units wide, with the optional `color` and `layer`.
