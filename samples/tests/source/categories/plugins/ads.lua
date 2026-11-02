@@ -7,6 +7,11 @@ local demo = require('native-demo')
 
 local Ads = haylen.class('Ads', DemoTest)
 
+Ads.code = [[
+local closed = demo.showInterstitial():await()
+demo.onAdRewarded(function(reward) print(reward.amount) end)
+local result = demo.showRewarded():await()]]
+
 function Ads:enter()
     self.coins = 0
     self.shownAds = 0
@@ -35,7 +40,6 @@ function Ads:enter()
                 ui.label{id = 'lastAd', text = 'No ad has shown yet.', color = 'textMuted'},
             },
         },
-        code = "local closed = demo.showInterstitial():await()\ndemo.onAdRewarded(function(reward) print(reward.amount) end)\nlocal result = demo.showRewarded():await()",
     }
     if self.native then
         self.connection = demo.onAdRewarded(function(reward)

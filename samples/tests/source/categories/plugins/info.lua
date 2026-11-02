@@ -8,6 +8,11 @@ local demo = require('native-demo')
 
 local Info = haylen.class('Info', DemoTest)
 
+Info.code = [[
+for _, plugin in ipairs(platform.plugins()) do
+  print(plugin.id, plugin.version, plugin.native)
+end]]
+
 function Info:enter()
     local rows = {}
     for index, plugin in ipairs(platform.plugins()) do
@@ -24,7 +29,6 @@ function Info:enter()
                 ui.table{id = 'plugins', columns = {{text = 'Plugin'}, {text = 'Version', width = 180}, {text = 'Native part', width = 220}}, rows = rows},
             },
         },
-        code = "for _, plugin in ipairs(platform.plugins()) do\n  print(plugin.id, plugin.version, plugin.native)\nend",
     }
     if self.native then
         self.results:set('native', 'pass', 'The native part of "' .. demo.id .. '" runs', string.format('The field "native" of "platform.plugin(\'%s\')" is "true".', demo.id))

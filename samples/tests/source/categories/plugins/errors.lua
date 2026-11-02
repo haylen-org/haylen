@@ -7,6 +7,11 @@ local demo = require('native-demo')
 
 local Errors = haylen.class('Errors', DemoTest)
 
+Errors.code = [[
+demo.onLastError(function(failure)
+  print(failure.message, failure.line)
+end)]]
+
 -- The error the native part sent back outlives the scene, because a retained event reaches only the listener that connects first.
 Errors.received = nil
 
@@ -26,7 +31,6 @@ function Errors:enter()
                 ui.label{id = 'errorPlace', text = '', font = 'caption', color = 'textMuted', textAlign = 'center', align = 'stretch'},
             },
         },
-        code = "demo.onLastError(function(failure)\n  print(failure.message, failure.line)\nend)",
     }
     if not self.native then
         return

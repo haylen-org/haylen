@@ -11,6 +11,13 @@ local demo = require('native-demo')
 
 local Banner = haylen.class('Banner', DemoTest)
 
+Banner.code = [[
+demo.showBanner('bottom', true)
+demo.onBannerTapped(function(tap)
+  print(tap.count)
+end)
+print(viewport.reservedInsets().bottom)]]
+
 Banner.insetsInterval = 0.25
 Banner.rippleSeconds = 0.6
 
@@ -43,7 +50,6 @@ function Banner:enter()
             },
             ui.playArea{id = 'stage', grow = 1, align = 'stretch'},
         },
-        code = "demo.showBanner('bottom', true)\ndemo.onBannerTapped(function(tap)\n  print(tap.count)\nend)\nprint(viewport.reservedInsets().bottom)",
     }
     if self.native then
         self.results:set('taps', 'waiting', 'The native button reaches Lua', 'Tap the button of the banner.')

@@ -7,6 +7,12 @@ local demo = require('native-demo')
 
 local Configuration = haylen.class('Configuration', DemoTest)
 
+Configuration.code = [[
+local config = demo.config()
+print(config.greeting, config.tickInterval)
+local received = demo.nativeConfig():await()
+print(received.bannerColor)]]
+
 Configuration.parameters = {'greeting', 'bannerColor', 'tickInterval', 'urlScheme'}
 Configuration.leftOut = 'tickInterval'
 Configuration.default = 1
@@ -44,7 +50,6 @@ function Configuration:enter()
                 ui.scroll{grow = 1, height = 0, ui.column{gap = 12, children = cards}},
             },
         },
-        code = 'local config = demo.config()\nprint(config.greeting, config.tickInterval)\nlocal received = demo.nativeConfig():await()\nprint(received.bannerColor)',
     }
 
     local defaulted = given[Configuration.leftOut] == nil and config[Configuration.leftOut] == Configuration.default

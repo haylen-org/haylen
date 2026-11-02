@@ -9,6 +9,13 @@ local demo = require('native-demo')
 
 local Events = haylen.class('Events', DemoTest)
 
+Events.code = [[
+demo.onLoaded(function(payload)
+  print(payload.language)
+end)
+demo.onTick(function(tick) print(tick.count) end)
+demo.setTicking(true)]]
+
 Events.loadedWait = 3
 Events.ticksToPass = 3
 Events.quietSeconds = 2.5
@@ -34,7 +41,6 @@ function Events:enter()
                 ui.label{id = 'beatState', text = 'Stopped. Start the ticks to hear from it.', color = 'textMuted', textAlign = 'center', align = 'stretch'},
             },
         },
-        code = "demo.onLoaded(function(payload)\n  print(payload.language)\nend)\ndemo.onTick(function(tick) print(tick.count) end)\ndemo.setTicking(true)",
     }
     self:listenLoaded()
     self:toggleTicks()

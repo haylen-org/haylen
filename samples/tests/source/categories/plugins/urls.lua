@@ -7,6 +7,11 @@ local demo = require('native-demo')
 
 local Urls = haylen.class('Urls', DemoTest)
 
+Urls.code = [[
+demo.onUrlOpened(function(link)
+  print(link.url)  -- Such as "haylendemo://hello".
+end)]]
+
 -- The links outlive the scene, because a retained event reaches only the listener that connects first.
 Urls.received = {}
 
@@ -36,7 +41,6 @@ function Urls:enter()
                 ui.label{text = string.format(way[2], scheme), font = 'monospace', color = 'accentText', textAlign = 'center', align = 'stretch'},
             },
         },
-        code = "demo.onUrlOpened(function(link)\n  print(link.url)  -- Such as \"haylendemo://hello\".\nend)",
     }
     if not self.native then
         return

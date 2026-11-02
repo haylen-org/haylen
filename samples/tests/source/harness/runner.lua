@@ -9,6 +9,7 @@ local window = require('haylen.window')
 
 local catalog = require('harness.catalog')
 local navigation = require('harness.navigation')
+local Unsupported = require('harness.unsupported')
 
 local runner = {}
 
@@ -67,6 +68,15 @@ function runner.start()
     end
     runner.index = 0
     runner.failures = {}
+
+    -- A test that some platform cannot run shows its code on the page that says why, which reads it from the class of the test.
+    for _, test in ipairs(catalog.tests) do
+        if test.platforms and not Unsupported.codeOf(require(test.module)) then
+            runner.failures[#runner.failures + 1] = {test = test, message = 'The test keeps no code on its class, so the page that says why it cannot run here shows none.'}
+            log.error(string.format('[%s] Failed: %s', test.code, runner.failures[#runner.failures].message))
+        end
+    end
+
     runner.screenKeptOn = window.keepScreenOn()
     window.setKeepScreenOn(true)
 

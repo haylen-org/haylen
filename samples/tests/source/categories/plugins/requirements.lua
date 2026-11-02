@@ -7,6 +7,12 @@ local demo = require('native-demo')
 
 local Requirements = haylen.class('Requirements', DemoTest)
 
+Requirements.code = [[
+local _, err = demo.requirementCheck():await()
+for _, missing in ipairs(err.data.missing) do
+  print(missing.file, missing.snippet)
+end]]
+
 -- What the project of each platform leaves out on purpose, which the call reports.
 Requirements.expected = {
     android = {'The permission "android.permission.READ_CONTACTS"', 'The manifest of the app does not declare it.'},
@@ -51,7 +57,6 @@ function Requirements:enter()
                 ui.scroll{grow = 1, height = 0, ui.column{gap = 14, children = platforms}},
             },
         },
-        code = "local _, err = demo.requirementCheck():await()\nfor _, missing in ipairs(err.data.missing) do\n  print(missing.file, missing.snippet)\nend",
     }
     self:check()
 end

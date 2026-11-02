@@ -56,6 +56,7 @@ function Wrapping:update(dt)
     Wrapping.super.update(self, dt)
     if self.sweep then
         self.width = 440 + 120 * math.sin(haylen.elapsed() * 0.7)
+        self:set('width', {value = self.width})
     end
     local style = {size = Wrapping.size, maxWidth = self.width, lineSpacing = self.spacing}
     local english = self.latin:layout(Wrapping.english, style).lineCount

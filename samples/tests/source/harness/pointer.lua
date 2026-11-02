@@ -1,4 +1,4 @@
--- One pointer over the play area of a test for every device: the mouse, the first finger on the screen and a cursor that the `cursor` action moves and the `press` action presses, the right stick and the right trigger in `Pointer.actions`. A test adds those actions to its action map, updates the pointer after the frame follows the play area and draws it from `renderUi`. With `confined = true` the pointer starts in the middle of the play area, or at the share of it that `origin` gives, such as `{0.5, 0.85}` near the middle of its bottom edge, and never leaves it, and with `shown = true` it draws its ring for every device instead of only for gamepads.
+-- One pointer over the play area of a test for every device: the mouse, the first finger on the screen and a cursor that the `cursor` action moves and the `press` action presses, the right stick and the right trigger in `Pointer.actions`. A test adds those actions to its action map, updates the pointer after the frame follows the play area and draws it from `renderUi`. With `confined = true` the pointer starts in the middle of the play area, or at the share of it that `origin` gives, such as `{0.5, 0.85}` near the middle of its bottom edge, and never leaves it, and with `shown = true` it draws its ring for every device instead of only for gamepads. The ring shows once the player moves the pointer or presses with it, so it never covers what a test shows where the pointer starts.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -21,6 +21,7 @@ function Pointer:init(options)
     self.x, self.y = input.mousePosition()
     self.worldX, self.worldY = 0, 0
     self.down, self.pressed, self.released = false, false, false
+    self.moved = false
 end
 
 -- Follows the devices over the play area of `test`. Presses only start inside the play area, and a press keeps going wherever it moves.
@@ -63,15 +64,20 @@ function Pointer:follow(dt)
     local first = input.touches()[1]
     if first ~= nil then
         self.x, self.y = first.x, first.y
+        self.moved = true
         return
     end
 
     local dx, dy = input.mouseDelta()
     if dx ~= 0 or dy ~= 0 or input.mousePressed('left') then
         self.x, self.y = input.mousePosition()
+        self.moved = true
     end
 
     local cx, cy = input.vector('cursor')
+    if cx ~= 0 or cy ~= 0 or input.pressed('press') then
+        self.moved = true
+    end
     self.x = self.x + cx * Pointer.cursorSpeed * dt
     self.y = self.y + cy * Pointer.cursorSpeed * dt
 end
@@ -102,9 +108,9 @@ function Pointer:held()
     return input.down('press')
 end
 
--- Shows the gamepad cursor, which has no system cursor of its own, or the pointer of every device when it is shown.
+-- Shows the gamepad cursor, which has no system cursor of its own, or the pointer of every device when it is shown, once the player moved it.
 function Pointer:draw()
-    if self.shown or input.lastDevice() == 'gamepad' then
+    if self.moved and (self.shown or input.lastDevice() == 'gamepad') then
         graphics2d.beginScreen()
         graphics2d.drawRing(self.x, self.y, 18, 4, self.down and '#FFFFD54F' or '#FFFFFFFF', {layer = 100})
         graphics2d.drawCircle(self.x, self.y, 4, '#FFFFFFFF', {layer = 100})

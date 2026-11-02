@@ -7,6 +7,12 @@ local demo = require('native-demo')
 
 local Location = haylen.class('Location', DemoTest)
 
+Location.code = [[
+local place, err = demo.location():await()  -- The system asks the person first.
+print(place.latitude, place.longitude, place.accuracy)
+demo.showMap('bottom', place.latitude, place.longitude):await()
+demo.removeMap()]]
+
 Location.locationName = 'The platform tells where the device is'
 Location.mapName = 'A native map shows over the app'
 
@@ -37,7 +43,6 @@ function Location:enter()
                 DemoTest.placeholder('mapState', 'plugins/map.svg', 'The native map shows at the bottom of the app, over it, once you show it.'),
             },
         },
-        code = "local place, err = demo.location():await()  -- The system asks the person first.\nprint(place.latitude, place.longitude, place.accuracy)\ndemo.showMap('bottom', place.latitude, place.longitude):await()\ndemo.removeMap()",
     }
 end
 

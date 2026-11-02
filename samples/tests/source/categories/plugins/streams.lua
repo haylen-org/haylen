@@ -12,6 +12,13 @@ local demo = require('native-demo')
 
 local Streams = haylen.class('Streams', DemoTest)
 
+Streams.code = [[
+demo.startVideo():await()
+ui.setImage('@native-video', demo.videoStream().texture)
+demo.startTone(440):await()
+local voice = demo.audioStream():play({volume = 0.5})
+local count = demo.audioStream():read(samples)]]
+
 Streams.framesToPass = 60
 Streams.toneSeconds = 2
 Streams.levelToPass = 0.1
@@ -50,7 +57,6 @@ function Streams:enter()
                 ui.progress{id = 'level', value = 0, text = 'Level 0.00'},
             },
         },
-        code = "demo.startVideo():await()\nui.setImage('@native-video', demo.videoStream().texture)\ndemo.startTone(440):await()\nlocal voice = demo.audioStream():play({volume = 0.5})\nlocal count = demo.audioStream():read(samples)",
     }
     self:toggleVideo()
 end

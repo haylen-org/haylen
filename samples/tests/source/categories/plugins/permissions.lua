@@ -7,6 +7,13 @@ local demo = require('native-demo')
 
 local Permissions = haylen.class('Permissions', DemoTest)
 
+Permissions.code = [[
+local answer = demo.requestPermission('camera'):await()
+demo.notify(5):await()
+demo.onNotificationOpened(function(tap)
+  print(tap.identifier)
+end)]]
+
 Permissions.notifySeconds = 5
 
 -- The taps outlive the scene, because a retained event reaches only the listener that connects first.
@@ -33,7 +40,6 @@ function Permissions:enter()
                 ui.label{id = 'notification', text = string.format('Notify in %d seconds, then tap the notification, even after closing the app.', Permissions.notifySeconds), color = 'textMuted', textAlign = 'center', align = 'stretch'},
             },
         },
-        code ="local answer = demo.requestPermission('camera'):await()\ndemo.notify(5):await()\ndemo.onNotificationOpened(function(tap)\n  print(tap.identifier)\nend)",
     }
     if not self.native then
         return

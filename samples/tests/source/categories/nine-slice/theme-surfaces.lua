@@ -31,7 +31,7 @@ function ThemeSurfaces.theme(colorize)
     return {
         name = 'workshop',
         colors = {
-            window = '#FFFBF3E1', panel = '#FFF2E3C6', raised = '#FFFBF3E1', text = '#FF3A2A1E', textMuted = '#FF6E5A45',
+            background = '#FFE9DCC0', window = '#FFFBF3E1', panel = '#FFF2E3C6', raised = '#FFFBF3E1', text = '#FF3A2A1E', textMuted = '#FF6E5A45',
             accent = '#FF3E8BA3', accentHover = '#FF4F9DB5', accentStrong = '#FF2C6F86', accentText = '#FF2C6F86',
             danger = '#FFD9534A', success = '#FF6CBF4F', warning = '#FFF0A63C', border = '#FF6E5A45', borderStrong = '#FF3A2A1E', focus = '#FFF2C14E',
         },
@@ -106,13 +106,6 @@ function ThemeSurfaces:update(dt)
     ThemeSurfaces.super.update(self, dt)
     local fill = ui.themeSurface('trackFill')
     self:status(string.format('The theme "%s" draws its fills with borders of %g pixels, %s.', ui.theme(), fill.slice.borders[1], fill.colorize and 'colored by each component' or 'as they are painted'))
-end
-
--- The theme writes dark text, so the page behind the frame is light while the test runs.
-function ThemeSurfaces:render()
-    graphics2d.beginScreen({order = -1})
-    graphics2d.drawRect(viewport.visibleRect(), '#FFE9DCC0')
-    ThemeSurfaces.super.render(self)
 end
 
 -- Draws the fill of the theme once per tone, multiplied by the color of the tone as "colorize" does, with its round ends kept round at the height it draws at, and the button once per role with the name of the role on it, all on the paper of the theme.

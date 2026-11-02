@@ -10,6 +10,11 @@ local demo = require('native-demo')
 
 local Benchmark = haylen.class('Benchmark', DemoTest)
 
+Benchmark.code = [[
+local started = datetime.now():millis()
+for i = 1, 200 do demo.echo(i):await() end
+print((datetime.now():millis() - started) / 200)]]
+
 Benchmark.roundTrips = 200
 Benchmark.parallel = 2000
 Benchmark.perFrame = {10, 100, 1000}
@@ -36,7 +41,6 @@ function Benchmark:enter()
             Benchmark.chart({'None', '10', '100', '1000'}),
             ui.progress{id = 'step', value = 0, text = 'Waiting to measure'},
         },
-        code = "local started = datetime.now():millis()\nfor i = 1, 200 do demo.echo(i):await() end\nprint((datetime.now():millis() - started) / 200)",
     }
     self:run()
 end

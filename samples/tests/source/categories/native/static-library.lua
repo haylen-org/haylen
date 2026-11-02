@@ -13,6 +13,10 @@ local StaticLibrary = haylen.class('StaticLibrary', Test)
 
 local expect = Checks.expect
 
+StaticLibrary.code = [[
+local lib = native.load('native-test-static')
+print(ffi.string(lib.native_test_origin()))]]
+
 function StaticLibrary:enter()
     self.checks = Checks(self.entry.code)
     self:frame{
@@ -23,7 +27,6 @@ function StaticLibrary:enter()
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = 'The "native" section of "app.json" links "native-test-static" into iOS and tvOS apps and lists the symbols Lua reaches, which the generated "HaylenNativeSymbols.mm" keeps and registers. The function "native.load" returns "ffi.C" for a linked library, because its symbols are part of the app.', color = 'textMuted', font = 'caption'},
         },
-        code = "local lib = native.load('native-test-static')\nprint(ffi.string(lib.native_test_origin()))",
     }
     self.checks:show(self.gui)
     self:run()

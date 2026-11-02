@@ -69,6 +69,8 @@ function Fitting:update(dt)
         local time = haylen.elapsed()
         self.width = 490 + 130 * math.sin(time * 0.6)
         self.height = 240 + 120 * math.sin(time * 0.45)
+        self:set('width', {value = self.width})
+        self:set('height', {value = self.height})
     end
     local nameWidth = graphics2d.measureText(self.latin, Fitting.name, self:nameStyle())
     local _, storyHeight = graphics2d.measureText(self.latin, Fitting.story, self:storyStyle())

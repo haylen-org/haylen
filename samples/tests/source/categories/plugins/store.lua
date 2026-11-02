@@ -7,6 +7,12 @@ local demo = require('native-demo')
 
 local Store = haylen.class('Store', DemoTest)
 
+Store.code = [[
+local products = demo.products():await()
+local purchase, err = demo.purchase('coins.small'):await()
+demo.onPurchaseUpdated(function(update) print(update.state) end)
+local kept = demo.restorePurchases():await()]]
+
 -- The picture of each kind of product: coins the person buys again and again, and a product that the device keeps.
 Store.icons = {consumable = 'plugins/coins.svg', nonConsumable = 'plugins/no-ads.svg'}
 
@@ -30,7 +36,6 @@ function Store:enter()
                 }},
             },
         },
-        code = "local products = demo.products():await()\nlocal purchase, err = demo.purchase('coins.small'):await()\ndemo.onPurchaseUpdated(function(update) print(update.state) end)\nlocal kept = demo.restorePurchases():await()",
     }
     if not self.native then
         self.gui:replaceChildren('shelf', {ui.label{text = 'The store needs the native part of the plugin.', color = 'textMuted'}})

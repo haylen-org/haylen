@@ -7,6 +7,12 @@ local demo = require('native-demo')
 
 local SignIn = haylen.class('SignIn', DemoTest)
 
+SignIn.code = [[
+local account, err = demo.signIn():await()
+demo.onUserChanged(function(user) print(user and user.name) end)
+local current = demo.currentUser():await()
+demo.signOut():await()]]
+
 function SignIn:enter()
     self:frame{
         hint = 'Sign in with an account or cancel, check the current user, then sign out.',
@@ -29,7 +35,6 @@ function SignIn:enter()
                 ui.statusIndicator{id = 'accountState', text = 'Signed out', tone = 'information', align = 'center'},
             },
         },
-        code = "local account, err = demo.signIn():await()\ndemo.onUserChanged(function(user) print(user and user.name) end)\nlocal current = demo.currentUser():await()\ndemo.signOut():await()",
     }
     if self.native then
         self.connection = demo.onUserChanged(function(user)

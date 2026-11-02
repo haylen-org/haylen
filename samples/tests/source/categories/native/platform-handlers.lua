@@ -10,6 +10,13 @@ local PlatformHandlers = haylen.class('PlatformHandlers', Test)
 
 local expect = Checks.expect
 
+PlatformHandlers.code = [[
+local greeting = nativeSample.greet('Lua'):await()
+local _, failure = nativeSample.refuse():await()
+print(failure.code, failure.data.reason)
+local call = nativeSample.slow()
+call:cancel()  -- The handler hears it and stops.]]
+
 -- How the native part of the plugin `native-sample` registers its handlers on each platform.
 PlatformHandlers.registrations = {
     android = 'The Android module of the plugin registers its handlers with "registerSuspend" and a handler that throws.',
@@ -32,7 +39,6 @@ function PlatformHandlers:enter()
             ui.button{id = 'run', text = 'Run the checks again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = PlatformHandlers.registrations[haylen.platform] or PlatformHandlers.registrations.desktop, color = 'textMuted', font = 'caption'},
         },
-        code = "local greeting = nativeSample.greet('Lua'):await()\nlocal _, failure = nativeSample.refuse():await()\nprint(failure.code, failure.data.reason)\nlocal call = nativeSample.slow()\ncall:cancel()  -- The handler hears it and stops.",
     }
     self.checks:show(self.gui)
     self:run()

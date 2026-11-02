@@ -7,6 +7,10 @@ local demo = require('native-demo')
 
 local Result = haylen.class('Result', DemoTest)
 
+Result.code = [[
+local picked, err = demo.pickFile():await()
+print(picked and picked.name or 'cancelled')]]
+
 Result.pickers = {
     ios = 'The document picker of UIKit answers the call.',
     macos = 'The open panel of AppKit answers the call.',
@@ -31,7 +35,6 @@ function Result:enter()
                 ui.label{id = 'fileState', text = 'The name of the file that the picker answers with shows here.', color = 'textMuted', textAlign = 'center', align = 'stretch'},
             },
         },
-        code = "local picked, err = demo.pickFile():await()\nprint(picked and picked.name or 'cancelled')",
     }
 end
 

@@ -9,6 +9,13 @@ local demo = require('native-demo')
 
 local Camera = haylen.class('Camera', DemoTest)
 
+Camera.code = [[
+demo.startCamera('back'):await()
+ui.setImage('@native-camera', demo.cameraStream().texture)
+local photo = demo.takePhoto():await()
+local texture = graphics.newTexture(photo.jpeg)
+demo.startMicrophone():await()]]
+
 Camera.framesToPass = 30
 Camera.cameraName = 'The frames of the camera reach the texture'
 Camera.photoName = 'A photo arrives as JPEG bytes'
@@ -51,7 +58,6 @@ function Camera:enter()
                 ui.progress{id = 'level', value = 0, tone = 'success', text = 'Level 0.000'},
             },
         },
-        code = "demo.startCamera('back'):await()\nui.setImage('@native-camera', demo.cameraStream().texture)\nlocal photo = demo.takePhoto():await()\nlocal texture = graphics.newTexture(photo.jpeg)\ndemo.startMicrophone():await()",
     }
 end
 

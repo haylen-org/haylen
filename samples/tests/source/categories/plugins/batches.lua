@@ -10,6 +10,12 @@ local demo = require('native-demo')
 
 local Batches = haylen.class('Batches', DemoTest)
 
+Batches.code = [[
+demo.onBurst(function(list)
+  print(#list, list[1].index)
+end)
+demo.burst(100, 30)]]
+
 Batches.count = 100
 Batches.ticks = 30
 Batches.name = 'Batched events arrive as one list per frame'
@@ -41,7 +47,6 @@ function Batches:enter()
                 ui.label{text = 'Each bar is one call of the listener, with the events of one frame. The line marks the 100 events of one tick.', font = 'caption', color = 'textMuted'},
             },
         },
-        code = "demo.onBurst(function(list)\n  print(#list, list[1].index)\nend)\ndemo.burst(100, 30)",
     }
     self:send()
 end

@@ -7,6 +7,13 @@ local demo = require('native-demo')
 
 local Cover = haylen.class('Cover', DemoTest)
 
+Cover.code = [[
+events.on('appInactive', function()
+  print(haylen.appCovered())
+end)
+local closed = demo.showScreen('Title'):await()
+print(closed.seconds)]]
+
 Cover.rows = {
     {key = 'covered', name = 'The call "haylen.appCovered()" returns "true" while it shows', waiting = 'Waiting for the cover.'},
     {key = 'halted', name = 'No update runs while covered', waiting = 'Waiting for the cover to end.'},
@@ -33,7 +40,6 @@ function Cover:enter()
                 ui.label{id = 'coverInfo', text = 'Show the native screen, and this count stops while it covers the app.', color = 'textMuted', textAlign = 'center', align = 'stretch'},
             },
         },
-        code = "events.on('appInactive', function()\n  print(haylen.appCovered())\nend)\nlocal closed = demo.showScreen('Title'):await()\nprint(closed.seconds)",
     }
 end
 

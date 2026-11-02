@@ -10,6 +10,12 @@ local demo = require('native-demo')
 
 local Screen = haylen.class('Screen', DemoTest)
 
+Screen.code = [[
+local answer, err = demo.openScreen({state = {level = 3}}):await()
+demo.onScreenRestored(function(ending)
+  print(ending.state.level, ending.result)
+end)]]
+
 Screen.apple = {ios = true, tvos = true, macos = true}
 
 -- The restored end outlives the scene, because a retained event reaches only the listener that connects first.
@@ -42,7 +48,6 @@ function Screen:enter()
             ui.button{id = 'dialog', text = 'Open after a message', onClick = function() self:openFromDialog() end},
             ui.label{text = 'Each platform opens its own kind of screen: a UIKit controller or an AppKit sheet, an AndroidX activity, a popup page of the browser or a window over the app. Only the web opens by redirect, and only Apple platforms open SwiftUI.', color = 'textMuted', font = 'caption'},
         },
-        code = "local answer, err = demo.openScreen({state = {level = 3}}):await()\ndemo.onScreenRestored(function(ending)\n  print(ending.state.level, ending.result)\nend)",
     }
     if not self.native then
         return

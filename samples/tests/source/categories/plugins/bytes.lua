@@ -8,6 +8,12 @@ local demo = require('native-demo')
 
 local Bytes = haylen.class('Bytes', DemoTest)
 
+Bytes.code = [[
+local echoed = demo.echoBytes(data):await()
+print(echoed.data == data)
+local image = demo.generatedImage(384, 216):await()
+ui.setImage('@native-picture', graphics.newTexture(image.png))]]
+
 Bytes.imageWidth = 384
 Bytes.imageHeight = 216
 Bytes.pngSignature = '\137PNG\r\n\26\n'
@@ -55,7 +61,6 @@ function Bytes:enter()
                 ui.row{gap = 16, ui.label{text = 'Back', width = 120, color = 'textMuted'}, ui.label{id = 'received', text = 'Nothing yet', font = 'monospace', grow = 1}},
             },
         },
-        code = "local echoed = demo.echoBytes(data):await()\nprint(echoed.data == data)\nlocal image = demo.generatedImage(384, 216):await()\nui.setImage('@native-picture', graphics.newTexture(image.png))",
     }
     self:run()
 end

@@ -7,6 +7,12 @@ local demo = require('native-demo')
 
 local Sharing = haylen.class('Sharing', DemoTest)
 
+Sharing.code = [[
+local result = demo.share('A text', 'https://example.com'):await()
+print(result.shared)  -- Nil where the platform keeps it to itself.
+local opened = demo.openApp('maps'):await()
+print(opened.opened)  -- False when no app takes the link.]]
+
 Sharing.text = 'A text that Haylen Tests shares.'
 Sharing.link = 'https://example.com/haylen'
 Sharing.apps = {
@@ -38,7 +44,6 @@ function Sharing:enter()
                 ui.label{id = 'shareState', text = 'Nothing shared yet.', color = 'textMuted'},
             },
         },
-        code = "local result = demo.share('A text', 'https://example.com'):await()\nprint(result.shared)  -- Nil where the platform keeps it to itself.\nlocal opened = demo.openApp('maps'):await()\nprint(opened.opened)  -- False when no app takes the link.",
     }
 end
 

@@ -9,6 +9,13 @@ local demo = require('native-demo')
 
 local DataViews = haylen.class('DataViews', DemoTest)
 
+DataViews.code = [[
+local shot = demo.captureFrame(320, 180):await()
+texture:update(shot.frame)
+local view = dataview.new(4096)
+local answer = demo.checksumView(view):await()
+print(view:read(0, 6)) -- NATIVE]]
+
 DataViews.width = 320
 DataViews.height = 180
 DataViews.framesToPass = 30
@@ -40,7 +47,6 @@ function DataViews:enter()
                 ui.row{gap = 16, ui.label{text = 'After', width = 120, color = 'textMuted'}, ui.label{id = 'after', text = 'Nothing yet', font = 'monospace', grow = 1}},
             },
         },
-        code = "local shot = demo.captureFrame(320, 180):await()\ntexture:update(shot.frame)\nlocal view = dataview.new(4096)\nlocal answer = demo.checksumView(view):await()\nprint(view:read(0, 6)) -- NATIVE",
     }
     self:act(function()
         self:share()

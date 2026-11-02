@@ -124,7 +124,7 @@ function Basics:update(dt)
     self.sliderTime = self.sliderTime + dt
     if self.spin and self.sliderTime >= Test.statusInterval then
         self.sliderTime = 0
-        self.gui:set('rotation', {value = math.deg(hero.rotation)})
+        self:set('rotation', {value = math.deg(hero.rotation)})
     end
     local flips = hero.flipHorizontal and (hero.flipVertical and 'mirrored and upside down' or 'mirrored') or (hero.flipVertical and 'upside down' or 'not flipped')
     local degrees = math.floor(math.deg(hero.rotation) + 0.5) % 360

@@ -7,6 +7,13 @@ local demo = require('native-demo')
 
 local Calls = haylen.class('Calls', DemoTest)
 
+Calls.code = [[
+local demo = require('native-demo')
+local answer, err = demo.compute(200000):await()
+local call = demo.wait(1, {timeout = 0.5})
+local _, failure = call:await()
+print(failure.code)]]
+
 Calls.limit = 200000
 Calls.primes = 17984
 Calls.timeout = 0.5
@@ -23,7 +30,6 @@ function Calls:enter()
             ui.button{id = 'run', text = 'Run the calls again', variant = 'primary', onClick = function() self:run() end},
             ui.label{text = 'Every call crosses the bridge to the native part and back while a coroutine awaits its answer. Swift answers on Apple platforms, Kotlin on Android, JavaScript on the web and C on the desktops.', color = 'textMuted', font = 'caption'},
         },
-        code = "local demo = require('native-demo')\nlocal answer, err = demo.compute(200000):await()\nlocal call = demo.wait(1, {timeout = 0.5})\nlocal _, failure = call:await()\nprint(failure.code)",
     }
     self:run()
 end

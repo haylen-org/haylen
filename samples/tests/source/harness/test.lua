@@ -5,6 +5,7 @@ local log = require('haylen.log')
 local m = require('haylen.math')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
+local viewport = require('haylen.viewport')
 local window = require('haylen.window')
 
 local catalog = require('harness.catalog')
@@ -16,6 +17,9 @@ local Test = haylen.class('Test', scene.Scene)
 Test.panelWidth = 460
 Test.stageColor = '#FF181D26'
 Test.statusInterval = 0.2
+
+-- The events of controls the player changes, after which the status shows at once.
+Test.controlEvents = {change = true, click = true}
 
 -- The code card shows this many lines of code and scrolls the rest, so the region of every test has the same height.
 Test.codeLines = 6
@@ -42,7 +46,7 @@ function Test:init(entry)
     self.camera.anchor = 'topLeft'
 end
 
--- Mounts the frame. The table `options` takes the `hint`, the `controls` of the panel and its `panelWidth`, `stage = false` for tests without a play area, `content`, nodes that take the place of the play area in a region that scrolls once they are taller than it, `fixed = true` for content that fills the region as it is and scrolls inside itself, such as a long collection, `code`, the Lua code the test runs, shown in a card under the play area or the content, `play = true` for tests that read the keyboard, gamepads or remotes as game input, which gives the play area the first focus, the id of another control to `focus` first, `view`, the width and height of a world centered on the origin that the camera fits into the play area, and `overlay`, nodes such as touch controls drawn over the region, which anchor to it with `anchorTo = 'parent'`.
+-- Mounts the frame. The table `options` takes the `hint`, the `controls` of the panel and its `panelWidth`, `stage = false` for tests without a play area, `content`, nodes that take the place of the play area in a region that scrolls once they are taller than it, `fixed = true` for content that fills the region as it is and scrolls inside itself, such as a long collection, `code`, the Lua code the test runs, shown in a card under the play area or the content, which defaults to the `code` of the class of the test, where a test keeps it so the page that says why a platform cannot run the test shows it too, `play = true` for tests that read the keyboard, gamepads or remotes as game input, which gives the play area the first focus, the id of another control to `focus` first, `view`, the width and height of a world centered on the origin that the camera fits into the play area, and `overlay`, nodes such as touch controls drawn over the region, which anchor to it with `anchorTo = 'parent'`.
 function Test:frame(options)
     options = options or {}
     local entry = self.entry
@@ -56,8 +60,9 @@ function Test:frame(options)
     end
 
     local main = {self:region(stage, options)}
-    if options.code then
-        main[2] = self:codeCard(options.code)
+    local source = options.code or self.code
+    if source then
+        main[2] = self:codeCard(source)
     end
     local middle = {ui.column{grow = 1, gap = 12, align = 'stretch', children = main}}
     if options.controls then
@@ -77,6 +82,11 @@ function Test:frame(options)
         self:footer(options.hint, stage and options.controls ~= nil),
     }
     self.gui = ui.mount(ui.column{id = 'frame', padding = 24, gap = 12, onCancel = function() self:cancel() end, children = children}, {owner = self})
+    ui.onEvent(function(event)
+        if Test.controlEvents[event.name] then
+            Test.statusDue(self)
+        end
+    end, {owner = self})
     self.gui:command(options.focus or (stage and options.play and 'stage') or 'back', 'focus')
     log.info(string.format('[%s] Started.', entry.code))
 end
@@ -85,7 +95,7 @@ end
 function Test:region(stage, options)
     local layers = {}
     if stage then
-        layers[1] = ui.playArea{id = 'stage', align = 'stretch', radius = ui.themeMetric('panelRadius'), cornerColor = haylen.config.clearColor}
+        layers[1] = ui.playArea{id = 'stage', align = 'stretch', radius = ui.themeMetric('panelRadius')}
     elseif options.content and options.fixed then
         layers[1] = ui.column{id = 'content', gap = 12, align = 'stretch', children = options.content}
     elseif options.content then
@@ -200,8 +210,10 @@ end
 function Test:resize(area)
 end
 
--- Draws the stage background and lets the test draw in the coordinates of its camera once the play area has a size.
+-- Paints the screen behind the frame with the background of the theme, which the rounded corners of the play area take too, and draws the stage background and lets the test draw in the coordinates of its camera once the play area has a size.
 function Test:render()
+    graphics2d.beginScreen({order = -1})
+    graphics2d.drawRect(viewport.visibleRect(), ui.themeColor('background'))
     if not self.area then
         return
     end
@@ -218,7 +230,7 @@ function Test:toStage(x, y)
     return self.camera:screenToWorld(x, y)
 end
 
--- Shows a line of live values a few times per second, so the numbers stay readable, and always the last line given, which shows once the interval passes. An empty line hides the status.
+-- Shows a line of live values a few times per second, so the numbers stay readable, and always the last line given, which shows once the interval passes. After a change of a control, by the player or through `set`, the line shows at once, so it never disagrees with the control beside it. An empty line hides the status.
 function Test:status(text)
     self.pendingStatus = text
     if self.statusTime >= Test.statusInterval then
@@ -245,8 +257,15 @@ function Test.setNode(test, id, properties)
     if id == 'status' and properties.text then
         test.statusText = properties.text
         properties.visible = properties.text ~= ''
+    elseif id ~= 'status' then
+        Test.statusDue(test)
     end
     test.gui:set(id, properties)
+end
+
+-- Lets the next line of the status show at once.
+function Test.statusDue(test)
+    test.statusTime = math.max(test.statusTime, Test.statusInterval)
 end
 
 -- Writes a line to the log with the code of the test in front of it.
