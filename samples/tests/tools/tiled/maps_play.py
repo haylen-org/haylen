@@ -118,7 +118,7 @@ def collision(folder: Path) -> None:
 
     o = builder.object
     shapes = [
-        o(name="rock pile", type="collision", x=400, y=352, polygon=[{"x": 0, "y": 0}, {"x": 20, "y": -44}, {"x": 64, "y": -56}, {"x": 96, "y": -20}, {"x": 88, "y": 0}]),
+        o(name="rock pile", type="collision", x=404, y=352, polygon=[{"x": 0, "y": 0}, {"x": 4, "y": -34}, {"x": 26, "y": -66}, {"x": 54, "y": -78}, {"x": 76, "y": -62}, {"x": 84, "y": -22}, {"x": 72, "y": 0}]),
         o(name="pond", type="collision", x=478, y=238, width=196, height=132, ellipse=True, properties=[prop("sensor", "bool", True)]),
         o(name="rope", type="collision", x=416, y=64, polyline=[{"x": 0, "y": 0}, {"x": 56, "y": 24}, {"x": 120, "y": 10}, {"x": 176, "y": 34}]),
         o(name="log", type="collision", x=50, y=228, width=124, height=72, capsule=True),
@@ -127,6 +127,7 @@ def collision(folder: Path) -> None:
     rng = random.Random(99)
     # The flower patches keep to open grass, away from the shores of the pond and the pit.
     flowers = {cell for cell in ((7, 3), (10, 2), (22, 2), (15, 2)) if not ground.touches(*cell)}
+    # The rock pile hugs the outline of the three rocks it stacks.
     art = Props(builder)
     for x, y in ((428, 352), (464, 336), (454, 312)):
         art.at("rock", x, y)
