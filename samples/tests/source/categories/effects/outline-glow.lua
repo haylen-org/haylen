@@ -6,12 +6,14 @@ local ui = require('haylen.ui')
 
 local ParticleTest = require('categories.particles.particle-test')
 local Scenery = require('categories.effects.scenery')
+local code = require('harness.code')
 
 local OutlineGlow = haylen.class('OutlineGlow', ParticleTest)
 
+-- The code follows the controls, with the width, the size and the colors they set.
 OutlineGlow.code = [[
-graphics2d.draw(texture, x, y, {pivotY = 1, effect = {outlineWidth = 8, outlineColor = '#FFFFC830'}})
-graphics2d.draw(texture, x, y, {pivotY = 1, effect = {glowSize = 36, glowColor = '#E0FFC040'}})]]
+graphics2d.draw(texture, x, y, {pivotY = 1, effect = {outlineWidth = %g, outlineColor = '%s'}})
+graphics2d.draw(texture, x, y, {pivotY = 1, effect = {glowSize = %g, glowColor = '%s'}})]]
 
 OutlineGlow.subjects = {
     {name = 'Knight', path = 'sprites/images/hero.png', x = -720, scale = 1.3, glowing = true},
@@ -74,7 +76,7 @@ end
 function OutlineGlow:enter()
     self:frame{
         hint = 'The sprite nearest the cursor shows its outline. A click, a tap, E, Enter, Space or the south button makes it glow or stop glowing.',
-        code = OutlineGlow.code,
+        code = self:codeText(),
         cursor = true,
         controls = {
             ui.toggle{id = 'night', text = 'Night', checked = self.night, onChange = function(event) self.night = event.checked end},
@@ -82,18 +84,31 @@ function OutlineGlow:enter()
             ui.toggle{id = 'all', text = 'Outline every sprite', checked = self.outlineAll, onChange = function(event) self.outlineAll = event.checked end},
             ui.formField{label = 'Outline width in pixels', ui.slider{id = 'outlineWidth', min = 1, max = 24, value = self.outlineWidth, showValue = true, decimals = 1, onChange = function(event)
                 self.outlineWidth = event.value
+                self:showCode()
             end}},
             ui.formField{label = 'Outline color', ui.combo{id = 'outlineColor', items = OutlineGlow.items(OutlineGlow.outlineColors), selected = OutlineGlow.outlineColors[1].id, onChange = function(event)
                 self.outlineColor = OutlineGlow.colorOf(OutlineGlow.outlineColors, event.value)
+                self:showCode()
             end}},
             ui.formField{label = 'Glow size in pixels', ui.slider{id = 'glowSize', min = 2, max = 64, value = self.glowSize, showValue = true, decimals = 0, onChange = function(event)
                 self.glowSize = event.value
+                self:showCode()
             end}},
             ui.formField{label = 'Glow color', ui.combo{id = 'glowColor', items = OutlineGlow.items(OutlineGlow.glowColors), selected = OutlineGlow.glowColors[1].id, onChange = function(event)
                 self.glowColor = OutlineGlow.colorOf(OutlineGlow.glowColors, event.value)
+                self:showCode()
             end}},
         },
     }
+end
+
+function OutlineGlow:codeText()
+    return string.format(OutlineGlow.code, math.floor(self.outlineWidth * 10 + 0.5) / 10, self.outlineColor, math.floor(self.glowSize + 0.5), self.glowColor)
+end
+
+function OutlineGlow:showCode()
+    self.codeSource = self:codeText()
+    self:set('code', {text = code.markup(self.codeSource)})
 end
 
 -- Returns the sprite whose middle is nearest the cursor, when the cursor is close enough to it.
@@ -132,7 +147,7 @@ function OutlineGlow:update(dt)
             glowing = glowing + 1
         end
     end
-    self:report('Pointed at %s, %d glowing, outline %.1f px, glow %.1f px', self.target and 'the ' .. self.target.subject.name:lower() or 'nothing', glowing, self.outlineWidth, glow)
+    self:report('The cursor points at %s, and %d %s, with an outline of %.1f pixels and a glow of %.0f pixels.', self.target and 'the ' .. self.target.subject.name:lower() or 'nothing', glowing, glowing == 1 and 'sprite glows' or 'sprites glow', self.outlineWidth, glow)
 end
 
 function OutlineGlow:draw(area)

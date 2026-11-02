@@ -117,7 +117,7 @@ function Dissolve:update(dt)
     end
 
     local states = self.subjectStates
-    self:report('Dissolved %.2f, %.2f, %.2f and %.2f, edge %.2f, cells of %.0f px', states[1].options.effect.dissolve, states[2].options.effect.dissolve, states[3].options.effect.dissolve, states[4].options.effect.dissolve, states[1].options.effect.dissolveEdge, states[1].options.effect.dissolveSize)
+    self:report('The four sprites are %.0f%%, %.0f%%, %.0f%% and %.0f%% dissolved, with an edge of %.2f and cells of %.0f pixels.', states[1].options.effect.dissolve * 100, states[2].options.effect.dissolve * 100, states[3].options.effect.dissolve * 100, states[4].options.effect.dissolve * 100, states[1].options.effect.dissolveEdge, states[1].options.effect.dissolveSize)
 end
 
 -- The sprite whose turn it is dissolves, waits gone, comes back and waits whole, and then the next one takes its turn.

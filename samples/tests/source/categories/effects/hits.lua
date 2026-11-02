@@ -117,7 +117,7 @@ function Hits:update(dt)
     local camera = self.camera
     camera:update(dt)
     local offset = camera:shakeOffset()
-    self:report('Trauma %.2f, shake of %.1f units and %.1f degrees, view flash %.2f, hits %d', camera.trauma, math.sqrt(offset.x * offset.x + offset.y * offset.y), math.abs(math.deg(camera:renderRotation())), camera:flashColor().a, self.hits)
+    self:report('A trauma of %.2f shakes the camera %.1f units and %.1f degrees, the view flash is at %.2f, and %d %s landed.', camera.trauma, math.sqrt(offset.x * offset.x + offset.y * offset.y), math.abs(math.deg(camera:renderRotation())), camera:flashColor().a, self.hits, self.hits == 1 and 'hit' or 'hits')
 end
 
 function Hits:draw(area)

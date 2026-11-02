@@ -14,8 +14,8 @@ local PostProcessing = haylen.class('PostProcessing', ParticleTest)
 PostProcessing.code = [[
 local lut = graphics.newTexture(256, 16, {pixels = strip, filter = 'linear'})  -- One 16 by 16 cell per step of blue.
 graphics2d.beginWorld(camera, {postProcess = {
-    bloomStrength = 1.2, bloomThreshold = 0.55, bloomRadius = 28, vignetteStrength = 0.35, saturation = 1.25,
-    colorLut = lut, colorLutStrength = 0.8, chromaticAberration = 3, pixelate = 6, blur = 2, grain = 0.12, dither = true,
+    bloomStrength = 0.7, bloomThreshold = 0.75, bloomRadius = 20, vignetteStrength = 0.3, saturation = 1.2,
+    colorLut = lut, colorLutStrength = 0.8, chromaticAberration = 3, pixelate = 6, blur = 0.8, grain = 0.12, dither = true,
 }})]]
 
 PostProcessing.library = 'particles/library/'
@@ -38,7 +38,7 @@ PostProcessing.sliders = {
 PostProcessing.defaults = {bloomStrength = 0, bloomThreshold = 0.8, bloomRadius = 12, vignetteStrength = 0, vignetteRadius = 0.6, saturation = 1, contrast = 1, brightness = 1, colorLutStrength = 1, chromaticAberration = 0, pixelate = 0, blur = 0, grain = 0, dither = false, grade = 'none'}
 PostProcessing.presets = {
     {id = 'clean', text = 'Clean', values = {}},
-    {id = 'dream', text = 'Dream', values = {bloomStrength = 1.2, bloomThreshold = 0.55, bloomRadius = 28, blur = 2, saturation = 1.25, vignetteStrength = 0.35, dither = true}},
+    {id = 'dream', text = 'Dream', values = {bloomStrength = 0.7, bloomThreshold = 0.75, bloomRadius = 20, blur = 0.8, saturation = 1.2, vignetteStrength = 0.3, dither = true}},
     {id = 'retro', text = 'Retro', values = {pixelate = 6, chromaticAberration = 3, grade = 'sepia', colorLutStrength = 0.8, vignetteStrength = 0.5, contrast = 1.15, grain = 0.12}},
     {id = 'paused', text = 'Paused', values = {blur = 12, saturation = 0.35, brightness = 0.7, vignetteStrength = 0.6}},
 }
@@ -182,7 +182,7 @@ function PostProcessing:update(dt)
     end
     ParticleTest.updateAll(self.systems, dt)
     local stats = graphics2d.stats()
-    self:report('Preset "%s", %d passes, %d draw calls, grading "%s", bloom %.2f, blur %.1f', self.preset and self.preset.text or 'custom', stats.passes, stats.drawCalls, self.grade, self.post.bloomStrength, self.post.blur)
+    self:report('The %s runs %d passes in %d draw calls, with the grading "%s", a bloom of %.2f and a blur of %.1f.', self.preset and string.format('preset "%s"', self.preset.text) or 'chain of your values', stats.passes, stats.drawCalls, self.grade, self.post.bloomStrength, self.post.blur)
 end
 
 function PostProcessing:render()

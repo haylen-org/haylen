@@ -35,7 +35,7 @@ function Distortion:init(entry)
     self.campfire = Distortion.newSystem('fire/campfire-realistic')
     self.haze = Distortion.newSystem('fire/heat-haze')
     self.campfire.position, self.haze.position = {Distortion.fire[1], Distortion.fire[2] - 40}, {Distortion.fire[1], Distortion.fire[2] - 180}
-    self.campfire.scale = 2
+    self.campfire.scale = 1.5
     self.shield = Distortion.newSystem('scifi/shield-ripple-distortion')
     self.shield.position = Distortion.shield
     self.rings = {}
@@ -98,7 +98,7 @@ function Distortion:update(dt)
     self.haze:update(dt)
     self.shield:update(dt)
     local rings = ParticleTest.updateAll(self.rings, dt)
-    self:report('Bend distance %.0f, %d particles of haze, %d rings on the shield and %d shock rings', self.post.distortion, self.haze.count, self.shield.count, rings)
+    self:report('The image bends up to %.0f units, with %d particles of haze, %d rings on the shield and %d shock rings.', self.post.distortion, self.haze.count, self.shield.count, rings)
 end
 
 function Distortion:render()

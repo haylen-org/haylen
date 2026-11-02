@@ -88,7 +88,7 @@ end
 
 function ImageEffects:update(dt)
     ImageEffects.super.update(self, dt)
-    self:status(string.format('%d copies being made on the task pool, %d asked for so far', self.waiting, self.request))
+    self:status(string.format('%d %s made on the task pool, of %d asked for so far.', self.waiting, self.waiting == 1 and 'copy is being' or 'copies are being', self.request))
 end
 
 function ImageEffects:draw(area)
