@@ -35,9 +35,11 @@ class HaylenUITestCase: XCTestCase {
         return element
     }
 
+#if !os(tvOS)
     func tap(_ label: String, file: StaticString = #filePath, line: UInt = #line) {
         waitFor(element(label), file: file, line: line).tap()
     }
+#endif
 
     // Waits until the condition holds, checking it twice a second, and fails with the message when it never does.
     func waitUntil(_ message: @autoclosure () -> String, timeout: TimeInterval = HaylenUITestCase.timeout, file: StaticString = #filePath, line: UInt = #line, _ condition: () -> Bool) {

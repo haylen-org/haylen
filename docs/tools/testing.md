@@ -317,10 +317,11 @@ So the headless player exits with 1 when a test raised an error, failed a check 
 
 ## The UI tests
 
-The UI tests drive an app on a simulator the way a person does: they tap, drag and use the system UI, such as the controls that arrange the windows of iPadOS. They run on the iOS and iPadOS simulators and on the Apple Vision Pro simulator, where a tap arrives as a look and a pinch.
+The UI tests drive an app on a simulator the way a person does: they tap, drag and use the system UI, such as the controls that arrange the windows of iPadOS. They run on the iOS and iPadOS simulators, on the Apple TV simulator, where a test presses the buttons of the remote through `XCUIRemote` and types on the keyboard of the system, and on the Apple Vision Pro simulator, where a tap arrives as a look and a pinch.
 
 ```sh
 haylen test --ui samples/tests --platform ios-simulator --device "iPad Pro 13-inch (M5)"
+haylen test --ui samples/tests --platform tvos-simulator --device "Apple TV 4K (3rd generation)"
 haylen test --ui samples/tests --platform visionos-simulator --device "Apple Vision Pro"
 haylen test --ui samples/games/tiny-island --platform visionos-simulator
 ```
@@ -343,7 +344,7 @@ The command `haylen test --ui <app>` runs these steps:
 
 - It builds the app for the simulator as `haylen run --build-only` does, in the Debug configuration with the engine artifacts of `--config`, `Debug` by default. A Debug engine checks at every frame on UIKit that the view and its drawable cover the window, through `platform::SurfaceCheck`.
 - It generates the runner from `engine/tests/ui/apple/project.yml` with the pinned XcodeGen into `build/<platform>-ui-tests`, with the tests of the app, and builds it with `xcodebuild build-for-testing`.
-- It boots the simulator that `--device` names without a window, or else a booted one or the first iPhone or Apple Vision Pro, and installs the app.
+- It boots the simulator that `--device` names without a window, or else a booted one or the first iPhone, Apple TV or Apple Vision Pro, and installs the app.
 - It runs the tests with `xcodebuild test-without-building`, which prints each test and each failure. The runner receives the identifier of the app and the folder of the screenshots through the prefix `TEST_RUNNER_` of xcodebuild. A test that runs longer than 10 minutes stops and fails.
 - It relays the log of the app meanwhile and fails when the engine logged an error, even when every test passed, so a layout that leaves the drawable behind the window fails the run.
 - It uninstalls the app and the runner, and shuts the simulator down when it booted it.
@@ -353,14 +354,14 @@ The class `HaylenUITestCase` starts the app again for each test and gives the te
 | Helper | What it does |
 | --- | --- |
 | `element(_:)`, `element(matching:)` | The first element of the app whose label is the text or matches the regular expression. |
-| `waitFor(_:)`, `tap(_:)` | Waits until an element exists, and taps the element with the text. |
+| `waitFor(_:)`, `tap(_:)` | Waits until an element exists, and taps the element with the text on every simulator but the Apple TV, which has no taps. |
 | `waitUntil(_:_:)` | Waits until a condition holds, and fails with the message when it never does. |
 | `saveScreenshot(_:)` | Saves a picture of the window of the app, never the whole screen, in `ui-tests/<platform>` of the build folder of the app. |
 | `setMultitasking(_:)` | Chooses Full Screen Apps, Windowed Apps or Stage Manager in the settings of iPadOS, and returns the mode it replaced, so a test puts it back. |
 | `arrangeWindow(_:)` | Picks an arrangement of the window controls of iPadOS, such as `Left`, `Right` or `Fill`. |
 | `resizeWindow(by:)` | Drags the bottom right corner of the window of the app, which resizes it. |
 
-The test project checks with them that a tap opens a category on every simulator, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays.
+The test project checks with them that a tap opens a category, that the software keyboard types, deletes and turns with a field on the iPhone and the iPad, that the keyboard of the Apple TV types into the search of its menu, and that on an iPad the framebuffer follows the window. That test tiles the window to the left half, resizes it there, tiles it to the right half and resizes it in Stage Manager. At each size it reads the framebuffer from the test "Window and device", compares it with the frame of the window times its scale, and checks that the controls of the window leave the button "Back" free. Tiny Island checks that its start plays.
 
 ## Sanitizers
 

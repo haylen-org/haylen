@@ -3,6 +3,7 @@ name: HaylenUITests
 options:
   deploymentTarget:
     iOS: "17.0"
+    tvOS: "17.0"
     visionOS: "1.0"
 settings:
   base:
@@ -24,6 +25,15 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
     scheme:
       testTargets: [iOS]
+  tvOS:
+    type: bundle.ui-testing
+    platform: tvOS
+    sources: *sources
+    settings:
+      base:
+        TARGETED_DEVICE_FAMILY: "3"
+    scheme:
+      testTargets: [tvOS]
   visionOS:
     type: bundle.ui-testing
     platform: visionOS

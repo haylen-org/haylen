@@ -1434,7 +1434,7 @@ def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
 # The UI tests of apps on the Apple simulators: the XCUITest runner that `engine/tests/ui/apple/project.yml` defines builds with the Swift tests in the folder `ui-tests` of an app, and drives the app that "run --build-only" built, taps, drags and the system UI included.
 UI_TEST_PROJECT = ENGINE_DIR / "tests" / "ui" / "apple"
 UI_TEST_FOLDER = "ui-tests"
-UI_TEST_PLATFORMS = ("ios-simulator", "visionos-simulator")
+UI_TEST_PLATFORMS = ("ios-simulator", "tvos-simulator", "visionos-simulator")
 UI_TEST_RUNNER = "com.haylen.uitests.xctrunner"
 # The longest that one UI test runs before xcodebuild stops it, so a gesture that the system never finishes fails the test instead of the run waiting forever.
 UI_TEST_SECONDS = 600
@@ -1454,10 +1454,10 @@ def ui_test_environment(environment: dict[str, str], identifier: str, output: Pa
 
 
 def command_test_ui(args: argparse.Namespace) -> None:
-    """Builds an app for an iOS or visionOS simulator as "run --build-only" does, installs it, runs the UI tests of its folder `ui-tests` on it, and fails on a failed test or on an error that the engine logged meanwhile. It uninstalls the app and the runner afterwards, and shuts down a simulator it booted."""
+    """Builds an app for an iOS, tvOS or visionOS simulator as "run --build-only" does, installs it, runs the UI tests of its folder `ui-tests` on it, and fails on a failed test or on an error that the engine logged meanwhile. It uninstalls the app and the runner afterwards, and shuts down a simulator it booted."""
     require_host("apple")
     if args.platform not in UI_TEST_PLATFORMS:
-        raise BuildError(f'The UI tests run on "{UI_TEST_PLATFORMS[0]}" and "{UI_TEST_PLATFORMS[1]}". Pick one with "--platform".')
+        raise BuildError(f'The UI tests run on {quoted_names(UI_TEST_PLATFORMS)}. Pick one with "--platform".')
     folder = resolve_lua_app(args.ui)
     tests = folder / UI_TEST_FOLDER
     if not any(tests.glob("*.swift")):
@@ -6742,7 +6742,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
         parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
         parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default, or the name or id of the device of "--platform ios" or "tvos", which "haylen devices" lists.')
-        parser.add_argument("--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--platform ios-simulator" or "visionos-simulator", instead of the engine tests. The configuration is the one of the engine artifacts the app uses.')
+        parser.add_argument("--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--platform ios-simulator", "tvos-simulator" or "visionos-simulator", instead of the engine tests. The configuration is the one of the engine artifacts the app uses.')
         parser.add_argument("--port", action="store_true", help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.')
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
     add_sanitizer_option(parser)

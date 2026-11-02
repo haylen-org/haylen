@@ -1043,19 +1043,19 @@ class UiTestsTest(unittest.TestCase):
         self.assertEqual(env["TEST_RUNNER_HAYLEN_UI_OUTPUT"], "/build/screenshots")
         self.assertEqual(env["HOME"], "/Users/me")
 
-    def test_the_runner_builds_for_ios_and_visionos_with_the_tests_of_the_app(self):
+    def test_the_runner_builds_for_ios_tvos_and_visionos_with_the_tests_of_the_app(self):
         spec = (haylen.UI_TEST_PROJECT / "project.yml").read_text(encoding="utf-8")
         for platform_name in haylen.UI_TEST_PLATFORMS:
             self.assertIn(f"  {haylen.APPLE_RUNS[platform_name]['scheme']}:\n    type: bundle.ui-testing", spec)
         self.assertIn("path: ${HAYLEN_UI_TESTS}", spec)
         self.assertIn(f"PRODUCT_BUNDLE_IDENTIFIER: {haylen.UI_TEST_RUNNER.removesuffix('.xctrunner')}", spec)
 
-    def test_the_ui_tests_take_a_simulator_of_ios_or_visionos_and_an_app_with_tests(self):
+    def test_the_ui_tests_take_a_simulator_of_ios_tvos_or_visionos_and_an_app_with_tests(self):
         with mock.patch.object(haylen, "require_host"):
             with self.assertRaisesRegex(haylen.BuildError, "neither"):
                 haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", "samples/tests", "--gpu", "--platform", "ios-simulator"]))
-            with self.assertRaisesRegex(haylen.BuildError, '"ios-simulator" and "visionos-simulator"'):
-                haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", "samples/tests", "--platform", "tvos-simulator"]))
+            with self.assertRaisesRegex(haylen.BuildError, '"ios-simulator", "tvos-simulator", "visionos-simulator"'):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--ui", "samples/tests", "--platform", "catalyst"]))
             with tempfile.TemporaryDirectory() as scratch:
                 (Path(scratch) / "app.json").write_text("{}", encoding="utf-8")
                 with self.assertRaisesRegex(haylen.BuildError, "has no UI tests"):

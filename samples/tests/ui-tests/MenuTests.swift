@@ -1,5 +1,6 @@
 import XCTest
 
+#if !os(tvOS)
 // The menu of the test project answers a tap, which the visionOS simulator delivers as a look and a pinch.
 class MenuTests: HaylenUITestCase {
     func testATapOnACategoryOpensItsTests() throws {
@@ -8,3 +9,4 @@ class MenuTests: HaylenUITestCase {
         try saveScreenshot("sprites-category")
     }
 }
+#endif
