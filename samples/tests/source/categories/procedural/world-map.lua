@@ -29,6 +29,8 @@ WorldMap.biomes = {
     savanna = m.color('#FF9DAF5E'), woods = m.color('#FF3F7A40'), taiga = m.color('#FF3D6A50'), rock = m.color('#FF8D877C'), snow = m.color('#FFF2F4F6'),
 }
 WorldMap.neighbors = {{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}}
+-- What a cell of open lowland costs a road, against 1 for a cell that a road already crosses.
+WorldMap.openCost = 3
 
 function WorldMap:enter()
     self.options = {seed = 7, sea = 0, islands = 3, towns = 8, rivers = true, roads = true, names = true}
@@ -207,7 +209,7 @@ function WorldMap.settle(heights, rivers, count, random)
     return towns
 end
 
--- Joins the towns into networks, each new town to the nearest town already joined that a road can reach, along the cheapest path where the sea is blocked, hills cost more and rivers cost a bridge. A town that reaches none, such as one on another island, starts a network of its own.
+-- Joins the towns into networks, each new town to the nearest town already joined that a road can reach, along the cheapest path where the sea is blocked, hills cost more and rivers cost a bridge. A road that is built costs less than open land, so a later road joins it instead of running beside it. A town that reaches none, such as one on another island, starts a network of its own.
 function WorldMap.roads(heights, rivers, towns)
     local columns, rows = WorldMap.columns, WorldMap.rows
     local grid = navigation2d.newGrid(columns, rows)
@@ -218,7 +220,7 @@ function WorldMap.roads(heights, rivers, towns)
             if height < 0 then
                 grid:setWalkable(column, row, false)
             else
-                grid:setCost(column, row, 1 + math.max(0, height - 0.1) * 14 + (rivers.wet[index] and 6 or 0))
+                grid:setCost(column, row, WorldMap.openCost + math.max(0, height - 0.1) * 14 + (rivers.wet[index] and 6 or 0))
             end
         end
     end
@@ -229,6 +231,9 @@ function WorldMap.roads(heights, rivers, towns)
             local path = grid:findPath(town.column, town.row, other.column, other.row)
             if path then
                 roads[#roads + 1] = path
+                for _, cell in ipairs(path) do
+                    grid:setCost(cell.x, cell.y, 1)
+                end
                 break
             end
         end
