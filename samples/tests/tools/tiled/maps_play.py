@@ -13,34 +13,43 @@ from tiled_json import MapBuilder, item, prop
 
 def objects(folder: Path) -> None:
     """A meadow with every object shape of Tiled marking places of it: a fenced plot, a pond, a log bridge, a spawn point, a flower bed, a trail and a label, with tile objects and the lamps and signs of the templates."""
-    width, height = 24, 12
+    width, height = 28, 12
+    # The places stand two columns in from the left, so the meadow runs on past them on both sides.
+    shift = 64
     builder = MapBuilder(width, height).tileset(1, TERRAIN).tileset(PROPS_GID, PROPS).tileset(TRANSITIONS_GID, TRANSITIONS).tileset(SCENERY_GID, SCENERY)
     ground = Ground(width, height, 91)
-    ground.blob("water", 9.5, 3.2, 2.6, 1.8)
-    ground.road("path", [(0, 8.5), (8, 8), (14, 9.5), (24, 9)], 0.8)
+    ground.blob("water", 11.5, 3.2, 2.6, 1.8)
+    ground.road("path", [(0, 8.5), (10, 8), (16, 9.5), (28, 9)], 0.8)
     o = builder.object
     shapes = [
-        o(name="plot", type="area", x=40, y=40, width=160, height=96, rotation=8),
-        o(name="pond", type="area", x=232, y=40, width=148, height=112, ellipse=True),
-        o(name="bridge", type="area", x=440, y=72, width=176, height=56, capsule=True),
-        o(name="spawn", type="spawn", x=684, y=96, point=True),
-        o(name="flower bed", type="area", x=72, y=200, polygon=[{"x": 0, "y": 0}, {"x": 104, "y": -28}, {"x": 136, "y": 40}, {"x": 64, "y": 92}, {"x": -16, "y": 64}], rotation=-6),
-        o(name="trail", type="path", x=248, y=216, polyline=[{"x": 0, "y": 0}, {"x": 56, "y": 48}, {"x": 128, "y": 8}, {"x": 200, "y": 56}]),
-        o(name="label", type="label", x=504, y=168, width=200, height=64, text={"text": "Text objects wrap and align", "wrap": True, "halign": "center", "valign": "center", "pixelsize": 20, "color": "#ff1e1b33", "bold": True}),
+        o(name="plot", type="area", x=40 + shift, y=40, width=160, height=96, rotation=8),
+        o(name="pond", type="area", x=232 + shift, y=40, width=148, height=112, ellipse=True),
+        o(name="bridge", type="area", x=440 + shift, y=72, width=176, height=56, capsule=True),
+        o(name="spawn", type="spawn", x=684 + shift, y=96, point=True),
+        o(name="flower bed", type="area", x=72 + shift, y=200, polygon=[{"x": 0, "y": 0}, {"x": 104, "y": -28}, {"x": 136, "y": 40}, {"x": 64, "y": 92}, {"x": -16, "y": 64}], rotation=-6),
+        o(name="trail", type="path", x=248 + shift, y=216, polyline=[{"x": 0, "y": 0}, {"x": 56, "y": 48}, {"x": 128, "y": 8}, {"x": 200, "y": 56}]),
+        o(name="label", type="label", x=504 + shift, y=168, width=200, height=64, text={"text": "Text objects wrap and align", "wrap": True, "halign": "center", "valign": "center", "pixelsize": 20, "color": "#ff1e1b33", "bold": True}),
     ]
     props = Props(builder)
-    props.at("chest", 3.2 * 32, 11.4 * 32, "chest", type="chest")
-    props.at("tree", 6.2 * 32, 11.6 * 32, "tree", type="tree")
-    props.at("crate", 8.6 * 32, 11.4 * 32, "big crate", type="crate", scale=1.3, rotation=8)
-    props.at("log", 16.6 * 32, 3.95 * 32, "log", type="log")
+    props.at("chest", 5.2 * 32, 11.4 * 32, "chest", type="chest")
+    props.at("tree", 8.2 * 32, 11.6 * 32, "tree", type="tree")
+    props.at("crate", 10.6 * 32, 11.4 * 32, "big crate", type="crate", scale=1.3, rotation=8)
+    props.at("log", 18.6 * 32, 3.95 * 32, "log", type="log")
     templates = [
-        {"id": builder.next_object, "template": "../templates/lamp.tj", "x": 352, "y": 376},
-        {"id": builder.next_object + 1, "template": "../templates/lamp.tj", "x": 432, "y": 376, "properties": [prop("lit", "bool", False)]},
-        {"id": builder.next_object + 2, "template": "../templates/sign.tj", "x": 560, "y": 376},
-        {"id": builder.next_object + 3, "template": "../templates/sign.tj", "x": 664, "y": 376, "name": "exit sign", "properties": [prop("text", "string", "Exit this way")]},
+        {"id": builder.next_object, "template": "../templates/lamp.tj", "x": 352 + shift, "y": 376},
+        {"id": builder.next_object + 1, "template": "../templates/lamp.tj", "x": 432 + shift, "y": 376, "properties": [prop("lit", "bool", False)]},
+        {"id": builder.next_object + 2, "template": "../templates/sign.tj", "x": 560 + shift, "y": 376},
+        {"id": builder.next_object + 3, "template": "../templates/sign.tj", "x": 664 + shift, "y": 376, "name": "exit sign", "properties": [prop("text", "string", "Exit this way")]},
     ]
     builder.next_object += len(templates)
-    builder.add(ground.meadow(builder, 92), ground.layer(builder, "path", "path"), ground.layer(builder, "water", "water"), builder.objects("shapes", shapes), builder.objects("props", props.objects), builder.objects("templates", templates))
+    # The grass under the text object keeps its flowers away, so the text reads on plain grass.
+    rng = random.Random(92)
+
+    def grass(column: int, row: int) -> int:
+        under_label = 17 <= column <= 24 and 5 <= row <= 7
+        return gid(t.FLOWERS if not under_label and not ground.touches(column, row) and rng.random() < 0.12 else t.GRASS)
+
+    builder.add(builder.tiles("ground", grass), ground.layer(builder, "path", "path"), ground.layer(builder, "water", "water"), builder.objects("shapes", shapes), builder.objects("props", props.objects), builder.objects("templates", templates))
     builder.save(folder / "objects.tmj")
 
 
@@ -110,12 +119,14 @@ def collision(folder: Path) -> None:
     o = builder.object
     shapes = [
         o(name="rock pile", type="collision", x=400, y=352, polygon=[{"x": 0, "y": 0}, {"x": 20, "y": -44}, {"x": 64, "y": -56}, {"x": 96, "y": -20}, {"x": 88, "y": 0}]),
-        o(name="pond", type="collision", x=488, y=256, width=184, height=128, ellipse=True, properties=[prop("sensor", "bool", True)]),
+        o(name="pond", type="collision", x=478, y=238, width=196, height=132, ellipse=True, properties=[prop("sensor", "bool", True)]),
         o(name="rope", type="collision", x=416, y=64, polyline=[{"x": 0, "y": 0}, {"x": 56, "y": 24}, {"x": 120, "y": 10}, {"x": 176, "y": 34}]),
-        o(name="log", type="collision", x=48, y=264, width=128, height=40, capsule=True),
-        o(name="pit", type="collision", x=190, y=298, width=108, height=74, ellipse=True, properties=[prop("sensor", "bool", True)]),
+        o(name="log", type="collision", x=50, y=228, width=124, height=72, capsule=True),
+        o(name="pit", type="collision", x=184, y=292, width=120, height=86, ellipse=True, properties=[prop("sensor", "bool", True)]),
     ]
     rng = random.Random(99)
+    # The flower patches keep to open grass, away from the shores of the pond and the pit.
+    flowers = {cell for cell in ((7, 3), (10, 2), (22, 2), (15, 2)) if not ground.touches(*cell)}
     art = Props(builder)
     for x, y in ((428, 352), (464, 336), (454, 312)):
         art.at("rock", x, y)
@@ -125,7 +136,7 @@ def collision(folder: Path) -> None:
         ground.layer(builder, "water", "water", properties=[prop("collision", "bool", False)]),
         ground.layer(builder, "lava", "lava", properties=[prop("collision", "bool", False)]),
         builder.tiles("walls", walls),
-        builder.tiles("decor", lambda column, row: gid(t.FLOWERS) if (column, row) in {(7, 3), (15, 11), (20, 8)} else 0, properties=[prop("collision", "bool", False)]),
+        builder.tiles("decor", lambda column, row: gid(t.FLOWERS) if (column, row) in flowers else 0, properties=[prop("collision", "bool", False)]),
         builder.tiles("fences", lambda column, row: gid(t.FENCE) if row == 4 and 14 <= column <= 20 else 0, properties=[prop("category", "int", 2)]),
         builder.objects("art", art.objects),
         builder.objects("shapes", shapes, **{"class": "collision"}),
@@ -141,11 +152,12 @@ def spawning(folder: Path) -> None:
     ground.road("path", [(0, 5.5), (7, 5), (14, 6), (22, 5.5)], 0.8)
     rng = random.Random(97)
     o = builder.object
-    entities = [o(name="start", type="player_start", x=48, y=144, point=True)]
-    coins = [(9, 2), (11, 3), (13, 2), (16, 3), (15, 8), (17, 9), (11, 8), (19, 2), (6, 9)]
+    entities = [o(name="start", type="player_start", x=56, y=150, point=True)]
+    # The entities keep to cells of their own, clear of the trees, bushes and chests around them.
+    coins = [(9, 2), (11, 3), (13, 2), (16, 3), (15, 8), (17, 8), (11, 8), (18, 2), (6, 9)]
     for index, (column, row) in enumerate(coins):
         entities.append(o(name=f"coin {index + 1}", type="coin", gid=gid(t.COIN), x=column * 32, y=row * 32 + 28, width=40, height=40, properties=[prop("value", "int", rng.choice([5, 10, 25]))]))
-    for index, (column, row) in enumerate(((7, 7), (12, 4), (16, 6), (4, 9))):
+    for index, (column, row) in enumerate(((7, 7), (12, 4), (15, 6), (4, 9))):
         entities.append(o(name=f"slime {index + 1}", type="slime", gid=gid(t.SLIME), x=column * 32, y=row * 32 + 28, width=48, height=48))
     for index, (loot, column) in enumerate((("A key", 2), ("A map", 9), ("Gold", 18))):
         entities.append(o(name=f"chest {index + 1}", type="chest", gid=gid(t.CHEST), x=column * 32, y=10 * 32 - 2, width=48, height=48, properties=[prop("loot", "string", loot)]))
@@ -153,9 +165,9 @@ def spawning(folder: Path) -> None:
     entities.append(o(name="note", type="marker", x=600, y=60, point=True))
     zone = builder.group("zone", [builder.objects("entities", entities, visible=False)], offsetx=24, offsety=8)
     props = Props(builder)
-    for cell in ((1, 3), (20, 3), (20, 9), (13, 10)):
+    for cell in ((0, 3), (20, 3), (20, 9), (13, 10)):
         props.on(rng.choice(("tree", "pine")), cell, rng, scale=0.85)
-    for cell in ((3, 7), (14, 3), (18, 6)):
+    for cell in ((3, 7), (14, 3), (19, 6)):
         props.on(rng.choice(("bush", "blossoms", "rock")), cell, rng)
     builder.add(ground.meadow(builder, 98), ground.layer(builder, "path", "path"), builder.objects("props", props.objects), zone)
     builder.save(folder / "spawning.tmj")

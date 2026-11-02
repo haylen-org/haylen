@@ -167,6 +167,8 @@ def transitions() -> dict:
     liquid = [prop("liquid", "bool", True), prop("depth", "float", 1.5)]
     tiles = [{"id": tile_id(WATER, mask), "type": "water", "properties": liquid, "animation": [{"tileid": tile_id(WATER + frame, mask), "duration": 180} for frame in range(FRAMES)]} for mask in range(1, 16)]
     tiles += [{"id": tile_id(LAVA, mask), "type": "lava", "animation": [{"tileid": tile_id(LAVA + frame, mask), "duration": 220} for frame in range(FRAMES)]} for mask in range(1, 16)]
+    # The full lava tile also plays from each of its other frames, so a pit that mixes them shows no grid of one repeated tile.
+    tiles += [{"id": tile_id(LAVA + start, 15), "type": "lava", "animation": [{"tileid": tile_id(LAVA + (start + frame) % FRAMES, 15), "duration": 220} for frame in range(FRAMES)]} for start in range(1, FRAMES)]
     document = tileset("transitions", "../tiles/transitions.png", width, height, SIZE, SIZE, tiles, **t.GRID)
     document["wangsets"] = [corner_set("water", "#ff2fb3c4", WATER), corner_set("sand", "#fff3d58d", SAND), corner_set("path", "#ff8a5a32", PATH), corner_set("lava", "#ffff7043", LAVA), corner_set("grass", "#ff7bc74d", GRASS)]
     return document

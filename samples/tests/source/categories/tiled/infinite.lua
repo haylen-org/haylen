@@ -100,10 +100,16 @@ function Infinite:draw(area)
             end
             MapTest.pill('No chunk here', x + side / 2, y + side / 2, {anchor = {0.5, 0.5}, size = 22, layer = 5})
         end
+        -- The name of a chunk sits at the top left of the part of it in view, so every chunk on the screen carries its name.
+        local view = graphics2d.canvasBounds()
         for _, chunk in ipairs(self.chunks) do
             local x, y = map:cellToWorld(chunk.x, chunk.y)
-            graphics2d.drawRectOutline({x, y, chunk.width * map.tileWidth, chunk.height * map.tileHeight}, 3 * unit, '#B3FFC93C', {layer = 5})
-            MapTest.pill(string.format('Chunk %d, %d', chunk.x, chunk.y), x + 10 * unit, y + 10 * unit, {anchor = {0, 0}, size = 18})
+            local width, height = chunk.width * map.tileWidth, chunk.height * map.tileHeight
+            graphics2d.drawRectOutline({x, y, width, height}, 3 * unit, '#B3FFC93C', {layer = 5})
+            local left, top = math.max(x, view.x), math.max(y, view.y)
+            if left + 180 * unit < x + width and top + 60 * unit < y + height then
+                MapTest.pill(string.format('Chunk %d, %d', chunk.x, chunk.y), left + 10 * unit, top + 10 * unit, {anchor = {0, 0}, size = 18})
+            end
         end
     end
     graphics2d.drawShape({-9 * unit, -9 * unit, 18 * unit, 18 * unit}, {kind = 'ellipse', color = '#FFF0473E', borderWidth = 3 * unit, borderColor = MapTest.ink, layer = 11})

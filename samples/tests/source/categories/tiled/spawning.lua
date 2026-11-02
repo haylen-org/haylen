@@ -147,11 +147,14 @@ function Spawning:draw(area)
         if entity.kind == 'start' then
             graphics2d.drawShape({entity.x - 20, entity.y - 7, 40, 14}, {kind = 'ellipse', color = '#40000000', layer = 4})
             graphics2d.draw(self.texture, entity.x, entity.y, {source = self.map:tileInfo(self.flag).source, width = 48, height = 48, pivotX = 0.3, pivotY = 0.95, layer = 5})
-            MapTest.pill('Start', entity.x, entity.y - 52, {size = 16})
+            MapTest.pill('Start', entity.x + 30, entity.y - 52, {size = 16})
         else
-            local bob = entity.kind == 'coin' and math.sin(self.time * 4 + entity.phase) * 4 or 0
+            -- A coin floats over its shadow, which shrinks as the coin rises, while the others stand on theirs.
+            local coin = entity.kind == 'coin'
+            local bob = coin and math.sin(self.time * 4 + entity.phase) * 4 or 0
             local height = entity.squashed and entity.height * 0.4 or entity.height
-            graphics2d.drawShape({entity.x + entity.width * 0.15, entity.y - 6, entity.width * 0.7, 12}, {kind = 'ellipse', color = '#40000000', layer = 4})
+            local shadow = entity.width * (coin and 0.5 - bob * 0.02 or 0.7)
+            graphics2d.drawShape({entity.x + (entity.width - shadow) / 2, entity.y - (coin and 9 or 6), shadow, coin and 9 or 12}, {kind = 'ellipse', color = '#40000000', softness = 3, layer = 4})
             graphics2d.draw(self.texture, entity.x, entity.y + bob, {source = self:source(entity.gid, entity.phase), pivotX = 0, pivotY = 1, width = entity.width, height = height, layer = 5})
             if entity.kind == 'sign' then
                 MapTest.pill(entity.text, entity.x + entity.width / 2, entity.y - entity.height - 4, {size = 16})

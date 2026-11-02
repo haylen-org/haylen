@@ -406,6 +406,93 @@
    ]
   },
   {
+   "id": 25,
+   "type": "coin",
+   "animation": [
+    {
+     "duration": 120,
+     "tileid": 25
+    },
+    {
+     "duration": 120,
+     "tileid": 26
+    },
+    {
+     "duration": 120,
+     "tileid": 27
+    },
+    {
+     "duration": 120,
+     "tileid": 24
+    }
+   ],
+   "properties": [
+    {
+     "name": "value",
+     "type": "int",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "id": 26,
+   "type": "coin",
+   "animation": [
+    {
+     "duration": 120,
+     "tileid": 26
+    },
+    {
+     "duration": 120,
+     "tileid": 27
+    },
+    {
+     "duration": 120,
+     "tileid": 24
+    },
+    {
+     "duration": 120,
+     "tileid": 25
+    }
+   ],
+   "properties": [
+    {
+     "name": "value",
+     "type": "int",
+     "value": 10
+    }
+   ]
+  },
+  {
+   "id": 27,
+   "type": "coin",
+   "animation": [
+    {
+     "duration": 120,
+     "tileid": 27
+    },
+    {
+     "duration": 120,
+     "tileid": 24
+    },
+    {
+     "duration": 120,
+     "tileid": 25
+    },
+    {
+     "duration": 120,
+     "tileid": 26
+    }
+   ],
+   "properties": [
+    {
+     "name": "value",
+     "type": "int",
+     "value": 10
+    }
+   ]
+  },
+  {
    "id": 28,
    "type": "slime",
    "animation": [

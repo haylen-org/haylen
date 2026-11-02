@@ -114,7 +114,7 @@ function Collision:drawCollision()
     for _, object in ipairs(self.shapes) do
         local points, closed = outlines.of(self.map, object)
         if object.properties.sensor then
-            graphics2d.drawPolygon(points, '#402FB3C4', {layer = 5})
+            graphics2d.drawPolygon(points, '#26FFFFFF', {layer = 5})
         end
         graphics2d.drawPolyline(points, 5 * unit, MapTest.ink, closed, {layer = 5})
         graphics2d.drawPolyline(points, 2.5 * unit, object.properties.sensor and '#FFFFC93C' or '#FF8FE3FF', closed, {layer = 6})

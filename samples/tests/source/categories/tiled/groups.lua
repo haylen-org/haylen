@@ -15,7 +15,8 @@ for _, layer in ipairs(map:layer('town').layers) do
     print(layer.name, layer.kind, layer.offsetX, layer.parallaxX, layer.opacity)
 end]]
 
-local kSway = 160
+-- The camera sways far enough for the parallax to show, and little enough that the roofs stay over their walls.
+local kSway = 90
 
 function Groups:enter()
     self.map = MapTest.loadMap('tiled/maps/groups.tmj')
@@ -31,7 +32,7 @@ function Groups:enter()
             ui.sectionTitle{text = 'Layers'},
             ui.tree{id = 'tree', items = Groups.items(self.map:layers()), expanded = {'background', 'town', 'upstairs'}},
         },
-        view = {bounds.width + kSway * 2, bounds.height + 96},
+        view = {bounds.width + kSway * 2, bounds.height + kSway * 0.6 + 120},
         play = true,
     }
     self.swaying, self.time = true, 0
@@ -40,8 +41,8 @@ function Groups:enter()
     self.camera:snapTo(self.center[1], self.center[2])
 end
 
--- The layers as items of a tree, each group over its layers, with the offset, parallax, opacity and tint each one has of its own.
-function Groups.items(layers)
+-- The layers as items of a tree, each group over its layers, with the offset, parallax, opacity and tint each one has of its own, and what a plain layer takes from its group.
+function Groups.items(layers, inherited)
     local items = {}
     for _, layer in ipairs(layers) do
         local parts = {}
@@ -57,8 +58,17 @@ function Groups.items(layers)
         if layer.tint:toHex() ~= '#FFFFFFFF' then
             parts[#parts + 1] = 'tinted'
         end
-        local caption = #parts > 0 and table.concat(parts, ', '):gsub('^%l', string.upper) or 'Takes what its groups give'
-        items[#items + 1] = {id = layer.name, text = string.format('%s "%s"', layer.kind == 'group' and 'Group' or 'Layer', layer.name), caption = caption, children = layer.kind == 'group' and Groups.items(layer.layers) or nil}
+        local own = table.concat(parts, ', ')
+        local caption
+        if own ~= '' then
+            caption = own:gsub('^%l', string.upper)
+        elseif inherited then
+            caption = 'Takes ' .. inherited .. ' from its group'
+        else
+            caption = 'Draws as it is, in no group'
+        end
+        local children = layer.kind == 'group' and Groups.items(layer.layers, own ~= '' and own or inherited) or nil
+        items[#items + 1] = {id = layer.name, text = string.format('%s "%s"', layer.kind == 'group' and 'Group' or 'Layer', layer.name), caption = caption, children = children}
     end
     return items
 end
@@ -74,7 +84,8 @@ function Groups:update(dt)
         self.camera.x = self.center[1] + math.sin(self.time * 0.8) * kSway
         self.camera.y = self.center[2] + math.sin(self.time * 0.5) * kSway * 0.3
     end
-    self:status(string.format('The camera is at %.0f, %.0f, and the map is centered at %.0f, %.0f.', self.camera.x, self.camera.y, self.center[1], self.center[2]))
+    local shift = self.camera.x - self.center[1]
+    self:status(string.format('The camera stands %.0f units %s of the middle of the island, so the sea lags behind it and the roofs lead.', math.abs(shift), shift < 0 and 'left' or 'right'))
 end
 
 function Groups:draw(area)

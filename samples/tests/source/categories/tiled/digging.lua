@@ -95,7 +95,8 @@ function Digging:update(dt)
         local column, row = self.map:worldToCell(self.pointer.worldX, self.pointer.worldY)
         self:toggle(column, row)
     end
-    self:status(string.format('The walls hold %d loops and shapes after %d changes, and a step of the %d balls takes %.2f ms.', #self.walls:outlines(), self.changes, #self.balls, self.world:stats().stepMilliseconds))
+    local changes = self.changes == 1 and 'one change' or string.format('%d changes', self.changes)
+    self:status(string.format('The walls hold %d loops and shapes after %s, traced again around each one, and %d balls bounce off them.', #self.walls:outlines(), changes, #self.balls))
 end
 
 function Digging:fixedUpdate(step)

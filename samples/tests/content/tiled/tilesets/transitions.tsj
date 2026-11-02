@@ -852,6 +852,72 @@
      "duration": 220
     }
    ]
+  },
+  {
+   "id": 127,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 127,
+     "duration": 220
+    },
+    {
+     "tileid": 143,
+     "duration": 220
+    },
+    {
+     "tileid": 159,
+     "duration": 220
+    },
+    {
+     "tileid": 111,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 143,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 143,
+     "duration": 220
+    },
+    {
+     "tileid": 159,
+     "duration": 220
+    },
+    {
+     "tileid": 111,
+     "duration": 220
+    },
+    {
+     "tileid": 127,
+     "duration": 220
+    }
+   ]
+  },
+  {
+   "id": 159,
+   "type": "lava",
+   "animation": [
+    {
+     "tileid": 159,
+     "duration": 220
+    },
+    {
+     "tileid": 111,
+     "duration": 220
+    },
+    {
+     "tileid": 127,
+     "duration": 220
+    },
+    {
+     "tileid": 143,
+     "duration": 220
+    }
+   ]
   }
  ],
  "tilerendersize": "grid",

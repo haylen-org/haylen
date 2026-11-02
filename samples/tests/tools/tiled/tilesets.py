@@ -48,6 +48,8 @@ def terrain() -> dict:
         {"id": CRATE, "type": "crate", "properties": [prop("breakable", "bool", True)], "objectgroup": shape(x=2, y=2, width=28, height=28)},
         {"id": CHEST, "type": "chest", "properties": [prop("loot", "list", [item("string", "gold"), item("int", 25), item("list", [item("string", "potion"), item("color", "#ff66bb6a")])])]},
         {"id": COIN, "type": "coin", "animation": animation(COIN, 4, 120), "properties": [prop("value", "int", 10)]},
+        # The other frames of the coin spin from their own frame, so coins placed with them never turn in step.
+        *({"id": COIN + start, "type": "coin", "animation": [{"duration": 120, "tileid": COIN + (start + frame) % 4} for frame in range(4)], "properties": [prop("value", "int", 10)]} for start in range(1, 4)),
         {"id": SLIME, "type": "slime", "animation": animation(SLIME, 2, 400), "properties": [prop("health", "int", 3)]},
     ]
     width, height = atlas_size(8, 4, 32 * SCALE, 32 * SCALE)

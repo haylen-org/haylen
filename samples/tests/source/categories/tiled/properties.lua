@@ -1,5 +1,6 @@
 -- Custom properties of every type read from the map, its layers, its objects and its tiles, shown as a tree with the property type names Tiled stores next to them.
 local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -18,7 +19,22 @@ print(guard.properties.watches, guard.properties.route[2])  -- An object id, and
 
 local kGuardSize = 72
 
--- Class values arrive as tables of their members and lists as sequences, so both open into children.
+-- The names of the swatches made for the color properties, which the test gives back when it exits.
+Properties.swatches = {}
+
+-- Returns the name of a round swatch of a color, made once, which a tree item shows as its picture.
+function Properties.swatch(color)
+    local hex = color:toHex()
+    local name = '@property-color-' .. hex:sub(2)
+    if not Properties.swatches[name] then
+        Properties.swatches[name] = true
+        local svg = string.format('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#%s" fill-opacity="%.3f" stroke="#1E1B33" stroke-width="2"/></svg>', hex:sub(4), color.a)
+        ui.setImage(name, graphics.newVectorImage(svg))
+    end
+    return name
+end
+
+-- Class values arrive as tables of their members and lists as sequences, so both open into children, and a color shows its swatch.
 local function items(prefix, properties, types)
     local names = {}
     for name in pairs(properties) do
@@ -33,7 +49,8 @@ local function items(prefix, properties, types)
         if type(value) == 'table' then
             result[#result + 1] = {id = id, text = tostring(name), caption = kind == 'table' and (#value > 0 and 'list' or 'class') or kind, children = items(id, value)}
         else
-            result[#result + 1] = {id = id, text = string.format('%s = %s', tostring(name), tostring(value)), caption = kind == 'userdata' and 'color' or kind}
+            local color = type(value) == 'userdata' and value.toHex
+            result[#result + 1] = {id = id, text = string.format('%s = %s', tostring(name), tostring(value)), caption = color and 'color' or kind, image = color and Properties.swatch(value) or nil, iconColor = color and false or nil}
         end
     end
     return result
@@ -82,7 +99,15 @@ function Properties:select(id)
     self.selected = owner and owner.object
 end
 
--- The haunted zone draws as the fog its property names, the guard as a character standing on its point, and the treasure as the chest of its tile, each named in a pill.
+function Properties:exit()
+    for name in pairs(Properties.swatches) do
+        ui.removeImage(name)
+    end
+    Properties.swatches = {}
+    Properties.super.exit(self)
+end
+
+-- The haunted zone draws as the drifting mist of the color its property names, the guard as a character standing on its point, and the treasure as the chest of its tile, each named in a pill.
 function Properties:draw(area)
     local map = self.map
     map:draw(self.camera)
@@ -92,7 +117,7 @@ function Properties:draw(area)
         local selected = object == self.selected
         local top = object.y
         if object.type == 'zone' then
-            graphics2d.drawShape({object.x, object.y, object.width, object.height}, {radius = 24, color = object.properties.fog, softness = 12, layer = 4})
+            self:drawMist(object)
         elseif object.type == 'npc' then
             graphics2d.drawShape({object.x - 22, object.y - 8, 44, 14}, {kind = 'ellipse', color = '#40000000', layer = 4})
             graphics2d.draw(self.guard, object.x, object.y, {source = {0, 0, 256, 256}, width = kGuardSize, height = kGuardSize, pivotY = 0.92, flipHorizontal = true, layer = 5})
@@ -105,6 +130,20 @@ function Properties:draw(area)
             outlines.draw(map, object, '#FFFFC93C', 5 * unit, {layer = 7})
         end
         MapTest.pill(object.name, object.x + (object.shape == 'point' and 0 or object.width / 2), top - 6 * unit, {size = 18, layer = 8})
+    end
+end
+
+-- Soft puffs of the fog color drift slowly over the zone, thinner toward its edges, so the zone reads as mist over the trees.
+function Properties:drawMist(zone)
+    local time = haylen.elapsed()
+    local fog = zone.properties.fog
+    local radius = math.min(zone.width, zone.height) * 0.42
+    for index = 0, 6 do
+        local share = index / 6
+        local x = zone.x + zone.width * (0.15 + share * 0.7) + math.sin(time * 0.4 + index * 1.7) * radius * 0.25
+        local y = zone.y + zone.height * (0.5 + 0.22 * math.sin(index * 2.3)) + math.cos(time * 0.3 + index) * radius * 0.15
+        local size = radius * (0.8 + 0.25 * math.sin(index * 1.3))
+        graphics2d.drawShape({x - size, y - size * 0.7, size * 2, size * 1.4}, {kind = 'ellipse', color = fog:withAlpha(fog.a * 0.55), softness = size * 0.8, layer = 4})
     end
 end
 

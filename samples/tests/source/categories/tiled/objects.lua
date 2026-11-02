@@ -21,7 +21,7 @@ function Objects:enter()
     self.map = MapTest.loadMap('tiled/maps/objects.tmj')
     local bounds = self.map.pixelBounds
     self:frame{
-        hint = 'Point at an object to read it. The lamps and the signs come from templates, and the second lamp and the second sign override what their template says.',
+        hint = 'The lamps and the signs come from templates, and the second lamp and the second sign override what their template says.',
         code = Objects.code,
         controls = {
             ui.checkbox{id = 'outlines', text = 'Outline every object', checked = true, onChange = function(event) self.showOutlines = event.checked end},
@@ -43,7 +43,7 @@ function Objects:enter()
     for _, shape in ipairs(order) do
         lines[#lines + 1] = string.format('%d of the shape "%s"', counts[shape], shape)
     end
-    self.summary = table.concat(lines, '\n') .. '\n\nPoint at an object to read it.'
+    self.summary = table.concat(lines, '\n')
     self.camera:snapTo(bounds.width / 2, bounds.height / 2)
 end
 
@@ -89,10 +89,12 @@ function Objects:draw(area)
             end
         end
     end
-    -- The signs show the text of their template, or the text an instance overrides it with.
+    -- The signs show the text of their template, or the text an instance overrides it with, and a point names what it marks.
     for _, object in ipairs(self.objects) do
         if object.type == 'sign' then
             MapTest.pill(object.properties.text, object.x + object.width / 2, object.y - object.height - 4 * unit, {size = 18, layer = 7})
+        elseif object.shape == 'point' then
+            MapTest.pill(object.name:gsub('^%l', string.upper) .. ' point', object.x, object.y - 18 * unit, {size = 18, layer = 7})
         end
     end
     if self.hovered then

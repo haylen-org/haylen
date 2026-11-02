@@ -6,6 +6,7 @@ import random
 from pathlib import Path
 
 import tilesets as t
+import transitions as tr
 from nature import PROPS, PROPS_GID, ROOFS, ROOFS_GID, SCENERY, SCENERY_GID, TERRAIN, TRANSITIONS, TRANSITIONS_GID, Ground, Props, gid, scatter
 from tiled_json import MapBuilder, noise, prop, save
 
@@ -14,31 +15,35 @@ def landscape(builder: MapBuilder, ground: Ground, seed: int, trees: int, bushes
     """Trees, bushes, rocks and flowering bushes on the open cells of a map, with `extras` placed among them once each."""
     rng = random.Random(seed)
     props = Props(builder)
-    # Trees stand four cells tall, so they keep off the top rows and the side columns, where they would leave the map.
-    cells = [(column, row) for column, row in ground.open_cells() if 1 <= column <= ground.width - 2]
+    # Trees stand four cells tall, so they keep off the top rows and the side columns, where they would leave the map, and the smaller props keep off the first row, which they would reach past.
+    cells = [(column, row) for column, row in ground.open_cells() if 1 <= column <= ground.width - 2 and row >= 1]
     planted = scatter([(column, row) for column, row in cells if row >= 4], trees, 2.4, seed)
     for cell in planted:
         props.on(rng.choice(("tree", "tree", "pine")), cell, rng)
     small = scatter(cells, bushes + len(extras), 1.6, seed + 1, planted)
-    for index, cell in enumerate(small):
-        kind = extras[index] if index < len(extras) else rng.choice(("bush", "bush", "rock", "blossoms", "mushrooms"))
+    # The extras stand taller than a cell, so they take cells from the third row on.
+    tall = [cell for cell in small if cell[1] >= 2][: len(extras)]
+    for kind, cell in zip(extras, tall):
         props.on(kind, cell, rng)
+    for cell in small:
+        if cell not in tall:
+            props.on(rng.choice(("bush", "bush", "rock", "blossoms", "mushrooms")), cell, rng)
     return props
 
 
 def orthogonal(folder: Path) -> None:
     """A meadow with a lake, a road that winds around it and woods, with a lamp, a sign post and a well by the road."""
-    width, height = 26, 12
+    width, height = 29, 12
     builder = MapBuilder(width, height).tileset(1, TERRAIN).tileset(PROPS_GID, PROPS).tileset(TRANSITIONS_GID, TRANSITIONS).tileset(SCENERY_GID, SCENERY)
     ground = Ground(width, height, 11)
-    ground.blob("water", 19.5, 7.5, 5.2, 3.4).blob("water", 23.5, 3.5, 2.5, 2.2)
-    ground.road("path", [(0, 4.5), (6, 4), (11, 6.5), (13.5, 10), (13, 12.5)], 0.9)
+    ground.blob("water", 22.5, 7.5, 5.2, 3.4).blob("water", 26.5, 3.5, 2.5, 2.2)
+    ground.road("path", [(0, 4.5), (9, 4), (14, 6.5), (16.5, 10), (16, 12.5)], 0.9)
     rng = random.Random(12)
-    props = landscape(builder, ground, 13, 9, 12, ("well", "campfire", "stump"))
-    props.at("lamp", 7.4 * 32, 3.2 * 32)
-    props.at("signpost", 11.3 * 32, 9.2 * 32)
+    props = landscape(builder, ground, 13, 10, 14, ("well", "campfire", "stump"))
+    props.at("lamp", 10.4 * 32, 3.2 * 32)
+    props.at("signpost", 14.3 * 32, 9.2 * 32)
     for x in (1.2, 4.1):
-        props.on("reeds", (int(19 + x), 4), rng)
+        props.on("reeds", (int(22 + x), 4), rng)
     builder.add(ground.meadow(builder, 12), ground.layer(builder, "path", "path"), ground.layer(builder, "water", "water"), builder.objects("props", props.objects))
     builder.save(folder / "orthogonal.tmj")
 
@@ -87,10 +92,17 @@ def infinite(folder: Path) -> None:
     chunks = [(-32, -16), (-16, -16), (0, -16), (-16, 0), (0, 0), (16, 0), (0, 16), (16, 16), (32, 16)]
     offset = 32
     ground = Ground(96, 64, 51)
-    heights = noise(97, 65, 7, 52)
-    ground.paint("water", lambda column, line: heights(column, line) < 0.34)
-    ground.paint("sand", lambda column, line: heights(column, line) < 0.4)
+    # Two scales of noise give the lakes rounded, uneven shores instead of the straight runs of one coarse lattice.
+    coarse, fine = noise(97, 65, 9, 52), noise(97, 65, 4, 54)
+
+    def heights(column: int, line: int) -> float:
+        return coarse(column, line) * 0.7 + fine(column, line) * 0.3
+
+    ground.paint("water", lambda column, line: heights(column, line) < 0.36)
+    ground.paint("sand", lambda column, line: heights(column, line) < 0.41)
     ground.road("path", [(4, 30), (30, 26), (52, 38), (80, 34), (95, 46)], 0.9)
+    # The road ends where the beach begins, so its own corner tiles round it off at the sand.
+    ground.corners["path"] -= ground.corners["sand"]
     rng = random.Random(53)
 
     # The chunks reach negative cells, which the ground holds from 0.
@@ -115,32 +127,45 @@ def infinite(folder: Path) -> None:
 
 def animations(folder: Path) -> None:
     """A courtyard under a castle wall with torches, a pond and a lava pit whose tiles play their frames, and coins and slimes that are animated tile objects."""
-    width, height = 24, 11
+    width, height = 26, 11
     builder = MapBuilder(width, height).tileset(1, TERRAIN).tileset(TRANSITIONS_GID, TRANSITIONS).tileset(SCENERY_GID, SCENERY)
     ground = Ground(width, height, 61)
-    ground.blob("water", 5.5, 7.6, 3.8, 2.3)
-    ground.blob("lava", 18.5, 7.8, 3.2, 2.1)
-    ground.paint("path", lambda column, line: line <= 2)
+    ground.blob("water", 6.5, 7.6, 3.8, 2.3)
+    ground.blob("lava", 19.5, 7.8, 3.4, 2.2)
+    # The dirt under the wall ends in a ragged edge on the grass.
+    ground.paint("path", lambda column, line: line <= 2 or (line == 3 and ground.wobble(column + 1, line + 1) > 0.5))
 
+    # The wall stands two cells tall, with its torches on the lower row.
     def walls(column: int, row: int) -> int:
         if row == 0:
+            return gid(t.WALL)
+        if row == 1:
             return gid(t.TORCH if column % 5 == 2 else t.WALL)
         return 0
 
+    # The full cells of the pit mix the frames of the lava, so the pit never shows one tile repeated in a grid.
+    lava = ground.cells("lava")
+    full = TRANSITIONS_GID + tr.tile_id(tr.LAVA, 15)
+
+    def varied_lava(column: int, row: int) -> int:
+        tile = lava(column, row)
+        return TRANSITIONS_GID + tr.tile_id(tr.LAVA + (column * 3 + row * 5) % tr.FRAMES, 15) if tile == full else tile
+
     props = Props(builder)
     for index in range(8):
-        props.at("coin", (4.2 + index * 2.2) * 32, (4.3 - 0.35 * (index % 2)) * 32, f"coin {index + 1}", type="coin")
-    for index, (x, y) in enumerate(((11.2, 7.6), (12.8, 9.9), (11.0, 10.6))):
+        coin = props.at("coin", (5.2 + index * 2.2) * 32, (5.1 - 0.35 * (index % 2)) * 32, f"coin {index + 1}", type="coin")
+        coin["gid"] = gid(t.COIN + index % 4)
+    for index, (x, y) in enumerate(((12.2, 7.6), (13.8, 9.9), (12.0, 10.6))):
         props.at("slime", x * 32, y * 32, f"slime {index + 1}", type="slime")
     rng = random.Random(62)
     decor = Props(builder)
-    for cell in ((1, 3), (22, 3)):
+    for cell in ((1, 4), (24, 4)):
         decor.on("barrel", cell, rng)
     builder.add(
         ground.meadow(builder, 63),
         ground.layer(builder, "path", "path"),
         ground.layer(builder, "water", "water"),
-        ground.layer(builder, "lava", "lava"),
+        builder.tiles("lava", varied_lava),
         builder.tiles("walls", walls),
         builder.objects("decor", decor.objects),
         builder.objects("animated", props.objects),
