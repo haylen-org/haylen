@@ -74,15 +74,15 @@ function GameControls:captureRows()
     return rows
 end
 
--- The controls stand in two columns of the panel, so every one of them shows at once.
+-- The controls stand in two columns of the panel, so every one of them shows at once, and each stepper takes the width of its column under its label, so its value never shrinks to an ellipsis.
 function GameControls:controls()
     local difficulties = {{id = 'easy', text = 'Easy'}, {id = 'normal', text = 'Normal'}, {id = 'hard', text = 'Hard'}}
     return {ui.row{gap = 24, alignItems = 'start',
         ui.column{grow = 1, gap = 12,
             layout.section('Component "stepper"', {
-                ui.settingsRow{label = 'Players', ui.stepper{id = 'players', value = 2, min = 1, max = 4, width = 240, onChange = self:report('players')}},
-                ui.settingsRow{label = 'Difficulty', caption = 'Wraps around', ui.stepper{items = difficulties, selected = 'normal', wrap = true, width = 240, onChange = self:report('difficulty')}},
-                ui.settingsRow{label = 'Gamma', ui.stepper{value = 1, min = 0.5, max = 2, step = 0.1, decimals = 1, width = 240, onChange = self:report('gamma')}},
+                ui.formField{label = 'Players', ui.stepper{id = 'players', value = 2, min = 1, max = 4, onChange = self:report('players')}},
+                ui.formField{label = 'Difficulty', help = 'Wraps around', ui.stepper{items = difficulties, selected = 'normal', wrap = true, onChange = self:report('difficulty')}},
+                ui.formField{label = 'Gamma', ui.stepper{value = 1, min = 0.5, max = 2, step = 0.1, decimals = 1, onChange = self:report('gamma')}},
             }),
             layout.section('Component "segmentedControl"', {
                 ui.segmentedControl{items = {{id = 'daily', text = 'Daily'}, {id = 'weekly', text = 'Weekly'}, {id = 'all', text = 'All time'}}, selected = 'daily', onChange = self:report('leaderboard')},

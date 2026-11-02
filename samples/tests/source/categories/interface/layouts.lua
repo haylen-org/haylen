@@ -72,12 +72,12 @@ function Layouts:columns()
                     self.share = event.value
                     self:apply()
                 end},
-                ui.row{gap = 16,
-                    ui.formField{label = 'Justify', grow = 1, ui.stepper{id = 'justify', items = choices(Layouts.justify), selected = self.chosenJustify, onChange = function(event)
+                ui.row{gap = 16, wrap = true, lineGap = 12,
+                    ui.formField{label = 'Justify', grow = 1, minWidth = 260, ui.stepper{id = 'justify', items = choices(Layouts.justify), selected = self.chosenJustify, onChange = function(event)
                         self.chosenJustify = event.value
                         self:apply()
                     end}},
-                    ui.formField{label = 'Align items', grow = 1, ui.stepper{id = 'align', items = choices(Layouts.align), selected = self.chosenAlign, onChange = function(event)
+                    ui.formField{label = 'Align items', grow = 1, minWidth = 200, ui.stepper{id = 'align', items = choices(Layouts.align), selected = self.chosenAlign, onChange = function(event)
                         self.chosenAlign = event.value
                         self:apply()
                     end}},
