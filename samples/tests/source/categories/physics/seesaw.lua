@@ -34,7 +34,7 @@ Seesaw.pivot = {320, 300}
 Seesaw.armAngle = 0.2
 Seesaw.stoneSpot = {358, -31}
 -- The weights land this far from the middle of the seesaw, and the catapult weight this far behind the pivot of the arm.
-Seesaw.drop = 220
+Seesaw.dropOffset = 220
 Seesaw.catapultDrop = 64
 -- The cup of the catapult, in the space of the arm: its middle, its half width and its depth.
 Seesaw.cup = {358, -30, 46, 22}
@@ -47,8 +47,8 @@ function Seesaw:enter()
         controls = {
             ui.label{text = 'Weight', font = 'heading'},
             ui.radioGroup{id = 'mass', items = {{id = 'light', text = 'Light wood'}, {id = 'medium', text = 'Medium stone'}, {id = 'heavy', text = 'Heavy iron'}}, selected = 'medium', onChange = function(event) self.mass = event.value end},
-            ui.button{id = 'left', text = 'Drop on the left end', onClick = function() self:drop(Seesaw.center - Seesaw.drop, self.mass) end},
-            ui.button{id = 'right', text = 'Drop on the right end', onClick = function() self:drop(Seesaw.center + Seesaw.drop, self.mass) end},
+            ui.button{id = 'left', text = 'Drop on the left end', onClick = function() self:drop(Seesaw.center - Seesaw.dropOffset, self.mass) end},
+            ui.button{id = 'right', text = 'Drop on the right end', onClick = function() self:drop(Seesaw.center + Seesaw.dropOffset, self.mass) end},
             ui.button{id = 'throw', text = 'Drop the catapult weight', onClick = function() self:drop(Seesaw.pivot[1] - Seesaw.catapultDrop, 'catapult', -150) end},
             ui.button{id = 'catapult', text = 'Set the catapult again', onClick = function() self:buildCatapult() end},
             ui.button{id = 'reset', text = 'Start over', onClick = function() self:build() end},
@@ -62,9 +62,9 @@ function Seesaw:enter()
     self.cup = {}
     self.cupStroke = {width = 1, color = '#FFFFFFFF', join = 'round', cap = 'round', layer = 2}
     self:build()
-    timer.after(0.6, function() self:drop(Seesaw.center - Seesaw.drop, 'medium') end, {owner = self})
+    timer.after(0.6, function() self:drop(Seesaw.center - Seesaw.dropOffset, 'medium') end, {owner = self})
     timer.after(1.2, function() self:drop(Seesaw.pivot[1] - Seesaw.catapultDrop, 'catapult', -150) end, {owner = self})
-    timer.after(1.6, function() self:drop(Seesaw.center + Seesaw.drop, 'heavy') end, {owner = self})
+    timer.after(1.6, function() self:drop(Seesaw.center + Seesaw.dropOffset, 'heavy') end, {owner = self})
 end
 
 function Seesaw:build()

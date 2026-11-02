@@ -39,7 +39,7 @@ WaterWheel.pipe = {-772, 316, -772, -374, -690, -374, -690, -326}
 WaterWheel.spout = {-690, -320}
 WaterWheel.pourSpeed = 220
 -- The pump stands in the basin by the foot of its pipe: an iron cylinder whose piston a flywheel drives through a rod.
-WaterWheel.pump = {x = -730, y = 340, flywheel = {-688, 322, 24}}
+WaterWheel.pumpStand = {x = -730, y = 340, flywheel = {-688, 322, 24}}
 WaterWheel.chute = {x = -140, y = -90, width = 372, rotation = 0.11}
 
 function WaterWheel:enter()
@@ -151,7 +151,7 @@ end
 -- The pump is an iron cylinder on a stone slab with a domed cap, whose piston rod a spoked flywheel drives round while it pumps, and a short pipe from its side to the foot of the riser.
 function WaterWheel:drawPump()
     local unit = Look.pixel
-    local pump = WaterWheel.pump
+    local pump = WaterWheel.pumpStand
     local x, y = pump.x, pump.y
     local wheelX, wheelY, radius = pump.flywheel[1], pump.flywheel[2], pump.flywheel[3]
     local turn = self.damOpen and self.pumping and haylen.elapsed() * 5 or 0

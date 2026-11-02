@@ -26,7 +26,7 @@ RopeCutting.ropeCategory = 2
 RopeCutting.candySpot = {0, -60, 30}
 RopeCutting.pins = {{-300, -380}, {40, -380}, {330, -380}}
 -- The frame is a beam on two posts, by the middle of the beam, the half width between the posts and the thickness of its timbers.
-RopeCutting.frame = {beam = -405, half = 640, timber = 26}
+RopeCutting.timbers = {beam = -405, half = 640, timber = 26}
 RopeCutting.segments = 18
 -- Each stretch of a rope between two joints bends through this many points, so a loose end hangs in a curve.
 RopeCutting.smoothness = 4
@@ -231,7 +231,7 @@ end
 
 -- The frame is a wooden beam on two posts with braces in its corners, and every rope hangs from a steel eye under the beam.
 function RopeCutting:drawFrame()
-    local frame = RopeCutting.frame
+    local frame = RopeCutting.timbers
     local timber, beam = frame.timber, frame.beam
     local postTop = beam - timber / 2
     for _, side in ipairs({-1, 1}) do

@@ -85,7 +85,7 @@ end
 -- Returns a static body of the room with the name the status gives it.
 function Collisions:fixture(name)
     local body = self.world:createBody({type = 'static'})
-    body.data.name = name
+    body.data = {name = name}
     return body
 end
 
