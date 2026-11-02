@@ -68,8 +68,8 @@ function TrimmedSlices:draw(area)
     local slice = {x + first.x * scale - 6, y + first.y * scale - 6, (last.x + last.width - first.x) * scale + 12, (last.y + last.height - first.y) * scale + 12}
     graphics2d.drawRectOutline(slice, 3, Test.warm, {layer = 3})
     local legendTop = y + texture.height * scale + 40
-    TrimmedSlices.legend(Test.accent, 'The frames that the packer trimmed', x, legendTop, atlasWidth)
-    TrimmedSlices.legend(Test.warm, 'The slice "card", on the same pixels', x, legendTop + 40, atlasWidth)
+    TrimmedSlices.legend(Test.accent, 'The frames the packer trimmed', x, legendTop, atlasWidth)
+    TrimmedSlices.legend(Test.warm, 'The slice "card", on the same pixels', x, legendTop + 64, atlasWidth)
 
     local left = x + atlasWidth + 70
     local width = area.width - left - margin

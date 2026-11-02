@@ -11,7 +11,7 @@ ThemeSurfaces.tones = {'accent', 'success', 'warning', 'danger'}
 ThemeSurfaces.code = [[
 local atlas = 'nine-slice/theme.png'
 local button = {image = atlas, source = {0, 0, 96, 96}, slice = 32, scale = 0.5, colorize = true}
-local fill = {image = atlas, source = {324, 184, 48, 36}, slice = 18, scale = 0.5, colorize = true}
+local fill = {image = atlas, source = {324, 184, 48, 36}, slice = {17, 18}, scale = 0.5, colorize = true}
 local theme = ui.addTheme({name = 'workshop', surfaces = {button = button, trackFill = fill}}, 'light')
 ui.setTheme(theme)  -- One near white fill becomes the accent, success, warning and danger bars.]]
 
@@ -21,6 +21,8 @@ ThemeSurfaces.regions = {
     button = {0, 0, 96, 96}, buttonPressed = {100, 0, 96, 96}, panel = {200, 0, 128, 128}, knob = {332, 0, 80, 80},
     banner = {0, 132, 320, 112}, track = {324, 132, 96, 48}, fill = {324, 184, 48, 36},
 }
+-- The borders of the round bars, which keep two rows of their middle to stretch when a bar draws taller than its piece, so the straight part of its outline grows instead of a line of one row.
+ThemeSurfaces.slices = {track = {23, 24}, fill = {17, 18}}
 
 -- The theme document, with `colorize` on or off for the surfaces that take the color of their component.
 function ThemeSurfaces.theme(colorize)
@@ -44,8 +46,8 @@ function ThemeSurfaces.theme(colorize)
             buttonPrimaryPressed = button(regions.buttonPressed, {4, 0, 0, 0}),
             buttonDestructive = button(regions.button, {0, 0, 4, 0}),
             buttonDestructivePressed = button(regions.buttonPressed, {4, 0, 0, 0}),
-            track = {image = atlas, source = regions.track, slice = 24, scale = 0.5, padding = 5},
-            trackFill = {image = atlas, source = regions.fill, slice = 18, scale = 0.5, colorize = colorize},
+            track = {image = atlas, source = regions.track, slice = ThemeSurfaces.slices.track, scale = 0.5, padding = 5},
+            trackFill = {image = atlas, source = regions.fill, slice = ThemeSurfaces.slices.fill, scale = 0.5, colorize = colorize},
             knob = {image = atlas, source = regions.knob, scale = 0.5},
         },
     }
@@ -88,8 +90,8 @@ function ThemeSurfaces:demo()
         ui.column{grow = 1, minWidth = ThemeSurfaces.columnWidth, gap = 16,
             ui.panel{gap = 10, ui.sectionTitle{text = 'One fill in four tones'}, ui.column{gap = 10, children = bars}},
             ui.card{gap = 10,
-                ui.sectionTitle{text = 'The near white pieces of "nine-slice/theme.png"'},
-                ui.image{image = ThemeSurfaces.atlas, height = 150, fit = 'contain', align = 'stretch'},
+                ui.sectionTitle{text = 'The near white pieces of the atlas'},
+                ui.image{image = ThemeSurfaces.atlas, height = 140, fit = 'contain', align = 'stretch'},
             },
         },
     }
@@ -109,7 +111,7 @@ end
 function ThemeSurfaces:update(dt)
     ThemeSurfaces.super.update(self, dt)
     local fill = ui.themeSurface('trackFill')
-    self:status(string.format('The theme "%s" draws its fills with borders of %g pixels, %s.', ui.theme(), fill.slice.borders[1], fill.colorize and 'colored by each component' or 'as they are painted'))
+    self:status(string.format('The theme "%s" draws every fill from one near white piece, %s.', ui.theme(), fill.colorize and 'colored by the tone of each component' or 'as it is painted'))
 end
 
 return ThemeSurfaces

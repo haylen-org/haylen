@@ -24,13 +24,15 @@ Measuring.glyphSize = 200
 Measuring.kerningSize = 100
 Measuring.rightWidth = 820
 -- The captions of a large glyph start below the deepest descender at its size.
-Measuring.captionGap = 96
+Measuring.captionGap = 80
+-- The large glyphs stand on a baseline this far above the bottom of the layout, which leaves room for their captions.
+Measuring.glyphRoom = 200
 Measuring.blue = '#FF4C7DFF'
 Measuring.red = '#FFFF6A6A'
 Measuring.green = '#FF3DBE7A'
 Measuring.orange = '#FFF2B23A'
 -- The measured boxes stand this far outside their blocks, so the text never touches their lines, and the quads take turns every this many seconds.
-Measuring.frame = 8
+Measuring.boxMargin = 8
 Measuring.turn = 0.6
 
 function Measuring:init(entry)
@@ -86,16 +88,16 @@ end
 function Measuring:measuredLine(x, y)
     local font, size, layout = self.font, Measuring.size, self.layoutOfLine
     local width, height = self.lineWidth, self.lineHeight
-    local frame = Measuring.frame
-    graphics2d.drawRectOutline({x - frame, y - frame, width + frame * 2, height + frame * 2}, 3, Measuring.blue)
+    local margin = Measuring.boxMargin
+    graphics2d.drawRectOutline({x - margin, y - margin, width + margin * 2, height + margin * 2}, 3, Measuring.blue)
     graphics2d.drawText(font, Measuring.text, x, y, {size = size, color = Test.ink})
     local baseline = y + font:ascent(size)
     graphics2d.drawLine(x, baseline, x + width, baseline, 2, Measuring.red)
     local shown = self.picked or math.floor(haylen.elapsed() / Measuring.turn) % #layout.quads + 1
     local quad = layout.quads[shown]
     graphics2d.drawRectOutline({x + quad.position.x, y + quad.position.y, quad.size.x, quad.size.y}, self.picked and 4 or 2, self.picked and '#FFFFE070' or Measuring.green, {layer = 1})
-    TextTest.label(string.format('Measured %.0f by %.0f with "measureText", in %d quads on %d line', width, height, #layout.quads, layout.lineCount), x, y + height + frame + 14, {size = 24})
-    TextTest.label(string.format('Ascent %.1f and line height %.1f at size %d', font:ascent(size), font:lineHeight(size), size), x, y + height + frame + 46, {size = 24})
+    TextTest.label(string.format('Measured %.0f by %.0f with "measureText", in %d quads on %d line', width, height, #layout.quads, layout.lineCount), x, y + height + margin + 14, {size = 24})
+    TextTest.label(string.format('Ascent %.1f and line height %.1f at size %d', font:ascent(size), font:lineHeight(size), size), x, y + height + margin + 46, {size = 24})
 end
 
 -- Draws one character large with its source quad, its offset from the pen on the baseline and its advance.
@@ -110,9 +112,10 @@ function Measuring:glyphMetrics(character, x, baseline)
     graphics2d.drawCircle(x, baseline, 6, '#FFFFFFFF', {layer = 1})
     graphics2d.drawLine(x, baseline + 24, x + glyph.advance * scale, baseline + 24, 4, Measuring.orange)
     local captionY = baseline + Measuring.captionGap
-    TextTest.label(string.format('Glyph "%s" at size %d', character, font.nativeSize), x - 30, captionY, {size = 24, color = Test.accent})
-    TextTest.label(string.format('A quad of %.0f by %.0f, %.0f across and %.0f up from the pen', glyph.source.width, glyph.source.height, -glyph.offset.x, -glyph.offset.y), x - 30, captionY + 32, {size = 24})
-    TextTest.label(string.format('The pen moves on by %.1f', glyph.advance), x - 30, captionY + 64, {size = 24})
+    TextTest.label(string.format('Glyph "%s" at size %d', character, font.nativeSize), x - 30, captionY, {size = 22, color = Test.accent})
+    TextTest.label(string.format('A quad of %.0f by %.0f', glyph.source.width, glyph.source.height), x - 30, captionY + 28, {size = 22})
+    TextTest.label(string.format('%.0f across and %.0f up from the pen', -glyph.offset.x, -glyph.offset.y), x - 30, captionY + 56, {size = 22})
+    TextTest.label(string.format('The pen moves on by %.1f', glyph.advance), x - 30, captionY + 84, {size = 22})
 end
 
 -- Draws a pair with the kerning of its font and again with each letter at its own advance.
@@ -135,8 +138,8 @@ end
 -- Draws the rich text with the block "measureRichText" returns, the box of each line, and its link and image.
 function Measuring:richBlock(x, y)
     local width, height, laid = self.richWidth, self.richHeight, self.richFrame
-    local frame = Measuring.frame
-    graphics2d.drawRectOutline({x - frame, y - frame, width + frame * 2, height + frame * 2}, 3, Measuring.blue)
+    local margin = Measuring.boxMargin
+    graphics2d.drawRectOutline({x - margin, y - margin, width + margin * 2, height + margin * 2}, 3, Measuring.blue)
     for _, line in ipairs(laid.lines) do
         graphics2d.drawRect({x + line.rect.x, y + line.rect.y, line.rect.width, line.rect.height}, '#283DBE7A', {layer = -1})
     end
@@ -147,14 +150,14 @@ function Measuring:richBlock(x, y)
     for _, image in ipairs(laid.images) do
         graphics2d.drawRectOutline({x + image.rect.x, y + image.rect.y, image.rect.width, image.rect.height}, 2, Measuring.green, {layer = 1})
     end
-    TextTest.label(string.format('The block from "measureRichText" is %.0f by %.0f, as wide as its maximum width, while the shaded boxes of its %d lines end with their text. It holds %d glyphs, %d link and %d image.', width, height, laid.lineCount, #laid.glyphs, #laid.links, #laid.images), x, y + height + frame + 14, {size = 24, maxWidth = Measuring.rightWidth})
+    TextTest.label(string.format('The block from "measureRichText" is %.0f by %.0f, as wide as its maximum width, while the shaded boxes of its %d lines end with their text. It holds %d glyphs, %d link and %d image.', width, height, laid.lineCount, #laid.glyphs, #laid.links, #laid.images), x, y + height + margin + 14, {size = 24, maxWidth = Measuring.rightWidth})
 end
 
 function Measuring:draw(area)
     local layout = self.layout
     local right = layout.width - Measuring.rightWidth
     self:measuredLine(self.lineX, self.lineY)
-    local baseline = layout.height - Measuring.captionGap - 96
+    local baseline = layout.height - Measuring.glyphRoom
     self:glyphMetrics('g', 40, baseline)
     self:glyphMetrics('A', 480, baseline)
     self:kerningPairs(right, 0)
