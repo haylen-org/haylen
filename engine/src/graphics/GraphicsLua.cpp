@@ -125,7 +125,7 @@ int GraphicsLua::textureFilter(lua_State* L) {
 }
 
 int GraphicsLua::textureMipmaps(lua_State* L) {
-    lua::Stack::push(L, lua::Userdata::check<Texture>(L, 1).getOptions().mipmaps);
+    lua::Stack::push(L, lua::Userdata::check<Texture>(L, 1).getOptions().hasMipmaps());
     return 1;
 }
 

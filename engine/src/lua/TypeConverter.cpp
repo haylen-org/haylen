@@ -484,6 +484,8 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             }
         } else if (key == "wrap") {
             Table::readValue(L, key, style.wrap);
+        } else if (key == "balance") {
+            Table::readValue(L, key, style.balance);
         } else if (key == "lineSpacing") {
             Table::readValue(L, key, style.lineSpacing);
         } else if (key == "anchor") {
@@ -508,6 +510,8 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
             Table::readValue(L, key, style.pixelSnap);
         } else if (key == "ligatures") {
             Table::readValue(L, key, style.ligatures);
+        } else if (key == "code") {
+            Table::readValue(L, key, style.code);
         }
     });
     // clang-format on
@@ -539,7 +543,9 @@ graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* L, int i
         } else if (key == "wrap") {
             Table::readValue(L, key, options.wrap);
         } else {
-            Table::readValue(L, key, options.mipmaps);
+            bool mipmaps = false;
+            Table::readValue(L, key, mipmaps);
+            options.mipmaps = mipmaps;
         }
     });
     // clang-format on

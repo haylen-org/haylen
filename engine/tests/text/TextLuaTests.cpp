@@ -52,6 +52,20 @@ TEST_F(TextLuaTest, TurnsLigaturesOff) {
     EXPECT_EQ(lua("local rich = graphics2d.newRichText('ffi', {ligatures = false}) local before = rich.ligatures rich.ligatures = true return tostring(before) .. ' ' .. tostring(rich.ligatures)"), "false true");
 }
 
+// Text with the style option "code", or rich text with the option of the same name, breaks only between the tokens of its code, so a string that fits on a line stays whole.
+TEST_F(TextLuaTest, BreaksCodeBetweenTokens) {
+    lua("function widest(layout) local width = 0 for _, quad in ipairs(layout.quads) do width = math.max(width, quad.position.x + quad.size.x) end return width end");
+    EXPECT_EQ(lua("local width = font:layout(\"f('a b', 'c\", {size = 32}).size.x + 2 local prose = font:layout(\"f('a b', 'c d')\", {size = 32, maxWidth = width, balance = 'none'}) local code = font:layout(\"f('a b', 'c d')\", {size = 32, maxWidth = width, balance = 'none', code = true}) return prose.lineCount .. ' ' .. code.lineCount .. ' ' .. tostring(widest(code) < widest(prose))"), "2 2 true");
+    EXPECT_EQ(lua("local rich = graphics2d.newRichText(\"f('a b c')\", {code = true}) local before = rich.code rich.code = false return tostring(before) .. ' ' .. tostring(rich.code)"), "true false");
+}
+
+// The style option "balance" and the rich text option of the same name choose how wrapped lines share their words, which by default keeps the last line from holding one word alone.
+TEST_F(TextLuaTest, BalancesWrappedLines) {
+    lua("function widest(layout) local width = 0 for _, quad in ipairs(layout.quads) do width = math.max(width, quad.position.x + quad.size.x) end return width end");
+    EXPECT_EQ(lua("local width = font:layout('one two three four five six', {size = 32}).size.x + 4 local greedy = font:layout('one two three four five six seven', {size = 32, maxWidth = width, balance = 'none'}) local last = font:layout('one two three four five six seven', {size = 32, maxWidth = width}) local even = font:layout('one two three four five six seven', {size = 32, maxWidth = width, balance = 'allLines'}) return tostring(widest(last) < widest(greedy)) .. ' ' .. tostring(widest(even) < widest(last)) .. ' ' .. even.lineCount"), "true true 2");
+    EXPECT_EQ(lua("local rich = graphics2d.newRichText('one two', {balance = 'allLines'}) local before = rich.balance rich.balance = 'none' return before .. ' ' .. rich.balance"), "allLines none");
+}
+
 TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_EQ(lua("return tostring(font.distanceField) .. ' ' .. font.nativeSize .. ' ' .. font.pageCount .. ' ' .. tostring(font:hasGlyph('A')) .. ' ' .. tostring(font:hasGlyph(0xE000))"), "true 48.0 1 true false");
     EXPECT_EQ(lua("local glyph = font:glyph('A') return tostring(glyph.visible) .. ' ' .. tostring(glyph.advance > 0) .. ' ' .. glyph.page .. ' ' .. tostring(font:page(1).width >= 512)"), "true true 1 true");

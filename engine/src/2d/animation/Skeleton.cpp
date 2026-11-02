@@ -423,6 +423,7 @@ math::Rect Skeleton::getBounds() {
 void Skeleton::draw(graphics2d::Renderer& renderer, const graphics2d::DrawOrder& order) {
     vertices.clear();
     indices.clear();
+    // The attachments meet edge to edge and end in the margins of their images, so they keep hard edges.
     graphics2d::DrawOrder run = order;
     for (const std::size_t slot : drawOrder) {
         const SkeletonData::Attachment* attachment = slots[slot].attachment;
@@ -431,7 +432,7 @@ void Skeleton::draw(graphics2d::Renderer& renderer, const graphics2d::DrawOrder&
         }
         const graphics::BlendMode::Type blend = data->getSlots()[slot].blend == graphics::BlendMode::Type::Alpha ? order.blend : data->getSlots()[slot].blend;
         if (!indices.empty() && blend != run.blend) {
-            renderer.drawMesh(data->getAtlas().getTexture(), vertices, indices, run);
+            renderer.drawMesh(data->getAtlas().getTexture(), vertices, indices, run, false);
             vertices.clear();
             indices.clear();
         }
@@ -439,7 +440,7 @@ void Skeleton::draw(graphics2d::Renderer& renderer, const graphics2d::DrawOrder&
         appendSlot(slot);
     }
     if (!indices.empty()) {
-        renderer.drawMesh(data->getAtlas().getTexture(), vertices, indices, run);
+        renderer.drawMesh(data->getAtlas().getTexture(), vertices, indices, run, false);
     }
 }
 

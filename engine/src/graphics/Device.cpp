@@ -47,10 +47,11 @@ gpu::Device& Device::getGpu() noexcept {
 
 Texture Device::createTexture(const Image& image, Texture::Options options) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
+    options.mipmaps = options.hasMipmaps();
 
     auto resource = std::make_shared<TextureResource>();
     std::size_t bytes = 0;
-    resource->image = state->createTextureImage(image, options.mipmaps, bytes);
+    resource->image = state->createTextureImage(image, *options.mipmaps, bytes);
     resource->tracked.setBytes(bytes);
     resource->sampler = state->getSampler(options);
     resource->width = image.getWidth();
@@ -72,7 +73,7 @@ const Texture& Device::getWhiteTexture() const noexcept {
 
 RenderTarget Device::createRenderTarget(int width, int height, Texture::Options options) {
     validateSize(width, height, getMaxTextureSize());
-    if (options.mipmaps) {
+    if (options.mipmaps.value_or(false)) {
         throw std::invalid_argument("A render target has no mipmaps.");
     }
     return state->createRenderTarget(width, height, state->offscreenFormat, options);
@@ -84,7 +85,7 @@ void Device::replaceTexture(const Texture& texture, const Image& image) {
 
     // The old image is released only once the new one exists, so a failed creation leaves the texture intact. A dynamic texture stays dynamic, and its new pixels reach the GPU with the next upload.
     std::size_t bytes = DeviceState::getImageBytes(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8);
-    const gpu::Device::Image created = resource->dynamic ? state->createDynamicImage(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8) : state->createTextureImage(image, resource->options.mipmaps, bytes);
+    const gpu::Device::Image created = resource->dynamic ? state->createDynamicImage(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8) : state->createTextureImage(image, resource->options.hasMipmaps(), bytes);
     state->graveyard->bury(resource->image);
     resource->image = created;
     resource->format = gpu::Device::PixelFormat::Rgba8;
@@ -161,7 +162,7 @@ std::size_t Device::getPendingReadCount() const noexcept {
 
 Texture Device::createDynamicTexture(const Image& image, Texture::Options options) {
     validateSize(image.getWidth(), image.getHeight(), getMaxTextureSize());
-    if (options.mipmaps) {
+    if (options.mipmaps.value_or(false)) {
         throw std::invalid_argument("A texture that changes in place has no mipmaps.");
     }
     return state->createDynamicTexture(image.getWidth(), image.getHeight(), gpu::Device::PixelFormat::Rgba8, image.getPixels(), options);

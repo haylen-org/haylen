@@ -102,7 +102,7 @@ Image Image::decodeFor(std::span<const std::uint8_t> encoded, Texture::Options o
     if (options.filter == Texture::Filter::Linear) {
         image.bleed();
     }
-    if (options.mipmaps) {
+    if (options.hasMipmaps()) {
         image.buildMipmaps();
     }
     return image;

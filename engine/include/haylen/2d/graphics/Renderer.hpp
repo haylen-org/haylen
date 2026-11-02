@@ -176,10 +176,11 @@ class Renderer final {
     void drawText(text::FontFamily& family, std::string_view content, math::Vec2 position, const text::Style& style = {}, const DrawOrder& order = {});
     // Draws rich text with the top-left of its block at the position, scaled from that corner and with its colors multiplied by the tint. A y-sorted canvas sorts it by the bottom of the block.
     void drawRichText(text::RichText& richText, math::Vec2 position, const DrawOrder& order = {}, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
-    void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {});
+    // Draws triangles of a texture, or of white without one, whose outline, the edges that only one triangle holds, fades over one pixel of the destination like the edges of every other shape, unless `fadeEdges` is off, which suits triangles that already fade their own edges or that meet other meshes edge to edge.
+    void drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order = {}, bool fadeEdges = true);
 
     // Draws a kept mesh with its vertices placed by the transform.
-    void drawMesh(const Mesh& mesh, const DrawOrder& order = {}, const math::Transform2D& transform = {});
+    void drawMesh(const Mesh& mesh, const DrawOrder& order = {}, const math::Transform2D& transform = {}, bool fadeEdges = true);
 
     // Draws a line through the points with the joins, caps, widths, colors, texture and dashes of the stroke, whose edges fade over one pixel of the destination. Throws `std::invalid_argument` for a stroke whose values cannot draw.
     void drawStroke(std::span<const math::Vec2> points, const Stroke& stroke, const DrawOrder& order = {});
@@ -296,7 +297,7 @@ class Renderer final {
     void addPolygon(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, math::Color color, const DrawOrder& order);
 
     void drawTextLayout(const text::Layout& layout, math::Vec2 position, const text::Style& style, const DrawOrder& order);
-    void addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform);
+    void addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform, bool fadeEdges);
 
     static constexpr std::array<std::pair<std::string_view, MaskMode>, 2> kMaskModeNames{{{"inside", MaskMode::Inside}, {"outside", MaskMode::Outside}}};
 

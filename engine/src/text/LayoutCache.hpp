@@ -30,6 +30,7 @@ class LayoutCache final {
         float maxHeight = 0.0F;
         float minScale = 0.0F;
         bool wrap = true;
+        Balance balance = Balance::LastLine;
         float lineSpacing = 0.0F;
         Alignment align = Alignment::Start;
         Direction direction = Direction::Auto;
@@ -39,6 +40,7 @@ class LayoutCache final {
         bool underline = false;
         bool strike = false;
         bool ligatures = true;
+        bool code = false;
 
         friend bool operator==(const Key&, const Key&) = default;
     };

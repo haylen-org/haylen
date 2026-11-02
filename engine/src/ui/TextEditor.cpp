@@ -162,7 +162,9 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     const float paddingY = multiline ? context.getMetric(Theme::Metric::ControlPaddingY) : std::max(0.0F, (inner.height - fontSize) * 0.5F);
     const math::Rect spaced = multiline ? whole.inset({paddingX, paddingY, paddingX, paddingY}) : whole.inset({paddingX, 0.0F, paddingX, 0.0F});
     const math::Rect area = barShown ? Scrollbar::getContentBox(context, barArea, spaced, false) : spaced;
-    const text::Style style = Typography::getStyle(context, Theme::Font::Body, multiline ? std::max(1.0F, area.width) : -1.0F);
+    // Text being typed fills its lines as far as they go, so the lines before the caret keep their words as it moves on.
+    text::Style style = Typography::getStyle(context, Theme::Font::Body, multiline ? std::max(1.0F, area.width) : -1.0F);
+    style.balance = text::Balance::None;
 
     // The caret and the selection the field had start the frame.
     Editing editing{.session = &session, .context = &context, .style = style, .bounds = bounds, .area = area, .scroll = {storage.GetFloat(scrollX), storage.GetFloat(scrollY)}, .rightToLeft = rightToLeft, .password = password, .multiline = multiline, .centered = options.centered};

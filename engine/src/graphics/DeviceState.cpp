@@ -21,8 +21,9 @@ gpu::Device::Wrap DeviceState::toWrap(Texture::Wrap wrap) noexcept {
     return gpu::Device::Wrap::ClampToEdge;
 }
 
+// A sampler asked for without mipmaps, such as the one of a render target, reads only the image itself, since the textures that keep mipmaps settle them when they are made.
 std::uint8_t DeviceState::samplerKey(Texture::Options options) noexcept {
-    return static_cast<std::uint8_t>(static_cast<unsigned>(options.filter) | (static_cast<unsigned>(options.wrap) << 1U) | (options.mipmaps ? 8U : 0U));
+    return static_cast<std::uint8_t>(static_cast<unsigned>(options.filter) | (static_cast<unsigned>(options.wrap) << 1U) | (options.mipmaps.value_or(false) ? 8U : 0U));
 }
 
 gpu::Device::Sampler DeviceState::getSampler(Texture::Options options) {
@@ -31,7 +32,7 @@ gpu::Device::Sampler DeviceState::getSampler(Texture::Options options) {
         return found->second;
     }
     const gpu::Device::Filter filter = options.filter == Texture::Filter::Nearest ? gpu::Device::Filter::Nearest : gpu::Device::Filter::Linear;
-    const gpu::Device::Sampler sampler = gpu->makeSampler({.minification = filter, .magnification = filter, .mipmap = options.mipmaps ? filter : gpu::Device::Filter::Nearest, .wrapU = toWrap(options.wrap), .wrapV = toWrap(options.wrap)});
+    const gpu::Device::Sampler sampler = gpu->makeSampler({.minification = filter, .magnification = filter, .mipmap = options.mipmaps.value_or(false) ? filter : gpu::Device::Filter::Nearest, .wrapU = toWrap(options.wrap), .wrapV = toWrap(options.wrap)});
     samplers.emplace(key, sampler);
     return sampler;
 }
@@ -65,6 +66,7 @@ gpu::Device::Image DeviceState::createDynamicImage(int width, int height, gpu::D
 }
 
 Texture DeviceState::createDynamicTexture(int width, int height, gpu::Device::PixelFormat format, std::span<const std::uint8_t> pixels, Texture::Options options) {
+    options.mipmaps = false;
     auto resource = std::make_shared<TextureResource>();
     resource->image = createDynamicImage(width, height, format);
     resource->tracked.setBytes(getImageBytes(width, height, format));
@@ -93,6 +95,7 @@ std::size_t DeviceState::getImageBytes(int width, int height, gpu::Device::Pixel
 }
 
 RenderTarget DeviceState::createRenderTarget(int width, int height, gpu::Device::PixelFormat format, Texture::Options options) {
+    options.mipmaps = false;
     auto texture = std::make_shared<TextureResource>(TextureResource::targets);
     texture->image = gpu->makeImage({.width = width, .height = height, .format = format, .kind = gpu::Device::ImageKind::RenderTarget, .label = "haylen-render-target"});
     texture->tracked.setBytes(getImageBytes(width, height, format));

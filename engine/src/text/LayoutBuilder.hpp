@@ -5,6 +5,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -160,9 +161,13 @@ class LayoutBuilder final {
         std::size_t character = 0;
     };
 
-    // Synthetic bold adds this fraction of the text size to each side of a stroke, and synthetic italic leans glyphs by this shift per unit of height.
+    // Synthetic bold spreads every stroke by this fraction of the text size to each side, at most this share of the width of the counter of the letter o, and synthetic italic leans glyphs by this shift per unit of height.
     static constexpr float kSyntheticWeight = 0.03F;
+    static constexpr float kCounterShare = 0.25F;
     static constexpr float kSyntheticSkew = 0.2F;
+
+    // Balancing every line halves the range of widths this many times, which finds the narrowest width within a 4096th of the available one.
+    static constexpr int kBalanceSteps = 12;
 
     // One indent level, the gap between a list marker and its item and the space around a rule, as fractions of the base text size.
     static constexpr float kIndentEms = 1.5F;
@@ -181,13 +186,18 @@ class LayoutBuilder final {
     LayoutBuilder(const RichTextDocument& source, const RichTextOptions& layoutOptions, const RichTextRegistry* textRegistry, const FontFamily* baseFamily, Font* baseFont);
 
     [[nodiscard]] static Segmenter::Break breakBefore(const std::vector<Piece>& pieces, std::size_t index) noexcept;
+    [[nodiscard]] static bool isBreak(Segmenter::Break kind) noexcept;
+    [[nodiscard]] static bool isVisible(const Piece& piece) noexcept;
+    [[nodiscard]] static std::size_t countWords(const std::vector<Piece>& pieces, const Line& line) noexcept;
     [[nodiscard]] static Alignment resolveAlign(Alignment align, bool rightToLeft, bool lastLine) noexcept;
+    [[nodiscard]] static float getSyntheticWeight(const Font& font, float size) noexcept;
     [[nodiscard]] static float alignOffset(Alignment align, float room, float width) noexcept;
     [[nodiscard]] static std::vector<std::size_t> orderPieces(const std::vector<Piece>& pieces, std::size_t begin, std::size_t end, const BidiParagraph& bidi);
 
     [[nodiscard]] const StyleFont& getStyleFont(std::size_t style);
     [[nodiscard]] std::size_t getLook(std::size_t style, const FontFamily::Selection& face);
     [[nodiscard]] math::Color getColor(std::size_t style) const;
+    [[nodiscard]] bool isCode(std::size_t style) const noexcept;
     [[nodiscard]] float getIndentUnit() const noexcept;
     [[nodiscard]] Direction getDirection(const RichTextDocument::Paragraph& paragraph) const noexcept;
 
@@ -202,6 +212,9 @@ class LayoutBuilder final {
     [[nodiscard]] Block measureRule(const RichTextDocument::Paragraph& paragraph);
     [[nodiscard]] Block measureTable(const RichTextDocument::Paragraph& paragraph, float width);
     void breakLines(Flow& flow, float available);
+    void wrapLines(Flow& flow, float available, std::span<const std::size_t> forced);
+    void keepLastWords(Flow& flow, float available);
+    void evenLines(Flow& flow, float available);
     void placeDropCap(Flow& flow);
     void closeLine(Flow& flow, Line& line, float& top) const;
 
@@ -225,6 +238,7 @@ class LayoutBuilder final {
     std::map<std::pair<std::size_t, const Font*>, std::size_t> looks;
     std::vector<Font::ShapedGlyph> shapedGlyphs;
     std::vector<std::size_t> clusterOrder;
+    std::vector<std::size_t> forcedBreaks;
     float pendingPause = 0.0F;
     std::size_t textOffset = 0;
 };

@@ -38,7 +38,7 @@ Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style,
         start = end + 1;
     }
 
-    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .ligatures = style.ligatures};
+    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .balance = style.balance, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .ligatures = style.ligatures, .code = style.code};
     return LayoutBuilder(plain, plainOptions, nullptr, baseFamily, baseFont).build();
 }
 
@@ -109,7 +109,7 @@ const LayoutBuilder::StyleFont& LayoutBuilder::getStyleFont(std::size_t style) {
     return *cached;
 }
 
-// Synthetic bold widens the strokes of a distance field font through its weight, and draws a bitmap font twice one native pixel apart.
+// Synthetic bold spreads the glyphs of a distance field font along their baselines by its weight, which keeps at least half the width of the counter of the letter o, so a heavy face keeps its holes open, and draws a bitmap font twice one native pixel apart.
 std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selection& face) {
     const auto key = std::make_pair(style, static_cast<const Font*>(face.font));
     if (const auto found = looks.find(key); found != looks.end()) {
@@ -124,7 +124,7 @@ std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selectio
         .size = size,
         .outlineWidth = described.outlineWidth * options.scale,
         .outlineColor = described.outlineColor,
-        .weight = face.syntheticBold && field ? size * kSyntheticWeight : 0.0F,
+        .weight = face.syntheticBold && field ? getSyntheticWeight(*face.font, size) : 0.0F,
         .emboldenOffset = face.syntheticBold && !field ? size / face.font->getNativeSize() : 0.0F,
         .skew = face.syntheticItalic ? kSyntheticSkew : 0.0F,
     };
@@ -145,6 +145,11 @@ std::size_t LayoutBuilder::getLook(std::size_t style, const FontFamily::Selectio
     return layout.looks.size() - 1;
 }
 
+float LayoutBuilder::getSyntheticWeight(const Font& font, float size) noexcept {
+    const float counter = font.getCounterWidth(size);
+    return counter > 0.0F ? std::min(size * kSyntheticWeight, counter * kCounterShare) : size * kSyntheticWeight;
+}
+
 math::Color LayoutBuilder::getColor(std::size_t style) const {
     const RichTextDocument::Style& described = document.styles[style];
     math::Color color = described.color.value_or(options.color);
@@ -163,7 +168,7 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
 
     // Code keeps a glyph for every letter, so it never takes ligatures.
     shapedGlyphs.clear();
-    const bool ligatures = options.ligatures && !document.styles[style].mono;
+    const bool ligatures = options.ligatures && !isCode(style);
     drawing.shape({.text = source.text, .begin = begin, .end = end, .script = script, .language = options.language, .rightToLeft = level % 2 != 0, .ligatures = ligatures}, shapedGlyphs);
     std::vector<std::size_t>& byCluster = clusterOrder;
     byCluster.resize(shapedGlyphs.size());
@@ -197,12 +202,26 @@ void LayoutBuilder::shapeRun(const Source& source, std::size_t begin, std::size_
     }
 }
 
-// Every grapheme cluster picks the font that draws it, spaces and punctuation keeping the font before them, and runs of one style, font, level and script shape together with the whole paragraph as their context. Objects and line breaks stand alone, and a pause stays with the piece after it, so a line never wraps between them.
+bool LayoutBuilder::isCode(std::size_t style) const noexcept {
+    return options.code || document.styles[style].mono;
+}
+
+// Every grapheme cluster picks the font that draws it, spaces and punctuation keeping the font before them, and runs of one style, font, level and script shape together with the whole paragraph as their context. Objects and line breaks stand alone, and a pause stays with the piece after it, so a line never wraps between them. Runs of code break only between their tokens.
 std::vector<LayoutBuilder::Piece> LayoutBuilder::shape(const Source& source, const BidiParagraph& bidi, std::vector<PlacedGlyph>& glyphs) {
     const std::u32string_view text = source.text;
     const std::vector<std::uint32_t> scripts = Segmenter::getScripts(text);
     const std::vector<bool> graphemes = Segmenter::getGraphemeStarts(text);
-    const std::vector<Segmenter::Break> breaks = Segmenter::getLineBreaks(text, options.language);
+    std::vector<Segmenter::Break> breaks = Segmenter::getLineBreaks(text, options.language);
+    for (std::size_t codeBegin = 0; codeBegin < text.size();) {
+        std::size_t codeEnd = codeBegin;
+        while (codeEnd < text.size() && isCode(source.styles[codeEnd])) {
+            ++codeEnd;
+        }
+        if (codeEnd > codeBegin) {
+            Segmenter::keepCode(text, codeBegin, codeEnd, breaks);
+        }
+        codeBegin = codeEnd + 1;
+    }
 
     // A code point makes at most one piece and most often one glyph, so the lists take their room once.
     std::vector<Piece> pieces;
@@ -362,6 +381,11 @@ Segmenter::Break LayoutBuilder::breakBefore(const std::vector<Piece>& pieces, st
     return index > 0 && pieces[index - 1].kind != Piece::Kind::Pause ? pieces[index].breakBefore : Segmenter::Break::Never;
 }
 
+// The breaks that end a segment, where an overflow break stays inside its word.
+bool LayoutBuilder::isBreak(Segmenter::Break kind) noexcept {
+    return kind == Segmenter::Break::Allowed || kind == Segmenter::Break::Mandatory;
+}
+
 // The drawable pieces of a line from left to right: the runs of the line in the order the bidirectional algorithm shows them, each read forward or backward by the direction of its level.
 std::vector<std::size_t> LayoutBuilder::orderPieces(const std::vector<Piece>& pieces, std::size_t begin, std::size_t end, const BidiParagraph& bidi) {
     std::vector<std::size_t> order;
@@ -427,13 +451,104 @@ void LayoutBuilder::closeLine(Flow& flow, Line& line, float& top) const {
     flow.lines.push_back(line);
 }
 
-// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next. A segment wider than a whole line wraps between its clusters instead, and every line keeps at least one piece. A mandatory break, such as the one after a vertical tab or a form feed, ends the line. Lines beside a drop cap and the lines after the first of a hanging indent are shorter.
+// Lines wrap as far as they go, and then the balance of the text evens them out where it asks for it.
 void LayoutBuilder::breakLines(Flow& flow, float available) {
+    wrapLines(flow, available, {});
+    if (available <= 0.0F || flow.lines.size() < 2) {
+        return;
+    }
+    switch (options.balance) {
+    case Balance::None:
+        break;
+    case Balance::LastLine:
+        keepLastWords(flow, available);
+        break;
+    case Balance::AllLines:
+        evenLines(flow, available);
+        break;
+    }
+}
+
+// A line that ends its paragraph or a line break and holds one word alone takes the last word of the wrapped line before it, when that line keeps a word of its own and both words fit on the last line, so the lines wrap again with a break before that word.
+void LayoutBuilder::keepLastWords(Flow& flow, float available) {
+    const std::vector<Piece>& pieces = flow.pieces;
+    forcedBreaks.clear();
+    for (std::size_t index = 1; index < flow.lines.size(); ++index) {
+        const Line& line = flow.lines[index];
+        const Line& previous = flow.lines[index - 1];
+        if (line.wrapped || !previous.wrapped || countWords(pieces, line) != 1) {
+            continue;
+        }
+
+        std::size_t firstVisible = previous.begin;
+        while (firstVisible < previous.end && !isVisible(pieces[firstVisible])) {
+            ++firstVisible;
+        }
+        std::size_t word = previous.end - 1;
+        while (word > firstVisible && breakBefore(pieces, word) != Segmenter::Break::Allowed) {
+            --word;
+        }
+        if (word <= firstVisible) {
+            continue;
+        }
+
+        float width = 0.0F;
+        for (std::size_t piece = word; piece < line.visibleEnd; ++piece) {
+            width += pieces[piece].advance;
+        }
+        if (width <= available - line.shift) {
+            forcedBreaks.push_back(word);
+        }
+    }
+    if (!forcedBreaks.empty()) {
+        wrapLines(flow, available, forcedBreaks);
+    }
+}
+
+// The narrowest width that keeps the count of lines, which halving the range between the widest unbreakable run and the available width finds.
+void LayoutBuilder::evenLines(Flow& flow, float available) {
+    const std::size_t count = flow.lines.size();
+    float narrow = flow.minimumWidth;
+    float wide = available;
+    for (int step = 0; step < kBalanceSteps; ++step) {
+        const float middle = (narrow + wide) * 0.5F;
+        wrapLines(flow, middle, {});
+        if (flow.lines.size() > count) {
+            narrow = middle;
+        } else {
+            wide = middle;
+        }
+    }
+    wrapLines(flow, wide, {});
+}
+
+// A word starts at a piece that draws after a break a line may take between words.
+std::size_t LayoutBuilder::countWords(const std::vector<Piece>& pieces, const Line& line) noexcept {
+    std::size_t words = 0;
+    bool apart = true;
+    for (std::size_t index = line.begin; index < line.visibleEnd; ++index) {
+        apart = apart || (index > line.begin && breakBefore(pieces, index) == Segmenter::Break::Allowed);
+        if (apart && isVisible(pieces[index])) {
+            ++words;
+            apart = false;
+        }
+    }
+    return words;
+}
+
+bool LayoutBuilder::isVisible(const Piece& piece) noexcept {
+    return (piece.kind == Piece::Kind::Cluster && !piece.space) || piece.kind == Piece::Kind::Image;
+}
+
+// Greedy wrapping between segments, the runs of pieces from one break opportunity to the next, which also ends a line before every forced break. A segment wider than a whole line wraps at the last overflow break that fits, such as after a slash of a path, or between its clusters where it has none, and every line keeps at least one piece. A mandatory break, such as the one after a vertical tab or a form feed, ends the line. Lines beside a drop cap and the lines after the first of a hanging indent are shorter. The narrowest the paragraph can get is its widest run of pieces between breaks of any kind, overflow breaks included.
+void LayoutBuilder::wrapLines(Flow& flow, float available, std::span<const std::size_t> forced) {
     const std::vector<Piece>& pieces = flow.pieces;
     const bool bounded = available > 0.0F;
     float top = 0.0F;
     float penX = 0.0F;
     Line line;
+    std::size_t nextForced = 0;
+    flow.lines.clear();
 
     // clang-format off
     const auto start = [&](std::size_t begin) {
@@ -444,9 +559,6 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
         const bool besideDropCap = !flow.dropCap.empty() && (flow.lines.empty() || top < flow.dropCapReach);
         line = Line{.begin = begin, .end = begin, .visibleEnd = begin, .top = top, .shift = std::max(besideDropCap ? flow.dropCapShift : 0.0F, hang)};
         penX = 0.0F;
-    };
-    const auto isVisible = [](const Piece& piece) {
-        return (piece.kind == Piece::Kind::Cluster && !piece.space) || piece.kind == Piece::Kind::Image;
     };
     // clang-format on
 
@@ -465,22 +577,32 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
             closeLine(flow, line, top);
             start(cursor);
         }
+        while (nextForced < forced.size() && forced[nextForced] < cursor) {
+            ++nextForced;
+        }
+        if (line.end > line.begin && nextForced < forced.size() && forced[nextForced] == cursor) {
+            line.wrapped = true;
+            closeLine(flow, line, top);
+            start(cursor);
+        }
 
         std::size_t segmentEnd = cursor + 1;
-        while (segmentEnd < pieces.size() && pieces[segmentEnd].kind != Piece::Kind::LineBreak && breakBefore(pieces, segmentEnd) == Segmenter::Break::Never) {
+        while (segmentEnd < pieces.size() && pieces[segmentEnd].kind != Piece::Kind::LineBreak && !isBreak(breakBefore(pieces, segmentEnd))) {
             ++segmentEnd;
         }
         float total = 0.0F;
         float visible = 0.0F;
+        float part = 0.0F;
         std::size_t visibleEnd = cursor;
         for (std::size_t index = cursor; index < segmentEnd; ++index) {
             total += pieces[index].advance;
+            part = index > cursor && breakBefore(pieces, index) == Segmenter::Break::Overflow ? pieces[index].advance : part + pieces[index].advance;
             if (isVisible(pieces[index])) {
                 visible = total;
                 visibleEnd = index + 1;
+                flow.minimumWidth = std::max(flow.minimumWidth, part);
             }
         }
-        flow.minimumWidth = std::max(flow.minimumWidth, visible);
 
         if (bounded && line.end > line.begin && penX + visible > available - line.shift) {
             line.wrapped = true;
@@ -490,9 +612,23 @@ void LayoutBuilder::breakLines(Flow& flow, float available) {
         if (bounded && line.end == line.begin && visible > available - line.shift) {
             std::size_t fit = cursor + 1;
             float width = pieces[cursor].advance;
+            std::size_t joint = cursor;
+            float jointWidth = 0.0F;
             while (fit < segmentEnd && width + pieces[fit].advance <= available - line.shift) {
+                if (breakBefore(pieces, fit) == Segmenter::Break::Overflow) {
+                    joint = fit;
+                    jointWidth = width;
+                }
                 width += pieces[fit].advance;
                 ++fit;
+            }
+            if (fit < segmentEnd && breakBefore(pieces, fit) == Segmenter::Break::Overflow) {
+                joint = fit;
+                jointWidth = width;
+            }
+            if (fit < segmentEnd && joint > cursor) {
+                fit = joint;
+                width = jointWidth;
             }
             if (fit < segmentEnd) {
                 line.end = fit;

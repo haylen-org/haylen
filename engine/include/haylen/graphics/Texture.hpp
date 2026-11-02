@@ -31,8 +31,13 @@ class Texture final {
         Filter filter = Filter::Nearest;
         Wrap wrap = Wrap::Clamp;
 
-        // Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, with linear blending between them when the filter is linear.
-        bool mipmaps = false;
+        // Keeps smaller copies of the image down to one pixel, which a texture drawn smaller than its size samples, with linear blending between them when the filter is linear. Unset, a texture made from an image keeps them when its filter is linear, so art drawn far below its size stays smooth, while pixel art with the nearest filter keeps its hard pixels. Render targets and textures that change in place never have them.
+        std::optional<bool> mipmaps;
+
+        // Tells whether a texture made from an image with these options keeps mipmaps.
+        [[nodiscard]] constexpr bool hasMipmaps() const noexcept {
+            return mipmaps.value_or(filter == Filter::Linear);
+        }
 
         [[nodiscard]] constexpr bool operator==(const Options&) const noexcept = default;
     };

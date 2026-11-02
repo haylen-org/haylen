@@ -28,6 +28,9 @@ struct DistanceField {
     // Returns the size and offset of the field `build` makes, without its pixels, or nothing for a glyph without an outline box. It reads only the box of the glyph, so it tells at once whether a field can fit somewhere.
     [[nodiscard]] static std::optional<DistanceField> measure(const stbtt_fontinfo& font, int glyph, float scale, int spread);
 
+    // Returns twice the distance from the middle of the box of a glyph to its outline in pixels at the scale, the width of the hole that the middle lies in, such as the counter of the letter o, or 0 when the middle lies inside a stroke or the glyph has no outline.
+    [[nodiscard]] static float measureHole(const stbtt_fontinfo& font, int glyph, float scale);
+
   private:
     [[nodiscard]] static msdfgen::Shape readShape(const stbtt_fontinfo& font, int glyph, float scale);
     [[nodiscard]] static bool mayOverlap(const msdfgen::Shape& shape);

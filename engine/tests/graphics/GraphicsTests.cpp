@@ -135,7 +135,7 @@ TEST(DeviceTest, MakesTexturesWithMipmaps) {
     test::EngineFixture fixture;
     graphics::Device& device = fixture.engine().getGraphics();
     const graphics::Texture made = device.createTexture(graphics::Image(32, 8), {.filter = graphics::Texture::Filter::Linear, .mipmaps = true});
-    EXPECT_TRUE(made.getOptions().mipmaps);
+    EXPECT_TRUE(made.getOptions().hasMipmaps());
     graphics::Image decoded(16, 16);
     decoded.buildMipmaps();
     EXPECT_EQ(device.createTexture(decoded, {.mipmaps = true}).getWidth(), 16);
@@ -144,6 +144,23 @@ TEST(DeviceTest, MakesTexturesWithMipmaps) {
     EXPECT_EQ(device.createTexture(graphics::Image(1, 1), {.mipmaps = true}).getWidth(), 1);
     EXPECT_THROW((void)device.createDynamicTexture(graphics::Image(4, 4), {.mipmaps = true}), std::invalid_argument);
     EXPECT_THROW((void)device.createRenderTarget(4, 4, {.mipmaps = true}), std::invalid_argument);
+}
+
+// A texture made from an image keeps mipmaps by default when its filter is linear, so art drawn far below its size stays smooth, while pixel art with the nearest filter, render targets and textures that change in place keep none.
+TEST(DeviceTest, KeepsMipmapsOfLinearTexturesByDefault) {
+    test::EngineFixture fixture;
+    graphics::Device& device = fixture.engine().getGraphics();
+    constexpr graphics::Texture::Filter kLinear = graphics::Texture::Filter::Linear;
+    EXPECT_TRUE(device.createTexture(graphics::Image(8, 8), {.filter = kLinear}).getOptions().hasMipmaps());
+    EXPECT_FALSE(device.createTexture(graphics::Image(8, 8)).getOptions().hasMipmaps());
+    EXPECT_FALSE(device.createTexture(graphics::Image(8, 8), {.filter = kLinear, .mipmaps = false}).getOptions().hasMipmaps());
+    EXPECT_FALSE(device.createDynamicTexture(graphics::Image(8, 8), {.filter = kLinear}).getOptions().hasMipmaps());
+    EXPECT_FALSE(device.createRenderTarget(8, 8, {.filter = kLinear}).getTexture().getOptions().hasMipmaps());
+
+    // Decoding for a linear texture makes the smaller copies on the thread that decodes, and decoding for pixel art makes none.
+    const std::vector<std::uint8_t> png = test::TestFiles::pngImage(4, 4, 0xFF0000FFU);
+    EXPECT_EQ(graphics::Image::decodeFor(png, {.filter = kLinear}).getMipmaps().size(), 2U);
+    EXPECT_TRUE(graphics::Image::decodeFor(png, {}).getMipmaps().empty());
 }
 
 TEST(ImageTest, TurnsRenderedPixelsIntoStraightColorsAndPngFiles) {
@@ -199,7 +216,7 @@ TEST(DeviceTest, CreatesReplacesAndReleasesResources) {
     const graphics::Texture texture = device.createTexture(graphics::Image(4, 2, math::Color::white()), {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat});
     EXPECT_TRUE(texture.isValid());
     EXPECT_EQ(texture.getSize(), math::Vec2(4.0F, 2.0F));
-    EXPECT_EQ(texture.getOptions(), (graphics::Texture::Options{.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat}));
+    EXPECT_EQ(texture.getOptions(), (graphics::Texture::Options{.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Repeat, .mipmaps = true}));
     EXPECT_NE(texture.getId(), 0U);
 
     device.replaceTexture(texture, graphics::Image(8, 8));

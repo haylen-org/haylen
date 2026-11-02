@@ -1,6 +1,7 @@
 #include "text/DistanceField.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <utility>
 
@@ -102,6 +103,20 @@ std::optional<DistanceField> DistanceField::build(const stbtt_fontinfo& font, in
     field->distances.resize(samples.size());
     std::ranges::transform(samples, field->distances.begin(), [](float distance) { return math::HalfFloat::fromFloat(std::clamp(distance, 0.0F, 1.0F)); });
     return field;
+}
+
+// The distance takes the sign of the side of the outline a point lies on, so the middle lies in a hole when its sign matches the sign of a point outside the box.
+float DistanceField::measureHole(const stbtt_fontinfo& font, int glyph, float scale) {
+    msdfgen::Shape shape = readShape(font, glyph, scale);
+    if (shape.contours.empty()) {
+        return 0.0F;
+    }
+
+    shape.normalize();
+    const msdfgen::Shape::Bounds bounds = shape.getBounds();
+    const double outside = msdfgen::SimpleTrueShapeDistanceFinder::oneShotDistance(shape, msdfgen::Point2(bounds.l - 1.0, bounds.b - 1.0));
+    const double middle = msdfgen::SimpleTrueShapeDistanceFinder::oneShotDistance(shape, msdfgen::Point2((bounds.l + bounds.r) * 0.5, (bounds.b + bounds.t) * 0.5));
+    return (outside > 0.0) == (middle > 0.0) ? static_cast<float>(std::fabs(middle) * 2.0) : 0.0F;
 }
 
 } // namespace haylen::text

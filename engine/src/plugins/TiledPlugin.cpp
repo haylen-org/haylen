@@ -82,7 +82,7 @@ void TiledPlugin::decodeImages(const tiled::Map& map, const io::Package& package
         if (options.filter == graphics::Texture::Filter::Linear) {
             image.image.bleed();
         }
-        if (options.mipmaps) {
+        if (options.hasMipmaps()) {
             image.image.buildMipmaps();
         }
         images.emplace(entry.path, std::move(image));

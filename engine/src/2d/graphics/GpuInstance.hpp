@@ -18,12 +18,13 @@ struct TextureResource;
 
 namespace haylen::graphics2d {
 
-// One sprite or glyph as the sprite and text shaders read it from the instance buffer. The four parameter bytes hold the flip bits of a sprite and the range of its texture coordinates in the first byte and how much its tilt shortens it in the fourth, and the outline, weight and softness of a glyph drawn by the text program, while the third byte is the skew of both. A shape fills a record of the same size with fields of its own.
+// One sprite or glyph as the sprite and text shaders read it from the instance buffer. The four parameter bytes hold the flip bits of a sprite and the range of its texture coordinates in the first byte and how much its tilt shortens it in the fourth, and the outline, the spread of a synthetic bold and the softness of a glyph drawn by the text program, while the third byte is the skew of both. A shape fills a record of the same size with fields of its own.
 struct GpuInstance {
-    // How a glyph looks beyond its color: the outline, weight and softness in distance field units and the skew as a horizontal shift per unit of height above the baseline.
+    // How a glyph looks beyond its color: the outline, the weight and the softness in distance field units, the width of its quad in the same units, which turns the weight into the share of the quad that a synthetic bold spreads the glyph by on each side along its baseline, and the skew as a horizontal shift per unit of height above the baseline.
     struct TextParameters {
         float outline = 0.0F;
         float weight = 0.0F;
+        float width = 0.0F;
         float skew = 0.0F;
         float softness = 0.0F;
     };
@@ -98,9 +99,9 @@ struct GpuInstance {
         std::uint16_t radii[4];
     };
 
-    // The outline and the softness reach half the distance field, and the weight and the skew are signed bytes, so zeroed parameters leave a quad untouched.
+    // The outline and the softness reach half the distance field, the spread of a synthetic bold reaches a quarter of the quad and the skew is a signed byte, so zeroed parameters leave a quad untouched.
     static constexpr float kUnsignedRange = 0.5F;
-    static constexpr float kWeightScale = 256.0F;
+    static constexpr float kSpreadRange = 0.25F;
     static constexpr float kSkewScale = 127.0F;
     static constexpr float kMaximumReach = 0.48F;
 
@@ -116,7 +117,7 @@ struct GpuInstance {
     [[nodiscard]] static std::uint16_t unorm16(float value) noexcept;
     [[nodiscard]] static std::uint32_t scaleAlpha(std::uint32_t color, float amount) noexcept;
     [[nodiscard]] static std::uint8_t flipBits(SpriteFlip flip) noexcept;
-    [[nodiscard]] static std::uint8_t unsignedByte(float value) noexcept;
+    [[nodiscard]] static std::uint8_t unsignedByte(float value, float range) noexcept;
     [[nodiscard]] static std::uint8_t signedByte(float value, float scale) noexcept;
 };
 

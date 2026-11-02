@@ -136,6 +136,10 @@ class FrameSubmitter final {
     // The grain repeats its pattern after this many frames, which keeps the seed of its noise exact as a float.
     static constexpr std::uint64_t kGrainFrames = 1024;
 
+    // The image bends along the slope of the coverage of its distortion draws blurred by a Gaussian whose deviation is this share of the bend distance, which keeps the slope of the bend below 1, so the image never folds into copies of itself. The blur of a radius has a deviation of about this share of it.
+    static constexpr float kBendDeviation = 0.6F;
+    static constexpr float kBlurDeviation = 0.42F;
+
     // A blur shrinks the image until its radius spans at most this many texels, through at most this many sizes, none smaller than this many texels across.
     static constexpr float kBlurReach = 4.0F;
     static constexpr std::size_t kBlurLevels = 8;

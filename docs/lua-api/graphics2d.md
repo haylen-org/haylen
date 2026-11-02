@@ -164,7 +164,7 @@ scene.push({
 | `vignetteRadius` | number | `0.6` | The distance from the center where the vignette starts, where 1 reaches the corners. |
 | `vignetteSoftness` | number | `0.5` | The width of the falloff of the vignette. |
 | `fade` | Color | `'#00000000'` | Mixes the result toward this color by its alpha, for fades to black or white. |
-| `distortion` | number | `24` | How far the [distortion draws](#distortion) move pixels, in units of the destination, where their coverage goes from nothing to full within 8 units. |
+| `distortion` | number | `24` | How far the [distortion draws](#distortion) move pixels, in units of the destination, at an edge where their coverage goes from nothing to full. The bend fades smoothly around that edge and never folds the image. |
 | `chromaticAberration` | number | `0` | Splits red and blue apart toward the corners by this many units, like a cheap lens. |
 | `pixelate` | number | `0` | Draws the image in square blocks of this many units, where 0 keeps every pixel. |
 | `blur` | number | `0` | Blurs the whole image over this radius in units, such as the world behind a pause menu. |
@@ -1654,7 +1654,7 @@ scene.push({
 
 ## Distortion
 
-A draw with a `distortion` above 0 bends the image of its canvas instead of drawing colors. Its coverage is the alpha of its texture times its color and the distortion. The coverage adds up in the distortion map of the canvas, and the composite moves every pixel down the slope of the map. The `distortion` of the [post-process options](#post-process-options) sets how far, where the coverage goes from nothing to full within 8 units. This makes these effects:
+A draw with a `distortion` above 0 bends the image of its canvas instead of drawing colors. Its coverage is the alpha of its texture times its color and the distortion. The coverage adds up in the distortion map of the canvas, and the composite moves every pixel down the slope of the map. The `distortion` of the [post-process options](#post-process-options) sets how far, at an edge where the coverage goes from nothing to full, and the bend fades smoothly around that edge, as [the rendering guide](../graphics/rendering.md#distortion) explains. This makes these effects:
 
 - A ring pushes the image outward at its outer edge and inward at its inner edge, like a shock wave.
 - A soft dot bends the image around its edge, like a lens.
@@ -2584,7 +2584,7 @@ A mesh is a set of textured triangles. Draw triangles once with `graphics2d.draw
 
 ### graphics2d.drawMesh(texture, vertices, indices, order)
 
-Draws textured triangles. The argument `texture` can be `nil` for solid colors. Each vertex is a table with `x`, `y`, `u`, `v` and `color`, where `u` and `v` are texture coordinates from 0 to 1. Every field is optional: `color` is white by default and the others 0. The list `indices` names vertices in groups of three, counted from 1. The table `order` is an optional [draw order](#draw-order). An index below 1 raises a `bad argument` error that ends with `mesh indices start at 1`, and an index past the last vertex raises `Mesh index refers to a vertex that does not exist.`.
+Draws textured triangles. The argument `texture` can be `nil` for solid colors. Each vertex is a table with `x`, `y`, `u`, `v` and `color`, where `u` and `v` are texture coordinates from 0 to 1. Every field is optional: `color` is white by default and the others 0. The list `indices` names vertices in groups of three, counted from 1. The table `order` is an optional [draw order](#draw-order), which also takes `fadeEdges`. The outline of the triangles, the edges that only one triangle holds, fades over one pixel of the destination like the edges of every other shape: it moves half a pixel in and fades to nothing half a pixel out. Vertices at the same place count as one, so triangles that keep vertices of their own along a seam fade only their outside. The option `fadeEdges = false` keeps the edges hard, for triangles that already fade their own edges or that meet other meshes edge to edge. An index below 1 raises a `bad argument` error that ends with `mesh indices start at 1`, and an index past the last vertex raises `Mesh index refers to a vertex that does not exist.`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -2739,7 +2739,7 @@ quad:setIndices({1, 2, 3, 1, 3, 4})
 
 ### mesh:draw(x, y, options)
 
-Draws the mesh into the open canvas with its vertices moved to `x`, `y`, which are 0 by default, without changing the mesh. The table `options` is optional and takes `rotation` in radians, `scaleX` and `scaleY`, which are 0, 1 and 1 by default, and the keys of the [draw order](#draw-order).
+Draws the mesh into the open canvas with its vertices moved to `x`, `y`, which are 0 by default, without changing the mesh. The table `options` is optional and takes `rotation` in radians, `scaleX` and `scaleY`, which are 0, 1 and 1 by default, `fadeEdges`, `true` by default, which fades the outline of the mesh over one pixel as [`graphics2d.drawMesh`](#graphics2ddrawmeshtexture-vertices-indices-order) does, and the keys of the [draw order](#draw-order).
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2996,6 +2996,7 @@ scene.push({
 | `align` | string | `'start'` | The alignment of each line inside the block. The values `'start'` and `'end'` are the sides where the lines of the paragraph begin and end: left and right for left-to-right text and the other way around for right-to-left text. The values `'left'`, `'center'` and `'right'` are fixed sides, and `'fill'` stretches the spaces of every wrapped line to reach both edges and leaves the last line of a paragraph at its start. |
 | `maxWidth` | number | `0` | Wraps whole words at this width, where 0 never wraps. |
 | `wrap` | boolean | `true` | Whether lines wrap at `maxWidth`. Without wrapping every line stays whole, and `maxWidth` only bounds the box that `minScale` fits the text into. |
+| `balance` | string | `'lastLine'` | How the wrapped lines of a paragraph share its words: `'lastLine'` moves a word down so the last line never holds one word alone, `'allLines'` gives every line about the same width and `'none'` fills every line as far as it goes, as [balanced lines](../graphics/text.md#balanced-lines) explains. |
 | `maxHeight` | number | `0` | The height of the box that `minScale` fits the text into, where 0 bounds no height. |
 | `minScale` | number above 0, at most 1 | `1` | Draws text that does not fit its box smaller, down to this share of `size`, at the largest size where it fits: wrapped lines until they fit `maxHeight`, and text that does not wrap until its widest line fits `maxWidth` and its lines fit `maxHeight`. Text that fits at `size` keeps it, and text that never fits draws at the smallest size. The fitted layout is cached like any other, so text that stays the same fits once. |
 | `lineSpacing` | number | `1.2` | The distance between lines as a multiple of the line height. |
@@ -3008,6 +3009,7 @@ scene.push({
 | `scale` | Vec2 | `{1, 1}` | Stretches the drawn block from its anchor point on each axis, without laying the text out again. The function `graphics2d.measureText` returns the stretched size for the same style. |
 | `pixelSnap` | boolean | `false` | Moves every line so its left edge lands on a whole pixel of the destination, centered and right-aligned lines included, and puts its baseline on a whole pixel row. This keeps small text crisp and stops it from shimmering as it moves. It applies when neither the text nor the view of its canvas turns, and it never changes the layout. |
 | `ligatures` | boolean | `true` | Joins letters such as f and i into one glyph where the font has a ligature for them, which suits prose. The value `false` keeps a glyph for every letter, which code, file names and the names of functions need. |
+| `code` | boolean | `false` | Lays the text out as code, which keeps a glyph for every letter and breaks lines only between tokens, never inside a string that fits on a line or after the indentation of a line, as [code](../graphics/text.md#code) explains. |
 
 A `size`, `maxWidth`, `maxHeight`, `minScale` or `lineSpacing` that is not a finite number raises `Text needs a finite size, maximum width, maximum height, minimum scale and line spacing.`. A `minScale` out of range raises `The "minScale" of a text style is a share of its size above 0 and at most 1.`.
 
@@ -3082,6 +3084,7 @@ scene.push({
 | `italic` | boolean | `false` | Styles all the text italic, as if inside `[i]`. |
 | `color` | Color | `'#FFFFFFFF'` | The color of text without a `[color]` tag. |
 | `maxWidth` | number | `0` | The width the paragraphs wrap at. 0 never wraps, and the block is as wide as its widest line. |
+| `balance` | string | `'lastLine'` | How the wrapped lines of every paragraph share its words, `'lastLine'`, `'allLines'` or `'none'`, like the text style option. |
 | `align` | string | `'start'` | The alignment of paragraphs without their own: `'start'`, `'end'`, `'left'`, `'center'`, `'right'` or `'fill'`, where `'start'` and `'end'` follow the direction of each paragraph. |
 | `lineSpacing` | number | `1.2` | The distance between lines as a multiple of their height. |
 | `direction` | string | `'auto'` | The direction of paragraphs without a `[p dir]` of their own: `'auto'` takes the direction of the first strong letter of each paragraph, and `'leftToRight'` and `'rightToLeft'` force it. |
@@ -3090,6 +3093,7 @@ scene.push({
 | `revealSpeed` | number | `0` | The characters per second that the typewriter reveal shows as `text:update` advances. 0 shows everything at once. |
 | `underlineLinks` | boolean | `true` | Whether `[url]` text is underlined. |
 | `ligatures` | boolean | `true` | Joins letters into the ligatures of the font, like the text style option. The text of `[code]` never takes ligatures. |
+| `code` | boolean | `false` | Lays all of the text out as code, like the text of `[code]` but in the faces the markup picks, as the text style option of the same name does. |
 | `fonts` | table | none | The families or fonts that `[font=name]` tags name, as `{name = family}`. A key that is not a string raises `The "fonts" option maps font names to families, so its keys must be strings.`. |
 
 ### graphics2d.drawRichText(markup, x, y, options)
@@ -3185,6 +3189,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 | --- | --- | --- | --- |
 | `markup` | string | read and write | The markup. Setting it lays the text out again and starts its effects and reveal over. |
 | `maxWidth` | number | read and write | The width the paragraphs wrap at, 0 for none. |
+| `balance` | string | read and write | How the wrapped lines of every paragraph share its words. |
 | `scale` | number | read and write | Multiplies every size of the text. A scale that is not positive raises `Rich text needs a positive scale.`. |
 | `family` | FontFamily | read and write | The family of text without a `[font]` tag. Setting a `Font` makes it the regular face of a family of its own. |
 | `bold`, `italic` | boolean | read and write | Whether all the text is bold or italic, as if inside `[b]` or `[i]`. |
@@ -3196,6 +3201,7 @@ print(table.concat(graphics2d.textEffectNames(), ', '))
 | `revealSpeed` | number | read and write | The characters per second that the typewriter reveal shows, 0 for everything at once. |
 | `underlineLinks` | boolean | read and write | Whether `[url]` text is underlined. |
 | `ligatures` | boolean | read and write | Whether letters outside `[code]` join into the ligatures of the font. |
+| `code` | boolean | read and write | Whether all of the text lays out as code. |
 | `visibleCharacters` | integer | read and write | How many characters show. Setting it moves the reveal there, and a negative count shows everything. |
 | `visibleRatio` | number | read and write | The share of characters that show, from 0 to 1. Values outside that range count as its ends, and NaN raises `The visible ratio of rich text must be a number.`. |
 | `characterCount` | integer | read | The characters of the text: one per cluster, which is a letter with its marks, a conjunct or a ligature, and one per image or icon. |

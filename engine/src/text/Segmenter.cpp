@@ -57,18 +57,53 @@ std::vector<Segmenter::Break> Segmenter::getLineBreaks(std::u32string_view text,
             found[index] = Break::Allowed;
         }
     }
-    keepHyphenatedNames(text, found);
+    keepNames(text, found);
     addThaiPhrases(text, found);
     return found;
 }
 
-// A hyphen-minus between two letters or digits joins the parts of one name, such as an identifier, a file name or a date, so a line never breaks inside it.
-void Segmenter::keepHyphenatedNames(std::u32string_view text, std::vector<Break>& found) {
-    for (std::size_t index = 1; index + 1 < text.size(); ++index) {
-        if (text[index] == U'-' && found[index] == Break::Allowed && isLetterOrDigit(text[index - 1]) && isLetterOrDigit(text[index + 1])) {
-            found[index] = Break::Never;
+// A slash joins the parts of a path or an address, and a hyphen-minus between two letters or digits the parts of one name, such as an identifier, a file name or a date, so a line breaks there only when the whole name does not fit on it.
+void Segmenter::keepNames(std::u32string_view text, std::vector<Break>& found) {
+    for (std::size_t index = 0; index + 1 < text.size(); ++index) {
+        const bool slash = text[index] == U'/';
+        const bool hyphen = index > 0 && text[index] == U'-' && isLetterOrDigit(text[index - 1]) && isLetterOrDigit(text[index + 1]);
+        if ((slash || hyphen) && found[index] == Break::Allowed) {
+            found[index] = Break::Overflow;
         }
     }
+}
+
+// A string opens at a quote that follows no letter or digit, so the apostrophe of a word in a comment opens none, and closes at the same quote that no backslash escapes, or where its line ends.
+void Segmenter::keepCode(std::u32string_view text, std::size_t begin, std::size_t end, std::vector<Break>& found) {
+    bool indenting = begin == 0 || found[begin - 1] == Break::Mandatory;
+    for (std::size_t index = begin; index < end; ++index) {
+        indenting = indenting && isSpace(text[index]);
+        if (indenting && found[index] == Break::Allowed) {
+            found[index] = Break::Never;
+        }
+        indenting = indenting || found[index] == Break::Mandatory;
+    }
+
+    for (std::size_t index = begin; index < end; ++index) {
+        if (!isQuote(text[index]) || (index > 0 && isLetterOrDigit(text[index - 1]))) {
+            continue;
+        }
+        std::size_t close = index + 1;
+        while (close < end && text[close] != text[index] && found[close - 1] != Break::Mandatory) {
+            close += text[close] == U'\\' && close + 1 < end ? 2 : 1;
+        }
+        close = std::min(close, end - 1);
+        for (std::size_t inside = index; inside < close; ++inside) {
+            if (found[inside] == Break::Allowed) {
+                found[inside] = Break::Overflow;
+            }
+        }
+        index = close;
+    }
+}
+
+bool Segmenter::isQuote(char32_t codePoint) noexcept {
+    return codePoint == U'\'' || codePoint == U'"' || codePoint == U'`';
 }
 
 bool Segmenter::isLetterOrDigit(char32_t codePoint) noexcept {

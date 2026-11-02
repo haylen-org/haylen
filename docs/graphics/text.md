@@ -46,12 +46,12 @@ The class `text::BitmapFont` draws BMFont files and grids of equal cells from th
 
 The text program draws the glyphs of distance field fonts. It smooths the edge over how much the field changes across one pixel of the screen, which keeps edges crisp when text is scaled. It reads that change from the field half a pixel to each side of the point. The point moves linearly across the glyph, so its own derivatives are exact on every GPU, while the derivatives of the field itself differ between GPUs that take them for each pixel and GPUs that take them once for each block of four pixels. It reads four values of every glyph from its instance:
 
-- The weight moves the edge outward. This is how synthetic bold grows the strokes of a face that a family lacks.
+- The weight spreads the glyph along its baseline: the shader reads the field twice, moved left and moved right, and fills what either covers. This is how synthetic bold widens the strokes of a face that a family lacks, while the gaps above and below the strokes, such as the one between the dot of an i and its stem, stay as open as the font draws them.
 - The outline is a second threshold of the same field, filled with the flash color. The fill covers it with premultiplied colors, so every edge blends its coverage once.
 - The softness widens the edge into a blur, for soft shadows and glows.
 - The skew leans the quad around the baseline in the vertex shader. This is how synthetic italic slants.
 
-The outline, the weight, the softness and the smoothing of the edge on screen add up. Together they stop a sixteenth of the field short of the border of the quad of the glyph, where the field fades out. When they would reach further, they shrink together, so no size or scale shows the box of a glyph.
+The outline, the weight, the softness and the smoothing of the edge on screen add up, since the weight moves the glyph toward the sides of its quad. Together they stop a sixteenth of the field short of the border of the quad of the glyph, where the field fades out. When they would reach further, they shrink together, so no size or scale shows the box of a glyph.
 
 Text with effects draws in layers. A shadow draws every glyph once more before the outlines: moved by its offset, in the shadow color and softened by its blur. The shadow of a bitmap glyph is its silhouette. Every outline draws next, as glyphs whose fill is transparent, and every fill draws over them. So the outline of a letter never covers the letters beside it.
 
@@ -125,7 +125,7 @@ Layout picks the font of each run from its style and from each character, where 
 
 A style that the family has no face for is synthesized from the face it has:
 
-- A distance field face grows its strokes on both sides by 3 percent of the text size and widens its advance to match. It leans italic glyphs by one fifth of their height around the baseline in the vertex shader.
+- A distance field face spreads its strokes to the left and to the right by 3 percent of the text size and widens its advance to match. A heavy face whose letters have small holes spreads them less: at most a quarter of the width of the counter of its letter o, so the counters keep at least half their width and letters such as e, a and o stay open. The spread runs along the baseline only, so the dot of an i never joins its stem. It leans italic glyphs by one fifth of their height around the baseline in the vertex shader.
 - A bitmap face draws a bold glyph a second time one native pixel to the right, and leans italic glyphs the same way.
 - A fallback font synthesizes the bold and italic its run asks for.
 - The tag `[code]` uses the mono face, or the regular faces when the family has none.
@@ -215,7 +215,7 @@ These characters end a paragraph: a line feed, a carriage return, CRLF, which co
 
 The language tailors the rules: the quotation marks of English, German, Spanish, French and Russian text, and the ambiguous punctuation of Chinese text. Thai writes no spaces between words, so a line of Thai breaks between the phrases that the Thai model of BudouX finds. That model is small and weighs the letters around every place of the text. Lao, Khmer and Burmese also write without spaces, and their lines break only at spaces and punctuation, because the engine has no model for them.
 
-A hyphen-minus between two letters or digits joins the parts of one name, such as an identifier, a file name or a date, so a line never breaks there. A hyphen after a space may still end a line. A word wider than a whole line breaks between its characters, never inside a cluster.
+A slash joins the parts of a path or an address, and a hyphen-minus between two letters or digits joins the parts of one name, such as an identifier, a file name or a date. So a path such as `levels/forest/map.json` moves to the next line whole while it fits on one line, and a line breaks at its joints only when the whole name is wider than the line. Then it breaks after the last slash or hyphen that fits. A hyphen after a space may still end a line. A word without such a joint that is wider than a whole line breaks between its characters, never inside a cluster.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -224,8 +224,52 @@ local scene = require('haylen.scene')
 scene.push({
     renderUi = function(self)
         graphics2d.beginScreen()
-        -- The file name stays whole, so the line breaks at the space before it.
-        graphics2d.drawText(nil, 'Saved the game to slot-03-2026-10-21.sav', 100, 100, {size = 32, maxWidth = 420})
+        -- The path stays whole, so the line breaks at the space before it.
+        graphics2d.drawText(nil, 'Saved the game to saves/slot-03/2026-10-21.sav', 100, 100, {size = 32, maxWidth = 420})
+    end,
+})
+```
+
+### Code
+
+Code breaks its lines only between its tokens. A string, from a quote to the same quote, stays on one line while it fits on one, whatever spaces and slashes it holds, and the indentation of a line of code never ends the line. A quote that follows a letter or a digit opens no string, so the apostrophe of a word in a comment, as in `player's`, leaves the comment free to wrap. A string wider than a whole line breaks at its spaces and slashes. Code also keeps a glyph for every letter, like text without [ligatures](#ligatures). Text lays out as code in these places:
+
+- The text style option `code = true` and the rich text option of the same name.
+- The text of `[code]`.
+- The `monospace` role of the [UI themes](../lua-api/ui.md#theme-fonts), so labels and rich text in that role show code.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        -- The string stays whole on the second line.
+        graphics2d.drawText(nil, "local map = assets.load('levels/forest/map.json')", 100, 100, {size = 28, maxWidth = 520, code = true})
+    end,
+})
+```
+
+### Balanced lines
+
+A line that holds one word alone at the end of a paragraph looks like a mistake, so text keeps it from happening. The text style option `balance` and the rich text option of the same name choose how the wrapped lines of a paragraph share its words:
+
+- `lastLine`, the default, fills every line as far as it goes. When the last line of a paragraph, or the last line before a line break, would hold one word alone, it takes the last word of the line before it. That happens only when the line before keeps a word of its own and both words fit on the last line. The count of lines never changes, so the height of the text stays the same.
+- `allLines` gives every line about the same width. The layout takes the narrowest width that keeps the count of lines, which suits titles, captions and short centered messages.
+- `none` fills every line as far as it goes. Text that grows while the player types needs it, so the lines before the caret keep their words, and the text fields of the UI use it.
+
+Labels, rich text, the code card and the empty states of the UI keep the default, so their captions, descriptions and hints never end with a lone word. A word is a run of text between two places where a line may break. So in Chinese and Japanese, where a line may break between any two characters, the last line never holds one character alone.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        -- The two lines of the title have about the same width.
+        graphics2d.drawText(nil, 'The lighthouse keeper and the storm', 960, 200, {size = 56, maxWidth = 900, align = 'center', anchor = {0.5, 0}, balance = 'allLines'})
     end,
 })
 ```
@@ -243,7 +287,7 @@ Plain text lays out in these steps:
 
 Plain text is a document of one paragraph per line. The carriage return of CRLF stays at the end of its line and draws nothing, so the characters of the layout keep counting the code points of the text.
 
-Every font and every family keeps its 512 most recent plain text layouts. They are found by the text and by the style fields that change the layout: size, wrap width, line spacing, alignment, direction, language, bold and italic. The size, the wrap width and the line spacing must be finite numbers. So text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
+Every font and every family keeps its 512 most recent plain text layouts. They are found by the text and by the style fields that change the layout: size, wrap width, balance, line spacing, alignment, direction, language, bold, italic, ligatures and code. The size, the wrap width and the line spacing must be finite numbers. So text that `graphics2d.drawText` draws every frame, and the labels of the UI, shape once and then only place their glyphs. Color, outline, shadow, anchor and rotation apply when the text draws and never lay it out again.
 
 Rich text lays each paragraph out into lines. Lines wrap where the [line breaking](#line-breaking) rules allow and around images, and inside a word only when the word alone is wider than a line. Every line stands on one baseline and is as tall as its tallest text and images. Lines follow each other by their height times the line spacing, so a line with a larger size or an image makes room for it. Images are centered by default on the middle of the text of their style. The value `baseline` puts their bottom on the baseline, and `top` and `bottom` align them with the line.
 
@@ -294,7 +338,7 @@ Rich text is text with tags in square brackets:
 | Tag | Meaning |
 | --- | --- |
 | `[b]`, `[i]`, `[u]`, `[s]` | Bold, italic, underline and strike. |
-| `[code]` | The mono face of the family, which in the default family of the engine is Space Mono, a monospace font. Code never takes ligatures, so every letter keeps its own glyph and column. |
+| `[code]` | The mono face of the family, which in the default family of the engine is Space Mono, a monospace font. Code never takes ligatures, so every letter keeps its own glyph and column, and it breaks lines only between its tokens, as [code](#code) explains. |
 | `[color=c]`, `[bgcolor=c]` | Text color and a background behind the text. |
 | `[font=name]` | A font family that the host names: the `fonts` option in 2D and the fonts of `ui.addFont` in the UI. |
 | `[size=24]`, `[size=150%]` | An absolute size, or a size relative to the text around it. |

@@ -17,6 +17,9 @@ class PolygonMesh final {
     // Replaces the vertices and indices with the shape whose outlines are the runs of `counts` points that follow each other in `points`, in the color, where `pixel` is the size of one pixel in the units of the points.
     void build(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts, std::uint32_t color, float pixel);
 
+    // The offset of a corner whose edges before and after it, with the given normals that point away from the fill, move by the given distances along them.
+    [[nodiscard]] static math::Vec2 getOffset(math::Vec2 before, math::Vec2 after, float beforeDistance, float afterDistance, float limit) noexcept;
+
     [[nodiscard]] const std::vector<GpuVertex>& getVertices() const noexcept {
         return vertices;
     }
@@ -33,9 +36,6 @@ class PolygonMesh final {
         std::array<std::uint32_t, 4> key{};
         std::uint32_t point = 0;
     };
-
-    // The offset of a corner whose edges before and after it, with the given normals that point away from the fill, move by the given distances along them.
-    [[nodiscard]] static math::Vec2 getOffset(math::Vec2 before, math::Vec2 after, float beforeDistance, float afterDistance, float limit) noexcept;
 
     void findSharedEdges(std::span<const math::Vec2> points, std::span<const std::uint32_t> counts);
 

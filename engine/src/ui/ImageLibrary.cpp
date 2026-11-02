@@ -191,7 +191,8 @@ void ImageLibrary::requestRaster(const std::string& path, Vector& vector, int st
             return;
         }
         const graphics::Image& pixels = *result.value;
-        Raster raster{.texture = device.createTexture(pixels, {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Clamp}), .bytes = pixels.getPixels().size(), .frame = frame};
+        // A raster draws at the scale it was made for, so it needs no smaller copies.
+        Raster raster{.texture = device.createTexture(pixels, {.filter = graphics::Texture::Filter::Linear, .wrap = graphics::Texture::Wrap::Clamp, .mipmaps = false}), .bytes = pixels.getPixels().size(), .frame = frame};
         rasterBytes += raster.bytes;
         entry.rasters.insert_or_assign(step, std::move(raster));
     });

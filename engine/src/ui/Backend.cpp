@@ -995,7 +995,8 @@ void Backend::drawList(const ImDrawList& list) {
         }
 
         rendering->pushClip(clip);
-        rendering->drawMesh(*texture, meshVertices, meshIndices);
+        // ImGui fades the edges of what it draws itself.
+        rendering->drawMesh(*texture, meshVertices, meshIndices, {}, false);
         rendering->popClip();
     }
 }

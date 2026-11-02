@@ -8,12 +8,13 @@
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/text/Alignment.hpp"
+#include "haylen/text/Balance.hpp"
 #include "haylen/text/Direction.hpp"
 #include "haylen/text/FontFamily.hpp"
 
 namespace haylen::text {
 
-// How rich text lays out: the family and size of text without `[font]` or `[size]`, whether all of it is bold or italic as if inside `[b]` or `[i]`, the color, the width it wraps at, the alignment and direction of paragraphs without their own, the language of the text, the scale of every size in the markup and options, how many characters per second the reveal shows, where zero shows everything at once, and whether letters join into ligatures, which the code of `[code]` never does. The member `fonts` resolves the names of `[font]` tags and `images` the paths of `[img]` tags, which may return an empty texture while an image still loads.
+// How rich text lays out: the family and size of text without `[font]` or `[size]`, whether all of it is bold or italic as if inside `[b]` or `[i]`, the color, the width it wraps at, how wrapped lines share the words of a paragraph, the alignment and direction of paragraphs without their own, the language of the text, the scale of every size in the markup and options, how many characters per second the reveal shows, where zero shows everything at once, whether letters join into ligatures, which the code of `[code]` never does, and whether all of the text is code, which breaks its lines like the text of `[code]` in the faces it has. The member `fonts` resolves the names of `[font]` tags and `images` the paths of `[img]` tags, which may return an empty texture while an image still loads.
 struct RichTextOptions {
     std::shared_ptr<FontFamily> family;
     float size = 32.0F;
@@ -21,6 +22,7 @@ struct RichTextOptions {
     bool italic = false;
     math::Color color = math::Color::white();
     float maxWidth = 0.0F;
+    Balance balance = Balance::LastLine;
     Alignment align = Alignment::Start;
     Direction direction = Direction::Auto;
     std::string language;
@@ -29,6 +31,7 @@ struct RichTextOptions {
     float revealSpeed = 0.0F;
     bool underlineLinks = true;
     bool ligatures = true;
+    bool code = false;
     std::function<std::shared_ptr<FontFamily>(std::string_view name)> fonts;
     std::function<graphics::Texture(std::string_view path)> images;
 };

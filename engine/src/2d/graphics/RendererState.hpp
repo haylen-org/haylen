@@ -22,6 +22,7 @@
 #include "2d/graphics/LightDraw.hpp"
 #include "2d/graphics/LightInstance.hpp"
 #include "2d/graphics/LitTargets.hpp"
+#include "2d/graphics/MeshFringe.hpp"
 #include "2d/graphics/MetaballDraw.hpp"
 #include "2d/graphics/PolygonMesh.hpp"
 #include "2d/graphics/Program.hpp"
@@ -196,6 +197,7 @@ struct RendererState {
 
     StrokeBuilder strokes;
     PolygonMesh polygons;
+    MeshFringe meshFringe;
 
     // Turns the layout of every text draw into instances, reusing its batches from draw to draw.
     TextPainter painter;

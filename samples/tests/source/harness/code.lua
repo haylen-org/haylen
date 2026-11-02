@@ -1,4 +1,4 @@
--- The markup of the code card of a test: the Lua code with its keywords, strings, numbers, comments and the names of the functions it calls in colors of the active theme. Every line of the code is a paragraph whose wrapped lines hang under its start, and a line never breaks inside a string or the indentation of a line.
+-- The markup of the code card of a test: the Lua code with its keywords, strings, numbers, comments and the names of the functions it calls in colors of the active theme. Every line of the code is a paragraph whose wrapped lines hang under its start, and the monospace role lays it out as code, so a line never breaks inside a string or the indentation of a line.
 local ui = require('haylen.ui')
 
 local code = {}
@@ -11,9 +11,6 @@ code.literals = {['true'] = true, ['false'] = true, ['nil'] = true}
 
 -- The theme color roles of the kinds of tokens.
 code.roles = {keyword = 'accentText', string = 'successText', number = 'warningText', literal = 'warningText', comment = 'textMuted', call = 'informationText'}
-
--- A space that never ends a line, which keeps strings and indentation whole.
-code.joiner = '\u{A0}'
 
 -- Wrapped lines start this many columns past the indentation of their line, and a level of the hanging indent of rich text spans one and a half ems, which Space Mono fills with about two and a half columns.
 code.hangColumns = 4
@@ -29,7 +26,7 @@ function code.markup(source)
     for _, line in ipairs(code.tokenize(source)) do
         local parts = {}
         for _, token in ipairs(line.tokens) do
-            local text = code.escape(token.text, token.kind == 'string' or token.kind == 'indent')
+            local text = code.escape(token.text)
             parts[#parts + 1] = colors[token.kind] and string.format('[color=%s]%s[/color]', colors[token.kind], text) or text
         end
         local hang = (line.indent + code.hangColumns) / code.columnsPerLevel
@@ -38,13 +35,9 @@ function code.markup(source)
     return table.concat(lines)
 end
 
--- Writes the brackets of the code as the tags of rich text, and joins the spaces of a string or of the indentation so no line breaks there.
-function code.escape(text, joined)
-    text = text:gsub('[%[%]]', {['['] = '[lb]', [']'] = '[rb]'})
-    if joined then
-        text = text:gsub(' ', code.joiner)
-    end
-    return text
+-- Writes the brackets of the code as the tags of rich text.
+function code.escape(text)
+    return (text:gsub('[%[%]]', {['['] = '[lb]', [']'] = '[rb]'}))
 end
 
 -- Splits the source into lines of tokens, each with its kind, where a string or a comment that spans lines becomes a token on each of them.

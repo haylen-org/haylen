@@ -19,13 +19,13 @@ float Typography::getLineHeight(Context& context, Theme::Font font) {
     return context.getFontFamily(font)->select(context.isFontBold(font), context.isFontItalic(font), false).font->getLineHeight(context.getFontSize(font));
 }
 
-// Text takes the size of the em square of its role, and lines follow each other by the height of their fonts. Every paragraph reads in the direction of its first strong letter, while start and end line it up with the side of the UI they name.
+// Text takes the size of the em square of its role, and lines follow each other by the height of their fonts. Every paragraph reads in the direction of its first strong letter, while start and end line it up with the side of the UI they name. Text in the monospace role lays out as code.
 text::Style Typography::getStyle(Context& context, Theme::Font font, float wrapWidth, text::Alignment align) {
     const bool rightToLeft = context.isRightToLeft();
     if (align == text::Alignment::Start || align == text::Alignment::End) {
         align = (align == text::Alignment::Start) != rightToLeft ? text::Alignment::Left : text::Alignment::Right;
     }
-    return {.size = context.getFontSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = context.isFontBold(font), .italic = context.isFontItalic(font), .direction = text::Direction::Auto, .language = context.getLanguage(), .ligatures = context.hasLigatures(font)};
+    return {.size = context.getFontSize(font), .align = align, .maxWidth = wrapWidth > 0.0F ? wrapWidth : 0.0F, .lineSpacing = 1.0F, .bold = context.isFontBold(font), .italic = context.isFontItalic(font), .direction = text::Direction::Auto, .language = context.getLanguage(), .ligatures = context.hasLigatures(font), .code = font == Theme::Font::Monospace};
 }
 
 std::shared_ptr<const text::Layout> Typography::layout(Context& context, Theme::Font font, std::string_view text, const text::Style& style) {

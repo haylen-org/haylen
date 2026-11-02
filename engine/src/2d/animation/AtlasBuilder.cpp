@@ -196,7 +196,7 @@ AtlasBuilder::Packed AtlasBuilder::pack(const Options& options) const {
     if (options.texture.filter == graphics::Texture::Filter::Linear) {
         packed.image.bleed();
     }
-    if (options.texture.mipmaps) {
+    if (options.texture.hasMipmaps()) {
         packed.image.buildMipmaps();
     }
 

@@ -103,7 +103,7 @@ TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
     EXPECT_EQ(fixture.lua("local part = canvas:crop({8, 2, 4, 4}) part:setPixel(0, 0, '#000000') return part.width .. ' ' .. canvas:pixel(8, 2):toHex() .. ' ' .. graphics.decodeImage(png).height"), "4 #FF336699 4");
     EXPECT_EQ(fixture.lua("local copy = tile:clone() copy:fill('#000000') return assets.load('images/tile.png', 'image'):pixel(0, 0):toHex() .. ' ' .. copy:pixel(0, 0):toHex()"), "#FF336699 #FF000000");
     EXPECT_EQ(fixture.lua("tile:fill('#000000') return assets.load('images/tile.png', 'image'):pixel(0, 0):toHex()"), "#FF336699");
-    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(canvas, {filter = 'linear', mipmaps = true}) return t.width .. ' ' .. tostring(t.mipmaps) .. ' ' .. tostring(graphics.newTexture(2, 2).mipmaps)"), "16 true false");
+    EXPECT_EQ(fixture.lua("local t = graphics.newTexture(canvas, {filter = 'linear', mipmaps = true}) return t.width .. ' ' .. tostring(t.mipmaps) .. ' ' .. tostring(graphics.newTexture(2, 2).mipmaps) .. ' ' .. tostring(graphics.newTexture(2, 2, {filter = 'linear'}).mipmaps) .. ' ' .. tostring(graphics.newTexture(2, 2, {filter = 'linear', mipmaps = false}).mipmaps) .. ' ' .. tostring(assets.texture('images/tile.png', {filter = 'linear'}).mipmaps)"), "16 true false true false true");
     EXPECT_EQ(fixture.lua("local builder = animation2d.newAtlasBuilder() builder:add('a', canvas) builder:add('b', tile) local atlas = builder:build({trim = false}) return atlas:frame('a').source.width .. ' ' .. #atlas:frameNames() .. ' ' .. #atlas:subset('b'):frameNames()"), "16.0 2 1");
     EXPECT_EQ(fixture.lua("canvas:bleed() return canvas:pixel(15, 0).a"), "0.0");
 

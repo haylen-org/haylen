@@ -24,6 +24,10 @@ float Font::getCapHeight(float size) const noexcept {
     return metrics.capHeight * size / metrics.nativeSize;
 }
 
+float Font::getCounterWidth(float size) const noexcept {
+    return metrics.counter * size / metrics.nativeSize;
+}
+
 float Font::toDistance(float pixels, float size) const noexcept {
     if (metrics.spread <= 0.0F) {
         return 0.0F;

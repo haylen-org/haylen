@@ -123,6 +123,18 @@ TEST_F(StrokeBuilderTest, JoinsTurnsWithMitersBevelsAndArcs) {
     EXPECT_EQ(sections(), 5U);
 }
 
+// The inner corner of a sharp turn stays within its shorter segment at the outer edge of the fade too, so a needle-thin triangle of a thin or a sub-pixel stroke never folds its fade past its points into slivers that draw as dots.
+TEST_F(StrokeBuilderTest, KeepsTheFadeOfSharpTurnsWithinTheirSegments) {
+    const std::array<math::Vec2, 3> needle{math::Vec2{0.0F, 0.0F}, math::Vec2{100.0F, 1.0F}, math::Vec2{100.0F, -1.0F}};
+    for (const float width : {2.0F, 0.5F}) {
+        build(needle, {.width = width, .join = Stroke::Join::Round, .closed = true});
+        for (const GpuVertex& vertex : builder.getVertices()) {
+            EXPECT_LE(vertex.position[0], 100.0F + width * 0.5F + 1.0F) << width;
+            EXPECT_GE(vertex.position[0], -width * 0.5F - 1.0F) << width;
+        }
+    }
+}
+
 TEST_F(StrokeBuilderTest, ClosesPathsWithoutASeam) {
     const std::array<math::Vec2, 5> square{{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}, {0.0F, 0.0F}}};
     build(square, {.width = 4.0F, .closed = true});

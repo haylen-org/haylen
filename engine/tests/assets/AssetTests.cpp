@@ -67,7 +67,7 @@ TEST_F(AssetsManagerTest, LoadsAndCachesSynchronously) {
     EXPECT_THROW((void)assets.getTypeForPath("images/readme.txt"), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"filter", "linear"}, {"anisotropy", 4}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("texture", "images/red.png", {{"mipmaps", "yes"}}), std::invalid_argument);
-    EXPECT_TRUE(assets.texture("images/red.png", {.filter = graphics::Texture::Filter::Linear, .mipmaps = true}).getOptions().mipmaps);
+    EXPECT_TRUE(assets.texture("images/red.png", {.filter = graphics::Texture::Filter::Linear, .mipmaps = true}).getOptions().hasMipmaps());
     EXPECT_THROW((void)assets.load("json", "data/config.json", {{"strict", true}}), std::invalid_argument);
     EXPECT_THROW((void)assets.load("json", "data/config.json", 3), std::invalid_argument);
 }

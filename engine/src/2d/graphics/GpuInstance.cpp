@@ -25,8 +25,8 @@ std::uint8_t GpuInstance::flipBits(SpriteFlip flip) noexcept {
     return static_cast<std::uint8_t>((flip.horizontal ? 1U : 0U) | (flip.vertical ? 2U : 0U) | (flip.diagonal ? 4U : 0U));
 }
 
-std::uint8_t GpuInstance::unsignedByte(float value) noexcept {
-    return static_cast<std::uint8_t>(std::lround(std::clamp(value / kUnsignedRange, 0.0F, 1.0F) * 255.0F));
+std::uint8_t GpuInstance::unsignedByte(float value, float range) noexcept {
+    return static_cast<std::uint8_t>(std::lround(std::clamp(value / range, 0.0F, 1.0F) * 255.0F));
 }
 
 // Stores a signed value as the two's complement byte the shaders decode.
@@ -81,13 +81,13 @@ GpuInstance GpuInstance::make(const graphics::TextureResource& texture, const Sp
 
 // The outline, a positive weight and the softness shrink together into the reach their bytes hold, and the text shader shrinks them again to what the field of the glyph reaches at its size on screen.
 GpuInstance GpuInstance::makeGlyph(const graphics::TextureResource& texture, const SpriteInstance& glyph, const TextParameters& text) noexcept {
-    const float reach = std::max(text.weight, 0.0F) + text.outline + text.softness;
+    const float reach = text.weight + text.outline + text.softness;
     const float fit = reach > kMaximumReach ? kMaximumReach / reach : 1.0F;
     GpuInstance packed = make(texture, glyph);
-    packed.parameters[0] = unsignedByte(text.outline * fit);
-    packed.parameters[1] = signedByte(text.weight > 0.0F ? text.weight * fit : text.weight, kWeightScale);
+    packed.parameters[0] = unsignedByte(text.outline * fit, kUnsignedRange);
+    packed.parameters[1] = unsignedByte(text.width > 0.0F ? text.weight * fit / text.width : 0.0F, kSpreadRange);
     packed.parameters[2] = signedByte(text.skew, kSkewScale);
-    packed.parameters[3] = unsignedByte(text.softness * fit);
+    packed.parameters[3] = unsignedByte(text.softness * fit, kUnsignedRange);
     return packed;
 }
 

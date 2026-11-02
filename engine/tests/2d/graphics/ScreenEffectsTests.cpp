@@ -76,8 +76,18 @@ TEST(ScreenEffectsTest, DistortionDrawsGoIntoTheMapOfCompositedCanvases) {
     EXPECT_EQ(bent.sprites, 5U);
     EXPECT_EQ(visible, 1U);
 
-    // The distortion draws take a pass of their own, and the map shrinks twice before the composite measures its slope.
-    EXPECT_EQ(bent.passes, flat.passes + 3U);
+    // The distortion draws take a pass of their own, and the map blurs by a deviation that grows with the bend distance, through smaller sizes for a longer bend, so the bend never folds the image.
+    EXPECT_GT(bent.passes, flat.passes + 3U);
+    // clang-format off
+    const auto bend = [&](float distance) {
+        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+            Renderer& renderer = engine.getRenderer2D();
+            renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.distortion = distance}});
+            renderer.draw({.texture = texture, .order = bending});
+        }).passes;
+    };
+    // clang-format on
+    EXPECT_GT(bend(64.0F), bend(4.0F));
 
     Renderer& renderer = fixture.engine().getRenderer2D();
     renderer.beginWorld(Camera{}, {.ambientLight = math::Color::white()});

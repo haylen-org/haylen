@@ -97,7 +97,7 @@ std::unique_ptr<TrueTypeFont::Face> TrueTypeFont::open(std::vector<std::uint8_t>
     return opened;
 }
 
-Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontOptions) noexcept {
+Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontOptions) {
     int ascent = 0;
     int descent = 0;
     int lineGap = 0;
@@ -109,12 +109,14 @@ Font::Metrics TrueTypeFont::readMetrics(const Face& opened, const Options& fontO
     if (stbtt_FindGlyphIndex(&opened.info, 'H') != 0) {
         stbtt_GetCodepointBox(&opened.info, 'H', &left, &bottom, &right, &top);
     }
+    const int letterO = stbtt_FindGlyphIndex(&opened.info, 'o');
     return {
         .nativeSize = fontOptions.bakeSize,
         .ascent = static_cast<float>(ascent) * opened.scale,
         .lineHeight = static_cast<float>(ascent - descent + lineGap) * opened.scale,
         .capHeight = static_cast<float>(top) * opened.scale,
         .spread = static_cast<float>(fontOptions.spread),
+        .counter = letterO != 0 ? DistanceField::measureHole(opened.info, letterO, opened.scale) : 0.0F,
     };
 }
 

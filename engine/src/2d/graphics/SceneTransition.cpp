@@ -260,7 +260,8 @@ void SceneTransition::drawTurn(Renderer& renderer, const math::Rect& area, const
             }
         }
     }
-    renderer.drawMesh(texture, vertices, indices, kCapturedOrder);
+    // The captured scene reaches the edges of the screen, so its pieces keep hard edges.
+    renderer.drawMesh(texture, vertices, indices, kCapturedOrder, false);
 }
 
 void SceneTransition::drawRegion(Renderer& renderer, const math::Rect& area, const graphics::Texture& texture, std::span<const math::Vec2> polygon) {
@@ -275,7 +276,8 @@ void SceneTransition::drawRegion(Renderer& renderer, const math::Rect& area, con
     for (std::uint32_t corner = 2; corner < polygon.size(); ++corner) {
         indices.insert(indices.end(), {0U, corner - 1U, corner});
     }
-    renderer.drawMesh(texture, vertices, indices, kCapturedOrder);
+    // The captured scene reaches the edges of the screen, so its pieces keep hard edges.
+    renderer.drawMesh(texture, vertices, indices, kCapturedOrder, false);
 }
 
 // Tiles turn off in random order, or shrink in a wave that crosses the screen toward the direction.

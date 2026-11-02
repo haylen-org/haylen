@@ -499,14 +499,18 @@ int Graphics2DLua::drawPolyline(lua_State* L) {
     return 0;
 }
 
-// Draws triangles with `drawMesh(texture or nil, {{x, y, u, v, color}, ...}, {1, 2, 3, ...}, order)`.
+// Draws triangles with `drawMesh(texture or nil, {{x, y, u, v, color}, ...}, {1, 2, 3, ...}, options)`, whose options take `fadeEdges` and the keys of the draw order.
 int Graphics2DLua::drawMesh(lua_State* L) {
     const graphics::Texture texture = lua_isnil(L, 1) ? graphics::Texture{} : lua::Stack::read<graphics::Texture>(L, 1);
     std::vector<MeshVertex> vertices;
     std::vector<std::uint32_t> indices;
     MeshLua::readVertices(L, 2, vertices);
     MeshLua::readIndices(L, 3, indices);
-    getRenderer(L).drawMesh(texture, vertices, indices, lua::TypeConverter::readDrawOrder(L, 4));
+    bool fadeEdges = true;
+    if (lua_istable(L, 4)) {
+        lua::Table::readField(L, 4, "fadeEdges", fadeEdges);
+    }
+    getRenderer(L).drawMesh(texture, vertices, indices, lua::TypeConverter::readDrawOrder(L, 4, {kMeshFields}), fadeEdges);
     return 0;
 }
 

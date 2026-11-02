@@ -184,7 +184,7 @@ void StrokeBuilder::buildPath(std::span<const Node> path, bool closed) {
     emitJoint();
 }
 
-// The outer side of a turn takes the miter, the bevel or the arc, and the inner side meets at the corner of the offset edges, kept within the shorter segment so short segments never fold it far past their ends.
+// The outer side of a turn takes the miter, the bevel or the arc, and the inner side meets at the corner of the offset edges, kept within the shorter segment so short segments never fold it far past their ends. The bound holds for the outer edge of the fade, which reaches a pixel past the core and so past the edge of a stroke thinner than a pixel, so a sharp turn of a thin stroke never folds its fade into slivers that break into dots.
 void StrokeBuilder::addJoin(const Node& previous, const Node& node, const Node& next, float distance) {
     const math::Vec2 incoming = (node.position - previous.position).getNormalized();
     const math::Vec2 outgoing = (next.position - node.position).getNormalized();
@@ -211,7 +211,8 @@ void StrokeBuilder::addJoin(const Node& previous, const Node& node, const Node& 
     }
 
     const float shorter = std::min(math::Vec2::distance(previous.position, node.position), math::Vec2::distance(node.position, next.position));
-    const float inner = node.half > 0.0F ? std::min(miter, std::sqrt(1.0F + (shorter / node.half) * (shorter / node.half))) : miter;
+    const float reach = std::max(node.half - pixel * 0.5F, 0.0F) + pixel;
+    const float inner = std::min(miter, std::sqrt(1.0F + (shorter / reach) * (shorter / reach)));
     const bool leftInner = math::Vec2::dot(outgoing, before) > 0.0F;
     const math::Vec2 innerOffset = (leftInner ? miterDirection : -miterDirection) * inner;
     const math::Vec2 from = leftInner ? -before : before;

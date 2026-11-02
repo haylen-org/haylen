@@ -1,15 +1,18 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <optional>
 #include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 #include <stb_truetype.h>
@@ -19,6 +22,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/text/Font.hpp"
+#include "haylen/text/FontFamily.hpp"
 #include "haylen/text/TrueTypeFont.hpp"
 #include "math/HalfFloat.hpp"
 #include "support/EngineFixture.hpp"
@@ -45,6 +49,68 @@ class FontFileTest : public ::testing::Test {
         stbtt_fontinfo info{};
         EXPECT_NE(stbtt_InitFont(&info, data.data(), stbtt_GetFontOffsetForIndex(data.data(), 0)), 0);
         return info;
+    }
+
+    // Reads a distance of a field, a half float from 0 to 1.
+    [[nodiscard]] static float toFloat(std::uint16_t bits) {
+        const auto exponent = static_cast<int>(bits >> 10U);
+        const auto mantissa = static_cast<float>(bits & 0x3FFU);
+        return exponent == 0 ? std::ldexp(mantissa, -24) : std::ldexp(1.0F + mantissa / 1024.0F, exponent - 15);
+    }
+
+    // Fills the pixels of a field that the glyph covers once a synthetic bold moves it left and right by the weight, reading the field between its pixels along each row.
+    [[nodiscard]] static std::vector<bool> spread(const DistanceField& field, float weight) {
+        // clang-format off
+        const auto read = [&field](int row, float x) {
+            const float clamped = std::clamp(x, 0.0F, static_cast<float>(field.width - 1));
+            const int left = static_cast<int>(clamped);
+            const int right = std::min(left + 1, field.width - 1);
+            const float share = clamped - static_cast<float>(left);
+            const std::size_t start = static_cast<std::size_t>(row) * static_cast<std::size_t>(field.width);
+            return toFloat(field.distances[start + static_cast<std::size_t>(left)]) * (1.0F - share) + toFloat(field.distances[start + static_cast<std::size_t>(right)]) * share;
+        };
+        // clang-format on
+        std::vector<bool> filled(field.distances.size());
+        for (int row = 0; row < field.height; ++row) {
+            for (int column = 0; column < field.width; ++column) {
+                const float x = static_cast<float>(column);
+                filled[static_cast<std::size_t>(row * field.width + column)] = std::max(read(row, x - weight), read(row, x + weight)) > 0.5F;
+            }
+        }
+        return filled;
+    }
+
+    // Counts the regions of pixels that share a value, joined through their sides, and leaves out the regions that touch the border when `inner` is set, which counts the holes of a shape.
+    [[nodiscard]] static int countRegions(const std::vector<bool>& mask, int width, int height, bool value, bool inner) {
+        std::vector<bool> seen(mask.size(), false);
+        std::vector<int> pending;
+        int regions = 0;
+        for (int first = 0; first < width * height; ++first) {
+            if (seen[static_cast<std::size_t>(first)] || mask[static_cast<std::size_t>(first)] != value) {
+                continue;
+            }
+            bool touches = false;
+            pending.assign(1, first);
+            seen[static_cast<std::size_t>(first)] = true;
+            while (!pending.empty()) {
+                const int at = pending.back();
+                pending.pop_back();
+                const int x = at % width;
+                const int y = at / width;
+                touches = touches || x == 0 || y == 0 || x == width - 1 || y == height - 1;
+                for (const auto [dx, dy] : {std::pair{1, 0}, std::pair{-1, 0}, std::pair{0, 1}, std::pair{0, -1}}) {
+                    const int nx = x + dx;
+                    const int ny = y + dy;
+                    const std::size_t next = static_cast<std::size_t>(ny * width + nx);
+                    if (nx >= 0 && ny >= 0 && nx < width && ny < height && !seen[next] && mask[next] == value) {
+                        seen[next] = true;
+                        pending.push_back(ny * width + nx);
+                    }
+                }
+            }
+            regions += inner && touches ? 0 : 1;
+        }
+        return regions;
     }
 };
 
@@ -187,6 +253,27 @@ TEST(FontTest, FailsAgainForAGlyphNoAtlasHolds) {
     EXPECT_THROW(text::TrueTypeFont(device, bytes, {.bakeSize = static_cast<float>(limit) * 2.0F}), std::invalid_argument);
     EXPECT_THROW(text::TrueTypeFont(device, bytes, {.spread = -1}), std::invalid_argument);
     EXPECT_THROW(text::TrueTypeFont(device, bytes, {.atlasSize = 0}), std::invalid_argument);
+}
+
+// A synthetic bold spreads strokes along the baseline by at most a quarter of the counter of the letter o, so a heavy face keeps the dot of its i apart from the stem and the counter of its o open, while a face with wide counters takes the whole weight.
+TEST_F(FontFileTest, KeepsTheHolesOfLettersInSyntheticBold) {
+    test::EngineFixture fixture;
+    const std::vector<std::uint8_t> data = read("lilita-one-regular.ttf");
+    const auto heavy = std::make_shared<FontFamily>(FontFamily::Faces{.regular = std::make_shared<TrueTypeFont>(fixture.engine().getGraphics(), data)});
+    const float weight = heavy->layout("o", {.size = 48.0F, .bold = true})->looks[0].weight;
+    EXPECT_GT(weight, 0.0F);
+    EXPECT_LT(weight, 48.0F * 0.03F);
+    const auto light = std::make_shared<FontFamily>(FontFamily::Faces{.regular = fixture.engine().getDefaultFont()});
+    EXPECT_FLOAT_EQ(light->layout("o", {.size = 48.0F, .bold = true})->looks[0].weight, 48.0F * 0.03F);
+
+    // The fonts bake at 48 pixels, so a pixel of the field is a pixel of the text at that size.
+    const stbtt_fontinfo info = open(data);
+    const float scale = stbtt_ScaleForMappingEmToPixels(&info, 48.0F);
+    const std::optional<DistanceField> dotted = DistanceField::build(info, stbtt_FindGlyphIndex(&info, 'i'), scale, 8);
+    const std::optional<DistanceField> round = DistanceField::build(info, stbtt_FindGlyphIndex(&info, 'o'), scale, 8);
+    ASSERT_TRUE(dotted && round);
+    EXPECT_EQ(countRegions(spread(*dotted, weight), dotted->width, dotted->height, true, false), 2);
+    EXPECT_EQ(countRegions(spread(*round, weight), round->width, round->height, false, true), 1);
 }
 
 // The table directory of a font, and every table it lists, must lie inside the file before stb_truetype reads them.

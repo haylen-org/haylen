@@ -51,7 +51,7 @@ vec4 lit_scene(vec2 point) {
     return scene;
 }
 
-// The image before bloom and blur: pixelated into blocks of `shape.x` units, moved down the slope of the coverage of the distortion draws by up to `view.z` units, and split into its colors by `view.w` units toward the corners.
+// The image before bloom and blur: pixelated into blocks of `shape.x` units, moved down the slope of the blurred coverage of the distortion draws by up to `view.z` units, and split into its colors by `view.w` units toward the corners.
 vec4 first_stage() {
     vec2 point = uv;
     if (shape.x > 0.0) {
@@ -59,13 +59,13 @@ vec4 first_stage() {
         point = (floor(point * cells) + 0.5) / cells;
     }
     if (flags.w > 0.5) {
-        // The slope of the coverage over 8 units, which is 1 where a draw goes from nothing to full coverage within that distance.
-        vec2 reach = 4.0 / view.xy;
+        // The slope of the coverage across the deviation `shape.z` of its blur on each side, which spans 0.6827 of the step where a draw goes from nothing to full coverage, so the bend reaches `view.z` units at that edge and fades smoothly around it.
+        vec2 reach = max(shape.z, 1.0) / view.xy;
         float right = texture(sampler2D(distortion_texture, composite_sampler), source_point(point + vec2(reach.x, 0.0))).a;
         float left = texture(sampler2D(distortion_texture, composite_sampler), source_point(point - vec2(reach.x, 0.0))).a;
         float below = texture(sampler2D(distortion_texture, composite_sampler), source_point(point + vec2(0.0, reach.y))).a;
         float above = texture(sampler2D(distortion_texture, composite_sampler), source_point(point - vec2(0.0, reach.y))).a;
-        point -= vec2(right - left, below - above) * view.z / view.xy;
+        point -= vec2(right - left, below - above) * view.z / (0.6827 * view.xy);
     }
     if (view.w <= 0.0) {
         return lit_scene(point);

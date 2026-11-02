@@ -81,6 +81,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/graphics/PixelCanvas.cpp
   src/2d/graphics/PixelCanvasLua.cpp
   src/2d/graphics/ParallaxLua.cpp
+  src/2d/graphics/MeshFringe.cpp
   src/2d/graphics/Path.cpp
   src/2d/graphics/PathLua.cpp
   src/2d/graphics/PathTessellation.cpp

@@ -49,6 +49,7 @@ class TextPainterTest : public ::testing::Test {
 
 } // namespace
 
+// A synthetic bold spreads the glyph by a share of its quad along the baseline instead of moving the edge of its field, so the gaps above and below its strokes stay as the font draws them.
 TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
     text::RichText styled = make("[b]b[/b][i]i[/i][outline=2 color=red]o[/outline]", {.size = 32.0F});
     const std::vector<TextPainter::Batch> batches = paint(styled);
@@ -58,7 +59,8 @@ TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
 
     const GpuInstance& bold = batches[0].instances[1];
     const text::Font& font = *styled.getLayout().looks[0].font;
-    EXPECT_NEAR(static_cast<float>(signedByte(bold.parameters[1])) / 256.0F, font.toDistance(32.0F * 0.03F, 32.0F), 1.0F / 256.0F);
+    const text::Layout::Glyph& widened = styled.getLayout().glyphs[0];
+    EXPECT_NEAR(static_cast<float>(bold.parameters[1]) / 255.0F * 0.25F, 32.0F * 0.03F / widened.size.x, 0.25F / 255.0F);
     EXPECT_EQ(bold.parameters[2], 0U);
     EXPECT_EQ(bold.parameters[0], 0U);
 
@@ -143,9 +145,11 @@ TEST_F(TextPainterTest, DrawsShadowsAndGlowsUnderTheGlyphs) {
     const GpuInstance& glow = batches[1].instances[0];
     const GpuInstance& shadow = batches[1].instances[1];
     const GpuInstance& glyph = batches[1].instances[2];
-    EXPECT_GT(signedByte(glow.parameters[1]), 0);
+    EXPECT_GT(glow.parameters[0], 0U);
+    EXPECT_EQ(glow.parameters[1], 0U);
     EXPECT_GT(glow.parameters[3], 0U);
-    EXPECT_EQ(glow.color, math::Color::fromHex(0xFFFF00FFU).toRgba8());
+    EXPECT_EQ(glow.color >> 24U, 0U);
+    EXPECT_EQ(glow.flash, math::Color::fromHex(0xFFFF00FFU).toRgba8());
     EXPECT_GT(shadow.parameters[3], 0U);
     EXPECT_FLOAT_EQ(shadow.position[0], glyph.position[0] + 3.0F);
     EXPECT_EQ(glyph.parameters[3], 0U);

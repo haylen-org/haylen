@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <fstream>
 #include <iterator>
@@ -246,7 +247,7 @@ TEST_F(ShapingTest, BreaksLinesByTheRulesOfEachScript) {
     }
 }
 
-// A hyphen-minus inside a name, such as an identifier, a file name or a date, never ends a line, while a hyphen after a space still may.
+// A hyphen-minus inside a name, such as an identifier, a file name or a date, ends no line the name fits on, while a hyphen after a space still may.
 TEST_F(ShapingTest, KeepsHyphenatedNamesOnOneLine) {
     const std::u32string text = U"Open native-sample and 2026-06-21 now";
     const Layout& lines = lay("Open native-sample and 2026-06-21 now", {.size = 32.0F, .maxWidth = 260.0F});
@@ -255,6 +256,93 @@ TEST_F(ShapingTest, KeepsHyphenatedNamesOnOneLine) {
         const std::size_t first = lines.characters[lines.lines[index].firstCharacter].begin;
         EXPECT_EQ(text[first - 1], U' ') << index;
     }
+}
+
+// A path that fits on a line moves to the next line whole instead of breaking after one of its slashes, and a path wider than a line breaks after the last slash that fits.
+TEST_F(ShapingTest, KeepsPathsWholeWhileTheyFit) {
+    const float path = lay("levels/forest/map.json").size.x;
+    const float sentence = lay("Load levels/forest/map.json").size.x;
+    ASSERT_GT(sentence, path + 8.0F);
+    const std::u32string text = U"Load levels/forest/map.json first";
+    const Layout& lines = lay("Load levels/forest/map.json first", {.size = 32.0F, .maxWidth = path + 4.0F});
+    ASSERT_GT(lines.lines.size(), 1U);
+    for (std::size_t index = 1; index < lines.lines.size(); ++index) {
+        const std::size_t first = lines.characters[lines.lines[index].firstCharacter].begin;
+        EXPECT_EQ(text[first - 1], U' ') << index;
+    }
+
+    const std::u32string longPath = U"levels/forest/caves/deep/map.json";
+    const Layout& parts = lay("levels/forest/caves/deep/map.json", {.size = 32.0F, .maxWidth = lay("levels/forest/caves/").size.x + 4.0F});
+    ASSERT_GT(parts.lines.size(), 1U);
+    for (std::size_t index = 1; index < parts.lines.size(); ++index) {
+        const std::size_t first = parts.characters[parts.lines[index].firstCharacter].begin;
+        EXPECT_EQ(longPath[first - 1], U'/') << index;
+    }
+    EXPECT_EQ(parts.characters[parts.lines[1].firstCharacter].begin, 20U);
+}
+
+// Code breaks only between its tokens: never inside a string that fits on a line, whatever its spaces and slashes, and never after the indentation of a line, while the apostrophe of a word in a comment opens no string.
+TEST_F(ShapingTest, BreaksCodeOnlyBetweenTokens) {
+    // clang-format off
+    const auto breaksInside = [](const Layout& layout) {
+        return std::ranges::any_of(layout.lines, [](const Layout::Line& line) { return line.begin > 14U && line.begin <= 36U; });
+    };
+    // clang-format on
+    const std::string_view source = "local path = 'levels/forest map.json'";
+    const float width = lay("local path = 'levels/forest").size.x + 4.0F;
+    EXPECT_TRUE(breaksInside(lay(source, {.size = 32.0F, .maxWidth = width, .balance = Balance::None})));
+    const Layout& code = lay(source, {.size = 32.0F, .maxWidth = width, .balance = Balance::None, .code = true});
+    EXPECT_EQ(code.lines.size(), 2U);
+    EXPECT_FALSE(breaksInside(code));
+
+    const std::shared_ptr<RichTextRegistry> registry = fixture.engine().getPlugin<plugins::TextPlugin>().getRegistry();
+    RichText spanned("[code]local path = 'levels/forest map.json'[/code]", {.family = family, .size = 32.0F, .maxWidth = width, .balance = Balance::None}, registry);
+    RichText whole("local path = 'levels/forest map.json'", {.family = family, .size = 32.0F, .maxWidth = width, .balance = Balance::None, .code = true}, registry);
+    EXPECT_FALSE(breaksInside(spanned.getLayout()));
+    EXPECT_FALSE(breaksInside(whole.getLayout()));
+
+    const Layout& indented = lay("        value = 1", {.size = 32.0F, .maxWidth = lay("        val").size.x, .code = true});
+    EXPECT_GT(indented.lines.front().box.width, 0.0F);
+    const Layout& comment = lay("x = 1 -- the player's best score", {.size = 32.0F, .maxWidth = lay("x = 1 -- the player's").size.x + 4.0F, .code = true});
+    ASSERT_EQ(comment.lines.size(), 2U);
+    EXPECT_EQ(comment.lines[1].begin, 22U);
+}
+
+// The last line of a paragraph, and the last line before a line break, takes the last word of the line before it rather than hold one word alone, while text without balance fills every line as far as it goes and text that balances all its lines evens their widths.
+TEST_F(ShapingTest, BalancesTheLinesOfParagraphs) {
+    const std::string_view source = "one two three four five six seven";
+    const float width = lay("one two three four five six").size.x + 4.0F;
+    // clang-format off
+    const auto widest = [](const Layout& layout) {
+        return std::ranges::max(layout.lines, {}, [](const Layout::Line& line) { return line.box.width; }).box.width;
+    };
+    // clang-format on
+    const Layout& greedy = lay(source, {.size = 32.0F, .maxWidth = width, .balance = Balance::None});
+    ASSERT_EQ(greedy.lines.size(), 2U);
+    EXPECT_EQ(greedy.lines[1].begin, 28U);
+    const float greedyWidth = widest(greedy);
+
+    const Layout& last = lay(source, {.size = 32.0F, .maxWidth = width});
+    ASSERT_EQ(last.lines.size(), 2U);
+    EXPECT_EQ(last.lines[1].begin, 24U);
+    const float lastWidth = widest(last);
+    const float lastSpread = std::fabs(last.lines[0].box.width - last.lines[1].box.width);
+    EXPECT_LT(lastWidth, greedyWidth);
+
+    const Layout& even = lay(source, {.size = 32.0F, .maxWidth = width, .balance = Balance::AllLines});
+    ASSERT_EQ(even.lines.size(), 2U);
+    EXPECT_LT(std::fabs(even.lines[0].box.width - even.lines[1].box.width), lastSpread);
+    EXPECT_LT(widest(even), lastWidth);
+
+    // A last word too wide to share its line stays alone.
+    const Layout& alone = lay("one two three four five six onetwothreefourfivesix", {.size = 32.0F, .maxWidth = width});
+    ASSERT_EQ(alone.lines.size(), 2U);
+    EXPECT_EQ(alone.lines[1].begin, 28U);
+
+    const std::shared_ptr<RichTextRegistry> registry = fixture.engine().getPlugin<plugins::TextPlugin>().getRegistry();
+    RichText broken("one two three four five six seven[br]eight", {.family = family, .size = 32.0F, .maxWidth = width}, registry);
+    ASSERT_EQ(broken.getLayout().lines.size(), 3U);
+    EXPECT_EQ(broken.getLayout().lines[1].begin, 24U);
 }
 
 // Styles apply across a change of direction, and backgrounds and lines split where it changes so each grows with the reveal from its own start.

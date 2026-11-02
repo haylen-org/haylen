@@ -102,7 +102,7 @@ graphics::Texture::Options Manager::textureOptionsFromJson(const core::Json& opt
 }
 
 core::Json Manager::textureOptionsToJson(graphics::Texture::Options options) {
-    return {{"filter", graphics::Texture::filterName(options.filter)}, {"wrap", graphics::Texture::wrapName(options.wrap)}, {"mipmaps", options.mipmaps}};
+    return {{"filter", graphics::Texture::filterName(options.filter)}, {"wrap", graphics::Texture::wrapName(options.wrap)}, {"mipmaps", options.hasMipmaps()}};
 }
 
 Manager::Manager(io::Package& contentPackage, core::JobSystem& jobSystem, graphics::Device& graphicsDevice, core::EventBus& eventBus) : package(contentPackage), jobs(jobSystem), device(graphicsDevice), publisher(std::make_shared<Publisher>(eventBus)) {

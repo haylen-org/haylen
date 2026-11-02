@@ -122,15 +122,13 @@ LitTargets& FrameSubmitter::getLitTargets(std::size_t index, math::Vec2 size, co
     }
     if (canvas.distorted && !targets.distortion.isValid()) {
         targets.distortion = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Linear});
-        targets.distortionField[0] = state.device.createRenderTarget(std::max(1, width / 2), std::max(1, height / 2), {.filter = graphics::Texture::Filter::Linear});
-        targets.distortionField[1] = state.device.createRenderTarget(std::max(1, width / 4), std::max(1, height / 4), {.filter = graphics::Texture::Filter::Linear});
     }
     if (canvas.backdrop && !targets.backdrop.isValid()) {
         targets.backdrop = state.device.createRenderTarget(width, height, {.filter = graphics::Texture::Filter::Nearest});
     }
 
-    // Bloom and blur start at half the size, which their filters read with linear filtering, and their chains grow the smaller sizes they need when they blur.
-    for (auto [used, chain] : {std::pair{canvas.hasBloom(), &targets.bloom}, std::pair{canvas.hasBlur(), &targets.blur}}) {
+    // The blur of the distortion map, bloom and blur start at half the size, which their filters read with linear filtering, and their chains grow the smaller sizes they need when they blur.
+    for (auto [used, chain] : {std::pair{canvas.distorted, &targets.distortionBlur}, std::pair{canvas.hasBloom(), &targets.bloom}, std::pair{canvas.hasBlur(), &targets.blur}}) {
         if (used && chain->empty()) {
             growChain(*chain, 1, width, height);
         }
@@ -401,13 +399,13 @@ void FrameSubmitter::renderCanvasOffscreen(Canvas& canvas) {
     LitTargets& targets = state.litTargets[canvas.litIndex];
     const math::Rect full{0.0F, 0.0F, static_cast<float>(targets.scene.getWidth()), static_cast<float>(targets.scene.getHeight())};
     const math::Color clear = canvas.options.clear.value_or(canvas.kind == Canvas::Kind::Target ? math::Color::transparent() : state.clearColor).getPremultiplied();
-    // The distortion map shrinks twice, so the slope the composite measures across 8 units averages the coverage of every texel there, and a texture that a distortion draw shrinks far without mipmaps bends the image smoothly instead of scattering its pixels.
+    // The distortion map blurs by a deviation that grows with the bend distance, so the slope the composite bends the image along stays smooth and never folds the image into copies of itself, whatever the sharp edges of the textures of the distortion draws.
     if (canvas.distortEnd > canvas.distortBegin) {
+        const PostProcess& post = canvas.options.postProcess ? *canvas.options.postProcess : kNoPostProcess;
         beginOffscreenPass(targets.distortion, math::Color::transparent());
         drawCommands(canvas, canvas.distortBegin, canvas.distortEnd, graphics::PassTarget::Offscreen, full);
         endPass();
-        filter(targets.distortion, targets.distortionField[0], -1.0F, {});
-        filter(targets.distortionField[0], targets.distortionField[1], -1.0F, {});
+        blurInto(canvas, targets.distortion, targets.distortionBlur, -1.0F, post.distortion * kBendDeviation / kBlurDeviation);
     }
     if (canvas.isLit()) {
         beginLitPass(targets, clear);
@@ -608,7 +606,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
     bindings.textures[RendererState::kCompositeScene] = viewOf(image);
     bindings.textures[RendererState::kCompositeLight] = viewOf(lit ? targets.light : image);
     bindings.textures[RendererState::kCompositeEmission] = viewOf(lit ? targets.emission : image);
-    bindings.textures[RendererState::kCompositeDistortion] = viewOf(distorts ? targets.distortionField[1] : image);
+    bindings.textures[RendererState::kCompositeDistortion] = viewOf(distorts ? targets.distortionBlur.front()[0] : image);
     bindings.textures[RendererState::kCompositeBloom] = viewOf(blooms ? targets.bloom.front()[0] : image);
     bindings.textures[RendererState::kCompositeLut] = grades ? post.colorLut.getResource()->image : viewOf(image);
     bindings.samplers[0] = state.device.getState().getSampler({.filter = graphics::Texture::Filter::Linear});
@@ -623,7 +621,7 @@ void FrameSubmitter::composite(const Canvas& canvas, graphics::PassTarget pass, 
         .vignette = {post.vignetteStrength, post.vignetteRadius, post.vignetteSoftness, blooms ? post.bloomStrength : 0.0F},
         .flags = {lit ? 1.0F : 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, stageFlag, distorts ? 1.0F : 0.0F},
         .view = {canvas.viewSize.x, canvas.viewSize.y, post.distortion, post.chromaticAberration},
-        .shape = {post.pixelate, grades ? post.colorLut.getSize().y : 0.0F, 0.0F, 0.0F},
+        .shape = {post.pixelate, grades ? post.colorLut.getSize().y : 0.0F, distorts ? post.distortion * kBendDeviation : 0.0F, 0.0F},
         .visionRed = {vision[0][0], vision[0][1], vision[0][2], 0.0F},
         .visionGreen = {vision[1][0], vision[1][1], vision[1][2], 0.0F},
         .visionBlue = {vision[2][0], vision[2][1], vision[2][2], 0.0F},

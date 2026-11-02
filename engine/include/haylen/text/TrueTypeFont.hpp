@@ -64,7 +64,7 @@ class TrueTypeFont final : public Font {
     [[nodiscard]] static const Options& validate(const Options& value, const graphics::Device& graphicsDevice);
     [[nodiscard]] static bool hasTables(std::span<const std::uint8_t> ttf, std::size_t start) noexcept;
     [[nodiscard]] static std::unique_ptr<Face> open(std::vector<std::uint8_t> ttf, const Options& fontOptions);
-    [[nodiscard]] static Metrics readMetrics(const Face& opened, const Options& fontOptions) noexcept;
+    [[nodiscard]] static Metrics readMetrics(const Face& opened, const Options& fontOptions);
 
     [[nodiscard]] Glyph rasterize(std::uint32_t index);
     void grow();

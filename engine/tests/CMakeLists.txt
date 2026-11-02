@@ -11,6 +11,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/Graphics2DLuaTests.cpp
   2d/graphics/GpuInstanceTests.cpp
   2d/graphics/GroupTests.cpp
+  2d/graphics/MeshFringeTests.cpp
   2d/graphics/NineSliceTests.cpp
   2d/graphics/StrokeBuilderTests.cpp
   2d/graphics/SceneTransitionTests.cpp

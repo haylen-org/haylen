@@ -122,7 +122,8 @@ Renderer::Renderer(graphics::Device& device, core::JobSystem& jobs) : state(std:
     state->lightFormat = capabilities.renderFormats[halfFloat] && capabilities.blendableFormats[halfFloat] ? gpu::Device::PixelFormat::Rgba16Float : device.getState().offscreenFormat;
 
     state->light = device.createTexture(graphics::Image(RendererState::kLightTextureSize, RendererState::kLightTextureSize, radialFalloff(RendererState::kLightTextureSize)), {.filter = graphics::Texture::Filter::Linear});
-    state->metaball = device.createTexture(graphics::Image(RendererState::kMetaballTextureSize, RendererState::kMetaballTextureSize, metaballKernel(RendererState::kMetaballTextureSize)), {.filter = graphics::Texture::Filter::Linear});
+    // The metaball kernel keeps its exact values at every size of a splat, which the threshold of the field depends on.
+    state->metaball = device.createTexture(graphics::Image(RendererState::kMetaballTextureSize, RendererState::kMetaballTextureSize, metaballKernel(RendererState::kMetaballTextureSize)), {.filter = graphics::Texture::Filter::Linear, .mipmaps = false});
 }
 
 // The programs of the packages go to the device graveyard with the packages, and the objects of the renderer go at once.
@@ -475,21 +476,21 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
     painter.clear();
 }
 
-void Renderer::drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order) {
+void Renderer::drawMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, bool fadeEdges) {
     for (const std::uint32_t index : indices) {
         if (index >= vertices.size()) {
             throw std::out_of_range("Mesh index refers to a vertex that does not exist.");
         }
     }
-    addMesh(texture, vertices, indices, order, nullptr);
+    addMesh(texture, vertices, indices, order, nullptr, fadeEdges);
 }
 
-void Renderer::drawMesh(const Mesh& mesh, const DrawOrder& order, const math::Transform2D& transform) {
-    addMesh(mesh.getTexture(), mesh.getVertices(), mesh.getIndices(), order, &transform);
+void Renderer::drawMesh(const Mesh& mesh, const DrawOrder& order, const math::Transform2D& transform, bool fadeEdges) {
+    addMesh(mesh.getTexture(), mesh.getVertices(), mesh.getIndices(), order, &transform, fadeEdges);
 }
 
 // Render targets of GPU devices that start at the bottom row are flipped, like sprites flip them, so meshes sample them upright.
-void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform) {
+void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVertex> vertices, std::span<const std::uint32_t> indices, const DrawOrder& order, const math::Transform2D* transform, bool fadeEdges) {
     if (!state->accepts(order)) {
         return;
     }
@@ -501,7 +502,12 @@ void Renderer::addMesh(const graphics::Texture& texture, std::span<const MeshVer
         const math::Vec2 position = transform != nullptr ? transform->apply(vertex.position) : vertex.position;
         packed.push_back({{position.x, position.y}, {vertex.uv.x, flipped ? 1.0F - vertex.uv.y : vertex.uv.y}, vertex.color.toRgba8()});
     }
-    state->addMesh(used, packed, indices, order);
+    if (!fadeEdges) {
+        state->addMesh(used, packed, indices, order);
+        return;
+    }
+    state->meshFringe.build(packed, indices, state->getPixelSize());
+    state->addMesh(used, state->meshFringe.getVertices(), state->meshFringe.getIndices(), order);
 }
 
 void Renderer::drawStroke(std::span<const math::Vec2> points, const Stroke& stroke, const DrawOrder& order) {

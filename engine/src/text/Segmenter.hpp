@@ -9,9 +9,10 @@ namespace haylen::text {
 // Splits text into the pieces layout works with, by the rules of Unicode: the scripts of its runs, its grapheme clusters and the places where a line may break.
 class Segmenter final {
   public:
-    // What a line may do after a code point.
+    // What a line may do after a code point. A line takes an overflow break only when the word around it is wider than a whole line, such as after a slash of a path, so a name stays whole while it fits.
     enum class Break : std::uint8_t {
         Never,
+        Overflow,
         Allowed,
         Mandatory,
     };
@@ -22,8 +23,11 @@ class Segmenter final {
     // Returns whether a grapheme cluster, a letter with its marks or an emoji sequence, starts at every code point.
     [[nodiscard]] static std::vector<bool> getGraphemeStarts(std::u32string_view text);
 
-    // Returns whether a line may break after every code point by the Unicode line breaking rules, tailored to the language when it has rules of its own, such as Japanese and Chinese, between the phrases of Thai, and never after a hyphen-minus inside a name.
+    // Returns whether a line may break after every code point by the Unicode line breaking rules, tailored to the language when it has rules of its own, such as Japanese and Chinese, and between the phrases of Thai. A slash, and a hyphen-minus inside a name, give only overflow breaks, so paths, addresses, identifiers and dates break at their joints only when they are wider than a line.
     [[nodiscard]] static std::vector<Break> getLineBreaks(std::u32string_view text, std::string_view language);
+
+    // Tailors the breaks of a run of code from `begin` to `end`, which breaks only between its tokens: a string, from a quote to the same quote, gives only overflow breaks, and the indentation of a line never ends it.
+    static void keepCode(std::u32string_view text, std::size_t begin, std::size_t end, std::vector<Break>& found);
 
     [[nodiscard]] static bool isSpace(char32_t codePoint) noexcept;
 
@@ -40,9 +44,10 @@ class Segmenter final {
     [[nodiscard]] static char32_t getMirror(char32_t codePoint) noexcept;
 
   private:
-    static void keepHyphenatedNames(std::u32string_view text, std::vector<Break>& found);
+    static void keepNames(std::u32string_view text, std::vector<Break>& found);
     static void addThaiPhrases(std::u32string_view text, std::vector<Break>& found);
     [[nodiscard]] static bool isLetterOrDigit(char32_t codePoint) noexcept;
+    [[nodiscard]] static bool isQuote(char32_t codePoint) noexcept;
 };
 
 } // namespace haylen::text

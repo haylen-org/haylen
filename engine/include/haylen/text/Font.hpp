@@ -83,17 +83,21 @@ class Font {
     // The height of the capital H above the baseline, or the ascent of a font without one, which centers a word of capitals on a line or a button.
     [[nodiscard]] float getCapHeight(float size) const noexcept;
 
+    // The width of the counter of the letter o across its middle at a text size, which bounds how far a synthetic bold spreads the strokes of the font, or 0 for a font without one.
+    [[nodiscard]] float getCounterWidth(float size) const noexcept;
+
     // Converts a length in pixels at a text size to the distance field units the text shader reads, where 0.5 spans the spread of the field. Fonts without a distance field convert everything to zero.
     [[nodiscard]] float toDistance(float pixels, float size) const noexcept;
 
   protected:
-    // Line metrics at the native size, with the height of the capital H above the baseline, or the ascent of a font without one. The spread is the reach of the distance field in native pixels, zero for a font without one.
+    // Line metrics at the native size, with the height of the capital H above the baseline, or the ascent of a font without one. The spread is the reach of the distance field in native pixels, zero for a font without one, and the counter is the width of the counter of the letter o across its middle in native pixels, zero for a font without one.
     struct Metrics {
         float nativeSize = 0.0F;
         float ascent = 0.0F;
         float lineHeight = 0.0F;
         float capHeight = 0.0F;
         float spread = 0.0F;
+        float counter = 0.0F;
     };
 
     explicit Font(Metrics fontMetrics);
