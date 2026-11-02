@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -25,11 +26,12 @@ class TestPortHost final : public NativeHost {
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
     void setMouseLocked(bool value) override;
-    void setClipboard(std::string_view value) override;
+    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
+    [[nodiscard]] bool prepareGpuDevice() override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;

@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <exception>
+#include <memory>
 #include <utility>
 
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -13,6 +14,7 @@
 #include "haylen/input/Input.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/System.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/text/Font.hpp"
 #include "plugins/HotReloadPlugin.hpp"
@@ -134,8 +136,25 @@ math::Vec2 ErrorScreen::toCanvas(math::Vec2 framebufferPoint) const {
 }
 
 void ErrorScreen::copyReport() {
-    engine.getWindow().setClipboard(report);
-    copied = true;
+    // clang-format off
+    engine.getSystem().setClipboard(report, [state = std::weak_ptr<CopyState>(copyState)](bool written) {
+        if (const std::shared_ptr<CopyState> alive = state.lock()) {
+            *alive = written ? CopyState::Copied : CopyState::Refused;
+        }
+    });
+    // clang-format on
+}
+
+std::string_view ErrorScreen::getCopyLabel() const noexcept {
+    switch (*copyState) {
+    case CopyState::Copied:
+        return "Report copied";
+    case CopyState::Refused:
+        return "Copy refused";
+    case CopyState::Idle:
+        break;
+    }
+    return "Copy report";
 }
 
 void ErrorScreen::restartApp() {
@@ -486,7 +505,7 @@ math::Rect ErrorScreen::drawAction(graphics2d::Renderer& renderer, text::Font& f
 float ErrorScreen::drawFooter(graphics2d::Renderer& renderer, text::Font& font, const math::Rect& area, float unit) {
     const float gap = kGap * unit;
     const float buttonsTop = area.getBottom() - kButtonHeight * unit;
-    copyButton = drawAction(renderer, font, {area.x, buttonsTop}, Action::Copy, "C", copied ? "Report copied" : "Copy report", unit);
+    copyButton = drawAction(renderer, font, {area.x, buttonsTop}, Action::Copy, "C", getCopyLabel(), unit);
     restartButton = drawAction(renderer, font, {copyButton.getRight() + gap, buttonsTop}, Action::Restart, "R", "Restart app", unit);
     backButton = engine.isRecoverable() ? drawAction(renderer, font, {restartButton.getRight() + gap, buttonsTop}, Action::Back, "Esc", "Back to the app", unit) : math::Rect{};
     const float closeLeft = (engine.isRecoverable() ? backButton.getRight() : restartButton.getRight()) + gap;

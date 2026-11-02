@@ -774,6 +774,15 @@ WEB_WAKE_LOCK_STEPS = {
     "missing": ["ready", "warned", "runs on"],
 }
 WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
+# The error screen check of the web: an app that stops with an error at a key, whose page a headless browser opens three times. One lets the page write the clipboard, where the copy of the error screen puts its report, and the app draws again after the key R and after a click on the restart button. The others refuse the write or lack the clipboard API, which warns in the log, leaves the clipboard alone and still restarts the app.
+WEB_ERROR_SCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-error-screen"
+WEB_ERROR_SCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "error-screen-check.mjs"
+WEB_ERROR_SCREEN_STEPS = {
+    "granted": ["ready", "stopped", "copied", "restarted by the key", "stopped again", "restarted by a click"],
+    "refused": ["ready", "stopped", "refused", "restarted by the key"],
+    "missing": ["ready", "stopped", "refused", "restarted by the key"],
+}
+WEB_ERROR_SCREEN_BROWSERS = {"granted": "lets the page write the clipboard", "refused": "refuses the clipboard", "missing": "has no clipboard API"}
 CHROME_PATHS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
 
 
@@ -792,12 +801,13 @@ def free_port() -> int:
 
 
 def command_test_web(args: argparse.Namespace) -> None:
-    """Runs the wake lock check and the memory check of the web in headless browsers."""
+    """Runs the error screen check, the wake lock check and the memory check of the web in headless browsers."""
     args.config = "Release"
     args.engine_config = "Release"
     args.previous_release = None
     target = RUN_TARGETS["web"]
     ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
+    check_web_error_screen(args, target)
     check_web_wake_lock(args, target)
     check_web_memory_pages(args, target)
 
@@ -810,6 +820,22 @@ def serve_site(site: Path) -> LocalServer:
     return server
 
 
+def check_web_error_screen(args: argparse.Namespace, target) -> None:
+    """Builds the site of the error screen check app, opens it in a headless browser that lets the page write the clipboard, one that refuses it and one without its API, and stops when a page misses a step or reports an error."""
+    site = target.prepare(App(WEB_ERROR_SCREEN_APP, target.plugins), args)
+    server = serve_site(site)
+    try:
+        for mode, steps in WEB_ERROR_SCREEN_STEPS.items():
+            with headless_browser([], "the error screen check of the web") as debugging:
+                terminal.step(f"Running the error screen check of the web in a headless browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}")
+                report = json.loads(capture([emsdk_node(), WEB_ERROR_SCREEN_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", mode]))
+            check_web_page_steps(report, steps, f"The page of the error screen check in a browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}")
+    finally:
+        server.shutdown()
+        server.server_close()
+    terminal.success("The error screen put its report on the clipboard where the browser allowed it, warned where the browser refused it or lacked it, and restarted the app from the key R and from its button, which drew again.")
+
+
 def check_web_wake_lock(args: argparse.Namespace, target) -> None:
     """Builds the site of the wake lock check app, opens it in a headless browser that grants the wake lock, one that refuses it and one without its API, and stops when a page misses a step or reports an error."""
     site = target.prepare(App(WEB_WAKE_LOCK_APP, target.plugins), args)
@@ -819,23 +845,23 @@ def check_web_wake_lock(args: argparse.Namespace, target) -> None:
             with headless_browser([], "the wake lock check of the web") as debugging:
                 terminal.step(f"Running the wake lock check of the web in a headless browser that {WEB_WAKE_LOCK_BROWSERS[mode]}")
                 report = json.loads(capture([emsdk_node(), WEB_WAKE_LOCK_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", mode]))
-            check_web_wake_lock_report(report, mode, steps)
+            check_web_page_steps(report, steps, f"The page of the wake lock check in a browser that {WEB_WAKE_LOCK_BROWSERS[mode]}")
     finally:
         server.shutdown()
         server.server_close()
     terminal.success("The page took the wake lock while the app kept the screen on, gave it up when it hid, took it again when it showed and released it when the app let the screen sleep, and a browser that refused it or lacked it only warned.")
 
 
-def check_web_wake_lock_report(report: dict, mode: str, steps: list[str]) -> None:
-    """Stops on a page of the wake lock check that reported an error or missed one of the steps of its mode, with the last lines of its log."""
+def check_web_page_steps(report: dict, steps: list[str], page: str) -> None:
+    """Stops on a page of a check of the web that reported an error or missed one of the steps of its mode, with the last lines of its log."""
     reached = [entry["name"] for entry in report["steps"] if entry["reached"]]
     if not report["failure"] and reached == steps:
         return
     log = "\n".join(report["log"][-20:])
     if report["failure"]:
-        raise BuildError(f'The page of the wake lock check in a browser that {WEB_WAKE_LOCK_BROWSERS[mode]} reported an error: {report["failure"]} The last lines of its log follow.\n{log}')
+        raise BuildError(f'{page} reported an error: {report["failure"]} The last lines of its log follow.\n{log}')
     missed = next(step for step in steps if step not in reached)
-    raise BuildError(f'The page of the wake lock check in a browser that {WEB_WAKE_LOCK_BROWSERS[mode]} missed the step "{missed}". The last lines of its log follow.\n{log}')
+    raise BuildError(f'{page} missed the step "{missed}". The last lines of its log follow.\n{log}')
 
 
 def check_web_memory_pages(args: argparse.Namespace, target) -> None:

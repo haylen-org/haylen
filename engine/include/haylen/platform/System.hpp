@@ -44,6 +44,12 @@ class System final {
     // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with whether an app took it. Throws `std::invalid_argument` for an empty url.
     void openUrl(std::string_view url, std::function<void(bool opened)> callback);
 
+    // The text on the clipboard of the system, or an empty string when it holds no text.
+    [[nodiscard]] std::string getClipboard() const;
+
+    // Puts the text on the clipboard of the system and calls back at a later pump with whether it got there. A browser refuses a page outside a secure context or without a recent input of the person, such as a click or a key.
+    void setClipboard(std::string_view text, std::function<void(bool written)> callback);
+
     // Vibrates the device for the given seconds where it can vibrate. Throws `std::invalid_argument` unless the seconds are positive.
     void vibrate(float seconds);
 
@@ -65,7 +71,7 @@ class System final {
   private:
     struct Answer {
         std::uint64_t id = 0;
-        bool opened = false;
+        bool succeeded = false;
     };
 
     // Answers wait here, shared with the callbacks the platform holds, so an answer that comes after the engine is gone touches nothing.
@@ -76,13 +82,16 @@ class System final {
 
     static const std::array<std::pair<std::string_view, Theme>, 2> kThemeNames;
 
+    // Keeps the callback of a request until its answer, and returns what the platform calls with the answer, which waits for the next pump.
+    [[nodiscard]] std::function<void(bool)> awaitAnswer(std::function<void(bool)> callback);
+
     Host& host;
     core::EventBus& events;
     SystemInfo info;
     Theme theme;
     Battery battery;
     std::bitset<input::Input::kMaxGamepads> rumbling;
-    std::uint64_t nextUrl = 1;
+    std::uint64_t nextRequest = 1;
     std::unordered_map<std::uint64_t, std::function<void(bool)>> pending;
     std::shared_ptr<Inbox> inbox = std::make_shared<Inbox>();
 };

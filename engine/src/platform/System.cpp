@@ -33,17 +33,29 @@ void System::openUrl(std::string_view url, std::function<void(bool opened)> call
     if (url.empty()) {
         throw std::invalid_argument("Opening a url needs a url.");
     }
-    // The platform may answer while it opens the url, and the answer waits for the next pump like any other.
-    const std::uint64_t id = nextUrl++;
+    host.openUrl(url, awaitAnswer(std::move(callback)));
+}
+
+std::string System::getClipboard() const {
+    return host.getClipboard();
+}
+
+void System::setClipboard(std::string_view text, std::function<void(bool written)> callback) {
+    host.setClipboard(text, awaitAnswer(std::move(callback)));
+}
+
+// The platform may answer during the request, and the answer waits for the next pump like any other.
+std::function<void(bool)> System::awaitAnswer(std::function<void(bool)> callback) {
+    const std::uint64_t id = nextRequest++;
+    pending.emplace(id, std::move(callback));
     // clang-format off
-    host.openUrl(url, [shared = std::weak_ptr<Inbox>(inbox), id](bool opened) {
+    return [shared = std::weak_ptr<Inbox>(inbox), id](bool succeeded) {
         if (const std::shared_ptr<Inbox> alive = shared.lock()) {
             const std::scoped_lock lock(alive->mutex);
-            alive->answers.push_back({.id = id, .opened = opened});
+            alive->answers.push_back({.id = id, .succeeded = succeeded});
         }
-    });
+    };
     // clang-format on
-    pending.emplace(id, std::move(callback));
 }
 
 void System::vibrate(float seconds) {
@@ -98,7 +110,7 @@ void System::pump() {
         const std::function<void(bool)> callback = std::move(found->second);
         pending.erase(found);
         if (callback) {
-            callback(answer.opened);
+            callback(answer.succeeded);
         }
     }
 

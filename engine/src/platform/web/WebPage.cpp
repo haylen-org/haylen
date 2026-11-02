@@ -6,6 +6,7 @@
 #include <exception>
 #include <span>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 
 #include "haylen/2d/graphics/Renderer.hpp"
@@ -63,6 +64,14 @@ EM_JS(void, haylen_js_keep_screen_on, (int value), {
     Module.haylen.keepScreenOn(value !== 0);
 });
 
+EM_JS(void, haylen_js_write_clipboard, (double id, const char* text), {
+    Module.haylen.writeClipboard(id, UTF8ToString(text));
+});
+
+EM_JS(char*, haylen_js_clipboard, (), {
+    return stringToNewUTF8(Module.haylen.clipboardText());
+});
+
 EM_JS(void, haylen_js_console_result, (double id, int ok, const char* output), {
     Module.haylen.reportConsoleResult(id, ok !== 0, UTF8ToString(output));
 });
@@ -76,6 +85,8 @@ namespace haylen::platform {
 
 std::vector<std::string>& WebPage::touched = *new std::vector<std::string>();
 std::string& WebPage::lastError = *new std::string();
+std::unordered_map<std::uint64_t, std::function<void(bool)>>& WebPage::clipboardWrites = *new std::unordered_map<std::uint64_t, std::function<void(bool)>>();
+std::uint64_t WebPage::nextClipboardWrite = 1;
 double WebPage::lastStats = 0.0;
 
 template <typename Body> int WebPage::answer(Body&& body) {
@@ -93,6 +104,29 @@ void WebPage::setFullscreen(bool value) {
 
 void WebPage::setScreenKeptOn(bool value) {
     haylen_js_keep_screen_on(value ? 1 : 0);
+}
+
+void WebPage::setClipboard(std::string_view text, std::function<void(bool written)> callback) {
+    const std::uint64_t id = nextClipboardWrite++;
+    clipboardWrites.emplace(id, std::move(callback));
+    haylen_js_write_clipboard(static_cast<double>(id), std::string(text).c_str());
+}
+
+void WebPage::answerClipboard(double id, bool written) {
+    const auto found = clipboardWrites.find(static_cast<std::uint64_t>(id));
+    if (found == clipboardWrites.end()) {
+        return;
+    }
+    const std::function<void(bool)> callback = std::move(found->second);
+    clipboardWrites.erase(found);
+    callback(written);
+}
+
+std::string WebPage::getClipboard() {
+    char* text = haylen_js_clipboard();
+    std::string result(text);
+    std::free(text);
+    return result;
 }
 
 std::string WebPage::getCanvasSelector() {
@@ -348,6 +382,10 @@ extern "C" {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_media_command(int command, double position) {
     haylen::platform::WebEntry::guard("haylen_web_media_command", [&] { haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position); });
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_clipboard_written(double id, int written) {
+    haylen::platform::WebEntry::guard("haylen_web_clipboard_written", [&] { haylen::platform::WebPage::answerClipboard(id, written != 0); });
 }
 
 EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {

@@ -57,6 +57,10 @@ std::unique_ptr<gpu::Device> Runtime::createDevice() {
     return gpu::DeviceFactory::create(window.getApi(), window.getSurface(), getDeviceOptions());
 }
 
+bool Runtime::prepareDevice() {
+    return openedDevice != nullptr || gpu::DeviceFactory::prepare(window.getApi(), getDeviceOptions());
+}
+
 void Runtime::post(const platform::Event& event) {
     posted.push_back(event);
     SDL_Event marker{};
@@ -224,7 +228,8 @@ SDL_AppResult Runtime::iterate() {
     if (!started) {
         return start();
     }
-    if (!closing && recover()) {
+    if (!closing) {
+        recover();
         Player::frame(timer.next(SDL_GetTicksNS()));
     }
 #if defined(__APPLE__) && !TARGET_OS_OSX && !defined(NDEBUG)
@@ -233,21 +238,15 @@ SDL_AppResult Runtime::iterate() {
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
-// A device that stopped working, after a reset of the GPU, the removal of the adapter or a lost context, gives way to a new one, which the app starts again on once the graphics API prepared it, and the frames wait meanwhile. It returns whether the app has a device that works.
-bool Runtime::recover() {
-    if (!recovering) {
-        const gpu::Device* device = Player::getGpuDevice();
-        if (device == nullptr || !device->isLost()) {
-            return true;
-        }
-        core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", gpu::DeviceFactory::getApiName(window.getApi()));
-        recovering = true;
+// A device that stopped working, after a reset of the GPU, the removal of the adapter or a lost context, gives way to a new one, which the app starts again on once the graphics API prepared it.
+void Runtime::recover() {
+    const gpu::Device* device = Player::getGpuDevice();
+    if (device == nullptr || !device->isLost()) {
+        return;
     }
-    if (!gpu::DeviceFactory::prepare(window.getApi(), getDeviceOptions())) {
-        return false;
-    }
+    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", gpu::DeviceFactory::getApiName(window.getApi()));
+    recovering = true;
     Player::restart();
-    return true;
 }
 
 // Controllers open as SDL connects them, also the ones connected before the app started, while the other events before the app started find no app to hear them.

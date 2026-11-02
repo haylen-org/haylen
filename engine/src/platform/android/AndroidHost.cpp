@@ -18,12 +18,17 @@ float AndroidHost::getDpiScale() const noexcept {
     return AndroidActivity::getDensity() * NativeWindow::getScale();
 }
 
-void AndroidHost::setClipboard(std::string_view value) {
-    JavaBridge::setClipboard(value);
+void AndroidHost::setClipboard(std::string_view value, std::function<void(bool written)> callback) {
+    callback(JavaBridge::setClipboard(value));
 }
 
 std::string AndroidHost::getClipboard() const {
     return JavaBridge::getClipboard();
+}
+
+// The devices of Vulkan and OpenGL ES start during the call that creates them.
+bool AndroidHost::prepareGpuDevice() {
+    return true;
 }
 
 std::unique_ptr<gpu::Device> AndroidHost::createGpuDevice() {

@@ -60,7 +60,7 @@ UiPlugin::~UiPlugin() = default;
 
 void UiPlugin::start(core::Engine& engine) {
     owner = &engine;
-    backend = std::make_unique<ui::Backend>(engine.getGraphics(), engine.getWindow(), core::EmbeddedFiles::getDefaultFont(), core::EmbeddedFiles::getMonospaceFont());
+    backend = std::make_unique<ui::Backend>(engine.getGraphics(), engine.getWindow(), engine.getSystem(), core::EmbeddedFiles::getDefaultFont(), core::EmbeddedFiles::getMonospaceFont());
     safeAreaVisible = engine.getConfig().debug.showSafeArea;
     scaling = engine.getConfig().uiScaling;
     // clang-format off

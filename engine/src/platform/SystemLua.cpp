@@ -44,6 +44,21 @@ int SystemLua::openUrl(lua_State* L) {
     return 1;
 }
 
+int SystemLua::clipboard(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getSystem().getClipboard());
+    return 1;
+}
+
+// Returns a promise that resolves on a later frame with whether the text reached the clipboard.
+int SystemLua::setClipboard(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const auto text = lua::Stack::read<std::string_view>(L, 1);
+    const lua::Promise promise(engine);
+    engine.getSystem().setClipboard(text, [promise](bool written) { promise.resolve(written); });
+    promise.push(L);
+    return 1;
+}
+
 int SystemLua::vibrate(lua_State* L) {
     lua::Runtime::getEngine(L).getSystem().vibrate(lua::Stack::read<float>(L, 1));
     return 0;
@@ -100,7 +115,7 @@ int SystemLua::clearNowPlaying(lua_State* L) {
 
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"openUrl", &lua::Binding::native<&openUrl>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

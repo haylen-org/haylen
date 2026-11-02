@@ -98,8 +98,12 @@ class HeadlessHost final : public Host {
     void setKeyboardVisible(bool value) override {
         keyboardVisible = value;
     }
-    void setClipboard(std::string_view value) override {
-        clipboard = value;
+    // The clipboard keeps the text unless the test refuses writes, the way a browser refuses a page, and answers at once.
+    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override {
+        if (writesClipboard) {
+            clipboard = value;
+        }
+        callback(writesClipboard);
     }
     [[nodiscard]] std::string getClipboard() const override {
         return clipboard;
@@ -397,6 +401,10 @@ class HeadlessHost final : public Host {
         opensUrls = value;
     }
 
+    void setWritesClipboard(bool value) noexcept {
+        writesClipboard = value;
+    }
+
     // What the network errors of the apps that start after the change end with, the way a platform reports what the project of the app lacks for network access.
     void setNetworkRequirement(std::string value) {
         networkRequirement = std::move(value);
@@ -518,6 +526,7 @@ class HeadlessHost final : public Host {
     bool launched = false;
     const audio::OutputBackend* audioOutput = nullptr;
     bool opensUrls = true;
+    bool writesClipboard = true;
 
     // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Monitor> monitors{{.name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true}};

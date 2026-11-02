@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -27,13 +28,14 @@ class AndroidHost final : public NativeHost {
     void setCursor(Cursor) override {}
     void setCursorVisible(bool) override {}
     void setMouseLocked(bool) override {}
-    void setClipboard(std::string_view value) override;
+    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return false;
     }
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
+    [[nodiscard]] bool prepareGpuDevice() override;
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;

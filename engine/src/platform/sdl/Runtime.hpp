@@ -66,8 +66,9 @@ class Runtime final {
     }
 #endif
 
-    // Hands over the GPU device that started with the window, or creates another one for the window, as an app that replaces the last one asks for it.
+    // Hands over the GPU device that started with the window, or creates another one for the window, as an app that replaces the last one asks for it. Another one needs its graphics API prepared first, which `prepareDevice` reports.
     [[nodiscard]] std::unique_ptr<gpu::Device> createDevice();
+    [[nodiscard]] bool prepareDevice();
 
     // Ends the frames at the next iteration, which closes the window and ends the process of desktop apps.
     void close() noexcept {
@@ -109,7 +110,7 @@ class Runtime final {
     [[nodiscard]] SDL_AppResult start();
     [[nodiscard]] bool openWindow();
     [[nodiscard]] SDL_AppResult iterate();
-    [[nodiscard]] bool recover();
+    void recover();
     [[nodiscard]] SDL_AppResult handle(const SDL_Event& event);
     void deliver(const SDL_Event& event);
     void quit() noexcept;

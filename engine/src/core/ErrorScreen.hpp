@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -32,6 +33,9 @@ class Engine;
 class ErrorScreen final {
   public:
     enum class Action { Copy, Restart, Back, Close };
+
+    // Whether the last copy of the report reached the clipboard, which a browser may refuse.
+    enum class CopyState { Idle, Copied, Refused };
 
     struct SourceLine {
         int number = 0;
@@ -86,6 +90,9 @@ class ErrorScreen final {
     [[nodiscard]] Action getFocusedAction() const noexcept {
         return focused;
     }
+    [[nodiscard]] CopyState getCopyState() const noexcept {
+        return *copyState;
+    }
 
     void handleEvent(const platform::Event& event);
     // Reads the gamepads once per frame, since their buttons arrive as state rather than as events.
@@ -132,6 +139,7 @@ class ErrorScreen final {
     [[nodiscard]] std::vector<SourceLine> readExcerpt() const;
     [[nodiscard]] std::string getDetails() const;
     [[nodiscard]] std::string getLocation() const;
+    [[nodiscard]] std::string_view getCopyLabel() const noexcept;
     [[nodiscard]] std::string buildReport() const;
     [[nodiscard]] bool isTouchDevice() const;
     [[nodiscard]] bool isGamepadDriven() const;
@@ -172,7 +180,9 @@ class ErrorScreen final {
     math::Rect closeButton{};
     Action focused;
     bool canResume = true;
-    bool copied = false;
+
+    // The answer of the clipboard comes at a later frame, which may come after the screen is gone.
+    std::shared_ptr<CopyState> copyState = std::make_shared<CopyState>(CopyState::Idle);
 };
 
 } // namespace haylen::core

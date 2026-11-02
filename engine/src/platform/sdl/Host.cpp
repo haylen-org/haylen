@@ -5,6 +5,9 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_video.h>
 
+#include <utility>
+
+#include "haylen/core/Log.hpp"
 #include "platform/sdl/Runtime.hpp"
 
 #if defined(__APPLE__)
@@ -85,15 +88,28 @@ void Host::setMouseLocked(bool value) {
     SDL_SetWindowRelativeMouseMode(runtime.getWindow().get(), value);
 }
 
-void Host::setClipboard(std::string_view value) {
-    SDL_SetClipboardText(std::string(value).c_str());
+// SDL has no clipboard of the browser, so the page writes it and keeps what it may read.
+void Host::setClipboard(std::string_view value, std::function<void(bool written)> callback) {
+#if defined(__EMSCRIPTEN__)
+    WebPage::setClipboard(value, std::move(callback));
+#else
+    const bool written = SDL_SetClipboardText(std::string(value).c_str());
+    if (!written) {
+        core::Log::error("The clipboard could not be written: {}", SDL_GetError());
+    }
+    callback(written);
+#endif
 }
 
 std::string Host::getClipboard() const {
+#if defined(__EMSCRIPTEN__)
+    return WebPage::getClipboard();
+#else
     char* text = SDL_GetClipboardText();
     std::string result = text != nullptr ? text : "";
     SDL_free(text);
     return result;
+#endif
 }
 
 // The window composes premultiplied alpha with the desktop when it opened transparent, and while it is opaque the frames keep alpha 1.
@@ -112,6 +128,10 @@ platform::TextInput& Host::getTextInput() noexcept {
 
 std::unique_ptr<gpu::Device> Host::createGpuDevice() {
     return runtime.createDevice();
+}
+
+bool Host::prepareGpuDevice() {
+    return runtime.prepareDevice();
 }
 
 void Host::closeWindow() {

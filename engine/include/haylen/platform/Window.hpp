@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <optional>
 #include <span>
-#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -86,8 +85,6 @@ class Window {
     virtual void setCursorVisible(bool value) = 0;
     virtual void setMouseLocked(bool value) = 0;
     virtual void setKeyboardVisible(bool value) = 0;
-    virtual void setClipboard(std::string_view value) = 0;
-    [[nodiscard]] virtual std::string getClipboard() const = 0;
     virtual void requestQuit() = 0;
 
     // Whether a quit closes the app, which desktops, Android and the headless host do, while iPhones, iPads, TVs, Mac Catalyst windows and web pages close only through the system or the browser.

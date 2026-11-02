@@ -7,7 +7,7 @@ struct lua_State;
 
 namespace haylen::platform {
 
-// Installs `haylen.system`, which tells what the device is, its theme and its battery, opens urls, vibrates the device and shows what the app plays in the now-playing controls of the system.
+// Installs `haylen.system`, which tells what the device is, its theme and its battery, opens urls, reads and writes the clipboard, vibrates the device and shows what the app plays in the now-playing controls of the system.
 class SystemLua final {
   public:
     static void install(lua_State* L);
@@ -19,6 +19,8 @@ class SystemLua final {
     static int theme(lua_State* L);
     static int battery(lua_State* L);
     static int openUrl(lua_State* L);
+    static int clipboard(lua_State* L);
+    static int setClipboard(lua_State* L);
     static int vibrate(lua_State* L);
     static int setNowPlaying(lua_State* L);
     static int clearNowPlaying(lua_State* L);

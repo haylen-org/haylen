@@ -29,8 +29,9 @@ void TestPortHost::setCursorVisible(bool) {}
 
 void TestPortHost::setMouseLocked(bool) {}
 
-void TestPortHost::setClipboard(std::string_view value) {
+void TestPortHost::setClipboard(std::string_view value, std::function<void(bool written)> callback) {
     clipboard = value;
+    callback(true);
 }
 
 std::string TestPortHost::getClipboard() const {
@@ -39,6 +40,10 @@ std::string TestPortHost::getClipboard() const {
 
 bool TestPortHost::canBeTransparent() const noexcept {
     return false;
+}
+
+bool TestPortHost::prepareGpuDevice() {
+    return true;
 }
 
 std::unique_ptr<gpu::Device> TestPortHost::createGpuDevice() {

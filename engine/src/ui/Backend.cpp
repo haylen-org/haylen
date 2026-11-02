@@ -17,6 +17,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/System.hpp"
 #include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
 #include "haylen/ui/NavigationInput.hpp"
@@ -215,12 +216,12 @@ Backend& Backend::getOwner(ImGuiContext* context) {
 
 const char* Backend::getClipboardText(ImGuiContext* context) {
     Backend& self = getOwner(context);
-    self.clipboard = self.window.getClipboard();
+    self.clipboard = self.system.getClipboard();
     return self.clipboard.c_str();
 }
 
 void Backend::setClipboardText(ImGuiContext* context, const char* text) {
-    getOwner(context).window.setClipboard(text);
+    getOwner(context).system.setClipboard(text, {});
 }
 
 // Every mesh carries its own render state, so a request to reset it needs no work.
@@ -284,7 +285,7 @@ void Backend::runDraw(const Draw& draw) {
     }
 }
 
-Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData) : device(graphicsDevice), window(hostWindow), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())), scrollArbiter(std::make_unique<ScrollArbiter>()) {
+Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, platform::System& hostSystem, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData) : device(graphicsDevice), window(hostWindow), system(hostSystem), recovery(std::make_unique<Recovery>()), textSession(std::make_unique<TextSession>(hostWindow.getTextInput())), scrollArbiter(std::make_unique<ScrollArbiter>()) {
     imguiContext = ImGui::CreateContext();
     makeCurrent();
 

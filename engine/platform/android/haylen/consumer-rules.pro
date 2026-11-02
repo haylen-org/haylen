@@ -30,7 +30,7 @@
     static void openUrl(long, byte[]);
     static void vibrate(long);
     static void rumbleGamepad(int, float, float, long);
-    static void setClipboard(byte[]);
+    static boolean setClipboard(byte[]);
     static byte[] clipboard();
     static byte[] networkRequirement();
     static byte[] developmentServer();

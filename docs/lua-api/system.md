@@ -1,6 +1,6 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it and vibrates the device. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard and vibrates the device. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -89,6 +89,44 @@ local system = require('haylen.system')
 async.spawn(function()
     if not system.openUrl('https://example.com/tiny-island'):await() then
         print('No app opens web pages on this device.')
+    end
+end)
+```
+
+### system.clipboard()
+
+Returns the text on the clipboard of the system, or an empty string when it holds no text. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux and the Apple TV.
+
+- iOS shows its notice that the app pasted.
+- Android gives the clipboard only to the app that has the focus.
+- An Apple TV has no clipboard, so the text stays inside the app.
+- Browsers give a page only the text that the person pastes into it. So the function returns the text of the last paste into the page, or the last text that the app wrote there, whichever came later.
+
+```lua
+local system = require('haylen.system')
+
+local code = system.clipboard()
+if #code > 0 then
+    print('Pasted the invite code ' .. code .. '.')
+end
+```
+
+### system.setClipboard(text)
+
+Puts `text` on the clipboard of the system. It returns a Varn promise that resolves on a later frame, with `true` when the text reached the clipboard and `false` when the system refused it. A `text` that is not a string raises a bad argument error.
+
+Desktops, phones, tablets and TVs take the text at once, and an Apple TV keeps it inside the app. A browser writes the clipboard only for a page served over https or from localhost, which has the focus and an input of the person shortly before, such as a click or a key. So a copy that a button or a key of the app asks for reaches the clipboard, while a copy without an input of the person resolves with `false` and the browser console says why. A page without the clipboard API, served over plain http from another machine, resolves with `false` too, which the console explains once.
+
+```lua
+local async = require('async')
+local system = require('haylen.system')
+
+local seed = 184467
+async.spawn(function()
+    if system.setClipboard('Island seed: ' .. seed):await() then
+        print('Copied the seed.')
+    else
+        print('The system refused the copy, so the seed shows on the screen instead.')
     end
 end)
 ```
@@ -243,6 +281,8 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getTheme()` | The `haylen::platform::Theme`, `Light` or `Dark`. |
 | `getBattery()` | The `haylen::platform::Battery`, with its optional `level`, `charging` and `State`. |
 | `openUrl(url, callback)` | Opens the url and calls back on the frame thread with whether an app took it. |
+| `getClipboard()` | The text on the clipboard of the system. |
+| `setClipboard(text, callback)` | Puts the text on the clipboard and calls back on the frame thread, at a later frame, with whether it got there. |
 | `vibrate(seconds)` | Vibrates the device. |
 
 The functions `openUrl` and `vibrate` throw `std::invalid_argument` for the values that Lua rejects. The function `graphics::Device::getAdapterName()` names the GPU on its own.

@@ -87,7 +87,7 @@ jint JavaBridge::load(JavaVM* vm) {
     openUrlMethod = findMethod(*env, activityClass, "openUrl", "(J[B)V");
     vibrateMethod = findMethod(*env, activityClass, "vibrate", "(J)V");
     rumbleGamepadMethod = findMethod(*env, activityClass, "rumbleGamepad", "(IFFJ)V");
-    setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)V");
+    setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)Z");
     clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
     networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
     developmentServerMethod = findMethod(*env, activityClass, "developmentServer", "()[B");
@@ -220,10 +220,10 @@ std::string JavaBridge::getSystemInfo() {
     return callText(env, activityClass, systemInfoMethod, "dev.haylen.HaylenActivity.systemInfo", "{}");
 }
 
-void JavaBridge::setClipboard(std::string_view text) {
+bool JavaBridge::setClipboard(std::string_view text) {
     JNIEnv& env = getEnv();
-    env.CallStaticVoidMethod(activityClass, setClipboardMethod, toBytes(env, text).get());
-    clearException(env, "dev.haylen.HaylenActivity.setClipboard");
+    const jboolean written = env.CallStaticBooleanMethod(activityClass, setClipboardMethod, toBytes(env, text).get());
+    return !clearException(env, "dev.haylen.HaylenActivity.setClipboard") && written == JNI_TRUE;
 }
 
 std::string JavaBridge::getClipboard() {

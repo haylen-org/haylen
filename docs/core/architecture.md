@@ -186,7 +186,7 @@ Plugins talk to each other only through public methods, never through the intern
 
 ## The host boundary
 
-The portable engine reaches the platform only through `platform::Host`, declared in `engine/src/platform/Host.hpp`. `Host` extends the public `platform::Window` interface, which covers the framebuffer size, the DPI scale, fullscreen, the title, the cursor, the mouse lock, the on-screen keyboard, the clipboard, quit requests, the orientation, the fold, the status bar, text input, transparency and the modes of desktop windows. `Host` adds what the engine needs to run.
+The portable engine reaches the platform only through `platform::Host`, declared in `engine/src/platform/Host.hpp`. `Host` extends the public `platform::Window` interface, which covers the framebuffer size, the DPI scale, fullscreen, the title, the cursor, the mouse lock, the on-screen keyboard, quit requests, the orientation, the fold, the status bar, text input, transparency and the modes of desktop windows. `Host` adds what the engine needs to run.
 
 | Method | Purpose |
 | --- | --- |
@@ -197,6 +197,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 | `getUserDataDirectory(identifier)`, `persistUserData()` | Where `storage::UserStorage` keeps the files of an app, and how the platform makes them durable. |
 | `getSafeAreaInsets()` | The area of the screen that UI must avoid, in framebuffer pixels. |
 | `getStatusBarHeight()` | The height in framebuffer pixels of the status bar that shows over the top of the app, or `0` while none shows. |
+| `setClipboard(text, callback)`, `getClipboard()` | Put text on the clipboard of the system, calling back once with whether it got there, and read the text on it. Browsers answer later and may refuse a page without a recent input of the person, while the other platforms answer during the call. `platform::System` hands the answer to the app at the next frame. |
 | `pollGamepads(span)` | Fills the gamepad states once per frame, from the controllers that the platform layer reads: the gamepads of SDL, GameController on UIKit and the input events of GameActivity on Android. |
 | `dispatchPlatformCall(id, method, params, buffers)`, `cancelPlatformCall(id)` | Hands a bridge call to native code, with the byte buffers of its parameters, and tells native code that the app gave the call up. |
 | `getReservedInsets()` | The edges of the screen that native views of plugins reserve: the largest reservation on each edge, in framebuffer pixels. The engine adds them to the safe area. |
@@ -255,7 +256,7 @@ The engine stands on three layers. The platform layer opens the window, runs the
 | --- | --- | --- |
 | Engine | `haylen-engine` | The C++ API and the Lua bindings, which reach the platform through `platform::Host` and draw through `gpu::Device`. |
 | Renderers | `graphics2d::Renderer` in `engine/src/2d/graphics/` | Turn the draws of the app into passes and draws of the GPU device through `graphics::Device`, which owns the device and makes textures, render targets and readbacks for the renderers of every dimension. A 3D renderer goes next to it, in a `3d` folder of its own. |
-| Player | `platform::Player` in `engine/src/platform/Player.hpp` | The runtime that every platform layer shares. It reads the command line, opens the package it names or the bundled one, creates the engine, and replaces it whenever the app restarts or launches another. It hands the app the events of the window and the platform, routes the back button of the platform and ends the splash screen. |
+| Player | `platform::Player` in `engine/src/platform/Player.hpp` | The runtime that every platform layer shares. It reads the command line, opens the package it names or the bundled one, creates the engine, and replaces it whenever the app restarts or launches another. A new engine starts once `NativeHost::prepareGpuDevice` reports that its GPU device can be created, which a browser hands over for WebGPU only in a later turn of its event loop, so the frames run on without an app until then. It hands the app the events of the window and the platform, routes the back button of the platform and ends the splash screen. |
 | Native host | `platform::NativeHost` in `engine/src/platform/NativeHost.hpp` | The `Host` of real devices. It forwards to the `Services` of the platform folder compiled into the runtime, and keeps the state that outlives the apps of the process, such as `NativeViews` and `SystemState`. |
 | Native window | `platform::NativeWindow` in `engine/src/platform/NativeWindow.hpp` | The window of the platform layer as the system sees it. The services of a platform read it to place dialogs, text fields, views, menus and accessibility over the app. It is an `NSWindow` on macOS, a `UIWindow` on iOS, iPadOS, Mac Catalyst and tvOS, an `HWND` on Windows, an X11 `Window` and its `Display` on Linux, and an `ANativeWindow` and its `GameActivity` on Android, with the size and scale of the framebuffer. |
 | Platform layer | `engine/src/platform/sdl/`, `engine/src/platform/android/` | The window, the frames, the events and the entry point: the [SDL platform layer](#the-sdl-platform-layer) on every platform but Android, the [Android runtime](#the-android-runtime), and the runtime of a [port](../platform/ports.md) in the folder that `HAYLEN_PORT_DIR` names. |
@@ -263,7 +264,7 @@ The engine stands on three layers. The platform layer opens the window, runs the
 
 A platform layer implements two interfaces of the engine and holds a runtime that drives the player:
 
-1. **A host** derived from `platform::NativeHost`, which adds what its window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, whether the window can be transparent, closing the window, its focus, and `createGpuDevice()`, which hands over the GPU device that draws into its window.
+1. **A host** derived from `platform::NativeHost`, which adds what its window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the mouse lock, the clipboard, whether the window can be transparent, closing the window, its focus, `prepareGpuDevice()`, which reports whether the GPU device of the next app can be created now and starts preparing it otherwise, and `createGpuDevice()`, which hands over the GPU device that draws into its window.
 2. **A window** derived from `platform::NativeWindow`. The platform layer installs it with `NativeWindow::install` when its window opens and removes it when the window closes.
 3. **A runtime** that owns the entry point and drives the player:
     - It calls `Player::create` with the command line and its host.
@@ -271,7 +272,7 @@ A platform layer implements two interfaces of the engine and holds a runtime tha
     - It calls `Player::frame` with the seconds since the last frame.
     - It turns the events of its window into `platform::Event` values for `Player::handleEvent`.
     - It asks `Player::routeBack` where a press of the back button of the platform goes.
-    - It replaces a device that `gpu::Device::isLost` reports with a new one and calls `Player::restart`.
+    - It calls `Player::restart` when `gpu::Device::isLost` reports that the device stopped working, and the player starts the app again on a new device.
     - It calls `Player::cleanup` when the window closes.
 
 ### The render hardware interface

@@ -174,6 +174,27 @@ TEST_F(ErrorScreenTest, CopiesTheReportAndRestartsTheAppFromTheKeyboard) {
     EXPECT_TRUE(fixture.engine().isRestartRequested());
 }
 
+TEST_F(ErrorScreenTest, TellsWhetherTheClipboardTookTheReportOnceItAnswers) {
+    test::EngineFixture fixture({{"source/main.lua", ""}});
+    auto screen = std::make_unique<ErrorScreen>(fixture.engine(), lua::Error("source/main.lua:1: attempt to call a nil value"), true);
+
+    // The clipboard answers at the next frame, and a browser may refuse the copy.
+    screen->copyReport();
+    EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Idle);
+    fixture.frames(1);
+    EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Copied);
+
+    fixture.host().setWritesClipboard(false);
+    screen->copyReport();
+    fixture.frames(1);
+    EXPECT_EQ(screen->getCopyState(), ErrorScreen::CopyState::Refused);
+
+    // An answer that comes after the screen is gone, as after going back to the app, touches nothing.
+    screen->copyReport();
+    screen.reset();
+    fixture.frames(1);
+}
+
 TEST_F(ErrorScreenTest, CopiesAndRestartsWithAGamepadOrATvRemote) {
     test::EngineFixture fixture = startFailingApp();
     fixture.frames(2);

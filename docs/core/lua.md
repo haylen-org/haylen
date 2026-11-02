@@ -483,6 +483,7 @@ source/scenes/level.lua:12  function <source/scenes/level.lua:10>
 ### Using the error screen
 
 - `C` copies that report to the clipboard, and `R` restarts the app. Both actions are also buttons at the bottom of the screen, which a click or a tap presses. On touch devices the buttons show without their keys.
+- The copy button says `Report copied` once the clipboard took the report, and `Copy refused` when the system refused it, as a browser does for a page served over plain http from another machine. Pressing it again tries again.
 - Gamepads and TV remotes move an outlined focus between the buttons with the directional pad or the arrows of the remote. The south button or the select button of the remote presses the focused one. The focus starts on the restart button.
 - A report taller than the screen scrolls with the mouse wheel, a drag of the mouse or a finger, the arrow and page keys, Home and End, and the directional pad up and down.
 

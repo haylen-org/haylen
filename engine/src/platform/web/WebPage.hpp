@@ -2,9 +2,12 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "haylen/core/Json.hpp"
@@ -27,6 +30,11 @@ class WebPage final {
 
     // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go.
     static void setScreenKeptOn(bool value);
+
+    // The clipboard of the browser, which the page writes asynchronously and answers through `answerClipboard`, and whose text the page knows only from the last paste into it or the last text it wrote.
+    static void setClipboard(std::string_view text, std::function<void(bool written)> callback);
+    static void answerClipboard(double id, bool written);
+    [[nodiscard]] static std::string getClipboard();
 
     // Tells the page when an app starts and stops, and passes it frame statistics about once per second.
     static void reportStarted(const core::AppConfig& config);
@@ -82,6 +90,10 @@ class WebPage final {
 
     // The paths the page changed since its last `applyChanges`.
     static std::vector<std::string>& touched;
+
+    // The writes of the clipboard that the page has not answered yet.
+    static std::unordered_map<std::uint64_t, std::function<void(bool)>>& clipboardWrites;
+    static std::uint64_t nextClipboardWrite;
     static std::string& lastError;
     static double lastStats;
 

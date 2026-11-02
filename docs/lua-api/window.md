@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the clipboard, the orientation and the status bar of phones, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows, their frame and the monitors. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows, their frame and the monitors. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -163,7 +163,7 @@ local hint = window.hasPointerDevice() and 'Click to start' or 'Press select to 
 print(hint)
 ```
 
-## Keyboard and clipboard
+## Keyboard
 
 ### window.setKeyboardVisible(visible)
 
@@ -193,35 +193,6 @@ end
 
 beginEditing()
 endEditing()
-```
-
-### window.clipboard()
-
-Returns the text on the clipboard of the system, or an empty string when it holds no text. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux, the Apple TV and the web.
-
-- iOS shows its notice that the app pasted.
-- Android gives the clipboard only to the app that has the focus.
-- An Apple TV has no clipboard, so the text stays inside the app.
-- Browsers give a page only the text that the person pastes into it. So the function returns the text of the last paste of the page.
-
-```lua
-local window = require('haylen.window')
-
-local code = window.clipboard()
-if #code > 0 then
-    print('Pasted the invite code ' .. code .. '.')
-end
-```
-
-### window.setClipboard(text)
-
-Puts `text` on the clipboard of the system. An Apple TV keeps it inside the app. Browsers let a page write the clipboard only shortly after an input of the person, such as a click or a key.
-
-```lua
-local window = require('haylen.window')
-
-local seed = 184467
-window.setClipboard('Island seed: ' .. seed)
 ```
 
 ## Orientation and status bar

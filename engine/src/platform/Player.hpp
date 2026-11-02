@@ -179,6 +179,7 @@ class Player final {
     [[nodiscard]] std::shared_ptr<io::Package> withOverlay(std::shared_ptr<io::Package> source) const;
     void endSplashScreenWhenDue();
     void launch();
+    void launchWhenReady();
     void close() noexcept;
     void replace(App app);
     void launchPackage(const std::filesystem::path& path);
@@ -201,6 +202,9 @@ class Player final {
 
     // Whether the window of the platform layer opened, from when on the player plays the apps that replace each other.
     bool initialized = false;
+
+    // Whether the pending app waits for the platform to prepare its GPU device.
+    bool waiting = false;
 
     // Whether the app took the last press of the back button, so its release goes to the same place.
     bool backCaptured = false;

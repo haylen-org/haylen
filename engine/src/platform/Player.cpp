@@ -281,7 +281,13 @@ void Player::initialize() {
 
 void Player::frame(double seconds) {
     Player& runtime = getCurrent();
-    if (runtime.reported.isPaused() || runtime.engine == nullptr) {
+    if (runtime.reported.isPaused()) {
+        return;
+    }
+    if (runtime.waiting) {
+        runtime.launchWhenReady();
+    }
+    if (runtime.engine == nullptr) {
         return;
     }
     Services::updateWindow();
@@ -437,6 +443,14 @@ void Player::launch() {
 #endif
 }
 
+void Player::launchWhenReady() {
+    if (!host->prepareGpuDevice()) {
+        return;
+    }
+    waiting = false;
+    launch();
+}
+
 void Player::close() noexcept {
     if (engine == nullptr) {
         return;
@@ -492,10 +506,11 @@ void Player::replace(App app) {
     }
     pending = std::move(app);
 
-    // Before the window opens, which on the web waits for the GPU device, the new app simply replaces the one waiting to start. Once it opened, the new app starts, also after an app whose engine could not start, which the web page replaces this way.
+    // Before the window opens, which on the web waits for the GPU device, the new app simply replaces the one waiting to start. Once it opened, the new app starts as soon as the platform can create its GPU device, which WebGPU hands over a few frames later in browsers, also after an app whose engine could not start, which the web page replaces this way.
     if (initialized) {
         host->setTitle(pending.config.window.title);
-        launch();
+        waiting = true;
+        launchWhenReady();
     }
 }
 

@@ -12,7 +12,7 @@ class Viewport;
 
 namespace haylen::platform {
 
-// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, the fold of foldable devices, clipboard and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
+// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, the fold of foldable devices and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
 class WindowLua final {
   public:
     static void install(lua_State* L);
@@ -45,8 +45,6 @@ class WindowLua final {
     static int segments(lua_State* L);
     static int foldSimulation(lua_State* L);
     static int setFoldSimulation(lua_State* L);
-    static int clipboard(lua_State* L);
-    static int setClipboard(lua_State* L);
     static int hasPointerDevice(lua_State* L);
     static int backLeavesApp(lua_State* L);
     static int setBackLeavesApp(lua_State* L);

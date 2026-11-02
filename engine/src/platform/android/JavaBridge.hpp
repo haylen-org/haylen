@@ -77,7 +77,8 @@ class JavaBridge final {
     static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
     // The clipboard of the system, which the frame thread reads and writes.
-    static void setClipboard(std::string_view text);
+    // Returns whether the text reached the clipboard, which it misses while no activity exists or when Java fails.
+    [[nodiscard]] static bool setClipboard(std::string_view text);
     [[nodiscard]] static std::string getClipboard();
 
     // Shows the dialog that the JSON of `AndroidDialogJson` describes, with the data of a save as bytes, and the Java side answers through the dialog relay. A dialog that Java never took fails at once.

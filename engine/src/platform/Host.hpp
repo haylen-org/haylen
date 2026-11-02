@@ -54,6 +54,11 @@ class Host : public Window {
     [[nodiscard]] virtual float getStatusBarHeight() const = 0;
 
     virtual void pollGamepads(std::span<input::GamepadState> gamepads) = 0;
+
+    // Puts the text on the clipboard of the system and calls back with whether it got there. Browsers write the clipboard of a page asynchronously and refuse a page without a recent input of the person or outside a secure context, so their answer comes later and may be a refusal, while the other platforms answer during the call.
+    virtual void setClipboard(std::string_view value, std::function<void(bool written)> callback) = 0;
+    [[nodiscard]] virtual std::string getClipboard() const = 0;
+
     // Hands a platform call to the handlers of the platform, with the byte buffers that its parameters refer to, which stay valid until it returns.
     virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) = 0;
     virtual void cancelPlatformCall(std::uint64_t id) = 0;

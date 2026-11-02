@@ -392,12 +392,14 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         });
     }
 
-    // Called from the frame thread of the engine, which puts text on the clipboard of the system.
-    static void setClipboard(byte[] text) {
+    // Called from the frame thread of the engine, which puts text on the clipboard of the system and learns whether it got there, which it misses while no activity exists.
+    static boolean setClipboard(byte[] text) {
         HaylenActivity activity = HaylenBridge.activity();
-        if (activity != null) {
-            activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("text", new String(text, StandardCharsets.UTF_8)));
+        if (activity == null) {
+            return false;
         }
+        activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("text", new String(text, StandardCharsets.UTF_8)));
+        return true;
     }
 
     // Called from the frame thread of the engine, which reads the text on the clipboard of the system, empty when it holds none or Android keeps it from an app without the focus.

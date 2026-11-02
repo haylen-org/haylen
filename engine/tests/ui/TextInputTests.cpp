@@ -328,8 +328,8 @@ TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     EXPECT_EQ(events.back(), R"(notes:change {"value":"a\nb"})");
 }
 
-// Where the UI edits the text itself, the shortcuts of copying and pasting go through the clipboard of the window.
-TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheWindow) {
+// Where the UI edits the text itself, the shortcuts of copying and pasting go through the clipboard of the system.
+TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheSystem) {
     getInput().setNative(false);
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Copy me"})");
     focus(*gui, "name");
@@ -340,7 +340,7 @@ TEST_F(TextInputTest, CopiesAndPastesThroughTheClipboardOfTheWindow) {
     press(input::Key::C, 0, shortcut);
     EXPECT_EQ(fixture.host().getClipboard(), "Copy me");
 
-    fixture.host().setClipboard("Pasted");
+    fixture.host().setClipboard("Pasted", [](bool) {});
     events.clear();
     press(input::Key::V, 0, shortcut);
     ASSERT_FALSE(events.empty());

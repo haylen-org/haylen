@@ -41,14 +41,14 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.signal` | Signals with priorities, one-shot, deferred and owned listeners, and the `Connection` of every listener. | [`signal.md`](signal.md) |
 | `haylen.spatial2d` | Spatial hashes, quadtrees, dynamic AABB trees and k-d trees with area, circle, point, ray and nearest queries, screen picking, grid algorithms: ray casts, Bresenham lines and circles, field of view, visibility polygons, flood fills, connected regions and union-find, and overlap worlds that find the boxes that reach each other. | [`spatial2d.md`](spatial2d.md) |
 | `haylen.storage` | Private files of the player, the folder Varn's `fs` shares with them, named save slots with summaries, versions, migrations, backups and cloud copies, and the resume state, on the frame thread or on the I/O pool. | [`storage.md`](storage.md) |
-| `haylen.system` | What the device and its operating system are, the theme and the battery with their changes, opening urls, vibrating and the now-playing controls of the system with their media keys. | [`system.md`](system.md) |
+| `haylen.system` | What the device and its operating system are, the theme and the battery with their changes, opening urls, the clipboard, vibrating and the now-playing controls of the system with their media keys. | [`system.md`](system.md) |
 | `haylen.tiled` | Tiled maps and worlds: drawing with y sorting, maps built at run time with terrain painting and saved as Tiled JSON, automapping, collision, objects and spawning, ray casts against tiles and objects, and object outlines for navigation meshes. | [`tiled.md`](tiled.md) |
 | `haylen.timer` | Functions that run after a delay or at an interval, with owners and process modes. | [`timer.md`](timer.md) |
 | `haylen.tween` | Tweens of fields and engine properties, ready-made motions, timelines, staggers and full playback control. | [`tween.md`](tween.md) |
 | `haylen.ui` | The 64 component kinds of retained GUIs with their properties and events, layout and anchors, themes and styles, focus and navigation, accessibility, long collections, and the types `Gui`, `UiCollection`, `UiCell` and `UiTransform`. | [`ui.md`](ui.md) |
 | `haylen.video` | Video files of the package played into a texture with the decoder of each platform, with play, pause, seek, loop, rate, sound through a bus of the mixer, events and asynchronous loads. | [`video.md`](video.md) |
 | `haylen.viewport` | The design size and the scaling policy, which change while the app runs, the visible area, the safe area, the edges that native views reserve, conversions between design units and pixels, and the simulated safe area of other devices. | [`viewport.md`](viewport.md) |
-| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard, clipboard, orientation, status bar, back button and folds, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. | [`window.md`](window.md) |
+| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard, orientation, status bar, back button and folds, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. | [`window.md`](window.md) |
 
 ## Varn modules
 

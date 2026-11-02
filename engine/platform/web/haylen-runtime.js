@@ -2129,6 +2129,33 @@ Module.haylen = Module.haylen || {};
         }
     };
 
+    // Browsers let a page write the clipboard only in a secure context, served over https or from localhost, and shortly after an input of the person, and read it only through what the person pastes. So a write answers the engine once the browser settles it, which a page without the API answers at once with a refusal that the log explains once, and the engine reads the text of the last paste of the page or the last text it wrote.
+    let clipboardText = "";
+    let warnedWithoutClipboard = false;
+    window.addEventListener("paste", (event) => {
+        clipboardText = event.clipboardData.getData("text/plain");
+    }, true);
+    haylen.clipboardText = function () {
+        return clipboardText;
+    };
+    haylen.writeClipboard = function (id, text) {
+        if (!navigator.clipboard) {
+            if (!warnedWithoutClipboard) {
+                warnedWithoutClipboard = true;
+                console.warn("The page cannot write the clipboard, because browsers give the clipboard only to pages served over https or from localhost.");
+            }
+            queueMicrotask(() => Module._haylen_web_clipboard_written(id, 0));
+            return;
+        }
+        navigator.clipboard.writeText(text).then(() => {
+            clipboardText = text;
+            Module._haylen_web_clipboard_written(id, 1);
+        }, (error) => {
+            console.warn("The browser refused to write the clipboard: " + error.message);
+            Module._haylen_web_clipboard_written(id, 0);
+        });
+    };
+
     haylen.lockOrientation = function (value) {
         const orientation = screen.orientation;
         if (!orientation || !orientation.lock) {

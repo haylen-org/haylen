@@ -29,8 +29,9 @@
 struct ImGuiWindow;
 
 namespace haylen::platform {
+class System;
 struct Event;
-}
+} // namespace haylen::platform
 
 namespace haylen::graphics {
 class Device;
@@ -73,7 +74,7 @@ class Backend final {
         std::vector<std::vector<std::uint8_t>> fallbacks;
     };
 
-    Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData);
+    Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow, platform::System& hostSystem, std::span<const std::uint8_t> defaultFontData, std::span<const std::uint8_t> monospaceFontData);
     ~Backend();
 
     Backend(const Backend&) = delete;
@@ -322,6 +323,7 @@ class Backend final {
 
     graphics::Device& device;
     platform::Window& window;
+    platform::System& system;
     std::unique_ptr<Recovery> recovery;
     std::unique_ptr<TextSession> textSession;
     std::unique_ptr<ScrollArbiter> scrollArbiter;

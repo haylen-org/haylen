@@ -142,6 +142,23 @@ TEST_F(SystemTest, OpensUrlsWithAnAnswerOnALaterFrame) {
     EXPECT_THROW(system.openUrl("", [](bool) {}), std::invalid_argument);
 }
 
+TEST_F(SystemTest, WritesTheClipboardWithAnAnswerOnALaterFrame) {
+    test::EngineFixture fixture;
+    System& system = fixture.engine().getSystem();
+    std::vector<bool> answers;
+    system.setClipboard("Island seed: 184467", [&answers](bool written) { answers.push_back(written); });
+    EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
+
+    // A refused write leaves the clipboard as it was, the way a browser refuses a page without a recent input of the person.
+    fixture.host().setWritesClipboard(false);
+    system.setClipboard("Refused", [&answers](bool written) { answers.push_back(written); });
+    EXPECT_TRUE(answers.empty());
+
+    fixture.frames(1);
+    EXPECT_EQ(answers, (std::vector<bool>{true, false}));
+    EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
+}
+
 TEST_F(SystemTest, VibratesForAPositiveNumberOfSeconds) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
@@ -200,6 +217,19 @@ TEST(SystemLuaTest, OpensUrlsAndVibrates) {
     EXPECT_EQ(fixture.host().getVibrations(), (std::vector<float>{0.25F}));
     EXPECT_NE(fixture.lua("system.vibrate(0)").find("A vibration lasts a positive number of seconds."), std::string::npos);
     EXPECT_NE(fixture.lua("system.vibrate('long')").find("number expected"), std::string::npos);
+}
+
+TEST(SystemLuaTest, WritesAndReadsTheClipboard) {
+    test::EngineFixture fixture;
+    fixture.runLua("system = require('haylen.system') async = require('async') answers = {}");
+    fixture.runLua("copying = system.setClipboard('Island seed: 184467') async.spawn(function() local written = copying:await() answers[#answers + 1] = tostring(written) end)");
+    fixture.host().setWritesClipboard(false);
+    fixture.runLua("refusing = system.setClipboard('Refused') async.spawn(function() local written = refusing:await() answers[#answers + 1] = tostring(written) end)");
+    EXPECT_EQ(fixture.lua("return #answers"), "0");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(answers, ' ')"), "true false");
+    EXPECT_EQ(fixture.lua("return system.clipboard()"), "Island seed: 184467");
+    EXPECT_NE(fixture.lua("system.setClipboard()").find("string expected"), std::string::npos);
 }
 
 } // namespace haylen::platform

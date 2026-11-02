@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstddef>
+#include <functional>
 #include <memory>
 #include <span>
 #include <string>
@@ -29,11 +30,12 @@ class Host final : public platform::NativeHost {
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
     void setMouseLocked(bool value) override;
-    void setClipboard(std::string_view value) override;
+    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] platform::TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
+    [[nodiscard]] bool prepareGpuDevice() override;
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
