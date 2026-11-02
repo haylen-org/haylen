@@ -105,21 +105,39 @@ void main() {
         return {};
     }
 
-    // Compiles the material with `haylen.py shaders`, the way apps compile theirs, with the shader compiler of the build, once for every test that needs it. Python starts without a shell, so no shell reinterprets the quotes of the paths.
+    // A material that never samples its texture, so its sprite sampler pairs with no texture in any program.
+    static constexpr const char* kGlowSource = R"(@include haylen/material.glsl
+
+@fs glow_fs
+@include_block haylen_fragment
+layout(binding=1) uniform glow_params {
+    vec4 glow;
+};
+
+void main() {
+    haylen_output(glow * color);
+}
+@end
+
+@program glow haylen_vs glow_fs
+)";
+
+    // Compiles the material `source` with `haylen.py shaders`, the way apps compile theirs, with the shader compiler of the build. Python starts without a shell, so no shell reinterprets the quotes of the paths.
+    [[nodiscard]] static std::vector<std::uint8_t> compile(const std::string& name, const char* source) {
+        const test::TemporaryDirectory app;
+        app.write("app.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
+        app.write("content/shaders/" + name + ".glsl", source);
+        const Poco::Process::Env env{{"HAYLEN_SHADER_COMPILER", HAYLEN_SHADER_COMPILER}};
+        if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}, "", nullptr, nullptr, nullptr, env).wait() != 0) {
+            throw std::runtime_error("The command \"haylen.py shaders\" failed.");
+        }
+        std::ifstream file(app.getPath() / "content" / "shaders" / (name + ".shader"), std::ios::binary);
+        return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
+    }
+
+    // The tint material, compiled once for every test that needs it.
     [[nodiscard]] static const std::vector<std::uint8_t>& tintShader() {
-        // clang-format off
-        static const std::vector<std::uint8_t> compiled = [] {
-            const test::TemporaryDirectory app;
-            app.write("app.json", R"({"name": "Shaders", "identifier": "com.haylen.shaders", "version": "1.0.0"})");
-            app.write("content/shaders/tint.glsl", kTintSource);
-            const Poco::Process::Env env{{"HAYLEN_SHADER_COMPILER", HAYLEN_SHADER_COMPILER}};
-            if (Poco::Process::launch(HAYLEN_PYTHON, {HAYLEN_TOOL_SCRIPT, "shaders", app.getPath().string()}, "", nullptr, nullptr, nullptr, env).wait() != 0) {
-                throw std::runtime_error("The command \"haylen.py shaders\" failed.");
-            }
-            std::ifstream file(app.getPath() / "content" / "shaders" / "tint.shader", std::ios::binary);
-            return std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>());
-        }();
-        // clang-format on
+        static const std::vector<std::uint8_t> compiled = compile("tint", kTintSource);
         return compiled;
     }
 
@@ -499,6 +517,33 @@ TEST_F(MaterialTest, DrawsEveryKindOfDrawAndPostProcessesCanvases) {
     EXPECT_THROW(renderer.drawImageBlend({.from = texture, .to = texture}, {.material = material}), std::invalid_argument);
     EXPECT_THROW(renderer.drawMetaballs(std::vector<math::Vec2>{{}}, 4.0F, {}, {.material = material}), std::invalid_argument);
     fixture.frames(1);
+}
+
+TEST_F(MaterialTest, DrawsWithAShaderThatNeverSamplesItsTexture) {
+    const std::vector<std::uint8_t> bytes = compile("glow", kGlowSource);
+    test::EngineFixture fixture({{"content/shaders/glow.shader", std::string(bytes.begin(), bytes.end())}});
+    graphics::Device& device = fixture.engine().getGraphics();
+    const graphics2d::Material material(fixture.engine().getAssets().shader("shaders/glow.shader"));
+    const graphics::Texture texture = device.createTexture(graphics::Image(8, 8, math::Color::white()));
+    const std::array<math::Vec2, 3> points{math::Vec2{0.0F, 0.0F}, math::Vec2{20.0F, 10.0F}, math::Vec2{40.0F, 0.0F}};
+
+    // Every program that a material replaces binds the sampler of the sprite texture, which the shader declares and never pairs.
+    // clang-format off
+    fixture.engine().getScenes().replace(std::make_shared<test::DrawingScene>([&](core::Engine& engine) {
+        graphics2d::Renderer& renderer = engine.getRenderer2D();
+        const graphics2d::DrawOrder order{.material = material};
+        for (const bool lit : {false, true}) {
+            renderer.beginWorld(graphics2d::Camera{}, {.ambientLight = lit ? std::optional(math::Color::white()) : std::nullopt});
+            renderer.draw({.texture = texture, .order = order});
+            renderer.drawStroke(points, {.width = 8.0F}, order);
+            renderer.drawRect({0.0F, 0.0F, 4.0F, 4.0F}, math::Color::white(), order);
+            renderer.drawText(*engine.getDefaultFont(), "Hi", {}, {}, order);
+        }
+    }));
+    // clang-format on
+    fixture.frames(2);
+
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 TEST_F(MaterialTest, ReloadsItsShaderInPlace) {

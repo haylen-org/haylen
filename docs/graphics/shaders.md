@@ -206,6 +206,7 @@ A material fills the uniform blocks and textures that the fragment shader declar
 - Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or with `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first, in the `batch` programs.
 - The sampler of a texture binding is the one the texture was created with, so a texture loaded with `filter = 'linear'` samples smoothly.
 - A texture that a material leaves unset draws as white.
+- A sampler that the shader declares but never pairs with a texture, such as `sprite_sampler` in a shader that only computes its colors, takes the sampler of the texture at its own binding, so a material that never samples draws like any other.
 
 The method `material:set(name, value)` takes the value that fits the type, as the [`Material` reference](../lua-api/graphics2d.md#materialsetname-value) lists. A draw copies the values of its material when it is made. The properties `shader.uniforms` and `shader.textures` list what a shader offers.
 

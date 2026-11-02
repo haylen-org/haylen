@@ -106,7 +106,7 @@ struct ShaderResource {
         [[nodiscard]] const Attribute* findAttribute(std::string_view attribute) const noexcept;
     };
 
-    // A GPU program with the size of the uniform block at every bind slot, zero where it has none, and the bind slots it declares, which draws fill and leave the others empty: its fragment uniform blocks, its textures, and its samplers with the texture each one samples.
+    // A GPU program with the size of the uniform block at every bind slot, zero where it has none, and the bind slots it declares, which draws fill and leave the others empty: its fragment uniform blocks, its textures, and every sampler it declares with the texture whose sampler it takes.
     struct Compiled {
         gpu::Device::Program program;
         std::array<std::uint32_t, gpu::Device::kMaxBlocks> blockSizes{};

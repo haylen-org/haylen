@@ -411,6 +411,13 @@ const ShaderResource::Compiled& ShaderResource::getProgram(gpu::Device& device, 
             made.samplers.emplace_back(pair.sampler, pair.texture);
         }
     }
+
+    // A sampler that no texture pairs with, such as the one of the sprite texture in a shader that never samples it, still needs a binding, so it takes the sampler of the texture at its own slot.
+    for (const SamplerInfo& sampler : info.samplers) {
+        if (std::ranges::find(made.samplers, sampler.slot, &std::pair<int, int>::first) == made.samplers.end()) {
+            made.samplers.emplace_back(sampler.slot, sampler.slot);
+        }
+    }
     return compiled.emplace(key, std::move(made)).first->second;
 }
 
