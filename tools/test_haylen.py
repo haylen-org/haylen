@@ -357,6 +357,19 @@ class LayerIsolationTest(unittest.TestCase):
         self.assertEqual(knowing, [], "These Lua bindings include a host or a platform folder, while the Lua API stays the same on every platform and graphics API.")
 
 
+class TextInputTest(unittest.TestCase):
+    """The text input of SDL reads keys as text only on Windows and Linux, where no native field edits, so keys in play on every other platform never reach an input method, such as the accent menu of macOS."""
+
+    def test_only_the_text_input_of_windows_and_linux_starts_the_text_input_of_sdl(self):
+        root = Path(__file__).resolve().parent.parent
+        sources = LayerIsolationTest().sources()
+        starting = [name for name, text in sources.items() if re.search(r"\bSDL_StartTextInput\w*\s*\(", text)]
+        self.assertEqual(starting, ["engine/src/platform/sdl/TextInput.cpp"])
+        build = (root / "engine/CMakeLists.txt").read_text(encoding="utf-8")
+        self.assertRegex(build, r'if\(HAYLEN_PLATFORM MATCHES "\^\(windows\|linux\)\$"\)\n\s*list\(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/TextInput\.cpp\)')
+        self.assertEqual(build.count("src/platform/sdl/TextInput.cpp"), 1)
+
+
 class WritingTest(unittest.TestCase):
     root = Path(__file__).resolve().parent.parent
 

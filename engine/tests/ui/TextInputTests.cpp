@@ -236,6 +236,20 @@ TEST_F(TextInputTest, WaitsForTheInputMethodToCommit) {
     EXPECT_EQ(getPublished().selectionEnd, 3);
 }
 
+// Keys held in play, with fields on screen that nobody edits, never turn on the text input of the platform, so no input method, such as the accent menu of macOS, opens for them.
+TEST_F(TextInputTest, LeavesTheTextInputOfThePlatformOffInPlay) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "button", "id": "jump", "text": "Jump"}, {"kind": "textField", "id": "name"}]})");
+    for (int repeat = 0; repeat < 30; ++repeat) {
+        getEngine().handleEvent({.type = platform::Event::Type::KeyDown, .key = input::Key::A, .repeat = repeat > 0});
+        fixture.frames(1);
+    }
+    getEngine().handleEvent({.type = platform::Event::Type::KeyUp, .key = input::Key::A});
+    fixture.frames(1);
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_TRUE(getInput().getPublished().empty());
+    EXPECT_FALSE(fixture.host().isKeyboardVisible());
+}
+
 TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "abc"})");
     focus(*gui, "name");
