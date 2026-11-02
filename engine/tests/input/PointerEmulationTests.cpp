@@ -73,6 +73,8 @@ TEST_F(PointerEmulationTest, LetsTheFirstFingerDriveTheMouse) {
     const std::span<const platform::Event> moved = emulation.convert(makeTouch(Type::TouchMoved, 1, {15.0F, 25.0F}));
     ASSERT_EQ(getTypes(moved), (std::vector{Type::MouseMove, Type::TouchMoved}));
     EXPECT_EQ(moved[0].position, math::Vec2(15.0F, 25.0F));
+    EXPECT_TRUE(moved[0].fromTouch) << "The UI follows the finger and leaves the mouse it drives to the app.";
+    EXPECT_FALSE(moved[1].fromTouch);
     EXPECT_EQ(getTypes(emulation.convert(makeTouch(Type::TouchCancelled, 1, {15.0F, 25.0F}))), (std::vector{Type::MouseMove, Type::MouseUp, Type::MouseLeave, Type::TouchCancelled}));
 
     // The next finger down takes the mouse over.

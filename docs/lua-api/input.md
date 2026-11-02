@@ -752,7 +752,7 @@ end
 
 ### input.setTouchAsMouse(enabled)
 
-Makes a finger act as the mouse too, so an app that reads the mouse runs on a touch screen. The key `input.touchAsMouse` of `app.json` sets it at start.
+Makes a finger act as the mouse too, so an app that reads the mouse runs on a touch screen. The key `input.touchAsMouse` of `app.json` sets it at start. The UI keeps following the finger itself, so a drag of the finger still scrolls the area under it.
 
 - The first finger down drives the left button and the mouse position until it lifts. The mouse leaves the window with it, and the next finger down takes over.
 - A finger that drives the mouse keeps driving it until it lifts, even when this turns off meanwhile.

@@ -67,6 +67,8 @@ struct Event {
     input::KeyModifiers modifiers{};
     char32_t character = 0;
     input::MouseButton mouseButton = input::MouseButton::Left;
+    // Whether a finger drives the mouse event through `input.touchAsMouse`, which reaches the app while the UI follows the finger itself.
+    bool fromTouch = false;
     math::Vec2 position{};
     math::Vec2 delta{};
     // A scroll moves by the points of the screen that a precise device, such as a trackpad, reports when `preciseScroll` is set, and by steps of a wheel otherwise, with positive values for scrolling up and to the left.

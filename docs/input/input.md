@@ -284,7 +284,7 @@ scene.push({
 An app can treat one device as the other:
 
 - With `input.setMouseAsTouch(true)`, or `"input": {"mouseAsTouch": true}` in `app.json`, the left mouse button becomes a finger for the whole engine. So touch controls, gestures and touch code run on a desktop as on a phone.
-- With `input.setTouchAsMouse(true)`, or `"touchAsMouse": true`, the first finger down also drives the mouse. So code that reads `input.mousePressed` and `input.mousePosition` runs on a touch screen, while the touches keep working.
+- With `input.setTouchAsMouse(true)`, or `"touchAsMouse": true`, the first finger down also drives the mouse. So code that reads `input.mousePressed` and `input.mousePosition` runs on a touch screen, while the touches keep working. That mouse reaches the app alone: the UI follows the finger, so a drag scrolls the area under it and a tap presses a button once.
 
 ### Gestures
 

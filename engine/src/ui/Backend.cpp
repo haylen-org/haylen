@@ -484,7 +484,11 @@ void Backend::handleEvent(const platform::Event& event, const graphics::Viewport
     }
 }
 
+// The mouse that a finger drives for the app never reaches ImGui, which follows the finger itself, so a drag of the finger scrolls the area under it.
 void Backend::handlePointer(const platform::Event& event, const graphics::Viewport& viewport) {
+    if (event.fromTouch) {
+        return;
+    }
     ImGuiIO& io = ImGui::GetIO();
     // clang-format off
     const auto place = [&](math::Vec2 framebufferPoint) {

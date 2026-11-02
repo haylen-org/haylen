@@ -4,6 +4,7 @@
 #include <string>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/input/PointerEmulation.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/CollectionItems.hpp"
@@ -293,6 +294,16 @@ TEST_F(ScrollArbiterTest, ScrollsAPageWhenAFingerSwipesOverADraggableRow) {
     swipe(inside + math::Vec2{0.0F, 100.0F}, inside - math::Vec2{0.0F, 100.0F});
     EXPECT_LT(getBounds(*gui, "rows").y, top - 150.0F);
     EXPECT_EQ(std::ranges::count(getEventNames(), std::string("rows:dragStart")), 0);
+}
+
+// The mouse that a finger drives for the app never takes the drag from the UI, so the finger still scrolls the page.
+TEST_F(ScrollArbiterTest, AFingerScrollsWhileItAlsoDrivesTheMouse) {
+    getEngine().getPointerEmulation().setTouchAsMouse(true);
+    auto gui = mountLongPage();
+    const math::Vec2 inside = getBounds(*gui, "page").getCenter();
+    const float top = getBounds(*gui, "content").y;
+    swipe(inside + math::Vec2{0.0F, 100.0F}, inside - math::Vec2{0.0F, 100.0F});
+    EXPECT_LT(getBounds(*gui, "content").y, top - 150.0F);
 }
 
 // A finger that holds a row for a long press picks it up, and the page then leaves the finger to the item.

@@ -97,6 +97,7 @@ void PointerEmulation::addMouse(platform::Event::Type type, math::Vec2 position)
     mouse = platform::Event{};
     mouse.type = type;
     mouse.mouseButton = MouseButton::Left;
+    mouse.fromTouch = true;
     mouse.position = position;
 }
 
