@@ -44,7 +44,7 @@ The option `--version` prints `Haylen` and the version that `engine/VERSION` hol
 
 Each step prints a title after `==>`. Successes, warnings after `Warning:` and errors after `Error:` follow. The tools that a command runs, such as CMake, Ninja, `xcodebuild` and Gradle, write their whole output to the log of the command in `build/logs`, such as `build/logs/run.log`. Every run of a command starts its log again. Meanwhile a terminal shows the latest line of the tool in place under the step.
 
-When a tool fails, the command prints its last 60 lines and the path of the log. Add `--verbose`, before or after the command, to see the commands after `$` and the whole output of every tool instead. Some output always prints, because you read it: the log of the app that runs, the results of tests and benchmarks and the coverage report.
+When a tool fails, the command prints its last 60 lines and the path of the log. Add `--verbose`, before or after the command, to see the commands after `$` and the whole output of every tool instead. Some output always prints, because you read it: the log of the app that runs, the results of tests and benchmarks and the coverage report. While an app runs, `run` shows its summary and the keys that act on it, as [run](distribution.md#run) describes.
 
 An error is one block with the cause and what to do. The output of the tool that failed follows it, when there is one. The command then exits with the code 1, without a Python traceback. Only an unexpected failure prints a traceback. Ctrl+C stops a command with the code 130.
 
@@ -54,7 +54,7 @@ Serving build/apps/my-game-70da5b67/web at http://127.0.0.1:8000/
 Press Ctrl+C to stop the server.
 ```
 
-On a terminal, titles are bold, commands are dim, successes are green, warnings are yellow and errors are red. Reserved expressions, such as commands, options, keys and values, show in cyan without the double quotes that mark them in plain text. Paths and URLs always print bare, and underlined on a terminal, so the terminal can open them. Color follows the usual rules of terminals:
+On a terminal, titles are bold after a blue `==>`, commands are dim, successes are green, warnings are yellow and errors are red. Reserved expressions, such as commands, options, keys and values, show in a soft teal without the double quotes that mark them in plain text. Only URLs are underlined, since terminals open them. Paths print bare, with no style. Color follows the usual rules of terminals:
 
 - The variable `NO_COLOR` with any value turns color off.
 - The variable `FORCE_COLOR` turns it on when the output is not a terminal, such as a log of continuous integration.

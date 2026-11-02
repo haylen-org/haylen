@@ -75,9 +75,10 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
         NativeLibraries::addSearchFolder(folder);
     }
     if (options.development) {
+        // A player that a development server feeds takes the saved files from the server alone, so a save never reloads twice.
         std::error_code error;
-        const bool folder = !options.package.empty() && std::filesystem::is_directory(options.package, error);
-        runtime.host->enableDevelopment(folder ? std::optional<std::filesystem::path>(options.package) : std::nullopt, options.developmentServer);
+        const bool watched = options.developmentServer.empty() && !options.package.empty() && std::filesystem::is_directory(options.package, error);
+        runtime.host->enableDevelopment(watched ? std::optional<std::filesystem::path>(options.package) : std::nullopt, options.developmentServer);
 #if defined(__EMSCRIPTEN__)
         runtime.host->getDevelopmentSession()->addReporter(&WebPage::reportReloaded);
 #endif

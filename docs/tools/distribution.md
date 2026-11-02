@@ -101,8 +101,8 @@ Without `--platform`, `run` does this:
 
 1. It builds the `haylen` player of this machine in the configuration of `--engine-config`, in the build tree `build/<host>-<config>`.
 2. It builds or copies the [native libraries](#native-libraries) of the app for this machine into `native/development` of the [build folder of the app](#platform-projects).
-3. It starts the player with `--dev`, with `--native` and that folder when there are libraries, and with the app folder.
-4. While the player runs, it compiles every shader source that changes again, and the player then reloads the shader.
+3. It starts the [development server](#the-development-server) of the app folder, which compiles every shader source that changes again.
+4. It starts the player with `--dev-server` and the address of the server, with `--native` and that folder when there are libraries, and with the app folder.
 
 With `--platform` it prepares the project of the platform, as [platform projects](#platform-projects) describe, and then builds, checks and launches it:
 
@@ -112,19 +112,52 @@ With `--platform` it prepares the project of the platform, as [platform projects
 | `catalyst` | Runs `xcodebuild` on the `iOS` scheme for the Mac Catalyst destination. | Starts the executable of the Mac Catalyst bundle and streams its log with `log stream`. |
 | `ios-simulator`, `tvos-simulator`, `visionos-simulator` | Runs `xcodebuild` on the `iOS`, `tvOS` or `visionOS` scheme for the simulator. | Runs `xcrun simctl boot`, `install` and `launch --console-pty`, and streams the log of the app with `log stream` inside the simulator. The simulator is the one that `--device` names, by name or id, or else a booted one, or else the first iPhone or Apple TV available. |
 | `ios`, `tvos`, `visionos` | Runs `xcodebuild` for the device, signed with the team that the environment variable `HAYLEN_APPLE_TEAM` names. | Runs `xcrun devicectl device install app` and `device process launch --console` on the device whose id `--device` gives. |
-| `android` | Runs the Gradle task `:app:assembleDebug`, or with `--config Release` the release tasks of [release builds](#release-builds), into the build folder of the app. A debug build names the ABI of the device with the Gradle property `haylen.abi`, and the debug build type of the template then packs only the native libraries of that ABI. | Installs the newest APK of the configuration with `adb install -r`, starts its launcher activity with `adb shell am start`, and streams the log of the app process. The device or emulator is the one whose serial `--device` gives, which you may leave out when only one is connected. |
+| `android` | Runs the Gradle task `:app:assembleDebug`, or with `--config Release` the release tasks of [release builds](#release-builds), into the build folder of the app. A debug build names the ABI of the device with the Gradle property `haylen.abi`, and the debug build type of the template then packs only the native libraries of that ABI. | Installs the newest APK of the configuration with `adb install -r`, starts its launcher activity with `adb shell am start`, and streams the log of the app process, filtered as below. The device or emulator is the one whose serial `--device` gives, which you may leave out when only one is connected. |
 | `web` | Copies the files of the web project into the site, with the prebuilt runtime and `app.zip`, or with `--config Release` the protected release in `app/` and runtimes linked for the app. Then it writes `config.json` next to them. | Serves the site on `--port` with the `--coep` and `--coop` policies, and opens it with `--open`. |
 | `windows`, `linux` | CMake builds the project with Ninja, or with the default generator on Windows without Ninja, into `cmake/<platform>-<config>` of the build folder of the app. Then it installs the app into `build/apps/<app>-<hash>/installed/<platform>/`, as [Windows and Linux](#windows-and-linux) describe. | Runs the installed executable, `<executable>.exe` on Windows and `bin/<executable>` on Linux, which plays the folder `app` next to it. |
 
-Before it builds, `run` checks the plugins of the app and their values for the platform, and stops with every problem it finds. After the build it runs [check](#check) and prints what it finds as warnings. In the Debug configuration it launches the app connected to a development server, as [development mode](#development-mode) describes. It streams the output of the app until the app exits or Ctrl+C stops it.
+Before it builds, `run` checks the plugins of the app and their values for the platform, and stops with every problem it finds. After the build it runs [check](#check) and prints what it finds as warnings. In the Debug configuration it launches the app connected to a development server, as [development mode](#development-mode) describes. Then it shows the summary of the running app and its keys, as [while the app runs](#while-the-app-runs) describes, and streams the output of the app until the app ends, the key `q` quits or Ctrl+C stops it.
 
 Where the log of the engine goes:
 
 - On desktops, to the standard output.
-- On Android, to the log of the process, which `adb logcat --pid` streams, with `haylen` as the tag.
+- On Android, to the log of the process, with `haylen` as the tag. The command `run` streams it with `adb logcat --pid`, filtered to every line of the engine, printed as on a desktop, and to the warnings and errors of the other tags of the process, such as those of plugins and of the system, with their level and tag in front. It ends when the process of the app ends.
 - On iOS, tvOS and Mac Catalyst, to the unified log, with the bundle identifier of the app as the subsystem and `haylen` as the category.
 
 On Mac Catalyst and the simulators, `run` streams those lines next to the standard output and error of the process, with warnings and errors on the standard error. It keeps streaming for one second after the app ends, so the last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.
+
+#### While the app runs
+
+Each step of `run` prints one short line. Once the app runs, `run` prints a summary of the app, the device and the configuration, and the keys that act on the app, one per line. The log of the app follows.
+
+```text
+==> Preparing the Apple project platform/apple
+==> Building the app for "ios-simulator" in "Debug"
+==> Installing the app on the simulator "iPhone 17e"
+
+  App            My Game ("com.example.mygame")
+  Device         iPhone 17e, simulator
+  Configuration  "Debug", with the engine in "Release"
+  Hot reload     Every file saved in the app reloads in it
+
+  r  Reload what changed
+  R  Restart the app
+  d  Run a command in the developer console
+  c  Clear the screen
+  q  Quit
+  h  List the keys
+```
+
+| Key | What it does |
+| --- | --- |
+| `r` | Sends the files saved since the last batch at once, for a save that the development server has not seen yet. |
+| `R` | Restarts every connected app from its package with a fresh Lua state, which the app reports back. |
+| `d` | Asks for a line with the prompt `Console>` and runs it as a command of the [developer console](../lua-api/debug.md#console) of every connected app, such as `gold 50`, and the terminal prints the result of each app. So you run commands on a phone or a TV from the computer. An empty line runs nothing. |
+| `c` | Clears the screen and its scrollback. |
+| `q` | Quits the app and ends the command: it terminates the app on a simulator or on Android, stops the server of a web page and ends the process of the app elsewhere. |
+| `h` | Lists the keys again. |
+
+A key acts at once, without Enter, in an interactive terminal. The keys `r`, `R` and `d` need the development server, so the Release configuration and C++ apps offer only `c`, `q` and `h`. The web platform shows the address of the page and the folder of the site in place of the device. Without an interactive terminal, such as in continuous integration, the summary still prints and no key is read.
 
 #### Running a C++ app
 
@@ -1063,7 +1096,7 @@ Development mode is [hot reload](../core/lua.md#hot-reload): the running app rel
 | Option | Meaning |
 | --- | --- |
 | `--dev` | Runs in development, watching the package folder. |
-| `--dev-server <address>` | Runs in development and connects to the development server at that WebSocket address, which pushes the saved files. |
+| `--dev-server <address>` | Runs in development and connects to the development server at that WebSocket address, which pushes the saved files. The player then takes the saved files from the server alone and watches no folder, so a save never reloads twice. |
 | `--native <folder>` | Adds a folder that `native.load` searches before the folders of the platform. It may repeat. |
 | `--graphics-api <name>` | The graphics API that the window tries first, such as `vulkan`, before the other APIs of the build. It replaces the `window.graphicsApis` of `app.json`, and the web page passes the API that its address names the same way. A name that is not a graphics API stops the player with an error, and an API that the build lacks logs a warning. |
 | The first argument that is not an option | The package to play, a folder or a zip. Without one, the runtime plays the package bundled with the app. |
@@ -1072,7 +1105,7 @@ Other options are ignored, because systems add their own, such as the ones that 
 
 Among the commands of `haylen.py`, only `run` turns development on:
 
-- `run` without `--platform` passes `--dev`.
+- `run` without `--platform` starts a development server and passes `--dev-server` to the player of this machine.
 - `run --platform web` in the Debug configuration serves a page that turns on development through `Module.haylen.development`.
 - `run` with any other platform in the Debug configuration starts a development server and launches the app connected to it.
 
@@ -1088,19 +1121,15 @@ The page of `run --platform web` connects to the development server that `haylen
 - A page that opens or reconnects later gets the files that changed since the package was made. A page of an earlier run of the server gets every file, so it always plays the files on disk.
 - A file larger than 16 MiB stays out, with an error that names it. A shader that fails to compile prints its error in the terminal and on the pages, which keep the last good shader.
 
-In the Debug configuration, `run` with any other platform starts the same development server once the app is built. It runs alone on the port of `--port`, 8000 by default, and the app launches with `--dev-server` and its address. So every file saved in the app reloads in it, as it does in the player and in the pages. The manifest of the server holds the files of the package that the build placed in the project, in `haylen/app` of the Apple project and `haylen/assets/app` of the Android project. So the app catches up on what changed while it was built. The server stops when the launch ends, such as when the app quits or Ctrl+C stops the streamed log.
+The command `run` without `--platform`, and with any other platform in the Debug configuration, starts the same development server once the app is built. It runs alone on the port of `--port`, 8000 by default, and the app launches with `--dev-server` and its address. So every file saved in the app reloads in it, as it does in the pages. The manifest of the server holds the files of the package that the build placed in the project, or the files of the app folder for the player, in `haylen/app` of the Apple project and `haylen/assets/app` of the Android project. So the app catches up on what changed while it was built. The server stops when the launch ends, such as when the app quits, the key `q` quits or Ctrl+C stops the streamed log.
 
 | Platform | How the app reaches the server |
 | --- | --- |
 | `android` | `adb reverse` forwards the port of the device, emulator or phone to this machine, so the app connects to `127.0.0.1`. The address travels as the extra `dev.haylen.developmentServer` of the launch intent, and the forward goes away when the launch ends. |
-| `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `macos`, `catalyst`, `windows`, `linux` | The simulator and this machine share the loopback address of this machine. The address follows the arguments of `xcrun simctl launch` or of the executable. |
+| The player, `ios-simulator`, `tvos-simulator`, `visionos-simulator`, `macos`, `catalyst`, `windows`, `linux` | The simulator and this machine share the loopback address of this machine. The address follows the arguments of `xcrun simctl launch` or of the executable. |
 | `ios`, `tvos`, `visionos` | The device reaches this machine over the network. So the server listens on every address of this machine, or on the one that `--host` names, and the app connects to the address of this machine on the network, which `xcrun devicectl device process launch` passes. The device and this machine must share a network, and the first connection asks the person on the device for access to the local network. |
 
-While the development server of `run` runs in an interactive terminal, with the web platform or any other, the terminal takes commands:
-
-- The line `r` sends the files saved since the last batch at once, for a save that the watcher has not seen yet.
-- The line `R` restarts every connected app from its package with a fresh Lua state, which the app reports back.
-- Every other line goes to the connected apps as a line of their [developer console](../lua-api/debug.md#console), and the terminal prints the result of each app. So you run commands on a phone or a TV from the computer.
+While the development server of `run` runs in an interactive terminal, with the web platform or any other, the keys of [while the app runs](#while-the-app-runs) reload, restart and reach the developer console of the connected apps.
 
 An app that stops or restarts leaves the server, which says so and keeps serving the apps that connect next.
 

@@ -92,7 +92,7 @@ class NativeHost : public Host {
         launched = value;
     }
 
-    // Plays the apps of this runtime in development, with a session that scans the package folder when the app plays from one and connects to the development server whose address the launch gave.
+    // Plays the apps of this runtime in development, with a session that scans the package folder it is given or connects to the development server whose address the launch gave.
     void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
         developmentSession = std::make_unique<DevelopmentSession>(std::move(folder), std::move(server));
     }

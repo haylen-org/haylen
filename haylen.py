@@ -21,6 +21,7 @@ import plistlib
 import re
 import shlex
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -255,17 +256,21 @@ class BuildError(RuntimeError):
 
 
 class Terminal:
-    """Prints what haylen.py does: the titles of its steps, the commands it runs, successes, warnings and errors. A message marks reserved expressions with double quotes and paths and URLs with backticks. On a terminal with color, reserved expressions print in color without their quotes and paths and URLs print underlined, and without color reserved expressions keep their quotes. Paths and URLs always print bare, so terminals can open them."""
+    """Prints what haylen.py does: the titles of its steps, the commands it runs, successes, warnings, errors and the summary of a running app. A message marks reserved expressions with double quotes and paths and URLs with backticks. On a terminal with color, reserved expressions print in a calm color without their quotes, URLs print underlined, since terminals open them, and paths print bare. Without color, reserved expressions keep their quotes and paths and URLs print bare."""
 
     MARKUP = re.compile(r'`([^`\n]+)`|"([^"\n]+)"')
+    URL = re.compile(r"[a-z][a-z0-9+.-]*://", re.IGNORECASE)
     STEP = "1"
+    MARKER = "1;34"
     COMMAND = "2"
     SUCCESS = "32"
     WARNING = "1;33"
     ERROR = "1;31"
     EMPHASIS = "1"
-    EXPRESSION = "36"
-    LOCATION = "4"
+    LABEL = "2"
+    # A soft teal of the 256 colors that every terminal with escape sequences shows, which sets reserved expressions apart from the prose without drawing the eye to them.
+    EXPRESSION = "38;5;73"
+    LINK = "4"
     # The console mode of Windows that shows escape sequences, which consoles leave off for older programs.
     VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
@@ -311,8 +316,11 @@ class Terminal:
         base = f"\x1b[{style}m" if style else ""
 
         def mark(match: re.Match) -> str:
-            code, text = (Terminal.EXPRESSION, match[2]) if match[1] is None else (Terminal.LOCATION, match[1])
-            return f"\x1b[{code}m{text}\x1b[0m{base}"
+            if match[1] is None:
+                return f"\x1b[{Terminal.EXPRESSION}m{match[2]}\x1b[0m{base}"
+            if Terminal.URL.match(match[1]):
+                return f"\x1b[{Terminal.LINK}m{match[1]}\x1b[0m{base}"
+            return match[1]
 
         rendered = Terminal.MARKUP.sub(mark, message)
         return f"{base}{rendered}\x1b[0m" if base else rendered
@@ -322,13 +330,20 @@ class Terminal:
         return subprocess.list2cmdline(parts) if os.name == "nt" else shlex.join(parts)
 
     def step(self, title: str) -> None:
-        print(Terminal.render(f"==> {title}", self.stdout_color, Terminal.STEP), file=self.stdout, flush=True)
+        print(f"{Terminal.paint('==>', self.stdout_color, Terminal.MARKER)} {Terminal.render(title, self.stdout_color, Terminal.STEP)}", file=self.stdout, flush=True)
 
     def command(self, parts: list[str]) -> None:
         print(Terminal.paint(f"$ {Terminal.command_line(parts)}", self.stdout_color, Terminal.COMMAND), file=self.stdout, flush=True)
 
     def heading(self, text: str) -> None:
         print(Terminal.paint(text, self.stdout_color, Terminal.EMPHASIS), file=self.stdout, flush=True)
+
+    def rows(self, rows: list[tuple[str, str]], keys: bool = False) -> None:
+        """Prints rows of a name and a text with the names aligned, such as the summary of a running app with dim labels, or its keys in the color of reserved expressions."""
+        width = max(len(name) for name, _ in rows)
+        style = Terminal.EXPRESSION if keys else Terminal.LABEL
+        for name, text in rows:
+            print(f"  {Terminal.paint(name.ljust(width), self.stdout_color, style)}  {Terminal.render(text, self.stdout_color)}", file=self.stdout, flush=True)
 
     def info(self, message: str) -> None:
         print(Terminal.render(message, self.stdout_color), file=self.stdout, flush=True)
@@ -348,6 +363,11 @@ class Terminal:
         if details:
             lines.append(Terminal.paint(details, self.stderr_color, Terminal.COMMAND))
         print("\n".join(lines), file=self.stderr, flush=True)
+
+    def clear(self) -> None:
+        """Clears the screen and the scrollback of a terminal, and nothing elsewhere."""
+        if self.stdout_color:
+            print("\x1b[2J\x1b[3J\x1b[H", end="", file=self.stdout, flush=True)
 
     def progress(self, line: str) -> None:
         """Shows the latest line of a quiet tool in place on a terminal with color, cut to the width of the terminal, and nothing elsewhere."""
@@ -392,13 +412,13 @@ def missing_command(executable: str) -> str:
 
 
 def run(command: list, *, cwd: Path = ROOT, env: dict[str, str] | None = None, echo: bool = True, stream: bool = False) -> None:
-    """Runs a command and stops with an error that names the command when it fails. A command whose output the developer reads, such as the log of an app or the results of tests, streams it with `stream`, and so does every command with "--verbose", after printing the command unless the caller describes it in a step of its own. Any other command writes its output to the log of the terminal, shows its latest line in place, and on a failure prints its last lines and where the whole output is."""
+    """Runs a command and stops with an error that names the command when it fails. A command whose output the developer reads, such as the results of tests, streams it with `stream`, and so does every command with "--verbose", which also prints the command unless the caller describes it in a step of its own. Any other command writes its output to the log of the terminal, shows its latest line in place, and on a failure prints its last lines and where the whole output is."""
     parts = [str(part) for part in command]
     name = Path(parts[0]).name
     if not (stream or terminal.verbose):
         run_quietly(parts, cwd, env, name)
         return
-    if echo:
+    if echo and terminal.verbose:
         terminal.command(parts)
     # The input of the terminal belongs to haylen.py, which reads the lines of the developer console from it, so a command that also reads it, such as the console of an app that devicectl or simctl launches, never takes those lines.
     try:
@@ -2864,21 +2884,6 @@ def compile_app_shaders(folder: Path) -> None:
             compile_shader(source, output)
 
 
-def watch_app_shaders(folder: Path, stop: threading.Event) -> None:
-    """Compiles the shaders of an app in development again whenever a source changes, which the player then reloads, and reports errors without stopping, once per change."""
-    shaders = folder / "content" / "shaders"
-    seen = newest_shader_source(folder) if shaders.is_dir() else 0.0
-    while not stop.wait(SHADER_WATCH_SECONDS):
-        stamp = newest_shader_source(folder) if shaders.is_dir() else 0.0
-        if stamp == seen:
-            continue
-        seen = stamp
-        try:
-            compile_app_shaders(folder)
-        except BuildError as error:
-            terminal.error(str(error), error.details)
-
-
 def command_shaders(args: argparse.Namespace) -> None:
     folder = resolve_app(args.app)
     if not shader_sources(folder):
@@ -3607,31 +3612,37 @@ def unified_log(executable: str, prefix: list) -> Iterator[list[str]]:
         stream.wait()
 
 
-def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None, arguments: list[str]) -> None:
-    """Launches an app bundle on this Mac, a simulator or a device with the arguments of its command line and streams its output until it exits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
+def launch_apple(app: App, bundle: Path, args: argparse.Namespace, simulator: dict | None, session: RunSession) -> None:
+    """Launches an app bundle on this Mac, a simulator or a device with the arguments of the session and streams its output until it ends or the session quits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
     desktop = args.platform in {"macos", "catalyst"}
     info = plistlib.loads((bundle / "Contents" / "Info.plist" if desktop else bundle / "Info.plist").read_bytes())
     executable, identifier = info["CFBundleExecutable"], info["CFBundleIdentifier"]
     if args.platform == "macos":
-        run([bundle / "Contents" / "MacOS" / executable, *arguments], stream=True)
+        session.show(run_rows(app, "This Mac", args, session))
+        session.follow([bundle / "Contents" / "MacOS" / executable, *session.arguments])
     elif args.platform == "catalyst":
         with unified_log(executable, []):
-            run([bundle / "Contents" / "MacOS" / executable, *arguments], stream=True)
+            session.show(run_rows(app, "This Mac, with Mac Catalyst", args, session))
+            session.follow([bundle / "Contents" / "MacOS" / executable, *session.arguments])
     elif simulator:
         udid = simulator["udid"]
-        terminal.step(f'Launching "{identifier}" on the simulator "{simulator["name"]}"')
+        terminal.step(f'Installing the app on the simulator "{simulator["name"]}"')
         if simulator["state"] != "Booted":
             run(["xcrun", "simctl", "boot", udid])
         run(["xcrun", "simctl", "bootstatus", udid, "-b"])
         run(["xcrun", "simctl", "install", udid, bundle])
         with unified_log(executable, ["xcrun", "simctl", "spawn", udid]):
-            run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *arguments], stream=True)
+            session.show(run_rows(app, f'{simulator["name"]}, simulator', args, session), lambda: subprocess.run(["xcrun", "simctl", "terminate", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False))
+            session.follow(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *session.arguments])
     else:
         if not args.device:
             raise BuildError(f'Name the device with "--device". {DEVICES_HINT}')
-        terminal.step(f'Launching "{identifier}" on the device "{args.device}"')
+        name = apple_device_name(args.device)
+        terminal.step(f'Installing the app on "{name}"')
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
-        run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *arguments], stream=True)
+        # The launch ends the app when it stops, as Ctrl+C does.
+        session.show(run_rows(app, f"{name}, device", args, session), lambda: session.process.send_signal(signal.SIGINT))
+        session.follow(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *session.arguments])
 
 
 def apple_product(app: App, platform: str, config: str) -> Path:
@@ -3653,7 +3664,7 @@ def build_apple(app: App, root: Path, args: argparse.Namespace) -> tuple[Path, d
     command = ["xcodebuild", "-project", root / "App.xcodeproj", "-scheme", settings["scheme"], "-configuration", args.config, "-destination", destination, "-derivedDataPath", app.build_folder / "xcode", "-jobs", str(args.jobs), "build"]
     if args.platform in APPLE_DEVICE_SYSTEMS:
         command += ["-allowProvisioningUpdates", f"DEVELOPMENT_TEAM={apple_team()}"]
-    terminal.step(f'Building the "{settings["scheme"]}" scheme for "{args.platform}" in the "{args.config}" configuration')
+    terminal.step(f'Building the app for "{args.platform}" in "{args.config}"')
     run(command)
     return apple_product(app, args.platform, args.config), simulator
 
@@ -3776,8 +3787,8 @@ def run_apple(app: App, root: Path, args: argparse.Namespace) -> None:
     report_requirements(requirements)
     if args.build_only:
         return
-    with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
-        launch_apple(bundle, args, simulator, arguments)
+    with run_session(app, root / GENERATED_FOLDER / "app", args) as session:
+        launch_apple(app, bundle, args, simulator, session)
 
 
 # Android projects: the Gradle scripts read `haylen/haylen.properties` and take `haylen/assets`, `haylen/res` and `haylen/jniLibs` as source folders of the app module and `haylen/plugins/<id>` as the modules of the plugins.
@@ -4075,6 +4086,13 @@ def missing_android_plugin_files(app: App, root: Path) -> list[tuple[Plugin, Pat
     return [(plugin, source, destination) for plugin in app.plugins if "android" in plugin.manifest for source, destination in android_plugin_files(app, plugin) if not (root / destination).exists()]
 
 
+def android_device_name(serial: str) -> str:
+    """The name of an Android device that people know it by: the virtual device of an emulator, or the model of a phone, a tablet or a TV."""
+    if serial.startswith("emulator-"):
+        return capture([adb(), "-s", serial, "emu", "avd", "name"]).splitlines()[0].strip()
+    return android_property(serial, "ro.product.model")
+
+
 def android_device_abi(device: str) -> str:
     """The ABI that an Android device runs, which must be one the engine builds for."""
     abi = capture([adb(), "-s", device, "shell", "getprop", "ro.product.cpu.abi"]).strip()
@@ -4090,7 +4108,7 @@ def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | Non
         copies = " ".join(f'The plugin "{plugin.id}" needs "{destination}", so copy `{shown_path(source)}` to `{shown_path(root / destination)}`.' for plugin, source, destination in lacking)
         raise BuildError(f"The Android project lacks files that its plugins need. {copies}")
     variant = "Release" if args.config == "Release" else "Debug"
-    terminal.step(f'Building the APK of `{shown_path(root)}` with Gradle in the "{args.config}" configuration')
+    terminal.step(f'Building the APK with Gradle in "{args.config}"')
     only = [f"-Phaylen.abi={abi}"] if abi and variant == "Debug" else []
     packed = variant == "Release" and any((root / GENERATED_FOLDER / "asset-packs").glob("*/build.gradle.kts"))
     tasks = [f":app:package{variant}UniversalApk" if packed else f":app:assemble{variant}"]
@@ -4100,20 +4118,59 @@ def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | Non
     return android_product(app, args.config)
 
 
-def launch_android(app: App, root: Path, apk: Path, args: argparse.Namespace, device: str, arguments: list[str]) -> None:
-    """Installs an APK on a device, starts it and streams the log of its process until it ends. A release with asset packs that Google Play delivers after the install installs its bundle in the local testing mode of Play instead, which delivers them from the device as Play would. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
+# The tag of the engine in the log of Android. The log of a run shows its lines as the engine writes them, and of the other tags of the process, such as those of plugins and of the system, only the warnings and errors, with their tag.
+ANDROID_LOG_TAG = "haylen"
+ANDROID_LOG_FILTER = [f"{ANDROID_LOG_TAG}:V", "*:W"]
+ANDROID_PROCESS_POLL_SECONDS = 1.0
+
+
+def android_pid(device: str, package: str) -> str:
+    """The process of an app on a device, or an empty text when it runs none."""
+    return subprocess.run([str(adb()), "-s", device, "shell", "pidof", package], capture_output=True, text=True, check=False).stdout.strip()
+
+
+def android_log_line(line: str) -> str:
+    """Turns a line of logcat in its "tag" format into the line that the terminal shows: a line of the engine as the engine wrote it, and a line of another tag with its level and tag in front."""
+    prefix, separator, message = line.partition(": ")
+    if separator and prefix[1:2] == "/" and prefix[2:].strip() == ANDROID_LOG_TAG:
+        return message
+    return line
+
+
+def watch_android_process(session: RunSession, device: str, package: str, pid: str) -> None:
+    """Ends the run once the process of the app is gone, such as when the app quits or crashes, since its log never ends on its own."""
+    while not session.quitting.wait(ANDROID_PROCESS_POLL_SECONDS):
+        if android_pid(device, package) != pid:
+            terminal.info("The app stopped.")
+            session.quit()
+            return
+
+
+def launch_android(app: App, root: Path, apk: Path, args: argparse.Namespace, device: str, session: RunSession) -> None:
+    """Installs an APK on a device, starts it and streams the log of its process, filtered to the lines of the engine and the warnings and errors of the rest, until the app ends or the session quits. A release with asset packs that Google Play delivers after the install installs its bundle in the local testing mode of Play instead, which delivers them from the device as Play would. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
     package = capture([android_build_tool("aapt2"), "dump", "packagename", apk]).strip()
-    terminal.step(f'Launching "{package}" on the Android device "{device}"')
+    name = android_device_name(device)
+    terminal.step(f'Installing the app on "{name}"')
     if args.config == "Release" and android_store_packs(root):
         install_android_bundle(android_bundle(app, args.config), root, device)
     else:
         run([adb(), "-s", device, "install", "-r", apk])
+
     # The launcher intent starts the task of the app, so the launcher icon brings that task back as it is later. The shell of the device reads the command line, so the extra is quoted for it.
+    arguments = session.arguments
     extras = ["--es", ANDROID_DEVELOPMENT_EXTRA, shlex.quote(arguments[arguments.index("--dev-server") + 1])] if "--dev-server" in arguments else []
     run([adb(), "-s", device, "shell", "am", "start", "-W", "-a", "android.intent.action.MAIN", "-c", "android.intent.category.LAUNCHER", "-n", f"{package}/dev.haylen.HaylenActivity", *extras])
-    process = capture([adb(), "-s", device, "shell", "pidof", package]).strip()
-    if process:
-        run([adb(), "-s", device, "logcat", "--pid", process], stream=True)
+    pid = android_pid(device, package)
+    if not pid:
+        raise BuildError(f'The app "{package}" stopped as soon as it started. Its log stays on the device, which "adb -s {device} logcat" shows.')
+
+    def stop() -> None:
+        subprocess.run([str(adb()), "-s", device, "shell", "am", "force-stop", package], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False)
+        session.process.terminate()
+
+    session.show(run_rows(app, f'{name} ("{device}")', args, session), stop)
+    threading.Thread(target=watch_android_process, args=(session, device, package, pid), daemon=True).start()
+    session.follow([adb(), "-s", device, "logcat", "-v", "tag", f"--pid={pid}", *ANDROID_LOG_FILTER], line=android_log_line)
 
 
 def android_manifest(apk: Path) -> dict[str, set[str]]:
@@ -4278,8 +4335,8 @@ def run_android(app: App, root: Path, args: argparse.Namespace) -> None:
     report_requirements(requirements)
     if device is None:
         return
-    with device_development(app, root / GENERATED_FOLDER / "assets" / "app", args, device) as arguments:
-        launch_android(app, root, apk, args, device, arguments)
+    with run_session(app, root / GENERATED_FOLDER / "assets" / "app", args, device) as session:
+        launch_android(app, root, apk, args, device, session)
 
 
 # Web sites: the files of `platform/web` of an app, or of the template, go as they are into the site in the build folder of the app, and the generated files join them there.
@@ -4441,14 +4498,152 @@ def development_address(platform_name: str, host: str, port: int, token: str) ->
     return listen, f"ws://{reached}:{port}{DEVELOPMENT_PATH}?token={token}"
 
 
-# What the terminal of a run in development offers.
-DEVELOPMENT_CONSOLE = '{subject} in development, and every file saved in the app reloads {where}. Type "r" to send what changed at once, "R" to restart, and any other line to run it in {console} developer console.'
+# The keys of a running app with what each does, in the order that its list shows them. The keys of the development server work only in development.
+RUN_KEYS = {"r": "Reload what changed", "R": "Restart the app", "d": "Run a command in the developer console", "c": "Clear the screen", "q": "Quit", "h": "List the keys"}
+DEVELOPMENT_KEYS = ("r", "R", "d")
+CONSOLE_PROMPT = "Console> "
 
 
-def start_console_input(development: DevelopmentServer) -> None:
-    """Reads the lines the developer types in an interactive terminal and sends them to the developer console of the connected apps."""
-    if sys.stdin.isatty():
-        threading.Thread(target=development.read_lines, args=(sys.stdin,), daemon=True).start()
+class KeyReader:
+    """Reads the keys that the developer presses in an interactive terminal one at a time and without echo, and a whole line when the session asks for one, and leaves the terminal as it found it when it closes."""
+
+    def __init__(self, stream: TextIO) -> None:
+        self.stream = stream
+        self.saved: list | None = None
+
+    def open(self) -> None:
+        if os.name == "nt":
+            return
+        import termios
+        import tty
+
+        self.saved = termios.tcgetattr(self.stream.fileno())
+        tty.setcbreak(self.stream.fileno())
+
+    def close(self) -> None:
+        if self.saved is None:
+            return
+        import termios
+
+        termios.tcsetattr(self.stream.fileno(), termios.TCSADRAIN, self.saved)
+        self.saved = None
+
+    def key(self) -> str:
+        """Waits for the next key, and returns an empty text when the input ends."""
+        if os.name == "nt":
+            import msvcrt
+
+            return msvcrt.getwch()
+        return os.read(self.stream.fileno(), 1).decode(errors="replace")
+
+    def line(self, prompt: str) -> str:
+        """Reads a line with the echo and the editing of the terminal, and returns an empty text when the input ends."""
+        self.close()
+        try:
+            return input(prompt)
+        except EOFError:
+            return ""
+        finally:
+            self.open()
+
+
+class RunSession:
+    """What the terminal shows and takes while an app runs: the summary of the app, its device and its configuration, then its log and the keys that reload it, restart it, run a line in its developer console, clear the screen, quit and list the keys. A run without a development server, such as a release, offers only the keys that need none."""
+
+    def __init__(self, development: DevelopmentServer | None = None, arguments: list[str] | None = None) -> None:
+        self.development = development
+        # The arguments of the command line that connect the app to the development server.
+        self.arguments = arguments or []
+        self.keys = {key: text for key, text in RUN_KEYS.items() if development is not None or key not in DEVELOPMENT_KEYS}
+        self.reader = KeyReader(sys.stdin) if sys.stdin.isatty() else None
+        self.stop: Callable[[], None] | None = None
+        self.process: subprocess.Popen | None = None
+        self.quitting = threading.Event()
+
+    def __enter__(self) -> "RunSession":
+        return self
+
+    def __exit__(self, *_) -> None:
+        if self.reader is not None:
+            self.reader.close()
+
+    def show(self, rows: list[tuple[str, str]], stop: Callable[[], None] | None = None) -> None:
+        """Prints the summary of the running app with its keys, and takes the keys from then on. Quitting calls the stop of the platform, or else ends the process that the session follows."""
+        self.stop = stop
+        terminal.verbatim("")
+        terminal.rows(rows)
+        terminal.verbatim("")
+        self.list_keys()
+        if self.reader is not None:
+            self.reader.open()
+            threading.Thread(target=self.take_keys, daemon=True).start()
+
+    def list_keys(self) -> None:
+        terminal.rows(list(self.keys.items()), keys=True)
+        terminal.verbatim("")
+
+    def take_keys(self) -> None:
+        while key := self.reader.key():
+            self.press(key)
+
+    def press(self, key: str) -> None:
+        """Does what a key asks, and leaves every other key alone, such as the keys of the arrows."""
+        if key not in self.keys:
+            return
+        if key == "r":
+            self.development.reload()
+        elif key == "R":
+            self.development.restart()
+        elif key == "d":
+            self.run_line()
+        elif key == "c":
+            terminal.clear()
+        elif key == "q":
+            self.quit()
+        else:
+            self.list_keys()
+
+    def run_line(self) -> None:
+        line = self.reader.line(CONSOLE_PROMPT).strip() if self.reader is not None else ""
+        if line:
+            self.development.send_line(line)
+
+    def quit(self) -> None:
+        self.quitting.set()
+        if self.stop is not None:
+            self.stop()
+        elif self.process is not None:
+            self.process.terminate()
+
+    def follow(self, command: list, cwd: Path = ROOT, line: Callable[[str], str] | None = None) -> None:
+        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line through the function of the line when one is given. It stops with an error when the process fails, unless the developer quit."""
+        parts = [str(part) for part in command]
+        if terminal.verbose:
+            terminal.command(parts)
+        try:
+            self.process = subprocess.Popen(parts, cwd=cwd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE if line else None, text=True, encoding="utf-8", errors="replace")
+        except FileNotFoundError as error:
+            raise BuildError(missing_command(parts[0])) from error
+        if self.quitting.is_set():
+            self.process.terminate()
+        if line is not None:
+            for text in self.process.stdout:
+                terminal.verbatim(line(text.rstrip("\n")))
+        code = self.process.wait()
+        if self.quitting.is_set() or code == 0:
+            return
+        name = Path(parts[0]).name
+        if code < 0:
+            raise BuildError(f'The command "{name}" was stopped by the signal {-code}.')
+        raise BuildError(f'The command "{name}" failed with exit code {code}, and its output above shows why.')
+
+
+def run_rows(app: App, device: str, args: argparse.Namespace, session: RunSession) -> list[tuple[str, str]]:
+    """The summary of a running app: its name and identifier, the device it runs on, its configuration and, in development, how its files reach it."""
+    rows = [("App", f'{app.name} ("{app.identifier}")'), ("Device", device), ("Configuration", f'"{args.config}", with the engine in "{args.engine_config}"')]
+    if session.development is not None:
+        rows.append(("Hot reload", "Every file saved in the app reloads in it"))
+    return rows
 
 
 class DevelopmentHandler(http.server.BaseHTTPRequestHandler):
@@ -4467,10 +4662,11 @@ class DevelopmentHandler(http.server.BaseHTTPRequestHandler):
 
 
 @contextlib.contextmanager
-def device_development(app: App, package: Path, args: argparse.Namespace, device: str | None = None) -> Iterator[list[str]]:
-    """Runs the development server of an app that a launch starts in the Debug configuration, and yields the arguments of the command line that connect the app to it, which are none in the Release configuration. The manifest of the server holds the files of the package as the build ships them, so the app catches up on what changed since."""
+def run_session(app: App, package: Path, args: argparse.Namespace, device: str | None = None) -> Iterator[RunSession]:
+    """Yields the session of an app that a launch starts, with the development server that it connects to in the Debug configuration, which the arguments of the session name. The manifest of the server holds the files of the package as the build ships them, so the app catches up on what changed since. The Release configuration runs no server."""
     if args.config == "Release":
-        yield []
+        with RunSession() as session:
+            yield session
         return
     manifest = DevelopmentServer.hash_files(package, [path.relative_to(package).as_posix() for path in sorted(package.rglob("*")) if path.is_file()])
     development = DevelopmentServer(app.folder, manifest)
@@ -4483,12 +4679,11 @@ def device_development(app: App, package: Path, args: argparse.Namespace, device
     threading.Thread(target=server.serve_forever, daemon=True).start()
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
-    start_console_input(development)
     if device is not None:
         run([adb(), "-s", device, "reverse", f"tcp:{args.port}", f"tcp:{args.port}"])
-    terminal.info(DEVELOPMENT_CONSOLE.format(subject="The app runs", where="in it", console="its"))
     try:
-        yield ["--dev-server", address]
+        with RunSession(development, ["--dev-server", address]) as session:
+            yield session
     finally:
         stop.set()
         server.shutdown()
@@ -4504,16 +4699,13 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     report_requirements(requirements)
     if args.build_only:
         return
-    if args.config == "Release":
-        serve(site, args.host, args.port, args.coep, args.coop, args.open)
-        return
-    development = start_web_development(app, site)
+    development = start_web_development(app, site) if args.config != "Release" else None
     stop = threading.Event()
-    threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
-    start_console_input(development)
-    terminal.info(DEVELOPMENT_CONSOLE.format(subject="The page runs", where="in the open pages", console="their"))
+    if development is not None:
+        threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
     try:
-        serve(site, args.host, args.port, args.coep, args.coop, args.open, development)
+        with RunSession(development) as session:
+            serve(site, args.host, args.port, args.coep, args.coop, args.open, development, session, app)
     finally:
         stop.set()
 
@@ -4730,7 +4922,7 @@ def build_desktop(app: App, root: Path, args: argparse.Namespace) -> Path:
     # A build tree belongs to one project, so a project of the developer that replaces the copy of the template builds in a new tree.
     if (build / "CMakeCache.txt").is_file() and cmake_cache_value(build, "CMAKE_HOME_DIRECTORY") != root.as_posix():
         shutil.rmtree(build)
-    terminal.step(f'Building the {args.platform.capitalize()} project `{shown_path(root)}` in the "{args.config}" configuration')
+    terminal.step(f'Building the {args.platform.capitalize()} project in "{args.config}"')
     run(["cmake", "-S", root, "-B", build, *cmake_generator(), f"-DCMAKE_BUILD_TYPE={args.config}"])
     run(["cmake", "--build", build, "--config", args.config, "--parallel", str(args.jobs)])
     folder = desktop_folder(app, args.platform)
@@ -4819,8 +5011,9 @@ def run_desktop(app: App, root: Path, args: argparse.Namespace) -> None:
     if args.build_only:
         return
     executable = desktop_folder(app, args.platform) / DESKTOP_LAYOUTS[args.platform][1].format(executable=app.executable)
-    with device_development(app, root / GENERATED_FOLDER / "app", args) as arguments:
-        run([executable, *arguments], cwd=executable.parent, stream=True)
+    with run_session(app, root / GENERATED_FOLDER / "app", args) as session:
+        session.show(run_rows(app, host_device().name, args, session))
+        session.follow([executable, *session.arguments], cwd=executable.parent)
 
 
 def ensure_appimage_tools() -> dict[str, Path]:
@@ -4960,6 +5153,14 @@ def apple_physical_devices() -> list[Device]:
     return found
 
 
+def apple_device_name(requested: str) -> str:
+    """The name of the Apple device that "--device" names by its identifier or its name, which must be paired with this Mac."""
+    for device in apple_physical_devices():
+        if requested in (device.identifier, device.name):
+            return device.name
+    raise BuildError(f'No Apple device paired with this Mac has the name or identifier "{requested}". {DEVICES_HINT}')
+
+
 def android_property(serial: str, name: str) -> str:
     return capture([adb(), "-s", serial, "shell", "getprop", name]).strip()
 
@@ -4976,8 +5177,7 @@ def android_connected_devices() -> list[Device]:
         if state != "device":
             found.append(Device(serial, serial, "android", "", f"{kind}, {state}"))
             continue
-        name = capture([adb(), "-s", serial, "emu", "avd", "name"]).splitlines()[0].strip() if emulator else android_property(serial, "ro.product.model")
-        found.append(Device(name, serial, "android", f"Android {android_property(serial, 'ro.build.version.release')}", f"{kind}, running" if emulator else kind))
+        found.append(Device(android_device_name(serial), serial, "android", f"Android {android_property(serial, 'ro.build.version.release')}", f"{kind}, running" if emulator else kind))
     return found
 
 
@@ -5053,13 +5253,10 @@ def command_run(args: argparse.Namespace) -> None:
         native = info.build_folder / "native" / "development"
         shutil.rmtree(native, ignore_errors=True)
         native_options = ["--native", native] if prepare_host_native(info, native, args.jobs) else []
-        stop = threading.Event()
-        threading.Thread(target=watch_app_shaders, args=(app, stop), daemon=True).start()
-        terminal.step(f"Running `{shown_path(app)}` in the player with hot reload, until the app quits or Ctrl+C stops it")
-        try:
-            run([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), "--dev", *native_options, app], stream=True)
-        finally:
-            stop.set()
+        args.config = "Debug"
+        with run_session(info, app, args) as session:
+            session.show(run_rows(info, f"{host_device().name}, in the player", args, session))
+            session.follow([build_dir(build.platform, build.config) / "bin" / "haylen" / executable_name("haylen"), *session.arguments, *native_options, app])
         return
 
     target = RUN_TARGETS[args.platform]
@@ -5555,7 +5752,8 @@ def run_cpp_app(project: Path, args: argparse.Namespace) -> None:
         if args.config == "Release":
             stop_on_release_problems(cpp_release_problems(cpp_release_app(folder / f"web-{args.config.lower()}", target), site, "app"))
         if not args.build_only:
-            serve(site, args.host, args.port, args.coep, args.coop, args.open)
+            with RunSession() as session:
+                serve(site, args.host, args.port, args.coep, args.coop, args.open, None, session, App(project, "web"))
     elif args.platform == "android":
         run_cpp_android(project, target, folder, args)
     elif args.platform in APPLE_NATIVE_SLICES and args.platform != "macos":
@@ -5563,8 +5761,9 @@ def run_cpp_app(project: Path, args: argparse.Namespace) -> None:
     else:
         executable = build_cpp_desktop(project, target, folder / f"{host_name()}-{args.config.lower()}", args)
         if not args.build_only:
-            terminal.step(f'Running "{target}"')
-            run([executable], stream=True)
+            with RunSession() as session:
+                session.show(run_rows(App(project, host_name()), host_device().name, args, session))
+                session.follow([executable])
 
 
 def build_cpp_desktop(project: Path, target: str, directory: Path, args: argparse.Namespace) -> Path:
@@ -5626,7 +5825,8 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
 
     # The first configuration records the package of the target, whose plugins give the second one their Apple parts.
     run(command)
-    if write_cpp_apple_plugins(App(Path((directory / "bin" / target / "package.txt").read_text(encoding="utf-8").strip()), RUN_TARGETS[args.platform].plugins), args.platform, directory, plugins):
+    app = App(Path((directory / "bin" / target / "package.txt").read_text(encoding="utf-8").strip()), RUN_TARGETS[args.platform].plugins)
+    if write_cpp_apple_plugins(app, args.platform, directory, plugins):
         run(command)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
 
@@ -5638,7 +5838,8 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     if args.build_only:
         return
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
-    launch_apple(bundle, args, simulator, [])
+    with RunSession() as session:
+        launch_apple(app, bundle, args, simulator, session)
 
 
 def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: Path) -> bool:
@@ -5704,8 +5905,10 @@ def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Nam
     requirements = check_android(app, root, args)
     report_requirements([requirement for requirement in requirements if requirement.advice != RELEASE_ADVICE])
     stop_on_release_problems(requirements)
-    if not args.build_only:
-        launch_android(app, root, apk, args, device, [])
+    if args.build_only:
+        return
+    with RunSession() as session:
+        launch_android(app, root, apk, args, device, session)
 
 
 def bundle_web(source: Path, target: str, config: str, folder: Path, jobs: int, options: list[str] | None = None) -> Path:
@@ -6161,7 +6364,8 @@ class FileRange:
         self.stream.close()
 
 
-def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None) -> None:
+def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = "off", open_page: bool = False, development: DevelopmentServer | None = None, session: RunSession | None = None, app: App | None = None) -> None:
+    """Serves a folder until Ctrl+C stops the server, or the key that quits the session of the app that the site runs."""
     handler = functools.partial(type("Handler", (WebHandler,), {"coep": coep, "coop": coop, "development": development}), directory=str(directory))
     try:
         server = LocalServer((host, port), handler)
@@ -6169,8 +6373,14 @@ def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = 
         raise BuildError(f'The web server cannot listen on port {port} of "{host}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
     with server:
         url = f"http://{host}:{port}/"
-        terminal.success(f"Serving `{shown_path(directory)}` at `{url}`")
-        terminal.info("Press Ctrl+C to stop the server.")
+        if session is None:
+            terminal.success(f"Serving `{shown_path(directory)}` at `{url}`")
+            terminal.info("Press Ctrl+C to stop the server.")
+        else:
+            rows = [("App", f'{app.name} ("{app.identifier}")'), ("Page", f"`{url}`"), ("Site", f"`{shown_path(directory)}`")]
+            if development is not None:
+                rows.append(("Hot reload", "Every file saved in the app reloads in the open pages"))
+            session.show(rows, server.shutdown)
         if open_page:
             webbrowser.open(url)
         try:
@@ -6389,6 +6599,8 @@ class DevelopmentServer:
         """Asks every connected app to start again from its package with a fresh Lua state."""
         if self.send_all(json.dumps({"type": "restart"}).encode()) == 0:
             terminal.warning("No app is connected to the development server, so no app restarted.")
+            return
+        terminal.info("Restarting the app.")
 
     def report(self, message: dict) -> None:
         """Prints what a batch did in an app."""
@@ -6460,17 +6672,6 @@ class DevelopmentServer:
         if reached == 0:
             terminal.warning("No app is connected to the development server, so the line ran nowhere.")
         return reached
-
-    def read_lines(self, stream) -> None:
-        """Takes the lines the developer types in the terminal until the input ends: "r" sends the files saved since the last batch at once, "R" restarts the connected apps, and every other line runs in their developer console. A line that fails to reach the apps never stops the reading."""
-        for line in stream:
-            text = line.strip()
-            if text == "r":
-                self.reload()
-            elif text == "R":
-                self.restart()
-            elif text:
-                self.send_line(text)
 
     def receive(self, client: DevelopmentClient, message: dict) -> None:
         if message.get("type") == "report":

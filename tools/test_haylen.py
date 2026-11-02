@@ -163,8 +163,8 @@ class RequirementTest(unittest.TestCase):
         with mock.patch.object(haylen, "terminal", haylen.Terminal(stdout, stderr, {"FORCE_COLOR": "1"})):
             haylen.report_requirements([requirement])
         lines = stderr.getvalue().splitlines()
-        self.assertEqual(lines[0], "\x1b[1;33mWarning:\x1b[0m The plugin \x1b[36mdemo\x1b[0m needs \x1b[36mandroid.permission.CAMERA\x1b[0m.")
-        self.assertEqual(lines[1], "  Add to \x1b[4mapp/src/main/AndroidManifest.xml\x1b[0m:")
+        self.assertEqual(lines[0], "\x1b[1;33mWarning:\x1b[0m The plugin \x1b[38;5;73mdemo\x1b[0m needs \x1b[38;5;73mandroid.permission.CAMERA\x1b[0m.")
+        self.assertEqual(lines[1], "  Add to app/src/main/AndroidManifest.xml:")
         self.assertEqual(lines[2], '    <uses-permission android:name="android.permission.CAMERA" />')
         self.assertEqual(stdout.getvalue(), "")
 
@@ -652,12 +652,19 @@ class TerminalTest(unittest.TestCase):
         message = 'Serving `build/apps/demo-70da5b67/web` at `http://127.0.0.1:8000/` with "--coep off"'
         self.assertEqual(haylen.Terminal.render(message, False), 'Serving build/apps/demo-70da5b67/web at http://127.0.0.1:8000/ with "--coep off"')
 
-    def test_with_color_reserved_expressions_and_paths_take_their_styles_and_the_line_keeps_its_own(self):
-        rendered = haylen.Terminal.render('Run "python3 haylen.py run" in `apps/demo`.', True, haylen.Terminal.SUCCESS)
-        self.assertEqual(rendered, "\x1b[32mRun \x1b[36mpython3 haylen.py run\x1b[0m\x1b[32m in \x1b[4mapps/demo\x1b[0m\x1b[32m.\x1b[0m")
+    def test_with_color_reserved_expressions_and_urls_take_their_styles_paths_stay_plain_and_the_line_keeps_its_own(self):
+        rendered = haylen.Terminal.render('Run "python3 haylen.py run" in `apps/demo` and open `http://127.0.0.1:8000/`.', True, haylen.Terminal.SUCCESS)
+        self.assertEqual(rendered, "\x1b[32mRun \x1b[38;5;73mpython3 haylen.py run\x1b[0m\x1b[32m in apps/demo and open \x1b[4mhttp://127.0.0.1:8000/\x1b[0m\x1b[32m.\x1b[0m")
 
     def test_an_empty_quote_stays_as_it_is(self):
-        self.assertEqual(haylen.Terminal.render('The key "name" is "".', True), 'The key \x1b[36mname\x1b[0m is "".')
+        self.assertEqual(haylen.Terminal.render('The key "name" is "".', True), 'The key \x1b[38;5;73mname\x1b[0m is "".')
+
+    def test_a_step_marks_its_start_and_rows_align_their_names(self):
+        stdout = io.StringIO()
+        terminal = haylen.Terminal(stdout, io.StringIO(), {"NO_COLOR": "1"})
+        terminal.step('Building the app for "ios-simulator"')
+        terminal.rows([("App", 'Demo ("com.haylen.demo")'), ("Configuration", '"Debug"')])
+        self.assertEqual(stdout.getvalue().splitlines(), ['==> Building the app for "ios-simulator"', '  App            Demo ("com.haylen.demo")', '  Configuration  "Debug"'])
 
     @mock.patch.object(haylen.Terminal, "enable_escapes", return_value=True)
     def test_color_follows_the_terminal_and_the_environment(self, _):
@@ -1162,7 +1169,8 @@ class RunCppTest(unittest.TestCase):
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
         with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
-        self.assertEqual(launch.call_args.args[2:], (simulator, []))
+        self.assertEqual(launch.call_args.args[3], simulator)
+        self.assertEqual(launch.call_args.args[4].arguments, [])
 
     def test_the_apple_parts_of_plugins_reach_the_cmake_project_of_cpp_apps(self):
         plugin = self.scratch / "plugins" / "camera"
@@ -1209,18 +1217,20 @@ class RunCppTest(unittest.TestCase):
         with contextlib.ExitStack() as stack:
             mocks = [stack.enter_context(patch) for patch in patches]
             haylen.run_cpp_android(self.scratch / "project", "game", self.scratch, args)
-        self.assertEqual(mocks[-1].call_args.args[4:], ("emulator-5554", []))
+        self.assertEqual(mocks[-1].call_args.args[4], "emulator-5554")
+        self.assertEqual(mocks[-1].call_args.args[5].arguments, [])
 
 
     def test_a_build_only_run_builds_the_app_of_this_machine_without_launching_it(self):
         (self.scratch / "project").mkdir()
         (self.scratch / "project" / "CMakeLists.txt").write_text("")
+        (self.scratch / "project" / "app.json").write_text(json.dumps({"name": "Game", "identifier": "com.haylen.game", "version": "1.0.0"}))
         executable = self.scratch / "app"
         for options, launched in (([], True), (["--build-only"], False)):
             args = haylen.build_parser().parse_args(["run", str(self.scratch / "project"), *options])
-            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen.RunSession, "follow") as follow, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
                 haylen.run_cpp_app(self.scratch / "project", args)
-            self.assertEqual([executable] in [call.args[0] for call in run.call_args_list], launched)
+            self.assertEqual([call.args[0] for call in follow.call_args_list], [[executable]] if launched else [])
             self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
             self.assertIn("--target", run.call_args_list[1].args[0])
             self.assertEqual(run.call_args_list[1].args[0][run.call_args_list[1].args[0].index("--target") + 1], "main")
@@ -2489,7 +2499,11 @@ class DevelopmentServerTest(unittest.TestCase):
         client = mock.Mock(send=lambda opcode, payload: sent.append((opcode, json.loads(payload))) or True)
         self.assertEqual(server.send_line("gold 50"), 0)
         server.clients.append(client)
-        server.read_lines(io.StringIO("gold 50\n\n  help  \n"))
+        session = haylen.RunSession(server, [])
+        for line in ("gold 50", "", "  help  "):
+            session.reader = mock.Mock(line=mock.Mock(return_value=line))
+            session.press("d")
+        self.assertEqual(session.reader.line.call_args.args, (haylen.CONSOLE_PROMPT,))
         self.assertEqual(sent, [(haylen.WEBSOCKET_TEXT, {"type": "console", "id": 2, "line": "gold 50"}), (haylen.WEBSOCKET_TEXT, {"type": "console", "id": 3, "line": "help"})])
         output = io.StringIO()
         with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
@@ -2504,12 +2518,41 @@ class DevelopmentServerTest(unittest.TestCase):
         client = mock.Mock(send=lambda opcode, payload: sent.append(json.loads(payload)) or True, send_batch=mock.Mock(return_value=True))
         server.clients.append(client)
         output = io.StringIO()
+        session = haylen.RunSession(server, [])
         with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {})):
             self.write("source/level.lua", "return {edited = true}")
-            server.read_lines(io.StringIO("r\nR\nr\n"))
+            for key in "rRr":
+                session.press(key)
         self.assertEqual([file["path"] for file in client.send_batch.call_args.args[0]["files"]], ["source/level.lua"])
         self.assertEqual(sent, [{"type": "restart"}])
         self.assertIn("Nothing changed since the last files the apps received.", output.getvalue())
+
+    def test_the_keys_of_a_run_quit_clear_and_list_and_a_release_offers_only_those(self):
+        output = io.StringIO()
+        stop = mock.Mock()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(output, output, {"FORCE_COLOR": "1"})):
+            session = haylen.RunSession()
+            self.assertEqual(list(session.keys), ["c", "q", "h"])
+            session.show([("App", "Demo")], stop)
+            for key in "rRdx":
+                session.press(key)
+            session.press("c")
+            session.press("q")
+        stop.assert_called_once_with()
+        self.assertTrue(session.quitting.is_set())
+        self.assertIn("\x1b[2J", output.getvalue())
+        self.assertIn("Quit", output.getvalue())
+        self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.folder, self.manifest), []).keys), ["r", "R", "d", "c", "q", "h"])
+
+    def test_a_run_that_quits_ends_its_process_without_an_error(self):
+        session = haylen.RunSession()
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            session.show([("App", "Demo")])
+        threading.Timer(0.2, session.quit).start()
+        session.follow([sys.executable, "-c", "import time; time.sleep(30)"])
+        self.assertTrue(session.quitting.is_set())
+        with self.assertRaisesRegex(haylen.BuildError, "failed with exit code 3"):
+            haylen.RunSession().follow([sys.executable, "-c", "raise SystemExit(3)"])
 
     def test_an_app_whose_connection_resets_leaves_and_the_server_goes_on(self):
         server = haylen.DevelopmentServer(self.folder, self.manifest)
@@ -2591,14 +2634,16 @@ class DevelopmentServerTest(unittest.TestCase):
         shutil.copytree(self.folder, shipped)
         self.write("source/level.lua", "return {edited = true}")
         app = mock.Mock(folder=self.folder)
-        with haylen.device_development(app, shipped, mock.Mock(config="Release", platform="ios-simulator")) as arguments:
-            self.assertEqual(arguments, [])
+        with haylen.run_session(app, shipped, mock.Mock(config="Release", platform="ios-simulator")) as session:
+            self.assertEqual(session.arguments, [])
+            self.assertIsNone(session.development)
 
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
         options = mock.Mock(config="Debug", platform="ios-simulator", host="127.0.0.1", port=port)
-        with haylen.device_development(app, shipped, options) as arguments:
+        with haylen.run_session(app, shipped, options) as session:
+            arguments = session.arguments
             self.assertEqual(arguments[0], "--dev-server")
             token = urllib.parse.parse_qs(urllib.parse.urlsplit(arguments[1]).query)["token"][0]
             with socket.create_connection(("127.0.0.1", port), timeout=5) as sock:

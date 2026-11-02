@@ -628,7 +628,7 @@ The console window lists the output, the line being typed, the commands as butto
 
 The console is on in development runs, and `"debug": {"console": true}` in `app.json` turns it on in any other run. While it is off, it neither opens nor runs lines from outside the app, but the app still registers and runs its own commands with `debug.runCommand`. Lines also arrive from outside the app:
 
-- In a Debug run of `haylen run` on a device, a simulator, an emulator or the browser, every line typed in the terminal goes to the connected apps through the development server, and their results print there, as [development mode](../tools/distribution.md#the-development-server) describes.
+- In a Debug run of `haylen run`, in the player, on a device, a simulator, an emulator or the browser, the key `d` asks the terminal for a line, which goes to the connected apps through the development server, and their results print there, as [while the app runs](../tools/distribution.md#while-the-app-runs) describes.
 - A web page runs a line with `Module.haylen.console(line)`, as the [runtime API](../tools/build.md#runtime-api) describes.
 
 The engine registers these commands:
