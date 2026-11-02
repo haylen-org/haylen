@@ -1263,6 +1263,23 @@ class RunCppTest(unittest.TestCase):
             haylen.run_cpp_app(app, haylen.build_parser().parse_args(["run", str(app), "--platform", "visionos-simulator"]))
 
 
+class CommandNamesTest(unittest.TestCase):
+    def test_every_command_that_the_workflows_and_the_docs_run_exists(self):
+        commands = {action.dest: action for action in haylen.build_parser()._subparsers._group_actions}["command"].choices
+        texts = [path.read_text(encoding="utf-8") for path in [*(haylen.ROOT / ".github" / "workflows").glob("*.yml"), *(haylen.ROOT / "docs").rglob("*.md")]]
+        unknown = set()
+        for text in texts:
+            for match in re.finditer(r"(?:python3? \S*haylen\.py(?: --verbose)?|^haylen) ([a-z][a-z-]*)(?: ([a-z][a-z-]*))?", text, re.MULTILINE):
+                command, action = match[1], match[2]
+                if command not in commands:
+                    unknown.add(command)
+                    continue
+                groups = [choice for choice in commands[command]._actions if isinstance(choice, argparse._SubParsersAction)]
+                if groups and action not in groups[0].choices:
+                    unknown.add(f"{command} {action}")
+        self.assertEqual(sorted(unknown), [], "These commands of the workflows and the docs do not exist.")
+
+
 class DevicesTest(unittest.TestCase):
     SIMULATORS = {"devices": {
         "com.apple.CoreSimulator.SimRuntime.iOS-27-2": [{"name": "iPhone 17e", "udid": "PHONE", "state": "Booted"}],

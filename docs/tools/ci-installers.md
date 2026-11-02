@@ -504,7 +504,7 @@ jobs:
           [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:WINDOWS_CERTIFICATE))
       - name: Build the signed installer
         shell: pwsh
-        run: python haylen/haylen.py --verbose dist $env:APP --platform windows --output dist
+        run: python haylen/haylen.py --verbose distribution installer $env:APP --platform windows --output dist
       - uses: actions/upload-artifact@v7
         with:
           name: windows
@@ -543,7 +543,7 @@ jobs:
           mkdir -p "$HAYLEN_KEYS_DIR"
           echo "$HAYLEN_CONTENT_KEYS" | base64 --decode | tar -x -C "$HAYLEN_KEYS_DIR"
       - name: Build the Debian package and the AppImage
-        run: python haylen/haylen.py --verbose dist "$APP" --platform linux --output dist
+        run: python haylen/haylen.py --verbose distribution installer "$APP" --platform linux --output dist
       - uses: actions/upload-artifact@v7
         with:
           name: linux

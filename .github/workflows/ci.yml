@@ -308,7 +308,7 @@ jobs:
           python haylen.py --verbose plugin new build/echo-check
           python haylen.py --verbose plugin add build/echo-check --app build/starter
       - name: Build the packages of the starter app from the template of the platform
-        run: python haylen.py --verbose dist build/starter --platform ${{ matrix.platform }} --output build/dist
+        run: python haylen.py --verbose distribution installer build/starter --platform ${{ matrix.platform }} --output build/dist
       - name: Check the installed app
         run: python haylen.py --verbose check build/starter --platform ${{ matrix.platform }} --config Release
       - name: Validate the desktop entry
