@@ -1,5 +1,5 @@
 // Page side of the Haylen web runtime, included before the generated module code.
-// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that edits the package of the app and swaps it without reloading the page, development with hot reload, and the `onLog`, `onError`, `onStarted`, `onStopped`, `onStats` and `onReloaded` callbacks.
+// Pages talk to the running app through `Module.haylen`: native bridge handlers, the contexts of plugin modules with their overlay over the canvas, the editor API that edits the package of the app and swaps it without reloading the page, development with hot reload, and the `onLog`, `onError`, `onLoadProgress`, `onStarted`, `onSplashEnded`, `onStopped`, `onStats` and `onReloaded` callbacks.
 
 Module.haylen = Module.haylen || {};
 
@@ -2281,6 +2281,67 @@ Module.haylen = Module.haylen || {};
         };
     })();
 
+    // A page that leaves the WebAssembly module to the runtime, such as the default shell of C++ apps, sees the module, the files that the build preloads and the package of `packageUrl` download through `onLoadProgress({loaded, total})`. The `total` is 0 while the size of a download is unknown, which is the case of a compressed response, since it tells only its compressed length.
+    const downloads = new Map();
+    const reportDownloads = () => {
+        let loaded = 0;
+        let total = 0;
+        let known = true;
+        for (const download of [...downloads.values(), ...Object.values(Module.dataFileDownloads || {})]) {
+            loaded += download.loaded;
+            total += download.total;
+            known = known && download.total > 0;
+        }
+        notify("onLoadProgress", { loaded, total: known ? total : 0 });
+    };
+
+    const track = (url, response) => {
+        const length = Number(response.headers.get("Content-Length"));
+        const download = { loaded: 0, total: !response.headers.get("Content-Encoding") && length > 0 ? length : 0 };
+        downloads.set(url, download);
+        const reader = response.body.getReader();
+        const body = new ReadableStream({
+            async pull(controller) {
+                const { done, value } = await reader.read();
+                if (done) {
+                    controller.close();
+                    return;
+                }
+                download.loaded += value.length;
+                reportDownloads();
+                controller.enqueue(value);
+            },
+        });
+        return new Response(body, { headers: response.headers });
+    };
+
+    // Emscripten tells about every chunk of the files that the build preloads through `Module.setStatus`, with the sizes in `Module.dataFileDownloads`, and a status function of the page still hears it.
+    const pageStatus = Module.setStatus;
+    Module.setStatus = function (text) {
+        reportDownloads();
+        if (pageStatus) {
+            pageStatus(text);
+        }
+    };
+
+    if (!Module.instantiateWasm) {
+        Module.instantiateWasm = function (imports, receive) {
+            const url = findWasmBinary();
+            fetch(url)
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(response.status + " " + response.statusText);
+                    }
+                    return track(url, response).arrayBuffer();
+                })
+                .then((bytes) => WebAssembly.instantiate(bytes, imports))
+                .then((result) => receive(result.instance))
+                .catch((error) => {
+                    haylen.reportError({ message: "The WebAssembly module \"" + url + "\" could not be loaded, and the browser reported \"" + error.message + "\".", file: "", line: 0, traceback: "" });
+                });
+        };
+    }
+
     // User data lives in IndexedDB under `/persistent`, loaded before the app starts so saves are there on the first frame, and so is what the browser tells about the device.
     Module.preRun = Module.preRun || [];
     Module.preRun.push(function () {
@@ -2343,7 +2404,7 @@ Module.haylen = Module.haylen || {};
                     if (!response.ok) {
                         throw new Error(response.status + " " + response.statusText);
                     }
-                    return response.arrayBuffer();
+                    return track(haylen.packageUrl, response).arrayBuffer();
                 })
                 .then((buffer) => FS.writeFile("/package.zip", new Uint8Array(buffer)))
                 .catch((error) => {

@@ -11,6 +11,7 @@ var Module = {
     const splash = document.getElementById("splash");
     const bar = document.getElementById("splash-bar");
     const progress = document.getElementById("splash-progress");
+    const percentage = document.getElementById("splash-percent");
     const status = document.getElementById("splash-status");
     const details = document.getElementById("splash-details");
     const logo = document.getElementById("splash-logo");
@@ -19,6 +20,7 @@ var Module = {
         splash.classList.remove("hidden");
         splash.classList.add("failed");
         status.textContent = message;
+        status.hidden = false;
         if (detail) {
             details.textContent = detail;
             details.hidden = false;
@@ -46,6 +48,7 @@ var Module = {
             const loaded = received.reduce((sum, size) => sum + size, 0);
             const percent = total > 0 ? Math.min(100, Math.round((loaded * 100) / total)) : 0;
             bar.style.width = percent + "%";
+            percentage.textContent = percent + "%";
             progress.setAttribute("aria-valuenow", String(percent));
         };
         return Promise.all(
@@ -132,24 +135,9 @@ var Module = {
         return;
     }
     document.title = config.name;
+    // The colors of `config.json` are `rgba(r, g, b, a)`, and the splash shows dark content over a background whose relative luminance passes one half.
     const isLightColor = (color) => {
-        if (!color) {
-            return false;
-        }
-        let r = 0, g = 0, b = 0;
-        const rgba = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/i);
-        if (rgba) {
-            r = Number(rgba[1]);
-            g = Number(rgba[2]);
-            b = Number(rgba[3]);
-        } else if (color.startsWith("#")) {
-            const hex = color.slice(1);
-            if (hex.length >= 6) {
-                r = parseInt(hex.slice(0, 2), 16);
-                g = parseInt(hex.slice(2, 4), 16);
-                b = parseInt(hex.slice(4, 6), 16);
-            }
-        }
+        const [r, g, b] = color.match(/\d+/g).map(Number);
         return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 > 0.5;
     };
     // A transparent app lets the page behind its canvas show through, so only the splash keeps the background of `app.json`, which has a dark variant while the system uses dark colors.
@@ -202,11 +190,9 @@ var Module = {
 
     try {
         await checkGraphics();
-        status.textContent = "Loading " + config.name;
         // A protected release downloads only its manifests and its app domain before the app starts, and the content streams in as the app needs it, while development downloads the zipped package.
         const files = config.release ? config.release.files.map((name) => ({ url: "app/" + name, size: config.sizes["app/" + name] })) : [{ url: "app.zip", size: config.sizes["app.zip"] }];
         const [plugins, [wasm, ...packageFiles]] = await Promise.all([importPlugins(config.plugins), download([{ url: "haylen.wasm", size: config.sizes["haylen.wasm"] }, ...files])]);
-        status.textContent = "Starting " + config.name;
         // The runtime compiles the bytes downloaded here, so the browser fetches the WebAssembly module only once.
         Module.instantiateWasm = (imports, receive) => {
             WebAssembly.instantiate(wasm, imports).then(

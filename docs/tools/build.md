@@ -419,7 +419,7 @@ The engine target adds the native exceptions and the native `longjmp` of WebAsse
 A web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for apps, `<target>.data` in `bin/<target>/`. A step after the build, `haylen_setup_web_page`, copies three more files next to them:
 
 - The shell of the target as `<target>.shell.html`. That is the `WEB_SHELL` of `haylen_add_app`, or `engine/platform/web/shell.html` by default.
-- `haylen-logo.svg`, the engine logo, which the default shell shows as the icon of the page.
+- `haylen-logo.svg`, the engine logo, which the default shell shows on its splash and as the icon of the page.
 - `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output. The runtime loads it from the folder of its script through `locateFile`.
 
 The prebuilt player of `haylen engine --platform web` is the `haylen` target of the `web` tree, whose page is the [web loader](distribution.md#web-loader). The command `run --platform web` builds a C++ app target and writes this layout:
@@ -427,13 +427,13 @@ The prebuilt player of `haylen engine --platform web` is the `haylen` target of 
 ```text
 build/cpp/embedding-<hash>/web/
   index.html              The shell of the target, with engine/platform/web/runtime-loader.html in place of {{{ SCRIPT }}}.
-  haylen-logo.svg         The icon of the default shell.
+  haylen-logo.svg         The logo and the icon of the default shell.
   plugins.json            The web parts of the plugins of the app, which the page loads before the app starts.
   main.js                 The runtime, with main.wasm and main.data next to it.
   haylen-audio-worklet.js The processor of the audio output, next to haylen-content-store.js.
 ```
 
-The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The runtime loader loads the web parts of the plugins and then `<target>.js`. The default shell reads two parameters of the address: `?graphicsApi=webGpu` or `?graphicsApi=webGl2` tries one of the two APIs first, by the names that `graphics.apiName()` gives them, and `?package=<url>` downloads a zipped package.
+The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The runtime loader loads the web parts of the plugins and then `<target>.js`. The default shell shows the splash of the [web loader](distribution.md#changing-the-splash) over the background `#101418`: the engine logo, a progress bar and its percentage, which `onLoadProgress` of the runtime feeds while `<target>.wasm`, `<target>.data` and the package of the address download. A size that the server hides, as a compressed response does, turns the bar into a sweep without a percentage. The splash fades out with `onSplashEnded`, and an error before the app starts replaces the bar with its message. The variables at the top of its style restyle it, in a copy that `WEB_SHELL` names. The default shell reads two parameters of the address: `?graphicsApi=webGpu` or `?graphicsApi=webGl2` tries one of the two APIs first, by the names that `graphics.apiName()` gives them, and `?package=<url>` downloads a zipped package.
 
 The page is the own shell of the target, so everything that a custom `WEB_SHELL` adds works in the bundle too, such as the page handlers of the [platform bridge](../platform/platform-bridge.md#web). So do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. The command `run` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
 
@@ -490,7 +490,8 @@ The runtime reports back through callbacks that the page assigns to `Module.hayl
 | `onError(error)` | `{message, file, line, traceback, frames}` of the error that stopped the app, with an empty `file` when no script position is known. The `traceback` is the stack as text, one frame per line. The `frames` list the same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
 | `onStarted(app)` | `{name, identifier, version}` from `app.json`. |
 | `onStopped()` | The app ended. |
-| `onSplashEnded()` | The runtime ended the splash screen, which the page then fades out. |
+| `onLoadProgress(progress)` | `{loaded, total}` in bytes while the runtime downloads what the app needs before it starts: the WebAssembly module, unless the page instantiates it with `Module.instantiateWasm`, the files that the build preloads and the package of `packageUrl`. The `total` is 0 while the size of a download is unknown, as for a compressed response, which tells only its compressed length. |
+| `onSplashEnded(splash)` | `{fadeOut}`, the seconds of the fade out of `app.json`. The runtime ended the splash screen, which the page then fades out over those seconds. |
 | `onReloaded(report)` | In development, after every batch of changes that hot reload applied. It is `{restarted: false, mode, modules, assets, resumed, milliseconds}`, with the files of the modules and assets that reloaded in place and whether the app left the error screen. Right before a restart it is `{restarted: true, reason}`. |
 | `onStats(stats)` | About once per second: `fps`, `frameMilliseconds`, `averageMilliseconds`, `drawCalls`, `sprites`, `vertices`, `textureSwitches`, `uploadedBytes`, `assets`, `voices`, `scopes` and `audio`. The `scopes` are a list of `{name, milliseconds, calls, depth}` profiler scopes. The `audio` is the output of the app as `{available, state, sampleRate, bufferedMilliseconds, blocks, underruns}`, or only `{available}` while the app runs without an audio output. |
 

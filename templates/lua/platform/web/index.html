@@ -12,10 +12,11 @@
     <canvas id="canvas" tabindex="-1" oncontextmenu="event.preventDefault()"></canvas>
     <div id="splash">
         <img id="splash-logo" alt="">
-        <div id="splash-progress" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+        <div id="splash-progress" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div id="splash-bar"></div>
         </div>
-        <p id="splash-status">Loading</p>
+        <p id="splash-percent" aria-hidden="true">0%</p>
+        <p id="splash-status" hidden></p>
         <pre id="splash-details" hidden></pre>
     </div>
     <script src="loader.js"></script>

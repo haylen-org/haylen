@@ -713,8 +713,8 @@ The resources are vector drawables of the Haylen brand. The adaptive launcher ic
 
 ```text
 templates/lua/platform/web/
-  index.html        The canvas and the splash with the logo, the progress bar and the status line.
-  loader.css        Styles of the page and the splash.
+  index.html        The canvas and the splash with the logo, the progress bar, the percentage and the line of a failure.
+  loader.css        Styles of the page and the splash, with the variables that restyle the splash at its top.
   loader.js         Checks the browser, downloads with progress, loads the plugins and starts the runtime.
 templates/common/platform/web/
   app.js            Page code of the app, where its bridge handlers register, with the handler of the bridge example.
@@ -1046,7 +1046,7 @@ The app icons live in the asset catalogs of the Apple project and the launcher r
 | tvOS | `tvos/LaunchScreen.storyboard` with the same layout and a logo of at most 360 points, kept over the window the same way. |
 | visionOS | None. The system opens the window of the app without a launch screen, so the splash of `app.json` does not show there. |
 | Android | The SplashScreen API of `androidx.core:core-splashscreen`, with the theme `Theme.Haylen.Splash` of the manifest showing `haylen_splash_icon` over `haylen_splash_background`, then `Theme.Haylen`, whose window background has the same color. The system splash screen ends with the first frame of the activity window, while the Android runtime draws only once the activity resumed and its surface exists. So `HaylenSplash` covers the surface of the app from that first frame with a view of the same background and icon. It stays until the runtime ends the splash through `nativeFramePresented`, and then fades out over the seconds of `nativeFadeOut`. No black frame shows in between. The icon insets the logo so it fits the circle that Android masks it with, in every orientation, on phones, tablets and TVs. |
-| Web | The page shows the logo over the background with the progress bar, until the runtime ends the splash through `Module.haylen.onSplashEnded`, which fades it out. |
+| Web | The page shows the logo over the background with the progress bar and its percentage, until the runtime ends the splash through `Module.haylen.onSplashEnded`, which fades it out. |
 
 The script `haylen.py` writes the splash into each project:
 
@@ -1108,14 +1108,46 @@ The file `loader.js` runs when the page loads:
 
 1. It creates `Module` with the canvas, so `app.js` can add page handlers to `Module.preRun`.
 2. It reads `config.json`, which haylen.py writes. It holds the app name and identifier, whether `window.transparent` is set, the splash logo and backgrounds, the files of the protected release that download before the app starts, or `app.zip` in development, the size of each of them and of `haylen.wasm`, and the plugins with a web part.
-3. It sets the title and the background, and downloads `splash.<ext>`, the logo of the app or the Haylen symbol, once for both the logo of the splash and the icon of the page. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas. Only the splash keeps the splash background.
+3. It sets the title and the background, picks the light or the dark look of the splash, and downloads `splash.<ext>`, the logo of the app or the Haylen symbol, once for both the logo of the splash and the icon of the page. For a transparent app the page itself has no background, so whatever holds the page, such as the page of an editor that embeds it in a frame, shows through the transparent pixels of the canvas. Only the splash keeps the splash background.
 4. It checks for WebAssembly and for WebGPU or WebGL2, and a browser with neither sees a message instead of a blank page. The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. Add `?graphicsApi=webGpu` or `?graphicsApi=webGl2` to the address to try one of them first, which the loader passes on as `Module.haylen.graphicsApi`. Those are the names that `graphics.apiName()` gives the two APIs.
-5. It downloads `haylen.wasm` with the manifests and the app domain of the protected release, or with `app.zip` in development, behind one progress bar. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
+5. It downloads `haylen.wasm` with the manifests and the app domain of the protected release, or with `app.zip` in development, behind one progress bar with its percentage. Each download counts the bytes it streams against its `Content-Length`, or against the size in `config.json` when the length is missing or describes compressed bytes. Meanwhile it imports the web module of every plugin from `plugins/<id>/`.
 6. It hands the WebAssembly bytes to the runtime through `Module.instantiateWasm`, which compiles them instead of downloading `haylen.wasm` again. It hands the release as `Module.haylen.release`, or the package as `Module.haylen.packageData` in development, then loads `haylen.js`. The runtime opens the [content store](../content/content.md#the-web) of the app before it starts, and the content of the release streams from `app/` as the app needs it. Every file of the page downloads once.
 7. Before the app starts, a `Module.preRun` callback holds the start with a run dependency. Meanwhile it calls `load(context)` of every plugin in load order, with the context of `Module.haylen.createPluginContext`, as the [plugin guide](../platform/plugins.md#web) describes. A plugin that fails to import or to load replaces the progress bar with its error, and the app does not start.
 8. `Module.haylen.onSplashEnded` fades the splash out once the runtime ends it, and `Module.haylen.onStarted` tells the page that the app runs. `Module.haylen.onError` writes every error to the console. An error that happens before the app starts replaces the progress bar with the message and the Lua stack trace. Later errors show on the error screen of the runtime.
 
 When `config.json` holds the `development` entry, which only `run --platform web` writes, the loader sets `Module.haylen.development`, and the address of the development server with its token in `Module.haylen.developmentServer`. The [build guide](build.md#page-setup) lists every field that a page sets and the whole [runtime API](build.md#runtime-api), such as `Module.haylen.loadZip`, which replaces the running app later.
+
+### Changing the splash
+
+The splash is the element `#splash` of `index.html`: the logo, a thin progress bar, the percentage under it and, when the app cannot start, the message of the failure. It stays centered in the page in every browser, since it covers the page and centers its content with a flexible box.
+
+Every value that a project usually changes is a variable at the top of `loader.css`. The first block holds the values over a dark splash background, and the block of `#splash.light` holds the colors over a light one. The loader adds the class `light` when the relative luminance of the splash background of `app.json` passes one half, and checks again when the system switches between light and dark colors. So the text and the bar always stand out from the background.
+
+| Variable | Meaning |
+| --- | --- |
+| `--splash-logo-size` | The width and height of the logo, which keeps its proportions inside them. |
+| `--splash-bar-width`, `--splash-bar-height` | The size of the progress bar, whose ends are round. |
+| `--splash-gap` | The space between the logo, the bar and the failure message. The percentage sits closer to the bar, at half of it. |
+| `--splash-font` | The font of the percentage and of the failure message. |
+| `--splash-text` | The color of the percentage. |
+| `--splash-track`, `--splash-bar` | The colors of the empty and the filled part of the bar. |
+| `--splash-failed` | The color of the failure message. |
+| `--splash-details-background`, `--splash-details-text` | The colors of the box with the details of a failure, such as the Lua stack trace. |
+
+For example, a project with its brand color on the bar and a larger logo changes only the variables:
+
+```css
+:root {
+    --splash-logo-size: min(50vmin, 280px);
+    --splash-bar: #5b42f3;
+}
+
+#splash.light {
+    --splash-bar: #5b42f3;
+}
+```
+
+A deeper change, such as another layout, edits the rules below the variables and the elements of `index.html`. The loader needs only the ids `splash`, `splash-logo`, `splash-progress`, `splash-bar`, `splash-percent`, `splash-status` and `splash-details`, and the classes `light`, `failed` and `hidden` that it sets on `#splash`.
 
 ## Platform support
 

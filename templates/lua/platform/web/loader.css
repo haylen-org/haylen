@@ -1,3 +1,27 @@
+/* The look of the splash. Change these variables to restyle it: the first block is for a dark splash background, and the second for a light one, which `loader.js` picks from the background of `app.json`. */
+:root {
+    --splash-logo-size: min(40vmin, 200px);
+    --splash-bar-width: min(60vw, 280px);
+    --splash-bar-height: 4px;
+    --splash-gap: 20px;
+    --splash-font: 500 13px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    --splash-text: rgba(255, 255, 255, 0.8);
+    --splash-track: rgba(255, 255, 255, 0.15);
+    --splash-bar: #ffffff;
+    --splash-failed: #feb2b2;
+    --splash-details-background: rgba(0, 0, 0, 0.35);
+    --splash-details-text: #ffffff;
+}
+
+#splash.light {
+    --splash-text: rgba(16, 20, 24, 0.8);
+    --splash-track: rgba(16, 20, 24, 0.12);
+    --splash-bar: #101418;
+    --splash-failed: #c53030;
+    --splash-details-background: rgba(16, 20, 24, 0.06);
+    --splash-details-text: #101418;
+}
+
 html, body {
     margin: 0;
     width: 100%;
@@ -25,24 +49,13 @@ html, body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 24px;
+    gap: var(--splash-gap);
     padding: 24px;
     box-sizing: border-box;
     background: inherit;
-    color: var(--splash-color, #ffffff);
-    text-shadow: var(--splash-text-shadow, 0 1px 2px rgba(0, 0, 0, 0.5));
-    font: 15px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--splash-text);
+    font: var(--splash-font);
     transition: opacity 0.3s ease;
-}
-
-#splash.light {
-    --splash-color: #101418;
-    --splash-text-shadow: none;
-    --splash-track: rgba(0, 0, 0, 0.08);
-    --splash-bar: #101418;
-    --splash-failed: #c53030;
-    --splash-details-bg: rgba(0, 0, 0, 0.06);
-    --splash-details-color: #101418;
 }
 
 #splash.hidden {
@@ -51,41 +64,42 @@ html, body {
 }
 
 #splash-logo {
-    width: min(40vmin, 240px);
-    height: min(40vmin, 240px);
+    width: var(--splash-logo-size);
+    height: var(--splash-logo-size);
     object-fit: contain;
 }
 
 #splash-progress {
-    width: min(60vw, 320px);
-    height: 6px;
-    border-radius: 3px;
-    background: var(--splash-track, rgba(255, 255, 255, 0.15));
+    width: var(--splash-bar-width);
+    height: var(--splash-bar-height);
+    border-radius: calc(var(--splash-bar-height) / 2);
+    background: var(--splash-track);
     overflow: hidden;
 }
 
 #splash-bar {
     width: 0;
     height: 100%;
-    border-radius: 3px;
-    background: var(--splash-bar, rgba(255, 255, 255, 0.9));
+    border-radius: inherit;
+    background: var(--splash-bar);
     transition: width 0.15s linear;
+}
+
+#splash-percent {
+    margin: calc(var(--splash-gap) / -2) 0 0;
+    font-variant-numeric: tabular-nums;
 }
 
 #splash-status {
     margin: 0;
-    text-align: center;
-    opacity: 0.8;
-}
-
-#splash.failed #splash-progress {
-    display: none;
-}
-
-#splash.failed #splash-status {
-    color: var(--splash-failed, #feb2b2);
-    opacity: 1;
     max-width: 640px;
+    text-align: center;
+    color: var(--splash-failed);
+}
+
+#splash.failed #splash-progress,
+#splash.failed #splash-percent {
+    display: none;
 }
 
 #splash-details {
@@ -95,8 +109,8 @@ html, body {
     overflow: auto;
     padding: 12px 16px;
     border-radius: 8px;
-    background: var(--splash-details-bg, rgba(0, 0, 0, 0.35));
-    color: var(--splash-details-color, #ffffff);
+    background: var(--splash-details-background);
+    color: var(--splash-details-text);
     font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace;
     white-space: pre-wrap;
     -webkit-user-select: text;
