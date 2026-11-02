@@ -442,6 +442,21 @@ TEST_F(TextInputTest, LiftsTheFocusedFieldAboveTheKeyboard) {
     EXPECT_EQ(gui->find("name")->getBounds(), resting);
 }
 
+// The layout places nodes on whole units, so a keyboard whose top falls between two units leaves the lifted field still instead of flipping it between them frame after frame.
+TEST_F(TextInputTest, HoldsTheLiftedFieldStillOverAKeyboardBetweenTwoUnits) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "textField", "id": "name"}]})");
+    focus(*gui, "name");
+    send({.type = platform::Event::Type::KeyboardChanged, .keyboardFrame = {0.0F, 540.4F, 1920.0F, 539.6F}});
+    fixture.frames(60);
+
+    const math::Rect lifted = gui->find("name")->getBounds();
+    EXPECT_LE(lifted.getBottom(), 540.4F);
+    for (int frame = 0; frame < 30; ++frame) {
+        fixture.frames(1);
+        ASSERT_EQ(gui->find("name")->getBounds(), lifted) << "The field moves in frame " << frame << " after the lift settled.";
+    }
+}
+
 // A tap on a button next to a field ends the editing and hides the keyboard while the finger is still down, so the UI stays where it was until the finger lifts, and the button it pressed takes the tap.
 TEST_F(TextInputTest, KeepsTheUiInPlaceUntilAPressThatHidesTheKeyboardLifts) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "spacer", "height": 900}, {"kind": "row", "children": [{"kind": "textField", "id": "draft", "grow": 1}, {"kind": "button", "id": "send", "text": "Send"}]}]})");

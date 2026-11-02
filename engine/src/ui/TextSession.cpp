@@ -58,14 +58,14 @@ void TextSession::receiveEdit(platform::TextInput::Edit edit) {
     }
 }
 
-void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds, bool pressed) {
+void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiScale, float deltaSeconds, bool pointerDown) {
     viewport = frameViewport;
     origin = frameViewport.getVisibleRect().getMin();
     scale = uiScale;
     fields.clear();
     activeThisFrame = false;
 
-    if (pressed) {
+    if (pointerDown) {
         return;
     }
 
@@ -76,10 +76,12 @@ void TextSession::beginFrame(const graphics::Viewport& frameViewport, float uiSc
         const float overlap = bounds.getBottom() + keyboardOffset + kKeyboardMargin - keyboard.getTop();
         target = std::clamp(overlap, 0.0F, std::max(0.0F, top - kKeyboardMargin));
     }
-    keyboardOffset += (target - keyboardOffset) * std::min(1.0F, deltaSeconds * kKeyboardSpeed);
-    if (std::abs(target - keyboardOffset) < 0.5F) {
-        keyboardOffset = target;
+    keyboardLift += (target - keyboardLift) * std::min(1.0F, deltaSeconds * kKeyboardSpeed);
+    if (std::abs(target - keyboardLift) < 0.5F) {
+        keyboardLift = target;
     }
+    // The layout places nodes on whole units, so the UI moves by whole units too, and the place of the field without the offset then stays the same whatever the offset is, instead of following the rounding of its own lift.
+    keyboardOffset = std::round(keyboardLift);
 }
 
 void TextSession::addField(ImGuiID id, const math::Rect& fieldBounds, const platform::TextInput::Options& fieldOptions) {
