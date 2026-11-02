@@ -7,6 +7,7 @@ local ui = require('haylen.ui')
 
 local Test = require('harness.test')
 local prompts = require('categories.input.prompts')
+local touchLook = require('categories.input.touch-look')
 
 local Commands = haylen.class('Commands', Test)
 
@@ -31,13 +32,13 @@ local kActions = {actions = {
 }}
 local kFacings = {{id = '1', text = 'Right'}, {id = '-1', text = 'Left'}}
 local kHistory = 12
--- The commands as the legend lists them, with the steps the player types.
+-- The commands as the legend lists them, with the steps the player types and the words the status uses.
 local kCommands = {
-    {name = 'run', title = 'Run', steps = {'forward', 'forward'}},
-    {name = 'jumpAttack', title = 'Jump attack', steps = {'jump', 'attack'}},
-    {name = 'forwardSpecial', title = 'Forward special', steps = {'defend', 'forward', 'attack'}},
-    {name = 'upSpecial', title = 'Up special', steps = {'defend', 'up', 'attack'}},
-    {name = 'downSpecial', title = 'Down special', steps = {'defend', 'down', 'jump'}},
+    {name = 'run', title = 'Run', words = 'a run', steps = {'forward', 'forward'}},
+    {name = 'jumpAttack', title = 'Jump attack', words = 'a jump attack', steps = {'jump', 'attack'}},
+    {name = 'forwardSpecial', title = 'Forward special', words = 'a forward special', steps = {'defend', 'forward', 'attack'}},
+    {name = 'upSpecial', title = 'Up special', words = 'an up special', steps = {'defend', 'up', 'attack'}},
+    {name = 'downSpecial', title = 'Down special', words = 'a down special', steps = {'defend', 'down', 'jump'}},
 }
 -- The angle of the arrow of each direction, and the face button each button takes on a gamepad.
 local kArrows = {up = -math.pi / 2, down = math.pi / 2, left = math.pi, right = 0}
@@ -86,12 +87,12 @@ function Commands:enter()
             end},
         },
         overlay = {
-            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 16,
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 16, style = touchLook.style,
                 ui.touchButton{action = 'defend', text = 'Defend', size = 100, slideIn = true, touchOnly = true},
                 ui.touchButton{action = 'jump', text = 'Jump', size = 100, slideIn = true, touchOnly = true},
                 ui.touchButton{action = 'attack', text = 'Attack', size = 100, slideIn = true, touchOnly = true},
             },
-            ui.touchStick{action = 'pad', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 240, height = 240, touchOnly = true},
+            ui.touchStick{action = 'pad', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 240, height = 240, touchOnly = true, style = touchLook.style},
         },
     })
 end
@@ -110,7 +111,13 @@ function Commands:update(dt)
     input.setVirtualButton('up', y < -0.5)
     input.setVirtualButton('down', y > 0.5)
     self.time = self.time + dt
-    self:status(string.format('Step %d of the buffer, facing %s, with its lifetimes %s.', self.buffer.tick, self.buffer.facing > 0 and 'right' or 'left', self.buffer.frozen and 'frozen' or 'counting'))
+    local kept = 'No command is kept'
+    for _, command in ipairs(kCommands) do
+        if command.name == self.shown then
+            kept = string.format('The buffer keeps %s, typed %d %s ago', command.words, self.age, self.age == 1 and 'step' or 'steps')
+        end
+    end
+    self:status(string.format('%s. Forward is %s, and %s.', kept, self.buffer.facing > 0 and 'right' or 'left', self.buffer.frozen and 'the lifetimes are frozen, as in a hit stop' or 'a press of a button lives for 10 steps'))
 end
 
 function Commands:fixedUpdate(step)
@@ -148,9 +155,9 @@ function Commands:drawStep(step, x, y, size, lit, layer)
         return size
     end
     local text = step:sub(1, 1):upper() .. step:sub(2)
-    local width = graphics2d.measureText(prompts.font(), text, {size = size * 0.48}) + size * 0.8
+    local width = graphics2d.measureText(prompts.font(), text, {size = size * 0.5}) + size * 0.8
     graphics2d.drawShape({x, y - radius, width, size}, {radius = radius, color = prompts.faceColors[kFaces[step]], borderWidth = lit and 4 or 2, borderColor = lit and '#FFFFFFFF' or prompts.ink, layer = layer})
-    graphics2d.drawText(prompts.font(), text, x + width / 2, y, {size = size * 0.48, color = '#FFFFFFFF', anchor = {0.5, 0.5}, outlineWidth = 2, outlineColor = prompts.ink, layer = layer + 1})
+    graphics2d.drawText(prompts.font(), text, x + width / 2, y, {size = size * 0.5, color = '#FFFFFFFF', anchor = {0.5, 0.5}, outlineWidth = 2, outlineColor = prompts.ink, layer = layer + 1})
     return width
 end
 
@@ -194,9 +201,9 @@ function Commands:draw(area)
     local list = {left, top, width, height}
     graphics2d.drawShape(list, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(nil, 'Commands', left + 24, top + 22, {size = 24, color = Test.muted, layer = 2})
-    local row = math.min(52, (height - 70) / #kCommands)
+    local row = math.min(56, (height - 64) / #kCommands)
     for index, command in ipairs(kCommands) do
-        local y = top + 70 + (index - 0.5) * row
+        local y = top + 64 + (index - 0.5) * row
         local lit = command.name == self.shown
         if lit then
             graphics2d.drawShape({left + 12, y - row / 2 + 2, width - 24, row - 4}, {radius = 12, color = '#33FFC93C', layer = 1})
@@ -204,7 +211,7 @@ function Commands:draw(area)
         graphics2d.drawText(nil, command.title, left + 24, y, {size = 24, color = lit and Test.warm or Test.ink, anchor = {0, 0.5}, layer = 2})
         local x = left + width * 0.46
         for _, name in ipairs(command.steps) do
-            x = x + self:drawStep(name, x, y, row - 12, false, 2) + 8
+            x = x + self:drawStep(name, x, y, row - 8, false, 2) + 8
         end
     end
 

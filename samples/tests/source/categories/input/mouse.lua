@@ -1,5 +1,6 @@
 -- Mouse: the three buttons held, pressed and released, the wheel and the trackpad with the scroll speed, the movement of each frame, the position in design units and framebuffer pixels, a zone per cursor shape, a hidden cursor and a captured mouse that moves a crosshair by its movement alone.
 local collections = require('haylen.collections')
+local graphics = require('haylen.graphics')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -37,6 +38,8 @@ function Mouse:enter()
     self.journal = Journal(40)
     self.cursor = 'default'
     self.scrollSpeed = input.scrollSpeed()
+    self.shell = Mouse.gradient('#FF56607E', '#FF262C3C')
+    self.button = Mouse.gradient('#FF66718F', '#FF3A4258')
     self:frame({
         code = Mouse.code,
         hint = 'Hover a zone to change the cursor, click, scroll and move the mouse. On a touch screen, turn on the finger as the mouse to drive the buttons with the first finger down.',
@@ -60,6 +63,13 @@ function Mouse:exit()
     window.setCursor('default')
     window.setCursorVisible(true)
     window.setMouseLocked(false)
+end
+
+-- A texture that runs from `top` to `bottom`, which shades the body and the buttons of the mouse.
+function Mouse.gradient(top, bottom)
+    local image = graphics.newImage(4, 128)
+    image:fillGradient({angle = math.pi / 2, stops = {{0, top}, {1, bottom}}})
+    return graphics.newTexture(image, {filter = 'linear'})
 end
 
 function Mouse:capture(locked)
@@ -143,17 +153,21 @@ function Mouse:update(dt)
     self:status(string.format('The mouse is at %.0f, %.0f design units and %.0f, %.0f pixels, %s the window, and it moved %.1f, %.1f this frame.%s', mouseX, mouseY, fx, fy, input.mouseInside() and 'inside' or 'outside', self.deltaX, self.deltaY, input.pointerCaptured() and ' The interface holds it.' or ''))
 end
 
--- Draws the mouse seen from above: a rounded body whose two buttons light while held and flash on a press or a release, the wheel between them, which turns with the vertical total and leans with the horizontal one, and the movement of the frame from its middle, ten times longer.
+-- Draws the mouse seen from above: a shaded body on its shadow whose two buttons light while held and flash on a press or a release, the wheel between them, which turns with the vertical total and leans with the horizontal one, and the movement of the frame from the dot in its middle, ten times longer.
 function Mouse:drawMouse(left, top)
     local width, height = kMouse[1], kMouse[2]
     local split = height * 0.42
     local round = width / 2
-    graphics2d.drawShape({left, top, width, height}, {radius = {round, round, round * 0.9, round * 0.9}, color = '#FF2E3548', borderWidth = 3, borderColor = prompts.ink})
+    local corners = {round, round, round * 0.9, round * 0.9}
+    graphics2d.drawShape({left + 8, top + 18, width - 16, height}, {radius = corners, color = '#80000000', softness = 24})
+    graphics2d.drawShape({left, top, width, height}, {radius = corners, texture = self.shell, borderWidth = 3, borderColor = prompts.ink})
+    graphics2d.drawShape({left + 22, top + split + 24, 26, height - split - 70}, {radius = 13, color = '#1AFFFFFF', layer = 1})
     local halves = {left = {left + 3, top + 3, width / 2 - 4, split, {round, 0, 0, 0}}, right = {left + width / 2 + 1, top + 3, width / 2 - 4, split, {0, round, 0, 0}}}
     for side, rect in pairs(halves) do
         local flash = self.flashes[side]
-        local rim = flash.pressed > 0 and Test.warm or (flash.released > 0 and Test.red or Test.line)
-        graphics2d.drawShape({rect[1], rect[2], rect[3], rect[4]}, {radius = rect[5], color = input.mouseDown(side) and Test.accent or '#FF3A4258', borderWidth = 3, borderColor = rim, layer = 1})
+        local rim = flash.pressed > 0 and Test.warm or (flash.released > 0 and Test.red or prompts.ink)
+        local held = input.mouseDown(side)
+        graphics2d.drawShape({rect[1], rect[2], rect[3], rect[4]}, {radius = rect[5], texture = not held and self.button or nil, color = held and Test.accent or '#FFFFFFFF', borderWidth = 3, borderColor = rim, layer = 1})
         graphics2d.drawText(prompts.font(), side:sub(1, 1):upper() .. side:sub(2), rect[1] + rect[3] / 2, rect[2] + rect[4] * 0.62, {size = 24, anchor = {0.5, 0.5}, outlineWidth = 2, outlineColor = prompts.ink, layer = 3})
     end
 
@@ -168,11 +182,13 @@ function Mouse:drawMouse(left, top)
     end
 
     local cx, cy = left + width / 2, top + split + (height - split) * 0.45
-    graphics2d.drawCircle(cx, cy, 6, Test.muted, {layer = 2})
+    graphics2d.drawRing(cx, cy, 16, 2, '#40FFFFFF', {layer = 2})
+    graphics2d.drawCircle(cx, cy, 6, Test.green, {layer = 2})
     graphics2d.drawLine(cx, cy, cx + self.deltaX * 10, cy + self.deltaY * 10, 5, Test.green, {layer = 3})
+    local text = 'Move the mouse: a green line from the dot shows the movement of each frame, ten times longer.'
     local caption = {size = 20, color = Test.muted, maxWidth = width + 20, layer = 2}
-    graphics2d.drawText(nil, 'The green line is the movement, ten times longer.', left, top + height + 20, caption)
-    local _, captionHeight = graphics2d.measureText(nil, 'The green line is the movement, ten times longer.', caption)
+    graphics2d.drawText(nil, text, left, top + height + 20, caption)
+    local _, captionHeight = graphics2d.measureText(nil, text, caption)
     graphics2d.drawText(nil, string.format('Wheel total %.1f, %.1f', self.scrollX, self.scrollY), left, top + height + 32 + captionHeight, {size = 22, color = Test.ink, layer = 2})
 end
 
@@ -185,7 +201,7 @@ function Mouse:draw(area)
         local hovered = zone.name == self.cursor and zone.name ~= 'default'
         local rect = zone.rect
         graphics2d.drawShape(rect, {radius = 14, color = hovered and '#FF34405E' or Test.surface, borderWidth = 2, borderColor = hovered and Test.accent or Test.line})
-        graphics2d.drawText(nil, kCursorNames[zone.name], rect[1] + rect[3] / 2, rect[2] + rect[4] / 2, {size = 22, color = hovered and Test.ink or '#FFC4C9DC', anchor = {0.5, 0.5}, maxWidth = rect[3] - 16, wrap = false, minScale = 0.7, layer = 2})
+        graphics2d.drawText(nil, kCursorNames[zone.name], rect[1] + rect[3] / 2, rect[2] + rect[4] / 2, {size = 22, color = hovered and Test.ink or '#FFC4C9DC', anchor = {0.5, 0.5}, maxWidth = rect[3] - 24, align = 'center', lineSpacing = 1.05, layer = 2})
     end
 
     local last = self.zones[3].rect

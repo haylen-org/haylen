@@ -22,6 +22,8 @@ local kTypes = {'tap', 'doubleTap', 'longPress', 'swipe', 'pinch'}
 local kColors = {tap = Test.accent, doubleTap = Test.warm, longPress = Test.violet, swipe = Test.green, pinch = Test.red}
 local kLife = 0.9
 Gestures.names = {tap = 'Tap', doubleTap = 'Double tap', longPress = 'Long press', swipe = 'Swipe', pinch = 'Pinch'}
+-- How the status counts each gesture, once and more than once. A pinch reports a gesture on every frame its fingers move.
+Gestures.counted = {tap = {'tap', 'taps'}, doubleTap = {'double tap', 'double taps'}, longPress = {'long press', 'long presses'}, swipe = {'swipe', 'swipes'}, pinch = {'pinch update', 'pinch updates'}}
 local kSettings = {
     {key = 'longPressDuration', label = 'Long press seconds', min = 0.2, max = 1.5, step = 0.05},
     {key = 'doubleTapInterval', label = 'Double tap seconds', min = 0.15, max = 0.8, step = 0.05},
@@ -114,9 +116,13 @@ function Gestures:update(dt)
 
     local counts = {}
     for _, name in ipairs(kTypes) do
-        counts[#counts + 1] = Gestures.names[name] .. ' ' .. self.counts[name]
+        local count = self.counts[name]
+        if count > 0 then
+            counts[#counts + 1] = count .. ' ' .. Gestures.counted[name][count == 1 and 1 or 2]
+        end
     end
-    self:status(table.concat(counts, ', ') .. string.format('. The picture is at %.2f times its size, turned %.0f degrees.', self.scale, math.deg(self.angle)))
+    local seen = #counts == 0 and 'No gesture yet' or 'Seen so far: ' .. table.concat(counts, ', ', 1, #counts - 1) .. (#counts > 1 and ' and ' or '') .. counts[#counts]
+    self:status(string.format('%s. The picture is at %.2f times its size, turned %.0f degrees.', seen, self.scale, math.deg(self.angle)))
 end
 
 function Gestures:drawMarker(marker)
@@ -160,6 +166,10 @@ function Gestures:draw(area)
     local log = {logLeft, 24, logWidth, area.height - 48}
     graphics2d.drawShape(log, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(nil, 'Recognized gestures', logLeft + 20, 40, {size = 24, color = Test.muted, layer = 2})
+    if self.journal.lines.size == 0 then
+        graphics2d.drawText(nil, 'Tap, double tap, hold or swipe the play area to see each gesture here.', logLeft + logWidth / 2, log[2] + log[4] / 2, {size = 22, color = Test.muted, anchor = {0.5, 0.5}, maxWidth = logWidth - 48, align = 'center', layer = 2})
+        return
+    end
     self.journal:draw(logLeft + 4, 80, log[4] - 72, 20, logWidth - 16)
 end
 

@@ -7,7 +7,9 @@ local ui = require('haylen.ui')
 
 local Journal = require('harness.journal')
 local controls = require('categories.input.controls')
+local prompts = require('categories.input.prompts')
 local Test = require('harness.test')
+local touchLook = require('categories.input.touch-look')
 
 local Virtual = haylen.class('Virtual', Test)
 
@@ -63,8 +65,8 @@ function Virtual:enter()
             end},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 420, height = 420},
-            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 32,
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 420, height = 420, style = touchLook.style},
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 32, style = touchLook.style,
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', size = 130, onPress = logged('Dash press', Test.warm), onRelease = logged('Dash release', Test.red)},
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', size = 130, onPress = logged('Jump press', Test.warm), onRelease = logged('Jump release', Test.red)},
             },
@@ -108,7 +110,7 @@ function Virtual:update(dt)
             table.remove(self.shots, index)
         end
     end
-    self:status(string.format('Move %+.2f, %+.2f, jump %s and dash %s, with %d shots in flight. The last device is "%s".', mx, my, input.down('jump') and 'down' or 'up', input.down('dash') and 'down' or 'up', #self.shots, input.lastDevice()))
+    self:status(string.format('Move reads %+.2f, %+.2f, %s and %d %s in flight. The last input came from %s.', mx, my, prompts.held({'jump', 'dash'}), #self.shots, #self.shots == 1 and 'shot is' or 'shots are', prompts.lastDevice()))
 end
 
 -- Draws the ship over a field of stars, nose up, with its flame longer while it dashes, and its shots as glowing orbs.

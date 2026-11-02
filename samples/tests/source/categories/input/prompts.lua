@@ -1,4 +1,4 @@
--- The prompts of the input tests: a binding of the action map written for people, such as "Space", "Left stick" or the letter on the bottom button of the gamepad in hand, and drawn as a chip in the shape of what the player presses: a key cap for keys, a round button for gamepads, a pill for the mouse and an outlined pill for touch controls.
+-- The prompts of the input tests: a binding of the action map written for people, such as "Space", "Left stick" or the letter on the bottom button of the gamepad in hand, and drawn as a chip in the shape of what the player presses: a key cap for keys, a round button for gamepads, a pill for the mouse and an outlined pill for touch controls. The statuses of the tests also take from it the last device and the actions held in words.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
@@ -16,6 +16,26 @@ prompts.buttons = {dpadUp = 'D-pad up', dpadDown = 'D-pad down', dpadLeft = 'D-p
 prompts.axes = {leftTrigger = 'LT', rightTrigger = 'RT', leftX = 'Left stick', leftY = 'Left stick', rightX = 'Right stick', rightY = 'Right stick'}
 prompts.mouse = {left = 'Left click', right = 'Right click', middle = 'Middle click'}
 prompts.ink = '#FF15172A'
+prompts.devices = {keyboardMouse = 'the keyboard and the mouse', gamepad = 'a gamepad', touch = 'the touch screen'}
+
+-- Says where the last input came from, such as "the keyboard and the mouse", for the status of a test.
+function prompts.lastDevice()
+    return prompts.devices[input.lastDevice()]
+end
+
+-- Says which of the actions `names` the player holds, such as "nothing is held" or "jump and dash are held", for the status of a test.
+function prompts.held(names)
+    local held = {}
+    for _, name in ipairs(names) do
+        if input.down(name) then
+            held[#held + 1] = name
+        end
+    end
+    if #held == 0 then
+        return 'nothing is held'
+    end
+    return table.concat(held, ' and ') .. (#held == 1 and ' is held' or ' are held')
+end
 
 -- The labels of the face buttons of the first connected gamepad, or letters when none is connected.
 function prompts.faceLabels()

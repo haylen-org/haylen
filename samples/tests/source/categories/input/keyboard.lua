@@ -105,7 +105,8 @@ function Keyboard:update(dt)
             held[#held + 1] = name:sub(1, 1):upper() .. name:sub(2)
         end
     end
-    self:status(string.format('%d presses, %s held, and %d characters typed.', self.presses, #held > 0 and table.concat(held, ' and ') or 'no modifier', utf8.len(self.text) or 0))
+    local typed = utf8.len(self.text) or 0
+    self:status(string.format('The keyboard saw %d %s, with %s held and %d %s typed.', self.presses, self.presses == 1 and 'press' or 'presses', #held > 0 and table.concat(held, ' and ') or 'no modifier', typed, typed == 1 and 'character' or 'characters'))
 end
 
 -- Draws a key cap: a darker side under a light top that sinks while the key is held, with a rim that flashes on a press or a release.
@@ -128,7 +129,7 @@ function Keyboard:drawKey(key, left, top)
         graphics2d.drawPolygon(points, prompts.ink, {layer = 3})
         return
     end
-    graphics2d.drawText(prompts.font(), key.label, middleX, middleY, {size = unit * (#key.label > 1 and 0.3 or 0.4), color = prompts.ink, anchor = {0.5, 0.5}, maxWidth = width - 8, wrap = false, minScale = 0.6, layer = 3})
+    graphics2d.drawText(prompts.font(), key.label, middleX, middleY, {size = unit * (#key.label > 1 and 0.36 or 0.44), color = prompts.ink, anchor = {0.5, 0.5}, maxWidth = width - 10, wrap = false, minScale = 0.75, layer = 3})
 end
 
 -- Draws a chip per modifier that lights in its color while held.
@@ -161,12 +162,20 @@ function Keyboard:draw(area)
     graphics2d.drawShape(box, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(nil, 'Text from "input.text()"', box[1] + 20, box[2] + 16, {size = 24, color = Test.muted, layer = 2})
     local caret = math.floor(haylen.elapsed() * 2) % 2 == 0 and '|' or ''
-    graphics2d.drawText(nil, self.text .. caret, box[1] + 20, box[2] + 52, {size = 30, color = Test.ink, maxWidth = box[3] - 40, layer = 2})
+    if self.text == '' then
+        graphics2d.drawText(nil, 'Type on the keyboard, and the characters show here with the layout of the platform.', box[1] + box[3] / 2, box[2] + 32 + (box[4] - 32) / 2, {size = 24, color = Test.muted, anchor = {0.5, 0.5}, maxWidth = box[3] - 64, align = 'center', layer = 2})
+    else
+        graphics2d.drawText(nil, self.text .. caret, box[1] + 20, box[2] + 52, {size = 30, color = Test.ink, maxWidth = box[3] - 40, layer = 2})
+    end
 
     local logLeft = left + width + 24
     local log = {logLeft, top, area.width - logLeft - margin, area.height - top - margin}
     graphics2d.drawShape(log, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(nil, 'Key events', logLeft + 20, top + 16, {size = 24, color = Test.muted, layer = 2})
+    if self.journal.lines.size == 0 then
+        graphics2d.drawText(nil, 'Press and hold keys to see each event, with the repeats of a held key.', logLeft + log[3] / 2, top + log[4] / 2, {size = 22, color = Test.muted, anchor = {0.5, 0.5}, maxWidth = log[3] - 48, align = 'center', layer = 2})
+        return
+    end
     self.journal:draw(logLeft + 4, top + 56, log[4] - 72, 20, log[3] - 16)
 end
 

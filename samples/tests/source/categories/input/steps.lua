@@ -7,7 +7,9 @@ local ui = require('haylen.ui')
 
 local Backdrop = require('categories.animation.backdrop')
 local controls = require('categories.input.controls')
+local prompts = require('categories.input.prompts')
 local Test = require('harness.test')
+local touchLook = require('categories.input.touch-look')
 
 local Steps = haylen.class('Steps', Test)
 
@@ -26,6 +28,8 @@ local kIdleFrames = {0, 1, 2, 3}
 local kAir = 10
 local kFeet = 248 / 256
 local kHeroSize = 150
+-- How far under the bottom of the meadow its ground line sits, so a band of soil shows under the grass.
+local kSoil = 64
 
 function Steps:enter()
     local actions = controls.actions()
@@ -52,9 +56,15 @@ function Steps:enter()
                 self.counts = {frame = 0, fixedFrame = 0, fixedStep = 0}
                 self.hopper.jumps = 0
             end},
+            ui.label{text = 'What the time scale does', font = 'caption', color = 'textMuted'},
+            ui.label{text = 'Below 1, many frames run no fixed step, so a press read through the frame edges in "fixedUpdate" can be missed.'},
+            ui.label{text = 'Above 1, a frame runs several fixed steps that all see the same frame edge, so one press counts more than once.'},
+            ui.label{text = 'The step edges of "input.stepPressed" belong to one fixed step, so every press counts once at any scale.'},
+            ui.label{text = 'The jump buffer', font = 'caption', color = 'textMuted'},
+            ui.label{text = 'A press up to 0.15 seconds before the hopper lands still makes it jump again.'},
         },
         overlay = {
-            ui.touchButton{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, action = 'jump', text = 'Jump', touchOnly = true},
+            ui.touchButton{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, action = 'jump', text = 'Jump', touchOnly = true, style = touchLook.style},
         },
     })
 end
@@ -70,7 +80,7 @@ function Steps:update(dt)
     if input.pressed('jump') then
         self.counts.frame = self.counts.frame + 1
     end
-    self:status(string.format('Time runs at %.2f times its speed, with fixed steps of %.4f seconds, and jump is %s.', haylen.timeScale(), haylen.fixedStep(), input.down('jump') and 'down' or 'up'))
+    self:status(string.format('Time runs at %.2f times its speed, with fixed steps of %.1f ms, and %s.', haylen.timeScale(), haylen.fixedStep() * 1000, prompts.held({'jump'})))
 end
 
 -- The hopper lands every half second or so and jumps again only with a press that the buffer still holds when it touches the ground.
@@ -94,23 +104,32 @@ function Steps:fixedUpdate(step)
     end
 end
 
-function Steps:drawCount(title, value, rect, color)
+-- Draws a count with its title, and how it compares with the presses read in "update": the reference in white, a count that matches in green, and a count that misses or doubles presses in red.
+function Steps:drawCount(title, value, rect, reference)
+    local color, verdict = Test.ink, 'Every press, once per frame'
+    if reference then
+        local difference = value - reference
+        color = difference == 0 and Test.green or Test.red
+        verdict = difference == 0 and 'Matches the presses' or (difference < 0 and string.format('Missed %d %s', -difference, difference == -1 and 'press' or 'presses') or string.format('Counted %d extra', difference))
+    end
     graphics2d.drawShape(rect, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(nil, title, rect[1] + 24, rect[2] + 20, {size = 24, color = Test.muted, maxWidth = rect[3] - 48, layer = 2})
-    graphics2d.drawText(nil, tostring(value), rect[1] + 24, rect[2] + rect[4] - 20, {size = 64, color = color, anchor = {0, 1}, layer = 2})
+    graphics2d.drawText(nil, tostring(value), rect[1] + 24, rect[2] + rect[4] - 16, {size = 64, color = color, anchor = {0, 1}, layer = 2})
+    local numberWidth = graphics2d.measureText(nil, tostring(value), {size = 64})
+    graphics2d.drawText(nil, verdict, rect[1] + 48 + numberWidth, rect[2] + rect[4] - 30, {size = 22, color = color, anchor = {0, 1}, maxWidth = rect[3] - 72 - numberWidth, layer = 2})
 end
 
 function Steps:draw(area)
     local margin, gap = 24, 16
     local width = (area.width - margin * 2 - gap * 2) / 3
     local height = math.min(170, area.height * 0.3)
-    self:drawCount('Presses read in "update"', self.counts.frame, {margin, margin, width, height}, Test.ink)
-    self:drawCount('Frame edges read in "fixedUpdate"', self.counts.fixedFrame, {margin + width + gap, margin, width, height}, Test.red)
-    self:drawCount('Step edges read in "fixedUpdate"', self.counts.fixedStep, {margin + (width + gap) * 2, margin, width, height}, Test.green)
+    self:drawCount('Presses read in "update"', self.counts.frame, {margin, margin, width, height})
+    self:drawCount('Frame edges read in "fixedUpdate"', self.counts.fixedFrame, {margin + width + gap, margin, width, height}, self.counts.frame)
+    self:drawCount('Step edges read in "fixedUpdate"', self.counts.fixedStep, {margin + (width + gap) * 2, margin, width, height}, self.counts.frame)
 
     -- The hopper stands on a meadow under the counters and jumps only with a press that the buffer still holds when it lands.
     local meadow = {margin, margin + height + gap, area.width - margin * 2, area.height - height - gap - margin * 2}
-    local ground = meadow[2] + meadow[4] - 40
+    local ground = meadow[2] + meadow[4] - kSoil
     self.meadow = meadow
     graphics2d.pushMask(self.meadowShape)
     self.backdrop:draw(graphics2d.canvasBounds(), ground, 150, 0)

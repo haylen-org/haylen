@@ -120,7 +120,8 @@ function Gamepads:update(dt)
         self.hold = 0
         Gamepads.super.cancel(self)
     end
-    self:status(string.format('%d of 8 gamepads connected, a dead zone of %.2f, and the last device is "%s".', connected, input.gamepadDeadzone(), input.lastDevice()))
+    local count = connected == 0 and 'No gamepad is connected' or (connected == 1 and '1 gamepad is connected' or connected .. ' gamepads are connected')
+    self:status(string.format('%s, the dead zone is %.2f, and the last input came from %s.', count, input.gamepadDeadzone(), prompts.lastDevice()))
 end
 
 function Gamepads:drawStick(index, side, x, y, radius)
@@ -205,6 +206,9 @@ function Gamepads:draw(area)
     local logLeft = margin + width + gap
     graphics2d.drawShape({logLeft, margin, logWidth, area.height - margin * 2}, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
     graphics2d.drawText(prompts.font(), 'Connections', logLeft + 20, margin + 30, {size = 24, anchor = {0, 0.5}, layer = 2})
+    if self.journal.lines.size == 0 then
+        graphics2d.drawText(nil, 'Connect a gamepad to see it here. A browser shows a gamepad once one of its buttons is pressed.', logLeft + logWidth / 2, area.height / 2, {size = 22, color = Test.muted, anchor = {0.5, 0.5}, maxWidth = logWidth - 48, align = 'center', layer = 2})
+    end
     self.journal:draw(logLeft + 4, margin + 60, area.height - margin * 2 - 150, 19, logWidth - 24)
     if self.hold > 0 then
         local cx, cy = logLeft + 54, area.height - margin - 50

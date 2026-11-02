@@ -75,7 +75,12 @@ function Touch:update(dt)
         trail.lifted = touch.phase == 'ended' or touch.phase == 'cancelled'
     end
     self.most = math.max(self.most, #touches)
-    self:status(string.format('%d fingers down, %d at most at once, and %d touch events so far.', #touches, self.most, self.events))
+    if self.most == 0 then
+        self:status('No finger has touched the play area yet.')
+        return
+    end
+    local down = #touches == 0 and 'No finger is down' or (#touches == 1 and '1 finger is down' or #touches .. ' fingers are down')
+    self:status(string.format('%s, the most at once was %d, and %d touch %s arrived.', down, self.most, self.events, self.events == 1 and 'event' or 'events'))
 end
 
 function Touch:draw(area)

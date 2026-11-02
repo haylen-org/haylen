@@ -7,6 +7,7 @@ local ui = require('haylen.ui')
 local controls = require('categories.input.controls')
 local prompts = require('categories.input.prompts')
 local Test = require('harness.test')
+local touchLook = require('categories.input.touch-look')
 
 local Actions = haylen.class('Actions', Test)
 
@@ -59,8 +60,8 @@ function Actions:enter()
             end}},
         },
         overlay = {
-            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 260, height = 260, touchOnly = true},
-            ui.row{anchor = 'bottom', anchorTo = 'parent', margin = {0, 0, 24, 0}, gap = 32,
+            ui.touchStick{id = 'stick', action = 'move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 260, height = 260, touchOnly = true, style = touchLook.style},
+            ui.row{anchor = 'bottom', anchorTo = 'parent', margin = {0, 0, 24, 0}, gap = 32, style = touchLook.style,
                 ui.touchButton{id = 'jump', action = 'jump', text = 'Jump', touchOnly = true},
                 ui.touchButton{id = 'dash', action = 'dash', text = 'Dash', touchOnly = true},
             },
@@ -82,7 +83,7 @@ function Actions:update(dt)
         row.released = input.released(row.name) and kFlash or math.max(0, row.released - dt)
     end
     local x, y = input.vector('move')
-    self:status(string.format('The last device is "%s". Move %+.2f, %+.2f, jump %s, dash %s, throttle %+.2f.', input.lastDevice(), x, y, input.down('jump') and 'down' or 'up', input.down('dash') and 'down' or 'up', input.value('throttle')))
+    self:status(string.format('The last input came from %s. Move reads %+.2f, %+.2f, %s and the throttle reads %+.2f.', prompts.lastDevice(), x, y, prompts.held({'jump', 'dash'}), input.value('throttle')))
 end
 
 function Actions:drawRow(row, rect)
@@ -94,15 +95,29 @@ function Actions:drawRow(row, rect)
     graphics2d.drawText(prompts.font(), row.name:sub(1, 1):upper() .. row.name:sub(2), x + 24, middle - 14, {size = 32, anchor = {0, 0.5}, outlineWidth = 3, outlineColor = prompts.ink, layer = 2})
     graphics2d.drawText(nil, row.type:sub(1, 1):upper() .. row.type:sub(2) .. ' action', x + 24, middle + 22, {size = 20, color = Test.accent, anchor = {0, 0.5}, layer = 2})
     local stateX = x + width - 300
-    prompts.chips(row.bindings, x + 190, top + 30, 36, stateX - 32)
+    prompts.chips(row.bindings, x + 190, top + 32, 40, stateX - 32)
 
-    -- The light shows the action held, and its rim flashes on a press or a release.
-    graphics2d.drawShape({stateX - 22, middle - 34, 44, 44}, {kind = 'ellipse', color = down and Test.green or '#FF15172A', borderWidth = 3, borderColor = flash or Test.line, layer = 2})
-    graphics2d.drawText(nil, down and 'Down' or 'Up', stateX, middle + 26, {size = 20, color = down and Test.green or Test.muted, anchor = {0.5, 0.5}, layer = 2})
+    -- The light glows while the action is held, and its rim flashes on a press or a release.
+    if down then
+        graphics2d.drawShape({stateX - 34, middle - 46, 68, 68}, {kind = 'ellipse', color = '#666FDCA0', softness = 16, layer = 2})
+    end
+    graphics2d.drawShape({stateX - 22, middle - 34, 44, 44}, {kind = 'ellipse', color = down and Test.green or '#FF262C3C', borderWidth = 3, borderColor = flash or prompts.ink, layer = 2})
+    graphics2d.drawShape({stateX - 12, middle - 28, 14, 9}, {kind = 'ellipse', color = down and '#B3FFFFFF' or '#33FFFFFF', layer = 3})
+    graphics2d.drawText(nil, down and 'Held' or 'Idle', stateX, middle + 26, {size = 20, color = down and Test.green or Test.muted, anchor = {0.5, 0.5}, layer = 2})
 
-    -- Axes run from -1 to 1 around the middle of the groove, and the other types from 0 to 1.
+    -- A vector shows its direction on a dial, and the other types fill a groove, axes from -1 to 1 around its middle and buttons from 0 to 1.
     local value = input.value(row.name)
-    local barX, barWidth, barHeight = stateX + 50, row.type == 'vector' and 120 or 220, 20
+    local barX, barWidth, barHeight = stateX + 50, 220, 20
+    if row.type == 'vector' then
+        local radius = math.min(30, height / 2 - 24)
+        local cx, cy = barX + radius, middle - 20 + barHeight / 2
+        local vx, vy = input.vector(row.name)
+        graphics2d.drawShape({cx - radius, cy - radius, radius * 2, radius * 2}, {kind = 'ellipse', color = '#FF15172A', borderWidth = 3, borderColor = Test.line, layer = 2})
+        graphics2d.drawLine(cx, cy, cx + vx * radius, cy + vy * radius, 5, Test.green, {layer = 3})
+        graphics2d.drawCircle(cx + vx * radius, cy + vy * radius, 8, Test.green, {layer = 4})
+        graphics2d.drawText(nil, string.format('X %+.2f, Y %+.2f', vx, vy), cx + radius + 16, cy, {size = 20, color = Test.muted, anchor = {0, 0.5}, layer = 2})
+        return
+    end
     local axis = row.type == 'axis'
     local zero = axis and barX + barWidth / 2 or barX
     local scale = axis and barWidth / 2 or barWidth
@@ -113,14 +128,6 @@ function Actions:drawRow(row, rect)
         graphics2d.drawShape({axis and left or barX + 3, middle - 17, fill, barHeight - 6}, {radius = (barHeight - 6) / 2, color = Test.accent, layer = 3})
     end
     graphics2d.drawText(nil, string.format('Value %+.2f', value), barX, middle + 26, {size = 20, color = Test.muted, anchor = {0, 0.5}, layer = 2})
-
-    if row.type == 'vector' then
-        local cx, radius = x + width - 64, math.min(40, height / 2 - 12)
-        local vx, vy = input.vector(row.name)
-        graphics2d.drawShape({cx - radius, middle - radius, radius * 2, radius * 2}, {kind = 'ellipse', color = '#FF15172A', borderWidth = 3, borderColor = Test.line, layer = 2})
-        graphics2d.drawLine(cx, middle, cx + vx * radius, middle + vy * radius, 5, Test.green, {layer = 3})
-        graphics2d.drawCircle(cx + vx * radius, middle + vy * radius, 10, Test.green, {layer = 4})
-    end
 end
 
 function Actions:draw(area)

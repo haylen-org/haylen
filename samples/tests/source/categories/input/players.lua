@@ -8,6 +8,7 @@ local ui = require('haylen.ui')
 local controls = require('categories.input.controls')
 local prompts = require('categories.input.prompts')
 local Test = require('harness.test')
+local touchLook = require('categories.input.touch-look')
 
 local Players = haylen.class('Players', Test)
 
@@ -53,8 +54,8 @@ function Players:enter()
         hint = 'Press start or south on a gamepad to join its seat. Each seat moves with its own devices only.',
         play = true,
         overlay = {
-            ui.touchStick{action = 'seat.move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 240, height = 240, touchOnly = true},
-            ui.touchButton{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, action = 'seat.jump', text = 'Jump', touchOnly = true},
+            ui.touchStick{action = 'seat.move', mode = 'floating', anchor = 'bottomLeft', anchorTo = 'parent', margin = {0, 0, 24, 24}, width = 240, height = 240, touchOnly = true, style = touchLook.style},
+            ui.touchButton{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, action = 'seat.jump', text = 'Jump', touchOnly = true, style = touchLook.style},
         },
     })
 end
@@ -85,7 +86,7 @@ function Players:update(dt)
         end
         joined = joined + (seat.joined and 1 or 0)
     end
-    self:status(string.format('%d of %d seats are taken. Each moves only with its own devices.', joined, kSeats))
+    self:status(string.format('%d %s of %d %s taken, and each player moves only with the devices of its seat.', joined, joined == 1 and 'seat' or 'seats', kSeats, joined == 1 and 'is' or 'are'))
 end
 
 function Players:fixedUpdate(step)
@@ -102,18 +103,20 @@ function Players:drawSeat(index, seat, rect)
     graphics2d.drawShape({x + 16, y + 16, 34, 34}, {kind = 'ellipse', color = seat.joined and color or '#FF3A4258', borderWidth = 2, borderColor = prompts.ink, layer = 2})
     graphics2d.drawText(prompts.font(), tostring(index), x + 33, y + 33, {size = 20, color = prompts.ink, anchor = {0.5, 0.5}, layer = 3})
     graphics2d.drawText(prompts.font(), seat.title, x + 62, y + 33, {size = 24, anchor = {0, 0.5}, color = seat.joined and '#FFFFFFFF' or Test.muted, layer = 2})
+    local icon = self.icons[seat.pad and 'gamepad' or 'keyboard']
     if not seat.joined or waiting then
-        local icon = self.icons[seat.pad and 'gamepad' or 'keyboard']
         local size = math.min(width * 0.36, (height - 110) * icon.width / icon.height)
         graphics2d.draw(icon, x + width / 2, y + height * 0.52, {width = size, height = size * icon.height / icon.width, color = waiting and '#40FF8A84' or '#30FFFFFF', layer = 1})
         graphics2d.drawText(nil, waiting and 'Waiting for its gamepad' or 'Press Start to join', x + width / 2, y + height - 26, {size = 22, color = waiting and Test.red or Test.muted, anchor = {0.5, 0.5}, layer = 2})
         return
     end
 
-    -- The player stands on a ring of its color and walks inside its seat with its own devices.
+    -- The device of the seat shows in its top-right corner, and the player stands on a ring of its color in the middle and walks inside its seat with its own devices.
+    local iconWidth = math.min(72, width * 0.16)
+    graphics2d.draw(icon, x + width - 18 - iconWidth / 2, y + 33, {width = iconWidth, height = iconWidth * icon.height / icon.width, layer = 2})
     local jump = (seat.mask or 0) & 1 ~= 0
-    local cx, feet = x + width * 0.6 + seat.x * width * 0.3, y + height - 24 + seat.y * 8
-    local size = math.min(height - 40, 150)
+    local size = math.min(height - 72, 150)
+    local cx, feet = x + width / 2 + seat.x * (width / 2 - size * 0.45), y + height - 24 + seat.y * 8
     graphics2d.drawShape({cx - size * 0.3, feet - size * 0.06, size * 0.6, size * 0.12}, {kind = 'ellipse', color = color, borderWidth = 2, borderColor = prompts.ink, layer = 2})
     local frames = seat.moving and kRunFrames or kIdleFrames
     local frame = frames[math.floor(self.time * (seat.moving and 14 or 6)) % #frames + 1]

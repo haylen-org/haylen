@@ -10,6 +10,7 @@ local ui = require('haylen.ui')
 local Backdrop = require('categories.animation.backdrop')
 local Test = require('harness.test')
 local prompts = require('categories.input.prompts')
+local touchLook = require('categories.input.touch-look')
 
 local Replay = haylen.class('Replay', Test)
 
@@ -39,7 +40,9 @@ local kIdleFrames = {0, 1, 2, 3}
 local kRunFrames = {8, 9, 10, 11, 12, 13, 14, 15}
 local kAir = 10
 local kFeet = 248 / 256
-local kHeroSize = 150
+-- The hash of a step mixes its values with the 32 bit FNV-1a hash.
+local kHashBasis = 2166136261
+local kHashPrime = 16777619
 
 function Replay:enter()
     self:loadActions(kActions)
@@ -58,7 +61,7 @@ function Replay:enter()
             ui.button{id = 'replay', text = 'Replay the run', onClick = function() self:startReplay() end},
         },
         overlay = {
-            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 16,
+            ui.row{anchor = 'bottomRight', anchorTo = 'parent', margin = {0, 24, 24, 0}, gap = 16, style = touchLook.style,
                 ui.touchButton{action = 'left', image = '@replayLeft', size = 100, touchOnly = true},
                 ui.touchButton{action = 'right', image = '@replayRight', size = 100, touchOnly = true},
                 ui.touchButton{action = 'jump', text = 'Jump', size = 100, touchOnly = true},
@@ -79,6 +82,7 @@ function Replay:resetWorld(randomState)
     self.sparks = {}
     self.random = m.random(1)
     self.random:setState(randomState)
+    self.step, self.stepHash = 0, self:hash(0)
 end
 
 function Replay:startRecording()
@@ -95,10 +99,14 @@ function Replay:startReplay()
     self:resetWorld(self.playback.data)
 end
 
--- The hash of a step folds the position of the hopper and the count of its sparks into 32 bits.
-function Replay:hash()
+-- The hash of a step folds the number of the step, the position of the hopper and the count of its sparks into 32 bits, so it changes on every step even while the hopper stands still.
+function Replay:hash(step)
     local hopper = self.hopper
-    return (math.floor(hopper.x * 100) * 31 + math.floor(hopper.y * 100) * 17 + #self.sparks) & 0xFFFFFFFF
+    local hash = kHashBasis
+    for _, value in ipairs({step, math.floor(hopper.x * 100), math.floor(hopper.y * 100), #self.sparks}) do
+        hash = ((hash ~ (value & 0xFFFFFFFF)) * kHashPrime) & 0xFFFFFFFF
+    end
+    return hash
 end
 
 function Replay:fixedUpdate(step)
@@ -142,13 +150,15 @@ function Replay:fixedUpdate(step)
         end
     end
 
+    local index = self.playback and self.playback.step or self.recorder.steps
+    self.step, self.stepHash = index, self:hash(index)
     if self.playback then
-        if self.playback:hash() ~= self:hash() then
+        if self.playback:hash() ~= self.stepHash then
             self.mismatches = self.mismatches + 1
         end
         self.playback:advance()
     else
-        self.recorder:advance(self:hash())
+        self.recorder:advance(self.stepHash)
     end
 end
 
@@ -174,20 +184,23 @@ function Replay:drawMode(x, y)
         graphics2d.drawShape({x + 20, y + 16, 24, 24}, {kind = 'ellipse', color = {1, 0.3, 0.27, pulse}, layer = 6})
     end
     graphics2d.drawText(prompts.font(), text, x + 60, y + 28, {size = 30, anchor = {0, 0.5}, outlineWidth = 3, outlineColor = prompts.ink, layer = 6})
-    local hash = string.format('Step hash %08X', self:hash())
+    local hash = string.format('Step %d, hash %08X', self.step, self.stepHash)
     local hashWidth = graphics2d.measureText(nil, hash, {size = 22}) + 40
     graphics2d.drawShape({x, y + 68, hashWidth, 40}, {radius = 20, color = '#E6151A2A', layer = 5})
     graphics2d.drawText(nil, hash, x + 20, y + 88, {size = 22, color = replaying and Test.green or Test.ink, anchor = {0, 0.5}, layer = 6})
 end
 
+-- The scenery grows with the play area, so its clouds rise behind the hills and leave the sky over them clear for the mode and the hash.
 function Replay:draw(area)
-    local ground = area.height - 60
+    local strip = math.max(150, math.min(260, area.height * 0.37))
+    local ground = area.height - strip * 0.42
     local center = area.width * 0.5
-    self.backdrop:draw(graphics2d.canvasBounds(), ground, 150, 0)
+    local heroSize = strip * 0.86
+    self.backdrop:draw(graphics2d.canvasBounds(), ground, strip, 0)
     local hopper = self.hopper
     local frame = hopper.y < 0 and kAir or (hopper.moving and kRunFrames[math.floor(self.time * 14) % #kRunFrames + 1] or kIdleFrames[math.floor(self.time * 6) % #kIdleFrames + 1])
-    Backdrop.shadow(center + hopper.x, ground, hopper.y < 0 and 60 or 90, 3)
-    graphics2d.draw(self.walker, center + hopper.x, ground + hopper.y, {source = {frame % 8 * 256, frame // 8 * 256, 256, 256}, width = kHeroSize, height = kHeroSize, pivotY = kFeet, flipHorizontal = hopper.facing < 0, layer = 4})
+    Backdrop.shadow(center + hopper.x, ground, heroSize * (hopper.y < 0 and 0.4 or 0.6), 3)
+    graphics2d.draw(self.walker, center + hopper.x, ground + hopper.y, {source = {frame % 8 * 256, frame // 8 * 256, 256, 256}, width = heroSize, height = heroSize, pivotY = kFeet, flipHorizontal = hopper.facing < 0, layer = 4})
     for _, spark in ipairs(self.sparks) do
         local x, y = center + spark.x, ground - 20 + spark.y
         local size = 34 * spark.life
