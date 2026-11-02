@@ -3617,6 +3617,13 @@ def unified_log(executable: str, prefix: list) -> Iterator[list[str]]:
         stream.wait()
 
 
+def simulator_line(identifier: str, line: str) -> str | None:
+    """Leaves out the lines that the launcher of a simulator adds to the output of the app: the process it started and the signal that ended it."""
+    if re.fullmatch(rf"{re.escape(identifier)}: \d+", line.strip()) or line.startswith("Child process terminated with signal"):
+        return None
+    return line
+
+
 def launch_apple(app: App, bundle: Path, args: argparse.Namespace, simulator: dict | None, session: RunSession) -> None:
     """Launches an app bundle on this Mac, a simulator or a device with the arguments of the session and streams its output until it ends or the session quits. The engine writes to the standard output on macOS and to the unified log elsewhere, which simulators and Mac Catalyst stream next to the output of the process."""
     desktop = args.platform in {"macos", "catalyst"}
@@ -3638,7 +3645,7 @@ def launch_apple(app: App, bundle: Path, args: argparse.Namespace, simulator: di
         run(["xcrun", "simctl", "install", udid, bundle])
         with unified_log(executable, ["xcrun", "simctl", "spawn", udid]):
             session.show(run_rows(app, f'{simulator["name"]}, simulator', args, session), lambda: subprocess.run(["xcrun", "simctl", "terminate", udid, identifier], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, check=False))
-            session.follow(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *session.arguments])
+            session.follow(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *session.arguments], line=functools.partial(simulator_line, identifier))
     else:
         if not args.device:
             raise BuildError(f'Name the device with "--device". {DEVICES_HINT}')
@@ -4620,8 +4627,8 @@ class RunSession:
         elif self.process is not None:
             self.process.terminate()
 
-    def follow(self, command: list, cwd: Path = ROOT, line: Callable[[str], str] | None = None) -> None:
-        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line through the function of the line when one is given. It stops with an error when the process fails, unless the developer quit."""
+    def follow(self, command: list, cwd: Path = ROOT, line: Callable[[str], str | None] | None = None) -> None:
+        """Streams the output of the process that runs the app, or that relays its log, until it ends, passing each line through the function of the line when one is given, which leaves out a line by returning nothing. It stops with an error when the process fails, unless the developer quit."""
         parts = [str(part) for part in command]
         if terminal.verbose:
             terminal.command(parts)
@@ -4633,7 +4640,9 @@ class RunSession:
             self.process.terminate()
         if line is not None:
             for text in self.process.stdout:
-                terminal.verbatim(line(text.rstrip("\n")))
+                shown = line(text.rstrip("\n"))
+                if shown is not None:
+                    terminal.verbatim(shown)
         code = self.process.wait()
         if self.quitting.is_set() or code == 0:
             return

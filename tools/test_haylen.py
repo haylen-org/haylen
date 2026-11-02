@@ -2576,6 +2576,10 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertIn("Quit", output.getvalue())
         self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.folder, self.manifest), []).keys), ["r", "R", "d", "c", "q", "h"])
 
+    def test_the_log_of_a_simulator_leaves_out_the_lines_of_its_launcher(self):
+        lines = ["com.haylen.game: 65678", "[info] The app draws through \"metal\".", "Child process terminated with signal 15: Terminated"]
+        self.assertEqual([haylen.simulator_line("com.haylen.game", line) for line in lines], [None, lines[1], None])
+
     def test_a_run_that_quits_ends_its_process_without_an_error(self):
         session = haylen.RunSession()
         with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
