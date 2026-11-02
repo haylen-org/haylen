@@ -133,7 +133,7 @@ end)
 
 ### demo.generatedImage(width, height)
 
-Draws the picture of the plugin, a small island with a palm under the sun in a sea with waves, in an image of `width` by `height` pixels, from 1 to 2048, and answers with `{png, width, height, drawnWith, language}`, where `png` holds the bytes of a PNG file: drawn with CoreGraphics and written with ImageIO on Apple platforms, drawn in a `Bitmap` and compressed on the background thread on Android, drawn on a `<canvas>` and encoded with `toBlob` on the web, and drawn in memory and encoded by a PNG encoder of the library on the desktops. Another size fails with the code `invalidParams`.
+Draws the picture of the plugin, a small island with a palm and its coconuts under the sun and two clouds, in a sea with waves, in an image of `width` by `height` pixels, from 1 to 2048, and answers with `{png, width, height, drawnWith, language}`, where `png` holds the bytes of a PNG file: drawn with CoreGraphics and written with ImageIO on Apple platforms, drawn in a `Bitmap` and compressed on the background thread on Android, drawn on a `<canvas>` and encoded with `toBlob` on the web, and drawn in memory and encoded by a PNG encoder of the library on the desktops. Another size fails with the code `invalidParams`.
 
 ```lua
 local async = require('async')

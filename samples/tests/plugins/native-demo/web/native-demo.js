@@ -37,7 +37,7 @@ const fillFrame = (pixels, width, height, index) => {
     }
 };
 
-// The picture of the demo, a small island with a palm under the sun in a sea with waves, in fractions of the width and the height of the canvas, the same on every platform. The video moves the waves and floats the sun with the time in seconds.
+// The picture of the demo, a small island with a palm and its coconuts under the sun and two clouds, in a sea with waves, in fractions of the width and the height of the canvas, the same on every platform. Every shape has the outline of the art, the sun a soft halo, the sand and the leaves a lighter highlight and the island a shadow on the water. The video moves the waves and floats the sun with the time in seconds.
 const scene = {
     ink: "#1e1b33",
     skyTop: "#6cc6f5",
@@ -46,11 +46,23 @@ const scene = {
     seaLow: "#1e8fa6",
     sun: "#ffc93c",
     sunLight: "#ffe89a",
+    halo: "rgba(255, 250, 225, 0.45)",
+    cloud: "#ffffff",
+    shadow: "rgba(30, 27, 51, 0.18)",
     sand: "#f3d58d",
+    sandLight: "#fbe8b6",
     grass: "#7bc74d",
     trunk: "#a86a3d",
     leaf: "#5db33c",
+    leafLight: "#8fd45e",
+    coconut: "#6b4423",
     leafAngles: [-0.45, 0.4, 2.75, 3.55],
+    // Each cloud is three circles, with the x and y of their centers in fractions of the width and the height and their radius in fractions of the height.
+    clouds: [
+        [[0.14, 0.22, 0.06], [0.19, 0.17, 0.08], [0.245, 0.22, 0.06]],
+        [[0.56, 0.15, 0.05], [0.6, 0.12, 0.065], [0.64, 0.15, 0.05]],
+    ],
+    coconuts: [[0.41, 0.33], [0.435, 0.335]],
 };
 
 // Fills an ellipse over the outline of the art, a stroke twice as wide as the outline whose inner half the fill covers.
@@ -62,6 +74,31 @@ const outlinedEllipse = (context, x, y, radiusX, radiusY, angle, outline, fill) 
     context.stroke();
     context.fillStyle = fill;
     context.fill();
+};
+
+const filledEllipse = (context, x, y, radiusX, radiusY, angle, fill) => {
+    context.beginPath();
+    context.ellipse(x, y, radiusX, radiusY, angle, 0, Math.PI * 2);
+    context.fillStyle = fill;
+    context.fill();
+};
+
+// A cloud strokes the outlines of all its circles before it fills them, so one outline goes around the whole cloud.
+const drawCloud = (context, circles, width, height, outline) => {
+    for (const pass of ["stroke", "fill"]) {
+        for (const [x, y, radius] of circles) {
+            context.beginPath();
+            context.arc(x * width, y * height, radius * height, 0, Math.PI * 2);
+            if (pass === "stroke") {
+                context.lineWidth = outline * 2;
+                context.strokeStyle = scene.ink;
+                context.stroke();
+            } else {
+                context.fillStyle = scene.cloud;
+                context.fill();
+            }
+        }
+    }
 };
 
 const drawScene = (canvas, seconds) => {
@@ -82,14 +119,12 @@ const drawScene = (canvas, seconds) => {
     context.fillRect(0, horizon, width, height - horizon);
 
     const sunY = 0.26 * height + 0.02 * height * Math.sin(seconds * 1.2);
-    context.fillStyle = scene.sun;
-    context.beginPath();
-    context.arc(0.8 * width, sunY, 0.12 * height, 0, Math.PI * 2);
-    context.fill();
-    context.fillStyle = scene.sunLight;
-    context.beginPath();
-    context.arc(0.78 * width, sunY - 0.02 * height, 0.07 * height, 0, Math.PI * 2);
-    context.fill();
+    filledEllipse(context, 0.8 * width, sunY, 0.17 * height, 0.17 * height, 0, scene.halo);
+    outlinedEllipse(context, 0.8 * width, sunY, 0.12 * height, 0.12 * height, 0, outline, scene.sun);
+    filledEllipse(context, 0.78 * width, sunY - 0.02 * height, 0.07 * height, 0.07 * height, 0, scene.sunLight);
+    for (const cloud of scene.clouds) {
+        drawCloud(context, cloud, width, height, outline);
+    }
 
     const spacing = 0.2 * width;
     context.strokeStyle = "rgba(255, 255, 255, 0.6)";
@@ -106,7 +141,9 @@ const drawScene = (canvas, seconds) => {
         }
     }
 
+    filledEllipse(context, 0.36 * width, 0.69 * height, 0.24 * width, 0.05 * height, 0, scene.shadow);
     outlinedEllipse(context, 0.36 * width, 0.64 * height, 0.22 * width, 0.085 * height, 0, outline, scene.sand);
+    filledEllipse(context, 0.24 * width, 0.675 * height, 0.05 * width, 0.013 * height, 0, scene.sandLight);
     outlinedEllipse(context, 0.36 * width, 0.6 * height, 0.15 * width, 0.05 * height, 0, outline, scene.grass);
     const crownX = 0.42 * width;
     const crownY = 0.3 * height;
@@ -120,7 +157,13 @@ const drawScene = (canvas, seconds) => {
     context.strokeStyle = scene.trunk;
     context.stroke();
     for (const angle of scene.leafAngles) {
-        outlinedEllipse(context, crownX + Math.cos(angle) * 0.085 * width, crownY + Math.sin(angle) * 0.085 * width, 0.09 * width, 0.028 * height, angle, outline, scene.leaf);
+        const leafX = crownX + Math.cos(angle) * 0.085 * width;
+        const leafY = crownY + Math.sin(angle) * 0.085 * width;
+        outlinedEllipse(context, leafX, leafY, 0.09 * width, 0.028 * height, angle, outline, scene.leaf);
+        filledEllipse(context, leafX, leafY, 0.07 * width, 0.008 * height, angle, scene.leafLight);
+    }
+    for (const [x, y] of scene.coconuts) {
+        outlinedEllipse(context, x * width, y * height, 0.025 * height, 0.025 * height, 0, outline, scene.coconut);
     }
 };
 

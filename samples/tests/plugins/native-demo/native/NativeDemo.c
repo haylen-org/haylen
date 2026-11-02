@@ -379,7 +379,7 @@ static void native_demo_checksum_view(uint64_t call, const char* paramsJson) {
     nativeDemoApi->releaseView(view);
 }
 
-// The picture of the demo, a small island with a palm under the sun in a sea with waves, in fractions of the width and the height of the picture, the same on every platform. The video moves the waves and floats the sun with the time.
+// The picture of the demo, a small island with a palm and its coconuts under the sun and two clouds, in a sea with waves, in fractions of the width and the height of the picture, the same on every platform. Every shape has the outline of the art, the sun a soft halo, the sand and the leaves a lighter highlight and the island a shadow on the water. The video moves the waves and floats the sun with the time.
 typedef struct NativeDemoColor {
     float red, green, blue;
 } NativeDemoColor;
@@ -395,7 +395,18 @@ static const NativeDemoColor nativeDemoSand = {243, 213, 141};
 static const NativeDemoColor nativeDemoGrass = {123, 199, 77};
 static const NativeDemoColor nativeDemoTrunk = {168, 106, 61};
 static const NativeDemoColor nativeDemoLeaf = {93, 179, 60};
+static const NativeDemoColor nativeDemoLeafLight = {143, 212, 94};
+static const NativeDemoColor nativeDemoSandLight = {251, 232, 182};
+static const NativeDemoColor nativeDemoCoconut = {107, 68, 35};
+static const NativeDemoColor nativeDemoCloud = {255, 255, 255};
+static const NativeDemoColor nativeDemoHalo = {255, 250, 225};
 static const float nativeDemoLeafAngles[4] = {-0.45f, 0.4f, 2.75f, 3.55f};
+// Each cloud is three circles, with the x and y of their centers in fractions of the width and the height and their radius in fractions of the height.
+static const float nativeDemoClouds[2][3][3] = {
+    {{0.14f, 0.22f, 0.06f}, {0.19f, 0.17f, 0.08f}, {0.245f, 0.22f, 0.06f}},
+    {{0.56f, 0.15f, 0.05f}, {0.6f, 0.12f, 0.065f}, {0.64f, 0.15f, 0.05f}},
+};
+static const float nativeDemoCoconuts[2][2] = {{0.41f, 0.33f}, {0.435f, 0.335f}};
 
 static NativeDemoColor native_demo_mix(NativeDemoColor from, NativeDemoColor to, float amount) {
     const NativeDemoColor mixed = {from.red + (to.red - from.red) * amount, from.green + (to.green - from.green) * amount, from.blue + (to.blue - from.blue) * amount};
@@ -431,6 +442,24 @@ static void native_demo_outlined(NativeDemoColor* color, float x, float y, float
     }
 }
 
+// Paints a cloud, whose circles share one outline around the whole cloud.
+static void native_demo_cloud(NativeDemoColor* color, float x, float y, const float circles[3][3], float width, float height, float outline) {
+    int edge = 0;
+    for (int index = 0; index < 3; ++index) {
+        const float centerX = circles[index][0] * width;
+        const float centerY = circles[index][1] * height;
+        const float radius = circles[index][2] * height;
+        if (native_demo_in_ellipse(x, y, centerX, centerY, radius, radius, 0.0f)) {
+            *color = nativeDemoCloud;
+            return;
+        }
+        edge = edge || native_demo_in_ellipse(x, y, centerX, centerY, radius + outline, radius + outline, 0.0f);
+    }
+    if (edge) {
+        *color = nativeDemoInk;
+    }
+}
+
 // The color of one point of the picture at the time in seconds, painted from the back to the front.
 static NativeDemoColor native_demo_scene(float x, float y, float width, float height, float seconds) {
     const float horizon = 0.6f * height;
@@ -438,8 +467,15 @@ static NativeDemoColor native_demo_scene(float x, float y, float width, float he
     NativeDemoColor color = y < horizon ? native_demo_mix(nativeDemoSkyTop, nativeDemoSkyLow, y / horizon) : native_demo_mix(nativeDemoSeaTop, nativeDemoSeaLow, (y - horizon) / (height - horizon));
 
     const float sunY = 0.26f * height + 0.02f * height * sinf(seconds * 1.2f);
-    if (native_demo_in_ellipse(x, y, 0.8f * width, sunY, 0.12f * height, 0.12f * height, 0.0f)) {
-        color = native_demo_in_ellipse(x, y, 0.78f * width, sunY - 0.02f * height, 0.07f * height, 0.07f * height, 0.0f) ? nativeDemoSunLight : nativeDemoSun;
+    if (native_demo_in_ellipse(x, y, 0.8f * width, sunY, 0.17f * height, 0.17f * height, 0.0f)) {
+        color = native_demo_mix(color, nativeDemoHalo, 0.45f);
+    }
+    native_demo_outlined(&color, x, y, 0.8f * width, sunY, 0.12f * height, 0.12f * height, 0.0f, outline, nativeDemoSun);
+    if (native_demo_in_ellipse(x, y, 0.78f * width, sunY - 0.02f * height, 0.07f * height, 0.07f * height, 0.0f)) {
+        color = nativeDemoSunLight;
+    }
+    for (int cloud = 0; cloud < 2; ++cloud) {
+        native_demo_cloud(&color, x, y, nativeDemoClouds[cloud], width, height, outline);
     }
 
     const float spacing = 0.2f * width;
@@ -452,7 +488,13 @@ static NativeDemoColor native_demo_scene(float x, float y, float width, float he
         }
     }
 
+    if (native_demo_in_ellipse(x, y, 0.36f * width, 0.69f * height, 0.24f * width, 0.05f * height, 0.0f)) {
+        color = native_demo_mix(color, nativeDemoInk, 0.18f);
+    }
     native_demo_outlined(&color, x, y, 0.36f * width, 0.64f * height, 0.22f * width, 0.085f * height, 0.0f, outline, nativeDemoSand);
+    if (native_demo_in_ellipse(x, y, 0.24f * width, 0.675f * height, 0.05f * width, 0.013f * height, 0.0f)) {
+        color = nativeDemoSandLight;
+    }
     native_demo_outlined(&color, x, y, 0.36f * width, 0.6f * height, 0.15f * width, 0.05f * height, 0.0f, outline, nativeDemoGrass);
     const float crownX = 0.42f * width;
     const float crownY = 0.3f * height;
@@ -463,7 +505,15 @@ static NativeDemoColor native_demo_scene(float x, float y, float width, float he
     }
     for (int leaf = 0; leaf < 4; ++leaf) {
         const float angle = nativeDemoLeafAngles[leaf];
-        native_demo_outlined(&color, x, y, crownX + cosf(angle) * 0.085f * width, crownY + sinf(angle) * 0.085f * width, 0.09f * width, 0.028f * height, angle, outline, nativeDemoLeaf);
+        const float leafX = crownX + cosf(angle) * 0.085f * width;
+        const float leafY = crownY + sinf(angle) * 0.085f * width;
+        native_demo_outlined(&color, x, y, leafX, leafY, 0.09f * width, 0.028f * height, angle, outline, nativeDemoLeaf);
+        if (native_demo_in_ellipse(x, y, leafX, leafY, 0.07f * width, 0.008f * height, angle)) {
+            color = nativeDemoLeafLight;
+        }
+    }
+    for (int coconut = 0; coconut < 2; ++coconut) {
+        native_demo_outlined(&color, x, y, nativeDemoCoconuts[coconut][0] * width, nativeDemoCoconuts[coconut][1] * height, 0.025f * height, 0.025f * height, 0.0f, outline, nativeDemoCoconut);
     }
     return color;
 }
