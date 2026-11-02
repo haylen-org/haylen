@@ -65,7 +65,10 @@ function SdfEffects:update(dt)
     self.glowText:update(dt)
     self.allText:update(dt)
     local font, size = self.font, SdfEffects.size
-    self:status(string.format('In distance units, where 0.5 spans the whole spread of the field, the outline reaches %.3f, the blur %.3f and the glow %.3f.', font:toDistance(self.outline, size), font:toDistance(self.blur, size), font:toDistance(self.glow, size)))
+    local function share(units)
+        return math.min(100, font:toDistance(units, size) / 0.5 * 100)
+    end
+    self:status(string.format('The outline takes %.0f percent of the reach of the distance field, the blur %.0f and the glow %.0f, and no effect grows past all of it.', share(self.outline), share(self.blur), share(self.glow)))
 end
 
 -- Draws the four effects in two rows, each word under its label.

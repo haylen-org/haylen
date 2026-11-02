@@ -55,7 +55,7 @@ end
 function Wrapping:update(dt)
     Wrapping.super.update(self, dt)
     if self.sweep then
-        self.width = 440 + 120 * math.sin(haylen.elapsed() * 0.7)
+        self.width = math.floor(44 + 12 * math.sin(haylen.elapsed() * 0.7) + 0.5) * 10
         self:set('width', {value = self.width})
     end
     local style = {size = Wrapping.size, maxWidth = self.width, lineSpacing = self.spacing}
@@ -70,13 +70,19 @@ function Wrapping.guide(x, top, bottom)
     end
 end
 
--- Draws one column: its caption, the box of the widest the column gets, its text and the dashed line at its maximum width, down to the bottom of the box.
-function Wrapping:column(caption, font, text, x, width, widest)
-    local layout, padding = self.layout, Wrapping.padding
+-- Draws one column: its caption, the box of the widest the column gets down to `bottom`, its text and the dashed line at its maximum width, down to the bottom of the box.
+function Wrapping:column(caption, font, text, x, width, widest, bottom)
+    local padding = Wrapping.padding
     TextTest.label(caption, x, 0)
-    TextTest.box({x - padding, Wrapping.textTop - padding, widest + padding * 2, layout.height - Wrapping.textTop + padding})
+    TextTest.box({x - padding, Wrapping.textTop - padding, widest + padding * 2, bottom - Wrapping.textTop + padding * 2})
     graphics2d.drawText(font, text, x, Wrapping.textTop, {size = Wrapping.size, maxWidth = width, lineSpacing = self.spacing, color = Test.ink})
-    Wrapping.guide(x + width, Wrapping.textTop - 6, layout.height - 6)
+    Wrapping.guide(x + width, Wrapping.textTop - 6, bottom + padding - 6)
+end
+
+-- Returns the height of a text at a width, at the size and spacing of the columns.
+function Wrapping:height(font, text, width)
+    local _, height = font:measure(text, {size = Wrapping.size, maxWidth = width, lineSpacing = self.spacing})
+    return height
 end
 
 function Wrapping:draw(area)
@@ -85,9 +91,13 @@ function Wrapping:draw(area)
     local gap = Wrapping.columnGap + (self.layout.width - columns - padding * 2) / 2
     local japaneseX = padding + Wrapping.maxWidth + gap
     local longX = japaneseX + Wrapping.maxWidth + gap
-    self:column('English wraps after spaces', self.latin, Wrapping.english, padding, self.width, Wrapping.maxWidth)
-    self:column('Japanese breaks between characters', self.cjk, Wrapping.japanese, japaneseX, self.width, Wrapping.maxWidth)
-    self:column('A long word breaks inside', self.latin, Wrapping.long, longX, math.min(self.width, Wrapping.longWidth), Wrapping.longWidth)
+    -- The boxes reach just below the tallest text, so they hold their text at every width.
+    local longWidth = math.min(self.width, Wrapping.longWidth)
+    local tallest = math.max(self:height(self.latin, Wrapping.english, self.width), self:height(self.cjk, Wrapping.japanese, self.width), self:height(self.latin, Wrapping.long, longWidth))
+    local bottom = Wrapping.textTop + tallest + 8
+    self:column('English wraps after spaces', self.latin, Wrapping.english, padding, self.width, Wrapping.maxWidth, bottom)
+    self:column('Japanese breaks between characters', self.cjk, Wrapping.japanese, japaneseX, self.width, Wrapping.maxWidth, bottom)
+    self:column('A long word breaks inside', self.latin, Wrapping.long, longX, longWidth, Wrapping.longWidth, bottom)
 end
 
 return Wrapping

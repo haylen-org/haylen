@@ -18,6 +18,9 @@ graphics2d.drawText(lcd, '12:04.5', x, y, {size = 60})]]
 Bitmap.line = 'PRESS START to play!'
 Bitmap.story = 'Bitmap fonts wrap at a width like any other font, and keep every pixel square.'
 Bitmap.lcdFrame = '#FF0B1A10'
+-- The room between the lines of each size and the room of the count in front of them.
+Bitmap.lineGap = 14
+Bitmap.countWidth = 44
 Bitmap.words = {{'Red', '#FFFF6A6A'}, {'Green', '#FF6FDCA0'}, {'Blue', '#FF7FCBF2'}, {'Shadow', '#FFFFF3D6'}}
 
 function Bitmap:init(entry)
@@ -52,24 +55,30 @@ function Bitmap:textFormat(x, width, height)
     TextTest.label('The text format file "haylen-pixel.fnt"', x, 0, {size = 28, color = Test.accent})
     local lines = 0
     for count = 1, 4 do
-        lines = lines + self:screenPixelSize(pixel, count) * 1.3
+        lines = lines + self:screenPixelSize(pixel, count) + Bitmap.lineGap
     end
     local five, story = self:pixelSize(pixel, 5), self:pixelSize(pixel, 3)
     local plateHeight = five * 1.9
     local _, storyHeight = graphics2d.measureText(pixel, Bitmap.story, {size = story, maxWidth = width, lineSpacing = 1.3})
     local gap = (height - 52 - lines - plateHeight - storyHeight) / 2
 
+    -- Each line names how many pixels of the screen a pixel of the font covers, and keeps a gap below it, so its descenders stay clear of the next line.
     local y = 52
     for count = 1, 4 do
         local size = self:screenPixelSize(pixel, count)
-        graphics2d.drawText(pixel, Bitmap.line, x, y, {size = size, pixelSnap = true, color = Test.ink})
-        y = y + size * 1.3
+        TextTest.label(count .. '×', x, y + size - 22, {size = 20})
+        graphics2d.drawText(pixel, Bitmap.line, x + Bitmap.countWidth, y, {size = size, pixelSnap = true, color = Test.ink})
+        y = y + size + Bitmap.lineGap
     end
 
-    -- The colored words sit on a lighter plate, where the dark shadow one pixel of the font away shows.
+    -- The colored words sit on a lighter plate as wide as they are, where the dark shadow one pixel of the font away shows.
     y = y + gap
-    graphics2d.drawShape({x, y, width, plateHeight}, {radius = 14, color = '#FF3A4462', borderWidth = 2, borderColor = '#FF4E5878'})
     local unit = five / pixel.nativeSize
+    local wordsWidth = unit * 3
+    for _, word in ipairs(Bitmap.words) do
+        wordsWidth = wordsWidth + graphics2d.measureText(pixel, word[1], {size = five}) + unit * 5
+    end
+    graphics2d.drawShape({x, y, math.min(width, wordsWidth), plateHeight}, {radius = 14, color = '#FF3A4462', borderWidth = 2, borderColor = '#FF4E5878'})
     local wordX, wordY = x + unit * 4, y + (plateHeight - five) / 2
     for _, word in ipairs(Bitmap.words) do
         self:crisp(pixel, word[1], wordX, wordY, 5, {color = word[2], shadowOffset = {unit, unit}, shadowColor = '#FF141626'})

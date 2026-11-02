@@ -32,7 +32,7 @@ function Alignment:init(entry)
 end
 
 function Alignment:enter()
-    self:frame{code = Alignment.code, page = {1800, 700}, hint = 'Fill stretches the spaces of every wrapped line to both edges and leaves the last line of a paragraph at its start. The red marks show the position each anchored block is drawn at, and the last block also turns around it.'}
+    self:frame{code = Alignment.code, page = {1800, 700}, hint = 'Fill stretches the spaces of every wrapped line to both edges and leaves the last line of a paragraph at its start. The red marks show the position each anchored block is drawn at, on the plate of its bounds, and the last block also turns around it.'}
 end
 
 -- Lays the boxes out again for the width of the page, and keeps the heights the rows take.
@@ -53,10 +53,11 @@ function Alignment:resize(area)
     self.richHeight = math.max(first, second) + padding * 2
 end
 
+-- Marks the anchor point of a block under its text, so the glyphs stay whole over the mark.
 function Alignment.mark(x, y)
     graphics2d.drawLine(x - 14, y, x + 14, y, 2, '#C0FF6A6A', {layer = -1})
     graphics2d.drawLine(x, y - 14, x, y + 14, 2, '#C0FF6A6A', {layer = -1})
-    graphics2d.drawCircle(x, y, 5, '#FFFF6A6A', {layer = 3})
+    graphics2d.drawCircle(x, y, 5, '#FFFF6A6A', {layer = -1})
 end
 
 function Alignment:draw(area)
@@ -72,7 +73,7 @@ function Alignment:draw(area)
         graphics2d.drawText(self.font, Alignment.text, x + padding, y + caption + padding, {size = Alignment.size, maxWidth = self.boxWidth - padding * 2, align = align[1], color = Test.ink})
     end
 
-    -- Each anchored block stands centered in its cell, so the mark shows where its anchor point lies on it.
+    -- Each anchored block stands centered in its cell on a plate of its bounds, so the mark shows where its anchor point lies on it.
     y = y + caption + self.boxHeight + gap
     local cell = layout.width / #Alignment.anchors
     for index, anchor in ipairs(Alignment.anchors) do
@@ -80,8 +81,11 @@ function Alignment:draw(area)
         local width, height = graphics2d.measureText(self.font, 'Anchored', {size = 44})
         local x = centerX + (anchor[1][1] - 0.5) * width
         local markY = centerY + (anchor[1][2] - 0.5) * height
+        local text = anchor[3] and 'Turned' or 'Anchored'
+        local textWidth = graphics2d.measureText(self.font, text, {size = 44})
         TextTest.label(anchor[2], centerX, y, {anchor = {0.5, 0}})
-        graphics2d.drawText(self.font, anchor[3] and 'Turned' or 'Anchored', x, markY, {size = 44, anchor = anchor[1], rotation = anchor[3] or 0, color = anchor[3] and '#FF7FCBF2' or '#FFFFE070'})
+        graphics2d.drawShape({x - anchor[1][1] * textWidth, markY - anchor[1][2] * height, textWidth, height}, {radius = 6, rotation = anchor[3] or 0, color = '#14FFFFFF', borderWidth = 1.5, borderColor = '#40FFFFFF', layer = -2})
+        graphics2d.drawText(self.font, text, x, markY, {size = 44, anchor = anchor[1], rotation = anchor[3] or 0, color = anchor[3] and '#FF7FCBF2' or '#FFFFE070'})
         Alignment.mark(x, markY)
     end
 

@@ -17,13 +17,14 @@ graphics2d.drawText(font, story, x, y, {size = 40, maxWidth = 460})]]
 
 Fitting.name = 'Captain Marigold of the Northern Sea'
 Fitting.maxWidth = 620
+Fitting.maxHeight = 320
 Fitting.padding = 20
 Fitting.story = 'On the third night the keeper climbed the lighthouse stairs, lit the great lamp and watched the ships find the harbor, one sail after another, until the last boat was home.'
 
 function Fitting:init(entry)
     Fitting.super.init(self, entry)
     self.width = 500
-    self.height = 240
+    self.height = 220
     self.minScale = 0.4
     self.sweep = true
     self.latin = fonts.load('crimson')
@@ -39,7 +40,7 @@ function Fitting:enter()
                 self.width = event.value
                 self:stopSweep()
             end}},
-            ui.formField{label = 'Height of the story', ui.slider{id = 'height', min = 120, max = 360, step = 10, value = self.height, showValue = true, decimals = 0, onChange = function(event)
+            ui.formField{label = 'Height of the story', ui.slider{id = 'height', min = 120, max = Fitting.maxHeight, step = 10, value = self.height, showValue = true, decimals = 0, onChange = function(event)
                 self.height = event.value
                 self:stopSweep()
             end}},
@@ -67,8 +68,8 @@ function Fitting:update(dt)
     Fitting.super.update(self, dt)
     if self.sweep then
         local time = haylen.elapsed()
-        self.width = 490 + 130 * math.sin(time * 0.6)
-        self.height = 240 + 120 * math.sin(time * 0.45)
+        self.width = math.floor(49 + 13 * math.sin(time * 0.6) + 0.5) * 10
+        self.height = math.floor(22 + 10 * math.sin(time * 0.45) + 0.5) * 10
         self:set('width', {value = self.width})
         self:set('height', {value = self.height})
     end
@@ -77,24 +78,25 @@ function Fitting:update(dt)
     self:status(string.format('The boxes are %.0f by %.0f, the name takes %.0f of their width and the story %.0f of their height, shrinking to no less than %.2f of their size.', self.width, self.height, nameWidth, storyHeight, self.minScale))
 end
 
+-- The left column holds the story that fits its box over the name that fits its plate, and the right column the same story without a smallest scale, which runs past its box down the page.
 function Fitting:draw(area)
     local layout, padding = self.layout, Fitting.padding
     local width, height = self.width, self.height
-    TextTest.label('A name that does not wrap fits the width of its plate', 0, 0)
-    local plate = {0, 44, width, 100}
-    graphics2d.drawShape(plate, {radius = 14, color = '#FF2A3550', borderWidth = 3, borderColor = '#FFFFD54F'})
-    graphics2d.drawText(self.latin, Fitting.name, width / 2, plate[2] + plate[4] / 2, self:nameStyle())
-
-    local storyY = 224
+    local storyY, plateY = 44, 44 + Fitting.maxHeight + 88
     TextTest.label('A story that wraps fits the height of its box', 0, storyY - 44)
     graphics2d.drawShape({0, storyY, width, height}, {radius = 14, color = '#FF22303A', borderWidth = 3, borderColor = '#FF6FDCA0'})
     graphics2d.drawText(self.latin, Fitting.story, padding, storyY + padding, self:storyStyle())
 
+    TextTest.label('A name that does not wrap fits the width of its plate', 0, plateY - 44)
+    local plate = {0, plateY, width, 100}
+    graphics2d.drawShape(plate, {radius = 14, color = '#FF2A3550', borderWidth = 3, borderColor = '#FFFFD54F'})
+    graphics2d.drawText(self.latin, Fitting.name, width / 2, plate[2] + plate[4] / 2, self:nameStyle())
+
     -- The same story without a smallest scale runs past the bottom of its box, and the page keeps room for it.
     local right = layout.width - Fitting.maxWidth
-    TextTest.label('Without a smallest scale, it overflows its box', right, 0)
-    graphics2d.drawShape({right, 44, width, height}, {radius = 14, color = '#FF22303A', borderWidth = 3, borderColor = '#FFFF8A84'})
-    graphics2d.drawText(self.latin, Fitting.story, right + padding, 44 + padding, {size = 40, maxWidth = width - padding * 2, color = Test.ink, layer = 1})
+    TextTest.label('Without a smallest scale, it overflows its box', right, storyY - 44)
+    graphics2d.drawShape({right, storyY, width, height}, {radius = 14, color = '#FF22303A', borderWidth = 3, borderColor = '#FFFF8A84'})
+    graphics2d.drawText(self.latin, Fitting.story, right + padding, storyY + padding, {size = 40, maxWidth = width - padding * 2, color = Test.ink, layer = 1})
 end
 
 return Fitting

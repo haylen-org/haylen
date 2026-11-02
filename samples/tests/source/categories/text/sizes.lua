@@ -13,8 +13,8 @@ Sizes.code = [[
 local serif = assets.font('fonts/crimson-text-regular.ttf')
 graphics2d.drawText(serif, 'Black sphinx', 64, y, {size = 12})
 y = y + serif:lineHeight(12) + 6
-local baseline = top + (height + serif:capHeight(320)) / 2  -- Centers the capitals.
-graphics2d.drawText(serif, 'Aa', x, baseline - serif:ascent(320), {size = 320, anchor = {0.5, 0}})]]
+local baseline = middle + serif:capHeight(size) / 2  -- Centers the capitals at any size.
+graphics2d.drawText(serif, 'Aa', x, baseline - serif:ascent(size), {size = size, anchor = {0.5, 0}})]]
 
 Sizes.sizes = {12, 16, 20, 24, 32, 48, 64, 96}
 Sizes.line = 'Black sphinx'
@@ -22,7 +22,6 @@ Sizes.word = 'Aa'
 Sizes.numberSize = 24
 Sizes.numberWidth = 44
 Sizes.titleHeight = 52
-Sizes.maxZoom = 320
 -- The widths of the two columns of lines, each wide enough for its font at 96, and of the panel of the zoomed words.
 Sizes.columns = {560, 620, 420}
 
@@ -56,6 +55,7 @@ function Sizes:update(dt)
     Sizes.super.update(self, dt)
     if self.pulse then
         self.zoomSize = 164 + 156 * math.sin(haylen.elapsed() * 0.8)
+        self:set('zoom', {value = math.floor(self.zoomSize + 0.5)})
     end
     local serif, sans = self.serif, self.sans
     self:status(string.format('Crimson Text bakes its glyphs once at size %d into %s and Fira Sans at size %d into %s, and the word draws at size %d.', serif.nativeSize, Sizes.pages(serif.pageCount), sans.nativeSize, Sizes.pages(sans.pageCount), math.floor(self.zoomSize + 0.5)))
@@ -83,10 +83,12 @@ function Sizes:column(font, title, x, height)
     end
 end
 
--- The zoomed word of each font stands on a baseline that centers its capitals at the largest size in its half of the panel.
-function Sizes:zoomed(font, x, top, height, color)
+-- The zoomed word of each font grows from the middle of its half of the panel, whose top names the font.
+function Sizes:zoomed(font, name, x, top, height, color)
+    TextTest.label(name, x, top + 18, {size = 22, anchor = {0.5, 0}})
     local size = self.zoomSize
-    local baseline = top + (height + font:capHeight(Sizes.maxZoom)) / 2
+    local middle = top + 24 + height / 2
+    local baseline = middle + font:capHeight(size) / 2
     graphics2d.drawText(font, Sizes.word, x, baseline - font:ascent(size), {size = size, anchor = {0.5, 0}, color = color})
 end
 
@@ -100,8 +102,9 @@ function Sizes:draw(area)
     local panelX = layout.width - widths[3]
     TextTest.box({panelX, 0, widths[3], layout.height})
     local half = layout.height / 2
-    self:zoomed(self.serif, panelX + widths[3] / 2, 0, half, '#FFFFE070')
-    self:zoomed(self.sans, panelX + widths[3] / 2, half, half, '#FF7FCBF2')
+    self:zoomed(self.serif, 'Crimson Text', panelX + widths[3] / 2, 0, half, '#FFFFE070')
+    self:zoomed(self.sans, 'Fira Sans', panelX + widths[3] / 2, half, half, '#FF7FCBF2')
+    graphics2d.drawLine(panelX + 24, half, panelX + widths[3] - 24, half, 2, TextTest.boxBorder)
 end
 
 return Sizes

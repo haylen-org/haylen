@@ -24,6 +24,7 @@ CustomEffects.lines = {
     {'[drop cycle=4]', '[drop cycle=4]Treasure found[/drop] [icon=coin] [icon=coin]'},
     {'[blink rate=2]', 'Press any key[blink rate=2]_[/blink]'},
     {'[wave amp=6][ghost]', '[wave amp=6][ghost]A haunted tide[/ghost][/wave]'},
+    {'[sparkle rate=3]', '[sparkle rate=3]Golden crown[/sparkle] [icon=coin]'},
 }
 
 -- A ghost fades along the word between a third and its full opacity and floats up as it shows.
@@ -38,14 +39,24 @@ function CustomEffects.bounce(glyph, attributes)
     glyph.offsetY = glyph.offsetY - math.abs(math.sin(glyph.time * 5 + glyph.index * 0.45)) * (attributes.height or 16)
 end
 
--- A glitch jumps sideways and flashes cyan on some glyphs, a few times a second.
+-- A glitch shakes the whole line sideways on some ticks, a few times a second, and flashes a run of glyphs cyan, so the letters keep their spacing.
 function CustomEffects.glitch(glyph, attributes)
     local tick = math.floor(glyph.time * (attributes.rate or 8))
-    local noise = (tick * 7919 + glyph.index * 104729) % 97
-    if noise < 18 then
-        glyph.offsetX = glyph.offsetX + (noise % 3 - 1) * 6
+    local noise = tick * 7919 % 97
+    if noise >= 30 then
+        return
+    end
+    glyph.offsetX = glyph.offsetX + (noise % 3 - 1) * 5
+    local start = tick * 104729 % 20
+    if glyph.index >= start and glyph.index < start + 4 then
         glyph.color = '#FF40FFFF'
     end
+end
+
+-- A sparkle twinkles each glyph to gold and back on a beat of its own.
+function CustomEffects.sparkle(glyph, attributes)
+    local beat = 0.5 + 0.5 * math.sin(glyph.time * (attributes.rate or 3) + glyph.index * 1.7)
+    glyph.color = string.format('#FFFF%02X%02X', math.floor(255 - beat * 54), math.floor(255 - beat * 195))
 end
 
 -- A heartbeat reddens the word on each beat and lifts it.
@@ -71,7 +82,7 @@ end
 
 function CustomEffects:init(entry)
     CustomEffects.super.init(self, entry)
-    for _, name in ipairs({'ghost', 'bounce', 'glitch', 'heartbeat', 'drop', 'blink'}) do
+    for _, name in ipairs({'ghost', 'bounce', 'glitch', 'heartbeat', 'drop', 'blink', 'sparkle'}) do
         graphics2d.registerTextEffect(name, CustomEffects[name])
     end
     graphics2d.registerTextIcon('coin', assets.texture('text/coin.png', {filter = 'linear'}))

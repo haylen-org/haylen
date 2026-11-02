@@ -29,6 +29,9 @@ Measuring.blue = '#FF4C7DFF'
 Measuring.red = '#FFFF6A6A'
 Measuring.green = '#FF3DBE7A'
 Measuring.orange = '#FFF2B23A'
+-- The measured boxes stand this far outside their blocks, so the text never touches their lines, and the quads take turns every this many seconds.
+Measuring.frame = 8
+Measuring.turn = 0.6
 
 function Measuring:init(entry)
     Measuring.super.init(self, entry)
@@ -79,19 +82,20 @@ function Measuring:update(dt)
     end
 end
 
--- Draws the line with its measured box and its baseline. The quads of its glyphs stay faint, and the one under the pointer stands out.
+-- Draws the line with its measured box, just outside the block, and its baseline across the box. The quad of the glyph under the pointer shows, or while the pointer is elsewhere the quads take turns.
 function Measuring:measuredLine(x, y)
     local font, size, layout = self.font, Measuring.size, self.layoutOfLine
     local width, height = self.lineWidth, self.lineHeight
-    graphics2d.drawRectOutline({x, y, width, height}, 3, Measuring.blue)
+    local frame = Measuring.frame
+    graphics2d.drawRectOutline({x - frame, y - frame, width + frame * 2, height + frame * 2}, 3, Measuring.blue)
     graphics2d.drawText(font, Measuring.text, x, y, {size = size, color = Test.ink})
     local baseline = y + font:ascent(size)
-    graphics2d.drawLine(x - 20, baseline, x + width + 20, baseline, 2, Measuring.red)
-    for index, quad in ipairs(layout.quads) do
-        local picked = index == self.picked
-        graphics2d.drawRectOutline({x + quad.position.x, y + quad.position.y, quad.size.x, quad.size.y}, picked and 4 or 1, picked and '#FFFFE070' or '#503DBE7A', {layer = 1})
-    end
-    TextTest.label(string.format('Size from "measureText" %.0f by %.0f, %d quads on %d line, ascent %.1f, line height %.1f', width, height, #layout.quads, layout.lineCount, font:ascent(size), font:lineHeight(size)), x, y + height + 14, {size = 24, maxWidth = width})
+    graphics2d.drawLine(x, baseline, x + width, baseline, 2, Measuring.red)
+    local shown = self.picked or math.floor(haylen.elapsed() / Measuring.turn) % #layout.quads + 1
+    local quad = layout.quads[shown]
+    graphics2d.drawRectOutline({x + quad.position.x, y + quad.position.y, quad.size.x, quad.size.y}, self.picked and 4 or 2, self.picked and '#FFFFE070' or Measuring.green, {layer = 1})
+    TextTest.label(string.format('Measured %.0f by %.0f with "measureText", in %d quads on %d line', width, height, #layout.quads, layout.lineCount), x, y + height + frame + 14, {size = 24})
+    TextTest.label(string.format('Ascent %.1f and line height %.1f at size %d', font:ascent(size), font:lineHeight(size), size), x, y + height + frame + 46, {size = 24})
 end
 
 -- Draws one character large with its source quad, its offset from the pen on the baseline and its advance.
@@ -107,8 +111,8 @@ function Measuring:glyphMetrics(character, x, baseline)
     graphics2d.drawLine(x, baseline + 24, x + glyph.advance * scale, baseline + 24, 4, Measuring.orange)
     local captionY = baseline + Measuring.captionGap
     TextTest.label(string.format('Glyph "%s" at size %d', character, font.nativeSize), x - 30, captionY, {size = 24, color = Test.accent})
-    TextTest.label(string.format('Offset %.1f, %.1f, size %.0f by %.0f', glyph.offset.x, glyph.offset.y, glyph.source.width, glyph.source.height), x - 30, captionY + 32, {size = 24})
-    TextTest.label(string.format('Advance %.1f', glyph.advance), x - 30, captionY + 64, {size = 24})
+    TextTest.label(string.format('A quad of %.0f by %.0f, %.0f across and %.0f up from the pen', glyph.source.width, glyph.source.height, -glyph.offset.x, -glyph.offset.y), x - 30, captionY + 32, {size = 24})
+    TextTest.label(string.format('The pen moves on by %.1f', glyph.advance), x - 30, captionY + 64, {size = 24})
 end
 
 -- Draws a pair with the kerning of its font and again with each letter at its own advance.
@@ -131,7 +135,8 @@ end
 -- Draws the rich text with the block "measureRichText" returns, the box of each line, and its link and image.
 function Measuring:richBlock(x, y)
     local width, height, laid = self.richWidth, self.richHeight, self.richFrame
-    graphics2d.drawRectOutline({x, y, width, height}, 3, Measuring.blue)
+    local frame = Measuring.frame
+    graphics2d.drawRectOutline({x - frame, y - frame, width + frame * 2, height + frame * 2}, 3, Measuring.blue)
     for _, line in ipairs(laid.lines) do
         graphics2d.drawRect({x + line.rect.x, y + line.rect.y, line.rect.width, line.rect.height}, '#283DBE7A', {layer = -1})
     end
@@ -142,7 +147,7 @@ function Measuring:richBlock(x, y)
     for _, image in ipairs(laid.images) do
         graphics2d.drawRectOutline({x + image.rect.x, y + image.rect.y, image.rect.width, image.rect.height}, 2, Measuring.green, {layer = 1})
     end
-    TextTest.label(string.format('The block from "measureRichText" is %.0f by %.0f, as wide as its maximum width, while the shaded boxes of its %d lines end with their text. It holds %d glyphs, %d link and %d image.', width, height, laid.lineCount, #laid.glyphs, #laid.links, #laid.images), x, y + height + 14, {size = 24, maxWidth = Measuring.rightWidth})
+    TextTest.label(string.format('The block from "measureRichText" is %.0f by %.0f, as wide as its maximum width, while the shaded boxes of its %d lines end with their text. It holds %d glyphs, %d link and %d image.', width, height, laid.lineCount, #laid.glyphs, #laid.links, #laid.images), x, y + height + frame + 14, {size = 24, maxWidth = Measuring.rightWidth})
 end
 
 function Measuring:draw(area)

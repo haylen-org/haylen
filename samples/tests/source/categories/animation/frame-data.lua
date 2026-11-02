@@ -87,7 +87,7 @@ function FrameData:enter()
 end
 
 function FrameData:record(name, event, frame)
-    table.insert(self.history, 1, string.format('%s%s on frame %d, %s', event:sub(1, 1):upper(), event:sub(2), frame, FrameData.names[name]))
+    table.insert(self.history, 1, string.format('%s%s at %.1f s on frame %d, %s', event:sub(1, 1):upper(), event:sub(2), self.time, frame, FrameData.names[name]))
     self.history[FrameData.lines + 1] = nil
     local rows = {}
     for index, text in ipairs(self.history) do

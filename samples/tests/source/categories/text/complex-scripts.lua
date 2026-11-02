@@ -34,6 +34,7 @@ ComplexScripts.labelWidth = 150
 ComplexScripts.padding = 16
 ComplexScripts.caption = 40
 ComplexScripts.typedWidth = 600
+ComplexScripts.columnGap = 48
 
 function ComplexScripts:init(entry)
     ComplexScripts.super.init(self, entry)
@@ -90,8 +91,8 @@ end
 
 function ComplexScripts:draw(area)
     local family, layout, padding = self.family, self.layout, ComplexScripts.padding
-    local leftWidth = math.min(700, layout.width * 0.48)
     local right = layout.width - (ComplexScripts.typedWidth + padding * 2)
+    local leftWidth = right - ComplexScripts.columnGap
     local mixed = {size = 30, maxWidth = leftWidth - padding * 2, lineSpacing = 1, direction = self.direction, color = Test.ink}
     local _, mixedHeight = graphics2d.measureText(family, ComplexScripts.mixed, mixed)
     local thaiWidth = leftWidth - padding * 2
@@ -116,13 +117,13 @@ function ComplexScripts:draw(area)
     top = ComplexScripts.panel('Thai wraps between phrases', 0, y, thaiWidth + padding * 2, thaiHeight)
     graphics2d.drawText(family, ComplexScripts.thai, padding, top, thai)
 
+    -- The right column holds the paragraph over the typewriter in boxes of one width, and the paragraph keeps to the right edge of its box at any width it wraps at.
     local _, height = self.paragraph:size()
-    local paragraphX = layout.width - self.width - padding * 2
-    top = ComplexScripts.panel('Right-to-left rich text with spans', paragraphX, 0, self.width + padding * 2, height)
-    self.paragraph:draw(paragraphX + padding, top)
+    local columnWidth = ComplexScripts.typedWidth + padding * 2
+    top = ComplexScripts.panel('Right-to-left rich text with spans', right, 0, columnWidth, height)
+    self.paragraph:draw(right + columnWidth - padding - self.width, top)
     local _, typedHeight = self.typed:size(ComplexScripts.typedWidth)
-    local typedTop = layout.height - typedHeight - padding * 2 - ComplexScripts.caption
-    top = ComplexScripts.panel('A typewriter reveals in reading order, from the right', right, typedTop, ComplexScripts.typedWidth + padding * 2, typedHeight)
+    top = ComplexScripts.panel('A typewriter reveals in reading order, from the right', right, top + height + padding + gap * 2, columnWidth, typedHeight)
     self.typed:draw(right + padding, top)
 end
 

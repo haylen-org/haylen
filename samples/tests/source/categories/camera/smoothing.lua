@@ -11,6 +11,8 @@ local actions = require('categories.camera.actions')
 
 local Smoothing = haylen.class('Smoothing', CameraTest)
 
+Smoothing.aheadColor = '#FF4AD8FF'
+
 Smoothing.code = [[
 camera.positionSmoothing = true
 camera.positionSmoothingSpeed = 4
@@ -77,6 +79,13 @@ function Smoothing:draw(area)
     graphics2d.drawCircle(camera.x, camera.y, 12, '#FFFFE08A', {layer = 10})
     graphics2d.drawRing(camera.x, camera.y, 24, 4, '#C0FFE08A', {layer = 10})
     CameraTest.tag('View center', camera.x, camera.y + 84, {color = Test.warm})
+
+    -- While the walker moves, a ring marks the point the look-ahead leads to, where it will be after the look-ahead time.
+    if math.abs(walker.vx) + math.abs(walker.vy) > 20 and camera.lookAheadTime > 0 then
+        local aheadX, aheadY = walker.x + walker.vx * camera.lookAheadTime, walker.y - 60 + walker.vy * camera.lookAheadTime
+        graphics2d.drawRing(aheadX, aheadY, 18, 4, Smoothing.aheadColor, {layer = 10})
+        CameraTest.tag('Look-ahead', aheadX, aheadY - 30, {color = Smoothing.aheadColor})
+    end
 end
 
 return Smoothing

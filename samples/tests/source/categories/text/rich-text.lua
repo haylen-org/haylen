@@ -27,7 +27,7 @@ RichText.inline = [==[
 [size=22]size=22[/size], [size=150%]size=150%[/size] and back.
 [outline=3 color=#FF8A1E1E]outline=3[/outline], [shadow=3,4 color=#C0000000 blur=2]shadow=3,4 blur=2[/shadow] and [glow=8 color=#FF40C4FF]glow=8[/glow].
 [url=manual]url=manual[/url], [url]https://haylen.dev[/url] and a [hint=Hints show as tooltips in the UI]hint[/hint].
-[img=text/coin.png height=32] [img=text/heart.png width=40] [img=text/star.png height=24 valign=baseline] images and [icon=south] [icon=east] [icon=west] [icon=north color=#FFFFD0D0] icons.
+[img=text/coin.png height=32] [img=text/heart.png width=40] [img=text/star.png height=24 valign=baseline] images and [icon=south height=44] [icon=east height=44] [icon=west height=44] [icon=north height=44 color=#FFFFB070] icons.
 [lb]b[rb] writes brackets, and [lb]br[rb] breaks[br]the line inside one paragraph.]==]
 
 RichText.paragraphs = [==[
@@ -50,7 +50,7 @@ Roman two
 Letters count the items
 of an ordered list
 [/ol]
-[hr width=80% height=3 color=#FF8FB0FF]
+[left][hr width=65% height=3 color=#FF8FB0FF][/left]
 [table=3][cell bg=#FF2C3147 border=#FF525A7A padding=10][b]Item[/b][/cell][cell bg=#FF2C3147 border=#FF525A7A padding=10][b]Count[/b][/cell][cell bg=#FF2C3147 border=#FF525A7A padding=10][b]Where[/b][/cell][cell border=#FF525A7A padding=10]Wood[/cell][cell border=#FF525A7A padding=10]12[/cell][cell border=#FF525A7A padding=10]By the fire[/cell][cell border=#FF525A7A padding=10]Stone[/cell][cell border=#FF525A7A padding=10]4[/cell][cell border=#FF525A7A padding=10]In the cave[/cell][/table]]==]
 
 function RichText:init(entry)

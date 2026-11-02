@@ -43,9 +43,10 @@ function OutlinesSmallText:enter()
     }
 end
 
--- The rich text takes its outline from its markup, so it follows the slider.
+-- The rich text takes its outline from its markup, so it follows the slider, and its glow reaches past the outline, so it shows around it.
 function OutlinesSmallText:refresh()
-    self.rich = graphics2d.newRichText(string.format('[outline=%d color=#FF6A1830][glow=6 color=#FFFFC040]Rich WAVE[/glow][/outline]', math.floor(48 * self.reach + 0.5)), {family = self.family, size = 48, color = '#FFFFF0D0'})
+    local outline = math.floor(48 * self.reach + 0.5)
+    self.rich = graphics2d.newRichText(string.format('[outline=%d color=#FF6A1830][glow=%d color=#C0FFC040]Rich WAVE[/glow][/outline]', outline, outline + 12), {family = self.family, size = 48, color = '#FFFFF0D0'})
 end
 
 function OutlinesSmallText:update(dt)

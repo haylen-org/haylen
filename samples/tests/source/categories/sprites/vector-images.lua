@@ -124,7 +124,7 @@ function VectorImages:drawRaster(rect)
     local size = math.min(128, inner[4] - 56)
     local centerX = inner[1] + inner[3] / 2
     graphics2d.draw(self.raster, centerX, inner[2] + size / 2, {width = size, height = size})
-    Panels.caption(string.format('%d by %d pixels at 4 times its size', self.raster.width, self.raster.height), centerX, inner[2] + inner[4] - 32)
+    Panels.caption(string.format('%d by %d pixels, 4 times as large', self.raster.width, self.raster.height), centerX, inner[2] + inner[4] - 32)
 end
 
 function VectorImages:draw(area)
