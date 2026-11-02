@@ -2362,6 +2362,8 @@ OBJC_CLASS = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
 EXTENSION_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
 APPLE_VERSION = re.compile(r"\d+(\.\d+){0,2}")
 # The kinds of app extension that a plugin adds to the Apple apps, with the XcodeGen type of each and the Info.plist key that names its extension point.
+# The platforms that app extensions build for, since Mac Catalyst apps leave them out.
+APPLE_EXTENSION_PLATFORMS = ("ios", "tvos", "visionos", "macos")
 APPLE_EXTENSION_TYPES = {"extensionKit": ("extensionkit-extension", "EXAppExtensionAttributes", "EXExtensionPointIdentifier"), "appExtension": ("app-extension", "NSExtension", "NSExtensionPointIdentifier")}
 # The Maven repositories that plugins add to the Android project, by their https address, without the commas that separate them in the properties of the project.
 MAVEN_REPOSITORY = re.compile(r"https://[^\s,]+")
@@ -2618,7 +2620,7 @@ class PluginManifestCheck:
             key = f"apple.extensions[{index}]"
             if not self.is_object(key, extension, 'must be an object with the "name", "type", "point" and "sources" of the extension.'):
                 continue
-            self.check_keys(key, extension, {"name", "type", "point", "sources", "minimumVersion", "frameworks", "infoPlist", "entitlements"}, {"name", "type", "point", "sources"})
+            self.check_keys(key, extension, {"name", "type", "point", "sources", "platforms", "minimumVersion", "frameworks", "infoPlist", "entitlements"}, {"name", "type", "point", "sources"})
             if "name" in extension and not (isinstance(extension["name"], str) and EXTENSION_NAME.fullmatch(extension["name"])):
                 self.report(f"{key}.name", 'must be a name of letters and digits that starts with a capital letter, such as "Downloads".')
             if "type" in extension and extension["type"] not in APPLE_EXTENSION_TYPES:
@@ -2627,6 +2629,9 @@ class PluginManifestCheck:
                 self.report(f"{key}.point", 'must be the identifier of the extension point, such as "com.apple.background-asset-downloader-extension".')
             if "sources" in extension:
                 self.check_path(f"{key}.sources", extension["sources"], "folder")
+            systems = [platform for platform in APPLE_EXTENSION_PLATFORMS if platform in self.platforms]
+            if "platforms" in extension and not (isinstance(extension["platforms"], list) and extension["platforms"] and all(platform in systems for platform in extension["platforms"])):
+                self.report(f"{key}.platforms", f"must list the platforms of the plugin that the extension builds for, among {quoted_names(systems)}.")
             if "minimumVersion" in extension and not (isinstance(extension["minimumVersion"], str) and APPLE_VERSION.fullmatch(extension["minimumVersion"])):
                 self.report(f"{key}.minimumVersion", 'must be the oldest system version that the extension runs on, such as "26.0".')
             if "frameworks" in extension:
@@ -3322,7 +3327,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         for extension in apple.get("extensions", []):
             shutil.copytree(plugin.folder / extension["sources"], copied / "extensions" / extension["name"], ignore=COPY_IGNORED)
             for template, filters in apple_template_plugins(plugin).items():
-                if filters.get("destinationFilters") == ["macCatalyst"]:
+                if filters.get("destinationFilters") == ["macCatalyst"] or APPLE_TEMPLATES[template][0] not in extension.get("platforms", APPLE_EXTENSION_PLATFORMS):
                     continue
                 target = f"{extension['name']}{template.removeprefix('Haylen')}"
                 if target in extensions:
@@ -3451,7 +3456,7 @@ def prepare_apple(app: App, root: Path, run_platform: str, config: str, engine_c
     if config == "Release":
         shutil.copytree(build_release(app, CONTENT_PROFILES[run_platform], engine_config, jobs, previous), generated / "app")
         write_bootstrap(app, CONTENT_PROFILES[run_platform], generated / BOOTSTRAP_SOURCE, engine_config, jobs)
-        write_apple_asset_packs(app)
+        write_apple_asset_packs(app, release_packs_folder(app, "apple"))
     else:
         copy_package(app, generated / "app")
         write_if_changed(generated / BOOTSTRAP_SOURCE, development_bootstrap("!DEBUG"))
@@ -3468,12 +3473,11 @@ def apple_asset_packs_folder(app: App) -> Path:
     return app.build_folder / "release" / "apple.asset-packs"
 
 
-def write_apple_asset_packs(app: App) -> list[Path]:
+def write_apple_asset_packs(app: App, packs: Path) -> list[Path]:
     """Packs every named pack of the Apple release of an app into an asset pack of Background Assets with `ba-package`, when a plugin of the app delivers them from the App Store, and returns the archives. The packs that the plugin lists in `prefetch` download with the install and every update, the others when the app asks for them, and the shards of each sit in a folder named after the pack, which the plugin finds in the downloaded packs."""
     output = apple_asset_packs_folder(app)
     shutil.rmtree(output, ignore_errors=True)
     delivering = [(plugin, section["assetPacks"]) for plugin in app.plugins if (section := plugin_section(app, plugin, "apple")) is not None and "assetPacks" in section]
-    packs = release_packs_folder(app, "apple")
     folders = sorted(path for path in packs.iterdir() if path.is_dir()) if packs.is_dir() else []
     if not delivering or not folders:
         return []
@@ -5512,7 +5516,7 @@ def command_plugin_add(args: argparse.Namespace) -> None:
         target = app / "plugins" / plugin.id
         if source != target:
             shutil.rmtree(target, ignore_errors=True)
-            shutil.copytree(source, target, ignore=COPY_IGNORED)
+            shutil.copytree(source, target, symlinks=True, ignore=COPY_IGNORED)
 
     document = json.loads((app / "app.json").read_text(encoding="utf-8"))
     listed = document.setdefault("plugins", {})
@@ -5784,26 +5788,48 @@ def run_cpp_app(project: Path, args: argparse.Namespace) -> None:
 
 
 def build_cpp_desktop(project: Path, target: str, directory: Path, args: argparse.Namespace) -> Path:
-    """Builds the target of a C++ app project for this machine in a build folder and returns its executable, after inspecting a Release build for anything a release never holds."""
+    """Builds the target of a C++ app project for this machine in a build folder and returns its executable, after inspecting a Release build for anything a release never holds. On macOS the app takes the Apple parts of its plugins."""
     command = ["cmake", "-S", project, "-B", directory, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *cpp_release_options(args)]
     if host_name() != "windows" or shutil.which("ninja"):
         command += ["-G", "Ninja"]
     if host_name() == "macos":
         command.append(f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS['macOS']}")
     terminal.step(f'Building the target "{target}" in `{shown_path(directory)}`')
-    run(command)
+    if host_name() == "macos":
+        configure_cpp_apple(target, directory, command, "macos", args)
+    else:
+        run(command)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs)])
     executable = cmake_app_executable(directory, target)
-    if args.config == "Release":
-        app = cpp_release_app(directory, target)
-        bundle = apple_bundle_of(executable)
-        stop_on_release_problems(cpp_release_problems(app, bundle, "Contents/Resources/app") if bundle else cpp_release_problems(app, executable.parent, "app"))
+
+    # Windows and Linux find the native libraries of the app and its plugins next to its executable, while a macOS bundle took them in its build.
+    if host_name() != "macos":
+        prepare_host_native(App(Path((directory / "bin" / target / "package.txt").read_text(encoding="utf-8").strip()), host_name()), executable.parent, args.jobs)
+    if args.config != "Release":
+        return executable
+    app = cpp_release_app(directory, target)
+    if host_name() != "macos":
+        stop_on_release_problems(cpp_release_problems(app, executable.parent, "app"))
+        return executable
+    stop_on_release_problems(cpp_release_problems(app, apple_bundle_of(executable), "Contents/Resources/app"))
+    write_apple_asset_packs(app, directory / "haylen-release" / target / "packs")
     return executable
 
 
 def apple_bundle_of(executable: Path) -> Path | None:
     """The app bundle that holds an executable on macOS, or nothing for an executable of Windows or Linux."""
     return next((parent for parent in executable.parents if parent.suffix == ".app"), None)
+
+
+def configure_cpp_apple(target: str, directory: Path, command: list, platform: str, args: argparse.Namespace) -> App:
+    """Configures the build of a C++ app for an Apple run platform with the Apple parts of its plugins, which `haylen_add_app` reads from `haylen-plugins.cmake`, and returns the app. The first configuration records the package of the target, whose plugins give the second one their parts when they changed."""
+    plugins = directory / CPP_PLUGINS_FILE
+    command = [*command, f"-DHAYLEN_PLUGINS_FILE={plugins.as_posix()}"]
+    run(command)
+    app = App(Path((directory / "bin" / target / "package.txt").read_text(encoding="utf-8").strip()), RUN_TARGETS[platform].plugins)
+    if write_cpp_apple_parts(app, platform, directory, plugins, args.config, args.jobs):
+        run(command)
+    return app
 
 
 def cpp_release_options(args: argparse.Namespace) -> list[str]:
@@ -5834,17 +5860,11 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
     directory = folder / f"{args.platform}-{args.config.lower()}"
     generator = "Ninja" if args.platform == "catalyst" else "Xcode"
-    plugins = directory / CPP_PLUGINS_FILE
-    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args), f"-DHAYLEN_PLUGINS_FILE={plugins.as_posix()}"]
+    command = ["cmake", "-S", project, "-B", directory, "-G", generator, *cpp_engine_options(), f"-DCMAKE_BUILD_TYPE={args.config}", *apple_slice_options(APPLE_NATIVE_SLICES[args.platform], arch), *cpp_release_options(args)]
     if device:
         command.append(f"-DCMAKE_XCODE_ATTRIBUTE_DEVELOPMENT_TEAM={apple_team()}")
     terminal.step(f'Building the target "{target}" for "{args.platform}" in `{shown_path(directory)}`')
-
-    # The first configuration records the package of the target, whose plugins give the second one their Apple parts.
-    run(command)
-    app = App(Path((directory / "bin" / target / "package.txt").read_text(encoding="utf-8").strip()), RUN_TARGETS[args.platform].plugins)
-    if write_cpp_apple_plugins(app, args.platform, directory, plugins):
-        run(command)
+    app = configure_cpp_apple(target, directory, command, args.platform, args)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
 
     # Ninja places the bundle in `bin/<target>`, while the Xcode generator places it in `bin`.
@@ -5852,6 +5872,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     bundle = next((directory / "bin").glob(f"**/{target}.app"))
     if args.config == "Release":
         stop_on_release_problems(cpp_release_problems(cpp_release_app(directory, target), bundle, "Contents/Resources/app" if args.platform == "catalyst" else "app"))
+        write_apple_asset_packs(app, directory / "haylen-release" / target / "packs")
     if args.build_only:
         return
     simulator = apple_simulator(settings["simulator"], args.device) if "simulator" in settings else None
@@ -5859,39 +5880,166 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
         launch_apple(app, bundle, args, simulator, session)
 
 
-def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: Path) -> bool:
-    """Copies the Apple sources and resources of the plugins of a C++ app that build for a run platform into its build folder and writes the CMake file that `haylen_add_app` reads, which compiles the sources into the app, links the system frameworks, bundles the resources and adds the `infoPlist` keys to its `Info.plist`, the parts that the target templates give Lua apps. Returns whether the file changed. Swift packages, shipped frameworks and build scripts need the Xcode project of the Apple template."""
+# The destination that `xcodebuild` builds the Swift packages of the plugins of a C++ app for, and the suffix of the folder of its products, by the slice of the app.
+SWIFT_PACKAGE_DESTINATIONS = {"macos": ("generic/platform=macOS", ""), "ios-maccatalyst": ("generic/platform=macOS,variant=Mac Catalyst", "-maccatalyst"), "ios": ("generic/platform=iOS", "-iphoneos"), "ios-simulator": ("generic/platform=iOS Simulator", "-iphonesimulator"), "tvos": ("generic/platform=tvOS", "-appletvos"), "tvos-simulator": ("generic/platform=tvOS Simulator", "-appletvsimulator")}
+# The package that joins the Swift packages of the plugins of a C++ app into one dynamic framework.
+SWIFT_PACKAGES_PRODUCT = "HaylenPackages"
+
+
+def swift_package_identity(url: str) -> str:
+    """The identity of a Swift package, which Swift Package Manager takes from the last part of its URL, in lowercase and without `.git`."""
+    return re.split(r"[/:]", url.rstrip("/"))[-1].removesuffix(".git").lower()
+
+
+def write_swift_packages(packages: dict[str, dict], folder: Path) -> None:
+    """Writes the package that depends on every product of the Swift packages of the plugins of a C++ app, whose one dynamic library the app links and embeds."""
+    products = [(product, swift_package_identity(package["url"])) for package in packages.values() for product in package["products"]]
+    dependencies = ",\n        ".join(f'.package(url: "{package["url"]}", exact: "{package["exactVersion"]}")' for package in packages.values())
+    linked = ", ".join(f'.product(name: "{product}", package: "{identity}")' for product, identity in products)
+    manifest = "\n".join([
+        "// swift-tools-version:5.9",
+        "// Written by haylen.py from the Swift packages of the plugins of the app, which the app links as the one dynamic framework of this package.",
+        "import PackageDescription",
+        "",
+        "let package = Package(",
+        f'    name: "{SWIFT_PACKAGES_PRODUCT}",',
+        f'    platforms: [.iOS("{APPLE_MINIMUM_VERSIONS["iOS"]}"), .tvOS("{APPLE_MINIMUM_VERSIONS["tvOS"]}"), .macOS("{APPLE_MINIMUM_VERSIONS["macOS"]}")],',
+        f'    products: [.library(name: "{SWIFT_PACKAGES_PRODUCT}", type: .dynamic, targets: ["{SWIFT_PACKAGES_PRODUCT}"])],',
+        f"    dependencies: [\n        {dependencies}\n    ],",
+        f'    targets: [.target(name: "{SWIFT_PACKAGES_PRODUCT}", dependencies: [{linked}])]',
+        ")",
+        "",
+    ])
+    write_if_changed(folder / "Package.swift", manifest)
+    write_if_changed(folder / "Sources" / SWIFT_PACKAGES_PRODUCT / f"{SWIFT_PACKAGES_PRODUCT}.swift", "// The products of the packages link into this framework, and the plugins import their modules themselves.\n")
+
+
+def build_swift_packages(packages: dict[str, dict], slice_name: str, config: str, folder: Path, jobs: int) -> tuple[Path, Path, list[Path]]:
+    """Builds the Swift packages of the plugins of a C++ app for one slice with `xcodebuild`, since CMake builds no Swift package, and returns the dynamic framework that holds their products, the folder of the modules that the Swift sources of the plugins import and the resource bundles of the packages."""
+    write_swift_packages(packages, folder / "package")
+    destination, suffix = SWIFT_PACKAGE_DESTINATIONS[slice_name]
+    derived = folder / "derived"
+    terminal.step(f'Building the Swift packages of the plugins for "{slice_name}"')
+    run(["xcodebuild", "-scheme", SWIFT_PACKAGES_PRODUCT, "-destination", destination, "-configuration", config, "-derivedDataPath", derived, "-jobs", str(jobs), "build", "CODE_SIGNING_ALLOWED=NO"], cwd=folder / "package")
+    built = derived / "Build" / "Products" / f"{config}{suffix}"
+    return built / "PackageFrameworks" / f"{SWIFT_PACKAGES_PRODUCT}.framework", built, sorted(built.glob("*.bundle"))
+
+
+def cmake_list(name: str, values: list) -> str:
+    return f"set({name} [==[{';'.join(str(value) for value in values)}]==])"
+
+
+def cmake_path(name: str, path: Path | None) -> str:
+    return f"set({name} [==[{path.as_posix() if path else ''}]==])"
+
+
+def write_cpp_apple_parts(app: App, platform: str, directory: Path, fragment: Path, config: str, jobs: int) -> bool:
+    """Assembles the Apple parts of the plugins and the native libraries of a C++ app that build for a run platform in its build folder and writes the CMake file that `haylen_add_app` reads, which gives the app every part that the target templates give Lua apps: the sources, the system frameworks, the frameworks the plugins ship and the one of their Swift packages, which the app embeds when they are dynamic, the resources, the build scripts, the app extensions, the native libraries, which it links when they are static and embeds otherwise, and the `Info.plist` keys, entitlements and privacy manifest merged with those of the engine. Returns whether the file changed."""
     target_platform = RUN_TARGETS[platform].plugins
+    slice_name = APPLE_NATIVE_SLICES[platform]
     copied = directory / "haylen-plugins"
     shutil.rmtree(copied, ignore_errors=True)
+    settings = apple_app_settings(app)
     sources: list[Path] = []
     resources: list[Path] = []
     frameworks: list[str] = []
+    linked: list[Path] = []
+    embedded: list[Path] = []
+    scripts: list[Path] = []
+    extensions: dict[str, str] = {}
+    extension_lines: list[str] = []
+    packages: dict[str, dict] = {}
+    package_owners: dict[str, str] = {}
+    shipped: dict[str, str] = {}
     for plugin in app.plugins:
         apple = plugin_section(app, plugin, "apple", (target_platform,)) if plugin.supports(target_platform) else None
         if apple is None:
             continue
-        unsupported = [key for key in ("packages", "binaryFrameworks", "buildScripts") if apple.get(key)]
-        if unsupported:
-            raise BuildError(f'The plugin "{plugin.id}" needs {quoted_names(unsupported, " and ")} on Apple platforms, which only the Xcode project of the Apple template builds. Build the app from a Lua project, or use a plugin without them.')
+        apple = expand_app_settings(apple, settings)
+        folder = copied / plugin.id
         if "sources" in apple:
-            shutil.copytree(plugin.folder / apple["sources"], copied / plugin.id / "sources", ignore=COPY_IGNORED)
-            sources += sorted(path for path in (copied / plugin.id / "sources").rglob("*") if path.suffix in CPP_APPLE_PLUGIN_SOURCES)
+            shutil.copytree(plugin.folder / apple["sources"], folder / "sources", ignore=COPY_IGNORED)
+            sources += sorted(path for path in (folder / "sources").rglob("*") if path.suffix in CPP_APPLE_PLUGIN_SOURCES)
         for resource in plugin.manifest["apple"].get("resources", []):
             source = plugin_file(app, plugin, resource)
             if source is not None:
-                resources.append(copy_into(source, copied / plugin.id / "resources"))
+                resources.append(copy_into(source, folder / "resources"))
         frameworks += [Path(framework).stem for framework in apple.get("frameworks", []) if Path(framework).stem not in frameworks]
 
+        for binary in apple.get("binaryFrameworks", []):
+            name = Path(binary["path"]).name
+            if name in shipped:
+                raise BuildError(f'The plugins "{shipped[name]}" and "{plugin.id}" both ship the framework "{name}". Keep only one of them.')
+            shipped[name] = plugin.id
+            library = prebuilt_apple_native(plugin.folder / binary["path"], slice_name)
+            linked.append(library)
+            if binary["embed"]:
+                embedded.append(library)
+
+        for name, package in apple.get("packages", {}).items():
+            declared = {"url": package["url"], "exactVersion": package["exactVersion"]}
+            joined = packages.setdefault(name, {**declared, "products": []})
+            if {"url": joined["url"], "exactVersion": joined["exactVersion"]} != declared:
+                raise BuildError(f'The plugins "{package_owners[name]}" and "{plugin.id}" ask for the Swift package "{name}" from different URLs or versions. Use versions of the plugins that pin the same package.')
+            package_owners.setdefault(name, plugin.id)
+            joined["products"] += [product for product in package["products"] if product not in joined["products"]]
+
+        for index, script in enumerate(apple.get("buildScripts", [])):
+            path = folder / "scripts" / f"{index}.sh"
+            write_if_changed(path, f"# The build script \"{script['name']}\" of the plugin \"{plugin.id}\".\nset -e\n{script['script']}\n")
+            scripts.append(path)
+
+        for extension in apple.get("extensions", []):
+            if target_platform not in extension.get("platforms", APPLE_EXTENSION_PLATFORMS):
+                continue
+            if extension["name"] in extensions:
+                raise BuildError(f'The plugins "{extensions[extension["name"]]}" and "{plugin.id}" both add the app extension "{extension["name"]}". Keep only one of them.')
+            extensions[extension["name"]] = plugin.id
+            extension_lines += cpp_apple_extension(app, plugin, extension, folder / "extensions" / extension["name"])
+
+    # The static native libraries link into the app with the table of their symbols, and the dynamic ones join the frameworks it embeds, where the engine finds them.
+    native_platform = APPLE_SLICE_NATIVE_PLATFORMS[slice_name]
+    for library in app.native:
+        if not library.ships_to(native_platform):
+            continue
+        built = build_apple_native(app, library, slice_name, jobs) if library.cmake else prebuilt_apple_native(library.files[native_platform], slice_name)
+        (linked if library.static else embedded).append(built)
+    if write_apple_native_symbols(app, copied):
+        sources.append(copied / "HaylenNativeSymbols.mm")
+
+    # Resource bundles are folders, which the app copies whole after its link, like the resource bundles of the Swift packages.
+    bundles = [resource for resource in resources if resource.is_dir()]
+    modules: list[Path] = []
+    if packages:
+        framework, products, package_bundles = build_swift_packages(packages, slice_name, config, directory / "haylen-packages", jobs)
+        linked.append(framework)
+        embedded.append(framework)
+        modules.append(products)
+        bundles += package_bundles
+
     # The keys of the plugins go inside the dictionary of the Info.plist of the engine, which a property list of their own carries.
-    keys = apple_plugin_keys(app, (target_platform,), "infoPlist", {}, {}, '"Info.plist"')
+    keys = expand_app_settings(apple_plugin_keys(app, (target_platform,), "infoPlist", {}, {}, '"Info.plist"'), settings)
     entries = plistlib.dumps(keys, sort_keys=True).decode().split("<dict>", 1)[1].rsplit("</dict>", 1)[0].strip("\n") if keys else ""
+    entitlements = expand_app_settings(apple_plugin_keys(app, (target_platform,), "entitlements", {}, {}, "entitlements"), settings)
+    if entitlements:
+        write_if_changed(copied / "App.entitlements", plistlib.dumps(entitlements, sort_keys=True).decode())
+    manifests = [read_plist(ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy"), *(plugin_section(app, plugin, "apple").get("privacy", {}) for plugin in app.plugins if "apple" in plugin.manifest and plugin.supports(target_platform))]
+    write_if_changed(copied / "PrivacyInfo.xcprivacy", plistlib.dumps(merge_privacy(manifests), sort_keys=True).decode())
     lines = [
         "# Written by haylen.py from app.json and the plugins of the app for haylen_add_app, which builds their Apple parts into the app.",
-        f"set(HAYLEN_PLUGIN_SOURCES [==[{';'.join(path.as_posix() for path in sources)}]==])",
-        f"set(HAYLEN_PLUGIN_RESOURCES [==[{';'.join(path.as_posix() for path in resources)}]==])",
-        f"set(HAYLEN_PLUGIN_FRAMEWORKS [==[{';'.join(frameworks)}]==])",
+        cmake_list("HAYLEN_PLUGIN_SOURCES", [path.as_posix() for path in sources]),
+        cmake_list("HAYLEN_PLUGIN_RESOURCES", [path.as_posix() for path in resources if path not in bundles]),
+        cmake_list("HAYLEN_PLUGIN_BUNDLES", [path.as_posix() for path in bundles]),
+        cmake_list("HAYLEN_PLUGIN_FRAMEWORKS", frameworks),
+        cmake_list("HAYLEN_PLUGIN_LIBRARIES", [path.as_posix() for path in linked]),
+        cmake_list("HAYLEN_PLUGIN_EMBEDDED", [path.as_posix() for path in embedded]),
+        cmake_list("HAYLEN_PLUGIN_MODULES", [path.as_posix() for path in modules]),
+        cmake_list("HAYLEN_PLUGIN_SCRIPTS", [path.as_posix() for path in scripts]),
+        cmake_list("HAYLEN_PLUGIN_EXTENSIONS", list(extensions)),
+        *extension_lines,
         f"set(HAYLEN_PLUGIN_KEYS [==[{entries}\n]==])" if entries else "set(HAYLEN_PLUGIN_KEYS \"\")",
+        cmake_path("HAYLEN_PLUGIN_ENTITLEMENTS", copied / "App.entitlements" if entitlements else None),
+        cmake_path("HAYLEN_PLUGIN_PRIVACY", copied / "PrivacyInfo.xcprivacy"),
         "",
     ]
     text = "\n".join(lines)
@@ -5899,6 +6047,42 @@ def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: 
         return False
     fragment.write_text(text, encoding="utf-8")
     return True
+
+
+def cpp_apple_extension(app: App, plugin: Plugin, extension: dict, folder: Path) -> list[str]:
+    """Copies the sources of an app extension of a plugin, writes its `Info.plist` and entitlements with the identity of the app, and returns the CMake lines that describe it to `haylen_add_app`, which builds it as a target of its own and embeds it into the app. Its bundle identifier is the one of the app followed by its name in lowercase, as in the projects of Lua apps."""
+    name = extension["name"]
+    kind, attributes, point = APPLE_EXTENSION_TYPES[extension["type"]]
+    settings = apple_app_settings(app)
+    shutil.copytree(plugin.folder / extension["sources"], folder / "sources", ignore=COPY_IGNORED)
+    info = {
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleDisplayName": name,
+        "CFBundleExecutable": name,
+        "CFBundleIdentifier": f"{app.identifier}.{name.lower()}",
+        "CFBundleInfoDictionaryVersion": "6.0",
+        "CFBundleName": name,
+        "CFBundlePackageType": "XPC!",
+        "CFBundleShortVersionString": app.version,
+        "CFBundleVersion": app.version,
+        **expand_app_settings(extension.get("infoPlist", {}), settings),
+    }
+    info[attributes] = {point: extension["point"], **info.get(attributes, {})}
+    write_if_changed(folder / "Info.plist", plistlib.dumps(info, sort_keys=True).decode())
+    entitlements = None
+    if extension.get("entitlements"):
+        entitlements = folder / f"{name}.entitlements"
+        write_if_changed(entitlements, plistlib.dumps(expand_app_settings(extension["entitlements"], settings), sort_keys=True).decode())
+    prefix = f"HAYLEN_EXTENSION_{name}"
+    return [
+        f"set({prefix}_TYPE {kind})",
+        f"set({prefix}_IDENTIFIER {app.identifier}.{name.lower()})",
+        cmake_list(f"{prefix}_SOURCES", sorted(path.as_posix() for path in (folder / "sources").rglob("*") if path.suffix in CPP_APPLE_PLUGIN_SOURCES)),
+        cmake_path(f"{prefix}_INFO_PLIST", folder / "Info.plist"),
+        cmake_path(f"{prefix}_ENTITLEMENTS", entitlements),
+        cmake_list(f"{prefix}_FRAMEWORKS", [Path(framework).stem for framework in extension.get("frameworks", [])]),
+        f"set({prefix}_MINIMUM_VERSION [==[{extension.get('minimumVersion', '')}]==])",
+    ]
 
 
 def run_cpp_android(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:

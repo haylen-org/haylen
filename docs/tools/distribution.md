@@ -182,14 +182,14 @@ The command hands the project the engine of this checkout in `HAYLEN_ENGINE_SOUR
 
 | Platform | Build | Launch |
 | --- | --- | --- |
-| This machine | Ninja, or the default generator on Windows without Ninja. On a Mac, the macOS minimum of the engine as `CMAKE_OSX_DEPLOYMENT_TARGET`. | Runs the executable. |
+| This machine | Ninja, or the default generator on Windows without Ninja. On a Mac, the macOS minimum of the engine as `CMAKE_OSX_DEPLOYMENT_TARGET`, and `haylen_add_app` signs the bundle ad hoc. | Runs the executable. |
 | `web` | Emscripten into `build/cpp/<project>-<hash>/web`, with an `index.html` that loads the plugins and the runtime, which draws through WebGPU or WebGL2, as [the files of a web build](build.md#files-of-a-web-build) show. | Serves that folder like `serve`. |
 | `ios-simulator`, `tvos-simulator` | The Xcode generator with the SDK of the iOS or tvOS simulator for the architecture of this Mac, which compiles the launch screen and signs the bundle. | Like a Lua app, on the simulator that `--device` names, a booted one or the first one available. |
 | `ios`, `tvos` | The Xcode generator with the SDK of the device, signed with the team of `HAYLEN_APPLE_TEAM`. | Like a Lua app, on the device that `--device` names. |
 | `catalyst` | Ninja with `engine/cmake/haylen-catalyst.toolchain.cmake` for the architecture of this Mac. The function `haylen_add_app` signs the bundle ad hoc, as [Apple bundles](embedding.md#apple-bundles) explain. | Like a Lua app: starts the executable and streams its log. |
 | `android` | Ninja with the NDK, for the ABI of the device that `--device` names or of the only one connected, into `bin/<target>/lib<target>.so`. Then it prepares the Android project of the package that `bin/<target>/package.txt` names: its `platform/android`, or the copy of the template. The library goes into `haylen/jniLibs/<abi>`, and `library` of `haylen/haylen.properties` names the target. So `HaylenActivity` loads the library of the app, and the Lua player of the `haylen` library stays out of the APK. The `haylen` library comes from the artifacts, built with `--engine-config` when they are missing or stale. | Like a Lua app. |
 
-The Apple and web builds also bring the native parts of the plugins of the app, as the [plugin guide](../platform/plugins.md#c-apps) describes.
+Every build also brings the native parts of the plugins of the app and its native libraries: the Apple builds of this Mac, Mac Catalyst, iOS and tvOS take every key of the `apple` section of the plugins, Android and the web take their modules, and Windows and Linux find the native libraries next to the executable, as the [plugin guide](../platform/plugins.md#c-apps) describes.
 
 ### devices
 

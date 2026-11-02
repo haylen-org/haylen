@@ -160,15 +160,23 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "3" XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET "16.3")
   endif()
 
-  # The privacy manifest declares the APIs with required reasons that the engine calls.
-  set(resources "${project_dir}/PrivacyInfo.xcprivacy" ${launch_screen})
+  # The privacy manifest declares the APIs with required reasons that the engine calls, merged with the declarations of the plugins when the app has any.
+  set(privacy "${project_dir}/PrivacyInfo.xcprivacy")
+  if(HAYLEN_PLUGIN_PRIVACY)
+    set(privacy "${HAYLEN_PLUGIN_PRIVACY}")
+  endif()
+  set(resources "${privacy}" ${launch_screen})
   target_sources(${target} PRIVATE ${resources})
   set_source_files_properties(${resources} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
 
-  # Xcode signs the bundles it builds, while other generators leave only the signature the linker gives the executable, which binds neither the bundle identifier nor the Info.plist. macOS places the window of an unsigned Mac Catalyst app at the top left, whatever frame the app asks for, so the bundle is signed ad hoc.
-  if(CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$" AND NOT CMAKE_GENERATOR STREQUAL "Xcode")
+  # Xcode signs the bundles it builds, while other generators leave only the signature the linker gives the executable, which binds neither the bundle identifier, the Info.plist, the entitlements nor the frameworks and extensions the bundle embeds. macOS places the window of an unsigned Mac Catalyst app at the top left, whatever frame the app asks for. So the bundle is signed ad hoc, after every other step of its build.
+  if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    set(entitlements "")
+    if(HAYLEN_PLUGIN_ENTITLEMENTS)
+      set(entitlements --entitlements "${HAYLEN_PLUGIN_ENTITLEMENTS}")
+    endif()
     add_custom_command(TARGET ${target} POST_BUILD
-      COMMAND codesign --force --sign - --timestamp=none "$<TARGET_BUNDLE_DIR:${target}>"
+      COMMAND codesign --force --sign - --timestamp=none ${entitlements} "$<TARGET_BUNDLE_DIR:${target}>"
       VERBATIM
     )
   endif()
@@ -192,39 +200,207 @@ function(haylen_read_app_plugins package output)
   set(${output} "${entries}" PARENT_SCOPE)
 endfunction()
 
-# Builds the Apple parts of the plugins of an app into it from the file that HAYLEN_PLUGINS_FILE names, which haylen.py run writes from app.json and the plugins: their Objective-C, C and Swift sources, where the Swift files see the plugin API of the engine through its bridging header and take the Swift helpers of the engine, the system frameworks they link, their resources and the keys they add to the Info.plist.
+# Builds the Apple parts of the plugins of an app into it from the file that HAYLEN_PLUGINS_FILE names, which haylen.py run writes from app.json and the plugins, so a C++ app takes every part that the Apple project gives a Lua app.
+# Their Objective-C, C and C++ sources compile into the app, and their Swift sources into a library that the app links whole, with the plugin API of the engine as their bridging header and the Swift helpers of the engine. The app links their system frameworks, the frameworks they ship and the framework of their Swift packages, embeds the dynamic ones and their app extensions, bundles their resources, runs their build scripts and takes their Info.plist keys, entitlements and privacy declarations.
 function(haylen_add_apple_plugins target)
   set(HAYLEN_PLUGIN_KEYS "" PARENT_SCOPE)
+  set(HAYLEN_PLUGIN_ENTITLEMENTS "" PARENT_SCOPE)
+  set(HAYLEN_PLUGIN_PRIVACY "" PARENT_SCOPE)
   if(NOT HAYLEN_PLUGINS_FILE OR NOT EXISTS "${HAYLEN_PLUGINS_FILE}")
     return()
   endif()
   include("${HAYLEN_PLUGINS_FILE}")
   set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${HAYLEN_PLUGINS_FILE}")
-  target_sources(${target} PRIVATE ${HAYLEN_PLUGIN_SOURCES})
+
   set(swift ${HAYLEN_PLUGIN_SOURCES})
   list(FILTER swift INCLUDE REGEX "\\.swift$")
-  set(objc ${HAYLEN_PLUGIN_SOURCES})
+  set(sources ${HAYLEN_PLUGIN_SOURCES})
+  list(FILTER sources EXCLUDE REGEX "\\.swift$")
+  set(objc ${sources})
   list(FILTER objc INCLUDE REGEX "\\.mm?$")
+  target_sources(${target} PRIVATE ${sources})
   set_source_files_properties(${objc} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+
+  # The frameworks of the plugins and of their Swift packages are found by the folders that hold them, and a static library of an xcframework by its headers next to it.
+  set(search "")
+  foreach(library IN LISTS HAYLEN_PLUGIN_LIBRARIES)
+    get_filename_component(folder "${library}" DIRECTORY)
+    if(library MATCHES "\\.framework$")
+      list(APPEND search "SHELL:-F ${folder}")
+    elseif(IS_DIRECTORY "${folder}/Headers")
+      target_include_directories(${target} PRIVATE "${folder}/Headers")
+    endif()
+    target_link_libraries(${target} PRIVATE "${library}")
+  endforeach()
+  foreach(framework IN LISTS HAYLEN_PLUGIN_FRAMEWORKS)
+    target_link_libraries(${target} PRIVATE "-framework ${framework}")
+  endforeach()
+  target_compile_options(${target} PRIVATE ${search})
+
+  # The Swift sources compile into a library of their own, which takes the header folders of the app without the options and definitions that its C and C++ libraries give their users, which Swift does not read. The app links the whole library, so the runtime finds every plugin class by its name.
   if(swift)
     if(NOT CMAKE_Swift_COMPILER)
       message(FATAL_ERROR "The plugins of ${target} have Swift sources, which need the Swift language. Add \"enable_language(Swift)\" to the CMake project on Apple platforms, as the C++ template does.")
     endif()
-    target_sources(${target} PRIVATE "${HAYLEN_ENGINE_DIR}/platform/apple/HaylenBridgeAsync.swift")
+    set(library "${target}-swift-plugins")
     set(bridging "${HAYLEN_ENGINE_DIR}/platform/apple/HaylenPlugins.h")
-    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER "${bridging}" XCODE_ATTRIBUTE_SWIFT_VERSION "5.0")
-    target_compile_options(${target} PRIVATE "$<$<COMPILE_LANGUAGE:Swift>:SHELL:-import-objc-header ${bridging}>" "$<$<COMPILE_LANGUAGE:Swift>:SHELL:-Xcc -I${HAYLEN_ENGINE_DIR}/include>")
+    add_library(${library} STATIC ${swift} "${HAYLEN_ENGINE_DIR}/platform/apple/HaylenBridgeAsync.swift")
+    set_target_properties(${library} PROPERTIES Swift_MODULE_NAME HaylenPlugins XCODE_ATTRIBUTE_SWIFT_OBJC_BRIDGING_HEADER "${bridging}" XCODE_ATTRIBUTE_SWIFT_VERSION "5.0")
+    target_include_directories(${library} PRIVATE "$<TARGET_PROPERTY:${target},INCLUDE_DIRECTORIES>")
+    target_compile_options(${library} PRIVATE "SHELL:-import-objc-header ${bridging}" ${search})
+    foreach(modules IN LISTS HAYLEN_PLUGIN_MODULES)
+      target_compile_options(${library} PRIVATE "SHELL:-I ${modules}")
+    endforeach()
+    # Other generators than Xcode compile Swift for the macOS that builds it, so the library takes the deployment target of the app in the target of the compiler.
+    if(HAYLEN_PLATFORM STREQUAL "macos" AND NOT CMAKE_GENERATOR STREQUAL "Xcode" AND CMAKE_OSX_DEPLOYMENT_TARGET)
+      set(architecture "${CMAKE_SYSTEM_PROCESSOR}")
+      if(CMAKE_OSX_ARCHITECTURES)
+        set(architecture "${CMAKE_OSX_ARCHITECTURES}")
+      endif()
+      target_compile_options(${library} PRIVATE "SHELL:-target ${architecture}-apple-macosx${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    endif()
+    target_link_libraries(${target} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,${library}>")
+    # The app links with the C++ driver, which takes every option that its C and C++ libraries give the linker, such as the weak frameworks of SDL, and the Swift objects bring the Swift libraries they need themselves.
+    set_target_properties(${target} PROPERTIES LINKER_LANGUAGE CXX)
   endif()
-  foreach(framework IN LISTS HAYLEN_PLUGIN_FRAMEWORKS)
-    target_link_libraries(${target} PRIVATE "-framework ${framework}")
-  endforeach()
+
   if(HAYLEN_PLUGIN_RESOURCES)
     target_sources(${target} PRIVATE ${HAYLEN_PLUGIN_RESOURCES})
     set_source_files_properties(${HAYLEN_PLUGIN_RESOURCES} PROPERTIES MACOSX_PACKAGE_LOCATION "Resources")
   endif()
+
+  # A bundle of macOS or Mac Catalyst keeps its parts in its Contents folder, and a bundle of iOS or tvOS at its root.
+  set(contents "$<TARGET_BUNDLE_CONTENT_DIR:${target}>")
+  set(resources "${contents}")
+  set(runpath "@executable_path/Frameworks")
+  if(HAYLEN_PLATFORM STREQUAL "macos" OR CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
+    set(resources "${contents}/Resources")
+    set(runpath "@executable_path/../Frameworks")
+  endif()
+  if(HAYLEN_PLUGIN_BUNDLES)
+    haylen_embed_apple(${target} "${HAYLEN_PLUGIN_BUNDLES}" "${resources}" OFF)
+  endif()
+  if(HAYLEN_PLUGIN_EMBEDDED)
+    target_link_options(${target} PRIVATE "LINKER:-rpath,${runpath}")
+    haylen_embed_apple(${target} "${HAYLEN_PLUGIN_EMBEDDED}" "${contents}/Frameworks" ON)
+  endif()
+
+  # Mac Catalyst apps leave out the extensions of iOS, as the Apple project of Lua apps does.
+  if(NOT CMAKE_CXX_COMPILER_TARGET MATCHES "-macabi$")
+    foreach(name IN LISTS HAYLEN_PLUGIN_EXTENSIONS)
+      haylen_add_apple_extension(${target} ${name} "${contents}")
+    endforeach()
+  endif()
+
+  # The build scripts read the build settings of Xcode, which the Xcode generator gives every script, and which haylen_add_app gives the scripts of other generators.
+  # Other generators build only the bundles of macOS and Mac Catalyst, whose paths the settings give relative to the folder of the bundle, as Xcode does.
+  set(environment "")
+  if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    set(bundle "$<TARGET_BUNDLE_DIR_NAME:${target}>")
+    set(environment "${CMAKE_COMMAND}" -E env
+      "TARGET_BUILD_DIR=$<PATH:GET_PARENT_PATH,$<TARGET_BUNDLE_DIR:${target}>>"
+      "BUILT_PRODUCTS_DIR=$<PATH:GET_PARENT_PATH,$<TARGET_BUNDLE_DIR:${target}>>"
+      "WRAPPER_NAME=${bundle}"
+      "FULL_PRODUCT_NAME=${bundle}"
+      "PRODUCT_NAME=$<TARGET_FILE_BASE_NAME:${target}>"
+      "EXECUTABLE_NAME=$<TARGET_FILE_NAME:${target}>"
+      "EXECUTABLE_PATH=${bundle}/Contents/MacOS/$<TARGET_FILE_NAME:${target}>"
+      "CONTENTS_FOLDER_PATH=${bundle}/Contents"
+      "EXECUTABLE_FOLDER_PATH=${bundle}/Contents/MacOS"
+      "UNLOCALIZED_RESOURCES_FOLDER_PATH=${bundle}/Contents/Resources"
+      "FRAMEWORKS_FOLDER_PATH=${bundle}/Contents/Frameworks"
+      "PLUGINS_FOLDER_PATH=${bundle}/Contents/PlugIns"
+      "INFOPLIST_PATH=${bundle}/Contents/Info.plist"
+      "PRODUCT_BUNDLE_IDENTIFIER=${app_identifier}"
+      "CONFIGURATION=$<CONFIG>"
+      "PLATFORM_NAME=macosx"
+      "SRCROOT=${CMAKE_SOURCE_DIR}"
+      "PROJECT_DIR=${CMAKE_SOURCE_DIR}"
+      "CODE_SIGNING_ALLOWED=YES"
+      "EXPANDED_CODE_SIGN_IDENTITY=-"
+    )
+  endif()
+  foreach(script IN LISTS HAYLEN_PLUGIN_SCRIPTS)
+    add_custom_command(TARGET ${target} POST_BUILD COMMAND ${environment} /bin/sh "${script}" WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}" VERBATIM)
+  endforeach()
+
+  if(HAYLEN_PLUGIN_ENTITLEMENTS)
+    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${HAYLEN_PLUGIN_ENTITLEMENTS}")
+  endif()
   set(HAYLEN_PLUGIN_KEYS "${HAYLEN_PLUGIN_KEYS}" PARENT_SCOPE)
+  set(HAYLEN_PLUGIN_ENTITLEMENTS "${HAYLEN_PLUGIN_ENTITLEMENTS}" PARENT_SCOPE)
+  set(HAYLEN_PLUGIN_PRIVACY "${HAYLEN_PLUGIN_PRIVACY}" PARENT_SCOPE)
 endfunction()
 
+# Copies frameworks, app extensions or resource bundles into the bundle of an app after its link, and signs them like the app when they hold code.
+function(haylen_embed_apple target items destination sign)
+  list(JOIN items "|" joined)
+  add_custom_command(TARGET ${target} POST_BUILD
+    COMMAND "${CMAKE_COMMAND}" "-DITEMS=${joined}" "-DDESTINATION=${destination}" "-DSIGN=${sign}" -P "${HAYLEN_CMAKE_DIR}/haylen-apple-embed.cmake"
+    VERBATIM
+  )
+endfunction()
+
+# Builds an app extension of a plugin as a target of its own, from the variables that haylen.py writes for it, and embeds it into the app: an ExtensionKit extension in Extensions and a classic app extension in PlugIns.
+function(haylen_add_apple_extension target name contents)
+  set(prefix "HAYLEN_EXTENSION_${name}")
+  set(extension "${target}-${name}")
+  add_executable(${extension} MACOSX_BUNDLE ${${prefix}_SOURCES})
+  set_target_properties(${extension} PROPERTIES
+    OUTPUT_NAME "${name}"
+    BUNDLE_EXTENSION appex
+    MACOSX_BUNDLE_INFO_PLIST "${${prefix}_INFO_PLIST}"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${target}/extensions/$<0:>"
+    XCODE_PRODUCT_TYPE "com.apple.product-type.${${prefix}_TYPE}"
+    XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${${prefix}_IDENTIFIER}"
+    XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
+    XCODE_ATTRIBUTE_APPLICATION_EXTENSION_API_ONLY YES
+    XCODE_ATTRIBUTE_SKIP_INSTALL YES
+    XCODE_ATTRIBUTE_SWIFT_VERSION "5.0"
+  )
+  target_compile_options(${extension} PRIVATE "$<$<COMPILE_LANGUAGE:Swift>:-application-extension>" "$<$<COMPILE_LANGUAGE:Swift>:-parse-as-library>" "$<$<NOT:$<COMPILE_LANGUAGE:Swift>>:-fapplication-extension>")
+  target_link_options(${extension} PRIVATE "LINKER:-application_extension")
+  # A classic app extension starts in the main function of the system, while an ExtensionKit extension declares its own with @main.
+  if(${prefix}_TYPE STREQUAL "app-extension")
+    target_link_options(${extension} PRIVATE "LINKER:-e,_NSExtensionMain")
+  endif()
+  foreach(framework IN LISTS ${prefix}_FRAMEWORKS)
+    target_link_libraries(${extension} PRIVATE "-framework ${framework}")
+  endforeach()
+
+  # The extension runs on the systems of its minimum version, which may be newer than the one of the app. Other generators build macOS alone, where a later target of the compiler wins over the one of the app.
+  set(minimum "${${prefix}_MINIMUM_VERSION}")
+  if(minimum AND NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    set(triple "${CMAKE_SYSTEM_PROCESSOR}-apple-macosx${minimum}")
+    target_compile_options(${extension} PRIVATE "$<IF:$<COMPILE_LANGUAGE:Swift>,SHELL:-target ${triple},-mmacosx-version-min=${minimum}>")
+    target_link_options(${extension} PRIVATE "$<IF:$<LINK_LANGUAGE:Swift>,SHELL:-target ${triple},-mmacosx-version-min=${minimum}>")
+  elseif(minimum)
+    if(HAYLEN_PLATFORM STREQUAL "macos")
+      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "${minimum}")
+    elseif(HAYLEN_PLATFORM STREQUAL "ios")
+      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${minimum}")
+    else()
+      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET "${minimum}")
+    endif()
+  endif()
+
+  # Xcode signs the extension with its entitlements, and other generators sign it ad hoc with them before the app embeds it.
+  set(signing --force --sign - --timestamp=none)
+  if(${prefix}_ENTITLEMENTS)
+    set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_CODE_SIGN_ENTITLEMENTS "${${prefix}_ENTITLEMENTS}")
+    list(APPEND signing --entitlements "${${prefix}_ENTITLEMENTS}")
+  endif()
+  if(NOT CMAKE_GENERATOR STREQUAL "Xcode")
+    add_custom_command(TARGET ${extension} POST_BUILD COMMAND codesign ${signing} "$<TARGET_BUNDLE_DIR:${extension}>" VERBATIM)
+  endif()
+
+  set(folder "${contents}/PlugIns")
+  if(${prefix}_TYPE STREQUAL "extensionkit-extension")
+    set(folder "${contents}/Extensions")
+  endif()
+  add_dependencies(${target} ${extension})
+  haylen_embed_apple(${target} "$<TARGET_BUNDLE_DIR:${extension}>" "${folder}" ON)
+endfunction()
 # Reads the name, identifier and version of an app package, so the app carries the same values the runtime reads.
 function(haylen_read_app_info target package)
   if(NOT EXISTS "${package}/app.json")
@@ -268,6 +444,7 @@ endfunction()
 function(haylen_add_app target)
   cmake_parse_arguments(arg "CPP" "PACKAGE;APPLE_PROJECT;WEB_SHELL" "SOURCES" ${ARGN})
   haylen_read_app_info(${target} "${arg_PACKAGE}")
+
 
   set(sources ${arg_SOURCES})
   if(NOT arg_CPP)

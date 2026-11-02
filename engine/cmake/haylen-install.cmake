@@ -167,7 +167,7 @@ install(FILES "${HAYLEN_VARN_DATAVIEW_SCRIPT}" DESTINATION "${HAYLEN_SDK_SHARE_D
 if(APPLE)
   install(FILES "${varn_SOURCE_DIR}/modules/dataview/platform/apple/VarnDataView.h" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen-sdk)
 endif()
-install(FILES "${HAYLEN_CMAKE_DIR}/haylen-app.cmake" "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake" "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/cmake" COMPONENT haylen-sdk)
+install(FILES "${HAYLEN_CMAKE_DIR}/haylen-app.cmake" "${HAYLEN_CMAKE_DIR}/haylen-apple-embed.cmake" "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake" "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/cmake" COMPONENT haylen-sdk)
 install(DIRECTORY "${HAYLEN_ENGINE_DIR}/platform/web" "${HAYLEN_ENGINE_DIR}/platform/apple" "${HAYLEN_ENGINE_DIR}/platform/windows" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/platform" COMPONENT haylen-sdk)
 install(FILES "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/src/platform" COMPONENT haylen-sdk)
 if(WIN32)

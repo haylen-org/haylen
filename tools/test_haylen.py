@@ -1135,6 +1135,23 @@ class VisionOSTest(unittest.TestCase):
             manifest["apple"]["binaryFrameworks"] = [{"path": "apple", "embed": "yes"}]
             self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), ['The key "apple.binaryFrameworks[0].path" must be an ".xcframework" or a ".framework" inside the plugin.', 'The key "apple.binaryFrameworks[0].embed" must be true for a dynamic framework, which the app embeds, and false for a static one.'])
 
+    def test_an_extension_builds_only_for_the_platforms_it_lists(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "shelf"
+            (folder / "extension").mkdir(parents=True)
+            extension = {"name": "Shelf", "type": "appExtension", "point": "com.apple.tv-top-shelf", "sources": "extension", "platforms": ["tvos"]}
+            manifest = {"id": "shelf", "name": "Shelf", "version": "1.0.0", "description": "A top shelf.", "platforms": ["ios", "tvos"], "apple": {"extensions": [extension]}}
+            self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [])
+            app = mock.Mock(plugins=[haylen.Plugin(folder, manifest, None)], plugin_values={"shelf": {}}, native=[], identifier="com.haylen.shelf", version="1.0.0")
+            generated = Path(scratch) / "haylen"
+            frameworks = {"iOS": [], "macCatalyst": [], "tvOS": [], "visionOS": [], "macOS": []}
+            with mock.patch.object(haylen, "apple_spec", return_value={"targets": {}}), mock.patch.object(haylen, "apple_frameworks", return_value=frameworks):
+                haylen.write_apple_spec(app, Path(scratch), generated, {template: {} for template in haylen.APPLE_TEMPLATES}, False)
+            text = (generated / "project.yml").read_text()
+            document = json.loads(text[text.index("{"):])
+        self.assertEqual(list(document["targets"]), ["ShelfTVOS"])
+        self.assertNotIn("ShelfIOS", json.dumps(document["targetTemplates"]["HaylenIOS"]))
+
     def test_a_missing_runtime_names_the_platform_that_xcodebuild_downloads(self):
         with mock.patch.object(haylen, "capture", return_value=json.dumps({"devices": {}})), self.assertRaisesRegex(haylen.BuildError, '"xcodebuild -downloadPlatform visionOS"'):
             haylen.apple_simulator("xrOS", None)
@@ -1195,7 +1212,7 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "ios-simulator-debug" / "bin" / "game" / "package.txt").write_text(str(self.scratch / "package"))
         args = haylen.build_parser().parse_args(["run", "project", "--platform", "ios-simulator"])
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
-        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
+        with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_parts", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
         self.assertEqual(launch.call_args.args[3], simulator)
         self.assertEqual(launch.call_args.args[4].arguments, [])
@@ -1206,21 +1223,110 @@ class RunCppTest(unittest.TestCase):
         (plugin / "apple" / "CameraPlugin.swift").write_text("")
         (plugin / "apple" / "notes.txt").write_text("")
         (plugin / "camera.bundle").mkdir()
-        manifest = {"id": "camera", "version": "1.0.0", "platforms": ["ios"], "parameters": {}, "apple": {"class": "CameraPlugin", "sources": "apple", "frameworks": ["AVFoundation.framework"], "resources": ["camera.bundle"], "infoPlist": {"NSCameraUsageDescription": "Shows the camera."}}}
-        app = mock.Mock(plugins=[haylen.Plugin(plugin, manifest, None)], plugin_values={"camera": {}})
-        fragment = self.scratch / "build" / haylen.CPP_PLUGINS_FILE
-        fragment.parent.mkdir()
-        self.assertTrue(haylen.write_cpp_apple_plugins(app, "ios-simulator", fragment.parent, fragment))
+        (plugin / "Vendor.framework").mkdir()
+        (plugin / "downloads").mkdir()
+        (plugin / "downloads" / "Downloads.swift").write_text("")
+        manifest = {
+            "id": "camera", "version": "1.0.0", "platforms": ["ios"], "parameters": {},
+            "apple": {
+                "class": "CameraPlugin", "sources": "apple", "frameworks": ["AVFoundation.framework"], "resources": ["camera.bundle"],
+                "infoPlist": {"NSCameraUsageDescription": "Shows the camera.", "CameraGroup": "group.$(HAYLEN_BUNDLE_IDENTIFIER)"},
+                "entitlements": {"com.apple.security.application-groups": ["group.$(HAYLEN_BUNDLE_IDENTIFIER)"]},
+                "privacy": {"NSPrivacyTracking": True},
+                "binaryFrameworks": [{"path": "Vendor.framework", "embed": True}],
+                "packages": {"Lens": {"url": "https://example.com/lens-kit.git", "exactVersion": "2.1.0", "products": ["Lens"]}},
+                "buildScripts": [{"name": "Stamp", "script": "echo stamped"}],
+                "extensions": [{"name": "Downloads", "type": "extensionKit", "point": "com.apple.background-asset-downloader-extension", "sources": "downloads", "minimumVersion": "26.0", "entitlements": {"com.apple.developer.team-identifier": "TEAM"}}, {"name": "Shelf", "type": "appExtension", "point": "com.apple.tv-top-shelf", "sources": "downloads", "platforms": ["tvos"]}],
+            },
+        }
+        (self.scratch / "libcodec.a").write_bytes(b"")
+        (self.scratch / "Effects.framework").mkdir()
+        codec = haylen.NativeLibrary("codec", {"ios": self.scratch / "libcodec.a"}, None, ("ios",), True, ("codec_open",))
+        effects = haylen.NativeLibrary("effects", {"ios": self.scratch / "Effects.framework"}, None, ("ios",), False, ())
+        app = mock.Mock(plugins=[haylen.Plugin(plugin, manifest, None)], plugin_values={"camera": {}}, native=[codec, effects], identifier="com.haylen.camera", version="1.0.0")
+        app.name = "Camera"
+        build = self.scratch / "build"
+        fragment = build / haylen.CPP_PLUGINS_FILE
+        build.mkdir()
+        packages = build / "haylen-packages" / "Products"
+        built = (packages / "HaylenPackages.framework", packages, [packages / "Lens_Lens.bundle"])
+        with mock.patch.object(haylen, "build_swift_packages", return_value=built) as swift:
+            self.assertTrue(haylen.write_cpp_apple_parts(app, "ios-simulator", build, fragment, "Debug", 4))
+        self.assertEqual(swift.call_args.args[:3], ({"Lens": {"url": "https://example.com/lens-kit.git", "exactVersion": "2.1.0", "products": ["Lens"]}}, "ios-simulator", "Debug"))
         text = fragment.read_text()
-        self.assertIn(f"set(HAYLEN_PLUGIN_SOURCES [==[{(fragment.parent / 'haylen-plugins' / 'camera' / 'sources' / 'CameraPlugin.swift').as_posix()}]==])", text)
+        copied = build / "haylen-plugins" / "camera"
+        self.assertIn(f"set(HAYLEN_PLUGIN_SOURCES [==[{(copied / 'sources' / 'CameraPlugin.swift').as_posix()};{(build / 'haylen-plugins' / 'HaylenNativeSymbols.mm').as_posix()}]==])", text)
+        self.assertIn('registerLinked("codec"', (build / "haylen-plugins" / "HaylenNativeSymbols.mm").read_text(), "The static native libraries register their symbols for haylen.native.")
         self.assertIn("set(HAYLEN_PLUGIN_FRAMEWORKS [==[AVFoundation]==])", text)
-        self.assertIn("<key>NSCameraUsageDescription</key>", text)
-        self.assertTrue((fragment.parent / "haylen-plugins" / "camera" / "resources" / "camera.bundle").is_dir())
-        self.assertFalse(haylen.write_cpp_apple_plugins(app, "ios-simulator", fragment.parent, fragment))
+        self.assertIn(f"set(HAYLEN_PLUGIN_BUNDLES [==[{(copied / 'resources' / 'camera.bundle').as_posix()};{(packages / 'Lens_Lens.bundle').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_LIBRARIES [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'libcodec.a').as_posix()};{(packages / 'HaylenPackages.framework').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_EMBEDDED [==[{(plugin / 'Vendor.framework').as_posix()};{(self.scratch / 'Effects.framework').as_posix()};{(packages / 'HaylenPackages.framework').as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_MODULES [==[{packages.as_posix()}]==])", text)
+        self.assertIn(f"set(HAYLEN_PLUGIN_SCRIPTS [==[{(copied / 'scripts' / '0.sh').as_posix()}]==])", text)
+        self.assertIn("echo stamped", (copied / "scripts" / "0.sh").read_text())
+        self.assertIn("<string>group.com.haylen.camera</string>", text, "The Info.plist keys name the identity of the app as Xcode would.")
+        self.assertEqual(haylen.read_plist(build / "haylen-plugins" / "App.entitlements"), {"com.apple.security.application-groups": ["group.com.haylen.camera"]})
+        self.assertTrue(haylen.read_plist(build / "haylen-plugins" / "PrivacyInfo.xcprivacy")["NSPrivacyTracking"])
+        self.assertIn("NSPrivacyAccessedAPITypes", haylen.read_plist(build / "haylen-plugins" / "PrivacyInfo.xcprivacy"), "The privacy manifest of the engine joins the declarations of the plugins.")
+        self.assertIn("set(HAYLEN_PLUGIN_EXTENSIONS [==[Downloads]==])", text)
+        self.assertIn("set(HAYLEN_EXTENSION_Downloads_TYPE extensionkit-extension)", text)
+        self.assertIn("set(HAYLEN_EXTENSION_Downloads_IDENTIFIER com.haylen.camera.downloads)", text)
+        self.assertIn("set(HAYLEN_EXTENSION_Downloads_MINIMUM_VERSION [==[26.0]==])", text)
+        info = haylen.read_plist(copied / "extensions" / "Downloads" / "Info.plist")
+        self.assertEqual(info["EXAppExtensionAttributes"], {"EXExtensionPointIdentifier": "com.apple.background-asset-downloader-extension"})
+        self.assertEqual(info["CFBundleIdentifier"], "com.haylen.camera.downloads")
+        with mock.patch.object(haylen, "build_swift_packages", return_value=built):
+            self.assertFalse(haylen.write_cpp_apple_parts(app, "ios-simulator", build, fragment, "Debug", 4))
 
-        manifest["apple"]["packages"] = [{"url": "https://example.com/camera.git", "version": "1.0.0", "products": ["Camera"]}]
-        with self.assertRaisesRegex(haylen.BuildError, 'The plugin "camera" needs "packages" on Apple platforms'):
-            haylen.write_cpp_apple_plugins(app, "ios-simulator", fragment.parent, fragment)
+    def test_the_swift_packages_of_cpp_apps_join_one_dynamic_framework(self):
+        haylen.write_swift_packages({"Lens": {"url": "https://example.com/team/lens-kit.git", "exactVersion": "2.1.0", "products": ["Lens", "LensUI"]}, "Maps": {"url": "git@example.com:team/Maps.git", "exactVersion": "1.0.0", "products": ["Maps"]}}, self.scratch)
+        manifest = (self.scratch / "Package.swift").read_text()
+        self.assertIn('.library(name: "HaylenPackages", type: .dynamic, targets: ["HaylenPackages"])', manifest)
+        self.assertIn('.package(url: "https://example.com/team/lens-kit.git", exact: "2.1.0")', manifest)
+        self.assertIn('.product(name: "LensUI", package: "lens-kit")', manifest)
+        self.assertIn('.product(name: "Maps", package: "maps")', manifest)
+        self.assertTrue((self.scratch / "Sources" / "HaylenPackages" / "HaylenPackages.swift").is_file())
+
+    def test_plugins_that_ship_the_same_framework_stop_the_build_of_a_cpp_app(self):
+        manifests = []
+        for name in ("first", "second"):
+            (self.scratch / name / "Vendor.framework").mkdir(parents=True)
+            manifests.append(haylen.Plugin(self.scratch / name, {"id": name, "version": "1.0.0", "platforms": ["ios"], "parameters": {}, "apple": {"binaryFrameworks": [{"path": "Vendor.framework", "embed": False}]}}, None))
+        app = mock.Mock(plugins=manifests, plugin_values={"first": {}, "second": {}}, native=[], identifier="com.haylen.vendor", version="1.0.0")
+        with self.assertRaisesRegex(haylen.BuildError, 'The plugins "first" and "second" both ship the framework "Vendor.framework".'):
+            haylen.write_cpp_apple_parts(app, "ios-simulator", self.scratch / "build", self.scratch / "build" / haylen.CPP_PLUGINS_FILE, "Debug", 4)
+
+    def test_cpp_apps_of_windows_and_linux_find_the_native_libraries_next_to_their_executable(self):
+        (self.scratch / "package").mkdir()
+        (self.scratch / "package" / "app.json").write_text(json.dumps({"name": "Game", "identifier": "com.haylen.game", "version": "1.0.0"}))
+        (self.scratch / "build" / "bin" / "main").mkdir(parents=True)
+        (self.scratch / "build" / "bin" / "main" / "package.txt").write_text(str(self.scratch / "package"))
+        executable = self.scratch / "build" / "bin" / "main" / "game"
+        args = haylen.build_parser().parse_args(["run", str(self.scratch / "package")])
+        patches = [mock.patch.object(haylen, "host_name", return_value="linux"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))]
+        with contextlib.ExitStack() as stack, mock.patch.object(haylen, "prepare_host_native") as native:
+            for patch in patches:
+                stack.enter_context(patch)
+            haylen.build_cpp_desktop(self.scratch / "package", "main", self.scratch / "build", args)
+        self.assertEqual(native.call_args.args[0].folder, self.scratch / "package")
+        self.assertEqual(native.call_args.args[1], executable.parent)
+
+    def test_plugin_add_keeps_the_links_inside_the_frameworks_of_a_plugin(self):
+        plugin = self.scratch / "vendor"
+        framework = plugin / "frameworks" / "Vendor.framework"
+        (framework / "Versions" / "A").mkdir(parents=True)
+        (framework / "Versions" / "A" / "Vendor").write_bytes(b"code")
+        (framework / "Versions" / "Current").symlink_to("A")
+        (framework / "Vendor").symlink_to("Versions/Current/Vendor")
+        (plugin / "plugin.json").write_text(json.dumps({"id": "vendor", "name": "Vendor", "version": "1.0.0", "description": "Ships a framework.", "platforms": ["macos"], "apple": {"binaryFrameworks": [{"path": "frameworks/Vendor.framework", "embed": True}]}}))
+        app = self.scratch / "app"
+        app.mkdir()
+        (app / "app.json").write_text(json.dumps({"name": "Game", "identifier": "com.haylen.game", "version": "1.0.0"}))
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(plugin), "--app", str(app)]))
+        copied = app / "plugins" / "vendor" / "frameworks" / "Vendor.framework"
+        self.assertTrue((copied / "Vendor").is_symlink(), "A macOS framework whose links became copies is no bundle that codesign signs.")
+        self.assertEqual((copied / "Versions" / "Current").readlink(), Path("A"))
 
     def test_cpp_apps_launch_on_android_with_an_empty_command_line(self):
         built = self.scratch / "android-arm64-v8a-debug" / "bin" / "game"
@@ -1256,7 +1362,9 @@ class RunCppTest(unittest.TestCase):
         executable = self.scratch / "app"
         for options, launched in (([], True), (["--build-only"], False)):
             args = haylen.build_parser().parse_args(["run", str(self.scratch / "project"), *options])
-            with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen.RunSession, "follow") as follow, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            # On macOS the configuration also gives the app the Apple parts of its plugins, which the test of those parts covers.
+            configure = mock.patch.object(haylen, "configure_cpp_apple", side_effect=lambda target, directory, command, platform, given: haylen.run(command))
+            with mock.patch.object(haylen, "run") as run, configure, mock.patch.object(haylen.RunSession, "follow") as follow, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
                 haylen.run_cpp_app(self.scratch / "project", args)
             self.assertEqual([call.args[0] for call in follow.call_args_list], [[executable]] if launched else [])
             self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
@@ -2205,11 +2313,12 @@ class AndroidPluginsTest(unittest.TestCase):
         extension = {"name": "Downloads", "type": "extensionKit", "point": "com.apple.background-asset-downloader-extension", "sources": "apple-extension", "minimumVersion": "26.0"}
         manifest = {"id": "assets", "name": "Assets", "version": "1.0.0", "description": "Delivers packs.", "platforms": ["ios"], "parameters": {"prefetchPacks": {"type": "array", "default": [], "description": "Packs."}}, "apple": {"class": "AssetsPlugin", "sources": "apple", "assetPacks": {"prefetch": "${prefetchPacks}"}, "extensions": [extension]}}
         self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [])
-        manifest["apple"]["extensions"] = [{**extension, "name": "downloads", "type": "widget", "minimumVersion": "latest"}, {"name": "Other"}]
+        manifest["apple"]["extensions"] = [{**extension, "name": "downloads", "type": "widget", "platforms": ["tvos"], "minimumVersion": "latest"}, {"name": "Other"}]
         manifest["apple"]["assetPacks"] = {"prefetch": 3}
         self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [
             'The key "apple.extensions[0].name" must be a name of letters and digits that starts with a capital letter, such as "Downloads".',
             'The key "apple.extensions[0].type" must be "extensionKit", "appExtension".',
+            'The key "apple.extensions[0].platforms" must list the platforms of the plugin that the extension builds for, among "ios".',
             'The key "apple.extensions[0].minimumVersion" must be the oldest system version that the extension runs on, such as "26.0".',
             'The key "apple.extensions[1].point" is missing.',
             'The key "apple.extensions[1].sources" is missing.',
@@ -2230,7 +2339,7 @@ class AndroidPluginsTest(unittest.TestCase):
             manifests[Path(command[3]).stem] = json.loads(Path(command[3]).read_text())
             Path(command[-1]).write_bytes(b"archive")
         with mock.patch.object(haylen, "run", side_effect=package), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
-            archives = haylen.write_apple_asset_packs(app)
+            archives = haylen.write_apple_asset_packs(app, scratch / "release" / "apple.packs")
         self.assertEqual([path.name for path in archives], ["chapter-2.aar", "intro.music.aar"])
         self.assertEqual(manifests["chapter-2"]["downloadPolicy"], {"onDemand": {}})
         self.assertEqual(manifests["intro.music"]["downloadPolicy"], {"prefetch": {"installationEventTypes": ["firstInstallation", "subsequentUpdate"]}})
@@ -2240,7 +2349,7 @@ class AndroidPluginsTest(unittest.TestCase):
         self.assertEqual(sorted(path.name for path in haylen.apple_asset_packs_folder(app).iterdir()), ["chapter-2.aar", "intro.music.aar"], "The manifests of the tool leave once the archives exist.")
         app.plugin_values["assets"]["prefetchPacks"] = ["chapter-3"]
         with self.assertRaisesRegex(haylen.BuildError, 'the packs "chapter-3", which "content.delivery"'):
-            haylen.write_apple_asset_packs(app)
+            haylen.write_apple_asset_packs(app, scratch / "release" / "apple.packs")
 
     def test_an_android_project_without_the_files_of_its_plugins_stops_before_gradle(self):
         scratch = Path(tempfile.mkdtemp()).resolve()

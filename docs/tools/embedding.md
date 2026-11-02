@@ -192,9 +192,9 @@ The function fills placeholders of the templates from `app.json`:
 
 Pass `APPLE_PROJECT` to use templates of your own with the same layout and placeholders.
 
-Xcode signs the bundles it builds, while other generators leave only the signature that the linker gives the executable. That signature binds neither the bundle identifier nor the `Info.plist`, and macOS opens the window of an unsigned Mac Catalyst app at the top left of the screen instead of where the app asks. So for Mac Catalyst without the Xcode generator, `haylen_add_app` signs the bundle ad hoc after linking, as Xcode does.
+Xcode signs the bundles it builds, while other generators leave only the signature that the linker gives the executable. That signature binds neither the bundle identifier, the `Info.plist`, the entitlements nor the frameworks and extensions that the bundle embeds, and macOS opens the window of an unsigned Mac Catalyst app at the top left of the screen instead of where the app asks. So without the Xcode generator, `haylen_add_app` signs the bundles of macOS and Mac Catalyst ad hoc as the last step of their build, as Xcode does.
 
-The Apple parts of the plugins of a C++ app reach the bundle through the file that `HAYLEN_PLUGINS_FILE` names, which `run` writes, as the [plugin guide](../platform/plugins.md#c-apps) describes. Plugins with Swift sources need `enable_language(Swift)` in the project, as the C++ template has.
+The Apple parts of the plugins of a C++ app reach the bundle through the file that `HAYLEN_PLUGINS_FILE` names, which `run` writes: their sources, system frameworks, shipped frameworks, Swift packages, resources, app extensions, build scripts, `Info.plist` keys, entitlements and privacy declarations, as the [plugin guide](../platform/plugins.md#c-apps) describes. Plugins with Swift sources need `enable_language(Swift)` in the project, as the C++ template has. The script `engine/cmake/haylen-apple-embed.cmake` copies the frameworks, extensions and resource bundles into the bundle after the link, and signs the code among them with the identity that Xcode gives, or ad hoc with the other generators.
 
 ### Protected releases
 
