@@ -2242,7 +2242,7 @@ Testes do projeto de testes apontados pelo dono:
 - [ ] Teste de física de dois mundos (`two-worlds.lua`): erro "attempt to index a nil value (field 'data')" em `TwoWorlds:pop` depois de atirar e o corpo girar no outro mundo. Corrigir a causa (corpo sem `data` criado no outro mundo) e conferir a API de `data` dos corpos.
 - [ ] `TLD-001`: sprites cortados no mapa de orientações. Achar o motivo (objetos fora do retângulo do mapa cortados pela região do teste, ou o recorte errado de tiles e objetos) e corrigir.
 - [ ] `TLD-008`: os colisores não batem com a imagem (o lago, o tronco e as pedras). Corrigir a leitura das formas do Tiled ou o desenho do teste.
-- [ ] `TLD-015`: o slime fica atrás do chão.
+- [x] `TLD-015`: o slime fica atrás do chão. Feito: as camadas que as regras escrevem (`water`, `path` e `decor`) não existiam no `garden.tmj`, então o automapping as criava no topo do mapa, acima da camada `actors`, como o Tiled faz, e o caminho cobria os slimes. O gerador do mapa agora traz essas camadas vazias abaixo de `actors`, o caminho ficou largo o bastante para não se partir na diagonal e termina dentro do jardim com as pontas arredondadas, e o status fala de 1 slime no singular. Conferido na captura WebGPU e no `haylen-headless`.
 - [ ] Sombra nas pontas de toda lista: o `scrollFade` só pode aparecer na borda onde o conteúdo continua, nunca numa lista parada no começo ou que cabe inteira. Conferir em todas as listas do projeto de testes e dos apps, corrigir o que estiver errado e explicar ao dono quando ele aparece.
 
 Revisão pendente:

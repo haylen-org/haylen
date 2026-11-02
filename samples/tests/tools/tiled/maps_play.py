@@ -242,7 +242,8 @@ def garden(folder: Path) -> None:
     builder = MapBuilder(width, height).tileset(1, TERRAIN)
     plain = Ground(width, height, 103)
     plain.blob("water", 6, 4, 3.4, 2.4).blob("water", 19, 8.5, 4.2, 2.8).blob("water", 21.5, 2.5, 2.2, 1.6)
-    plain.road("path", [(0, 9.5), (6, 9), (11, 6.5), (15, 5), (26, 5.5)], 0.6)
+    # The path is wide enough that its diagonal stretch stays one piece, and it ends inside the garden, where its corner tiles round it off, since the corner rules cannot reach past the last column.
+    plain.road("path", [(0, 9.5), (6, 9), (11, 6.5), (15, 5), (20.5, 4.8)], 0.8)
 
     def cell(column: int, row: int) -> int:
         if plain.holds("water", column, row):
@@ -251,7 +252,8 @@ def garden(folder: Path) -> None:
             return gid(t.DIRT)
         return gid(t.GRASS)
 
-    builder.add(builder.tiles("ground", cell), builder.objects("actors", []))
+    # The layers that the rules write into wait empty under the actors, so the shores, the path and the decoration draw under the slimes.
+    builder.add(builder.tiles("ground", cell), builder.tiles("water", lambda column, row: 0), builder.tiles("path", lambda column, row: 0), builder.tiles("decor", lambda column, row: 0), builder.objects("actors", []))
     builder.save(folder / "maps" / "garden.tmj")
     rules(folder / "rules" / "garden.tmj")
 

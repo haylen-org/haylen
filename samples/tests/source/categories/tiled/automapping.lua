@@ -54,7 +54,7 @@ function Automapping:update(dt)
     if input.pressed('reset') then
         self:next()
     end
-    self:status(self.plain and 'The plain map, as it was painted, before the rules.' or string.format('The rules of %d rule map matched %d times with the seed %d, and put %d slimes on the path.', #self.rules.ruleMaps, self.matches, self.seed, self.slimes))
+    self:status(self.plain and 'The plain map, as it was painted, before the rules.' or string.format('The rules of %d rule %s matched %d times with the seed %d, and put %d %s on the path.', #self.rules.ruleMaps, #self.rules.ruleMaps == 1 and 'map' or 'maps', self.matches, self.seed, self.slimes, self.slimes == 1 and 'slime' or 'slimes'))
 end
 
 function Automapping:draw(area)
