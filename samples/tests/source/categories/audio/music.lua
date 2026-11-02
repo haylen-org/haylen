@@ -13,11 +13,16 @@ local Music = haylen.class('Music', AudioTest)
 local kHistory = 14
 local kColors = {calm = Test.accent, lively = Test.warm}
 local kPaused = '#30FF8A84'
+-- The plot of the volume sits this far inside its card, so the lines at the edges of the scale stay clear of the rounded corners.
+local kInset = 16
+-- The pieces of the curve where a stop cuts a fade in short and the two fades multiply.
+local kCurveSteps = 8
 local kCode = "local music = audio.playMusic(track, {fade = 2, loop = true, volume = 0.8, startAt = 0, loopStart = 4})\naudio.pause(music)\naudio.resume(music)\naudio.setCursor(music, audio.cursor(music) + 10)\naudio.stopMusic(2)\naudio.music() == track"
 
 function Music:enter()
     self.fade, self.loop, self.volume, self.startAt, self.loopStart = 2, true, 0.8, 0, 0
     self.clock = 0
+    self.stroke = {width = 4, color = Test.accent, join = 'round', cap = 'round', layer = 2}
     self.segments = {}
     self.pauses = {}
     self:frame({
@@ -154,39 +159,92 @@ function Music:describe()
     return string.format('%s plays at %s%s.', name, place, fading and ', while the track before it fades out' or '')
 end
 
--- The volume the calls asked for at a time: the fade in, the level set last and the fade out.
-function Music:level(segment, time)
+-- The volume the calls asked for at a time: the fade in, the level set last and the fade out. With `before`, a level set or a stop at that very time does not count yet, which gives the volume just before a step.
+function Music:level(segment, time, before)
     if time < segment.start or segment.stop and time > segment.stop + segment.fadeOut then
         return nil
     end
     local volume = segment.levels[1][2]
     for _, level in ipairs(segment.levels) do
-        if level[1] <= time then
+        if level[1] < time or level[1] == time and not before then
             volume = level[2]
         end
     end
     local fadeIn = segment.fadeIn > 0 and math.min(1, (time - segment.start) / segment.fadeIn) or 1
     local fadeOut = 1
-    if segment.stop and time > segment.stop then
+    if segment.stop and (time > segment.stop or time == segment.stop and not before) then
         fadeOut = segment.fadeOut > 0 and math.max(0, 1 - (time - segment.stop) / segment.fadeOut) or 0
     end
     return volume * fadeIn * fadeOut
 end
 
+-- The times from `first` to `last` where the volume of a segment turns: the end of its fade in, each level set, its stop and the end of its fade out. The volume runs straight between them, except while a stop cuts its fade in short, where the two fades multiply into a curve that gets times of its own.
+function Music.turns(segment, first, last)
+    local times = {first, segment.start + segment.fadeIn}
+    for _, level in ipairs(segment.levels) do
+        times[#times + 1] = level[1]
+    end
+    if segment.stop then
+        times[#times + 1] = segment.stop
+        times[#times + 1] = segment.stop + segment.fadeOut
+        local fadeInEnd = segment.start + segment.fadeIn
+        if segment.stop < fadeInEnd then
+            local curveEnd = math.min(fadeInEnd, segment.stop + segment.fadeOut)
+            for step = 1, kCurveSteps - 1 do
+                times[#times + 1] = segment.stop + (curveEnd - segment.stop) * step / kCurveSteps
+            end
+        end
+    end
+    times[#times + 1] = last
+    table.sort(times)
+
+    local kept = {}
+    for _, time in ipairs(times) do
+        if time >= first and time <= last and time ~= kept[#kept] then
+            kept[#kept + 1] = time
+        end
+    end
+    return kept
+end
+
+-- The line of a segment in the plot, from the exact times where its volume turns, so its corners and its ends stay where they are as the history scrolls instead of jumping between samples. A step of the volume becomes a vertical piece.
+function Music:curve(segment, from, plot)
+    local first = math.max(from, segment.start)
+    local last = segment.stop and math.min(self.clock, segment.stop + segment.fadeOut) or self.clock
+    if last <= first then
+        return nil
+    end
+    local points = {}
+    local function add(time, volume)
+        points[#points + 1] = plot.x + plot.width * (time - from) / kHistory
+        points[#points + 1] = plot.y + plot.height * (1 - volume)
+    end
+    for _, time in ipairs(Music.turns(segment, first, last)) do
+        local before = time > first and self:level(segment, time, true)
+        local volume = self:level(segment, time)
+        if before and before ~= volume then
+            add(time, before)
+        end
+        add(time, volume)
+    end
+    return #points >= 4 and points or nil
+end
+
 function Music:draw(area)
     local left, top, width, height = 96, 90, area.width - 136, area.height * 0.5
+    local plot = {x = left + kInset, y = top + kInset, width = width - kInset * 2, height = height - kInset * 2}
     local from = self.clock - kHistory
     Test.caption(string.format('Volume the calls asked for, over the last %d seconds', kHistory), left, top - 40, {size = 22})
     AudioTest.lockNote(left + width, top - 54)
     graphics2d.drawShape({left, top, width, height}, {radius = 12, color = Test.surface})
     for volume = 0, 1, 0.25 do
-        local y = top + height * (1 - volume)
-        graphics2d.drawLine(left, y, left + width, y, 1, Test.line, {layer = 1})
+        local y = plot.y + plot.height * (1 - volume)
+        graphics2d.drawLine(plot.x, y, plot.x + plot.width, y, 1, Test.line, {layer = 1})
         Test.caption(string.format('%g', volume), left - 14, y, {anchor = {1, 0.5}, size = 18})
     end
     for index = 0, kHistory, 2 do
-        local x = left + width * index / kHistory
-        graphics2d.drawLine(x, top, x, top + height, 1, Test.line, {layer = 1})
+        local x = plot.x + plot.width * index / kHistory
+        graphics2d.drawLine(x, plot.y, x, plot.y + plot.height, 1, Test.line, {layer = 1})
         Test.caption(string.format('%d s', index - kHistory), x, top + height + 8, {anchor = {0.5, 0}, size = 18})
     end
 
@@ -201,21 +259,16 @@ function Music:draw(area)
         local a = math.max(0, (span[1] - from) / kHistory)
         local b = math.max(0, (span[2] - from) / kHistory)
         if b > a then
-            graphics2d.drawRect({left + width * a, top, width * (b - a), height}, kPaused, {layer = 1})
+            graphics2d.drawRect({plot.x + plot.width * a, plot.y, plot.width * (b - a), plot.height}, kPaused, {layer = 1})
         end
     end
 
+    local stroke = self.stroke
     for _, segment in ipairs(self.segments) do
-        local points = {}
-        for step = 0, 140 do
-            local time = from + kHistory * step / 140
-            local volume = self:level(segment, time)
-            if volume then
-                points[#points + 1] = {left + width * step / 140, top + height * (1 - volume)}
-            end
-        end
-        if #points > 1 then
-            graphics2d.drawPolyline(points, 4, kColors[segment.track.id], false, {layer = 2})
+        local points = self:curve(segment, from, plot)
+        if points then
+            stroke.color = kColors[segment.track.id]
+            graphics2d.drawStroke(points, stroke)
         end
     end
 
