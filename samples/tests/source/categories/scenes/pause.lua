@@ -1,4 +1,4 @@
--- Pause and process modes: `haylen.setPaused` stops the pausable world, the timer that drops its coins and the tween that moves its platform, while the pause menu runs in `whenPaused` and one timer runs `always`.
+-- Pause and process modes: `haylen.setPaused` stops the pausable world, the timer that drops its coins onto the moving platform and the tween that moves it, while the pause menu runs in `whenPaused` and one timer runs `always`.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
@@ -27,6 +27,15 @@ Pause.gravity = 1500
 Pause.platformWidth = 420
 Pause.platformTop = 230
 Pause.platformHeight = 80
+-- The coins drop over the platform and fall with it, and the oldest goes once this many are on it.
+Pause.maxCoins = 9
+-- What runs in each process mode, which the panel lists with whether it runs now.
+Pause.modes = {
+    {id = 'coins', text = 'Coins', mode = 'pausable'},
+    {id = 'platform', text = 'Platform', mode = 'pausable'},
+    {id = 'menu', text = 'Pause menu', mode = 'whenPaused'},
+    {id = 'clock', text = 'Clock', mode = 'always'},
+}
 
 -- The pause menu: transparent over the world, running only while the game is paused.
 local PauseMenu = haylen.class('PauseMenu', scene.Scene)
@@ -95,11 +104,14 @@ end
 
 function Pause:enter()
     self:frame{
-        hint = 'Pause with the button, P or the Y button. The coins, the timer that drops them and the tween of the platform stop, the "always" timer keeps counting and the menu animates.',
+        hint = 'Pause with the button, P or the Y button. The coins that drop onto the platform, the timer that drops them and the tween of the platform stop, the "always" timer keeps counting and the menu animates.',
         code = Pause.code,
         view = Card.world,
         play = true,
-        controls = {ui.button{id = 'pause', text = 'Pause', onClick = function() self:openMenu() end}},
+        controls = {
+            ui.button{id = 'pause', text = 'Pause', onClick = function() self:openMenu() end},
+            ui.formField{label = 'Process modes', ui.table{id = 'modes', columns = {{text = 'What'}, {text = 'Runs', width = 80, align = 'end'}}, rows = self:modeRows()}},
+        },
     }
     timer.every(0.4, function() self:spawn() end, {owner = self})
     timer.every(0.1, function() self.always = self.always + 0.1 end, {owner = self, processMode = 'always'})
@@ -112,13 +124,25 @@ function Pause:openMenu()
     end
 end
 
--- Drops a coin from above the top of the world. The spawner timer calls it while the game runs, and the menu can call it while paused.
+-- Drops a coin from above the top of the world over the platform. The spawner timer calls it while the game runs, and the menu can call it while paused.
 function Pause:spawn()
     self.dropped = self.dropped + 1
-    self.coins[#self.coins + 1] = {x = -800 + (self.dropped * 337) % 1600, y = -620, speed = 0, spin = self.dropped}
-    if #self.coins > 40 then
+    local offset = ((self.dropped * 137) % 300) - 150
+    self.coins[#self.coins + 1] = {x = self.platform.x + offset, y = -620, speed = 0, spin = self.dropped}
+    if #self.coins > Pause.maxCoins then
         table.remove(self.coins, 1)
     end
+end
+
+-- Lists every process mode with whether its things run now: the pausable ones stop while paused, and the menu runs only then.
+function Pause:modeRows()
+    local paused = haylen.paused()
+    local rows = {}
+    for index, entry in ipairs(Pause.modes) do
+        local runs = entry.mode == 'always' or (entry.mode == 'whenPaused') == paused
+        rows[index] = {id = entry.id, cells = {string.format('%s, "%s"', entry.text, entry.mode), runs and 'Yes' or 'No'}}
+    end
+    return rows
 end
 
 -- Shows the state in the status line, from the update of this test while it runs and from the update of the menu while the game is paused.
@@ -127,6 +151,7 @@ function Pause:describe()
     if text ~= self.shown then
         self.shown = text
         self:set('status', {text = text})
+        self:set('modes', {rows = self:modeRows()})
     end
 end
 
@@ -137,8 +162,16 @@ function Pause:update(dt)
     end
     self.spins = self.spins + 1
     local half = Pause.platformWidth / 2
+    local moved = self.platform.x - (self.lastPlatform or self.platform.x)
+    self.lastPlatform = self.platform.x
     for _, coin in ipairs(self.coins) do
-        coin.spin = coin.spin + dt * 4
+        -- A falling coin spins and keeps above the platform, and a coin that rests shows its face.
+        if not coin.on and coin.speed > 0 or coin.y < Pause.platformTop - Pause.coinSize then
+            coin.spin = coin.spin + dt * 4
+            coin.x = coin.x + moved
+        else
+            coin.spin = 0
+        end
         local before = coin.y
         coin.speed = coin.speed + Pause.gravity * dt
         coin.y = coin.y + coin.speed * dt
@@ -175,7 +208,7 @@ function Pause:draw(area)
     local platform = {self.platform.x - Pause.platformWidth / 2, Pause.platformTop - Pause.platformHeight * 22 / 241, Pause.platformWidth, Pause.platformHeight}
     graphics2d.drawNineSlice(self.platformSlice, platform, nil, {borderScale = Pause.platformHeight / 241, layer = 1})
     for _, coin in ipairs(self.coins) do
-        graphics2d.draw(self.coin, coin.x, coin.y, {width = Pause.coinSize * math.max(0.15, math.abs(math.cos(coin.spin))), height = Pause.coinSize, layer = 2})
+        graphics2d.draw(self.coin, coin.x, coin.y, {width = Pause.coinSize * math.max(0.35, math.abs(math.cos(coin.spin))), height = Pause.coinSize, layer = 2})
     end
     local bounds = graphics2d.canvasBounds()
     local left, top = bounds.x + 40, bounds.y + 40

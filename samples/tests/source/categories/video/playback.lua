@@ -78,7 +78,7 @@ function Playback:draw(area)
     graphics2d.drawShape(screen, {radius = 14, texture = self.clip.texture, layer = 1})
 
     local bar = {screen[1], screen[2] + height + 32, width, 16}
-    graphics2d.drawShape(bar, {radius = 8, color = '#FF15172A', layer = 1})
+    graphics2d.drawShape(bar, {radius = 8, color = '#FF3A4058', borderWidth = 2, borderColor = '#FF15172A', layer = 1})
     local share = self.clip.duration > 0 and self.clip.time / self.clip.duration or 0
     graphics2d.drawShape({bar[1] + 3, bar[2] + 3, math.max(10, (width - 6) * share), 10}, {radius = 5, color = '#FFFFC93C', layer = 2})
     graphics2d.drawText(nil, 'A sprite drawn from the texture of the video, with its time under it', x, bar[2] + 34, {size = 22, color = Test.muted, anchor = {0.5, 0}, layer = 2})

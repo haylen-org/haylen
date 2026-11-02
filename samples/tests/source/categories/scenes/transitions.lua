@@ -1,9 +1,12 @@
--- Transition gallery: every built-in effect of `haylen.scene` pushes the island by day or by night with the chosen direction, easing, duration and color, and the card pops itself back with the opposite direction.
+-- Transition gallery: every built-in effect of `haylen.scene` pushes the island by day or by night with the chosen direction, easing, duration and color, and the card pops itself back with the opposite direction. A live picture under the buttons shows the island that the next push brings.
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 
 local Card = require('categories.scenes.card')
+local Scenery = require('categories.effects.scenery')
 local SceneTest = require('categories.scenes.scene-test')
 
 local Transitions = haylen.class('Transitions', SceneTest)
@@ -11,7 +14,7 @@ local Transitions = haylen.class('Transitions', SceneTest)
 Transitions.code = [[
 scene.push(card, {effect = 'pageTurn', direction = 'left', ease = 'cubicInOut', duration = 0.8})
 scene.pop({effect = 'pageTurn', direction = 'right', ease = 'cubicInOut', duration = 0.8})
-scene.push(card, {effect = 'iris', duration = 0.8, color = '#FF000000'})  -- Fades and irises pass through the color.]]
+scene.push(card, {effect = 'iris', duration = 0.8, color = '#000000'})  -- Fades and irises pass through the color.]]
 
 Transitions.effects = {'fade', 'crossFade', 'moveIn', 'slideIn', 'push', 'shrinkGrow', 'flipX', 'flipY', 'zoomFlip', 'rotoZoom', 'jumpZoom', 'splitColumns', 'splitRows', 'turnOffTiles', 'fadeTiles', 'pageTurn', 'radialClockwise', 'radialCounterclockwise', 'wipe', 'inOut', 'outIn', 'iris', 'dissolve', 'pixelate'}
 Transitions.directions = {'left', 'right', 'up', 'down', 'upLeft', 'upRight', 'downLeft', 'downRight'}
@@ -33,13 +36,22 @@ function Transitions.label(name)
     return (name:gsub('%u', function(letter) return ' ' .. letter:lower() end):gsub('^%l', string.upper))
 end
 
+-- The picture of the next island renders at twice the size it shows at, so it stays sharp.
+Transitions.preview = {width = 480, height = 270, image = '@transition-preview'}
+
 function Transitions:init(entry)
     Transitions.super.init(self, entry)
-    self.options = {direction = 'left', ease = 'cubicInOut', duration = 0.8, color = '#FF000000'}
+    self.options = {direction = 'left', ease = 'cubicInOut', duration = 0.8, color = '#000000'}
     self.played = 0
+    self.scenery = Scenery()
+    self.previewTarget = graphics.newRenderTarget(Transitions.preview.width, Transitions.preview.height)
+    self.previewCamera = graphics2d.newCamera()
+    local zoom = Transitions.preview.width / Card.world[1]
+    self.previewCamera.zoom = {zoom, zoom}
 end
 
 function Transitions:enter()
+    ui.setImage(Transitions.preview.image, self.previewTarget)
     local options = self.options
     local buttons = {}
     for index, effect in ipairs(Transitions.effects) do
@@ -50,16 +62,28 @@ function Transitions:enter()
     self:frame{
         hint = 'Pick an effect to push a card with it. The card leaves by itself after a moment, or with Escape or the B button.',
         code = Transitions.code,
-        content = {ui.grid{columns = 4, gap = 12, children = buttons}},
+        content = {
+            ui.grid{columns = 4, gap = 12, children = buttons},
+            ui.row{gap = 16, margin = {12, 0, 0, 0},
+                ui.image{image = Transitions.preview.image, width = Transitions.preview.width / 2.5, height = Transitions.preview.height / 2.5, radius = 12},
+                ui.column{grow = 1, gap = 4,
+                    ui.label{text = 'Up next', font = 'caption', color = 'textMuted'},
+                    ui.label{id = 'next', text = ''},
+                },
+            },
+        },
         controls = {
             ui.formField{label = 'Direction', ui.combo{id = 'direction', items = Transitions.items(Transitions.directions), selected = options.direction, onChange = function(event)
                 options.direction = event.value
+                self:describeNext()
             end}},
             ui.formField{label = 'Easing', ui.combo{id = 'ease', items = Transitions.items(Transitions.eases, Transitions.easeNames), selected = options.ease, onChange = function(event)
                 options.ease = event.value
+                self:describeNext()
             end}},
             ui.formField{label = 'Duration in seconds', ui.slider{id = 'duration', min = 0.2, max = 2.5, value = options.duration, showValue = true, onChange = function(event)
                 options.duration = event.value
+                self:describeNext()
             end}},
             ui.formField{label = 'Color of fades and irises', ui.colorField{id = 'color', value = options.color, alpha = false, onChange = function(event)
                 options.color = event.value
@@ -68,6 +92,33 @@ function Transitions:enter()
         focus = 'fade',
     }
     self:set('status', {text = 'Pick an effect to push the island with it.'})
+    self:describeNext()
+end
+
+function Transitions:exit()
+    ui.removeImage(Transitions.preview.image)
+    Transitions.super.exit(self)
+end
+
+-- The next card shows the island by day and by night in turns.
+function Transitions:nextNight()
+    return (self.played + 1) % 2 == 0
+end
+
+function Transitions:describeNext()
+    local options = self.options
+    self:set('next', {text = string.format('The island %s, going %s with %s easing for %.1f seconds.', self:nextNight() and 'by night' or 'by day', Transitions.label(options.direction):lower(), Transitions.easeNames[options.ease]:lower(), options.duration)})
+end
+
+function Transitions:update(dt)
+    Transitions.super.update(self, dt)
+    self.scenery:update(dt)
+end
+
+function Transitions:render()
+    Transitions.super.render(self)
+    graphics2d.beginTarget(self.previewTarget, self.previewCamera, {clear = '#FF000000'})
+    self.scenery:draw(self:nextNight())
 end
 
 function Transitions:play(effect)
@@ -81,6 +132,7 @@ function Transitions:play(effect)
     local caption = string.format('%s, %s, %.1f seconds', Transitions.label(options.direction), Transitions.easeNames[options.ease]:lower(), options.duration)
     scene.push(Card({title = Transitions.label(effect), caption = caption, night = self.played % 2 == 0, stay = 1.2, leave = leave}), arrive)
     self:set('status', {text = string.format('Pushed with "%s", %d transitions so far.', effect, self.played)})
+    self:describeNext()
 end
 
 return Transitions

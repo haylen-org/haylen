@@ -1,8 +1,9 @@
--- Stack and hooks: the operations of `haylen.scene` on the cards above this test, with the hooks each scene received on a timeline next to the cards. Each card is a transparent panel over a part of the play area, cascaded by its depth, so the stack shows as cards over cards while the buttons of the test stay usable. The test sits on the menus of the project, so "Pop to the test" is the `popTo` that "popToRoot" would be in an app of its own.
+-- Stack and hooks: the operations of `haylen.scene` on the cards above this test, with the hooks each scene received on a timeline next to the cards. Each card is a transparent panel over a part of the play area, cascaded by its depth, so the stack shows as cards over cards while the buttons of the test stay usable. The test pushes two cards by itself as it opens, so the stack shows from the start. The test sits on the menus of the project, so "Pop to the test" is the `popTo` that "popToRoot" would be in an app of its own.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local m = require('haylen.math')
 local scene = require('haylen.scene')
+local timer = require('haylen.timer')
 local ui = require('haylen.ui')
 
 local Card = require('categories.scenes.card')
@@ -24,6 +25,8 @@ Stack.transitions = {
     fade = {arrive = {effect = 'fade', duration = 0.5}, leave = {effect = 'fade', duration = 0.5}},
 }
 Stack.lines = 14
+-- The cards the test pushes by itself as it opens, one after the other.
+Stack.openingCards = 2
 -- The colors of the hooks on the timeline.
 Stack.hookColors = {load = Test.violet, enter = Test.green, exit = Test.red, unload = Test.muted, pause = Test.warm, resume = Test.accent, exitTransitionStarted = Test.warm, enterTransitionFinished = Test.accent}
 
@@ -34,6 +37,7 @@ function Stack:init(entry)
     self.cards = 0
     self.started = haylen.elapsed()
     self.transition = Stack.transitions.slide
+    self.openingLeft = Stack.openingCards
 end
 
 function Stack:operation(id, text, action)
@@ -47,7 +51,7 @@ end
 function Stack:enter(params)
     self.depth = scene.size()
     self:frame{
-        hint = 'Change the stack with the buttons. Escape or the B button pops the top card, and Back returns to the list once this test is on top again.',
+        hint = 'The test opens with two cards on its stack. Change the stack with the buttons. Escape or the B button pops the top card, and Back returns to the list once this test is on top again.',
         code = Stack.code,
         controls = {
             ui.formField{label = 'Transition', ui.combo{id = 'transition', selected = 'slide', items = {{id = 'none', text = 'Instant'}, {id = 'slide', text = 'Slide'}, {id = 'fade', text = 'Fade'}}, onChange = function(event)
@@ -62,13 +66,22 @@ function Stack:enter(params)
         focus = 'push',
     }
     self:record(self.title, 'enter')
+    timer.after(0.4, function() self:pushOpening() end, {owner = self})
+end
+
+-- Pushes the next card of the opening while the test or the last card it pushed is on top, so the player's own changes stop it.
+function Stack:pushOpening()
+    if self.openingLeft > 0 and not scene.transitioning() and scene.size() - self.depth == Stack.openingCards - self.openingLeft then
+        self.openingLeft = self.openingLeft - 1
+        scene.push(self:card(), self:arrival())
+    end
 end
 
 -- The place of a card at a depth above the test, where the test itself is depth 0: a panel in the left part of the play area, moved down and right by its depth.
 function Stack:cardRect(depth)
     local stage = self.stage
-    local width, height = stage.width * 0.5, stage.height * 0.62
-    local step = math.min(46, (stage.height - height - 48) / 5)
+    local width, height = stage.width * 0.5, stage.height * 0.66
+    local step = math.min(52, (stage.height - height - 48) / 5)
     local offset = math.min(depth, 5) * step
     return m.rect(stage.x + 24 + offset, stage.y + 24 + offset, width, height)
 end
@@ -78,6 +91,9 @@ function Stack:card()
     local depth = scene.size() - self.depth + 1
     return Card({title = 'Card ' .. self.cards, caption = 'Pushed at depth ' .. depth, night = self.cards % 2 == 0, leave = self.transition.leave, stage = self:cardRect(depth), listener = function(card, hook, detail)
         self:record(card.title, hook, detail)
+        if hook == 'enterTransitionFinished' and self.openingLeft > 0 then
+            timer.after(0.2, function() self:pushOpening() end, {owner = card})
+        end
     end})
 end
 
@@ -125,9 +141,11 @@ end
 function Stack:draw(area)
     local bottom = self:cardRect(0)
     graphics2d.drawShape({bottom.x - self.stage.x, bottom.y - self.stage.y, bottom.width, bottom.height}, {radius = 18, color = '#FF232938', borderWidth = 3, borderColor = Test.line})
-    graphics2d.drawText(nil, 'This test, under its cards', bottom.x - self.stage.x + bottom.width / 2, bottom.y - self.stage.y + bottom.height / 2, {size = 30, color = Test.muted, anchor = {0.5, 0.5}, layer = 1})
+    local middleX, middleY = bottom.x - self.stage.x + bottom.width / 2, bottom.y - self.stage.y + bottom.height / 2
+    graphics2d.drawText(nil, 'This test', middleX, middleY - 20, {size = 34, color = Test.ink, anchor = {0.5, 0.5}, layer = 1})
+    graphics2d.drawText(nil, 'Depth 0, the bottom of the stack', middleX, middleY + 22, {size = 22, color = Test.muted, anchor = {0.5, 0.5}, layer = 1})
 
-    local left = area.width * 0.5 + 24 + 5 * 46
+    local left = area.width * 0.5 + 24 + 5 * 52
     local log = {math.min(left, area.width - 420), 24, 0, area.height - 48}
     log[3] = area.width - log[1] - 24
     graphics2d.drawShape(log, {radius = 18, color = Test.surface, borderWidth = 2, borderColor = Test.line})
