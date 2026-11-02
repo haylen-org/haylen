@@ -7,6 +7,7 @@ local m = require('haylen.math')
 local ui = require('haylen.ui')
 
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
+local Backdrop = require('categories.animation.backdrop')
 local names = require('categories.procedural.names')
 
 local Characters = haylen.class('Characters', AlgorithmTest)
@@ -29,10 +30,14 @@ Characters.hats = {'cap', 'beanie', 'topHat', 'bow'}
 Characters.hairNames = {short = 'short', long = 'long', bun = 'a bun of', spiky = 'spiky', bald = 'almost no', ponytail = 'a ponytail of', curly = 'curly'}
 Characters.hatNames = {cap = 'a cap', beanie = 'a beanie', topHat = 'a top hat', bow = 'a bow'}
 Characters.columns, Characters.spacing, Characters.grounds = 5, 300, {-60, 360}
+-- The rows stand on two strips of the meadow of the Animation tests, the back one on a far ledge, each this tall, so the near strip covers the soil under the ledge.
+Characters.strip = 420
 
 function Characters:enter()
     self.seed = 1
     self.wave = true
+    self.backdrop = Backdrop()
+    self.ledge = {ground = Characters.grounds[1], height = Characters.strip}
     self:build()
     self:frame{
         code = Characters.code,
@@ -365,17 +370,13 @@ function Characters.drawPerson(person, time)
     if person.hat then
         Characters.drawHat(person, x, head)
     end
-    graphics2d.drawText(nil, person.name, x, person.ground + 16, {size = 24, color = '#FFE8EAF2', anchor = {0.5, 0}})
+    graphics2d.drawText(nil, person.name, x, person.ground + 16, {size = 24, color = '#FFFFFFFF', anchor = {0.5, 0}, outlineWidth = 3, outlineColor = Characters.outline})
 end
 
--- Every row stands on a strip of grass that fills the width of the canvas.
+-- The back row stands on a far ledge of the meadow and the front row on the near grass, under a sky with drifting clouds.
 function Characters:draw(area)
     local time = haylen.elapsed()
-    local bounds = graphics2d.canvasBounds()
-    for _, ground in ipairs(Characters.grounds) do
-        graphics2d.drawShape({bounds.x, ground - 4, bounds.width, 12}, {radius = 6, color = '#FF3D5A3A'})
-        graphics2d.drawRect({bounds.x, ground - 4, bounds.width, 3}, '#FF6FA854')
-    end
+    self.backdrop:draw(graphics2d.canvasBounds(), Characters.grounds[2], Characters.strip, 0, self.ledge)
     for _, person in ipairs(self.people) do
         Characters.drawPerson(person, time)
     end
