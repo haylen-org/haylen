@@ -90,8 +90,8 @@ function ColorVision:drawHalf(width, height, title)
         Test.caption(bar[1], margin, y, {size = 22, color = Test.muted})
         local x = margin + 110
         local length = barWidth - 110
-        graphics2d.drawShape({x, y + 2, length, 20}, {radius = 10, color = '#FF1B1F2C'})
-        graphics2d.drawShape({x, y + 2, length * bar[2], 20}, {radius = 10, color = bar[3]})
+        graphics2d.drawShape({x, y + 2, length, 20}, {radius = 10, color = '#FF151924', borderWidth = 2, borderColor = '#FF3A4258'})
+        graphics2d.drawShape({x, y + 2, length * bar[2], 20}, {radius = 10, color = bar[3], layer = 1})
     end
     local teamX = margin * 2 + barWidth
     for index, team in ipairs(ColorVision.teams) do

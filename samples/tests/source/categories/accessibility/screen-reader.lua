@@ -55,12 +55,18 @@ function ScreenReader:enter()
         content = {
             ui.card{gap = 16,
                 ui.row{gap = 16, ui.icon{image = 'interface/themes/fantasy/icons/star.png', size = 56, accessibilityHidden = true}, ui.pageHeader{title = 'Audio', caption = 'How the game sounds', grow = 1}},
-                ui.button{id = 'play', text = 'Play a sound', onClick = function() self.presses = self.presses + 1 end},
-                ui.toggle{id = 'music', text = 'Music', checked = true},
-                ui.formField{label = 'Volume', ui.slider{id = 'volume', value = 0.5, step = 0.1, showValue = true, accessibilityLabel = 'Volume'}},
-                ui.formField{label = 'Quality', ui.radioGroup{id = 'quality', accessibilityLabel = 'Quality', horizontal = true, items = {{id = 'low', text = 'Low'}, {id = 'high', text = 'High'}}, selected = 'high'}},
-                ui.formField{label = 'Profile', ui.textField{id = 'name', placeholder = 'Name of the profile'}},
-                ui.row{gap = 16, ui.icon{image = 'interface/themes/fantasy/icons/heart.png', size = 48, accessibilityLabel = 'Favorite'}, ui.label{text = 'A favorite sound, whose icon a screen reader names', color = 'textMuted', grow = 1}},
+                ui.row{gap = 32, alignItems = 'start',
+                    ui.column{grow = 1, gap = 16,
+                        ui.button{id = 'play', text = 'Play a sound', onClick = function() self.presses = self.presses + 1 end},
+                        ui.toggle{id = 'music', text = 'Music', checked = true},
+                        ui.formField{label = 'Volume', ui.slider{id = 'volume', value = 0.5, step = 0.1, showValue = true, accessibilityLabel = 'Volume'}},
+                    },
+                    ui.column{grow = 1, gap = 16,
+                        ui.formField{label = 'Quality', ui.radioGroup{id = 'quality', accessibilityLabel = 'Quality', horizontal = true, items = {{id = 'low', text = 'Low'}, {id = 'high', text = 'High'}}, selected = 'high'}},
+                        ui.formField{label = 'Profile', ui.textField{id = 'name', placeholder = 'Name of the profile'}},
+                        ui.row{gap = 16, ui.icon{image = 'interface/themes/fantasy/icons/heart.png', size = 48, accessibilityLabel = 'Favorite'}, ui.label{text = 'A favorite sound, whose icon a screen reader names', color = 'textMuted', grow = 1}},
+                    },
+                },
             },
         },
         controls = {
@@ -70,7 +76,8 @@ function ScreenReader:enter()
             ui.button{text = 'Pick "Low"', onClick = function() self:act('Low', 'activate') end},
             ui.button{text = 'Announce a text', onClick = function() accessibility.announce('The profile was saved.') end},
             ui.sectionTitle{text = 'Elements'},
-            ui.table{id = 'elements', columns = {{text = 'Role', width = 170}, {text = 'Label'}, {text = 'Value', width = 160, align = 'end'}}},
+            ui.row{gap = 16, ui.label{text = 'Role', font = 'caption', color = 'textMuted', width = 140}, ui.label{text = 'Label', font = 'caption', color = 'textMuted', grow = 1}, ui.label{text = 'Value and state', font = 'caption', color = 'textMuted', width = 170, textAlign = 'end'}},
+            ui.column{id = 'elements', gap = 10, align = 'stretch'},
         },
         panelWidth = 720,
     }
@@ -88,21 +95,31 @@ function ScreenReader:exit()
     ScreenReader.super.exit(self)
 end
 
--- The table lists the elements again only when what they say changes.
+-- The list of elements builds again only when what they say changes, with every label whole on as many lines as it needs.
 function ScreenReader:update(dt)
     ScreenReader.super.update(self, dt)
     local elements = accessibility.elements()
-    local rows, lines = {}, {}
+    local lines = {}
     for index = 1, math.min(#elements, ScreenReader.shown) do
         local element = elements[index]
-        local value = describe(element)
-        rows[index] = {id = 'element-' .. index, cells = {ScreenReader.roles[element.role] or element.role, element.label, value}}
-        lines[index] = element.role .. element.label .. value
+        lines[index] = element.role .. element.label .. describe(element)
     end
     local listed = table.concat(lines, '|')
     if listed ~= self.listed then
         self.listed = listed
-        self:set('elements', {rows = rows})
+        local rows = {}
+        for index = 1, math.min(#elements, ScreenReader.shown) do
+            local element = elements[index]
+            if index > 1 then
+                rows[#rows + 1] = ui.divider{align = 'stretch'}
+            end
+            rows[#rows + 1] = ui.row{gap = 16, alignItems = 'start',
+                ui.label{text = ScreenReader.roles[element.role] or element.role, width = 140},
+                ui.label{text = element.label, grow = 1},
+                ui.label{text = describe(element), color = 'textMuted', width = 170, textAlign = 'end'},
+            }
+        end
+        self.gui:replaceChildren('elements', rows)
     end
     self:status(string.format('A screen reader reads %d elements, and "Play a sound" was pressed %d %s.', #elements, self.presses, self.presses == 1 and 'time' or 'times'))
 end

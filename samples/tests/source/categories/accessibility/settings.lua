@@ -113,8 +113,8 @@ function Settings:draw(area)
         graphics2d.drawShape(rect, {radius = 24, color = Test.surface, borderWidth = 2, borderColor = Test.line, layer = -1})
         Test.caption(lane.title, rect[1] + 32, rect[2] + 24, {size = 30, color = Test.ink})
         local skipped = index == 2 and reduced
-        local note = skipped and 'Jumps to the end' or 'Slides'
-        Test.caption(note, rect[1] + rect[3] - 32, rect[2] + 28, {size = 24, color = skipped and Test.warm or Test.muted, anchor = {1, 0}})
+        local note = skipped and 'Reduced motion is on, so it jumps to the end' or 'It slides all the way'
+        Test.caption(note, rect[1] + rect[3] - 32, rect[2] + 30, {size = 24, color = skipped and Test.warm or Test.muted, anchor = {1, 0}})
 
         local grooveY = rect[2] + rect[4] * 0.66
         local left, right = rect[1] + 80, rect[1] + rect[3] - 80
@@ -122,7 +122,7 @@ function Settings:draw(area)
         local progress = self[lane.target].x
         local x = left + (right - left) * progress
         graphics2d.drawShape({left - 12, grooveY - 9, x - left + 24, 18}, {radius = 9, color = lane.color})
-        graphics2d.drawEllipse(x, grooveY + 26, 34, 8, '#40000000')
+        graphics2d.drawShape({x - 24, grooveY - 2, 48, 10}, {kind = 'ellipse', color = '#55000000', softness = 4, layer = 1})
         local size = 84
         graphics2d.draw(self.icons[index], x, grooveY - size * 0.5 + 6, {width = size, height = size, layer = 2})
     end
