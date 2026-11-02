@@ -16,19 +16,15 @@ vortex:configure({alignToVelocity = true, stretch = 0.05, blend = 'additive'})
 vortex:configure({attractors = {{strength = 320, radius = 170, killRadius = 26}}})  -- Swallowed.
 vortex.position = {orb.x, orb.y}]]
 
--- The orb hovers above the cursor, like the light at the tip of a wand.
-Magic.hover = 170
-
 function Magic:init(entry)
     Magic.super.init(self, entry)
-    self.orb = {x = 0, y = -Magic.hover}
+    self.orb = {x = 0, y = 0}
     self.swirl = 240
     self.pull = 380
     self.vortex = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 180, lifetime = {1.4, 1.8}, speed = {0, 20}, spread = 6.2832, startSize = {16, 22}, endSize = 6, alignToVelocity = true, stretch = 0.05, colors = {'#00A060FF', '#E0B070FF', '#C060E0FF', '#0040C0FF'}, shape = 'ring', shapeSize = {240, 0}, attractors = {{strength = 320, radius = 170, killRadius = 26}}, blend = 'additive', maxParticles = 512, layer = 2, seed = 13}))
     self.stars = particles2d.newEmitter(ParticleTest.look('sparkle', {rate = 14, lifetime = {0.8, 1.2}, speed = {10, 40}, spread = 6.2832, startSize = {30, 46}, endSize = {30, 46}, colors = {'#FFFFFFFF', '#FFA0E8FF', '#00A0E8FF'}, shape = 'circle', shapeSize = {280, 0}, blend = 'additive', layer = 3, seed = 14}))
     self.core = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 40, lifetime = 0.5, speed = 0, startSize = {150, 170}, endSize = {190, 220}, colors = {'#00FFFFFF', '#70C090FF', '#00A060FF'}, blend = 'additive', layer = 1, seed = 15}))
     self.orbLook, self.swirlLook = ParticleTest.look('orb', {}), ParticleTest.look('swirl', {})
-    self.pointer.origin = {0.5, 0.6}
     self:shape()
 end
 
@@ -57,7 +53,7 @@ end
 function Magic:update(dt)
     Magic.super.update(self, dt)
     local follow = m.dampFactor(3, dt)
-    self.orb.x, self.orb.y = m.lerp(self.orb.x, self.cursorX, follow), m.lerp(self.orb.y, self.cursorY - Magic.hover, follow)
+    self.orb.x, self.orb.y = m.lerp(self.orb.x, self.cursorX, follow), m.lerp(self.orb.y, self.cursorY, follow)
     for _, emitter in ipairs({self.vortex, self.stars, self.core}) do
         emitter.position = {self.orb.x, self.orb.y}
         emitter:update(dt)

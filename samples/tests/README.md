@@ -255,7 +255,7 @@ Particle emitters from Lua tables, effect files and composite effects: weather, 
 | `PRT-005` | Snow | Two layers of flakes that drift and spin in the wind. |  |
 | `PRT-006` | Sparks | Sparks from the disc of a grinder at the cursor, thrown from a cone with gravity and damping, stretched along their motion and bouncing on the floor of a physics world. |  |
 | `PRT-007` | Trails | Trails in world space that follow the cursor and a comet. |  |
-| `PRT-008` | Magic | A swirling orb with radial and tangential acceleration and twinkling stars. |  |
+| `PRT-008` | Magic | A swirling orb that follows the cursor, with radial and tangential acceleration and twinkling stars. |  |
 | `PRT-009` | Confetti | Colored confetti that flips through frames as it falls. |  |
 | `PRT-010` | Fireworks | Rockets with trails that burst into colored stars. |  |
 | `PRT-011` | Emitter shapes | Point, circle, ring, rectangle and cone spawn areas side by side. |  |

@@ -11,7 +11,7 @@ return {
         {code = 'PRT-005', title = 'Snow', description = 'Two layers of flakes that drift and spin in the wind.', module = 'snow'},
         {code = 'PRT-006', title = 'Sparks', description = 'Sparks from the disc of a grinder, stretched along their motion, that bounce on the floor.', module = 'sparks'},
         {code = 'PRT-007', title = 'Trails', description = 'Trails in world space that follow the cursor and a comet.', module = 'trail'},
-        {code = 'PRT-008', title = 'Magic', description = 'A swirling orb with radial and tangential acceleration and twinkling stars.', module = 'magic'},
+        {code = 'PRT-008', title = 'Magic', description = 'A swirling orb that follows the cursor, with radial and tangential acceleration and twinkling stars.', module = 'magic'},
         {code = 'PRT-009', title = 'Confetti', description = 'Colored confetti that flips through frames as it falls.', module = 'confetti'},
         {code = 'PRT-010', title = 'Fireworks', description = 'Rockets with trails that burst into colored stars.', module = 'fireworks'},
         {code = 'PRT-011', title = 'Emitter shapes', description = 'Point, circle, ring, rectangle and cone spawn areas side by side.', module = 'shapes'},
