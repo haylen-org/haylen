@@ -26,6 +26,7 @@ local kSpeed = 150
 local kWalls = {{{-300, -250}, {-300, 100}}, {{100, -100}, {400, -100}}, {{0, 150}, {0, 380}}, {{-600, 0}, {-420, 0}}, {{450, 100}, {650, 250}}}
 local kRest = {{-650, -330}, {650, 330}}
 local kArena = {-780, -410, 1560, 820}
+local kGuards = 4
 
 local function moveToward(board, target, dt, speed)
     local offset = m.vec2(target[1], target[2]) - board.position
@@ -102,7 +103,7 @@ function BehaviorTree:enter()
         controls = {
             ui.button{id = 'tired', text = 'Tire every guard', onClick = function() self:tire() end},
             ui.button{id = 'reset', text = 'Reset the trees', onClick = function() self:build() end},
-            ui.formField{label = 'What each guard does', ui.label{id = 'states', text = '', font = 'monospace'}},
+            ui.formField{label = 'What each guard does', ui.column{gap = 14, children = BehaviorTree.guardRows()}},
         },
         focus = 'tired',
     }
@@ -111,15 +112,32 @@ function BehaviorTree:enter()
     local glow = graphics.newImage(128, 128)
     glow:fillGradient({kind = 'radial', stops = {{0, '#FFFFFFFF'}, {1, '#00FFFFFF'}}})
     self.glow = graphics.newTexture(glow, {filter = 'linear'})
+    self.shown = {}
     self:build()
+end
+
+-- Every guard has a line with its state and its shouts over a bar of its energy, which fit the panel at any width.
+function BehaviorTree.guardRows()
+    local rows = {}
+    for index = 1, kGuards do
+        rows[index] = ui.column{gap = 6,
+            ui.row{gap = 10,
+                ui.label{text = 'Guard ' .. index},
+                ui.label{id = 'state' .. index, text = '', color = 'textMuted', grow = 1},
+                ui.label{id = 'shouts' .. index, text = '', color = 'textMuted'},
+            },
+            ui.progress{id = 'energy' .. index, value = 0, tone = 'success'},
+        }
+    end
+    return rows
 end
 
 function BehaviorTree:build()
     local posts = {
-        {{-500, -300}, {-500, 250}, {-350, 250}},
-        {{-150, -330}, {250, -330}, {250, -180}},
+        {{-500, -290}, {-500, 250}, {-350, 250}},
+        {{-150, -290}, {250, -290}, {250, -160}},
         {{150, 50}, {350, 300}, {150, 320}},
-        {{500, -300}, {680, -60}, {520, 20}},
+        {{500, -290}, {680, -60}, {520, 20}},
     }
     self.guards = {}
     for index, route in ipairs(posts) do
@@ -141,19 +159,36 @@ function BehaviorTree:update(dt)
     end
     -- The intruder waits in the middle until the pointer comes over the play area.
     self.intruder = m.vec2(self:aim(-60, 20))
-    local lines = {'Guard  State           Energy  Shouts'}
+    local shouts = 0
     for index, guard in ipairs(self.guards) do
         guard.blackboard.player = self.intruder
         guard:tick(dt)
-        local board = guard.blackboard
-        lines[index + 1] = string.format('%-6d %-15s %5d%%  %6d', index, board.state, math.floor(board.energy * 100), board.shouts)
+        self:show(index, guard.blackboard)
+        shouts = shouts + guard.blackboard.shouts
     end
-    local states = table.concat(lines, '\n')
-    if states ~= self.states then
-        self.states = states
-        self:set('states', {text = states})
+    self:status(string.format('Each of the %d guards ticks a tree of %d nodes, and they have shouted %d %s.', #self.guards, self.guards[1].nodeCount, shouts, shouts == 1 and 'time' or 'times'))
+end
+
+-- Updates the line of a guard only when its state, its shouts or its energy in whole percents change.
+function BehaviorTree:show(index, board)
+    local energy = math.floor(board.energy * 100)
+    local shown = self.shown[index]
+    if shown == nil then
+        shown = {}
+        self.shown[index] = shown
     end
-    self:status(string.format('%d trees of %d nodes each', #self.guards, self.guards[1].nodeCount))
+    if shown.state ~= board.state then
+        shown.state = board.state
+        self:set('state' .. index, {text = board.state, color = board.state == 'Chasing' and 'dangerText' or 'textMuted'})
+    end
+    if shown.shouts ~= board.shouts then
+        shown.shouts = board.shouts
+        self:set('shouts' .. index, {text = board.shouts == 1 and '1 shout' or board.shouts .. ' shouts'})
+    end
+    if shown.energy ~= energy then
+        shown.energy = energy
+        self:set('energy' .. index, {value = board.energy, text = 'Energy ' .. energy .. '%', tone = board.energy < 0.3 and 'warning' or 'success'})
+    end
 end
 
 -- The guards walk a courtyard with walls and two campfires to rest at, each with a cone of sight that fades with distance and turns red while it chases.

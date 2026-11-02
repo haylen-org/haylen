@@ -23,6 +23,9 @@ local kColumns, kRows = 8, 5
 local kSpacing = {188, 158}
 local kHeavy = 4
 local kPickDistance = 50
+-- New roads start with a closed door and two heavy points, given as their column and row, so both show from the start.
+local kDoors = {{3, 2}}
+local kHeavyPoints = {{5, 1}, {1, 3}}
 
 function Waypoints:enter()
     self:frame{
@@ -31,6 +34,7 @@ function Waypoints:enter()
         controls = {
             ui.radioGroup{id = 'brush', items = {{id = 'start', text = 'Move the start'}, {id = 'goal', text = 'Move the goal'}, {id = 'door', text = 'Open or close a door'}, {id = 'weight', text = 'Make a point heavy'}}, selected = 'goal', onChange = function(event) self.brush = event.value end},
             ui.checkbox{id = 'costs', text = 'Show Dijkstra costs', checked = true, onChange = function(event) self.showCosts = event.checked end},
+            ui.label{text = 'Red points are closed doors, large brown points are heavy, arrows mark one-way roads and the numbers are the costs from the start.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'New roads', onClick = function() self:build() end},
         },
         focus = 'brush',
@@ -71,6 +75,12 @@ function Waypoints:build()
             end
         end
     end
+    for _, door in ipairs(kDoors) do
+        self.graph:setEnabled(id(door[1], door[2]), false)
+    end
+    for _, heavy in ipairs(kHeavyPoints) do
+        self.graph:setWeight(id(heavy[1], heavy[2]), kHeavy)
+    end
     self.start, self.goal = 1, kColumns * kRows
     self:search()
 end
@@ -107,7 +117,7 @@ function Waypoints:update(dt)
     for _ in pairs(self.distances) do
         reachable = reachable + 1
     end
-    self:status(string.format('%d points, %d reachable from the start, %s', self.graph.size, reachable, self.route and string.format('a route of %d points that costs %.0f', #self.route, self.cost) or 'and the route is blocked'))
+    self:status(string.format('Of the %d points, %d are reachable from the start, %s.', self.graph.size, reachable, self.route and string.format('and the route of %d points costs %.0f', #self.route, self.cost) or 'and the route to the goal is blocked'))
 end
 
 function Waypoints:draw(area)
@@ -145,7 +155,7 @@ function Waypoints:draw(area)
         end
         local cost = self.distances[point]
         if self.showCosts and cost and point ~= self.start and point ~= self.goal then
-            self.art:label(string.format('%.0f', cost), position.x, position.y - radius - 20, 20, '#FFE8EAF2', 6)
+            self.art:label(string.format('%.0f', cost), position.x, position.y - radius - 24, 26, '#FFE8EAF2', 6)
         end
     end
     local start, goal = graph:position(self.start), graph:position(self.goal)

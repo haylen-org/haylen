@@ -15,15 +15,16 @@ local Crowd = haylen.class('Crowd', AlgorithmTest)
 Crowd.code = [[
 local crowd = navigation2d.newCrowd({separation = 0.2, alignment = 0, cohesion = 0})
 crowd:addObstacle({{-40, -40}, {40, -40}, {40, 40}, {-40, 40}})
-local id = crowd:addAgent({x = -650, y = 120, radius = 9, maxSpeed = 120})
+local id = crowd:addAgent({x = -650, y = 120, radius = 12, maxSpeed = 120})
 crowd:setTarget(id, 650, 120)
 crowd:step(dt)  -- Moves every agent without overlaps.]]
 
-local kAgents = 360
-local kRadius = 9
+local kAgents = 300
+local kRadius = 12
 local kPillars = {{-250, -120}, {250, 120}, {0, 0}, {-250, 160}, {250, -160}}
 local kArena = {-770, -410, 1540, 820}
-local kWalls = {{-820, -460, 1640, 50}, {-820, 410, 1640, 50}, {-820, -460, 50, 920}, {770, -460, 50, 920}}
+-- The walls stand a little inside the rim of the arena, so the agents that crowd against them keep clear of it.
+local kWalls = {{-820, -460, 1640, 74}, {-820, 386, 1640, 74}, {-820, -460, 74, 920}, {746, -460, 74, 920}}
 
 function Crowd:enter()
     self:frame{
@@ -53,7 +54,7 @@ function Crowd:enter()
     for index = 1, kAgents do
         local left = index % 2 == 0
         local x = (left and -650 or 650) + self.random:range(-80, 80)
-        local y = self.random:range(-350, 350)
+        local y = self.random:range(-340, 340)
         self.agents[index] = {id = self.crowd:addAgent({x = x, y = y, radius = kRadius, maxSpeed = self.random:range(90, 140)}), left = left, angle = index / kAgents * math.pi * 2}
     end
     self.disc = {kind = 'ellipse', color = nil, borderWidth = 2, borderColor = '#FF15172A', layer = 1}
@@ -90,7 +91,7 @@ function Crowd:update(dt)
     profiler.beginScope('crowd')
     self.crowd:step(dt)
     profiler.endScope()
-    self:status(string.format('%d agents, stepped in %.3f ms', self.crowd.agentCount, self:timing('crowd')))
+    self:status(string.format('%d agents keep clear of each other, stepped in %s.', self.crowd.agentCount, AlgorithmTest.milliseconds(self:timing('crowd'))))
 end
 
 -- Each agent is a disc with a dark rim and a small arrow of its heading, in the color of the side it started on, among stone pillars on a floor with a rim.
@@ -109,9 +110,9 @@ function Crowd:draw(area)
         local speed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
         if speed > 5 then
             local dx, dy = velocity.x / speed, velocity.y / speed
-            arrow[1][1], arrow[1][2] = position.x + dx * 6, position.y + dy * 6
-            arrow[2][1], arrow[2][2] = position.x - dx * 3 - dy * 4, position.y - dy * 3 + dx * 4
-            arrow[3][1], arrow[3][2] = position.x - dx * 3 + dy * 4, position.y - dy * 3 - dx * 4
+            arrow[1][1], arrow[1][2] = position.x + dx * 8, position.y + dy * 8
+            arrow[2][1], arrow[2][2] = position.x - dx * 4 - dy * 5, position.y - dy * 4 + dx * 5
+            arrow[3][1], arrow[3][2] = position.x - dx * 4 + dy * 5, position.y - dy * 4 - dx * 5
             graphics2d.drawPolygon(arrow, '#FF15172A', {layer = 2})
         end
     end

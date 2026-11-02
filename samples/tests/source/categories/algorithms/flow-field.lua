@@ -116,7 +116,7 @@ function FlowField:update(dt)
     end
     self:request()
     self:move(dt)
-    self:status(string.format('%d units on %d cells, the last field took %s, toward the cell %s', #self.units, kColumns * kRows, self.latency and string.format('%.0f ms', self.latency) or 'a moment', self.goal and string.format('%d, %d', self.goal[1], self.goal[2]) or 'none yet'))
+    self:status(string.format('%d units walk %d cells, and the last field %s.', #self.units, kColumns * kRows, self.goal and string.format('toward the cell %d, %d took %s', self.goal[1], self.goal[2], self.latency and string.format('%.0f ms', self.latency) or 'a moment') or 'is still on its way'))
 end
 
 -- Every unit reads the direction of its cell and slides a little away from walls it touches.

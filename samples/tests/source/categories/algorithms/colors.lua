@@ -21,6 +21,8 @@ local ink = swatches.vibrant:contrastingColor()  -- Black or white, whichever re
 
 Colors.pictures = {{id = 'landscape', text = 'Island', path = 'interface/images/landscape.png'}, {id = 'planet', text = 'Planet', path = 'shaders/images/planet.png'}, {id = 'gems', text = 'Gems', path = 'sprites/atlases/gems.png'}}
 Colors.swatchNames = {'dominant', 'vibrant', 'darkVibrant', 'lightVibrant', 'muted', 'darkMuted', 'lightMuted'}
+-- The names of the swatches written for people on their cells.
+Colors.swatchTitles = {dominant = 'Dominant', vibrant = 'Vibrant', darkVibrant = 'Dark vibrant', lightVibrant = 'Light vibrant', muted = 'Muted', darkMuted = 'Dark muted', lightMuted = 'Light muted'}
 Colors.box = {width = 740, height = 380}
 Colors.left = -770
 Colors.gap = 60
@@ -73,7 +75,7 @@ function Colors:analyze()
     self.swatches = image:swatches()
     self.code = image:placeholder({columns = self.columns, rows = self.rows})
     self.blurred = graphics.newTexture(graphics.decodePlaceholder(self.code, 32, math.max(1, math.floor(32 / self.aspect))), {filter = 'linear'})
-    self:status(string.format('The placeholder "%s" holds %d characters, and the palette %d colors', self.code, #self.code, #self.palette))
+    self:status(string.format('The placeholder "%s" holds %d characters, and the palette %d colors.', self.code, #self.code, #self.palette))
 end
 
 function Colors:fit(x, y)
@@ -83,17 +85,17 @@ function Colors:fit(x, y)
 end
 
 function Colors:draw(area)
-    local left, top = Colors.left, -400
-    local picture = self:fit(left, top + 34)
-    Colors.caption('The picture', picture[1], top, {size = 24, color = Test.ink})
+    local left, top = Colors.left, -410
+    local picture = self:fit(left, top + 44)
+    Colors.caption('The picture', picture[1], top, {size = 30, color = Test.ink})
     graphics2d.drawShape(picture, {radius = 14, texture = self.texture})
-    local blurred = self:fit(left + Colors.box.width + Colors.gap, top + 34)
-    Colors.caption(string.format('Its placeholder of %d by %d cosines', self.columns, self.rows), blurred[1], top, {size = 24, color = Test.ink})
+    local blurred = self:fit(left + Colors.box.width + Colors.gap, top + 44)
+    Colors.caption(string.format('Its placeholder of %d by %d cosines', self.columns, self.rows), blurred[1], top, {size = 30, color = Test.ink})
     graphics2d.drawShape(blurred, {radius = 14, texture = self.blurred})
 
     -- The palette shows each color as wide as the share of the picture it stands for, on a strip as wide as the swatches under it.
-    local y = top + Colors.box.height + 92
-    Colors.caption('Its palette, each color as wide as its share', left, y - 36, {size = 22})
+    local y = top + Colors.box.height + 108
+    Colors.caption('Its palette, each color as wide as its share', left, y - 42, {size = 28})
     local x, total = left, 0
     for _, swatch in ipairs(self.palette) do
         total = total + swatch.population
@@ -105,22 +107,22 @@ function Colors:draw(area)
         x = x + width
     end
 
-    y = y + 112
-    Colors.caption('Its swatches, with text in the color that reads best and its contrast', left, y - 36, {size = 22})
+    y = y + 122
+    Colors.caption('Its swatches, with text in the color that reads best and its contrast', left, y - 42, {size = 28})
     local gap = 14
     local cellWidth = (Colors.width - gap * (#Colors.swatchNames - 1)) / #Colors.swatchNames
     for index, name in ipairs(Colors.swatchNames) do
         local color = self.swatches[name]
-        local cell = {left + (index - 1) * (cellWidth + gap), y, cellWidth, 128}
+        local cell = {left + (index - 1) * (cellWidth + gap), y, cellWidth, 136}
         local middle = cell[1] + cellWidth / 2
         if color then
             local text = color:contrastingColor()
             graphics2d.drawShape(cell, {radius = 12, color = color})
-            graphics2d.drawText(nil, name, middle, cell[2] + 44, {size = 24, color = text, anchor = {0.5, 0.5}, layer = 1})
-            graphics2d.drawText(nil, string.format('%.1f to 1', m.contrast(text, color)), middle, cell[2] + 86, {size = 22, color = text, anchor = {0.5, 0.5}, layer = 1})
+            graphics2d.drawText(nil, Colors.swatchTitles[name], middle, cell[2] + 48, {size = 28, color = text, anchor = {0.5, 0.5}, maxWidth = cellWidth - 16, wrap = false, minScale = 0.75, layer = 1})
+            graphics2d.drawText(nil, string.format('Contrast %.1f to 1', m.contrast(text, color)), middle, cell[2] + 94, {size = 24, color = text, anchor = {0.5, 0.5}, maxWidth = cellWidth - 16, wrap = false, minScale = 0.75, layer = 1})
         else
             graphics2d.drawShape(cell, {radius = 12, color = '#00000000', borderWidth = 2, borderColor = '#FF5A6A8A'})
-            graphics2d.drawText(nil, name .. '\nNone', middle, cell[2] + 64, {size = 22, color = '#FF8A9AB8', anchor = {0.5, 0.5}, align = 'center', layer = 1})
+            graphics2d.drawText(nil, Colors.swatchTitles[name] .. '\nNone', middle, cell[2] + 68, {size = 26, color = '#FF8A9AB8', anchor = {0.5, 0.5}, align = 'center', layer = 1})
         end
     end
 end

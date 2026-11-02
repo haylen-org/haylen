@@ -124,13 +124,13 @@ end
 function Spatial:detail()
     local structure = self.structure
     if self.kind == 'hash' then
-        return string.format('cell size %d', structure.cellSize)
+        return string.format('cells of %d units', structure.cellSize)
     elseif self.kind == 'quad' then
-        return string.format('quadrants %d', structure.nodeCount)
+        return string.format('%d quadrants', structure.nodeCount)
     elseif self.kind == 'aabb' then
-        return string.format('tree height %d', structure.height)
+        return string.format('a tree %d levels high', structure.height)
     end
-    return structure.built and 'built' or 'not built'
+    return structure.built and 'the tree built' or 'the tree not built yet'
 end
 
 function Spatial:update(dt)
@@ -159,7 +159,7 @@ function Spatial:update(dt)
     profiler.endScope()
 
     local structure = self.structure
-    self:status(string.format('%d boxes stored, %s, %d found, updated in %.3f ms and asked in %.3f ms', structure.size, self:detail(), #self.found, self:timing('spatialUpdate'), self:timing('spatialQuery')))
+    self:status(string.format('%d boxes are stored with %s, and the query found %d, updated in %s and asked in %s.', structure.size, self:detail(), #self.found, AlgorithmTest.milliseconds(self:timing('spatialUpdate')), AlgorithmTest.milliseconds(self:timing('spatialQuery'))))
 end
 
 function Spatial:draw(area)

@@ -136,7 +136,7 @@ function NavMesh:update(dt)
         self:apply(self.pointer.worldX, self.pointer.worldY)
     end
     self:walk(dt)
-    self:status(string.format('%d triangles, %d obstacles, built first in %.0f ms, a query of %.3f ms, %s', self.mesh.triangleCount, self.mesh.obstacleCount, self.buildLatency or 0, self:timing('navmesh'), self.path and string.format('a path of %d corners, %.0f long', #self.path, self.length) or 'no path'))
+    self:status(string.format('The mesh has %d triangles around %d obstacles and was built first in %.0f ms, and a query of %s %s.', self.mesh.triangleCount, self.mesh.obstacleCount, self.buildLatency or 0, AlgorithmTest.milliseconds(self:timing('navmesh')), self.path and string.format('found a path of %d corners, %.0f long', #self.path, self.length) or 'found no path'))
 end
 
 function NavMesh:walk(dt)
@@ -158,10 +158,13 @@ function NavMesh:walk(dt)
     end
 end
 
--- The walls around the boundary are dark rock, the floor inside it lighter, and the obstacles stand on it with a dark rim.
+-- The rock around the boundary is dark, with a wall along the boundary that also runs around the block of rock jutting in from the bottom, the floor inside it is lighter, and the obstacles stand on it with a dark rim.
 function NavMesh:draw(area)
     graphics2d.drawShape({-790, -450, 1580, 900}, {radius = 18, color = '#FF1A1F2C', layer = -2})
     graphics2d.drawPolygon(kBoundary, '#FF2E3A52', {layer = -1})
+    self.boundaryStroke = self.boundaryStroke or NavMesh.flat(kBoundary)
+    graphics2d.drawStroke(self.boundaryStroke, {width = 16, color = '#FF15172A', closed = true, join = 'round', layer = 2})
+    graphics2d.drawStroke(self.boundaryStroke, {width = 9, color = '#FF8D97B5', closed = true, join = 'round', layer = 2})
     for _, rock in ipairs(self.rocks) do
         graphics2d.drawPolygon(rock, '#FF7C86A3', {layer = 2})
         graphics2d.drawStroke(NavMesh.flat(rock), {width = 4, color = '#FF15172A', closed = true, join = 'round', layer = 2})

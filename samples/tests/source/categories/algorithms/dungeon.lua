@@ -70,7 +70,7 @@ function Dungeon:update(dt)
         self:change('seed', self.options.seed + 1)
     end
     local dungeon = self.dungeon
-    self:status(self.failure or string.format('%d rooms joined by %d corridors, made in %.0f ms', dungeon and #dungeon.rooms or 0, dungeon and #dungeon.connections or 0, self.latency or 0))
+    self:status(self.failure or string.format('%d rooms are joined by %d corridors, made in %.0f ms.', dungeon and #dungeon.rooms or 0, dungeon and #dungeon.connections or 0, self.latency or 0))
 end
 
 -- Rooms have floors of stone slabs and corridors of packed earth, and only the walls that touch a floor show their bricks, so the dungeon reads like a map.
@@ -117,7 +117,8 @@ function Dungeon:draw(area)
     if dungeon == nil then
         return
     end
-    graphics2d.drawShape({board.left - 6, board.top - 6, board.width + 12, board.height + 12}, {radius = 10, color = '#FF10131B', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
+    -- The frame keeps a margin around the map, so rooms on its edges never touch it.
+    graphics2d.drawShape({board.left - 22, board.top - 22, board.width + 44, board.height + 44}, {radius = 14, color = '#FF10131B', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
     self.tiles:draw({layer = 0})
     if self.showLinks then
         for _, link in ipairs(dungeon.connections) do

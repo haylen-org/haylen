@@ -102,7 +102,7 @@ end
 
 function OverlapBoxes:update(dt)
     OverlapBoxes.super.update(self, dt)
-    self:status(string.format('%d fighters, %d hits so far', kFighters, self.hits))
+    self:status(string.format('%d fighters have landed %d %s so far.', kFighters, self.hits, self.hits == 1 and 'hit' or 'hits'))
 end
 
 -- The fighters stand on a belt of rows painted on the floor, the lower ones in front, with the boxes of the overlap world over them when they are on.

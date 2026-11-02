@@ -51,6 +51,14 @@ function AlgorithmTest:aim(x, y)
     return x, y
 end
 
+-- Writes milliseconds with the tenth of a millisecond that every platform measures, since the timer of a browser only counts in tenths, and a time under it as such.
+function AlgorithmTest.milliseconds(value)
+    if value < 0.05 then
+        return 'under 0.1 ms'
+    end
+    return string.format('%.1f ms', value)
+end
+
 function AlgorithmTest:renderUi()
     self.pointer:draw()
 end

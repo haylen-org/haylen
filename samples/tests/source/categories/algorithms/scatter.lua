@@ -108,7 +108,7 @@ function Scatter:update(dt)
     for _, point in ipairs(self.points) do
         counts[point.type] = counts[point.type] + 1
     end
-    self:status(string.format('%d points, %d trees, %d bushes, %d rocks and %d flowers, scattered in %.0f ms', #self.points, counts[1], counts[2], counts[3], counts[4], self.latency or 0))
+    self:status(string.format('%d points, %d trees, %d bushes, %d rocks and %d flowers, scattered in %.0f ms.', #self.points, counts[1], counts[2], counts[3], counts[4], self.latency or 0))
 end
 
 -- The island lies in the sea with a beach around it, its lakes have a sandy shore, the village is a cottage, and the objects stand in rows from the back to the front.

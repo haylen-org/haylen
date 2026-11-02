@@ -28,11 +28,13 @@ local kPlaces = {
     play = {x = -480, y = 250, cell = 2, label = 'Park'},
     work = {x = 480, y = 250, cell = 3, label = 'Field'},
 }
--- The spots stand in two rows, and the back row sits between the villagers of the front one, so no bars of needs cover each other.
+-- The spots stand in two rows, and the back row sits between the villagers of the front one.
 local kSpots = {{-60, 40}, {60, 40}, {-180, 40}, {180, 40}, {0, 130}, {-120, 130}, {120, 130}, {240, 130}}
 local kNeeds = {eat = 'hunger', sleep = 'tiredness', play = 'boredom'}
 local kOptions = {eat = 'Eat', sleep = 'Sleep', play = 'Play', work = 'Work'}
-local kNeedColors = {hunger = '#FFFFA44D', tiredness = '#FF9B7BE8', boredom = '#FF2FB3C4'}
+local kNeedNames = {hunger = 'Hunger', tiredness = 'Tiredness', boredom = 'Boredom'}
+-- The bars over the chosen villager take the colors of the tones of its bars in the panel.
+local kNeedTones = {hunger = 'warning', tiredness = 'accent', boredom = 'information'}
 local kTeams = {'blue', 'red', 'green', 'gold', 'violet', 'teal', 'blue', 'red'}
 local kHeight = 128
 -- Dirt paths join the places through the square in the middle of the village.
@@ -61,8 +63,12 @@ function Utility:enter()
         controls = {
             ui.button{id = 'hungry', text = 'Make everyone hungry', onClick = function() self:everyone('hunger') end},
             ui.button{id = 'bored', text = 'Make everyone bored', onClick = function() self:everyone('boredom') end},
-            ui.formField{label = 'Scores of the chosen villager', ui.label{id = 'scores', text = '', font = 'monospace'}},
-            ui.label{text = 'The bars over every villager show hunger in orange, tiredness in violet and boredom in cyan.', color = 'textMuted', font = 'caption'},
+            ui.formField{label = 'Needs of the chosen villager', ui.column{gap = 8,
+                ui.progress{id = 'hunger', value = 0, tone = kNeedTones.hunger},
+                ui.progress{id = 'tiredness', value = 0, tone = kNeedTones.tiredness},
+                ui.progress{id = 'boredom', value = 0, tone = kNeedTones.boredom},
+            }},
+            ui.formField{label = 'Scores of its options', ui.table{id = 'scores', columns = {{text = 'Option'}, {text = 'Score', width = 100, align = 'end'}}, rows = {}}},
         },
         focus = 'hungry',
     }
@@ -76,6 +82,7 @@ function Utility:enter()
         self.villagers[index] = {x = self.random:range(-260, 260), y = self.random:range(-60, 160), hunger = self.random:nextFloat() * 0.6, tiredness = self.random:nextFloat() * 0.6, boredom = self.random:nextFloat() * 0.6, team = kTeams[index], facing = 1}
     end
     self.selected = self.villagers[1]
+    self.shown = {}
 end
 
 -- Gives a villager the first spot in front of its place that no other villager there holds, so they never stand on each other.
@@ -154,16 +161,29 @@ function Utility:update(dt)
         end
     end
     local villager = self.selected
-    local lines = {}
-    for _, option in ipairs(self.brain.options) do
-        lines[#lines + 1] = string.format('%-6s %4.2f', kOptions[option], self.brain:score(option, villager))
+    self:showChosen(villager)
+    self:status(string.format('The chosen villager is %d%% hungry, %d%% tired and %d%% bored, and goes to %s.', math.floor(villager.hunger * 100), math.floor(villager.tiredness * 100), math.floor(villager.boredom * 100), villager.task and kOptions[villager.task]:lower() or 'choose'))
+end
+
+-- Shows the needs of the chosen villager in whole percents and the scores of its options, with the option it took highlighted, updating the panel only when they change.
+function Utility:showChosen(villager)
+    for need, name in pairs(kNeedNames) do
+        local percent = math.floor(villager[need] * 100)
+        if self.shown[need] ~= percent then
+            self.shown[need] = percent
+            self:set(need, {value = villager[need], text = name .. ' ' .. percent .. '%'})
+        end
     end
-    local scores = table.concat(lines, '\n')
-    if scores ~= self.scores then
-        self.scores = scores
-        self:set('scores', {text = scores})
+    local rows, key = {}, villager.task or ''
+    for index, option in ipairs(self.brain.options) do
+        local score = string.format('%.2f', self.brain:score(option, villager))
+        rows[index] = {id = option, cells = {kOptions[option], score}}
+        key = key .. score
     end
-    self:status(string.format('The chosen villager is %.2f hungry, %.2f tired and %.2f bored, and goes to %s', villager.hunger, villager.tiredness, villager.boredom, villager.task and kOptions[villager.task]:lower() or 'choose'))
+    if key ~= self.shown.scores then
+        self.shown.scores = key
+        self:set('scores', {rows = rows, selected = villager.task})
+    end
 end
 
 -- Things lower in the village draw in front, so a layer follows the line a thing stands on.
@@ -195,16 +215,20 @@ function Utility:draw(area)
         local depth = Utility.depth(y)
         Art.shadow(x, y, 54, depth - 1)
         self.art:character(x, y - bob, kHeight, villager.team, depth, villager.facing < 0)
-        if villager == self.selected then
-            graphics2d.drawShape({x - 36, y - 11, 72, 22}, {kind = 'ellipse', color = '#00000000', borderWidth = 4, borderColor = '#FFFFC93C', layer = depth})
-        end
-        for index, need in ipairs({'hunger', 'tiredness', 'boredom'}) do
-            local top = y - kHeight - 36 + (index - 1) * 12
-            graphics2d.drawShape({x - 28, top, 56, 9}, {radius = 4.5, color = '#D0151824', layer = 2001})
-            if villager[need] > 0.02 then
-                graphics2d.drawShape({x - 28, top, math.max(9, 56 * villager[need]), 9}, {radius = 4.5, color = kNeedColors[need], layer = 2002})
-            end
-        end
+    end
+    self:drawChosen(self.selected)
+end
+
+-- The chosen villager stands on a gold ring and carries its three needs as bars on a plate over its head, above everything else.
+function Utility:drawChosen(villager)
+    local x, y = villager.x, villager.y
+    graphics2d.drawShape({x - 36, y - 11, 72, 22}, {kind = 'ellipse', color = '#00000000', borderWidth = 4, borderColor = '#FFFFC93C', layer = Utility.depth(y)})
+    local top = y - kHeight - 62
+    graphics2d.drawShape({x - 44, top, 88, 54}, {radius = 12, color = '#E0151824', borderWidth = 3, borderColor = '#FFFFC93C', layer = 2001})
+    for index, need in ipairs({'hunger', 'tiredness', 'boredom'}) do
+        local bar = top + 9 + (index - 1) * 13
+        graphics2d.drawShape({x - 32, bar, 64, 10}, {radius = 5, color = '#FF2C3147', layer = 2002})
+        graphics2d.drawShape({x - 32, bar, math.max(10, 64 * villager[need]), 10}, {radius = 5, color = ui.themeColor(kNeedTones[need]), layer = 2003})
     end
 end
 

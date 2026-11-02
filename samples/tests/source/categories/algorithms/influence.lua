@@ -25,8 +25,13 @@ local x, y = red:findLowest(unit.x, unit.y, 150)  -- The safest cell nearby.]]
 local kColumns, kRows, kCell = 64, 34, 23
 local kOrigin = {-kColumns * kCell / 2, -kRows * kCell / 2}
 local kSpeed = 70
--- Units keep this far inside the map, so they never stand on its edge.
-local kMargin = 60
+-- Units keep this far inside the map on its sides and its bottom, and farther from its top, which their heads reach toward, so they never touch its frame.
+local kMargin = 70
+local kTopMargin = 130
+-- Influence below this counts as none, so a unit only chases or flees a real threat, and the faint rim of an area fades out instead of stepping from cell to cell.
+local kFaint = 0.05
+-- With no threat in reach, a unit marches toward the front, this far from the middle on its own side.
+local kFront = 140
 local kTeams = {blue = {color = '#FF42A5F5', sign = 1}, red = {color = '#FFEF5350', sign = -1}}
 
 function Influence:enter()
@@ -55,7 +60,7 @@ function Influence:build()
     for index = 1, 30 do
         local team = index % 2 == 0 and 'blue' or 'red'
         local x = (team == 'blue' and -500 or 500) + self.random:range(-150, 150)
-        self.units[index] = {team = team, x = x, y = self.random:range(-300, 320), strength = self.random:range(0.6, 1.4), facing = team == 'blue' and 1 or -1}
+        self.units[index] = {team = team, x = x, y = self.random:range(kOrigin[2] + kTopMargin, -kOrigin[2] - kMargin), strength = 0.7 + (index % 7) * 0.1, facing = team == 'blue' and 1 or -1}
     end
     self:think()
 end
@@ -86,10 +91,14 @@ function Influence:think()
         local tx, ty
         if advantage > -0.1 then
             tx, ty = enemy:findHighest(unit.x, unit.y, 400)
-        else
+        elseif enemy:sample(unit.x, unit.y) > kFaint then
             tx, ty = enemy:findLowest(unit.x, unit.y, 150)
         end
-        unit.target = tx and {tx, ty} or nil
+        -- A unit with no enemy worth chasing in reach marches toward the front on the line it stands on.
+        if tx == nil or (advantage > -0.1 and enemy:sample(tx, ty) < kFaint) then
+            tx, ty = -sign * kFront, unit.y
+        end
+        unit.target = {tx, ty}
     end
     self:paint(self.balance:values())
 end
@@ -97,13 +106,27 @@ end
 -- Blue shades where blue is stronger and red shades where red is, blending smoothly between the cells.
 function Influence:paint(values)
     self.picture = picture.cells(kColumns, kRows, function(column, row)
-        local value = m.clamp(values[row * kColumns + column + 1] * 0.6, -1, 1)
-        local level = math.abs(value)
+        local value = m.clamp(Influence.blurred(values, column, row) * 0.6, -1, 1)
+        local level = math.max(0, math.abs(value) - kFaint) / (1 - kFaint)
         if value >= 0 then
             return m.color(0.10, 0.14 + level * 0.25, 0.20 + level * 0.6):toHex()
         end
         return m.color(0.14 + level * 0.65, 0.12, 0.16):toHex()
     end, true)
+end
+
+-- The average of a cell and the eight around it, which softens the rim of every area.
+function Influence.blurred(values, column, row)
+    local sum, count = 0, 0
+    for dy = -1, 1 do
+        for dx = -1, 1 do
+            local x, y = column + dx, row + dy
+            if x >= 0 and y >= 0 and x < kColumns and y < kRows then
+                sum, count = sum + values[y * kColumns + x + 1], count + 1
+            end
+        end
+    end
+    return sum / count
 end
 
 function Influence:update(dt)
@@ -124,9 +147,9 @@ function Influence:update(dt)
             end
         end
         unit.x = m.clamp(unit.x, kOrigin[1] + kMargin, -kOrigin[1] - kMargin)
-        unit.y = m.clamp(unit.y, kOrigin[2] + kMargin * 1.5, -kOrigin[2] - kMargin * 0.3)
+        unit.y = m.clamp(unit.y, kOrigin[2] + kTopMargin, -kOrigin[2] - kMargin)
     end
-    self:status(string.format('%d units on %d cells, stamped and spread in %.3f ms', #self.units, kColumns * kRows, self:timing('influence')))
+    self:status(string.format('%d units stamp their influence on %d cells, spread in %s.', #self.units, kColumns * kRows, AlgorithmTest.milliseconds(self:timing('influence'))))
 end
 
 function Influence:draw(area)

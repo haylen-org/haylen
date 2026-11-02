@@ -22,6 +22,8 @@ local cell = mesh:findNearest({120, 40})  -- The cell that holds a position.]]
 
 local kBounds = {-740, -400, 1480, 800}
 local kGlide = 0.35
+-- Points keep this far inside the bounds, so none sits on the frame.
+local kInset = 36
 
 function Voronoi:enter()
     self:frame{
@@ -43,7 +45,7 @@ end
 function Voronoi:scatter()
     self.points = {}
     for index = 1, 70 do
-        self.points[index] = {self.random:range(kBounds[1], kBounds[1] + kBounds[3]), self.random:range(kBounds[2], kBounds[2] + kBounds[4])}
+        self.points[index] = {self.random:range(kBounds[1] + kInset, kBounds[1] + kBounds[3] - kInset), self.random:range(kBounds[2] + kInset, kBounds[2] + kBounds[4] - kInset)}
     end
     self.moves, self.relaxations = nil, 0
     self:rebuild()
@@ -103,10 +105,10 @@ function Voronoi:update(dt)
     if self.moves then
         self:glide(dt)
     elseif self.pointer.pressed then
-        self.points[#self.points + 1] = {self.pointer.worldX, self.pointer.worldY}
+        self.points[#self.points + 1] = {m.clamp(self.pointer.worldX, kBounds[1] + kInset, kBounds[1] + kBounds[3] - kInset), m.clamp(self.pointer.worldY, kBounds[2] + kInset, kBounds[2] + kBounds[4] - kInset)}
         self:rebuild()
     end
-    self:status(string.format('%d points, %d triangles, %d relaxations, triangulated in %.3f ms', #self.points, #self.mesh.triangles // 3, self.relaxations, self:timing('delaunay')))
+    self:status(string.format('%d points make %d triangles after %d relaxations, triangulated in %s.', #self.points, #self.mesh.triangles // 3, self.relaxations, AlgorithmTest.milliseconds(self:timing('delaunay'))))
 end
 
 function Voronoi:draw(area)

@@ -1,4 +1,4 @@
--- The paint bucket of `spatial2d.floodFill`, the connected regions of `spatial2d.components` and a union-find that joins islands with bridges.
+-- The paint bucket of `spatial2d.floodFill`, the connected regions of `spatial2d.components` and a union-find that joins islands with bridges, on islands smoothed from noise whose coasts, traced by marching squares, draw a beach and a line of foam.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -24,6 +24,8 @@ local kColumns, kRows, kCell = 64, 34, 23
 -- The bucket paints the painted terrain of the Tiled tests: water around grass islands, and sand, flowers or dirt.
 local kTerrains = {[0] = 'water', 'grass', 'sand', 'flowers', 'dirt'}
 local kWater = '#FF2A8FB0'
+-- Islands smaller than this many cells sink, so no speck of land is left alone in the sea.
+local kSmallest = 8
 
 function FloodFill:enter()
     self:frame{
@@ -49,15 +51,99 @@ function FloodFill:enter()
 end
 
 function FloodFill:build()
-    self.grid = spatial2d.newCellGrid(kColumns, kRows)
     local noise = m.noise(self.random:integer(1, 9999))
+    local land = {}
     for row = 0, kRows - 1 do
         for column = 0, kColumns - 1 do
-            self.grid:set(column, row, noise:fractal(column / 10, row / 10, 3) > 0.15 and 1 or 0)
+            land[row * kColumns + column] = noise:fractal(column / 10, row / 10, 3) > 0.15
         end
     end
+    -- Two passes of the majority of the nine cells around each cell round the coasts off, and small islands sink.
+    for _ = 1, 2 do
+        land = FloodFill.smoothed(land)
+    end
+    self.grid = spatial2d.newCellGrid(kColumns, kRows)
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            self.grid:set(column, row, land[row * kColumns + column] and 1 or 0)
+        end
+    end
+    self:sinkSmallIslands()
+    self:traceCoasts()
     self.bridges = {}
     self:analyze()
+end
+
+-- Returns the land of a map where each cell takes what most of the nine cells around it are, with the edges of the map counted as water.
+function FloodFill.smoothed(land)
+    local result = {}
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            local count = 0
+            for dy = -1, 1 do
+                for dx = -1, 1 do
+                    local x, y = column + dx, row + dy
+                    if x >= 0 and y >= 0 and x < kColumns and y < kRows and land[y * kColumns + x] then
+                        count = count + 1
+                    end
+                end
+            end
+            result[row * kColumns + column] = count >= 5
+        end
+    end
+    return result
+end
+
+function FloodFill:sinkSmallIslands()
+    local labels, count = spatial2d.components(self.grid, {background = 0})
+    local sizes = {}
+    for label = 1, count do
+        sizes[label] = 0
+    end
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            local label = labels:get(column, row)
+            if label > 0 then
+                sizes[label] = sizes[label] + 1
+            end
+        end
+    end
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            local label = labels:get(column, row)
+            if label > 0 and sizes[label] < kSmallest then
+                self.grid:set(column, row, 0)
+            end
+        end
+    end
+end
+
+-- The coasts pass between the centers of land and water cells, and the foam runs a little out at sea.
+function FloodFill:traceCoasts()
+    local values = {}
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            values[#values + 1] = self.grid:get(column, row) ~= 0 and 1 or 0
+        end
+    end
+    local origin = {self.board.left + kCell / 2, self.board.top + kCell / 2}
+    local coasts = m.marchingSquares.trace(values, kColumns, kRows, {threshold = 0.5, spacing = kCell, origin = origin})
+    self.coasts, self.foam = {}, {}
+    for index, coast in ipairs(coasts) do
+        self.coasts[index] = FloodFill.flat(coast)
+    end
+    for index, line in ipairs(m.polygon.offset(coasts, kCell * 0.5)) do
+        self.foam[index] = FloodFill.flat(line)
+    end
+end
+
+function FloodFill.flat(points)
+    local flat = {}
+    for _, point in ipairs(points) do
+        flat[#flat + 1] = point.x
+        flat[#flat + 1] = point.y
+    end
+    return flat
 end
 
 -- Numbers the islands and starts a union-find with one set per island.
@@ -137,17 +223,28 @@ function FloodFill:update(dt)
             self:apply(column, row)
         end
     end
-    self:status(string.format('%d islands in %d sets after the bridges, the last fill painted %d cells in %.3f ms, regions in %.3f ms', self.count, self.sets.setCount, self.filled or 0, self:timing('floodFill'), self:timing('regions')))
+    self:status(string.format('%d islands make %d sets after the bridges, the last fill painted %d cells in %s, and the regions took %s.', self.count, self.sets.setCount, self.filled or 0, AlgorithmTest.milliseconds(self:timing('floodFill')), AlgorithmTest.milliseconds(self:timing('regions'))))
 end
 
 function FloodFill:draw(area)
     local board = self.board
     graphics2d.drawShape({board.left - 6, board.top - 6, board.width + 12, board.height + 12}, {radius = 10, color = '#FF151A24', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
+    graphics2d.pushClip(board:bounds())
     if self.tool == 'bucket' then
         self.terrain:draw({layer = 0})
+        for _, line in ipairs(self.foam) do
+            graphics2d.drawStroke(line, {width = 5, color = '#C8E8FBFF', closed = true, join = 'round', layer = 1})
+        end
+        for _, coast in ipairs(self.coasts) do
+            graphics2d.drawStroke(coast, {width = kCell * 0.8, color = '#FFE9CF8C', closed = true, join = 'round', layer = 1})
+        end
     else
         board:drawPicture(self.picture)
+        for _, coast in ipairs(self.coasts) do
+            graphics2d.drawStroke(coast, {width = 3, color = '#FF15172A', closed = true, join = 'round', layer = 1})
+        end
     end
+    graphics2d.popClip()
     -- A bridge is a plank road between the two islands it joins.
     for _, bridge in ipairs(self.bridges) do
         local x1, y1 = board:center(bridge[1], bridge[2])

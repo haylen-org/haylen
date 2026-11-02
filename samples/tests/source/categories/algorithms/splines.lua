@@ -73,7 +73,7 @@ function Splines:update(dt)
         self:rebuild()
     end
     self.traveled = (self.traveled + kSpeed * dt) % self.spline.length
-    self:status(string.format('A "%s" curve of %d segments, %.0f long, with %d even samples', self.spline.kind, self.spline.segmentCount, self.spline.length, #self.samples))
+    self:status(string.format('The "%s" curve has %d segments, is %.0f units long and holds %d even samples.', self.spline.kind, self.spline.segmentCount, self.spline.length, #self.samples))
 end
 
 function Splines:draw(area)

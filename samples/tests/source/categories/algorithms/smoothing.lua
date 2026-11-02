@@ -104,7 +104,7 @@ function Smoothing:update(dt)
         self.carry = self.carry - 1 / Smoothing.rate
         self:sample()
     end
-    self:status(string.format('Noise %.2f, spikes %s, %d samples at %d per second', self.noise, self.spikes and 'on' or 'off', #self.measured, Smoothing.rate))
+    self:status(string.format('The wave holds %d samples at %d per second, with a noise of %.2f and %s.', #self.measured, Smoothing.rate, self.noise, self.spikes and 'spikes' or 'no spikes'))
 end
 
 -- Turns a history into the flat points of a row whose middle is `middle` and which draws `scale` units for a value of 1.

@@ -105,7 +105,7 @@ function Caves:update(dt)
         self.dirty, self.wait = false, kRegenerateDelay
         self:generate()
     end
-    self:status(string.format('%d caves with %d open cells of %d, grown in %.0f ms', self.count or 0, self.open or 0, kColumns * kRows, self.latency or 0))
+    self:status(string.format('The worker thread grew %d caves with %d open cells of %d in %.0f ms.', self.count or 0, self.open or 0, kColumns * kRows, self.latency or 0))
 end
 
 function Caves:draw(area)

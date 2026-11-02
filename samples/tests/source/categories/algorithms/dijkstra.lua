@@ -143,7 +143,7 @@ function Dijkstra:update(dt)
         self.player = {column, row}
         self:plan()
     end
-    self:status(string.format('Both maps in %.3f ms, the adventurer at %d, %d, where the chase map holds %.1f', self:timing('dijkstraMaps'), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
+    self:status(string.format('Both maps took %s, and the adventurer stands at %d, %d, where the chase map holds %.1f.', AlgorithmTest.milliseconds(self:timing('dijkstraMaps')), self.player[1], self.player[2], self.chase:value(self.player[1], self.player[2])))
 end
 
 function Dijkstra:draw(area)

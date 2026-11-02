@@ -160,7 +160,7 @@ function Hpa:update(dt)
     for index, search in ipairs(kSearches) do
         self.results[index].milliseconds = self:timing(search.scope)
     end
-    self:status(string.format('Entrances between clusters %d, built in %.2f ms, last stroke rebuilt in %.2f ms', self.router.nodeCount, self:timing('hpaBuild'), self:timing('hpaUpdate')))
+    self:status(string.format('The clusters have %d entrances, built in %s, and the last stroke rebuilt them in %s.', self.router.nodeCount, AlgorithmTest.milliseconds(self:timing('hpaBuild')), AlgorithmTest.milliseconds(self:timing('hpaUpdate'))))
 end
 
 function Hpa:draw(area)
@@ -196,7 +196,7 @@ function Hpa:drawLegend()
         local y = card.y + 250 + (index - 1) * 150
         graphics2d.drawLine(left, y + 22, left + 64, y + 22, search.width, search.color, {layer = 1})
         graphics2d.drawText(nil, search.name, left + 92, y, {size = 30, layer = 1})
-        local summary = result.path and string.format('%d cells, cost %.0f, %.2f ms', #result.path, result.cost, result.milliseconds or 0) or 'No path between the flags.'
+        local summary = result.path and string.format('%d cells, a cost of %.0f, in %s', #result.path, result.cost, AlgorithmTest.milliseconds(result.milliseconds or 0)) or 'No path between the flags.'
         graphics2d.drawText(nil, summary, left + 92, y + 44, {size = 24, color = '#FFAAB4CC', layer = 1})
     end
     graphics2d.drawText(nil, string.format('The map has %d clusters of %d by %d cells.', (kSize // kClusterSize) * (kSize // kClusterSize), kClusterSize, kClusterSize), left, card.y + card.height - 64, {size = 22, color = '#FF7A8099', maxWidth = card.width - 72, layer = 1})

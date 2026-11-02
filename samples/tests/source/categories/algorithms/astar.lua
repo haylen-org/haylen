@@ -141,9 +141,9 @@ function AStar:update(dt)
     local times = {}
     for _, panel in ipairs(self.panels) do
         panel.milliseconds = self:timing(panel.scope)
-        times[#times + 1] = string.format('%s %.3f ms', panel.name, panel.path and panel.milliseconds or 0)
+        times[#times + 1] = string.format('%s in %s', panel.name, AlgorithmTest.milliseconds(panel.path and panel.milliseconds or 0))
     end
-    self:status(table.concat(times, ', '))
+    self:status('The searches took ' .. table.concat(times, ', ', 1, #times - 1) .. ' and ' .. times[#times] .. '.')
 end
 
 function AStar:draw(area)
@@ -157,7 +157,7 @@ function AStar:draw(area)
         self.art:start(sx, sy + kCell * 0.4, 34, 10)
         self.art:goal(gx, gy + kCell * 0.4, 34, 10)
         graphics2d.drawText(nil, panel.name, panel.x, board.top - 18, {size = 32, anchor = {0.5, 1}})
-        local summary = panel.note or (panel.path and string.format('%d cells, cost %.1f, %.3f ms', #panel.path, panel.cost, panel.milliseconds) or 'No path between the flags')
+        local summary = panel.note or (panel.path and string.format('%d cells, a cost of %.1f, in %s', #panel.path, panel.cost, AlgorithmTest.milliseconds(panel.milliseconds)) or 'No path between the flags')
         graphics2d.drawText(nil, summary, panel.x, board.top + board.height + 16, {size = 24, color = '#FFAAB4CC', anchor = {0.5, 0}, align = 'center', maxWidth = board.width + 40})
     end
 end

@@ -140,8 +140,8 @@ function Poisson:update(dt)
         self.dirty, self.wait = false, kResampleDelay
         self:sample()
     end
-    local timing = self.latency and string.format('worker thread %.0f ms', self.latency) or string.format('function "poissonDisk" %.1f ms', self:timing('poissonDisk'))
-    self:status(string.format('%d points spaced from %d to %d, %s', #self.points, kNearest, kFarthest, timing))
+    local timing = self.latency and string.format('on a worker thread in %.0f ms', self.latency) or string.format('by the function "poissonDisk" in %s', AlgorithmTest.milliseconds(self:timing('poissonDisk')))
+    self:status(string.format('%d points spaced from %d to %d units apart were placed %s.', #self.points, kNearest, kFarthest, timing))
 end
 
 function Poisson:draw(area)

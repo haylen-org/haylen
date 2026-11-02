@@ -105,7 +105,7 @@ function Polygons:update(dt)
         self.center = {self.pointer.worldX, self.pointer.worldY}
         self:combine()
     end
-    self:status(string.format('Outlines %d, area %.0f square units, convex pieces %d, combined in %.3f ms', #self.result, m.polygon.area(self.result), #self.pieces, self:timing('polygonBooleans')))
+    self:status(string.format('The result has %d outlines, an area of %.0f square units and %d convex pieces, combined in %s.', #self.result, m.polygon.area(self.result), #self.pieces, AlgorithmTest.milliseconds(self:timing('polygonBooleans'))))
 end
 
 function Polygons:draw(area)

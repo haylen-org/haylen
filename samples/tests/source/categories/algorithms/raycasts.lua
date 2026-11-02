@@ -31,6 +31,16 @@ local kFrame = {-780, -420, 1560, 840}
 -- Where the ray aims while the pointer is away from the play area: at the circle, past the rectangle.
 local kAim = {-180, 200}
 local kGrid = {columns = 12, rows = 16, cell = 32, x = 380, y = -256}
+-- Every kind of shape has a caption by it, so each cast names what it reads.
+local kCaptions = {
+    {'Rectangle', -350, -186},
+    {'Circle', -180, 306},
+    {'Polygon', 10, 34},
+    {'Chain', 250, 400},
+    {'Walls', -500, -100},
+    {'Grid of cells', 572, -282},
+    {'Boxes of an AABB tree', -40, -372},
+}
 local kModes = {
     {id = 'closest', text = 'Closest of every shape'},
     {id = 'pierce', text = 'Pierce four segments'},
@@ -88,7 +98,7 @@ function Raycasts:enter()
     end
     self.tree = spatial2d.newAabbTree()
     for index = 1, 12 do
-        local box = {-250 + (index % 4) * 110 + self.random:range(-20, 20), -400 + (index // 4) * 40 + self.random:range(-10, 10), self.random:range(30, 70), 24}
+        local box = {-250 + (index % 4) * 110 + self.random:range(-20, 20), -340 + (index // 4) * 40 + self.random:range(-10, 10), self.random:range(30, 70), 24}
         self.tree:set({id = index, box = box}, box)
     end
     self.cast = {rays = {}}
@@ -192,7 +202,7 @@ function Raycasts:update(dt)
     profiler.beginScope('mathCasts')
     self.cast = casts[self.mode](self)
     profiler.endScope()
-    self:status(string.format('%s, cast in %.3f ms', self.cast.summary, self:timing('mathCasts')))
+    self:status(string.format('%s, cast in %s.', self.cast.summary, AlgorithmTest.milliseconds(self:timing('mathCasts'))))
 end
 
 function Raycasts:draw(area)
@@ -231,6 +241,9 @@ function Raycasts:draw(area)
         self.art:label(tostring(index), hit.x + 22, hit.y - 22, 22, '#FFFFFFFF', 8)
     end
     graphics2d.drawShape({kOrigin[1] - 16, kOrigin[2] - 16, 32, 32}, {kind = 'ellipse', color = '#FFF2F3FF', borderWidth = 4, borderColor = '#FF15172A', layer = 8})
+    for _, caption in ipairs(kCaptions) do
+        self.art:label(caption[1], caption[2], caption[3], 20, '#FFC8D0E8', 3)
+    end
 end
 
 return Raycasts

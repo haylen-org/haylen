@@ -117,7 +117,7 @@ function Wfc:update(dt)
             self:generate()
         end
     end
-    self:status(string.format('%d tiles, %d rules and %d pins, %s in %.0f ms', #kTiles, #self.allow, self.pins, self.failed and 'every attempt contradicted' or 'collapsed', self.latency or 0))
+    self:status(string.format('The %d tiles, %d rules and %d pins %s in %.0f ms.', #kTiles, #self.allow, self.pins, self.failed and 'contradicted on every attempt' or 'collapsed', self.latency or 0))
 end
 
 -- Fills the batch with the tiles of a map, once per map, and counts the share of every tile.

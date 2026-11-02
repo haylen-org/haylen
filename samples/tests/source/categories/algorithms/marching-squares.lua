@@ -29,6 +29,7 @@ function MarchingSquares:enter()
             ui.formField{label = 'What to trace', ui.radioGroup{id = 'source', items = {{id = 'field', text = 'Trace the field'}, {id = 'bitmap', text = 'Trace the bitmap'}}, selected = 'field', onChange = function(event) self:change('source', event.value) end}},
             ui.formField{label = 'Threshold', ui.slider{id = 'threshold', value = 0.5, min = 0.2, max = 0.8, step = 0.02, showValue = true, onChange = function(event) self:change('threshold', event.value) end}},
             ui.formField{label = 'Simplify tolerance', ui.slider{id = 'tolerance', value = 0, min = 0, max = 12, step = 0.5, showValue = true, decimals = 1, onChange = function(event) self:change('tolerance', event.value) end}},
+            ui.label{text = 'Gold outlines go around the areas above the threshold, and cyan outlines around the holes inside them, wound the other way.', color = 'textMuted', font = 'caption'},
             ui.button{id = 'reset', text = 'New field', onClick = function() self:build() end},
         },
         focus = 'brush',
@@ -115,7 +116,7 @@ function MarchingSquares:update(dt)
     if self.pointer.down then
         self:paint(dt)
     end
-    self:status(string.format('%d samples traced into %d outlines of %d points in %.3f ms', kColumns * kRows, #self.outlines, self.points, self:timing('marchingSquares')))
+    self:status(string.format('%d samples traced into %d outlines of %d points in %s.', kColumns * kRows, #self.outlines, self.points, AlgorithmTest.milliseconds(self:timing('marchingSquares'))))
 end
 
 function MarchingSquares:draw(area)

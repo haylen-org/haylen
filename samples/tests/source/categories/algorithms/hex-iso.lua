@@ -133,7 +133,7 @@ function HexIso:update(dt)
             self:search()
         end
     end
-    self:status(string.format('The topology "%s" staggers its %s, %s', self.grid.topology, self.grid.staggerX and 'columns' or 'rows', self.path and string.format('with a path of %d cells and a cost of %.1f', #self.path, self.cost) or 'with no path between the flags'))
+    self:status(string.format('The topology "%s" staggers its %s, %s.', self.grid.topology, self.grid.staggerX and 'columns' or 'rows', self.path and string.format('with a path of %d cells and a cost of %.1f', #self.path, self.cost) or 'with no path between the flags'))
 end
 
 function HexIso:drawCell(column, row, color, order)

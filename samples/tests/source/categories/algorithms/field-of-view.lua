@@ -1,4 +1,4 @@
--- Sight on a grid and in the open: symmetric shadowcasting with fog of war, a Bresenham line to a guard and a Bresenham circle of the sight radius, and a visibility polygon among wall segments.
+-- Sight on a grid and in the open: symmetric shadowcasting over a dungeon of painted tiles under a soft fog of war, a Bresenham line to a guard and a Bresenham circle of the sight radius, and a visibility polygon among wall segments.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
@@ -10,6 +10,7 @@ local ui = require('haylen.ui')
 local AlgorithmTest = require('categories.algorithms.algorithm-test')
 local Art = require('categories.algorithms.art')
 local Board = require('categories.algorithms.board')
+local picture = require('categories.algorithms.picture')
 
 local FieldOfView = haylen.class('FieldOfView', AlgorithmTest)
 
@@ -22,15 +23,20 @@ local polygon = spatial2d.visibilityPolygon({120, 40}, {{{300, 200}, {300, 400}}
 
 local kColumns, kRows, kCell = 56, 30, 26
 local kBounds = {-740, -400, 1480, 800}
+-- The fog over cells out of sight: thin over the cells seen before and nearly black over the rest.
+local kFog = {visible = '#00000000', seen = '#B00A0D16', hidden = '#F20A0D16'}
 
 function FieldOfView:enter()
     self:frame{
-        hint = 'Move the pointer to look around. The grid remembers the cells it saw, and the guard sees you exactly when you see it. The yellow cells are the Bresenham circle of the sight radius and the red ones the Bresenham line to the guard. R or the X button builds a new map.',
+        hint = 'Move the pointer to look around. The grid remembers the cells it saw, and the guard sees you exactly when you see it. The gold squares are the Bresenham circle of the sight radius and the red dots the Bresenham line to the guard. R or the X button builds a new map.',
         code = FieldOfView.code,
         controls = {
             ui.formField{label = 'Sight', ui.radioGroup{id = 'mode', items = {{id = 'grid', text = 'Shadowcasting on a grid'}, {id = 'polygon', text = 'Visibility polygon'}}, selected = 'grid', onChange = function(event) self.mode = event.value end}},
             ui.formField{label = 'Sight radius in cells', ui.slider{id = 'radius', value = 10, min = 2, max = 30, step = 1, showValue = true, decimals = 0, onChange = function(event) self.radius = event.value end}},
-            ui.button{id = 'forget', text = 'Forget what was seen', onClick = function() self.seen = {} end},
+            ui.button{id = 'forget', text = 'Forget what was seen', onClick = function()
+                self.seen = {}
+                self.fogKey = nil
+            end},
             ui.button{id = 'reset', text = 'New map', onClick = function() self:build() end},
         },
         focus = 'mode',
@@ -39,6 +45,7 @@ function FieldOfView:enter()
     self.random = m.random(79)
     self.board = Board(kColumns, kRows, kCell)
     self.art = Art()
+    self.tiles = graphics2d.newSpriteBatch(self.art.terrain)
     self:build()
 end
 
@@ -75,6 +82,30 @@ function FieldOfView:build()
     self.grid:set(self.guard[1], self.guard[2], 0)
     self.seen, self.visibleSet, self.sightLine, self.ring = {}, {}, {}, {}
     self.viewer = {2, 2}
+    self.fogKey = nil
+
+    -- The dungeon is a floor of stone with walls of brick, painted once for each map.
+    local board = self.board
+    self.tiles:clear()
+    for row = 0, kRows - 1 do
+        for column = 0, kColumns - 1 do
+            local wall = self.grid:get(column, row) == 1
+            self.art:addCell(self.tiles, wall and 'brick' or 'stone', board.left, board.top, kCell, column, row, wall and '#FFC8B8C0' or '#FF9AA0B4')
+        end
+    end
+end
+
+-- Covers the map with fog by what the viewer sees and saw, as a picture of one pixel per cell that blends between the cells, so the edge of sight is soft. It changes only when the cells in sight do.
+function FieldOfView:updateFog()
+    local key = self.viewer[1] .. ',' .. self.viewer[2] .. ',' .. self.radius
+    if key == self.fogKey then
+        return
+    end
+    self.fogKey = key
+    self.fog = picture.cells(kColumns, kRows, function(column, row)
+        local cell = row * kColumns + column
+        return self.visibleSet[cell] and kFog.visible or self.seen[cell] and kFog.seen or kFog.hidden
+    end, true)
 end
 
 function FieldOfView:update(dt)
@@ -98,8 +129,9 @@ function FieldOfView:update(dt)
         end
         self.sightLine = spatial2d.line(self.viewer[1], self.viewer[2], self.guard[1], self.guard[2])
         self.ring = spatial2d.circle(self.viewer[1], self.viewer[2], self.radius)
+        self:updateFog()
         local spotted = self.visibleSet[self.guard[2] * kColumns + self.guard[1]]
-        self:status(string.format('%d cells in sight, shadowcast in %.3f ms, and the guard %s', #self.visible, self:timing('fieldOfView'), spotted and 'sees you' or 'does not see you'))
+        self:status(string.format('%d cells are in sight, shadowcast in %s, and the guard %s.', #self.visible, AlgorithmTest.milliseconds(self:timing('fieldOfView')), spotted and 'sees you' or 'does not see you'))
     else
         local x, y = self:aim(-200, -60)
         self.eye = {x, y}
@@ -109,43 +141,34 @@ function FieldOfView:update(dt)
             self.polygon = spatial2d.visibilityPolygon({x, y}, self.segments, kBounds)
             profiler.endScope()
         end
-        self:status(string.format('%d walls, a polygon of %d corners in %.3f ms', #self.segments, self.polygon and #self.polygon or 0, self:timing('visibilityPolygon')))
+        self:status(string.format('The %d walls leave a polygon of %d corners, found in %s.', #self.segments, self.polygon and #self.polygon or 0, AlgorithmTest.milliseconds(self:timing('visibilityPolygon'))))
     end
 end
 
+-- The painted dungeon lies under the fog, the circle of the sight radius shows as gold squares and the line to the guard as red dots, and the guard stands in the dark until the viewer sees it.
 function FieldOfView:renderGrid()
     local board = self.board
     graphics2d.drawShape({board.left - 6, board.top - 6, board.width + 12, board.height + 12}, {radius = 10, color = '#FF0E1118', borderWidth = 3, borderColor = '#FF3A4560', layer = -1})
-    for row = 0, kRows - 1 do
-        for column = 0, kColumns - 1 do
-            local key = row * kColumns + column
-            local wall = self.grid:get(column, row) == 1
-            local color
-            -- Cells in sight are lit, cells seen before keep a dim memory, and the rest of the map shows only faintly.
-            if self.visibleSet[key] then
-                color = wall and '#FFB4BED2' or '#FF56704C'
-            elseif self.seen[key] then
-                color = wall and '#FF465066' or '#FF262E3D'
-            else
-                color = wall and '#FF232A39' or '#FF141923'
-            end
-            graphics2d.drawRect(board:cellRect(column, row), color)
-        end
+    self.tiles:draw({layer = 0})
+    if self.fog then
+        board:drawPicture(self.fog, {layer = 5})
     end
     for _, cell in ipairs(self.ring) do
         if board:contains(cell.x, cell.y) then
-            graphics2d.drawShape(board:cellRect(cell.x, cell.y, 3), {radius = 4, color = '#70FFC93C', layer = 1})
+            graphics2d.drawShape(board:cellRect(cell.x, cell.y, 4), {radius = 5, color = '#30FFC93C', borderWidth = 3, borderColor = '#FFFFC93C', layer = 6})
         end
     end
     for _, cell in ipairs(self.sightLine) do
-        graphics2d.drawShape(board:cellRect(cell.x, cell.y, 6), {radius = 4, color = '#B0F0473E', layer = 2})
+        local x, y = board:center(cell.x, cell.y)
+        graphics2d.drawCircle(x, y, 5, '#FFF0473E', {layer = 7})
     end
     local vx, vy = board:center(self.viewer[1], self.viewer[2])
     local gx, gy = board:center(self.guard[1], self.guard[2])
-    Art.shadow(vx, vy + kCell * 0.4, kCell, 3)
-    self.art:character(vx, vy + kCell * 0.45, kCell * 2, 'blue', 4)
-    Art.shadow(gx, gy + kCell * 0.4, kCell, 3)
-    self.art:character(gx, gy + kCell * 0.45, kCell * 2, 'red', 4, true)
+    local guardLayer = self.visibleSet[self.guard[2] * kColumns + self.guard[1]] and 8 or 4
+    Art.shadow(gx, gy + kCell * 0.4, kCell * 1.2, guardLayer - 1)
+    self.art:character(gx, gy + kCell * 0.45, kCell * 2.6, 'red', guardLayer, true)
+    Art.shadow(vx, vy + kCell * 0.4, kCell * 1.2, 8)
+    self.art:character(vx, vy + kCell * 0.45, kCell * 2.6, 'blue', 9)
 end
 
 function FieldOfView:renderPolygon()
