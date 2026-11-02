@@ -30,6 +30,7 @@ This file is binding for every change. It describes the project as it is and the
 - Screenshots used to check a change capture only the app window or the page, never the whole screen.
 - Automated checks run emulators and simulators without a window, shut them down afterwards and never send input to a device or window that a person may be using. They use only the simulators and the emulator that already exist on the machine, never create or delete one, and uninstall every app they install when the check ends.
 - Features that touch rendering, input, audio, text input, windows or platform code are run on the platforms they affect (desktop player, iOS and tvOS simulators, Mac Catalyst, Android emulator, browser), and a sample shows each of them working.
+- Simulators, emulators and the browser carry the checks. A physical device runs only what they cannot show, such as hardware they lack or limit, real performance, signing and store delivery, or behavior that needs the attention of a person, and it never repeats a check that already passed on a simulator or an emulator.
 
 ## What the engine is
 
