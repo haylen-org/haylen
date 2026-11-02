@@ -2266,7 +2266,7 @@ Web:
 
 Bridge e plugins:
 
-- [ ] Transferir ponteiros entre as plataformas pela bridge, que vive no Varn e a Haylen reaproveita na engine: um `DataView` com ponteiro e tamanho dentro do JSON, feito na bridge do Varn (a C ABI, o Lua e os hosts de Swift, Kotlin e WebAssembly) e usado pelo `platform::Bridge` da Haylen sem código paralelo, para dados grandes em tempo real (como a imagem da câmera) sem copiar os bytes, entre C++, Lua (Varn), Swift e Objective-C, Kotlin e Java (buffers diretos) e JavaScript (memória do WebAssembly), com dono e tempo de vida claros, testes em cada plataforma, a demo do plugin do projeto de testes e a documentação.
+- [ ] Transferir ponteiros entre as plataformas e o Lua: um ponteiro com o tamanho, sem copiar os bytes, para dados grandes em tempo real (como a imagem da câmera), entre C++, Lua, Swift e Objective-C, Kotlin e Java (buffers diretos) e JavaScript (memória do WebAssembly). O recurso fica no Varn, com o nome e o lugar que melhor cabem na arquitetura dele, e a Haylen o reaproveita na engine e nos plugins sem código paralelo, com dono e tempo de vida claros, testes em cada plataforma, a demo do plugin do projeto de testes e a documentação.
 - [ ] O template de projeto Lua e o C++ 100% prontos e perfeitos: criar, rodar e empacotar em todas as plataformas a partir de `haylen new`, revisado arquivo por arquivo.
 - [ ] Adicionar plugins é fácil e sem limites, qualquer que seja a complexidade: os projetos do Xcode, do Visual Studio (CMake) e do Android Studio nunca impedem o desenvolvedor de criar ou adicionar plugins, com dependências, recursos, extensões e código próprio. Revisar o fluxo inteiro de `plugin new` e `plugin add` em cada plataforma e corrigir o que limitar.
 
