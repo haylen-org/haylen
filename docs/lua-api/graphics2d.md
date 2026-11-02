@@ -1,6 +1,6 @@
 # 📖 `haylen.graphics2d`
 
-The module `haylen.graphics2d` draws everything a 2D app shows: sprites, sprite batches, shapes, lines, meshes, text, rich text, nine-slices, vector images, metaballs, lights and occluders, into world, screen and offscreen canvases. It also has cameras, parallax layers, groups, masks, captures and the materials that shade draws with custom shaders. Draw inside the `render` and `renderUi` hooks of a scene, and make cameras, sprites, batches and materials anywhere. Textures, render targets, fonts and shaders come from [`haylen.graphics`](graphics.md), and lights and occluders from [`haylen.lighting2d`](lighting2d.md). The [rendering guide](../graphics/rendering.md) explains canvases, batching and every effect, and the [text guide](../graphics/text.md) explains text and markup.
+The module `haylen.graphics2d` draws everything a 2D app shows: sprites, sprite batches, shapes, lines, paths, meshes, text, rich text, nine-slices, vector images, metaballs, lights and occluders, into world, screen and offscreen canvases. It also has cameras, parallax layers, groups, masks, captures and the materials that shade draws with custom shaders. Draw inside the `render` and `renderUi` hooks of a scene, and make cameras, sprites, batches and materials anywhere. Textures, render targets, fonts and shaders come from [`haylen.graphics`](graphics.md), and lights and occluders from [`haylen.lighting2d`](lighting2d.md). The [rendering guide](../graphics/rendering.md) explains canvases, batching and every effect, and the [text guide](../graphics/text.md) explains text and markup.
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -2755,6 +2755,172 @@ scene.push({
 })
 ```
 
+## Path
+
+A `Path` is a shape made of lines, curves and arcs, which fills and strokes with edges that fade over one pixel of the destination. Its outlines can cross themselves, overlap each other and cut holes, and the fill rule decides what lies inside. The [rendering guide](../graphics/rendering.md#paths) explains how a path is tessellated and kept. A path keeps its triangles between draws, so a path that draws again at the same scale only copies them. That holds also when its commands are cleared and given again unchanged, so a path built every frame costs no more than a kept one while it stays the same.
+
+Every command returns the path, so calls chain, such as `path:moveTo(0, 0):lineTo(100, 0):close()`. Angles are in radians, measured clockwise on the screen from the x axis, where y grows downward.
+
+### graphics2d.newPath()
+
+Returns a new empty `Path`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local badge = graphics2d.newPath()
+badge:moveTo(0, -60):lineTo(52, -30):lineTo(52, 30):lineTo(0, 60):lineTo(-52, 30):lineTo(-52, -30):close()
+badge:arc(0, 0, 24, 0, -2 * math.pi):close()
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        badge:fill(200, 200, {color = '#FF3A7BD5'})
+        badge:stroke(200, 200, {width = 4, join = 'round', color = '#FFFFFFFF'})
+    end,
+})
+```
+
+### Properties
+
+| Property | Type | Access | Meaning |
+| --- | --- | --- | --- |
+| `empty` | boolean | read | Whether the path has no command. |
+
+### path:moveTo(x, y)
+
+Starts a new outline at the point. Lines and curves continue from the end of the command before them. After a `close` they continue from the start of the outline that closed, as a new outline.
+
+### path:lineTo(x, y)
+
+Adds a straight line to the point. A path without a point to continue from raises `A path has no point to continue from, so "moveTo" comes before its first line or curve.`, and so do the curves.
+
+### path:quadraticTo(controlX, controlY, x, y)
+
+Adds a quadratic Bézier curve that bends toward the control point and ends at the point.
+
+### path:cubicTo(firstX, firstY, secondX, secondY, x, y)
+
+Adds a cubic Bézier curve with two control points that ends at the point.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+
+local wave = graphics2d.newPath()
+wave:moveTo(0, 100):quadraticTo(50, 0, 100, 100):cubicTo(140, 180, 200, 20, 240, 100)
+```
+
+### path:arc(x, y, radius, startAngle, sweep)
+
+Adds a part of the circle around `x`, `y`, from `startAngle`, turning clockwise by `sweep`, or counterclockwise when `sweep` is negative. A whole turn is `2 * math.pi`. When an outline is open, a line joins its end to the first point of the arc. Otherwise the arc starts a new outline at its first point, so a closed circle followed by another arc draws two separate circles. A negative radius or a value that is not finite raises `An arc of a path takes a finite radius of zero or more and finite angles.`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+
+-- A slice of a pie: a line from the center to the arc, the arc, and the close back to the center.
+local slice = graphics2d.newPath()
+slice:moveTo(0, 0):arc(0, 0, 80, -math.pi / 2, math.pi / 3):close()
+```
+
+### path:close()
+
+Joins the end of the open outline to its start. Closed outlines stroke without caps and with a join where they close. A path without an open outline raises `A path closes only an outline it has open, so "close" follows a move, a line, a curve or an arc.`.
+
+### path:clear()
+
+Removes every command and keeps the storage and the triangles of the path. A path given the same commands again after a clear draws its kept triangles without tessellating.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local wave = graphics2d.newPath()
+local time = 0
+
+scene.push({
+    update = function(self, dt)
+        time = time + dt
+    end,
+    render = function(self)
+        local lift = math.sin(time * 2) * 40
+        wave:clear():moveTo(100, 300):quadraticTo(300, 300 - lift, 500, 300):cubicTo(600, 300 + lift, 700, 200, 800, 300)
+        graphics2d.beginScreen()
+        wave:stroke(0, 0, {width = 6, cap = 'round', color = '#FFF2B23A'})
+    end,
+})
+```
+
+### path:fill(x, y, options)
+
+Fills the outlines of the path into the open canvas, with every outline closed and its points moved to `x`, `y`, which are 0 by default. The curves stay within a quarter pixel of the destination at any zoom, and every edge fades over one pixel, also the edges that crossings and holes make. The table `options` is optional and also takes the keys of the [draw order](#draw-order):
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `color` | Color | white | The color of the fill. |
+| `fillRule` | string | `'nonZero'` | The value `'nonZero'` fills every area the outlines wind around, so an outline wound opposite to the one around it cuts a hole. The value `'evenOdd'` fills the areas inside an odd count of outlines, so every overlap cuts a hole whatever the windings. |
+| `texture` | Texture | white | An image stretched over the bounds of the path under the color, such as a [gradient](graphics.md#gradients) painted into an image. |
+| `rotation` | number | `0` | The turn of the path around `x`, `y`, in radians. |
+| `scaleX`, `scaleY` | number | `1` | The scale of the path before it turns. |
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+-- A star in one outline that crosses itself: the nonzero rule fills its middle, and the even-odd rule leaves it empty.
+local star = graphics2d.newPath()
+for corner = 0, 4 do
+    local angle = -math.pi / 2 + corner * 4 * math.pi / 5
+    if corner == 0 then
+        star:moveTo(math.cos(angle) * 80, math.sin(angle) * 80)
+    else
+        star:lineTo(math.cos(angle) * 80, math.sin(angle) * 80)
+    end
+end
+star:close()
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        star:fill(200, 200, {color = '#FFE0A030'})
+        star:fill(420, 200, {color = '#FFE0A030', fillRule = 'evenOdd', rotation = 0.3, scaleX = 1.2, scaleY = 1.2})
+    end,
+})
+```
+
+### path:stroke(x, y, options)
+
+Strokes every outline of the path into the open canvas, each closed where the path closes it, with its points moved to `x`, `y`, which are 0 by default. The scale of the options scales the width too. The table `options` is optional and takes `width`, `color`, `join`, `cap`, `miterLimit`, `texture`, `textureMode`, `textureLength`, `dashes` and `dashOffset` as [`graphics2d.drawStroke`](#graphics2ddrawstrokepoints-options) does, `rotation`, `scaleX` and `scaleY` as `path:fill` does, and the keys of the [draw order](#draw-order). Every outline starts the dash pattern and the texture again. The errors of the values are those of `graphics2d.drawStroke`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local frame = graphics2d.newPath()
+frame:moveTo(0, 0):lineTo(200, 0):quadraticTo(240, 0, 240, 40):lineTo(240, 160):lineTo(0, 160):close()
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        frame:stroke(100, 100, {width = 3, join = 'round', dashes = {12, 6}, color = '#FF8FB0FF'})
+    end,
+})
+```
+
+### path:outlines(tolerance)
+
+Returns the outlines of the path as lines that stay within `tolerance` of its curves, 0.25 by default, and a list with one boolean for each outline that tells whether it closes. The outlines are a shape of the [polygon functions](math.md#polygon-operations), a list of outlines that are each a list of points, so they work with `m.polygon`, [`graphics2d.drawPolygon`](#graphics2ddrawpolygonpoints-color-order), the bodies of [`haylen.physics2d`](physics2d.md) and the regions of [`haylen.procedural2d`](procedural2d.md). Points that repeat the point before them are dropped, and so is an outline without a line. A tolerance that is not positive and finite raises `A path flattens within a positive and finite tolerance.`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local m = require('haylen.math')
+
+local leaf = graphics2d.newPath()
+leaf:moveTo(0, 0):quadraticTo(60, -50, 120, 0):quadraticTo(60, 50, 0, 0):close()
+local shape, closed = leaf:outlines(0.5)
+print(#shape, closed[1], m.polygon.area(shape))
+```
+
 ## Text
 
 Plain text draws with a font or a font family, shaped in every script and ordered in its direction, as the [text guide](../graphics/text.md#scripts-and-directions) explains.
@@ -3796,6 +3962,11 @@ These messages come from the functions and methods of the module, besides the er
 | `Mesh index refers to a vertex that does not exist.` | An index of a mesh is past its vertices. |
 | `A mesh lists its triangles as three indices each, and <count> is not a multiple of three.` | The indices of a kept mesh are not whole triangles. |
 | `A grid mesh needs at least one column and one row and at most 1048576 cells.` | The size of `graphics2d.newGridMesh` is out of range. |
+| `A path has no point to continue from, so "moveTo" comes before its first line or curve.` | A line or a curve came before the first point of a path. |
+| `A path closes only an outline it has open, so "close" follows a move, a line, a curve or an arc.` | The method `path:close` had no open outline. |
+| `A path takes finite coordinates.` | A point of a path command is not finite. |
+| `An arc of a path takes a finite radius of zero or more and finite angles.` | A value of `path:arc` is wrong. |
+| `A path flattens within a positive and finite tolerance.` | The tolerance of `path:outlines` is not positive and finite. |
 | `The positions of a mesh come in x and y pairs for the vertices it has, <count>, from the first one given.` | The positions of `mesh:setPositions` or `mesh:readPositions` reach past the vertices. |
 | `Text needs a finite size, maximum width, maximum height, minimum scale and line spacing.` | A value of a text style is not finite. |
 | `The "minScale" of a text style is a share of its size above 0 and at most 1.` | The `minScale` of a text style is out of range. |

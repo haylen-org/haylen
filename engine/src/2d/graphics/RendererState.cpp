@@ -505,6 +505,20 @@ void RendererState::addMesh(const graphics::Texture& texture, std::span<const Gp
     }
 }
 
+void RendererState::addTintedMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, math::Color tint, const math::Transform2D& transform, const DrawOrder& order) {
+    const bool flipped = texture.getResource()->flipped;
+    const std::uint32_t rgb = tint.toRgba8() & 0x00FFFFFFU;
+    const float alpha = std::clamp(tint.a, 0.0F, 1.0F);
+    std::vector<GpuVertex>& packed = scratchVertices;
+    packed.clear();
+    for (const GpuVertex& vertex : meshVertices) {
+        const math::Vec2 position = transform.apply({vertex.position[0], vertex.position[1]});
+        const auto coverage = static_cast<std::uint32_t>(std::lround(static_cast<float>(vertex.color >> 24U) * alpha));
+        packed.push_back({{position.x, position.y}, {vertex.uv[0], flipped ? 1.0F - vertex.uv[1] : vertex.uv[1]}, rgb | (coverage << 24U)});
+    }
+    addMesh(texture, packed, meshIndices, order);
+}
+
 std::uint32_t RendererState::pipelineKey(Program program, std::uint8_t blend, graphics::PassTarget target) noexcept {
     return static_cast<std::uint32_t>(program) | (static_cast<std::uint32_t>(blend) << 4U) | (static_cast<std::uint32_t>(target) << 8U);
 }

@@ -2,6 +2,7 @@
 #include <array>
 #include <atomic>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -18,6 +19,7 @@
 
 #include "haylen/2d/animation/AtlasBuilder.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
+#include "haylen/2d/graphics/Path.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/2d/graphics/Sprite.hpp"
@@ -25,6 +27,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Scene.hpp"
 #include "haylen/core/SceneManager.hpp"
+#include "haylen/math/Math.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/io/MemoryPackage.hpp"
@@ -41,7 +44,7 @@
 
 namespace haylen::bench {
 
-// Times whole engine frames that draw sprites, shapes, text, rich text and a screen of interface components on the headless host, through its null device or offscreen through the device that `--graphics-api` names, and prints for each scene the CPU time of a frame and the time of the GPU where the device measures it, with the draw calls, instances and uploaded bytes the renderer reports, and the allocations of the frame thread.
+// Times whole engine frames that draw sprites, shapes, paths, text, rich text and a screen of interface components on the headless host, through its null device or offscreen through the device that `--graphics-api` names, and prints for each scene the CPU time of a frame and the time of the GPU where the device measures it, with the draw calls, instances and uploaded bytes the renderer reports, and the allocations of the frame thread.
 class RenderBenchmark final {
   public:
     static int run(BenchmarkGpu& gpu) {
@@ -61,6 +64,7 @@ class RenderBenchmark final {
         std::printf("%-44s %9s %9s %7s %9s %11s %9s %11s\n", "Scene", "Frame ms", "GPU ms", "Draws", "Instances", "Upload KB", "Allocs", "Alloc KB");
         measureSprites(engine, gpu);
         measureShapes(engine, gpu);
+        measurePaths(engine, gpu);
         measureText(engine, gpu);
         measureRichText(engine, gpu);
         measureInterface(engine, gpu);
@@ -198,6 +202,54 @@ class RenderBenchmark final {
                 renderer.drawShape({.bounds = {place.x + 24.0F, place.y, 20.0F, 20.0F}, .radii = {4.0F, 4.0F, 4.0F, 4.0F}, .color = math::Color{0.2F, 0.3F, 0.5F, 1.0F}, .borderWidth = 1.0F, .borderColor = math::Color::white()});
                 renderer.drawLine(place + math::Vec2{0.0F, 30.0F}, place + math::Vec2{44.0F, 36.0F}, 2.0F, math::Color{0.6F, 0.9F, 0.6F, 1.0F});
             }
+        });
+        // clang-format on
+    }
+
+    // Two hundred kept paths of curves, arcs and a hole, filled by the even-odd rule and stroked with round joins, and then one path whose commands change every frame, which tessellates every frame.
+    static void measurePaths(core::Engine& engine, BenchmarkGpu& gpu) {
+        std::vector<graphics2d::Path> paths(200);
+        for (std::size_t index = 0; index < paths.size(); ++index) {
+            graphics2d::Path& path = paths[index];
+            const float bend = 10.0F + static_cast<float>(index % 7) * 4.0F;
+            path.moveTo({0.0F, -40.0F});
+            path.cubicTo({bend + 30.0F, -40.0F}, {40.0F, -bend}, {40.0F, 0.0F});
+            path.quadraticTo({40.0F, 40.0F}, {0.0F, 40.0F});
+            path.arc({0.0F, 0.0F}, 40.0F, math::Math::kHalfPi, math::Math::kPi);
+            path.close();
+            path.arc({0.0F, 0.0F}, 12.0F + bend * 0.5F, 0.0F, math::Math::kTau);
+            path.close();
+        }
+        // clang-format off
+        measure(engine, gpu, "Paths, 200 kept, filled and stroked", [&paths](core::Engine& current) {
+            graphics2d::Renderer& renderer = current.getRenderer2D();
+            renderer.beginScreen();
+            for (std::size_t index = 0; index < paths.size(); ++index) {
+                const math::Transform2D place = math::Transform2D::compose({static_cast<float>(index % 20) * 92.0F + 50.0F, static_cast<float>(index / 20) * 100.0F + 60.0F}, 0.0F, {1.0F, 1.0F});
+                renderer.fillPath(paths[index], {.color = math::Color{0.3F, 0.5F, 0.9F, 1.0F}, .rule = graphics2d::Path::FillRule::EvenOdd}, {}, place);
+                renderer.strokePath(paths[index], {.width = 3.0F, .color = math::Color::white(), .join = graphics2d::Stroke::Join::Round}, {}, place);
+            }
+        });
+        // clang-format on
+
+        graphics2d::Path wave;
+        float time = 0.0F;
+        // clang-format off
+        measure(engine, gpu, "Paths, 1 changing every frame", [&wave, &time](core::Engine& current) {
+            time += 1.0F / 60.0F;
+            wave.clear();
+            wave.moveTo({100.0F, 540.0F});
+            for (int step = 0; step < 16; ++step) {
+                const float x = 100.0F + static_cast<float>(step) * 110.0F;
+                wave.quadraticTo({x + 55.0F, 540.0F + std::sin(time * 3.0F + static_cast<float>(step)) * 200.0F}, {x + 110.0F, 540.0F});
+            }
+            wave.lineTo({1860.0F, 1000.0F});
+            wave.lineTo({100.0F, 1000.0F});
+            wave.close();
+            graphics2d::Renderer& renderer = current.getRenderer2D();
+            renderer.beginScreen();
+            renderer.fillPath(wave, {.color = math::Color{0.2F, 0.7F, 0.5F, 1.0F}});
+            renderer.strokePath(wave, {.width = 4.0F, .color = math::Color::white(), .join = graphics2d::Stroke::Join::Round});
         });
         // clang-format on
     }

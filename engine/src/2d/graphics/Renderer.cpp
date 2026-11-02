@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "2d/graphics/FrameSubmitter.hpp"
+#include "2d/graphics/PathTessellation.hpp"
 #include "2d/graphics/PolygonMesh.hpp"
 #include "2d/graphics/RendererState.hpp"
 #include "2d/graphics/TextPainter.hpp"
@@ -727,6 +728,30 @@ void Renderer::addPolygon(std::span<const math::Vec2> points, std::span<const st
     PolygonMesh& polygon = state->polygons;
     polygon.build(points, counts, color.toRgba8(), state->getPixelSize());
     state->addMesh(state->white, polygon.getVertices(), polygon.getIndices(), order);
+}
+
+float Renderer::getLeastScale(const math::Transform2D& transform) noexcept {
+    return std::min(std::hypot(transform.a, transform.b), std::hypot(transform.c, transform.d));
+}
+
+// A path builds its triangles in its own units, where a pixel of the destination spans the pixel of the canvas over the scale of the transform.
+void Renderer::fillPath(const Path& path, const Path::Fill& fill, const DrawOrder& order, const math::Transform2D& transform) {
+    const float scale = getLeastScale(transform);
+    if (path.empty() || !(scale > 0.0F) || !state->accepts(order)) {
+        return;
+    }
+    const PathTessellation::Triangles& triangles = path.getTessellation().getFill(path, fill.rule, state->getPixelSize() / scale, state->polygons);
+    state->addTintedMesh(fill.texture.isValid() ? fill.texture : state->white, triangles.vertices, triangles.indices, fill.color, transform, order);
+}
+
+void Renderer::strokePath(const Path& path, const Stroke& stroke, const DrawOrder& order, const math::Transform2D& transform) {
+    const float scale = getLeastScale(transform);
+    if (path.empty() || !(scale > 0.0F) || !state->accepts(order)) {
+        return;
+    }
+    const graphics::Texture& used = stroke.texture.isValid() ? stroke.texture : state->white;
+    const PathTessellation::Triangles& triangles = path.getTessellation().getStroke(path, stroke, state->getPixelSize() / scale, used.getSize(), state->strokes);
+    state->addTintedMesh(used, triangles.vertices, triangles.indices, stroke.color, transform, order);
 }
 
 std::uint64_t Renderer::addCanvasOverlay(CanvasOverlay overlay) {

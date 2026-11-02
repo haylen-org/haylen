@@ -2,7 +2,7 @@
 return {
     prefix = 'SPR',
     title = 'Sprites',
-    description = 'Sprites, atlases, animation, batches, pools, render targets, shapes and text of the 2D renderer.',
+    description = 'Sprites, atlases, animation, batches, pools, render targets, shapes, paths and text of the 2D renderer.',
     tests = {
         {code = 'SPR-001', title = 'Sprite basics', description = 'Pivot, rotation, scale, flips, tint and flash on one sprite.', module = 'basics'},
         {code = 'SPR-002', title = 'Atlases and sheets', description = 'A hash atlas with trimmed frames, an array atlas with tags and a slice, and a grid sheet.', module = 'atlases'},
@@ -24,5 +24,6 @@ return {
         {code = 'SPR-018', title = 'Screen capture', description = 'The whole screen captured into an image without the frame thread waiting, shown and saved as a PNG file.', module = 'screen-capture'},
         {code = 'SPR-019', title = 'Batches of several textures', description = 'A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite.', module = 'batch-textures'},
         {code = 'SPR-020', title = 'Blend modes', description = 'Every blend mode of a group over the same picture, from the blends of the GPU to overlay, darken, lighten, the dodges and burns, the lights, difference and exclusion, which mix with what lies below.', module = 'blend-modes'},
+        {code = 'SPR-021', title = 'Paths', description = 'Shapes of lines, curves and arcs filled by the nonzero or the even-odd rule and stroked with joins and dashes, a kept gear drawn turned and zoomed and a wave given again every frame.', module = 'paths'},
     },
 }

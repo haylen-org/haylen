@@ -409,7 +409,7 @@ Polygons are tessellated instead, since their edges are straight. The fill stops
 - The edge of a hole fades into the hole. An edge that two outlines share, such as the edge between two convex pieces or two chunks of a terrain, gets no fringe. The fills of both outlines reach it, and a corner on it slides along it, so the pieces join without a seam.
 - The triangulator, the edges and the vertices keep their storage in the renderer, so a shape drawn every frame allocates nothing once its buffers have grown.
 
-Strokes of `graphics2d.drawStroke`, `Renderer::drawStroke` in C++, are tessellated the same way by `StrokeBuilder` (`engine/src/2d/graphics/StrokeBuilder.cpp`):
+Strokes of `graphics2d.drawStroke`, `Renderer::drawStroke` in C++, and the outlines and curves of [paths](#paths) are tessellated the same way by `StrokeBuilder` (`engine/src/2d/graphics/StrokeBuilder.cpp`):
 
 - Every cross section of a stroke is four vertices: the outer edge and the core on each side. The core lies half a pixel inside the edge and the outer vertices half a pixel past it. A section joins the one before it with three quads.
 - A miter join is one section whose offsets grow longer along the bisector. A bevel or round join and a round cap are runs of sections around one point. Their outer side turns in steps that keep the arc within a quarter pixel, and their inner side stays at the corner of the offset edges. Butt and square caps add a section that fades past the end.
@@ -437,6 +437,82 @@ scene.push({
         graphics2d.drawStroke({600, 300, 700, 220, 800, 300}, {width = 0.5, color = '#FFFFFFFF'})
     end,
 })
+```
+
+## Paths
+
+A path, `graphics2d::Path` (`engine/include/haylen/2d/graphics/Path.hpp`), is a shape made of commands: moves, lines, quadratic and cubic Bézier curves, arcs of circles and closes. It draws shapes that the other primitives cannot, such as a leaf, a speech bubble, a logo, a pie slice, a star that crosses itself or a frame with a curved corner. Its outlines can cross themselves, overlap each other and cut holes. The fill rule decides what lies inside:
+
+- The rule `nonZero` fills every area the outlines wind around. An outline wound opposite to the one around it cuts a hole, and outlines wound the same way add up.
+- The rule `evenOdd` fills the areas inside an odd count of outlines. Every overlap cuts a hole, whatever the windings, and the middle of a star drawn in one outline stays empty.
+
+This is how a path draws:
+
+- The path flattens its curves and arcs into lines that stay within a quarter pixel of the destination. A curve takes as many equal steps as the bend of its control points needs, and an arc as many as its radius needs.
+- A fill resolves its outlines by the rule into simple outlines and holes, which touch at most at corners, through the polygon booleans of the engine. They work on a grid of 64 steps per pixel, which never shows. Then `PolygonMesh` fills them like a polygon: the fill stops half a pixel inside every edge and a fringe fades it to nothing half a pixel outside. So the edges that crossings and holes make fade like the outer edges.
+- A stroke strokes every outline on its own with `StrokeBuilder`, closed where the path closes it, with the joins, caps, dashes and texture of strokes. Every outline starts its dash pattern and its texture again.
+- A transform places, turns and scales the path. The path builds its triangles in its own units, where one pixel of the destination is the pixel of the canvas over the scale of the transform. So the edges stay one pixel wide at any scale, and the scale also widens the stroke.
+
+`PathTessellation` (`engine/src/2d/graphics/PathTessellation.cpp`) keeps the triangles of the fill and of the stroke of each path between draws. Their vertices are white with the coverage of their point in their alpha, and a draw only tints and places them into the streaming buffer. They build again only when the commands of the path, the size of a pixel or the look of the draw change. A path keeps a copy of the commands it built from and compares the new ones with it. So a path that draws again unchanged, also after `path:clear()` and the same commands, allocates nothing. A path whose commands change every frame, such as a wave, tessellates every frame, and its fill allocates while the polygon booleans resolve it. A camera that zooms changes the size of a pixel, so its paths tessellate again on every frame of the zoom.
+
+Each kind of shape has the primitive that suits it best:
+
+| Shape | Primitive | Why |
+| --- | --- | --- |
+| Circles, ellipses, rounded rectangles, capsules, rings, arcs and pie slices with a border, a soft shadow or a texture | `graphics2d.drawShape` and the functions of circles, rings and arcs | One quad whose shader measures the exact distance to the edge, the cheapest and the sharpest at any zoom. |
+| Many dots | `graphics2d.drawPoints` | One quad of the shape program for each dot, in one draw call. |
+| Lines through points with per-point widths and colors, a texture or dashes, and curves of a spline | `graphics2d.drawStroke` | A stroke built for every draw, with every look of a line. |
+| Polygons and shapes of outlines with holes, such as the results of `m.polygon` or the outlines of a terrain | `graphics2d.drawPolygon` | A fill that triangulates its outlines directly and joins outlines that share edges without a seam. |
+| Shapes with curves, outlines that cross or overlap, the even-odd rule, or a shape drawn again and again | `graphics2d.newPath` | Curves and arcs, both fill rules, and triangles kept between draws. |
+| Triangles with colors or texture coordinates of each vertex | `graphics2d.drawMesh` and `graphics2d.newMesh` | Free triangles, also deformed every frame. |
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+local bubble = graphics2d.newPath()
+bubble:moveTo(20, 0):lineTo(220, 0):quadraticTo(240, 0, 240, 20):lineTo(240, 100):quadraticTo(240, 120, 220, 120)
+bubble:lineTo(80, 120):lineTo(40, 160):lineTo(50, 120):lineTo(20, 120):quadraticTo(0, 120, 0, 100):lineTo(0, 20):quadraticTo(0, 0, 20, 0):close()
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        bubble:fill(100, 100, {color = '#FFF7F1E3'})
+        bubble:stroke(100, 100, {width = 3, join = 'round', color = '#FF3B2F2F'})
+    end,
+})
+```
+
+In C++, `Renderer::fillPath` and `Renderer::strokePath` draw a path with a `Path::Fill`, a `Stroke`, a draw order and a `math::Transform2D`. This scene builds a ring with a hole once and draws it every frame from its kept triangles:
+
+```cpp
+#include "haylen/2d/graphics/Path.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/core/Engine.hpp"
+#include "haylen/core/Scene.hpp"
+#include "haylen/math/Math.hpp"
+#include "haylen/math/Transform2D.hpp"
+
+class RingScene final : public haylen::core::Scene {
+  public:
+    void enter(haylen::core::Engine&) override {
+        ring.arc({0.0F, 0.0F}, 60.0F, 0.0F, haylen::math::Math::kTau);
+        ring.close();
+        ring.arc({0.0F, 0.0F}, 30.0F, 0.0F, haylen::math::Math::kTau);
+        ring.close();
+    }
+
+    void renderUi(haylen::core::Engine& engine) override {
+        haylen::graphics2d::Renderer& renderer = engine.getRenderer2D();
+        const haylen::math::Transform2D place = haylen::math::Transform2D::compose({400.0F, 300.0F}, 0.0F, {1.5F, 1.5F});
+        renderer.beginScreen();
+        renderer.fillPath(ring, {.color = haylen::math::Color::fromHex(0x3A7BD5FFU), .rule = haylen::graphics2d::Path::FillRule::EvenOdd}, {}, place);
+        renderer.strokePath(ring, {.width = 2.0F, .color = haylen::math::Color::white()}, {}, place);
+    }
+
+  private:
+    haylen::graphics2d::Path ring;
+};
 ```
 
 ## Sprites, sprite batches and static batches
@@ -1125,6 +1201,7 @@ The suite `render` builds `haylen-render-benchmark` in Release, from `engine/ben
 
 - Ten thousand sprites in runs of four textures, and then alternating them.
 - A thousand circles, rounded panels and lines.
+- 200 kept paths of curves, arcs and a hole, each filled by the even-odd rule and stroked with round joins, and then one wave of 16 curves whose commands change every frame.
 - 200 labels that stay the same, and 200 labels whose numbers change every frame.
 - 20 rich text blocks with a wave effect.
 - A screen of 40 interface components.
@@ -1137,12 +1214,14 @@ For each scene it prints the CPU time of a frame, the time of the GPU on a real 
 | 10,000 sprites alternating 4 textures | 0.438 | 10,000 | 10,000 | 468.8 | 0 | 0 |
 | 10,000 sprites alternating 4 frames of a runtime atlas | 0.289 | 1 | 10,000 | 468.8 | 0 | 0 |
 | 3,000 circles, panels and lines | 0.133 | 2,000 | 3,000 | 140.6 | 0 | 0 |
+| 200 kept paths, filled and stroked | 1.765 | 1 | 0 | 4,670.0 | 0 | 0 |
+| 1 path that changes every frame | 0.252 | 1 | 0 | 97.9 | 344.6 | 43.89 |
 | 200 labels that stay | 0.074 | 1 | 4,892 | 229.3 | 0 | 0 |
 | 200 labels that change every frame | 0.741 | 1 | 4,090 | 191.7 | 7,000 | 3,204 |
 | 20 rich text blocks with a wave | 0.032 | 1 | 1,440 | 67.5 | 0 | 0 |
 | A screen of 40 interface components | 0.026 | 48 | 514 | 24.1 | 0 | 0 |
 
-Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost. Text that changes every frame lays out again, which is the one drawing that allocates. So a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, while the same sprites cut from one atlas that `animation2d::AtlasBuilder` packs at run time draw in one. Alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains. The suite also packs 400 images of 8 to 72 pixels a side into one linear atlas, trimmed, padded, extruded and bled. That takes 5.8 ms on one worker and gives an atlas of 1024 by 685 pixels.
+Labels that stay find their layouts in the cache of their font, so they cost what their glyph quads cost. Text that changes every frame lays out again, which is the one drawing that allocates. So a readout of numbers is cheapest when it changes a few times per second, as the compact debug statistics do. Alternating textures turns every sprite into a draw call, while the same sprites cut from one atlas that `animation2d::AtlasBuilder` packs at run time draw in one. Kept paths allocate nothing and draw in one call, and their cost is the vertices of their curves, which every frame copies into the streaming buffer through their transforms. The path rows were measured while other builds loaded the machine. A path whose commands change every frame tessellates every frame, and its fill allocates while the polygon booleans resolve it. Alternating circles and panels with lines splits the batches of the shape program, as the [performance guidance](#performance-guidance) explains. The suite also packs 400 images of 8 to 72 pixels a side into one linear atlas, trimmed, padded, extruded and bled. That takes 5.8 ms on one worker and gives an atlas of 1024 by 685 pixels.
 
 ## Using the renderer from C++
 

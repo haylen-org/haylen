@@ -16,6 +16,7 @@ set(HAYLEN_TEST_SOURCES
   2d/graphics/SceneTransitionTests.cpp
   2d/graphics/TileLayerTests.cpp
   2d/graphics/PartMaskTests.cpp
+  2d/graphics/PathTests.cpp
   2d/graphics/PostProcessTests.cpp
   2d/graphics/RendererStateTests.cpp
   2d/graphics/RendererTests.cpp

@@ -268,6 +268,9 @@ struct RendererState {
     // Meshes stand on their lowest vertex.
     void addMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, const DrawOrder& order);
 
+    // Adds a mesh of white vertices whose alpha holds their coverage, tinted by the color, placed by the transform and with its rows flipped for a texture that starts at the bottom.
+    void addTintedMesh(const graphics::Texture& texture, std::span<const GpuVertex> meshVertices, std::span<const std::uint32_t> meshIndices, math::Color tint, const math::Transform2D& transform, const DrawOrder& order);
+
     // Adds a shade that copies the values a material has now, for the post-processing passes of the frame.
     std::uint32_t addMaterialShade(const Material& material);
 
