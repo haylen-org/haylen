@@ -49,12 +49,15 @@ endif()
 # The engine links the static core of Varn, which the `cli` target builds, and Varn picks the HTTP driver of every platform itself: the URL Loading System on iOS, tvOS and Mac Catalyst, the Android stack on Android and the fetch of the browser on the web.
 CPMAddPackage(
   NAME varn
-  URL "https://github.com/varn-org/varn/archive/fb5ef4b89f6cb0265a806f07854e0a7711232187.tar.gz"
-  URL_HASH SHA256=0bc2f07a97ddeb445c4ce5ea7ea1dc46d85a2441bc155ae505a127a148b87f72
+  URL "https://github.com/varn-org/varn/archive/96966c95e593a1f8137239c89606f523e67fbfbb.tar.gz"
+  URL_HASH SHA256=ab1398554d3d9bb58dabe321b4731bb7c6cc5eafb4b063e46e7e2ea6506dad75
   OPTIONS "VARN_TARGET ${HAYLEN_VARN_TARGET}" "VARN_BUILD_TESTS OFF" "VARN_SANITIZE ${HAYLEN_VARN_SANITIZE}"
   EXCLUDE_FROM_ALL YES
   SYSTEM YES
 )
+
+# The page shares data views with the engine through the class `VarnDataView` of Varn, which every web build links before the runtime of the page.
+set(HAYLEN_VARN_DATAVIEW_SCRIPT "${varn_SOURCE_DIR}/src/wasm/varn-dataview.js" CACHE INTERNAL "The JavaScript class of Varn data views.")
 
 # Varn builds its own code, the Lua it vendors and libuv with the warning flags of their projects, which MSVC answers with hundreds of warnings in code the engine does not own.
 set(varn_compiled_targets varn-core varn-vendor-lua)

@@ -474,6 +474,24 @@ async.spawn(function()
 end)
 ```
 
+### Data views
+
+A plugin that hands the app large data that changes often, such as the frames of a camera for a filter of the app, a depth map or a large buffer, shares it as a data view of Varn instead of bytes. The memory never moves: the JSON carries a token with the pointer and the size, and the app and the native part hold references to the same bytes. The Lua API of the plugin passes views of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md) as they are, and every view that the native part sends arrives as one. The [platform bridge guide](platform-bridge.md#data-views) explains who owns a view, how long it lives and the class of each language, and when a stream fits better.
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+local platform = require('haylen.platform')
+
+local scanner = platform.plugin('depth-scanner')
+local texture = graphics.newTexture(256, 192, {dynamic = true})
+
+async.spawn(function()
+    local scan = scanner:call('scan'):await()
+    texture:update(scan.depth)
+end)
+```
+
 ### Streams
 
 A plugin that produces video or audio without pause, such as a camera, a video decoder, a microphone or a synthesized voice, feeds a stream instead of sending events. Streams belong to the process and have a name within their plugin. The Lua API of the plugin reaches them with [`handle:videoStream(name)`](../lua-api/platform.md#videostream) and [`handle:audioStream(name)`](../lua-api/platform.md#audiostream), which return `nil` until the native part opens them.
@@ -1602,6 +1620,15 @@ The method `startVideo` opens the video stream `island`. It draws the picture of
 - The Kotlin part draws the picture with a `Canvas` into an RGBA `Bitmap`, and pushes it with `push(bitmap, timestamp)`. It pushes mono floats at 44100 Hz with `push(samples, frames)`. Each stream has a `HandlerThread` of its own.
 
 The Lua API returns the streams with `videoStream()` and `audioStream()`. The sample draws the texture of the video, plays the voice of the tone and shows a level meter from `read`.
+
+### Data views
+
+The method `captureFrame` fills a frame of RGBA pixels the way a camera would, in a data view that the native part makes, and answers with it. The method `checksumView` receives a view that the app made, sums its bytes in place and writes `NATIVE` into its first bytes, which the app reads back from its own view. The test `PLG-023` updates a texture with one frame after the other and checks both directions.
+
+- The C library makes the frame with `newView` of `HaylenNativeApi`, answers with the token that `viewToken` writes and releases its view after `resolve`. It reaches the view of the app with `acquireView` and the token of its parameters.
+- The Swift part makes the frame with `VarnDataView(length:)`, which ARC releases after the reply, and reads the view of the app through its `bytes`.
+- The Kotlin part makes the frame with `VarnDataView.allocate`, fills it through its direct `buffer()` and closes it with `use` after the reply. It reads and marks the view of the app through its buffer.
+- The web module makes the frame with `context.VarnDataView.allocate`, fills its `bytes()` and returns it, which hands it over to the engine. It reads and marks the `bytes()` of the view of the app.
 
 ### Parameters
 

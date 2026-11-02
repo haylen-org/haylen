@@ -47,7 +47,7 @@ Makes a `Texture` of `width` by `height` pixels from code. The table `options` i
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `fill` | Color | `'#FFFFFFFF'` | The color of every pixel when `pixels` is absent. |
-| `pixels` | string | none | Raw RGBA bytes, four per pixel, row by row from the top. Its length must be `width * height * 4`, or the call raises `Image pixel data does not match its dimensions.`. |
+| `pixels` | string or data view | none | Raw RGBA bytes, four per pixel, row by row from the top, in a string or in a view of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md). Its length must be `width * height * 4`, or the call raises `Image pixel data does not match its dimensions.`. |
 | `dynamic` | boolean | `false` | Makes a texture whose pixels change in place with [`texture:update(pixels)`](#textureupdatepixels), such as a minimap that code draws. |
 | `filter` | string | `'nearest'` | The `'nearest'` or `'linear'` sampling. |
 | `wrap` | string | `'clamp'` | The `'clamp'`, `'repeat'` or `'mirror'` addressing. |
@@ -68,7 +68,7 @@ print(red.width, checker.height)
 
 ### graphics.newTexture(bytes, options)
 
-Makes a `Texture` from `bytes`, a string with the contents of a PNG, JPEG, TGA, BMP or GIF file. Use it for an image that a plugin returns from native code or a file the app downloaded. The texture has the size of the image. The table `options` takes `dynamic`, `filter`, `wrap` and `mipmaps` as above. The options `fill` and `pixels` raise `Unknown option "<key>".`, since the image gives the pixels. Bytes that are not an image raise `The image could not be decoded, and the decoder reported "<reason>".`. Raw RGBA pixels take the form with the width and the height, and images of the package load with `assets.texture`.
+Makes a `Texture` from `bytes`, a string or a data view with the contents of a PNG, JPEG, TGA, BMP or GIF file. Use it for an image that a plugin returns from native code or a file the app downloaded. The texture has the size of the image. The table `options` takes `dynamic`, `filter`, `wrap` and `mipmaps` as above. The options `fill` and `pixels` raise `Unknown option "<key>".`, since the image gives the pixels. Bytes that are not an image raise `The image could not be decoded, and the decoder reported "<reason>".`. Raw RGBA pixels take the form with the width and the height, and images of the package load with `assets.texture`.
 
 ```lua
 local async = require('async')
@@ -140,7 +140,7 @@ print(texture == assets.texture('sprites/knight/run.png', {filter = 'linear'}))
 
 ### texture:update(pixels)
 
-Replaces every pixel of a texture made with `dynamic = true`. The string `pixels` holds raw RGBA bytes, four per pixel, row by row from the top, and its length is `width * height * 4`. The texture keeps its size, and every draw of the frame shows the new pixels. A texture that changes several times in one frame sends only its last pixels, whole and once, before the frame draws, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`.
+Replaces every pixel of a texture made with `dynamic = true`. The value `pixels` holds raw RGBA bytes, four per pixel, row by row from the top, and its length is `width * height * 4`. It is a string or a [data view](platform.md#data-views), whose memory the upload reads in place, such as a frame that a plugin fills. Any other value raises `Bytes come as a string or a data view that was not released, not as a <type>.`. The texture keeps its size, and every draw of the frame shows the new pixels. A texture that changes several times in one frame sends only its last pixels, whole and once, before the frame draws, which `graphics2d.stats().uploadedBytes` counts. A texture that is not dynamic raises `Only a dynamic texture changes its pixels in place.`, and pixels of another length raise `The pixels do not match the size of the dynamic texture.`.
 
 ```lua
 local graphics = require('haylen.graphics')

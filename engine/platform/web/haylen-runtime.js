@@ -139,10 +139,15 @@ Module.haylen = Module.haylen || {};
         waiting.runtime.push(work);
     };
 
-    // Parameters, results and events cross as JSON with the bytes of every `ArrayBuffer` and `ArrayBuffer` view, such as a `Uint8Array`, in buffers of their own that the JSON refers to as `{"$bytes": N}`, so binary data never turns into text.
+    // Parameters, results and events cross as JSON with the bytes of every `ArrayBuffer` and `ArrayBuffer` view, such as a `Uint8Array`, in buffers of their own that the JSON refers to as `{"$bytes": N}`, so binary data never turns into text. A `VarnDataView` crosses as the token of its view, which shares the memory of the heap without a copy, and the payload lists the views so a sender that keeps the payload keeps them.
     const encodePayload = (value) => {
         const buffers = [];
+        const views = [];
         const prepare = (item) => {
+            if (item instanceof Module.VarnDataView) {
+                views.push(item);
+                return item.token();
+            }
             if (item instanceof ArrayBuffer || ArrayBuffer.isView(item)) {
                 buffers.push(item instanceof ArrayBuffer ? new Uint8Array(item) : new Uint8Array(item.buffer, item.byteOffset, item.byteLength));
                 return { $bytes: buffers.length - 1 };
@@ -156,16 +161,26 @@ Module.haylen = Module.haylen || {};
             return item;
         };
         const json = JSON.stringify(prepare(value === undefined ? null : value));
-        return { json: json === undefined ? "null" : json, buffers };
+        return { json: json === undefined ? "null" : json, buffers, views };
     };
 
-    // Every `{"$bytes": N}` of the JSON becomes buffer `N`, a `Uint8Array`.
-    const decodePayload = (json, buffers) => {
+    // Every `{"$bytes": N}` of the JSON becomes buffer `N`, a `Uint8Array`, and every token a `VarnDataView` with a reference of its own, which `acquired` lists so its owner releases it. The engine keeps the views of the JSON alive while it hands the JSON over, so the decode runs before that returns.
+    const decodePayload = (json, buffers, acquired) => {
         return JSON.parse(json, (key, value) => {
+            if (Module.VarnDataView.isToken(value)) {
+                const view = Module.VarnDataView.acquire(value);
+                if (view === null) {
+                    throw new Error(`The data view ${value.$view} was gone before the page received it.`);
+                }
+                acquired.push(view);
+                return view;
+            }
             const index = value !== null && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length === 1 ? value.$bytes : undefined;
             return Number.isInteger(index) && index >= 0 && index < buffers.length ? buffers[index] : value;
         });
     };
+
+    const releaseViews = (views) => views.forEach((view) => view.release());
 
     // Calls an export of the engine with `ccall`, but with every string argument copied to the heap of the program for the duration of the call, because `ccall` copies strings onto its stack, which a large payload, such as the JSON of a result or the text of a long text area, would overflow.
     const callEngine = (name, returns, types, values) => {
@@ -224,7 +239,7 @@ Module.haylen = Module.haylen || {};
         const encoded = encodePayload(payload);
         const flags = (options && options.retain ? 1 : 0) | (options && options.batched ? 2 : 0);
         if (!waiting.appStarted) {
-            waiting.events.push({ event, json: encoded.json, buffers: encoded.buffers.map((buffer) => buffer.slice()), flags });
+            waiting.events.push({ event, json: encoded.json, buffers: encoded.buffers.map((buffer) => buffer.slice()), views: encoded.views.map((view) => view.retain()), flags });
             return;
         }
         sendEvent(event, encoded.json, encoded.buffers, flags);
@@ -242,14 +257,16 @@ Module.haylen = Module.haylen || {};
         return { message, code: "exception", data: { type: error && error.name ? error.name : typeof error } };
     };
 
-    // The handler receives the bytes of the app as `Uint8Array` values in its parameters, and its result carries `ArrayBuffer` and `Uint8Array` values as bytes. Failures carry JSON alone.
+    // The handler receives the bytes of the app as `Uint8Array` values in its parameters and its views as `VarnDataView` values, and its result carries `ArrayBuffer` and `Uint8Array` values as bytes and `VarnDataView` values as views. Failures carry JSON alone. The views of the parameters belong to the call until its handler settles, even after a cancel, so a handler keeps one longer with `retain`, and a view in the result is handed over to the engine, so a handler that still needs it returns a `retain` of it.
     haylen.dispatch = function (call, method, params, buffers) {
+        const views = [];
         const reply = (ok, value) => {
             if (!pending.delete(call)) {
                 return;
             }
-            const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
+            const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [], views: [] };
             withBuffers(encoded.buffers, (table, count) => callEngine("haylen_web_resolve", null, ["number", "number", "string", "number", "number"], [call, ok ? 1 : 0, encoded.json, table, count]));
+            releaseViews(encoded.views);
         };
         const handler = handlers.get(method);
         const controller = new AbortController();
@@ -258,15 +275,26 @@ Module.haylen = Module.haylen || {};
             reply(false, { message: "No page handler is registered for \"" + method + "\".", code: "noHandler" });
             return;
         }
+        let decoded;
+        try {
+            decoded = decodePayload(params, buffers, views);
+        } catch (error) {
+            releaseViews(views);
+            reply(false, describeFailure(error));
+            return;
+        }
         // The handler starts after the frame that made the call, and a cancel in that frame keeps it from starting, as on the other platforms.
         queueMicrotask(async () => {
             if (controller.signal.aborted) {
+                releaseViews(views);
                 return;
             }
             try {
-                reply(true, await handler(decodePayload(params, buffers), { call, signal: controller.signal }));
+                reply(true, await handler(decoded, { call, signal: controller.signal }));
             } catch (error) {
                 reply(false, describeFailure(error));
+            } finally {
+                releaseViews(views);
             }
         });
     };
@@ -285,7 +313,7 @@ Module.haylen = Module.haylen || {};
 
     const screenFailure = (message, code) => Object.assign(new Error(message), { code });
 
-    // Ends the screen that shows once, which uncovers the app. A result carries `ArrayBuffer` and `Uint8Array` values as bytes, and a failure carries JSON alone.
+    // Ends the screen that shows once, which uncovers the app. A result carries `ArrayBuffer` and `Uint8Array` values as bytes and hands its `VarnDataView` values over to the engine, and a failure carries JSON alone.
     const endScreen = (screen, ok, value) => {
         if (screens.current !== screen) {
             return;
@@ -295,8 +323,9 @@ Module.haylen = Module.haylen || {};
         if (screen.popup && !screen.popup.closed) {
             screen.popup.close();
         }
-        const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [] };
+        const encoded = ok ? encodePayload(value) : { json: JSON.stringify(value), buffers: [], views: [] };
         withBuffers(encoded.buffers, (table, count) => callEngine("haylen_web_finish_screen", null, ["number", "number", "string", "number", "number"], [screen.id, ok ? 1 : 0, encoded.json, table, count]));
+        releaseViews(encoded.views);
     };
 
     // A popup answers with `{haylenScreen: token, result}` or `{haylenScreen: token, error: {message, code, data}}`, which its page posts to the opener, from an origin the screen trusts, or on the `BroadcastChannel` `haylen-screens`, which only pages of this origin reach and which works even when the popup lost its opener.
@@ -384,13 +413,17 @@ Module.haylen = Module.haylen || {};
             popup: (url, options) => openPopup(screen, url, options),
             redirect: (url) => redirect(screen, url),
         };
+        // The views of the parameters live until the opener returns, so an opener keeps one longer with `retain`.
+        const views = [];
         try {
-            const returned = open(decodePayload(params, buffers), handle);
+            const returned = open(decodePayload(params, buffers, views), handle);
             if (returned && typeof returned.then === "function") {
                 returned.then(undefined, handle.reject);
             }
         } catch (error) {
             handle.reject(error);
+        } finally {
+            releaseViews(views);
         }
     };
 
@@ -1175,6 +1208,8 @@ Module.haylen = Module.haylen || {};
             audioStream(name, options) {
                 return openAudioStream(id, name, options);
             },
+            // The class of the data views of Varn, which share memory of the heap with the app, so a plugin makes views with "VarnDataView.allocate" once the runtime started.
+            VarnDataView: Module.VarnDataView,
             overlay: {
                 add: (element, placement) => addToOverlay(id, element, placement),
             },
@@ -1218,6 +1253,7 @@ Module.haylen = Module.haylen || {};
             queueMicrotask(() => {
                 for (const entry of waiting.events.splice(0)) {
                     sendEvent(entry.event, entry.json, entry.buffers, entry.flags);
+                    releaseViews(entry.views);
                 }
             });
         }

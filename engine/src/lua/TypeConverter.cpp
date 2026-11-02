@@ -10,6 +10,7 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "lua/Owners.hpp"
+#include "varn/dataview/DataViewModule.h"
 
 namespace haylen::lua {
 
@@ -511,6 +512,18 @@ text::Style TypeConverter::readTextStyle(lua_State* L, int index, std::initializ
     });
     // clang-format on
     return style;
+}
+
+std::string_view TypeConverter::readBytes(lua_State* L, int index) {
+    if (lua_type(L, index) == LUA_TSTRING) {
+        std::size_t length = 0;
+        const char* text = lua_tolstring(L, index, &length);
+        return {text, length};
+    }
+    if (const varn::dataview::DataView* view = varn::dataview::DataViewModule::test(L, index)) {
+        return {reinterpret_cast<const char*>(view->data()), view->size()};
+    }
+    throw std::invalid_argument(std::string("Bytes come as a string or a data view that was not released, not as a ") + luaL_typename(L, index) + ".");
 }
 
 graphics::Texture::Options TypeConverter::readTextureOptions(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields) {

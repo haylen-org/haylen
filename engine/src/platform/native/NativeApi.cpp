@@ -10,10 +10,11 @@
 #include "haylen/platform/PluginStreams.hpp"
 #include "platform/BridgeRelay.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "varn/varn.h"
 
 namespace haylen::platform {
 
-const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin, .registerErrorHandler = &registerErrorHandler, .openVideoStream = &openVideoStream, .pushVideoFrame = &pushVideoFrame, .openAudioStream = &openAudioStream, .pushAudioFrames = &pushAudioFrames, .registerScreen = &registerScreen, .finishScreen = &finishScreen, .getWindow = &getWindow, .coverApp = &coverApp, .uncoverApp = &uncoverApp};
+const HaylenNativeApi NativeApi::api{.version = HAYLEN_NATIVE_API_VERSION, .emit = &emit, .resolve = &resolve, .registerHandler = &registerHandler, .log = &log, .registerPlugin = &registerPlugin, .registerErrorHandler = &registerErrorHandler, .openVideoStream = &openVideoStream, .pushVideoFrame = &pushVideoFrame, .openAudioStream = &openAudioStream, .pushAudioFrames = &pushAudioFrames, .registerScreen = &registerScreen, .finishScreen = &finishScreen, .getWindow = &getWindow, .coverApp = &coverApp, .uncoverApp = &uncoverApp, .newView = &varn_dataview_new, .wrapView = &varn_dataview_wrap, .acquireView = &varn_dataview_acquire, .retainView = &varn_dataview_retain, .releaseView = &varn_dataview_release, .viewData = &varn_dataview_data, .viewSize = &varn_dataview_size, .viewToken = &varn_dataview_token};
 std::mutex& NativeApi::mutex = *new std::mutex();
 std::unordered_map<std::string, NativeApi::Handler>& NativeApi::handlers = *new std::unordered_map<std::string, Handler>();
 std::unordered_map<std::string, NativeApi::ScreenHandler>& NativeApi::screens = *new std::unordered_map<std::string, ScreenHandler>();

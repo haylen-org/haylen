@@ -26,18 +26,20 @@
 #include "lua/Owners.hpp"
 #include "platform/StreamsLua.hpp"
 #include "varn/async/Promise.h"
+#include "varn/dataview/DataViewJson.h"
 
 namespace haylen::platform {
 
-// Parameters that Lua leaves out are an empty object, and strings marked with `platform.bytes` become byte buffers.
+// Parameters that Lua leaves out are an empty object, strings marked with `platform.bytes` become byte buffers and data views become their tokens.
 Bridge::Payload PlatformLua::readPayload(lua_State* L, int index) {
     Bridge::Payload payload;
-    payload.json = lua_isnoneornil(L, index) ? core::Json::object() : lua::JsonConverter::read(L, index, payload.buffers);
+    payload.json = lua_isnoneornil(L, index) ? core::Json::object() : lua::JsonConverter::readBridged(L, index, payload.buffers);
+    payload.views = varn::dataview::DataViewJson::acquire(payload.json);
     return payload;
 }
 
 void PlatformLua::pushPayload(lua_State* L, const Bridge::Payload& payload) {
-    lua::JsonConverter::push(L, payload.json, payload.buffers);
+    lua::JsonConverter::pushBridged(L, payload.json, payload.buffers);
 }
 
 void PlatformLua::pushCall(lua_State* L, const std::string& method, int paramsIndex, int optionsIndex) {
@@ -186,7 +188,7 @@ int PlatformLua::resolve(lua_State* L) {
     const auto id = lua::Stack::read<std::uint64_t>(L, 1);
     const bool ok = lua::Stack::read<bool>(L, 2);
     std::vector<std::vector<std::byte>> buffers;
-    const std::string result = lua::JsonConverter::read(L, 3, buffers).dump();
+    const std::string result = lua::JsonConverter::readBridged(L, 3, buffers).dump();
     lua::Runtime::getEngine(L).getPlatform().resolve(id, ok, result, std::move(buffers));
     return 0;
 }
@@ -195,7 +197,7 @@ int PlatformLua::resolve(lua_State* L) {
 int PlatformLua::emit(lua_State* L) {
     const std::string event = lua::Stack::read<std::string>(L, 1);
     std::vector<std::vector<std::byte>> buffers;
-    const std::string payload = lua::JsonConverter::read(L, 2, buffers).dump();
+    const std::string payload = lua::JsonConverter::readBridged(L, 2, buffers).dump();
     Bridge::EmitOptions options;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
@@ -255,7 +257,8 @@ int PlatformLua::registerHandler(lua_State* L) {
             pushPayload(state, params);
             lua::Runtime::protectedCall(state, 1, 1);
             result = {.ok = true};
-            result.value.json = lua::JsonConverter::read(state, -1, result.value.buffers);
+            result.value.json = lua::JsonConverter::readBridged(state, -1, result.value.buffers);
+            result.value.views = varn::dataview::DataViewJson::acquire(result.value.json);
         } catch (const std::exception& exception) {
             result = {.error = {.message = exception.what()}};
         }

@@ -27,6 +27,7 @@
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
 #include "varn/async/Promise.h"
+#include "varn/dataview/DataViewModule.h"
 
 namespace haylen::graphics {
 
@@ -35,9 +36,9 @@ int GraphicsLua::newRenderTarget(lua_State* L) {
     return 1;
 }
 
-// Creates a texture from raw RGBA bytes or a fill color with `newTexture(width, height, {pixels = string or fill = color, dynamic, filter, wrap})`, where a dynamic texture changes its pixels with `update`, or from the bytes of an image file with `newTexture(bytes, {dynamic, filter, wrap})`.
+// Creates a texture from raw RGBA bytes or a fill color with `newTexture(width, height, {pixels = bytes or fill = color, dynamic, filter, wrap})`, where a dynamic texture changes its pixels with `update`, or from the bytes of an image file with `newTexture(bytes, {dynamic, filter, wrap})`, where bytes are a string or a data view.
 int GraphicsLua::newTexture(lua_State* L) {
-    if (lua_type(L, 1) == LUA_TSTRING) {
+    if (lua_type(L, 1) == LUA_TSTRING || luaL_testudata(L, 1, varn::dataview::DataViewModule::kMetatable) != nullptr) {
         pushImageTexture(L);
         return 1;
     }
@@ -49,13 +50,16 @@ int GraphicsLua::newTexture(lua_State* L) {
     const int width = lua::Stack::read<int>(L, 1);
     const int height = lua::Stack::read<int>(L, 2);
     math::Color fill = math::Color::white();
-    std::string pixels;
+    std::string_view pixels;
     bool dynamic = false;
     if (!lua_isnoneornil(L, 3)) {
         luaL_checktype(L, 3, LUA_TTABLE);
         lua::Table::readField(L, 3, "fill", fill);
-        lua::Table::readField(L, 3, "pixels", pixels);
         lua::Table::readField(L, 3, "dynamic", dynamic);
+        lua_getfield(L, 3, "pixels");
+        if (!lua_isnil(L, -1)) {
+            pixels = lua::TypeConverter::readBytes(L, -1);
+        }
     }
 
     Device& device = lua::Runtime::getEngine(L).getGraphics();
@@ -70,7 +74,7 @@ int GraphicsLua::newTexture(lua_State* L) {
 }
 
 void GraphicsLua::pushImageTexture(lua_State* L) {
-    const std::string_view bytes = lua::Stack::read<std::string_view>(L, 1);
+    const std::string_view bytes = lua::TypeConverter::readBytes(L, 1);
     bool dynamic = false;
     if (!lua_isnoneornil(L, 2)) {
         luaL_checktype(L, 2, LUA_TTABLE);
@@ -82,10 +86,10 @@ void GraphicsLua::pushImageTexture(lua_State* L) {
     lua::Stack::push(L, dynamic ? device.createDynamicTexture(image, options) : device.createTexture(image, options));
 }
 
-// Replaces every pixel of a dynamic texture with `texture:update(pixels)`, a string of RGBA bytes of the same size.
+// Replaces every pixel of a dynamic texture with `texture:update(pixels)`, the RGBA bytes of the same size in a string or a data view, which the upload reads in place.
 int GraphicsLua::updateTexture(lua_State* L) {
     const Texture& texture = lua::Userdata::check<Texture>(L, 1);
-    const std::string_view pixels = lua::Stack::read<std::string_view>(L, 2);
+    const std::string_view pixels = lua::TypeConverter::readBytes(L, 2);
     lua::Runtime::getEngine(L).getGraphics().updateTexture(texture, {reinterpret_cast<const std::uint8_t*>(pixels.data()), pixels.size()});
     return 0;
 }

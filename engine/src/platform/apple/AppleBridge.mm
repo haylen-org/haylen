@@ -1,5 +1,7 @@
 #import "platform/apple/AppleBridge.hpp"
 
+#import "VarnDataView.h"
+
 #include <utility>
 
 #include "haylen/core/JsonBytes.hpp"
@@ -124,7 +126,7 @@ std::optional<AppleBridge::Encoded> AppleBridge::encode(id value) {
         return Encoded{.json = "null"};
     }
     Encoded encoded;
-    id prepared = prepare(value, encoded.buffers);
+    id prepared = prepare(value, encoded);
     @try {
         NSData* data = [NSJSONSerialization dataWithJSONObject:prepared options:NSJSONWritingFragmentsAllowed error:nil];
         if (data == nil) {
@@ -137,18 +139,23 @@ std::optional<AppleBridge::Encoded> AppleBridge::encode(id value) {
     }
 }
 
-id AppleBridge::prepare(id value, std::vector<std::vector<std::byte>>& buffers) {
+id AppleBridge::prepare(id value, Encoded& encoded) {
     if ([value isKindOfClass:NSData.class]) {
         NSData* data = value;
         const auto* bytes = static_cast<const std::byte*>(data.bytes);
-        buffers.emplace_back(bytes, bytes + data.length);
-        return @{@(core::JsonBytes::kKey) : @(buffers.size() - 1)};
+        encoded.buffers.emplace_back(bytes, bytes + data.length);
+        return @{@(core::JsonBytes::kKey) : @(encoded.buffers.size() - 1)};
+    }
+    if ([value isKindOfClass:VarnDataView.class]) {
+        VarnDataView* view = value;
+        encoded.views.push_back(varn::dataview::DataView::share(view.handle));
+        return view.token;
     }
     if ([value isKindOfClass:NSDictionary.class]) {
         NSDictionary* source = value;
         NSMutableDictionary* object = [NSMutableDictionary dictionaryWithCapacity:source.count];
         for (id key in source) {
-            object[key] = prepare(source[key], buffers);
+            object[key] = prepare(source[key], encoded);
         }
         return object;
     }
@@ -156,14 +163,14 @@ id AppleBridge::prepare(id value, std::vector<std::vector<std::byte>>& buffers) 
         NSArray* source = value;
         NSMutableArray* array = [NSMutableArray arrayWithCapacity:source.count];
         for (id element in source) {
-            [array addObject:prepare(element, buffers)];
+            [array addObject:prepare(element, encoded)];
         }
         return array;
     }
     return value;
 }
 
-// A reference is an object whose only key is $bytes with an integer, never a boolean or a fraction.
+// A reference is an object whose only key is $bytes with an integer, never a boolean or a fraction. A token reaches its view while the sender keeps the view alive, which the bridge guarantees for the parameters of a dispatch and of a screen.
 id AppleBridge::restore(id value, NSArray<NSData*>* buffers) {
     if ([value isKindOfClass:NSArray.class]) {
         NSMutableArray* array = [NSMutableArray arrayWithCapacity:[value count]];
@@ -174,6 +181,14 @@ id AppleBridge::restore(id value, NSArray<NSData*>* buffers) {
     }
     if (![value isKindOfClass:NSDictionary.class]) {
         return value;
+    }
+    if ([VarnDataView isToken:value]) {
+        VarnDataView* view = [VarnDataView viewWithToken:value];
+        if (view == nil) {
+            core::Log::error("A data view of the parameters was gone before native code received it.");
+            return NSNull.null;
+        }
+        return view;
     }
     NSDictionary* source = value;
     id index = source.count == 1 ? source[@(core::JsonBytes::kKey)] : nil;

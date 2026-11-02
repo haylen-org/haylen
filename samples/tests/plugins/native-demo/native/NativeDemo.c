@@ -312,6 +312,73 @@ static void native_demo_echo_bytes(uint64_t call, const HaylenNativeBuffer* buff
     nativeDemoApi->resolve(call, 1, answer, buffers, 1);
 }
 
+// The colors of a frame of the camera that the demo simulates, which move with the index of the frame, so the app sees each new frame arrive.
+static void native_demo_fill_frame(uint8_t* pixels, int width, int height, unsigned index) {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
+            uint8_t* pixel = pixels + ((size_t)y * (size_t)width + (size_t)x) * 4;
+            pixel[0] = (uint8_t)(x * 255 / width + index * 3);
+            pixel[1] = (uint8_t)(y * 255 / height + index * 2);
+            pixel[2] = (uint8_t)((x + y + index * 4) / 2);
+            pixel[3] = 255;
+        }
+    }
+}
+
+// Answers with a frame of RGBA pixels in a data view that the library allocates, so the app uploads it into a texture without a copy. The reference of the library goes back once the engine took its own from the answer.
+static void native_demo_capture_frame(uint64_t call, const char* paramsJson) {
+    static unsigned frames = 0;
+    const int width = native_demo_number(paramsJson, "width", 0);
+    const int height = native_demo_number(paramsJson, "height", 0);
+    if (width < 1 || height < 1 || width > 2048 || height > 2048) {
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The method \\\"captureFrame\\\" needs a width and a height from 1 to 2048.\",\"code\":\"invalidParams\"}", NULL, 0);
+        return;
+    }
+    varn_dataview* frame = nativeDemoApi->newView((size_t)width * (size_t)height * 4);
+    if (frame == NULL) {
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The frame could not be allocated.\",\"code\":\"outOfMemory\"}", NULL, 0);
+        return;
+    }
+    const unsigned index = ++frames;
+    native_demo_fill_frame((uint8_t*)nativeDemoApi->viewData(frame), width, height, index);
+
+    char token[128];
+    nativeDemoApi->viewToken(frame, token, sizeof(token));
+    char answer[NATIVE_DEMO_TEXT];
+    snprintf(answer, sizeof(answer), "{\"frame\":%s,\"width\":%d,\"height\":%d,\"index\":%u,\"language\":\"C\"}", token, width, height, index);
+    nativeDemoApi->resolve(call, 1, answer, NULL, 0);
+    nativeDemoApi->releaseView(frame);
+}
+
+// Reads the view of the parameters in place, answers with the sum of its bytes, and writes a mark into its first bytes that the app reads back from the same memory.
+static void native_demo_checksum_view(uint64_t call, const char* paramsJson) {
+    char token[160];
+    char id[32];
+    char pointer[40];
+    const int found = native_demo_field(paramsJson, "view", token, sizeof(token)) && native_demo_field(token, "$view", id, sizeof(id)) && native_demo_field(token, "pointer", pointer, sizeof(pointer));
+    const int size = found ? native_demo_number(token, "size", -1) : -1;
+    varn_dataview* view = size >= 0 ? nativeDemoApi->acquireView(strtoull(id, NULL, 10), (const void*)(uintptr_t)strtoull(pointer + 1, NULL, 16), (size_t)size) : NULL;
+    if (view == NULL) {
+        nativeDemoApi->resolve(call, 0, "{\"message\":\"The method \\\"checksumView\\\" needs a data view.\",\"code\":\"invalidParams\"}", NULL, 0);
+        return;
+    }
+
+    uint8_t* bytes = (uint8_t*)nativeDemoApi->viewData(view);
+    const size_t length = nativeDemoApi->viewSize(view);
+    uint32_t checksum = 0;
+    for (size_t index = 0; index < length; ++index) {
+        checksum += bytes[index];
+    }
+    static const char mark[] = "NATIVE";
+    if (length >= sizeof(mark) - 1) {
+        memcpy(bytes, mark, sizeof(mark) - 1);
+    }
+    char answer[NATIVE_DEMO_TEXT];
+    snprintf(answer, sizeof(answer), "{\"checksum\":%u,\"size\":%zu,\"mark\":\"%s\",\"language\":\"C\"}", checksum, length, mark);
+    nativeDemoApi->resolve(call, 1, answer, NULL, 0);
+    nativeDemoApi->releaseView(view);
+}
+
 // The picture of the demo, a small island with a palm under the sun in a sea with waves, in fractions of the width and the height of the picture, the same on every platform. The video moves the waves and floats the sun with the time.
 typedef struct NativeDemoColor {
     float red, green, blue;
@@ -866,6 +933,10 @@ static void native_demo_handle(void* user, uint64_t call, const char* method, co
         native_demo_echo_bytes(call, buffers, bufferCount);
     } else if (strcmp(name, "generatedImage") == 0) {
         native_demo_generated_image(call, paramsJson);
+    } else if (strcmp(name, "captureFrame") == 0) {
+        native_demo_capture_frame(call, paramsJson);
+    } else if (strcmp(name, "checksumView") == 0) {
+        native_demo_checksum_view(call, paramsJson);
     } else if (strcmp(name, "startVideo") == 0) {
         native_demo_start_video(call);
     } else if (strcmp(name, "stopVideo") == 0) {

@@ -302,7 +302,7 @@ TEST_F(NativeLuaTest, GivesLibrariesTheInterfaceOfTheEngine) {
     // The library announced itself with a retained event, which waits for a listener that connects late.
     fixture.runLua("platform.on('native_test.ready', function(payload) ready = payload end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return ready ~= nil") == "true"; }));
-    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "5 dynamic");
+    EXPECT_EQ(fixture.lua("return ready.version .. ' ' .. ready.origin"), "6 dynamic");
     EXPECT_EQ(fixture.lua("return failed.message .. ' ' .. failed.code .. ' ' .. failed.data.reason"), "The native test failed on purpose. native_test_failure requested");
     EXPECT_EQ(fixture.lua("return tostring(failed) .. ' | ' .. ('error: ' .. failed) .. ' | ' .. (failed .. '!')"), "The native test failed on purpose. | error: The native test failed on purpose. | The native test failed on purpose.!");
 

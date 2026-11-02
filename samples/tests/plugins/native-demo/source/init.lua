@@ -46,6 +46,16 @@ function demo.generatedImage(width, height)
     return handle:call('generatedImage', {width = width, height = height})
 end
 
+-- Fills a frame of `width` by `height` RGBA pixels natively, as a camera would, and answers with `{frame, width, height, index, language}`, where `frame` is a data view whose memory the native part and the app share without a copy.
+function demo.captureFrame(width, height)
+    return handle:call('captureFrame', {width = width, height = height})
+end
+
+-- Hands a data view to the native part, which reads its bytes in place, writes the text of `mark` into its first bytes and answers with `{checksum, size, mark, language}`.
+function demo.checksumView(view)
+    return handle:call('checksumView', {view = view})
+end
+
 -- Counts the primes below `limit` on a background thread and answers with `{primes, thread, detail, language}`.
 function demo.compute(limit)
     return handle:call('compute', {limit = limit})

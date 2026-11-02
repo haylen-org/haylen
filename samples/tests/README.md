@@ -782,6 +782,7 @@ Every capability of native plugins through the plugin "native-demo", written wit
 | `PLG-020` | Fake ads | A full-screen ad and a rewarded ad that cover the app while they show, and the reward of an ad watched to the end. | headless |
 | `PLG-021` | Fake sign-in | An account that the person picks in a native sheet, the current user that the device keeps and signing out. | headless |
 | `PLG-022` | Bridge benchmark | The round trip of one call, the calls per second, and the work of a frame with N calls and with N batched events. | headless |
+| `PLG-023` | Data views | Camera frames that the native part fills in data views of shared memory, which a texture reads in place, and a view of the app that the native part reads and marks. | headless |
 
 #### Preferences (PRF)
 

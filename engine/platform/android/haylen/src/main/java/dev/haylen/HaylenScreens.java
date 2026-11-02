@@ -8,7 +8,9 @@ import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContract;
 import androidx.lifecycle.Lifecycle;
 import androidx.savedstate.SavedStateRegistry;
+import com.varn.VarnDataView;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -130,28 +132,38 @@ final class HaylenScreens {
     }
 
     // Called from the frame thread of the engine once it covered the app, which shows the screen on the main thread. A screen that no plugin registered fails with the code `noHandler`, and one that finds the activity away from the foreground with the code `notActive`.
-    static void open(long id, byte[] plugin, byte[] name, byte[] params, byte[][] buffers, byte[] state, boolean opaque) {
+    // The views of the parameters live until the opener returns, so a plugin keeps one longer with `retain`.
+    static void open(long id, byte[] plugin, byte[] name, byte[] params, byte[][] buffers, long[] views, byte[] state, boolean opaque) {
         HaylenScreen screen = new HaylenScreen(id, text(plugin), text(name), text(state), opaque, false);
+        List<VarnDataView> held = HaylenPayload.adopt(views);
         mainThread.post(() -> {
-            Registration registration = registrations.get(screen.key());
-            if (registration == null) {
-                screen.fail("No screen \"" + screen.name() + "\" of the plugin \"" + screen.plugin() + "\" is registered on Android.", "noHandler", null);
-                return;
-            }
-            HaylenActivity activity = HaylenBridge.activity();
-            if (activity == null || !activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
-                screen.fail("The screen \"" + screen.name() + "\" cannot show while the app is away from the foreground.", "notActive", null);
-                return;
-            }
-            synchronized (HaylenScreens.class) {
-                showing = screen;
-            }
             try {
-                registration.open(HaylenPayload.decode(params, buffers), screen);
-            } catch (Exception error) {
-                screen.fail(error);
+                show(screen, params, buffers, held);
+            } finally {
+                HaylenPayload.close(held);
             }
         });
+    }
+
+    private static void show(HaylenScreen screen, byte[] params, byte[][] buffers, List<VarnDataView> views) {
+        Registration registration = registrations.get(screen.key());
+        if (registration == null) {
+            screen.fail("No screen \"" + screen.name() + "\" of the plugin \"" + screen.plugin() + "\" is registered on Android.", "noHandler", null);
+            return;
+        }
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity == null || !activity.getLifecycle().getCurrentState().isAtLeast(Lifecycle.State.RESUMED)) {
+            screen.fail("The screen \"" + screen.name() + "\" cannot show while the app is away from the foreground.", "notActive", null);
+            return;
+        }
+        synchronized (HaylenScreens.class) {
+            showing = screen;
+        }
+        try {
+            registration.open(HaylenPayload.decode(params, buffers, views), screen);
+        } catch (Exception error) {
+            screen.fail(error);
+        }
     }
 
     // Called from the frame thread of the engine when the app gives a screen up. The plugin closes the UI that it shows itself when its cancel listeners run, and a screen without listeners ends with the code `cancelled` at once, which drops the answer that its launcher may still receive. A contract screen finishes the activity that its launcher started.

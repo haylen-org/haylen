@@ -9,7 +9,7 @@ The bridge carries two things:
 - **Calls.** The app calls a named method with JSON parameters. A handler answers once with a JSON result, or with a typed error that has a message, a code and data. The answer arrives later, so a call never blocks the app. A call can time out, and the app can cancel it. The handler hears both.
 - **Events.** Native code sends a named event with a JSON payload, and the app listens to it. An event can be retained for a listener that comes later, or batched into one list per frame.
 
-Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text. Every result and every event reaches the app on the frame thread, at the start of a frame. Plugins also open screens through the bridge: native UI that covers the app until it ends with one result.
+Parameters, results and events carry byte buffers next to their JSON, such as images and audio, which never turn into text, and data views, memory that the app and native code share without a copy. Every result and every event reaches the app on the frame thread, at the start of a frame. Plugins also open screens through the bridge: native UI that covers the app until it ends with one result.
 
 The bridge covers what the engine does not wrap, such as sign-in, purchases, sharing, deep links or system settings. The engine wraps some services itself, and they never go through the bridge: what the device is, opening urls and vibrating in [`haylen.system`](../lua-api/system.md), and native dialogs in [`haylen.dialogs`](../lua-api/dialogs.md). The bridge has no methods of its own, so every method name and event name is a contract between an app and its native code.
 
@@ -142,6 +142,62 @@ async.spawn(function()
 end)
 ```
 
+## Data views
+
+Byte buffers copy their bytes once into the engine or out of it. That is fine for a photo, and too slow for data that changes every frame, such as the frames of a camera. A data view shares the memory instead. It is a view of Varn, the runtime of the engine: memory with an address, a size and an id that no other view of the process ever takes, which every language holds a reference to. The JSON names it with a token, and the bytes never move:
+
+```json
+{"frame": {"$view": 7, "pointer": "0x10a3f0000", "size": 230400}}
+```
+
+The pointer is hexadecimal text, because an address of 64 bits does not survive the numbers of every language. The [`dataview` reference](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md) of Varn lists what Lua does with a view, and the [embedding guide](https://github.com/varn-org/varn/blob/main/docs/embedding.md#sharing-memory-with-data-views) of Varn describes its C interface.
+
+### Ownership and lifetime
+
+- **Each holder owns one reference.** A Lua value, a C++ `varn::dataview::DataView`, a `varn_dataview*` of C, an Objective-C or Swift `VarnDataView`, a Java or Kotlin `com.varn.VarnDataView` and a JavaScript `VarnDataView` each hold one, from any thread. The memory goes away when the last reference ends, whoever holds it.
+- **A token owns nothing.** The sender keeps its view alive until the call that carries the token returns. Every boundary of the bridge takes its own reference before it returns: `Bridge::call`, `send`, `resolve` and `emit`, and the dispatch to native code. So native code may release its view as soon as its reply or its emit returns, and Lua may drop its value once `platform.call` returns.
+- **A payload keeps its views.** The `views` of a `Bridge::Payload` hold the views that its tokens name, so an answer that waits for the next frame, a retained event and a batch keep their memory alive for as long as they wait.
+- **Received views belong to their call.** A handler receives the views of its parameters with a reference that its call owns. That reference ends when the handler answers, even after the app gave the call up, and when the opener of a screen returns. A handler that keeps a view longer takes a reference of its own, with `retain` in Java and JavaScript, by keeping the object in Swift and Objective-C, and with `acquireView` of `HaylenNativeApi` in C.
+- **The bytes are not synchronized.** Both sides see the same memory, so a writer finishes before it hands a view over. A producer that writes a view again, such as a ring of camera frames, waits until every consumer released it.
+- **A token never reaches what it does not name.** A token reaches a view only while the view lives and only with its exact id, address and size. The bridge fails a call with the code `invalidView` and drops an event when a token names a view that is gone. Plain JSON never holds a view, so `haylen.storage`, `json.encode` and the screens state refuse one.
+
+### Data views in each language
+
+| Where | Views that the app sends | Views that native code sends |
+| --- | --- | --- |
+| Lua | A value of [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md), such as `dataview.new(size)`, anywhere in the parameters. | A `dataview` value in the place of the token, which `texture:update(view)`, `graphics.newTexture(view)` and `audio.newSound(view)` read in place. |
+| C++ | The token of `varn::dataview::DataViewJson::write(view)` in the JSON of a `Bridge::Payload`. The bridge fills its `views`. | The token in the JSON of `Bridge::resolve` and `Bridge::emit`, and the `views` of the payloads that handlers and listeners receive. |
+| C | The token in the JSON of a handler, valid while it runs, which `acquireView` of `HaylenNativeApi` turns into a reference. | The token that `viewToken` writes for a view of `newView` or `wrapView`, in the JSON of `resolve` and `emit`. |
+| Java and Kotlin | A `com.varn.VarnDataView` in the `JSONObject` of the parameters, whose `buffer()` is a direct `ByteBuffer` over the memory. | A `VarnDataView` anywhere in the value of `reply.success` and of `emit`, from `VarnDataView.allocate(size)` or `VarnDataView.wrap(directBuffer)`. Its `close()` gives a reference back, so it fits `use` of Kotlin. |
+| Objective-C and Swift | A `VarnDataView` in the parameters, whose `bytes` and `length` reach the memory, and whose `data` is an `NSData` that reads it in place. | A `VarnDataView` anywhere in the value of a reply and of `emit`, from `VarnDataView(length:)`, `VarnDataView(bytesNoCopy:length:deallocator:)`, such as the base address of a locked `CVPixelBuffer`, or `VarnDataView(data:)`. |
+| JavaScript | A `VarnDataView` in the parameters, whose `bytes()` is a `Uint8Array` over the heap of WebAssembly as it is now. | A `VarnDataView` of `context.VarnDataView.allocate(size)` anywhere in the value of a handler, which hands its reference over to the engine, and of `emit`, after which the page releases its own. |
+
+The heap of WebAssembly grows when the app allocates, which detaches every `Uint8Array` over it, so a page asks `bytes()` again after anything that may allocate. On Android the class `VarnDataView` works once the first activity loaded the engine library, like the streams of plugins.
+
+```lua
+local async = require('async')
+local dataview = require('dataview')
+local graphics = require('haylen.graphics')
+local platform = require('haylen.platform')
+
+local camera = platform.plugin('camera-kit')
+local texture = graphics.newTexture(640, 480, {dynamic = true})
+
+async.spawn(function()
+    -- The native part answers with a view of the pixels it filled, which the texture uploads in place.
+    local shot = camera:call('capture', {width = 640, height = 480}):await()
+    texture:update(shot.pixels)
+
+    -- The native part reads this view in place and may write into it.
+    local mask = dataview.new(640 * 480)
+    camera:call('applyMask', {mask = mask}):await()
+end)
+```
+
+### Data views or streams
+
+A view crosses with each call or event, so the app decides when it wants data and holds it for as long as it needs. The [streams](plugins.md#streams) of plugins push video and audio without a call: the engine keeps only the newest video frame, which it copies once on the thread that pushes it, and audio goes through a ring with one writer and one reader. Use a stream for video or audio that plays without pause, and a view for data that the app asks for or works on, such as a frame to analyze, a depth map, a mesh or a large buffer of a file.
+
 ## Timeouts and cancellation
 
 A call with a `timeout` fails with the code `timeout` at the first pump after its deadline. The method `call:cancel()` fails a pending call with the code `cancelled` at the next pump. In both cases the bridge tells the native side that the app gave the call up, through `Bridge::Canceller`:
@@ -173,7 +229,7 @@ The engine covers the app before the platform shows the screen, and keeps it cov
 - A failure carries a JSON string, which becomes the error message, or an object with a `message` string and optional `code` and `data` values, which Lua receives as the fields of the error.
 - Any other failure payload, such as `null`, a number or an object without a string `message`, fails with `The native platform call failed without a message.`. It keeps the code and the data of an object.
 - An answer that is not JSON at all fails with the code `invalidJson` and `The platform returned invalid JSON.`.
-- The bridge and the platforms fail calls with codes of their own. The bridge gives `timeout` and `cancelled`, and `noHandler` comes when nothing answers the method. The codes `invalidJson` and `invalidBytes` come for broken answers. The code `exception` comes when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The [reference](../lua-api/platform.md#platformerror) describes each one.
+- The bridge and the platforms fail calls with codes of their own. The bridge gives `timeout` and `cancelled`, and `noHandler` comes when nothing answers the method. The codes `invalidJson`, `invalidBytes` and `invalidView` come for broken answers. The code `exception` comes when a Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The [reference](../lua-api/platform.md#platformerror) describes each one.
 - Method and event names are free-form strings, usually dotted names such as `auth.signIn`. [Plugins](plugins.md) put their id in front of their method and event names, which use camelCase, such as `ads.showBanner` and `ads.closed`. The plugin handle of Lua and the plugin contexts of native code add the prefix, so neither side writes it.
 
 ## Stand-ins in Lua
@@ -428,7 +484,7 @@ The class `haylen::platform::Bridge` in `engine/include/haylen/platform/Bridge.h
 
 | Member | Meaning |
 | --- | --- |
-| `registerHandler(std::string method, Bridge::Handler handler)` | Answers a method inside the engine. The handler receives the `const Bridge::Payload& params`, JSON with its `std::vector<std::byte>` buffers, and a `Bridge::Reply`. The reply takes a `Bridge::Result{ok, value, error}`, whose `value` is a `Bridge::Payload` and whose `Bridge::Error` has a `message`, a `code` and `data`. An empty method name throws `A platform handler needs a method name and a function.`. |
+| `registerHandler(std::string method, Bridge::Handler handler)` | Answers a method inside the engine. The handler receives the `const Bridge::Payload& params`, JSON with its `std::vector<std::byte>` buffers and the tokens of its data views, and a `Bridge::Reply`. The reply takes a `Bridge::Result{ok, value, error}`, whose `value` is a `Bridge::Payload` and whose `Bridge::Error` has a `message`, a `code` and `data`. An empty method name throws `A platform handler needs a method name and a function.`. |
 | `hasHandler(std::string_view method)` | Whether an engine handler answers the method. |
 | `call(std::string_view method, const Bridge::Payload& params, Bridge::Callback callback, timeout)` | Calls a method and returns the id of the call. The callback receives the `Bridge::Result` on the frame thread. An optional `std::chrono::steady_clock::duration` fails the call with the code `timeout` once it passes. |
 | `cancel(std::uint64_t id)` | Fails a pending call with the code `cancelled` at the next pump, tells native code, and returns whether the call was pending. |
@@ -614,4 +670,4 @@ ASSERT_TRUE(fixture.frameUntil([&] { return fixture.host().getPlatformCalls().si
 fixture.engine().getPlatform().resolve(fixture.host().getPlatformCalls()[0].id, true, R"({"model": "phone"})");
 ```
 
-The function `platform::HeadlessHost::getPlatformCalls()` returns the id, the method, the JSON parameters and the byte buffers of each call. The function `getCancelledCalls()` returns the ids of the calls that the bridge gave up through a timeout or a cancel. A test answers with buffers the way native code does, such as `resolve(id, true, R"({"png": {"$bytes": 0}})", {pngBytes})`, and sends batched events with `emit(event, json, {}, {.batched = true})`. Lua code under test can stand in for native methods with `platform.registerHandler`. The native interop tests load `engine/tests/native/NativeTest.c`, whose init function registers handlers through `HaylenNativeApi`. The [testing guide](../tools/testing.md) describes the whole test support.
+The function `platform::HeadlessHost::getPlatformCalls()` returns the id, the method, the JSON parameters, the byte buffers and the data views of each call, which it holds the way native code does. The function `getCancelledCalls()` returns the ids of the calls that the bridge gave up through a timeout or a cancel. A test answers with buffers the way native code does, such as `resolve(id, true, R"({"png": {"$bytes": 0}})", {pngBytes})`, and sends batched events with `emit(event, json, {}, {.batched = true})`. Lua code under test can stand in for native methods with `platform.registerHandler`. The native interop tests load `engine/tests/native/NativeTest.c`, whose init function registers handlers through `HaylenNativeApi`. The [testing guide](../tools/testing.md) describes the whole test support.

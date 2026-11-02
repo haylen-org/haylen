@@ -14,7 +14,7 @@
 
 namespace haylen::platform {
 
-// Native side of the platform bridge on Apple platforms: the HaylenBridge handlers and the JSON that crosses between them and the engine, with NSData for every byte buffer in both directions. Handlers may be registered at any time, even before the app starts.
+// Native side of the platform bridge on Apple platforms: the HaylenBridge handlers and the JSON that crosses between them and the engine, with NSData for every byte buffer and VarnDataView for every data view in both directions. Handlers may be registered at any time, even before the app starts.
 class AppleBridge final {
   public:
     static void setHandler(NSString* method, HaylenCancellableHandler handler);
@@ -35,16 +35,17 @@ class AppleBridge final {
 
     [[nodiscard]] static id fromJson(std::string_view text);
 
-    // JSON text with the byte buffers it refers to.
+    // JSON text with the byte buffers it refers to and the data views that its tokens name, which it keeps alive until the bridge took its own references.
     struct Encoded {
         std::string json;
         std::vector<std::vector<std::byte>> buffers;
+        std::vector<varn::dataview::DataView> views;
     };
 
-    // Returns the JSON of a value with its `NSData` values as buffers, or nothing when JSON cannot hold the value, which `NSJSONSerialization` reports with an exception.
+    // Returns the JSON of a value with its `NSData` values as buffers and its `VarnDataView` values as tokens, or nothing when JSON cannot hold the value, which `NSJSONSerialization` reports with an exception.
     [[nodiscard]] static std::optional<Encoded> encode(id value);
 
-    // Parses JSON text into Foundation values with an `NSData` for every buffer it refers to, or returns `nil` for text that is not JSON.
+    // Parses JSON text into Foundation values with an `NSData` for every buffer it refers to and a `VarnDataView` for every live view that a token names, or returns `nil` for text that is not JSON.
     [[nodiscard]] static id decode(std::string_view json, std::span<const std::vector<std::byte>> buffers);
 
   private:
@@ -59,8 +60,8 @@ class AppleBridge final {
     // The calls that wait for their answer, each with the cancel block its handler returned or NSNull.
     [[nodiscard]] static NSMutableDictionary<NSNumber*, id>* getCalls();
 
-    // Replaces every NSData with a reference to a buffer, and every reference with its NSData on the way back.
-    [[nodiscard]] static id prepare(id value, std::vector<std::vector<std::byte>>& buffers);
+    // Replaces every NSData with a reference to a buffer and every VarnDataView with its token, and every reference and token with its object on the way back.
+    [[nodiscard]] static id prepare(id value, Encoded& encoded);
     [[nodiscard]] static id restore(id value, NSArray<NSData*>* buffers);
 
     [[nodiscard]] static NSString* toString(std::string_view text);

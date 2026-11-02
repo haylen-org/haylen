@@ -18,10 +18,11 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Signal.hpp"
+#include "varn/dataview/DataView.h"
 
 namespace haylen::platform {
 
-// Request and event channel between the app and native code. Parameters, results and events are JSON with byte buffers next to it. Results, events and work that native code posts always reach the frame thread in `pump`. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
+// Request and event channel between the app and native code. Parameters, results and events are JSON with byte buffers next to it and data views that it names by token. Results, events and work that native code posts always reach the frame thread in `pump`. Call ids are unique in the whole process, so a reply that arrives after the app restarted never answers a call of the new app.
 class Bridge final {
     struct Inbox;
 
@@ -29,10 +30,11 @@ class Bridge final {
     // How many retained events of one name wait for a listener. A newer one drops the oldest.
     static constexpr std::size_t kRetainedLimit = 32;
 
-    // JSON with the byte buffers it refers to as `{"$bytes": N}`, so binary data such as images and audio never turns into text.
+    // JSON with the byte buffers it refers to as `{"$bytes": N}`, so binary data such as images and audio never turns into text, and the data views that its tokens name, which the bridge fills at every boundary so the payload keeps them alive for as long as it lives.
     struct Payload {
         core::Json json;
         std::vector<std::vector<std::byte>> buffers;
+        std::vector<varn::dataview::DataView> views;
     };
 
     // Why a call failed. The code and the data are whatever native code sent, and `null` when it sent none. The bridge fails calls itself with the codes `timeout` and `cancelled`.
@@ -71,7 +73,8 @@ class Bridge final {
     using Callback = std::function<void(Result)>;
     using Reply = std::function<void(Result)>;
     using Handler = std::function<void(const Payload& params, Reply reply)>;
-    using Dispatcher = std::function<void(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers)>;
+    // Native code takes its own reference to each view while the dispatcher runs, since the views live only until it returns.
+    using Dispatcher = std::function<void(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views)>;
     using Canceller = std::function<void(std::uint64_t id, std::string_view method)>;
 
     // The dispatcher hands calls to native code, and the canceller tells native code that the app no longer waits for one.
@@ -87,7 +90,7 @@ class Bridge final {
     void registerHandler(std::string method, Handler handler);
     [[nodiscard]] bool hasHandler(std::string_view method) const;
 
-    // A call with a timeout fails with the code `timeout` when no answer arrived in time, and native code hears that it was given up. Throws `std::invalid_argument` for an empty method name or parameters that refer to a buffer they lack.
+    // A call with a timeout fails with the code `timeout` when no answer arrived in time, and native code hears that it was given up. The caller keeps the views of the parameters alive until the call returns. Throws `std::invalid_argument` for an empty method name, parameters that refer to a buffer they lack, or a token that names no live view.
     std::uint64_t call(std::string_view method, const Payload& params, Callback callback, std::optional<std::chrono::steady_clock::duration> timeout = std::nullopt);
 
     // Calls a method whose answer nobody needs. Nothing waits for it, it never counts as pending, and its answer is dropped.
@@ -99,7 +102,7 @@ class Bridge final {
     // Listens to a native event until the connection ends, or until the owner, when one is given, is destroyed.
     core::Connection on(const std::string& event, std::function<void(const Payload&)> listener, std::weak_ptr<const void> owner = {});
 
-    // Thread-safe entry points for native code, which move the buffers into the queue of the bridge without copying them. A failed call carries a message string or an object with `message`, `code` and `data`. JSON that refers to a buffer it lacks fails the call with the code `invalidBytes`, and drops the event with an error in the log. An event that nothing listens to is dropped, unless it is retained: then it waits until a listener of its name connects, which receives the waiting events in order at the next pump.
+    // Thread-safe entry points for native code, which move the buffers into the queue of the bridge without copying them and take a reference to every view that the tokens of the JSON name, so the sender keeps its views alive only until the entry point returns. A failed call carries a message string or an object with `message`, `code` and `data`. JSON that refers to a buffer it lacks fails the call with the code `invalidBytes`, a token that names no live view fails it with the code `invalidView`, and both drop the event with an error in the log. An event that nothing listens to is dropped, unless it is retained: then it waits until a listener of its name connects, which receives the waiting events in order at the next pump.
     void resolve(std::uint64_t id, bool ok, std::string_view resultJson, std::vector<std::vector<std::byte>> buffers = {});
     void emit(std::string_view event, std::string_view payloadJson, std::vector<std::vector<std::byte>> buffers = {}, const EmitOptions& options = kDefaultEmitOptions);
     [[nodiscard]] Mailbox getMailbox() const;
@@ -107,7 +110,7 @@ class Bridge final {
     void pump();
     [[nodiscard]] std::size_t getPendingCallCount() const;
 
-    // Reads an answer of native code the way `resolve` does: JSON that is not valid fails with the code `invalidJson`, JSON that refers to a buffer it lacks fails with the code `invalidBytes`, and a failure keeps its message, code and data but drops its buffers.
+    // Reads an answer of native code the way `resolve` does: JSON that is not valid fails with the code `invalidJson`, JSON that refers to a buffer it lacks fails with the code `invalidBytes`, a token that names no live view fails with the code `invalidView`, and a failure keeps its message, code and data but drops its buffers and views.
     [[nodiscard]] static Result parseResult(bool ok, std::string_view json, std::vector<std::vector<std::byte>> buffers);
 
   private:
@@ -145,6 +148,9 @@ class Bridge final {
 
     [[nodiscard]] static Error readFailure(core::Json payload);
 
+    // Fills the views of a payload from the tokens of its JSON, or answers why the payload is not valid.
+    [[nodiscard]] static std::optional<Error> attach(Payload& payload);
+
     // Gathers the batched events of each name into one event at the place of the first of them, whose JSON lists theirs in order.
     [[nodiscard]] static std::vector<Arrival> gather(std::vector<Arrival> arrivals);
 
@@ -152,7 +158,7 @@ class Bridge final {
     void deliver(NativeEvent& event);
 
     // Runs the engine handler of the method, from a copy because it may register handlers itself, or hands the call to native code.
-    void start(std::uint64_t id, std::string_view method, const Payload& params, Reply reply);
+    void start(std::uint64_t id, std::string_view method, const Payload& params, std::span<const varn::dataview::DataView> views, Reply reply);
 
     // Delivers the retained events of a name once it has listeners, and keeps them otherwise.
     void deliverRetained(const std::string& name);

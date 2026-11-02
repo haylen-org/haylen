@@ -268,7 +268,8 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+// The parameters reach the handler with a VarnDataView of their own for every view, which the decode takes while the bridge still holds the views.
+void Services::dispatch(std::uint64_t call, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
     AppleBridge::dispatch(call, method, paramsJson, buffers);
 }
 

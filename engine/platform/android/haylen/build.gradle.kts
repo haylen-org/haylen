@@ -1,4 +1,4 @@
-// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the platform bridge, the plugin API and the Kotlin transport of the Varn HTTP client. Its manifest declares only what every app needs, so permissions and the components of plugins and links come from the app and from the libraries that need them.
+// Android side of the Haylen runtime: the Lua player library, the activity with its splash screen, the platform bridge, the plugin API, the Kotlin transport of the Varn HTTP client and the Java class of Varn data views. Its manifest declares only what every app needs, so permissions and the components of plugins and links come from the app and from the libraries that need them.
 // The command `haylen.py engine --platform android` builds the player with the engine CMake project for every ABI and publishes this library as `dev.haylen:haylen` to a local Maven repository, so apps made from the Android template depend on it without compiling C++.
 plugins {
     id("com.android.library")
@@ -50,29 +50,39 @@ dependencies {
     implementation("androidx.window:window-java:1.5.1")
 }
 
-// Only the HTTP transport of the Varn Android library runs inside a Haylen app, because the engine links Varn into the player library itself.
-abstract class VarnTransportTask : DefaultTask() {
+// Only the HTTP transport and the data views of the Varn Android library run inside a Haylen app, because the engine links Varn into the player library itself and registers their natives from it.
+abstract class VarnSourceTask : DefaultTask() {
     @get:InputFile
     abstract val source: RegularFileProperty
+
+    @get:Input
+    abstract val path: Property<String>
 
     @get:OutputDirectory
     abstract val outputDir: DirectoryProperty
 
     @TaskAction
     fun copy() {
-        val target = outputDir.file("com/varn/VarnHttp.kt").get().asFile
+        val target = outputDir.file(path.get()).get().asFile
         target.parentFile.mkdirs()
         source.get().asFile.copyTo(target, overwrite = true)
     }
 }
 
-val varnTransport = tasks.register<VarnTransportTask>("copyVarnTransport") {
+val varnTransport = tasks.register<VarnSourceTask>("copyVarnTransport") {
     source.set(File(varnSourceDir, "android/varn/src/main/kotlin/com/varn/VarnHttp.kt"))
+    path.set("com/varn/VarnHttp.kt")
+}
+
+val varnDataView = tasks.register<VarnSourceTask>("copyVarnDataView") {
+    source.set(File(varnSourceDir, "android/varn/src/main/java/com/varn/VarnDataView.java"))
+    path.set("com/varn/VarnDataView.java")
 }
 
 androidComponents {
     onVariants { variant ->
-        variant.sources.kotlin?.addGeneratedSourceDirectory(varnTransport, VarnTransportTask::outputDir)
+        variant.sources.kotlin?.addGeneratedSourceDirectory(varnTransport, VarnSourceTask::outputDir)
+        variant.sources.java?.addGeneratedSourceDirectory(varnDataView, VarnSourceTask::outputDir)
         variant.sources.jniLibs?.addStaticSourceDirectory(nativeLibraries)
     }
 }

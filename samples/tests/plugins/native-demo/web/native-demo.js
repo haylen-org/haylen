@@ -24,6 +24,19 @@ const countPrimes = async (limit) => {
 
 const failure = (message, code, data) => Object.assign(new Error(message), { code, data });
 
+// The colors of a frame of the camera that the demo simulates, which move with the index of the frame, the same on every platform.
+const fillFrame = (pixels, width, height, index) => {
+    for (let y = 0; y < height; ++y) {
+        for (let x = 0; x < width; ++x) {
+            const offset = (y * width + x) * 4;
+            pixels[offset] = Math.floor((x * 255) / width) + index * 3;
+            pixels[offset + 1] = Math.floor((y * 255) / height) + index * 2;
+            pixels[offset + 2] = Math.floor((x + y + index * 4) / 2);
+            pixels[offset + 3] = 255;
+        }
+    }
+};
+
 // The picture of the demo, a small island with a palm under the sun in a sea with waves, in fractions of the width and the height of the canvas, the same on every platform. The video moves the waves and floats the sun with the time in seconds.
 const scene = {
     ink: "#1e1b33",
@@ -256,6 +269,36 @@ export default function load(context) {
     });
 
     context.register("generatedImage", (params) => generatedImage(params.width, params.height));
+
+    // The frame goes out in a data view on the heap of WebAssembly, which the app uploads into a texture in place, and the answer hands the reference of the page over to the engine.
+    let frames = 0;
+    context.register("captureFrame", (params) => {
+        const { width, height } = params;
+        if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 2048 || height > 2048) {
+            throw failure('The method "captureFrame" needs a width and a height from 1 to 2048.', "invalidParams");
+        }
+        frames += 1;
+        const frame = context.VarnDataView.allocate(width * height * 4);
+        fillFrame(frame.bytes(), width, height, frames);
+        return { frame, width, height, index: frames, language };
+    });
+
+    // The view of the app arrives as a VarnDataView over the same memory, which the page reads and marks in place.
+    context.register("checksumView", (params) => {
+        if (!(params.view instanceof context.VarnDataView)) {
+            throw failure('The method "checksumView" needs a data view.', "invalidParams");
+        }
+        const bytes = params.view.bytes();
+        let checksum = 0;
+        for (const byte of bytes) {
+            checksum = (checksum + byte) >>> 0;
+        }
+        const mark = new TextEncoder().encode("NATIVE");
+        if (bytes.length >= mark.length) {
+            bytes.set(mark);
+        }
+        return { checksum, size: bytes.length, mark: "NATIVE", language };
+    });
 
     // A canvas animates the picture 30 times per second, and the video stream copies each frame into the texture of the app.
     context.register("startVideo", () => {

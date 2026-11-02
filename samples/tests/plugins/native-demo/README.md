@@ -147,6 +147,40 @@ async.spawn(function()
 end)
 ```
 
+### demo.captureFrame(width, height)
+
+Fills a frame of `width` by `height` RGBA pixels, from 1 to 2048, whose colors move with the index of the frame, the way a camera hands over its frames, and answers with `{frame, width, height, index, language}`. The value `frame` is a [data view](../../../../docs/platform/platform-bridge.md#data-views) that the native part made, whose memory the app reads in place: with `VarnDataView(length:)` in Swift, `VarnDataView.allocate` in Kotlin, `context.VarnDataView.allocate` in JavaScript and `newView` of `HaylenNativeApi` in C. Another size fails with the code `invalidParams`.
+
+```lua
+local async = require('async')
+local demo = require('native-demo')
+local graphics = require('haylen.graphics')
+
+local texture = graphics.newTexture(320, 180, {dynamic = true})
+
+async.spawn(function()
+    local shot = demo.captureFrame(320, 180):await()
+    texture:update(shot.frame)
+    print(shot.language, shot.index, shot.frame.size)
+end)
+```
+
+### demo.checksumView(view)
+
+Hands the data view `view` to the native part, which sums its bytes in place, writes `NATIVE` into its first bytes and answers with `{checksum, size, mark, language}`. The app reads the mark back from its own view, since both sides share the memory. A value that is no view fails with the code `invalidParams`.
+
+```lua
+local async = require('async')
+local dataview = require('dataview')
+local demo = require('native-demo')
+
+async.spawn(function()
+    local view = dataview.from(string.rep('\1', 64))
+    local answer = demo.checksumView(view):await()
+    print(answer.checksum, view:read(0, 6))
+end)
+```
+
 ### demo.fail()
 
 Always fails with the message `The native demo failed on purpose.`, the code `demoFailure` and the data `{reason = 'requested', language}`.
@@ -574,6 +608,8 @@ end)
 | `native-demo.echo` | `{value}` | `{echo, thread, language}` |
 | `native-demo.echoBytes` | `{data}` with the bytes of `data` | `{data, size, thread, language}` with the same bytes |
 | `native-demo.generatedImage` | `{width, height}` | `{png, width, height, drawnWith, language}` with the bytes of `png` |
+| `native-demo.captureFrame` | `{width, height}` | `{frame, width, height, index, language}` with the data view `frame` |
+| `native-demo.checksumView` | `{view}` with a data view | `{checksum, size, mark, language}`, after it wrote `mark` into the view |
 | `native-demo.startVideo`, `native-demo.stopVideo` | `{}` | `{width, height, fps, format, thread, language}`, and `null` |
 | `native-demo.startTone`, `native-demo.stopTone` | `{frequency}`, and `{}` | `{frequency, sampleRate, channels, format, language}`, and `null` |
 | `native-demo.burst` | `{count, ticks}` | `{count, ticks, language}` |

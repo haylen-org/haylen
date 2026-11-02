@@ -15,6 +15,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.OpenableColumns
 import android.util.Log
+import com.varn.VarnDataView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.app.NotificationManagerCompat
@@ -28,6 +29,7 @@ import dev.haylen.HaylenRequirements
 import dev.haylen.HaylenScreen
 import dev.haylen.HaylenVideoStream
 import java.io.ByteArrayOutputStream
+import java.nio.ByteBuffer
 import java.util.UUID
 import org.json.JSONObject
 
@@ -112,6 +114,36 @@ class NativeDemoPlugin : HaylenPlugin() {
             val data = (params as JSONObject).opt("data") as? ByteArray ?: throw HaylenBridge.Failure("The method \"echoBytes\" needs bytes.", "invalidParams", null)
             reply.success(JSONObject().put("data", data).put("size", data.size).put("thread", threadName()).put("language", LANGUAGE))
         }
+
+        // The frame goes out in a data view whose memory the app uploads into a texture in place, and the view of Kotlin closes once the engine took its own reference from the reply.
+        context.register("captureFrame", { params, reply ->
+            val width = (params as JSONObject).optInt("width")
+            val height = params.optInt("height")
+            if (width !in 1..2048 || height !in 1..2048) {
+                throw HaylenBridge.Failure("The method \"captureFrame\" needs a width and a height from 1 to 2048.", "invalidParams", null)
+            }
+            val index = synchronized(this) { ++frames }
+            VarnDataView.allocate(width.toLong() * height * 4).use { frame ->
+                fillFrame(frame.buffer(), width, height, index)
+                reply.success(JSONObject().put("frame", frame).put("width", width).put("height", height).put("index", index).put("language", LANGUAGE))
+            }
+        }, HaylenBridge.Threading.BACKGROUND)
+
+        // The view of the app arrives as a VarnDataView over the same memory, which Kotlin reads and marks in place through a direct buffer.
+        context.register("checksumView", { params, reply ->
+            val view = (params as JSONObject).opt("view") as? VarnDataView ?: throw HaylenBridge.Failure("The method \"checksumView\" needs a data view.", "invalidParams", null)
+            val bytes = view.buffer()
+            var checksum = 0L
+            while (bytes.hasRemaining()) {
+                checksum = (checksum + (bytes.get().toInt() and 0xFF)) and 0xFFFFFFFFL
+            }
+            val mark = "NATIVE".toByteArray()
+            if (bytes.capacity() >= mark.size) {
+                bytes.rewind()
+                bytes.put(mark)
+            }
+            reply.success(JSONObject().put("checksum", checksum).put("size", bytes.capacity()).put("mark", "NATIVE").put("language", LANGUAGE))
+        }, HaylenBridge.Threading.BACKGROUND)
 
         context.register("generatedImage", { params, reply ->
             val width = (params as JSONObject).optInt("width")
@@ -436,6 +468,22 @@ class NativeDemoPlugin : HaylenPlugin() {
         val COLOR = Regex("#[0-9A-Fa-f]{6}")
 
         fun threadName(): String = if (Looper.myLooper() == Looper.getMainLooper()) "main" else "background"
+
+        // The frames that "captureFrame" made, whose index moves the colors of the next one.
+        var frames = 0
+
+        // The colors of a frame of the camera that the demo simulates, which move with the index of the frame, the same on every platform.
+        fun fillFrame(pixels: ByteBuffer, width: Int, height: Int, index: Int) {
+            for (y in 0 until height) {
+                for (x in 0 until width) {
+                    val offset = (y * width + x) * 4
+                    pixels.put(offset, (x * 255 / width + index * 3).toByte())
+                    pixels.put(offset + 1, (y * 255 / height + index * 2).toByte())
+                    pixels.put(offset + 2, ((x + y + index * 4) / 2).toByte())
+                    pixels.put(offset + 3, 255.toByte())
+                }
+            }
+        }
 
         // Draws the picture of the demo into a `Bitmap` and compresses it as a PNG file.
         fun drawPicture(width: Int, height: Int): ByteArray {

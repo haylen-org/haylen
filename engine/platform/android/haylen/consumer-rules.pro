@@ -1,7 +1,7 @@
 # The engine reaches these classes from C++ by name, so R8 must keep them in minified app builds.
 
 -keep class dev.haylen.HaylenBridge {
-    static void dispatch(long, byte[], byte[], byte[][]);
+    static void dispatch(long, byte[], byte[], byte[][], long[]);
     static void cancel(long);
     static void setAppRunning(boolean);
 }
@@ -42,7 +42,7 @@
 }
 
 -keep class dev.haylen.HaylenScreens {
-    static void open(long, byte[], byte[], byte[], byte[][], byte[], boolean);
+    static void open(long, byte[], byte[], byte[], byte[][], long[], byte[], boolean);
     static void cancel(long);
 }
 
@@ -59,6 +59,9 @@
 -keep class com.varn.VarnHttp { *; }
 -keep class com.varn.VarnHttp$Outcome { *; }
 -keep class com.varn.NativeExchange { *; }
+
+# The data views of Varn register the natives of their Java class by name from the library of the engine.
+-keep class com.varn.VarnDataView { *; }
 
 -keepclasseswithmembernames class dev.haylen.**, com.varn.** {
     native <methods>;

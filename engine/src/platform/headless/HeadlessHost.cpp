@@ -47,8 +47,8 @@ void HeadlessHost::pollGamepads(std::span<input::GamepadState> states) {
     std::copy_n(gamepads.begin(), std::min(states.size(), gamepads.size()), states.begin());
 }
 
-void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
-    platformCalls.push_back({.id = id, .method = std::string(method), .paramsJson = std::string(paramsJson), .buffers = {buffers.begin(), buffers.end()}});
+void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {
+    platformCalls.push_back({.id = id, .method = std::string(method), .paramsJson = std::string(paramsJson), .buffers = {buffers.begin(), buffers.end()}, .views = {views.begin(), views.end()}});
 }
 
 void HeadlessHost::openUrl(std::string_view url, std::function<void(bool opened)> callback) {

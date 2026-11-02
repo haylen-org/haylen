@@ -124,9 +124,9 @@ template <typename Sample> std::vector<Sample> AudioLua::readSamples(std::string
     return samples;
 }
 
-// Makes a sound from bytes with `newSound(bytes, options)`: a WAV, Ogg Vorbis, MP3 or FLAC file, decoded unless `{stream = true}`, or raw samples with `{format = 'float32' or 'int16', sampleRate, channels}`.
+// Makes a sound from bytes with `newSound(bytes, options)`, a string or a data view: a WAV, Ogg Vorbis, MP3 or FLAC file, decoded unless `{stream = true}`, or raw samples with `{format = 'float32' or 'int16', sampleRate, channels}`.
 int AudioLua::newSound(lua_State* L) {
-    const std::string_view bytes = lua::Stack::read<std::string_view>(L, 1);
+    const std::string_view bytes = lua::TypeConverter::readBytes(L, 1);
     bool stream = false;
     std::string format;
     std::uint32_t sampleRate = 0;

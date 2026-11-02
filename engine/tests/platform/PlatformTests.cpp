@@ -3,6 +3,7 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <cstring>
 #include <functional>
 #include <span>
 #include <stdexcept>
@@ -20,6 +21,7 @@
 #include "platform/MemoryWarning.hpp"
 #include "platform/ReportedState.hpp"
 #include "support/EngineFixture.hpp"
+#include "varn/dataview/DataViewJson.h"
 
 namespace haylen::platform {
 
@@ -61,7 +63,7 @@ TEST(KeyboardTranslatorTest, TypesWhatThePlainKeyboardCommits) {
 
 TEST(BridgeRelayTest, ForwardsNativeRepliesToTheAttachedBridge) {
     std::vector<std::string> calls;
-    Bridge bridge([&calls](std::uint64_t, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>) { calls.emplace_back(method); }, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([&calls](std::uint64_t, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) { calls.emplace_back(method); }, [](std::uint64_t, std::string_view) {});
     std::vector<Bridge::Result> results;
     std::vector<core::Json> events;
     const std::uint64_t call = bridge.call("native.method", {.json = core::Json::object()}, [&](Bridge::Result result) { results.push_back(std::move(result)); });
@@ -182,7 +184,7 @@ TEST(GamepadVendorsTest, LabelsTheFaceButtonsByTheVendorOfTheGamepad) {
 }
 
 TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
     std::vector<Bridge::Result> results;
     std::vector<std::uint64_t> calls;
     for (int index = 0; index < 9; ++index) {
@@ -211,7 +213,7 @@ TEST(BridgeTest, KeepsTheMessageCodeAndDataOfEveryFailure) {
 
 TEST(BridgeTest, TimesOutAndCancelsCallsAndTellsNativeCode) {
     std::vector<std::pair<std::uint64_t, std::string>> cancelled;
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [&cancelled](std::uint64_t id, std::string_view method) { cancelled.emplace_back(id, method); });
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [&cancelled](std::uint64_t id, std::string_view method) { cancelled.emplace_back(id, method); });
     Bridge::Reply late;
     bridge.registerHandler("engine.slow", [&late](const Bridge::Payload&, Bridge::Reply reply) { late = std::move(reply); });
 
@@ -244,7 +246,7 @@ TEST(BridgeTest, CancelsThePendingNativeCallsWhenItGoesAway) {
     std::vector<std::pair<std::uint64_t, std::string>> cancelled;
     std::uint64_t watch = 0;
     {
-        Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [&cancelled](std::uint64_t id, std::string_view method) { cancelled.emplace_back(id, method); });
+        Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [&cancelled](std::uint64_t id, std::string_view method) { cancelled.emplace_back(id, method); });
         bridge.registerHandler("engine.slow", [](const Bridge::Payload&, Bridge::Reply) {});
         watch = bridge.call("native.watch", {}, [](const Bridge::Result&) {});
         bridge.call("engine.slow", {}, [](const Bridge::Result&) {});
@@ -259,7 +261,7 @@ TEST(BridgeTest, RunsPostedWorkOnTheFrameThreadUntilTheBridgeIsGone) {
     std::vector<std::thread::id> threads;
     // clang-format off
     Bridge::Mailbox kept = [&threads] {
-        Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+        Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
         Bridge::Mailbox mailbox = bridge.getMailbox();
         std::thread worker([&] { EXPECT_TRUE(mailbox.post([&threads] { threads.push_back(std::this_thread::get_id()); })); });
         worker.join();
@@ -276,7 +278,7 @@ TEST(BridgeTest, RunsPostedWorkOnTheFrameThreadUntilTheBridgeIsGone) {
 }
 
 TEST(BridgeTest, HandsOverRepliesEventsAndPostedWorkInTheOrderTheyArrived) {
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
     std::vector<std::string> order;
     const core::Connection progress = bridge.on("download.progress", [&order](const Bridge::Payload& payload) { order.push_back("progress " + payload.json.dump()); });
     const std::uint64_t call = bridge.call("download.start", {.json = core::Json::object()}, [&order](const Bridge::Result&) { order.emplace_back("done"); });
@@ -289,7 +291,7 @@ TEST(BridgeTest, HandsOverRepliesEventsAndPostedWorkInTheOrderTheyArrived) {
 }
 
 TEST(BridgeTest, LeavesNoCallBehindWhenItsHandlerThrows) {
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
     bridge.registerHandler("broken", [](const Bridge::Payload&, const Bridge::Reply&) { throw std::runtime_error("The handler failed."); });
     EXPECT_THROW((void)bridge.call("broken", {.json = core::Json::object()}, {}), std::runtime_error);
     EXPECT_EQ(bridge.getPendingCallCount(), 0U);
@@ -300,7 +302,7 @@ TEST(BridgeTest, KeepsLateRepliesAwayFromOtherBridges) {
     Bridge::Reply late;
     std::uint64_t oldCall = 0;
     {
-        Bridge old([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+        Bridge old([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
         old.registerHandler("slow", [&late](const Bridge::Payload&, Bridge::Reply reply) { late = std::move(reply); });
         oldCall = old.call("slow", {.json = core::Json::object()}, [&answers](Bridge::Result) { answers.emplace_back("old"); });
         EXPECT_EQ(old.getPendingCallCount(), 1U);
@@ -308,7 +310,7 @@ TEST(BridgeTest, KeepsLateRepliesAwayFromOtherBridges) {
 
     // The reply of a destroyed bridge goes nowhere, and a restarted app never shares call ids with the old one.
     late({.ok = true});
-    Bridge restarted([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    Bridge restarted([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
     const std::uint64_t newCall = restarted.call("native.method", {.json = core::Json::object()}, [&answers](Bridge::Result result) { answers.push_back(result.value.json.get<std::string>()); });
     EXPECT_NE(newCall, oldCall);
     restarted.resolve(oldCall, true, R"("stale")");
@@ -362,7 +364,7 @@ TEST(BridgeTest, RoutesCallsToHandlersAndNativeCode) {
 }
 
 TEST(BridgeTest, RetainsEventsUntilTheFirstListenerConnects) {
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
     std::vector<core::Json> opened;
     std::vector<core::Json> purchases;
 
@@ -403,7 +405,7 @@ TEST(BridgeTest, RetainsEventsUntilTheFirstListenerConnects) {
 
 TEST(BridgeTest, SendsCallsWhoseAnswerNobodyNeeds) {
     std::vector<std::pair<std::uint64_t, std::string>> dispatched;
-    Bridge bridge([&dispatched](std::uint64_t id, std::string_view method, std::string_view params, std::span<const std::vector<std::byte>>) { dispatched.emplace_back(id, std::string(method) + " " + std::string(params)); }, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([&dispatched](std::uint64_t id, std::string_view method, std::string_view params, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) { dispatched.emplace_back(id, std::string(method) + " " + std::string(params)); }, [](std::uint64_t, std::string_view) {});
     int counted = 0;
     // clang-format off
     bridge.registerHandler("engine.count", [&counted](const Bridge::Payload& params, Bridge::Reply reply) {
@@ -453,7 +455,7 @@ TEST(BridgeTest, CarriesByteBuffersBothWays) {
     std::string sentJson;
     std::vector<std::vector<std::byte>> sent;
     // clang-format off
-    const auto dispatch = [&](std::uint64_t, std::string_view, std::string_view params, std::span<const std::vector<std::byte>> buffers) {
+    const auto dispatch = [&](std::uint64_t, std::string_view, std::string_view params, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
         sentJson = params;
         sent.assign(buffers.begin(), buffers.end());
     };
@@ -496,8 +498,54 @@ TEST(BridgeTest, CarriesByteBuffersBothWays) {
     EXPECT_EQ(frames[0].buffers, std::vector<std::vector<std::byte>>{photo});
 }
 
+TEST(BridgeTest, CarriesDataViewsWithoutCopyingTheirBytes) {
+    std::vector<varn::dataview::DataView> dispatched;
+    // clang-format off
+    const auto dispatch = [&](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView> views) {
+        dispatched.assign(views.begin(), views.end());
+    };
+    // clang-format on
+    Bridge bridge(dispatch, [](std::uint64_t, std::string_view) {});
+    std::vector<Bridge::Result> results;
+    const auto record = [&results](Bridge::Result result) { results.push_back(std::move(result)); };
+
+    // The parameters name a view by its token, and native code receives the same memory while the call runs.
+    varn::dataview::DataView frame = varn::dataview::DataView::allocate(16);
+    const std::uint64_t call = bridge.call("camera.show", {.json = {{"frame", varn::dataview::DataViewJson::write(frame)}}}, record);
+    ASSERT_EQ(dispatched.size(), 1U);
+    EXPECT_EQ(dispatched[0].data(), frame.data());
+
+    // A reply takes its own reference to the views it names, so native code releases its view as soon as the reply returns.
+    varn::dataview::DataView answer = varn::dataview::DataView::allocate(4);
+    std::memcpy(answer.data(), "ok!!", 4);
+    bridge.resolve(call, true, core::Json{{"thumbnail", varn::dataview::DataViewJson::write(answer)}}.dump());
+    answer.reset();
+    const nlohmann::json gone = varn::dataview::DataViewJson::write(varn::dataview::DataView::allocate(4));
+    bridge.resolve(bridge.call("camera.show", {}, record), true, core::Json{{"thumbnail", gone}}.dump());
+    bridge.pump();
+    ASSERT_EQ(results.size(), 2U);
+    ASSERT_TRUE(results[0].ok);
+    ASSERT_EQ(results[0].value.views.size(), 1U);
+    EXPECT_EQ(std::string_view(reinterpret_cast<const char*>(results[0].value.views[0].data()), 4), "ok!!");
+    EXPECT_EQ(results[1].error.code, "invalidView");
+    EXPECT_NE(results[1].error.message.find("which is no longer alive"), std::string::npos);
+
+    // An event keeps its views from the emit on, and parameters that name a view that is gone never leave the engine.
+    std::vector<Bridge::Payload> frames;
+    core::Connection connection = bridge.on("camera.frame", [&](const Bridge::Payload& payload) { frames.push_back(payload); });
+    varn::dataview::DataView pixels = varn::dataview::DataView::allocate(8);
+    bridge.emit("camera.frame", core::Json{{"pixels", varn::dataview::DataViewJson::write(pixels)}}.dump());
+    const std::byte* address = pixels.data();
+    pixels.reset();
+    bridge.emit("camera.frame", core::Json{{"pixels", gone}}.dump());
+    bridge.pump();
+    ASSERT_EQ(frames.size(), 1U);
+    EXPECT_EQ(frames[0].views.at(0).data(), address);
+    EXPECT_THROW(bridge.call("camera.show", {.json = {{"frame", gone}}}, record), std::invalid_argument);
+}
+
 TEST(BridgeTest, GathersTheBatchedEventsOfAFrameIntoOneList) {
-    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>) {}, [](std::uint64_t, std::string_view) {});
+    Bridge bridge([](std::uint64_t, std::string_view, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {}, [](std::uint64_t, std::string_view) {});
     std::vector<std::string> heard;
     std::vector<Bridge::Payload> readings;
     // clang-format off

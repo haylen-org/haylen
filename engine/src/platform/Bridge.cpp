@@ -8,6 +8,7 @@
 
 #include "haylen/core/JsonBytes.hpp"
 #include "haylen/core/Log.hpp"
+#include "varn/dataview/DataViewJson.h"
 
 namespace haylen::platform {
 
@@ -54,6 +55,7 @@ std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callb
         throw std::invalid_argument("A platform call needs a method name.");
     }
     core::JsonBytes::validate(params.json, params.buffers.size());
+    const std::vector<varn::dataview::DataView> views = varn::dataview::DataViewJson::acquire(params.json);
     const std::uint64_t id = nextCallId.fetch_add(1);
     Pending entry{.callback = std::move(callback), .method = std::string(method), .native = !hasHandler(method)};
     if (timeout) {
@@ -64,7 +66,10 @@ std::uint64_t Bridge::call(std::string_view method, const Payload& params, Callb
     // A handler that throws leaves no call behind, and its exception reaches the caller.
     // clang-format off
     try {
-        start(id, method, params, [shared = std::weak_ptr<Inbox>(inbox), id](Result result) {
+        start(id, method, params, views, [shared = std::weak_ptr<Inbox>(inbox), id](Result result) {
+            if (std::optional<Error> error = result.ok ? attach(result.value) : std::nullopt) {
+                result = {.error = std::move(*error)};
+            }
             if (const std::shared_ptr<Inbox> alive = shared.lock()) {
                 const std::scoped_lock lock(alive->mutex);
                 alive->arrivals.emplace_back(Completion{id, std::move(result)});
@@ -83,13 +88,13 @@ void Bridge::send(std::string_view method, const Payload& params) {
         throw std::invalid_argument("A platform call needs a method name.");
     }
     core::JsonBytes::validate(params.json, params.buffers.size());
-    start(nextCallId.fetch_add(1), method, params, [](const Result&) {});
+    start(nextCallId.fetch_add(1), method, params, varn::dataview::DataViewJson::acquire(params.json), [](const Result&) {});
 }
 
-void Bridge::start(std::uint64_t id, std::string_view method, const Payload& params, Reply reply) {
+void Bridge::start(std::uint64_t id, std::string_view method, const Payload& params, std::span<const varn::dataview::DataView> views, Reply reply) {
     const auto found = handlers.find(std::string(method));
     if (found == handlers.end()) {
-        dispatcher(id, method, params.json.dump(), params.buffers);
+        dispatcher(id, method, params.json.dump(), params.buffers, views);
         return;
     }
     const Handler handler = found->second;
@@ -137,9 +142,14 @@ void Bridge::emit(std::string_view event, std::string_view payloadJson, std::vec
         core::Log::error("The platform event \"{}\" was dropped. {}", event, error.what());
         return;
     }
+    Payload arrived{.json = std::move(payload), .buffers = std::move(buffers)};
+    if (const std::optional<Error> error = attach(arrived)) {
+        core::Log::error("The platform event \"{}\" was dropped. {}", event, error->message);
+        return;
+    }
 
     const std::scoped_lock lock(inbox->mutex);
-    inbox->arrivals.emplace_back(NativeEvent{.name = std::string(event), .payload = {.json = std::move(payload), .buffers = std::move(buffers)}, .options = options});
+    inbox->arrivals.emplace_back(NativeEvent{.name = std::string(event), .payload = std::move(arrived), .options = options});
 }
 
 Bridge::Mailbox Bridge::getMailbox() const {
@@ -241,6 +251,7 @@ std::vector<Bridge::Arrival> Bridge::gather(std::vector<Arrival> arrivals) {
         core::JsonBytes::shift(event->payload.json, batch.payload.buffers.size());
         batch.payload.json.push_back(std::move(event->payload.json));
         std::ranges::move(event->payload.buffers, std::back_inserter(batch.payload.buffers));
+        std::ranges::move(event->payload.views, std::back_inserter(batch.payload.views));
         batch.options.retain = batch.options.retain || event->options.retain;
     }
     return gathered;
@@ -326,7 +337,20 @@ Bridge::Result Bridge::parseResult(bool ok, std::string_view json, std::vector<s
     } catch (const std::invalid_argument& error) {
         return {.error = {.message = error.what(), .code = "invalidBytes"}};
     }
-    return {.ok = true, .value = {.json = std::move(parsed), .buffers = std::move(buffers)}};
+    Result result{.ok = true, .value = {.json = std::move(parsed), .buffers = std::move(buffers)}};
+    if (std::optional<Error> error = attach(result.value)) {
+        return {.error = std::move(*error)};
+    }
+    return result;
+}
+
+std::optional<Bridge::Error> Bridge::attach(Payload& payload) {
+    try {
+        payload.views = varn::dataview::DataViewJson::acquire(payload.json);
+    } catch (const std::invalid_argument& error) {
+        return Error{.message = error.what(), .code = "invalidView"};
+    }
+    return std::nullopt;
 }
 
 } // namespace haylen::platform

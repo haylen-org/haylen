@@ -246,7 +246,8 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+// The page acquires its own reference to every view while the dispatch runs, since the bridge holds the views until it returns.
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView>) {
     const std::vector<std::uint32_t> table = WebPage::describeBuffers(buffers);
     haylen_js_dispatch(static_cast<double>(id), std::string(method).c_str(), std::string(paramsJson).c_str(), table.data(), static_cast<int>(buffers.size()));
 }

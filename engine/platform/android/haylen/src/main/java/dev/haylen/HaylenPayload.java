@@ -1,5 +1,6 @@
 package dev.haylen;
 
+import com.varn.VarnDataView;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -12,7 +13,7 @@ import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-// The JSON and the byte buffers that cross the bridge together. A `byte[]` or a `ByteBuffer` anywhere inside a value becomes a buffer that the JSON refers to as `{"$bytes": N}`, so binary data never turns into text.
+// The JSON and the byte buffers that cross the bridge together. A `byte[]` or a `ByteBuffer` anywhere inside a value becomes a buffer that the JSON refers to as `{"$bytes": N}`, so binary data never turns into text, and a `VarnDataView` becomes the token of its view, so shared memory crosses without a copy.
 final class HaylenPayload {
     static final Object[] NO_BUFFERS = new Object[0];
 
@@ -27,7 +28,7 @@ final class HaylenPayload {
         this.buffers = buffers;
     }
 
-    // Accepts `null`, strings, numbers, booleans, `JSONObject`, `JSONArray`, maps, collections, arrays, `byte[]` and `ByteBuffer`. A `ByteBuffer` crosses with its remaining bytes.
+    // Accepts `null`, strings, numbers, booleans, `JSONObject`, `JSONArray`, maps, collections, arrays, `byte[]`, `ByteBuffer` and `VarnDataView`. A `ByteBuffer` crosses with its remaining bytes, and a view stays alive for as long as the caller holds it, which covers the call that sends the payload.
     static HaylenPayload encode(Object value) throws JSONException {
         List<Object> buffers = new ArrayList<>();
         Object prepared = prepare(value, buffers);
@@ -35,9 +36,24 @@ final class HaylenPayload {
         return new HaylenPayload(json.getBytes(StandardCharsets.UTF_8), buffers.toArray());
     }
 
-    // Parses JSON text in which every `{"$bytes": N}` becomes buffer `N`, so objects arrive as `JSONObject` with `byte[]` values where the app sent bytes.
-    static Object decode(byte[] json, byte[][] buffers) throws JSONException {
-        return restore(new JSONTokener(new String(json, StandardCharsets.UTF_8)).nextValue(), buffers);
+    // Parses JSON text in which every `{"$bytes": N}` becomes buffer `N` and every token one of the views that came with it, so objects arrive as `JSONObject` with `byte[]` values where the app sent bytes and `VarnDataView` values where it sent views.
+    static Object decode(byte[] json, byte[][] buffers, List<VarnDataView> views) throws JSONException {
+        return restore(new JSONTokener(new String(json, StandardCharsets.UTF_8)).nextValue(), buffers, views);
+    }
+
+    // Takes over the references that the engine hands to Java with a call or a screen, one for each view of its parameters.
+    static List<VarnDataView> adopt(long[] handles) {
+        List<VarnDataView> views = new ArrayList<>(handles.length);
+        for (long handle : handles) {
+            views.add(VarnDataView.adopt(handle));
+        }
+        return views;
+    }
+
+    static void close(List<VarnDataView> views) {
+        for (VarnDataView view : views) {
+            view.close();
+        }
     }
 
     private static Object prepare(Object value, List<Object> buffers) throws JSONException {
@@ -52,6 +68,9 @@ final class HaylenPayload {
             byte[] copy = new byte[bytes.remaining()];
             bytes.duplicate().get(copy);
             return reference(copy, buffers);
+        }
+        if (value instanceof VarnDataView) {
+            return ((VarnDataView) value).token();
         }
         if (value instanceof JSONObject) {
             JSONObject source = (JSONObject) value;
@@ -100,16 +119,19 @@ final class HaylenPayload {
         return new JSONObject().put(BYTES_KEY, buffers.size() - 1);
     }
 
-    private static Object restore(Object value, byte[][] buffers) throws JSONException {
+    private static Object restore(Object value, byte[][] buffers, List<VarnDataView> views) throws JSONException {
         if (value instanceof JSONArray) {
             JSONArray array = (JSONArray) value;
             for (int index = 0; index < array.length(); ++index) {
-                array.put(index, restore(array.get(index), buffers));
+                array.put(index, restore(array.get(index), buffers, views));
             }
             return array;
         }
         if (!(value instanceof JSONObject)) {
             return value;
+        }
+        if (VarnDataView.isToken(value)) {
+            return view((JSONObject) value, views);
         }
         JSONObject object = (JSONObject) value;
         Object index = object.length() == 1 ? object.opt(BYTES_KEY) : null;
@@ -124,8 +146,18 @@ final class HaylenPayload {
             keys.add(names.next());
         }
         for (String key : keys) {
-            object.put(key, restore(object.get(key), buffers));
+            object.put(key, restore(object.get(key), buffers, views));
         }
         return object;
+    }
+
+    private static VarnDataView view(JSONObject token, List<VarnDataView> views) throws JSONException {
+        long id = token.getLong("$view");
+        for (VarnDataView view : views) {
+            if (view.id() == id) {
+                return view;
+            }
+        }
+        throw new JSONException("The parameters name the data view " + id + ", which did not come with them.");
     }
 }

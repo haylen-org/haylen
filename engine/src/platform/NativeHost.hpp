@@ -58,7 +58,7 @@ class NativeHost : public Host {
     void persistUserData() override;
     [[nodiscard]] math::Insets getSafeAreaInsets() const override;
     [[nodiscard]] float getStatusBarHeight() const override;
-    void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) override;
+    void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) override;
     void cancelPlatformCall(std::uint64_t id) override;
     [[nodiscard]] math::Insets getReservedInsets() const override;
     [[nodiscard]] bool isAppCovered() const override;

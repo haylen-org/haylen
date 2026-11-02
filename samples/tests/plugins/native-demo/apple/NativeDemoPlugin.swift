@@ -147,6 +147,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
     }
 
     private nonisolated static let language = "Swift"
+    private static var frames = 0
 
     // The notifications of the plugin carry this prefix in their identifiers, so the plugin answers for its own notifications alone.
     private static let notificationPrefix = "native-demo."
@@ -241,6 +242,35 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
                 return
             }
             reply(true, ["data": data, "size": data.count, "thread": Thread.isMainThread ? "main" : "background", "language": Self.language])
+        }
+
+        // The frame goes out in a data view whose memory the app uploads into a texture in place, and ARC gives the reference of Swift back once the reply was sent.
+        context.registerHandler("captureFrame") { params, reply in
+            let values = params as? [String: Any]
+            let width = values?["width"] as? Int ?? 0
+            let height = values?["height"] as? Int ?? 0
+            guard (1...2048).contains(width), (1...2048).contains(height), let frame = VarnDataView(length: UInt(width * height * 4)), let pixels = frame.bytes else {
+                reply(false, ["message": "The method \"captureFrame\" needs a width and a height from 1 to 2048.", "code": "invalidParams"])
+                return
+            }
+            Self.frames += 1
+            Self.fillFrame(pixels.assumingMemoryBound(to: UInt8.self), width: width, height: height, index: Self.frames)
+            reply(true, ["frame": frame, "width": width, "height": height, "index": Self.frames, "language": Self.language])
+        }
+
+        // The view of the app arrives as a VarnDataView over the same memory, which Swift reads and marks in place.
+        context.registerHandler("checksumView") { params, reply in
+            guard let view = (params as? [String: Any])?["view"] as? VarnDataView else {
+                reply(false, ["message": "The method \"checksumView\" needs a data view.", "code": "invalidParams"])
+                return
+            }
+            let bytes = UnsafeMutableRawBufferPointer(start: view.bytes, count: Int(view.length))
+            let checksum = bytes.reduce(UInt32(0)) { $0 &+ UInt32($1) }
+            let mark = Array("NATIVE".utf8)
+            if bytes.count >= mark.count {
+                bytes.copyBytes(from: mark)
+            }
+            reply(true, ["checksum": checksum, "size": bytes.count, "mark": "NATIVE", "language": Self.language])
         }
 
         context.registerHandler("generatedImage") { params, reply in
@@ -588,6 +618,19 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         #endif
         @unknown default:
             return "unknown"
+        }
+    }
+
+    // The colors of a frame of the camera that the demo simulates, which move with the index of the frame, the same on every platform.
+    private static func fillFrame(_ pixels: UnsafeMutablePointer<UInt8>, width: Int, height: Int, index: Int) {
+        for y in 0..<height {
+            for x in 0..<width {
+                let pixel = pixels + (y * width + x) * 4
+                pixel[0] = UInt8(truncatingIfNeeded: x * 255 / width + index * 3)
+                pixel[1] = UInt8(truncatingIfNeeded: y * 255 / height + index * 2)
+                pixel[2] = UInt8(truncatingIfNeeded: (x + y + index * 4) / 2)
+                pixel[3] = 255
+            }
         }
     }
 

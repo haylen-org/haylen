@@ -83,6 +83,9 @@ class TypeConverter final {
     [[nodiscard]] static text::Style readTextStyle(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
     [[nodiscard]] static graphics::Texture::Options readTextureOptions(lua_State* L, int index, std::initializer_list<Table::FieldNames> extraFields = {});
 
+    // Reads the bytes of a Lua string or of a live data view of Varn, which share their memory instead of copying it, valid while the value stays on the stack. Throws `std::invalid_argument` for any other value.
+    [[nodiscard]] static std::string_view readBytes(lua_State* L, int index);
+
     // Reads a sprite table over `base`. A sprite left without a size takes the size of its source, or of the whole texture when it has no source, like a sprite drawn with `graphics.draw`.
     [[nodiscard]] static graphics2d::SpriteInstance readSpriteInstance(lua_State* L, int index, const graphics::Texture& texture, graphics2d::SpriteInstance base = {}, std::initializer_list<Table::FieldNames> extraFields = {});
 

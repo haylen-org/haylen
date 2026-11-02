@@ -29,14 +29,20 @@ class JsonConverter final {
     // Reads like `read`, and turns every `haylen.Bytes` into a reference to a buffer that it appends to `buffers`.
     [[nodiscard]] static core::Json read(lua_State* L, int index, std::vector<std::vector<std::byte>>& buffers);
 
+    // Pushes JSON that crosses the platform bridge like the `push` with buffers, and turns every data view token into the view it names. Throws `std::invalid_argument` for a token that names no live view.
+    static void pushBridged(lua_State* L, const core::Json& value, const std::vector<std::vector<std::byte>>& buffers);
+
+    // Reads JSON that crosses the platform bridge like the `read` with buffers, and turns every data view into its token, which names the view only while the Lua value keeps it alive.
+    [[nodiscard]] static core::Json readBridged(lua_State* L, int index, std::vector<std::vector<std::byte>>& buffers);
+
   private:
     static constexpr int kMaxDepth = 128;
     static constexpr const char* kTooDeep = "JSON value is nested too deeply to push to Lua.";
 
     [[nodiscard]] static bool isSequence(lua_State* L, int table);
     [[nodiscard]] static std::string objectKey(lua_State* L, int index);
-    [[nodiscard]] static core::Json convert(lua_State* L, int index, int depth, std::vector<std::vector<std::byte>>* buffers);
-    static void pushConverted(lua_State* L, const core::Json& value, int depth, const std::vector<std::vector<std::byte>>* buffers);
+    [[nodiscard]] static core::Json convert(lua_State* L, int index, int depth, std::vector<std::vector<std::byte>>* buffers, bool views);
+    static void pushConverted(lua_State* L, const core::Json& value, int depth, const std::vector<std::vector<std::byte>>* buffers, bool views);
     static void validateNested(const core::Json& value, int depth);
 };
 

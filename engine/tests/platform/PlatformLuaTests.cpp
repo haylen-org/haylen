@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -12,6 +13,7 @@
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
+#include "varn/dataview/DataViewJson.h"
 
 namespace haylen::platform {
 
@@ -226,6 +228,48 @@ TEST(PlatformLuaTest, SendsAndReceivesBytesNextToJson) {
     EXPECT_EQ(fixture.lua("return frames[2]"), "frame two");
     EXPECT_NE(fixture.lua("platform.bytes({})").find("string expected"), std::string::npos);
     EXPECT_NE(fixture.lua("require('haylen.storage').writeJson('bytes.json', {platform.bytes('a')})").find("cannot be converted to JSON"), std::string::npos);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+TEST(PlatformLuaTest, SharesDataViewsWithNativeCodeWithoutCopies) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        platform = require('haylen.platform')
+        dataview = require('dataview')
+        graphics = require('haylen.graphics')
+        async = require('async')
+        view = dataview.from('frame')
+        platform.registerHandler('view.echo', function(params) return {view = params.view} end)
+        shown = platform.call('camera.show', {frame = view})
+        async.spawn(function()
+            local echoed = platform.call('view.echo', {view = view}):await()
+            local answer = shown:await()
+            local texture = graphics.newTexture(1, 1, {dynamic = true})
+            texture:update(answer.pixels)
+            summary = table.concat({tostring(echoed.view == view), view:read(), answer.pixels:read(), tostring(dataview.is(answer.pixels))}, ' ')
+        end)
+    )");
+    // clang-format on
+
+    // Native code reads the bytes of Lua in place and writes into them, and Lua sees the change in its own view.
+    ASSERT_EQ(fixture.host().getPlatformCalls().size(), 1U);
+    const HeadlessHost::PlatformCall& shown = fixture.host().getPlatformCalls()[0];
+    ASSERT_EQ(shown.views.size(), 1U);
+    EXPECT_EQ(core::Json::parse(shown.paramsJson).at("frame").at("size"), 5);
+    std::memcpy(shown.views[0].data(), "FRAME", 5);
+
+    varn::dataview::DataView pixels = varn::dataview::DataView::allocate(4);
+    std::memcpy(pixels.data(), "\x01\x02\x03\xFF", 4);
+    fixture.engine().getPlatform().resolve(shown.id, true, core::Json{{"pixels", varn::dataview::DataViewJson::write(pixels)}}.dump());
+    pixels.reset();
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return summary ~= nil") == "true"; }));
+    EXPECT_EQ(fixture.lua("return summary"), "true FRAME \x01\x02\x03\xFF true");
+
+    // A released view never crosses, plain JSON of the app never holds one, and bytes come only as strings and live views.
+    EXPECT_NE(fixture.lua("local released = dataview.new(1) released:release() platform.call('camera.show', {frame = released})").find("A data view that was released cannot cross the platform bridge."), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen.storage').writeJson('view.json', {view})").find("cannot be converted to JSON"), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newTexture(1, 1, {dynamic = true}):update({})").find("Bytes come as a string or a data view that was not released, not as a table."), std::string::npos);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 

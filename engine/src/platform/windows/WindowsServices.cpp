@@ -166,7 +166,7 @@ std::optional<Fold> Services::getFold() {
 }
 
 // Windows has no handler registry in the language of the platform, so native libraries and C++ plugins answer the methods of apps.
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>) {
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view, std::span<const std::vector<std::byte>>, std::span<const varn::dataview::DataView>) {
     BridgeRelay::resolve(id, false, core::Json{{"message", "No native handler is registered for \"" + std::string(method) + "\"."}, {"code", "noHandler"}}.dump());
 }
 

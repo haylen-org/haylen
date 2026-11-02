@@ -7,6 +7,7 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "varn/dataview/DataViewJni.h"
 #include "varn/http/AndroidHttpBridge.h"
 
 namespace haylen::platform {
@@ -72,7 +73,7 @@ jint JavaBridge::load(JavaVM* vm) {
     if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr) {
         return JNI_ERR;
     }
-    dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B)V");
+    dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B[J)V");
     cancelMethod = findMethod(*env, bridgeClass, "cancel", "(J)V");
     setAppRunningMethod = findMethod(*env, bridgeClass, "setAppRunning", "(Z)V");
     reportErrorMethod = findMethod(*env, pluginsClass, "reportError", "([B)V");
@@ -92,7 +93,7 @@ jint JavaBridge::load(JavaVM* vm) {
     developmentServerMethod = findMethod(*env, activityClass, "developmentServer", "()[B");
     showDialogMethod = findMethod(*env, dialogsClass, "show", "(J[B[B)V");
     cancelDialogMethod = findMethod(*env, dialogsClass, "cancel", "(J)V");
-    openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[BZ)V");
+    openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[J[BZ)V");
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
@@ -111,6 +112,9 @@ jint JavaBridge::load(JavaVM* vm) {
     }
 
     varn::http::client::AndroidHttpBridge::publish(vm);
+    if (!varn::dataview::DataViewJni::publish(env)) {
+        return JNI_ERR;
+    }
     return JNI_VERSION_1_6;
 }
 
@@ -135,13 +139,14 @@ jmethodID JavaBridge::findMethod(JNIEnv& env, jclass owner, const char* name, co
     return found;
 }
 
-void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
+void JavaBridge::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {
     JNIEnv& env = getEnv();
     {
         const JavaLocalRef methodBytes = toBytes(env, method);
         const JavaLocalRef paramsBytes = toBytes(env, paramsJson);
         const JavaLocalRef arrays = toByteArrays(env, buffers);
-        env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes.get(), paramsBytes.get(), arrays.get());
+        const JavaLocalRef handles = toViewHandles(env, views);
+        env.CallStaticVoidMethod(bridgeClass, dispatchMethod, static_cast<jlong>(id), methodBytes.get(), paramsBytes.get(), arrays.get(), handles.get());
     }
 
     // A call that the Java registry never took would wait forever, so it fails at once.
@@ -324,8 +329,9 @@ void JavaBridge::openScreen(const ScreenRequest& request) {
         const JavaLocalRef screen = toBytes(env, request.screen);
         const JavaLocalRef params = toBytes(env, request.params.json.dump());
         const JavaLocalRef buffers = toByteArrays(env, request.params.buffers);
+        const JavaLocalRef handles = toViewHandles(env, request.params.views);
         const JavaLocalRef state = toBytes(env, request.state.dump());
-        env.CallStaticVoidMethod(screensClass, openScreenMethod, static_cast<jlong>(request.id), plugin.get(), screen.get(), params.get(), buffers.get(), state.get(), static_cast<jboolean>(request.opaque ? JNI_TRUE : JNI_FALSE));
+        env.CallStaticVoidMethod(screensClass, openScreenMethod, static_cast<jlong>(request.id), plugin.get(), screen.get(), params.get(), buffers.get(), handles.get(), state.get(), static_cast<jboolean>(request.opaque ? JNI_TRUE : JNI_FALSE));
     }
     if (clearException(env, "dev.haylen.HaylenScreens.open")) {
         ScreenRelay::finish(request.id, false, core::Json{{"message", "The screen failed, because the Java method \"dev.haylen.HaylenScreens.open\" threw an exception."}, {"code", "exception"}}.dump());
@@ -408,6 +414,19 @@ JavaLocalRef<jobjectArray> JavaBridge::toByteArrays(JNIEnv& env, std::span<const
         env.SetObjectArrayElement(arrays.get(), static_cast<jsize>(index), array.get());
     }
     return arrays;
+}
+
+JavaLocalRef<jlongArray> JavaBridge::toViewHandles(JNIEnv& env, std::span<const varn::dataview::DataView> views) {
+    JavaLocalRef handles(env, env.NewLongArray(static_cast<jsize>(views.size())));
+    if (handles.get() == nullptr) {
+        clearException(env, "NewLongArray");
+        throw std::runtime_error("Java has no memory for a list of " + std::to_string(views.size()) + " data views.");
+    }
+    for (std::size_t index = 0; index < views.size(); ++index) {
+        const auto handle = static_cast<jlong>(reinterpret_cast<std::uintptr_t>(varn::dataview::DataView(views[index]).detach()));
+        env.SetLongArrayRegion(handles.get(), static_cast<jsize>(index), 1, &handle);
+    }
+    return handles;
 }
 
 std::string JavaBridge::callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback) {

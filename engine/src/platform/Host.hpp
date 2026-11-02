@@ -26,6 +26,7 @@
 #include "haylen/platform/Theme.hpp"
 #include "haylen/platform/VideoDecoder.hpp"
 #include "haylen/platform/Window.hpp"
+#include "varn/dataview/DataView.h"
 
 namespace haylen::io {
 class PackageReader;
@@ -54,7 +55,7 @@ class Host : public Window {
 
     virtual void pollGamepads(std::span<input::GamepadState> gamepads) = 0;
     // Hands a platform call to the handlers of the platform, with the byte buffers that its parameters refer to, which stay valid until it returns.
-    virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) = 0;
+    virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) = 0;
     virtual void cancelPlatformCall(std::uint64_t id) = 0;
 
     // The screen edges that native views of plugins reserve, the largest reservation on each edge in framebuffer pixels, which the engine adds to the safe area.

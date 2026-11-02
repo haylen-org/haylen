@@ -3,6 +3,7 @@ package dev.haylen;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
+import com.varn.VarnDataView;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -166,10 +167,10 @@ public final class HaylenBridge {
         }
     }
 
-    // Called from the native frame thread for every call that no C++ handler answers, with the byte buffers of its parameters. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
-    static void dispatch(long call, byte[] methodBytes, byte[] paramsBytes, byte[][] buffers) {
+    // Called from the native frame thread for every call that no C++ handler answers, with the byte buffers of its parameters and a reference to each of its views. The parameters are parsed on the thread of the handler, so the frame thread only hands the call over.
+    static void dispatch(long call, byte[] methodBytes, byte[] paramsBytes, byte[][] buffers, long[] views) {
         String method = new String(methodBytes, StandardCharsets.UTF_8);
-        PendingReply reply = new PendingReply(call);
+        PendingReply reply = new PendingReply(call, HaylenPayload.adopt(views));
         Registration registration = handlers.get(method);
         if (registration == null) {
             reply.failure("No native handler is registered for \"" + method + "\".", "noHandler", null);
@@ -194,6 +195,7 @@ public final class HaylenBridge {
 
     private static void handle(String method, Registration registration, byte[] paramsBytes, byte[][] buffers, PendingReply reply) {
         if (reply.isCancelled()) {
+            reply.closeViews();
             return;
         }
         if (registration.threading == Threading.MAIN && activity == null) {
@@ -203,7 +205,7 @@ public final class HaylenBridge {
 
         Object params;
         try {
-            params = HaylenPayload.decode(paramsBytes, buffers);
+            params = HaylenPayload.decode(paramsBytes, buffers, reply.views);
         } catch (JSONException error) {
             reply.failure("The parameters of \"" + method + "\" are not JSON: " + reason(error));
             return;
@@ -278,20 +280,23 @@ public final class HaylenBridge {
         }
     }
 
-    // A call answers once: later answers, and answers after a cancel, are dropped.
+    // A call answers once: later answers, and answers after a cancel, are dropped. The views of its parameters belong to the call until its handler answers, even after a cancel, so a handler keeps one longer with `retain`.
     private static final class PendingReply implements Reply {
         private final long call;
         private final List<Runnable> cancelListeners = new ArrayList<>();
         private boolean settled;
         private boolean cancelled;
+        final List<VarnDataView> views;
 
-        PendingReply(long call) {
+        PendingReply(long call, List<VarnDataView> views) {
             this.call = call;
+            this.views = views;
         }
 
         @Override
         public void success(Object value) {
             if (!settle()) {
+                closeViews();
                 return;
             }
             try {
@@ -300,6 +305,7 @@ public final class HaylenBridge {
             } catch (JSONException error) {
                 nativeResolve(call, false, encodeFailure("The native handler returned a value that is not JSON: " + reason(error), null, null), HaylenPayload.NO_BUFFERS);
             }
+            closeViews();
         }
 
         @Override
@@ -312,6 +318,7 @@ public final class HaylenBridge {
             if (settle()) {
                 nativeResolve(call, false, encodeFailure(message, code, data), HaylenPayload.NO_BUFFERS);
             }
+            closeViews();
         }
 
         @Override
@@ -319,6 +326,7 @@ public final class HaylenBridge {
             if (settle()) {
                 nativeResolve(call, false, encodeFailure(error), HaylenPayload.NO_BUFFERS);
             }
+            closeViews();
         }
 
         @Override
@@ -351,6 +359,10 @@ public final class HaylenBridge {
             for (Runnable listener : listeners) {
                 mainThread.post(listener);
             }
+        }
+
+        void closeViews() {
+            HaylenPayload.close(views);
         }
 
         private synchronized boolean settle() {

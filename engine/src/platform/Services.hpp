@@ -29,6 +29,7 @@
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/native/HaylenNative.h"
 #include "platform/WindowStyle.hpp"
+#include "varn/dataview/DataView.h"
 
 namespace haylen::io {
 class Package;
@@ -106,7 +107,7 @@ class Services final {
     [[nodiscard]] static TextInput& getTextInput();
 
     // Hands a call to the native handler registry with the byte buffers that its parameters refer to, which the registry copies before it returns, and it answers through the bridge relay. Methods without a handler fail with an error result.
-    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers);
+    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views);
 
     // Tells the native handler of a call that the app gave it up, so it can stop working on it.
     static void cancel(std::uint64_t id);

@@ -160,6 +160,13 @@ install(DIRECTORY "${HAYLEN_ENGINE_DIR}/include/" "${HAYLEN_GENERATED_INCLUDE_DI
 install(FILES "${HAYLEN_ENGINE_DIR}/src/ui/ImGuiConfig.hpp" "${HAYLEN_ENGINE_DIR}/src/ui/ImGuiAssert.hpp" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/haylen/ui" COMPONENT haylen-sdk)
 install(FILES "${imgui_SOURCE_DIR}/imgui.h" "${imgui_SOURCE_DIR}/imconfig.h" "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h" "${lua_include}/lua.h" "${lua_include}/luaconf.h" "${lua_include}/lualib.h" "${lua_include}/lauxlib.h" "${varn_SOURCE_DIR}/include/lua.hpp"
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen-sdk)
+# The data views of the bridge are those of Varn, so C++ apps, native libraries and the Objective-C and Swift of apps include the headers of Varn that describe them.
+install(FILES "${varn_SOURCE_DIR}/modules/api/include/varn/varn.h" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/varn" COMPONENT haylen-sdk)
+install(DIRECTORY "${varn_SOURCE_DIR}/modules/dataview/include/varn/dataview" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/varn" COMPONENT haylen-sdk)
+install(FILES "${HAYLEN_VARN_DATAVIEW_SCRIPT}" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/platform/web" COMPONENT haylen-sdk)
+if(APPLE)
+  install(FILES "${varn_SOURCE_DIR}/modules/dataview/platform/apple/VarnDataView.h" DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}" COMPONENT haylen-sdk)
+endif()
 install(FILES "${HAYLEN_CMAKE_DIR}/haylen-app.cmake" "${HAYLEN_CMAKE_DIR}/haylen-link-content.cmake" "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/cmake" COMPONENT haylen-sdk)
 install(DIRECTORY "${HAYLEN_ENGINE_DIR}/platform/web" "${HAYLEN_ENGINE_DIR}/platform/apple" "${HAYLEN_ENGINE_DIR}/platform/windows" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/platform" COMPONENT haylen-sdk)
 install(FILES "${HAYLEN_ENGINE_DIR}/src/platform/LuaPlayer.cpp" DESTINATION "${HAYLEN_SDK_SHARE_DIR}/src/platform" COMPONENT haylen-sdk)

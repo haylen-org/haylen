@@ -147,8 +147,8 @@ TextInput& Services::getTextInput() {
     return input;
 }
 
-void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
-    JavaBridge::dispatch(id, method, paramsJson, buffers);
+void Services::dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {
+    JavaBridge::dispatch(id, method, paramsJson, buffers, views);
 }
 
 void Services::cancel(std::uint64_t id) {

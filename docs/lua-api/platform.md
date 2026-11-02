@@ -12,12 +12,12 @@ Parameters, results and event payloads cross the bridge as JSON. Lua values beco
 
 - A table whose keys are the integers from `1` up, with no gaps, becomes an array. Any other table becomes an object, and an empty table becomes an empty object.
 - The keys of an object are strings. A number key becomes its text, and a key of another type raises `A <type> key cannot be converted to JSON.`.
-- A function, a userdata or another value that JSON cannot hold raises `A <type> cannot be converted to JSON.`. The one userdata that crosses is the [`Bytes`](#bytes) mark.
+- A function, a userdata or another value that JSON cannot hold raises `A <type> cannot be converted to JSON.`. The userdata that cross are the [`Bytes`](#bytes) mark and the views of [`dataview`](#data-views).
 - A table nested deeper than 128 levels raises `Value is nested too deeply to convert to JSON.`.
 
 JSON comes back to Lua by the same rules in reverse. A JSON `null` arrives as `nil`, and an integer too large for a Lua integer arrives as a float.
 
-A string crosses as text, so it must hold UTF-8 to reach native code. Binary data, such as an image or a recording, crosses as a byte buffer next to the JSON instead. Mark the string with [`platform.bytes(data)`](#platformbytesdata), and it crosses as a buffer in its place. Every buffer that native code sends arrives as a Lua string in its place, in results and in events alike.
+A string crosses as text, so it must hold UTF-8 to reach native code. Binary data, such as an image or a recording, crosses as a byte buffer next to the JSON instead. Mark the string with [`platform.bytes(data)`](#platformbytesdata), and it crosses as a buffer in its place. Every buffer that native code sends arrives as a Lua string in its place, in results and in events alike. Large data that changes often crosses as a [data view](#data-views) instead, memory that Lua and native code share without a copy.
 
 Results and events reach Lua on the frame thread, at the start of a frame, before the app updates. The [platform bridge guide](../platform/platform-bridge.md#how-a-call-travels) shows the whole road.
 
@@ -224,6 +224,29 @@ async.spawn(function()
 end)
 ```
 
+## Data views
+
+A view of the Varn module [`dataview`](https://github.com/varn-org/varn/blob/main/docs/lua-api/dataview.md) crosses the bridge as a token that names its memory, so its bytes never move. Put one anywhere in the parameters of a call or of a send, in the result of a Lua handler and in an event, and every view that native code sends arrives as a `dataview` value in its place. The functions `texture:update(view)`, `graphics.newTexture(view)`, `graphics.newTexture(width, height, {pixels = view})` and `audio.newSound(view)` read a view in place. A view that was released raises `A data view that was released cannot cross the platform bridge.`. The [platform bridge guide](../platform/platform-bridge.md#data-views) explains who owns a view and how long it lives.
+
+```lua
+local async = require('async')
+local dataview = require('dataview')
+local graphics = require('haylen.graphics')
+local platform = require('haylen.platform')
+
+local texture = graphics.newTexture(320, 180, {dynamic = true})
+
+async.spawn(function()
+    -- The pixels arrive in a view of the memory of native code, which the texture uploads in place.
+    local shot = platform.call('camera.capture', {width = 320, height = 180}):await()
+    texture:update(shot.pixels)
+
+    -- Native code reads this view in place and may write into it.
+    local samples = dataview.new(4096)
+    platform.call('audio.analyze', {samples = samples}):await()
+end)
+```
+
 ## Plugins
 
 ### platform.plugins()
@@ -344,6 +367,7 @@ The engine and the platforms fail calls with these codes:
 | `noHandler` | No handler answers the method. The message is `No native handler is registered for "<method>".`, or `No page handler is registered for "<method>".` on the web. |
 | `invalidJson` | Native code answered with text that is not JSON. The message is `The platform returned invalid JSON.`. |
 | `invalidBytes` | Native code answered with JSON that refers to a byte buffer it did not send, with a message such as `The JSON refers to byte buffer 2, but only 1 came with it.`. |
+| `invalidView` | Native code answered with a data view token that names no live view, with a message such as `The JSON names the data view 7, which is no longer alive.`. |
 | `exception` | A Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The field `data.type` names the class of the exception or the type of the error. |
 | `unsupported` | The platform cannot serve the call, or the project of the app lacks what the call needs. That may be a permission of the Android manifest, a usage description of the `Info.plist` or an API of the browser. In the second case `data.missing` lists each missing requirement as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. |
 

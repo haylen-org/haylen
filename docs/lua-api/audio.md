@@ -30,7 +30,7 @@ print(audio.active(voice))
 
 ### audio.newSound(bytes, options)
 
-Makes a [`Sound`](#sound) from bytes in memory, such as a recording that a plugin returns or audio the app downloaded or made itself. The string `bytes` holds either a whole WAV, Ogg Vorbis, MP3 or FLAC file, or raw samples when `options.format` is given. The table `options` is optional.
+Makes a [`Sound`](#sound) from bytes in memory, such as a recording that a plugin returns or audio the app downloaded or made itself. The value `bytes`, a string or a [data view](platform.md#data-views), holds either a whole WAV, Ogg Vorbis, MP3 or FLAC file, or raw samples when `options.format` is given. The table `options` is optional.
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |

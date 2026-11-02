@@ -203,8 +203,8 @@ float NativeHost::getStatusBarHeight() const {
     return Services::getStatusBarHeight();
 }
 
-void NativeHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) {
-    Services::dispatch(id, method, paramsJson, buffers);
+void NativeHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {
+    Services::dispatch(id, method, paramsJson, buffers, views);
 }
 
 void NativeHost::cancelPlatformCall(std::uint64_t id) {

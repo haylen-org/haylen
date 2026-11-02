@@ -8,7 +8,7 @@ extern "C" {
 #endif
 
 // The version of `HaylenNativeApi` that this header describes. A new version may change any entry, so a library checks that the engine hands it the table of exactly this version.
-enum { HAYLEN_NATIVE_API_VERSION = 5 };
+enum { HAYLEN_NATIVE_API_VERSION = 6 };
 
 enum HaylenNativeLogLevel { HAYLEN_NATIVE_LOG_DEBUG = 0, HAYLEN_NATIVE_LOG_INFO = 1, HAYLEN_NATIVE_LOG_WARNING = 2, HAYLEN_NATIVE_LOG_ERROR = 3 };
 
@@ -27,6 +27,9 @@ typedef struct HaylenNativeBuffer {
     size_t size;
 } HaylenNativeBuffer;
 
+// A data view, memory that the library shares with the app by reference instead of copying it, which is the `varn_dataview` of the C interface of Varn. JSON names a view with the token `{"$view": id, "pointer": "0x...", "size": n}`, which owns nothing, so whoever sends a token keeps the view alive until the call that carries it returns.
+typedef struct varn_dataview varn_dataview;
+
 // The streams of the app, which live as long as the process, so a library keeps their handles for good.
 typedef struct HaylenNativeVideoStream HaylenNativeVideoStream;
 typedef struct HaylenNativeAudioStream HaylenNativeAudioStream;
@@ -37,7 +40,7 @@ typedef struct HaylenNativeWindow {
     void* display;
 } HaylenNativeWindow;
 
-// Answers the platform call named `method`, whose parameters arrive as JSON text with the buffers it refers to, which stay valid until the handler returns. It runs on the frame thread, and the library answers once through `resolve`, at once or later from any thread.
+// Answers the platform call named `method`, whose parameters arrive as JSON text with the buffers it refers to, which stay valid until the handler returns, like the views that its tokens name, which `acquireView` keeps for longer. It runs on the frame thread, and the library answers once through `resolve`, at once or later from any thread.
 typedef void (*HaylenNativeHandler)(void* user, uint64_t call, const char* method, const char* paramsJson, const HaylenNativeBuffer* buffers, size_t bufferCount);
 
 // Tells a handler that the app cancelled the call or that its timeout passed, on the frame thread. An answer that still comes is dropped.
@@ -84,6 +87,18 @@ typedef struct HaylenNativeApi {
     // Covers the app while native UI of the library covers it, which makes the app inactive, halted and muted until the matching `uncoverApp`. Covers nest and belong to the process, so they outlive the apps that restart under them.
     void (*coverApp)(void);
     void (*uncoverApp)(void);
+    // Allocates a view of zeroed bytes with one reference that the library owns, or returns null when the memory cannot be allocated.
+    varn_dataview* (*newView)(size_t size);
+    // Shares memory that the library owns, which `release` hands back on the thread that releases the last reference.
+    varn_dataview* (*wrapView)(void* data, size_t size, void (*release)(void* data, void* userdata), void* userdata);
+    // Takes a reference to the live view that a token names, or returns null when no live view has that id, pointer and size.
+    varn_dataview* (*acquireView)(unsigned long long id, const void* pointer, size_t size);
+    void (*retainView)(varn_dataview* view);
+    void (*releaseView)(varn_dataview* view);
+    void* (*viewData)(const varn_dataview* view);
+    size_t (*viewSize)(const varn_dataview* view);
+    // Writes the JSON token of the view and its null into `buffer` when it fits, and returns the length of the token without the null.
+    size_t (*viewToken)(const varn_dataview* view, char* buffer, size_t capacity);
 } HaylenNativeApi;
 
 // The function that `native.load(name, {init = 'symbol'})` calls after loading the library. It returns 0 on success, and any other value fails the load with that code.

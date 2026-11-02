@@ -16,6 +16,7 @@
 
 #include "haylen/platform/ScreenRequest.hpp"
 #include "platform/android/JavaLocalRef.hpp"
+#include "varn/dataview/DataView.h"
 
 namespace haylen::platform {
 
@@ -26,7 +27,7 @@ class JavaBridge final {
     static jint load(JavaVM* vm);
 
     // Hands a call to the Java handler registry with the byte buffers of its parameters as byte arrays, and the registry answers through the bridge relay.
-    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers);
+    static void dispatch(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views);
 
     // Tells the Java handler of a call that the app gave it up.
     static void cancel(std::uint64_t id);
@@ -112,6 +113,9 @@ class JavaBridge final {
 
     [[nodiscard]] static JavaLocalRef<jbyteArray> toBytes(JNIEnv& env, std::string_view text);
     [[nodiscard]] static JavaLocalRef<jobjectArray> toByteArrays(JNIEnv& env, std::span<const std::vector<std::byte>> buffers);
+
+    // Hands Java one reference to each view, as the handles that `VarnDataView.adopt` takes over.
+    [[nodiscard]] static JavaLocalRef<jlongArray> toViewHandles(JNIEnv& env, std::span<const varn::dataview::DataView> views);
 
     // Returns the text of a byte array that a static method of Java returns, or `fallback` when the method threw.
     [[nodiscard]] static std::string callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback);

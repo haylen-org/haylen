@@ -29,6 +29,7 @@ class HeadlessHost final : public Host {
         std::string method;
         std::string paramsJson;
         std::vector<std::vector<std::byte>> buffers;
+        std::vector<varn::dataview::DataView> views;
     };
 
     // A rumble of a gamepad that the engine asked for.
@@ -231,7 +232,7 @@ class HeadlessHost final : public Host {
         return statusBar == StatusBar::Hidden ? 0.0F : statusBarHeight;
     }
     void pollGamepads(std::span<input::GamepadState> states) override;
-    void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers) override;
+    void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) override;
     void cancelPlatformCall(std::uint64_t id) override {
         cancelledCalls.push_back(id);
     }
