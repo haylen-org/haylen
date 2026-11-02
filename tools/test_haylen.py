@@ -2576,6 +2576,11 @@ class DevelopmentServerTest(unittest.TestCase):
         self.assertIn("Quit", output.getvalue())
         self.assertEqual(list(haylen.RunSession(haylen.DevelopmentServer(self.folder, self.manifest), []).keys), ["r", "R", "d", "c", "q", "h"])
 
+    def test_the_log_of_android_shows_the_lines_of_the_engine_as_it_wrote_them_and_the_tag_of_the_others(self):
+        self.assertEqual(haylen.android_log_line("I/haylen  : [12:00:01] [info] The app draws through \"vulkan\"."), "[12:00:01] [info] The app draws through \"vulkan\".")
+        self.assertEqual(haylen.android_log_line("E/AndroidRuntime: FATAL EXCEPTION: main"), "E/AndroidRuntime: FATAL EXCEPTION: main")
+        self.assertIsNone(haylen.android_log_line("--------- beginning of main"))
+
     def test_the_log_of_a_simulator_leaves_out_the_lines_of_its_launcher(self):
         lines = ["com.haylen.game: 65678", "[info] The app draws through \"metal\".", "Child process terminated with signal 15: Terminated"]
         self.assertEqual([haylen.simulator_line("com.haylen.game", line) for line in lines], [None, lines[1], None])

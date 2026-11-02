@@ -4130,9 +4130,9 @@ def build_android(app: App, root: Path, args: argparse.Namespace, abi: str | Non
     return android_product(app, args.config)
 
 
-# The tag of the engine in the log of Android. The log of a run shows its lines as the engine writes them, and of the other tags of the process, such as those of plugins and of the system, only the warnings and errors, with their tag.
+# The tag of the engine in the log of Android, whose lines the log of a run shows as the engine writes them. The log also shows the lines of the plugins of the app, which log under their id, and the crashes of its Java code, with their level and tag, and leaves out the rest of the process, such as the warnings of the graphics driver.
 ANDROID_LOG_TAG = "haylen"
-ANDROID_LOG_FILTER = [f"{ANDROID_LOG_TAG}:V", "*:W"]
+ANDROID_CRASH_TAG = "AndroidRuntime"
 ANDROID_PROCESS_POLL_SECONDS = 1.0
 
 
@@ -4141,8 +4141,10 @@ def android_pid(device: str, package: str) -> str:
     return subprocess.run([str(adb()), "-s", device, "shell", "pidof", package], capture_output=True, text=True, check=False).stdout.strip()
 
 
-def android_log_line(line: str) -> str:
-    """Turns a line of logcat in its "tag" format into the line that the terminal shows: a line of the engine as the engine wrote it, and a line of another tag with its level and tag in front."""
+def android_log_line(line: str) -> str | None:
+    """Turns a line of logcat in its "tag" format into the line that the terminal shows: a line of the engine as the engine wrote it, a line of another tag with its level and tag in front, and nothing for the lines where logcat names the buffer it starts."""
+    if line.startswith("--------- beginning of"):
+        return None
     prefix, separator, message = line.partition(": ")
     if separator and prefix[1:2] == "/" and prefix[2:].strip() == ANDROID_LOG_TAG:
         return message
@@ -4159,7 +4161,7 @@ def watch_android_process(session: RunSession, device: str, package: str, pid: s
 
 
 def launch_android(app: App, root: Path, apk: Path, args: argparse.Namespace, device: str, session: RunSession) -> None:
-    """Installs an APK on a device, starts it and streams the log of its process, filtered to the lines of the engine and the warnings and errors of the rest, until the app ends or the session quits. A release with asset packs that Google Play delivers after the install installs its bundle in the local testing mode of Play instead, which delivers them from the device as Play would. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
+    """Installs an APK on a device, starts it and streams the log of its process, filtered to the lines of the engine, of the plugins of the app and the crashes of its Java code, until the app ends or the session quits. A release with asset packs that Google Play delivers after the install installs its bundle in the local testing mode of Play instead, which delivers them from the device as Play would. Android starts apps without a command line, so the address of the development server travels as an extra of the intent, which only a debuggable app reads."""
     package = capture([android_build_tool("aapt2"), "dump", "packagename", apk]).strip()
     name = android_device_name(device)
     terminal.step(f'Installing the app on "{name}"')
@@ -4182,7 +4184,8 @@ def launch_android(app: App, root: Path, apk: Path, args: argparse.Namespace, de
 
     session.show(run_rows(app, f'{name} ("{device}")', args, session), stop)
     threading.Thread(target=watch_android_process, args=(session, device, package, pid), daemon=True).start()
-    session.follow([adb(), "-s", device, "logcat", "-v", "tag", f"--pid={pid}", *ANDROID_LOG_FILTER], line=android_log_line)
+    filters = [f"{ANDROID_LOG_TAG}:V", *(f"{plugin.id}:V" for plugin in app.plugins), f"{ANDROID_CRASH_TAG}:E", "*:S"]
+    session.follow([adb(), "-s", device, "logcat", "-v", "tag", f"--pid={pid}", *filters], line=android_log_line)
 
 
 def android_manifest(apk: Path) -> dict[str, set[str]]:

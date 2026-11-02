@@ -121,7 +121,7 @@ Before it builds, `run` checks the plugins of the app and their values for the p
 Where the log of the engine goes:
 
 - On desktops, to the standard output.
-- On Android, to the log of the process, with `haylen` as the tag. The command `run` streams it with `adb logcat --pid`, filtered to every line of the engine, printed as on a desktop, and to the warnings and errors of the other tags of the process, such as those of plugins and of the system, with their level and tag in front. It ends when the process of the app ends.
+- On Android, to the log of the process, with `haylen` as the tag. The command `run` streams it with `adb logcat --pid`, filtered to every line of the engine, printed as on a desktop, to the lines of the plugins of the app, which log under their id as the tag, and to the crashes of its Java code under `AndroidRuntime`, with their level and tag in front. The rest of the process, such as the warnings of the graphics driver, stays out, and `adb logcat` still shows it. The stream ends when the process of the app ends.
 - On iOS, tvOS and Mac Catalyst, to the unified log, with the bundle identifier of the app as the subsystem and `haylen` as the category.
 
 On Mac Catalyst and the simulators, `run` streams those lines next to the standard output and error of the process, with warnings and errors on the standard error. It keeps streaming for one second after the app ends, so the last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.

@@ -351,6 +351,7 @@ The function [`platform.plugin(id)`](../lua-api/platform.md#appplugin) returns t
 - A platform without the native part of a plugin answers its calls with the code `noHandler`. The field `handle.native` tells the Lua API whether the native part exists at all.
 - A native part that cannot offer a method on its platform fails the call with the code `unsupported` and a message that says why. So the Lua API stays the same everywhere.
 - The Lua API wraps every method, screen and event in a function of its own, so apps never write method names.
+- The Android part of a plugin logs under its id as the tag of `android.util.Log`, such as `Log.i("camera-scanner", ...)`. So the log that `haylen run` streams from an Android device shows its lines next to those of the engine, as the [distribution guide](../tools/distribution.md#run) describes.
 
 ```lua
 -- plugins/game-center/source/init.lua
