@@ -3886,7 +3886,7 @@ end})
 
 ### gui:replaceChildren(id, children)
 
-Replaces every child of the node `id` with the nodes of the list `children`. An empty list removes them all. The ids of the new nodes are checked before anything changes, so a failed replace leaves the GUI and its handlers as they were. Once the new children are in place, the handlers of the removed nodes go. A new node that reuses the id of a removed one gets only the handlers of its own table.
+Replaces every child of the node `id` with the nodes of the list `children`. An empty list removes them all. The ids of the new nodes are checked before anything changes, so a failed replace leaves the GUI and its handlers as they were. Once the new children are in place, the handlers of the removed nodes go. A new node that reuses the id of a removed one gets only the handlers of its own table. A new node keeps the state of the node it replaces, such as the focus, the text being edited with its keyboard, a press in progress and the place of a scroll, when it has the same `id`, or, without an id of the app, the same kind in the same place among the children. The new children draw in the frame they arrive in. The [UI guide](../ui/ui.md#screens-that-change) explains how to build screens that change.
 
 These errors can happen:
 

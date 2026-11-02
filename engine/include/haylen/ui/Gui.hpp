@@ -116,7 +116,7 @@ class Gui final {
     void reportMounts(Component& component);
     void deliver(const std::vector<Event>& found);
 
-    [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count) const;
+    [[nodiscard]] Built build(const core::Json& node, std::size_t depth, std::size_t& count, int place) const;
     [[nodiscard]] Component& require(std::string_view id) const;
 
     const ComponentRegistry& registry;

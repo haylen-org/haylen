@@ -114,7 +114,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.pointerEmulation.setTouchAsMouse(current.config.input.touchAsMouse);
     current.input.setScrollSpeed(current.config.input.scrollSpeed);
     current.reservedInsets = host.getReservedInsets();
-    current.viewport.update(host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets(), host.getDpiScale());
+    current.viewport.update(host.getFramebufferSize(), getOrientedDesignSize(host.getFramebufferSize()), current.config.scaling, getSafeAreaInsets(), host.getDpiScale());
     current.fullscreen = host.isFullscreen();
     current.windowPosition = host.getFrame().getPosition();
     current.orientation = host.getOrientation();
@@ -821,10 +821,21 @@ void Engine::remapViewport() {
     EngineState& current = *state;
     const graphics::Viewport previous = current.viewport;
     current.reservedInsets = current.host.getReservedInsets();
-    current.viewport.update(current.host.getFramebufferSize(), current.config.designSize, current.config.scaling, getSafeAreaInsets(), current.host.getDpiScale());
+    const math::Vec2 framebuffer = current.host.getFramebufferSize();
+    current.viewport.update(framebuffer, getOrientedDesignSize(framebuffer), current.config.scaling, getSafeAreaInsets(), current.host.getDpiScale());
     if (current.viewport.getPixelRect() != previous.getPixelRect() || current.viewport.getVisibleRect() != previous.getVisibleRect()) {
         current.input.followViewport(previous, current.viewport);
     }
+}
+
+// An app that turns with the device lays its design out along the screen, so a design taller than wide turns wide on a screen wider than tall, and the app keeps the size of its design units and lays out again as a native app does.
+math::Vec2 Engine::getOrientedDesignSize(math::Vec2 framebuffer) const noexcept {
+    const math::Vec2 design = state->config.designSize;
+    if (state->config.orientation != platform::Orientation::Any) {
+        return design;
+    }
+    const bool turned = (framebuffer.x > framebuffer.y && design.x < design.y) || (framebuffer.x < framebuffer.y && design.x > design.y);
+    return turned ? math::Vec2{design.y, design.x} : design;
 }
 
 void Engine::setSafeAreaSimulation(std::optional<platform::SafeAreaSimulation> value) {

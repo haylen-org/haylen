@@ -145,6 +145,7 @@ std::unique_ptr<Component> CellTemplate::create(std::size_t node, std::vector<Co
     std::unique_ptr<Component> component = registry.create(entry.kind);
     component->id = entry.part;
     component->identity = static_cast<int>(node);
+    component->key = static_cast<ImGuiID>(node);
     component->apply(entry.properties);
     component->compile(registry);
     created[node] = component.get();

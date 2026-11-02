@@ -316,7 +316,10 @@ class Component {
     std::shared_ptr<Transform> transform = std::make_shared<Transform>();
     ImGuiID drawId = 0;
 
-    // The place of the node in the template of a collection cell, which names its ImGui items in place of its address, so they follow the item the cell shows.
+    // Names the ImGui items of the node, so a node that its GUI builds again keeps the state of its items: its id, or its kind and its place among its siblings, and in the template of a collection cell its place in the template, so the items follow the item the cell shows.
+    ImGuiID key = 0;
+
+    // The place of the node in the template of a collection cell.
     int identity = -1;
     std::uint64_t measuredFrame = 0;
     std::uint64_t drawnFrame = 0;

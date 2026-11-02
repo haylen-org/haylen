@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <utility>
 
+#include <imgui_internal.h>
+
 #include "haylen/ui/Collection.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
 #include "haylen/ui/Context.hpp"
@@ -50,7 +52,7 @@ class Gui::PreparingScope final {
 
 Gui::Gui(const ComponentRegistry& componentRegistry, const core::Json& tree, Placement where) : registry(componentRegistry), placement(where) {
     std::size_t count = 0;
-    Built built = build(tree, 0, count);
+    Built built = build(tree, 0, count, 0);
     root = std::move(built.component);
     ids = std::move(built.ids);
     properties = std::move(built.properties);
@@ -103,7 +105,8 @@ math::Rect Gui::place(const Context& context, const Component& component, math::
     return {context.alignHorizontally(component.getAlignment(), area.x, area.width, size.x), Component::align(component.getAlignment(), area.y, area.height, size.y), size.x, size.y};
 }
 
-Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& count) const {
+// A node of the same kind that the GUI builds again in the same place among its siblings names its ImGui items as before and keeps their state, such as the focus and the editing of a field, and a node with an id of the app names them by that id wherever it moves. The ids that start with "#" are those the engine gives nodes with handlers, which change whenever a tree is built again.
+Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& count, int place) const {
     if (!node.is_object()) {
         throw std::invalid_argument("A UI node must be an object with a kind.");
     }
@@ -117,11 +120,16 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
 
     Built built{.component = registry.create(kind->get<std::string>()), .ids = {}, .properties = {}};
     Component& component = *built.component;
+    const std::string& kindName = kind->get_ref<const std::string&>();
+    component.key = ImHashStr(kindName.data(), kindName.size(), static_cast<ImGuiID>(place));
     if (const auto id = node.find("id"); id != node.end()) {
         if (!id->is_string() || id->get<std::string>().empty()) {
             throw std::invalid_argument("The id of " + PropertyReader::describeKind(kind->get<std::string>()) + " must be a non-empty string.");
         }
         component.id = id->get<std::string>();
+        if (!component.id.starts_with('#')) {
+            component.key = ImHashStr(component.id.data(), component.id.size());
+        }
         built.ids.emplace(component.id, &component);
 
         core::Json values = node;
@@ -144,7 +152,7 @@ Gui::Built Gui::build(const core::Json& node, std::size_t depth, std::size_t& co
         throw std::invalid_argument("The component kind \"" + kind->get<std::string>() + "\" takes at most " + std::to_string(component.getChildLimit()) + " children.");
     }
     for (const core::Json& child : *children) {
-        Built nested = build(child, depth + 1, count);
+        Built nested = build(child, depth + 1, count, static_cast<int>(component.children.size()));
         for (auto& [nestedId, target] : nested.ids) {
             if (!built.ids.emplace(nestedId, target).second) {
                 throw std::invalid_argument("The UI id \"" + nestedId + "\" is used more than once.");
@@ -243,7 +251,7 @@ void Gui::replaceChildren(std::string_view id, const core::Json& trees) {
     std::vector<std::unique_ptr<Component>> built;
     const std::size_t depth = *findDepth(*root, component, 0) + 1;
     for (const core::Json& child : trees) {
-        Built nested = build(child, depth, count);
+        Built nested = build(child, depth, count, static_cast<int>(built.size()));
         for (auto& [childId, target] : nested.ids) {
             if (!remainingIds.emplace(childId, target).second) {
                 throw std::invalid_argument("The UI id \"" + childId + "\" is used more than once.");

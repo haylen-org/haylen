@@ -84,7 +84,8 @@ void Window::render(Context& context, const math::Rect&) {
     ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, {0.0F, 0.0F});
     ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0F);
     const ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoFocusOnAppearing;
-    const bool shown = ImGui::Begin(std::format("##window{}", static_cast<const void*>(this)).c_str(), nullptr, flags);
+    // The window takes its name from the items of the node, so a window that its GUI builds again stays the same ImGui window.
+    const bool shown = ImGui::Begin(std::format("##window{}", ImGui::GetID("##window")).c_str(), nullptr, flags);
     ImGui::PopStyleVar(2);
     if (shown) {
         context.pushPlainReshape();

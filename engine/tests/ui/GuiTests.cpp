@@ -4,12 +4,15 @@
 #include <functional>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
+#include "haylen/ui/Backend.hpp"
 #include "haylen/ui/ComponentRegistry.hpp"
 #include "haylen/ui/Gui.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/UiFixture.hpp"
 #include "ui/components/BuiltInComponents.hpp"
 
 namespace haylen::ui {
@@ -177,6 +180,41 @@ TEST_F(GuiTest, ReadsPropertyValuesStrictly) {
     EXPECT_NE(invalid(R"({"kind": "touchStick"})").find("The property \"action\" of a \"touchStick\" names the virtual stick"), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "numberField", "min": 5, "max": 1})").find("must not be greater than \"max\""), std::string::npos);
     EXPECT_NE(invalid(R"({"kind": "tree", "expanded": [1]})").find("list of item ids"), std::string::npos);
+}
+
+// Children that replace the same children draw the frame they arrive in as the old ones did, laid out and with their pictures and text, so a screen that rebuilds its content never blinks.
+TEST(GuiReplaceTest, DrawsReplacedChildrenInTheFrameTheyArrive) {
+    test::UiFixture ui;
+    // clang-format off
+    const std::string rows = R"([
+        {"kind": "label", "text": "Your home", "font": "title"},
+        {"kind": "card", "children": [{"kind": "row", "children": [{"kind": "label", "text": "Central", "grow": 1}, {"kind": "badge", "text": "Online"}]}]},
+        {"kind": "toggle", "text": "Lights", "checked": true},
+        {"kind": "progress", "value": 0.4},
+        {"kind": "button", "text": "Refresh", "align": "stretch"},
+        {"kind": "textField", "value": "Kitchen"}
+    ])";
+    // clang-format on
+    auto gui = ui.mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 500, "children": [{"kind": "column", "id": "content", "children": )" + rows + "}]}");
+    ui.frames(30);
+
+    const ui::Backend& backend = ui.getUi().getBackend();
+    // clang-format off
+    const auto capture = [&backend] {
+        std::vector<std::string> drawn;
+        for (const graphics2d::Shape& shape : backend.getShapes()) {
+            drawn.push_back("shape " + std::to_string(shape.bounds.x) + " " + std::to_string(shape.bounds.y) + " " + std::to_string(shape.bounds.width) + " " + std::to_string(shape.bounds.height) + " " + shape.color.toHex());
+        }
+        for (const ui::Backend::Text& text : backend.getTexts()) {
+            drawn.push_back("text " + std::string(backend.getContent(text)) + " " + std::to_string(text.origin.x) + " " + std::to_string(text.origin.y));
+        }
+        return drawn;
+    };
+    // clang-format on
+    const std::vector<std::string> steady = capture();
+    gui->replaceChildren("content", core::Json::parse(rows));
+    ui.frames(1);
+    EXPECT_EQ(capture(), steady);
 }
 
 TEST(ComponentRegistryTest, CreatesRegisteredKinds) {

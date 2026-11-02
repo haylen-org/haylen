@@ -34,7 +34,7 @@ end
 
 ### viewport.designSize()
 
-Returns the width and height of the design area in design units, as two numbers. They are 1920 and 1080 unless the `design` section of `app.json` or `viewport.setDesignSize` gives others.
+Returns the width and height of the design area in design units, as two numbers. They are 1920 and 1080 unless the `design` section of `app.json` or `viewport.setDesignSize` gives others. An app whose `orientation` is `any` turns the design with the screen, so a design of 440 by 956 returns 956 and 440 while the screen is wider than tall, as the [rendering guide](../graphics/rendering.md#design-units-and-the-viewport) explains.
 
 ```lua
 local viewport = require('haylen.viewport')

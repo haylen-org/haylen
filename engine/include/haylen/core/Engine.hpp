@@ -344,6 +344,7 @@ class Engine final {
     void applyCover();
     void applyStateMute();
     void remapViewport();
+    [[nodiscard]] math::Vec2 getOrientedDesignSize(math::Vec2 framebuffer) const noexcept;
     [[nodiscard]] math::Insets getSafeAreaInsets() const;
 
     Claim claim;

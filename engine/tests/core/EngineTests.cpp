@@ -583,6 +583,30 @@ TEST(EngineTest, KeepsHeldTouchesOnTheirScreenPointAcrossAResize) {
     EXPECT_NEAR(engine.getInput().getTouches()[0].position.y, expected.y, 1e-3F);
 }
 
+// An app of any orientation turns its design with the screen, so a phone turned on its side keeps the size of the design units and lays out wide.
+TEST(EngineTest, TurnsTheDesignOfAnAppOfAnyOrientationWithTheScreen) {
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "any", "design": {"width": 440, "height": 956, "scaling": "expand"}})"}});
+    core::Engine& engine = fixture.engine();
+    fixture.host().resize({1320.0F, 2868.0F});
+    fixture.frames(1);
+    EXPECT_EQ(engine.getViewport().getDesignSize(), math::Vec2(440.0F, 956.0F));
+    const math::Vec2 portrait = engine.getViewport().getPixelsPerUnit();
+
+    fixture.host().resize({2868.0F, 1320.0F});
+    fixture.frames(1);
+    EXPECT_EQ(engine.getViewport().getDesignSize(), math::Vec2(956.0F, 440.0F));
+    EXPECT_EQ(engine.getViewport().getPixelsPerUnit(), portrait);
+    EXPECT_EQ(engine.getViewport().getVisibleRect(), math::Rect(0.0F, 0.0F, 956.0F, 440.0F));
+    EXPECT_EQ(fixture.lua("local width, height = require('haylen.viewport').designSize() return width .. ' ' .. height"), "956.0 440.0");
+}
+
+TEST(EngineTest, KeepsTheDesignOfAnAppOfOneOrientation) {
+    test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "orientation": "landscape", "design": {"width": 1920, "height": 1080}})"}});
+    fixture.host().resize({1080.0F, 1920.0F});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.engine().getViewport().getDesignSize(), math::Vec2(1920.0F, 1080.0F));
+}
+
 TEST(EngineTest, HaltsUpdatesByTheLifecycleOptions) {
     test::EngineFixture fixture({{"app.json", R"({"name": "Test App", "identifier": "com.haylen.tests", "lifecycle": {"pauseOnFocusLoss": true, "muteOnFocusLoss": true}})"}});
     core::Engine& engine = fixture.engine();

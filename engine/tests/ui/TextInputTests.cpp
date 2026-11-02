@@ -495,6 +495,59 @@ TEST_F(TextInputTest, ScrollsOverAFieldBeingEditedAndKeepsEditing) {
     EXPECT_TRUE(getInput().isEditing());
 }
 
+// A screen that turns lays the GUI out again around the field being edited, which keeps its text, its focus and the keyboard.
+TEST_F(TextInputTest, KeepsEditingWhenTheScreenTurns) {
+    auto gui = mount(R"({"kind": "column", "padding": 20, "children": [{"kind": "label", "text": "Name"}, {"kind": "textField", "id": "name", "align": "stretch"}]})");
+    focus(*gui, "name");
+    edit("Ada", 3, 3);
+    const math::Rect wide = getPublished().bounds;
+
+    // The field edits in every frame of the turn, so the keyboard never closes.
+    fixture.host().resize({1080.0F, 1920.0F});
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing());
+    }
+    EXPECT_EQ(getPublished().text, "Ada");
+    EXPECT_NE(getPublished().bounds, wide) << "The native field follows the field to its new place.";
+    edit("Ada L", 5, 5);
+    EXPECT_EQ(getPublished().text, "Ada L");
+}
+
+// A screen that builds its content again, as an app that rebuilds it on every change does, keeps the field being edited, with its text, its focus and the keyboard, and so does a field with an id whose siblings come and go.
+TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
+    auto gui = mount(R"({"kind": "scroll", "height": 600, "children": [{"kind": "column", "id": "content", "children": [{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": ""}]}]})");
+    const math::Vec2 center = gui->find("content")->getChildren()[1]->getBounds().getCenter();
+    touch(platform::Event::Type::TouchBegan, center);
+    fixture.frames(2);
+    touch(platform::Event::Type::TouchEnded, center);
+    fixture.frames(3);
+    ASSERT_TRUE(getInput().isEditing());
+    edit("lamp", 4, 4);
+
+    const std::uint64_t field = getPublished().id;
+    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "value": "lamp"}])"));
+    for (int frame = 0; frame < 3; ++frame) {
+        fixture.frames(1);
+        EXPECT_TRUE(getInput().isEditing());
+    }
+    EXPECT_EQ(getPublished().id, field);
+    edit("lamps", 5, 5);
+    EXPECT_EQ(getPublished().text, "lamps");
+
+    // A field with an id keeps editing while a notice comes in above it.
+    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
+    fixture.frames(1);
+    gui->command(getUi().getContext(), "filter", "focus", core::Json::object());
+    fixture.frames(2);
+    ASSERT_TRUE(getInput().isEditing());
+    const std::uint64_t named = getPublished().id;
+    gui->replaceChildren("content", core::Json::parse(R"([{"kind": "label", "text": "Saved."}, {"kind": "label", "text": "Filter"}, {"kind": "filterField", "id": "filter", "value": "lamps"}])"));
+    fixture.frames(2);
+    EXPECT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().id, named);
+}
+
 // The caret of a focused field takes the theme color for it, which a style changes like any other color.
 TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
     auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name"}]})");

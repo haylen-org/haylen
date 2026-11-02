@@ -348,6 +348,44 @@ end
 hud:update({health = 0.25, day = 3})
 ```
 
+### Screens that change
+
+A screen that shows changing data, such as the state of a device or a list of results, mounts its GUI once and changes it in place. Each change touches only what changed:
+
+- Values that change, such as a label, a badge, a progress value, `enabled`, `visible` or `checked`, change with `gui:set` on nodes with an `id`. Nothing is built again, so nothing moves and nothing loses its state.
+- A part whose shape changes, such as the rows of a list or the page of a tab, changes with `gui:replaceChildren` on the node that holds it, and only when its shape changed. Rebuilding it for a new value only costs work.
+- A long list or one whose items come and go often is a [`collection`](#long-lists), which reuses its cells and keeps the place of the list as items change.
+
+A node that a GUI builds again keeps the state of the node it replaces when it has the same kind in the same place among its siblings: the focus, the text being edited with its keyboard, a press in progress and the place of a scroll. So a field that the player types in keeps typing when the screen around it is built again. A node with an `id` keeps that state wherever it moves, such as a field below a notice that comes and goes, so give an `id` to every field and control whose siblings change. The ids that the engine gives nodes with handlers, which start with `#`, are new every time, so they keep nothing.
+
+Children that replace others draw in the frame they arrive in, laid out and with their text and pictures, so a rebuilt screen never shows an empty frame. Still, a screen that rebuilds everything on every change moves its parts whenever their shape changes, while a screen that sets values only changes the values.
+
+```lua
+local ui = require('haylen.ui')
+
+local screen = {}
+screen.gui = ui.mount(ui.column{
+    ui.label{id = 'status', text = 'Connecting'},
+    ui.filterField{id = 'filter', placeholder = 'Filter devices'},
+    ui.column{id = 'devices'},
+})
+
+-- Values change in place, and the rows change only when the list itself changed.
+function screen:show(state)
+    self.gui:set('status', {text = state.connected and 'Connected' or 'Connecting'})
+    if state.devices ~= self.shownDevices then
+        self.shownDevices = state.devices
+        local rows = {}
+        for _, device in ipairs(state.devices) do
+            rows[#rows + 1] = ui.label{text = device.name}
+        end
+        self.gui:replaceChildren('devices', rows)
+    end
+end
+
+screen:show({connected = true, devices = {{name = 'Kitchen light'}, {name = 'Front door'}}})
+```
+
 ### Move, fade and animate nodes
 
 The method [`gui:transform(id)`](../lua-api/ui.md#guitransformid) returns the transform of a node: an offset, a scale, an opacity and a tint, on top of the place that the layout gives the node. Tweens animate a transform in C++, without running Lua every frame, so menus can slide and buttons can pulse cheaply.

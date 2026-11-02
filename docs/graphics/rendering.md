@@ -160,6 +160,8 @@ Three rectangles describe the mapping:
 - The safe rectangle, `viewport.safeRect()`, is the visible area that no notch, rounded corner, system bar or native view covers. Put buttons and important HUD text inside it.
 - The pixel rectangle, `viewport.pixelRect()`, is the part of the framebuffer that shows the visible rectangle, on whole pixels. Outside it, the letterbox bars of `fit` and `pixelPerfect` show the clear color.
 
+An app whose `orientation` in `app.json` is `any` turns its design with the screen. A design taller than wide, such as 440 by 956 units, lays out as 956 by 440 units on a screen wider than tall, and turns back when the screen does. So a phone on its side keeps the size of the design units and the UI lays out again for the wide screen, as a native app does, instead of shrinking the whole design to fit the short side. An app of one orientation keeps its design as it is. `viewport.designSize()` returns the turned size.
+
 The engine recomputes the viewport at the start of every frame, so a resize or a rotation shows from the next frame on. Pointer and touch positions arrive in design units already. Inside a world canvas, `graphics2d.canvasUnitSize()` tells how long one design unit of the screen is in world units, so outlines keep one thickness at any zoom.
 
 ```lua
