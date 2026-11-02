@@ -10,6 +10,7 @@
 #include <imgui.h>
 
 #include "haylen/2d/graphics/Shape.hpp"
+#include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/ui/Backend.hpp"
@@ -42,6 +43,19 @@ class LayoutTest : public ::testing::Test, public test::UiFixture {
         for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
             for (const ImDrawVert& vertex : list->VtxBuffer) {
                 if (vertex.col == packed && std::fabs(vertex.pos.y - y) < 0.5F) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    // Tells whether any vertex of the frame has the color whatever its alpha, so a fade drawn with no strength counts too.
+    [[nodiscard]] static bool hasColor(math::Color color) {
+        const ImU32 packed = ImGui::ColorConvertFloat4ToU32({color.r, color.g, color.b, 0.0F});
+        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
+            for (const ImDrawVert& vertex : list->VtxBuffer) {
+                if ((vertex.col & ~IM_COL32_A_MASK) == packed) {
                     return true;
                 }
             }
@@ -186,6 +200,22 @@ TEST_F(LayoutTest, FadesTheEdgesOfAScrollWhereTheContentContinues) {
     frames(2);
     EXPECT_TRUE(hasVertex(fade, area.y));
     EXPECT_FALSE(hasVertex(fade, area.getBottom()));
+}
+
+// A scroll draws no fade at all while its content rests at its start or fits inside it, so a list that the player has not moved shows no shade at its start.
+TEST_F(LayoutTest, DrawsNoFadeWhereTheContentRestsOrFits) {
+    auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollFade": "#FF00FF80"}}, "children": [{"kind": "scroll", "id": "long", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
+    frames(2);
+    getUi().getBackend().makeCurrent();
+    const math::Color fade = *math::Color::parse("#FF00FF80");
+    const math::Rect area = getBounds(*gui, "long");
+    EXPECT_TRUE(hasVertex(fade, area.getBottom()));
+    EXPECT_FALSE(hasVertex(fade.withAlpha(0.0F), area.y));
+
+    gui->set("long", {{"height", 1000}});
+    frames(2);
+    getUi().getBackend().makeCurrent();
+    EXPECT_FALSE(hasColor(fade));
 }
 
 TEST_F(LayoutTest, KeepsMarginsAroundChildrenAndPaddingInsideContainers) {
