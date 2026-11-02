@@ -3033,6 +3033,8 @@ A `Terrain`, named `haylen.Terrain` in messages, is destructible ground. The fun
 
 Creates a `Terrain`. The ground is stored as a grid of samples from 0, empty, to 1, solid. Bitmaps and polygons fill it, and shapes and explosions carve it. The solid areas become chain loops on one static body per chunk, traced with marching squares. The method `terrain:update()` rebuilds only the chunks that changed.
 
+Marching squares places every point of an outline between two samples, as far along as the samples say the edge lies. Soft samples, such as the edges that `fill`, `carve` and `explode` blend, put the points where the shapes are. Hard samples of only 0 and 1, such as a mask of an image or a function that returns 0 or 1, put every point in the middle of the edge of a cell, so a gentle slope would trace as stairs. So the points between hard samples relax toward the curve through their neighbors, and each stays within half a cell of where it was traced, which is where the edge between such samples may lie. The points between soft samples stay where the samples put them. Slopes come out straight and bends come out round, in the drawing of the outlines and in their collision alike, so crates slide down a slope instead of bumping on steps. The points where an outline meets the edge of its chunk stay where they are, so neighboring chunks still meet.
+
 Sample `(column, row)` lies at `{x, y} + {column, row} * cellSize`. So the terrain covers `(columns - 1) * cellSize` by `(rows - 1) * cellSize`. The terrain owns its bodies and starts empty. The table `options` is optional, and an unknown key raises `Unknown option "<key>".`.
 
 | Key | Type | Default | Meaning |

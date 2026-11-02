@@ -4,6 +4,7 @@
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <utility>
 
 #include "2d/physics/Box2DConverter.hpp"
 #include "haylen/2d/physics/World.hpp"
@@ -192,7 +193,7 @@ void Terrain::rebuild(std::size_t index) {
     const math::Rect area{corner.x, corner.y, static_cast<float>(width - 1) * options.cellSize, static_cast<float>(height - 1) * options.cellSize};
     chunk.outlines.clear();
     for (const std::vector<math::Vec2>& traced : math::MarchingSquares::trace(field, width, height, {.threshold = 0.5F, .spacing = options.cellSize, .origin = corner})) {
-        std::vector<math::Vec2> outline = simplify(traced, area);
+        std::vector<math::Vec2> outline = simplify(smooth(traced, area, field, width), area);
         // Specks smaller than a quarter cell carry no useful collision.
         if (outline.size() < 3 || std::fabs(math::Geometry::signedArea(outline)) < options.cellSize * options.cellSize * 0.25F) {
             continue;
@@ -219,6 +220,43 @@ void Terrain::rebuild(std::size_t index) {
         }
     }
     chunk.dirty = false;
+}
+
+// A point traced between two hard samples, one empty and one solid, lies in the middle of their cell edge whatever the true ground there, so it may move up to half a cell. A point between softer samples lies where they put the ground, and a point on the edge of the chunk keeps the chunks beside it joined, so neither moves.
+float Terrain::getFreedom(math::Vec2 point, const math::Rect& area, std::span<const float> field, int width) const noexcept {
+    const float epsilon = options.cellSize * 1e-3F;
+    if (std::fabs(point.x - area.getLeft()) < epsilon || std::fabs(point.x - area.getRight()) < epsilon || std::fabs(point.y - area.getTop()) < epsilon || std::fabs(point.y - area.getBottom()) < epsilon) {
+        return 0.0F;
+    }
+
+    const math::Vec2 cell = (point - area.getMin()) / options.cellSize;
+    const bool onRow = std::fabs(cell.y - std::round(cell.y)) * options.cellSize < epsilon;
+    const int column = static_cast<int>(onRow ? std::floor(cell.x) : std::round(cell.x));
+    const int row = static_cast<int>(onRow ? std::round(cell.y) : std::floor(cell.y));
+    const std::size_t first = static_cast<std::size_t>(row) * static_cast<std::size_t>(width) + static_cast<std::size_t>(column);
+    const std::size_t second = first + (onRow ? 1U : static_cast<std::size_t>(width));
+    const auto hard = [](float sample) { return sample == 0.0F || sample == 1.0F; };
+    return second < field.size() && hard(field[first]) && hard(field[second]) ? options.cellSize * 0.5F : 0.0F;
+}
+
+// Hard samples, such as the mask of an image or samples of only 0 and 1, put every point of an outline in the middle of the edge of a cell, so a gentle slope traces as stairs. The outline relaxes toward the curve through its neighbors, and every point stays within the room `getFreedom` gives it, where the edge between its samples may lie, so slopes come out straight and bends round while the ground stays where its samples put it.
+std::vector<math::Vec2> Terrain::smooth(const std::vector<math::Vec2>& outline, const math::Rect& area, std::span<const float> field, int width) const {
+    const std::size_t count = outline.size();
+    std::vector<float> freedom(count);
+    for (std::size_t index = 0; index < count; ++index) {
+        freedom[index] = getFreedom(outline[index], area, field, width);
+    }
+
+    std::vector<math::Vec2> current = outline;
+    std::vector<math::Vec2> next(count);
+    for (int pass = 0; pass < kSmoothingPasses; ++pass) {
+        for (std::size_t index = 0; index < count; ++index) {
+            const math::Vec2 relaxed = (current[(index + count - 1) % count] + current[index] * 2.0F + current[(index + 1) % count]) * 0.25F;
+            next[index] = outline[index] + (relaxed - outline[index]).clampedLength(freedom[index]);
+        }
+        std::swap(current, next);
+    }
+    return current;
 }
 
 std::vector<math::Vec2> Terrain::simplify(const std::vector<math::Vec2>& outline, const math::Rect& area) const {

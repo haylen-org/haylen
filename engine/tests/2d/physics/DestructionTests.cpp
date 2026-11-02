@@ -59,8 +59,8 @@ TEST_F(DestructionTest, TerrainBuildsChainsFromFilledShapes) {
             EXPECT_GE(point.y, 101.9F);
         }
     }
-    // The two upper corners sit on the edge of the grid, where samples are half covered, and lose a small triangle each.
-    EXPECT_NEAR(area, 512.0F * 154.0F, 16.0F);
+    // The two upper corners sit on the edge of the grid, where samples are half covered, and lose a small triangle each, toward which the points between the hard samples beside them relax by less than half a cell.
+    EXPECT_NEAR(area, 512.0F * 154.0F, 96.0F);
 
     // A ball dropped onto the ground comes to rest on its surface.
     Body ball = world.createBody({.position = {100.0F, 50.0F}});
@@ -109,6 +109,36 @@ TEST_F(DestructionTest, CarvingRebuildsOnlyTheChunksItTouches) {
     EXPECT_THROW((void)terrain.getSample(200, 0), std::out_of_range);
     EXPECT_THROW(Terrain(world, {.columns = 1}), std::invalid_argument);
     EXPECT_THROW(Terrain(world, {.shape = {.friction = -1.0F}}), std::invalid_argument);
+}
+
+// Hard samples put every point of an outline in the middle of the edge of a cell, so a gentle slope of them would trace as stairs half a cell high, and the outline relaxes into the slope instead, in its drawing and its collision alike.
+TEST_F(DestructionTest, TerrainSmoothsTheStairsOfHardSamples) {
+    constexpr int kColumns = 129;
+    constexpr int kRows = 65;
+    constexpr float kCell = 4.0F;
+    Terrain terrain(world, {.columns = kColumns, .rows = kRows, .cellSize = kCell, .simplifyTolerance = 0.0F});
+    std::vector<std::uint8_t> samples(static_cast<std::size_t>(kColumns * kRows));
+    for (int row = 0; row < kRows; ++row) {
+        for (int column = 0; column < kColumns; ++column) {
+            samples[static_cast<std::size_t>(row * kColumns + column)] = static_cast<float>(row) > 20.0F + static_cast<float>(column) / 6.0F ? 255 : 0;
+        }
+    }
+    terrain.setSamples(samples);
+    terrain.update();
+
+    // The slope runs along y = 80 + x / 6, and points near the edges of chunks keep where they were traced so neighboring chunks meet.
+    float worst = 0.0F;
+    for (const std::vector<math::Vec2>& outline : terrain.getOutlines()) {
+        for (const math::Vec2 point : outline) {
+            const float across = std::fmod(point.x, 32.0F * kCell);
+            const float down = std::fmod(point.y, 32.0F * kCell);
+            if (point.y < 200.0F && across > 3.0F * kCell && across < 29.0F * kCell && down > 3.0F * kCell && down < 29.0F * kCell) {
+                worst = std::max(worst, std::fabs(point.y - (80.0F + point.x / 6.0F)));
+            }
+        }
+    }
+    EXPECT_GT(worst, 0.0F);
+    EXPECT_LT(worst, kCell * 0.25F);
 }
 
 TEST_F(DestructionTest, TerrainExplosionsCarveAndPush) {

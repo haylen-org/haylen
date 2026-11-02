@@ -16,7 +16,7 @@ namespace haylen::physics2d {
 
 class World;
 
-// Destructible ground stored as a grid of samples from 0 (empty) to 255 (solid), which bitmaps and polygons fill and which shapes and explosions carve. The solid areas become chain loops on one static body per chunk, traced with marching squares, and `update` rebuilds only the chunks that changed. The terrain owns its bodies and must go before its world.
+// Destructible ground stored as a grid of samples from 0 (empty) to 255 (solid), which bitmaps and polygons fill and which shapes and explosions carve. The solid areas become chain loops on one static body per chunk, traced with marching squares, and the points between hard samples relax within half a cell, so ground of hard samples follows its slopes instead of the steps of its cells, and `update` rebuilds only the chunks that changed. The terrain owns its bodies and must go before its world.
 class Terrain final {
   public:
     // The sample `(column, row)` lies at `origin + (column, row) * cellSize`. Outlines are simplified to within `simplifyTolerance` world units, and chunks are `chunkSize` cells wide and tall.
@@ -81,6 +81,9 @@ class Terrain final {
     [[nodiscard]] std::vector<Body> getBodies() const;
 
   private:
+    // Smoothing relaxes an outline this many times, which straightens slopes as gentle as one cell in eight.
+    static constexpr int kSmoothingPasses = 32;
+
     struct Chunk {
         Body body;
         std::vector<std::vector<math::Vec2>> outlines;
@@ -105,6 +108,8 @@ class Terrain final {
     [[nodiscard]] Span spanOf(std::size_t index) const noexcept;
     // Simplifies an outline while keeping the points where it meets the chunk edge, so neighboring chunks still meet.
     [[nodiscard]] std::vector<math::Vec2> simplify(const std::vector<math::Vec2>& outline, const math::Rect& area) const;
+    [[nodiscard]] std::vector<math::Vec2> smooth(const std::vector<math::Vec2>& outline, const math::Rect& area, std::span<const float> field, int width) const;
+    [[nodiscard]] float getFreedom(math::Vec2 point, const math::Rect& area, std::span<const float> field, int width) const noexcept;
 
     World& world;
     Options options;
