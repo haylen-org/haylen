@@ -1,6 +1,6 @@
 # 📖 `haylen.procedural2d`
 
-The module `haylen.procedural2d` builds 2D content from rules and a seed. It scatters objects over areas, grows caves, lays out dungeons, carves mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors. The same options and the same seed always give the same result. The [procedural generation guide](../2d/procedural.md) explains which generator suits which content, how to build whole levels and how to keep generation off the frame.
+The module `haylen.procedural2d` builds 2D content from rules and a seed. It scatters objects over areas, places entities by the shapes they occupy, grows caves, lays out dungeons, carves mazes, fills maps with Wave Function Collapse, builds Delaunay triangulations and Voronoi diagrams, and picks tiles by their neighbors. The same options and the same seed always give the same result. The [procedural generation guide](../2d/procedural.md) explains which generator suits which content, how to build whole levels and how to keep generation off the frame.
 
 ```lua
 local procedural = require('haylen.procedural2d')
@@ -150,6 +150,86 @@ local procedural = require('haylen.procedural2d')
 async.spawn(function()
     local rocks = procedural.scatterAsync({region = {0, 0, 4096, 4096}, density = 0.0005, seed = 1}):await()
     print(#rocks)
+end)
+```
+
+## Placement
+
+### procedural.place(options)
+
+Places a count of entities of several kinds on a map, such as trees, rocks and houses. Each entity occupies the shape of its kind, a circle, a rectangle or a polygon, instead of the size of its image. It keeps a gap from every other entity and a margin from the forbidden areas. Positions are random within the area, so the same seed always gives the same map. When the area has no room for everything, it places what fits and counts what it left out of each kind. The [placement recipe](../2d/procedural.md#recipe-trees-rocks-and-houses-that-never-overlap) explains when to use it instead of a scatter.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `area` | Rect | required | The map. The whole footprint of every entity lies inside it. |
+| `kinds` | list | required | The kinds to place, each a table of the keys below, counted from 1. |
+| `forbidden` | list of shapes | `{}` | Areas of the map that no entity enters, such as a lake, a road or a village, as shapes in map coordinates. |
+| `order` | string | `'shuffled'` | The value `'shuffled'` places the entities of every kind in a random order, so the kinds share what does not fit. The value `'listed'` places every entity of a kind before the next kind, so the kinds listed first take the room first. |
+| `attempts` | integer | `30` | The random positions tried for each entity before it is left out. |
+| `seed`, `random` | | | The generator, as [seeds, maps and promises](#seeds-maps-and-promises) describes. |
+
+Each kind takes these keys:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `count` | integer | `0` | How many entities of the kind to place. |
+| `shape` | shape | required | The footprint of each entity around its position. |
+| `spacing` | number | `0` | The gap between the footprint and the footprint of every other entity. Two entities keep the larger gap of their kinds. |
+| `margin` | number | `0` | The gap between the footprint and every forbidden area. |
+| `rotate` | boolean | `false` | Whether each entity turns its footprint by a random angle, which it returns as its `rotation`. |
+
+A shape is a table with these keys, a circle when it names no `kind`:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `kind` | string | `'circle'` | The value `'circle'`, `'rectangle'` or `'polygon'`. |
+| `center` | Vec2 | `{0, 0}` | The center of the shape: its offset from the position of an entity for a footprint, such as the trunk at the foot of a tree, or its place on the map for a forbidden area. |
+| `radius` | number | `0` | The radius of a circle. |
+| `width`, `height` | number | `0` | The size of a rectangle. |
+| `points` | list of Vec2 | `{}` | The corners of a simple polygon around the center, in either winding, such as an outline of [`path:outlines`](graphics2d.md#pathoutlinestolerance). |
+| `rotation` | number | `0` | The turn of a rectangle or a polygon around its center, in radians. |
+
+It returns `{entities, missing}`. The list `entities` holds a `{kind, x, y, rotation}` table for each placed entity, in the order it was placed, where `kind` counts from 1 and `x`, `y` is its position. The list `missing` holds, for each kind, how many of its count found no room.
+
+```lua
+local procedural = require('haylen.procedural2d')
+
+local map = procedural.place({
+    area = {0, 0, 1600, 1200},
+    kinds = {
+        {count = 4, shape = {kind = 'rectangle', width = 160, height = 110}, spacing = 60},
+        {count = 120, shape = {kind = 'circle', radius = 18, center = {0, 40}}, spacing = 12, margin = 30},
+        {count = 80, shape = {kind = 'polygon', points = {{-22, -10}, {0, -18}, {24, -6}, {16, 14}, {-18, 12}}}, rotate = true, spacing = 4},
+    },
+    forbidden = {{kind = 'circle', center = {800, 600}, radius = 180}, {kind = 'rectangle', center = {800, 1100}, width = 1600, height = 60}},
+    order = 'listed',
+    seed = 12,
+})
+for _, entity in ipairs(map.entities) do
+    print(entity.kind, entity.x, entity.y, entity.rotation)
+end
+print(map.missing[1] .. ' houses, ' .. map.missing[2] .. ' trees and ' .. map.missing[3] .. ' rocks found no room.')
+```
+
+These errors come from wrong options:
+
+- An area without a positive width and height, or with a value that is not finite, raises `A placement needs a finite area with a positive width and height.`
+- An `attempts` below 1 raises `A placement needs at least one attempt for each entity.`
+- A shape without a size, with a polygon of fewer than three points around an area, or with a value that is not finite raises `A placement shape needs finite values and a size: a positive radius, a positive width and height, or a polygon of at least three points around an area.`
+- A negative or infinite `spacing` or `margin` raises `A placement kind needs a finite spacing and margin of zero or more.`
+- Counts that add up to more than 1048576 raise `A placement places at most 1048576 entities.`
+
+### procedural.placeAsync(options)
+
+Places like [`procedural.place`](#proceduralplaceoptions) on a worker thread and resolves with the same result, for maps with many entities.
+
+```lua
+local async = require('async')
+local procedural = require('haylen.procedural2d')
+
+async.spawn(function()
+    local map = procedural.placeAsync({area = {0, 0, 8192, 8192}, kinds = {{count = 20000, shape = {radius = 16}, spacing = 8}}, seed = 3}):await()
+    print(#map.entities, map.missing[1])
 end)
 ```
 

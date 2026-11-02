@@ -7,6 +7,7 @@
 #include <tuple>
 
 #include "2d/procedural/MapGeneratorsLua.hpp"
+#include "2d/procedural/PlacementLua.hpp"
 #include "haylen/2d/procedural/Voronoi.hpp"
 #include "haylen/2d/tiled/Object.hpp"
 #include "haylen/lua/Binding.hpp"
@@ -390,6 +391,7 @@ int Procedural2DLua::open(lua_State* L) {
     };
     lua::Binding::newModule(L, functions);
     MapGeneratorsLua::addFunctions(L);
+    PlacementLua::addFunctions(L);
     return 1;
 }
 

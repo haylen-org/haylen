@@ -57,6 +57,7 @@ The asynchronous generators work on a copy of the `random` option, so the `Rando
 | You want | Use |
 | --- | --- |
 | Trees, rocks, loot and spawn points spread naturally over an area | [`procedural.scatter`](../lua-api/procedural2d.md#proceduralscatteroptions), at random, on a shaken grid or with Poisson spacing. |
+| A set count of each kind of object, such as trees, rocks and houses, kept apart by the shapes they occupy, with what did not fit | [`procedural.place`](../lua-api/procedural2d.md#proceduralplaceoptions), as the [placement recipe](#recipe-trees-rocks-and-houses-that-never-overlap) shows. |
 | Points that never sit closer than a distance, without regions or types | [`m.poissonDisk`](../lua-api/math.md#mpoissondiskoptions) of `haylen.math`. |
 | Organic caves and islands | [`procedural.cellularAutomaton`](../lua-api/procedural2d.md#proceduralcellularautomatonoptions). |
 | Long winding tunnels and mines | [`procedural.drunkardWalk`](../lua-api/procedural2d.md#proceduraldrunkardwalkoptions). |
@@ -236,6 +237,45 @@ print(#forest .. ' trees.')
 
 A biome map picks different weights in different places. Give `scatter` a `biome` noise and a list of `layers`, each with a range of the noise and its own weights, such as only pines in the cold north and only palms near the sea. The [scatter reference](../lua-api/procedural2d.md#proceduralscatteroptions) shows the layers.
 
+## Recipe: trees, rocks and houses that never overlap
+
+A scatter spreads points, and each point stands for an object of any size. Some maps need more: a set count of each kind, objects that never overlap by the ground they really occupy, and a report when the map is too small. A placement does that. Each kind has a count and a footprint, the shape the object occupies on the ground, which is often much smaller than its image. A tree occupies the circle of its trunk at the foot of its crown, a house its rectangle, and a rock the polygon of its outline. The image of the tree can then hang over the rock behind it, as it would in a picture, while their trunks and outlines never touch.
+
+```lua
+local procedural = require('haylen.procedural2d')
+
+local lake = {kind = 'circle', center = {800, 600}, radius = 180}
+local road = {kind = 'rectangle', center = {800, 1100}, width = 1600, height = 60}
+
+local map = procedural.place({
+    area = {0, 0, 1600, 1200},
+    kinds = {
+        {count = 4, shape = {kind = 'rectangle', width = 160, height = 110}, spacing = 60, margin = 40},
+        {count = 120, shape = {kind = 'circle', radius = 18, center = {0, 40}}, spacing = 12, margin = 30},
+        {count = 80, shape = {kind = 'polygon', points = {{-22, -10}, {0, -18}, {24, -6}, {16, 14}, {-18, 12}}}, rotate = true, spacing = 4},
+    },
+    forbidden = {lake, road},
+    order = 'listed',
+    seed = 12,
+})
+
+local names = {'houses', 'trees', 'rocks'}
+for kind, missing in ipairs(map.missing) do
+    if missing > 0 then
+        print(missing .. ' ' .. names[kind] .. ' found no room.')
+    end
+end
+```
+
+This is how a placement works:
+
+- Every entity tries random positions in the area, up to `attempts` of them, and takes the first one where its footprint lies inside the area, keeps its `margin` from every forbidden area and keeps the larger `spacing` of the two kinds from every placed entity. An entity that finds no room is left out and counted in `missing`.
+- Circles, rectangles and polygons are measured by their real shapes, also when `rotate` turns them, so two long planks can lie side by side where the circles around them would collide.
+- The order `'shuffled'` mixes the entities of every kind, so the kinds share what does not fit. The order `'listed'` places the kinds one after another, so the large or important ones, listed first, take the room before the small ones fill the gaps.
+- A grid of cells holds the placed entities, so every try measures only against the entities around it. The cost grows with the entities times their attempts, and `procedural.placeAsync` does the same work on a worker thread for large maps.
+
+Forbidden areas take the same shapes in map coordinates. A polygon can come from the outlines of a [path](../graphics/rendering.md#paths) or from a shape of [`m.polygon`](../lua-api/math.md#polygon-operations), one outline at a time. The [placement reference](../lua-api/procedural2d.md#proceduralplaceoptions) lists every option.
+
 ## Recipe: a maze
 
 A maze generator returns a `Maze`, a grid of cells with walls between them. Draw it as tiles with `maze:toGrid`, which puts each cell and each wall on a tile of its own.
@@ -405,6 +445,7 @@ Every generator works in C++, so one call costs far less than the same work in L
 | Dungeon | The rooms and the attempts to place them. It stays cheap even for large maps. |
 | Maze | The cells. |
 | Scatter and Poisson disk sampling | The points times the `attempts` of each Poisson point. A density map that Lua computes adds a call per candidate. |
+| Placement | The entities times their `attempts`, and the corners of their polygons when they come close. |
 | Wave Function Collapse | The cells times the tiles, more for rules with few allowed pairs, and again for each restart after a contradiction. It is the most expensive generator. |
 | Delaunay, Voronoi and relaxation | The points, in about n log n time. Relaxation repeats the Voronoi diagram once per iteration. |
 | Autotiling | The cells. |
@@ -413,4 +454,4 @@ As a rule, run a generation on the frame when it is small and happens once, such
 
 ## C++
 
-The C++ types live in `haylen/2d/procedural/` in the namespace `haylen::procedural2d`: `Region`, `Scatter`, `CellularAutomaton`, `DrunkardWalk`, `Dungeon`, `Maze`, `WaveFunctionCollapse`, `Delaunay`, `Voronoi` and `Autotile`.
+The C++ types live in `haylen/2d/procedural/` in the namespace `haylen::procedural2d`: `Region`, `Scatter`, `Placement`, `CellularAutomaton`, `DrunkardWalk`, `Dungeon`, `Maze`, `WaveFunctionCollapse`, `Delaunay`, `Voronoi` and `Autotile`.

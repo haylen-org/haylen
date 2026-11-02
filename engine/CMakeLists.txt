@@ -183,6 +183,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/2d/procedural/Dungeon.cpp
   src/2d/procedural/MapGeneratorsLua.cpp
   src/2d/procedural/Maze.cpp
+  src/2d/procedural/Placement.cpp
+  src/2d/procedural/PlacementLua.cpp
   src/2d/procedural/Procedural2DLua.cpp
   src/2d/procedural/Region.cpp
   src/2d/procedural/Scatter.cpp

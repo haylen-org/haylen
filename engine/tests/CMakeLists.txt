@@ -49,6 +49,7 @@ set(HAYLEN_TEST_SOURCES
   2d/physics/VehicleTests.cpp
   2d/physics/WorldTuningTests.cpp
   2d/procedural/Procedural2DLuaTests.cpp
+  2d/procedural/PlacementTests.cpp
   2d/procedural/Procedural2DTests.cpp
   2d/procedural/TilingTests.cpp
   2d/spatial/GridAlgorithmTests.cpp

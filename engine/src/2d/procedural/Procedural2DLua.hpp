@@ -32,7 +32,7 @@ template <> struct Type<procedural2d::Region> {
 
 namespace haylen::procedural2d {
 
-// Installs `haylen.procedural2d` with regions, scattering, the `Delaunay` class and Voronoi diagrams, and the map generators of `MapGeneratorsLua`. Functions that take options read the generator from a `random` field or seed a new one from a `seed` field.
+// Installs `haylen.procedural2d` with regions, scattering, the `Delaunay` class and Voronoi diagrams, the map generators of `MapGeneratorsLua` and the placement of `PlacementLua`. Functions that take options read the generator from a `random` field or seed a new one from a `seed` field.
 class Procedural2DLua final {
   public:
     static void install(lua_State* L);
