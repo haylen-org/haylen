@@ -12,7 +12,7 @@ ui.window{id = 'bag', title = 'Bag', closable = true, onClose = function() log.i
 local dock = gui:bounds('dock')
 gui:set('bag', {open = true, x = dock.x, y = dock.y, width = dock.width})
 ui.accordion{multiple = true, items = {{id = 'food', text = 'Food'}, {id = 'tools', text = 'Tools'}}, expanded = {'food'}, foodRow, toolsRow}
-ui.carousel{height = 230, loop = true, interval = 5, dayPage, duskPage, nightPage}
+ui.carousel{loop = true, interval = 5, dayPage, duskPage, nightPage}
 ui.scroll{axis = 'horizontal', snap = true, ui.row{gap = 24, children = levelCards}}]]
 
 local function levels()
@@ -89,7 +89,7 @@ function WindowsPages:columns()
         },
         ui.column{grow = 2, gap = 24,
             layout.section('Component "carousel"', {
-                ui.carousel{height = 230, loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
+                ui.carousel{loop = true, interval = 5, onChange = function(event) self:report('The carousel shows page ' .. event.page .. '.') end,
                     page('#FFFFFFFF', 'Day'),
                     page('#FFFFB08A', 'Dusk'),
                     page('#FF5A6AB8', 'Night'),
