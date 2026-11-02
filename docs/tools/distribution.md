@@ -524,6 +524,8 @@ int main(int argc, char* argv[]) {
 }
 ```
 
+When the system ends the app with `SIGTERM`, such as when the Simulator quits while the app runs, Xcode stops the app at `return haylen_main(argc, argv);` with "signal SIGTERM". That is the debugger, which stops on every signal before the app receives it, and not a crash. The frames of UIKit and AppKit run inside `haylen_main`, so the debugger shows that line. Continue in Xcode, and the app quits the way it quits when the system asks it to: SDL turns the signal into a request to quit, the app hears `appQuitRequested`, and the engine stops and saves what it keeps. A run without the debugger never stops there. To keep the debugger running on the signal, type `process handle SIGTERM --stop false --notify true` in the console of the debugger, or put that line in the `~/.lldbinit` file.
+
 That `main` is also the place to register native handlers of the platform bridge with `[HaylenBridge registerHandler:handler:]` from `haylen/platform/apple/HaylenBridge.h`, before the runtime starts. Native plugins register theirs through their context, as the [plugin guide](../platform/plugins.md#the-apple-part) describes. Apple apps built with CMake through `haylen_add_app`, and the macOS desktop player, get the same `main` from `engine/src/platform/apple/AppleMain.cpp`.
 
 ### The Android libraries
