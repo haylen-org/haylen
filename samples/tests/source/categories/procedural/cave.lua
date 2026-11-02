@@ -21,21 +21,27 @@ function Cave:init(seed, width, height)
     self.halfWidth, self.halfHeight = width / 2, height / 2
     self.stone = assets.texture('procedural/cave-rock.png', {filter = 'linear', wrap = 'repeat'})
     self.rocks = {}
-    for _ = 1, random:integer(6, 9) do
-        local side = random:integer(1, 4)
-        local along = random:range(-0.85, 0.85)
-        local radius = random:range(50, 100)
-        local x, y
-        if side == 1 or side == 2 then
-            x, y = along * self.halfWidth, (side == 1 and -1 or 1) * (self.halfHeight + radius * 0.25)
-        else
-            x, y = (side == 3 and -1 or 1) * (self.halfWidth + radius * 0.25), along * self.halfHeight
+    -- Rocks bulge from the walls all around the room, one every few hundred units with a random size and spacing, so no stretch of wall runs straight.
+    for side = 1, 4 do
+        local horizontal = side <= 2
+        local half = horizontal and self.halfWidth or self.halfHeight
+        local along = -half + random:range(40, 120)
+        while along < half - 40 do
+            local radius = random:range(55, 110)
+            local sink = radius * random:range(0.2, 0.55)
+            if horizontal then
+                self:addRock(random, along, (side == 1 and -1 or 1) * (self.halfHeight + sink), radius)
+            else
+                self:addRock(random, (side == 3 and -1 or 1) * (self.halfWidth + sink), along, radius)
+            end
+            along = along + random:range(170, 260)
         end
-        self:addRock(random, x, y, radius)
     end
+    self.wallRocks = #self.rocks
+
     -- Floating rocks keep room around them, so a creature always fits between a rock and the walls.
     for _ = 1, 40 do
-        if #self.rocks >= 12 then
+        if #self.rocks >= self.wallRocks + 4 then
             break
         end
         local x, y = random:range(-self.halfWidth + 200, self.halfWidth - 200), random:range(-self.halfHeight + 160, self.halfHeight - 160)
