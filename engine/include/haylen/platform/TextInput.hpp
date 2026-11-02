@@ -80,7 +80,7 @@ class TextInput {
         Keyboard keyboard = Keyboard::Text;
         ReturnKey returnKey = ReturnKey::Default;
         Capitalization capitalization = Capitalization::Sentences;
-        bool autocorrect = true;
+        bool autocorrect = false;
         int maxLength = 0;
 
         [[nodiscard]] bool operator==(const Options&) const noexcept = default;

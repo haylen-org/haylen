@@ -189,11 +189,6 @@ SDL_AppResult Runtime::start() {
 #if defined(__APPLE__) && TARGET_OS_TV
     SDL_SetEventFilter(&Runtime::onFilter, this);
 #endif
-    // Desktops and the web type text into the window itself, while UIKit apps type into the native fields of the services alone.
-#if !defined(__APPLE__) || TARGET_OS_OSX
-    SDL_StartTextInput(window.get());
-#endif
-
     Player::initialize();
     started = true;
     window.show();

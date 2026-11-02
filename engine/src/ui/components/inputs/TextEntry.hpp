@@ -36,14 +36,14 @@ class TextEntry : public Component {
     std::string value;
 
   private:
-    // Prose keyboards correct and capitalize by default, while addresses, numbers and passwords keep the text exactly as typed.
+    // Prose keyboards capitalize by default, while addresses, numbers and passwords keep the text exactly as typed, and no keyboard corrects words unless the entry asks for it.
     [[nodiscard]] platform::TextInput::Options getInputOptions(platform::TextInput::Keyboard keyboard) const noexcept;
 
     TextValue placeholder;
     int maxLength = 0;
     platform::TextInput::ReturnKey returnKey = platform::TextInput::ReturnKey::Default;
     std::optional<platform::TextInput::Capitalization> capitalization;
-    std::optional<bool> autocorrect;
+    bool autocorrect = false;
 };
 
 } // namespace haylen::ui

@@ -202,6 +202,8 @@ The functions `input.keyDown(key)`, `input.keyPressed(key)` and `input.keyReleas
 
 Text is not keys. The function `input.text()` returns the UTF-8 text typed in this frame, which follows the keyboard layout and the input methods of the platform. The [text fields of the UI](../ui/ui.md#text-entry) already handle typing, so most apps never read it. A GUI that the app draws itself edits text with the native text input through [`input.editText`](../lua-api/input.md#text-fields-of-the-app).
 
+The text input of the system is on only while something takes text: a text field of the UI that edits, a field of [`input.editText`](../lua-api/input.md#text-fields-of-the-app), or the plain keyboard of [`window.setKeyboardVisible(true)`](../lua-api/window.md#windowsetkeyboardvisiblevisible). So `input.text()` and the `character` events stay empty in play, on every platform. Keys held in play never open the accent menu of macOS or a composition window of an input method, and a game reads keys alone. An app that reads typing itself, such as a typing game, opens the plain keyboard while it takes text.
+
 ```lua
 local input = require('haylen.input')
 local scene = require('haylen.scene')

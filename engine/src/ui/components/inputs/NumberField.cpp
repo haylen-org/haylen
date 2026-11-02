@@ -66,7 +66,7 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
 
     // Numeric keypads have no minus sign, so a field that takes negative numbers types on the text keyboard.
     const platform::TextInput::Keyboard keyboard = minimum < 0.0 ? platform::TextInput::Keyboard::Text : (decimals > 0 ? platform::TextInput::Keyboard::Decimal : platform::TextInput::Keyboard::Number);
-    const TextEditor::Result typed = TextEditor::draw(context, middle, text, {.input = {.keyboard = keyboard, .returnKey = returnKey, .capitalization = platform::TextInput::Capitalization::None, .autocorrect = false}, .focus = takeFocusRequest()});
+    const TextEditor::Result typed = TextEditor::draw(context, middle, text, {.input = {.keyboard = keyboard, .returnKey = returnKey, .capitalization = platform::TextInput::Capitalization::None}, .focus = takeFocusRequest()});
     const bool editing = ImGui::IsItemActive();
     const bool committed = typed.submitted || ImGui::IsItemDeactivated();
     double next = value;

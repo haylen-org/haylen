@@ -836,7 +836,7 @@ Inputs let the player type or set a value. They all take the focus. The text kin
 
 A text field is a text entry of one line. Typing reports `change`, with the text as `value`. Enter, or the return key of the on-screen keyboard, reports `submit`, also with the text as `value`.
 
-The focused field edits through the native text input of the platform. On phones, tablets, TVs and mobile browsers it opens the on-screen keyboard. Everywhere it brings input methods, autocorrection, dictation and native paste. The keyboard options below choose that keyboard. While an input method composes text, as Japanese and Chinese input do, the field underlines the text in progress. When the on-screen keyboard would cover the focused field, the whole UI moves up until the field shows above it.
+The focused field edits through the native text input of the platform. On phones, tablets, TVs and mobile browsers it opens the on-screen keyboard. Everywhere it brings input methods, dictation and native paste, and autocorrection where the field asks for it. The keyboard options below choose that keyboard. While an input method composes text, as Japanese and Chinese input do, the field underlines the text in progress. When the on-screen keyboard would cover the focused field, the whole UI moves up until the field shows above it.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -845,7 +845,7 @@ The focused field edits through the native text input of the platform. On phones
 | `maxLength` | integer from 0 to 1048576 | `0` | The largest length in characters, which are Unicode code points. The value `0` sets no limit. |
 | `keyboard` | string | `'text'` | The on-screen keyboard: `'text'` for letters, `'number'` for digits, `'decimal'` for digits with a decimal separator, `'phone'` for a phone pad, and `'email'`, `'url'` or `'search'` for letters with the keys of addresses, links or searches. Text areas and secret fields have keyboards of their own. |
 | `returnKey` | string | `'default'` | The label of the return key of the on-screen keyboard: `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'`. With `'next'`, the return key moves the focus to the next field, like Tab, instead of reporting `submit`. |
-| `autocorrect` | boolean | `true` for `'text'`, `'search'` and text areas, `false` otherwise | Whether the keyboard corrects spelling and offers suggestions. |
+| `autocorrect` | boolean | `false` | Whether the on-screen keyboard corrects spelling and offers suggestions in its bar. Inline predictions never show, and macOS never corrects a field, since the hidden native field would change text the user does not see. |
 | `autocapitalize` | string | `'sentences'` for `'text'` and text areas, `'none'` otherwise | Which letters the keyboard capitalizes on its own: `'none'`, `'sentences'`, `'words'` or `'characters'`. |
 
 Escape brings back the text the field had when it took the focus, and lets the focus go. So does the escape key of a hardware keyboard on a phone. Closing the on-screen keyboard, or leaving the field, lets the focus go and keeps the text.

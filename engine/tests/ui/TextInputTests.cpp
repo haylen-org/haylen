@@ -247,6 +247,62 @@ TEST_F(TextInputTest, LeavesTypingToTheNativeField) {
     EXPECT_EQ(getPublished().text, "abc");
 }
 
+// A platform with a native field may send the keys and the characters of a keystroke next to the edit of the field, and the field types each keystroke once.
+TEST_F(TextInputTest, TypesEachKeystrokeOnceNextToItsKeys) {
+    auto gui = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*gui, "name");
+    events.clear();
+
+    press(input::Key::O, U'o');
+    edit("o", 1, 1);
+    press(input::Key::I, U'i');
+    edit("oi", 2, 2);
+    EXPECT_EQ(events, (std::vector<std::string>{R"(name:change {"value":"o"})", R"(name:change {"value":"oi"})"}));
+    EXPECT_EQ(getPublished().text, "oi");
+}
+
+// Suggestions and compositions of the native field, taken or refused, and the Backspace right after them all reach the field, which keeps taking every edit after them.
+TEST_F(TextInputTest, KeepsTypingAfterSuggestionsAndCompositions) {
+    auto gui = mount(R"({"kind": "textField", "id": "name"})");
+    focus(*gui, "name");
+    const std::uint64_t revision = getPublished().revision;
+    const ImGuiID field = static_cast<ImGuiID>(getPublished().id);
+    const TextSession& session = getUi().getBackend().getTextSession();
+    // clang-format off
+    const auto expectText = [&](const std::string& text) {
+        fixture.frames(1);
+        EXPECT_EQ(getPublished().text, text);
+        EXPECT_EQ(getPublished().revision, revision) << "No edit of the platform is a change of the UI.";
+    };
+    // clang-format on
+
+    // A suggestion shown after the caret composes until the user takes or refuses it, and Backspace refuses it.
+    edit("he", 2, 2);
+    edit("hello", 2, 2, 2, 5);
+    EXPECT_EQ(session.getComposition(field), (std::pair{2, 5}));
+    edit("h", 1, 1);
+    EXPECT_FALSE(session.getComposition(field));
+    expectText("h");
+    edit("hi", 2, 2);
+    expectText("hi");
+
+    // A correction that replaces a word, and the Backspace right after it.
+    edit("hi tehre", 8, 8);
+    edit("hi there ", 9, 9);
+    expectText("hi there ");
+    edit("hi there", 8, 8);
+    expectText("hi there");
+
+    // A composition of an input method that commits, and the Backspace right after it.
+    edit("hi thereか", 9, 9, 8, 9);
+    edit("hi there家", 9, 9);
+    expectText("hi there家");
+    edit("hi there", 8, 8);
+    expectText("hi there");
+    edit("hi there!", 9, 9);
+    expectText("hi there!");
+}
+
 // Where the UI edits the text itself, Space and Enter type into the field even though they also press the focused control.
 TEST_F(TextInputTest, TypesTheKeysThatPressControls) {
     getInput().setNative(false);

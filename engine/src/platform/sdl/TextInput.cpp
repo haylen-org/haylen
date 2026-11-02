@@ -15,30 +15,39 @@ void TextInput::edit(const Field& field) {
     if (handle == nullptr) {
         return;
     }
+
     if (field.id == kKeyboardField) {
-        finish();
-        return;
+        line.reset();
+        cursor = 0;
+    } else {
+        int width = 0;
+        int height = 0;
+        SDL_GetWindowSize(handle, &width, &height);
+        const math::Vec2 pixels = window.getPixelSize();
+        const float scale = pixels.x > 0.0F ? static_cast<float>(width) / pixels.x : 1.0F;
+        const auto toWindow = [scale](float value) { return static_cast<int>(std::lround(value * scale)); };
+        line = SDL_Rect{.x = toWindow(field.bounds.x), .y = toWindow(field.caret.y), .w = toWindow(field.bounds.width), .h = toWindow(field.caret.height)};
+        cursor = toWindow(field.caret.x - field.bounds.x);
     }
 
-    int width = 0;
-    int height = 0;
-    SDL_GetWindowSize(handle, &width, &height);
-    const math::Vec2 pixels = window.getPixelSize();
-    const float scale = pixels.x > 0.0F ? static_cast<float>(width) / pixels.x : 1.0F;
-    const auto toWindow = [scale](float value) { return static_cast<int>(std::lround(value * scale)); };
-    line = SDL_Rect{.x = toWindow(field.bounds.x), .y = toWindow(field.caret.y), .w = toWindow(field.bounds.width), .h = toWindow(field.caret.height)};
-    cursor = toWindow(field.caret.x - field.bounds.x);
+    editing = true;
     apply();
+    if (!SDL_TextInputActive(handle)) {
+        SDL_StartTextInput(handle);
+    }
 }
 
 void TextInput::finish() {
     line.reset();
     cursor = 0;
-    apply();
+    editing = false;
+    if (SDL_Window* handle = window.get(); handle != nullptr) {
+        SDL_StopTextInput(handle);
+    }
 }
 
 void TextInput::restore() {
-    if (line) {
+    if (editing) {
         apply();
     }
 }

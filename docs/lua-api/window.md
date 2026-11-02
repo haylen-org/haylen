@@ -167,14 +167,14 @@ print(hint)
 
 ### window.setKeyboardVisible(visible)
 
-Shows or hides the plain on-screen keyboard. Use it for an app that takes typing without a text field of the UI, such as a typing game. The keyboard opens through the same native text input as the text fields of [`haylen.ui`](ui.md), with an empty field of its own. So phones, tablets, TVs and browsers show their keyboard, and input methods work.
+Shows or hides the plain on-screen keyboard. Use it for an app that takes typing without a text field of the UI, such as a typing game. The keyboard opens through the same native text input as the text fields of [`haylen.ui`](ui.md), with an empty field of its own. So phones, tablets, TVs and browsers show their keyboard, and input methods work. The system takes text only while a text field edits or this keyboard is open, so an app that reads typing itself opens it, also on desktops.
 
 - Typed text arrives as `character` events in the `event` callback of the scene, and through `input.text()` of `haylen.input`.
 - A correction erases with `backspace` key events and types again.
 - Return, tab and escape arrive as the key events `enter`, `tab` and `escape`.
 - Text that the input method still composes arrives once it is committed.
 
-Desktop apps type with the physical keyboard either way. Safari on iOS opens the keyboard only from a tap, so there a text field of the UI is the reliable way to type. The [text input guide](../ui/text-input.md) describes each platform.
+Desktop apps type with the physical keyboard and show no keyboard on screen, but they still take text only while it is open. Safari on iOS opens the keyboard only from a tap, so there a text field of the UI is the reliable way to type. The [text input guide](../ui/text-input.md) describes each platform.
 
 ```lua
 local window = require('haylen.window')

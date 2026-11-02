@@ -99,15 +99,19 @@ scene.push({
 
 ### input.text()
 
-Returns the text typed in this frame as a UTF-8 string, or an empty string. It follows the keyboard layout and the input methods of the platform, so read it for text instead of key names. The text fields of [`haylen.ui`](ui.md) already handle typing.
+Returns the text typed in this frame as a UTF-8 string, or an empty string. It follows the keyboard layout and the input methods of the platform, so read it for text instead of key names. The text fields of [`haylen.ui`](ui.md) already handle typing. Text arrives only while the system takes text: while a text field edits, a field of `input.editText` edits, or the plain keyboard of [`window.setKeyboardVisible(true)`](window.md#windowsetkeyboardvisiblevisible) is open, as the [input guide](../input/input.md#keyboard) explains.
 
 ```lua
 local input = require('haylen.input')
 local scene = require('haylen.scene')
+local window = require('haylen.window')
 
 local name = ''
 
 scene.push({
+    enter = function(self)
+        window.setKeyboardVisible(true)
+    end,
     update = function(self, dt)
         name = name .. input.text()
         if input.keyPressed('backspace') then
@@ -795,7 +799,7 @@ Starts editing the text field of the app, or follows it when it changes or moves
 | `keyboard` | string | `'text'` | `'text'`, `'multiline'`, `'number'`, `'decimal'`, `'phone'`, `'email'`, `'url'`, `'search'` or `'password'`. |
 | `returnKey` | string | `'default'` | `'default'`, `'done'`, `'go'`, `'next'`, `'search'` or `'send'`. |
 | `autocapitalize` | string | `'sentences'` | `'none'`, `'sentences'`, `'words'` or `'characters'`. |
-| `autocorrect` | boolean | `true` | Lets the system correct words. |
+| `autocorrect` | boolean | `false` | Lets the on-screen keyboard correct words and offer suggestions in its bar. |
 | `maxLength` | integer | `0` | The most code points the field takes, or `0` for no limit. |
 
 A missing text raises `A text field needs its "text" as a string.`. A bad selection raises `The selection of a text field must run from 0 to the length of its text, with "selectionStart" not past "selectionEnd".`. An unknown name raises `The option "<option>" of a text field must be <names>.`, and an unknown key raises `Unknown option "<key>".`.

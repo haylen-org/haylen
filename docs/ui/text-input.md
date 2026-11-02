@@ -2,7 +2,9 @@
 
 This guide explains how the text fields of the UI type through the native text input of each platform, and what each platform does. It is for developers who want to know why typing works the way it does, and for anyone who ports or debugs a platform host. The [UI guide](ui.md#text-entry) shows how an app uses text fields, and the [`haylen.ui` reference](../lua-api/ui.md#uitextfieldproperties) lists their keyboard options.
 
-A text field of the UI does not read keys on its own. A hidden native field of the platform edits its text. So phones, tablets and TVs open their on-screen keyboard. Every platform brings its input methods for languages such as Japanese and Chinese, Linux through the input methods of IBus and Fcitx. The platforms with a native field also bring their autocorrection, dictation, emoji picker and native paste, copy and undo. The UI still draws the field, its text, its selection and its caret.
+A text field of the UI does not read keys on its own. A hidden native field of the platform edits its text. So phones, tablets and TVs open their on-screen keyboard. Every platform brings its input methods for languages such as Japanese and Chinese, Linux through the input methods of IBus and Fcitx. The platforms with a native field also bring their dictation, emoji picker and native paste, copy and undo, and the autocorrection of their on-screen keyboards for a field that asks for it with `autocorrect`. The native field is hidden, so it never shows inline predictions, never completes or rewrites text and never corrects text on macOS: the system would change text that the user does not see. The UI still draws the field, its text, its selection and its caret.
+
+The text input of the system is on only while something takes text: a text field of the UI that edits, a field of `input.editText`, or the plain keyboard of `window.setKeyboardVisible(true)`. In play, keys stay keys. So a held letter never opens the accent menu of macOS, and an input method never opens a composition window. Inside a field, the keys behave as in any field of the system, with the accent menu, dead keys and input methods. Only one text input of the platform reads each key, the native field of the platform or the text input of SDL, never both, so no keystroke types twice.
 
 ## How a field edits
 
@@ -13,7 +15,7 @@ When a text component of [`haylen.ui`](../lua-api/ui.md) takes the focus, the UI
 - The rectangles of the field and of its caret, in framebuffer pixels.
 - The keyboard: text, multiline, number, decimal, phone, email, url, search or password.
 - The label of the return key: default, done, go, next, search or send.
-- The autocorrection, the capitalization and the length limit.
+- The autocorrection, which is off by default, the capitalization and the length limit.
 
 The platform places its native field over the field of the UI and shows the keyboard.
 
@@ -74,12 +76,12 @@ Safari on iOS opens the keyboard only when an element takes the focus inside a u
 
 `HaylenActivity` adds a hidden `HaylenEditText` with alpha 0 to the layout of the surface of the app, above the surface. The engine places it over the focused field, in window pixels. It is an ordinary view of the activity, which GameActivity hosts, so it takes the focus and the keyboard like any field. Touches pass through it to the app, which places the caret itself.
 
-- Its `inputType` follows the keyboard, the capitalization and the autocorrection of the field.
+- Its `inputType` follows the keyboard, the capitalization and the autocorrection of the field. A field without autocorrection asks for no suggestions.
 - Its `imeOptions` carry the action of the return key, with `IME_FLAG_NO_EXTRACT_UI` and `IME_FLAG_NO_FULLSCREEN`. So the input method never covers the app with its own editor.
 - Every call from the engine runs on the UI thread through `runOnUiThread`.
 - After `afterTextChanged` and `onSelectionChanged`, once the input method finishes its batch of changes, the field sends its text, selection and composing span through JNI. The method `onEditorAction` sends the submit action.
 
-The field keeps the editing of Android: the composition of input methods, suggestions and autocorrection, the clipboard, and the length limit through `InputFilter.LengthFilter`. The input method places its candidates next to the field of the UI, since the hidden field lies over it. GameActivity also offers GameTextInput, an input connection on the surface of the app, which the engine leaves unused. It knows neither where the field is nor its length limit, and it leaves the keys of hardware keyboards out of the text.
+The field keeps the editing of Android: the composition of input methods, the suggestions and autocorrection of a field that asks for them, the clipboard, and the length limit through an input filter that counts code points. The input method places its candidates next to the field of the UI, since the hidden field lies over it. GameActivity also offers GameTextInput, an input connection on the surface of the app, which the engine leaves unused. It knows neither where the field is nor its length limit, and it leaves the keys of hardware keyboards out of the text.
 
 While the field edits, it has the focus. So the keys of hardware keyboards type into it, and tab, escape and return become actions. The keys that it leaves reach the app, and touches and the sticks of controllers always reach the app. GameActivity focuses its surface whenever its window gains the focus, such as after a dialog or the notification shade. The surface declines the focus while a text field over the app has it, so the field keeps its keyboard.
 
@@ -89,7 +91,8 @@ The activity uses `adjustNothing`, so the keyboard lies over the app without res
 
 The runtime adds a hidden `UITextField` for single lines and a hidden `UITextView` for text areas to the root view. It places them over the field in points, with alpha 0, so touches still reach the view of the app.
 
-- They get `keyboardType`, `returnKeyType`, `secureTextEntry`, `autocorrectionType` and `autocapitalizationType` from the field, without smart quotes and dashes.
+- They get `keyboardType`, `returnKeyType`, `secureTextEntry`, `autocorrectionType`, `spellCheckingType` and `autocapitalizationType` from the field. Autocorrection offers its words in the bar of the keyboard.
+- Smart quotes, dashes and insertion, inline predictions, math completion and the writing tools stay off, since they change text inside the hidden field.
 - The editing changed event and `textFieldDidChangeSelection`, or their equivalents of the text view, send the text, the selection and the `markedTextRange` of the input method. The runtime converts them from UTF-16 offsets to code points.
 - Return sends the submit action. Tab and escape of a hardware keyboard send next and cancel. A field that stops editing on its own sends the dismissed action.
 - `UIKeyboardWillChangeFrameNotification` reports the keyboard frame. SDL shows no keyboard of its own, since the runtime starts no text input of SDL on UIKit.
@@ -98,7 +101,9 @@ On tvOS, the text field presents the fullscreen keyboard of the system, and a te
 
 ## macOS
 
-While a field edits, an invisible `NSTextView` over it is the first responder of the window. It brings marked text, dead keys, the emoji picker and dictation.
+While a field edits, an invisible `NSTextView` over it is the first responder of the window. It brings marked text, dead keys, the accent menu of a held key, the emoji picker and dictation. It is the only text input of the window: the runtime never starts the text input of SDL on macOS, which would read every key a second time and open the accent menu in play.
+
+- Spelling correction, grammar checks, text replacement, completion, inline predictions, math completion and the writing tools stay off for every field. The view is invisible, so the correction panel and the predictions would change text that the user cannot see.
 
 - The Edit menu of the app gives it Undo, Redo, Cut, Copy, Paste, Delete and Select All, with their Command shortcuts. The text system of AppKit adds the moves by word, line and document with Option and Command.
 - The selector `insertNewline:` submits a single line, `insertTab:` moves on, and `cancelOperation:` cancels.
@@ -107,7 +112,7 @@ While a field edits, an invisible `NSTextView` over it is the first responder of
 
 ## Windows and Linux
 
-Neither platform has a native field, so the UI edits the text itself:
+Neither platform has a native field, so the UI edits the text itself. The runtime starts the text input of SDL when a field starts editing or the plain keyboard opens, and stops it when the editing ends, so keys pressed in play never reach an input method:
 
 - Windows types through the text input of SDL, which turns `WM_CHAR` and the text that the input method commits into text events.
 - Linux types through the text input of SDL, which reads the characters of the keyboard layout and the text that the input methods of IBus and Fcitx commit over D-Bus, such as Japanese, Chinese or Korean.

@@ -17,6 +17,7 @@ using haylen::platform::TextInput;
     BOOL applying;
 }
 
+// The view is invisible, so it never corrects, completes, predicts or rewrites what the user types, since the system shows those changes in the view itself or in panels over it that the user would answer without seeing the text they change.
 - (instancetype)init {
     self = [super initWithFrame:NSMakeRect(0.0, 0.0, 1.0, 1.0)];
     self.alphaValue = 0.0;
@@ -25,6 +26,21 @@ using haylen::platform::TextInput;
     self.allowsUndo = YES;
     self.automaticQuoteSubstitutionEnabled = NO;
     self.automaticDashSubstitutionEnabled = NO;
+    self.automaticSpellingCorrectionEnabled = NO;
+    self.continuousSpellCheckingEnabled = NO;
+    self.grammarCheckingEnabled = NO;
+    self.automaticTextReplacementEnabled = NO;
+    self.automaticTextCompletionEnabled = NO;
+    self.automaticLinkDetectionEnabled = NO;
+    self.automaticDataDetectionEnabled = NO;
+    self.smartInsertDeleteEnabled = NO;
+    if (@available(macOS 14.0, *)) {
+        self.inlinePredictionType = NSTextInputTraitTypeNo;
+    }
+    if (@available(macOS 15.0, *)) {
+        self.mathExpressionCompletionType = NSTextInputTraitTypeNo;
+        self.writingToolsBehavior = NSWritingToolsBehaviorNone;
+    }
     self.delegate = self;
     return self;
 }
@@ -55,9 +71,6 @@ using haylen::platform::TextInput;
     const CGRect bounds = AppleTextInput::toPoints(value.bounds);
     self.frame = NSMakeRect(bounds.origin.x, host.bounds.size.height - bounds.origin.y - bounds.size.height, std::max<CGFloat>(bounds.size.width, 1.0), std::max<CGFloat>(bounds.size.height, 1.0));
     multiline = value.options.keyboard == TextInput::Keyboard::Multiline;
-    self.automaticSpellingCorrectionEnabled = value.options.autocorrect;
-    self.continuousSpellCheckingEnabled = value.options.autocorrect;
-    self.automaticTextReplacementEnabled = value.options.autocorrect;
 
     // Passwords type with Roman input sources only, like secure text fields.
     const BOOL secure = value.options.keyboard == TextInput::Keyboard::Password;

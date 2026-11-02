@@ -10,7 +10,7 @@ namespace haylen::platform::sdl {
 
 class Window;
 
-// Text input of Windows and Linux, which type through the text events of SDL. It tells SDL the line of the caret of the focused field, so the composition and candidate windows of the input methods of Windows, IBus and Fcitx open at the field, below the line being typed.
+// Text input of Windows and Linux, which type through the text events of SDL. The text input of SDL, and with it the input methods of the system, is on only while a field edits or the app shows the plain keyboard, so keys pressed in play never open a composition window. It tells SDL the line of the caret of the focused field, so the composition and candidate windows of the input methods of Windows, IBus and Fcitx open at the field, below the line being typed.
 class TextInput final : public platform::TextInput {
   public:
     explicit TextInput(const Window& owner) noexcept : window(owner) {}
@@ -26,9 +26,10 @@ class TextInput final : public platform::TextInput {
 
     const Window& window;
 
-    // The line of the caret in the coordinates of the window and the place of the caret along it, or none while no field edits.
+    // The line of the caret in the coordinates of the window and the place of the caret along it, or none while no field of the UI edits.
     std::optional<SDL_Rect> line;
     int cursor = 0;
+    bool editing = false;
 };
 
 } // namespace haylen::platform::sdl

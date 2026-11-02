@@ -107,7 +107,7 @@ using haylen::platform::TextInput;
     return UITextAutocapitalizationTypeNone;
 }
 
-// Applies the keyboard options to a view and returns whether any changed, which a view that already shows its keyboard must reload.
+// Applies the keyboard options to a view and returns whether any changed, which a view that already shows its keyboard must reload. Autocorrection offers its words in the bar of the keyboard, while inline predictions, math completion, smart insertion and the writing tools would change text inside the hidden view that the user never sees, so they stay off.
 + (BOOL)configure:(UIView<UITextInput>*)view options:(const TextInput::Options&)options {
     const UIKeyboardType keyboard = [self keyboardType:options.keyboard];
     const UIReturnKeyType returnKey = [self returnKeyType:options.returnKey];
@@ -123,6 +123,18 @@ using haylen::platform::TextInput;
     view.autocapitalizationType = capitalization;
     view.smartQuotesType = UITextSmartQuotesTypeNo;
     view.smartDashesType = UITextSmartDashesTypeNo;
+    view.smartInsertDeleteType = UITextSmartInsertDeleteTypeNo;
+    if (@available(iOS 17.0, tvOS 17.0, *)) {
+        view.inlinePredictionType = UITextInlinePredictionTypeNo;
+    }
+    if (@available(iOS 18.0, tvOS 18.0, *)) {
+        view.mathExpressionCompletionType = UITextMathExpressionCompletionTypeNo;
+    }
+#if !TARGET_OS_TV
+    if (@available(iOS 18.0, visionOS 2.4, *)) {
+        view.writingToolsBehavior = UIWritingToolsBehaviorNone;
+    }
+#endif
     return changed;
 }
 

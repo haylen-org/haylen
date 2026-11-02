@@ -14,8 +14,8 @@ local Keyboard = haylen.class('Keyboard', Test)
 Keyboard.code = [[
 if input.keyPressed('space') then hero:jump() end
 local running = input.keyDown('w') and input.modifiers().shift
-typed = typed .. input.text()  -- The characters typed this frame.
-window.setKeyboardVisible(true)]]
+window.setKeyboardVisible(true)  -- The system takes text only while the keyboard is open.
+typed = typed .. input.text()  -- The characters typed this frame.]]
 
 -- Each row lists key names with an optional label and width in key units, and every row spans the same width. The arrows stand apart in an inverted T under the last two rows.
 local kRows = {
@@ -50,7 +50,7 @@ function Keyboard:enter()
     self.journal = Journal(60)
     self:frame({
         code = Keyboard.code,
-        hint = 'Type anything: held keys light up, presses flash yellow and releases flash red.',
+        hint = 'Type anything: held keys light up, presses flash yellow and releases flash red. Turn on the on-screen keyboard to take typed text as well.',
         play = true,
         controls = {
             ui.label{text = 'Every key reaches the test while the play area has the focus, and Escape still goes back.', color = 'textMuted', font = 'caption'},

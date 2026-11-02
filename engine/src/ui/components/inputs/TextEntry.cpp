@@ -14,11 +14,7 @@ void TextEntry::readProperties(PropertyReader& reader) {
     reader.read("placeholder", placeholder);
     reader.read("maxLength", maxLength, 0, 1 << 20);
     reader.readChoice<platform::TextInput::ReturnKey>("returnKey", returnKey, platform::TextInput::kReturnKeys);
-    if (reader.has("autocorrect")) {
-        bool enabled = true;
-        reader.read("autocorrect", enabled);
-        autocorrect = enabled;
-    }
+    reader.read("autocorrect", autocorrect);
     if (reader.has("autocapitalize")) {
         platform::TextInput::Capitalization mode = platform::TextInput::Capitalization::None;
         reader.readChoice<platform::TextInput::Capitalization>("autocapitalize", mode, platform::TextInput::kCapitalizations);
@@ -33,8 +29,7 @@ math::Vec2 TextEntry::measureContent(Context& context, float availableWidth) {
 
 platform::TextInput::Options TextEntry::getInputOptions(platform::TextInput::Keyboard keyboard) const noexcept {
     const bool prose = keyboard == platform::TextInput::Keyboard::Text || keyboard == platform::TextInput::Keyboard::Multiline;
-    const bool corrected = prose || keyboard == platform::TextInput::Keyboard::Search;
-    return {.keyboard = keyboard, .returnKey = returnKey, .capitalization = capitalization.value_or(prose ? platform::TextInput::Capitalization::Sentences : platform::TextInput::Capitalization::None), .autocorrect = autocorrect.value_or(corrected), .maxLength = maxLength};
+    return {.keyboard = keyboard, .returnKey = returnKey, .capitalization = capitalization.value_or(prose ? platform::TextInput::Capitalization::Sentences : platform::TextInput::Capitalization::None), .autocorrect = autocorrect, .maxLength = maxLength};
 }
 
 void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::TextInput::Keyboard keyboard, float reserveStart, float reserveEnd, Scrollbar* scrollbar) {

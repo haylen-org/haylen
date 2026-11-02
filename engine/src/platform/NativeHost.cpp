@@ -36,7 +36,7 @@ void NativeHost::setKeyboardVisible(bool value) {
     }
     keyboard.reset();
     const math::Rect corner{0.0F, 0.0F, 1.0F, 1.0F};
-    input.edit({.id = TextInput::kKeyboardField, .revision = ++keyboardRevision, .bounds = corner, .caret = corner, .options = {.capitalization = TextInput::Capitalization::None, .autocorrect = false}});
+    input.edit({.id = TextInput::kKeyboardField, .revision = ++keyboardRevision, .bounds = corner, .caret = corner, .options = {.capitalization = TextInput::Capitalization::None}});
 }
 
 // A launched app quits back to the app that launched it, which takes over the same window.

@@ -1,10 +1,15 @@
 #include <gtest/gtest.h>
 
 #include <cstring>
+#include <string>
+#include <utility>
 #include <vector>
 
+#include "haylen/core/Engine.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/ui/Gui.hpp"
 #include "platform/sdl/Events.hpp"
+#include "support/UiFixture.hpp"
 
 namespace haylen::platform::sdl {
 
@@ -70,6 +75,32 @@ TEST_F(EventsTest, TurnsTextIntoOneCharacterPerCodePoint) {
     EXPECT_EQ(characters[1].character, U'é');
     EXPECT_EQ(characters[2].character, U'\U0001F600');
     EXPECT_TRUE(characters[2].modifiers.shift);
+}
+
+// Each key of Windows and Linux reaches the app as its key and as the text it types, and a field of the UI types the text once, whatever key brought it.
+TEST_F(EventsTest, TypesEachKeyOnceIntoAFieldOfTheUi) {
+    test::UiFixture ui;
+    auto gui = ui.mount(R"({"kind": "textField", "id": "name"})");
+    ui.click(*gui, "name");
+
+    for (const auto& [scancode, text] : {std::pair{SDL_SCANCODE_O, "o"}, std::pair{SDL_SCANCODE_I, "i"}}) {
+        SDL_Event key = makeEvent(SDL_EVENT_KEY_DOWN);
+        key.key.scancode = scancode;
+        key.key.down = true;
+        std::string typed = text;
+        SDL_Event input = makeEvent(SDL_EVENT_TEXT_INPUT);
+        input.text.text = typed.c_str();
+        SDL_Event release = key;
+        release.type = SDL_EVENT_KEY_UP;
+        release.key.down = false;
+        for (const SDL_Event& source : {key, input, release}) {
+            for (const platform::Event& event : translate(source)) {
+                ui.getEngine().handleEvent(event);
+            }
+            ui.frames();
+        }
+    }
+    EXPECT_EQ(ui.findLastEvent("change").value, (core::Json{{"value", "oi"}}));
 }
 
 TEST_F(EventsTest, PlacesTheMouseInFramebufferPixels) {
