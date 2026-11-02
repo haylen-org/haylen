@@ -169,8 +169,9 @@ function TwoWorlds:launch()
     self.launched = self.launched + 1
 end
 
+-- Pops a body that a hard hit touched when it is a critter. The planets carry no data, so a shot that lands hard on one passes a body without it.
 function TwoWorlds:pop(body)
-    if body and body.valid and body.data.critter then
+    if body.valid and body.data and body.data.critter then
         self.poofs:fire(body.x, body.y)
         self.popped = self.popped + 1
         self:remove(body)
