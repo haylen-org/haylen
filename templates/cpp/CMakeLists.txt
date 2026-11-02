@@ -1,4 +1,4 @@
-# The C++ app. It adds the engine from the engine folder of a Haylen checkout, which "HAYLEN_ENGINE_SOURCE" names and "haylen run-cpp" passes, or else from an installed SDK, and builds the app of this folder, which is also its package, for the platform it configures for.
+# The C++ app. It adds the engine from the engine folder of a Haylen checkout, which "HAYLEN_ENGINE_SOURCE" names and "haylen run" passes, or else from an installed SDK, and builds the app of this folder, which is also its package, for the platform it configures for.
 cmake_minimum_required(VERSION 3.28...4.4)
 project(App LANGUAGES C CXX)
 

@@ -223,12 +223,12 @@ The player runs any app during development, and the project of each platform shi
 
 - The executable takes the name, the version, the description, the company and the copyright of `app.json`. The version resource shows them on Windows, and the desktop entry and the AppStream metainfo show them on Linux.
 - On Windows the window and its taskbar button take the first icon of the executable, the icon of the project in `resources/app.ico`. On Linux the class of the window is the identifier of `app.json`. The identifier names the desktop entry and the icons that the project installs, so the desktop shows them for the window.
-- The command `haylen dist <app> --platform windows` makes the installer of the app with Inno Setup, and `--platform linux` makes a `.deb` and an AppImage, as [dist](../tools/distribution.md#dist) describes.
+- The command `haylen distribution installer <app> --platform windows` makes the installer of the app with Inno Setup, and `--platform linux` makes a `.deb` and an AppImage, as [distribution installer](../tools/distribution.md#distribution-installer) describes.
 - Windows builds sign the executable, the installer and the uninstaller with the certificate that the environment names. Continuous integration takes it from the secrets `WINDOWS_CERTIFICATE` and `WINDOWS_CERTIFICATE_PWD`, as [signing](../tools/distribution.md#signing) describes. Without a certificate the app stays unsigned, and the build says so.
 
 ```sh
 haylen run ~/apps/strip --platform windows
-haylen dist ~/apps/strip --platform linux
+haylen distribution installer ~/apps/strip --platform linux
 ```
 
 ## C++

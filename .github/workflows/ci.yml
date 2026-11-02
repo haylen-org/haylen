@@ -248,7 +248,7 @@ jobs:
       - name: Build and check the protected release APK of the starter app, with the content tool of the desktop artifacts
         run: |
           python haylen.py --verbose new build/starter
-          python haylen.py --verbose android-key build/starter
+          python haylen.py --verbose distribution android-key build/starter
           python haylen.py --verbose run build/starter --platform android --config Release --build-only
 
   apple:
@@ -317,9 +317,9 @@ jobs:
       - name: Create the starter C++ app
         run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build the starter C++ app from the C++ template
-        run: python haylen.py --verbose run-cpp build/starter-cpp --build-only
+        run: python haylen.py --verbose run build/starter-cpp --build-only
       - name: Build and check the protected release of the starter C++ app
-        run: python haylen.py --verbose run-cpp build/starter-cpp --config Release --build-only
+        run: python haylen.py --verbose run build/starter-cpp --config Release --build-only
 
   sanitizers:
     strategy:

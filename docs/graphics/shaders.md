@@ -78,7 +78,7 @@ The compiler gives inputs and outputs their locations, so a stage declares them 
 
 ## Compiling
 
-The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`. It leaves the other files alone, since the sources include them. The commands `run`, `prepare`, `package` and `dist` of `haylen.py` compile the shaders that changed on their own.
+The command `haylen.py shaders <app>` compiles every `.glsl` file under `content/shaders/` that declares an `@program`. It leaves the other files alone, since the sources include them. The commands `run`, `prepare`, `package` and `distribution installer` of `haylen.py` compile the shaders that changed on their own.
 
 The command runs `haylen-shaderc`, the Haylen shader compiler. Unless the environment variable `HAYLEN_SHADER_COMPILER` names a build of it, `haylen.py` uses the release that `engine/cmake/haylen-shader-compiler.json` pins and keeps it in `.tools/`. It downloads the binary of that release for the machine and checks its SHA-256. Only on a machine that the release ships no binary for does it build the compiler from the source of the pinned commit, as the [build guide](../tools/build.md#tools) describes.
 

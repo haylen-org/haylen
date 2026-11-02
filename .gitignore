@@ -13,7 +13,7 @@ __pycache__/
 /engine/platform/android/build/
 /engine/platform/android/*/build/
 local.properties
-# The signing keys that `haylen.py android-key` writes into the Android project of an app, with their passwords.
+# The signing keys that `haylen.py distribution android-key` writes into the Android project of an app, with their passwords.
 **/platform/android/keystore/
 *.profraw
 MISSING.md

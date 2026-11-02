@@ -16,17 +16,17 @@ haylen run ~/apps/my-game --platform web
 
 The command `new` creates the app from the starter app and copies every platform template into its folder `platform/`, where the projects belong to the developer. The command `run` without `--platform` starts the desktop player of this machine in development mode, which reloads edited scripts and assets. With `--platform` it builds the engine artifacts when they are missing or stale, prepares the project of the platform and builds it. Then it checks what the built app lacks, launches it on a simulator, an emulator, a device, this Mac or a local web server, and streams the output of the app.
 
-A C++ app is a CMake project that compiles the engine. The option `--kind cpp` of `new` creates one, and `run-cpp` builds and runs it:
+A C++ app is a CMake project that compiles the engine. The option `--kind cpp` of `new` creates one, and `run` builds and runs it:
 
 ```sh
 haylen new ~/apps/my-cpp-game --kind cpp
-haylen run-cpp ~/apps/my-cpp-game
-haylen run-cpp ~/apps/my-cpp-game --platform android
+haylen run ~/apps/my-cpp-game
+haylen run ~/apps/my-cpp-game --platform android
 ```
 
 ## Commands
 
-The commands of apps name an app by its folder, relative to the current folder or absolute. A command without an app, or with a path that holds no `app.json`, stops with an error that says what an app folder is. It never runs another app in its place. A folder that holds `CMakeLists.txt` is a C++ app. The commands `run`, `prepare`, `xcodegen` and `dist` build the platform projects of Lua apps, so they stop for a C++ app and name `run-cpp` instead.
+The commands of apps name an app by its folder, relative to the current folder or absolute. A command without an app, or with a path that holds no `app.json`, stops with an error that says what an app folder is. It never runs another app in its place. A folder that holds `CMakeLists.txt` is a C++ app. The command `run` builds a C++ app with its CMake project, as [running a C++ app](#running-a-c-app) describes. The commands `prepare`, `platform xcodegen` and `distribution installer` build the platform projects of Lua apps, so they stop for a C++ app and name `run` instead.
 
 Several commands share these options:
 
@@ -48,7 +48,7 @@ Builds the [engine artifacts](#engine-artifacts) into `build/artifacts/`. The op
 
 Each build records its configuration and a SHA-256 hash of the engine sources in `build/artifacts/manifest.json`. The hash covers every file under `engine/` except the tests, the benchmarks and build outputs. So any change to the engine code, its CMake files, its shaders or its platform projects makes the artifacts stale. The commands `run`, `prepare` and the others build the artifacts of a platform again before they use them, whenever the manifest does not match the current sources or the configuration that `--engine-config` asks for.
 
-On Apple platforms the manifest records each slice of `Haylen.xcframework` on its own. The command `run` builds only the slice that it runs on, such as the slice of the iOS simulator, so a change to the engine builds one slice before a run. The commands `prepare`, `xcodegen` and `engine` build every slice, since a project of the developer may build for any Apple platform.
+On Apple platforms the manifest records each slice of `Haylen.xcframework` on its own. The command `run` builds only the slice that it runs on, such as the slice of the iOS simulator, so a change to the engine builds one slice before a run. The commands `prepare`, `platform xcodegen` and `engine` build every slice, since a project of the developer may build for any Apple platform.
 
 ### new
 
@@ -91,7 +91,7 @@ Runs an app. First it compiles the shaders of the app whose sources changed, as 
 | Option | Default | Meaning |
 | --- | --- | --- |
 | `--platform` | none | `macos`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator`, `visionos`, `visionos-simulator`, `android`, `web`, `windows` or `linux`. Without it, the desktop player runs the app folder in development mode. |
-| `--device` | see below | The name or id of a simulator, the id of an Apple device or the serial of an Android device. |
+| `--device` | see below | The identifier or name of a simulator or Apple device, or the serial of an Android device, which [devices](#devices) lists. |
 | `--build-only` | off | Builds and checks the app for the platform without launching it, which needs no device, simulator or server. Continuous integration builds the apps of every platform this way. A build-only Android run packs the native libraries of every ABI. |
 | `--host` | `127.0.0.1` | The address that the local web server listens on, and the development server of a Debug run on a device, a simulator or this Mac. The address of this machine on the network lets phones and other computers open the page, which then runs without sound, because browsers offer `AudioWorklet` only to pages served over https or from localhost. Apple devices reach the development server on every address of this machine unless this option names one. |
 | `--port` | `8000` | The port of the local web server, and of the development server of a Debug run. |
@@ -126,26 +126,24 @@ Where the log of the engine goes:
 
 On Mac Catalyst and the simulators, `run` streams those lines next to the standard output and error of the process, with warnings and errors on the standard error. It keeps streaming for one second after the app ends, so the last lines arrive. The log of an app on a device shows in Console.app, while `run` shows the standard output and error of its process.
 
-### run-cpp
+#### Running a C++ app
 
 ```sh
-haylen run-cpp ~/apps/my-cpp-game
-haylen run-cpp ~/apps/my-cpp-game --platform web
-haylen run-cpp ~/apps/my-cpp-game --platform ios-simulator --device "iPhone 17"
-haylen run-cpp ~/apps/my-cpp-game --platform catalyst
-haylen run-cpp ~/apps/my-cpp-game --platform android --device emulator-5554
+haylen run ~/apps/my-cpp-game
+haylen run ~/apps/my-cpp-game --platform web
+haylen run ~/apps/my-cpp-game --platform ios-simulator --device "iPhone 17"
+haylen run ~/apps/my-cpp-game --platform catalyst
+haylen run ~/apps/my-cpp-game --platform android --device emulator-5554
 ```
 
-Builds a C++ project that compiles the engine through CMake and runs it. The project is a folder with a `CMakeLists.txt` that adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows. The command configures it in `build/cpp/<project>-<hash>/<platform>-<config>`. The part `<hash>` is the start of the SHA-256 hash of the absolute folder of the project, so projects in folders with the same name never share a build tree. It builds the app target and runs it. It takes the shared options of [commands](#commands) and these:
+A C++ app is a folder with a `CMakeLists.txt` that adds the engine and calls `haylen_add_app`, as the [embedding guide](embedding.md) shows. For such a folder, `run` builds the CMake project and runs the app. It configures the project in `build/cpp/<project>-<hash>/<platform>-<config>`. The part `<hash>` is the start of the SHA-256 hash of the absolute folder of the project, so projects in folders with the same name never share a build tree. The options of `run` keep their meaning, with these differences:
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--platform` | this machine | This machine, `web`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator` or `android`. |
+| `--platform` | this machine | This machine, `web`, `catalyst`, `ios`, `ios-simulator`, `tvos`, `tvos-simulator` or `android`. Another platform stops the command. |
 | `--target` | `main` | The target of `haylen_add_app`, which the [C++ template](#cpp) names `main`. |
-| `--config` | `Debug` | `Debug`, `Release` or `RelWithDebInfo`. The value `Release` ships the protected release of the app, built with the content tool of the desktop artifacts, and inspects the built app before it launches, as the [embedding guide](embedding.md#protected-releases) describes. |
-| `--device` | see below | The name or id of a simulator, the id of an Apple device or the serial of an Android device. |
-| `--build-only` | off | Builds and checks the app without launching it, as continuous integration does on Windows and Linux. |
-| `--host`, `--port`, `--coep`, `--coop`, `--open` | as in `run` | The local web server of the `web` platform, as [serve](#serve) describes. |
+| `--config` | `Debug` | The value `Release` ships the protected release of the app, built with the content tool of the desktop artifacts, and inspects the built app before it launches, as the [embedding guide](embedding.md#protected-releases) describes. |
+| `--engine-config` | `Release` | The configuration of the `haylen` Android library, whose Java classes an Android app uses. |
 
 The command hands the project the engine of this checkout in `HAYLEN_ENGINE_SOURCE`, the shader compiler in `HAYLEN_SHADERC` and the dependency cache of the engine builds in `CPM_SOURCE_CACHE`. So a project anywhere on the machine compiles the engine without downloading its dependencies again. C++ projects compile the engine from source, so only Android uses an engine artifact, for its Java classes.
 
@@ -153,12 +151,30 @@ The command hands the project the engine of this checkout in `HAYLEN_ENGINE_SOUR
 | --- | --- | --- |
 | This machine | Ninja, or the default generator on Windows without Ninja. On a Mac, the macOS minimum of the engine as `CMAKE_OSX_DEPLOYMENT_TARGET`. | Runs the executable. |
 | `web` | Emscripten into `build/cpp/<project>-<hash>/web`, with an `index.html` that loads the plugins and the runtime, which draws through WebGPU or WebGL2, as [the files of a web build](build.md#files-of-a-web-build) show. | Serves that folder like `serve`. |
-| `ios-simulator`, `tvos-simulator` | The Xcode generator with the SDK of the iOS or tvOS simulator for the architecture of this Mac, which compiles the launch screen and signs the bundle. | Like `run`, on the simulator that `--device` names, a booted one or the first one available. |
-| `ios`, `tvos` | The Xcode generator with the SDK of the device, signed with the team of `HAYLEN_APPLE_TEAM`. | Like `run`, on the device that `--device` names. |
-| `catalyst` | Ninja with `engine/cmake/haylen-catalyst.toolchain.cmake` for the architecture of this Mac. The function `haylen_add_app` signs the bundle ad hoc, as [Apple bundles](embedding.md#apple-bundles) explain. | Like `run`: starts the executable and streams its log. |
-| `android` | Ninja with the NDK, for the ABI of the device that `--device` names or of the only one connected, into `bin/<target>/lib<target>.so`. Then it prepares the Android project of the package that `bin/<target>/package.txt` names: its `platform/android`, or the copy of the template. The library goes into `haylen/jniLibs/<abi>`, and `library` of `haylen/haylen.properties` names the target. So `HaylenActivity` loads the library of the app, and the Lua player of the `haylen` library stays out of the APK. The `haylen` library comes from the artifacts, built with `--engine-config` when they are missing or stale. | Like `run`. |
+| `ios-simulator`, `tvos-simulator` | The Xcode generator with the SDK of the iOS or tvOS simulator for the architecture of this Mac, which compiles the launch screen and signs the bundle. | Like a Lua app, on the simulator that `--device` names, a booted one or the first one available. |
+| `ios`, `tvos` | The Xcode generator with the SDK of the device, signed with the team of `HAYLEN_APPLE_TEAM`. | Like a Lua app, on the device that `--device` names. |
+| `catalyst` | Ninja with `engine/cmake/haylen-catalyst.toolchain.cmake` for the architecture of this Mac. The function `haylen_add_app` signs the bundle ad hoc, as [Apple bundles](embedding.md#apple-bundles) explain. | Like a Lua app: starts the executable and streams its log. |
+| `android` | Ninja with the NDK, for the ABI of the device that `--device` names or of the only one connected, into `bin/<target>/lib<target>.so`. Then it prepares the Android project of the package that `bin/<target>/package.txt` names: its `platform/android`, or the copy of the template. The library goes into `haylen/jniLibs/<abi>`, and `library` of `haylen/haylen.properties` names the target. So `HaylenActivity` loads the library of the app, and the Lua player of the `haylen` library stays out of the APK. The `haylen` library comes from the artifacts, built with `--engine-config` when they are missing or stale. | Like a Lua app. |
 
 The Apple and web builds also bring the native parts of the plugins of the app, as the [plugin guide](../platform/plugins.md#c-apps) describes.
+
+### devices
+
+```sh
+haylen devices
+```
+
+Lists every place on this machine that `run` launches an app on: this computer, the simulators of iOS, tvOS and visionOS, the Apple devices paired with this Mac, and the Android devices and emulators that `adb` reaches. Each line shows the name, the identifier that `--device` takes, the platforms of `--platform` that reach it, the version of its system and its kind, `Simulator`, `Emulator`, `Device` or `Desktop`, with its state, such as `booted`, `running`, `connected`, `unavailable` or `unauthorized`. The Android virtual devices that no emulator runs follow, since `run` needs a running emulator. A platform whose tools the machine lacks, such as the Android SDK or Xcode, lists nothing.
+
+```text
+Name          Identifier                            Platform         System        Kind
+This Mac      -                                     macos, catalyst  macOS 27.0.1  Desktop
+iPhone 17e    6D20D864-BE69-4D5B-8C2E-021D939583FF  ios-simulator    iOS 27.0      Simulator
+Ana's iPhone  00008110-001428CC0CD0401E             ios              iOS 27.0.1    Device
+Pixel_10a     emulator-5554                         android          Android 16    Emulator, running
+```
+
+The simulators come from `xcrun simctl`, the Apple devices from `xcrun devicectl` and the Android devices from `adb`. A `--device` that names nothing of the list stops `run` with an error that points to this command.
 
 ### prepare
 
@@ -168,17 +184,6 @@ haylen prepare ~/apps/my-game --platform android --config Release
 ```
 
 Builds the engine artifacts of the platform when they are missing or stale. Then it writes the folder `haylen/` of the project of the platform, and nothing else. That is enough to open the project in Xcode, Android Studio or an editor that opens CMake projects, and to build, run or archive it there. On the web it makes the site. The option `--platform` is required and takes the platforms of `run`. The native libraries of an Apple project are those of the platform that `--platform` names. The command takes the shared options of [commands](#commands). The value `--config Release` writes the protected release and the bootstrap of the app, which an archive for a store needs, as [release builds](#release-builds) describe.
-
-### xcodegen
-
-```sh
-haylen xcodegen ~/apps/my-game
-haylen xcodegen --template
-```
-
-Prepares the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, with the XcodeGen that haylen.py pins. Run it after you change `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. The app is the current folder by default. The option `--platform` picks the Apple platform whose native libraries the project gets, `macos` by default. The option `--config` picks the package, `Debug` by default, and the command takes the other shared options of [commands](#commands).
-
-The option `--template` generates the `App.xcodeproj` of the Apple template of the engine again, after a change to its `project.yml`. It works in a new starter app in `build/templates/lua`, whose folder `haylen/` links no plugins and no native libraries, and copies the result into the template.
 
 ### check
 
@@ -213,12 +218,18 @@ Warning: The plugin "native-demo" needs the permission "android.permission.POST_
 
 ```sh
 haylen platform add ~/apps/my-game android
-haylen platform diff ~/apps/my-game --template apple
+haylen platform diff ~/apps/my-game apple
+haylen platform xcodegen ~/apps/my-game
+haylen platform xcodegen --template
 ```
 
 The command `platform add <app> <template>` creates `platform/<template>/` of an app from the template of the platform: the common layer and the layer of the kind of the app. The app then builds that project instead of the copy that haylen.py keeps. It stops when the app already has the project. A template that the kind lacks, such as `apple` for a C++ app, stops the command with the list of the templates that the kind has.
 
-The command `platform diff <app> --template <template>` compares `platform/<template>/` of an app with the same layered template. It prints the files that only one of them has, and a unified diff of every text file that differs. It leaves out `haylen/`, build outputs and the state of Xcode for each person. So the developer adopts what they want of a newer template. It changes nothing.
+The command `platform diff <app> <template>` compares `platform/<template>/` of an app with the same layered template. It prints the files that only one of them has, and a unified diff of every text file that differs. It leaves out `haylen/`, build outputs and the state of Xcode for each person. So the developer adopts what they want of a newer template. It changes nothing.
+
+The command `platform xcodegen <app>` prepares the Apple project of an app and generates its `App.xcodeproj` again from `project.yml`, with the XcodeGen that haylen.py pins. Run it after you change `project.yml`, as [generating App.xcodeproj](#generating-appxcodeproj) describes. The option `--platform` picks the Apple platform whose native libraries the project gets, `macos` by default. The option `--config` picks the package, `Debug` by default, and the command takes the other shared options of [commands](#commands).
+
+The option `--template` generates the `App.xcodeproj` of the Apple template of the engine again, after a change to its `project.yml`. It works in a new starter app in `build/templates/lua`, whose folder `haylen/` links no plugins and no native libraries, and copies the result into the template.
 
 ### plugin
 
@@ -266,7 +277,7 @@ haylen serve dist/my-game --open
 haylen serve dist/my-game --host 192.168.1.20
 ```
 
-Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. The option `--port` is `8000` by default, and `--open` opens the page in the default browser. The option `--host` listens on another address of this machine instead, such as its address on the network, so phones and other computers open the page. Browsers offer `AudioWorklet` only to pages served over https or from localhost, so those pages run without sound. The commands `run --platform web` and `run-cpp --platform web` take the same options. The server sends these headers:
+Serves a folder at `http://127.0.0.1:<port>/` with a threading Python server. The option `--port` is `8000` by default, and `--open` opens the page in the default browser. The option `--host` listens on another address of this machine instead, such as its address on the network, so phones and other computers open the page. Browsers offer `AudioWorklet` only to pages served over https or from localhost, so those pages run without sound. The commands `run --platform web` and `run --platform web` take the same options. The server sends these headers:
 
 | Header | Value |
 | --- | --- |
@@ -286,12 +297,109 @@ The option `--coop same-origin` with `--coep credentialless` or `--coep require-
 
 The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg`, `.png` and `.data` itself. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding`, when the browser accepts that encoding.
 
-### android-key
+### distribution
+
+The command `distribution` builds what ships an app. Its actions are `installer`, `steam` and `android-key`:
+
+| Action | What it does |
+| --- | --- |
+| `distribution installer` | Builds the installer of a Windows app, or the `.deb` package and the AppImage of a Linux app. |
+| `distribution steam` | Builds the release of a desktop app and stages its depots and build scripts for SteamPipe, the upload system of Steam. |
+| `distribution android-key` | Creates the upload key that signs the release builds of an Android app, or the debug key of its project. |
+
+### distribution installer
 
 ```sh
-haylen android-key ~/apps/my-game
-haylen android-key ~/apps/my-game --debug
-haylen android-key ~/apps/my-game --alias store --password "a long secret" --dname "CN=My Company, O=My Company, C=US"
+haylen distribution installer ~/apps/my-game --platform windows
+haylen distribution installer ~/apps/my-game --platform linux -o ~/releases/my-game
+```
+
+Builds the installers of a Windows or Linux app, on a machine of that system. The option `--platform` is required and names this machine, `windows` or `linux`. The command takes `--engine-config`, `--jobs` and `--previous-release` too. It works in these steps:
+
+1. It compiles the shaders of the app and prepares the project of the platform in the Release configuration.
+2. It builds the project and installs it.
+3. It stops on what a release never ships, as [check](#check) does.
+4. It runs CPack with the configuration that `CMakeLists.txt` of the project describes.
+
+The installers land in `dist/` of the app folder, which its `.gitignore` keeps out of the repository, or in the folder of `-o` or `--output`.
+
+| Platform | Installers | Tools |
+| --- | --- | --- |
+| Windows | `<executable>-<version>-setup.exe`, an installer that installs the app for the person or, with an administrator, for every user. It adds a shortcut in the Start menu, an optional one on the desktop, the option to run the app at the end, and an uninstaller in the settings of Windows. [Signing](#signing) covers the installer and the uninstaller. | Inno Setup, which haylen.py installs into `.tools`, as the [build guide](build.md#tools-that-haylenpy-brings) lists. |
+| Linux | `<executable>_<version>_<arch>.deb`, which installs into `/usr` with the dependencies that `dpkg-shlibdeps` finds in the executable, and GTK 3 and the sound servers as recommendations. And `<executable>-<version>-<arch>.AppImage`, one file that runs on any distribution without installing. | The DEB generator of CPack, with `dpkg-shlibdeps` of `dpkg-dev`. The AppImage generator of CPack, which needs CMake 4.2 or later, with appimagetool, the AppImage runtime and patchelf, which haylen.py downloads into `.tools`. |
+
+Inno Setup makes the Windows installer for several reasons. It is free, it has had regular releases for more than two decades, it compiles a script from the command line, which CPack writes, and it signs the installer and its uninstaller through the signing command it receives. MSI packages suit software that companies deploy to many machines, while an app for people needs a plain installer.
+
+The `.deb` reaches Debian, Ubuntu and the distributions based on them through their package manager, which resolves the libraries of the system that the app links. The AppImage serves every other distribution with one file that needs no installation, no permission of the administrator and no runtime. The packages link the C library and the graphics libraries of the system that builds them. So they run on distributions as new as that one or newer, and a release that reaches older ones builds on the oldest distribution it supports.
+
+#### Signing
+
+A Windows app without a signature makes SmartScreen warn the person who installs it. So the release builds of the Windows project sign the executable, the installer and the uninstaller with `signtool` of the Windows SDK. They use a SHA-256 digest and an RFC 3161 time stamp, which keeps the signature valid after the certificate expires. The certificate never belongs in the project or the repository, so `signing.cmake` reads it from the environment:
+
+| Environment variable | Value |
+| --- | --- |
+| `HAYLEN_WINDOWS_CERTIFICATE` | A PFX file with the code signing certificate and its private key. |
+| `HAYLEN_WINDOWS_CERTIFICATE_PASSWORD` | The password of the PFX file. |
+| `HAYLEN_WINDOWS_CERTIFICATE_THUMBPRINT` | Instead of a file, the SHA-1 thumbprint of a certificate in the certificate store of the user, such as one on a hardware token, whose private key never leaves it. |
+| `HAYLEN_WINDOWS_TIMESTAMP_URL` | The time stamp server of the authority that issued the certificate. |
+| `HAYLEN_WINDOWS_SIGNTOOL` | Another `signtool` than the one on `PATH` or in the newest Windows SDK. |
+
+The project decides when CMake configures it. With `HAYLEN_WINDOWS_CERTIFICATE` or `HAYLEN_WINDOWS_CERTIFICATE_THUMBPRINT` it signs. Without either, the app stays unsigned, and the install of every release build says so. A workflow of GitHub Actions keeps the PFX file as Base64 in a secret and writes it to a file before the build:
+
+```yaml
+env:
+  HAYLEN_WINDOWS_CERTIFICATE: ${{ runner.temp }}\certificate.pfx
+  HAYLEN_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PWD }}
+  HAYLEN_WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+  HAYLEN_KEYS_DIR: ${{ runner.temp }}\keys
+steps:
+  - shell: pwsh
+    run: |
+      [IO.File]::WriteAllBytes($env:HAYLEN_WINDOWS_CERTIFICATE, [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE }}"))
+      python haylen.py distribution installer my-game --platform windows
+```
+
+The guide [installers in CI](ci-installers.md) gives the whole workflow of every platform and explains each secret. The content keys of the app reach the workflow through `HAYLEN_KEYS_DIR`, as [the content guide](../content/content.md) describes, since every release of an app needs the keys of its earlier releases. The command `signtool verify /pa /v my-game-1.0.0-setup.exe` shows the signature of an installer.
+
+Linux packages carry no signature of their own. The repositories that publish `.deb` packages sign their indexes. The AppImage takes a GnuPG signature from `CPACK_APPIMAGE_SIGN` and `CPACK_APPIMAGE_SIGN_KEY` in the project.
+
+### distribution steam
+
+```sh
+haylen distribution steam ~/apps/my-game --platform windows --app-id 480 --depot windows=481 --depot forest=482
+```
+
+Builds the release of an app for macOS, Windows or Linux, inspects it as `check --config Release` does, and lays it out for SteamPipe, the upload system of Steam. Steam installs the app with its release, so the app needs no content server.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `--platform` | required | `macos`, `windows` or `linux`, the platform of the depot of the app. |
+| `--app-id` | required | The ID of the app on Steam. |
+| `--depot <name>=<id>` | required | The ID of a depot from Steamworks. Repeat it for every depot: the platform is one name, and each pack of the app is another. The command stops before it builds when one is missing. |
+| `--branch` | none | The beta branch that the build goes live on, such as `beta`. Without it, the build waits in Steamworks to be set live. |
+| `--output` | `build/apps/<app>-<hash>/steam` | The folder of the staging. |
+| `--target` | `main` | The `haylen_add_app` target of a C++ app. |
+
+The command also takes `--engine-config`, `--jobs` and `--previous-release`. It writes this layout:
+
+| Folder | What it holds |
+| --- | --- |
+| `content/<platform>/` | The depot of the app: the installed Windows or Linux app with its release, or the macOS bundle. It holds every shard of the release except those of the [packs](../content/content.md#delivery) of the app, or only the shards that its required content needs when `app.json` names a content server. |
+| `content/<pack>/` | The depot of each pack. Its shards install into `packs/` next to the executable, in `lib/<executable>/` on Linux, or next to the macOS bundle, where the runtime finds them. A player who does not own a pack, such as an expansion sold apart, never receives its depot. Its assets stay unavailable, and `assets.loadAsync` of one fails with `storeAssetUnavailable`, which an app shows as content to buy. |
+| `scripts/` | The build scripts of `steamcmd`: `app_build.vdf` with the app ID, a description of the app and its version, and the branch of `--branch`, and one `depot_build_<id>.vdf` per depot that maps its whole folder. |
+
+A C++ app stages its depots the same way from the folder of its CMake project. Its Release build on this machine makes the executable with its release next to it, or the macOS bundle, and the shards of each pack, which `content/<pack>/packs/` installs next to the executable or the bundle. Its CMake project builds for the machine it runs on, so `--platform` must name this machine. The depots of each platform are staged on that platform, such as in one job of continuous integration per platform.
+
+Steam compares each depot with the build before it, file by file. A release keeps every unchanged shard byte for byte under the same name, so an update of a few assets uploads and downloads only the shards that changed and the two manifests. A machine without the release before it in its build folder, such as continuous integration, downloads the depots of the live build first. Use `steamcmd +login <account> +app_update <app id> validate +quit`, or the command `download_depot` of the Steam console, and name that folder with `--previous-release`, which finds the release and the shards of its packs in it.
+
+The command `steamcmd +login <account> +run_app_build <steam>/scripts/app_build.vdf +quit` uploads the build. The Steamworks API of the app itself, such as achievements and the ownership of packs, is a native library that the app calls through `haylen.native`, as [native libraries](#native-libraries) describe.
+
+### distribution android-key
+
+```sh
+haylen distribution android-key ~/apps/my-game
+haylen distribution android-key ~/apps/my-game --debug
+haylen distribution android-key ~/apps/my-game --alias store --password "a long secret" --dname "CN=My Company, O=My Company, C=US"
 ```
 
 Creates the upload key that signs the release builds of an app. With `--debug` it creates a debug key of the project instead, which signs its debug builds in place of the debug key of the Android SDK. So every machine of a team builds with the same signature.
@@ -342,93 +450,6 @@ steps:
 ```
 
 The command `base64 < platform/android/keystore/release.jks` prints the text of the `ANDROID_KEYSTORE` secret. The guide [installers in CI](ci-installers.md) builds the App Bundle with these secrets. The command `apksigner verify --print-certs` of the build tools of the Android SDK shows the certificate that signed an APK.
-
-### dist
-
-```sh
-haylen dist ~/apps/my-game --platform windows
-haylen dist ~/apps/my-game --platform linux -o ~/releases/my-game
-```
-
-Builds what ships a Windows or Linux app, on a machine of that system. The option `--platform` is required and names this machine, `windows` or `linux`. The command takes `--engine-config`, `--jobs` and `--previous-release` too. It works in these steps:
-
-1. It compiles the shaders of the app and prepares the project of the platform in the Release configuration.
-2. It builds the project and installs it.
-3. It stops on what a release never ships, as [check](#check) does.
-4. It runs CPack with the configuration that `CMakeLists.txt` of the project describes.
-
-The packages land in `dist/` of the app folder, which its `.gitignore` keeps out of the repository, or in the folder of `-o` or `--output`.
-
-| Platform | Packages | Tools |
-| --- | --- | --- |
-| Windows | `<executable>-<version>-setup.exe`, an installer that installs the app for the person or, with an administrator, for every user. It adds a shortcut in the Start menu, an optional one on the desktop, the option to run the app at the end, and an uninstaller in the settings of Windows. [Signing](#signing) covers the installer and the uninstaller. | Inno Setup, which haylen.py installs into `.tools`, as the [build guide](build.md#tools-that-haylenpy-brings) lists. |
-| Linux | `<executable>_<version>_<arch>.deb`, which installs into `/usr` with the dependencies that `dpkg-shlibdeps` finds in the executable, and GTK 3 and the sound servers as recommendations. And `<executable>-<version>-<arch>.AppImage`, one file that runs on any distribution without installing. | The DEB generator of CPack, with `dpkg-shlibdeps` of `dpkg-dev`. The AppImage generator of CPack, which needs CMake 4.2 or later, with appimagetool, the AppImage runtime and patchelf, which haylen.py downloads into `.tools`. |
-
-Inno Setup makes the Windows installer for several reasons. It is free, it has had regular releases for more than two decades, it compiles a script from the command line, which CPack writes, and it signs the installer and its uninstaller through the signing command it receives. MSI packages suit software that companies deploy to many machines, while an app for people needs a plain installer.
-
-The `.deb` reaches Debian, Ubuntu and the distributions based on them through their package manager, which resolves the libraries of the system that the app links. The AppImage serves every other distribution with one file that needs no installation, no permission of the administrator and no runtime. The packages link the C library and the graphics libraries of the system that builds them. So they run on distributions as new as that one or newer, and a release that reaches older ones builds on the oldest distribution it supports.
-
-#### Signing
-
-A Windows app without a signature makes SmartScreen warn the person who installs it. So the release builds of the Windows project sign the executable, the installer and the uninstaller with `signtool` of the Windows SDK. They use a SHA-256 digest and an RFC 3161 time stamp, which keeps the signature valid after the certificate expires. The certificate never belongs in the project or the repository, so `signing.cmake` reads it from the environment:
-
-| Environment variable | Value |
-| --- | --- |
-| `HAYLEN_WINDOWS_CERTIFICATE` | A PFX file with the code signing certificate and its private key. |
-| `HAYLEN_WINDOWS_CERTIFICATE_PASSWORD` | The password of the PFX file. |
-| `HAYLEN_WINDOWS_CERTIFICATE_THUMBPRINT` | Instead of a file, the SHA-1 thumbprint of a certificate in the certificate store of the user, such as one on a hardware token, whose private key never leaves it. |
-| `HAYLEN_WINDOWS_TIMESTAMP_URL` | The time stamp server of the authority that issued the certificate. |
-| `HAYLEN_WINDOWS_SIGNTOOL` | Another `signtool` than the one on `PATH` or in the newest Windows SDK. |
-
-The project decides when CMake configures it. With `HAYLEN_WINDOWS_CERTIFICATE` or `HAYLEN_WINDOWS_CERTIFICATE_THUMBPRINT` it signs. Without either, the app stays unsigned, and the install of every release build says so. A workflow of GitHub Actions keeps the PFX file as Base64 in a secret and writes it to a file before the build:
-
-```yaml
-env:
-  HAYLEN_WINDOWS_CERTIFICATE: ${{ runner.temp }}\certificate.pfx
-  HAYLEN_WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PWD }}
-  HAYLEN_WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
-  HAYLEN_KEYS_DIR: ${{ runner.temp }}\keys
-steps:
-  - shell: pwsh
-    run: |
-      [IO.File]::WriteAllBytes($env:HAYLEN_WINDOWS_CERTIFICATE, [Convert]::FromBase64String("${{ secrets.WINDOWS_CERTIFICATE }}"))
-      python haylen.py dist my-game --platform windows
-```
-
-The guide [installers in CI](ci-installers.md) gives the whole workflow of every platform and explains each secret. The content keys of the app reach the workflow through `HAYLEN_KEYS_DIR`, as [the content guide](../content/content.md) describes, since every release of an app needs the keys of its earlier releases. The command `signtool verify /pa /v my-game-1.0.0-setup.exe` shows the signature of an installer.
-
-Linux packages carry no signature of their own. The repositories that publish `.deb` packages sign their indexes. The AppImage takes a GnuPG signature from `CPACK_APPIMAGE_SIGN` and `CPACK_APPIMAGE_SIGN_KEY` in the project.
-
-### steam
-
-```sh
-haylen steam ~/apps/my-game --platform windows --app-id 480 --depot windows=481 --depot forest=482
-```
-
-Builds the release of an app for macOS, Windows or Linux, inspects it as `check --config Release` does, and lays it out for SteamPipe, the upload system of Steam. Steam installs the app with its release, so the app needs no content server.
-
-| Option | Default | Meaning |
-| --- | --- | --- |
-| `--platform` | required | `macos`, `windows` or `linux`, the platform of the depot of the app. |
-| `--app-id` | required | The ID of the app on Steam. |
-| `--depot <name>=<id>` | required | The ID of a depot from Steamworks. Repeat it for every depot: the platform is one name, and each pack of the app is another. The command stops before it builds when one is missing. |
-| `--branch` | none | The beta branch that the build goes live on, such as `beta`. Without it, the build waits in Steamworks to be set live. |
-| `--output` | `build/apps/<app>-<hash>/steam` | The folder of the staging. |
-| `--target` | `main` | The `haylen_add_app` target of a C++ app. |
-
-The command also takes `--engine-config`, `--jobs` and `--previous-release`. It writes this layout:
-
-| Folder | What it holds |
-| --- | --- |
-| `content/<platform>/` | The depot of the app: the installed Windows or Linux app with its release, or the macOS bundle. It holds every shard of the release except those of the [packs](../content/content.md#delivery) of the app, or only the shards that its required content needs when `app.json` names a content server. |
-| `content/<pack>/` | The depot of each pack. Its shards install into `packs/` next to the executable, in `lib/<executable>/` on Linux, or next to the macOS bundle, where the runtime finds them. A player who does not own a pack, such as an expansion sold apart, never receives its depot. Its assets stay unavailable, and `assets.loadAsync` of one fails with `storeAssetUnavailable`, which an app shows as content to buy. |
-| `scripts/` | The build scripts of `steamcmd`: `app_build.vdf` with the app ID, a description of the app and its version, and the branch of `--branch`, and one `depot_build_<id>.vdf` per depot that maps its whole folder. |
-
-A C++ app stages its depots the same way from the folder of its CMake project. Its Release build on this machine makes the executable with its release next to it, or the macOS bundle, and the shards of each pack, which `content/<pack>/packs/` installs next to the executable or the bundle. Its CMake project builds for the machine it runs on, so `--platform` must name this machine. The depots of each platform are staged on that platform, such as in one job of continuous integration per platform.
-
-Steam compares each depot with the build before it, file by file. A release keeps every unchanged shard byte for byte under the same name, so an update of a few assets uploads and downloads only the shards that changed and the two manifests. A machine without the release before it in its build folder, such as continuous integration, downloads the depots of the live build first. Use `steamcmd +login <account> +app_update <app id> validate +quit`, or the command `download_depot` of the Steam console, and name that folder with `--previous-release`, which finds the release and the shards of its packs in it.
-
-The command `steamcmd +login <account> +run_app_build <steam>/scripts/app_build.vdf +quit` uploads the build. The Steamworks API of the app itself, such as achievements and the ownership of packs, is a native library that the app calls through `haylen.native`, as [native libraries](#native-libraries) describe.
 
 ### content
 
@@ -596,11 +617,11 @@ The file `source/main.lua` is a scene with the logo, the name of the app, a line
 
 ### cpp
 
-The folder of a C++ app is its CMake project and its package at once. That works because `haylen_add_app` ships only `app.json`, `source/`, `content/` and the manifests and Lua of the plugins that `app.json` lists. The command `run-cpp` brings the native parts of those plugins, as the [plugin guide](../platform/plugins.md#c-apps) describes.
+The folder of a C++ app is its CMake project and its package at once. That works because `haylen_add_app` ships only `app.json`, `source/`, `content/` and the manifests and Lua of the plugins that `app.json` lists. The command `run` brings the native parts of those plugins, as the [plugin guide](../platform/plugins.md#c-apps) describes.
 
-Its `CMakeLists.txt` adds the engine folder that `HAYLEN_ENGINE_SOURCE` names, which `run-cpp` passes, or an installed SDK through `find_package` when the variable is empty, as the [embedding guide](embedding.md#an-app-written-in-c) shows. It builds the target `main` with the `CPP` option from `src/App.cpp`. It adds `src/AppBridge.mm` on Apple platforms, and links `platform/web/app.js` into the runtime script with `--pre-js` on the web. The target is not named `app`, because iOS and tvOS bundles keep the package in a folder of that name next to the executable. Its scene draws the logo, the name of the app and the answer of the [bridge example](#the-bridge-example) with the renderer of the engine, and the app runs no Lua.
+Its `CMakeLists.txt` adds the engine folder that `HAYLEN_ENGINE_SOURCE` names, which `run` passes, or an installed SDK through `find_package` when the variable is empty, as the [embedding guide](embedding.md#an-app-written-in-c) shows. It builds the target `main` with the `CPP` option from `src/App.cpp`. It adds `src/AppBridge.mm` on Apple platforms, and links `platform/web/app.js` into the runtime script with `--pre-js` on the web. The target is not named `app`, because iOS and tvOS bundles keep the package in a folder of that name next to the executable. Its scene draws the logo, the name of the app and the answer of the [bridge example](#the-bridge-example) with the renderer of the engine, and the app runs no Lua.
 
-Android builds through `platform/android` of the common layer, as [run-cpp](#run-cpp) describes, and `haylen_add_app` makes the apps of the other platforms itself. The command `steam` builds the Release of a C++ app with its CMake project for this machine and stages its depots, as it does for a Lua app.
+Android builds through `platform/android` of the common layer, as [run](#running-a-c-app) describes, and `haylen_add_app` makes the apps of the other platforms itself. The command `distribution steam` builds the Release of a C++ app with its CMake project for this machine and stages its depots, as it does for a Lua app.
 
 ### The bridge example
 
@@ -672,7 +693,7 @@ templates/common/platform/android/
   app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
-The app module depends on `dev.haylen:haylen` from the Maven repository of the artifacts, which brings GameActivity, AppCompat, the activity library and core. It reads the application id, the version name and code, the label, the screen orientation, the status bar, the native library and the manifest placeholders from `haylen/haylen.properties`. It adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, so 1.2.3 becomes 1002003. The SDK levels and R8 are choices of the developer. The signing reads the keys of `keystore/`, as [android-key](#android-key) describes. The `minSdk` of 27 is what the engine library needs.
+The app module depends on `dev.haylen:haylen` from the Maven repository of the artifacts, which brings GameActivity, AppCompat, the activity library and core. It reads the application id, the version name and code, the label, the screen orientation, the status bar, the native library and the manifest placeholders from `haylen/haylen.properties`. It adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, so 1.2.3 becomes 1002003. The SDK levels and R8 are choices of the developer. The signing reads the keys of `keystore/`, as [distribution android-key](#distribution-android-key) describes. The `minSdk` of 27 is what the engine library needs.
 
 The manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` as visible defaults. Network access, the network events and `system.vibrate` need them, and an app deletes those it does not use, since the engine library declares no permission. A feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](../platform/plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system.
 
@@ -727,7 +748,7 @@ The resource script `resources/app.rc` reads the values of `app.json` from `hayl
 
 The resource script embeds the application manifest itself, so the linkers of MSVC and clang-cl take `/MANIFEST:NO` and add none of their own. The engine needs the Common Controls of version 6 and UTF-8 as the code page of the process, as [the Windows section](embedding.md#windows) of the embedding guide explains. The per-monitor DPI awareness matches the one that the Direct3D 11 runtime asks for. The window of the app and its taskbar button take the first icon of the executable, the one that Explorer shows. The icon is the gradient symbol on a navy plate with rounded corners, every size drawn from the full-size art.
 
-The project installs the executable with the package in `app/` and the native libraries next to it. It signs the executable of a release build when the environment names a certificate, and describes the installer that [dist](#dist) makes with Inno Setup.
+The project installs the executable with the package in `app/` and the native libraries next to it. It signs the executable of a release build when the environment names a certificate, and describes the installer that [distribution installer](#distribution-installer) makes with Inno Setup.
 
 ### linux
 
@@ -794,7 +815,7 @@ The completed `Info.plist` and entitlements follow one rule: the value of the de
 
 ### Generating App.xcodeproj
 
-The developer changes the project in `project.yml` and generates `App.xcodeproj` again with `haylen xcodegen <app>`. That prepares `haylen/` and runs the XcodeGen that haylen.py pins. The command `run` generates it on its own when all of these hold:
+The developer changes the project in `project.yml` and generates `App.xcodeproj` again with `haylen platform xcodegen <app>`. That prepares `haylen/` and runs the XcodeGen that haylen.py pins. The command `run` generates it on its own when all of these hold:
 
 - `project.yml` includes `haylen/project.yml`.
 - The inputs changed since the last generation. The inputs are `project.yml`, `haylen/project.yml`, the XcodeGen version and the files of the plugin sources, such as after the app gained a plugin.
@@ -803,7 +824,7 @@ The developer changes the project in `project.yml` and generates `App.xcodeproj`
 The file `haylen/state.json` keeps both hashes. A project whose inputs did not change builds as it is, edits made in Xcode included. Sometimes the inputs changed while `project.pbxproj` differs from the last generation, or haylen.py never generated it, such as in a fresh clone of the repository of an app. Then haylen.py generates the project once more in a scratch folder that links the entries of the project. When the result is the same file, haylen.py records it and goes on. Otherwise it stops without touching the project and says what to do:
 
 ```text
-Error: The project platform/apple/App.xcodeproj changed since its last generation from "project.yml", or was never generated from it, so it stays as it is. Move the changes made in Xcode into "project.yml" and run "haylen xcodegen .", which generates the project again.
+Error: The project platform/apple/App.xcodeproj changed since its last generation from "project.yml", or was never generated from it, so it stays as it is. Move the changes made in Xcode into "project.yml" and run "haylen platform xcodegen .", which generates the project again.
 ```
 
 The command `run` never generates a `project.yml` without the include, and [check](#check) reports what its targets lack.
@@ -907,7 +928,7 @@ haylen check ~/apps/my-game --platform linux --config Release
 | Platform | Release build |
 | --- | --- |
 | Windows, Linux | Writes the release of the profile `windows` or `linux` into `haylen/app/` of the project, and the bootstrap into `haylen/HaylenBootstrap.cpp`. The function `haylen_app` compiles it into the executable that links the SDK of the desktop artifacts, with hidden symbols. Linux links it with `--gc-sections` and ships it stripped, with its symbols in a `.debug` file next to the build, which the executable names in its debug link. Windows links it with `/DEBUG /OPT:REF /OPT:ICF`, so the PDB of its public symbols stays next to the build. The project installs the release in `app/` next to the executable, and neither symbol file. |
-| Android | Writes the release of the profile `android` into `haylen/assets/app/` of the Android project, a flat folder that Android lists without an index and whose shards the template keeps uncompressed in the APK. It links the library of the app, `libhaylen-app.so`, for every ABI from the SDK of the Android artifacts with the bootstrap. The library exports only the entry points of Java and GameActivity and ships stripped. Its symbols stay in `libhaylen-app.so.debug` of `build/apps/<app>-<hash>/release-library/build-<abi>/` for crash reports. The key `library` of `haylen/haylen.properties` names it, so the activity loads it and the Lua player of the `haylen` library stays out of the APK. The release build signs with the upload key of the app, which `android-key` creates, and the template shrinks the code and the resources of the APK with R8. |
+| Android | Writes the release of the profile `android` into `haylen/assets/app/` of the Android project, a flat folder that Android lists without an index and whose shards the template keeps uncompressed in the APK. It links the library of the app, `libhaylen-app.so`, for every ABI from the SDK of the Android artifacts with the bootstrap. The library exports only the entry points of Java and GameActivity and ships stripped. Its symbols stay in `libhaylen-app.so.debug` of `build/apps/<app>-<hash>/release-library/build-<abi>/` for crash reports. The key `library` of `haylen/haylen.properties` names it, so the activity loads it and the Lua player of the `haylen` library stays out of the APK. The release build signs with the upload key of the app, which `distribution android-key` creates, and the template shrinks the code and the resources of the APK with R8. |
 | Web | Places the whole release of the profile `web` in `app/` of the site, where the shards of the content stay and stream by range. It links the runtime of the app with Emscripten, from the web SDK of the artifacts with the bootstrap, in `build/apps/<app>-<hash>/release-web/`. The site holds no `app.zip`, and `config.json` names the manifests and the shards of the app domain, which the page downloads before the app starts. The symbol map of the runtime, `haylen.js.symbols`, stays in its build folder for crash reports and never reaches the site. Every other script of the site goes through the terser of the pinned Emscripten: the classic scripts of the page and its workers keep their top-level names, and the web modules of the plugins minify as modules. |
 | macOS, Mac Catalyst, iOS, tvOS, visionOS | Writes the release of the profile `apple` into `haylen/app/` of the Apple project, which the bundle carries as `Resources/app`, and on macOS as `Contents/Resources/app`. It writes the bootstrap into `haylen/HaylenBootstrap.cpp`, which the targets compile into the app that links `Haylen.xcframework`. Every target of the project shares the release. The generated `Haylen.xcconfig` makes the Release configuration keep the debug information in a `.dSYM` next to the app, and strip the app as it builds, so the release that runs is the one that ships. `App.xcconfig` may override each setting. The engine and its dependencies compile with hidden symbols on Apple platforms, so the app exports only the symbols of its own code. |
 

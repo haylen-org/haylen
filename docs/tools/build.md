@@ -16,32 +16,29 @@ The option `--version` prints `Haylen` and the version that `engine/VERSION` hol
 
 | Command | What it does | Guide |
 | --- | --- | --- |
-| `tools` | Downloads the pinned build tools. | [tools](#tools) |
-| `configure` | Generates a build tree of the engine. | [configure](#configure) |
-| `build` | Configures the engine when needed and builds it. | [build](#build) |
-| `bench` | Builds and runs a benchmark of the engine. | [bench](#bench) |
-| `clean` | Removes every build tree, the engine artifacts and the build folders of apps. | [clean](#clean) |
-| `test` | Builds and runs the engine tests, or the wake lock and memory checks of the web. | [Testing](testing.md#running-the-tests) |
-| `coverage` | Measures the code coverage of the engine. | [Testing](testing.md#coverage) |
-| `fuzz` | Runs the fuzzers of the parsers that read untrusted bytes. | [Testing](testing.md#fuzzing) |
-| `format` | Formats the C, C++ and Objective-C sources. | [Testing](testing.md#formatting) |
-| `sdk` | Builds and installs the engine SDK, and checks that other projects consume the engine. | [Embedding](embedding.md#the-sdk-command) |
-| `engine` | Builds the prebuilt engine artifacts that apps use. | [Distribution](distribution.md#engine) |
 | `new` | Creates an app. | [Distribution](distribution.md#new) |
-| `run` | Runs an app in the desktop player, or builds and launches it for a platform. | [Distribution](distribution.md#run) |
-| `run-cpp` | Builds and runs a C++ app project. | [Distribution](distribution.md#run-cpp) |
+| `run` | Runs a Lua app in the desktop player, builds and launches an app for a platform, or builds and runs a C++ app. | [Distribution](distribution.md#run) |
+| `devices` | Lists the simulators, emulators and devices of every platform, with the identifiers of `--device`. | [Distribution](distribution.md#devices) |
 | `prepare` | Writes the generated folder of the project of a platform. | [Distribution](distribution.md#prepare) |
-| `xcodegen` | Generates the `App.xcodeproj` of an app or of the Apple template again. | [Distribution](distribution.md#xcodegen) |
 | `check` | Checks a built app against what the engine and its plugins need. | [Distribution](distribution.md#check) |
-| `platform` | Creates the project of a platform in an app, or compares it with the template. | [Distribution](distribution.md#platform) |
+| `platform` | Creates the project of a platform in an app, compares it with the template, or generates the `App.xcodeproj` of an app or of the Apple template again. | [Distribution](distribution.md#platform) |
 | `plugin` | Adds, removes, lists or creates plugins. | [Distribution](distribution.md#plugin) |
 | `package` | Zips the package of an app. | [Distribution](distribution.md#package) |
 | `shaders` | Compiles the shaders of an app. | [Distribution](distribution.md#shaders) |
 | `serve` | Serves a folder with the headers that WebAssembly pages need. | [Distribution](distribution.md#serve) |
-| `android-key` | Creates the signing key of the Android project of an app. | [Distribution](distribution.md#android-key) |
-| `dist` | Builds the installer of a Windows app, or the packages of a Linux app. | [Distribution](distribution.md#dist) |
-| `steam` | Builds a desktop release and stages its Steam depots. | [Distribution](distribution.md#steam) |
 | `content` | Builds, checks and publishes the protected releases of an app, and manages its keys. | [Content](../content/content.md#the-content-tool) |
+| `distribution` | Builds the installers of a desktop app, stages its Steam depots, or creates the signing key of its Android project. | [Distribution](distribution.md#distribution) |
+| `engine` | Builds the prebuilt engine artifacts that apps use. | [Distribution](distribution.md#engine) |
+| `tools` | Downloads the pinned build tools. | [tools](#tools) |
+| `configure` | Generates a build tree of the engine. | [configure](#configure) |
+| `build` | Configures the engine when needed and builds it. | [build](#build) |
+| `test` | Builds and runs the engine tests, or the wake lock and memory checks of the web. | [Testing](testing.md#running-the-tests) |
+| `bench` | Builds and runs a benchmark of the engine. | [bench](#bench) |
+| `fuzz` | Runs the fuzzers of the parsers that read untrusted bytes. | [Testing](testing.md#fuzzing) |
+| `coverage` | Measures the code coverage of the engine. | [Testing](testing.md#coverage) |
+| `format` | Formats the C, C++ and Objective-C sources. | [Testing](testing.md#formatting) |
+| `sdk` | Builds and installs the engine SDK, and checks that other projects consume the engine. | [Embedding](embedding.md#the-sdk-command) |
+| `clean` | Removes every build tree, the engine artifacts and the build folders of apps. | [clean](#clean) |
 
 ### What the commands print
 
@@ -93,8 +90,8 @@ The script downloads, or builds, the other tools the first time a command needs 
 | Gradle | 9.8.1 | `.tools/gradle-9.8.1` | The Android libraries and Android apps. |
 | XcodeGen | 2.46.0 | `.tools/xcodegen-2.46.0` | Apple apps whose `App.xcodeproj` haylen.py generates again. macOS only. |
 | bundletool | 1.18.3 | `.tools/bundletool-1.18.3.jar` | Release runs on Android of apps whose packs Google Play delivers, which install in the local testing mode of Google Play. |
-| Inno Setup | 7.1.0 | `.tools/inno-setup-7.1.0` | The Windows installer of [`dist`](distribution.md#dist), installed in portable mode, without an uninstaller or entries in the registry. Windows only. |
-| appimagetool, the AppImage runtime and patchelf | 1.9.1, 20251108 and 0.19.2 | `.tools/appimage-1.9.1` | The AppImage of [`dist`](distribution.md#dist). Linux only. |
+| Inno Setup | 7.1.0 | `.tools/inno-setup-7.1.0` | The Windows installer of [`distribution installer`](distribution.md#distribution-installer), installed in portable mode, without an uninstaller or entries in the registry. Windows only. |
+| appimagetool, the AppImage runtime and patchelf | 1.9.1, 20251108 and 0.19.2 | `.tools/appimage-1.9.1` | The AppImage of [`distribution installer`](distribution.md#distribution-installer). Linux only. |
 
 Emscripten comes from its repository through `git`. An SDK of another version fetches the newest list of releases and installs the pinned one. Every web build tree records the version of Emscripten that configured it. A tree of another version builds again from nothing, because Emscripten keeps no binary compatibility between versions.
 
@@ -134,7 +131,7 @@ CMake cannot change the generator of a tree, so run `clean` before you switch to
 | --- | --- |
 | `build/engine/` | The build trees of the [engine artifacts](distribution.md#engine-artifacts), whose results go to `build/artifacts/`. |
 | `build/apps/<app>-<hash>/` | Everything that haylen.py builds for an app, as [platform projects](distribution.md#platform-projects) explain. |
-| `build/cpp/<project>-<hash>/` | The build trees of the C++ app projects of [`run-cpp`](distribution.md#run-cpp). |
+| `build/cpp/<project>-<hash>/` | The build trees of the C++ app projects of [`run`](distribution.md#running-a-c-app). |
 | `build/sdk/`, `build/sdk-build-<platform>-<config>/`, `build/consumers/` | The SDK, its build tree and the projects that [`sdk --check-consumers`](embedding.md#checking-the-three-ways) builds. |
 | `build/coverage/`, `build/fuzz/`, `build/tests/` | The trees of [coverage](testing.md#coverage), [fuzzing](testing.md#fuzzing) and the [memory check of the web](testing.md#the-memory-check-of-the-web). |
 | `build/logs/` | The log of each command. |
@@ -193,7 +190,7 @@ haylen build --target haylen-headless
 
 Configures the tree when needed and runs `cmake --build`. Without `--target` it builds everything the tree defines. That is the engine, the `haylen` player on desktop, web and Android, and on desktop also the headless player, the content tool, the tests and the benchmarks. Useful targets are `haylen`, `haylen-headless`, `haylen-tests`, `haylen-native-test` and `haylen-sprite-benchmark`.
 
-Apps are not part of this workspace. The command `run` runs Lua apps from their folders, and `run-cpp` builds C++ app projects, as the [distribution guide](distribution.md) describes.
+Apps are not part of this workspace. The command `run` runs Lua apps from their folders, and `run` builds C++ app projects, as the [distribution guide](distribution.md) describes.
 
 ### bench
 
@@ -407,7 +404,7 @@ The command `haylen engine --platform desktop` builds the player for apps, as th
 
 Web builds run on one thread, like Varn. So they need no `SharedArrayBuffer` and no cross-origin isolation. The command `serve` sends an opener policy only when `--coop` asks for one, as [serve](distribution.md#serve) explains.
 
-Audio reaches the browser through an `AudioWorkletNode`, which the page feeds over its message port, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. Browsers offer `AudioWorklet` only to pages served over https or from localhost. The commands `serve`, `run --platform web` and `run-cpp --platform web` serve on `127.0.0.1` by default, so their pages play sound. Apps run on any other page too, without sound, as the [audio guide](../audio/audio.md#without-an-audio-output) explains.
+Audio reaches the browser through an `AudioWorkletNode`, which the page feeds over its message port, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. Browsers offer `AudioWorklet` only to pages served over https or from localhost. The commands `serve`, `run --platform web` and `run --platform web` serve on `127.0.0.1` by default, so their pages play sound. Apps run on any other page too, without sound, as the [audio guide](../audio/audio.md#without-an-audio-output) explains.
 
 The link options come from `haylen_link_runtime_platform`:
 
@@ -425,7 +422,7 @@ A web target produces `<target>.html`, `<target>.js`, `<target>.wasm` and, for a
 - `haylen-logo.svg`, the engine logo, which the default shell shows as the icon of the page.
 - `haylen-audio-worklet.js`, the AudioWorklet processor of the audio output. The runtime loads it from the folder of its script through `locateFile`.
 
-The prebuilt player of `haylen engine --platform web` is the `haylen` target of the `web` tree, whose page is the [web loader](distribution.md#web-loader). The command `run-cpp --platform web` builds a C++ app target and writes this layout:
+The prebuilt player of `haylen engine --platform web` is the `haylen` target of the `web` tree, whose page is the [web loader](distribution.md#web-loader). The command `run --platform web` builds a C++ app target and writes this layout:
 
 ```text
 build/cpp/embedding-<hash>/web/
@@ -438,7 +435,7 @@ build/cpp/embedding-<hash>/web/
 
 The runtime draws through WebGPU, or through WebGL2 where WebGPU does not start. The runtime loader loads the web parts of the plugins and then `<target>.js`. The default shell reads two parameters of the address: `?graphicsApi=webGpu` or `?graphicsApi=webGl2` tries one of the two APIs first, by the names that `graphics.apiName()` gives them, and `?package=<url>` downloads a zipped package.
 
-The page is the own shell of the target, so everything that a custom `WEB_SHELL` adds works in the bundle too, such as the page handlers of the [platform bridge](../platform/platform-bridge.md#web). So do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. The command `run-cpp` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
+The page is the own shell of the target, so everything that a custom `WEB_SHELL` adds works in the bundle too, such as the page handlers of the [platform bridge](../platform/platform-bridge.md#web). So do the handlers of a script that the target links with `--pre-js`, such as `platform/web/app.js` of the C++ template. The command `run` fails when the shell has no `{{{ SCRIPT }}}` placeholder.
 
 ### Page setup
 
@@ -458,7 +455,7 @@ A page defines `Module` before it loads the runtime script. The file `templates/
 
 None of the package fields turns on development mode. Only a page that sets `Module.haylen.development` runs in development. The template loader sets it only for the `development` entry of `config.json` that `run --platform web` writes.
 
-A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Emscripten inserts the runtime script there, and `run-cpp` inserts the runtime loader. Before the app starts, the runtime mounts IndexedDB at `/persistent` for user data and loads it. It also reads what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
+A custom shell passed as `WEB_SHELL` keeps the `{{{ SCRIPT }}}` placeholder. Emscripten inserts the runtime script there, and `run` inserts the runtime loader. Before the app starts, the runtime mounts IndexedDB at `/persistent` for user data and loads it. It also reads what the browser tells about the device through `navigator.userAgentData` and the Battery Status API, which answer asynchronously.
 
 ### Runtime API
 
@@ -521,7 +518,7 @@ The command `haylen build --platform android` builds the engine and the player l
 - The folder `engine/platform/android` is the Gradle project of the Android libraries of Haylen, which [the Android libraries](distribution.md#the-android-libraries) describe. The command `haylen engine --platform android` builds and publishes them.
 - The folder `templates/common/platform/android` is the Gradle project of an app, without C++, which [the Android template](distribution.md#android) describes. The command `run --platform android` builds it, as [the Android project](distribution.md#the-android-project) describes.
 
-Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file, as in any Android project. R8 minifies the release builds of apps, and the upload key of the app signs them, which [`android-key`](distribution.md#android-key) creates.
+Gradle finds the Android SDK through `ANDROID_HOME` or a `local.properties` file, as in any Android project. R8 minifies the release builds of apps, and the upload key of the app signs them, which [`distribution android-key`](distribution.md#distribution-android-key) creates.
 
 ## iOS, tvOS and Mac Catalyst
 

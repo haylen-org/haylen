@@ -48,13 +48,13 @@ haylen prepare ~/apps/my-game --platform ios --config Release
 haylen run ~/apps/my-game --platform ios-simulator --config Release
 
 # Android: creates the upload key once, then builds, inspects and installs the release APK.
-haylen android-key ~/apps/my-game
+haylen distribution android-key ~/apps/my-game
 haylen run ~/apps/my-game --platform android --config Release
 # Android: writes the release and the library of the app into the Android project, whose Gradle builds the App Bundle for Google Play.
 haylen prepare ~/apps/my-game --platform android --config Release
 
 # Steam: builds the release on a machine of the platform and stages its depots for SteamPipe.
-haylen steam ~/apps/my-game --platform windows --app-id 1000 --depot windows=1001
+haylen distribution steam ~/apps/my-game --platform windows --app-id 1000 --depot windows=1001
 
 # Web: makes the site in build/apps/my-game-<hash>/web/, or serves it on this machine with byte ranges.
 haylen prepare ~/apps/my-game --platform web --config Release
@@ -68,7 +68,7 @@ For each of them the engine does the same steps:
 3. It writes the bootstrap that seals the keys of the app into its binary.
 4. It places the release where the runtime of the platform reads it.
 
-The commands `run` and `steam` also inspect the built app for anything that a release never holds. [Platforms and stores](#platforms-and-stores) shows what each of them contains.
+The commands `run` and `distribution steam` also inspect the built app for anything that a release never holds. [Platforms and stores](#platforms-and-stores) shows what each of them contains.
 
 ## Autoload, preload, delivery and cache
 
@@ -441,12 +441,12 @@ MyGame.app/Extensions/Downloads.appex   The downloader extension of the plugin.
 ### Google Play
 
 ```sh
-haylen android-key ~/apps/my-game
+haylen distribution android-key ~/apps/my-game
 haylen run ~/apps/my-game --platform android --config Release
 haylen prepare ~/apps/my-game --platform android --config Release
 ```
 
-The command `run` builds, inspects and installs the release APK, signed with the upload key that `android-key` created. The command `prepare` writes the release of the `android` profile into `haylen/assets/app/` and the library of the app into `haylen/jniLibs/`. Then the Gradle project of the app builds the App Bundle for Google Play, such as with its `bundleRelease` task or the signed bundle of Android Studio.
+The command `run` builds, inspects and installs the release APK, signed with the upload key that `distribution android-key` created. The command `prepare` writes the release of the `android` profile into `haylen/assets/app/` and the library of the app into `haylen/jniLibs/`. Then the Gradle project of the app builds the App Bundle for Google Play, such as with its `bundleRelease` task or the signed bundle of Android Studio.
 
 ```text
 assets/app/app.hmanifest       The signed manifest of the app domain.
@@ -469,7 +469,7 @@ The manifests and the shards of the app domain, the code of the app, always stay
 ### Steam
 
 ```sh
-haylen steam ~/apps/my-game --platform windows --app-id 1000 --depot windows=1001 --depot forest=1002 --branch beta
+haylen distribution steam ~/apps/my-game --platform windows --app-id 1000 --depot windows=1001 --depot forest=1002 --branch beta
 steamcmd +login <account> +run_app_build build/apps/my-game-1a2b3c4d/steam/scripts/app_build.vdf +quit
 ```
 

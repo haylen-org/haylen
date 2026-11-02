@@ -327,6 +327,9 @@ class Terminal:
     def command(self, parts: list[str]) -> None:
         print(Terminal.paint(f"$ {Terminal.command_line(parts)}", self.stdout_color, Terminal.COMMAND), file=self.stdout, flush=True)
 
+    def heading(self, text: str) -> None:
+        print(Terminal.paint(text, self.stdout_color, Terminal.EMPHASIS), file=self.stdout, flush=True)
+
     def info(self, message: str) -> None:
         print(Terminal.render(message, self.stdout_color), file=self.stdout, flush=True)
 
@@ -602,12 +605,19 @@ def configure_web_tree(command: list, directory: Path, env: dict[str, str] | Non
     (directory / EMSCRIPTEN_MARKER).write_text(EMSDK_VERSION, encoding="utf-8")
 
 
-def android_sdk() -> Path:
+def find_android_sdk() -> Path | None:
     for variable in ("ANDROID_HOME", "ANDROID_SDK_ROOT"):
         value = os.environ.get(variable)
         if value and Path(value).exists():
             return Path(value)
-    raise BuildError('The Android SDK was not found. Set "ANDROID_HOME" to its folder.')
+    return None
+
+
+def android_sdk() -> Path:
+    found = find_android_sdk()
+    if found is None:
+        raise BuildError('The Android SDK was not found. Set "ANDROID_HOME" to its folder.')
+    return found
 
 
 def android_ndk() -> Path:
@@ -1333,7 +1343,7 @@ def command_test_gpu_apple_device(args: argparse.Namespace) -> None:
     """Builds the GPU tests as a signed app for an iOS or tvOS device and runs it there through devicectl, on Metal or on the API that "--graphics-api" names, copies its results and the images of the scenes that differ into the tree and uninstalls it."""
     require_host("apple")
     if not args.device:
-        raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
+        raise BuildError(f'Name the device with "--device". {DEVICES_HINT}')
     api = args.graphics_api
     directory = BUILD_ROOT / f"{args.platform}-gpu-tests-{args.config.lower()}"
     if not is_configured(directory):
@@ -1910,7 +1920,7 @@ def resolve_lua_app(value: str | None) -> Path:
     """Returns the folder of a Lua app, the kind of app that the commands of the platform projects build, and stops with the command of C++ apps for the folder of a C++ app."""
     folder = resolve_app(value)
     if app_kind(folder) == "cpp":
-        raise BuildError(f'The app `{shown_path(folder)}` is a C++ app, whose CMake project builds it for every platform. Run it with "{TOOL} run-cpp {shown_path(folder)}".')
+        raise BuildError(f'The app `{shown_path(folder)}` is a C++ app, whose CMake project builds it for every platform. Run it with "{TOOL} run {shown_path(folder)}".')
     return folder
 
 
@@ -3083,7 +3093,7 @@ def write_apple_plists(app: App, root: Path, generated: Path) -> None:
     for template, (folder, platforms, _) in APPLE_TEMPLATES.items():
         own = root / folder / "Info.plist"
         if not own.is_file():
-            raise BuildError(f'The Apple project `{shown_path(root)}` has no `{shown_path(own)}`, which the target template "{template}" completes into the "Info.plist" of its targets. Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} --template apple" shows.')
+            raise BuildError(f'The Apple project `{shown_path(root)}` has no `{shown_path(own)}`, which the target template "{template}" completes into the "Info.plist" of its targets. Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} apple" shows.')
         owners: dict[str, str] = {}
         generated_keys = apple_plugin_keys(app, platforms, "infoPlist", fills[folder], owners, '"Info.plist"')
         completed = complete_keys(read_plist(own), generated_keys, owners, shown_path(own), warnings)
@@ -3477,7 +3487,7 @@ def generate_apple_project(app: App, root: Path, forced: bool) -> None:
         # A project that someone generated from the same inputs, such as the one a fresh clone of a repository holds, only needs its record.
         if action == "compare":
             if trial_apple_project(root) != current:
-                raise BuildError(f'The project `{shown_path(root / "App.xcodeproj")}` changed since its last generation from "project.yml", or was never generated from it, so it stays as it is. Move the changes made in Xcode into "project.yml" and run "{TOOL} xcodegen {shown_path(app.folder)}", which generates the project again.')
+                raise BuildError(f'The project `{shown_path(root / "App.xcodeproj")}` changed since its last generation from "project.yml", or was never generated from it, so it stays as it is. Move the changes made in Xcode into "project.yml" and run "{TOOL} platform xcodegen {shown_path(app.folder)}", which generates the project again.')
             write_state(root, {**state, "xcodegen": {"inputs": inputs, "project": current}})
             return
 
@@ -3493,7 +3503,7 @@ def apple_simulator(family: str, requested: str | None) -> dict:
     if requested:
         matches = [device for device in candidates if requested in (device["udid"], device["name"])]
         if not matches:
-            raise BuildError(f'No available {family} simulator is named "{requested}". Use the command "xcrun simctl list devices available" to list them.')
+            raise BuildError(f'No available {family} simulator has the name or identifier "{requested}". {DEVICES_HINT}')
         return matches[0]
     if not candidates:
         raise BuildError(f'No {family} simulator is installed. Install the runtime with "xcodebuild -downloadPlatform {SIMULATOR_DOWNLOAD_PLATFORMS[family]}".')
@@ -3563,7 +3573,7 @@ def launch_apple(bundle: Path, args: argparse.Namespace, simulator: dict | None,
             run(["xcrun", "simctl", "launch", "--console-pty", "--terminate-running-process", udid, identifier, *arguments], stream=True)
     else:
         if not args.device:
-            raise BuildError('Name the device with "--device". Use the command "xcrun devicectl list devices" to list them.')
+            raise BuildError(f'Name the device with "--device". {DEVICES_HINT}')
         terminal.step(f'Launching "{identifier}" on the device "{args.device}"')
         run(["xcrun", "devicectl", "device", "install", "app", "--device", args.device, bundle])
         run(["xcrun", "devicectl", "device", "process", "launch", "--console", "--device", args.device, identifier, *arguments], stream=True)
@@ -3922,10 +3932,10 @@ def android_device(requested: str | None) -> str:
     devices = [line.split()[0] for line in capture([adb(), "devices"]).splitlines()[1:] if line.strip().endswith("device")]
     if requested:
         if requested not in devices:
-            raise BuildError(f'The device "{requested}" is not a connected Android device. Use the command "adb devices" to list them.')
+            raise BuildError(f'The device "{requested}" is not a connected Android device. {DEVICES_HINT}')
         return requested
     if len(devices) != 1:
-        raise BuildError('Name the Android device with "--device", because ' + ("none is connected." if not devices else f"{len(devices)} are connected: {quoted_names(devices)}."))
+        raise BuildError('Name the Android device with "--device", because ' + ("none is connected." if not devices else f"{len(devices)} are connected: {quoted_names(devices)}.") + f" {DEVICES_HINT}")
     return devices[0]
 
 
@@ -3971,7 +3981,7 @@ def android_release_key(root: Path) -> dict[str, str]:
             gradle.update(read_java_properties(file.read_text(encoding="latin-1")))
     given = {name: gradle.get(f"haylen.release.{name}") or os.environ.get(f"HAYLEN_RELEASE_{suffix}") for name, suffix in ANDROID_KEY_VARIABLES.items()}
     if not all(given.values()):
-        raise BuildError(f'The release build needs the upload key of the app. Create it with "{TOOL} android-key" and the app folder, or give the Gradle properties {quoted_names([f"haylen.release.{name}" for name in ANDROID_KEY_VARIABLES])} or the environment variables {quoted_names([f"HAYLEN_RELEASE_{suffix}" for suffix in ANDROID_KEY_VARIABLES.values()])}.')
+        raise BuildError(f'The release build needs the upload key of the app. Create it with "{TOOL} distribution android-key" and the app folder, or give the Gradle properties {quoted_names([f"haylen.release.{name}" for name in ANDROID_KEY_VARIABLES])} or the environment variables {quoted_names([f"HAYLEN_RELEASE_{suffix}" for suffix in ANDROID_KEY_VARIABLES.values()])}.')
     return {**given, "storeFile": str(root / given["storeFile"])}
 
 
@@ -4614,7 +4624,7 @@ def write_linux_entries(app: App, root: Path, generated: Path) -> None:
     metainfo = root / "resources" / "app.metainfo.xml"
     for path in (entry, metainfo):
         if not path.is_file():
-            raise BuildError(f'The Linux project `{shown_path(root)}` has no `{shown_path(path)}`, which haylen.py completes with the values of "app.json". Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} --template linux" shows.')
+            raise BuildError(f'The Linux project `{shown_path(root)}` has no `{shown_path(path)}`, which haylen.py completes with the values of "app.json". Restore it from the template, which "{TOOL} platform diff {shown_path(app.folder)} linux" shows.')
     keys = {"Name": app.name, "Comment": app.description, "Exec": app.executable, "Icon": app.identifier, "StartupWMClass": app.identifier}
     write_if_changed(generated / "app.desktop", complete_desktop_entry(entry.read_text(encoding="utf-8"), keys, shown_path(entry), warnings))
     write_if_changed(generated / "app.metainfo.xml", complete_metainfo(metainfo.read_text(encoding="utf-8"), appstream_elements(app), shown_path(metainfo), warnings))
@@ -4795,7 +4805,7 @@ def ensure_inno_setup() -> Path:
     return target
 
 
-def command_dist(args: argparse.Namespace) -> None:
+def command_distribution_installer(args: argparse.Namespace) -> None:
     """Builds the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the `.deb` and the AppImage of Linux, which the CPack configuration of the project describes."""
     app = resolve_lua_app(args.app)
     compile_app_shaders(app)
@@ -4832,6 +4842,115 @@ def folder_entries(folder: Path) -> list[tuple[str, int, Callable[[], bytes]]]:
     return [(path.relative_to(folder).as_posix(), path.stat().st_size, path.read_bytes) for path in sorted(folder.rglob("*")) if path.is_file()]
 
 
+# Devices: what "run" launches apps on, which "devices" lists for "--device".
+
+# The run platform of each family of simulators and of each system of Apple devices.
+APPLE_SIMULATOR_PLATFORMS = {"iOS": "ios-simulator", "tvOS": "tvos-simulator", "xrOS": "visionos-simulator"}
+APPLE_DEVICE_PLATFORMS = {"iOS": "ios", "tvOS": "tvos", "visionOS": "visionos"}
+# The name that the system of each family of simulators goes by.
+APPLE_SIMULATOR_SYSTEMS = {"iOS": "iOS", "tvOS": "tvOS", "xrOS": "visionOS"}
+DEVICES_HINT = f'Use the command "{TOOL} devices" to list the simulators, emulators and devices of this machine.'
+
+
+@dataclasses.dataclass(frozen=True)
+class Device:
+    """A simulator, emulator, device or computer that "run" launches apps on: its name, the identifier that "--device" takes, the platforms of "--platform" that reach it, the system it runs and its kind with its state."""
+
+    name: str
+    identifier: str
+    platforms: str
+    system: str
+    kind: str
+
+
+def host_device() -> Device:
+    """This computer, which runs desktop apps and the player without a device."""
+    if host_name() == "macos":
+        return Device("This Mac", "", "macos, catalyst", f"macOS {host_platform.mac_ver()[0]}", "Desktop")
+    if host_name() == "windows":
+        return Device("This PC", "", "windows", f"Windows {host_platform.version()}", "Desktop")
+    return Device("This computer", "", "linux", host_platform.freedesktop_os_release().get("PRETTY_NAME", "Linux"), "Desktop")
+
+
+def apple_simulator_devices() -> list[Device]:
+    """Every available simulator of iOS, tvOS and visionOS, which "run" boots when it is shut down."""
+    found = []
+    for runtime, entries in json.loads(capture(["xcrun", "simctl", "list", "devices", "available", "--json"]))["devices"].items():
+        match = re.search(r"SimRuntime\.(\w+)-([\d-]+)$", runtime)
+        if match is None or match[1] not in APPLE_SIMULATOR_PLATFORMS:
+            continue
+        system = f"{APPLE_SIMULATOR_SYSTEMS[match[1]]} {match[2].replace('-', '.')}"
+        found += [Device(entry["name"], entry["udid"], APPLE_SIMULATOR_PLATFORMS[match[1]], system, "Simulator, booted" if entry["state"] == "Booted" else "Simulator") for entry in entries]
+    return found
+
+
+def apple_physical_devices() -> list[Device]:
+    """The iPhones, iPads, Apple TVs and Vision Pros paired with this Mac, as devicectl reports them in its JSON file."""
+    with tempfile.TemporaryDirectory() as folder:
+        output = Path(folder) / "devices.json"
+        capture(["xcrun", "devicectl", "list", "devices", "--quiet", "--omit-deprecated-fields-in-json", "--json-output", output])
+        devices = json.loads(output.read_text(encoding="utf-8"))["result"]["devices"]
+    found = []
+    for device in devices:
+        properties = device["properties"]
+        hardware = properties["hardware"]
+        if hardware.get("reality") != "physical" or hardware.get("platform") not in APPLE_DEVICE_PLATFORMS:
+            continue
+        state = properties.get("connection", {}).get("state")
+        system = f"{hardware['platform']} {properties['software']['osVersionNumber']['stringValue']}"
+        found.append(Device(properties["state"]["name"], hardware["udid"], APPLE_DEVICE_PLATFORMS[hardware["platform"]], system, f"Device, {state}" if state in ("connected", "unavailable") else "Device"))
+    return found
+
+
+def android_property(serial: str, name: str) -> str:
+    return capture([adb(), "-s", serial, "shell", "getprop", name]).strip()
+
+
+def android_connected_devices() -> list[Device]:
+    """The Android devices and emulators that adb reaches, with their model or virtual device and their version of Android."""
+    found = []
+    for line in capture([adb(), "devices"]).splitlines()[1:]:
+        if not line.strip():
+            continue
+        serial, state = line.split()[:2]
+        emulator = serial.startswith("emulator-")
+        kind = "Emulator" if emulator else "Device"
+        if state != "device":
+            found.append(Device(serial, serial, "android", "", f"{kind}, {state}"))
+            continue
+        name = capture([adb(), "-s", serial, "emu", "avd", "name"]).splitlines()[0].strip() if emulator else android_property(serial, "ro.product.model")
+        found.append(Device(name, serial, "android", f"Android {android_property(serial, 'ro.build.version.release')}", f"{kind}, running" if emulator else kind))
+    return found
+
+
+def machine_devices() -> tuple[list[Device], list[str]]:
+    """Every device of this machine for "devices", and the virtual devices of Android that no emulator runs, which an emulator starts first. A platform whose tools this machine lacks, such as the Android SDK, adds nothing."""
+    devices = [host_device()]
+    if host_name() == "macos":
+        devices += apple_simulator_devices()
+        devices += apple_physical_devices()
+    idle: list[str] = []
+    if find_android_sdk() is not None:
+        android = android_connected_devices()
+        devices += android
+        running = {device.name for device in android}
+        idle = [name for name in android_virtual_devices() if name not in running]
+    return devices, idle
+
+
+def command_devices(_: argparse.Namespace) -> None:
+    devices, idle = machine_devices()
+    rows = [("Name", "Identifier", "Platform", "System", "Kind"), *((device.name, device.identifier or "-", device.platforms, device.system or "-", device.kind) for device in devices)]
+    widths = [max(len(row[column]) for row in rows) for column in range(len(rows[0]))]
+    lines = ["  ".join(value.ljust(width) for value, width in zip(row, widths)).rstrip() for row in rows]
+    terminal.heading(lines[0])
+    for line in lines[1:]:
+        terminal.verbatim(line)
+    if idle:
+        terminal.info(f'The Android virtual devices {quoted_names(idle)} run once an emulator starts them, such as with "emulator -avd {idle[0]}".')
+    terminal.info(f'Run an app on one with "{TOOL} run <app> --platform <platform> --device <identifier>".')
+
+
 @dataclasses.dataclass(frozen=True)
 class RunTarget:
     """A platform that `haylen.py run` builds for: the platform template of its project, the engine artifacts it needs, the plugin platform whose parameters it checks, the function that prepares its project or site, the one that builds and launches it and the one that checks what the built app lacks."""
@@ -4862,7 +4981,10 @@ RUN_TARGETS = {
 
 
 def command_run(args: argparse.Namespace) -> None:
-    app = resolve_lua_app(args.app)
+    app = resolve_app(args.app)
+    if app_kind(app) == "cpp":
+        run_cpp_app(app, args)
+        return
     compile_app_shaders(app)
     if args.platform is None:
         # The player of this machine runs the package folder in development mode, which reloads edited files, while changed shaders compile again in the background.
@@ -4898,7 +5020,7 @@ def command_prepare(args: argparse.Namespace) -> None:
     terminal.success(f'Prepared `{shown_path(target.prepare(info, args))}` for "{args.platform}".')
 
 
-def command_xcodegen(args: argparse.Namespace) -> None:
+def command_platform_xcodegen(args: argparse.Namespace) -> None:
     """Writes `haylen/` of the Apple project of an app and generates its `App.xcodeproj` again from `project.yml` with the pinned XcodeGen, or generates the project of the Apple template again."""
     if args.template:
         generate_template_project(args)
@@ -4969,7 +5091,7 @@ def command_new(args: argparse.Namespace) -> None:
             section["width"], section["height"] = section["height"], section["width"]
     (folder / "app.json").write_text(json.dumps(document, indent=4) + "\n", encoding="utf-8")
     terminal.success(f'Created the {APP_KINDS[args.kind]} app "{name}" with the identifier "{identifier}" in `{shown_path(folder)}`.')
-    terminal.info(f'Run it with "{TOOL} {"run-cpp" if args.kind == "cpp" else "run"} {shown_path(folder)}".')
+    terminal.info(f'Run it with "{TOOL} run {shown_path(folder)}".')
 
 
 def command_platform_add(args: argparse.Namespace) -> None:
@@ -4978,7 +5100,7 @@ def command_platform_add(args: argparse.Namespace) -> None:
     kind = require_platform_template(app, args.template)
     destination = app / "platform" / args.template
     if destination.exists():
-        raise BuildError(f'The app already has the project `{shown_path(destination)}`. Compare it with the template with "{TOOL} platform diff {shown_path(app)} --template {args.template}".')
+        raise BuildError(f'The app already has the project `{shown_path(destination)}`. Compare it with the template with "{TOOL} platform diff {shown_path(app)} {args.template}".')
     copy_template(kind, args.template, destination)
     terminal.success(f'Created `{shown_path(destination)}` from the "{args.template}" template.')
 
@@ -5049,11 +5171,11 @@ def android_key_files(root: Path, kind: str) -> dict[str, Path]:
 def android_key_properties(kind: str, alias: str, password: str) -> str:
     """Writes the properties that the Gradle scripts of the template read to sign a build type with its key, with the keystore relative to them."""
     values = {"storeFile": f"{kind}.jks", "storePassword": password, "keyAlias": alias, "keyPassword": password}
-    lines = [f'# Written by "haylen.py android-key". It holds the passwords of the {kind} key, so the folder stays out of the repository.']
+    lines = [f'# Written by "haylen.py distribution android-key". It holds the passwords of the {kind} key, so the folder stays out of the repository.']
     return "\n".join([*lines, *(f"{key}={java_property(value)}" for key, value in values.items())]) + "\n"
 
 
-def command_android_key(args: argparse.Namespace) -> None:
+def command_distribution_android_key(args: argparse.Namespace) -> None:
     """Creates the release upload key or the debug key of the Android project of an app with `keytool`, exports its certificate as PEM and writes the properties that the signing of the Gradle scripts reads. An app without an Android project gets one from the template first."""
     app = resolve_app(args.app)
     if not args.alias:
@@ -5361,13 +5483,12 @@ def cpp_engine_options() -> list[str]:
     return [f"-DHAYLEN_ENGINE_SOURCE={ENGINE_DIR.as_posix()}", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DCPM_SOURCE_CACHE={cpm_cache()}"]
 
 
-def command_run_cpp(args: argparse.Namespace) -> None:
-    """Builds a C++ app project, which compiles the engine through its own CMake, and runs it on this machine, in the browser, on an Apple simulator or device, on Mac Catalyst or on Android."""
-    if not args.project:
-        raise BuildError('The command needs the folder of a C++ app project, named after it, which is a CMake project that adds the engine and calls "haylen_add_app".')
-    project = Path(args.project).expanduser().resolve()
-    if not (project / "CMakeLists.txt").is_file():
-        raise BuildError(f'The path `{shown_path(project)}` is not a CMake project, because it holds no "CMakeLists.txt". Name the folder of a project that adds the engine and calls "haylen_add_app".')
+def run_cpp_app(project: Path, args: argparse.Namespace) -> None:
+    """Builds a C++ app, whose folder is the CMake project that compiles the engine, and runs it on this machine, in the browser, on an Apple simulator or device, on Mac Catalyst or on Android."""
+    if args.platform is None:
+        args.platform = host_name()
+    if args.platform not in CPP_RUN_PLATFORMS:
+        raise BuildError(f'A C++ app runs on {quoted_names(CPP_RUN_PLATFORMS)}, since its CMake project builds the app itself, and not on "{args.platform}".')
     target = args.target
     folder = CPP_BUILDS_DIR / build_folder_name(project)
 
@@ -5798,7 +5919,7 @@ def write_steam_scripts(output: Path, app_id: str, description: str, depots: dic
         (scripts / f"depot_build_{depot}.vdf").write_text(f'"DepotBuild"\n{{\n\t"DepotID" "{depot}"\n\t"ContentRoot" "../content/{name}/"\n\t"FileMapping"\n\t{{\n\t\t"LocalPath" "*"\n\t\t"DepotPath" "."\n\t\t"Recursive" "1"\n\t}}\n}}\n', encoding="utf-8")
 
 
-def command_steam(args: argparse.Namespace) -> None:
+def command_distribution_steam(args: argparse.Namespace) -> None:
     """Builds the release of an app for a desktop platform and lays it out for SteamPipe in `build/apps/<app>-<hash>/steam/`: the depot of the platform with the app and its protected release, a depot for every named pack whose shards install into `packs/` next to the executable or the bundle, and the build scripts of steamcmd. A C++ app builds with its CMake project for this machine."""
     folder = resolve_app(args.app)
     args.config = "Release"
@@ -5837,7 +5958,7 @@ def command_steam(args: argparse.Namespace) -> None:
 def stage_cpp_steam(project: Path, args: argparse.Namespace) -> None:
     """Builds the target of a C++ app project in Release for this machine and lays out its Steam depots like those of a Lua app: the folder of the executable, or the macOS bundle, and the shards of each pack in `packs/` next to it, as the release build of CMake staged them."""
     if args.platform != host_name():
-        raise BuildError(f'A C++ app builds its Steam depots on the platform they ship to, since its CMake project builds for this machine, so run "{TOOL} steam" with "--platform {host_name()}" here and on each other platform.')
+        raise BuildError(f'A C++ app builds its Steam depots on the platform they ship to, since its CMake project builds for this machine, so run "{TOOL} distribution steam" with "--platform {host_name()}" here and on each other platform.')
     directory = CPP_BUILDS_DIR / build_folder_name(project) / f"{host_name()}-release"
     executable = build_cpp_desktop(project, args.target, directory, args)
     app = cpp_release_app(directory, args.target)
@@ -6344,7 +6465,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
     if gpu_tests:
         parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
-        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default, or the name or id of the device of "--platform ios" or "tvos", which "xcrun devicectl list devices" lists.')
+        parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default, or the name or id of the device of "--platform ios" or "tvos", which "haylen devices" lists.')
         parser.add_argument("--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--platform ios-simulator" or "visionos-simulator", instead of the engine tests. The configuration is the one of the engine artifacts the app uses.')
         parser.add_argument("--port", action="store_true", help='Build the engine with the test port of "engine/tests/data/port", whose platform and GPU device come from outside the engine, and play its app on it, instead of the engine tests.')
     parser.add_argument("--xcode", action="store_true", help="Use the Xcode generator on macOS.")
@@ -6379,22 +6500,6 @@ def build_parser() -> argparse.ArgumentParser:
     common.add_argument("--verbose", action="store_true", default=argparse.SUPPRESS, help=verbose_help)
     commands = parser.add_subparsers(dest="command", required=True, metavar="command")
 
-    tools = commands.add_parser("tools", parents=[common], help="Download the pinned build tools.")
-    tools.add_argument("--emsdk", action="store_true", help=f"Install Emscripten {EMSDK_VERSION} into .tools.")
-    tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
-    tools.set_defaults(handler=command_tools)
-
-    for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, 'Build and run the engine tests on this machine, or with "--platform web" the memory check of the web in a headless browser. With "--gpu" it runs the GPU tests instead, which the web runs in a headless browser too.')):
-        sub = commands.add_parser(name, parents=[common], help=help_text)
-        add_build_options(sub, gpu_tests=name == "test")
-        sub.set_defaults(handler=handler)
-
-    engine = commands.add_parser("engine", parents=[common], help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
-    engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"], help='Platform of the artifacts, "all" by default.')
-    engine.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the artifacts, "Release" by default.')
-    add_jobs_option(engine)
-    engine.set_defaults(handler=command_engine)
-
     new = commands.add_parser("new", parents=[common], help="Create an app with the starter code and a project of every platform template, which the developer owns.")
     new.add_argument("folder", help="Folder of the new app, which must not exist or be empty.")
     new.add_argument("--name", help="Display name, from the folder name by default.")
@@ -6402,6 +6507,58 @@ def build_parser() -> argparse.ArgumentParser:
     new.add_argument("--orientation", default="landscape", choices=["landscape", "portrait", "any"], help='Orientation of the app, "landscape" by default.')
     new.add_argument("--kind", default="lua", choices=list(APP_KINDS), help='Kind of the app: "lua", whose code is Lua, or "cpp", a CMake project whose C++ code compiles the engine. "lua" by default.')
     new.set_defaults(handler=command_new)
+
+    run_app = commands.add_parser("run", parents=[common], help="Run an app: a Lua app in the player of this machine with hot reload, or built from its project for a platform, and a C++ app built from its CMake project.")
+    add_app_argument(run_app)
+    run_app.add_argument("--platform", choices=list(RUN_TARGETS), help=f'Build the project of the app for a platform. Without it the desktop player runs the folder of a Lua app in development mode, and a C++ app builds for this machine. A C++ app runs on {quoted_names(CPP_RUN_PLATFORMS)}.')
+    run_app.add_argument("--device", help=f'The identifier or name of the simulator or device, or the serial of the Android device, which "{TOOL} devices" lists.')
+    run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project of a platform builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
+    run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the engine: of the player that runs the app on this machine, or of the artifacts the project of a platform uses. "Release" by default, and "Debug" only to debug the engine itself, because it runs many times slower.')
+    run_app.add_argument("--target", default="main", help='The "haylen_add_app" target of a C++ app, "main" by default, as the C++ template names it.')
+    run_app.add_argument("--build-only", action="store_true", help="Build and check the app for a platform without launching it, such as in continuous integration, which needs no device.")
+    add_jobs_option(run_app)
+    add_previous_release_option(run_app)
+    add_web_server_options(run_app, 8000)
+    run_app.set_defaults(handler=command_run)
+
+    devices = commands.add_parser("devices", parents=[common], help="List the simulators, emulators and devices of every platform on this machine, with the identifier that \"--device\" takes.")
+    devices.set_defaults(handler=command_devices)
+
+    prepare = commands.add_parser("prepare", parents=[common], help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
+    add_app_argument(prepare)
+    prepare.add_argument("--platform", required=True, choices=list(RUN_TARGETS), help="The platform whose project to prepare.")
+    prepare.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
+    prepare.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
+    add_jobs_option(prepare)
+    add_previous_release_option(prepare)
+    prepare.set_defaults(handler=command_prepare)
+
+    check = commands.add_parser("check", parents=[common], help="Check the last build of an app for a platform against what the engine and its plugins need.")
+    add_app_argument(check)
+    check.add_argument("--platform", required=True, choices=[name for name, target in RUN_TARGETS.items() if target.check], help="The platform whose last build to check.")
+    check.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the build to check.")
+    check.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header that the server of the site sends, on the web.')
+    check.set_defaults(handler=command_check)
+
+    platform_project = commands.add_parser("platform", parents=[common], help="Create the project of a platform in an app, compare it with the template or generate the Apple project again.")
+    platform_actions = platform_project.add_subparsers(dest="action", required=True, metavar="action")
+    add_platform = platform_actions.add_parser("add", parents=[common], help='Create "platform/<template>" of an app from the template of the platform.')
+    add_app_argument(add_platform)
+    add_platform.add_argument("template", choices=platform_templates(), help="The platform template to copy.")
+    add_platform.set_defaults(handler=command_platform_add)
+    diff_platform = platform_actions.add_parser("diff", parents=[common], help='Show how "platform/<template>" of an app differs from the current template, without changing anything.')
+    add_app_argument(diff_platform)
+    diff_platform.add_argument("template", choices=platform_templates(), help="The platform template to compare with.")
+    diff_platform.set_defaults(handler=command_platform_diff)
+    xcodegen = platform_actions.add_parser("xcodegen", parents=[common], help='Write "haylen" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
+    xcodegen.add_argument("app", nargs="?", help='The app folder, relative to the current folder or absolute, which "--template" leaves out.')
+    xcodegen.add_argument("--platform", default="macos", choices=list(APPLE_RUNS), help="Apple platform whose native libraries the project gets.")
+    xcodegen.add_argument("--template", action="store_true", help='Generate the "App.xcodeproj" of the Apple template of the engine instead, after a change to its "project.yml".')
+    xcodegen.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
+    xcodegen.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
+    add_jobs_option(xcodegen)
+    add_previous_release_option(xcodegen)
+    xcodegen.set_defaults(handler=command_platform_xcodegen)
 
     plugin = commands.add_parser("plugin", parents=[common], help="Add plugins to an app, remove them, list them or create a plugin.")
     actions = plugin.add_subparsers(dest="action", required=True, metavar="action")
@@ -6423,79 +6580,20 @@ def build_parser() -> argparse.ArgumentParser:
     new_plugin.add_argument("--with", dest="features", action="append", default=[], metavar="features", help=f'Features that the plugin starts with in every native part, separated by commas or given one per "--with": {", ".join(plugin_feature_names())}.')
     new_plugin.set_defaults(handler=command_plugin_new)
 
-    platform_project = commands.add_parser("platform", parents=[common], help="Create the project of a platform in an app or compare it with the template.")
-    platform_actions = platform_project.add_subparsers(dest="action", required=True, metavar="action")
-    add_platform = platform_actions.add_parser("add", parents=[common], help='Create "platform/<template>" of an app from the template of the platform.')
-    add_app_argument(add_platform)
-    add_platform.add_argument("template", choices=platform_templates(), help="The platform template to copy.")
-    add_platform.set_defaults(handler=command_platform_add)
-    diff_platform = platform_actions.add_parser("diff", parents=[common], help='Show how "platform/<template>" of an app differs from the current template, without changing anything.')
-    add_app_argument(diff_platform)
-    diff_platform.add_argument("--template", required=True, choices=platform_templates(), help="The platform template to compare with.")
-    diff_platform.set_defaults(handler=command_platform_diff)
+    package = commands.add_parser("package", parents=[common], help='Zip the "app.json", "source" and "content" of an app.')
+    add_app_argument(package)
+    package.add_argument("-o", "--output", default="app.zip", help="Zip file to write, app.zip in the current folder by default.")
+    package.set_defaults(handler=command_package)
 
-    run_app = commands.add_parser("run", parents=[common], help="Run an app: in the player of this machine with hot reload, or built from its project for a platform.")
-    add_app_argument(run_app)
-    run_app.add_argument("--platform", choices=list(RUN_TARGETS), help="Build the project of the app for a platform. Without it the desktop player runs the app folder in development mode.")
-    run_app.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
-    run_app.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project of a platform builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
-    run_app.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the engine: of the player that runs the app on this machine, or of the artifacts the project of a platform uses. "Release" by default, and "Debug" only to debug the engine itself, because it runs many times slower.')
-    run_app.add_argument("--build-only", action="store_true", help="Build and check the app for a platform without launching it, such as in continuous integration, which needs no device.")
-    add_jobs_option(run_app)
-    add_previous_release_option(run_app)
-    add_web_server_options(run_app, 8000)
-    run_app.set_defaults(handler=command_run)
+    shaders = commands.add_parser("shaders", parents=[common], help='Compile the shaders under "content/shaders" of an app into ".shader" files for every shader language of the engine.')
+    add_app_argument(shaders)
+    shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
+    shaders.set_defaults(handler=command_shaders)
 
-    prepare = commands.add_parser("prepare", parents=[common], help='Write the folder "haylen" of the project of a platform, or the site or folder of the app, and nothing else.')
-    add_app_argument(prepare)
-    prepare.add_argument("--platform", required=True, choices=list(RUN_TARGETS), help="The platform whose project to prepare.")
-    prepare.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
-    prepare.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
-    add_jobs_option(prepare)
-    add_previous_release_option(prepare)
-    prepare.set_defaults(handler=command_prepare)
-
-    xcodegen = commands.add_parser("xcodegen", parents=[common], help='Write "haylen" of the Apple project of an app and generate its "App.xcodeproj" again from "project.yml".')
-    xcodegen.add_argument("app", nargs="?", default=".", help="The app folder, the current folder by default.")
-    xcodegen.add_argument("--platform", default="macos", choices=list(APPLE_RUNS), help="Apple platform whose native libraries the project gets.")
-    xcodegen.add_argument("--template", action="store_true", help='Generate the "App.xcodeproj" of the Apple template of the engine instead, after a change to its "project.yml".')
-    xcodegen.add_argument("--config", default="Debug", choices=["Debug", "Release"], help='Configuration that the project builds: "Debug" with the package as it is, or "Release" with the protected release and the bootstrap of the app.')
-    xcodegen.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
-    add_jobs_option(xcodegen)
-    add_previous_release_option(xcodegen)
-    xcodegen.set_defaults(handler=command_xcodegen)
-
-    check = commands.add_parser("check", parents=[common], help="Check the last build of an app for a platform against what the engine and its plugins need.")
-    add_app_argument(check)
-    check.add_argument("--platform", required=True, choices=[name for name, target in RUN_TARGETS.items() if target.check], help="The platform whose last build to check.")
-    check.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the build to check.")
-    check.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header that the server of the site sends, on the web.')
-    check.set_defaults(handler=command_check)
-
-    android_key = commands.add_parser("android-key", parents=[common], help='Create the upload key of release builds, or the debug key, in "platform/android/keystore" of an app, with its certificate and the properties that sign its builds.')
-    add_app_argument(android_key)
-    kinds = android_key.add_mutually_exclusive_group()
-    kinds.add_argument("--release", dest="kind", action="store_const", const="release", help="Create the upload key that signs release builds, which is the default.")
-    kinds.add_argument("--debug", dest="kind", action="store_const", const="debug", help="Create a debug key of the project, which signs its debug builds instead of the debug key of the Android SDK.")
-    android_key.set_defaults(kind="release")
-    android_key.add_argument("--alias", default="upload", help='Alias of the key, "upload" by default.')
-    android_key.add_argument("--password", default="upload", help=f'Password of the keystore and the key, at least {ANDROID_KEY_PASSWORD_LENGTH} characters, "upload" by default.')
-    android_key.add_argument("--dname", default=ANDROID_KEY_NAME, help=f'Distinguished name of the certificate, "{ANDROID_KEY_NAME}" by default.')
-    android_key.add_argument("--force", action="store_true", help="Replace a key that the project already has.")
-    android_key.set_defaults(handler=command_android_key)
-
-    run_cpp = commands.add_parser("run-cpp", parents=[common], help="Build and run a C++ app project, which compiles the engine through CMake.")
-    run_cpp.add_argument("project", nargs="?", help='The folder of a CMake project that adds the engine and calls "haylen_add_app", relative to the current folder or absolute.')
-    run_cpp.add_argument("--platform", default=host_name(), choices=CPP_RUN_PLATFORMS, help="The platform to build and run on, this machine by default.")
-    run_cpp.add_argument("--target", default="main", help='The "haylen_add_app" target, "main" by default, as the C++ template names it.')
-    run_cpp.add_argument("--device", help="Simulator name or id, Apple device id or Android serial.")
-    run_cpp.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the project, "Debug" by default.')
-    run_cpp.add_argument("--engine-config", default="Release", choices=CONFIGS, help='Configuration of the "haylen" Android library whose Java classes Android apps use.')
-    run_cpp.add_argument("--build-only", action="store_true", help="Build and check the app without launching it, such as in continuous integration.")
-    add_jobs_option(run_cpp)
-    add_previous_release_option(run_cpp)
-    add_web_server_options(run_cpp, 8000)
-    run_cpp.set_defaults(handler=command_run_cpp)
+    serve_folder = commands.add_parser("serve", parents=[common], help="Serve a folder with the headers WebAssembly pages need.")
+    serve_folder.add_argument("directory", help="The folder of the web page.")
+    add_web_server_options(serve_folder, 8000)
+    serve_folder.set_defaults(handler=command_serve)
 
     content = commands.add_parser("content", parents=[common], help="Build, verify, inspect, compare, publish and compact the protected releases of an app, and show or rotate its keys.")
     content_actions = content.add_subparsers(dest="action", required=True, metavar="action")
@@ -6540,16 +6638,17 @@ def build_parser() -> argparse.ArgumentParser:
         action.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the content tool of the desktop artifacts.")
         add_jobs_option(action)
 
-    dist = commands.add_parser("dist", parents=[common], help='Build the packages that ship a Windows or Linux app in the Release configuration: the installer of Windows, or the ".deb" and the AppImage of Linux.')
-    add_app_argument(dist)
-    dist.add_argument("--platform", required=True, choices=["windows", "linux"], help="The platform whose packages to build, which is this machine.")
-    dist.add_argument("-o", "--output", help='Folder of the packages, "dist" in the app folder by default.')
-    dist.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
-    add_jobs_option(dist)
-    add_previous_release_option(dist)
-    dist.set_defaults(handler=command_dist)
-
-    steam = commands.add_parser("steam", parents=[common], help="Build the release of an app for a desktop platform and stage its depots and build scripts for SteamPipe.")
+    distribution = commands.add_parser("distribution", parents=[common], help="Build what ships an app: the installers of desktop apps, the depots of a store and the signing key of Android.")
+    distribution_actions = distribution.add_subparsers(dest="action", required=True, metavar="action")
+    installer = distribution_actions.add_parser("installer", parents=[common], help='Build the installer of a Windows app, or the ".deb" package and the AppImage of a Linux app, in the Release configuration.')
+    add_app_argument(installer)
+    installer.add_argument("--platform", required=True, choices=["windows", "linux"], help="The platform whose installers to build, which is this machine.")
+    installer.add_argument("-o", "--output", help='Folder of the installers, "dist" in the app folder by default.')
+    installer.add_argument("--engine-config", default="Release", choices=CONFIGS, help="Configuration of the engine artifacts the project uses.")
+    add_jobs_option(installer)
+    add_previous_release_option(installer)
+    installer.set_defaults(handler=command_distribution_installer)
+    steam = distribution_actions.add_parser("steam", parents=[common], help="Build the release of an app for a desktop platform and stage its depots and build scripts for SteamPipe.")
     add_app_argument(steam)
     steam.add_argument("--platform", required=True, choices=STEAM_PLATFORMS, help="The desktop platform of the depot of the app.")
     steam.add_argument("--app-id", required=True, help="The ID of the app on Steam.")
@@ -6561,22 +6660,41 @@ def build_parser() -> argparse.ArgumentParser:
     steam.add_argument("--device", help=argparse.SUPPRESS)
     add_jobs_option(steam)
     add_previous_release_option(steam)
-    steam.set_defaults(handler=command_steam)
+    steam.set_defaults(handler=command_distribution_steam)
+    android_key = distribution_actions.add_parser("android-key", parents=[common], help='Create the upload key of release builds, or the debug key, in "platform/android/keystore" of an app, with its certificate and the properties that sign its builds.')
+    add_app_argument(android_key)
+    kinds = android_key.add_mutually_exclusive_group()
+    kinds.add_argument("--release", dest="kind", action="store_const", const="release", help="Create the upload key that signs release builds, which is the default.")
+    kinds.add_argument("--debug", dest="kind", action="store_const", const="debug", help="Create a debug key of the project, which signs its debug builds instead of the debug key of the Android SDK.")
+    android_key.set_defaults(kind="release")
+    android_key.add_argument("--alias", default="upload", help='Alias of the key, "upload" by default.')
+    android_key.add_argument("--password", default="upload", help=f'Password of the keystore and the key, at least {ANDROID_KEY_PASSWORD_LENGTH} characters, "upload" by default.')
+    android_key.add_argument("--dname", default=ANDROID_KEY_NAME, help=f'Distinguished name of the certificate, "{ANDROID_KEY_NAME}" by default.')
+    android_key.add_argument("--force", action="store_true", help="Replace a key that the project already has.")
+    android_key.set_defaults(handler=command_distribution_android_key)
 
-    package = commands.add_parser("package", parents=[common], help='Zip the "app.json", "source" and "content" of an app.')
-    add_app_argument(package)
-    package.add_argument("-o", "--output", default="app.zip", help="Zip file to write, app.zip in the current folder by default.")
-    package.set_defaults(handler=command_package)
+    engine = commands.add_parser("engine", parents=[common], help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
+    engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"], help='Platform of the artifacts, "all" by default.')
+    engine.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the artifacts, "Release" by default.')
+    add_jobs_option(engine)
+    engine.set_defaults(handler=command_engine)
 
-    shaders = commands.add_parser("shaders", parents=[common], help='Compile the shaders under "content/shaders" of an app into ".shader" files for every shader language of the engine.')
-    add_app_argument(shaders)
-    shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
-    shaders.set_defaults(handler=command_shaders)
+    tools = commands.add_parser("tools", parents=[common], help="Download the pinned build tools.")
+    tools.add_argument("--emsdk", action="store_true", help=f"Install Emscripten {EMSDK_VERSION} into .tools.")
+    tools.add_argument("--gradle", action="store_true", help=f"Install Gradle {GRADLE_VERSION} into .tools.")
+    tools.set_defaults(handler=command_tools)
 
-    serve_folder = commands.add_parser("serve", parents=[common], help="Serve a folder with the headers WebAssembly pages need.")
-    serve_folder.add_argument("directory", help="The folder of the web page.")
-    add_web_server_options(serve_folder, 8000)
-    serve_folder.set_defaults(handler=command_serve)
+    for name, handler, help_text in (("configure", command_configure, "Generate a build tree of the engine."), ("build", command_build, "Configure the engine when needed and build it."), ("test", command_test, 'Build and run the engine tests on this machine, or with "--platform web" the memory check of the web in a headless browser. With "--gpu" it runs the GPU tests instead, which the web runs in a headless browser too.')):
+        sub = commands.add_parser(name, parents=[common], help=help_text)
+        add_build_options(sub, gpu_tests=name == "test")
+        sub.set_defaults(handler=handler)
+
+    bench = commands.add_parser("bench", parents=[common], help="Build and run a benchmark of the engine in Release on this machine.")
+    bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua sprite benchmark on the CPU.")
+    bench.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which a benchmark that draws draws through instead of the null device of the headless host or the first API of the window.')
+    bench.add_argument("--gpu", action="store_true", help="Run a benchmark that draws once on every graphics API that the build compiled, skipping the ones that cannot start on this machine.")
+    add_jobs_option(bench)
+    bench.set_defaults(handler=command_bench)
 
     fuzz = commands.add_parser("fuzz", parents=[common], help="Build the fuzzers of the parsers that read hostile bytes with a Clang that links libFuzzer, and run each for a while.")
     fuzz.add_argument("--seconds", type=int, default=60, help="How long each fuzzer runs, 60 seconds by default.")
@@ -6592,13 +6710,6 @@ def build_parser() -> argparse.ArgumentParser:
     formatter = commands.add_parser("format", parents=[common], help='Format the C, C++ and Objective-C sources with "clang-format".')
     formatter.add_argument("--check", action="store_true", help="Fail instead of rewriting files.")
     formatter.set_defaults(handler=command_format)
-
-    bench = commands.add_parser("bench", parents=[common], help="Build and run a benchmark of the engine in Release on this machine.")
-    bench.add_argument("--suite", default="sprites", choices=["sprites", "core", "algorithms", "procedural", "physics", "ui", "render", "particles", "content", "nodes", "animation", "lua"], help="The sprite benchmark on the GPU, the core, algorithm, procedural, physics, UI, render, particle, content, node or animation benchmark on the CPU or the Lua sprite benchmark on the CPU.")
-    bench.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which a benchmark that draws draws through instead of the null device of the headless host or the first API of the window.')
-    bench.add_argument("--gpu", action="store_true", help="Run a benchmark that draws once on every graphics API that the build compiled, skipping the ones that cannot start on this machine.")
-    add_jobs_option(bench)
-    bench.set_defaults(handler=command_bench)
 
     sdk = commands.add_parser("sdk", parents=[common], help='Build the engine SDK and install it for "find_package(haylen)", and check that other projects consume the engine.')
     sdk.add_argument("--platform", default=host_name(), choices=sorted(DESKTOP_PLATFORMS | {"web"}), help="Platform of the SDK, this machine by default.")

@@ -1135,7 +1135,7 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "ios-simulator-debug" / "bin" / "Debug-iphonesimulator" / "game.app").mkdir(parents=True)
         (self.scratch / "ios-simulator-debug" / "bin" / "game").mkdir(parents=True)
         (self.scratch / "ios-simulator-debug" / "bin" / "game" / "package.txt").write_text(str(self.scratch / "package"))
-        args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "ios-simulator"])
+        args = haylen.build_parser().parse_args(["run", "project", "--platform", "ios-simulator"])
         simulator = {"udid": "id", "name": "Phone", "state": "Booted"}
         with mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "run"), mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "App"), mock.patch.object(haylen, "write_cpp_apple_plugins", return_value=False), mock.patch.object(haylen, "apple_simulator", return_value=simulator), mock.patch.object(haylen, "launch_apple", autospec=True) as launch:
             haylen.run_cpp_apple(self.scratch / "project", "game", self.scratch, args)
@@ -1167,7 +1167,7 @@ class RunCppTest(unittest.TestCase):
         built = self.scratch / "android-arm64-v8a-debug" / "bin" / "game"
         built.mkdir(parents=True)
         (built / "package.txt").write_text(str(self.scratch / "package"))
-        args = haylen.build_parser().parse_args(["run-cpp", "project", "--platform", "android"])
+        args = haylen.build_parser().parse_args(["run", "project", "--platform", "android"])
         patches = [
             mock.patch.object(haylen, "android_device", return_value="emulator-5554"),
             mock.patch.object(haylen, "capture", return_value="arm64-v8a"),
@@ -1194,13 +1194,87 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "project" / "CMakeLists.txt").write_text("")
         executable = self.scratch / "app"
         for options, launched in (([], True), (["--build-only"], False)):
-            args = haylen.build_parser().parse_args(["run-cpp", str(self.scratch / "project"), *options])
+            args = haylen.build_parser().parse_args(["run", str(self.scratch / "project"), *options])
             with mock.patch.object(haylen, "run") as run, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
-                haylen.command_run_cpp(args)
+                haylen.run_cpp_app(self.scratch / "project", args)
             self.assertEqual([executable] in [call.args[0] for call in run.call_args_list], launched)
             self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
             self.assertIn("--target", run.call_args_list[1].args[0])
             self.assertEqual(run.call_args_list[1].args[0][run.call_args_list[1].args[0].index("--target") + 1], "main")
+
+
+    def test_run_builds_a_cpp_app_from_its_cmake_project_on_the_platforms_it_supports(self):
+        app = self.scratch / "game"
+        app.mkdir()
+        (app / "app.json").write_text("{}")
+        (app / "CMakeLists.txt").write_text("")
+        with mock.patch.object(haylen, "run_cpp_app") as built:
+            haylen.command_run(haylen.build_parser().parse_args(["run", str(app)]))
+        self.assertEqual(built.call_args.args[0], app.resolve())
+        with self.assertRaisesRegex(haylen.BuildError, 'A C\\+\\+ app runs on .* and not on "visionos-simulator".'):
+            haylen.run_cpp_app(app, haylen.build_parser().parse_args(["run", str(app), "--platform", "visionos-simulator"]))
+
+
+class DevicesTest(unittest.TestCase):
+    SIMULATORS = {"devices": {
+        "com.apple.CoreSimulator.SimRuntime.iOS-27-2": [{"name": "iPhone 17e", "udid": "PHONE", "state": "Booted"}],
+        "com.apple.CoreSimulator.SimRuntime.xrOS-27-0": [{"name": "Apple Vision Pro", "udid": "VISION", "state": "Shutdown"}],
+        "com.apple.CoreSimulator.SimRuntime.watchOS-27-0": [{"name": "Apple Watch", "udid": "WATCH", "state": "Shutdown"}],
+    }}
+    PHYSICAL = {"result": {"devices": [
+        {"properties": {"hardware": {"reality": "physical", "platform": "iOS", "udid": "00008110"}, "software": {"osVersionNumber": {"stringValue": "27.0.1"}}, "state": {"name": "Phone of Ana"}, "connection": {"state": "connected"}}},
+        {"properties": {"hardware": {"reality": "physical", "platform": "tvOS", "udid": "0766"}, "software": {"osVersionNumber": {"stringValue": "26.6"}}, "state": {"name": "Living Room"}, "connection": {"state": "unavailable"}}},
+        {"properties": {"hardware": {"reality": "simulated", "platform": "iOS", "udid": "PHONE"}, "software": {"osVersionNumber": {"stringValue": "27.2"}}, "state": {"name": "iPhone 17e"}, "connection": {"state": "disconnected"}}},
+    ]}}
+
+    def answer(self, command: list) -> str:
+        parts = [str(part) for part in command]
+        if parts[:3] == ["xcrun", "simctl", "list"]:
+            return json.dumps(self.SIMULATORS)
+        if parts[:2] == ["xcrun", "devicectl"]:
+            Path(parts[parts.index("--json-output") + 1]).write_text(json.dumps(self.PHYSICAL))
+            return ""
+        if parts[1:] == ["devices"]:
+            return "List of devices attached\nemulator-5554\tdevice\nR58M\tdevice\nZX1G\tunauthorized\n\n"
+        if parts[-3:] == ["emu", "avd", "name"]:
+            return "Pixel_10a\nOK\n"
+        if parts[-1] == "ro.product.model":
+            return "Pixel 9\n"
+        if parts[-1] == "ro.build.version.release":
+            return "16\n"
+        if parts[-1] == "-list-avds":
+            return "Pixel_10a\nTablet\n"
+        raise AssertionError(f"Unexpected command {parts}")
+
+    def test_every_platform_lists_its_devices_with_the_identifier_of_device(self):
+        with mock.patch.object(haylen, "capture", side_effect=self.answer), mock.patch.object(haylen, "host_name", return_value="macos"), mock.patch.object(haylen, "find_android_sdk", return_value=Path("sdk")):
+            devices, idle = haylen.machine_devices()
+        listed = [(device.name, device.identifier, device.platforms, device.system, device.kind) for device in devices[1:]]
+        self.assertEqual(devices[0].platforms, "macos, catalyst")
+        self.assertEqual(listed, [
+            ("iPhone 17e", "PHONE", "ios-simulator", "iOS 27.2", "Simulator, booted"),
+            ("Apple Vision Pro", "VISION", "visionos-simulator", "visionOS 27.0", "Simulator"),
+            ("Phone of Ana", "00008110", "ios", "iOS 27.0.1", "Device, connected"),
+            ("Living Room", "0766", "tvos", "tvOS 26.6", "Device, unavailable"),
+            ("Pixel_10a", "emulator-5554", "android", "Android 16", "Emulator, running"),
+            ("Pixel 9", "R58M", "android", "Android 16", "Device"),
+            ("ZX1G", "ZX1G", "android", "", "Device, unauthorized"),
+        ])
+        self.assertEqual(idle, ["Tablet"])
+
+    def test_a_machine_without_the_tools_of_a_platform_lists_only_what_it_has(self):
+        with mock.patch.object(haylen, "capture", side_effect=AssertionError("No tool runs.")), mock.patch.object(haylen, "host_name", return_value="linux"), mock.patch.object(haylen.host_platform, "freedesktop_os_release", return_value={"PRETTY_NAME": "Ubuntu 26.04"}), mock.patch.object(haylen, "find_android_sdk", return_value=None):
+            devices, idle = haylen.machine_devices()
+        self.assertEqual([(device.platforms, device.system) for device in devices], [("linux", "Ubuntu 26.04")])
+        self.assertEqual(idle, [])
+
+    def test_a_device_that_is_not_there_points_to_the_list_of_devices(self):
+        with mock.patch.object(haylen, "capture", return_value="List of devices attached\nemulator-5554\tdevice\n"), mock.patch.object(haylen, "find_android_sdk", return_value=Path("sdk")):
+            with self.assertRaisesRegex(haylen.BuildError, 'The device "R58M" is not a connected Android device. Use the command "haylen devices"'):
+                haylen.android_device("R58M")
+        with mock.patch.object(haylen, "capture", return_value=json.dumps(self.SIMULATORS)):
+            with self.assertRaisesRegex(haylen.BuildError, 'No available iOS simulator has the name or identifier "iPad". Use the command "haylen devices"'):
+                haylen.apple_simulator("iOS", "iPad")
 
 
 class ConsumerArgumentTest(unittest.TestCase):
@@ -1467,7 +1541,7 @@ class AndroidKeyTest(unittest.TestCase):
         (self.app / "app.json").write_text("{}")
 
     def arguments(self, *extra: str):
-        return haylen.build_parser().parse_args(["android-key", str(self.app), *extra])
+        return haylen.build_parser().parse_args(["distribution", "android-key", str(self.app), *extra])
 
     def test_the_upload_key_of_release_builds_is_the_default(self):
         args = self.arguments()
@@ -1481,7 +1555,7 @@ class AndroidKeyTest(unittest.TestCase):
 
     def test_a_short_password_stops_before_anything_changes(self):
         with self.assertRaisesRegex(haylen.BuildError, "at least 6 characters"):
-            haylen.command_android_key(self.arguments("--password", "short"))
+            haylen.command_distribution_android_key(self.arguments("--password", "short"))
         self.assertFalse((self.app / "platform").exists())
 
     def test_an_existing_key_stays_unless_forced(self):
@@ -1489,7 +1563,7 @@ class AndroidKeyTest(unittest.TestCase):
         keystore.parent.mkdir(parents=True)
         keystore.write_bytes(b"key")
         with self.assertRaisesRegex(haylen.BuildError, 'already has a release key.*"--force"'):
-            haylen.command_android_key(self.arguments())
+            haylen.command_distribution_android_key(self.arguments())
         self.assertEqual(keystore.read_bytes(), b"key")
 
     def test_the_properties_name_the_keystore_next_to_them_and_escape_the_values(self):
@@ -1566,13 +1640,13 @@ class TemplateLayersTest(unittest.TestCase):
         self.assertFalse((self.scratch / "cpp-app" / "source").exists())
         self.assertTrue((self.scratch / "cpp-app" / "src" / "App.cpp").is_file())
         self.assertTrue((self.scratch / "cpp-app" / "platform" / "android" / "settings.gradle.kts").is_file())
-        self.assertIn('Run it with "haylen run-cpp', self.output.getvalue())
+        self.assertIn(f'Run it with "haylen run {self.scratch / "cpp-app"}', self.output.getvalue())
         self.assertEqual(json.loads((self.scratch / "cpp-app" / "app.json").read_text())["name"], "Cpp App")
 
-    def test_the_commands_of_platform_projects_send_a_cpp_app_to_run_cpp(self):
+    def test_the_commands_of_platform_projects_send_a_cpp_app_to_run(self):
         app = self.new_app("game", "--kind", "cpp")
-        for arguments in (["run", str(app)], ["prepare", str(app), "--platform", "web"], ["dist", str(app), "--platform", "linux"], ["xcodegen", str(app)]):
-            with self.assertRaisesRegex(haylen.BuildError, 'is a C\\+\\+ app, whose CMake project builds it for every platform. Run it with "haylen run-cpp'):
+        for arguments in (["prepare", str(app), "--platform", "web"], ["distribution", "installer", str(app), "--platform", "linux"], ["platform", "xcodegen", str(app)]):
+            with self.assertRaisesRegex(haylen.BuildError, 'is a C\\+\\+ app, whose CMake project builds it for every platform. Run it with "haylen run '):
                 haylen.build_parser().parse_args(arguments).handler(haylen.build_parser().parse_args(arguments))
 
     def test_a_cpp_app_stages_the_steam_depots_of_the_executable_its_cmake_project_builds(self):
@@ -1585,7 +1659,7 @@ class TemplateLayersTest(unittest.TestCase):
         (build / "haylen-release" / "main" / "packs" / "chapter-2" / "shard.hpak").write_bytes(b"shard")
         released = mock.Mock(content_packs=["chapter-2"], version="1.0.0", build_folder=self.scratch / "app-build")
         released.name = "Game"
-        arguments = ["steam", str(app), "--platform", haylen.host_name(), "--app-id", "7", "--depot", f"{haylen.host_name()}=8", "--depot", "chapter-2=9"]
+        arguments = ["distribution", "steam", str(app), "--platform", haylen.host_name(), "--app-id", "7", "--depot", f"{haylen.host_name()}=8", "--depot", "chapter-2=9"]
         parsed = haylen.build_parser().parse_args(arguments)
         executable = build / "bin" / "main" / "main"
         with mock.patch.object(haylen, "build_cpp_desktop", return_value=executable) as built, mock.patch.object(haylen, "cpp_release_app", return_value=released), mock.patch.object(haylen, "CPP_BUILDS_DIR", self.scratch), mock.patch.object(haylen, "build_folder_name", return_value=""), mock.patch.object(haylen, "apple_bundle_of", return_value=None):
@@ -1599,7 +1673,7 @@ class TemplateLayersTest(unittest.TestCase):
         self.assertIn('"7"', (steam / "scripts" / "app_build.vdf").read_text())
         other = "windows" if haylen.host_name() != "windows" else "linux"
         with self.assertRaisesRegex(haylen.BuildError, "builds its Steam depots on the platform they ship to"):
-            parsed = haylen.build_parser().parse_args(["steam", str(app), "--platform", other, "--app-id", "7", "--depot", f"{other}=8"])
+            parsed = haylen.build_parser().parse_args(["distribution", "steam", str(app), "--platform", other, "--app-id", "7", "--depot", f"{other}=8"])
             parsed.handler(parsed)
 
     def test_no_file_of_a_kind_copies_the_common_file_it_replaces(self):
@@ -1614,7 +1688,7 @@ class TemplateLayersTest(unittest.TestCase):
         handler.write_text(handler.read_text() + "// A change of the developer.\n")
         (app / "platform" / "android" / "haylen").mkdir()
         (app / "platform" / "android" / "haylen" / "haylen.properties").write_text("generated")
-        haylen.command_platform_diff(haylen.build_parser().parse_args(["platform", "diff", str(app), "--template", "android"]))
+        haylen.command_platform_diff(haylen.build_parser().parse_args(["platform", "diff", str(app), "android"]))
         self.assertIn("+// A change of the developer.", self.output.getvalue())
         self.assertIn('differs from the "android" template in 1 files.', self.output.getvalue())
 

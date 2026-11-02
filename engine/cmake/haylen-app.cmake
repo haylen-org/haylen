@@ -88,7 +88,7 @@ function(haylen_setup_web_page target shell)
   target_link_options(${target} PRIVATE "--shell-file=${shell}")
   set_property(TARGET ${target} APPEND PROPERTY LINK_DEPENDS "${shell}" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js" "${HAYLEN_ENGINE_DIR}/platform/web/haylen-audio-worklet.js")
 
-  # The WebGPU and WebGL2 bundle of haylen.py run-cpp builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
+  # The WebGPU and WebGL2 bundle of haylen.py run builds its page from the same shell, so the shell travels with the build output, next to the engine logo that the default shell shows as its icon.
   # The runtime loads the processor of its audio output and the worker of its content store from next to its script, so both travel with the build output too.
   add_custom_command(TARGET ${target} POST_BUILD
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "${shell}" "$<TARGET_FILE_DIR:${target}>/${target}.shell.html"
@@ -191,7 +191,7 @@ function(haylen_read_app_plugins package output)
   set(${output} "${entries}" PARENT_SCOPE)
 endfunction()
 
-# Builds the Apple parts of the plugins of an app into it from the file that HAYLEN_PLUGINS_FILE names, which haylen.py run-cpp writes from app.json and the plugins: their Objective-C, C and Swift sources, where the Swift files see the plugin API of the engine through its bridging header and take the Swift helpers of the engine, the system frameworks they link, their resources and the keys they add to the Info.plist.
+# Builds the Apple parts of the plugins of an app into it from the file that HAYLEN_PLUGINS_FILE names, which haylen.py run writes from app.json and the plugins: their Objective-C, C and Swift sources, where the Swift files see the plugin API of the engine through its bridging header and take the Swift helpers of the engine, the system frameworks they link, their resources and the keys they add to the Info.plist.
 function(haylen_add_apple_plugins target)
   set(HAYLEN_PLUGIN_KEYS "" PARENT_SCOPE)
   if(NOT HAYLEN_PLUGINS_FILE OR NOT EXISTS "${HAYLEN_PLUGINS_FILE}")

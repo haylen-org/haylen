@@ -82,7 +82,7 @@ The command `new` writes a starter app with a project of every platform, and `ru
 
 ```sh
 haylen new ~/apps/my-cpp-app --kind cpp
-haylen run-cpp ~/apps/my-cpp-app --platform ios-simulator
+haylen run ~/apps/my-cpp-app --platform ios-simulator
 ```
 
 ```lua
