@@ -28,7 +28,7 @@ Return, tab and escape of the native field arrive as actions:
 - Submit reports `submit` and lets the field go. A return key labelled next moves on to the next field, like tab.
 - Next moves the focus to the next field, like tab.
 - Cancel brings back the text that the field had when it took the focus, and lets the field go.
-- A keyboard that the user closed lets the field go and keeps its text.
+- A keyboard that the user closed lets the field go and keeps its text on iOS, iPadOS and the web, where the system ends the editing with it. On Android the field keeps editing, as a native field keeps the focus, and back lets it go.
 
 While a field edits, the keys it types belong to the field alone and never navigate. So Space types a space, and Enter starts a new line in a text area instead of pressing the field. Enter still submits a single line and Escape still cancels, as keys of the field. The gamepad buttons of `uiAccept` and `uiCancel` still end the editing. While a platform edits the field natively, the UI ignores the character events and editing keys that reach it for that field, so nothing types twice.
 
@@ -85,7 +85,7 @@ The field keeps the editing of Android: the composition of input methods, the su
 
 While the field edits, it has the focus. So the keys of hardware keyboards type into it, and tab, escape and return become actions. The keys that it leaves reach the app, and touches and the sticks of controllers always reach the app. GameActivity focuses its surface whenever its window gains the focus, such as after a dialog or the notification shade. The surface declines the focus while a text field over the app has it, so the field keeps its keyboard.
 
-The activity uses `adjustNothing`, so the keyboard lies over the app without resizing it. Its insets listener reports the insets of the input method as the keyboard frame. A keyboard that closes while a field edits, such as with the back button, sends the dismissed action. Back never leaves the app while a field edits. The keyboard opens only when a field starts editing, so a field that moves or changes never brings back a keyboard that the user closed. Android 11 and later report the insets of the input method for a window that draws edge to edge. Android 8.1 to 10 may not report them with `adjustNothing`, and there the UI does not move above the keyboard.
+The activity uses `adjustNothing`, so the keyboard lies over the app without resizing it. Its insets listener reports the insets of the input method as the keyboard frame. A keyboard that hides while a field edits, with its own button, with the back button or for a turn of the device, leaves the field editing, as a native field keeps the focus. A press on the field shows the keyboard again, and a turn shows it again by itself. Back, once the keyboard is hidden, sends the dismissed action, so back never leaves the app while a field edits. A field that only moves never brings the keyboard back. Android 11 and later report the insets of the input method for a window that draws edge to edge. Android 8.1 to 10 may not report them with `adjustNothing`, and there the UI does not move above the keyboard.
 
 ## iOS, iPadOS, tvOS and Mac Catalyst
 

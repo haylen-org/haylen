@@ -548,6 +548,24 @@ TEST_F(TextInputTest, KeepsEditingWhenTheGuiBuildsTheFieldAgain) {
     EXPECT_EQ(getPublished().id, named);
 }
 
+// A press on the field being edited reaches the platform even when the caret stays where it was, so a native field whose keyboard hid shows it again, as a tap on a native field does.
+TEST_F(TextInputTest, PublishesAPressOnTheFieldBeingEdited) {
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textField", "id": "name", "value": "abc", "width": 600}]})");
+    focus(*gui, "name");
+    edit("abc", 3, 3);
+    const std::uint64_t revision = getPublished().revision;
+
+    const math::Rect field = gui->find("name")->getBounds();
+    const math::Vec2 end{field.getRight() - 20.0F, field.getCenter().y};
+    touch(platform::Event::Type::TouchBegan, end);
+    fixture.frames(1);
+    touch(platform::Event::Type::TouchEnded, end);
+    fixture.frames(2);
+    EXPECT_GT(getPublished().revision, revision);
+    EXPECT_EQ(getPublished().selectionStart, 3);
+    EXPECT_TRUE(getInput().isEditing());
+}
+
 // The caret of a focused field takes the theme color for it, which a style changes like any other color.
 TEST_F(TextInputTest, PaintsTheCaretWithTheThemeColor) {
     auto gui = mount(R"({"kind": "column", "style": {"colors": {"caret": "#FFFF0000"}}, "children": [{"kind": "textField", "id": "name"}]})");

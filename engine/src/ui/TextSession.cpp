@@ -95,6 +95,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
     if (activated) {
         active = data.ID;
         revision = ++lastRevision;
+        pressed = false;
         pending.reset();
         action.reset();
         compositionStart = -1;
@@ -130,7 +131,7 @@ void TextSession::synchronize(ImGuiInputTextCallbackData& data) {
     const bool cut = limit(data, options.maxLength);
     const std::string_view current(data.Buf, static_cast<std::size_t>(data.BufTextLen));
     const auto [start, end] = getSelection(data);
-    const bool changed = edited || cut || (!applied && (current != text || start != selectionStart || end != selectionEnd));
+    const bool changed = edited || cut || std::exchange(pressed, false) || (!applied && (current != text || start != selectionStart || end != selectionEnd));
     if (changed && !activated) {
         revision = ++lastRevision;
         compositionStart = -1;

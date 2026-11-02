@@ -108,6 +108,7 @@ void TextEditor::placeCaret(ImGuiInputTextCallbackData& data, const Editing& edi
     // clang-format on
 
     if (pressed) {
+        editing.session->notePress();
         const int caret = toBytes(field.hitTest(point - origin));
         if (!editing.tap && io.MouseClickedCount[0] == 2) {
             const auto [begin, end] = field.getWord(toPosition(caret));

@@ -42,6 +42,11 @@ class TextSession final {
     // Applies an edit of the native field and publishes what ImGui changed, called from the ImGui callback of the focused field.
     void synchronize(ImGuiInputTextCallbackData& data);
 
+    // Records that the player pressed the focused field, which the platform hears as a change of the field, so a field whose keyboard hid shows it again, as a tap on a native field does.
+    void notePress() noexcept {
+        pressed = true;
+    }
+
     // Records where the focused field shows its caret after its `InputText` call.
     void setCaret(const math::Rect& caret) noexcept {
         caretRect = caret;
@@ -112,6 +117,7 @@ class TextSession final {
     std::optional<platform::TextInput::Action> action;
     ImGuiID active = 0;
     bool activeThisFrame = false;
+    bool pressed = false;
     std::uint64_t revision = 0;
     std::string text;
     std::string original;

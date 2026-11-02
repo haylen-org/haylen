@@ -108,11 +108,8 @@ final class HaylenEditText extends EditText {
         return true;
     }
 
-    // A keyboard the user closed while a field was being edited lets that field go.
+    // A keyboard that hides while a field edits, by its own button or for a change of the configuration such as a turn of the device, leaves the field editing, as it leaves a native field focused, and a change of the field shows it again.
     void setKeyboardShown(boolean shown) {
-        if (keyboardShown && !shown && editing) {
-            nativeTextAction(field, ACTION_DISMISSED);
-        }
         keyboardShown = shown;
     }
 
@@ -153,9 +150,11 @@ final class HaylenEditText extends EditText {
         place.topMargin = value.optInt("y");
         setLayoutParams(place);
 
-        // The keyboard opens when a field starts editing, so a field that only moves never brings back a keyboard the user closed.
+        // The keyboard opens when a field starts editing, and again when the user changes a field whose keyboard hid, such as with a tap that moves the caret, so a field that only moves never brings the keyboard back.
         boolean starting = !editing || id != field;
-        if (starting || nextRevision != revision) {
+        boolean changed = nextRevision != revision;
+        boolean reopening = changed && !keyboardShown;
+        if (starting || changed) {
             field = id;
             revision = nextRevision;
             applying = true;
@@ -177,7 +176,7 @@ final class HaylenEditText extends EditText {
         } else if (reconfigured) {
             methods.restartInput(this);
         }
-        if (starting) {
+        if (starting || reopening) {
             methods.showSoftInput(this, 0);
         }
     }
