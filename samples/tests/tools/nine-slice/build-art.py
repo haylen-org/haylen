@@ -1,6 +1,6 @@
 """Builds the frames of the Nine-slice tests from the two frames painted for them.
 
-The sheet `frames.png` is painted with the "codex" command line in the style of the README of the test project on flat magenta: a wooden frame around plain parchment in the left half and the same frame in near white in the right half. Run it with `python3 samples/tests/tools/nine-slice/build-art.py <folder of frames.png>`. It keys out the magenta, scales each frame to 256 pixels and makes the straight sides of its border repeat without a seam, by blending every side with itself shifted by half its length toward its ends, and writes into `content/nine-slice/`:
+The sheet `frames.png` is painted with the "codex" command line in the style of the README of the test project on flat magenta: a wooden frame around plain parchment in the left half and the same frame in near white in the right half. Run it with `python3 samples/tests/tools/nine-slice/build-art.py <folder of frames.png>`. It keys out the magenta, scales each frame to 256 pixels and repaints the straight sides of its border so they meet the corner blocks and repeat without a seam, with their painted grain fading into a plain bar toward both ends, and writes into `content/nine-slice/`:
 
 - `panel.png`, the wooden frame around parchment with diagonal stripes whose period divides the middle, so the middle tiles without a seam while stretching widens its stripes;
 - `parchment.png`, the wooden frame around plain parchment, for the panels that hold text;
@@ -27,9 +27,15 @@ from png_image import Image  # noqa: E402
 
 CONTENT = Path(__file__).resolve().parents[2] / "content" / "nine-slice"
 SIZE = 256
-# The border of each frame at 256 pixels, which holds its wood or bevel and the shadow along its inner edge.
+# The border of each frame at 256 pixels, which holds its wood or bevel and the shadow along its inner edge, where the block of each corner ends and how far the bar reaches across the border.
 WOOD_BORDER = 50
+WOOD_CORNER = 43
+WOOD_BAR = 40
 WHITE_BORDER = 46
+WHITE_CORNER = 42
+WHITE_BAR = 38
+# The painted grain of each side fades out over this many pixels toward its ends.
+FADE = 16
 # Diagonal stripes of this period in pixels repeat six times across the middle of the wooden frame and nine times across the middle of the frame cut into pieces.
 STRIPE = 26
 STRIPE_COLORS = ((243, 230, 196), (232, 211, 166))
@@ -65,20 +71,41 @@ def put(image: Image, x: int, y: int, value: list[int]) -> None:
     image.pixels[offset : offset + 4] = bytes(value)
 
 
-def seamless(image: Image, border: int) -> Image:
-    """Blends each straight side of the border with itself shifted by half its length, more toward its ends, so the side repeats without a seam."""
+def place(side: int, size: int, along: int, across: int) -> tuple[int, int]:
+    """Maps a point of side `side` of a square border, top, bottom, left or right, from its distance along the side and across it from the outer edge to the image."""
+    return [(along, across), (along, size - 1 - across), (across, along), (size - 1 - across, along)][side]
+
+
+def plain_ends(image: Image, border: int, corner: int, bar: int) -> Image:
+    """Repaints each straight side of the border so it meets its corners and itself without a seam.
+
+    Each side becomes the average of its rows across, the plain bar, plus its painted grain, which fades to nothing over `FADE` pixels at both ends of the side. The stubs of bar between the edge of each corner block at `corner` and the border line, across the `bar` pixels of the bar, take the plain bar too. So every corner meets a plain bar, and a side that repeats meets itself plain to plain. Inside each corner, the shadows of its two sides meet without a step.
+    """
     result = Image(image.width, image.height, bytearray(image.pixels))
-    length = image.width - border * 2
-    for along in range(length):
-        weight = max(0.0, 1.0 - min(along, length - 1 - along) / (length * 0.35))
-        shifted = (along + length // 2) % length
-        for across in range(image.height):
-            if border <= across < image.height - border:
-                continue
-            mixed = [round(a + (b - a) * weight) for a, b in zip(pixel(image, border + along, across), pixel(image, border + shifted, across))]
-            put(result, border + along, across, mixed)
-            mixed = [round(a + (b - a) * weight) for a, b in zip(pixel(image, across, border + along), pixel(image, across, border + shifted))]
-            put(result, across, border + along, mixed)
+    size = image.width
+    length = size - border * 2
+    profiles = []
+    for side in range(4):
+        profile = []
+        for across in range(border):
+            values = [pixel(image, *place(side, size, border + along, across)) for along in range(length)]
+            profile.append([sum(value[channel] for value in values) / length for channel in range(4)])
+        profiles.append(profile)
+        for across in range(border):
+            for along in range(length):
+                fade = min(1.0, min(along, length - 1 - along) / FADE)
+                painted = pixel(image, *place(side, size, border + along, across))
+                put(result, *place(side, size, border + along, across), [round(min(255, max(0, base + (value - base) * fade))) for base, value in zip(profile[across], painted)])
+        for across in range(bar):
+            for along in list(range(corner, border)) + list(range(size - border, size - corner)):
+                put(result, *place(side, size, along, across), [round(value) for value in profile[across]])
+
+    # Inside each corner, where the shadows of two sides meet, the darker of the two keeps both sides going into the corner.
+    for horizontal, vertical, mirrored in ((0, 2, False), (0, 3, True), (1, 2, False), (1, 3, True)):
+        for across in range(corner, border):
+            for along in range(corner, border):
+                shade = [round(min(a, b)) for a, b in zip(profiles[horizontal][across][:3], profiles[vertical][along][:3])]
+                put(result, *place(horizontal, size, size - 1 - along if mirrored else along, across), shade + [255])
     return result
 
 
@@ -137,12 +164,13 @@ def main() -> None:
         sys.exit("Usage: build-art.py <folder of frames.png>")
     sheet = read(Path(sys.argv[1]) / "frames.png")
     CONTENT.mkdir(parents=True, exist_ok=True)
-    wood = seamless(frame(sheet, 0), WOOD_BORDER)
+    wood = plain_ends(frame(sheet, 0), WOOD_BORDER, WOOD_CORNER, WOOD_BAR)
     write(striped(wood, WOOD_BORDER), CONTENT / "panel.png")
     write(wood, CONTENT / "parchment.png")
-    border = WOOD_BORDER * PIECES_SIZE // SIZE
-    write(pieces(striped(seamless(frame(sheet, 0, PIECES_SIZE), border), border), border), CONTENT / "pieces.png")
-    write(seamless(frame(sheet, 1), WHITE_BORDER), CONTENT / "frame-white.png")
+    factor = PIECES_SIZE / SIZE
+    border = round(WOOD_BORDER * factor)
+    write(pieces(striped(plain_ends(frame(sheet, 0, PIECES_SIZE), border, round(WOOD_CORNER * factor), round(WOOD_BAR * factor)), border), border), CONTENT / "pieces.png")
+    write(plain_ends(frame(sheet, 1), WHITE_BORDER, WHITE_CORNER, WHITE_BAR), CONTENT / "frame-white.png")
     cards(wood)
     print("Wrote panel.png, parchment.png, pieces.png, frame-white.png, cards.png and cards.json.")
 
