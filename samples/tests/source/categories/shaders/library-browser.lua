@@ -22,6 +22,8 @@ LibraryBrowser.trailSeconds = 1
 -- The hero keeps its size on screen inside the margin its image gains.
 LibraryBrowser.heroMargin = 24
 LibraryBrowser.heroSize = 460 * (192 + 2 * 24) / 192
+-- The size of the render target that every shader draws into once.
+LibraryBrowser.proofSize = {268, 152}
 
 function LibraryBrowser:init(entry)
     LibraryBrowser.super.init(self, entry)
@@ -79,9 +81,8 @@ function LibraryBrowser:texture(target)
     return graphics.whiteTexture()
 end
 
-function LibraryBrowser:choose(categoryIndex, shaderIndex)
-    self.categoryIndex, self.shaderIndex = categoryIndex, shaderIndex
-    local _, entry = self:current()
+-- The values of the catalog entry `entry` as the uniforms of its material, with the size of a texel of the texture its target draws when the shader reads the pixels around it.
+function LibraryBrowser:uniforms(entry)
     local uniforms = {}
     for _, spec in ipairs(entry.floats) do
         uniforms[spec.name] = spec.value
@@ -96,7 +97,17 @@ function LibraryBrowser:choose(categoryIndex, shaderIndex)
         local texture = self:texture(entry.target)
         uniforms.texel = {1 / texture.width, 1 / texture.height}
     end
-    self.material = graphics2d.newMaterial(assets.shader(LibraryBrowser.folder .. entry.id .. '.shader'), uniforms)
+    return uniforms
+end
+
+function LibraryBrowser.newMaterial(entry, uniforms)
+    return graphics2d.newMaterial(assets.shader(LibraryBrowser.folder .. entry.id .. '.shader'), uniforms)
+end
+
+function LibraryBrowser:choose(categoryIndex, shaderIndex)
+    self.categoryIndex, self.shaderIndex = categoryIndex, shaderIndex
+    local _, entry = self:current()
+    self.material = LibraryBrowser.newMaterial(entry, self:uniforms(entry))
     self.shader = entry
     self.codeSource = LibraryBrowser.source(entry)
     if self.gui then
@@ -195,17 +206,12 @@ function LibraryBrowser:update(dt)
     while #self.trail > 2 and time - self.trail[#self.trail][3] > LibraryBrowser.trailSeconds do
         self.trail[#self.trail] = nil
     end
-    self:status(string.format('The shader "%s" draws from "%s%s.shader".', self.shader.name, LibraryBrowser.folder, self.shader.id))
+    self:status(string.format('The shader "%s" draws from "%s%s.shader", and all %d shaders of the library drew once when the test opened.', self.shader.name, LibraryBrowser.folder, self.shader.id, self.proven or 0))
 end
 
-function LibraryBrowser:draw(area)
-    local order = {material = self.material, blend = self.shader.blend == 'additive' and 'additive' or 'alpha'}
-    local target = self.shader.target
-    local width, height = self.layoutWidth, ShaderTest.layout[2]
-    if target ~= 'picture' then
-        local bounds = graphics2d.canvasBounds()
-        self:drawCard({rect = {bounds.x, bounds.y, bounds.width, bounds.height}}, self.shader.name, target ~= 'sprite' and target ~= 'disc')
-    end
+-- Draws the target of a shader with its material in the middle of a stage of `width` by `height`.
+function LibraryBrowser:drawTarget(target, material, blend, width, height)
+    local order = {material = material, blend = blend}
     if target == 'sprite' then
         graphics2d.draw(self.hero, width / 2, height / 2, {width = LibraryBrowser.heroSize, height = LibraryBrowser.heroSize, material = order.material, blend = order.blend})
     elseif target == 'disc' then
@@ -235,6 +241,41 @@ function LibraryBrowser:draw(area)
     else
         graphics2d.draw(self.picture, width / 2, height / 2, {width = 1080, height = 608, material = order.material, blend = order.blend})
     end
+end
+
+-- As soon as the trail has two points, the test draws every shader of the catalog once on its target, into a render target that never shows, so each of them proves it draws before anyone picks it.
+function LibraryBrowser:proveAll()
+    local width, height = ShaderTest.layout[1], ShaderTest.layout[2]
+    local target = graphics.newRenderTarget(LibraryBrowser.proofSize[1], LibraryBrowser.proofSize[2])
+    local camera = graphics2d.newCamera()
+    camera.position = {width / 2, height / 2}
+    local zoom = LibraryBrowser.proofSize[1] / width
+    camera.zoom = {zoom, zoom}
+    graphics2d.beginTarget(target, camera)
+    local count = 0
+    for _, category in ipairs(self.catalog) do
+        for _, entry in ipairs(category.shaders) do
+            self:drawTarget(entry.target, LibraryBrowser.newMaterial(entry, self:uniforms(entry)), entry.blend == 'additive' and 'additive' or 'alpha', width, height)
+            count = count + 1
+        end
+    end
+    self.proven = count
+end
+
+function LibraryBrowser:render()
+    if self.area and not self.proven and #self.trail >= 2 then
+        self:proveAll()
+    end
+    LibraryBrowser.super.render(self)
+end
+
+function LibraryBrowser:draw(area)
+    local target = self.shader.target
+    if target ~= 'picture' then
+        local bounds = graphics2d.canvasBounds()
+        self:drawCard({rect = {bounds.x, bounds.y, bounds.width, bounds.height}}, self.shader.name, target ~= 'sprite' and target ~= 'disc')
+    end
+    self:drawTarget(target, self.material, self.shader.blend == 'additive' and 'additive' or 'alpha', self.layoutWidth, ShaderTest.layout[2])
 end
 
 return LibraryBrowser
