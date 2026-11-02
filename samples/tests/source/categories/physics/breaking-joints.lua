@@ -25,6 +25,8 @@ hinge.breakForce = weight * 12
 world.onJointBreak = function(joint, info) spark(info.bodyB, info.forceX, info.forceY) end]]
 
 BreakingJoints.labelLife = 1.6
+-- A break within this distance of a label that still shows, across and up or down, joins that label.
+BreakingJoints.labelReach = {360, 160}
 -- The cone of light of a lamp, in the space of its bulb with the shade pointing up: the two corners at the mouth of the shade and the two where it fades out.
 BreakingJoints.beamCorners = {{-34, 0}, {34, 0}, {150, 330}, {-150, 330}}
 BreakingJoints.planks = 11
@@ -127,9 +129,20 @@ function BreakingJoints:build()
         local body = info.bodyB or info.bodyA
         if body then
             self.sparks:fire(body.x, body.y)
-            self.labels[#self.labels + 1] = {x = body.x, y = body.y, age = 0, force = math.sqrt(info.forceX ^ 2 + info.forceY ^ 2) / weight, limit = self.strength}
+            self:note(body.x, body.y, math.sqrt(info.forceX ^ 2 + info.forceY ^ 2) / weight)
         end
     end
+end
+
+-- Shows the force of a break where it happened. Breaks close to a label that still shows join it, such as the planks of the bridge that give way together, so the labels never pile on each other.
+function BreakingJoints:note(x, y, force)
+    for _, label in ipairs(self.labels) do
+        if math.abs(label.x - x) < BreakingJoints.labelReach[1] and math.abs(label.y - y) < BreakingJoints.labelReach[2] then
+            label.count, label.force, label.age = label.count + 1, math.max(label.force, force), 0
+            return
+        end
+    end
+    self.labels[#self.labels + 1] = {x = x, y = y, age = 0, count = 1, force = force, limit = self.strength}
 end
 
 -- Returns the joints of a chain of planks of equal pitch hanging across a span, with slopes that grow evenly toward the ends like a hanging chain, found by bisection.
@@ -257,7 +270,9 @@ function BreakingJoints:draw(area)
     Look.drawAll(self.bodies, {layer = 1})
     self.sparks:draw()
     for _, label in ipairs(self.labels) do
-        self:label(string.format('Hit with %d crates, limit %d', math.floor(label.force + 0.5), label.limit), label.x, label.y - 40 - label.age * 30, {size = 18, plate = PhysicsTest.problemPlate})
+        local force = math.floor(label.force + 0.5)
+        local text = label.count == 1 and string.format('Broke under %d crates, limit %d', force, label.limit) or string.format('%d joints broke, under up to %d crates', label.count, force)
+        self:label(text, label.x, label.y - 40 - label.age * 30, {size = 18, plate = PhysicsTest.problemPlate})
     end
     self.grab:draw()
 end
