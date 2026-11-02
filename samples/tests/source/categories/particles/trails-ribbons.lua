@@ -62,7 +62,7 @@ function TrailsRibbons:update(dt)
         self.swinging = false
     end
     if self.swinging then
-        local angle = -2.2 + math.sin(self.time * 2.4) * 1.3
+        local angle = -2.2 + math.sin(self.time * 3) * 1.3
         self.blade.x, self.blade.y = -60 + math.cos(angle) * 300, 120 + math.sin(angle) * 300
     else
         self.blade.x, self.blade.y = self.cursorX, self.cursorY

@@ -27,16 +27,52 @@ function LibraryCheck:init(entry)
         end
     end
     self.checked = 0
+    self.emitterCount = 0
     self.failures = {}
+    self:groupByCategory()
 end
 
--- Creates the emitters of an effect and runs them, which validates every value the effect sets.
+-- Sorts the files into the folders of their categories, which the grid shows with how many of their files ran.
+function LibraryCheck:groupByCategory()
+    self.categories, self.categoryOf = {}, {}
+    local byId = {}
+    for _, path in ipairs(self.paths) do
+        local id = path:match('^' .. LibraryCheck.folder .. '/([^/]+)/')
+        local category = byId[id]
+        if not category then
+            category = {id = id, title = id:sub(1, 1):upper() .. id:sub(2):gsub('%-', ' '), total = 0, checked = 0, failed = 0}
+            byId[id] = category
+            self.categories[#self.categories + 1] = category
+        end
+        category.total = category.total + 1
+        self.categoryOf[path] = category
+    end
+    table.sort(self.categories, function(a, b) return a.title < b.title end)
+end
+
+function LibraryCheck:categoryCells()
+    local cells = {}
+    for index, category in ipairs(self.categories) do
+        cells[index] = ui.card{padding = {10, 14}, ui.row{gap = 8,
+            ui.label{text = category.title, grow = 1},
+            ui.badge{id = 'category-' .. category.id, text = string.format('0 of %d', category.total)},
+        }}
+    end
+    return cells
+end
+
+function LibraryCheck:showCategory(category)
+    local tone = category.failed > 0 and 'danger' or category.checked == category.total and 'success' or 'neutral'
+    self:set('category-' .. category.id, {text = string.format('%d of %d', category.checked, category.total), tone = tone})
+end
+
+-- Creates the emitters of an effect and runs them, which validates every value the effect sets, and returns how many emitters it has.
 function LibraryCheck.exercise(effect)
     local system = particles2d.newSystem(effect, {seed = 1})
     for _ = 1, LibraryCheck.steps do
         system:update(1 / LibraryCheck.steps)
     end
-    return system.count
+    return #system:emitters()
 end
 
 function LibraryCheck:enter()
@@ -46,7 +82,8 @@ function LibraryCheck:enter()
         content = {
             ui.label{id = 'summary', text = string.format('Checking %d effect files.', #self.paths), font = 'heading'},
             ui.progress{id = 'progress', value = 0},
-            ui.scroll{grow = 1, ui.column{id = 'failures', gap = 8}},
+            ui.column{id = 'failures', gap = 8},
+            ui.grid{minColumnWidth = 230, columns = 6, gap = 10, children = self:categoryCells()},
         },
     }
     self:spawn(function()
@@ -57,13 +94,17 @@ function LibraryCheck:enter()
         end
         for index, path in ipairs(self.paths) do
             local ok, problem = pcall(function()
-                LibraryCheck.exercise(loads[index]:await())
+                self.emitterCount = self.emitterCount + LibraryCheck.exercise(loads[index]:await())
             end)
+            local category = self.categoryOf[path]
             if not ok then
                 self.failures[#self.failures + 1] = {path = path, message = tostring(problem)}
+                category.failed = category.failed + 1
                 self:log('Failed: File "%s": %s', path, tostring(problem))
             end
             self.checked = self.checked + 1
+            category.checked = category.checked + 1
+            self:showCategory(category)
             self:set('progress', {value = self.checked / #self.paths})
         end
         self:finish()
@@ -100,9 +141,16 @@ function LibraryCheck:finish()
     end
 end
 
+-- The status tells what the check does while it runs, and what the files hold once it ends, so it never repeats the summary.
 function LibraryCheck:update(dt)
     LibraryCheck.super.update(self, dt)
-    self:status(string.format('%d of %d effect files checked, and %d failed.', self.checked, #self.paths, #self.failures))
+    if self.checked < #self.paths then
+        self:status(string.format('Loading, building and running the file "%s".', self.paths[self.checked + 1]))
+    elseif #self.failures == 0 then
+        self:status(string.format('The %d files built %d emitters, and every one ran for a second without an error.', #self.paths, self.emitterCount))
+    else
+        self:status(string.format('The files that ran built %d emitters, and the ones listed above failed.', self.emitterCount))
+    end
 end
 
 return LibraryCheck

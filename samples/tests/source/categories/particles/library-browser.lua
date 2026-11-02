@@ -195,11 +195,11 @@ function LibraryBrowser:enter()
                 end
             end
         end}},
-        ui.row{wrap = true, gap = 8,
-            ui.button{id = 'previous', text = 'Previous', onClick = function() self:step(0, -1) end},
-            ui.button{id = 'fire', text = 'Fire again', onClick = function() self:fire() end},
-            ui.button{id = 'next', text = 'Next', onClick = function() self:step(0, 1) end},
+        ui.row{gap = 8,
+            ui.button{id = 'previous', text = 'Previous', grow = 1, onClick = function() self:step(0, -1) end},
+            ui.button{id = 'next', text = 'Next', grow = 1, onClick = function() self:step(0, 1) end},
         },
+        ui.button{id = 'fire', text = 'Fire again', onClick = function() self:fire() end},
         ui.scroll{height = LibraryBrowser.listHeight, ui.list{id = 'effects', items = self:effectItems(self.categories[self.categoryIndex]), selected = self:current().effects[self.effectIndex].id, onSelect = function(event)
             for index, effect in ipairs(self.categories[self.categoryIndex].effects) do
                 if effect.id == event.item then

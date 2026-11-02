@@ -5,6 +5,7 @@ local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
 
 local ParticleTest = require('categories.particles.particle-test')
+local code = require('harness.code')
 
 local Files = haylen.class('Files', ParticleTest)
 
@@ -12,11 +13,13 @@ Files.code = [[
 for _, path in ipairs(assets.list('particles/effects')) do
     if assets.typeForPath(path) == 'particles' then paths[#paths + 1] = path end
 end
-local effect = assets.load('particles/effects/sparks.particles')  -- A ParticleEffect.
+local effect = assets.load('%s')  -- A ParticleEffect.
 local emitter = particles2d.newEmitter(effect)
 log.info(effect.texturePath, effect.config.rate, effect.config.lifetime[1])]]
 
 Files.ground = 330
+-- Effects that burn on the ground stay on the floor under the cursor, with the painted fire pit of the props.
+Files.grounded = {['particles/effects/campfire.particles'] = true}
 
 -- The name of an effect from its file name, such as "Campfire" for "campfire.particles".
 function Files.title(path)
@@ -40,6 +43,10 @@ function Files:choose(path)
     self.path = path
     self.effect = assets.load(path)
     self.emitter = particles2d.newEmitter(self.effect)
+    self.codeSource = string.format(Files.code, path)
+    if self.gui then
+        self:set('code', {text = code.markup(self.codeSource)})
+    end
 end
 
 function Files:enter()
@@ -48,8 +55,8 @@ function Files:enter()
         items[index] = {id = path, text = Files.title(path)}
     end
     self:frame{
-        hint = 'Pick an effect of the folder "particles/effects". The emitter follows the cursor: move it with the mouse, a finger, the arrows, WASD or a stick.',
-        code = Files.code,
+        hint = 'Pick an effect of the folder "particles/effects". The emitter follows the cursor, and the campfire follows it along the floor: move it with the mouse, a finger, the arrows, WASD or a stick.',
+        code = self.codeSource,
         cursor = true,
         controls = {
             ui.formField{label = 'Effect file', ui.radioGroup{id = 'file', items = items, selected = self.path, onChange = function(event)
@@ -64,7 +71,8 @@ end
 
 function Files:update(dt)
     Files.super.update(self, dt)
-    self.emitter.position = {self.cursorX, self.cursorY}
+    local grounded = Files.grounded[self.path]
+    self.emitter.position = {self.cursorX, grounded and Files.ground - 40 or self.cursorY}
     self.emitter:update(dt)
     self:report('%s from "%s" holds %d particles.', Files.title(self.path), self.path:match('[^/]+$'), self.emitter.count)
 end
@@ -72,8 +80,8 @@ end
 function Files:draw(area)
     ParticleTest.backdrop({0.06, 0.07, 0.14}, {0.16, 0.12, 0.2})
     ParticleTest.paveFloor('stone', Files.ground, 150, '#FF7A7488')
-    if self.path:find('campfire') then
-        ParticleTest.prop('campfire', self.emitter.x, self.emitter.y + 50, 0.5, {pivotY = 1, layer = 1})
+    if Files.grounded[self.path] then
+        ParticleTest.prop('campfire', self.emitter.x, Files.ground + 12, 0.6, {pivotY = 1, layer = 1})
     end
     self.emitter:draw()
 end

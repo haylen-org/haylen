@@ -16,6 +16,9 @@ particles2d.newEmitter({texture = dot, shape = 'rectangle', shapeSize = {110, 70
 -- Cones fill the sector of the direction and the spread.
 particles2d.newEmitter({texture = dot, shape = 'cone', shapeSize = {140, 0}, spread = 1.2})]]
 
+Shapes.guide = {layer = 1}
+-- The middle of the row of shapes, a little above the middle of the view to leave room for the captions.
+Shapes.row = -60
 Shapes.list = {
     {name = 'point', title = 'Point', size = {0, 0}},
     {name = 'circle', title = 'Circle', size = {110, 0}},
@@ -30,8 +33,26 @@ function Shapes:init(entry)
     self.emitters = {}
     for index, shape in ipairs(Shapes.list) do
         local emitter = particles2d.newEmitter(ParticleTest.look('soft-dot', {rate = 90, lifetime = {1.5, 2}, speed = {self.speed, self.speed * 1.5}, spread = shape.name == 'cone' and 1.2 or 6.2832, startSize = 18, endSize = 4, colors = {'#FF80E0FF', '#0040A0FF'}, shape = shape.name, shapeSize = shape.size, blend = 'additive', layer = 2, seed = 30 + index}))
-        emitter.position = {(index - 3) * 340, 0}
         self.emitters[index] = emitter
+    end
+    self.scale = 1
+end
+
+-- Spreads the five shapes over the width of the canvas, which changes with the play area, and grows them with the room each one gets, so they fill the view in landscape and in portrait.
+function Shapes:fit()
+    local area = self.camera:visibleBounds()
+    if area.width == self.width then
+        return
+    end
+    self.width = area.width
+    local spacing = math.min(520, (area.width - 120) / #Shapes.list)
+    self.scale = spacing / 340
+    for index, emitter in ipairs(self.emitters) do
+        local shape = Shapes.list[index]
+        local x = area.x + area.width / 2 + (index - 3) * spacing
+        local y = shape.name == 'cone' and Shapes.row + shape.size[1] * self.scale / 2 or Shapes.row
+        emitter.position = {x, y}
+        emitter:configure({shapeSize = {shape.size[1] * self.scale, shape.size[2] * self.scale}, startSize = 18 * self.scale})
     end
 end
 
@@ -51,6 +72,10 @@ end
 
 function Shapes:update(dt)
     Shapes.super.update(self, dt)
+    if not self.stage then
+        return
+    end
+    self:fit()
     for _, emitter in ipairs(self.emitters) do
         emitter:update(dt)
     end
@@ -58,29 +83,31 @@ function Shapes:update(dt)
 end
 
 -- Outlines the spawn area of an emitter so the particles can be compared with it.
-function Shapes.drawArea(emitter, shape)
+function Shapes.drawArea(emitter, shape, scale)
     local x, y = emitter.x, emitter.y
-    local order = {layer = 1}
+    local width, height = shape.size[1] * scale, shape.size[2] * scale
+    local order, line, color = Shapes.guide, 5, '#80C8F0FF'
     if shape.name == 'circle' or shape.name == 'ring' then
-        graphics2d.drawRing(x, y, shape.size[1], 3, '#70FFFFFF', order)
+        graphics2d.drawRing(x, y, width, line, color, order)
     elseif shape.name == 'rectangle' then
-        graphics2d.drawShape({x - shape.size[1], y - shape.size[2], shape.size[1] * 2, shape.size[2] * 2}, {radius = 6, color = '#00000000', borderWidth = 3, borderColor = '#70FFFFFF', layer = 1})
+        graphics2d.drawShape({x - width, y - height, width * 2, height * 2}, {radius = 10, color = '#00000000', borderWidth = line, borderColor = color, layer = 1})
     elseif shape.name == 'cone' then
-        graphics2d.drawArc(x, y, shape.size[1], 3, -1.5708 - 0.6, -1.5708 + 0.6, '#70FFFFFF', order)
+        graphics2d.drawArc(x, y, width, line, -1.5708 - 0.6, -1.5708 + 0.6, color, order)
         for _, angle in ipairs({-1.5708 - 0.6, -1.5708 + 0.6}) do
-            graphics2d.drawLine(x, y, x + math.cos(angle) * shape.size[1], y + math.sin(angle) * shape.size[1], 3, '#70FFFFFF', order)
+            graphics2d.drawLine(x, y, x + math.cos(angle) * width, y + math.sin(angle) * width, line, color, order)
         end
     else
-        graphics2d.drawCircle(x, y, 6, '#90FFFFFF', order)
+        graphics2d.drawCircle(x, y, 8, color, order)
     end
 end
 
 function Shapes:draw(area)
     ParticleTest.backdrop({0.04, 0.05, 0.1}, {0.08, 0.1, 0.18})
     for index, emitter in ipairs(self.emitters) do
-        Shapes.drawArea(emitter, Shapes.list[index])
+        local shape = Shapes.list[index]
+        Shapes.drawArea(emitter, shape, self.scale)
         emitter:draw()
-        ParticleTest.label(Shapes.list[index].title, emitter.x, emitter.y + 170, string.format("shape = '%s'", Shapes.list[index].name))
+        ParticleTest.label(shape.title, emitter.x, Shapes.row + 110 * self.scale + 60, string.format("shape = '%s'", shape.name))
     end
 end
 

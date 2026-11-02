@@ -120,7 +120,7 @@ end
 function ParticleTest.label(text, x, y, option)
     graphics2d.drawText(nil, text, x, y, {size = 40, anchor = {0.5, 0}, outlineWidth = 4, layer = 20})
     if option then
-        graphics2d.drawText(nil, option, x, y + 50, {size = 28, anchor = {0.5, 0}, outlineWidth = 3, color = '#FFC8D0E8', layer = 20})
+        graphics2d.drawText(nil, option, x, y + 50, {size = 32, anchor = {0.5, 0}, outlineWidth = 3, color = '#FFC8D0E8', layer = 20})
     end
 end
 

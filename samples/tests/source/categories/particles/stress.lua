@@ -53,7 +53,7 @@ function Stress:update(dt)
     end
     self.frameTime = m.lerp(self.frameTime, haylen.unscaledDelta(), 0.05)
     local stats = graphics2d.stats()
-    self:report('%d particles drew as %d sprites in %d draw calls, at %.0f frames per second.', count, stats.sprites, stats.drawCalls, 1 / math.max(self.frameTime, 0.0001))
+    self:report('%d particles draw in one batch per fountain, and the whole frame with the interface takes %d draw calls at %.0f frames per second.', count, stats.drawCalls, 1 / math.max(self.frameTime, 0.0001))
 end
 
 function Stress:draw(area)

@@ -4,6 +4,7 @@ local m = require('haylen.math')
 local particles2d = require('haylen.particles2d')
 local ui = require('haylen.ui')
 
+local Look = require('categories.physics.look')
 local ParticleTest = require('categories.particles.particle-test')
 
 local Timing = haylen.class('Timing', ParticleTest)
@@ -16,9 +17,14 @@ crackle:configure({bursts = {{time = 0, count = {4, 10}, cycles = 12, interval =
 crackle:configure({bursts = {{time = 0, count = 6, cycles = 12, probability = 0.6}}})
 flame:restart()  -- Arms the delay again.]]
 
-Timing.launch = {-720, 300}
+Timing.launch = {-720, 280}
+Timing.floor = 310
 Timing.captionY = 360
 Timing.rest = 1.2
+-- The crackle sparks from a campfire, the sputter coughs out of a cannon and the pulses spout from a fountain, all standing on the floor.
+Timing.campfire = {x = -240, scale = 0.42}
+Timing.cannon = {x = 170, scale = 0.45, mouth = {0.82, 0.18}}
+Timing.fountain = {x = 720, scale = 0.45}
 
 function Timing:init(entry)
     Timing.super.init(self, entry)
@@ -28,7 +34,7 @@ function Timing:init(entry)
     self.quiet = 0
     local x, y = Timing.launch[1], Timing.launch[2]
 
-    self.smoke = particles2d.newEmitter(ParticleTest.look('smoke-puff', {rate = 30, duration = 2.4, lifetime = {1.6, 2.2}, speed = {80, 200}, direction = -1.5708, spread = 2.6, damping = 1.2, startSize = {50, 70}, endSize = {150, 200}, rotation = {0, m.tau}, spin = {-0.6, 0.6}, colors = {'#00C0C0C8', '#A0A0A0A8', '#00707078'}, maxParticles = 128, layer = 2, seed = 281}))
+    self.smoke = particles2d.newEmitter(ParticleTest.look('smoke', {frameMode = 'random', rate = 30, duration = 2.4, lifetime = {1.6, 2.2}, speed = {80, 200}, direction = -1.5708, spread = 2.6, damping = 1.2, startSize = {50, 70}, endSize = {150, 200}, rotation = {0, m.tau}, spin = {-0.6, 0.6}, colors = {'#00C0C0C8', '#A0A0A0A8', '#00707078'}, maxParticles = 128, layer = 2, seed = 281}))
     self.flame = particles2d.newEmitter(ParticleTest.look('flame-soft', {rate = 70, delay = self.gap, duration = 1.6, lifetime = {0.4, 0.7}, speed = {500, 700}, direction = -1.5708, spread = 0.15, startSize = {60, 80}, endSize = 10, colors = {'#FFFFFFE0', '#FFFFB040', '#00FF4010'}, blend = 'additive', maxParticles = 128, layer = 3, seed = 282}))
     self.sparks = particles2d.newEmitter(ParticleTest.look('spark-streak', {rate = 0, bursts = {{time = 0, count = 40}, {time = 0.3, count = 30}, {time = 0.6, count = 20}}, delay = self.gap * 2, duration = 0.8, lifetime = {0.6, 1.1}, speed = {500, 900}, direction = -1.5708, spread = 1.2, gravity = {0, 1200}, startSize = 14, endSize = 6, alignToVelocity = true, stretch = 0.02, colors = {'#FFFFFFE0', '#FFFFC050', '#00FF6020'}, blend = 'additive', maxParticles = 256, layer = 4, seed = 283}))
     self.parts = {self.smoke, self.flame, self.sparks}
@@ -36,13 +42,17 @@ function Timing:init(entry)
         emitter.x, emitter.y = x, y
     end
 
-    self.crackle = particles2d.newEmitter(ParticleTest.look('star-4point', {rate = 0, bursts = self:crackleBursts(), duration = 1.6, loop = true, lifetime = {0.2, 0.5}, speed = {60, 260}, spread = m.tau, startSize = {14, 28}, endSize = 0, rotation = {0, m.tau}, colors = {'#FFFFFFFF', '#FFFFE080', '#00FFA040'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 284}))
-    self.sputter = particles2d.newEmitter(ParticleTest.look('fireball', {frameMode = 'random', rate = 0, bursts = self:sputterBursts(), duration = 1.4, loop = true, lifetime = {0.3, 0.6}, speed = {300, 520}, direction = 0, spread = 0.35, damping = 2, startSize = {30, 46}, endSize = {60, 80}, colors = {'#FFFFF0B0', '#FFFF8020', '#00602000'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 285}))
-    self.pulse = particles2d.newEmitter(ParticleTest.look('droplet', {rate = 0, bursts = {{time = 0, count = {18, 26}, cycles = 3, interval = 0.25}}, duration = 1.5, loop = true, lifetime = {1, 1.3}, speed = {500, 680}, direction = -1.5708, spread = 0.4, gravity = {0, 1100}, startSize = {14, 20}, endSize = 10, colors = {'#FFA0D8FF', '#0060A0FF'}, maxParticles = 256, layer = 3, seed = 286}))
-    self.crackle.x, self.crackle.y = -240, 40
-    self.sputter.x, self.sputter.y = 120, 100
-    self.pulse.x, self.pulse.y = 720, 300
-    self.emitters = {self.smoke, self.flame, self.sparks, self.crackle, self.sputter, self.pulse}
+    self.crackle = particles2d.newEmitter(ParticleTest.look('star-4point', {rate = 0, bursts = self:crackleBursts(), duration = 1, loop = true, lifetime = {0.2, 0.5}, speed = {60, 260}, spread = m.tau, startSize = {14, 28}, endSize = 0, rotation = {0, m.tau}, colors = {'#FFFFFFFF', '#FFFFE080', '#00FFA040'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 284}))
+    self.campfire = particles2d.newEmitter(ParticleTest.look('flame', {frameMode = 'loopRandomStart', frameRate = 14, rate = 26, lifetime = {0.5, 0.8}, speed = {90, 150}, direction = -1.5708, spread = 0.2, startSize = {90, 120}, endSize = {20, 30}, sizeCurve = 'quadIn', colors = {'#00FFD890', '#B0FFB040', '#90FF701C', '#00601008'}, colorTimes = {0, 0.15, 0.6, 1}, shape = 'ellipse', shapeSize = {30, 8}, blend = 'additive', layer = 2, seed = 287}))
+    self.sputter = particles2d.newEmitter(ParticleTest.look('fireball', {frameMode = 'random', rate = 0, bursts = self:sputterBursts(), duration = 1.4, loop = true, lifetime = {0.3, 0.6}, speed = {300, 520}, direction = -0.85, spread = 0.35, damping = 2, startSize = {30, 46}, endSize = {60, 80}, colors = {'#FFFFF0B0', '#FFFF8020', '#00602000'}, blend = 'additive', maxParticles = 256, layer = 3, seed = 285}))
+    self.pulse = particles2d.newEmitter(ParticleTest.look('droplet', {rate = 0, bursts = {{time = 0, count = {18, 26}, cycles = 3, interval = 0.25}}, duration = 1.5, loop = true, lifetime = {0.9, 1.1}, speed = {460, 600}, direction = -1.5708, spread = 0.35, gravity = {0, 1100}, startSize = {18, 26}, endSize = 14, colors = {'#FFA0D8FF', '#0060A0FF'}, maxParticles = 256, layer = 3, seed = 286}))
+    local campfire, cannon, fountain = Timing.campfire, Timing.cannon, Timing.fountain
+    self.crackle.x, self.crackle.y = campfire.x, Timing.floor - 50
+    self.campfire.x, self.campfire.y = campfire.x, Timing.floor - 24
+    self.sputter.x = cannon.x + (cannon.mouth[1] - 0.5) * 365 * cannon.scale
+    self.sputter.y = Timing.floor + 6 - 390 * cannon.scale * (1 - cannon.mouth[2])
+    self.pulse.x, self.pulse.y = fountain.x + (199 - 202) * fountain.scale, Timing.floor + 20 - (318 - 70) * fountain.scale
+    self.emitters = {self.smoke, self.flame, self.sparks, self.campfire, self.crackle, self.sputter, self.pulse}
     self:describeDelays()
 end
 
@@ -116,12 +126,18 @@ end
 
 function Timing:draw(area)
     ParticleTest.backdrop({0.03, 0.03, 0.08}, {0.1, 0.07, 0.12})
-    ParticleTest.paveFloor('stone', Timing.launch[2] + 10, 140, '#FF6A6478')
+    ParticleTest.paveFloor('stone', Timing.floor, 140, '#FF6A6478')
+    -- The launch rises out of an iron tube in the floor.
+    Look.block(Timing.launch[1], Timing.floor - 22, 76, 52, 'iron', 5)
+    Look.block(Timing.launch[1], Timing.floor - 46, 96, 18, 'steel', 5)
+    ParticleTest.prop('campfire', Timing.campfire.x, Timing.floor + 12, Timing.campfire.scale, {pivotY = 1, layer = 1})
+    ParticleTest.prop('cannon', Timing.cannon.x, Timing.floor + 6, Timing.cannon.scale, {pivotY = 1, layer = 4})
+    ParticleTest.prop('fountain', Timing.fountain.x, Timing.floor + 20, Timing.fountain.scale, {pivotY = 1, layer = 2})
     ParticleTest.drawAll(self.emitters)
     ParticleTest.label('Launch in sequence', Timing.launch[1], Timing.captionY, self.launchTimes)
     ParticleTest.label('Crackle', self.crackle.x, Timing.captionY, 'Cycles and a probability')
-    ParticleTest.label('Sputter', self.sputter.x + 150, Timing.captionY, 'Small coughs, then a puff')
-    ParticleTest.label('Pulses', self.pulse.x, Timing.captionY, 'Three bursts a cycle')
+    ParticleTest.label('Sputter', Timing.cannon.x, Timing.captionY, 'Small coughs, then a puff')
+    ParticleTest.label('Pulses', Timing.fountain.x, Timing.captionY, 'Three bursts a cycle')
 end
 
 return Timing

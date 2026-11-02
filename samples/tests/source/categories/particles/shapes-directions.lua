@@ -120,9 +120,18 @@ function ShapesDirections:enter()
     }
 end
 
--- Adds the cursor as the head of the path once it moved a step away from the last head.
+-- Adds the cursor as the head of the path once it moved a step away from the last head. The path starts as a wave that ends at the cursor, once the cursor has its place in the play area.
 function ShapesDirections:follow()
     local path = self.path
+    if not self.pathStarted then
+        self.pathStarted = true
+        for index, point in ipairs(path) do
+            local back = #path - index
+            point[1], point[2] = self.cursorX - back * ShapesDirections.pathStep * 1.2, self.cursorY - math.sin(back * 0.7) * 40
+        end
+        self.follower:setShapePoints(path)
+        return
+    end
     local head = path[#path]
     if (self.cursorX - head[1]) ^ 2 + (self.cursorY - head[2]) ^ 2 < ShapesDirections.pathStep ^ 2 then
         return
@@ -136,6 +145,9 @@ end
 
 function ShapesDirections:update(dt)
     ShapesDirections.super.update(self, dt)
+    if not self.stage then
+        return
+    end
     self:follow()
     local count = ParticleTest.updateAll(self.emitters, dt)
     self:report('%d particles leave their shapes "%s", turned by %.2f radians and spread across %.0f units.', count, self.mode, self.angle, self.thickness)
@@ -144,10 +156,10 @@ end
 function ShapesDirections:draw(area)
     ParticleTest.backdrop({0.04, 0.05, 0.1}, {0.08, 0.1, 0.18})
     for index, outline in ipairs(self.outlines) do
-        graphics2d.drawPolyline(outline.points, 3, '#70FFFFFF', outline.closed, ShapesDirections.lines)
+        graphics2d.drawPolyline(outline.points, 5, '#80C8F0FF', outline.closed, ShapesDirections.lines)
         ParticleTest.label(self.labels[index][1], self.emitters[index].x, -70, self.labels[index][2])
     end
-    graphics2d.drawPolyline(self.path, 3, '#50FFFFFF', false, ShapesDirections.lines)
+    graphics2d.drawPolyline(self.path, 5, '#60C8F0FF', false, ShapesDirections.lines)
     local head = self.path[#self.path]
     ParticleTest.label('A polyline that follows the cursor', head[1], math.min(head[2] + 60, 480))
     ParticleTest.drawAll(self.emitters)

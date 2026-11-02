@@ -22,7 +22,7 @@ ImageShapes.size = 384
 ImageShapes.y = 100
 ImageShapes.floor = 290
 ImageShapes.away = 2.4
-ImageShapes.idle = 3.2
+ImageShapes.idle = 1.8
 
 function ImageShapes:init(entry)
     ImageShapes.super.init(self, entry)

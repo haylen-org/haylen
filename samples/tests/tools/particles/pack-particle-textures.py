@@ -1,11 +1,12 @@
 """Packs the particle pieces of the effect library into its three atlases and moves the frames of every effect file with them.
 
-The pieces are the images painted for the library with the "codex" command line, following the style guide in the README of the test project, one 8-bit RGBA PNG per piece: every name of SMOOTH, SEQUENCES and PIXEL, where a sheet of frames is the pieces `<name>-1` to `<name>-<count>`. Run it with `python3 samples/tests/tools/particles/pack-particle-textures.py <folder of the pieces>`. The tool writes `effects.png`, `sequences.png` and `pixel.png` with their atlas files into `content/particles/library/textures/`, adds the premultiplied copy of the soft dot, writes the glow line and the sheet of the runes, which tests draw whole, as files of their own, and rewrites the `frames` of every effect file that draws from an atlas, which it finds through the atlas files it replaces. The same pieces always make the same files.
+The pieces are the images painted for the library with the "codex" command line, following the style guide in the README of the test project, one 8-bit RGBA PNG per piece: every name of SMOOTH, SEQUENCES and PIXEL, where a sheet of frames is the pieces `<name>-1` to `<name>-<count>`. Run it with `python3 samples/tests/tools/particles/pack-particle-textures.py <folder of the pieces>`. The tool writes `effects.png`, `sequences.png` and `pixel.png` with their atlas files into `content/particles/library/textures/`, adds the premultiplied copy of the soft dot, draws the glow line, writes it and the sheet of the runes, which tests draw whole, as files of their own, and rewrites the `frames` of every effect file that draws from an atlas, which it finds through the atlas files it replaces. The same pieces always make the same files.
 """
 
 from __future__ import annotations
 
 import json
+import math
 import re
 import sys
 from pathlib import Path
@@ -21,8 +22,9 @@ TEXTURES = CONTENT / "particles" / "library" / "textures"
 WIDTH = {"effects": 2048, "sequences": 2048, "pixel": 128}
 GAP = {"effects": 4, "sequences": 4, "pixel": 2}
 PREMULTIPLIED = ("soft-dot", "soft-dot-premultiplied")
-# Textures that tests draw whole, as the ribbon of a trail and the sheet that "frameGrid" cuts, stay files of their own.
+# Textures that tests draw whole, as the ribbon of a trail and the sheet that "frameGrid" cuts, stay files of their own. The glow line is drawn here, white with a bright core along the middle of its height that fades to both edges, the way a ribbon stretches it across its width.
 GLOW_LINE = "glow-line"
+GLOW_LINE_SIZE = (256, 64)
 RUNES = ("rune", 4)
 FRAMES = re.compile(r'"frames": (\[\s*\[.*?\]\s*\])', re.DOTALL)
 TEXTURE = re.compile(r'"texture": "([^"]+)"')
@@ -57,6 +59,17 @@ def premultiply(image: Image) -> Image:
         for channel in range(3):
             result.pixels[start + channel] = round(result.pixels[start + channel] * alpha / 255)
     return result
+
+
+def glow_line() -> Image:
+    width, height = GLOW_LINE_SIZE
+    image = Image.blank(width, height)
+    for y in range(height):
+        across = (y + 0.5) / height - 0.5
+        alpha = 0.0 if abs(across) >= 0.48 else min(1.0, 0.62 * math.exp(-((across / 0.17) ** 2)) + 0.38 * math.exp(-((across / 0.05) ** 2)))
+        row = bytes([255, 255, 255, round(alpha * 255)]) * width
+        image.pixels[y * width * 4 : (y + 1) * width * 4] = row
+    return image
 
 
 def pack(pieces: dict[str, Image], width: int, gap: int) -> tuple[Image, dict[str, list[int]]]:
@@ -130,7 +143,7 @@ def main() -> None:
         (TEXTURES / f"{atlas}.json").write_text(document(atlas, regions, order))
         move_frames(atlas, before, regions)
 
-    write(read(folder / f"{GLOW_LINE}.png"), TEXTURES / f"{GLOW_LINE}.png")
+    write(glow_line(), TEXTURES / f"{GLOW_LINE}.png")
     runes = [read(folder / f"{RUNES[0]}-{frame}.png") for frame in range(1, RUNES[1] + 1)]
     sheet = Image.blank(sum(rune.width for rune in runes), runes[0].height)
     for index, rune in enumerate(runes):

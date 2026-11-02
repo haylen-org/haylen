@@ -7,6 +7,7 @@ local particles2d = require('haylen.particles2d')
 local physics2d = require('haylen.physics2d')
 local ui = require('haylen.ui')
 
+local Look = require('categories.physics.look')
 local ParticleTest = require('categories.particles.particle-test')
 
 local Collision = haylen.class('Collision', ParticleTest)
@@ -55,8 +56,6 @@ function Collision:init(entry)
     self.result = 'bounce'
     self.bounce = 0.5
     self.ballTexture = graphics.newTexture(Collision.ballImage(), {filter = 'linear'})
-    local effects = ParticleTest.look('plank', {})
-    self.plankTexture, self.plankSource = effects.texture, effects.frames[1]
 
     self.sparks = particles2d.newEmitter(ParticleTest.look('spark-streak', {rate = 90, lifetime = {1.8, 2.6}, speed = {300, 650}, direction = 1.5708, spread = 1.8, gravity = {0, 1200}, startSize = 12, endSize = 6, alignToVelocity = true, stretch = 0.02, colors = {'#FFFFFFE0', '#FFFFB040', '#FFFF6020', '#00A02000'}, collision = self:floorCollision(), blend = 'additive', maxParticles = 512, layer = 2, seed = 231}))
     self.sparks.x, self.sparks.y = -640, Collision.spout
@@ -113,21 +112,14 @@ function Collision:update(dt)
     self:report('Sparks %s on the floor with a bounce of %.2f, %d balls bounce in their box, and %d drops hit %d bodies.', self.result == 'bounce' and 'bounce' or self.result == 'stick' and 'stick' or 'die', self.bounce, self.balls.count, self.drops.count, self.world.bodyCount)
 end
 
--- Draws a body of a box shape as a wooden plank with a dark outline, turned with the body.
-function Collision.drawPlank(texture, source, body, width, height)
-    graphics2d.drawShape({body.x - width / 2 - 4, body.y - height / 2 - 4, width + 8, height + 8}, {radius = 6, rotation = body.rotation, color = '#FF1E1B33', layer = 3})
-    graphics2d.draw(texture, body.x, body.y, {source = source, width = width, height = height, rotation = body.rotation, layer = 3})
-end
-
 function Collision:draw(area)
     ParticleTest.backdrop({0.07, 0.08, 0.13}, {0.14, 0.14, 0.2})
     ParticleTest.paveFloor('stone', Collision.floor, 140, '#FF8A8C9C')
     graphics2d.drawShape(Collision.area, {radius = 10, color = '#301E1B33', borderWidth = 8, borderColor = '#FF9AA6C8', layer = 1})
-    graphics2d.drawCircle(self.round.x, self.round.y, 70, '#FF1E1B33', {layer = 3})
-    graphics2d.drawCircle(self.round.x, self.round.y, 64, '#FF9A7AB0', {layer = 3})
-    graphics2d.drawCircle(self.round.x - 14, self.round.y - 14, 40, '#FFB496C8', {layer = 3})
-    Collision.drawPlank(self.plankTexture, self.plankSource, self.plank, 280, 24)
-    Collision.drawPlank(self.plankTexture, self.plankSource, self.paddle, 280, 22)
+    -- The bodies wear the stone and wood of the physics tests, turned with them.
+    Look.disc(self.round.x, self.round.y, 70, 'stone', 3)
+    Look.block(self.plank.x, self.plank.y, 280, 24, 'wood', 3, self.plank.rotation)
+    Look.block(self.paddle.x, self.paddle.y, 280, 22, 'darkWood', 3, self.paddle.rotation)
     ParticleTest.drawAll(self.emitters)
     ParticleTest.label('Floor', -640, Collision.floor + 30, 'type = floor')
     ParticleTest.label('Walls', 0, Collision.floor + 30, 'type = bounds')
