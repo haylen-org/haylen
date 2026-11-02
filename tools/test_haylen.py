@@ -276,6 +276,13 @@ class StoryboardTest(unittest.TestCase):
             self.assertEqual('targetRuntime="AppleTV"' in text, 'type="com.apple.InterfaceBuilder.AppleTV.Storyboard"' in text, path)
 
 
+class StarterAppTest(unittest.TestCase):
+    def test_the_starter_app_describes_itself_apart_from_its_name(self):
+        # The desktop entry of Linux takes its comment and the AppStream metainfo its summary from the description, which validators reject when it repeats the name.
+        app = haylen.App(haylen.COMMON_TEMPLATE, "linux")
+        self.assertNotEqual(app.description, app.name)
+
+
 class TextFileTest(unittest.TestCase):
     def test_every_text_file_is_read_and_written_as_utf_8(self):
         # Windows reads and writes text in its own code page by default, which turns the copyright sign of `app.json` into a byte that no UTF-8 tool reads.
