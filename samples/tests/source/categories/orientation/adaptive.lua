@@ -65,11 +65,11 @@ function Adaptive:stats()
     }
 end
 
--- The gear lies in slots of one size, two in a row, that fill the card.
+-- The gear lies in slots of one size, two in a row, that fill the card, small enough that the stats and the gear fit the height of a landscape screen together.
 function Adaptive:gearCard(stacked)
     local slots = {}
     for index, item in ipairs(Adaptive.gear) do
-        slots[index] = ui.panel{gap = 8, alignItems = 'center', justify = 'center', ui.icon{image = item.icon, size = 64}, ui.label{text = item.text, font = 'caption'}}
+        slots[index] = ui.panel{gap = 6, padding = 12, alignItems = 'center', justify = 'center', ui.icon{image = item.icon, size = 48}, ui.label{text = item.text, font = 'caption'}}
     end
     return ui.card{gap = 16, align = 'stretch', grow = stacked and 0 or 1, ui.sectionTitle{text = 'Gear'}, ui.grid{columns = 2, gap = 12, grow = 1, align = 'stretch', children = slots}}
 end
