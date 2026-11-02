@@ -1,5 +1,4 @@
 -- Layer blend modes: a map built in code whose water layer lies over the ground with any of the thirteen blend modes of Tiled. The modes up to screen draw each tile with the blending of the GPU, and the modes from overlay on draw the layer into a group that mixes every color with the ground below it, the way Tiled composites the layer.
-local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local input = require('haylen.input')
 local m = require('haylen.math')
@@ -89,8 +88,7 @@ function BlendLayers:update(dt)
     elseif input.pressed('previous') then
         self:pick(self.mode - 1)
     end
-    local stats = graphics2d.stats()
-    self:status(string.format('The water layer blends with the mode "%s" of Tiled, in %d %s.', BlendLayers.tiledNames[BlendLayers.modes[self.mode]], stats.passes, stats.passes == 1 and 'pass' or 'passes'))
+    self:status(string.format('The water layer blends over the ground with the mode "%s" of Tiled.', BlendLayers.tiledNames[BlendLayers.modes[self.mode]]))
 end
 
 function BlendLayers:draw(area)

@@ -85,7 +85,10 @@ function Raycasts:update(dt)
     elseif first.source == 'object' then
         summary = string.format('The ray hits the object "%s" of the class "%s"', first.hit.name, first.hit.type)
     end
-    self:status(string.format('%s, %.0f units away. %d rays took %.3f ms.', summary, first.hit and first.hit.distance or 0, count, self:timing('tiledCasts')))
+    local milliseconds = self:timing('tiledCasts')
+    local cost = milliseconds < 0.1 and 'less than 0.1 ms' or string.format('%.1f ms', milliseconds)
+    local rays = count == 1 and 'The ray' or string.format('The %d rays', count)
+    self:status(string.format('%s, %.0f units away. %s took %s.', summary, first.hit and first.hit.distance or 0, rays, cost))
 end
 
 -- A ray glows from the eye to where it stops, with a bright point and an arrow along the normal of a hit.
