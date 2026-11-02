@@ -794,6 +794,21 @@ class ArtifactsTest(unittest.TestCase):
             self.assertEqual(builds[-1], ("apple", "Release", 4, [name for name in haylen.APPLE_SLICES if name != "ios-simulator"]))
             haylen.ensure_artifacts("apple", "Debug", 4, ["ios-simulator"])
             self.assertEqual(builds[-1], ("apple", "Debug", 4, ["ios-simulator"]))
+        self.assertEqual(haylen.APPLE_RUN_SLICES["ios"], ["ios", "ios-simulator"])
+        self.assertEqual(haylen.APPLE_RUN_SLICES["tvos-simulator"], ["tvos", "tvos-simulator"])
+        self.assertEqual(sorted(haylen.APPLE_RUN_SLICES), sorted(haylen.APPLE_RUNS))
+
+    def test_the_framework_joins_the_slices_built_now_and_the_current_ones_and_is_signed(self):
+        manifest = {"platforms": {"apple": {"config": "Release", "slices": {"ios": "current", "tvos": "old"}}}}
+        commands = []
+        with tempfile.TemporaryDirectory() as folder, mock.patch.object(haylen, "ENGINE_BUILDS_DIR", Path(folder)), mock.patch.object(haylen, "ARTIFACTS_DIR", Path(folder) / "artifacts"), mock.patch.object(haylen, "read_manifest", return_value=manifest), mock.patch.object(haylen, "write_manifest") as written, mock.patch.object(haylen, "engine_sources_hash", return_value="current"), mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "is_configured", return_value=True), mock.patch.object(haylen, "shutil") as files, mock.patch.object(haylen, "run", side_effect=lambda command, **_: commands.append([str(part) for part in command])), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.build_artifacts("apple", "Release", 4, ["ios-simulator"])
+            expected = [str(haylen.apple_slice_library(name, "Release")) for name in ("ios", "ios-simulator")]
+        created = next(command for command in commands if command[:2] == ["xcodebuild", "-create-xcframework"])
+        self.assertEqual([created[index + 1] for index, part in enumerate(created) if part == "-library"], expected)
+        output = created[-1]
+        self.assertEqual(commands[-2:], [["codesign", "--sign", "-", "--timestamp=none", "--force", output], ["codesign", "--verify", "--strict", output]])
+        self.assertEqual(written.call_args.args, ("apple", {"config": "Release", "slices": {"ios": "current", "ios-simulator": "current"}}))
 
 
 class LauncherTest(unittest.TestCase):

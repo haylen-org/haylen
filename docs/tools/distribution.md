@@ -48,7 +48,7 @@ Builds the [engine artifacts](#engine-artifacts) into `build/artifacts/`. The op
 
 Each build records its configuration and a SHA-256 hash of the engine sources in `build/artifacts/manifest.json`. The hash covers every file under `engine/` except the tests, the benchmarks and build outputs. So any change to the engine code, its CMake files, its shaders or its platform projects makes the artifacts stale. The commands `run`, `prepare` and the others build the artifacts of a platform again before they use them, whenever the manifest does not match the current sources or the configuration that `--engine-config` asks for.
 
-On Apple platforms the manifest records each slice of `Haylen.xcframework` on its own. The command `run` builds only the slice that it runs on, such as the slice of the iOS simulator, so a change to the engine builds one slice before a run. The commands `prepare`, `platform xcodegen` and `engine` build every slice, since a project of the developer may build for any Apple platform.
+On Apple platforms the manifest records each slice of `Haylen.xcframework` on its own. The command `run` builds only the slices of the family that it runs on, the device and the simulator of iOS, tvOS or visionOS, or the one slice of macOS or Mac Catalyst. So a change to the engine builds two slices at most before a run, and the project of the app still builds in Xcode for both the device and the simulator. The framework holds only the slices that were built from the current sources and configuration, so a slice of older sources never meets newer headers, and Xcode names a destination whose slice is missing until `prepare` builds it. The commands `prepare`, `platform xcodegen` and `engine` build every slice, since a project of the developer may build for any Apple platform.
 
 ### new
 
@@ -523,7 +523,7 @@ The framework holds one static library per slice, `libhaylen.a`, and the public 
 2. The script `haylen-install.cmake` merges the engine and the runtime, as it does for the [SDK](embedding.md#find_package-and-the-sdk).
 3. The script `haylen-framework.cmake` merges both with the player. It writes `haylen-frameworks.json` from the lists of system frameworks in `haylen-app.cmake`, the same lists that `haylen_link_runtime_platform` links into C++ apps.
 4. The tool `lipo` joins the architectures of a slice, and `xcodebuild -create-xcframework` joins the slices.
-5. The tool `codesign` signs `Haylen.xcframework` ad hoc with `-s -` and `--timestamp=none` so Xcode accepts it as signed.
+5. The tool `codesign` signs `Haylen.xcframework` ad hoc with `--sign -` and `--timestamp=none`, and `codesign --verify --strict` checks the signature, so Xcode takes it as signed and a broken signature stops the build of the artifacts.
 6. haylen.py copies `haylen-frameworks.json`, the privacy manifest of the engine and its Swift helpers next to the framework.
 
 | Slice | Architectures | Built with |

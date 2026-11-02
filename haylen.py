@@ -216,6 +216,9 @@ APPLE_SLICES = {
     "xros-simulator": ["arm64"],
 }
 
+# The slices of `Haylen.xcframework` that a run of each Apple platform needs: the device and the simulator of its family, since the project of the app builds for either one in Xcode, or the one slice of macOS and of Mac Catalyst.
+APPLE_RUN_SLICES = {"macos": ["macos"], "catalyst": ["ios-maccatalyst"], "ios": ["ios", "ios-simulator"], "ios-simulator": ["ios", "ios-simulator"], "tvos": ["tvos", "tvos-simulator"], "tvos-simulator": ["tvos", "tvos-simulator"], "visionos": ["xros", "xros-simulator"], "visionos-simulator": ["xros", "xros-simulator"]}
+
 # The name of the platform of each family of simulators that "xcodebuild -downloadPlatform" installs the runtime of.
 SIMULATOR_DOWNLOAD_PLATFORMS = {"iOS": "iOS", "tvOS": "tvOS", "xrOS": "visionOS"}
 
@@ -1786,8 +1789,8 @@ def apple_slice_library(slice_name: str, config: str) -> Path:
     return ENGINE_BUILDS_DIR / f"apple-{slice_name}-{config.lower()}" / "libhaylen.a"
 
 
-def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
-    """Builds one static library per architecture of the slices, joins the architectures of every slice with lipo and creates `Haylen.xcframework` from every slice built so far, so a run that needs one slice builds only that one."""
+def build_apple_artifacts(config: str, jobs: int, slices: list[str], current: list[str]) -> None:
+    """Builds one static library per architecture of the slices, joins the architectures of every slice with lipo and creates `Haylen.xcframework` from the slices built now and the current ones, which were built from the same sources and configuration, so a run that needs some slices builds only those and no slice of older sources ever joins the new headers. The framework is signed ad hoc and its signature verified, so Xcode takes it as signed."""
     require_host("apple")
     headers: Path | None = None
     for slice_name in slices:
@@ -1811,11 +1814,11 @@ def build_apple_artifacts(config: str, jobs: int, slices: list[str]) -> None:
     shutil.rmtree(output, ignore_errors=True)
     command: list = ["xcodebuild", "-create-xcframework"]
     for slice_name in APPLE_SLICES:
-        library = apple_slice_library(slice_name, config)
-        if library.is_file():
-            command += ["-library", library, "-headers", headers]
+        if slice_name in slices or slice_name in current:
+            command += ["-library", apple_slice_library(slice_name, config), "-headers", headers]
     run(command + ["-output", output])
-    run(["codesign", "-s", "-", "--timestamp=none", "--force", output])
+    run(["codesign", "--sign", "-", "--timestamp=none", "--force", output])
+    run(["codesign", "--verify", "--strict", output])
     # Apps link the system frameworks of the engine and declare its privacy reasons from the files next to the framework.
     shutil.copy2(headers.parent.parent / "framework" / "share" / "haylen" / "haylen-frameworks.json", output.parent)
     shutil.copy2(ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy", output.parent)
@@ -1915,10 +1918,11 @@ def build_artifacts(platform_name: str, config: str, jobs: int, slices: list[str
     sources = engine_sources_hash()
     if platform_name == "apple":
         built = slices or list(APPLE_SLICES)
-        build_apple_artifacts(config, jobs, built)
         entry = read_manifest()["platforms"].get("apple", {})
         recorded = entry.get("slices", {}) if entry.get("config") == config else {}
-        write_manifest("apple", {"config": config, "slices": {**recorded, **{name: sources for name in built}}})
+        current = [name for name, hashed in recorded.items() if hashed == sources and name not in built]
+        build_apple_artifacts(config, jobs, built, current)
+        write_manifest("apple", {"config": config, "slices": {**{name: sources for name in current}, **{name: sources for name in built}}})
     else:
         ARTIFACT_BUILDERS[platform_name](config, jobs)
         write_manifest(platform_name, {"config": config, "sources": sources})
@@ -5262,7 +5266,7 @@ def command_run(args: argparse.Namespace) -> None:
 
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
-    ensure_artifacts(target.artifacts, args.engine_config, args.jobs, [APPLE_NATIVE_SLICES[args.platform]] if target.artifacts == "apple" else None)
+    ensure_artifacts(target.artifacts, args.engine_config, args.jobs, APPLE_RUN_SLICES[args.platform] if target.artifacts == "apple" else None)
     target.run(info, target.prepare(info, args), args)
 
 
