@@ -12,6 +12,7 @@ pluginManagement {
 // The script `haylen.py` writes `haylen/haylen.properties` from `app.json` and the plugins of the app every time it prepares the project: the engine repository and version, the identity of the app, the native library its activity loads, the plugin modules and their Gradle plugins and manifest placeholders, and the folder that holds the build outputs.
 val haylen = Properties().apply { load(providers.fileContents(layout.settingsDirectory.file("haylen/haylen.properties")).asText.get().reader()) }
 
+// The Maven repositories of the SDKs of the plugins come after the ones of the engine, as the `repositories` of `haylen/haylen.properties` lists them.
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
@@ -21,6 +22,9 @@ dependencyResolutionManagement {
         }
         google()
         mavenCentral()
+        haylen.getProperty("repositories").split(",").filter { it.isNotEmpty() }.forEach { address ->
+            maven { url = uri(address) }
+        }
     }
 }
 

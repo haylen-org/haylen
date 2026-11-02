@@ -2312,6 +2312,8 @@ EXTENSION_NAME = re.compile(r"[A-Z][A-Za-z0-9]*")
 APPLE_VERSION = re.compile(r"\d+(\.\d+){0,2}")
 # The kinds of app extension that a plugin adds to the Apple apps, with the XcodeGen type of each and the Info.plist key that names its extension point.
 APPLE_EXTENSION_TYPES = {"extensionKit": ("extensionkit-extension", "EXAppExtensionAttributes", "EXExtensionPointIdentifier"), "appExtension": ("app-extension", "NSExtension", "NSExtensionPointIdentifier")}
+# The Maven repositories that plugins add to the Android project, by their https address, without the commas that separate them in the properties of the project.
+MAVEN_REPOSITORY = re.compile(r"https://[^\s,]+")
 GRADLE_PLUGIN_ID = re.compile(r"[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z][A-Za-z0-9_-]*)+")
 GRADLE_PLUGIN_VERSION = re.compile(r"[0-9A-Za-z._+-]+")
 PLACEHOLDER_NAME = re.compile(r"[A-Za-z_][A-Za-z0-9_]*")
@@ -2500,7 +2502,7 @@ class PluginManifestCheck:
             return
         if not any(platform in self.platforms for platform in ("ios", "catalyst", "tvos", "visionos", "macos")):
             self.report("apple", 'needs "ios", "catalyst", "tvos", "visionos" or "macos" in "platforms".')
-        self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "infoPlist", "entitlements", "privacy", "resources", "buildScripts", "extensions", "assetPacks"}, set())
+        self.check_keys("apple", apple, {"class", "sources", "packages", "frameworks", "binaryFrameworks", "infoPlist", "entitlements", "privacy", "resources", "buildScripts", "extensions", "assetPacks"}, set())
         if "class" in apple and not (isinstance(apple["class"], str) and OBJC_CLASS.fullmatch(apple["class"])):
             self.report("apple.class", 'must be the Objective-C name of the plugin class, such as "HaylenCameraScannerPlugin".')
         if "sources" in apple:
@@ -2524,6 +2526,18 @@ class PluginManifestCheck:
 
         if "frameworks" in apple:
             self.check_texts("apple.frameworks", apple["frameworks"], SYSTEM_FRAMEWORK, 'must list system frameworks and libraries, such as "StoreKit.framework" or "libz.tbd".')
+        binaries = apple.get("binaryFrameworks", [])
+        if not isinstance(binaries, list):
+            self.report("apple.binaryFrameworks", 'must list the frameworks that the plugin ships, such as {"path": "apple/Vendor.xcframework", "embed": true}.')
+        for index, binary in enumerate(binaries if isinstance(binaries, list) else []):
+            key = f"apple.binaryFrameworks[{index}]"
+            if not self.is_object(key, binary, 'must be an object with the "path" of the framework and whether the app embeds it.'):
+                continue
+            self.check_keys(key, binary, {"path", "embed"}, {"path", "embed"})
+            if "path" in binary and self.check_path(f"{key}.path", binary["path"], "folder") and Path(binary["path"]).suffix not in {".xcframework", ".framework"}:
+                self.report(f"{key}.path", 'must be an ".xcframework" or a ".framework" inside the plugin.')
+            if "embed" in binary and not isinstance(binary["embed"], bool):
+                self.report(f"{key}.embed", "must be true for a dynamic framework, which the app embeds, and false for a static one.")
         for key in ("infoPlist", "entitlements"):
             if key in apple:
                 self.is_object(f"apple.{key}", apple[key], "must be an object of keys and values.")
@@ -2608,12 +2622,15 @@ class PluginManifestCheck:
             return
         if "android" not in self.platforms:
             self.report("android", 'needs "android" in "platforms".')
-        self.check_keys("android", android, {"module", "gradlePlugins", "placeholders", "files", "assetPacks"}, {"module"})
+        self.check_keys("android", android, {"module", "repositories", "gradlePlugins", "placeholders", "files", "assetPacks"}, {"module"})
         if "module" in android and self.check_path("android.module", android["module"], "folder"):
             module = self.folder / android["module"]
             if not any((module / name).is_file() for name in ("build.gradle.kts", "build.gradle")) or not (module / "src" / "main" / "AndroidManifest.xml").is_file():
                 self.report("android.module", 'must be an Android library module with a "build.gradle.kts" and "src/main/AndroidManifest.xml".')
 
+        repositories = android.get("repositories", [])
+        if not isinstance(repositories, list) or not all(isinstance(entry, str) and MAVEN_REPOSITORY.fullmatch(entry) for entry in repositories):
+            self.report("android.repositories", 'must list the https addresses of the Maven repositories that the module and its Gradle plugins come from, such as "https://maven.example.com/releases".')
         gradle_plugins = android.get("gradlePlugins", [])
         if not isinstance(gradle_plugins, list) or not all(isinstance(entry, dict) and set(entry) == {"id", "version"} and isinstance(entry["id"], str) and GRADLE_PLUGIN_ID.fullmatch(entry["id"]) and isinstance(entry["version"], str) and GRADLE_PLUGIN_VERSION.fullmatch(entry["version"]) for entry in gradle_plugins):
             self.report("android.gradlePlugins", 'must list the id and the version of each Gradle plugin, such as {"id": "com.example.services", "version": "1.0.0"}.')
@@ -3218,14 +3235,15 @@ def apple_embed_script(folder: str) -> dict:
 
 
 def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[str, dict[str, str]], symbols: bool) -> None:
-    """Copies the Apple sources and resources of the plugins into `haylen/plugins/` and writes `haylen/project.yml`, whose target templates give the targets the engine library and frameworks, the package, the splash assets, the completed Info.plist, entitlements and privacy manifest, the native libraries and the sources, Swift packages, system frameworks, resources and build scripts of the plugins of their platforms."""
+    """Copies the Apple sources, resources and frameworks of the plugins into `haylen/plugins/` and writes `haylen/project.yml`, whose target templates give the targets the engine library and frameworks, the package, the splash assets, the completed Info.plist, entitlements and privacy manifest, the native libraries and the sources, Swift packages, system frameworks, shipped frameworks, resources and build scripts of the plugins of their platforms."""
     spec = apple_spec(root)
     frameworks = apple_frameworks()
     shutil.rmtree(generated / "plugins", ignore_errors=True)
     packages: dict[str, dict] = {}
     package_owners: dict[str, str] = {}
     bundled: dict[str, str] = {}
-    templates = {template: {"sources": [], "postBuildScripts": [], "extensions": []} for template in APPLE_TEMPLATES}
+    binaries: dict[str, str] = {}
+    templates = {template: {"sources": [], "postBuildScripts": [], "extensions": [], "binaries": []} for template in APPLE_TEMPLATES}
     linked: dict[str, dict[tuple[str, ...], list[str] | None]] = {template: {} for template in APPLE_TEMPLATES}
     extensions: dict[str, dict] = {}
     shutil.rmtree(generated / "extensions", ignore_errors=True)
@@ -3250,6 +3268,15 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         if (copied / "resources").is_dir():
             sources.append({"path": f"plugins/{plugin.id}/resources", "name": f"{plugin.id} resources", "group": "plugins", "buildPhase": "resources"})
 
+        shipped = []
+        for binary in apple.get("binaryFrameworks", []):
+            name = Path(binary["path"]).name
+            if name in binaries:
+                raise BuildError(f'The plugins "{binaries[name]}" and "{plugin.id}" both ship the framework "{name}". Keep only one of them.')
+            binaries[name] = plugin.id
+            shutil.copytree(plugin.folder / binary["path"], copied / "frameworks" / name, symlinks=True, ignore=COPY_IGNORED)
+            shipped.append({"framework": f"plugins/{plugin.id}/frameworks/{name}", "embed": binary["embed"]})
+
         for name, package in apple.get("packages", {}).items():
             declared = {"url": package["url"], "exactVersion": package["exactVersion"]}
             if packages.setdefault(name, declared) != declared:
@@ -3270,6 +3297,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         # A product or framework that two plugins link joins the template once, for every destination either plugin builds for.
         for template, filters in apple_template_plugins(plugin).items():
             templates[template]["sources"] += [{**source, **filters} for source in sources]
+            templates[template]["binaries"] += [{**binary, **filters} for binary in shipped]
             templates[template]["postBuildScripts"] += apple.get("buildScripts", [])
             dependencies = [("package", name, product) for name, package in apple.get("packages", {}).items() for product in package["products"]]
             for dependency in [*dependencies, *(("sdk", framework) for framework in apple.get("frameworks", []))]:
@@ -3286,6 +3314,7 @@ def write_apple_spec(app: App, root: Path, generated: Path, entitlements: dict[s
         catalyst = [framework for framework in frameworks["macCatalyst"] if framework not in frameworks["iOS"] and framework not in own] if template == "HaylenIOS" else []
         dependencies = [{"framework": "Haylen.xcframework", "embed": False}, *({"sdk": framework} for framework in engine), *({"sdk": framework, "destinationFilters": ["macCatalyst"]} for framework in catalyst)]
         dependencies += [{"target": target, "embed": True, **({"destinationFilters": ["iOS"]} if template == "HaylenIOS" else {})} for target in templates[template]["extensions"]]
+        dependencies += templates[template]["binaries"]
         for dependency, destinations in linked[template].items():
             if dependency[0] == "sdk" and (dependency[1] in engine or dependency[1] in catalyst or dependency[1] in own):
                 continue
@@ -3738,6 +3767,7 @@ def java_property(value: str) -> str:
 def prepare_android_plugins(app: App, root: Path) -> dict[str, str]:
     """Copies the library module of every plugin into `haylen/plugins/<id>` and returns the properties that include the modules, apply their Gradle plugins and set their manifest placeholders. The files that plugins place in the project, such as `app/services.json`, go only into a copy of the template that haylen.py owns, since the project of a developer is theirs, and `check` names the ones it lacks."""
     modules: list[str] = []
+    repositories: list[str] = []
     gradle_plugins: dict[str, str] = {}
     placeholders: dict[str, str] = {}
     owners: dict[str, dict[str, str]] = {"gradle": {}, "placeholder": {}, "file": {}}
@@ -3747,6 +3777,7 @@ def prepare_android_plugins(app: App, root: Path) -> dict[str, str]:
             continue
         shutil.copytree(plugin.folder / android["module"], root / GENERATED_FOLDER / "plugins" / plugin.id, ignore=COPY_IGNORED)
         modules.append(f"{plugin.id}={GENERATED_FOLDER}/plugins/{plugin.id}")
+        repositories += [address for address in android.get("repositories", []) if address not in repositories]
 
         for entry in android.get("gradlePlugins", []):
             if gradle_plugins.setdefault(entry["id"], entry["version"]) != entry["version"]:
@@ -3770,6 +3801,7 @@ def prepare_android_plugins(app: App, root: Path) -> dict[str, str]:
 
     return {
         "plugins": ",".join(modules),
+        "repositories": ",".join(repositories),
         "gradlePlugins": ",".join(f"{identifier}={version}" for identifier, version in gradle_plugins.items()),
         **{f"placeholder.{name}": value for name, value in placeholders.items()},
     }
@@ -5584,7 +5616,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
 
 
 def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: Path) -> bool:
-    """Copies the Apple sources and resources of the plugins of a C++ app that build for a run platform into its build folder and writes the CMake file that `haylen_add_app` reads, which compiles the sources into the app, links the system frameworks, bundles the resources and adds the `infoPlist` keys to its `Info.plist`, the parts that the target templates give Lua apps. Returns whether the file changed. Swift packages and build scripts need the Xcode project of the Apple template."""
+    """Copies the Apple sources and resources of the plugins of a C++ app that build for a run platform into its build folder and writes the CMake file that `haylen_add_app` reads, which compiles the sources into the app, links the system frameworks, bundles the resources and adds the `infoPlist` keys to its `Info.plist`, the parts that the target templates give Lua apps. Returns whether the file changed. Swift packages, shipped frameworks and build scripts need the Xcode project of the Apple template."""
     target_platform = RUN_TARGETS[platform].plugins
     copied = directory / "haylen-plugins"
     shutil.rmtree(copied, ignore_errors=True)
@@ -5595,7 +5627,7 @@ def write_cpp_apple_plugins(app: App, platform: str, directory: Path, fragment: 
         apple = plugin_section(app, plugin, "apple", (target_platform,)) if plugin.supports(target_platform) else None
         if apple is None:
             continue
-        unsupported = [key for key in ("packages", "buildScripts") if apple.get(key)]
+        unsupported = [key for key in ("packages", "binaryFrameworks", "buildScripts") if apple.get(key)]
         if unsupported:
             raise BuildError(f'The plugin "{plugin.id}" needs {quoted_names(unsupported, " and ")} on Apple platforms, which only the Xcode project of the Apple template builds. Build the app from a Lua project, or use a plugin without them.')
         if "sources" in apple:

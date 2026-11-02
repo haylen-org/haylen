@@ -1077,6 +1077,29 @@ class VisionOSTest(unittest.TestCase):
         self.assertEqual(embeds["HaylenIOS"], [["$(PROJECT_DIR)/haylen/native/ios-$(PLATFORM_NAME).xcfilelist"]])
         self.assertEqual(embeds["HaylenTVOS"], [])
 
+    def test_the_frameworks_that_a_plugin_ships_join_the_targets_of_its_platforms(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "vendor"
+            (folder / "apple" / "Vendor.xcframework").mkdir(parents=True)
+            (folder / "apple" / "Vendor.xcframework" / "Info.plist").write_text("<plist />")
+            manifest = {"id": "vendor", "name": "Vendor", "version": "1.0.0", "description": "An SDK.", "platforms": ["ios", "tvos"], "apple": {"binaryFrameworks": [{"path": "apple/Vendor.xcframework", "embed": True}]}}
+            self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [])
+            app = mock.Mock(plugins=[haylen.Plugin(folder, manifest, None)], plugin_values={"vendor": {}}, native=[])
+            generated = Path(scratch) / "haylen"
+            frameworks = {"iOS": [], "macCatalyst": [], "tvOS": [], "visionOS": [], "macOS": []}
+            with mock.patch.object(haylen, "apple_spec", return_value={"targets": {}}), mock.patch.object(haylen, "apple_frameworks", return_value=frameworks):
+                haylen.write_apple_spec(app, Path(scratch), generated, {template: {} for template in haylen.APPLE_TEMPLATES}, False)
+            text = (generated / "project.yml").read_text()
+            templates = json.loads(text[text.index("{"):])["targetTemplates"]
+            self.assertTrue((generated / "plugins" / "vendor" / "frameworks" / "Vendor.xcframework" / "Info.plist").is_file())
+
+            shipped = {"framework": "plugins/vendor/frameworks/Vendor.xcframework", "embed": True}
+            self.assertIn({**shipped, "destinationFilters": ["iOS"]}, templates["HaylenIOS"]["dependencies"], "The plugin lists iOS without Mac Catalyst.")
+            self.assertIn(shipped, templates["HaylenTVOS"]["dependencies"])
+            self.assertNotIn(shipped, templates["HaylenMacOS"]["dependencies"])
+            manifest["apple"]["binaryFrameworks"] = [{"path": "apple", "embed": "yes"}]
+            self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), ['The key "apple.binaryFrameworks[0].path" must be an ".xcframework" or a ".framework" inside the plugin.', 'The key "apple.binaryFrameworks[0].embed" must be true for a dynamic framework, which the app embeds, and false for a static one.'])
+
     def test_a_missing_runtime_names_the_platform_that_xcodebuild_downloads(self):
         with mock.patch.object(haylen, "capture", return_value=json.dumps({"devices": {}})), self.assertRaisesRegex(haylen.BuildError, '"xcodebuild -downloadPlatform visionOS"'):
             haylen.apple_simulator("xrOS", None)
@@ -2058,6 +2081,27 @@ class AndroidPluginsTest(unittest.TestCase):
         self.assertEqual(haylen.PluginManifestCheck.problems_of(scratch, manifest), [])
         manifest["android"]["assetPacks"] = {"fastFollow": "music", "delivery": "on-demand"}
         self.assertEqual(haylen.PluginManifestCheck.problems_of(scratch, manifest), ['The key "android.assetPacks.delivery" is not a key of "plugin.json".', 'The key "android.assetPacks.fastFollow" must list the packs that Google Play delivers right after the install, or name an array parameter that lists them.'])
+
+    def test_the_maven_repositories_of_plugins_reach_the_android_project_once_and_in_order(self):
+        root = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, root)
+        plugins = []
+        for identifier, repositories in (("ads", ["https://maven.ads.example/releases", "https://maven.shared.example"]), ("maps", ["https://maven.shared.example"])):
+            folder = root / identifier
+            (folder / "android" / "src" / "main").mkdir(parents=True)
+            (folder / "android" / "build.gradle.kts").write_text("")
+            (folder / "android" / "src" / "main" / "AndroidManifest.xml").write_text("<manifest />")
+            manifest = {"id": identifier, "name": identifier, "version": "1.0.0", "description": "An SDK.", "platforms": ["android"], "android": {"module": "android", "repositories": repositories}}
+            self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), [])
+            plugins.append(haylen.Plugin(folder, manifest, None))
+        app = mock.Mock(plugins=plugins, plugin_values={"ads": {}, "maps": {}})
+        properties = haylen.prepare_android_plugins(app, root / "project")
+        self.assertEqual(properties["repositories"], "https://maven.ads.example/releases,https://maven.shared.example")
+
+        manifest["android"]["repositories"] = ["http://maven.example", "https://a,b"]
+        self.assertEqual(haylen.PluginManifestCheck.problems_of(folder, manifest), ['The key "android.repositories" must list the https addresses of the Maven repositories that the module and its Gradle plugins come from, such as "https://maven.example.com/releases".'])
+        for name in ("settings.gradle.kts", "build.gradle.kts"):
+            self.assertIn('haylen.getProperty("repositories")', (haylen.ROOT / "templates" / "common" / "platform" / "android" / name).read_text(encoding="utf-8"), f'The file "{name}" of the template reads the repositories of the plugins.')
 
     def test_bundletool_signs_with_the_upload_key_that_the_gradle_scripts_read(self):
         scratch = Path(tempfile.mkdtemp()).resolve()
