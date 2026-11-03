@@ -153,7 +153,7 @@ function Remap:draw(area)
     graphics2d.drawShape({area.width / 2 - titleWidth / 2 - 24, 20, titleWidth + 48, 48}, {radius = 24, color = '#E6151A2A', layer = 2})
     graphics2d.drawText(prompts.font(), title, area.width / 2, 44, {size = 26, anchor = {0.5, 0.5}, layer = 3})
 
-    -- The bindings of every action, as chips of what the player presses, in two columns.
+    -- The bindings of every action that the fields remap, the keys, the mouse and the gamepad, as chips of what the player presses, in two columns.
     local margin, gap = 24, 16
     local top = self.cardTop
     local column = (area.width - margin * 2 - 40 - gap) / 2
@@ -162,7 +162,13 @@ function Remap:draw(area)
         local left = margin + 20 + (index - 1) // 3 * (column + gap)
         local y = top + (index - 1) % 3 * (kChip + 8) + kChip / 2
         graphics2d.drawText(nil, entry.title, left, y, {size = 22, color = Test.muted, anchor = {0, 0.5}, layer = 3})
-        prompts.chips(input.actionDefinition(entry.action)[entry.list] or {}, left + 125, y, kChip, left + column, 3)
+        local remapped = {}
+        for _, binding in ipairs(input.actionDefinition(entry.action)[entry.list] or {}) do
+            if not binding:match('^virtual:') then
+                remapped[#remapped + 1] = binding
+            end
+        end
+        prompts.chips(remapped, left + 125, y, kChip, left + column, 3)
     end
 end
 

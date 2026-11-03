@@ -1,4 +1,4 @@
--- The prompts of the input tests: a binding of the action map written for people, such as "Space", "Left stick" or the letter on the bottom button of the gamepad in hand, and drawn as a chip in the shape of what the player presses: a key cap for keys, a round button for gamepads, a pill for the mouse and an outlined pill for touch controls. The statuses of the tests also take from it the last device and the actions held in words.
+-- The prompts of the input tests: a binding of the action map written for people, such as "Space", "Left stick" or the letter on the bottom button of the gamepad in hand, and drawn as a chip in the shape of what the player presses: a key cap for keys, a round button for gamepads with the letter, shape or place of a face button, a pill for the mouse and an outlined pill for touch controls. The statuses of the tests also take from it the last device and the actions held in words.
 local assets = require('haylen.assets')
 local graphics2d = require('haylen.graphics2d')
 local input = require('haylen.input')
@@ -10,6 +10,7 @@ prompts.faces = {
     letters = {south = 'A', east = 'B', west = 'X', north = 'Y'},
     swappedLetters = {south = 'B', east = 'A', west = 'Y', north = 'X'},
     shapes = {south = 'Cross', east = 'Circle', west = 'Square', north = 'Triangle'},
+    unknown = {south = 'South', east = 'East', west = 'West', north = 'North'},
 }
 prompts.faceColors = {south = '#FF4CD45A', east = '#FFF0473E', west = '#FF2F86F6', north = '#FFFFC93C'}
 prompts.buttons = {dpadUp = 'D-pad up', dpadDown = 'D-pad down', dpadLeft = 'D-pad left', dpadRight = 'D-pad right', leftShoulder = 'LB', rightShoulder = 'RB', start = 'Start', back = 'View', guide = 'Guide', leftStick = 'L3', rightStick = 'R3'}
@@ -37,14 +38,14 @@ function prompts.held(names)
     return table.concat(held, ' and ') .. (#held == 1 and ' is held' or ' are held')
 end
 
--- The labels of the face buttons of the first connected gamepad, or letters when none is connected.
+-- The labels of the face buttons of the first connected gamepad, or their places when none is connected or its labels are unknown, the way the key captures of the engine write them.
 function prompts.faceLabels()
     for index = 1, 8 do
         if input.gamepadConnected(index) then
-            return prompts.faces[input.gamepadLabels(index)] or prompts.faces.letters
+            return prompts.faces[input.gamepadLabels(index)]
         end
     end
-    return prompts.faces.letters
+    return prompts.faces.unknown
 end
 
 -- Returns the text and the kind of a binding, such as "Space" and "key" for "key:space".

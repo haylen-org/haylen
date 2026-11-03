@@ -1039,7 +1039,7 @@ While it listens, it keeps every input from the rest of the UI. A binding of `ca
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `value` | string | `''` | The binding. It shows in words for people, such as `Left Shift` for `'key:leftShift'`, `1` for `'key:digit1'` and `D-pad Up` for `'button:dpadUp'`. |
+| `value` | string | `''` | The binding. It shows in words for people, such as `Left Shift` for `'key:leftShift'`, `1` for `'key:digit1'` and `D-pad Up` for `'button:dpadUp'`. A face button shows the letter or the shape that the first connected gamepad prints on it, such as `Button A` for `'button:south'`, and its place, such as `Button South`, while the [labels of the gamepad](input.md#inputgamepadlabelsindex) are unknown. |
 | `placeholder` | text | none | The text shown while there is no binding. |
 | `prompt` | text | `'…'` | The text shown while it listens. |
 | `sources` | list of strings | every source | The kinds of input it takes: `'key'`, `'mouse'`, `'button'` and `'axis'`. It ignores the others and goes on listening. |

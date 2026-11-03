@@ -15,7 +15,7 @@
 
 namespace haylen::ui {
 
-std::string KeyCapture::describe(std::string_view binding) {
+std::string KeyCapture::describe(std::string_view binding, input::GamepadLabels labels) {
     const std::size_t separator = binding.find(':');
     const std::string_view kind = binding.substr(0, separator);
     std::string name(separator == std::string_view::npos ? std::string_view{} : binding.substr(separator + 1));
@@ -45,12 +45,41 @@ std::string KeyCapture::describe(std::string_view binding) {
         return "D-pad " + label.substr(dpad.size());
     }
     if (kind == "button") {
-        return "Button " + label;
+        return "Button " + getFaceLabel(name, labels).value_or(label);
     }
     if (kind == "stick") {
         return label + " Stick";
     }
     return label + sign;
+}
+
+// A face button reads as the letter or the shape the gamepad prints on it, and by its place while the labels are unknown.
+std::optional<std::string> KeyCapture::getFaceLabel(std::string_view place, input::GamepadLabels labels) {
+    const auto index = static_cast<std::size_t>(std::ranges::find(kFacePlaces, place) - kFacePlaces.begin());
+    if (index == kFacePlaces.size()) {
+        return std::nullopt;
+    }
+    switch (labels) {
+    case input::GamepadLabels::Letters:
+        return std::string(kLetters[index]);
+    case input::GamepadLabels::SwappedLetters:
+        return std::string(kSwappedLetters[index]);
+    case input::GamepadLabels::Shapes:
+        return std::string(kShapes[index]);
+    case input::GamepadLabels::Unknown:
+        return std::nullopt;
+    }
+    return std::nullopt;
+}
+
+// The labels of the first connected gamepad, which prompts and the controls of a settings screen show.
+input::GamepadLabels KeyCapture::getLabels(const input::Input& devices) {
+    for (std::size_t index = 0; index < input::Input::kMaxGamepads; ++index) {
+        if (const input::GamepadState& gamepad = devices.getGamepad(index); gamepad.connected) {
+            return gamepad.labels;
+        }
+    }
+    return input::GamepadLabels::Unknown;
 }
 
 std::vector<std::string> KeyCapture::readBindings(PropertyReader& reader, std::string_view key, const core::Json& listed) {
@@ -119,7 +148,7 @@ void KeyCapture::render(Context& context, const math::Rect& bounds) {
 
     Surfaces::draw(context, capturing ? Theme::Surface::FieldFocused : Theme::Surface::Field, bounds, context.getColor(state.hovered && !capturing ? Theme::Color::BorderStrong : Theme::Color::Raised), context.getColor(capturing ? Theme::Color::Focus : Theme::Color::Border));
     const math::Rect inner = bounds.inset(Surfaces::getPadding(context, Theme::Surface::Field));
-    std::string shown = capturing ? std::string(context.getText(prompt)) : (value.empty() ? std::string(context.getText(placeholder)) : describe(value));
+    std::string shown = capturing ? std::string(context.getText(prompt)) : (value.empty() ? std::string(context.getText(placeholder)) : describe(value, getLabels(context.getInput())));
     if (capturing && shown.empty()) {
         shown = "\xE2\x80\xA6";
     }

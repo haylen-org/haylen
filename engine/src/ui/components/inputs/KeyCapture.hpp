@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "haylen/input/Controls.hpp"
+#include "haylen/input/GamepadLabels.hpp"
 #include "haylen/input/Input.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -24,8 +25,8 @@ class KeyCapture final : public Component {
     }
     [[nodiscard]] bool describe(Context& context, platform::AccessibilityElement& element) const override;
 
-    // Writes a binding for people, such as Left Shift for `key:leftShift`.
-    [[nodiscard]] static std::string describe(std::string_view binding);
+    // Writes a binding for people, such as Left Shift for `key:leftShift`, and a face button by the labels of the gamepad, such as Button A for `button:south` on a gamepad with letters.
+    [[nodiscard]] static std::string describe(std::string_view binding, input::GamepadLabels labels);
 
   protected:
     [[nodiscard]] bool isFocusable() const noexcept override {
@@ -49,8 +50,14 @@ class KeyCapture final : public Component {
     };
 
     static constexpr std::array<std::string_view, 4> kSourceNames{"key", "mouse", "button", "axis"};
+    static constexpr std::array<std::string_view, 4> kFacePlaces{"south", "east", "west", "north"};
+    static constexpr std::array<std::string_view, 4> kLetters{"A", "B", "X", "Y"};
+    static constexpr std::array<std::string_view, 4> kSwappedLetters{"B", "A", "Y", "X"};
+    static constexpr std::array<std::string_view, 4> kShapes{"Cross", "Circle", "Square", "Triangle"};
     static constexpr float kAxisTravel = 0.6F;
 
+    [[nodiscard]] static std::optional<std::string> getFaceLabel(std::string_view place, input::GamepadLabels labels);
+    [[nodiscard]] static input::GamepadLabels getLabels(const input::Input& devices);
     [[nodiscard]] static std::vector<std::string> readBindings(PropertyReader& reader, std::string_view key, const core::Json& listed);
     [[nodiscard]] std::optional<std::string> listen(const input::Input& devices) const;
     [[nodiscard]] bool accepts(Source source) const;

@@ -140,7 +140,9 @@ function Gamepads:drawButton(index, button, x, y, radius)
     local face = prompts.faceColors[button]
     local color = input.gamepadDown(button, index) and (face or Test.accent) or kIdle
     graphics2d.drawShape({x - radius, y - radius, radius * 2, radius * 2}, {kind = 'ellipse', color = color, borderWidth = 2, borderColor = face or prompts.ink, layer = 2})
-    local labels = prompts.faces[input.gamepadLabels(index)]
+    -- A gamepad whose labels are unknown shows its face buttons by their colors alone.
+    local kind = input.gamepadLabels(index)
+    local labels = kind ~= 'unknown' and prompts.faces[kind]
     if labels and labels[button] and radius >= 10 then
         graphics2d.drawText(prompts.font(), labels[button]:sub(1, 1), x, y, {size = radius * 1.1, anchor = {0.5, 0.5}, color = '#FFFFFFFF', outlineWidth = 2, outlineColor = prompts.ink, layer = 3})
     end

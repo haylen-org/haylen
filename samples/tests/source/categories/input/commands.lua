@@ -14,10 +14,10 @@ local Commands = haylen.class('Commands', Test)
 Commands.code = [[
 local run = {name = 'run', steps = {'forward', 'forward'}, maxTicks = 9, priority = 1}
 local special = {name = 'forwardSpecial', steps = {'defend', 'forward', 'attack'}, priority = 3}
-local directions = {back = 'left', forward = 'right'}
-local buffer = input.newCommandBuffer({buttons = names, lifetime = 10, directions = directions, commands = {run, special}})
-buffer:update(input.actions())  -- Once in every fixed step.
-local typed = buffer:peek()]]
+local options = {buttons = names, lifetime = 10, commands = {run, special}}
+options.directions = {back = 'left', forward = 'right'}  -- Which side is forward.
+local buffer = input.newCommandBuffer(options)
+buffer:update(input.actions()) print(buffer:peek())  -- Once in every fixed step.]]
 
 local kButtons = {'defend', 'up', 'down', 'left', 'right', 'jump', 'attack'}
 local kActions = {actions = {
