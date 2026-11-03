@@ -5,6 +5,7 @@ const target = await (await fetch(`http://127.0.0.1:${port}/json/new?about:blank
 const socket = new WebSocket(target.webSocketDebuggerUrl);
 const pending = new Map();
 const sessions = new Set([""]);
+const requests = new Set();
 const result = { receivedBytes: 0, peakWasmBytes: 0, buffersAfterCollection: 0, downloadedMedium: false, finished: false, failure: null, log: [] };
 let id = 0;
 
@@ -30,8 +31,13 @@ socket.onmessage = (event) => {
         pending.delete(message.id);
     } else if (message.method === "Target.attachedToTarget") {
         follow(message.params.sessionId);
+    } else if (message.method === "Network.requestWillBeSent") {
+        requests.add(`${message.sessionId ?? ""}:${message.params.requestId}`);
     } else if (message.method === "Network.loadingFinished") {
+        requests.delete(`${message.sessionId ?? ""}:${message.params.requestId}`);
         result.receivedBytes += message.params.encodedDataLength;
+    } else if (message.method === "Network.loadingFailed") {
+        requests.delete(`${message.sessionId ?? ""}:${message.params.requestId}`);
     } else if (message.method === "Runtime.consoleAPICalled") {
         const text = message.params.args.map((arg) => arg.value ?? arg.description).join(" ");
         result.log.push(text);
@@ -61,6 +67,12 @@ while (!result.finished && !result.failure && Date.now() < deadline) {
     const memory = await send("Runtime.evaluate", { expression: "typeof HEAPU8 === 'undefined' ? 0 : HEAPU8.length", returnByValue: true });
     result.peakWasmBytes = Math.max(result.peakWasmBytes, memory.result?.value ?? 0);
     await new Promise((resolve) => setTimeout(resolve, 250));
+}
+
+// The page may log that the download ended before the debugging protocol reports the end of its last requests, which a worker made, so the received bytes count once no request runs.
+const settled = Date.now() + 10000;
+while (result.finished && requests.size > 0 && Date.now() < settled) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
 }
 
 // Array buffers that nothing holds stay until the browser collects them, so the ones that the page and its workers keep show once it did.
