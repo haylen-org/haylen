@@ -1732,6 +1732,37 @@ class XcodeGenTest(unittest.TestCase):
         self.assertEqual(installed.read_text(), "pinned")
 
 
+class AppImageToolsTest(unittest.TestCase):
+    def test_a_new_pin_of_patchelf_downloads_its_own_release(self):
+        scratch = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, scratch)
+        folder = scratch / f"appimage-{haylen.APPIMAGETOOL_VERSION}"
+        for path in (folder / "appimagetool" / "AppRun", folder / f"runtime-{haylen.APPIMAGE_RUNTIME_VERSION}-x86_64", folder / "patchelf-0.0.1" / "bin" / "patchelf"):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("older")
+
+        def download(url: str, target: Path, sha256: str | None = None) -> None:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            if "patchelf" not in url:
+                target.write_text("pinned")
+                return
+            self.assertIn(f"/{haylen.PATCHELF_VERSION}/", url)
+            binary = scratch / "patchelf"
+            binary.write_text("pinned")
+            with tarfile.open(target, "w:gz") as package:
+                package.add(binary, "./bin/patchelf")
+
+        def extract(command: list, cwd: Path) -> str:
+            (cwd / "squashfs-root").mkdir()
+            (cwd / "squashfs-root" / "AppRun").write_text("pinned")
+            return ""
+
+        with mock.patch.object(haylen, "TOOLS_DIR", scratch), mock.patch.object(haylen, "host_arch", return_value="x64"), mock.patch.object(haylen, "require_host"), mock.patch.object(haylen, "download", side_effect=download), mock.patch.object(haylen, "capture", side_effect=extract):
+            tools = haylen.ensure_appimage_tools()
+        self.assertEqual(tools["patchelf"], folder / f"patchelf-{haylen.PATCHELF_VERSION}" / "bin" / "patchelf")
+        self.assertEqual(tools["patchelf"].read_text(), "pinned")
+
+
 class EmscriptenTest(unittest.TestCase):
     def setUp(self):
         self.scratch = Path(tempfile.mkdtemp())

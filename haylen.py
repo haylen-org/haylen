@@ -104,10 +104,10 @@ BUNDLETOOL_SHA256 = "a099cfa1543f55593bc2ed16a70a7c67fe54b1747bb7301f37fdfd6d910
 # The AppImage generator of CPack packs a Linux app with appimagetool, starts it with the AppImage runtime and points the libraries it bundles at the image with patchelf. The hashes are the ones of the release assets of each architecture.
 APPIMAGETOOL_VERSION = "1.9.1"
 APPIMAGE_RUNTIME_VERSION = "20251108"
-PATCHELF_VERSION = "0.19.2"
+PATCHELF_VERSION = "0.19.3"
 APPIMAGE_TOOLS_SHA256 = {
-    "x86_64": {"appimagetool": "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0", "runtime": "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d", "patchelf": "2abdc34fbe949c995a1baa4ec310896a085588a45a99cd0d726851bdfac2a4bb"},
-    "aarch64": {"appimagetool": "f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158", "runtime": "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444", "patchelf": "ba6850c1a6f4cbdb050e1cc22fa5239159ad31c43606846e49c408d335f594ff"},
+    "x86_64": {"appimagetool": "ed4ce84f0d9caff66f50bcca6ff6f35aae54ce8135408b3fa33abfc3cb384eb0", "runtime": "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d", "patchelf": "38861b171079e440b25ac86483284f690d0ee7921dba98b0c8fe04a9b0a11667"},
+    "aarch64": {"appimagetool": "f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158", "runtime": "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444", "patchelf": "2281dd071995b449b9ce7c53c71d6d56ec3a280ae1cc66b779442abf624f7c10"},
 }
 # The installer generator of CPack makes the Windows installer with Inno Setup. The hash is the one of the x64 installer of the release.
 INNO_SETUP_VERSION = "7.1.0"
@@ -5064,10 +5064,10 @@ def run_desktop(app: App, root: Path, args: argparse.Namespace) -> None:
 
 
 def ensure_appimage_tools() -> dict[str, Path]:
-    """Returns the pinned appimagetool, AppImage runtime and patchelf that the AppImage generator of CPack runs, with appimagetool unpacked from its own AppImage, so it runs without FUSE."""
+    """Returns the pinned appimagetool, AppImage runtime and patchelf that the AppImage generator of CPack runs, with appimagetool unpacked from its own AppImage, so it runs without FUSE. Each tool lives under a name with its version, so a new pin of any of them downloads its own release."""
     arch = {"x64": "x86_64", "arm64": "aarch64"}[host_arch()]
     folder = TOOLS_DIR / f"appimage-{APPIMAGETOOL_VERSION}"
-    tools = {"appimagetool": folder / "appimagetool" / "AppRun", "runtime": folder / f"runtime-{APPIMAGE_RUNTIME_VERSION}-{arch}", "patchelf": folder / "bin" / "patchelf"}
+    tools = {"appimagetool": folder / "appimagetool" / "AppRun", "runtime": folder / f"runtime-{APPIMAGE_RUNTIME_VERSION}-{arch}", "patchelf": folder / f"patchelf-{PATCHELF_VERSION}" / "bin" / "patchelf"}
     if all(path.exists() for path in tools.values()):
         return tools
 
@@ -5084,7 +5084,7 @@ def ensure_appimage_tools() -> dict[str, Path]:
     archive = folder / "patchelf.tar.gz"
     download(f"https://github.com/NixOS/patchelf/releases/download/{PATCHELF_VERSION}/patchelf-{PATCHELF_VERSION}-{arch}.tar.gz", archive, hashes["patchelf"])
     with tarfile.open(archive) as package:
-        package.extract("./bin/patchelf", folder, filter="data")
+        package.extract("./bin/patchelf", tools["patchelf"].parent.parent, filter="data")
     archive.unlink()
     return tools
 

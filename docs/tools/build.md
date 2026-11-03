@@ -91,7 +91,7 @@ The script downloads, or builds, the other tools the first time a command needs 
 | XcodeGen | 2.46.0 | `.tools/xcodegen-2.46.0` | Apple apps whose `App.xcodeproj` haylen.py generates again. macOS only. |
 | bundletool | 1.18.3 | `.tools/bundletool-1.18.3.jar` | Release runs on Android of apps whose packs Google Play delivers, which install in the local testing mode of Google Play. |
 | Inno Setup | 7.1.0 | `.tools/inno-setup-7.1.0` | The Windows installer of [`distribution installer`](distribution.md#distribution-installer), installed in portable mode, without an uninstaller or entries in the registry. Windows only. |
-| appimagetool, the AppImage runtime and patchelf | 1.9.1, 20251108 and 0.19.2 | `.tools/appimage-1.9.1` | The AppImage of [`distribution installer`](distribution.md#distribution-installer). Linux only. |
+| appimagetool, the AppImage runtime and patchelf | 1.9.1, 20251108 and 0.19.3 | `.tools/appimage-1.9.1` | The AppImage of [`distribution installer`](distribution.md#distribution-installer). Linux only. |
 
 Emscripten comes from its repository through `git`. An SDK of another version fetches the newest list of releases and installs the pinned one. Every web build tree records the version of Emscripten that configured it. A tree of another version builds again from nothing, because Emscripten keeps no binary compatibility between versions.
 
