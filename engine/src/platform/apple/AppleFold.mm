@@ -9,8 +9,9 @@ std::optional<Fold> AppleFold::fold;
 bool AppleFold::halfOpened = false;
 UIView* AppleFold::followed = nil;
 
-// A device without a hinge never calls the handler, and a release before iOS 27.1 has neither the interaction nor the regions.
-void AppleFold::attach(UIView* view) {
+// A device without a hinge never calls the handler, and a release before iOS 27.1 has neither the interaction nor the regions. An SDK before iOS 27.1 declares neither, so an engine built with it reports no fold.
+void AppleFold::attach([[maybe_unused]] UIView* view) {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270100
     if (@available(iOS 27.1, *)) {
         if (followed == view) {
             return;
@@ -25,10 +26,12 @@ void AppleFold::attach(UIView* view) {
         [view addInteraction:hinge];
         refresh(view);
     }
+#endif
 }
 
 // The region is in the points of the view, and the fold in framebuffer pixels. A fold whose region has an area hides what lies under it, and a fold that is half opened or hides its region separates the window.
-void AppleFold::refresh(UIView* view) {
+void AppleFold::refresh([[maybe_unused]] UIView* view) {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270100
     if (@available(iOS 27.1, *)) {
         fold = std::nullopt;
         for (UIViewReservedRegion* region in [view reservedRegionsOfKind:UIViewReservedRegionKind.divisionRegionKind]) {
@@ -43,6 +46,7 @@ void AppleFold::refresh(UIView* view) {
             return;
         }
     }
+#endif
 }
 
 std::optional<Fold> AppleFold::get() noexcept {

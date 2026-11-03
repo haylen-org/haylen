@@ -11,7 +11,7 @@
 
 namespace haylen::platform {
 
-// The fold of a foldable iPhone across the window of the app, from iOS 27.1 on: the division region that UIKit reserves in the view of the window where the screen folds, and the status of the hinge, which a hinge interaction on the view reports. The view controller of the window reads the region again after every layout, so the frame thread reads the fold without asking UIKit. Everything runs on the main thread, which is the frame thread.
+// The fold of a foldable iPhone across the window of the app, from iOS 27.1 on, in an engine built with the SDK of iOS 27.1 or later: the division region that UIKit reserves in the view of the window where the screen folds, and the status of the hinge, which a hinge interaction on the view reports. The view controller of the window reads the region again after every layout, so the frame thread reads the fold without asking UIKit. Everything runs on the main thread, which is the frame thread.
 class AppleFold final {
   public:
     // Follows the hinge of the device from the view of the window of the app.
