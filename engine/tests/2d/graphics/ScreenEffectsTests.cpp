@@ -80,7 +80,7 @@ TEST(ScreenEffectsTest, DistortionDrawsGoIntoTheMapOfCompositedCanvases) {
     EXPECT_GT(bent.passes, flat.passes + 3U);
     // clang-format off
     const auto bend = [&](float distance) {
-        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        return test::FrameRenderer::renderOnce(fixture, [&, distance](core::Engine& engine) {
             Renderer& renderer = engine.getRenderer2D();
             renderer.beginWorld(Camera{}, {.postProcess = PostProcess{.distortion = distance}});
             renderer.draw({.texture = texture, .order = bending});
@@ -102,7 +102,7 @@ TEST(ScreenEffectsTest, BloomAndBlurAddPassesAtHalfTheSize) {
     const graphics::Texture texture = fixture.engine().getGraphics().createTexture(graphics::Image(4, 4, math::Color::white()));
     // clang-format off
     const auto render = [&](const PostProcess& post) {
-        return test::FrameRenderer::renderOnce(fixture, [&](core::Engine& engine) {
+        return test::FrameRenderer::renderOnce(fixture, [&, post](core::Engine& engine) {
             Renderer& renderer = engine.getRenderer2D();
             renderer.beginWorld(Camera{}, {.postProcess = post});
             renderer.draw({.texture = texture});
