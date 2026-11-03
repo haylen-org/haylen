@@ -49,16 +49,18 @@ WindowPlacement WindowPlacement::fromJson(const core::Json& value) {
         return placement;
     }
 
-    core::JsonValidator::requireKnownKeys(value, {"anchor", "area", "monitor", "offset", "fill"}, "window position");
+    core::JsonValidator::requireKnownKeys(value, {"anchor", "area", "display", "offset", "fill"}, "window position");
     placement.anchor = readName(value, "anchor", kAnchors, Anchor::Center);
     placement.area = readName(value, "area", kAreas, Area::Work);
     placement.fill = readName(value, "fill", kFills, Fill::None);
-    if (value.contains("monitor")) {
-        const core::Json& number = value.at("monitor");
-        if (number.is_number_integer() && number.get<long long>() >= 1) {
-            placement.monitor = number.get<std::size_t>();
-        } else if (number != "primary") {
-            throw std::invalid_argument("A window position names its monitor with \"primary\" or a number from 1.");
+    if (value.contains("display")) {
+        const core::Json& target = value.at("display");
+        if (target.is_number_integer() && target.get<long long>() >= 1) {
+            placement.number = target.get<std::size_t>();
+        } else if (target.is_string() && !target.get<std::string>().empty()) {
+            placement.display = target == "primary" ? std::string() : target.get<std::string>();
+        } else {
+            throw std::invalid_argument("A window position names its display with \"primary\", a number from 1 or the id of a display.");
         }
     }
     if (value.contains("offset")) {
@@ -75,24 +77,28 @@ core::Json WindowPlacement::toJson() const {
     if (point) {
         return {{"x", core::JsonNumber::fromFloat(point->x)}, {"y", core::JsonNumber::fromFloat(point->y)}};
     }
-    const core::Json target = monitor == 0 ? core::Json("primary") : core::Json(monitor);
-    return {{"anchor", getName(kAnchors, anchor)}, {"area", getName(kAreas, area)}, {"monitor", target}, {"offset", {core::JsonNumber::fromFloat(offset.x), core::JsonNumber::fromFloat(offset.y)}}, {"fill", getName(kFills, fill)}};
+    const core::Json target = number != 0 ? core::Json(number) : core::Json(display.empty() ? std::string("primary") : display);
+    return {{"anchor", getName(kAnchors, anchor)}, {"area", getName(kAreas, area)}, {"display", target}, {"offset", {core::JsonNumber::fromFloat(offset.x), core::JsonNumber::fromFloat(offset.y)}}, {"fill", getName(kFills, fill)}};
 }
 
-const Monitor& WindowPlacement::findMonitor(std::span<const Monitor> monitors, std::size_t number) {
-    if (number >= 1 && number <= monitors.size()) {
-        return monitors[number - 1];
+const Display& WindowPlacement::findDisplay(std::span<const Display> displays) const {
+    if (number >= 1 && number <= displays.size()) {
+        return displays[number - 1];
     }
-    const auto primary = std::ranges::find_if(monitors, &Monitor::primary);
-    return primary != monitors.end() ? *primary : monitors.front();
+    const auto named = std::ranges::find(displays, display, &Display::id);
+    if (!display.empty() && named != displays.end()) {
+        return *named;
+    }
+    const auto primary = std::ranges::find_if(displays, &Display::primary);
+    return primary != displays.end() ? *primary : displays.front();
 }
 
-math::Rect WindowPlacement::resolve(std::span<const Monitor> monitors, math::Vec2 size) const {
+math::Rect WindowPlacement::resolve(std::span<const Display> displays, math::Vec2 size) const {
     if (point) {
         return {point->x, point->y, size.x, size.y};
     }
 
-    const Monitor& target = findMonitor(monitors, monitor);
+    const Display& target = findDisplay(displays);
     const math::Rect& region = area == Area::Work ? target.workArea : target.bounds;
     const float width = fill == Fill::Width || fill == Fill::Both ? region.width : size.x;
     const float height = fill == Fill::Height || fill == Fill::Both ? region.height : size.y;

@@ -2,8 +2,10 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <optional>
 #include <span>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -11,8 +13,8 @@
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
+#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Fold.hpp"
-#include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/TextInput.hpp"
 
@@ -64,6 +66,19 @@ class Window {
         Dark,
     };
 
+    // How the platform answers an app that asks to list every display. Browsers show the screens beyond the one of the page only once the person allows it, and the other platforms list every display from the start.
+    enum class DisplayAccess : std::uint8_t {
+        Granted,
+        Denied,
+        Unsupported,
+    };
+
+    // Where and how the window goes fullscreen, as `enterFullscreen` describes. A mode with a refresh rate of 0 runs at the highest rate of its size.
+    struct Fullscreen {
+        std::string display;
+        std::optional<Display::Mode> mode;
+    };
+
     virtual ~Window() = default;
 
     // Resolves the orientation names `landscape`, `portrait` and `any` that `app.json` and Lua share.
@@ -77,7 +92,12 @@ class Window {
     [[nodiscard]] virtual math::Vec2 getFramebufferSize() const noexcept = 0;
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
     [[nodiscard]] virtual bool isFullscreen() const noexcept = 0;
+
+    // Leaves fullscreen, or covers the display of the window at the mode that the desktop runs in.
     virtual void setFullscreen(bool value) = 0;
+
+    // Covers the display with the id, or the display of the window while the id is empty, at the mode that the desktop runs in, or exclusively in a mode of the display, which the display runs in while the window holds it. Desktops move the window to the display first, browsers go fullscreen on the screen where the person let the page see every screen, and the other platforms keep the window on its display in the mode that the system picks. Throws `std::invalid_argument` for a display that is not connected or a mode that the display does not list, and `std::runtime_error` where the platform cannot go fullscreen there.
+    virtual void enterFullscreen(const Fullscreen& value) = 0;
     [[nodiscard]] virtual bool isResizable() const noexcept = 0;
     virtual void setResizable(bool value) = 0;
     virtual void setTitle(std::string_view value) = 0;
@@ -138,11 +158,14 @@ class Window {
     // Moves the window with the mouse for as long as the button that just went down stays down, so the player drags the app by its content.
     virtual void startDrag() = 0;
 
-    // Returns every monitor of the desktop. Platforms whose window fills the screen report the screen as the only monitor.
-    [[nodiscard]] virtual std::vector<Monitor> getMonitors() const = 0;
+    // Returns every display of the device, at least one, in the order of the platform, as `Display` describes. A browser lists only the screen of the page until the person lets the page see the others.
+    [[nodiscard]] virtual std::vector<Display> getDisplays() const = 0;
 
-    // Returns the monitor that holds most of the window, or the primary monitor while the window is off every monitor.
-    [[nodiscard]] Monitor getCurrentMonitor() const;
+    // Returns the id of the display that shows the window, the one that holds most of it on desktops.
+    [[nodiscard]] virtual std::string getDisplayId() const = 0;
+
+    // Asks the platform to list every display, which browsers ask the person for, and calls back once on the frame thread with the answer. The displays that a grant adds reach the app as a change of the displays.
+    virtual void requestDisplays(std::function<void(DisplayAccess access)> callback) = 0;
 
   private:
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;

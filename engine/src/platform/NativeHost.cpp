@@ -5,6 +5,7 @@
 #include <utility>
 
 #include "platform/CrashGuard.hpp"
+#include "platform/Player.hpp"
 #include "platform/Services.hpp"
 
 #if defined(__EMSCRIPTEN__)
@@ -161,8 +162,46 @@ void NativeHost::startDrag() {
     Services::startWindowDrag();
 }
 
-std::vector<Monitor> NativeHost::getMonitors() const {
-    return Services::getMonitors();
+std::vector<Display> NativeHost::getDisplays() const {
+    return Services::getDisplays();
+}
+
+std::string NativeHost::getDisplayId() const {
+    return Services::getWindowDisplayId();
+}
+
+void NativeHost::requestDisplays(std::function<void(DisplayAccess access)> callback) {
+    Services::requestDisplays(std::move(callback));
+}
+
+FullscreenTarget NativeHost::resolveFullscreen(const Fullscreen& value) const {
+    return FullscreenTarget::resolve(getDisplays(), getDisplayId(), value);
+}
+
+void NativeHost::enterFullscreen(const Fullscreen& value) {
+    const FullscreenTarget target = resolveFullscreen(value);
+    if (target.display.id != getDisplayId() || target.mode) {
+        throw std::runtime_error("The window of this platform stays on the display that shows it, in the mode that the system picks.");
+    }
+    setFullscreen(true);
+}
+
+void NativeHost::openOutput(std::uint32_t number, std::string_view, const Output::Options&) {
+    refuseOutput(number, "This platform shows the app on the display of its window alone.");
+}
+
+void NativeHost::closeOutput(std::uint32_t number) {
+    refusedOutputs.erase(number);
+}
+
+NativeHost::OutputReport NativeHost::getOutputReport(std::uint32_t number) const {
+    const auto found = refusedOutputs.find(number);
+    return found != refusedOutputs.end() ? found->second : OutputReport{.ending = Output::Ending::Unsupported};
+}
+
+void NativeHost::refuseOutput(std::uint32_t number, std::string reason) {
+    refusedOutputs[number] = {.ending = Output::Ending::Unsupported, .reason = std::move(reason)};
+    Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
 }
 
 void NativeHost::applyStyle() {

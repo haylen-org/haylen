@@ -48,7 +48,17 @@ class LifecycleEvent final {
     static constexpr std::string_view kWindowSafeAreaChanged = "windowSafeAreaChanged";
     static constexpr std::string_view kWindowFoldChanged = "windowFoldChanged";
     static constexpr std::string_view kWindowMoved = "windowMoved";
-    static constexpr std::string_view kWindowMonitorsChanged = "windowMonitorsChanged";
+    static constexpr std::string_view kWindowDisplayChanged = "windowDisplayChanged";
+
+    static constexpr std::string_view kDisplayConnected = "displayConnected";
+    static constexpr std::string_view kDisplayDisconnected = "displayDisconnected";
+    static constexpr std::string_view kDisplayChanged = "displayChanged";
+
+    static constexpr std::string_view kOutputShown = "outputShown";
+    static constexpr std::string_view kOutputHidden = "outputHidden";
+    static constexpr std::string_view kOutputResized = "outputResized";
+    static constexpr std::string_view kOutputClosed = "outputClosed";
+    static constexpr std::string_view kOutputInput = "outputInput";
 
     static constexpr std::string_view kGuiMounted = "guiMounted";
     static constexpr std::string_view kGuiUnmounted = "guiUnmounted";

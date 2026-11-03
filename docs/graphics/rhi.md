@@ -134,6 +134,8 @@ The surface changes while the app runs, and the device keeps every object it mad
 - `detachSurface` lets go of the window when the platform has none, such as an Android app in the background, and `attachSurface` takes the new window when it comes back.
 - A swapchain that its API reports out of date or suboptimal is made again before the next frame.
 
+A device may also draw into surfaces beyond the window, such as the windows of the outputs of an app on other displays. `addSurface(surface)` makes a swapchain on another surface, with the color format, the samples and the depth and stencil of the swapchain of the window, so the swapchain pipelines draw into it too, and returns its number from 1. A swapchain pass names that number in the field `surface` of its `PassDesc`, where 0 is the window. `resizeSurface(surface, width, height)` follows its drawable, `removeSurface(surface)` lets it go once the frames in flight finished with it, and `commit` presents every surface that a pass drew into. The Metal and WebGPU devices draw into several surfaces. The Direct3D 12, Direct3D 11, Vulkan and OpenGL devices draw only into the window, and their `addSurface` throws `std::runtime_error`, which ends an output as `unsupported`. The null device checks that a pass names a surface it has.
+
 A transparent window composites the alpha of its pixels as premultiplied where the platform allows it: through the `opaque` property of the layer on Apple platforms, DirectComposition on Windows with Direct3D, the composite alpha of the Vulkan surface and the alpha mode of the WebGPU canvas.
 
 ## Lost devices

@@ -14,7 +14,7 @@
 
 namespace haylen::bench {
 
-// A GPU device that draws the swapchain passes of the device it wraps into a render target of one sample and a fixed size, so a benchmark draws whole frames through a real graphics API without a window. Everything else reaches the wrapped device as it is, and the frames present nothing.
+// A GPU device that draws the swapchain passes of the window of the device it wraps into a render target of one sample and a fixed size, so a benchmark draws whole frames through a real graphics API without a window. Everything else reaches the wrapped device as it is, the surfaces beyond the window too, and the frames present nothing of the window.
 class OffscreenSwapchain final : public gpu::Device {
   public:
     OffscreenSwapchain(std::unique_ptr<gpu::Device> wrapped, int width, int height);
@@ -64,6 +64,9 @@ class OffscreenSwapchain final : public gpu::Device {
     void resizeSurface(int width, int height) override;
     void detachSurface() override;
     void attachSurface(const gpu::Surface& surface) override;
+    [[nodiscard]] int addSurface(const gpu::Surface& surface) override;
+    void resizeSurface(int surface, int width, int height) override;
+    void removeSurface(int surface) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 

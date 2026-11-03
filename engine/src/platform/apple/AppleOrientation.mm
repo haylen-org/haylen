@@ -1,9 +1,6 @@
 #import "platform/apple/AppleOrientation.hpp"
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
-#include <string_view>
-#include <vector>
-
 #include "haylen/core/Log.hpp"
 #include "platform/NativeWindow.hpp"
 
@@ -32,22 +29,12 @@ UIInterfaceOrientationMask AppleOrientation::getSupported() {
     return getOrientations().get();
 }
 
-SupportedOrientations& AppleOrientation::getOrientations() {
-    static SupportedOrientations orientations = readInfoPlist();
-    return orientations;
+void AppleOrientation::prepare(Orientation value) {
+    getOrientations().prepare(value, UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad);
 }
 
-// The keys of iPads come first on an iPad, as UIKit reads them.
-SupportedOrientations AppleOrientation::readInfoPlist() {
-    NSDictionary* info = NSBundle.mainBundle.infoDictionary;
-    const bool pad = UIDevice.currentDevice.userInterfaceIdiom == UIUserInterfaceIdiomPad;
-    NSArray<NSString*>* names = (pad ? info[@"UISupportedInterfaceOrientations~ipad"] : nil) ?: info[@"UISupportedInterfaceOrientations"];
-    std::vector<std::string_view> listed;
-    for (NSString* name in names) {
-        listed.emplace_back(name.UTF8String);
-    }
-    SupportedOrientations orientations;
-    orientations.setListed(SupportedOrientations::fromInfoPlist(listed));
+SupportedOrientations& AppleOrientation::getOrientations() {
+    static SupportedOrientations orientations;
     return orientations;
 }
 

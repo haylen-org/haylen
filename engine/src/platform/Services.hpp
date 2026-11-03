@@ -18,9 +18,9 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/DialogRequest.hpp"
+#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/MediaSession.hpp"
-#include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
 #include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
@@ -72,8 +72,14 @@ class Services final {
     [[nodiscard]] static math::Rect getWindowFrame();
     static void setWindowFrame(const math::Rect& value);
 
-    // Returns every monitor of the desktop, at least one. It also works before the window opens.
-    [[nodiscard]] static std::vector<Monitor> getMonitors();
+    // Returns every display of the device, at least one, as `Window::getDisplays` describes. It also works before the window opens.
+    [[nodiscard]] static std::vector<Display> getDisplays();
+
+    // Returns the id of the display that shows the window.
+    [[nodiscard]] static std::string getWindowDisplayId();
+
+    // Asks to list every display and calls back once on the frame thread, as `Window::requestDisplays` describes.
+    static void requestDisplays(std::function<void(Window::DisplayAccess access)> callback);
 
     // Lets clicks through the window everywhere, or everywhere outside the regions in framebuffer pixels.
     static void setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions);
@@ -81,7 +87,7 @@ class Services final {
     // Moves the window with the mouse while the button that went down last stays down.
     static void startWindowDrag();
 
-    // Starts following the window once the platform layer opened it, so its moves and the changes of the monitors reach the running app as events.
+    // Starts following the window once the platform layer opened it, so its moves and the changes of the displays reach the running app as events.
     static void watchWindow();
 
     // Runs before every frame of the app, where platforms follow the mouse over the window for passthrough and Linux runs the main context of GLib.

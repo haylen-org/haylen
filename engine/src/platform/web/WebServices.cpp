@@ -20,6 +20,7 @@
 #include "platform/DialogRelay.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/web/WebDialogJson.hpp"
+#include "platform/web/WebDisplays.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
 #include "platform/web/WebTextInput.hpp"
@@ -181,16 +182,23 @@ bool Services::hasDesktop() noexcept {
 
 void Services::setWindowStyle(const WindowStyle&) {}
 
-// The canvas is the window, and the page gives it no desktop, so the canvas is also the only monitor.
+// The canvas is the window, and the page gives it no desktop.
 math::Rect Services::getWindowFrame() {
     return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 }
 
 void Services::setWindowFrame(const math::Rect&) {}
 
-std::vector<Monitor> Services::getMonitors() {
-    const math::Rect screen = getWindowFrame();
-    return {{.name = "canvas", .bounds = screen, .workArea = screen, .scale = NativeWindow::getScale(), .primary = true}};
+std::vector<Display> Services::getDisplays() {
+    return WebDisplays::getDisplays();
+}
+
+std::string Services::getWindowDisplayId() {
+    return WebDisplays::getWindowDisplayId();
+}
+
+void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
+    WebDisplays::request(std::move(callback));
 }
 
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}

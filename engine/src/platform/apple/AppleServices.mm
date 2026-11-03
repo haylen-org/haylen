@@ -26,6 +26,8 @@
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleDialogs.hpp"
+#import "platform/apple/AppleDisplays.hpp"
+#import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleKeyboard.hpp"
 #import "platform/apple/AppleMediaSession.hpp"
@@ -143,7 +145,7 @@ void Services::setWindowStyle([[maybe_unused]] const WindowStyle& value) {
 #endif
 }
 
-// Windows of iPhones, iPads and TVs fill their screen, which is their only monitor.
+// Windows of iPhones, iPads and TVs fill their screen.
 math::Rect Services::getWindowFrame() {
 #if TARGET_OS_OSX
     return AppleDesktop::getFrame();
@@ -158,13 +160,25 @@ void Services::setWindowFrame([[maybe_unused]] const math::Rect& value) {
 #endif
 }
 
-std::vector<Monitor> Services::getMonitors() {
+std::vector<Display> Services::getDisplays() {
 #if TARGET_OS_OSX
-    return AppleDesktop::getMonitors();
+    return AppleDesktop::getDisplays();
 #else
-    const math::Rect screen = getWindowFrame();
-    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = NativeWindow::getScale(), .primary = true}};
+    return AppleDisplays::getDisplays();
 #endif
+}
+
+std::string Services::getWindowDisplayId() {
+#if TARGET_OS_OSX
+    return AppleDesktop::getWindowDisplayId();
+#else
+    return AppleDisplays::getWindowDisplayId();
+#endif
+}
+
+// Apple platforms list every display from the start.
+void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
+    callback(Window::DisplayAccess::Granted);
 }
 
 void Services::setMousePassthrough([[maybe_unused]] Window::Passthrough mode, [[maybe_unused]] std::span<const math::Polygon::Outline> regions) {
@@ -259,8 +273,13 @@ void Services::endSplashScreen([[maybe_unused]] float fadeOutSeconds) {
 }
 
 // Apple devices have no folds, and iPadOS reports none for the windows of an iPad.
+// A foldable iPhone reports its fold from iOS 27.1 on, and every other Apple device has none.
 std::optional<Fold> Services::getFold() {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    return AppleFold::get();
+#else
     return std::nullopt;
+#endif
 }
 
 TextInput& Services::getTextInput() {

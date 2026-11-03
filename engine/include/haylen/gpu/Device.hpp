@@ -513,7 +513,7 @@ class Device {
         std::uint8_t clearStencil = 0;
     };
 
-    // A pass draws into the swapchain of the frame when it names no attachment, clearing its color, depth and stencil as its loads say. A swapchain pass that keeps the contents keeps the depth, the stencil and multisampled color only when it directly follows the swapchain pass whose contents it keeps, and otherwise keeps only the color of one sample.
+    // A pass draws into the swapchain of a surface when it names no attachment, the window for the surface 0 or a surface that `addSurface` made, clearing its color, depth and stencil as its loads say. A swapchain pass that keeps the contents keeps the depth, the stencil and multisampled color only when it directly follows the swapchain pass of the same surface whose contents it keeps, and otherwise keeps only the color of one sample.
     struct PassDesc {
         std::span<const ColorAttachment> colors;
         std::optional<DepthStencilAttachment> depthStencil;
@@ -522,6 +522,7 @@ class Device {
         float clearDepth = 1.0F;
         std::uint8_t clearStencil = 0;
         std::string_view label;
+        int surface = 0;
     };
 
     struct Bindings {
@@ -609,7 +610,7 @@ class Device {
     virtual void pushDebugGroup(std::string_view name) = 0;
     virtual void popDebugGroup() = 0;
 
-    // Submits the passes of the frame and presents the swapchain when a pass drew into it.
+    // Submits the passes of the frame and presents the swapchain of every surface that a pass drew into.
     virtual void commit() = 0;
 
     // Makes the swapchain follow a new size of the drawable in pixels, from the next frame.
@@ -618,6 +619,15 @@ class Device {
     // Lets go of the surface while the platform has none, such as an Android app in the background, and takes the new one when it comes back, keeping every object the device made. A frame without a surface records nothing into the swapchain.
     virtual void detachSurface() = 0;
     virtual void attachSurface(const Surface& surface) = 0;
+
+    // Makes a swapchain on a surface beyond the window, such as a window of the app on another display, with the color format, the samples and the depth and stencil of the swapchain of the window, so the swapchain pipelines draw into it too. Returns its number from 1, which swapchain passes name, and which no other surface takes while it lives. Throws `std::runtime_error` when the device cannot draw into the surface.
+    [[nodiscard]] virtual int addSurface(const Surface& surface) = 0;
+
+    // Makes the swapchain of a surface that `addSurface` made follow a new size of its drawable in pixels, from the next frame.
+    virtual void resizeSurface(int surface, int width, int height) = 0;
+
+    // Lets go of a surface that `addSurface` made, whose objects the frames in flight still draw into wait for them.
+    virtual void removeSurface(int surface) = 0;
 
     // Starts copying the pixels of the first mip level and layer of a render target, which must come after the frame that renders it was committed.
     [[nodiscard]] virtual std::unique_ptr<Readback> readImage(Image image, int width, int height) = 0;

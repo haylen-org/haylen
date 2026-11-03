@@ -32,9 +32,10 @@ class NullDevice final : public Device {
     static constexpr int kProgramPoolSize = 512;
     static constexpr int kPipelinePoolSize = 2048;
 
-    // A pass of a frame: whether it drew into the swapchain, its clear color, and the write masks of the first color of the pipelines it applied.
+    // A pass of a frame: whether it drew into a swapchain and the surface of that swapchain, its clear color, and the write masks of the first color of the pipelines it applied.
     struct PassRecord {
         bool swapchain = false;
+        int surface = 0;
         Load load = Load::Clear;
         math::Color clear = math::Color::transparent();
         std::vector<ColorMask> masks;
@@ -106,6 +107,14 @@ class NullDevice final : public Device {
     void resizeSurface(int width, int height) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
+    [[nodiscard]] int addSurface(const Surface& surface) override;
+    void resizeSurface(int surface, int width, int height) override;
+    void removeSurface(int surface) override;
+
+    // The surfaces beyond the window that the device draws into now, with the size of each.
+    [[nodiscard]] const std::unordered_map<int, Surface>& getAddedSurfaces() const noexcept {
+        return addedSurfaces;
+    }
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 
@@ -193,7 +202,8 @@ class NullDevice final : public Device {
     [[nodiscard]] const PipelineState& getAppliedPipeline(std::string_view call) const;
     void requirePass(std::string_view call) const;
     void requireNoPass(std::string_view call) const;
-    void recordPass(bool swapchain, Load load, math::Color clear);
+    void recordPass(bool swapchain, int surface, Load load, math::Color clear);
+    static void checkSurface(const Surface& surface, int maxSampleCount);
 
     std::unordered_map<std::uint32_t, BufferState> buffers;
     std::unordered_map<std::uint32_t, ImageDesc> images;
@@ -215,8 +225,10 @@ class NullDevice final : public Device {
     std::uint32_t appliedBlocks = 0;
     std::vector<bool> debugGroups;
 
-    // The surface the swapchain passes draw into, which a headless window has from the start.
+    // The surface the swapchain passes draw into, which a headless window has from the start, and the surfaces beyond it by their numbers.
     bool surfaceAttached = true;
+    std::unordered_map<int, Surface> addedSurfaces;
+    int nextSurface = 1;
 
     // The frame that records holds its passes up to the count it recorded, and reuses the ones past it.
     FrameRecord currentFrame;

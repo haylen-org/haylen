@@ -100,8 +100,17 @@ void Services::setWindowFrame(const math::Rect& value) {
     LinuxDesktop::setFrame(value);
 }
 
-std::vector<Monitor> Services::getMonitors() {
-    return LinuxDesktop::getMonitors();
+std::vector<Display> Services::getDisplays() {
+    return LinuxDesktop::getDisplays();
+}
+
+std::string Services::getWindowDisplayId() {
+    return LinuxDesktop::getWindowDisplayId();
+}
+
+// Linux lists every display from the start.
+void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
+    callback(Window::DisplayAccess::Granted);
 }
 
 void Services::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {

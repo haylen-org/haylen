@@ -1140,6 +1140,13 @@ bool Renderer::isCapturing() const noexcept {
 }
 
 // A failure on the way, such as a group left open that cannot close, still drops what the frame drew, so the next frame starts clean.
+void Renderer::present(const graphics::RenderTarget& target, int surface, math::Vec2 size, math::Color clear) {
+    if (!target.isValid() || surface == 0) {
+        throw std::invalid_argument("A presentation needs a valid render target and a surface beyond the window.");
+    }
+    state->presentations.push_back({.target = target, .surface = surface, .size = size, .clear = clear});
+}
+
 void Renderer::endFrame(bool transparent) {
     try {
         finishCanvas();

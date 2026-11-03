@@ -6,7 +6,6 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/platform/Event.hpp"
-#include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Window.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -97,7 +96,7 @@ TEST(WindowLuaTest, MovesAndPlacesTheWindow) {
     EXPECT_NE(fixture.lua("window.setFrame(0, 0, 0, 200)").find("positive width"), std::string::npos);
     EXPECT_NE(fixture.lua("window.setFrame(0, 0, 800, -1)").find("positive height"), std::string::npos);
 
-    // The headless desktop leaves a taskbar of 40 points at the bottom of its monitor.
+    // The headless desktop leaves a taskbar of 40 points at the bottom of its display.
     fixture.runLua("window.place({anchor = 'bottom', offset = {0, -8}})");
     EXPECT_EQ(fixture.host().getFrame(), (math::Rect{560.0F, 832.0F, 800.0F, 200.0F}));
     fixture.runLua("window.place({anchor = 'bottom', area = 'full', fill = 'width'})");
@@ -107,21 +106,6 @@ TEST(WindowLuaTest, MovesAndPlacesTheWindow) {
     fixture.runLua("window.place('center')");
     EXPECT_EQ(fixture.host().getFrame(), (math::Rect{0.0F, 420.0F, 1920.0F, 200.0F}));
     EXPECT_NE(fixture.lua("window.place({anchor = 'middle'})").find("A window position has the unknown \"anchor\" \"middle\"."), std::string::npos);
-}
-
-TEST(WindowLuaTest, ListsTheMonitors) {
-    test::EngineFixture fixture;
-    fixture.host().setMonitors({
-        {.name = "main", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 25.0F, 1920.0F, 1055.0F}, .scale = 2.0F, .primary = true},
-        {.name = "side", .bounds = {1920.0F, 0.0F, 1280.0F, 1024.0F}, .workArea = {1920.0F, 0.0F, 1280.0F, 1024.0F}, .scale = 1.0F, .primary = false},
-    });
-    fixture.runLua("window = require('haylen.window')");
-    EXPECT_EQ(fixture.lua("local all = window.monitors() return #all .. ' ' .. all[1].name .. ' ' .. tostring(all[1].workArea) .. ' ' .. all[1].scale .. ' ' .. tostring(all[1].primary) .. ' ' .. all[2].name .. ' ' .. tostring(all[2].bounds) .. ' ' .. tostring(all[2].primary)"), "2 main Rect(0.0, 25.0, 1920.0, 1055.0) 2.0 true side Rect(1920.0, 0.0, 1280.0, 1024.0) false");
-
-    fixture.host().setFrame({2200.0F, 100.0F, 640.0F, 480.0F});
-    EXPECT_EQ(fixture.lua("return window.currentMonitor().name"), "side");
-    fixture.runLua("window.place({anchor = 'topLeft', monitor = 2})");
-    EXPECT_EQ(fixture.host().getFrame(), (math::Rect{1920.0F, 0.0F, 640.0F, 480.0F}));
 }
 
 TEST(WindowLuaTest, LetsClicksThroughOutsideTheRegions) {
@@ -165,13 +149,13 @@ TEST(WindowLuaTest, StartsDragsAndHearsTheDesktop) {
     fixture.runLua("window = require('haylen.window') window.startDrag() window.startDrag()");
     EXPECT_EQ(fixture.host().getDragCount(), 2);
 
-    // Scenes hear the moves of the window and the changes of the monitors among their events.
+    // Scenes hear the moves of the window and the changes of the displays among their events.
     fixture.runLua("heard = {} require('haylen.scene').push({event = function(self, event) heard[#heard + 1] = event.type end})");
     fixture.frames(1);
     fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
-    fixture.engine().handleEvent({.type = Event::Type::MonitorsChanged});
+    fixture.engine().handleEvent({.type = Event::Type::DisplaysChanged});
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "windowMoved monitorsChanged");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ' ')"), "windowMoved displaysChanged");
 }
 
 } // namespace haylen::platform

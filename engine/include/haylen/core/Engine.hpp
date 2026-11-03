@@ -30,6 +30,8 @@ namespace haylen::platform {
 class Accessibility;
 class Bridge;
 class Dialogs;
+class Displays;
+class Outputs;
 class Host;
 class MediaSession;
 class Screens;
@@ -184,6 +186,8 @@ class Engine final {
     [[nodiscard]] content::ContentManager& getContent() noexcept;
     [[nodiscard]] platform::Bridge& getPlatform() noexcept;
     [[nodiscard]] platform::System& getSystem() noexcept;
+    [[nodiscard]] platform::Displays& getDisplays() noexcept;
+    [[nodiscard]] platform::Outputs& getOutputs() noexcept;
     [[nodiscard]] platform::MediaSession& getMediaSession() noexcept;
     [[nodiscard]] platform::Accessibility& getAccessibility() noexcept;
     [[nodiscard]] platform::Dialogs& getDialogs() noexcept;

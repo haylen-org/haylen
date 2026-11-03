@@ -2,6 +2,8 @@
 
 #include <TargetConditionals.h>
 
+#include "haylen/core/AppConfig.hpp"
+
 #if !TARGET_OS_OSX
 #include "platform/SurfaceCheck.hpp"
 #endif
@@ -15,6 +17,9 @@ class AppleApplication final {
   public:
     // Prepares the application before SDL runs it.
     static void prepare();
+
+    // Takes the options of an app before its window opens, such as the orientations of an iPhone or iPad app.
+    static void prepareWindow(const core::AppConfig& config);
 
     // Places the views of the services over the window once it opened, and lets the application finish launching.
     static void finishLaunching(Runtime& runtime);

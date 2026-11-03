@@ -40,8 +40,10 @@
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Bridge.hpp"
 #include "haylen/platform/Dialogs.hpp"
+#include "haylen/platform/Displays.hpp"
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/Outputs.hpp"
 #include "haylen/platform/Screens.hpp"
 #include "haylen/platform/System.hpp"
 #include "haylen/plugins/PluginRegistry.hpp"
@@ -79,6 +81,8 @@ struct EngineState {
     debug::Profiler profiler;
     std::unique_ptr<platform::Bridge> platform;
     std::unique_ptr<platform::System> system;
+    std::unique_ptr<platform::Displays> displays;
+    std::unique_ptr<platform::Outputs> outputs;
     std::unique_ptr<platform::MediaSession> mediaSession;
     std::unique_ptr<platform::Accessibility> accessibility;
     std::unique_ptr<platform::Dialogs> dialogs;

@@ -6,6 +6,8 @@
 #include <cmath>
 #include <optional>
 #include <string_view>
+#include <utility>
+#include <vector>
 
 #include "haylen/math/Geometry.hpp"
 #include "haylen/platform/Event.hpp"
@@ -96,24 +98,86 @@ void WindowsDesktop::setFrame(const math::Rect& value) {
     SetWindowPos(window, nullptr, frame.left, frame.top, frame.right - frame.left, frame.bottom - frame.top, SWP_NOZORDER | SWP_NOACTIVATE);
 }
 
-BOOL CALLBACK WindowsDesktop::addMonitor(HMONITOR monitor, HDC, LPRECT, LPARAM list) {
-    MonitorList& found = *reinterpret_cast<MonitorList*>(list);
+// The paths of the display configuration join the source that a monitor of the desktop draws from to the monitor itself, whose device path stays the same across runs and reconnections and whose friendly name the settings of Windows show. A source without a path, such as the display of a remote session, keeps the name of its device as its id, and a monitor without a friendly name keeps it as its name.
+WindowsDesktop::Identity WindowsDesktop::identify(std::wstring_view device) {
+    Identity identity{.id = WindowsText::toUtf8(device), .name = WindowsText::toUtf8(device)};
+    UINT32 pathCount = 0;
+    UINT32 modeCount = 0;
+    if (GetDisplayConfigBufferSizes(QDC_ONLY_ACTIVE_PATHS, &pathCount, &modeCount) != ERROR_SUCCESS) {
+        return identity;
+    }
+    std::vector<DISPLAYCONFIG_PATH_INFO> paths(pathCount);
+    std::vector<DISPLAYCONFIG_MODE_INFO> modes(modeCount);
+    if (QueryDisplayConfig(QDC_ONLY_ACTIVE_PATHS, &pathCount, paths.data(), &modeCount, modes.data(), nullptr) != ERROR_SUCCESS) {
+        return identity;
+    }
+
+    for (UINT32 index = 0; index < pathCount; ++index) {
+        const DISPLAYCONFIG_PATH_INFO& path = paths[index];
+        DISPLAYCONFIG_SOURCE_DEVICE_NAME source{};
+        source.header = {.type = DISPLAYCONFIG_DEVICE_INFO_GET_SOURCE_NAME, .size = static_cast<UINT32>(sizeof(source)), .adapterId = path.sourceInfo.adapterId, .id = path.sourceInfo.id};
+        if (DisplayConfigGetDeviceInfo(&source.header) != ERROR_SUCCESS || device != source.viewGdiDeviceName) {
+            continue;
+        }
+        DISPLAYCONFIG_TARGET_DEVICE_NAME target{};
+        target.header = {.type = DISPLAYCONFIG_DEVICE_INFO_GET_TARGET_NAME, .size = static_cast<UINT32>(sizeof(target)), .adapterId = path.targetInfo.adapterId, .id = path.targetInfo.id};
+        if (DisplayConfigGetDeviceInfo(&target.header) != ERROR_SUCCESS) {
+            continue;
+        }
+        identity.id = WindowsText::toUtf8(target.monitorDevicePath);
+        if (target.monitorFriendlyDeviceName[0] != L'\0') {
+            identity.name = WindowsText::toUtf8(target.monitorFriendlyDeviceName);
+        }
+        return identity;
+    }
+    return identity;
+}
+
+// The modes of a monitor in true color, each size and rate once.
+std::vector<Display::Mode> WindowsDesktop::getModes(const wchar_t* device, float scale) {
+    std::vector<Display::Mode> modes;
+    DEVMODEW mode{};
+    mode.dmSize = sizeof(mode);
+    for (DWORD index = 0; EnumDisplaySettingsW(device, index, &mode) != FALSE; ++index) {
+        const Display::Mode found{.width = static_cast<int>(mode.dmPelsWidth), .height = static_cast<int>(mode.dmPelsHeight), .refreshRate = static_cast<float>(mode.dmDisplayFrequency), .scale = scale};
+        if (mode.dmBitsPerPel >= 24 && std::ranges::find(modes, found) == modes.end()) {
+            modes.push_back(found);
+        }
+    }
+    return modes;
+}
+
+// A rate of 0 or 1 is the default rate of the hardware, which Windows does not tell.
+BOOL CALLBACK WindowsDesktop::addDisplay(HMONITOR monitor, HDC, LPRECT, LPARAM list) {
+    DisplayList& found = *reinterpret_cast<DisplayList*>(list);
     MONITORINFOEXW info{};
     info.cbSize = sizeof(info);
     if (GetMonitorInfoW(monitor, &info) == FALSE) {
         return TRUE;
     }
+    DEVMODEW current{};
+    current.dmSize = sizeof(current);
+    const float rate = EnumDisplaySettingsW(info.szDevice, ENUM_CURRENT_SETTINGS, &current) != FALSE && current.dmDisplayFrequency > 1 ? static_cast<float>(current.dmDisplayFrequency) : 0.0F;
     const float scale = found.desktopScale;
     const auto toPoints = [scale](const RECT& area) { return math::Rect{static_cast<float>(area.left) / scale, static_cast<float>(area.top) / scale, static_cast<float>(area.right - area.left) / scale, static_cast<float>(area.bottom - area.top) / scale}; };
-    found.monitors.push_back({.name = WindowsText::toUtf8(info.szDevice), .bounds = toPoints(info.rcMonitor), .workArea = toPoints(info.rcWork), .scale = getScale(monitor), .primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0});
+    Identity identity = identify(info.szDevice);
+    const float monitorScale = getScale(monitor);
+    found.displays.push_back({.id = std::move(identity.id), .name = std::move(identity.name), .bounds = toPoints(info.rcMonitor), .workArea = toPoints(info.rcWork), .scale = monitorScale, .refreshRate = rate, .primary = (info.dwFlags & MONITORINFOF_PRIMARY) != 0, .modes = getModes(info.szDevice, monitorScale)});
     return TRUE;
 }
 
 // The work area of a monitor leaves out the taskbar and the bars that dock to its edges.
-std::vector<Monitor> WindowsDesktop::getMonitors() {
-    MonitorList list{.desktopScale = getDesktopScale()};
-    EnumDisplayMonitors(nullptr, nullptr, &addMonitor, reinterpret_cast<LPARAM>(&list));
-    return list.monitors;
+std::vector<Display> WindowsDesktop::getDisplays() {
+    DisplayList list{.desktopScale = getDesktopScale()};
+    EnumDisplayMonitors(nullptr, nullptr, &addDisplay, reinterpret_cast<LPARAM>(&list));
+    return list.displays;
+}
+
+std::string WindowsDesktop::getWindowDisplayId() {
+    MONITORINFOEXW info{};
+    info.cbSize = sizeof(info);
+    GetMonitorInfoW(MonitorFromWindow(getWindow(), MONITOR_DEFAULTTOPRIMARY), &info);
+    return identify(info.szDevice).id;
 }
 
 // Only a layered window lets clicks through, and a layered window shows nothing until it has an opacity.
@@ -214,11 +278,11 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         break;
     case WM_DISPLAYCHANGE:
     case WM_DPICHANGED:
-        Player::postEvent({.type = Event::Type::MonitorsChanged});
+        Player::postEvent({.type = Event::Type::DisplaysChanged});
         break;
     case WM_SETTINGCHANGE:
         if (wParam == SPI_SETWORKAREA) {
-            Player::postEvent({.type = Event::Type::MonitorsChanged});
+            Player::postEvent({.type = Event::Type::DisplaysChanged});
         }
         // Windows names the colors of the personalization settings, the app theme among them, as the immersive color set.
         if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"ImmersiveColorSet") {

@@ -242,18 +242,22 @@ gpu::Surface Window::getNativeSurface() const {
     if (gl != nullptr) {
         return {.kind = gpu::Surface::Kind::Gl, .gl = gl.get()};
     }
-    if (metalView != nullptr) {
-        return {.kind = gpu::Surface::Kind::MetalLayer, .layer = SDL_Metal_GetLayer(metalView)};
+    return describe(window, metalView);
+}
+
+gpu::Surface Window::describe(SDL_Window* described, SDL_MetalView view) {
+    if (view != nullptr) {
+        return {.kind = gpu::Surface::Kind::MetalLayer, .layer = SDL_Metal_GetLayer(view)};
     }
 
 #if defined(_WIN32)
-    const SDL_PropertiesID properties = SDL_GetWindowProperties(window);
+    const SDL_PropertiesID properties = SDL_GetWindowProperties(described);
     return {.kind = gpu::Surface::Kind::Win32, .window = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_HWND_POINTER, nullptr), .display = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WIN32_INSTANCE_POINTER, nullptr)};
 #elif defined(__EMSCRIPTEN__)
-    const SDL_PropertiesID properties = SDL_GetWindowProperties(window);
+    const SDL_PropertiesID properties = SDL_GetWindowProperties(described);
     return {.kind = gpu::Surface::Kind::WebCanvas, .canvas = SDL_GetStringProperty(properties, SDL_PROP_WINDOW_EMSCRIPTEN_CANVAS_ID_STRING, "")};
 #elif defined(__linux__)
-    const SDL_PropertiesID properties = SDL_GetWindowProperties(window);
+    const SDL_PropertiesID properties = SDL_GetWindowProperties(described);
     if (std::string_view(SDL_GetCurrentVideoDriver()) == "wayland") {
         return {.kind = gpu::Surface::Kind::Wayland, .window = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_SURFACE_POINTER, nullptr), .display = SDL_GetPointerProperty(properties, SDL_PROP_WINDOW_WAYLAND_DISPLAY_POINTER, nullptr)};
     }
@@ -261,6 +265,22 @@ gpu::Surface Window::getNativeSurface() const {
 #else
     throw std::runtime_error("The window has no surface for the graphics API.");
 #endif
+}
+
+// SDL counts the desktop of macOS in points, like the engine, and the desktops of Windows and X11 in pixels, which are desktop points times the scale of the primary display.
+SDL_DisplayID Window::findDisplay(const Display& display) {
+#if defined(__APPLE__)
+    const float units = 1.0F;
+#else
+    const float units = SDL_GetDisplayContentScale(SDL_GetPrimaryDisplay());
+#endif
+    const math::Vec2 center = display.bounds.getCenter() * units;
+    const SDL_Point point{.x = static_cast<int>(std::lround(center.x)), .y = static_cast<int>(std::lround(center.y))};
+    const SDL_DisplayID found = SDL_GetDisplayForPoint(&point);
+    if (found == 0) {
+        throw std::runtime_error("SDL knows no display at the place of the display \"" + display.id + "\". " + SDL_GetError());
+    }
+    return found;
 }
 
 } // namespace haylen::platform::sdl

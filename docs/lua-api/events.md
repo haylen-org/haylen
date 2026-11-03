@@ -266,7 +266,7 @@ scene.push({name = 'title'})
 | `windowSafeAreaChanged` | The safe area moved, such as after a rotation, or when a native view of a plugin reserved or released an edge of the screen. | `{x, y, width, height}` in design units, the same rectangle as [`viewport.safeRect()`](viewport.md#viewportsaferect). |
 | `windowFoldChanged` | The fold of a foldable or dual-screen device across the window appeared, moved, went away or changed its state, or a simulation replaced it, as [`window.fold()`](window.md#folds-and-dual-screens) reports it. | `{posture, segments, fold}`. The field `posture` is `'flat'`, `'tabletop'` or `'book'`. The list `segments` holds the areas of the window on each side of the fold as `{x, y, width, height}` in design units, or one area for the whole window without a fold. The field `fold` is absent without a fold, and otherwise holds `x`, `y`, `width` and `height` in design units, `axis`, `state`, `separating` and `occluding`. |
 | `windowMoved` | The desktop window moved, because the player dragged it, the app placed it or the system moved it. A move publishes each new position once. | `{x, y}`, the top left corner of [`window.frame()`](window.md#desktop-windows) in desktop points. |
-| `windowMonitorsChanged` | A monitor connected, disconnected or changed, or its work area changed, such as when the taskbar moved. The function `window.monitors()` returns the new list. | None. |
+| `windowDisplayChanged` | The window moved to another display, as [`display.current()`](display.md#displaycurrent) reports it. | `{display}`, the id of the display. |
 | `keyboardShown` | The on-screen keyboard appeared or changed its frame, such as when a suggestion bar shows. | `{x, y, width, height}`, the area it covers in design units, like `viewport.safeRect()`. |
 | `keyboardHidden` | The on-screen keyboard went away. | None. |
 | `guiMounted`, `guiUnmounted` | A GUI of [`haylen.ui`](ui.md) was mounted or unmounted. | `{gui}` |
@@ -287,6 +287,12 @@ end)
 
 | Event | When | Value |
 | --- | --- | --- |
+| `displayConnected`, `displayDisconnected` | A display connected or disconnected, such as a monitor or an external display, or a browser showed the page another screen, as [`haylen.display`](display.md#events) describes. | `{display, name}`, the id and the name of the display. |
+| `displayChanged` | A display changed its bounds, work area, scale, refresh rate, modes or name, such as when the taskbar moved. | `{display, name}` |
+| `outputShown`, `outputResized` | An output of the app on another display showed, or its target changed its size, as [`haylen.display`](display.md#events) describes. | `{output, display, width, height, scale}` |
+| `outputHidden` | The platform holds an output back. | `{output}` |
+| `outputClosed` | An output closed. | `{output, display, ending, reason}` |
+| `outputInput` | The pointer over the window of an output pressed, released, moved or scrolled. | `{output, type, x, y}` with the fields of its type. |
 | `gamepadConnected`, `gamepadDisconnected` | A gamepad was plugged in or removed. The gamepads that are connected when the app starts are announced on its first frame. | `{gamepad, name}`, where `gamepad` counts from 1 like [`haylen.input`](input.md). |
 | `audioInterrupted`, `audioResumed` | The system took the audio, such as for a phone call, and every voice paused. Or the system gave the audio back while the app is active, and the voices resumed. The [audio reference](audio.md#events) explains both. | None. |
 | `audioRouteChanged` | The audio output moved to another device, such as when headphones were unplugged. | None. |

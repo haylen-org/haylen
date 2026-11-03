@@ -2,6 +2,7 @@
 
 #if TARGET_OS_OSX
 #include <algorithm>
+#include <utility>
 
 #include "haylen/math/Geometry.hpp"
 #include "haylen/platform/Event.hpp"
@@ -77,15 +78,74 @@ void AppleDesktop::setFrame(const math::Rect& value) {
     [window setFrame:[window frameRectForContentRect:toScreen(value)] display:YES];
 }
 
-// The visible frame of a screen leaves out the menu bar and the Dock.
-std::vector<Monitor> AppleDesktop::getMonitors() {
-    NSArray<NSScreen*>* screens = NSScreen.screens;
-    std::vector<Monitor> monitors;
-    monitors.reserve(screens.count);
-    for (NSScreen* screen in screens) {
-        monitors.push_back({.name = screen.localizedName.UTF8String, .bounds = toDesktop(screen.frame), .workArea = toDesktop(screen.visibleFrame), .scale = static_cast<float>(screen.backingScaleFactor), .primary = screen == screens.firstObject});
+// A display is known by the vendor, the model and the serial number of its monitor, which stay the same across runs and reconnections, and two monitors that report the same ones, such as two of a model without serial numbers, count up in the order of the screens.
+std::string AppleDesktop::getDisplayId(NSScreen* screen) {
+    const CGDirectDisplayID display = [screen.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
+    NSString* identity = [NSString stringWithFormat:@"%04x-%04x-%08x", CGDisplayVendorNumber(display), CGDisplayModelNumber(display), CGDisplaySerialNumber(display)];
+    NSUInteger twins = 0;
+    for (NSScreen* other in NSScreen.screens) {
+        if (other == screen) {
+            break;
+        }
+        const CGDirectDisplayID earlier = [other.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
+        if (CGDisplayVendorNumber(earlier) == CGDisplayVendorNumber(display) && CGDisplayModelNumber(earlier) == CGDisplayModelNumber(display) && CGDisplaySerialNumber(earlier) == CGDisplaySerialNumber(display)) {
+            ++twins;
+        }
     }
-    return monitors;
+    return twins == 0 ? identity.UTF8String : [identity stringByAppendingFormat:@"-%lu", static_cast<unsigned long>(twins + 1)].UTF8String;
+}
+
+// The modes that the desktop runs in, including the ones of low resolution that macOS hides from its settings, each one once.
+std::vector<Display::Mode> AppleDesktop::getModes(CGDirectDisplayID display) {
+    NSDictionary* options = @{(__bridge NSString*)kCGDisplayShowDuplicateLowResolutionModes : @YES};
+    const CFArrayRef all = CGDisplayCopyAllDisplayModes(display, (__bridge CFDictionaryRef)options);
+    std::vector<Display::Mode> modes;
+    for (CFIndex index = 0, count = all != nullptr ? CFArrayGetCount(all) : 0; index < count; ++index) {
+        const auto mode = static_cast<CGDisplayModeRef>(const_cast<void*>(CFArrayGetValueAtIndex(all, index)));
+        if (!CGDisplayModeIsUsableForDesktopGUI(mode)) {
+            continue;
+        }
+        const Display::Mode found{.width = static_cast<int>(CGDisplayModeGetPixelWidth(mode)), .height = static_cast<int>(CGDisplayModeGetPixelHeight(mode)), .refreshRate = static_cast<float>(CGDisplayModeGetRefreshRate(mode)), .scale = static_cast<float>(CGDisplayModeGetPixelWidth(mode)) / static_cast<float>(CGDisplayModeGetWidth(mode))};
+        if (std::ranges::find(modes, found) == modes.end()) {
+            modes.push_back(found);
+        }
+    }
+    if (all != nullptr) {
+        CFRelease(all);
+    }
+    return modes;
+}
+
+// The visible frame of a screen leaves out the menu bar and the Dock. The panels of laptops report no refresh rate in their modes, so the rate of a display is the most frames per second that its screen shows.
+std::vector<Display> AppleDesktop::getDisplays() {
+    NSArray<NSScreen*>* screens = NSScreen.screens;
+    std::vector<Display> displays;
+    displays.reserve(screens.count);
+    for (NSScreen* screen in screens) {
+        const CGDirectDisplayID display = [screen.deviceDescription[@"NSScreenNumber"] unsignedIntValue];
+        std::vector<Display::Mode> modes = getModes(display);
+        const float rate = static_cast<float>(screen.maximumFramesPerSecond);
+        for (Display::Mode& mode : modes) {
+            mode.refreshRate = mode.refreshRate > 0.0F ? mode.refreshRate : rate;
+        }
+        displays.push_back({.id = getDisplayId(screen), .name = screen.localizedName.UTF8String, .bounds = toDesktop(screen.frame), .workArea = toDesktop(screen.visibleFrame), .scale = static_cast<float>(screen.backingScaleFactor), .refreshRate = rate, .primary = screen == screens.firstObject, .modes = std::move(modes)});
+    }
+    return displays;
+}
+
+// AppKit gives a window that does not show yet no screen, so the display of the window is the screen that holds most of its frame, as AppKit decides once it shows, or the primary screen while it is off every screen.
+std::string AppleDesktop::getWindowDisplayId() {
+    const math::Rect frame = getFrame();
+    NSScreen* holding = NSScreen.screens.firstObject;
+    float largest = 0.0F;
+    for (NSScreen* screen in NSScreen.screens) {
+        const float overlap = toDesktop(screen.frame).intersection(frame).getArea();
+        if (overlap > largest) {
+            largest = overlap;
+            holding = screen;
+        }
+    }
+    return getDisplayId(holding);
 }
 
 void AppleDesktop::setPassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> value) {
@@ -111,7 +171,7 @@ void AppleDesktop::watch() {
     // AppKit places windows by their bottom left corner, so a window that grows or shrinks at its top also moves in desktop points.
     [center addObserverForName:NSWindowDidMoveNotification object:window queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::WindowMoved}); }];
     [center addObserverForName:NSWindowDidResizeNotification object:window queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::WindowMoved}); }];
-    [center addObserverForName:NSApplicationDidChangeScreenParametersNotification object:nil queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::MonitorsChanged}); }];
+    [center addObserverForName:NSApplicationDidChangeScreenParametersNotification object:nil queue:nil usingBlock:^(NSNotification*) { Player::postEvent({.type = Event::Type::DisplaysChanged}); }];
 
     // A drag of the window starts from the press that is still down, and a release that reaches the app ends it the usual way.
     // clang-format off

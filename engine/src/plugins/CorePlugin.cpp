@@ -11,6 +11,7 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/SceneView.hpp"
 #include "math/MathLua.hpp"
+#include "platform/DisplayLua.hpp"
 #include "platform/WindowLua.hpp"
 
 namespace haylen::plugins {
@@ -23,6 +24,7 @@ void CorePlugin::installLua(core::Engine&, lua_State* L) {
     warnings.install(L);
     core::CoreLua::install(L);
     platform::WindowLua::install(L);
+    platform::DisplayLua::install(L);
     core::CollectionsLua::install(L);
     core::TimerLua::install(L);
     core::SceneLua::install(L);

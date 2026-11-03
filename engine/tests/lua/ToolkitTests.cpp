@@ -868,7 +868,7 @@ TEST(ConverterTest, NamesEveryValueOfTheEnumsOfTheEngine) {
     EXPECT_TRUE(namesEveryValue(input::TouchPhase::Cancelled));
     EXPECT_TRUE(namesEveryValue(input::GamepadButton::DpadRight));
     EXPECT_TRUE(namesEveryValue(input::GamepadAxis::RightTrigger));
-    EXPECT_TRUE(namesEveryValue(platform::Event::Type::MonitorsChanged));
+    EXPECT_TRUE(namesEveryValue(platform::Event::Type::DisplaysChanged));
     EXPECT_TRUE(namesEveryValue(platform::TextInput::Action::Dismissed));
 }
 

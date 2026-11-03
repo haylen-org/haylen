@@ -54,6 +54,11 @@ void Events::translate(const SDL_Event& source, const Context& context, std::vec
         break;
     }
 
+    // The services of each platform report the displays too, and the engine publishes only what changed, so a report of both reaches the app once.
+    if (source.type >= SDL_EVENT_DISPLAY_FIRST && source.type <= SDL_EVENT_DISPLAY_LAST) {
+        events.push_back({.type = platform::Event::Type::DisplaysChanged});
+        return;
+    }
     if (source.type >= SDL_EVENT_WINDOW_FIRST && source.type <= SDL_EVENT_WINDOW_LAST) {
         if (const std::optional<platform::Event> window = translateWindow(source)) {
             events.push_back(*window);
@@ -107,6 +112,8 @@ std::optional<platform::Event> Events::translateWindow(const SDL_Event& source) 
         return kAppStates ? std::nullopt : std::optional<platform::Event>({.type = platform::Event::Type::FocusGained});
     case SDL_EVENT_WINDOW_FOCUS_LOST:
         return kAppStates ? std::nullopt : std::optional<platform::Event>({.type = platform::Event::Type::FocusLost});
+    case SDL_EVENT_WINDOW_DISPLAY_CHANGED:
+        return platform::Event{.type = platform::Event::Type::WindowMoved};
     case SDL_EVENT_WINDOW_MOUSE_ENTER:
         return platform::Event{.type = platform::Event::Type::MouseEnter};
     case SDL_EVENT_WINDOW_MOUSE_LEAVE:

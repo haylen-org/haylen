@@ -135,6 +135,7 @@ struct Device::Native {
     static void complete(Signals& state, id<MTLCommandBuffer> commands, std::uint64_t frame);
 
     [[nodiscard]] BufferEntry& requireBuffer(Buffer buffer);
+    [[nodiscard]] Swapchain& requireSwapchain(int surface);
     [[nodiscard]] ImageEntry& requireImage(Image image);
     [[nodiscard]] ProgramEntry& requireProgram(Program program);
     [[nodiscard]] id<MTLBlitCommandEncoder> getTransferBlit();
@@ -158,6 +159,9 @@ struct Device::Native {
     std::shared_ptr<Signals> signals = std::make_shared<Signals>();
     Graveyard graveyard;
     Swapchain swapchain;
+
+    // The swapchains of the surfaces beyond the window, at their numbers less one, with an empty place for a surface that went away.
+    std::vector<std::unique_ptr<Swapchain>> surfaces;
     LibraryCache libraries;
     std::vector<UploadRing> rings;
 
@@ -187,6 +191,7 @@ struct Device::Native {
     bool passOpen = false;
     bool swapchainPass = false;
     bool swapchainPending = false;
+    int pendingSurface = 0;
     std::uint32_t passSerial = 0;
     Applied applied;
     Bindings bindings;
@@ -312,6 +317,17 @@ void Device::Native::complete(Signals& state, id<MTLCommandBuffer> commands, std
     std::uint64_t known = state.completed.load(std::memory_order_relaxed);
     while (known < frame && !state.completed.compare_exchange_weak(known, frame, std::memory_order_release)) {}
     dispatch_semaphore_signal(state.semaphore);
+}
+
+// The surface 0 is the window, and the others are the surfaces that `addSurface` made.
+Swapchain& Device::Native::requireSwapchain(int surface) {
+    if (surface == 0) {
+        return swapchain;
+    }
+    if (surface < 0 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
+        throw std::logic_error(std::format("The device has no surface {}.", surface));
+    }
+    return *surfaces[static_cast<std::size_t>(surface - 1)];
 }
 
 Device::Native::BufferEntry& Device::Native::requireBuffer(Buffer buffer) {
@@ -944,20 +960,22 @@ void Device::beginPass(const PassDesc& desc) {
 
 // A pass that keeps what the swapchain pass before it drew continues in its encoder, so the color, the depth and the stencil stay in tile memory. Otherwise the multisampled color and the depth and stencil start cleared, since no pass stores them.
 void Device::beginSwapchainPass(const PassDesc& desc) {
+    Swapchain& chain = native->requireSwapchain(desc.surface);
     native->swapchainPass = true;
-    if (native->swapchainPending && desc.load == Load::Keep) {
+    if (native->swapchainPending && native->pendingSurface == desc.surface && desc.load == Load::Keep) {
         native->swapchainPending = false;
         native->encoder.resetViewport();
         return;
     }
     endPendingPass();
-    if (!native->swapchain.acquire()) {
+    native->pendingSurface = desc.surface;
+    if (!chain.acquire()) {
         return;
     }
 
     MTLRenderPassDescriptor* pass = native->passDesc;
-    const id<MTLTexture> drawable = native->swapchain.getDrawable().texture;
-    const id<MTLTexture> multisample = native->swapchain.getMultisampleTexture();
+    const id<MTLTexture> drawable = chain.getDrawable().texture;
+    const id<MTLTexture> multisample = chain.getMultisampleTexture();
     const MTLLoadAction colorLoad = desc.load == Load::Keep && multisample != nil ? MTLLoadActionClear : Formats::toLoadAction(desc.load);
     for (NSUInteger index = 1; index < kMaxColorTargets; ++index) {
         pass.colorAttachments[index].texture = nil;
@@ -973,11 +991,11 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     color.clearColor = Formats::toClearColor(desc.clear);
 
     const MTLLoadAction depthLoad = desc.load == Load::Keep ? MTLLoadActionClear : Formats::toLoadAction(desc.load);
-    pass.depthAttachment.texture = native->swapchain.getDepthTexture();
+    pass.depthAttachment.texture = chain.getDepthTexture();
     pass.depthAttachment.loadAction = depthLoad;
     pass.depthAttachment.storeAction = MTLStoreActionDontCare;
     pass.depthAttachment.clearDepth = desc.clearDepth;
-    pass.stencilAttachment.texture = native->swapchain.getDepthTexture();
+    pass.stencilAttachment.texture = chain.getDepthTexture();
     pass.stencilAttachment.loadAction = depthLoad;
     pass.stencilAttachment.storeAction = MTLStoreActionDontCare;
     pass.stencilAttachment.clearStencil = desc.clearStencil;
@@ -1324,6 +1342,11 @@ void Device::commit() {
     endPendingPass();
     closeDebugGroups(Native::kCommandBufferGroup);
     native->swapchain.present(native->commands);
+    for (const std::unique_ptr<Swapchain>& chain : native->surfaces) {
+        if (chain != nullptr) {
+            chain->present(native->commands);
+        }
+    }
 
     const std::shared_ptr<Native::Signals> signals = native->signals;
     const std::uint64_t frame = native->frameNumber;
@@ -1348,6 +1371,27 @@ void Device::detachSurface() {
 
 void Device::attachSurface(const Surface& surface) {
     native->swapchain.attach(surface);
+}
+
+int Device::addSurface(const Surface& surface) {
+    auto chain = std::make_unique<Swapchain>(native->device, native->graveyard, native->swapchain.getSampleCount(), native->swapchain.isMemoryless());
+    chain->attach(surface);
+    const auto free = std::ranges::find_if(native->surfaces, [](const std::unique_ptr<Swapchain>& chain) { return chain == nullptr; });
+    if (free != native->surfaces.end()) {
+        *free = std::move(chain);
+        return static_cast<int>(free - native->surfaces.begin()) + 1;
+    }
+    native->surfaces.push_back(std::move(chain));
+    return static_cast<int>(native->surfaces.size());
+}
+
+void Device::resizeSurface(int surface, int width, int height) {
+    native->requireSwapchain(surface).resize(width, height);
+}
+
+void Device::removeSurface(int surface) {
+    native->requireSwapchain(surface);
+    native->surfaces[static_cast<std::size_t>(surface - 1)].reset();
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {

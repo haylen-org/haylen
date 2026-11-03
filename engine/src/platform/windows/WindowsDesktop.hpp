@@ -5,24 +5,27 @@
 #include <windows.h>
 
 #include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/platform/Monitor.hpp"
+#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Window.hpp"
 #include "platform/WindowStyle.hpp"
 
 namespace haylen::platform {
 
-// The desktop window of Windows. Desktop points are pixels divided by the scale of the primary monitor, which sizes the window of `app.json` too. Only a layered window lets clicks through, so passthrough follows the mouse every frame and makes the window transparent to clicks outside the regions, while the app keeps hearing the mouse move. The window procedure of SDL gets a procedure in front of it that reports moves, monitor changes, the app theme and the power status, and starts drags between frames.
+// The desktop window of Windows. Desktop points are pixels divided by the scale of the primary display, which sizes the window of `app.json` too. Only a layered window lets clicks through, so passthrough follows the mouse every frame and makes the window transparent to clicks outside the regions, while the app keeps hearing the mouse move. The window procedure of SDL gets a procedure in front of it that reports moves, display changes, the app theme and the power status, and starts drags between frames.
 class WindowsDesktop final {
   public:
     static void setStyle(const WindowStyle& value);
     [[nodiscard]] static math::Rect getFrame();
     static void setFrame(const math::Rect& value);
-    [[nodiscard]] static std::vector<Monitor> getMonitors();
+    [[nodiscard]] static std::vector<Display> getDisplays();
+    [[nodiscard]] static std::string getWindowDisplayId();
     static void setPassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> value);
     static void startDrag();
     static void watch();
@@ -31,9 +34,15 @@ class WindowsDesktop final {
   private:
     static constexpr UINT kStartDragMessage = WM_APP + 1;
 
-    struct MonitorList {
-        std::vector<Monitor> monitors;
+    struct DisplayList {
+        std::vector<Display> displays;
         float desktopScale = 1.0F;
+    };
+
+    // The id and the name of a monitor.
+    struct Identity {
+        std::string id;
+        std::string name;
     };
 
     static WNDPROC sdlProcedure;
@@ -50,7 +59,9 @@ class WindowsDesktop final {
     [[nodiscard]] static bool isOverRegion(math::Vec2 pixel);
     static void setClickThrough(bool value);
     static void followPointer(math::Vec2 pixel, bool inside);
-    static BOOL CALLBACK addMonitor(HMONITOR monitor, HDC context, LPRECT area, LPARAM list);
+    [[nodiscard]] static Identity identify(std::wstring_view device);
+    [[nodiscard]] static std::vector<Display::Mode> getModes(const wchar_t* device, float scale);
+    static BOOL CALLBACK addDisplay(HMONITOR monitor, HDC context, LPRECT area, LPARAM list);
     static LRESULT CALLBACK windowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
 };
 

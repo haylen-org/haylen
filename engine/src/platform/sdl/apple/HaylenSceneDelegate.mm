@@ -7,6 +7,7 @@
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
+#import "platform/apple/HaylenDisplaySceneDelegate.h"
 #import "platform/apple/HaylenOverlayLayer.h"
 #import "platform/apple/HaylenScreenSceneDelegate.h"
 
@@ -52,8 +53,15 @@ using haylen::platform::NativeWindow;
 }
 #endif
 
-// The windows of screens connect with a delegate of their own, so they never become the window of the app.
+// The windows of screens and the scenes of external displays connect with delegates of their own, so they never become the window of the app.
 - (UISceneConfiguration*)application:(UIApplication*)application configurationForConnectingSceneSession:(UISceneSession*)connectingSceneSession options:(UISceneConnectionOptions*)options {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    if ([connectingSceneSession.role isEqualToString:UIWindowSceneSessionRoleExternalDisplayNonInteractive]) {
+        UISceneConfiguration* configuration = [[UISceneConfiguration alloc] initWithName:@"HaylenDisplay" sessionRole:connectingSceneSession.role];
+        configuration.delegateClass = HaylenDisplaySceneDelegate.class;
+        return configuration;
+    }
+#endif
 #if !TARGET_OS_TV
     for (NSUserActivity* activity in options.userActivities) {
         if ([activity.activityType isEqualToString:AppleScreens::kWindowActivity]) {

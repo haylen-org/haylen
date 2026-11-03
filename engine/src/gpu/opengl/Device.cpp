@@ -1066,4 +1066,17 @@ std::unique_ptr<Device::Readback> Device::readImage(Image image, int width, int 
     return std::make_unique<PixelReadback>(context, framebuffer, width, height, record.pixel.floating || record.pixel.halfFloating);
 }
 
+// The device draws only into the window of the app, so the outputs of the app on other displays draw through the devices that draw into several surfaces, as the guide of the render hardware interface lists them.
+int Device::addSurface(const Surface&) {
+    throw std::runtime_error("The OpenGL device draws only into the window of the app, not into a surface on another display.");
+}
+
+void Device::resizeSurface(int number, int, int) {
+    throw std::logic_error(std::format("The device has no surface {}.", number));
+}
+
+void Device::removeSurface(int number) {
+    throw std::logic_error(std::format("The device has no surface {}.", number));
+}
+
 } // namespace haylen::gpu::opengl

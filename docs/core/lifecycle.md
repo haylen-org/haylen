@@ -174,7 +174,8 @@ The engine publishes other moments of the app and the device as events too.
 - **Accessibility.** The event `accessibilitySettingsChanged` follows the text scale, reduced motion, contrast, transparency and screen reader of the system, as [`haylen.accessibility`](../lua-api/accessibility.md#events) describes.
 - **Orientation and folds.** The event `windowOrientationChanged` follows the screen, whose orientation `window.orientation()` reads and `window.lockOrientation` locks, as [`haylen.window`](../lua-api/window.md) describes. The event `windowFoldChanged` follows the fold of foldable and dual-screen devices, its posture and the segments of the window on each side of it, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes.
 - **The safe area.** The event `windowSafeAreaChanged` follows the safe area of [`haylen.viewport`](../lua-api/viewport.md#viewportsaferect). It is the safe area of the device, widened edge by edge by the edges that native views of plugins reserve, such as a banner at the bottom. So UI anchored to the safe area moves out of their way on its own.
-- **Desktop windows.** On desktops, `windowMoved` follows the position of the window and `windowMonitorsChanged` follows the monitors and their work areas, as the [desktop guide](../platform/desktop.md) describes.
+- **Desktop windows.** On desktops, `windowMoved` follows the position of the window, as the [desktop guide](../platform/desktop.md) describes.
+- **Displays.** The events `displayConnected`, `displayDisconnected` and `displayChanged` follow the displays of the device, such as a monitor or an external display that connects, and `windowDisplayChanged` follows the display that shows the window, as [`haylen.display`](../lua-api/display.md#events) describes.
 
 ```lua
 local events = require('haylen.events')
@@ -238,7 +239,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its key state and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and no Mac folds. |
 | `windowSafeAreaChanged` | The camera housing of a Mac with a notch, for a full screen or borderless window that reaches it, the native views of plugins and the simulation. |
-| `windowMoved`, `windowMonitorsChanged` | The moves of the window and the changes of the displays and their work areas, through AppKit. |
+| `windowMoved` | The moves of the window, through AppKit. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the screens and their work areas, through AppKit, and the screen of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because a Mac types with its keyboard and has no keyboard on the screen. |
 | `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
 | `audioInterrupted`, `audioResumed` | Never, because macOS does not interrupt the audio of apps. |
@@ -258,7 +260,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Windows offers desktop apps no API for the fold of a device. |
 | `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
-| `windowMoved`, `windowMonitorsChanged` | The moves of the window and the changes of the displays, their settings and the work area, through the messages of the window. |
+| `windowMoved` | The moves of the window, through the messages of the window. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the displays, their settings and the work area, through the messages of the window, and the monitor of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Windows. |
 | `networkOnline`, `networkOffline` | Never, because the engine follows no network state on Windows, and `haylen.networkState()` stays `'unknown'`. |
 | `audioInterrupted`, `audioResumed` | Never, because Windows does not interrupt the audio of apps. |
@@ -278,7 +281,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowResized`, `windowFocusGained`, `windowFocusLost`, `windowFullscreenChanged` | The window, resized by the player or the app, its focus and its full screen mode. |
 | `windowOrientationChanged`, `windowFoldChanged` | Never, because a desktop window counts as landscape and Linux desktops report no folds to windows. |
 | `windowSafeAreaChanged` | Only the native views of plugins and the simulation, because nothing of the system covers a window. |
-| `windowMoved`, `windowMonitorsChanged` | The moves of the window and the changes of the monitors and the work area, through X11. |
+| `windowMoved` | The moves of the window, through X11. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The changes of the monitors of RandR and the work area, through X11, and the monitor that holds most of the window. |
 | `keyboardShown`, `keyboardHidden` | Never, because the engine follows no keyboard on the screen on Linux. |
 | `networkOnline`, `networkOffline` | Never, because the engine follows no network state on Linux, and `haylen.networkState()` stays `'unknown'`. |
 | `audioInterrupted`, `audioResumed` | Never, because Linux does not interrupt the audio of apps. |
@@ -299,9 +303,10 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
 | `windowFullscreenChanged` | Never, because the app always fills its window. |
 | `windowOrientationChanged` | The interface orientation of the scene. |
-| `windowFoldChanged` | Never, because no iPhone or iPad folds. |
+| `windowFoldChanged` | The fold of a foldable iPhone, from the division region of the view of the window and its hinge, from iOS 27.1 on. |
 | `windowSafeAreaChanged` | The safe area insets of the view, such as a rotation that moves the notch or the Dynamic Island, and the native views of plugins. |
-| `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
+| `windowMoved` | Never, because the window has no desktop. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The scenes of external displays that connect and disconnect, and the screen of the window, which Stage Manager on an iPad can move to an external display. |
 | `keyboardShown`, `keyboardHidden` | The keyboard notifications of UIKit while a text field edits. |
 | `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session, such as a phone call, an alarm or Siri. |
@@ -322,7 +327,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
 | `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the app always fills the TV in landscape. |
 | `windowSafeAreaChanged` | The safe area insets of the view, the overscan margins of the TV, and the native views of plugins. |
-| `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
+| `windowMoved` | Never, because the window has no desktop. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | Never, because the TV is the only display of the app. |
 | `keyboardShown`, `keyboardHidden` | Never, because the keyboard of tvOS is a screen of the system over the app, which covers no part of it. |
 | `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session. |
@@ -343,7 +349,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowFocusGained`, `windowFocusLost` | The scene becoming and resigning active. |
 | `windowFullscreenChanged`, `windowOrientationChanged`, `windowFoldChanged` | Never, because the engine runs the window as the iPad window it is, which counts as landscape. |
 | `windowSafeAreaChanged` | The safe area insets of the view and the native views of plugins. |
-| `windowMoved`, `windowMonitorsChanged` | Never, because UIKit places Mac Catalyst windows on the desktop without telling apps where. |
+| `windowMoved` | Never, because UIKit places Mac Catalyst windows on the desktop without telling apps where. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | Never, because UIKit shows a Mac Catalyst app only the screen of its window. |
 | `keyboardShown`, `keyboardHidden` | Never, because a Mac has no keyboard on the screen. |
 | `networkOnline`, `networkOffline` | The path monitor of the Network framework. |
 | `audioInterrupted`, `audioResumed` | The interruptions of the audio session, which the Mac rarely sends. |
@@ -366,7 +373,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowOrientationChanged` | The configuration of the activity. |
 | `windowFoldChanged` | Jetpack WindowManager, on foldable and dual-screen devices, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. |
 | `windowSafeAreaChanged` | The insets of the cutout, of the status bar while it shows and of the system bars that stay visible, and the native views of plugins. |
-| `windowMoved`, `windowMonitorsChanged` | Never, because the window has no desktop. |
+| `windowMoved` | Never, because the window has no desktop. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The display manager, which reports external displays, cast screens and secondary screens that connect, disconnect or change, and the display of the activity. |
 | `keyboardShown`, `keyboardHidden` | The insets of the input method while a text field edits. |
 | `networkOnline`, `networkOffline` | The connectivity manager, with the permission `ACCESS_NETWORK_STATE`. |
 | `audioInterrupted`, `audioResumed` | The audio focus, which another app takes for a call, an alarm or its own sound. |
@@ -389,7 +397,8 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowOrientationChanged` | The Screen Orientation API, or the `orientation` media query. |
 | `windowFoldChanged` | The Viewport Segments and Device Posture APIs where the browser offers them, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. |
 | `windowSafeAreaChanged` | The part of the CSS `env(safe-area-inset-*)` insets that covers the canvas, and the native views of plugins. |
-| `windowMoved`, `windowMonitorsChanged` | Never, because a page has no place on a desktop. |
+| `windowMoved` | Never, because a page has no place on a desktop. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The change of the screen of the page, and once the person allowed it through `display.request()`, the changes of the screens of the Window Management API. |
 | `keyboardShown`, `keyboardHidden` | The `visualViewport` of the page while a text field edits on a phone or a tablet. |
 | `networkOnline`, `networkOffline` | The `online` and `offline` events of the browser. |
 | `audioInterrupted`, `audioResumed` | Never, because browsers suspend the audio of the page without telling it why. The runtime resumes it at the next tap, click or key, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |

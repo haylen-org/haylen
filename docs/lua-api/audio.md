@@ -790,7 +790,7 @@ local settings = audio.spatialization()
 print(settings.model, settings.minDistance, settings.maxDistance, settings.doppler)
 ```
 
-## Output
+## Audio output
 
 The output is the audio device that plays the mix. These functions tell its format and its state. The [audio guide](../audio/audio.md#without-an-audio-output) explains what happens when there is no output.
 

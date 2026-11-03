@@ -9,6 +9,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/gpu/Surface.hpp"
+#include "haylen/platform/Display.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/sdl/GlContext.hpp"
 
@@ -44,6 +45,20 @@ class Window final : public platform::NativeWindow {
     // The size of the drawable in pixels, and the framebuffer pixels per unit of the coordinates SDL gives the window, which turns the positions of the mouse into framebuffer pixels.
     [[nodiscard]] math::Vec2 getPixelSize() const noexcept;
     [[nodiscard]] float getPixelDensity() const noexcept;
+
+    [[nodiscard]] int getSampleCount() const noexcept {
+        return sampleCount;
+    }
+
+    [[nodiscard]] bool isVsync() const noexcept {
+        return vsync;
+    }
+
+    // The surface of the window of the system that SDL opened, with the layer of its Metal view where it has one, for the graphics APIs that draw into the window itself.
+    [[nodiscard]] static gpu::Surface describe(SDL_Window* described, SDL_MetalView view);
+
+    // Returns the display of SDL at the place of a display of the desktop. Throws `std::runtime_error` when SDL knows no display there.
+    [[nodiscard]] static SDL_DisplayID findDisplay(const Display& display);
 
   protected:
     [[nodiscard]] bool queryOpen() const noexcept override;

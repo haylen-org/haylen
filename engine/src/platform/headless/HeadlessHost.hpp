@@ -7,6 +7,8 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -76,6 +78,13 @@ class HeadlessHost final : public Host {
     }
     void setFullscreen(bool value) override {
         fullscreen = value;
+        fullscreenTarget = {};
+    }
+
+    // Goes fullscreen like a desktop, on the display and in the mode of the target, which `getFullscreenTarget` reports.
+    void enterFullscreen(const Fullscreen& value) override;
+    [[nodiscard]] const Fullscreen& getFullscreenTarget() const noexcept {
+        return fullscreenTarget;
     }
     [[nodiscard]] bool isResizable() const noexcept override {
         return resizable;
@@ -197,8 +206,29 @@ class HeadlessHost final : public Host {
     void startDrag() override {
         ++dragCount;
     }
-    [[nodiscard]] std::vector<Monitor> getMonitors() const override {
-        return monitors;
+    [[nodiscard]] std::vector<Display> getDisplays() const override {
+        return displays;
+    }
+
+    // The window is on the display that holds most of its frame, like a desktop window.
+    [[nodiscard]] std::string getDisplayId() const override {
+        return Display::findHolding(displays, frame).id;
+    }
+    void requestDisplays(std::function<void(DisplayAccess access)> callback) override {
+        callback(displayAccess);
+    }
+
+    // Outputs open on the headless platform as the requests record them, and tests report them with `setOutputReport` and the event `OutputChanged`.
+    void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override {
+        outputRequests.push_back({.number = number, .display = std::string(display), .options = options});
+        outputReports[number] = {};
+    }
+    void closeOutput(std::uint32_t number) override {
+        outputReports.erase(number);
+        closedOutputs.push_back(number);
+    }
+    [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override {
+        return outputReports.at(number);
     }
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override {
@@ -358,8 +388,30 @@ class HeadlessHost final : public Host {
         transparencySupported = value;
         transparent = value;
     }
-    void setMonitors(std::vector<Monitor> value) {
-        monitors = std::move(value);
+    void setDisplays(std::vector<Display> value) {
+        displays = std::move(value);
+    }
+
+    // An output that the app asked the headless platform to open.
+    struct OutputRequest {
+        std::uint32_t number = 0;
+        std::string display;
+        Output::Options options;
+    };
+
+    [[nodiscard]] const std::vector<OutputRequest>& getOutputRequests() const noexcept {
+        return outputRequests;
+    }
+    [[nodiscard]] const std::vector<std::uint32_t>& getClosedOutputs() const noexcept {
+        return closedOutputs;
+    }
+    void setOutputReport(std::uint32_t number, OutputReport value) {
+        outputReports[number] = std::move(value);
+    }
+
+    // How the headless platform answers an app that asks to list every display.
+    void setDisplayAccess(DisplayAccess value) noexcept {
+        displayAccess = value;
     }
 
     // The ids of the plugins whose native part the headless platform reports as loaded.
@@ -559,8 +611,13 @@ class HeadlessHost final : public Host {
     bool opensUrls = true;
     bool writesClipboard = true;
 
-    // The headless desktop is one 1920 by 1080 monitor whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
-    std::vector<Monitor> monitors{{.name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true}};
+    // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
+    std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};
+    DisplayAccess displayAccess = DisplayAccess::Granted;
+    Fullscreen fullscreenTarget;
+    std::vector<OutputRequest> outputRequests;
+    std::vector<std::uint32_t> closedOutputs;
+    std::unordered_map<std::uint32_t, OutputReport> outputReports;
     math::Rect frame;
     std::vector<math::Polygon::Outline> passthroughRegions;
     Passthrough passthrough = Passthrough::Off;

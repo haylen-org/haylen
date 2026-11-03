@@ -6,12 +6,13 @@
 #import <AppKit/AppKit.h>
 
 #include <span>
+#include <string>
 #include <vector>
 
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
-#include "haylen/platform/Monitor.hpp"
+#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Window.hpp"
 #include "platform/WindowStyle.hpp"
 
@@ -23,7 +24,8 @@ class AppleDesktop final {
     static void setStyle(const WindowStyle& value);
     [[nodiscard]] static math::Rect getFrame();
     static void setFrame(const math::Rect& value);
-    [[nodiscard]] static std::vector<Monitor> getMonitors();
+    [[nodiscard]] static std::vector<Display> getDisplays();
+    [[nodiscard]] static std::string getWindowDisplayId();
     static void setPassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> value);
     static void startDrag();
     static void watch();
@@ -40,6 +42,8 @@ class AppleDesktop final {
     [[nodiscard]] static NSWindow* getWindow();
     [[nodiscard]] static math::Rect toDesktop(NSRect rect);
     [[nodiscard]] static NSRect toScreen(const math::Rect& rect);
+    [[nodiscard]] static std::string getDisplayId(NSScreen* screen);
+    [[nodiscard]] static std::vector<Display::Mode> getModes(CGDirectDisplayID display);
     [[nodiscard]] static bool isOverRegion(math::Vec2 pixel);
     static void followPointer(math::Vec2 pixel, bool inside);
     static void finishDrag(math::Vec2 pixel);

@@ -15,6 +15,7 @@
 
 #include <SDL3/SDL_hints.h>
 
+#import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleTheme.hpp"
 #import "platform/apple/HaylenAccessibilityView.h"
@@ -40,16 +41,24 @@ void AppleApplication::finishLaunching(Runtime& runtime) {
     AppleScroll::watch([&runtime](const Event& event) { runtime.post(event); });
 }
 
+void AppleApplication::prepareWindow(const core::AppConfig&) {}
+
 bool AppleApplication::isTextFieldFocused() noexcept {
     NSWindow* window = (__bridge NSWindow*)NativeWindow::getHandle();
     return [window.firstResponder isKindOfClass:HaylenFieldEditor.class];
 }
 #else
-// SDL names the class that UIKit creates as the delegate of the application through a class method of its own delegate, which names the delegate of Haylen instead. SDL takes every orientation, so it never turns the size of the window it opens, and once the window opened its view controller and the application delegate answer UIKit with the orientations of the `Info.plist` or of the lock of the app.
+// SDL names the class that UIKit creates as the delegate of the application through a class method of its own delegate, which names the delegate of Haylen instead. SDL takes every orientation, so it never turns the size of the window it opens, and once the window opened its view controller and the application delegate answer UIKit with the orientations of `app.json` or of the lock of the app.
 void AppleApplication::prepare() {
     const IMP name = imp_implementationWithBlock(^NSString*(id) { return NSStringFromClass(HaylenSceneDelegate.class); });
     class_replaceMethod(object_getClass(HaylenSceneDelegate.superclass), @selector(getSceneDelegateClassName), name, "@@:");
     SDL_SetHint(SDL_HINT_ORIENTATIONS, "LandscapeLeft LandscapeRight Portrait PortraitUpsideDown");
+}
+
+void AppleApplication::prepareWindow([[maybe_unused]] const core::AppConfig& config) {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleOrientation::prepare(config.orientation);
+#endif
 }
 
 // The window that SDL opened lies under the overlay of the plugins and the elements of screen readers, and under the launch screen until the splash ends. The view controller of SDL answers UIKit with the status bar and the orientations of the app, and the plugins hear the scene connect once the window of the app is in it.

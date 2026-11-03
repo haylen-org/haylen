@@ -73,6 +73,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private HaylenEditText editor;
     private HaylenNetwork network;
     private HaylenFold fold;
+    private HaylenDisplays displays;
     private OnBackPressedCallback backCallback;
     private int statusBar;
     // Whether the app keeps the screen on, which outlives the activity, so an activity that the system creates again keeps the screen on too.
@@ -100,6 +101,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         accessibilityTree.reportWanted();
         fold = new HaylenFold(this);
         fold.register();
+        displays = new HaylenDisplays(this);
+        displays.register();
 
         // The views over the app share the layout of its surface, above it.
         FrameLayout content = findViewById(contentViewId);
@@ -222,6 +225,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeTheme(isDark(configuration));
         applyStatusBar();
         accessibility.report();
+        displays.report();
         overlays.refresh();
         HaylenPlugins.configurationChanged(configuration);
     }
@@ -263,6 +267,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         accessibilityTree.detach();
         HaylenMediaSession.release();
         fold.unregister();
+        displays.unregister();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {
             network.unregister();

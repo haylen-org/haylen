@@ -296,6 +296,9 @@ class Renderer final {
     [[nodiscard]] bool isCanvasLit() const;
     [[nodiscard]] bool isCapturing() const noexcept;
 
+    // Shows the image of the target in the swapchain of a surface of the GPU device beyond the window, at the end of the frame, as large as it fits in the surface of the size in pixels with bars of the clear color around it. The engine presents the target of every output that shows this way.
+    void present(const graphics::RenderTarget& target, int surface, math::Vec2 size, math::Color clear);
+
     // The engine begins and ends every frame, and submits everything drawn in between at its end into the swapchain, whose alpha a transparent window composes with the desktop.
     void beginFrame(const graphics::Viewport& viewport, math::Color clearColor);
     void endFrame(bool transparent);

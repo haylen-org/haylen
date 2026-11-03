@@ -13,7 +13,7 @@
         "alwaysOnTop": true,
         "focusable": false,
         "mousePassthrough": true,
-        "position": {"anchor": "bottom", "area": "work", "monitor": "primary", "fill": "width"}
+        "position": {"anchor": "bottom", "area": "work", "display": "primary", "fill": "width"}
     },
     "design": {
         "width": 1600,

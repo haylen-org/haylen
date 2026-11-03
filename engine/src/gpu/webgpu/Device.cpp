@@ -33,6 +33,7 @@ Device::~Device() {
         wgpuCommandEncoderRelease(encoder);
     }
     swapchain.reset();
+    surfaces.clear();
 
     pipelines.forEach([](PipelineRecord& record) { wgpuRenderPipelineRelease(record.pipeline); });
     // clang-format off
@@ -654,19 +655,20 @@ void Device::beginPass(const PassDesc& desc) {
 
 // The swapchain keeps its depth and stencil between the passes of a frame, so a later pass that keeps the color keeps them too.
 void Device::beginSwapchainPass(const PassDesc& desc) {
-    if (!swapchain || !swapchain->acquire()) {
+    Swapchain* chain = desc.surface == 0 ? swapchain.get() : &requireSwapchain(desc.surface);
+    if (chain == nullptr || !chain->acquire()) {
         skipping = true;
         return;
     }
 
     WGPURenderPassColorAttachment color = WGPU_RENDER_PASS_COLOR_ATTACHMENT_INIT;
-    color.view = swapchain->getColorView();
-    color.resolveTarget = swapchain->getResolveView();
+    color.view = chain->getColorView();
+    color.resolveTarget = chain->getResolveView();
     color.loadOp = Conversion::toLoad(desc.load);
     color.storeOp = WGPUStoreOp_Store;
     color.clearValue = Conversion::toColor(desc.clear);
     WGPURenderPassDepthStencilAttachment depth = WGPU_RENDER_PASS_DEPTH_STENCIL_ATTACHMENT_INIT;
-    depth.view = swapchain->getDepthView();
+    depth.view = chain->getDepthView();
     depth.depthLoadOp = Conversion::toLoad(desc.load);
     depth.depthStoreOp = WGPUStoreOp_Store;
     depth.depthClearValue = desc.clearDepth;
@@ -681,8 +683,8 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     descriptor.depthStencilAttachment = &depth;
     descriptor.timestampWrites = timer ? timer->nextPass() : nullptr;
     pass = wgpuCommandEncoderBeginRenderPass(encoder, &descriptor);
-    passWidth = swapchain->getWidth();
-    passHeight = swapchain->getHeight();
+    passWidth = chain->getWidth();
+    passHeight = chain->getHeight();
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
@@ -1006,6 +1008,11 @@ void Device::commit() {
     if (swapchain) {
         swapchain->release();
     }
+    for (const std::unique_ptr<Swapchain>& chain : surfaces) {
+        if (chain != nullptr) {
+            chain->release();
+        }
+    }
 
     releaseRetired();
     imageGroups.trim(frame);
@@ -1031,6 +1038,37 @@ void Device::attachSurface(const Surface& surface) {
     swapchainFormat = swapchain->getFormat();
     swapchainSamples = swapchain->getSampleCount();
     rebuildSwapchainPipelines();
+}
+
+// Another canvas draws through the swapchain pipelines only in the format and with the samples of the canvas of the window.
+int Device::addSurface(const Surface& surface) {
+    auto chain = std::make_unique<Swapchain>(connection->getInstance(), connection->getAdapter(), device, surface);
+    if (chain->getFormat() != swapchainFormat || chain->getSampleCount() != swapchainSamples) {
+        throw std::runtime_error("The canvas takes another format or another sample count than the canvas of the window, so the pipelines of the window cannot draw into it.");
+    }
+    const auto free = std::ranges::find_if(surfaces, [](const std::unique_ptr<Swapchain>& chain) { return chain == nullptr; });
+    if (free != surfaces.end()) {
+        *free = std::move(chain);
+        return static_cast<int>(free - surfaces.begin()) + 1;
+    }
+    surfaces.push_back(std::move(chain));
+    return static_cast<int>(surfaces.size());
+}
+
+Swapchain& Device::requireSwapchain(int surface) {
+    if (surface < 1 || static_cast<std::size_t>(surface) > surfaces.size() || surfaces[static_cast<std::size_t>(surface - 1)] == nullptr) {
+        throw std::logic_error(std::format("The device has no surface {}.", surface));
+    }
+    return *surfaces[static_cast<std::size_t>(surface - 1)];
+}
+
+void Device::resizeSurface(int surface, int width, int height) {
+    requireSwapchain(surface).resize(width, height);
+}
+
+void Device::removeSurface(int surface) {
+    requireSwapchain(surface);
+    surfaces[static_cast<std::size_t>(surface - 1)].reset();
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {

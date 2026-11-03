@@ -181,6 +181,7 @@ class FrameSubmitter final {
     void renderPostChain(Canvas& canvas, LitTargets& targets);
     void renderCapture(std::size_t index);
     void renderSwapchain();
+    void renderPresentations();
     void drawCanvases(std::size_t capture, graphics::PassTarget pass);
 
     // Draws the finished image of a composited canvas into the pass: the composite, or the last post-processing material over the image before it.

@@ -104,7 +104,7 @@ void OffscreenSwapchain::writeImages(std::span<const ImageWrite> writes) {
 }
 
 void OffscreenSwapchain::beginPass(const PassDesc& desc) {
-    if (!desc.colors.empty() || desc.depthStencil) {
+    if (!desc.colors.empty() || desc.depthStencil || desc.surface != 0) {
         device->beginPass(desc);
         return;
     }
@@ -172,6 +172,18 @@ void OffscreenSwapchain::detachSurface() {
 
 void OffscreenSwapchain::attachSurface(const gpu::Surface& surface) {
     device->attachSurface(surface);
+}
+
+int OffscreenSwapchain::addSurface(const gpu::Surface& surface) {
+    return device->addSurface(surface);
+}
+
+void OffscreenSwapchain::resizeSurface(int surface, int width, int height) {
+    device->resizeSurface(surface, width, height);
+}
+
+void OffscreenSwapchain::removeSurface(int surface) {
+    device->removeSurface(surface);
 }
 
 std::unique_ptr<gpu::Device::Readback> OffscreenSwapchain::readImage(Image image, int width, int height) {

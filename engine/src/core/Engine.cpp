@@ -82,6 +82,8 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
         });
     // clang-format on
     current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
+    current.displays = std::make_unique<platform::Displays>(host, current.events);
+    current.outputs = std::make_unique<platform::Outputs>(host, *current.displays, *current.graphics, current.events);
     current.mediaSession = std::make_unique<platform::MediaSession>(host, current.events);
     current.accessibility = std::make_unique<platform::Accessibility>(host, current.events);
     current.dialogs = std::make_unique<platform::Dialogs>(host, current.storage->getRoot() / "tmp" / "dialogs");
@@ -141,6 +143,8 @@ Engine::~Engine() {
     current.accessibility.reset();
     current.system->stopRumbles();
     current.system.reset();
+    current.outputs.reset();
+    current.displays.reset();
     current.mediaSession.reset();
     current.runtime->stop();
     current.jobs->discardQueued();
@@ -322,6 +326,7 @@ void Engine::frame(double frameSeconds) {
             const debug::ProfileScope scope(profiler, "scripts");
             current.platform->pump();
             current.system->pump();
+            current.displays->pump();
             current.mediaSession->pump();
             current.accessibility->pump();
             current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
@@ -469,6 +474,11 @@ void Engine::render(std::size_t plugins) {
             reportError(exception);
         }
     }
+    for (const std::shared_ptr<platform::Output>& output : current.outputs->getAll()) {
+        if (output->getState() == platform::Output::State::Shown) {
+            current.renderer->present(output->getTarget(), output->getSurface(), output->getSurfaceSize(), output->getClearColor());
+        }
+    }
     try {
         const debug::ProfileScope scope(profiler, "submit");
         current.renderer->endFrame(current.host.isFrameTransparent());
@@ -547,6 +557,20 @@ void Engine::handleEvent(const platform::Event& event) {
 
 void Engine::dispatchEvent(const platform::Event& event) {
     EngineState& current = *state;
+
+    // The reports and the pointers of outputs on other displays belong to the outputs, apart from the input of the window.
+    if (event.output != 0) {
+        try {
+            if (event.type == platform::Event::Type::OutputChanged) {
+                current.outputs->refresh(event.output);
+            } else {
+                current.outputs->receiveInput(event);
+            }
+        } catch (const std::exception& exception) {
+            reportError(exception);
+        }
+        return;
+    }
     current.input.handleEvent(event, current.viewport);
 
     // The error screen takes the input of the stopped app, so its actions work even when a plugin fails on the same event.
@@ -561,6 +585,7 @@ void Engine::dispatchEvent(const platform::Event& event) {
             resized.emit();
             const math::Vec2 size = current.host.getFramebufferSize();
             current.events.emit(LifecycleEvent::kWindowResized, {{"width", JsonNumber::fromFloat(size.x)}, {"height", JsonNumber::fromFloat(size.y)}});
+            current.displays->refreshWindowDisplay();
             break;
         }
         case platform::Event::Type::FocusLost:
@@ -603,10 +628,11 @@ void Engine::dispatchEvent(const platform::Event& event) {
                 current.windowPosition = position;
                 current.events.emit(LifecycleEvent::kWindowMoved, {{"x", JsonNumber::fromFloat(position.x)}, {"y", JsonNumber::fromFloat(position.y)}});
             }
+            current.displays->refreshWindowDisplay();
             break;
         }
-        case platform::Event::Type::MonitorsChanged:
-            current.events.emit(LifecycleEvent::kWindowMonitorsChanged);
+        case platform::Event::Type::DisplaysChanged:
+            current.displays->refresh();
             break;
         case platform::Event::Type::NetworkChanged: {
             // The first report publishes the state the app starts in, and later reports publish only changes.
@@ -1182,6 +1208,14 @@ platform::Bridge& Engine::getPlatform() noexcept {
 
 platform::System& Engine::getSystem() noexcept {
     return *state->system;
+}
+
+platform::Displays& Engine::getDisplays() noexcept {
+    return *state->displays;
+}
+
+platform::Outputs& Engine::getOutputs() noexcept {
+    return *state->outputs;
 }
 
 platform::MediaSession& Engine::getMediaSession() noexcept {

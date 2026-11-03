@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows, their frame and the monitors. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -43,20 +43,37 @@ local window = require('haylen.window')
 print('Fullscreen:', window.fullscreen())
 ```
 
-### window.setFullscreen(enabled)
+### window.setFullscreen(enabled, options)
 
-Switches between fullscreen and a window. Nothing happens when the window already is in that mode. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame.
+Switches between fullscreen and a window. Nothing happens when the window already is in that mode on that display. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame.
 
-Android ignores it, since the window of the app always fills the screen. On the web the page puts the element that holds the canvas in fullscreen, so the dialogs and the views of plugins stay over the app. Browsers allow fullscreen only shortly after a click, a tap or a key of the person. So the `fullscreen` key of `app.json` leaves a page as it is when it loads.
+The table `options` goes only with `true`, and chooses where and how the window goes fullscreen. Without it, the window covers the display that shows it, at the mode that the desktop runs in.
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `display` | The display of the window | The id of the display to cover, from [`display.list()`](display.md#displaylist). A desktop window moves there first. |
+| `mode` | none | A mode of the display, such as one of the `modes` of `display.list()`, which makes the fullscreen exclusive: the display runs in that mode while the window holds it, and goes back to its own mode when the window leaves fullscreen. It needs `width` and `height` in pixels, and `refreshRate` picks the rate, the highest rate of the size without it. |
+
+Exclusive fullscreen works on macOS, Windows and Linux. On the web the page puts the element that holds the canvas in fullscreen, so the dialogs and the views of plugins stay over the app. A page covers another screen once the person let it see every screen through [`display.request()`](display.md#displayrequest). Browsers allow fullscreen only shortly after a click, a tap or a key of the person, so the `fullscreen` key of `app.json` leaves a page as it is when it loads, and browsers have no modes. Phones, tablets and TVs keep the window on its display in the mode that the system picks, and Android ignores the function, since the window of the app always fills the screen.
 
 ```lua
+local display = require('haylen.display')
 local window = require('haylen.window')
 
 local function toggleFullscreen()
     window.setFullscreen(not window.fullscreen())
 end
 
+-- Cover the second display in its first mode, which the display runs in until the window leaves fullscreen.
+local function playOnSecondDisplay()
+    local second = display.list()[2]
+    if second then
+        window.setFullscreen(true, {display = second.id, mode = second.modes[1]})
+    end
+end
+
 toggleFullscreen()
+playOnSecondDisplay()
 ```
 
 ### window.resizable()
@@ -357,7 +374,8 @@ Foldable phones and tablets fold their screen along a line, and dual-screen devi
 | --- | --- |
 | Android | Jetpack WindowManager. Its `FoldingFeature` reports the bounds, the orientation and the state of the fold, whether it separates the window and whether a hinge hides part of it, on foldable phones and tablets and on dual-screen devices. |
 | Web | The Viewport Segments API, which splits the viewport into segments at the fold, and the Device Posture API, which tells whether the device is folded. Browsers that offer them include Chrome on foldable Android devices. The fold is the gap between the first two segments, so a browser that reports a posture without segments reports no fold. |
-| iOS, iPadOS, Mac Catalyst, tvOS, macOS, Windows, Linux | None. No Apple device folds, and the desktops give apps no API for the fold or the hinge of a device. The posture is always `'flat'`, and the window is one segment, unless a [simulation](#windowsetfoldsimulationvalue) replaces the fold. |
+| iOS | The foldable iPhone from iOS 27.1 on. The division region that UIKit reserves in the view of the window gives the bounds of the fold, and a hinge interaction gives its state: `'halfOpened'` while the hinge is partly open, and `'flat'` otherwise. A region with an area hides what lies under it. |
+| iPadOS, Mac Catalyst, tvOS, macOS, Windows, Linux | None. No iPad, Mac or TV folds, and the desktops give apps no API for the fold or the hinge of a device. The posture is always `'flat'`, and the window is one segment, unless a [simulation](#windowsetfoldsimulationvalue) replaces the fold. |
 
 ### window.fold()
 
@@ -455,9 +473,10 @@ C++ code reads the fold in framebuffer pixels with `core::Engine::getFold()`. It
 
 On Windows, macOS and Linux a window can drop its title bar, float above other windows, stay out of the taskbar, refuse the focus, let clicks pass through and move with the mouse. The [desktop guide](../platform/desktop.md) shows how these fit together and what each system allows.
 
-Phones, tablets, TVs and browsers run apps in a window that fills the screen or the page. There the setters keep and report their values without changing anything. The function `frame()` returns the screen in points, and `monitors()` returns the screen as the only monitor.
+Phones, tablets, TVs and browsers run apps in a window that fills the screen or the page. There the setters keep and report their values without changing anything, and the function `frame()` returns the screen in points.
 
-Frames and monitors use desktop points, from the top left corner of the primary monitor, as the [desktop guide](../platform/desktop.md#desktop-points) explains.
+Frames use desktop points, from the top left corner of the primary display, as the [desktop guide](../platform/desktop.md#desktop-points) explains.
+
 
 ### window.canBeTransparent()
 
@@ -604,7 +623,7 @@ Moves the content area of the window to `x`, `y` and resizes it to `width` by `h
 ```lua
 local window = require('haylen.window')
 
-local area = window.currentMonitor().workArea
+local area = require('haylen.display').current().workArea
 window.setFrame(area.x, area:bottom() - 180, area.width, 180)
 ```
 
@@ -612,15 +631,15 @@ window.setFrame(area.x, area:bottom() - 180, area.width, 180)
 
 Moves the window to a position that reads like `window.position` of `app.json`. It keeps the size of the window, unless the position fills the area. The position is one of these:
 
-- `'center'`, the middle of the work area of the primary monitor.
+- `'center'`, the middle of the work area of the primary display.
 - A point, such as `{x = 40, y = 60}`, in desktop points.
 - An anchored placement, a table with these fields:
 
 | Field | Default | Meaning |
 | --- | --- | --- |
 | `anchor` | `'center'` | The side or the corner the window touches: `'center'`, `'top'`, `'bottom'`, `'left'`, `'right'`, `'topLeft'`, `'topRight'`, `'bottomLeft'` or `'bottomRight'`. |
-| `area` | `'work'` | `'work'` for the area without the taskbar, the Dock and the menu bar, or `'full'` for the whole monitor. |
-| `monitor` | `'primary'` | `'primary'`, or the number of a monitor from `1`, in the order of `window.monitors()`. A number past the last monitor places the window on the primary one. |
+| `area` | `'work'` | `'work'` for the area without the taskbar, the Dock and the menu bar, or `'full'` for the whole display. |
+| `display` | `'primary'` | `'primary'`, the id of a display, or the number of a display from `1`, in the order of [`display.list()`](display.md#displaylist). A number past the last display, or the id of a display that is not connected, places the window on the primary one. |
 | `offset` | `{0, 0}` | Points added to the anchored position. |
 | `fill` | `'none'` | `'width'`, `'height'` or `'both'` stretch the window across the area. |
 
@@ -631,38 +650,7 @@ local window = require('haylen.window')
 
 -- A strip across the bottom of the work area, just above the taskbar or the Dock.
 window.place({anchor = 'bottom', fill = 'width'})
-window.place({anchor = 'topRight', monitor = 2, offset = {-16, 16}})
-```
-
-### window.monitors()
-
-Returns the monitors of the desktop as a list of tables. The list has at least one monitor, and the primary one is flagged. Every change of the monitors, such as a monitor that connects or a taskbar that moves, publishes the event `windowMonitorsChanged`.
-
-| Field | Type | Meaning |
-| --- | --- | --- |
-| `name` | string | The name that the system gives the monitor. |
-| `bounds` | `Rect` | The whole monitor, in desktop points. |
-| `workArea` | `Rect` | The monitor without the taskbar, the Dock and the menu bar, in desktop points. |
-| `scale` | number | The pixels in a point, such as `2` on a Retina display or a Windows monitor at 200 percent. |
-| `primary` | boolean | `true` for the primary monitor. |
-
-```lua
-local window = require('haylen.window')
-
-for number, monitor in ipairs(window.monitors()) do
-    print(number, monitor.name, monitor.bounds, monitor.scale, monitor.primary)
-end
-```
-
-### window.currentMonitor()
-
-Returns the monitor that holds most of the window, as a table like those of `window.monitors()`. While the window is off every monitor, it returns the primary monitor.
-
-```lua
-local window = require('haylen.window')
-
-local monitor = window.currentMonitor()
-print('The window is on', monitor.name, 'at scale', monitor.scale)
+window.place({anchor = 'topRight', display = 2, offset = {-16, 16}})
 ```
 
 ### window.startDrag()
@@ -736,13 +724,13 @@ The window publishes these events on [`haylen.events`](events.md#engine-events),
 | `windowSafeAreaChanged` | The safe area moved, such as when the status bar showed. |
 | `windowFoldChanged` | The fold across the window changed, or a simulation replaced it. |
 | `windowMoved` | The desktop window moved. |
-| `windowMonitorsChanged` | A monitor or a work area changed. |
+| `windowDisplayChanged` | The window moved to another display. |
 
 ```lua
 local events = require('haylen.events')
 local window = require('haylen.window')
 
-events.on('windowMonitorsChanged', function()
+events.on('windowDisplayChanged', function()
     window.place({anchor = 'bottom', fill = 'width'})
 end)
 ```
@@ -754,6 +742,11 @@ These messages are raised by the functions of the module.
 | Message | Cause |
 | --- | --- |
 | `bad argument #1 to '<function>' (boolean expected, got <type>)` | A function that takes a boolean got another value. |
+| `There is no display "<id>" to go fullscreen on. The function "display.list()" lists the displays.` | The `display` of `window.setFullscreen` is not connected. |
+| `The display "<id>" has no mode of <width> by <height> pixels at <rate> frames per second. The modes of "display.list()" are the ones it runs in.` | The `mode` of `window.setFullscreen` is not a mode of the display. |
+| `A fullscreen mode needs a positive "width" and "height" in pixels.` | The `mode` of `window.setFullscreen` has no size. |
+| `The window of this platform stays on the display that shows it, in the mode that the system picks.` | A phone, a tablet or a TV got another display or a mode in `window.setFullscreen`. |
+| `bad argument #2 to 'setFullscreen' (options only go with true)` | The function `window.setFullscreen(false, options)` got options. |
 | `bad argument #1 to '<function>' (unknown value '<name>')` | The functions `setCursor`, `lockOrientation` or `setStatusBar` got a name they do not know. |
 | `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.` | The function `window.setTransparent(true)` ran on a window that opened opaque. |
 | `bad argument #3 to 'setFrame' (positive width expected)` | The width of `window.setFrame` is not positive. |
@@ -761,7 +754,7 @@ These messages are raised by the functions of the module.
 | `A window position is "center", a point with "x" and "y", or an object with an "anchor".` | The position of `window.place` has another form. |
 | `A window position has the unknown "<key>" <value>.` | The `anchor`, `area` or `fill` of a position has a value it does not take. |
 | `A window position needs a number for "<key>".` | The `x`, `y` or an item of `offset` is not a number. |
-| `A window position names its monitor with "primary" or a number from 1.` | The `monitor` of a position has another value. |
+| `A window position names its display with "primary", a number from 1 or the id of a display.` | The `display` of a position has another value. |
 | `A window position offset is a pair of numbers.` | The `offset` of a position is not a list of two numbers. |
 | `Unknown key "<key>" in window position.` | A position has a key that it does not take. |
 | `A mouse passthrough region is a rectangle or a polygon, not a <type>.` | A region of `window.setMousePassthrough` is another value. |

@@ -3,7 +3,8 @@ local sources = {}
 
 sources.events = {
     'appActive', 'appInactive', 'appBackground', 'appLowMemory', 'appQuitRequested',
-    'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowMonitorsChanged',
+    'windowResized', 'windowFocusGained', 'windowFocusLost', 'windowFullscreenChanged', 'windowOrientationChanged', 'windowFoldChanged', 'windowSafeAreaChanged', 'windowMoved', 'windowDisplayChanged',
+    'displayConnected', 'displayDisconnected', 'displayChanged',
     'keyboardShown', 'keyboardHidden', 'networkOnline', 'networkOffline',
     'audioInterrupted', 'audioResumed', 'audioRouteChanged', 'systemThemeChanged', 'batteryChanged', 'gamepadConnected', 'gamepadDisconnected',
 }
@@ -12,6 +13,8 @@ local kDesktopFold = 'A window of a desktop counts as landscape and reports no f
 local kNoDesktop = 'The window has no desktop.'
 local kNoKeyboard = 'There is no keyboard on the screen.'
 local kAlwaysFull = 'The app always fills its window.'
+local kOneTv = 'The TV is the only display of the app.'
+local kOneScreen = 'UIKit shows a Mac Catalyst app only the screen of its window.'
 
 sources.never = {
     macos = {
@@ -29,26 +32,28 @@ sources.never = {
         audioInterrupted = 'Linux does not interrupt the audio of apps.', audioResumed = 'Linux does not interrupt the audio of apps.',
     },
     ios = {
-        appQuitRequested = 'iOS apps never quit on request.', windowFullscreenChanged = kAlwaysFull, windowFoldChanged = 'No iPhone or iPad folds.',
-        windowMoved = kNoDesktop, windowMonitorsChanged = kNoDesktop,
+        appQuitRequested = 'iOS apps never quit on request.', windowFullscreenChanged = kAlwaysFull,
+        windowMoved = kNoDesktop,
     },
     tvos = {
         appQuitRequested = 'tvOS apps never quit on request.', windowFullscreenChanged = 'The app always fills the TV in landscape.', windowOrientationChanged = 'The app always fills the TV in landscape.',
-        windowFoldChanged = 'The app always fills the TV in landscape.', windowMoved = kNoDesktop, windowMonitorsChanged = kNoDesktop,
+        windowFoldChanged = 'The app always fills the TV in landscape.', windowMoved = kNoDesktop,
+        windowDisplayChanged = kOneTv, displayConnected = kOneTv, displayDisconnected = kOneTv, displayChanged = kOneTv,
         keyboardShown = 'The keyboard of tvOS is a screen of the system over the app.', keyboardHidden = 'The keyboard of tvOS is a screen of the system over the app.', batteryChanged = 'A TV runs on mains power.',
     },
     catalyst = {
         appQuitRequested = 'Mac Catalyst ends the app on Quit without asking it.', windowFullscreenChanged = 'The window runs as the iPad window it is.', windowOrientationChanged = 'The window runs as the iPad window it is.',
-        windowFoldChanged = 'No Mac folds.', windowMoved = 'UIKit places the window without telling apps where.', windowMonitorsChanged = 'UIKit places the window without telling apps where.',
+        windowFoldChanged = 'No Mac folds.', windowMoved = 'UIKit places the window without telling apps where.',
+        windowDisplayChanged = kOneScreen, displayConnected = kOneScreen, displayDisconnected = kOneScreen, displayChanged = kOneScreen,
         keyboardShown = kNoKeyboard, keyboardHidden = kNoKeyboard,
     },
     android = {
         appQuitRequested = 'Back on the root screen and the recent apps close the activity, which stops the app.', windowFullscreenChanged = kAlwaysFull,
-        windowMoved = kNoDesktop, windowMonitorsChanged = kNoDesktop,
+        windowMoved = kNoDesktop,
     },
     web = {
         appLowMemory = 'Browsers tell pages nothing about memory pressure.', appQuitRequested = 'A page that closes cannot wait for the app.',
-        windowMoved = 'A page has no place on a desktop.', windowMonitorsChanged = 'A page has no place on a desktop.',
+        windowMoved = 'A page has no place on a desktop.',
         audioInterrupted = 'Browsers suspend the audio of the page without telling it why.', audioResumed = 'Browsers suspend the audio of the page without telling it why.',
         audioRouteChanged = 'The audio of the page follows the browser without telling the page.',
     },

@@ -288,6 +288,7 @@ void RendererState::resetFrame() noexcept {
     commands.clear();
     canvases.clear();
     captures.clear();
+    presentations.clear();
     openCaptures.clear();
     closedCaptures.clear();
     clips.clear();

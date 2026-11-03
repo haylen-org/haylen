@@ -56,8 +56,8 @@ EM_JS(void, haylen_js_reloaded, (const char* json), {
     Module.haylen.reportReloaded(JSON.parse(UTF8ToString(json)));
 });
 
-EM_JS(void, haylen_js_set_fullscreen, (int value), {
-    Module.haylen.setFullscreen(value !== 0);
+EM_JS(void, haylen_js_set_fullscreen, (int value, const char* display), {
+    Module.haylen.setFullscreen(value !== 0, UTF8ToString(display));
 });
 
 EM_JS(void, haylen_js_keep_screen_on, (int value), {
@@ -98,8 +98,8 @@ template <typename Body> int WebPage::answer(Body&& body) {
     }
 }
 
-void WebPage::setFullscreen(bool value) {
-    haylen_js_set_fullscreen(value ? 1 : 0);
+void WebPage::setFullscreen(bool value, std::string_view display) {
+    haylen_js_set_fullscreen(value ? 1 : 0, std::string(display).c_str());
 }
 
 void WebPage::setScreenKeptOn(bool value) {

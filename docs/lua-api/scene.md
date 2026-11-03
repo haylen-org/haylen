@@ -821,7 +821,7 @@ The hook `event` of the top scene receives one table for every platform event, a
 | `'keyboardChanged'` | The field `frame` is the rectangle that the on-screen keyboard covers, empty while it is hidden. |
 | `'networkChanged'` | The field `online` tells whether the device has a network. |
 | `'interruptionBegan'`, `'interruptionEnded'` | No other fields. The system interrupted the app, such as for a phone call, or gave it back. |
-| `'windowMoved'`, `'monitorsChanged'` | No other fields. The desktop window moved, or the monitors of the desktop changed. The events `windowMoved` and `windowMonitorsChanged` of [`haylen.events`](events.md#engine-events) report them with their details. |
+| `'windowMoved'`, `'displaysChanged'` | No other fields. The desktop window moved, or the displays of the device changed. The events `windowMoved`, `displayConnected`, `displayDisconnected` and `displayChanged` of [`haylen.events`](events.md#engine-events) report them with their details. |
 | `'audioServicesReset'` | No other fields. The audio services of iOS, tvOS or Mac Catalyst restarted, and the engine opened the audio device again. |
 
 The name `repeat` is a keyword of Lua, so read it as `event['repeat']`. The [key names](input.md#key-names) of `haylen.input` list every value of `key`. Gameplay reads input through the action map of [`haylen.input`](input.md), and these events suit text entry and pointer tracking best. Changes of the app, such as going to the background, also reach the listeners of [`haylen.events`](events.md#engine-events), which is the better place to react to them.

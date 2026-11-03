@@ -21,6 +21,7 @@
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/MediaSession.hpp"
+#include "haylen/platform/Output.hpp"
 #include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
@@ -42,6 +43,14 @@ class Host : public Window {
   public:
     // Explains, from any thread, why the platform blocked the connection of a socket, given its descriptor, or answers an empty text when it blocked nothing or cannot tell.
     using BlockedReason = std::function<std::string(std::intptr_t socket)>;
+
+    // What the platform reports of an output that `openOutput` opened: whether it ended and why, with a sentence for an output that the platform cannot show, and while it shows, the surface that the GPU device draws into, with the size of its drawable in pixels, and the pixels in a point of its display.
+    struct OutputReport {
+        std::optional<Output::Ending> ending;
+        std::string reason;
+        std::optional<gpu::Surface> surface;
+        float scale = 1.0F;
+    };
 
     [[nodiscard]] virtual std::string_view getPlatformName() const noexcept = 0;
     // Creates the GPU device, which draws into the window of the host. One exists while an app runs.
@@ -145,6 +154,13 @@ class Host : public Window {
 
     // The development session of a process that plays an app while it is being made, or null for every app that ships. It outlives the apps that restart on the host.
     [[nodiscard]] virtual DevelopmentSession* getDevelopmentSession() const noexcept = 0;
+
+    // Opens an output on a display that does not show the window, which the platform announces with `Event::Type::OutputChanged` for its number whenever its report changes: once it shows with its surface, when the surface resizes, goes away or comes back, and once it ends. The report keeps the surface of the last announcement until the frame thread reads the next one, and a platform without outputs on that display ends the output with `Output::Ending::Unsupported` and its reason.
+    virtual void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) = 0;
+
+    // Closes an output that the app gave up or whose ending the frame thread read, which ends without another announcement.
+    virtual void closeOutput(std::uint32_t number) = 0;
+    [[nodiscard]] virtual OutputReport getOutputReport(std::uint32_t number) const = 0;
 
     // Whether the app that plays was launched by another app of the process, which starts again when it quits.
     [[nodiscard]] virtual bool isLaunched() const noexcept = 0;

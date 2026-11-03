@@ -55,8 +55,16 @@ math::Rect Services::getWindowFrame() {
 
 void Services::setWindowFrame(const math::Rect&) {}
 
-std::vector<Monitor> Services::getMonitors() {
-    return {Monitor{.name = "Test port", .bounds = getWindowFrame(), .workArea = getWindowFrame(), .scale = 1.0F, .primary = true}};
+std::vector<Display> Services::getDisplays() {
+    return {Display{.id = "test-port", .name = "Test port", .bounds = getWindowFrame(), .workArea = getWindowFrame(), .scale = 1.0F, .primary = true}};
+}
+
+std::string Services::getWindowDisplayId() {
+    return "test-port";
+}
+
+void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
+    callback(Window::DisplayAccess::Granted);
 }
 
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}

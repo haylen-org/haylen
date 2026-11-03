@@ -474,12 +474,13 @@ NullDevice::Targets NullDevice::describeOffscreenPass(const PassDesc& desc, Open
     return targets;
 }
 
-void NullDevice::recordPass(bool swapchain, Load load, math::Color clear) {
+void NullDevice::recordPass(bool swapchain, int surface, Load load, math::Color clear) {
     if (recordedPasses == currentFrame.passes.size()) {
         currentFrame.passes.emplace_back();
     }
     PassRecord& record = currentFrame.passes[recordedPasses++];
     record.swapchain = swapchain;
+    record.surface = surface;
     record.load = load;
     record.clear = clear;
     record.masks.clear();
@@ -493,8 +494,14 @@ void NullDevice::beginPass(const PassDesc& desc) {
     OpenPass opened{.debugGroups = debugGroups.size()};
     const bool swapchain = desc.colors.empty() && !desc.depthStencil;
     if (swapchain) {
+        if (desc.surface != 0 && !addedSurfaces.contains(desc.surface)) {
+            throw std::logic_error(std::format("A swapchain pass drew into the surface {}, which the device does not have.", desc.surface));
+        }
         opened.targets.swapchain = true;
     } else {
+        if (desc.surface != 0) {
+            throw std::logic_error("A pass with attachments named a surface.");
+        }
         opened.targets = describeOffscreenPass(desc, opened);
     }
     pass = opened;
@@ -502,7 +509,7 @@ void NullDevice::beginPass(const PassDesc& desc) {
     bindingsApplied = false;
 
     const bool firstColor = !desc.colors.empty();
-    recordPass(swapchain, firstColor ? desc.colors.front().load : desc.load, firstColor ? desc.colors.front().clear : desc.clear);
+    recordPass(swapchain, desc.surface, firstColor ? desc.colors.front().load : desc.load, firstColor ? desc.colors.front().clear : desc.clear);
 }
 
 void NullDevice::applyViewport(const math::Rect& pixels) {
@@ -687,6 +694,7 @@ void NullDevice::commit() {
         const PassRecord& made = currentFrame.passes[index];
         PassRecord& kept = lastFrame.passes[index];
         kept.swapchain = made.swapchain;
+        kept.surface = made.surface;
         kept.load = made.load;
         kept.clear = made.clear;
         kept.masks.assign(made.masks.begin(), made.masks.end());
@@ -716,15 +724,44 @@ void NullDevice::detachSurface() {
     surfaceAttached = false;
 }
 
+void NullDevice::checkSurface(const Surface& surface, int maxSampleCount) {
+    if (surface.width < 0 || surface.height < 0 || !isPowerOfTwo(surface.sampleCount) || surface.sampleCount > maxSampleCount) {
+        throw std::logic_error(std::format("The surface of {}x{} pixels and {} samples does not fit the device.", surface.width, surface.height, surface.sampleCount));
+    }
+}
+
 void NullDevice::attachSurface(const Surface& surface) {
     requireNoPass("attachSurface");
     if (surfaceAttached) {
         throw std::logic_error("A surface was attached while the device had one.");
     }
-    if (surface.width < 0 || surface.height < 0 || !isPowerOfTwo(surface.sampleCount) || surface.sampleCount > features.maxSampleCount) {
-        throw std::logic_error(std::format("The surface of {}x{} pixels and {} samples does not fit the device.", surface.width, surface.height, surface.sampleCount));
-    }
+    checkSurface(surface, features.maxSampleCount);
     surfaceAttached = true;
+}
+
+int NullDevice::addSurface(const Surface& surface) {
+    requireNoPass("addSurface");
+    checkSurface(surface, features.maxSampleCount);
+    const int number = nextSurface++;
+    addedSurfaces.emplace(number, surface);
+    return number;
+}
+
+void NullDevice::resizeSurface(int surface, int width, int height) {
+    requireNoPass("resizeSurface");
+    const auto found = addedSurfaces.find(surface);
+    if (found == addedSurfaces.end() || width < 0 || height < 0) {
+        throw std::logic_error(std::format("The surface {} cannot be {}x{} pixels.", surface, width, height));
+    }
+    found->second.width = width;
+    found->second.height = height;
+}
+
+void NullDevice::removeSurface(int surface) {
+    requireNoPass("removeSurface");
+    if (addedSurfaces.erase(surface) == 0) {
+        throw std::logic_error(std::format("The surface {} was removed while the device did not have it.", surface));
+    }
 }
 
 std::unique_ptr<Device::Readback> NullDevice::readImage(Image image, int width, int height) {

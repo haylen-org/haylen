@@ -4,6 +4,8 @@
 #include <stdexcept>
 #include <thread>
 
+#include "platform/FullscreenTarget.hpp"
+
 namespace haylen::platform {
 
 HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : dataDirectory(std::move(directory)), framebufferSize(size), frame{0.0F, 0.0F, size.x, size.y} {
@@ -16,6 +18,14 @@ HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : d
 #endif
     systemInfo.deviceKind = SystemInfo::DeviceKind::Desktop;
     systemInfo.cpuCores = static_cast<int>(std::thread::hardware_concurrency());
+}
+
+// The window moves to the display it covers, as a desktop window does.
+void HeadlessHost::enterFullscreen(const Fullscreen& value) {
+    const FullscreenTarget target = FullscreenTarget::resolve(displays, getDisplayId(), value);
+    frame = target.display.bounds;
+    fullscreen = true;
+    fullscreenTarget = {.display = target.display.id, .mode = target.mode};
 }
 
 std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {

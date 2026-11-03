@@ -5,11 +5,14 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
+#include <unordered_map>
 #include <vector>
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/DevelopmentSession.hpp"
+#include "platform/FullscreenTarget.hpp"
 #include "platform/Host.hpp"
 #include "platform/KeyboardTranslator.hpp"
 #include "platform/NativeViews.hpp"
@@ -49,7 +52,16 @@ class NativeHost : public Host {
     [[nodiscard]] Passthrough getMousePassthrough() const noexcept override;
     void setMousePassthrough(Passthrough mode, std::span<const math::Polygon::Outline> regions) override;
     void startDrag() override;
-    [[nodiscard]] std::vector<Monitor> getMonitors() const override;
+    // Platforms whose window stays on its display go fullscreen only on that display, in the mode that the system picks.
+    void enterFullscreen(const Fullscreen& value) override;
+    [[nodiscard]] std::vector<Display> getDisplays() const override;
+
+    // Platforms without outputs end every output they are asked for, with the reason.
+    void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
+    void closeOutput(std::uint32_t number) override;
+    [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
+    [[nodiscard]] std::string getDisplayId() const override;
+    void requestDisplays(std::function<void(DisplayAccess access)> callback) override;
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
@@ -124,6 +136,12 @@ class NativeHost : public Host {
     [[nodiscard]] virtual bool prepareGpuDevice() = 0;
 
   protected:
+    // Finds what a fullscreen asks for among the displays of the platform. Throws `std::invalid_argument` as `enterFullscreen` describes.
+    [[nodiscard]] FullscreenTarget resolveFullscreen(const Fullscreen& value) const;
+
+    // Ends the output with `Output::Ending::Unsupported` and the reason, which the frame thread reads after the announcement.
+    void refuseOutput(std::uint32_t number, std::string reason);
+
     // Asks the window to close as its close button does, which the app hears before it closes.
     virtual void requestWindowClose() = 0;
     virtual void setWindowFocusable(bool value) = 0;
@@ -134,6 +152,7 @@ class NativeHost : public Host {
 
   private:
     KeyboardTranslator keyboard;
+    std::unordered_map<std::uint32_t, OutputReport> refusedOutputs;
     std::unique_ptr<DevelopmentSession> developmentSession;
     bool launched = false;
     std::uint64_t keyboardRevision = 0;

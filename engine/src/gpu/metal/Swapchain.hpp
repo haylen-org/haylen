@@ -19,6 +19,11 @@ class Swapchain final {
 
     Swapchain(id<MTLDevice> metal, Graveyard& retired, int samples, bool tileMemory);
 
+    // The frames in flight may still draw the drawable and the attachments, which then wait for them in the graveyard.
+    ~Swapchain();
+    Swapchain(const Swapchain&) = delete;
+    Swapchain& operator=(const Swapchain&) = delete;
+
     // Draws into the layer of the surface from the next frame. Throws `std::runtime_error` when the surface holds no `CAMetalLayer` or asks for a sample count other than the one the swapchain pipelines of the device were made for.
     void attach(const Surface& surface);
     void detach();

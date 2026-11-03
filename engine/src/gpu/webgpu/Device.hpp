@@ -78,6 +78,9 @@ class Device final : public gpu::Device {
     void resizeSurface(int width, int height) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
+    [[nodiscard]] int addSurface(const Surface& surface) override;
+    void resizeSurface(int surface, int width, int height) override;
+    void removeSurface(int surface) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 
@@ -213,6 +216,7 @@ class Device final : public gpu::Device {
 
     void openEncoder();
     void beginSwapchainPass(const PassDesc& desc);
+    [[nodiscard]] Swapchain& requireSwapchain(int surface);
     void beginOffscreenPass(const PassDesc& desc);
     void carryUniforms() noexcept;
     void bindBlocks(const ProgramRecord& program);
@@ -227,6 +231,9 @@ class Device final : public gpu::Device {
     WGPUQueue queue;
     Capabilities capabilities;
     std::unique_ptr<Swapchain> swapchain;
+
+    // The canvases beyond the window, at their surface numbers less one, with an empty place for a surface that went away.
+    std::vector<std::unique_ptr<Swapchain>> surfaces;
     PixelFormat swapchainFormat = PixelFormat::Bgra8;
     int swapchainSamples = 1;
     UniformRing ring;

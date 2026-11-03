@@ -6,15 +6,17 @@
 
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
-#include "haylen/platform/Monitor.hpp"
+#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Window.hpp"
 #include "platform/WindowStyle.hpp"
 
 struct _XDisplay;
+struct _XRRModeInfo;
+struct _XRRScreenResources;
 
 namespace haylen::platform {
 
-// The desktop window of X11. Desktop points are pixels divided by the scale of `Xft.dpi`, which sizes the window of `app.json` too. The input shape of the window lets clicks through outside the regions, and a connection of its own hears the moves of the window and the changes of the monitors, because the event loop of SDL drops what it does not handle. Window managers apply the hints, and transparency needs a compositing one. A window on Wayland, which keeps the place, the level and the input of every window to the compositor, keeps the style it opened with, and its frame sits at the origin.
+// The desktop window of X11. Desktop points are pixels divided by the scale of `Xft.dpi`, which sizes the window of `app.json` too. The input shape of the window lets clicks through outside the regions, and a connection of its own hears the moves of the window and the changes of the displays, because the event loop of SDL drops what it does not handle. Window managers apply the hints, and transparency needs a compositing one. A window on Wayland, which keeps the place, the level and the input of every window to the compositor, keeps the style it opened with, and its frame sits at the origin.
 class LinuxDesktop final {
   public:
     static void setStyle(const WindowStyle& value);
@@ -24,7 +26,8 @@ class LinuxDesktop final {
     [[nodiscard]] static std::string getTitle();
     [[nodiscard]] static math::Vec2 getOrigin();
     static void setFrame(const math::Rect& value);
-    [[nodiscard]] static std::vector<Monitor> getMonitors();
+    [[nodiscard]] static std::vector<Display> getDisplays();
+    [[nodiscard]] static std::string getWindowDisplayId();
     static void setPassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> value);
     static void startDrag();
     static void watch();
@@ -49,7 +52,9 @@ class LinuxDesktop final {
     [[nodiscard]] static float getDesktopScale(_XDisplay* display);
     [[nodiscard]] static std::vector<long> readCardinals(_XDisplay* display, unsigned long window, const char* name);
     [[nodiscard]] static math::Rect readWorkArea(_XDisplay* display, float scale);
-    [[nodiscard]] static std::vector<Monitor> readMonitors(_XDisplay* display);
+    [[nodiscard]] static std::vector<Display> readDisplays(_XDisplay* display);
+    [[nodiscard]] static float getRefreshRate(const _XRRModeInfo& mode);
+    static void describeOutput(_XDisplay* display, _XRRScreenResources* resources, unsigned long output, Display& described);
     static void changeState(_XDisplay* display, unsigned long window, const char* state, bool enabled);
     static void applySizeHints(_XDisplay* display, unsigned long window, int width, int height);
     static void followDrag(_XDisplay* display);

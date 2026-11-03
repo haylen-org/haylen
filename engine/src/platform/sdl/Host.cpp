@@ -5,7 +5,13 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_video.h>
 
+#include <algorithm>
+#include <cmath>
+#include <format>
+#include <optional>
+#include <stdexcept>
 #include <utility>
+#include <vector>
 
 #include "haylen/core/Log.hpp"
 #include "platform/sdl/Runtime.hpp"
@@ -13,11 +19,10 @@
 #if defined(__APPLE__)
 #include <TargetConditionals.h>
 #endif
-#if defined(__APPLE__) || defined(__EMSCRIPTEN__)
 #include "platform/Services.hpp"
-#endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
+#include "platform/apple/AppleOutputs.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include "platform/web/WebPage.hpp"
 #endif
@@ -44,20 +49,126 @@ bool Host::isFullscreen() const noexcept {
     return (SDL_GetWindowFlags(runtime.getWindow().get()) & SDL_WINDOW_FULLSCREEN) != 0U;
 }
 
+// Desktops open a window of SDL on the display of the output, iPhones and iPads show it in the scene of an external display, and the other platforms end it with the reason.
+void Host::openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) {
+#if defined(__EMSCRIPTEN__)
+    refuseOutput(number, "The page shows the app in its own canvas alone.");
+#elif defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleOutputs::open(number, display, {.sampleCount = runtime.getWindow().getSampleCount(), .vsync = runtime.getWindow().isVsync()});
+#elif defined(__APPLE__) && !TARGET_OS_OSX
+    refuseOutput(number, "This platform shows the app on the display of its window alone.");
+#else
+    const std::vector<Display> displays = getDisplays();
+    const auto found = std::ranges::find(displays, display, &Display::id);
+    if (found == displays.end()) {
+        refuseOutput(number, "The display \"" + std::string(display) + "\" disconnected before its output opened.");
+        return;
+    }
+    try {
+        runtime.getOutputs().open(number, *found, options, runtime.getWindow());
+    } catch (const std::runtime_error& error) {
+        refuseOutput(number, error.what());
+    }
+#endif
+}
+
+void Host::closeOutput(std::uint32_t number) {
+    NativeHost::closeOutput(number);
+#if defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleOutputs::close(number);
+#elif !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || TARGET_OS_OSX)
+    runtime.getOutputs().close(number);
+#endif
+}
+
+Host::OutputReport Host::getOutputReport(std::uint32_t number) const {
+#if defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    return AppleOutputs::getReport(number);
+#elif !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || TARGET_OS_OSX)
+    const OutputReport refused = NativeHost::getOutputReport(number);
+    return refused.reason.empty() ? runtime.getOutputs().getReport(number) : refused;
+#else
+    return NativeHost::getOutputReport(number);
+#endif
+}
+
+// A desktop window goes fullscreen on the display that shows it, in the mode that the desktop runs in.
 void Host::setFullscreen(bool value) {
+    if (value && Services::hasDesktop()) {
+        enterFullscreen({});
+        return;
+    }
     if (isFullscreen() == value) {
         return;
     }
 #if defined(__EMSCRIPTEN__)
-    // The page puts the element that holds the canvas and its overlay in fullscreen, so the dialogs, the fields and the views of plugins stay over the app.
-    WebPage::setFullscreen(value);
+    WebPage::setFullscreen(value, getDisplayId());
 #else
-    SDL_SetWindowFullscreen(runtime.getWindow().get(), value);
-    // Leaving fullscreen restores the default style of the window, which may have lost its decorations or its fixed size.
+    SDL_Window* window = runtime.getWindow().get();
+    SDL_SetWindowFullscreen(window, value);
+    // Leaving fullscreen restores the mode of the desktop and the default style of the window, which may have lost its decorations or its fixed size.
     if (!value) {
+        SDL_SetWindowFullscreenMode(window, nullptr);
         applyStyle();
     }
 #endif
+}
+
+// The page puts the element that holds the canvas and its overlay in fullscreen, so the dialogs, the fields and the views of plugins stay over the app, on the screen that the Fullscreen API takes. Desktops move the window, and the other platforms keep it on its display.
+void Host::enterFullscreen(const Fullscreen& value) {
+#if defined(__EMSCRIPTEN__)
+    const FullscreenTarget target = resolveFullscreen(value);
+    WebPage::setFullscreen(true, target.display.id);
+#else
+    if (!Services::hasDesktop()) {
+        NativeHost::enterFullscreen(value);
+        return;
+    }
+    enterDesktopFullscreen(resolveFullscreen(value));
+#endif
+}
+
+// The modes of SDL count their size in the units of the desktop, whose pixels are the size times the density.
+SDL_DisplayMode Host::findMode(SDL_DisplayID display, const Display::Mode& mode) {
+    constexpr float kRateTolerance = 0.5F;
+    int count = 0;
+    SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(display, &count);
+    SDL_DisplayMode found{};
+    for (int index = 0; index < count && found.displayID == 0; ++index) {
+        const SDL_DisplayMode& candidate = *modes[index];
+        const bool size = std::lround(static_cast<float>(candidate.w) * candidate.pixel_density) == mode.width && std::lround(static_cast<float>(candidate.h) * candidate.pixel_density) == mode.height;
+        if (size && std::abs(candidate.refresh_rate - mode.refreshRate) <= kRateTolerance) {
+            found = candidate;
+        }
+    }
+    SDL_free(static_cast<void*>(modes));
+    if (found.displayID == 0) {
+        throw std::runtime_error(std::format("SDL lists no fullscreen mode of {} by {} pixels at {} frames per second.", mode.width, mode.height, mode.refreshRate));
+    }
+    return found;
+}
+
+// A fullscreen window leaves fullscreen before it moves, and the move ends before the window covers the display, so the fullscreen lands on the display that the app chose.
+void Host::enterDesktopFullscreen(const FullscreenTarget& target) {
+    SDL_Window* window = runtime.getWindow().get();
+    const SDL_DisplayID display = sdl::Window::findDisplay(target.display);
+    const std::optional<SDL_DisplayMode> exclusive = target.mode ? std::optional(findMode(display, *target.mode)) : std::nullopt;
+    const SDL_DisplayMode* current = SDL_GetWindowFullscreenMode(window);
+    const bool sameMode = exclusive ? current != nullptr && current->w == exclusive->w && current->h == exclusive->h && current->refresh_rate == exclusive->refresh_rate && current->pixel_density == exclusive->pixel_density : current == nullptr;
+    if (isFullscreen() && sameMode && SDL_GetDisplayForWindow(window) == display) {
+        return;
+    }
+    if (isFullscreen()) {
+        SDL_SetWindowFullscreen(window, false);
+        SDL_SyncWindow(window);
+    }
+    if (SDL_GetDisplayForWindow(window) != display) {
+        SDL_SetWindowPosition(window, static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(display)), static_cast<int>(SDL_WINDOWPOS_CENTERED_DISPLAY(display)));
+        SDL_SyncWindow(window);
+    }
+    if (!SDL_SetWindowFullscreenMode(window, exclusive ? &*exclusive : nullptr) || !SDL_SetWindowFullscreen(window, true)) {
+        throw std::runtime_error("The window could not go fullscreen on the display \"" + target.display.id + "\". " + SDL_GetError());
+    }
 }
 
 void Host::setTitle(std::string_view value) {

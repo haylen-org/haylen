@@ -1205,4 +1205,17 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(std::move(buffer), fence, fenceValue + 1, pitch, record.format, width, height);
 }
 
+// The device draws only into the window of the app, so the outputs of the app on other displays draw through the devices that draw into several surfaces, as the guide of the render hardware interface lists them.
+int Device::addSurface(const Surface&) {
+    throw std::runtime_error("The Direct3D 12 device draws only into the window of the app, not into a surface on another display.");
+}
+
+void Device::resizeSurface(int number, int, int) {
+    throw std::logic_error(std::format("The device has no surface {}.", number));
+}
+
+void Device::removeSurface(int number) {
+    throw std::logic_error(std::format("The device has no surface {}.", number));
+}
+
 } // namespace haylen::gpu::d3d12

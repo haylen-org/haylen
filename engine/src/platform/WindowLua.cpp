@@ -14,8 +14,10 @@
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
+#include "haylen/lua/Table.hpp"
 #include "haylen/lua/TypeConverter.hpp"
 #include "haylen/lua/Userdata.hpp"
+#include "haylen/platform/Displays.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/FoldSimulation.hpp"
 #include "haylen/platform/Window.hpp"
@@ -58,20 +60,6 @@ math::Polygon::Outline WindowLua::readRegion(lua_State* L, int index) {
     return outline;
 }
 
-void WindowLua::pushMonitor(lua_State* L, const Monitor& monitor) {
-    lua_createtable(L, 0, 5);
-    lua::Stack::push(L, monitor.name);
-    lua_setfield(L, -2, "name");
-    lua::Stack::push(L, monitor.bounds);
-    lua_setfield(L, -2, "bounds");
-    lua::Stack::push(L, monitor.workArea);
-    lua_setfield(L, -2, "workArea");
-    lua::Stack::push(L, monitor.scale);
-    lua_setfield(L, -2, "scale");
-    lua::Stack::push(L, monitor.primary);
-    lua_setfield(L, -2, "primary");
-}
-
 math::Rect WindowLua::toDesign(const graphics::Viewport& viewport, const math::Rect& pixels) {
     return math::Rect::fromMinMax(viewport.toDesign(pixels.getMin()), viewport.toDesign(pixels.getMax()));
 }
@@ -93,8 +81,39 @@ int WindowLua::fullscreen(lua_State* L) {
     return 1;
 }
 
+// A mode is a table with its size in pixels and an optional refresh rate, such as one of the modes of `display.list()`, whose scale it ignores.
+Display::Mode WindowLua::readMode(lua_State* L, int index) {
+    luaL_argexpected(L, lua_istable(L, index), 2, "table with the width and the height of a mode");
+    lua::Table::checkFields(L, index, {kModeFields});
+    Display::Mode mode{};
+    lua::Table::readField(L, index, "width", mode.width);
+    lua::Table::readField(L, index, "height", mode.height);
+    lua::Table::readField(L, index, "refreshRate", mode.refreshRate);
+    if (mode.width <= 0 || mode.height <= 0) {
+        luaL_error(L, "A fullscreen mode needs a positive \"width\" and \"height\" in pixels.");
+    }
+    return mode;
+}
+
+// Takes `setFullscreen(enabled, {display, mode})`, where the options choose the display that the window covers and a mode of it for exclusive fullscreen.
 int WindowLua::setFullscreen(lua_State* L) {
-    lua::Runtime::getEngine(L).getWindow().setFullscreen(lua::Stack::read<bool>(L, 1));
+    Window& window = lua::Runtime::getEngine(L).getWindow();
+    const bool enabled = lua::Stack::read<bool>(L, 1);
+    if (lua_isnoneornil(L, 2)) {
+        window.setFullscreen(enabled);
+        return 0;
+    }
+    luaL_checktype(L, 2, LUA_TTABLE);
+    lua::Table::checkFields(L, 2, {kFullscreenOptions});
+    luaL_argcheck(L, enabled, 2, "options only go with true");
+    Window::Fullscreen target;
+    lua::Table::readField(L, 2, "display", target.display);
+    lua_getfield(L, 2, "mode");
+    if (!lua_isnil(L, -1)) {
+        target.mode = readMode(L, lua_gettop(L));
+    }
+    lua_pop(L, 1);
+    window.enterFullscreen(target);
     return 0;
 }
 
@@ -327,10 +346,10 @@ int WindowLua::setFrame(lua_State* L) {
 
 // Moves the window with `place(position)`, where the position reads like the one of `app.json` and keeps the size of the window unless it fills the area.
 int WindowLua::place(lua_State* L) {
-    Window& window = lua::Runtime::getEngine(L).getWindow();
+    core::Engine& engine = lua::Runtime::getEngine(L);
     const WindowPlacement placement = WindowPlacement::fromJson(lua::JsonConverter::read(L, 1));
-    const std::vector<Monitor> all = window.getMonitors();
-    window.setFrame(placement.resolve(all, window.getFrame().getSize()));
+    Window& window = engine.getWindow();
+    window.setFrame(placement.resolve(engine.getDisplays().getAll(), window.getFrame().getSize()));
     return 0;
 }
 
@@ -374,24 +393,9 @@ int WindowLua::startDrag(lua_State* L) {
     return 0;
 }
 
-int WindowLua::monitors(lua_State* L) {
-    const std::vector<Monitor> all = lua::Runtime::getEngine(L).getWindow().getMonitors();
-    lua_createtable(L, static_cast<int>(all.size()), 0);
-    for (std::size_t index = 0; index < all.size(); ++index) {
-        pushMonitor(L, all[index]);
-        lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
-    }
-    return 1;
-}
-
-int WindowLua::currentMonitor(lua_State* L) {
-    pushMonitor(L, lua::Runtime::getEngine(L).getWindow().getCurrentMonitor());
-    return 1;
-}
-
 int WindowLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"statusBar", &statusBar}, {"setStatusBar", &lua::Binding::native<&setStatusBar>}, {"statusBarColor", &lua::Binding::native<&statusBarColor>}, {"setStatusBarColor", &lua::Binding::native<&setStatusBarColor>}, {"fold", &lua::Binding::native<&fold>}, {"posture", &lua::Binding::native<&posture>}, {"segments", &lua::Binding::native<&segments>}, {"foldSimulation", &lua::Binding::native<&foldSimulation>}, {"setFoldSimulation", &lua::Binding::native<&setFoldSimulation>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"keepScreenOn", &keepScreenOn}, {"setKeepScreenOn", &lua::Binding::native<&setKeepScreenOn>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {"monitors", &lua::Binding::native<&monitors>}, {"currentMonitor", &lua::Binding::native<&currentMonitor>}, {nullptr, nullptr},
+        {"framebufferSize", &framebufferSize}, {"dpiScale", &dpiScale}, {"fullscreen", &fullscreen}, {"setFullscreen", &lua::Binding::native<&setFullscreen>}, {"resizable", &resizable}, {"setResizable", &lua::Binding::native<&setResizable>}, {"setTitle", &lua::Binding::native<&setTitle>}, {"setCursor", &lua::Binding::native<&setCursor>}, {"setCursorVisible", &lua::Binding::native<&setCursorVisible>}, {"setMouseLocked", &lua::Binding::native<&setMouseLocked>}, {"setKeyboardVisible", &lua::Binding::native<&setKeyboardVisible>}, {"orientation", &orientation}, {"lockOrientation", &lua::Binding::native<&lockOrientation>}, {"statusBar", &statusBar}, {"setStatusBar", &lua::Binding::native<&setStatusBar>}, {"statusBarColor", &lua::Binding::native<&statusBarColor>}, {"setStatusBarColor", &lua::Binding::native<&setStatusBarColor>}, {"fold", &lua::Binding::native<&fold>}, {"posture", &lua::Binding::native<&posture>}, {"segments", &lua::Binding::native<&segments>}, {"foldSimulation", &lua::Binding::native<&foldSimulation>}, {"setFoldSimulation", &lua::Binding::native<&setFoldSimulation>}, {"hasPointerDevice", &hasPointerDevice}, {"backLeavesApp", &backLeavesApp}, {"setBackLeavesApp", &lua::Binding::native<&setBackLeavesApp>}, {"keepScreenOn", &keepScreenOn}, {"setKeepScreenOn", &lua::Binding::native<&setKeepScreenOn>}, {"canBeTransparent", &canBeTransparent}, {"transparent", &transparent}, {"setTransparent", &lua::Binding::native<&setTransparent>}, {"decorated", &decorated}, {"setDecorated", &lua::Binding::native<&setDecorated>}, {"alwaysOnTop", &alwaysOnTop}, {"setAlwaysOnTop", &lua::Binding::native<&setAlwaysOnTop>}, {"showInTaskbar", &showInTaskbar}, {"setShowInTaskbar", &lua::Binding::native<&setShowInTaskbar>}, {"focusable", &focusable}, {"setFocusable", &lua::Binding::native<&setFocusable>}, {"frame", &lua::Binding::native<&frame>}, {"setFrame", &lua::Binding::native<&setFrame>}, {"place", &lua::Binding::native<&place>}, {"mousePassthrough", &mousePassthrough}, {"setMousePassthrough", &lua::Binding::native<&setMousePassthrough>}, {"startDrag", &lua::Binding::native<&startDrag>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

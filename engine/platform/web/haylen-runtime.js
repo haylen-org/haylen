@@ -1348,6 +1348,56 @@ Module.haylen = Module.haylen || {};
         return [...bounds, vertical ? 1 : 0, folded ? 1 : 0, 1, occluding ? 1 : 0];
     };
 
+    // The screens of the page: the one it shows on until the person lets the page see every screen through the Window Management API, whose screens then report their changes. Each screen gets an id the first time the page sees it, which it keeps while it stays connected, and its points are the CSS pixels of the screens around it.
+    const pageScreens = { details: null, ids: new WeakMap(), counted: 0 };
+    const screenId = (shown) => {
+        if (!pageScreens.ids.has(shown)) {
+            pageScreens.counted += 1;
+            pageScreens.ids.set(shown, "screen-" + pageScreens.counted);
+        }
+        return pageScreens.ids.get(shown);
+    };
+    const describeScreen = (shown) => {
+        const detailed = pageScreens.details !== null;
+        return {
+            id: screenId(shown),
+            name: detailed ? shown.label : "",
+            bounds: detailed ? [shown.left, shown.top, shown.width, shown.height] : [0, 0, shown.width, shown.height],
+            workArea: detailed ? [shown.availLeft, shown.availTop, shown.availWidth, shown.availHeight] : [0, 0, shown.availWidth, shown.availHeight],
+            scale: detailed ? shown.devicePixelRatio : window.devicePixelRatio,
+            primary: detailed ? shown.isPrimary : true,
+        };
+    };
+    const displaysChanged = () => whenRuntimeReady(() => Module._haylen_web_displays_changed());
+    haylen.displays = function () {
+        const all = pageScreens.details !== null ? pageScreens.details.screens : [window.screen];
+        const current = pageScreens.details !== null ? pageScreens.details.currentScreen : window.screen;
+        return JSON.stringify({ current: screenId(current), displays: all.map(describeScreen) });
+    };
+
+    // Answers 0 once the page sees every screen, 1 when the person or the browser refused it and 2 where the browser has no Window Management API.
+    haylen.requestDisplays = function (id) {
+        if (typeof window.getScreenDetails !== "function") {
+            queueMicrotask(() => Module._haylen_web_displays_answered(id, 2));
+            return;
+        }
+        window.getScreenDetails().then(
+            (details) => {
+                if (pageScreens.details === null) {
+                    pageScreens.details = details;
+                    details.addEventListener("screenschange", displaysChanged);
+                    details.addEventListener("currentscreenchange", displaysChanged);
+                    displaysChanged();
+                }
+                Module._haylen_web_displays_answered(id, 0);
+            },
+            () => Module._haylen_web_displays_answered(id, 1),
+        );
+    };
+    if (window.screen.addEventListener) {
+        window.screen.addEventListener("change", displaysChanged);
+    }
+
     haylen.persist = function () {
         FS.syncfs(false, (error) => {
             if (error) {
@@ -2078,11 +2128,13 @@ Module.haylen = Module.haylen || {};
 
     // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
     // Fullscreen covers the element that holds the canvas and the overlay of the runtime, so the dialogs, the fields and the views of plugins stay over the app. Browsers grant it only shortly after an input of the person, and Safari before 16.4 names it with its prefix.
-    haylen.setFullscreen = function (value) {
+    // The Fullscreen API takes the screen to cover once the person let the page see every screen, and a page that is fullscreen on another screen moves there.
+    haylen.setFullscreen = function (value, display) {
         const holder = Module.canvas.parentElement;
         const current = document.fullscreenElement || document.webkitFullscreenElement;
-        if (value && !current) {
-            const request = holder.requestFullscreen ? holder.requestFullscreen() : holder.webkitRequestFullscreen && holder.webkitRequestFullscreen();
+        const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
+        if (value && (!current || target !== undefined)) {
+            const request = holder.requestFullscreen ? holder.requestFullscreen(target !== undefined ? { screen: target } : {}) : holder.webkitRequestFullscreen && holder.webkitRequestFullscreen();
             Promise.resolve(request).catch((error) => console.warn("The page could not enter fullscreen: " + error.message));
         } else if (!value && current) {
             const exit = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen();

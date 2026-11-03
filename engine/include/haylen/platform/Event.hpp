@@ -3,6 +3,8 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
+#include <utility>
 
 #include "haylen/input/Key.hpp"
 #include "haylen/input/KeyModifiers.hpp"
@@ -44,7 +46,8 @@ struct Event {
         InterruptionBegan,
         InterruptionEnded,
         WindowMoved,
-        MonitorsChanged,
+        DisplaysChanged,
+        OutputChanged,
         AudioServicesReset,
     };
 
@@ -56,6 +59,10 @@ struct Event {
         Ended,
         Momentum,
     };
+
+    static constexpr std::array<std::pair<std::string_view, Type>, 30> kTypeNames{{
+        {"keyDown", Type::KeyDown}, {"keyUp", Type::KeyUp}, {"character", Type::Character}, {"mouseDown", Type::MouseDown}, {"mouseUp", Type::MouseUp}, {"mouseMove", Type::MouseMove}, {"mouseScroll", Type::MouseScroll}, {"mouseEnter", Type::MouseEnter}, {"mouseLeave", Type::MouseLeave}, {"touchBegan", Type::TouchBegan}, {"touchMoved", Type::TouchMoved}, {"touchEnded", Type::TouchEnded}, {"touchCancelled", Type::TouchCancelled}, {"resized", Type::Resized}, {"suspended", Type::Suspended}, {"resumed", Type::Resumed}, {"focusGained", Type::FocusGained}, {"focusLost", Type::FocusLost}, {"quitRequested", Type::QuitRequested}, {"lowMemory", Type::LowMemory}, {"textEdited", Type::TextEdited}, {"textAction", Type::TextAction}, {"keyboardChanged", Type::KeyboardChanged}, {"networkChanged", Type::NetworkChanged}, {"interruptionBegan", Type::InterruptionBegan}, {"interruptionEnded", Type::InterruptionEnded}, {"windowMoved", Type::WindowMoved}, {"displaysChanged", Type::DisplaysChanged}, {"outputChanged", Type::OutputChanged}, {"audioServicesReset", Type::AudioServicesReset},
+    }};
 
     static constexpr std::size_t kMaxTouchPoints = 10;
 
@@ -87,6 +94,9 @@ struct Event {
 
     // Whether the device reaches the network, as `NetworkChanged` reports it.
     bool online = false;
+
+    // The output whose report changed, or that the pointer of the event is over, or 0 for the window of the app. The position of a pointer over an output is in its points.
+    std::uint32_t output = 0;
 
     // Returns whether the event is player input: keys, text, mouse buttons, movement and scrolling, touches and the edits of native text fields.
     [[nodiscard]] bool isInput() const noexcept {

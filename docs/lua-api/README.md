@@ -17,6 +17,7 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`conversation.md`](conversation.md) |
 | `haylen.debug` | The debug statistics and drawings, object counts, monitors, the frame profiler, the recent log, traces, breadcrumbs and native crash reports, the developer console and the inspector. | [`debug.md`](debug.md) |
 | `haylen.dialogs` | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. | [`dialogs.md`](dialogs.md) |
+| `haylen.display` | The displays of the device with their ids, areas, scales, refresh rates and modes, the display of the window, their changes and the screens of a browser. | [`display.md`](display.md) |
 | `haylen.events` | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. | [`events.md`](events.md) |
 | `haylen.graphics` | The graphics API and the texture limit, textures from pixels, colors, images or image files, render targets, images on the CPU with their effects, gradients, palettes and placeholders, pixels read back from the GPU, TrueType and bitmap fonts, font families, shaders and vector images. | [`graphics.md`](graphics.md) |
 | `haylen.graphics2d` | Canvases with their options and post-processing, captures, draw order and blend modes, cameras, camera rigs, pixel canvases and parallax layers, sprites with effects, recoloring and distortion, sprite batches, static batches and tile layers, shapes, lines and strokes, paths, meshes, text and rich text, nine-slices, vector images, groups, masks, image blends, metaballs, lights, materials and the statistics of the renderer. | [`graphics2d.md`](graphics2d.md) |
@@ -48,7 +49,7 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.ui` | The 64 component kinds of retained GUIs with their properties and events, layout and anchors, themes and styles, focus and navigation, accessibility, long collections, and the types `Gui`, `UiCollection`, `UiCell` and `UiTransform`. | [`ui.md`](ui.md) |
 | `haylen.video` | Video files of the package played into a texture with the decoder of each platform, with play, pause, seek, loop, rate, sound through a bus of the mixer, events and asynchronous loads. | [`video.md`](video.md) |
 | `haylen.viewport` | The design size and the scaling policy, which change while the app runs, the visible area, the safe area, the edges that native views reserve, conversions between design units and pixels, and the simulated safe area of other devices. | [`viewport.md`](viewport.md) |
-| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard, orientation, status bar, back button and folds, and on desktops frameless, transparent, always-on-top and click-through windows with their frame and monitors. | [`window.md`](window.md) |
+| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard, orientation, status bar, back button and folds, and on desktops frameless, transparent, always-on-top and click-through windows with their frame. | [`window.md`](window.md) |
 
 ## Varn modules
 

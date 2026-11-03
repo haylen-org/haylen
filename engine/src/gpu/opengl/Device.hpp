@@ -79,6 +79,9 @@ class Device final : public gpu::Device {
     void resizeSurface(int width, int height) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
+    [[nodiscard]] int addSurface(const Surface& added) override;
+    void resizeSurface(int number, int width, int height) override;
+    void removeSurface(int number) override;
 
     [[nodiscard]] std::unique_ptr<Readback> readImage(Image image, int width, int height) override;
 

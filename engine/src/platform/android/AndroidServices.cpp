@@ -31,6 +31,7 @@
 #include "platform/android/AndroidBatteryStatus.hpp"
 #include "platform/android/AndroidDeviceInfo.hpp"
 #include "platform/android/AndroidDialogJson.hpp"
+#include "platform/android/AndroidDisplays.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidMouseWheel.hpp"
@@ -89,16 +90,24 @@ bool Services::hasDesktop() noexcept {
 
 void Services::setWindowStyle(const WindowStyle&) {}
 
-// The window of the activity fills the screen, which is its only monitor.
+// The window of the activity fills its display.
 math::Rect Services::getWindowFrame() {
     return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};
 }
 
 void Services::setWindowFrame(const math::Rect&) {}
 
-std::vector<Monitor> Services::getMonitors() {
-    const math::Rect screen = getWindowFrame();
-    return {{.name = "screen", .bounds = screen, .workArea = screen, .scale = NativeWindow::getScale(), .primary = true}};
+std::vector<Display> Services::getDisplays() {
+    return AndroidDisplays::getDisplays();
+}
+
+std::string Services::getWindowDisplayId() {
+    return AndroidDisplays::getWindowDisplayId();
+}
+
+// Android lists every display from the start.
+void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
+    callback(Window::DisplayAccess::Granted);
 }
 
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
@@ -362,6 +371,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativeWanted(JNIE
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibilityTree_nativePerform(JNIEnv*, jclass, jlong element, jint action) {
     haylen::platform::AccessibilityRelay::perform({.element = static_cast<std::uint64_t>(element), .action = static_cast<haylen::platform::AccessibilityElement::Action>(action)});
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenDisplays_nativeDisplays(JNIEnv* env, jclass, jbyteArray json, jint windowDisplay) {
+    haylen::platform::AndroidDisplays::receive(haylen::platform::JavaBridge::toString(*env, json), windowDisplay);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {

@@ -1,8 +1,11 @@
 #pragma once
 
+#include <array>
+#include <string_view>
+
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
-#include "haylen/platform/Monitor.hpp"
+#include "haylen/platform/Display.hpp"
 
 struct lua_State;
 
@@ -12,15 +15,18 @@ class Viewport;
 
 namespace haylen::platform {
 
-// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, the fold of foldable devices and back button, and on desktops its decorations, level, taskbar presence, focus, frame, monitors, dragging and mouse passthrough.
+// Installs `haylen.window`, which controls the window or the canvas of the app: its size, fullscreen, title, cursor, on-screen keyboard, orientation, the fold of foldable devices and back button, and on desktops its decorations, level, taskbar presence, focus, frame, dragging and mouse passthrough.
 class WindowLua final {
   public:
     static void install(lua_State* L);
 
   private:
+    static constexpr std::array<std::string_view, 2> kFullscreenOptions{"display", "mode"};
+    static constexpr std::array<std::string_view, 4> kModeFields{"width", "height", "refreshRate", "scale"};
+
     [[nodiscard]] static bool isRect(lua_State* L, int index);
+    [[nodiscard]] static Display::Mode readMode(lua_State* L, int index);
     [[nodiscard]] static math::Polygon::Outline readRegion(lua_State* L, int index);
-    static void pushMonitor(lua_State* L, const Monitor& monitor);
     [[nodiscard]] static math::Rect toDesign(const graphics::Viewport& viewport, const math::Rect& pixels);
 
     static int framebufferSize(lua_State* L);
@@ -67,8 +73,6 @@ class WindowLua final {
     static int mousePassthrough(lua_State* L);
     static int setMousePassthrough(lua_State* L);
     static int startDrag(lua_State* L);
-    static int monitors(lua_State* L);
-    static int currentMonitor(lua_State* L);
     static int open(lua_State* L);
 };
 

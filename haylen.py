@@ -237,11 +237,7 @@ APPLE_RUNS = {
 ANDROID_ORIENTATIONS = {"landscape": "sensorLandscape", "portrait": "sensorPortrait", "any": "fullSensor"}
 STATUS_BARS = ("hidden", "auto", "light", "dark")
 IOS_STATUS_BAR_STYLES = {"auto": "UIStatusBarStyleDefault", "light": "UIStatusBarStyleLightContent", "dark": "UIStatusBarStyleDarkContent"}
-IOS_ORIENTATIONS = {
-    "landscape": (["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"], ["UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]),
-    "portrait": (["UIInterfaceOrientationPortrait"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown"]),
-    "any": (["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"]),
-}
+IOS_ORIENTATIONS = (["UIInterfaceOrientationPortrait", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"], ["UIInterfaceOrientationPortrait", "UIInterfaceOrientationPortraitUpsideDown", "UIInterfaceOrientationLandscapeLeft", "UIInterfaceOrientationLandscapeRight"])
 
 # The engine writes to the unified log of Apple platforms under the bundle identifier of the app as the subsystem and this category.
 APPLE_LOG_CATEGORY = "haylen"
@@ -3149,7 +3145,7 @@ def read_plist(path: Path) -> dict:
 
 def write_apple_plists(app: App, root: Path, generated: Path) -> None:
     """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with and the Dock setting of `app.json` and the `infoPlist` keys of the plugins, where the values of the developer win."""
-    phone, pad = IOS_ORIENTATIONS[app.orientation]
+    phone, pad = IOS_ORIENTATIONS
     status_bar = {"UIStatusBarHidden": True} if app.status_bar == "hidden" else {"UIStatusBarHidden": False, "UIStatusBarStyle": IOS_STATUS_BAR_STYLES[app.status_bar]}
     fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, **status_bar}, "tvos": {}, "visionos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
     warnings: list[str] = []

@@ -13,8 +13,8 @@
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/Json.hpp"
 #include "haylen/math/Color.hpp"
+#include "haylen/platform/Display.hpp"
 #include "haylen/platform/Event.hpp"
-#include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
@@ -24,26 +24,26 @@ namespace haylen::platform {
 
 namespace {
 
-class MonitorLayoutTest : public ::testing::Test {
+class DisplayLayoutTest : public ::testing::Test {
   protected:
-    // A primary monitor with a taskbar at its bottom, and a denser one to its left whose top sits lower.
-    [[nodiscard]] static std::vector<Monitor> twoMonitors() {
+    // A primary display with a taskbar at its bottom, and a denser one to its left whose top sits lower.
+    [[nodiscard]] static std::vector<Display> twoDisplays() {
         return {
-            {.name = "main", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true},
-            {.name = "side", .bounds = {-1440.0F, 200.0F, 1440.0F, 900.0F}, .workArea = {-1440.0F, 225.0F, 1440.0F, 875.0F}, .scale = 2.0F, .primary = false},
+            {.id = "main-id", .name = "main", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .primary = true},
+            {.id = "side-id", .name = "side", .bounds = {-1440.0F, 200.0F, 1440.0F, 900.0F}, .workArea = {-1440.0F, 225.0F, 1440.0F, 875.0F}, .scale = 2.0F, .primary = false},
         };
     }
 
-    [[nodiscard]] static math::Rect place(const char* position, const std::vector<Monitor>& monitors = twoMonitors(), math::Vec2 size = {400.0F, 100.0F}) {
-        return WindowPlacement::fromJson(core::Json::parse(position)).resolve(monitors, size);
+    [[nodiscard]] static math::Rect place(const char* position, const std::vector<Display>& displays = twoDisplays(), math::Vec2 size = {400.0F, 100.0F}) {
+        return WindowPlacement::fromJson(core::Json::parse(position)).resolve(displays, size);
     }
 };
 
-class WindowConfigTest : public MonitorLayoutTest {};
+class WindowConfigTest : public DisplayLayoutTest {};
 
-class WindowPlacementTest : public MonitorLayoutTest {};
+class WindowPlacementTest : public DisplayLayoutTest {};
 
-class WindowTest : public MonitorLayoutTest {};
+class DisplayTest : public DisplayLayoutTest {};
 
 // The passes of the last frame that reached the swapchain, with the alpha they cleared to and the channels their pipelines wrote.
 class SwapchainPasses final {
@@ -72,7 +72,7 @@ class SwapchainPasses final {
 TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({
         "window": {"decorated": false, "transparent": true, "alwaysOnTop": true, "showInTaskbar": false, "focusable": false, "mousePassthrough": true, "keepScreenOn": true,
-                   "position": {"anchor": "bottom", "area": "work", "monitor": "primary", "offset": [0, -8], "fill": "width"}}
+                   "position": {"anchor": "bottom", "area": "work", "display": "primary", "offset": [0, -8], "fill": "width"}}
     })"));
     EXPECT_FALSE(config.window.decorated);
     EXPECT_TRUE(config.window.transparent);
@@ -82,7 +82,7 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_TRUE(config.window.mousePassthrough);
     EXPECT_TRUE(config.window.keepScreenOn);
     ASSERT_TRUE(config.window.position.has_value());
-    EXPECT_EQ(config.window.position->resolve(twoMonitors(), {400.0F, 100.0F}), (math::Rect{0.0F, 932.0F, 1920.0F, 100.0F}));
+    EXPECT_EQ(config.window.position->resolve(twoDisplays(), {400.0F, 100.0F}), (math::Rect{0.0F, 932.0F, 1920.0F, 100.0F}));
     EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
 
     // A transparent window clears to transparent unless `clearColor` says otherwise, and so does its splash screen.
@@ -104,7 +104,7 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
 
 TEST_F(WindowConfigTest, RejectsInvalidDesktopOptions) {
     const char* documents[] = {
-        R"({"window": {"decorated": "no"}})", R"({"window": {"mousePassthrough": "regions"}})", R"({"window": {"position": "left"}})", R"({"window": {"position": 12}})", R"({"window": {"position": {"anchor": "middle"}}})", R"({"window": {"position": {"area": "screen"}}})", R"({"window": {"position": {"fill": "all"}}})", R"({"window": {"position": {"monitor": 0}}})", R"({"window": {"position": {"monitor": "left"}}})", R"({"window": {"position": {"offset": [1]}}})", R"({"window": {"position": {"offset": [1, "a"]}}})", R"({"window": {"position": {"x": 3}}})", R"({"window": {"position": {"x": 3, "y": 4, "anchor": "top"}}})", R"({"window": {"position": {"anchor": "top", "size": 3}}})",
+        R"({"window": {"decorated": "no"}})", R"({"window": {"mousePassthrough": "regions"}})", R"({"window": {"position": "left"}})", R"({"window": {"position": 12}})", R"({"window": {"position": {"anchor": "middle"}}})", R"({"window": {"position": {"area": "screen"}}})", R"({"window": {"position": {"fill": "all"}}})", R"({"window": {"position": {"display": 0}}})", R"({"window": {"position": {"display": ""}}})", R"({"window": {"position": {"display": true}}})", R"({"window": {"position": {"monitor": 1}}})", R"({"window": {"position": {"offset": [1]}}})", R"({"window": {"position": {"offset": [1, "a"]}}})", R"({"window": {"position": {"x": 3}}})", R"({"window": {"position": {"x": 3, "y": 4, "anchor": "top"}}})", R"({"window": {"position": {"anchor": "top", "size": 3}}})",
     };
     for (const char* document : documents) {
         EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
@@ -128,7 +128,7 @@ TEST_F(WindowConfigTest, ReadsTheStatusBarOfAppJson) {
     }
 }
 
-TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
+TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfADisplay) {
     EXPECT_EQ(place(R"("center")"), (math::Rect{760.0F, 470.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottom"})"), (math::Rect{760.0F, 940.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottom", "area": "full"})"), (math::Rect{760.0F, 980.0F, 400.0F, 100.0F}));
@@ -140,13 +140,15 @@ TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
     EXPECT_EQ(place(R"({"anchor": "bottomLeft"})"), (math::Rect{0.0F, 940.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottomRight", "offset": [-10, -10]})"), (math::Rect{1510.0F, 930.0F, 400.0F, 100.0F}));
 
-    // Monitors count from 1, and a monitor past the last one is the primary monitor.
-    EXPECT_EQ(place(R"({"anchor": "bottom", "monitor": 2})"), (math::Rect{-920.0F, 1000.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "top", "monitor": 1})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
-    EXPECT_EQ(place(R"({"anchor": "top", "monitor": 3})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
+    // Displays count from 1 or go by their ids, and a display past the last one or one that is not connected is the primary display.
+    EXPECT_EQ(place(R"({"anchor": "bottom", "display": 2})"), (math::Rect{-920.0F, 1000.0F, 400.0F, 100.0F}));
+    EXPECT_EQ(place(R"({"anchor": "bottom", "display": "side-id"})"), (math::Rect{-920.0F, 1000.0F, 400.0F, 100.0F}));
+    EXPECT_EQ(place(R"({"anchor": "top", "display": 1})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
+    EXPECT_EQ(place(R"({"anchor": "top", "display": 3})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
+    EXPECT_EQ(place(R"({"anchor": "top", "display": "gone"})"), (math::Rect{760.0F, 0.0F, 400.0F, 100.0F}));
 
-    // Without a primary monitor, the first monitor takes its place.
-    std::vector<Monitor> unflagged = twoMonitors();
+    // Without a primary display, the first display takes its place.
+    std::vector<Display> unflagged = twoDisplays();
     unflagged.front().primary = false;
     EXPECT_EQ(place(R"({"anchor": "topLeft"})", unflagged), (math::Rect{0.0F, 0.0F, 400.0F, 100.0F}));
 }
@@ -154,31 +156,25 @@ TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfAMonitor) {
 TEST_F(WindowPlacementTest, FillsAreasAndPlacesPoints) {
     EXPECT_EQ(place(R"({"anchor": "bottom", "fill": "width"})"), (math::Rect{0.0F, 940.0F, 1920.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "right", "fill": "height"})"), (math::Rect{1520.0F, 0.0F, 400.0F, 1040.0F}));
-    EXPECT_EQ(place(R"({"fill": "both", "area": "full", "monitor": 2})"), (math::Rect{-1440.0F, 200.0F, 1440.0F, 900.0F}));
+    EXPECT_EQ(place(R"({"fill": "both", "area": "full", "display": 2})"), (math::Rect{-1440.0F, 200.0F, 1440.0F, 900.0F}));
     EXPECT_EQ(place(R"({"x": -300.5, "y": 250})"), (math::Rect{-300.5F, 250.0F, 400.0F, 100.0F}));
 
     // Anchored windows land on whole points, so their edges stay sharp.
-    EXPECT_EQ(place(R"("center")", twoMonitors(), {401.0F, 101.0F}), (math::Rect{760.0F, 470.0F, 401.0F, 101.0F}));
+    EXPECT_EQ(place(R"("center")", twoDisplays(), {401.0F, 101.0F}), (math::Rect{760.0F, 470.0F, 401.0F, 101.0F}));
 
-    for (const char* position : {R"("center")", R"({"x": 12, "y": 34})", R"({"anchor": "bottomRight", "area": "full", "monitor": 2, "offset": [-4, 6], "fill": "height"})"}) {
+    for (const char* position : {R"("center")", R"({"x": 12, "y": 34})", R"({"anchor": "bottomRight", "area": "full", "display": 2, "offset": [-4, 6], "fill": "height"})", R"({"anchor": "left", "display": "side-id"})"}) {
         const WindowPlacement placement = WindowPlacement::fromJson(core::Json::parse(position));
         EXPECT_EQ(WindowPlacement::fromJson(placement.toJson()), placement) << position;
     }
 }
 
-TEST_F(WindowTest, FindsTheMonitorThatHoldsMostOfTheWindow) {
-    test::TemporaryDirectory directory;
-    HeadlessHost host(directory.getPath());
-    host.setMonitors(twoMonitors());
+TEST_F(DisplayTest, FindsTheDisplayThatHoldsMostOfAFrame) {
+    const std::vector<Display> displays = twoDisplays();
+    EXPECT_EQ(Display::findHolding(displays, {-1000.0F, 400.0F, 800.0F, 600.0F}).name, "side");
+    EXPECT_EQ(Display::findHolding(displays, {-300.0F, 400.0F, 800.0F, 600.0F}).name, "main");
 
-    host.setFrame({-1000.0F, 400.0F, 800.0F, 600.0F});
-    EXPECT_EQ(host.getCurrentMonitor().name, "side");
-    host.setFrame({-300.0F, 400.0F, 800.0F, 600.0F});
-    EXPECT_EQ(host.getCurrentMonitor().name, "main");
-
-    // A window off every monitor belongs to the primary one.
-    host.setFrame({5000.0F, 5000.0F, 800.0F, 600.0F});
-    EXPECT_EQ(host.getCurrentMonitor().name, "main");
+    // A frame off every display belongs to the primary one.
+    EXPECT_EQ(Display::findHolding(displays, {5000.0F, 5000.0F, 800.0F, 600.0F}).name, "main");
 }
 
 TEST(WindowEngineTest, AppliesTheWindowOptionsOfAppJson) {
@@ -278,11 +274,10 @@ TEST(WindowEngineTest, KeepsTheAlphaOfOpaqueWindowsAtOne) {
     }
 }
 
-TEST(WindowEngineTest, PublishesMovesAndMonitorChanges) {
+TEST(WindowEngineTest, PublishesMoves) {
     test::EngineFixture fixture;
     fixture.runLua("events = require('haylen.events') heard = {} "
-                   "events.on('windowMoved', function(info) heard[#heard + 1] = 'moved ' .. info.x .. ' ' .. info.y end) "
-                   "events.on('windowMonitorsChanged', function() heard[#heard + 1] = 'monitors' end)");
+                   "events.on('windowMoved', function(info) heard[#heard + 1] = 'moved ' .. info.x .. ' ' .. info.y end)");
 
     // Platforms report every step of a move, and the app hears each new position once.
     fixture.host().setFrame({120.0F, 80.0F, 1920.0F, 1080.0F});
@@ -290,9 +285,8 @@ TEST(WindowEngineTest, PublishesMovesAndMonitorChanges) {
     fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
     fixture.host().setFrame({120.0F, 80.0F, 640.0F, 480.0F});
     fixture.engine().handleEvent({.type = Event::Type::WindowMoved});
-    fixture.engine().handleEvent({.type = Event::Type::MonitorsChanged});
     fixture.frames(1);
-    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "moved 120.0 80.0, monitors");
+    EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "moved 120.0 80.0");
 }
 
 } // namespace haylen::platform

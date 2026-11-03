@@ -102,7 +102,6 @@ class TypeConverter final {
     static const NameTable<input::InputDevice, 3> kDevices;
     static const NameTable<input::GamepadLabels, 4> kGamepadLabels;
     static const NameTable<input::TouchPhase, 5> kPhases;
-    static const NameTable<platform::Event::Type, 29> kEvents;
     static const NameTable<platform::Window::Passthrough, 3> kPassthroughs;
     static const NameTable<platform::TextInput::Action, 4> kTextActions;
     static const NameTable<core::ProcessMode, 5> kProcessModes;
@@ -563,10 +562,10 @@ template <> struct EnumNames<input::GamepadAxis> {
 
 template <> struct EnumNames<platform::Event::Type> {
     static std::optional<platform::Event::Type> fromName(std::string_view name) {
-        return TypeConverter::fromTable(TypeConverter::kEvents, name);
+        return TypeConverter::fromTable(platform::Event::kTypeNames, name);
     }
     static std::string_view name(platform::Event::Type value) {
-        return TypeConverter::toName(TypeConverter::kEvents, value);
+        return TypeConverter::toName(platform::Event::kTypeNames, value);
     }
 };
 

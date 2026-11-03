@@ -9,14 +9,16 @@ local config = require('config')
 local desktop = {}
 desktop.__index = desktop
 
--- The strip mode comes from `app.json`, so the mode the app starts in is whatever the window has. The strip follows the taskbar and the monitors while the owner lives.
+-- The strip mode comes from `app.json`, so the mode the app starts in is whatever the window has. The strip follows the taskbar and the displays while the owner lives.
 function desktop.new(owner)
     local self = setmetatable({strip = not window.decorated()}, desktop)
-    events.on('windowMonitorsChanged', function()
-        if self.strip then
-            window.place({anchor = 'bottom', fill = 'width'})
-        end
-    end, {owner = owner})
+    for _, name in ipairs({'displayConnected', 'displayDisconnected', 'displayChanged'}) do
+        events.on(name, function()
+            if self.strip then
+                window.place({anchor = 'bottom', fill = 'width'})
+            end
+        end, {owner = owner})
+    end
     return self
 end
 

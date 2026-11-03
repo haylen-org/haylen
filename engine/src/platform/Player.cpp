@@ -116,7 +116,7 @@ std::optional<math::Rect> Player::getOpeningFrame() {
     if (!window.position || !Services::hasDesktop()) {
         return std::nullopt;
     }
-    return window.position->resolve(Services::getMonitors(), {static_cast<float>(window.width), static_cast<float>(window.height)});
+    return window.position->resolve(Services::getDisplays(), {static_cast<float>(window.width), static_cast<float>(window.height)});
 }
 
 void Player::restart(std::shared_ptr<io::Package> source) {

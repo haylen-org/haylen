@@ -14,6 +14,7 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/sdl/Events.hpp"
 #include "platform/sdl/FrameTimer.hpp"
+#include "platform/sdl/OutputWindows.hpp"
 #include "platform/sdl/Window.hpp"
 
 #if defined(__APPLE__)
@@ -44,6 +45,11 @@ class Runtime final {
 
     [[nodiscard]] Window& getWindow() noexcept {
         return window;
+    }
+
+    // The windows of the outputs of the app on other displays of a desktop.
+    [[nodiscard]] OutputWindows& getOutputs() noexcept {
+        return outputs;
     }
 
     [[nodiscard]] bool isHighDpi() const noexcept {
@@ -119,6 +125,7 @@ class Runtime final {
     void followWindow(const SDL_Event& event);
 
     Window window;
+    OutputWindows outputs;
     Events events;
 #if !defined(__APPLE__) || TARGET_OS_OSX
     Gamepads gamepads;
@@ -137,6 +144,9 @@ class Runtime final {
     bool transparent = false;
     bool started = false;
     bool closing = false;
+
+    // Whether the keyboard went from the window of the app to the window of an output, which keeps the app focused.
+    bool focusInOutput = false;
 
     // Whether the device of the app stopped working, until its replacement exists.
     bool recovering = false;

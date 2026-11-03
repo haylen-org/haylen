@@ -26,6 +26,7 @@
 #include "2d/graphics/MeshFringe.hpp"
 #include "2d/graphics/MetaballDraw.hpp"
 #include "2d/graphics/PolygonMesh.hpp"
+#include "2d/graphics/Presentation.hpp"
 #include "2d/graphics/Program.hpp"
 #include "2d/graphics/Shade.hpp"
 #include "2d/graphics/StaticBatchResource.hpp"
@@ -139,6 +140,7 @@ struct RendererState {
     std::vector<Command> commands;
     std::vector<Canvas> canvases;
     std::vector<Capture> captures;
+    std::vector<Presentation> presentations;
     std::vector<std::size_t> openCaptures;
     std::vector<std::size_t> closedCaptures;
     std::vector<math::Rect> clips;

@@ -9,6 +9,7 @@
 #include <string_view>
 
 #include <SDL3/SDL_mouse.h>
+#include <SDL3/SDL_video.h>
 
 #include "platform/NativeHost.hpp"
 
@@ -26,6 +27,7 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] float getDpiScale() const noexcept override;
     [[nodiscard]] bool isFullscreen() const noexcept override;
     void setFullscreen(bool value) override;
+    void enterFullscreen(const Fullscreen& value) override;
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
@@ -39,6 +41,9 @@ class Host final : public platform::NativeHost {
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
+    void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
+    void closeOutput(std::uint32_t number) override;
+    [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
   protected:
     void requestWindowClose() override;
@@ -49,6 +54,8 @@ class Host final : public platform::NativeHost {
     static constexpr std::size_t kCursorCount = static_cast<std::size_t>(Cursor::NotAllowed) + 1;
 
     [[nodiscard]] static SDL_SystemCursor toSystemCursor(Cursor cursor) noexcept;
+    [[nodiscard]] static SDL_DisplayMode findMode(SDL_DisplayID display, const Display::Mode& mode);
+    void enterDesktopFullscreen(const FullscreenTarget& target);
 
     Runtime& runtime;
 

@@ -2,6 +2,7 @@
 
 #include <exception>
 #include <stdexcept>
+#include <utility>
 
 // The runtime holds the entry points itself and enters the main callbacks of SDL through the functions they name.
 #define SDL_MAIN_HANDLED
@@ -210,6 +211,9 @@ SDL_AppResult Runtime::start() {
 // Each graphics API in the order of the app opens a window with what it draws through and starts its device, and the first that starts keeps the window. The reasons of the ones that failed reach the log, so a machine that falls back says why. The services of the platform place the window where `app.json` puts it on the desktop, since they know the desktop points of each monitor.
 bool Runtime::openWindow() {
     const core::AppConfig& config = Player::getOpeningConfig();
+#if defined(__APPLE__)
+    AppleApplication::prepareWindow(config);
+#endif
     for (; nextApi < apis.size(); ++nextApi) {
         const gpu::Device::Api api = apis[nextApi];
         if (!gpu::DeviceFactory::prepare(api, getDeviceOptions())) {
@@ -274,6 +278,18 @@ SDL_AppResult Runtime::handle(const SDL_Event& event) {
         return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
     }
 
+    if (outputs.handle(event)) {
+        return SDL_APP_CONTINUE;
+    }
+    // The window of the app keeps the focus while the keyboard goes to the window of an output and back.
+    if (event.type == SDL_EVENT_WINDOW_FOCUS_LOST && outputs.holdsFocus()) {
+        focusInOutput = true;
+        return SDL_APP_CONTINUE;
+    }
+    if (event.type == SDL_EVENT_WINDOW_FOCUS_GAINED && std::exchange(focusInOutput, false)) {
+        return SDL_APP_CONTINUE;
+    }
+
     followWindow(event);
     if (takes(event)) {
         deliver(event);
@@ -305,6 +321,7 @@ void Runtime::quit() noexcept {
     }
     platform::NativeWindow::install(nullptr);
     openedDevice.reset();
+    outputs.closeAll();
     window.close();
     running = nullptr;
 }

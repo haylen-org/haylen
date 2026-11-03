@@ -39,10 +39,10 @@ Every start of the app applies these options again. So an app that restarts from
 
 ### Desktop points
 
-Frames and monitors are in desktop points. The origin is the top left corner of the primary monitor, and y grows down.
+Frames and displays are in desktop points. The origin is the top left corner of the primary display, and y grows down.
 
 - On macOS a desktop point is a point of the system.
-- On Windows and Linux a desktop point is a pixel divided by the scale of the primary monitor. The window size of `app.json` scales the same way, so a window of 1280 by 180 points has a frame of 1280 by 180 points on every system.
+- On Windows and Linux a desktop point is a pixel divided by the scale of the primary display. The window size of `app.json` scales the same way, so a window of 1280 by 180 points has a frame of 1280 by 180 points on every system.
 
 ### Where the window goes
 
@@ -50,20 +50,24 @@ The option `position` of `app.json` and the function [`window.place`](../lua-api
 
 - `"center"`, the middle of the work area.
 - A point, such as `{"x": 40, "y": 60}`.
-- An anchored placement, which names the side or the corner the window touches with `anchor`. It may also name the `area`, the whole monitor or the work area without the taskbar, the Dock and the menu bar, the `monitor`, an `offset` in points and a `fill` that stretches the window across the area. The [reference](../lua-api/window.md#windowplaceposition) lists the fields and their defaults.
+- An anchored placement, which names the side or the corner the window touches with `anchor`. It may also name the `area`, the whole display or the work area without the taskbar, the Dock and the menu bar, the `display` by its id or its number, an `offset` in points and a `fill` that stretches the window across the area. The [reference](../lua-api/window.md#windowplaceposition) lists the fields and their defaults.
 
-The function `window.monitors()` returns every monitor with its whole area in `bounds`, the work area in `workArea`, and the number of pixels in a point in `scale`. The function `window.frame()` returns the content area of the window, `window.setFrame` moves and resizes it, and `window.currentMonitor()` returns the monitor that holds most of it.
+The function [`display.list()`](../lua-api/display.md#displaylist) returns every display with its id, its whole area in `bounds`, the work area in `workArea`, the number of pixels in a point in `scale`, its refresh rate and its modes, as the [displays guide](displays.md) explains. The function `window.frame()` returns the content area of the window, `window.setFrame` moves and resizes it, and `display.current()` returns the display that holds most of it.
 
-Two events of [`haylen.events`](../lua-api/events.md#engine-events) follow the desktop. The event `windowMoved` follows every move, by the player, the app or the system. The event `windowMonitorsChanged` follows monitors that connect, disconnect or change, and work areas that change when the taskbar or the Dock moves.
+The function `window.setFullscreen(true, {display = id, mode = mode})` covers a display of the desktop, in its own mode for exclusive fullscreen, as the [displays guide](displays.md#the-window-on-a-display) explains.
+
+Events of [`haylen.events`](../lua-api/events.md#engine-events) follow the desktop. The event `windowMoved` follows every move, by the player, the app or the system. The events `displayConnected`, `displayDisconnected` and `displayChanged` follow displays that connect, disconnect or change, and work areas that change when the taskbar or the Dock moves, and `windowDisplayChanged` follows the window onto another display.
 
 ```lua
 local events = require('haylen.events')
 local window = require('haylen.window')
 
--- Keep the strip above the taskbar when the monitors change.
-events.on('windowMonitorsChanged', function()
-    window.place({anchor = 'bottom', fill = 'width'})
-end)
+-- Keep the strip above the taskbar when the displays change.
+for _, name in ipairs({'displayConnected', 'displayDisconnected', 'displayChanged'}) do
+    events.on(name, function()
+        window.place({anchor = 'bottom', fill = 'width'})
+    end)
+end
 ```
 
 ## Transparency
@@ -169,11 +173,11 @@ ui.mount(ui.button{text = 'Quit', anchor = 'topRight', margin = 16, onClick = fu
 
 A strip above the taskbar puts these pieces together:
 
-1. The file `app.json` opens a frameless, transparent window above the others. The window is anchored to the bottom of the work area and fills its width. Its design size is shaped like the strip, with `"expand"` scaling, so the visible width follows the monitor.
+1. The file `app.json` opens a frameless, transparent window above the others. The window is anchored to the bottom of the work area and fills its width. Its design size is shaped like the strip, with `"expand"` scaling, so the visible width follows the display.
 2. The scene draws the ground, the hero and the UI, and leaves the rest of the strip transparent.
 3. Every frame, the scene gives the regions of what the player can click. Presses on the ground or on a grip call `window.startDrag()`.
 4. A button switches to a normal window and back. The normal window takes `setTransparent(false)`, `setDecorated(true)`, `setAlwaysOnTop(false)`, `setFocusable(true)`, `setMousePassthrough(false)` and a frame in the middle of the screen. The strip comes back with its options, `setTransparent(true)` and `window.place({anchor = 'bottom', fill = 'width'})`.
-5. The event `windowMonitorsChanged` places the strip again when the taskbar moves or a monitor changes.
+5. The events of the displays place the strip again when the taskbar moves or a display connects, disconnects or changes.
 
 ```json
 {
@@ -213,9 +217,9 @@ showStrip()
 | --- | --- |
 | macOS | Everything. The window becomes a borderless window that can still take the keyboard when it is focusable. While on top it floats at the level of panels and joins every space. The Dock icon hides through the activation policy of the app. AppKit decides whether a window takes the mouse for the whole window. So passthrough follows the mouse every frame and lets the window ignore it outside the regions, while the app keeps hearing the mouse move over the window. An unfocusable window takes clicks without activating the app. |
 | Windows | Everything with the Direct3D 11 graphics API, the default. Transparency renders into a DirectComposition swapchain with premultiplied alpha, and builds that draw with OpenGL open opaque windows. A frameless window is a popup without a sizing border, so the app resizes it itself. Passthrough makes the window layered and transparent to clicks outside the regions, following the mouse every frame, while the app keeps hearing the mouse move. The system moves dragged windows in its own move loop, during which the app keeps drawing. An unfocusable window does not activate when clicked. |
-| Linux | X11 with a window manager that follows the Extended Window Manager Hints, as the common desktops do. Transparency needs a compositing window manager that offers 32-bit ARGB visuals. Without one the app stops with a clear error instead of opening an opaque window. Decorations follow the Motif hints, and a window manager may ignore them. Passthrough sets the input shape of the window, so the app hears the mouse only over the regions. Desktop points follow `Xft.dpi`, and the work area of each monitor is the work area of the desktop inside the monitor. Wayland sessions run the app through XWayland. |
-| Web | The canvas is the window, and the page gives it no desktop. A transparent app has a transparent canvas, and the page of the template drops its own background. So whatever holds the page shows through, such as an editor that embeds it in a frame. The other options keep their values without effect. The function `window.frame()` returns the canvas, and `window.monitors()` returns the canvas as the only monitor. |
-| iOS, iPadOS, tvOS, Android | Apps fill the screen, so the desktop options do not apply. The setters keep their values without effect. The function `window.frame()` returns the screen in points, and `window.monitors()` returns the screen as the only monitor. |
+| Linux | X11 with a window manager that follows the Extended Window Manager Hints, as the common desktops do. Transparency needs a compositing window manager that offers 32-bit ARGB visuals. Without one the app stops with a clear error instead of opening an opaque window. Decorations follow the Motif hints, and a window manager may ignore them. Passthrough sets the input shape of the window, so the app hears the mouse only over the regions. Desktop points follow `Xft.dpi`, and the work area of each display is the work area of the desktop inside the display. Wayland sessions run the app through XWayland. |
+| Web | The canvas is the window, and the page gives it no desktop. A transparent app has a transparent canvas, and the page of the template drops its own background. So whatever holds the page shows through, such as an editor that embeds it in a frame. The other options keep their values without effect. The function `window.frame()` returns the canvas, and `display.list()` returns the screens that the browser shows the page. |
+| iOS, iPadOS, tvOS, Android | Apps fill the screen, so the desktop options do not apply. The setters keep their values without effect. The function `window.frame()` returns the screen in points, and `display.list()` returns the screen with the external displays attached to it. |
 
 ## Shipping a desktop app
 
@@ -233,11 +237,12 @@ haylen distribution installer ~/apps/strip --platform linux
 
 ## C++
 
-C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns. It has `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getMonitors` and `getCurrentMonitor`, and `canBeTransparent`, `isTransparent` and `setTransparent`. The class `platform::WindowPlacement` reads and resolves the positions of `app.json`, and `core::AppConfig::Window` holds the options of `app.json`.
+C++ apps reach the same options through `platform::Window`, which `core::Engine::getWindow()` returns. It has `setDecorated`, `setAlwaysOnTop`, `setShowInTaskbar`, `setFocusable`, `getFrame` and `setFrame`, `setMousePassthrough` with regions in framebuffer pixels, `startDrag`, `getDisplays` and `getDisplayId`, and `canBeTransparent`, `isTransparent` and `setTransparent`. The class `platform::WindowPlacement` reads and resolves the positions of `app.json` against the displays of `core::Engine::getDisplays()`, and `core::AppConfig::Window` holds the options of `app.json`.
 
 ```cpp
 #include "haylen/core/Application.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/platform/Displays.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
 
@@ -246,7 +251,7 @@ class StripApp final : public haylen::core::Application {
     void start(haylen::core::Engine& engine) override {
         haylen::platform::Window& window = engine.getWindow();
         const auto placement = haylen::platform::WindowPlacement::fromJson({{"anchor", "bottom"}, {"fill", "width"}});
-        window.setFrame(placement.resolve(window.getMonitors(), window.getFrame().getSize()));
+        window.setFrame(placement.resolve(engine.getDisplays().getAll(), window.getFrame().getSize()));
         window.setMousePassthrough(haylen::platform::Window::Passthrough::Whole, {});
     }
 };

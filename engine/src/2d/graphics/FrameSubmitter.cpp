@@ -529,7 +529,32 @@ void FrameSubmitter::renderSwapchain() {
 
     drawCanvases(0, transparent ? graphics::PassTarget::TransparentSwapchain : graphics::PassTarget::Swapchain);
     endPass();
+    renderPresentations();
     state.getGpu().commit();
+}
+
+// Each presented image covers the largest area of its aspect that fits in the middle of its surface, sampled from its pixels as they are when it fits them one to one.
+void FrameSubmitter::renderPresentations() {
+    for (const Presentation& presentation : state.presentations) {
+        state.getGpu().beginPass({.load = gpu::Device::Load::Clear, .clear = presentation.clear.withAlpha(1.0F), .label = "haylen-presentation-pass", .surface = presentation.surface});
+        passOpen = true;
+        ++state.stats.passes;
+
+        const math::Vec2 image = presentation.target.getSize();
+        const float fit = std::min(presentation.size.x / image.x, presentation.size.y / image.y);
+        const math::Vec2 shown{std::round(image.x * fit), std::round(image.y * fit)};
+        state.getGpu().applyViewport({std::round((presentation.size.x - shown.x) * 0.5F), std::round((presentation.size.y - shown.y) * 0.5F), shown.x, shown.y});
+        state.getGpu().applyPipeline(state.getPipeline(Program::Filter, static_cast<std::uint8_t>(graphics::BlendMode::Type::Opaque), graphics::PassTarget::Swapchain));
+        gpu::Device::Bindings bindings;
+        bindings.textures[RendererState::kFilterSource] = presentation.target.getTexture().getResource()->image;
+        bindings.samplers[0] = state.device.getState().getSampler({.filter = shown == image ? graphics::Texture::Filter::Nearest : graphics::Texture::Filter::Linear});
+        state.getGpu().applyBindings(bindings);
+        const FilterParams params{.settings = {2.0F, 0.0F, state.getGpu().getCapabilities().originTopLeft ? 0.0F : 1.0F, 0.0F}, .offset = {}};
+        applyBlock(0, params);
+        state.getGpu().draw(0, 3, 1);
+        ++state.stats.drawCalls;
+        endPass();
+    }
 }
 
 // Draws the world and screen canvases of a destination, the screen or a capture, by their order and then in the order they began, which is their place in the list of canvases. A stable sort would take a buffer of its own in some standard libraries.

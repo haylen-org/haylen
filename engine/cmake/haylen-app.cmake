@@ -44,7 +44,7 @@ function(haylen_link_runtime_platform target scope)
       -sSTACK_SIZE=1048576
       -lidbfs.js
       "-sEXPORTED_RUNTIME_METHODS=[ccall,UTF8ToString,stringToNewUTF8,HEAPU8,HEAPU32,HEAPF32,FS,IDBFS,addRunDependency,removeRunDependency]"
-      "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_finish_screen,_haylen_web_restore_screen,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_set_file,_haylen_web_remove_file,_haylen_web_run_files,_haylen_web_console,_haylen_web_restart,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_apply_changes,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_theme,_haylen_web_accessibility,_haylen_web_accessibility_action,_haylen_web_battery,_haylen_web_resolve_dialog,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_scroll,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed,_haylen_web_audio_render,_haylen_web_open_video_stream,_haylen_web_push_video_frame,_haylen_web_open_audio_stream,_haylen_web_push_audio_frames,_haylen_web_media_command,_varn_dataview_new,_varn_dataview_acquire,_varn_dataview_retain,_varn_dataview_release,_varn_dataview_data,_varn_dataview_size,_varn_dataview_id]"
+      "-sEXPORTED_FUNCTIONS=[_main,_malloc,_free,_haylen_web_resolve,_haylen_web_emit,_haylen_web_finish_screen,_haylen_web_restore_screen,_haylen_web_load_zip,_haylen_web_clear_files,_haylen_web_set_file,_haylen_web_remove_file,_haylen_web_run_files,_haylen_web_console,_haylen_web_restart,_haylen_web_stop,_haylen_web_set_paused,_haylen_web_paused,_haylen_web_apply_changes,_haylen_web_last_error,_haylen_web_visibility,_haylen_web_page_hidden,_haylen_web_network,_haylen_web_displays_answered,_haylen_web_displays_changed,_haylen_web_theme,_haylen_web_accessibility,_haylen_web_accessibility_action,_haylen_web_battery,_haylen_web_resolve_dialog,_haylen_web_text_edited,_haylen_web_text_action,_haylen_web_keyboard,_haylen_web_scroll,_haylen_web_socket_opened,_haylen_web_socket_received,_haylen_web_socket_closed,_haylen_web_socket_failed,_haylen_web_audio_render,_haylen_web_open_video_stream,_haylen_web_push_video_frame,_haylen_web_open_audio_stream,_haylen_web_push_audio_frames,_haylen_web_media_command,_varn_dataview_new,_varn_dataview_acquire,_varn_dataview_retain,_varn_dataview_release,_varn_dataview_data,_varn_dataview_size,_varn_dataview_id]"
       "--pre-js=${HAYLEN_VARN_DATAVIEW_SCRIPT}"
       "--pre-js=${HAYLEN_ENGINE_DIR}/platform/web/haylen-runtime.js"
     )
@@ -100,7 +100,7 @@ function(haylen_setup_web_page target shell)
   )
 endfunction()
 
-function(haylen_setup_apple_bundle target project_dir display_name identifier version orientation show_in_taskbar status_bar)
+function(haylen_setup_apple_bundle target project_dir display_name identifier version show_in_taskbar status_bar)
   if(HAYLEN_PLATFORM STREQUAL "macos")
     # An app without a taskbar button has no Dock icon, not even while it starts.
     set(HAYLEN_UI_ELEMENT "")
@@ -115,20 +115,9 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     configure_file("${project_dir}/visionos/Info.plist.in" "${plist}" @ONLY)
     set(launch_screen "")
   elseif(HAYLEN_PLATFORM STREQUAL "ios")
-    # The supported orientations follow the orientation of app.json, and the iPhone does not turn upside down.
-    set(left "\t\t<string>UIInterfaceOrientationLandscapeLeft</string>\n\t\t<string>UIInterfaceOrientationLandscapeRight</string>\n")
-    set(up "\t\t<string>UIInterfaceOrientationPortrait</string>\n")
-    set(down "\t\t<string>UIInterfaceOrientationPortraitUpsideDown</string>\n")
-    if(orientation STREQUAL "landscape")
-      set(HAYLEN_ORIENTATIONS "${left}")
-      set(HAYLEN_ORIENTATIONS_IPAD "${left}")
-    elseif(orientation STREQUAL "portrait")
-      set(HAYLEN_ORIENTATIONS "${up}")
-      set(HAYLEN_ORIENTATIONS_IPAD "${up}${down}")
-    else()
-      set(HAYLEN_ORIENTATIONS "${up}${left}")
-      set(HAYLEN_ORIENTATIONS_IPAD "${up}${down}${left}")
-    endif()
+    # The Info.plist lists every orientation, and the runtime allows the ones of app.json, since a foldable iPhone shows an app that lists fewer in a box on its inner screen. The iPhone does not turn upside down.
+    set(HAYLEN_ORIENTATIONS "\t\t<string>UIInterfaceOrientationPortrait</string>\n\t\t<string>UIInterfaceOrientationLandscapeLeft</string>\n\t\t<string>UIInterfaceOrientationLandscapeRight</string>\n")
+    set(HAYLEN_ORIENTATIONS_IPAD "${HAYLEN_ORIENTATIONS}\t\t<string>UIInterfaceOrientationPortraitUpsideDown</string>\n")
     # The app launches with the status bar of app.json, which the view controller of the runtime keeps until the engine applies the same value.
     set(HAYLEN_STATUS_BAR_HIDDEN "false")
     set(HAYLEN_STATUS_BAR_STYLE "UIStatusBarStyleDefault")
@@ -424,13 +413,6 @@ function(haylen_read_app_info target package)
     set(app_${key} "${value}" PARENT_SCOPE)
   endforeach()
 
-  # The orientation defaults to landscape, like the runtime.
-  string(JSON orientation ERROR_VARIABLE error GET "${document}" orientation)
-  if(error)
-    set(orientation "landscape")
-  endif()
-  set(app_orientation "${orientation}" PARENT_SCOPE)
-
   # Windows show in the taskbar unless the window section of app.json says otherwise, like the runtime.
   string(JSON show_in_taskbar ERROR_VARIABLE error GET "${document}" window showInTaskbar)
   if(error)
@@ -500,7 +482,7 @@ function(haylen_add_app target)
     haylen_mark_resources(FILES ${package_files} BASEDIR "${arg_PACKAGE}" RESOURCEBASE "Resources/app")
     target_sources(${target} PRIVATE ${package_files})
     haylen_add_apple_plugins(${target})
-    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_orientation}" "${app_show_in_taskbar}" "${app_status_bar}")
+    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_show_in_taskbar}" "${app_status_bar}")
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(${target} "${arg_WEB_SHELL}")
     target_link_options(${target} PRIVATE "--preload-file=${arg_PACKAGE}/app.json@/app/app.json")
@@ -616,7 +598,7 @@ function(haylen_add_release target package apple_project web_shell)
       set(project_dir "${HAYLEN_ENGINE_DIR}/platform/apple")
     endif()
     haylen_add_apple_plugins(${target})
-    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_orientation}" "${app_show_in_taskbar}" "${app_status_bar}")
+    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_show_in_taskbar}" "${app_status_bar}")
   elseif(EMSCRIPTEN)
     # The page preloads the manifests and the app domain, and the shards of the content stay in the "app" folder next to it, where downloads read them by range.
     haylen_setup_web_page(${target} "${web_shell}")

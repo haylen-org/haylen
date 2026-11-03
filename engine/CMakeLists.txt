@@ -514,6 +514,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/PluginStreams.cpp
   src/platform/Fold.cpp
   src/platform/FoldSimulation.cpp
+  src/platform/FullscreenTarget.cpp
   src/platform/SafeAreaSimulation.cpp
   src/platform/ScreenRelay.cpp
   src/platform/Screens.cpp
@@ -524,6 +525,11 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/SystemLua.cpp
   src/platform/SystemState.cpp
   src/platform/VideoStream.cpp
+  src/platform/Display.cpp
+  src/platform/DisplayLua.cpp
+  src/platform/Displays.cpp
+  src/platform/OutputLua.cpp
+  src/platform/Outputs.cpp
   src/platform/Window.cpp
   src/platform/WindowLua.cpp
   src/platform/WindowPlacement.cpp
@@ -840,6 +846,9 @@ elseif(APPLE)
     src/platform/apple/AppleBattery.mm
     src/platform/apple/AppleBridge.mm
     src/platform/apple/AppleDesktop.mm
+    src/platform/apple/AppleDisplays.mm
+    src/platform/apple/AppleFold.mm
+    src/platform/apple/AppleOutputs.mm
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleKeyboard.mm
     src/platform/apple/AppleMediaSession.mm
@@ -864,9 +873,11 @@ elseif(APPLE)
     src/platform/apple/HaylenAudioStream.mm
     src/platform/apple/HaylenBridge.mm
     src/platform/apple/HaylenDialog.mm
+    src/platform/apple/HaylenDisplaySceneDelegate.mm
     src/platform/apple/HaylenFieldEditor.mm
     src/platform/apple/HaylenOverlay.mm
     src/platform/apple/HaylenOverlayItem.mm
+    src/platform/apple/HaylenOutputView.mm
     src/platform/apple/HaylenOverlayLayer.mm
     src/platform/apple/HaylenPlacement.mm
     src/platform/apple/HaylenPluginContext.mm
@@ -891,16 +902,16 @@ elseif(APPLE)
 elseif(WIN32)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsVideoDecoder.cpp)
 elseif(ANDROID)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidDisplays.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebDisplays.cpp src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
 else()
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
 
 # Every platform but Android runs apps through the platform layer of SDL. The application delegate of macOS is the runtime's own, so SDL leaves the menus, the quit requests and the events of plugins to it, the scene delegate of UIKit derives from the one of SDL, which runs the app in its scene, and the view controller of the window answers UIKit with the status bar of the app.
 if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/Window.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/OutputWindows.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/Window.cpp)
   # Windows and Linux type through the text events of SDL, while the other platforms edit text in a native field of their own.
   if(HAYLEN_PLATFORM MATCHES "^(windows|linux)$")
     list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/TextInput.cpp)

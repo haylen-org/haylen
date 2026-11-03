@@ -710,7 +710,7 @@ The `Info.plist` of each platform is complete. It holds `$(HAYLEN_DISPLAY_NAME)`
 - `GCSupportsControllerUserInteraction`, the hidden status bar of iOS, and the principal class and minimum system of macOS.
 - `UIApplicationSupportsIndirectInputEvents`, through which UIKit hands the mouse and the trackpad of an iPad or a Mac to the app as a pointer with its buttons, which SDL reads as the mouse.
 
-The orientations of iOS come from `app.json`, so the template leaves them out.
+The tool `haylen.py` fills the orientations of iOS, so the template leaves them out.
 
 The asset catalogs carry the Haylen icons, the gradient symbol on the navy `#07112F` of the brand. The iOS icon is an opaque full square that the system masks. The macOS icons put the symbol on a navy rounded plate with a soft drop shadow, on the grid of macOS icons, with every size drawn on its own. The layered tvOS icons have an opaque navy back layer and the symbol on a transparent front layer. The top shelf images show the horizontal logo with its white wordmark on navy.
 
@@ -845,7 +845,7 @@ The completed `Info.plist` and entitlements follow one rule: the value of the de
 - Objects merge key by key, and arrays gain the items they lack, so two ad plugins share `SKAdNetworkItems`.
 - A value of the developer that differs from the value of a plugin stays, with a warning, such as a usage description in the words of the company.
 - Two plugins, or a plugin and `app.json`, that give one key different values stop the build with both named.
-- The file `app.json` fills the orientations of iPhone and iPad, and the status bar that the app launches with, as `UIStatusBarHidden` and `UIStatusBarStyle` from `window.statusBar`. For an app whose `window.showInTaskbar` is `false`, it fills `LSUIElement` on macOS, so macOS never shows its Dock icon, not even while it starts.
+- The tool fills every orientation of iPhone and iPad, and the runtime allows only the ones of `app.json`, since a foldable iPhone shows an app whose `Info.plist` lists fewer in a box of the size of its outer screen on its inner screen. It also fills the status bar that the app launches with, as `UIStatusBarHidden` and `UIStatusBarStyle` from `window.statusBar`. For an app whose `window.showInTaskbar` is `false`, it fills `LSUIElement` on macOS, so macOS never shows its Dock icon, not even while it starts.
 - No key that haylen.py adds is a decision of the company, such as the statement on export compliance. That stays a default of the template, which the developer keeps or deletes.
 
 ### Generating App.xcodeproj

@@ -7,6 +7,12 @@ namespace haylen::gpu::metal {
 
 Swapchain::Swapchain(id<MTLDevice> metal, Graveyard& retired, int samples, bool tileMemory) : device(metal), graveyard(retired), sampleCount(samples), memoryless(tileMemory) {}
 
+Swapchain::~Swapchain() {
+    graveyard.retire(drawable);
+    graveyard.retire(depth);
+    graveyard.retire(multisample);
+}
+
 void Swapchain::attach(const Surface& surface) {
     if (surface.kind != Surface::Kind::MetalLayer || surface.layer == nullptr) {
         throw std::runtime_error("The Metal device draws only into a surface that holds a \"CAMetalLayer\".");
