@@ -306,7 +306,9 @@ class FileNameTest(unittest.TestCase):
                         imported.add(node.module.split(".")[0])
 
         def allowed(name: str) -> bool:
-            # Android resource names allow only letters, digits and underscores, and Python imports modules and discovers tests by names that are identifiers.
+            # Android resource names allow only letters, digits and underscores, Python imports modules and discovers tests by names that are identifiers, and GitHub reads issue templates only from the folder ".github/ISSUE_TEMPLATE".
+            if name.startswith(".github/ISSUE_TEMPLATE/"):
+                return "_" not in name.removeprefix(".github/ISSUE_TEMPLATE/")
             folder, separator, _ = name.partition("/src/main/res/")
             if separator:
                 return "_" not in folder
@@ -439,9 +441,11 @@ class DocsTest(unittest.TestCase):
 
     @staticmethod
     def prose(path: Path) -> Iterator[tuple[int, str]]:
-        """Yields the numbered lines of a page outside its code blocks."""
+        """Yields the numbered lines of a page outside its code blocks and the front matter that GitHub reads from an issue template."""
         inside = False
-        for number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+        lines = path.read_text(encoding="utf-8").splitlines()
+        start = lines.index("---", 1) + 1 if lines and lines[0] == "---" else 0
+        for number, line in enumerate(lines[start:], start + 1):
             if line.lstrip().startswith("```"):
                 inside = not inside
                 continue
@@ -485,11 +489,11 @@ class DocsTest(unittest.TestCase):
         return [self.root / "docs" / "README.md", *sorted((self.root / "docs").glob("*/README.md"))]
 
     def test_every_page_starts_with_a_title_that_starts_with_an_emoji(self):
-        # The main page opens with the logo, and the features of the plugin template are parts of the page of a new plugin.
+        # The main page opens with the logo, the features of the plugin template are parts of the page of a new plugin, and an issue template opens with the front matter whose name GitHub shows.
         wrong = []
         for path in self.pages():
             name = path.relative_to(self.root).as_posix()
-            if name == "README.md" or name.startswith("templates/plugin-features/"):
+            if name == "README.md" or name.startswith(("templates/plugin-features/", ".github/ISSUE_TEMPLATE/")):
                 continue
             title = path.read_text(encoding="utf-8").split("\n", 1)[0]
             if not title.startswith("# ") or unicodedata.category(title[2:3]) != "So":

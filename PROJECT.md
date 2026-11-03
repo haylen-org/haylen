@@ -2273,7 +2273,7 @@ Bridge e plugins:
 Integração contínua e GitHub:
 
 - [ ] Revisar a CI inteira: os arquivos `.yml` ficam organizados e fáceis de ler, e a execução é otimizada dentro do ambiente que existe, sem perder nada do que ela testa, sem gambiarras e sem atalhos que baixem a qualidade dos testes (por exemplo o cache do GitHub para as fontes do CPM, o ccache e os SDKs, jobs que não repetem trabalho e dependências entre jobs bem pensadas). Medir o tempo de cada job antes e depois.
-- [ ] Os arquivos do GitHub que o dono colocou (`.github/FUNDING.yml` e os modelos de issue em `.github/ISSUE_TEMPLATE/`) entram no repositório, seguindo as regras de nomes e de escrita do projeto onde o GitHub permitir.
+- [x] Os arquivos do GitHub que o dono colocou (`.github/FUNDING.yml` e os modelos de issue em `.github/ISSUE_TEMPLATE/`) entram no repositório, seguindo as regras de nomes e de escrita do projeto onde o GitHub permitir. Feito: `FUNDING.yml` e a pasta `ISSUE_TEMPLATE` mantêm os nomes que o GitHub exige, e os modelos passaram a `bug-report.md`, `feature-request.md` e `other.md`, com modo 644, reescritos em inglês simples no padrão de escrita, com os valores reais de `--platform` e as APIs gráficas na seção do sistema. O teste de nomes do `tools/test_haylen.py` aceita só esses nomes do GitHub, os testes da documentação leem os modelos sem o front matter, e o `AGENTS.md` registra a exceção ao lado da regra de nomes. Conferido com os testes do `tools/test_haylen.py` no macOS e num contêiner Linux.
 
 Repositórios irmãos:
 
