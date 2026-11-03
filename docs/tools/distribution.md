@@ -42,13 +42,14 @@ Several commands share these options:
 ```sh
 haylen engine
 haylen engine --platform apple --config Release
+haylen engine --platform apple --slices tvos tvos-simulator
 ```
 
-Builds the [engine artifacts](#engine-artifacts) into `build/artifacts/`. The option `--platform` picks `apple`, `android`, `web`, `desktop` or `all`, which is the default. The option `--config` is `Release` by default, and `--jobs` sets the jobs.
+Builds the [engine artifacts](#engine-artifacts) into `build/artifacts/`. The option `--platform` picks `apple`, `android`, `web`, `desktop` or `all`, which is the default. The option `--config` is `Release` by default, and `--jobs` sets the jobs. With `--platform apple`, the option `--slices` names the slices of `Haylen.xcframework` to build, such as `macos`, `ios`, `ios-simulator`, `ios-maccatalyst`, `tvos`, `tvos-simulator`, `xros` and `xros-simulator`, every slice by default. The framework then holds those slices and the others that were built from the same sources, as below.
 
 Each build records its configuration and a SHA-256 hash of the engine sources in `build/artifacts/manifest.json`. The hash covers every file under `engine/` except the tests, the benchmarks and build outputs. So any change to the engine code, its CMake files, its shaders or its platform projects makes the artifacts stale. The commands `run`, `prepare` and the others build the artifacts of a platform again before they use them, whenever the manifest does not match the current sources or the configuration that `--engine-config` asks for.
 
-On Apple platforms the manifest records each slice of `Haylen.xcframework` on its own. The command `run` builds only the slices of the family that it runs on, the device and the simulator of iOS, tvOS or visionOS, or the one slice of macOS or Mac Catalyst. So a change to the engine builds two slices at most before a run, and the project of the app still builds in Xcode for both the device and the simulator. The framework holds only the slices that were built from the current sources and configuration, so a slice of older sources never meets newer headers, and Xcode names a destination whose slice is missing until `prepare` builds it. The commands `prepare`, `platform xcodegen` and `engine` build every slice, since a project of the developer may build for any Apple platform.
+On Apple platforms the manifest records each slice of `Haylen.xcframework` on its own. The command `run` builds only the slices of the family that it runs on, the device and the simulator of iOS, tvOS or visionOS, or the one slice of macOS or Mac Catalyst. So a change to the engine builds two slices at most before a run, and the project of the app still builds in Xcode for both the device and the simulator. The framework holds only the slices that were built from the current sources and configuration, so a slice of older sources never meets newer headers, and Xcode names a destination whose slice is missing until `prepare` builds it. The commands `prepare`, `platform xcodegen` and `engine` build every slice, since a project of the developer may build for any Apple platform, unless `engine` names its slices with `--slices`.
 
 ### new
 

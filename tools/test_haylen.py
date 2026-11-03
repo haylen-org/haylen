@@ -837,6 +837,15 @@ class ArtifactsTest(unittest.TestCase):
         self.assertEqual(haylen.APPLE_RUN_SLICES["tvos-simulator"], ["tvos", "tvos-simulator"])
         self.assertEqual(sorted(haylen.APPLE_RUN_SLICES), sorted(haylen.APPLE_RUNS))
 
+    def test_the_engine_command_builds_the_apple_slices_it_names(self):
+        builds = []
+        with mock.patch.object(haylen, "build_artifacts", side_effect=lambda *arguments: builds.append(arguments)):
+            haylen.command_engine(haylen.build_parser().parse_args(["engine", "--platform", "apple", "--slices", "tvos", "tvos-simulator", "--jobs", "4"]))
+            haylen.command_engine(haylen.build_parser().parse_args(["engine", "--platform", "web", "--jobs", "4"]))
+            with self.assertRaisesRegex(haylen.BuildError, "needs \"--platform apple\""):
+                haylen.command_engine(haylen.build_parser().parse_args(["engine", "--platform", "android", "--slices", "tvos"]))
+        self.assertEqual(builds, [("apple", "Release", 4, ["tvos", "tvos-simulator"]), ("web", "Release", 4, None)])
+
     def test_the_framework_joins_the_slices_built_now_and_the_current_ones_and_is_signed(self):
         manifest = {"platforms": {"apple": {"config": "Release", "slices": {"ios": "current", "tvos": "old"}}}}
         commands = []

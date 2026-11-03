@@ -1949,8 +1949,10 @@ def ensure_artifacts(platform_name: str, config: str, jobs: int, slices: list[st
 
 
 def command_engine(args: argparse.Namespace) -> None:
+    if args.slices and args.platform != "apple":
+        raise BuildError('The option "--slices" names slices of "Haylen.xcframework", so it needs "--platform apple".')
     for platform_name in ARTIFACT_PLATFORMS if args.platform == "all" else [args.platform]:
-        build_artifacts(platform_name, args.config, args.jobs)
+        build_artifacts(platform_name, args.config, args.jobs, args.slices)
 
 
 # Apps: a package folder assembled with a platform template into a project under `build/apps`, then built and launched.
@@ -7138,6 +7140,7 @@ def build_parser() -> argparse.ArgumentParser:
     engine = commands.add_parser("engine", parents=[common], help="Build the prebuilt engine artifacts that apps use, into build/artifacts.")
     engine.add_argument("--platform", default="all", choices=[*ARTIFACT_PLATFORMS, "all"], help='Platform of the artifacts, "all" by default.')
     engine.add_argument("--config", default="Release", choices=CONFIGS, help='Configuration of the artifacts, "Release" by default.')
+    engine.add_argument("--slices", nargs="+", choices=list(APPLE_SLICES), help='The slices of "Haylen.xcframework" that "--platform apple" builds, every slice by default. The framework then holds them and the other slices built from the same sources.')
     add_jobs_option(engine)
     engine.set_defaults(handler=command_engine)
 
