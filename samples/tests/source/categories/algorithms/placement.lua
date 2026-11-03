@@ -97,7 +97,7 @@ function Placement:update(dt)
         counts[entity.kind] = counts[entity.kind] + 1
     end
     local missing = self.map.missing
-    self:status(string.format('Placed %d %s, %d %s and %d %s, and left out %d, %d and %d, in %.0f ms', counts[1], kNames[1], counts[2], kNames[2], counts[3], kNames[3], missing[1], missing[2], missing[3], self.latency or 0))
+    self:status(string.format('Placed %d %s, %d %s and %d %s, and left out %d, %d and %d, in %.0f ms.', counts[1], kNames[1], counts[2], kNames[2], counts[3], kNames[3], missing[1], missing[2], missing[3], self.latency or 0))
 end
 
 -- Draws the outline of a rock turned by the rotation of its entity, over the rock.

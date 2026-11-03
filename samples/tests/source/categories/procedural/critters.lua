@@ -11,10 +11,11 @@ local Leg = require('categories.procedural.leg')
 local Critters = haylen.class('Critters', AlgorithmTest)
 
 Critters.code = [[
-local bug = {kind = pick({'beetle', 'ant', 'ladybug'}), hue = random:nextFloat(), wings = random:chance(0.3)}  -- Six legs on the thorax.
+local random = m.random(seed)  -- The same seed makes the same bugs.
+local bug = {kind = kinds[random:integer(1, #kinds)], hue = random:nextFloat(), wings = random:chance(0.3)}
 leg.restX, leg.restY = hipX + sideX * 26 * size + forwardX * reach, hipY + sideY * 26 * size + forwardY * reach
 Leg.gait(bug.legs, 10 * size, velocityX * 0.08, velocityY * 0.08)  -- Two tripods of legs take turns.
-if distance(bug, pointer) < 220 then bug.heading = angleAwayFrom(pointer) bug.speed = 260 end]]
+if m.vec2(bug.x, bug.y):distance(m.vec2(pointer.worldX, pointer.worldY)) < 220 then bug.speed = 260 end]]
 
 Critters.kinds = {'beetle', 'ant', 'ladybug'}
 Critters.legPairs = 3
@@ -73,6 +74,7 @@ function Critters.make(random, bounds)
     local hue = random:nextFloat()
     bug.shell = m.fromHsv(hue, random:range(0.45, 0.8), random:range(0.55, 0.9))
     bug.dark = m.fromHsv(hue, 0.6, 0.25)
+    bug.limb = m.fromHsv(hue, 0.5, 0.42)
     bug.spots = bug.kind == 'ladybug' and random:integer(2, 5) or (random:chance(0.3) and random:integer(1, 3) or 0)
     bug.wings = random:chance(0.3)
     bug.length = random:range(0.85, 1.5)
@@ -81,12 +83,14 @@ function Critters.make(random, bounds)
     bug.turn = random:range(0, 100)
     bug.fear = 0
     local size = bug.size
+    -- An ant keeps shorter legs close to its slim body, so it never reads as a spider.
+    bug.span = bug.kind == 'ant' and 0.78 or 1
     bug.legs = {}
     -- The three pairs grow close together from under the thorax, the front pair reaching ahead and the back pair behind.
     for pair = 1, Critters.legPairs do
         local along = 9 - (pair - 1) * 6
         for side = -1, 1, 2 do
-            local leg = Leg({x = bug.x, y = bug.y, lengths = {9 * size, 10 * size, 8 * size}, group = (pair + (side > 0 and 1 or 0)) % 2 + 1, stepTime = 0.09, lift = 3, widths = {3.2 * size, 2.6 * size, 2 * size, 1.4 * size}, color = bug.dark, outlineWidth = 1.5, layer = 2})
+            local leg = Leg({x = bug.x, y = bug.y, lengths = {9 * size * bug.span, 10 * size * bug.span, 8 * size * bug.span}, group = (pair + (side > 0 and 1 or 0)) % 2 + 1, stepTime = 0.09, lift = 3, widths = {3.4 * size, 2.8 * size, 2.2 * size, 1.6 * size}, color = bug.limb, outlineWidth = 2, layer = 2})
             leg.along, leg.side = along * size, side
             leg.reach = (2 - pair) * 18 * size
             bug.legs[#bug.legs + 1] = leg
@@ -94,7 +98,7 @@ function Critters.make(random, bounds)
     end
     bug.antennae = {}
     for side = -1, 1, 2 do
-        local antenna = Leg({x = bug.x, y = bug.y, lengths = {9 * size, 8 * size, 6 * size}, widths = {1.3 * size, 1 * size, 0.8 * size, 0.6 * size}, color = bug.dark, outlineWidth = 1, layer = 2})
+        local antenna = Leg({x = bug.x, y = bug.y, lengths = {9 * size, 8 * size, 6 * size}, widths = {1.4 * size, 1.1 * size, 0.9 * size, 0.7 * size}, color = bug.limb, outlineWidth = 1.5, layer = 2})
         antenna.side = side
         bug.antennae[#bug.antennae + 1] = antenna
     end
@@ -105,13 +109,14 @@ end
 -- Sets the hip, the rest point and the pole of every leg from the body, and the lead of a step from the velocity.
 function Critters.placeLegs(bug, dt, settle)
     local size = bug.size
+    local spread = 21 * size * bug.span
     local fx, fy = math.cos(bug.heading), math.sin(bug.heading)
     local sx, sy = -fy, fx
     for _, leg in ipairs(bug.legs) do
         local side = leg.side
         leg.hipX, leg.hipY = bug.x + fx * leg.along + sx * side * 4 * size, bug.y + fy * leg.along + sy * side * 4 * size
-        leg.restX, leg.restY = leg.hipX + sx * side * 21 * size + fx * leg.reach, leg.hipY + sy * side * 21 * size + fy * leg.reach
-        leg.poleX, leg.poleY = leg.hipX + sx * side * 18 * size + fx * leg.reach * 0.2, leg.hipY + sy * side * 18 * size + fy * leg.reach * 0.2
+        leg.restX, leg.restY = leg.hipX + sx * side * spread + fx * leg.reach * bug.span, leg.hipY + sy * side * spread + fy * leg.reach * bug.span
+        leg.poleX, leg.poleY = leg.hipX + sx * side * spread * 0.86 + fx * leg.reach * 0.2, leg.hipY + sy * side * spread * 0.86 + fy * leg.reach * 0.2
         leg.liftX, leg.liftY = sx * side, sy * side
         if settle then
             leg:place(leg.restX, leg.restY)
@@ -219,7 +224,11 @@ function Critters.drawBug(bug, time)
         graphics2d.drawShape({x - width * size / 2, y - height * size / 2, width * size, height * size}, {kind = 'ellipse', rotation = angle, color = '#80FFFFFF', layer = layer})
     end
     local abdomen = 30 * bug.length
-    graphics2d.drawShape({bug.x - (abdomen * 0.6 + 14) * size, bug.y - 9 * size + 5, (abdomen * 1.2 + 28) * size, 18 * size}, {kind = 'ellipse', rotation = angle, color = '#40000000', softness = 6 * size, layer = 1})
+    -- The shadow lies under the whole body, from the head to the end of the abdomen, a little below it.
+    local tail = bug.kind == 'ant' and -10 - abdomen * 0.8 or -abdomen * 0.75 - 6
+    local middle, length = (25 + tail) / 2, 25 - tail
+    local shadowX, shadowY = bug.x + fx * middle * size, bug.y + (fy * middle + 4) * size
+    graphics2d.drawShape({shadowX - length * size / 2, shadowY - 10 * size, length * size, 20 * size}, {kind = 'ellipse', rotation = angle, color = '#45000000', softness = 6 * size, layer = 1})
     for _, leg in ipairs(bug.legs) do
         leg:draw()
     end

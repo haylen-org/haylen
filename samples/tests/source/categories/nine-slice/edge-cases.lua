@@ -36,8 +36,9 @@ function EdgeCases.sheet(frame)
             pieces[#pieces + 1] = {x, y, spans[column][2], spans[row][2]}
         end
     end
+    -- The sheet keeps no mipmaps, whose smaller copies would average the magenta gaps into the pieces, so a pink seam shows only what the sampling of a piece reads.
     image:bleed()
-    return graphics.newTexture(image, {filter = 'linear'}), pieces
+    return graphics.newTexture(image, {filter = 'linear', mipmaps = false}), pieces
 end
 
 function EdgeCases:enter()

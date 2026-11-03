@@ -12,11 +12,10 @@ local Fs = haylen.class('Fs', Test)
 
 Fs.code = [[
 async.spawn(function()
-    local base = storage.root() .. '/fs-demo'
-    fs.mkdir(base .. '/logs/archive'):await()
-    fs.writeFile(base .. '/logs/run.txt', 'Run started\n'):await()
-    fs.append(base .. '/logs/run.txt', 'All is well\n'):await()
-    local text, failure = fs.readFile(base .. '/logs/run.txt'):await()
+    local path = storage.root() .. '/fs-demo/logs/run.txt'
+    fs.mkdir(storage.root() .. '/fs-demo/logs/archive'):await()
+    fs.writeFile(path, 'Run started\n'):await() fs.append(path, 'All is well\n'):await()
+    local text, failure = fs.readFile(path):await()
 end)]]
 
 Fs.chunk = 64 * 1000

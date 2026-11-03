@@ -63,7 +63,7 @@ function LabelUp:spawn(x, y, text, kind)
     end
 
     record.text, record.look, record.age = text, look, 0
-    record.x, record.startY = x + (self:roll() - 0.5) * self.spread, y - stacked * self.size * 0.8
+    record.x, record.startY = x + (self:roll() - 0.5) * self.spread, y - stacked * self.size
     record.drift = (self:roll() - 0.5) * self.spread
     for channel = 1, 3 do
         record.fill[channel], record.outline[channel] = look.fill[channel], look.outline[channel]

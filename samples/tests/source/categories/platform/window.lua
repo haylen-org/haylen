@@ -13,8 +13,7 @@ local Window = haylen.class('Window', Test)
 Window.code = [[
 print(haylen.platform, haylen.graphicsApi, window.orientation(), window.hasPointerDevice(), haylen.appState())
 local safe = viewport.safeRect()  -- The visible area minus notches, bars and rounded corners.
-window.setFullscreen(true) window.setKeepScreenOn(true)
-window.setKeyboardVisible(true)
+window.setFullscreen(true) window.setKeepScreenOn(true) window.setKeyboardVisible(true)
 viewport.setSafeAreaSimulation('iphoneNotch')
 events.on('keyboardShown', function(frame) print(frame.y, frame.height) end, {owner = self})
 events.on('networkOffline', function() showOffline() end, {owner = self})]]

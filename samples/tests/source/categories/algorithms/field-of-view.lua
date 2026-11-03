@@ -24,7 +24,7 @@ local polygon = spatial2d.visibilityPolygon({120, 40}, {{{300, 200}, {300, 400}}
 local kColumns, kRows, kCell = 56, 30, 26
 local kBounds = {-740, -400, 1480, 800}
 -- The fog over cells out of sight: thin over the cells seen before and nearly black over the rest.
-local kFog = {visible = '#00000000', seen = '#B00A0D16', hidden = '#F20A0D16'}
+local kFog = {visible = '#00000000', seen = '#880A0D16', hidden = '#E60A0D16'}
 
 function FieldOfView:enter()
     self:frame{
@@ -155,12 +155,12 @@ function FieldOfView:renderGrid()
     end
     for _, cell in ipairs(self.ring) do
         if board:contains(cell.x, cell.y) then
-            graphics2d.drawShape(board:cellRect(cell.x, cell.y, 4), {radius = 5, color = '#30FFC93C', borderWidth = 3, borderColor = '#FFFFC93C', layer = 6})
+            graphics2d.drawShape(board:cellRect(cell.x, cell.y, 2), {radius = 6, color = '#38FFD36B', borderWidth = 2, borderColor = '#99FFD36B', layer = 6})
         end
     end
     for _, cell in ipairs(self.sightLine) do
         local x, y = board:center(cell.x, cell.y)
-        graphics2d.drawCircle(x, y, 5, '#FFF0473E', {layer = 7})
+        graphics2d.drawCircle(x, y, 3.5, '#D9FF7A5C', {layer = 7})
     end
     local vx, vy = board:center(self.viewer[1], self.viewer[2])
     local gx, gy = board:center(self.guard[1], self.guard[2])

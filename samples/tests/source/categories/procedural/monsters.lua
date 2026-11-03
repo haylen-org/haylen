@@ -66,6 +66,14 @@ function Monsters:build()
         hills[#hills + 1] = {reach, Monsters.ground}
         self.ranges[layer] = hills
     end
+    -- The ground has tufts of grass along its edge and stones lying in the dirt below it.
+    self.tufts, self.stones = {}, {}
+    for x = -reach, reach, 46 do
+        self.tufts[#self.tufts + 1] = {x + random:range(-14, 14), random:range(9, 18)}
+    end
+    for _ = 1, 90 do
+        self.stones[#self.stones + 1] = {random:range(-reach, reach), Monsters.ground + random:range(30, 420), random:range(5, 14), random:range(3, 7)}
+    end
     self.stars = {}
     for _ = 1, 120 do
         self.stars[#self.stars + 1] = {random:range(-reach, reach), random:range(-560, 40), random:range(1, 2.6)}
@@ -295,7 +303,7 @@ function Monsters.drawBody(monster, time)
     end
 end
 
--- A night over two ranges of hills, the far one lighter than the near one, and ground that fill the whole canvas.
+-- A night over two ranges of hills, the far one lighter than the near one, and ground with grass and stones that fill the whole canvas.
 function Monsters:draw(area)
     local bounds = graphics2d.canvasBounds()
     graphics2d.drawRect(bounds, '#FF161B2A', {layer = -3})
@@ -303,7 +311,7 @@ function Monsters:draw(area)
         graphics2d.drawCircle(star[1], star[2], star[3], '#B3E8EAF2', {layer = -2})
     end
     -- A crescent moon in its glow: the disc of the moon without the part a smaller disc covers.
-    graphics2d.drawCircle(430, -190, 80, '#1AF4EBD0', {layer = -2})
+    graphics2d.drawShape({330, -290, 200, 200}, {kind = 'ellipse', color = '#30F4EBD0', softness = 70, layer = -2})
     graphics2d.pushMask(function()
         graphics2d.drawCircle(450, -202, 46, '#FFFFFFFF')
     end, {mode = 'outside', layer = -2})
@@ -312,7 +320,13 @@ function Monsters:draw(area)
     graphics2d.drawPolygon(self.ranges[1], '#FF2C3552', {layer = -1})
     graphics2d.drawPolygon(self.ranges[2], '#FF222A40', {layer = -1})
     graphics2d.drawRect({bounds.x, Monsters.ground, bounds.width, bounds.y + bounds.height - Monsters.ground}, '#FF2C2A3C', {layer = -1})
-    graphics2d.drawRect({bounds.x, Monsters.ground, bounds.width, 5}, '#FF4A4560', {layer = -1})
+    for _, stone in ipairs(self.stones) do
+        graphics2d.drawEllipse(stone[1], stone[2], stone[3], stone[4], '#FF37344A', {layer = -1})
+    end
+    graphics2d.drawRect({bounds.x, Monsters.ground, bounds.width, 6}, '#FF3E5A4A', {layer = -1})
+    for _, tuft in ipairs(self.tufts) do
+        graphics2d.drawEllipse(tuft[1], Monsters.ground + 2, tuft[2] * 1.6, tuft[2], '#FF3E5A4A', {layer = -1})
+    end
     local time = haylen.elapsed()
     for _, monster in ipairs(self.monsters) do
         monster.lookX, monster.lookY = self.pointer.worldX, self.pointer.worldY

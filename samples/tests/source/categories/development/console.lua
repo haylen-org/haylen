@@ -21,8 +21,7 @@ debugging.addCommand('gold', function(amount)
     return 'Gold ' .. player.gold
 end, {help = 'Adds gold to the player.', args = {'integer'}, owner = self})
 local ok, output = debugging.runCommand('gold 50')
-print(table.concat(debugging.completeCommand('go'), ', '))
-debugging.setConsoleVisible(true)]]
+print(table.concat(debugging.completeCommand('go'), ', ')) debugging.setConsoleVisible(true)]]
 
 function Console:enter()
     self.gold = 0

@@ -14,8 +14,7 @@ async.spawn(function()
     for _, name in ipairs(fs.readdir(storage.root()):await()) do
         local info = fs.stat(storage.root() .. '/' .. name):await()  -- Holds "isDir", "size" and "mtime".
     end
-    local handle = fs.open(path, 'r'):await()
-    local start = handle:read(4096):await()  -- Only the start of a large file.
+    local start = fs.open(path, 'r'):await():read(4096):await()  -- Only the start of a large file.
 end)]]
 
 Browser.up = '..'

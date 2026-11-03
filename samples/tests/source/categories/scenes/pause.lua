@@ -33,7 +33,7 @@ Pause.maxCoins = 9
 Pause.modes = {
     {id = 'coins', text = 'Coins', mode = 'pausable'},
     {id = 'platform', text = 'Platform', mode = 'pausable'},
-    {id = 'menu', text = 'Pause menu', mode = 'whenPaused'},
+    {id = 'menu', text = 'Menu', mode = 'whenPaused'},
     {id = 'clock', text = 'Clock', mode = 'always'},
 }
 

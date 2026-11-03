@@ -14,12 +14,10 @@ local SettingsScreen = haylen.class('SettingsScreen', Test)
 
 SettingsScreen.code = [[
 ui.settingsRow{label = {key = 'settings.music'}, ui.slider{id = 'music', value = audio.busVolume('music'), onChange = function(event)
-    audio.setBusVolume('music', event.value)
-    preferences.capture()  -- Changes the engine at once.
+    audio.setBusVolume('music', event.value) preferences.capture()  -- Changes the engine at once.
 end}}
 ui.settingsRow{label = {key = 'settings.difficulty'}, ui.segmentedControl{id = 'difficulty', items = levels, onChange = function(event)
-    preferences.set('game.difficulty', event.value)
-end}}
+    preferences.set('game.difficulty', event.value) end}}
 if preferences.dirty() then preferences.save() end  -- Saves on the way out what is still unsaved.]]
 
 SettingsScreen.languages = {{id = 'en', text = 'English'}, {id = 'pt-BR', text = 'Português'}, {id = 'es', text = 'Español'}}

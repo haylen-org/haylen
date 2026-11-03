@@ -16,8 +16,7 @@ local settings = require('categories.preferences.settings')
 local Engine = haylen.class('Engine', Test)
 
 Engine.code = [[
-audio.setBusVolume('music', 0.4)
-audio.setBusMuted('sfx', false)
+audio.setBusVolume('music', 0.4) audio.setBusMuted('sfx', false)
 window.setFullscreen(true)
 input.defineAction({name = 'jump', type = 'button', bindings = {'key:k'}})
 preferences.capture()  -- Stores the volumes, the mutes, fullscreen and the actions.

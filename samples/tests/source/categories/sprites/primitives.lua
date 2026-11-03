@@ -15,19 +15,12 @@ Primitives.gap = 14
 Primitives.titleHeight = 56
 
 Primitives.code = [[
-graphics2d.drawLine(x1, y1, x2, y2, 4, color)
-graphics2d.drawPolyline(points, 3, color, true)
-graphics2d.drawRectOutline(rect, 4, color)
-graphics2d.drawCircle(x, y, 40, color)
-graphics2d.drawRing(x, y, 40, 8, color)
+graphics2d.drawLine(x1, y1, x2, y2, 4, color)  -- And drawStroke for curves with joins and caps.
+graphics2d.drawPolyline(points, 3, color, true)  -- And drawRectOutline, drawPolygon and drawPoints.
+graphics2d.drawCircle(x, y, 40, color)  -- And drawRing and drawEllipse.
 graphics2d.drawArc(x, y, 40, 10, start, start + m.tau * progress, color)
-graphics2d.drawPolygon(star, color)
 graphics2d.drawMesh(nil, {{x = 0, y = 0, color = '#FFFF4060'}, ...}, {1, 2, 3})
-graphics2d.drawShape(rect, {radius = 14, texture = gradient, borderWidth = 3, borderColor = border})
-graphics2d.drawEllipse(x, y, 60, 30, color)
-graphics2d.drawShape(rect, {kind = 'ellipse', startAngle = time, sweep = m.tau * 0.75, color = color})
-graphics2d.drawStroke(m.spline(controls, {kind = 'bezier'}), {width = 6, cap = 'round', color = color})
-graphics2d.drawPoints(points, {radius = 3, colors = colors})]]
+graphics2d.drawShape(rect, {radius = 14, texture = gradient, borderWidth = 3, borderColor = border})]]
 
 -- The points of a regular polygon around a center, with its first corner at the angle of the turn.
 function Primitives.regular(x, y, radius, sides, turn)

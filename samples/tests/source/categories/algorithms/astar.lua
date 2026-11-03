@@ -40,7 +40,7 @@ function AStar:enter()
             ui.formField{label = 'Heuristic', ui.combo{id = 'heuristic', items = {{id = 'octile', text = 'Octile'}, {id = 'manhattan', text = 'Manhattan'}, {id = 'euclidean', text = 'Euclidean'}, {id = 'chebyshev', text = 'Chebyshev'}}, selected = 'octile', onChange = function(event) self:setOption('heuristic', event.value) end}},
             ui.formField{label = 'Weight of weighted A*', ui.slider{id = 'weight', value = 2, min = 1, max = 5, step = 0.25, showValue = true, onChange = function(event) self:setOption('weight', event.value) end}},
             ui.checkbox{id = 'diagonal', text = 'Diagonal steps', checked = true, onChange = function(event) self:setOption('diagonal', event.checked) end},
-            ui.row{gap = 12, ui.button{id = 'random', text = 'Random walls', grow = 1, onClick = function() self:randomize() end}, ui.button{id = 'clear', text = 'Clear', grow = 1, onClick = function() self:clear() end}},
+            ui.row{gap = 12, alignItems = 'stretch', ui.button{id = 'random', text = 'Random walls', grow = 1, onClick = function() self:randomize() end}, ui.button{id = 'clear', text = 'Clear', grow = 1, onClick = function() self:clear() end}},
         },
         focus = 'brush',
     }

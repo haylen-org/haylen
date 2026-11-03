@@ -100,7 +100,7 @@ function Fireworks:update(dt)
         end
     end
     self.effects = alive
-    self:report('%d rockets climb, and the sky holds %d particles and points of ribbons.', #self.rockets, count)
+    self:report('%d %s, and the sky holds %d particles and points of ribbons.', #self.rockets, #self.rockets == 1 and 'rocket climbs' or 'rockets climb', count)
 end
 
 function Fireworks:draw(area)
