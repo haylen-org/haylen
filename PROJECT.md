@@ -2283,6 +2283,10 @@ Atualização de projetos:
 
 - [x] Um guia em `docs` bem detalhado para pessoas e para IA saberem o que olhar e mudar ao trazer um projeto e os seus plugins para o formato atual dos templates, que mudam com os anos (Xcode, projeto Android, CMake, `app.json` e o resto), de forma geral, para ninguém precisar descobrir o processo. Feito: `docs/tools/upgrading.md`, com a referência feita por `haylen new` e `haylen plugin new`, a comparação por `diff` e `haylen platform diff`, como separar mudança do template, escolha do desenvolvedor e as duas juntas, o que olhar em cada arquivo da raiz, da Apple, do Android, da web, do Windows, do Linux, do app C++ e de cada parte de um plugin, a verificação com `haylen check` e `haylen plugin list`, e as regras para assistentes de IA. O `AGENTS.md` manda atualizar o guia junto com qualquer template, e os testes da documentação passaram.
 
+Plugins de terceiros:
+
+- [ ] Os 13 plugins de SDKs de terceiros da pasta `haylen-plugins` do dono (admob, app-tracking-transparency, background-assets, firebase, firebase-analytics, firebase-crashlytics, firebase-messaging, google-analytics, pack-lab, play-asset-delivery, playgama, plugin-lab e revenuecat) revisados um a um pelo formato atual dos plugins e pelo guia `docs/tools/upgrading.md`, com o SDK na última versão, funcionando em todas as plataformas que declaram, com README no padrão da Haylen, e publicados como repositórios em `haylen-org` só quando estiverem prontos e com o aval do dono.
+
 Integração contínua e GitHub:
 
 - [ ] Revisar a CI inteira: os arquivos `.yml` ficam organizados e fáceis de ler, e a execução é otimizada dentro do ambiente que existe, sem perder nada do que ela testa, sem gambiarras e sem atalhos que baixem a qualidade dos testes (por exemplo o cache do GitHub para as fontes do CPM, o ccache e os SDKs, jobs que não repetem trabalho e dependências entre jobs bem pensadas). Medir o tempo de cada job antes e depois.
