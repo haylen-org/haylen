@@ -44,7 +44,6 @@ function Tunneling:enter()
         focus = 'speed',
     }
     self.speed = 6000
-    self.shown = {}
     self.cannon = assets.texture('physics/cannon.png', {filter = 'linear'})
     self:build()
 end
@@ -74,7 +73,6 @@ function Tunneling:build()
         Look.dress(plate, 'steel')
         world:createJoint('revolute', hinge, plate, {ax = origin + Tunneling.wallX, ay = Tunneling.movingLane - 80, enableSpring = true, hertz = 2, dampingRatio = 0.5})
         self.halves[index] = {world = world, origin = origin, bullet = fixed, statics = {wall, shelf, plate}, plate = plate, shots = {}, through = {0, 0, 0}, stopped = {0, 0, 0}}
-        self.shown[index] = {through = {0, 0, 0}, stopped = {0, 0, 0}}
     end
     self.clock = 0
 end
@@ -132,15 +130,12 @@ function Tunneling:update(dt)
     end
     local left, right = self.halves[1], self.halves[2]
     local text = string.format('Through on the left: %d balls past the wall, %d past the plate and %d crates past the shelf. On the right: %d, %d and %d.', left.through[1], left.through[2], left.through[3], right.through[1], right.through[2], right.through[3])
-    self:status(text)
     -- The plates take the counts that the status shows, so both read the same numbers in every frame.
-    if self.statusText == text then
-        for index, half in ipairs(self.halves) do
-            for lane = 1, 3 do
-                self.shown[index].through[lane], self.shown[index].stopped[lane] = half.through[lane], half.stopped[lane]
-            end
-        end
+    local counts = {}
+    for index, half in ipairs(self.halves) do
+        counts[index] = {through = {table.unpack(half.through)}, stopped = {table.unpack(half.stopped)}}
     end
+    self:status(text, counts)
 end
 
 function Tunneling:fixedUpdate(step)
@@ -211,7 +206,7 @@ function Tunneling:draw(area)
         for _, shot in ipairs(half.shots) do
             self:drawShot(shot)
         end
-        local shown = self.shown[index]
+        local shown = self.statusValue and self.statusValue[index] or half
         for lane, spot in ipairs({{Tunneling.wallX - 10, Tunneling.staticLane - 100}, {Tunneling.wallX - 10, Tunneling.movingLane + 110}}) do
             self:label(string.format('%s: %d through, %d stopped', Tunneling.names[lane], shown.through[lane], shown.stopped[lane]), origin + spot[1], spot[2], {size = 17})
         end

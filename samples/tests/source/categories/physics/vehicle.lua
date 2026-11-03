@@ -14,9 +14,9 @@ local Scenery = require('categories.physics.scenery')
 local Vehicle = haylen.class('Vehicle', PhysicsTest)
 
 Vehicle.code = [[
-local car = physics2d.newVehicle(world, {x = 0, y = 200, chassisWidth = 240, chassisHeight = 50, wheelRadius = 30, rearWheel = {-70, 34}, frontWheel = {70, 34}, drive = 'all'})
-car.throttle = input.value('throttle')  -- From -1 to 1.
-car.brake = input.down('brake') and 1 or 0
+local options = {x = 0, y = 200, chassisWidth = 240, chassisHeight = 50, wheelRadius = 30, drive = 'all'}
+local car = physics2d.newVehicle(world, options)  -- With rearWheel and frontWheel offsets.
+car.throttle, car.brake = input.value('throttle'), input.down('brake') and 1 or 0  -- From -1 to 1.
 road:addChain(points, false, {friction = 0.9})
 camera.limits = {-400, -1600, 9400, 2500}  -- The view never leaves the road.
 camera:follow(car.chassis.x, car.chassis.y - 150, dt)]]

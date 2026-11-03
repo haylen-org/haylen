@@ -185,7 +185,8 @@ function Stacking:update(dt)
 
     local blocks = #self.blocks
     local collapses = self.collapses == 0 and 'has not collapsed yet' or self.collapses == 1 and 'collapsed once' or string.format('collapsed %d times', self.collapses)
-    self:status(string.format('The tower stands %d units high and the best one reached %d. %d of %d blocks missed the stand, and the tower %s.', math.floor(self.height + 0.5), math.floor(self.best + 0.5), self.dropped, blocks, collapses))
+    -- The marks over the stand take the heights that the status shows, so both read the same numbers in every frame.
+    self:status(string.format('The tower stands %d units high and the best one reached %d. %d of %d blocks missed the stand, and the tower %s.', math.floor(self.height + 0.5), math.floor(self.best + 0.5), self.dropped, blocks, collapses), {self.height, self.best})
 end
 
 function Stacking:fixedUpdate(step)
@@ -248,8 +249,9 @@ function Stacking:draw(area)
     Look.drawAll(self.blocks, {layer = 1})
     self:drawCrane()
     Look.draw(self.held, {layer = 2})
-    self:drawMark(self.height, '#FF7BC74D', 'Height', -250, {1, 0.5}, false)
-    self:drawMark(self.best, '#FFFFC93C', 'Best', 250, {0, 0.5}, true)
+    local shown = self.statusValue or {self.height, self.best}
+    self:drawMark(shown[1], '#FF7BC74D', 'Height', -250, {1, 0.5}, false)
+    self:drawMark(shown[2], '#FFFFC93C', 'Best', 250, {0, 0.5}, true)
     if self.messageTime > 0 then
         self:label(self.message, 0, Stacking.baseTop - Stacking.clearance - self.lift - 90, {size = 28, plate = PhysicsTest.problemPlate, layer = 50})
     end

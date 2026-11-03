@@ -110,7 +110,7 @@ function Dominoes:build()
     for x = stairsEnd + 38, 690, 38 do
         self:stand(x, top, 0)
     end
-    self.clock, self.shown, self.running, self.finished = 0, 0, false, false
+    self.clock, self.running, self.finished = 0, false, false
 end
 
 -- Stands a domino on the ground point `x`, `y`, square to a slope of `angle`, with the pips of its two halves.
@@ -169,10 +169,7 @@ function Dominoes:update(dt)
         text = string.format('%d dominoes stand and wait for a push.', total)
     end
     -- The plate over the stage shows the time of the status that shows, so the two always read the same.
-    self:status(text)
-    if self.statusText == text then
-        self.shown = self.clock
-    end
+    self:status(text, self.clock)
 end
 
 -- The clock stops once every domino fell or everything came to rest.
@@ -230,7 +227,8 @@ function Dominoes:draw(area)
         self:drawPips(body, domino.top, -Dominoes.height / 4, cos, sin)
         self:drawPips(body, domino.bottom, Dominoes.height / 4, cos, sin)
     end
-    local text = self.finished and string.format('The chain took %.2f seconds', self.shown) or string.format('%.2f seconds', self.shown)
+    local shown = self.statusValue or 0
+    local text = self.finished and string.format('The chain took %.2f seconds', shown) or string.format('%.2f seconds', shown)
     self:label(text, 0, -110, {size = 30})
 end
 

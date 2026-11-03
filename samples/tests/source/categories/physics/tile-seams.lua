@@ -56,7 +56,6 @@ function TileSeams:enter()
     for index = 0, 3 do
         self.slabs[index + 1] = {source = {TileSeams.stoneTile[1] + index % 2 * TileSeams.slab, TileSeams.stoneTile[2] + index // 2 * TileSeams.slab, TileSeams.slab, TileSeams.slab}, width = TileSeams.tile, height = TileSeams.tile, pivotX = 0, pivotY = 0, layer = 0}
     end
-    self.shown = {{0, 0, 0}, {0, 0, 0}}
     self:build()
 end
 
@@ -167,15 +166,12 @@ function TileSeams:update(dt)
     end
     local left, right = self.halves[1], self.halves[2]
     local text = string.format('Tumbling boxes get %d%% of the way on the tiles and %d%% on the chains, upright boxes %d%% and %d%%.', TileSeams.percent(self:share(left, 1)), TileSeams.percent(self:share(right, 1)), TileSeams.percent(self:share(left, 2)), TileSeams.percent(self:share(right, 2)))
-    self:status(text)
     -- The bars take the shares that the status shows, so both read the same numbers in every frame.
-    if self.statusText == text then
-        for index, half in ipairs(self.halves) do
-            for kind = 1, 3 do
-                self.shown[index][kind] = self:share(half, kind)
-            end
-        end
+    local shares = {}
+    for index, half in ipairs(self.halves) do
+        shares[index] = {self:share(half, 1), self:share(half, 2), self:share(half, 3)}
     end
+    self:status(text, shares)
 end
 
 function TileSeams.percent(share)
@@ -204,7 +200,7 @@ function TileSeams:drawRow(half, index, kind, top)
     local width = half.right - half.left
     local y = top + tile + 34
     graphics2d.drawShape({half.left, y - 7, width, 14}, {radius = 7, color = '#B32F3352', borderWidth = 2 * unit, borderColor = '#FF15172A', layer = 30})
-    local share = self.shown[index][kind]
+    local share = self.statusValue and self.statusValue[index][kind] or 0
     if share > 0 then
         graphics2d.drawShape({half.left + 2 * unit, y - 5, math.max(10, (width - 4 * unit) * share), 10}, {radius = 5, color = '#FFFFC93C', layer = 31})
     end

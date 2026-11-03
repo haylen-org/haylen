@@ -38,7 +38,6 @@ function JointStability:enter()
     }
     self.density = 15
     self.rope = {}
-    self.shown = {0, 0, 0, 0}
     self:build()
 end
 
@@ -122,13 +121,8 @@ function JointStability:update(dt)
     end
     local cases = self.cases
     local text = string.format('The ropes stretch by %d%% and %d%%, and the chains by %d%% and %d%%, under loads of %d kilograms.', self:percent(cases[1]), self:percent(cases[3]), self:percent(cases[2]), self:percent(cases[4]), math.floor(cases[1].load.mass + 0.5))
-    self:status(text)
     -- The plates take the stretch that the status shows, so both read the same numbers in every frame.
-    if self.statusText == text then
-        for index, case in ipairs(cases) do
-            self.shown[index] = self:percent(case)
-        end
-    end
+    self:status(text, {self:percent(cases[1]), self:percent(cases[2]), self:percent(cases[3]), self:percent(cases[4])})
 end
 
 function JointStability:percent(case)
@@ -170,7 +164,7 @@ function JointStability:drawCase(case, index)
         Look.line(x - 10, tip - 12, x, tip, 4 * unit, '#FFF0473E', 3)
         Look.line(x + 10, tip - 12, x, tip, 4 * unit, '#FFF0473E', 3)
     end
-    self:label(string.format('%d%% longer', self.shown[index]), case.x, math.min(math.max(case.load.y, case.rest) + 78, JointStability.ground - 30), {size = 18, plate = sag > 6 and PhysicsTest.problemPlate or PhysicsTest.solutionPlate})
+    self:label(string.format('%d%% longer', self.statusValue and self.statusValue[index] or 0), case.x, math.min(math.max(case.load.y, case.rest) + 78, JointStability.ground - 30), {size = 18, plate = sag > 6 and PhysicsTest.problemPlate or PhysicsTest.solutionPlate})
     case.grab:draw()
 end
 

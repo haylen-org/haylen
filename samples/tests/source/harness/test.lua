@@ -230,9 +230,9 @@ function Test:toStage(x, y)
     return self.camera:screenToWorld(x, y)
 end
 
--- Shows a line of live values a few times per second, so the numbers stay readable, and always the last line given, which shows once the interval passes. After a change of a control, by the player or through `set`, the line shows at once, so it never disagrees with the control beside it. An empty line hides the status.
-function Test:status(text)
-    self.pendingStatus = text
+-- Shows a line of live values a few times per second, so the numbers stay readable, and always the last line given, which shows once the interval passes. After a change of a control, by the player or through `set`, the line shows at once, so it never disagrees with the control beside it. An empty line hides the status. The optional `value` travels with its line and becomes `statusValue` once the line shows, so plates drawn on the stage read the numbers of the line that shows.
+function Test:status(text, value)
+    self.pendingStatus, self.pendingValue = text, value
     if self.statusTime >= Test.statusInterval then
         self:showStatus()
     end
@@ -241,6 +241,7 @@ end
 function Test:showStatus()
     local text = self.pendingStatus
     self.pendingStatus = nil
+    self.statusValue = self.pendingValue
     self.statusTime = 0
     if text ~= self.statusText then
         Test.setNode(self, 'status', {text = text})

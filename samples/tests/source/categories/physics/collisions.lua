@@ -18,9 +18,8 @@ world.onContactBegin = function(a, b, contact)
     mark(contact.points, contact.normalX, contact.normalY, contact.relativeVelocityX, contact.relativeVelocityY)
     label(contact.speed, contact.force)  -- How fast they met and how hard they press.
 end
-for _, contact in ipairs(crate:contacts()) do
-    weight = weight + (contact.normalY > 0.5 and contact.force or 0)  -- Only what holds it from below.
-end]]
+-- The weight of the crate counts only the contacts that hold it from below.
+for _, contact in ipairs(crate:contacts()) do weight = weight + (contact.normalY > 0.5 and contact.force or 0) end]]
 
 -- Impacts slower than this many units per second only push, so the marks show the landings and not the settling.
 Collisions.slowest = 40

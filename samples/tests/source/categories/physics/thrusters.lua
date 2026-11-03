@@ -19,9 +19,8 @@ local upX, upY = math.sin(lander.rotation), -math.cos(lander.rotation)
 lander:applyForce(upX * force, upY * force, nozzleX, nozzleY)  -- Off center, so one thruster also turns it.
 local sensor = pad:addBox(200, 60, {offsetY = -38, sensor = true})
 local overPad = #sensor:overlaps() > 0
-world.onHit = function(a, b, contact)
-    crashed = crashed or contact.speed > 150
-end]]
+-- A landing faster than 150 units a second crashes the lander.
+world.onHit = function(a, b, contact) crashed = crashed or contact.speed > 150 end]]
 
 Thrusters.actions = {
     {name = 'leftThruster', type = 'button', bindings = {'key:a', 'key:left', 'axis:leftTrigger+', 'button:dpadLeft', 'virtual:leftThruster'}},
