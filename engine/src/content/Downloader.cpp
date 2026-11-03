@@ -486,6 +486,7 @@ void Downloader::verify(const Digest& shardId, const Digest& storedId, std::vect
     // The record is checked against the signed catalog and the index of its shard and opened on the task pool, and only then written to the store on the I/O pool.
     const std::uint64_t size = record.size();
     verifyingBytes += size;
+    found->second.verifying = true;
     // clang-format off
     jobs.post([this, &pool = jobs, owner = std::weak_ptr(alive), localStore = store, chunk = found->second.chunk, entry, keys = shard.keys, keyId = shard.index->getHeader().keyId, size, record = std::move(record)]() mutable {
         std::optional<Error> failure;
@@ -544,7 +545,7 @@ void Downloader::stored(const Digest& storedId, std::optional<Error> failure) {
         Request& request = requests.at(id);
         request.waiting.erase(storedId);
         if (request.waiting.empty()) {
-            complete(id, std::nullopt);
+            complete(id, request.failure);
         }
     }
 }
@@ -563,8 +564,39 @@ void Downloader::fail(const Digest& storedId, const Error& error) {
     const std::vector<std::uint64_t> waiting = std::move(found->second.requests);
     wanted.erase(found);
     for (const std::uint64_t id : waiting) {
-        complete(id, failure);
+        fail(id, storedId, failure);
     }
+}
+
+// A request that failed stops waiting for the records that did not arrive, and reports its failure once the records that arrived are checked and on the device, so an attempt after it never downloads them again.
+void Downloader::fail(std::uint64_t id, const Digest& storedId, const Error& error) {
+    const auto found = requests.find(id);
+    if (found == requests.end()) {
+        return;
+    }
+    Request& request = found->second;
+    request.waiting.erase(storedId);
+    if (!request.failure) {
+        request.failure = error;
+    }
+
+    // clang-format off
+    std::erase_if(request.waiting, [this, id](const Digest& waited) {
+        const auto record = wanted.find(waited);
+        if (record != wanted.end() && record->second.verifying) {
+            return false;
+        }
+        if (record != wanted.end()) {
+            std::erase(record->second.requests, id);
+        }
+        return true;
+    });
+    // clang-format on
+    if (request.waiting.empty()) {
+        complete(id, request.failure);
+        return;
+    }
+    dropUnwanted();
 }
 
 void Downloader::cancel(std::uint64_t request) {
