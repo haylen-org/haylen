@@ -9,17 +9,21 @@
 #include "haylen/input/GamepadAxis.hpp"
 #include "haylen/input/GamepadButton.hpp"
 #include "haylen/input/Key.hpp"
+#include "haylen/input/MotionSensor.hpp"
 #include "haylen/input/MouseButton.hpp"
 
 namespace haylen::input {
 
-// The keys, mouse buttons, gamepad buttons and gamepad axes that input tracks, with the names bindings and Lua use for them, such as `leftShift`, `middle`, `south` and `leftX`.
+// The keys, mouse buttons, gamepad buttons, gamepad axes and motion sensors that input tracks, with the names bindings and Lua use for them, such as `leftShift`, `middle`, `south`, `leftX` and `gyroscope`.
 class Controls final {
   public:
     static constexpr std::size_t kKeyCount = 349;
     static constexpr std::size_t kMouseButtonCount = 3;
     static constexpr std::size_t kGamepadButtonCount = 15;
     static constexpr std::size_t kGamepadAxisCount = 6;
+    static constexpr std::size_t kMotionSensorCount = 3;
+    // The fingers that the touchpads of one gamepad report at once, across all its touchpads.
+    static constexpr std::size_t kTouchpadFingerCount = 4;
 
     [[nodiscard]] static std::optional<Key> keyFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view keyName(Key key) noexcept;
@@ -29,12 +33,15 @@ class Controls final {
     [[nodiscard]] static std::string_view gamepadButtonName(GamepadButton button) noexcept;
     [[nodiscard]] static std::optional<GamepadAxis> gamepadAxisFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view gamepadAxisName(GamepadAxis axis) noexcept;
+    [[nodiscard]] static std::optional<MotionSensor> motionSensorFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view motionSensorName(MotionSensor sensor) noexcept;
 
   private:
     static const std::array<std::pair<std::string_view, Key>, 120> kKeyNames;
     static const std::array<std::string_view, kMouseButtonCount> kMouseButtonNames;
     static const std::array<std::string_view, kGamepadButtonCount> kGamepadButtonNames;
     static const std::array<std::string_view, kGamepadAxisCount> kGamepadAxisNames;
+    static const std::array<std::string_view, kMotionSensorCount> kMotionSensorNames;
 
     template <typename Enum, std::size_t Size> [[nodiscard]] static std::optional<Enum> findIndexed(const std::array<std::string_view, Size>& names, std::string_view name) noexcept;
 };

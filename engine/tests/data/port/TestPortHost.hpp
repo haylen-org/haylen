@@ -13,7 +13,7 @@ namespace haylen::platform {
 
 class TestPortRuntime;
 
-// The host of the test port, whose window has a fixed size and no cursor, clipboard or controllers, and whose GPU device the runtime makes.
+// The host of the test port, whose window has a fixed size and no cursor, clipboard, controllers or motion sensors, and whose GPU device the runtime makes.
 class TestPortHost final : public NativeHost {
   public:
     explicit TestPortHost(TestPortRuntime& owner) noexcept : runtime(owner) {}
@@ -36,6 +36,11 @@ class TestPortHost final : public NativeHost {
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
+    [[nodiscard]] input::MotionSensors::Support getMotionSupport() override;
+    void authorizeMotion(std::function<void(Permission::Answer answer)> callback) override;
+    void setMotion(input::MotionSensors::Sensors sensors, float rate) override;
+    void readMotion(input::MotionState& state) override;
+    void setGamepadMotion(input::MotionSensors::Sensors sensors) override;
 
   protected:
     void requestWindowClose() override;

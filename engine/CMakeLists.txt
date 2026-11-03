@@ -402,6 +402,8 @@ set(HAYLEN_ENGINE_SOURCES
   src/input/InputPlayback.cpp
   src/input/InputRecording.cpp
   src/input/InputRecordingLua.cpp
+  src/input/MotionSensors.cpp
+  src/input/MotionSensorsLua.cpp
   src/input/PointerEmulation.cpp
   src/input/VirtualInput.cpp
   src/io/CompositePackage.cpp
@@ -819,6 +821,7 @@ add_library(haylen-platform STATIC
   src/platform/linux/LinuxFilePattern.cpp
   src/platform/linux/LinuxSystemReader.cpp
   src/platform/MemoryWarning.cpp
+  src/platform/MotionFrame.cpp
   src/platform/ReportedState.cpp
   src/platform/SupportedOrientations.cpp
   src/platform/SurfaceCheck.cpp
@@ -895,16 +898,16 @@ elseif(APPLE)
   )
   # UIKit apps read their controllers through GameController, while SDL reads the controllers of macOS.
   if(NOT HAYLEN_PLATFORM STREQUAL "macos")
-    list(APPEND HAYLEN_APPLE_SOURCES src/platform/apple/AppleGamepads.mm src/platform/apple/AppleRemote.mm)
+    list(APPEND HAYLEN_APPLE_SOURCES src/platform/apple/AppleGamepads.mm src/platform/apple/AppleMotion.mm src/platform/apple/AppleRemote.mm)
   endif()
   list(APPEND HAYLEN_RUNTIME_SOURCES ${HAYLEN_APPLE_SOURCES})
   set_source_files_properties(${HAYLEN_APPLE_SOURCES} PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
 elseif(WIN32)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsVideoDecoder.cpp)
 elseif(ANDROID)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidDisplays.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidDisplays.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMotion.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebDisplays.cpp src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebDisplays.cpp src/platform/web/WebMotion.cpp src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
 else()
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()
@@ -921,6 +924,10 @@ if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
     set_source_files_properties(src/platform/sdl/Host.cpp PROPERTIES LANGUAGE OBJCXX COMPILE_OPTIONS "-fobjc-arc")
   else()
     list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Gamepads.cpp)
+  endif()
+  # Computers read their motion sensors through SDL, while phones, tablets, TVs and browsers read them in their platform folders.
+  if(HAYLEN_PLATFORM MATCHES "^(windows|macos|linux)$")
+    list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Sensors.cpp)
   endif()
   if(APPLE)
     set(HAYLEN_SDL_APPLE_SOURCES src/platform/sdl/apple/AppleApplication.mm src/platform/sdl/apple/HaylenAppDelegate.mm src/platform/sdl/apple/HaylenRootViewController.mm src/platform/sdl/apple/HaylenSceneDelegate.mm)

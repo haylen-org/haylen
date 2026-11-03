@@ -10,6 +10,7 @@
 #include <SDL3/SDL_gamepad.h>
 
 #include "haylen/input/GamepadState.hpp"
+#include "haylen/input/MotionSensors.hpp"
 #include "platform/GamepadSlots.hpp"
 
 namespace haylen::platform::sdl {
@@ -29,6 +30,9 @@ class Gamepads final {
 
     // Runs the motors of the controller in the slot for the seconds, or stops them at zero intensities.
     void rumble(std::size_t slot, float low, float high, float seconds) const;
+
+    // Runs the accelerometer and the gyroscope in the set on every controller that has them, and on those that connect later, or stops them.
+    void setMotion(input::MotionSensors::Sensors sensors);
 
     [[nodiscard]] static input::GamepadLabels getLabels(SDL_GamepadButtonLabel south) noexcept;
 
@@ -56,13 +60,22 @@ class Gamepads final {
         {SDL_GAMEPAD_BUTTON_DPAD_RIGHT, input::GamepadButton::DpadRight},
     }};
 
+    static constexpr std::array<std::pair<input::MotionSensor, SDL_SensorType>, 2> kSensors{{
+        {input::MotionSensor::Accelerometer, SDL_SENSOR_ACCEL},
+        {input::MotionSensor::Gyroscope, SDL_SENSOR_GYRO},
+    }};
+
     [[nodiscard]] SDL_Gamepad* find(const void* identity) const noexcept;
+    void applyMotion(SDL_Gamepad* pad) const;
     static void read(SDL_Gamepad* pad, input::GamepadState& state);
+    static void readMotion(SDL_Gamepad* pad, input::GamepadState& state);
+    static void readTouchpads(SDL_Gamepad* pad, input::GamepadState& state);
 
     // The open controllers in the order they connected, and the list of their identities, which keeps its memory from frame to frame.
     std::vector<SDL_Gamepad*> opened;
     std::vector<const void*> connected;
     GamepadSlots slots;
+    input::MotionSensors::Sensors motion;
 };
 
 } // namespace haylen::platform::sdl

@@ -15,6 +15,8 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/input/GamepadState.hpp"
+#include "haylen/input/MotionSensors.hpp"
+#include "haylen/input/MotionState.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/AccessibilitySettings.hpp"
@@ -67,6 +69,21 @@ class Host : public Window {
     [[nodiscard]] virtual float getStatusBarHeight() const = 0;
 
     virtual void pollGamepads(std::span<input::GamepadState> gamepads) = 0;
+
+    // The motion sensors that the device has, which the engine reads before it starts any of them.
+    [[nodiscard]] virtual input::MotionSensors::Support getMotionSupport() = 0;
+
+    // Checks what the project of the app needs for the motion sensors of the device and asks the person for them with the prompt of the system, where the platform gates them. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with `granted` or `unknown` when the sensors may run, `denied` when the person refused them, the requirements the project lacks, or a sentence for a request the platform did not take.
+    virtual void authorizeMotion(std::function<void(Permission::Answer answer)> callback) = 0;
+
+    // Runs the motion sensors of the device in the set at the readings per second, which the platform keeps within what its hardware delivers, or stops every one of them with an empty set.
+    virtual void setMotion(input::MotionSensors::Sensors sensors, float rate) = 0;
+
+    // Copies the newest readings of the sensors that run into the state, in the axes of the screen as the app shows it, with the sensors that delivered a reading since they started.
+    virtual void readMotion(input::MotionState& state) = 0;
+
+    // Runs the motion sensors in the set on every gamepad that has them, also on those that connect later, or stops them with an empty set. Their readings arrive with the gamepads.
+    virtual void setGamepadMotion(input::MotionSensors::Sensors sensors) = 0;
 
     // Puts the text on the clipboard of the system and calls back with whether it got there. Browsers write the clipboard of a page asynchronously and refuse a page without a recent input of the person or outside a secure context, so their answer comes later and may be a refusal, while the other platforms answer during the call.
     virtual void setClipboard(std::string_view value, std::function<void(bool written)> callback) = 0;

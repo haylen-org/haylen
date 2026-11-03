@@ -13,6 +13,13 @@
 
 #include "platform/NativeHost.hpp"
 
+#if defined(__APPLE__)
+#include <TargetConditionals.h>
+#endif
+#if !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || TARGET_OS_OSX)
+#include "platform/sdl/Sensors.hpp"
+#endif
+
 namespace haylen::platform::sdl {
 
 class Runtime;
@@ -41,6 +48,11 @@ class Host final : public platform::NativeHost {
     void closeWindow() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
+    [[nodiscard]] input::MotionSensors::Support getMotionSupport() override;
+    void authorizeMotion(std::function<void(Permission::Answer answer)> callback) override;
+    void setMotion(input::MotionSensors::Sensors sensors, float rate) override;
+    void readMotion(input::MotionState& state) override;
+    void setGamepadMotion(input::MotionSensors::Sensors sensors) override;
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
@@ -61,6 +73,9 @@ class Host final : public platform::NativeHost {
 
     // The cursors of the system, which SDL makes the first time the app shows each one.
     std::array<SDL_Cursor*, kCursorCount> cursors{};
+#if !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || TARGET_OS_OSX)
+    Sensors sensors;
+#endif
 };
 
 } // namespace haylen::platform::sdl

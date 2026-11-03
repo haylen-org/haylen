@@ -82,6 +82,7 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
         });
     // clang-format on
     current.system = std::make_unique<platform::System>(host, current.events, current.graphics->getAdapterName());
+    current.motion = std::make_unique<input::MotionSensors>(host);
     current.displays = std::make_unique<platform::Displays>(host, current.events);
     current.outputs = std::make_unique<platform::Outputs>(host, *current.displays, *current.graphics, current.events);
     current.mediaSession = std::make_unique<platform::MediaSession>(host, current.events);
@@ -143,12 +144,15 @@ Engine::~Engine() {
     current.accessibility.reset();
     current.system->stopRumbles();
     current.system.reset();
+    current.motion->clear();
     current.outputs.reset();
     current.displays.reset();
     current.mediaSession.reset();
     current.runtime->stop();
     current.jobs->discardQueued();
     current.runtime.reset();
+    // The motion sensors outlive the Lua state, whose owners still end their requests while it closes.
+    current.motion.reset();
     current.audio.reset();
     current.plugins.clear();
     current.assets.reset();
@@ -287,6 +291,7 @@ void Engine::frame(double frameSeconds) {
     const bool halted = isHalted();
     const bool hidden = current.appState == AppState::Background;
     remapViewport();
+    current.motion->update(!hidden, current.input);
     current.host.pollGamepads(current.gamepads);
     current.input.updateGamepads(current.gamepads);
     current.actions.update(current.input, current.virtualInput, halted || current.scenes->isInputBlocked());
@@ -326,6 +331,7 @@ void Engine::frame(double frameSeconds) {
             const debug::ProfileScope scope(profiler, "scripts");
             current.platform->pump();
             current.system->pump();
+            current.motion->pump();
             current.displays->pump();
             current.mediaSession->pump();
             current.accessibility->pump();
@@ -1204,6 +1210,10 @@ assets::Manager& Engine::getAssets() noexcept {
 
 platform::Bridge& Engine::getPlatform() noexcept {
     return *state->platform;
+}
+
+input::MotionSensors& Engine::getMotionSensors() noexcept {
+    return *state->motion;
 }
 
 platform::System& Engine::getSystem() noexcept {

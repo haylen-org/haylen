@@ -1,6 +1,6 @@
 # 🎮 Input
 
-This guide explains how a Haylen app reads its players. It covers the action map that gameplay reads and the timing of presses. It covers every device the engine supports: keyboards, mice, touch screens, gamepads and TV remotes. It also covers on-screen controls, how the game and the UI share the same devices, local multiplayer, command buffers and recorded replays. Read it before you write the controls of a game or a screen that players drive with a gamepad or a remote. The [`haylen.input` reference](../lua-api/input.md) lists every function, binding, event and error.
+This guide explains how a Haylen app reads its players. It covers the action map that gameplay reads and the timing of presses. It covers every device the engine supports: keyboards, mice, touch screens, gamepads, TV remotes and motion sensors. It also covers on-screen controls, how the game and the UI share the same devices, local multiplayer, command buffers and recorded replays. Read it before you write the controls of a game or a screen that players drive with a gamepad or a remote. The [`haylen.input` reference](../lua-api/input.md) lists every function, binding, event and error.
 
 ## Two levels of input
 
@@ -390,6 +390,48 @@ scene.push({
     end,
 })
 ```
+
+### Motion sensors
+
+Phones, tablets and some gamepads carry motion sensors. The accelerometer measures the push that holds the device up, which tells which way gravity pulls, plus every shake. The gyroscope measures how fast the device turns. The attitude is the orientation of the device that the system fuses from both. Games read them to roll a ball by tilting the phone, to steer by leaning the device and to aim with small turns of the hands.
+
+The sensors spend battery, so they stay off until the app starts them with `input.startMotion`. The call is asynchronous on every platform, because iOS from version 27.2 and Safari ask the person first, and it fails with a code and a sentence where the device has no such sensor, such as a computer, a TV or a simulator. A running request belongs to its owner, so the sensors stop with the scene that started them. They also stop while the app is in the background and start again when it comes back, without code of the app.
+
+- The readings follow the screen as the app shows it, so they turn with the screen when the app turns to landscape. On a gamepad they follow its face as it lies flat in the hands.
+- The function `input.tilt()` turns the gravity that the accelerometer measures into a vector up to `1` that follows design space like a stick. A ball accelerates by that vector times gravity, so it rolls toward the edge that goes down.
+- A device that lies flat face up is level. A game played with the phone in the hands calls `input.calibrateTilt()`, such as when a round starts, so the way the player holds the phone becomes level.
+- The bindings `tilt:x+`, `tilt:x-`, `tilt:y+`, `tilt:y-` and `stick:tilt` put the tilt in the action map next to keys and sticks, so gameplay reads one action whatever device the player holds. The option `motion` of an action map decides whether it reads the device, and its gamepads are the ones whose tilt it reads.
+- With the option `gamepads`, a request also runs the sensors of the gamepads that have them, such as the Siri Remote of the Apple TV and the DualSense, DualShock 4 and Switch Pro controllers, which `input.gamepadAcceleration`, `input.gamepadRotationRate` and `input.gamepadTilt` read. The function `input.gamepadTouches` reads the fingers on the touchpads of controllers.
+
+```lua
+local async = require('async')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+input.loadActions({actions = {
+    {name = 'roll', type = 'vector', left = {'key:left'}, right = {'key:right'}, up = {'key:up'}, down = {'key:down'}, bindings = {'stick:left', 'stick:tilt'}},
+}})
+
+scene.push({
+    enter = function(self)
+        self.x, self.y, self.speedX, self.speedY = 0, 0, 0, 0
+        async.spawn(function()
+            local _, failure = input.startMotion({sensors = {'accelerometer'}, gamepads = true, owner = self}):await()
+            self.reason = failure and failure.message
+            input.calibrateTilt()
+        end)
+    end,
+    update = function(self, dt)
+        local x, y = input.vector('roll')
+        self.speedX = self.speedX + x * 900 * dt
+        self.speedY = self.speedY + y * 900 * dt
+        self.x = self.x + self.speedX * dt
+        self.y = self.y + self.speedY * dt
+    end,
+})
+```
+
+The arrow keys and the stick steer the same ball where the device has no sensors, which is how the desktop player tries a tilt game. The [reference](../lua-api/input.md#motion-sensors) lists the axes and units of every reading and what each platform reads and asks.
 
 ### Platform events
 

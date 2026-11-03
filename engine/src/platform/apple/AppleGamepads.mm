@@ -32,6 +32,7 @@ namespace haylen::platform {
 
 GamepadSlots AppleGamepads::slots;
 std::vector<const void*> AppleGamepads::connected;
+input::MotionSensors::Sensors AppleGamepads::motion;
 char AppleGamepads::engineKey = 0;
 char AppleGamepads::playerKey = 0;
 
@@ -57,6 +58,8 @@ void AppleGamepads::poll(std::span<input::GamepadState> states) {
         state.connected = true;
         NSString* vendor = controller.vendorName;
         state.name = vendor != nil ? vendor.UTF8String : "Controller";
+        readMotion(controller, state);
+        readTouchpads(controller, state);
         if (controller.extendedGamepad == nil) {
             state.buttons = {};
             state.axes = {};
@@ -121,6 +124,69 @@ void AppleGamepads::rumble(std::size_t slot, float low, float high, float second
     id<HaylenHapticPlayer> player = [engine createPlayerWithPattern:pattern error:nil];
     if ([player startAtTime:0 error:nil]) {
         objc_setAssociatedObject(controller, &playerKey, player, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    }
+}
+
+void AppleGamepads::setMotion(input::MotionSensors::Sensors sensors) {
+    motion = sensors;
+}
+
+// GameController measures the pull of gravity in units of gravity on the axes of the controller, while the engine reads the push that holds it up in meters per second squared. A controller whose sensors wait for the app runs them only while the app asks, and the Siri Remote runs its own.
+void AppleGamepads::readMotion(GCController* controller, input::GamepadState& state) {
+    state.motionSensors.reset();
+    state.motion = {};
+    GCMotion* sensors = controller.motion;
+    if (sensors == nil) {
+        return;
+    }
+    state.motionSensors.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
+    state.motionSensors.set(static_cast<std::size_t>(input::MotionSensor::Gyroscope), sensors.hasRotationRate);
+    state.motionSensors.set(static_cast<std::size_t>(input::MotionSensor::Attitude), sensors.hasAttitude);
+    const bool wanted = motion.any();
+    if (sensors.sensorsRequireManualActivation && sensors.sensorsActive != wanted) {
+        sensors.sensorsActive = wanted;
+    }
+    if (!wanted || (sensors.sensorsRequireManualActivation && !sensors.sensorsActive)) {
+        return;
+    }
+
+    const auto take = [&state](input::MotionSensor sensor) { return state.motionSensors.test(static_cast<std::size_t>(sensor)) && motion.test(static_cast<std::size_t>(sensor)); };
+    if (take(input::MotionSensor::Accelerometer)) {
+        const GCAcceleration value = sensors.acceleration;
+        state.motion.acceleration = {static_cast<float>(-value.x * kStandardGravity), static_cast<float>(-value.y * kStandardGravity), static_cast<float>(-value.z * kStandardGravity)};
+        state.motion.sensors.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
+    }
+    if (take(input::MotionSensor::Gyroscope)) {
+        const GCRotationRate value = sensors.rotationRate;
+        state.motion.rotationRate = {static_cast<float>(value.x), static_cast<float>(value.y), static_cast<float>(value.z)};
+        state.motion.sensors.set(static_cast<std::size_t>(input::MotionSensor::Gyroscope));
+    }
+    if (take(input::MotionSensor::Attitude)) {
+        const GCQuaternion value = sensors.attitude;
+        state.motion.attitude = {static_cast<float>(value.x), static_cast<float>(value.y), static_cast<float>(value.z), static_cast<float>(value.w)};
+        state.motion.sensors.set(static_cast<std::size_t>(input::MotionSensor::Attitude));
+    }
+}
+
+// The touchpads of the profile of a controller tell whether a finger touches them, and their surface runs from -1 to 1 with up positive, while the engine reads them from 0 to 1 from the top left corner. The touchpad of the Siri Remote is its stick instead.
+void AppleGamepads::readTouchpads(GCController* controller, input::GamepadState& state) {
+    state.touchpad = {};
+    if (controller.extendedGamepad == nil) {
+        return;
+    }
+    // The profile keeps its touchpads by name in no lasting order, so the names in order give every touchpad its slot.
+    NSDictionary<NSString*, GCControllerTouchpad*>* touchpads = controller.physicalInputProfile.touchpads;
+    std::size_t slot = 0;
+    for (NSString* name in [touchpads.allKeys sortedArrayUsingSelector:@selector(compare:)]) {
+        if (slot == state.touchpad.size()) {
+            return;
+        }
+        GCControllerTouchpad* touchpad = touchpads[name];
+        input::TouchpadFinger& finger = state.touchpad[slot];
+        finger.touchpad = static_cast<std::uint8_t>(slot++);
+        finger.down = touchpad.touchState != GCTouchStateUp;
+        finger.position = {(touchpad.touchSurface.xAxis.value + 1.0F) / 2.0F, (1.0F - touchpad.touchSurface.yAxis.value) / 2.0F};
+        finger.pressure = finger.down ? 1.0F : 0.0F;
     }
 }
 

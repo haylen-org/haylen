@@ -133,6 +133,7 @@ set(HAYLEN_TEST_SOURCES
   input/GestureTests.cpp
   input/InputRecordingTests.cpp
   input/InputTests.cpp
+  input/MotionSensorsTests.cpp
   input/PointerEmulationTests.cpp
   io/IoTests.cpp
   localization/FormatTests.cpp
@@ -180,6 +181,7 @@ set(HAYLEN_TEST_SOURCES
   platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp
   platform/MediaSessionTests.cpp
+  platform/MotionFrameTests.cpp
   platform/NativeLuaTests.cpp
   platform/NativeTests.cpp
   platform/NativeViewsTests.cpp

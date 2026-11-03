@@ -1280,6 +1280,81 @@ Module.haylen = Module.haylen || {};
         notify("onStats", stats);
     };
 
+    // The motion of the device from the motion and orientation events of the page, which the runtime listens to only while the engine runs its sensors. Safari asks the person first, only during a tap or a click, and until the page loads again, while the other browsers ask nothing. The values hold the acceleration with gravity, the rotation rate as alpha, beta and gamma in degrees per second, and the angles alpha, beta and gamma of the attitude.
+    haylen.motion = (function () {
+        const values = new Float32Array(9);
+        const gated = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function";
+        let permission = gated ? 1 : 0;
+        let listening = 0;
+        let delivered = 0;
+        const onMotion = (event) => {
+            const acceleration = event.accelerationIncludingGravity;
+            if (acceleration && acceleration.x !== null && acceleration.y !== null && acceleration.z !== null) {
+                values.set([acceleration.x, acceleration.y, acceleration.z], 0);
+                delivered |= 1;
+            }
+            const rate = event.rotationRate;
+            if (rate && rate.alpha !== null && rate.beta !== null && rate.gamma !== null) {
+                values.set([rate.alpha, rate.beta, rate.gamma], 3);
+                delivered |= 2;
+            }
+        };
+        const onOrientation = (event) => {
+            if (event.alpha !== null && event.beta !== null && event.gamma !== null) {
+                values.set([event.alpha, event.beta, event.gamma], 6);
+                delivered |= 4;
+            }
+        };
+        // The angle of the screen grows as the device turns counterclockwise, which older Safari reports as `window.orientation`, with -90 for a clockwise turn.
+        const quarterTurns = () => {
+            const angle = screen.orientation ? screen.orientation.angle : Number(window.orientation) || 0;
+            return ((Math.round(angle / 90) % 4) + 4) % 4;
+        };
+        return {
+            // Answers the sensors whose events the browser has, and 8 outside a secure context, where browsers fire none.
+            support: () => {
+                if (!window.isSecureContext) {
+                    return 8;
+                }
+                return (typeof DeviceMotionEvent !== "undefined" ? 3 : 0) | (typeof DeviceOrientationEvent !== "undefined" ? 4 : 0);
+            },
+            // Answers 0 when the page may read the sensors, 1 before Safari asked in this visit and 2 after the person refused.
+            permission: () => permission,
+            // Answers 0 when the person allowed the sensors, 1 when they refused, 2 outside a tap or a click, and 3 when the browser failed to ask.
+            request: (id) => {
+                const answer = (result) => queueMicrotask(() => Module._haylen_web_motion_answered(id, result));
+                if (!gated || permission === 0) {
+                    answer(0);
+                    return;
+                }
+                DeviceMotionEvent.requestPermission().then(
+                    (state) => {
+                        permission = state === "granted" ? 0 : 2;
+                        answer(permission === 0 ? 0 : 1);
+                    },
+                    (error) => answer(error && error.name === "NotAllowedError" ? 2 : 3),
+                );
+            },
+            set: (sensors) => {
+                const motion = (sensors & 3) !== 0;
+                const orientation = (sensors & 4) !== 0;
+                if (motion !== ((listening & 3) !== 0)) {
+                    (motion ? window.addEventListener : window.removeEventListener).call(window, "devicemotion", onMotion);
+                }
+                if (orientation !== ((listening & 4) !== 0)) {
+                    (orientation ? window.addEventListener : window.removeEventListener).call(window, "deviceorientation", onOrientation);
+                }
+                listening = sensors;
+                delivered &= sensors;
+            },
+            // Writes the newest values and answers the sensors that delivered them, with the quarter turns of the screen above the lowest byte.
+            read: (pointer) => {
+                Module.HEAPF32.set(values, pointer >> 2);
+                return (delivered & listening) | (quarterTurns() << 8);
+            },
+        };
+    })();
+
     haylen.canvasSelector = function () {
         if (!(Module.canvas instanceof HTMLCanvasElement) || !Module.canvas.id) {
             throw new Error("The property \"Module.canvas\" must be a canvas element with an id.");

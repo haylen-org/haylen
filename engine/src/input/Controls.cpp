@@ -16,6 +16,8 @@ const std::array<std::string_view, Controls::kGamepadAxisCount> Controls::kGamep
     "leftX", "leftY", "rightX", "rightY", "leftTrigger", "rightTrigger",
 };
 
+const std::array<std::string_view, Controls::kMotionSensorCount> Controls::kMotionSensorNames = {"accelerometer", "gyroscope", "attitude"};
+
 template <typename Enum, std::size_t Size> std::optional<Enum> Controls::findIndexed(const std::array<std::string_view, Size>& names, std::string_view name) noexcept {
     for (std::size_t index = 0; index < names.size(); ++index) {
         if (names[index] == name) {
@@ -65,6 +67,14 @@ std::optional<GamepadAxis> Controls::gamepadAxisFromName(std::string_view name) 
 
 std::string_view Controls::gamepadAxisName(GamepadAxis axis) noexcept {
     return kGamepadAxisNames[static_cast<std::size_t>(axis)];
+}
+
+std::optional<MotionSensor> Controls::motionSensorFromName(std::string_view name) noexcept {
+    return findIndexed<MotionSensor>(kMotionSensorNames, name);
+}
+
+std::string_view Controls::motionSensorName(MotionSensor sensor) noexcept {
+    return kMotionSensorNames[static_cast<std::size_t>(sensor)];
 }
 
 } // namespace haylen::input

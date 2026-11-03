@@ -33,6 +33,7 @@
     static boolean setClipboard(byte[]);
     static byte[] clipboard();
     static byte[] networkRequirement();
+    static byte[] packageName();
     static byte[] developmentServer();
 }
 

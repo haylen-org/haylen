@@ -11,6 +11,7 @@
 #include "haylen/input/GamepadState.hpp"
 #include "haylen/input/InputDevice.hpp"
 #include "haylen/input/KeyModifiers.hpp"
+#include "haylen/input/MotionState.hpp"
 #include "haylen/input/Touch.hpp"
 #include "haylen/math/Vec2.hpp"
 
@@ -33,6 +34,9 @@ class Input final {
 
     void handleEvent(const platform::Event& event, const graphics::Viewport& viewport);
     void updateGamepads(std::span<const GamepadState> states);
+    void updateMotion(const MotionState& state) noexcept {
+        motion = state;
+    }
     void updateTouchDurations(float deltaSeconds) noexcept;
     void endFrame();
 
@@ -95,6 +99,21 @@ class Input final {
     [[nodiscard]] float getGamepadAxis(std::size_t index, GamepadAxis axis) const noexcept;
     [[nodiscard]] math::Vec2 getGamepadStick(std::size_t index, bool rightStick) const noexcept;
 
+    // The readings of the motion sensors of the device that run.
+    [[nodiscard]] const MotionState& getMotion() const noexcept {
+        return motion;
+    }
+
+    // How far the device leans from level, read from the gravity that its accelerometer measures, as a vector up to 1 that follows design space like a stick: x grows as the right edge of the screen goes down and y as the bottom edge goes down, so a ball that rolls with it moves by the vector times gravity. It is zero while the accelerometer of the device does not run.
+    [[nodiscard]] math::Vec2 getTilt() const noexcept;
+
+    // The same tilt for a gamepad, from its face lying flat, while its accelerometer runs.
+    [[nodiscard]] math::Vec2 getGamepadTilt(std::size_t index) const noexcept;
+
+    // Takes the way the device leans now as level, so the tilt is zero while the person keeps holding it that way, and returns false without a reading of the accelerometer. A device that lies flat face up is level until the first calibration and again after `resetTilt`.
+    bool calibrateTilt() noexcept;
+    void resetTilt() noexcept;
+
     // Takes a dead zone from 0 to below 1 and throws `std::invalid_argument` for any other value.
     void setGamepadDeadzone(float value);
     [[nodiscard]] float getGamepadDeadzone() const noexcept {
@@ -117,6 +136,9 @@ class Input final {
     [[nodiscard]] static std::size_t buttonIndex(MouseButton button) noexcept;
     [[nodiscard]] static float applyDeadzone(float value, float threshold) noexcept;
 
+    // Turns the gravity of an acceleration so that the level direction points out of the screen, and reads how far it leans from there.
+    [[nodiscard]] static math::Vec2 measureTilt(const std::array<float, 3>& acceleration, const std::array<float, 3>& level) noexcept;
+
     void handleTouches(const platform::Event& event, const graphics::Viewport& viewport);
     [[nodiscard]] bool hasGamepadPress(std::size_t index) const noexcept;
 
@@ -130,6 +152,8 @@ class Input final {
     std::vector<Touch> touches;
     std::array<GamepadState, kMaxGamepads> gamepads{};
     std::array<GamepadState, kMaxGamepads> previousGamepads{};
+    MotionState motion;
+    std::array<float, 3> tiltLevel{0.0F, 0.0F, 1.0F};
     KeyModifiers modifiers{};
     math::Vec2 mousePosition{};
     math::Vec2 mouseFramebufferPosition{};

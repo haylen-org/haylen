@@ -31,7 +31,8 @@ class GamepadsTest : public ::testing::Test {
         SDL_QuitSubSystem(SDL_INIT_GAMEPAD);
     }
 
-    SDL_Joystick* attach(const char* name, Uint16 vendor, Uint16 product, Motors* motors = nullptr) {
+    // A controller with the motion sensors and the touchpad of the controllers that have them, whose sensors stay off until the app runs them.
+    SDL_Joystick* attach(const char* name, Uint16 vendor, Uint16 product, Motors* motors = nullptr, bool sensors = false) {
         SDL_VirtualJoystickDesc desc;
         SDL_INIT_INTERFACE(&desc);
         desc.type = SDL_JOYSTICK_TYPE_GAMEPAD;
@@ -42,6 +43,13 @@ class GamepadsTest : public ::testing::Test {
         desc.name = name;
         desc.userdata = motors;
         desc.Rumble = &GamepadsTest::rumble;
+        if (sensors) {
+            desc.nsensors = static_cast<Uint16>(kSensors.size());
+            desc.sensors = kSensors.data();
+            desc.ntouchpads = 1;
+            desc.touchpads = &kTouchpad;
+            desc.SetSensorsEnabled = &GamepadsTest::enableSensors;
+        }
         SDL_Joystick* joystick = SDL_OpenJoystick(SDL_AttachVirtualJoystick(&desc));
         joysticks.push_back(joystick);
         return joystick;
@@ -62,12 +70,19 @@ class GamepadsTest : public ::testing::Test {
         gamepads.poll(states);
     }
 
+    static bool SDLCALL enableSensors(void*, bool) {
+        return true;
+    }
+
     static bool SDLCALL rumble(void* userdata, Uint16 low, Uint16 high) {
         auto* motors = static_cast<Motors*>(userdata);
         motors->low = low;
         motors->high = high;
         return true;
     }
+
+    static constexpr std::array<SDL_VirtualJoystickSensorDesc, 2> kSensors{{{SDL_SENSOR_ACCEL, 250.0F}, {SDL_SENSOR_GYRO, 250.0F}}};
+    static constexpr SDL_VirtualJoystickTouchpadDesc kTouchpad{.nfingers = 2};
 
     Gamepads gamepads;
     std::array<input::GamepadState, input::Input::kMaxGamepads> states{};
@@ -134,6 +149,40 @@ TEST_F(GamepadsTest, RumblesTheMotorsOfTheControllerInTheSlot) {
     // A slot without a controller rumbles nothing.
     gamepads.rumble(3, 1.0F, 1.0F, 1.0F);
     EXPECT_EQ(motors.low, 0);
+}
+
+// The sensors of a controller stay off until the app runs them, read with y out of the face of the controller as z of a face that lies flat, and the fingers on its touchpad go with the controller.
+TEST_F(GamepadsTest, ReadsTheSensorsAndTheTouchpadOfAControllerThatHasThem) {
+    SDL_Joystick* joystick = attach("Motion Controller", 0x054C, 0x0CE6, nullptr, true);
+    pump();
+    const std::array<float, 3> gravity{0.5F, 9.8F, -1.0F};
+    SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 1, gravity.data(), static_cast<int>(gravity.size()));
+    pump();
+    EXPECT_TRUE(states[0].motionSensors.test(static_cast<std::size_t>(input::MotionSensor::Accelerometer)));
+    EXPECT_TRUE(states[0].motionSensors.test(static_cast<std::size_t>(input::MotionSensor::Gyroscope)));
+    EXPECT_FALSE(states[0].motionSensors.test(static_cast<std::size_t>(input::MotionSensor::Attitude)));
+    EXPECT_TRUE(states[0].motion.sensors.none());
+
+    input::MotionSensors::Sensors wanted;
+    wanted.set(static_cast<std::size_t>(input::MotionSensor::Accelerometer));
+    gamepads.setMotion(wanted);
+    SDL_SendJoystickVirtualSensorData(joystick, SDL_SENSOR_ACCEL, 2, gravity.data(), static_cast<int>(gravity.size()));
+    SDL_SetJoystickVirtualTouchpad(joystick, 0, 1, true, 0.25F, 0.75F, 0.5F);
+    pump();
+    EXPECT_EQ(states[0].motion.sensors, wanted);
+    EXPECT_EQ(states[0].motion.acceleration, (std::array<float, 3>{0.5F, 1.0F, 9.8F}));
+    EXPECT_FALSE(states[0].touchpad[0].down);
+    EXPECT_TRUE(states[0].touchpad[1].down);
+    EXPECT_FLOAT_EQ(states[0].touchpad[1].position.x, 0.25F);
+    EXPECT_FLOAT_EQ(states[0].touchpad[1].position.y, 0.75F);
+    EXPECT_FLOAT_EQ(states[0].touchpad[1].pressure, 0.5F);
+
+    // A controller that goes takes its readings and its fingers with it.
+    detach(joystick);
+    pump();
+    EXPECT_FALSE(states[0].connected);
+    EXPECT_FALSE(states[0].touchpad[1].down);
+    EXPECT_TRUE(states[0].motion.sensors.none());
 }
 
 } // namespace haylen::platform::sdl

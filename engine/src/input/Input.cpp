@@ -138,6 +138,9 @@ void Input::updateGamepads(std::span<const GamepadState> states) {
         state.labels = source.labels;
         state.buttons = source.buttons;
         state.axes = source.axes;
+        state.motionSensors = source.motionSensors;
+        state.motion = source.motion;
+        state.touchpad = source.touchpad;
         if (state.name != source.name) {
             state.name = source.name;
         }
@@ -279,6 +282,61 @@ math::Vec2 Input::getGamepadStick(std::size_t index, bool rightStick) const noex
     }
     const float scaled = std::min(1.0F, (magnitude - deadzone) / (1.0F - deadzone));
     return raw / magnitude * scaled;
+}
+
+math::Vec2 Input::measureTilt(const std::array<float, 3>& acceleration, const std::array<float, 3>& level) noexcept {
+    const float length = std::sqrt(acceleration[0] * acceleration[0] + acceleration[1] * acceleration[1] + acceleration[2] * acceleration[2]);
+    if (length <= 0.0F) {
+        return {};
+    }
+    const std::array<float, 3> up{acceleration[0] / length, acceleration[1] / length, acceleration[2] / length};
+
+    // The rotation that takes the level direction onto z turns around the axis of their cross product, by the angle between them, with the formula of Rodrigues.
+    const std::array<float, 3> axis{level[1], -level[0], 0.0F};
+    const float sine = std::sqrt(axis[0] * axis[0] + axis[1] * axis[1]);
+    const float cosine = level[2];
+    std::array<float, 3> turned = up;
+    if (sine > 1.0e-6F) {
+        const std::array<float, 3> unit{axis[0] / sine, axis[1] / sine, 0.0F};
+        const float along = unit[0] * up[0] + unit[1] * up[1];
+        const std::array<float, 3> cross{unit[1] * up[2], -unit[0] * up[2], unit[0] * up[1] - unit[1] * up[0]};
+        for (std::size_t index = 0; index < 3; ++index) {
+            turned[index] = up[index] * cosine + cross[index] * sine + unit[index] * along * (1.0F - cosine);
+        }
+    } else if (cosine < 0.0F) {
+        turned = {up[0], -up[1], -up[2]};
+    }
+
+    // Gravity leans toward the edge that goes up, so the ball rolls the other way, and design space grows down.
+    return math::Vec2{-turned[0], turned[1]}.clampedLength(1.0F);
+}
+
+math::Vec2 Input::getTilt() const noexcept {
+    if (!motion.sensors.test(static_cast<std::size_t>(MotionSensor::Accelerometer))) {
+        return {};
+    }
+    return measureTilt(motion.acceleration, tiltLevel);
+}
+
+math::Vec2 Input::getGamepadTilt(std::size_t index) const noexcept {
+    if (index >= kMaxGamepads || !gamepads[index].motion.sensors.test(static_cast<std::size_t>(MotionSensor::Accelerometer))) {
+        return {};
+    }
+    return measureTilt(gamepads[index].motion.acceleration, {0.0F, 0.0F, 1.0F});
+}
+
+bool Input::calibrateTilt() noexcept {
+    const std::array<float, 3>& acceleration = motion.acceleration;
+    const float length = std::sqrt(acceleration[0] * acceleration[0] + acceleration[1] * acceleration[1] + acceleration[2] * acceleration[2]);
+    if (!motion.sensors.test(static_cast<std::size_t>(MotionSensor::Accelerometer)) || length <= 0.0F) {
+        return false;
+    }
+    tiltLevel = {acceleration[0] / length, acceleration[1] / length, acceleration[2] / length};
+    return true;
+}
+
+void Input::resetTilt() noexcept {
+    tiltLevel = {0.0F, 0.0F, 1.0F};
 }
 
 void Input::setGamepadDeadzone(float value) {

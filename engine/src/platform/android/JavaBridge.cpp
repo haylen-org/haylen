@@ -37,6 +37,7 @@ jmethodID JavaBridge::rumbleGamepadMethod = nullptr;
 jmethodID JavaBridge::setClipboardMethod = nullptr;
 jmethodID JavaBridge::clipboardMethod = nullptr;
 jmethodID JavaBridge::networkRequirementMethod = nullptr;
+jmethodID JavaBridge::packageNameMethod = nullptr;
 jmethodID JavaBridge::developmentServerMethod = nullptr;
 jclass JavaBridge::permissionsClass = nullptr;
 jmethodID JavaBridge::permissionStateMethod = nullptr;
@@ -97,6 +98,7 @@ jint JavaBridge::load(JavaVM* vm) {
     setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)Z");
     clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
     networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
+    packageNameMethod = findMethod(*env, activityClass, "packageName", "()[B");
     developmentServerMethod = findMethod(*env, activityClass, "developmentServer", "()[B");
     showDialogMethod = findMethod(*env, dialogsClass, "show", "(J[B[B)V");
     cancelDialogMethod = findMethod(*env, dialogsClass, "cancel", "(J)V");
@@ -108,7 +110,7 @@ jint JavaBridge::load(JavaVM* vm) {
     permissionStateMethod = findMethod(*env, permissionsClass, "state", "([B)[B");
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, requestPermissionMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, requestPermissionMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -243,6 +245,11 @@ std::string JavaBridge::getClipboard() {
 std::string JavaBridge::getNetworkRequirement() {
     JNIEnv& env = getEnv();
     return callText(env, activityClass, networkRequirementMethod, "dev.haylen.HaylenActivity.networkRequirement", "");
+}
+
+std::string JavaBridge::getPackageName() {
+    JNIEnv& env = getEnv();
+    return callText(env, activityClass, packageNameMethod, "dev.haylen.HaylenActivity.packageName", "");
 }
 
 std::string JavaBridge::getDevelopmentServer() {

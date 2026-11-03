@@ -26,7 +26,7 @@ class VirtualInput;
 // Maps named gameplay actions to devices in definition order. Buttons report edges, axes report [-1, 1] and vectors report a length up to 1.
 class ActionMap final {
   public:
-    // One physical or virtual input written as `key:w`, `mouse:left`, `button:south`, `axis:leftY-`, `stick:left`, `virtual:attack` or `virtualStick:move`.
+    // One physical or virtual input written as `key:w`, `mouse:left`, `button:south`, `axis:leftY-`, `stick:left`, `tilt:x+`, `stick:tilt`, `virtual:attack` or `virtualStick:move`. The tilt reads how far the device or a gamepad leans, as `Input::getTilt` measures it, one direction of one axis at a time or as a whole stick.
     struct Binding {
         enum class Source : std::uint8_t {
             Key,
@@ -34,6 +34,8 @@ class ActionMap final {
             GamepadButton,
             GamepadAxis,
             GamepadStick,
+            Tilt,
+            TiltStick,
             VirtualButton,
             VirtualStick,
         };
@@ -45,6 +47,7 @@ class ActionMap final {
         GamepadAxis gamepadAxis = GamepadAxis::LeftX;
         float direction = 1.0F;
         bool rightStick = false;
+        bool tiltY = false;
         std::string name;
 
         [[nodiscard]] static std::optional<Binding> parse(std::string_view text);
@@ -82,7 +85,7 @@ class ActionMap final {
         static const std::array<std::pair<std::string_view, Type>, 3> kTypeNames;
     };
 
-    // The devices whose bindings a map reads: the keyboard, the mouse, every gamepad, one gamepad or none, and the virtual controls, whose names the prefix goes in front of, so `virtual:jump` reads the virtual button `p2.jump` in a map with the prefix `p2.`.
+    // The devices whose bindings a map reads: the keyboard, the mouse, every gamepad, one gamepad or none, the motion of the device, and the virtual controls, whose names the prefix goes in front of, so `virtual:jump` reads the virtual button `p2.jump` in a map with the prefix `p2.`. The tilt bindings read the device while `motion` holds and the gamepads that the map reads.
     struct Devices {
         enum class Gamepads : std::uint8_t {
             Every,
@@ -94,6 +97,7 @@ class ActionMap final {
         bool mouse = true;
         Gamepads gamepads = Gamepads::Every;
         std::size_t gamepad = 0;
+        bool motion = true;
         bool virtualControls = true;
         std::string virtualPrefix;
 
@@ -190,6 +194,7 @@ class ActionMap final {
 
     [[nodiscard]] float getBindingValue(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] math::Vec2 getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept;
+    [[nodiscard]] math::Vec2 getTilt(const Input& input) const noexcept;
     [[nodiscard]] float getStrongest(const std::vector<Binding>& list, const Input& input, const VirtualInput& virtualInput) const noexcept;
     [[nodiscard]] std::string_view getVirtualName(const Binding& binding) const noexcept;
     [[nodiscard]] const State* find(std::string_view name) const noexcept;

@@ -74,11 +74,25 @@ std::optional<ActionMap::Binding> ActionMap::Binding::parse(std::string_view tex
     }
 
     if (kind == "stick") {
+        if (value == "tilt") {
+            binding.source = Source::TiltStick;
+            return binding;
+        }
         if (value != "left" && value != "right") {
             return std::nullopt;
         }
         binding.source = Source::GamepadStick;
         binding.rightStick = value == "right";
+        return binding;
+    }
+
+    if (kind == "tilt") {
+        if (value.size() != 2 || (value[0] != 'x' && value[0] != 'y') || (value[1] != '+' && value[1] != '-')) {
+            return std::nullopt;
+        }
+        binding.source = Source::Tilt;
+        binding.tiltY = value[0] == 'y';
+        binding.direction = value[1] == '+' ? 1.0F : -1.0F;
         return binding;
     }
 
@@ -102,6 +116,10 @@ std::string ActionMap::Binding::toString() const {
         return "axis:" + std::string(Controls::gamepadAxisName(gamepadAxis)) + (direction > 0.0F ? "+" : "-");
     case Source::GamepadStick:
         return rightStick ? "stick:right" : "stick:left";
+    case Source::Tilt:
+        return std::string("tilt:") + (tiltY ? "y" : "x") + (direction > 0.0F ? "+" : "-");
+    case Source::TiltStick:
+        return "stick:tilt";
     case Source::VirtualButton:
         return "virtual:" + name;
     case Source::VirtualStick:
@@ -187,7 +205,7 @@ std::vector<ActionMap::Binding> ActionMap::parseBindings(const core::Json& actio
         const std::string text = entry.is_string() ? entry.get<std::string>() : entry.dump();
         const std::optional<Binding> binding = entry.is_string() ? Binding::parse(text) : std::nullopt;
         if (!binding) {
-            throw std::invalid_argument("The input binding \"" + text + "\" is invalid. Use a binding such as \"key:space\", \"mouse:left\", \"button:south\", \"axis:leftX+\" or \"stick:left\".");
+            throw std::invalid_argument("The input binding \"" + text + "\" is invalid. Use a binding such as \"key:space\", \"mouse:left\", \"button:south\", \"axis:leftX+\", \"stick:left\" or \"tilt:x+\".");
         }
         bindings.push_back(*binding);
     }
@@ -218,7 +236,7 @@ void ActionMap::validate(const Action& action) {
         return;
     }
     for (const Binding& binding : action.bindings) {
-        if (binding.source != Binding::Source::GamepadStick && binding.source != Binding::Source::VirtualStick) {
+        if (binding.source != Binding::Source::GamepadStick && binding.source != Binding::Source::TiltStick && binding.source != Binding::Source::VirtualStick) {
             throw std::invalid_argument("The vector action \"" + action.name + "\" takes only sticks in \"bindings\", not \"" + binding.toString() + "\".");
         }
     }
@@ -334,9 +352,14 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
         return anyGamepad([&](std::size_t index) { return input.isGamepadDown(index, binding.gamepadButton) && !isGamepadButtonCaptured(index, binding.gamepadButton) ? 1.0F : 0.0F; });
     case Binding::Source::GamepadAxis:
         return anyGamepad([&](std::size_t index) { return isGamepadAxisCaptured(index, binding.gamepadAxis) ? 0.0F : std::max(0.0F, input.getGamepadAxis(index, binding.gamepadAxis) * binding.direction); });
+    case Binding::Source::Tilt: {
+        const math::Vec2 tilt = getTilt(input);
+        return std::max(0.0F, (binding.tiltY ? tilt.y : tilt.x) * binding.direction);
+    }
     case Binding::Source::VirtualButton:
         return devices.virtualControls && virtualInput.isButtonDown(getVirtualName(binding)) ? 1.0F : 0.0F;
     case Binding::Source::GamepadStick:
+    case Binding::Source::TiltStick:
     case Binding::Source::VirtualStick:
         return getBindingVector(binding, input, virtualInput).getLength();
     }
@@ -346,6 +369,9 @@ float ActionMap::getBindingValue(const Binding& binding, const Input& input, con
 math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& input, const VirtualInput& virtualInput) const noexcept {
     if (binding.source == Binding::Source::VirtualStick) {
         return devices.virtualControls ? virtualInput.getStick(getVirtualName(binding)) : math::Vec2{};
+    }
+    if (binding.source == Binding::Source::TiltStick) {
+        return getTilt(input);
     }
     if (binding.source != Binding::Source::GamepadStick || devices.gamepads == Devices::Gamepads::None) {
         return {};
@@ -365,6 +391,25 @@ math::Vec2 ActionMap::getBindingVector(const Binding& binding, const Input& inpu
         }
     }
     return strongestStick;
+}
+
+// The device and every gamepad the map reads lean on their own, and the one that leans the most moves the tilt.
+math::Vec2 ActionMap::getTilt(const Input& input) const noexcept {
+    math::Vec2 strongest = devices.motion ? input.getTilt() : math::Vec2{};
+    if (devices.gamepads == Devices::Gamepads::One) {
+        const math::Vec2 tilt = input.getGamepadTilt(devices.gamepad);
+        return tilt.getLengthSquared() > strongest.getLengthSquared() ? tilt : strongest;
+    }
+    if (devices.gamepads == Devices::Gamepads::None) {
+        return strongest;
+    }
+    for (std::size_t index = 0; index < Input::kMaxGamepads; ++index) {
+        const math::Vec2 tilt = input.getGamepadTilt(index);
+        if (tilt.getLengthSquared() > strongest.getLengthSquared()) {
+            strongest = tilt;
+        }
+    }
+    return strongest;
 }
 
 float ActionMap::getStrongest(const std::vector<Binding>& list, const Input& input, const VirtualInput& virtualInput) const noexcept {

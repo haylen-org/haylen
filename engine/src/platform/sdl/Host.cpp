@@ -22,8 +22,10 @@
 #include "platform/Services.hpp"
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
+#include "platform/apple/AppleMotion.hpp"
 #include "platform/apple/AppleOutputs.hpp"
 #elif defined(__EMSCRIPTEN__)
+#include "platform/web/WebMotion.hpp"
 #include "platform/web/WebPage.hpp"
 #endif
 
@@ -263,6 +265,57 @@ void Host::rumbleGamepad(std::size_t index, float low, float high, float seconds
     AppleGamepads::rumble(index, low, high, seconds);
 #else
     runtime.getGamepads().rumble(index, low, high, seconds);
+#endif
+}
+
+// Phones, tablets and TVs of Apple read the motion of the device through Core Motion, browsers through the motion events of the page, and computers through the sensors of SDL.
+input::MotionSensors::Support Host::getMotionSupport() {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    return AppleMotion::getSupport();
+#elif defined(__EMSCRIPTEN__)
+    return WebMotion::getSupport();
+#else
+    return sensors.getSupport();
+#endif
+}
+
+// Computers read their sensors without a permission.
+void Host::authorizeMotion(std::function<void(Permission::Answer answer)> callback) {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleMotion::authorize(std::move(callback));
+#elif defined(__EMSCRIPTEN__)
+    WebMotion::authorize(std::move(callback));
+#else
+    callback({.state = Permission::State::Granted});
+#endif
+}
+
+// Browsers and SDL read each sensor at the rate of its hardware.
+void Host::setMotion(input::MotionSensors::Sensors value, [[maybe_unused]] float rate) {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleMotion::set(value, rate);
+#elif defined(__EMSCRIPTEN__)
+    WebMotion::set(value);
+#else
+    sensors.set(value);
+#endif
+}
+
+void Host::readMotion(input::MotionState& state) {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleMotion::read(state);
+#elif defined(__EMSCRIPTEN__)
+    WebMotion::read(state);
+#else
+    sensors.read(state, runtime.getWindow().get());
+#endif
+}
+
+void Host::setGamepadMotion(input::MotionSensors::Sensors value) {
+#if defined(__APPLE__) && !TARGET_OS_OSX
+    AppleGamepads::setMotion(value);
+#else
+    runtime.getGamepads().setMotion(value);
 #endif
 }
 

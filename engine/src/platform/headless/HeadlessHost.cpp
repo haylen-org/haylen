@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 #include "platform/FullscreenTarget.hpp"
 
@@ -55,6 +56,21 @@ std::filesystem::path HeadlessHost::getUserDataDirectory(std::string_view identi
 
 void HeadlessHost::pollGamepads(std::span<input::GamepadState> states) {
     std::copy_n(gamepads.begin(), std::min(states.size(), gamepads.size()), states.begin());
+}
+
+void HeadlessHost::authorizeMotion(std::function<void(Permission::Answer answer)> callback) {
+    ++motionAuthorizations;
+    if (motionAnswersHeld) {
+        heldMotionAnswers.push_back(std::move(callback));
+        return;
+    }
+    callback(motionAnswer);
+}
+
+void HeadlessHost::answerMotion() {
+    for (const std::function<void(Permission::Answer)>& callback : std::exchange(heldMotionAnswers, {})) {
+        callback(motionAnswer);
+    }
 }
 
 void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) {

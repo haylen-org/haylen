@@ -4,6 +4,7 @@
 #include "platform/Services.hpp"
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
+#include "platform/android/AndroidMotion.hpp"
 #include "platform/android/AndroidRuntime.hpp"
 #include "platform/android/JavaBridge.hpp"
 
@@ -50,6 +51,26 @@ void AndroidHost::pollGamepads(std::span<input::GamepadState> gamepads) {
 void AndroidHost::rumbleGamepad(std::size_t index, float low, float high, float seconds) {
     AndroidGamepads::rumble(index, low, high, seconds);
 }
+
+input::MotionSensors::Support AndroidHost::getMotionSupport() {
+    return AndroidMotion::getSupport();
+}
+
+// Android asks the person for none of the motion sensors that the engine reads.
+void AndroidHost::authorizeMotion(std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
+}
+
+void AndroidHost::setMotion(input::MotionSensors::Sensors sensors, float rate) {
+    AndroidMotion::set(sensors, rate);
+}
+
+void AndroidHost::readMotion(input::MotionState& state) {
+    AndroidMotion::read(state);
+}
+
+// The engine reads the sticks and buttons of controllers on Android from their input events, which carry none of their motion sensors.
+void AndroidHost::setGamepadMotion(input::MotionSensors::Sensors) {}
 
 void AndroidHost::requestWindowClose() {
     runtime.requestQuit();

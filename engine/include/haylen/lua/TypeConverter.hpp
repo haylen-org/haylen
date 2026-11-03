@@ -560,6 +560,15 @@ template <> struct EnumNames<input::GamepadAxis> {
     }
 };
 
+template <> struct EnumNames<input::MotionSensor> {
+    static std::optional<input::MotionSensor> fromName(std::string_view name) {
+        return input::Controls::motionSensorFromName(name);
+    }
+    static std::string_view name(input::MotionSensor value) {
+        return input::Controls::motionSensorName(value);
+    }
+};
+
 template <> struct EnumNames<platform::Event::Type> {
     static std::optional<platform::Event::Type> fromName(std::string_view name) {
         return TypeConverter::fromTable(platform::Event::kTypeNames, name);

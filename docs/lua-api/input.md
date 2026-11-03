@@ -1,6 +1,6 @@
 # 📖 `haylen.input`
 
-The module `haylen.input` reads the keyboard, the mouse, touch screens, gestures, gamepads and TV remotes, and turns them into named actions through the action map. Gameplay reads actions, such as `jump` or `move`, so every device and every on-screen control works without extra code. Menus and tools read the devices themselves when they need to. The [input guide](../input/input.md) explains the action map, how the game and the UI share the devices, and what each device and platform does.
+The module `haylen.input` reads the keyboard, the mouse, touch screens, gestures, gamepads, TV remotes and motion sensors, and turns them into named actions through the action map. Gameplay reads actions, such as `jump` or `move`, so every device and every on-screen control works without extra code. Menus and tools read the devices themselves when they need to. The [input guide](../input/input.md) explains the action map, how the game and the UI share the devices, and what each device and platform does.
 
 ```lua
 local input = require('haylen.input')
@@ -696,6 +696,261 @@ scene.push({
 })
 ```
 
+## Motion sensors
+
+The motion sensors measure how the device or a gamepad moves and leans: the accelerometer, the gyroscope and the attitude that the system fuses from them. They spend battery, so they stay off until the app starts them with [`input.startMotion`](#inputstartmotionoptions), and some platforms ask the person first. The [input guide](../input/input.md#motion-sensors) explains the axes, the tilt and what each platform does.
+
+Every reading follows the screen as the app shows it, or the face of a gamepad that lies flat in the hands: x points to the right, y to the top, which on a gamepad is away from the person, and z out of the face toward the person. The readings are `0` while the sensor does not run.
+
+| Sensor | Reading | Unit |
+| --- | --- | --- |
+| `'accelerometer'` | The acceleration with gravity, the push that holds the device up, so a device that lies still on a table reads about `9.81` on z. | Meters per second squared. |
+| `'gyroscope'` | The rotation rate around each axis, counterclockwise as seen from the end of the axis. | Radians per second. |
+| `'attitude'` | The unit quaternion `x, y, z, w` that turns the axes of the screen into a frame whose z points up. The direction it faces around z is the one the device faced when the sensor started. | None. |
+
+### input.startMotion(options)
+
+Starts the motion sensors and returns a call of the kind that [`haylen.dialogs`](dialogs.md) returns. The method `call:await()` returns a [`MotionRequest`](#motionrequest) once the sensors run. The sensors run while a request wants them and the app is in the foreground, at the highest rate that a running request asks for. They stop in the background and start again when the app comes back, and they stop when the last request ends. The table `options` holds these keys.
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `sensors` | list | `{'accelerometer'}` | The names of the sensors to run, from `'accelerometer'`, `'gyroscope'` and `'attitude'`. |
+| `rate` | number | `60` | The readings per second to ask for, from `1` to `200`. The platform keeps it within what its hardware delivers. |
+| `device` | boolean | `true` | Whether the request runs the sensors of the device. |
+| `gamepads` | boolean | `false` | Whether the request runs the sensors of every gamepad that has them, also those that connect later. |
+| `owner` | table or userdata | the default owner | The owner whose end stops the request, as [`haylen.scene`](scene.md) describes for everything a scene creates. |
+
+The call fails with the code in `failure.code` and a sentence in `failure.message`.
+
+| Code | When |
+| --- | --- |
+| `'unsupported'` | The device lacks a sensor of `sensors`, such as a computer or a TV, with the reason of the platform, or the project of the app lacks what the sensors need, which `failure.data.missing` lists as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. |
+| `'denied'` | The person did not allow the motion sensors. |
+| `'failed'` | The platform did not ask the person, such as a browser that asks only during a tap or a click. |
+| `'cancelled'` | The owner ended, or `call:cancel()` gave the call up, before the sensors ran. Then `call:cancel()` returns `true`, and it returns `false` once the call settled. |
+
+A request for the sensors of gamepads alone asks nothing and never fails, since gamepads come and go. An empty `sensors` list raises `The motion sensors need at least one sensor, such as "accelerometer".`, `device` and `gamepads` both `false` raise `The motion sensors need the device, the gamepads or both.`, and a rate out of range raises `The rate of the motion sensors must be from 1 to 200 readings per second.`.
+
+| Platform | The device | Gamepads |
+| --- | --- | --- |
+| iOS and iPadOS | Core Motion, which the engine loads only when an app first asks. From version 27.2 the system asks the person the first time the app starts the sensors, with the text of `NSMotionUsageDescription` of the `Info.plist`, which the app must give. Without it the call fails with `'unsupported'` and `data.missing`. Older versions ask nothing. Simulators have no motion sensors. | The motion of controllers through GameController. |
+| visionOS | Core Motion, as on iOS, where the device offers it. | The motion of controllers through GameController. |
+| tvOS | None. An Apple TV has no motion sensors of its own, so the call fails with `'unsupported'`. | The motion of the Siri Remote and of controllers through GameController, which the option `gamepads` reads. |
+| Mac Catalyst and macOS | None, since Macs give apps no readings of motion sensors. | The motion of controllers through GameController on Mac Catalyst and through SDL on macOS. |
+| Android | The accelerometer, the gyroscope and the game rotation vector of the sensor manager, without a permission. The engine reads at most 200 readings per second, since faster ones need the permission `HIGH_SAMPLING_RATE_SENSORS`. | None. Android hands apps the motion of a controller only through the sensor manager of its input device, which the engine does not read. |
+| Web | The `devicemotion` and `deviceorientation` events, in pages served over https or from localhost. Safari asks the person, only during a tap or a click and again after the page loads again, so start the sensors from a tap or a click there. The other browsers ask nothing. A browser whose device has no sensors fires no events, so [`input.motionSensors`](#inputmotionsensors) stays empty. | None, since the Gamepad API of browsers reports no motion. |
+| Windows | The accelerometer and the gyroscope of Windows tablets through the Sensor API of Windows, which SDL reads. | The motion of controllers through SDL, such as DualSense, DualShock 4 and Switch Pro controllers. |
+| Linux | None, since the Linux desktop gives apps no readings of motion sensors. | The motion of controllers through SDL. |
+
+```lua
+local async = require('async')
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    enter = function(self)
+        async.spawn(function()
+            local _, failure = input.startMotion({sensors = {'accelerometer', 'gyroscope'}, rate = 60, owner = self}):await()
+            if failure then
+                print(failure.code, failure.message)
+            end
+        end)
+    end,
+    update = function(self, dt)
+        local x = input.tilt()
+        self.speedX = (self.speedX or 0) + x * 400 * dt
+    end,
+})
+```
+
+### input.motionSensors()
+
+Returns the list of the sensors of the device that delivered readings since they started, such as `{'accelerometer', 'gyroscope'}`. It is empty while no sensor runs and until the first readings arrive.
+
+```lua
+local input = require('haylen.input')
+
+if #input.motionSensors() == 0 then
+    print('Waiting for the first readings.')
+end
+```
+
+### input.acceleration()
+
+Returns the `x`, `y` and `z` of the acceleration of the device with gravity, in meters per second squared.
+
+```lua
+local input = require('haylen.input')
+
+local x, y, z = input.acceleration()
+if math.sqrt(x * x + y * y + z * z) > 25 then
+    print('The player shook the device.')
+end
+```
+
+### input.rotationRate()
+
+Returns how fast the device turns around its `x`, `y` and `z` axes, in radians per second.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    update = function(self, dt)
+        local x, y = input.rotationRate()
+        self.aimX = (self.aimX or 0) - y * 300 * dt
+        self.aimY = (self.aimY or 0) - x * 300 * dt
+    end,
+})
+```
+
+### input.attitude()
+
+Returns the `x`, `y`, `z` and `w` of the attitude of the device.
+
+```lua
+local input = require('haylen.input')
+
+local x, y, z, w = input.attitude()
+local heading = math.atan(2 * (w * z + x * y), 1 - 2 * (y * y + z * z))
+print('Heading in radians: ' .. heading)
+```
+
+### input.tilt()
+
+Returns how far the device leans from level, as the `x` and `y` of a vector up to `1` that follows design space like a stick: `x` grows as the right edge of the screen goes down, and `y` as the bottom edge goes down. A ball that rolls on the screen accelerates by the vector times gravity. A device that lies flat face up is level until [`input.calibrateTilt`](#inputcalibratetilt) takes another way of holding it. The tilt is `0, 0` while the accelerometer does not run. The binding `stick:tilt` reads it in the action map, as [Bindings](#bindings) shows.
+
+```lua
+local input = require('haylen.input')
+local scene = require('haylen.scene')
+
+scene.push({
+    update = function(self, dt)
+        local x, y = input.tilt()
+        self.velocityX = (self.velocityX or 0) + x * 900 * dt
+        self.velocityY = (self.velocityY or 0) + y * 900 * dt
+    end,
+})
+```
+
+### input.calibrateTilt()
+
+Takes the way the person holds the device now as level, so the tilt reads `0, 0` while they keep holding it that way. Returns `false`, and changes nothing, while the accelerometer has no reading.
+
+```lua
+local input = require('haylen.input')
+
+if input.calibrateTilt() then
+    print('The current angle is level now.')
+end
+```
+
+### input.resetTilt()
+
+Makes a device that lies flat face up level again.
+
+```lua
+local input = require('haylen.input')
+
+input.resetTilt()
+```
+
+### input.gamepadSensors(index)
+
+Returns the list of the motion sensors that the gamepad has, such as `{'accelerometer', 'gyroscope'}`, or an empty list. They report readings only while a request with `gamepads = true` runs.
+
+```lua
+local input = require('haylen.input')
+
+if #input.gamepadSensors(1) > 0 then
+    print('Tilt the gamepad to steer.')
+end
+```
+
+### input.gamepadAcceleration(index)
+
+Returns the `x`, `y` and `z` of the acceleration of the gamepad with gravity, in meters per second squared, on the axes of a gamepad that lies flat.
+
+```lua
+local input = require('haylen.input')
+
+local _, _, z = input.gamepadAcceleration(1)
+print(z)
+```
+
+### input.gamepadRotationRate(index)
+
+Returns how fast the gamepad turns around its `x`, `y` and `z` axes, in radians per second, which aims a crosshair with small turns of the hands.
+
+```lua
+local input = require('haylen.input')
+
+local x, _, z = input.gamepadRotationRate(1)
+print(x, z)
+```
+
+### input.gamepadAttitude(index)
+
+Returns the `x`, `y`, `z` and `w` of the attitude of the gamepad, on the controllers of Apple platforms that report it, and `0, 0, 0, 1` elsewhere.
+
+```lua
+local input = require('haylen.input')
+
+local x, y, z, w = input.gamepadAttitude(1)
+print(x, y, z, w)
+```
+
+### input.gamepadTilt(index)
+
+Returns how far the gamepad leans from lying flat, like [`input.tilt`](#inputtilt).
+
+```lua
+local input = require('haylen.input')
+
+local x = input.gamepadTilt(1)
+print('Steer ' .. x)
+```
+
+### input.gamepadTouches(index)
+
+Returns the fingers on the touchpads of a gamepad as a list of `{finger, touchpad, x, y, pressure}` tables, where `finger` and `touchpad` count from `1`, `x` and `y` run from `0` to `1` from the top left corner of the touchpad, and `pressure` runs from `0` to `1`. The fingers go with the gamepad when it disconnects. SDL reads the touchpads of controllers such as the DualSense and the DualShock 4 on Windows, macOS and Linux, and GameController the touchpads it exposes on iOS, iPadOS, tvOS and Mac Catalyst. Android and browsers report none.
+
+```lua
+local input = require('haylen.input')
+
+for _, finger in ipairs(input.gamepadTouches(1)) do
+    print(finger.finger, finger.x, finger.y)
+end
+```
+
+## MotionRequest
+
+A `MotionRequest`, named `haylen.MotionRequest` in messages, is a request of [`input.startMotion`](#inputstartmotionoptions) that runs.
+
+### request:stop()
+
+Ends the request. The sensors stop once no other request wants them.
+
+```lua
+local input = require('haylen.input')
+
+local function stopTilting(request)
+    request:stop()
+    print(request.running) -- false
+end
+```
+
+### Properties
+
+| Property | Type | Meaning |
+| --- | --- | --- |
+| `running` | boolean | Whether the request runs, until it stops or its owner ends. Read-only. |
+| `sensors` | list | The names of the sensors it asked for. Read-only. |
+| `rate` | number | The readings per second it asked for. Read-only. |
+| `device` | boolean | Whether it runs the sensors of the device. Read-only. |
+| `gamepads` | boolean | Whether it runs the sensors of gamepads. Read-only. |
+
 ## Devices
 
 ### input.lastDevice()
@@ -875,12 +1130,15 @@ Each binding is a string with a source and a name.
 | `button:<button>` | A gamepad button from [Gamepad names](#gamepad-names). | `button:south`, `button:dpadUp`, `button:start` |
 | `axis:<axis>+` or `axis:<axis>-` | One direction of a gamepad axis, from `0` to `1`. | `axis:rightTrigger+`, and `axis:leftY-` for the left stick pushed up |
 | `stick:left` or `stick:right` | A whole gamepad stick, for vector actions. | `stick:left` |
+| `tilt:x+`, `tilt:x-`, `tilt:y+` or `tilt:y-` | One direction of the [tilt](#inputtilt) of the device or a gamepad, from `0` to `1`. | `tilt:x+` for the right edge down, `tilt:y-` for the top edge down |
+| `stick:tilt` | The whole tilt, for vector actions. | `stick:tilt` |
 | `virtual:<name>` | A virtual button that `input.setVirtualButton` or a `touchButton` of the UI sets. | `virtual:attack` |
 | `virtualStick:<name>` | A virtual stick that `input.setVirtualStick` or a `touchStick` of the UI sets, for vector actions. | `virtualStick:move` |
 
 Digital bindings count as `0` or `1`. Analog bindings, such as triggers and stick axes, count by how far they are pushed.
 
 - Gamepad bindings read every connected gamepad and take the strongest one, unless the [`devices`](#mapdevices) of the map pick one gamepad or none.
+- Tilt bindings read the device and the gamepads of the map, and take the one that leans the most. They read `0` until [`input.startMotion`](#inputstartmotionoptions) runs the accelerometer.
 - Mouse bindings read as released for a press that the UI took, as [`input.pointerCaptured`](#inputpointercaptured) explains.
 - Key, gamepad button and axis bindings read as up for a press that the UI answers itself, as [`input.keyCaptured`](#inputkeycapturedkey) explains.
 - While a scene change holds input back, with the option `blockInput` of [`haylen.scene`](scene.md), every action reads as up and `0`. An action whose bindings are still held when the change ends stays up until they are released.
@@ -1174,7 +1432,8 @@ Makes an action map that reads the devices of `options`, every device by default
 | --- | --- | --- | --- |
 | `keyboard` | boolean | `true` | Whether `key:` bindings read the keyboard. |
 | `mouse` | boolean | `true` | Whether `mouse:` bindings read the mouse. |
-| `gamepad` | integer or `false` | every gamepad | The index of the one gamepad that `button:`, `axis:` and `stick:` bindings read, from `1` to `8`, or `false` for none. |
+| `gamepad` | integer or `false` | every gamepad | The index of the one gamepad that `button:`, `axis:`, `stick:` and `tilt:` bindings read, from `1` to `8`, or `false` for none. |
+| `motion` | boolean | `true` | Whether `tilt:` and `stick:tilt` bindings read the motion of the device. |
 | `virtual` | boolean | `true` | Whether `virtual:` and `virtualStick:` bindings read the virtual controls. |
 | `virtualPrefix` | string | `''` | Text that goes in front of the name of every virtual binding. With the prefix `p2.`, the binding `virtual:jump` reads the virtual button `p2.jump`. So two touch layouts on one screen drive two players. |
 | `actions` | table or string | none | A document table, or the path of a JSON file, to load as `map:load` does. |
@@ -2010,10 +2269,10 @@ The face buttons are named by their place, so `south` is the bottom button whate
 
 | Message | Cause |
 | --- | --- |
-| `unknown value '<name>'` | A key, mouse button, gamepad button or gamepad axis name does not exist. It comes inside a bad argument error. |
+| `unknown value '<name>'` | A key, mouse button, gamepad button, gamepad axis or motion sensor name does not exist. It comes inside a bad argument error. |
 | `gamepad index out of range` | A gamepad index is outside `1` to `8`. It comes inside a bad argument error. |
 | `expected left or right` | The function `input.gamepadStick` got another side. It comes inside a bad argument error. |
-| `Unknown option "<key>".` | An options table has a key that the function does not take, such as the options of `input.newActionMap`, `map.devices`, `input.setGestureSettings`, `input.rumble`, `input.editText`, `input.newCommandBuffer`, its `directions` and commands, and `input.newRecorder`. |
+| `Unknown option "<key>".` | An options table has a key that the function does not take, such as the options of `input.newActionMap`, `map.devices`, `input.setGestureSettings`, `input.rumble`, `input.startMotion`, `input.editText`, `input.newCommandBuffer`, its `directions` and commands, and `input.newRecorder`. |
 | `The gamepad dead zone must be at least 0 and below 1.` | The function `input.setGamepadDeadzone` got a value out of range. |
 | `The scroll speed must be a positive number.` | The function `input.setScrollSpeed` got `0` or less. |
 | `The motors of a rumble run from 0 to 1.` | The `low` or `high` of `input.rumble` is out of range. |
@@ -2021,6 +2280,10 @@ The face buttons are named by their place, so `south` is the bottom button whate
 | `A text field needs its "text" as a string.` | The function `input.editText` got no `text` string. |
 | `The selection of a text field must run from 0 to the length of its text, with "selectionStart" not past "selectionEnd".` | The function `input.editText` got a bad selection. |
 | `The option "<option>" of a text field must be <names>.` | The `keyboard`, `returnKey` or `autocapitalize` of `input.editText` names an unknown value. |
+| `The option "sensors" of the motion sensors must be a list of sensor names, such as {'accelerometer', 'gyroscope'}.` | The `sensors` of `input.startMotion` is not a list. |
+| `The motion sensors need at least one sensor, such as "accelerometer".` | The `sensors` of `input.startMotion` is empty. |
+| `The motion sensors need the device, the gamepads or both.` | The `device` and the `gamepads` of `input.startMotion` are both `false`. |
+| `The rate of the motion sensors must be from 1 to 200 readings per second.` | The `rate` of `input.startMotion` is out of range. |
 | `The press threshold must be above 0 and at most 1.` | The function `input.setPressThreshold` or the property `map.pressThreshold` got a value out of range. |
 | `Expected the action map to be a JSON object.` | An action map document is not a table with string keys. |
 | `Expected an action to be a JSON object.` | An entry of the `actions` list is not a table with string keys. |
@@ -2030,7 +2293,7 @@ The face buttons are named by their place, so `south` is the bottom button whate
 | `An action needs a name and a type.` | An action lacks a string `name` or `type`. |
 | `The type of an action must be "button", "axis" or "vector", not "<type>".` | An action has another type. |
 | `The "<list>" of an action must be a list of bindings.` | A binding list is not a list. |
-| `The input binding "<binding>" is invalid. Use a binding such as "key:space", "mouse:left", "button:south", "axis:leftX+" or "stick:left".` | A binding is not a string in one of the forms of [Bindings](#bindings). |
+| `The input binding "<binding>" is invalid. Use a binding such as "key:space", "mouse:left", "button:south", "axis:leftX+", "stick:left" or "tilt:x+".` | A binding is not a string in one of the forms of [Bindings](#bindings). |
 | `The <type> action "<name>" does not read "<list>".` | An action has a binding list that its type never reads. |
 | `The vector action "<name>" takes only sticks in "bindings", not "<binding>".` | The `bindings` of a vector action hold something other than a stick. |
 | `The action name "<name>" is used by more than one action.` | Two actions of a document have the same name. |

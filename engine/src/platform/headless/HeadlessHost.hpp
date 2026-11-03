@@ -266,6 +266,20 @@ class HeadlessHost final : public Host {
         return statusBar == StatusBar::Hidden ? 0.0F : statusBarHeight;
     }
     void pollGamepads(std::span<input::GamepadState> states) override;
+    [[nodiscard]] input::MotionSensors::Support getMotionSupport() override {
+        return motionSupport;
+    }
+    void authorizeMotion(std::function<void(Permission::Answer answer)> callback) override;
+    void setMotion(input::MotionSensors::Sensors sensors, float rate) override {
+        motionSensors = sensors;
+        motionRate = rate;
+    }
+    void readMotion(input::MotionState& state) override {
+        state = motionReadings;
+    }
+    void setGamepadMotion(input::MotionSensors::Sensors sensors) override {
+        gamepadMotion = sensors;
+    }
     void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) override;
     void cancelPlatformCall(std::uint64_t id) override {
         cancelledCalls.push_back(id);
@@ -479,6 +493,37 @@ class HeadlessHost final : public Host {
         return permissionRequests;
     }
 
+    // The motion sensors of the headless device, which has none until a test gives it some, and the answer that it gives the apps that ask to run them, at once unless the test holds the answers until `answerMotion`.
+    void setMotionSupport(input::MotionSensors::Support value) {
+        motionSupport = std::move(value);
+    }
+    void setMotionAnswer(Permission::Answer value) {
+        motionAnswer = std::move(value);
+    }
+    void setMotionAnswersHeld(bool value) noexcept {
+        motionAnswersHeld = value;
+    }
+    void answerMotion();
+
+    // The readings that the sensors of the headless device deliver while they run, the way a fake sensor would.
+    void setMotionReadings(const input::MotionState& value) noexcept {
+        motionReadings = value;
+    }
+
+    // The sensors and the rate that run now on the headless device and on its gamepads, and how often an app asked to run them.
+    [[nodiscard]] input::MotionSensors::Sensors getMotionSensors() const noexcept {
+        return motionSensors;
+    }
+    [[nodiscard]] float getMotionRate() const noexcept {
+        return motionRate;
+    }
+    [[nodiscard]] input::MotionSensors::Sensors getGamepadMotion() const noexcept {
+        return gamepadMotion;
+    }
+    [[nodiscard]] int getMotionAuthorizations() const noexcept {
+        return motionAuthorizations;
+    }
+
     // What the platform explains for a socket of the connections that start after the change, such as a connection that Local Network Protection of Android blocked.
     void setBlockedReason(std::string value) {
         blockedReason = std::move(value);
@@ -593,6 +638,15 @@ class HeadlessHost final : public Host {
     Permission::State permissionState = Permission::State::Granted;
     Permission::Answer permissionAnswer{.state = Permission::State::Granted};
     std::vector<Permission::Kind> permissionRequests;
+    input::MotionSensors::Support motionSupport{.reason = "The headless platform has no motion sensors."};
+    Permission::Answer motionAnswer{.state = Permission::State::Granted};
+    std::vector<std::function<void(Permission::Answer)>> heldMotionAnswers;
+    bool motionAnswersHeld = false;
+    int motionAuthorizations = 0;
+    input::MotionState motionReadings;
+    input::MotionSensors::Sensors motionSensors;
+    float motionRate = 0.0F;
+    input::MotionSensors::Sensors gamepadMotion;
     std::string blockedReason;
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;

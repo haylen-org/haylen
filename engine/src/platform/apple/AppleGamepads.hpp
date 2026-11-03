@@ -6,11 +6,12 @@
 #include <vector>
 
 #include "haylen/input/GamepadState.hpp"
+#include "haylen/input/MotionSensors.hpp"
 #include "platform/GamepadSlots.hpp"
 
 namespace haylen::platform {
 
-// Controllers read through GameController, each one in the slot it took when it connected. The Siri Remote of the Apple TV counts as a controller too.
+// Controllers read through GameController, each one in the slot it took when it connected. The Siri Remote of the Apple TV counts as a controller too, with the motion of its sensors.
 class AppleGamepads final {
   public:
     static void poll(std::span<input::GamepadState> states);
@@ -18,12 +19,20 @@ class AppleGamepads final {
     // Plays a continuous haptic event on the controller in the slot through the haptics engine of the controller, whose intensity follows the stronger motor and whose sharpness follows the share of the high frequency motor, or stops it.
     static void rumble(std::size_t slot, float low, float high, float seconds);
 
+    // Runs the motion sensors of the controllers that have them while the set holds any, which also reaches the controllers that connect later.
+    static void setMotion(input::MotionSensors::Sensors sensors);
+
   private:
+    static constexpr double kStandardGravity = 9.80665;
+
     static GamepadSlots slots;
     static std::vector<const void*> connected;
+    static input::MotionSensors::Sensors motion;
 
     [[nodiscard]] static GCController* find(NSArray<GCController*>* controllers, const void* identity);
     static void read(GCExtendedGamepad* pad, input::GamepadState& state);
+    static void readMotion(GCController* controller, input::GamepadState& state);
+    static void readTouchpads(GCController* controller, input::GamepadState& state);
     [[nodiscard]] static input::GamepadLabels getLabels(GCExtendedGamepad* pad);
 
     // The keys of the objects that a controller keeps for its rumble: its haptics engine and the player of the last rumble.
