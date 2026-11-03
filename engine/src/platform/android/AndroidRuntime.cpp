@@ -16,6 +16,7 @@
 #include "platform/Player.hpp"
 #include "platform/android/AndroidHost.hpp"
 #include "platform/android/AndroidInputEvents.hpp"
+#include "platform/android/AndroidOutputs.hpp"
 
 namespace haylen::platform {
 
@@ -251,7 +252,9 @@ void AndroidRuntime::drawFrame(double now) {
         Player::initialize();
     }
     replaceLostDevice();
+    AndroidOutputs::beginFrame();
     Player::frame(pacer.takeElapsed(now));
+    AndroidOutputs::endFrame();
     finishFrame();
 }
 
@@ -260,7 +263,9 @@ int AndroidRuntime::tick() {
     const double now = getTime();
     if (pacer.takeTick(now)) {
         replaceLostDevice();
+        AndroidOutputs::beginFrame();
         Player::frame(pacer.takeElapsed(now));
+        AndroidOutputs::endFrame();
         finishFrame();
     }
     return pacer.getWaitMilliseconds(getTime());

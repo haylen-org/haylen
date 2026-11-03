@@ -119,6 +119,9 @@ class Window {
     // The fold of a foldable or dual-screen device across the window where the platform reports one, which Android does through Jetpack WindowManager and browsers through the Viewport Segments and Device Posture APIs, and none elsewhere.
     [[nodiscard]] virtual std::optional<Fold> getFold() const = 0;
 
+    // Writes into `cutouts` the parts of the window that cutouts of the screen hide, such as the camera housing of a notch, a dynamic island or the hole of a camera, in framebuffer pixels: the regions of UIKit on iPhones from iOS 27.1, the cutouts of Android and the housing of the camera of a notched Mac. Other platforms report none, and the vector keeps its storage.
+    virtual void getCutouts(std::vector<math::Rect>& cutouts) const = 0;
+
     // Shows or hides the status bar where the platform has one, which iPhones, iPads and Android do, and keeps reporting the value that was set elsewhere.
     [[nodiscard]] virtual StatusBar getStatusBar() const noexcept = 0;
     virtual void setStatusBar(StatusBar value) = 0;

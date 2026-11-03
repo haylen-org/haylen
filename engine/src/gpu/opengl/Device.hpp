@@ -25,7 +25,7 @@
 
 namespace haylen::gpu::opengl {
 
-// The device of OpenGL 4.3 core on Windows and Linux, OpenGL ES 3.0 on Android and WebGL2 on the web, one class that knows its flavour. It draws through the context the platform created with the window, which stays current on the frame thread, and keeps every object as long as that context lives. The first row of its render targets is their bottom row. OpenGL keeps an object that a queued command still uses until the GPU finished the command, so `destroy` deletes objects at once.
+// The device of OpenGL 4.3 core on Windows and Linux, OpenGL ES 3.0 on Android and WebGL2 on the web, one class that knows its flavour. It draws through the context the platform created with the window, which stays current on the frame thread, and keeps every object as long as that context lives. The surfaces beyond the window are other drawables of that same context, which the device makes current for the swapchain passes that draw into them, so every object serves every surface. The first row of its render targets is their bottom row. OpenGL keeps an object that a queued command still uses until the GPU finished the command, so `destroy` deletes objects at once.
 class Device final : public gpu::Device {
   public:
     static constexpr std::size_t kFramesInFlight = 3;
@@ -132,6 +132,15 @@ class Device final : public gpu::Device {
         std::optional<DepthStencilAttachment> depthStencil;
         bool stencil = false;
         bool grouped = false;
+        int surface = 0;
+    };
+
+    // A drawable beyond the window that the context of the device draws into, with the size of its pixels and whether the frame drew into it.
+    struct Drawable {
+        GlContext* context = nullptr;
+        int width = 0;
+        int height = 0;
+        bool drawn = false;
     };
 
     [[nodiscard]] static std::shared_ptr<Context> makeContext(Api flavour, const Surface& surface);
@@ -162,6 +171,9 @@ class Device final : public gpu::Device {
     void beginFrame();
     void waitForFrame(std::size_t slot);
     void requirePass(std::string_view call) const;
+    [[nodiscard]] Drawable& requireDrawable(int number);
+    void makeDrawableCurrent(int number, GlContext& drawable);
+    void presentDrawable(int number, GlContext& drawable);
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
     void loadAttachments();
@@ -179,6 +191,11 @@ class Device final : public gpu::Device {
     int surfaceWidth = 0;
     int surfaceHeight = 0;
     bool surfaceAttached = false;
+    bool surfaceVsync = true;
+
+    // The drawables of the surfaces beyond the window at their numbers less one, with an empty place for a surface that went away, and the surface whose drawable is current.
+    std::vector<Drawable> drawables;
+    int currentSurface = 0;
     std::string adapterName;
     Capabilities capabilities;
     bool noFloatFiltering = false;

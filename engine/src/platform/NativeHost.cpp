@@ -68,6 +68,10 @@ std::optional<Fold> NativeHost::getFold() const {
     return Services::getFold();
 }
 
+void NativeHost::getCutouts(std::vector<math::Rect>& cutouts) const {
+    Services::getCutouts(cutouts);
+}
+
 Window::StatusBar NativeHost::getStatusBar() const noexcept {
     return statusBar;
 }

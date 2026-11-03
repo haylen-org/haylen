@@ -149,6 +149,41 @@ events.on('windowSafeAreaChanged', function()
 end)
 ```
 
+### viewport.cutouts()
+
+Returns the cutouts of the screen over the window, as a list of `Rect` in design units. A cutout is a part of the screen that shows no pixels of the app, such as the notch or the dynamic island of an iPhone, the hole of a camera on Android or the housing of the camera of a notched Mac. The safe area already leaves the edge of each cutout out, so the cutouts serve an app that draws around them, such as a HUD that fills the room on both sides of a dynamic island. The list is empty where nothing cuts into the window. The event `windowCutoutsChanged` of [`haylen.events`](events.md#engine-events) announces every change, such as after a rotation.
+
+| Platform | Cutouts |
+| --- | --- |
+| iOS and iPadOS | The regions that the screen occludes, which UIKit reports from iOS 27.1, such as the dynamic island and the camera of the foldable iPhone, in an engine built with the SDK of iOS 27.1 or later. Earlier releases and engines built with an older SDK report none. |
+| Android | The bounding rectangles of the cutouts of the display. |
+| macOS | The housing of the camera of a notched display, while the window reaches the top of that screen, such as in fullscreen. |
+| Web | None, since browsers report the insets that cutouts take through `env(safe-area-inset-*)` but never their shapes. |
+| Windows, Linux, tvOS, visionOS, Mac Catalyst | None, since these platforms report no cutouts. |
+
+A [safe area simulation](#safe-area-simulation) of a device brings the cutout of its screen too.
+
+```lua
+local events = require('haylen.events')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+local viewport = require('haylen.viewport')
+
+local cutouts = viewport.cutouts()
+events.on('windowCutoutsChanged', function()
+    cutouts = viewport.cutouts()
+end)
+
+scene.push({
+    render = function(self)
+        graphics2d.beginScreen()
+        for _, cutout in ipairs(cutouts) do
+            graphics2d.drawRectOutline({cutout.x, cutout.y, cutout.width, cutout.height}, 2, '#FFF2B23A')
+        end
+    end,
+})
+```
+
 ### viewport.pixelRect()
 
 Returns the framebuffer region, in pixels, that shows the visible design rectangle, as a `Rect`. It covers the whole framebuffer for `fill`, `stretch`, `expand`, `fitWidth` and `none`, and it leaves the letterbox bars outside for `fit` and `pixelPerfect`. Its edges lie on whole pixels, where the GPU places the viewport. So a centered area never starts half a pixel in, and `viewport.toDesign` maps every point to what the screen shows there.
@@ -223,13 +258,13 @@ Replaces the safe area that the device reports, to test a layout for other scree
 
 The option `debug.safeArea` of `app.json` sets it at start, and [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) shows it.
 
-| Device | Portrait | Landscape |
-| --- | --- | --- |
-| `'iphoneNotch'` | Notch at the top, home indicator at the bottom | Notch on the left and right, home indicator at the bottom |
-| `'iphoneDynamicIsland'` | Dynamic island at the top, home indicator at the bottom | Dynamic island on the left and right, home indicator at the bottom |
-| `'ipad'` | Status bar at the top, home indicator at the bottom | The same |
-| `'androidGestureBar'` | Camera cutout at the top, gesture bar at the bottom | Camera cutout on the left, gesture bar at the bottom |
-| `'television'` | The title safe margins of a TV | The same |
+| Device | Portrait | Landscape | Cutout |
+| --- | --- | --- | --- |
+| `'iphoneNotch'` | Notch at the top, home indicator at the bottom | Notch on the left and right, home indicator at the bottom  The notch at the top center in portrait, along the left edge in landscape |
+| `'iphoneDynamicIsland'` | Dynamic island at the top, home indicator at the bottom | Dynamic island on the left and right, home indicator at the bottom | The dynamic island below the top center in portrait, along the left edge in landscape |
+| `'ipad'` | Status bar at the top, home indicator at the bottom | The same | None |
+| `'androidGestureBar'` | Camera cutout at the top, gesture bar at the bottom | Camera cutout on the left, gesture bar at the bottom | The hole of the camera at the top center in portrait, along the left edge in landscape |
+| `'television'` | The title safe margins of a TV | The same | None |
 
 An unknown device raises `There is no simulated device named "<name>".`, and a negative inset raises `A simulated safe area needs non-negative insets.`. Anything else that is not insets raises `A simulated safe area is a device name or one, two or four insets.`.
 

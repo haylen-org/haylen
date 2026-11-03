@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -12,12 +13,13 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/platform/Output.hpp"
 #include "platform/Host.hpp"
+#include "platform/sdl/GlContext.hpp"
 
 namespace haylen::platform::sdl {
 
 class Window;
 
-// The windows of the outputs of the app on the other displays of a desktop, which SDL opens there for the graphics API of the window of the app. Each one covers its display or sits in the middle of it, follows its size and its scale, ends when the person closes it or its display disconnects, and hands the pointer over it to its output. Everything runs on the main thread, which is the frame thread of SDL.
+// The windows of the outputs of the app on the other displays of a desktop, which SDL opens there for the graphics API of the window of the app, with the context of the window of the app drawing into them under OpenGL. Each one covers its display or sits in the middle of it, follows its size and its scale, ends when the person closes it or its display disconnects, and hands the pointer over it to its output. A window that ended hides until the output closes, so the GPU device lets go of its swapchain before the window goes. Everything runs on the main thread, which is the frame thread of SDL.
 class OutputWindows final {
   public:
     OutputWindows() = default;
@@ -42,6 +44,7 @@ class OutputWindows final {
         std::string display;
         SDL_Window* window = nullptr;
         SDL_MetalView view = nullptr;
+        std::unique_ptr<GlContext> gl;
         Host::OutputReport report;
     };
 

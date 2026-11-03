@@ -26,6 +26,7 @@
 #include "platform/apple/AppleOutputs.hpp"
 #elif defined(__EMSCRIPTEN__)
 #include "platform/web/WebMotion.hpp"
+#include "platform/web/WebOutputs.hpp"
 #include "platform/web/WebPage.hpp"
 #endif
 
@@ -51,10 +52,14 @@ bool Host::isFullscreen() const noexcept {
     return (SDL_GetWindowFlags(runtime.getWindow().get()) & SDL_WINDOW_FULLSCREEN) != 0U;
 }
 
-// Desktops open a window of SDL on the display of the output, iPhones and iPads show it in the scene of an external display, and the other platforms end it with the reason.
+// Desktops open a window of SDL on the display of the output, iPhones and iPads show it in the scene of an external display, a page opens a window of the browser on the screen of the output, and the other platforms end it with the reason.
 void Host::openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) {
 #if defined(__EMSCRIPTEN__)
-    refuseOutput(number, "The page shows the app in its own canvas alone.");
+    if (runtime.getWindow().getApi() != gpu::Device::Api::WebGpu) {
+        refuseOutput(number, "A WebGL2 context draws only into its own canvas, so the page shows outputs on other screens only through WebGPU.");
+        return;
+    }
+    WebOutputs::open(number, display, options, runtime.getWindow().getSampleCount());
 #elif defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleOutputs::open(number, display, {.sampleCount = runtime.getWindow().getSampleCount(), .vsync = runtime.getWindow().isVsync()});
 #elif defined(__APPLE__) && !TARGET_OS_OSX
@@ -76,17 +81,22 @@ void Host::openOutput(std::uint32_t number, std::string_view display, const Outp
 
 void Host::closeOutput(std::uint32_t number) {
     NativeHost::closeOutput(number);
-#if defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+#if defined(__EMSCRIPTEN__)
+    WebOutputs::close(number);
+#elif defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleOutputs::close(number);
-#elif !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || TARGET_OS_OSX)
+#elif !defined(__APPLE__) || TARGET_OS_OSX
     runtime.getOutputs().close(number);
 #endif
 }
 
 Host::OutputReport Host::getOutputReport(std::uint32_t number) const {
-#if defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+#if defined(__EMSCRIPTEN__)
+    const OutputReport refused = NativeHost::getOutputReport(number);
+    return refused.reason.empty() ? WebOutputs::getReport(number) : refused;
+#elif defined(__APPLE__) && TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     return AppleOutputs::getReport(number);
-#elif !defined(__EMSCRIPTEN__) && (!defined(__APPLE__) || TARGET_OS_OSX)
+#elif !defined(__APPLE__) || TARGET_OS_OSX
     const OutputReport refused = NativeHost::getOutputReport(number);
     return refused.reason.empty() ? runtime.getOutputs().getReport(number) : refused;
 #else

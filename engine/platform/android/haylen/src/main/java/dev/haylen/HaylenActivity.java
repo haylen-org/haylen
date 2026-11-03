@@ -34,6 +34,7 @@ import android.view.WindowManager;
 import android.widget.FrameLayout;
 import androidx.activity.OnBackPressedCallback;
 import androidx.core.graphics.Insets;
+import androidx.core.view.DisplayCutoutCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
@@ -42,6 +43,7 @@ import com.google.androidgamesdk.GameActivity;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.TimeZone;
@@ -74,6 +76,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private HaylenNetwork network;
     private HaylenFold fold;
     private HaylenDisplays displays;
+    HaylenOutputs outputs;
     private OnBackPressedCallback backCallback;
     private int statusBar;
     // Whether the app keeps the screen on, which outlives the activity, so an activity that the system creates again keeps the screen on too.
@@ -102,6 +105,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         fold = new HaylenFold(this);
         fold.register();
         displays = new HaylenDisplays(this);
+        outputs = new HaylenOutputs(this);
         displays.register();
 
         // The views over the app share the layout of its surface, above it.
@@ -268,6 +272,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenMediaSession.release();
         fold.unregister();
         displays.unregister();
+        outputs.dismissAll();
         getSystemService(InputManager.class).unregisterInputDeviceListener(this);
         if (network != null) {
             network.unregister();
@@ -547,6 +552,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private WindowInsetsCompat applyInsets(View view, WindowInsetsCompat insets) {
         Insets safe = insets.getInsets(WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
         nativeSafeArea(safe.left, safe.top, safe.right, safe.bottom, insets.getInsets(WindowInsetsCompat.Type.statusBars()).top);
+        nativeCutouts(describeCutouts(insets.getDisplayCutout()));
         overlays.setSafeArea(safe);
 
         boolean keyboardShown = insets.isVisible(WindowInsetsCompat.Type.ime());
@@ -554,6 +560,23 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeKeyboard(0, view.getHeight() - keyboardHeight, keyboardHeight > 0 ? view.getWidth() : 0, keyboardHeight);
         editor.setKeyboardShown(keyboardShown);
         return ViewCompat.onApplyWindowInsets(view, insets);
+    }
+
+    // The bounding rectangle of each cutout, in pixels of the view, four numbers each, from the left and top edges to the right and bottom ones.
+    private static int[] describeCutouts(DisplayCutoutCompat cutout) {
+        if (cutout == null) {
+            return new int[0];
+        }
+        List<Rect> rects = cutout.getBoundingRects();
+        int[] edges = new int[rects.size() * 4];
+        for (int index = 0; index < rects.size(); ++index) {
+            Rect rect = rects.get(index);
+            edges[index * 4] = rect.left;
+            edges[index * 4 + 1] = rect.top;
+            edges[index * 4 + 2] = rect.right;
+            edges[index * 4 + 3] = rect.bottom;
+        }
+        return edges;
     }
 
     // Back lets the text field being edited go first, and otherwise reaches the engine as escape.
@@ -604,6 +627,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             return super.requestFocus(direction, previouslyFocusedRect);
         }
     }
+
+    private static native void nativeCutouts(int[] edges);
 
     private static native void nativeSafeArea(int left, int top, int right, int bottom, int statusBar);
 

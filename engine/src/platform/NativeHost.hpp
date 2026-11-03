@@ -32,6 +32,7 @@ class NativeHost : public Host {
     [[nodiscard]] Orientation getOrientation() const override;
     void lockOrientation(Orientation value) override;
     [[nodiscard]] std::optional<Fold> getFold() const override;
+    void getCutouts(std::vector<math::Rect>& cutouts) const override;
     [[nodiscard]] StatusBar getStatusBar() const noexcept override;
     void setStatusBar(StatusBar value) override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;

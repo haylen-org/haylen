@@ -1459,8 +1459,11 @@ Module.haylen = Module.haylen || {};
         window.getScreenDetails().then(
             (details) => {
                 if (pageScreens.details === null) {
+                    // The screen of the page keeps its id as the browser describes it in detail, so the app sees the others join it rather than a new screen.
+                    pageScreens.ids.set(details.currentScreen, screenId(window.screen));
                     pageScreens.details = details;
                     details.addEventListener("screenschange", displaysChanged);
+                    details.addEventListener("screenschange", outputScreensChanged);
                     details.addEventListener("currentscreenchange", displaysChanged);
                     displaysChanged();
                 }
@@ -1472,6 +1475,79 @@ Module.haylen = Module.haylen || {};
     if (window.screen.addEventListener) {
         window.screen.addEventListener("change", displaysChanged);
     }
+
+    // The outputs of the app on other screens, each a window of the browser that `window.open` places on its screen through the Window Management API, with a canvas that fills the window and that the WebGPU device presents into. A browser opens such a window only shortly after a click or a key of the person, so the app opens an output from a button, and a window that the browser blocks ends the output with the reason. The window covers the work area of its screen when the output asks for fullscreen, since a page cannot make another window fullscreen without a gesture inside it. The endings are those of `platform::Output::Ending`, in its order.
+    const outputEndings = { person: 1, disconnected: 2, unsupported: 3 };
+    const pageOutputs = new Map();
+    const endOutput = (number, ending, reason) => {
+        const output = pageOutputs.get(number);
+        if (output !== undefined) {
+            pageOutputs.delete(number);
+            output.window.close();
+        }
+        whenRuntimeReady(() => callEngine("haylen_web_output_ended", null, ["number", "number", "string"], [number, ending, reason]));
+    };
+    haylen.outputCanvas = (number) => pageOutputs.get(number)?.canvas ?? null;
+    haylen.openOutput = function (number, display, title, fullscreen, width, height) {
+        const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
+        if (target === undefined) {
+            queueMicrotask(() => endOutput(number, outputEndings.disconnected, ""));
+            return;
+        }
+        const size = fullscreen ? [target.availWidth, target.availHeight] : [Math.min(width, target.availWidth), Math.min(height, target.availHeight)];
+        const left = target.availLeft + Math.round((target.availWidth - size[0]) / 2);
+        const top = target.availTop + Math.round((target.availHeight - size[1]) / 2);
+        const opened = window.open("", "haylen-output-" + number, `popup,left=${left},top=${top},width=${size[0]},height=${size[1]}`);
+        if (opened === null) {
+            queueMicrotask(() => endOutput(number, outputEndings.unsupported, "The browser blocked the window of the output. A browser opens a window only shortly after a click or a key of the person, so open the output from a button."));
+            return;
+        }
+
+        const page = opened.document;
+        page.title = title;
+        page.body.style.cssText = "margin:0;overflow:hidden;background:#000";
+        const canvas = page.createElement("canvas");
+        canvas.style.cssText = "display:block;width:100vw;height:100vh;touch-action:none";
+        page.body.appendChild(canvas);
+        const output = { window: opened, canvas: canvas, screen: target };
+        pageOutputs.set(number, output);
+
+        const report = () => {
+            const scale = opened.devicePixelRatio;
+            const pixels = [Math.max(1, Math.round(canvas.clientWidth * scale)), Math.max(1, Math.round(canvas.clientHeight * scale))];
+            whenRuntimeReady(() => Module._haylen_web_output_canvas(number, pixels[0], pixels[1], scale));
+        };
+        const pointer = (kind) => (event) => whenRuntimeReady(() => Module._haylen_web_output_pointer(number, kind, event.offsetX, event.offsetY, event.button ?? 0, 0, 0));
+        canvas.addEventListener("pointerdown", pointer(0));
+        canvas.addEventListener("pointerup", pointer(1));
+        canvas.addEventListener("pointermove", pointer(2));
+        canvas.addEventListener("wheel", (event) => {
+            event.preventDefault();
+            whenRuntimeReady(() => Module._haylen_web_output_pointer(number, 3, event.offsetX, event.offsetY, 0, -event.deltaX / 100, -event.deltaY / 100));
+        }, { passive: false });
+        opened.addEventListener("resize", report);
+        opened.addEventListener("pagehide", () => {
+            if (pageOutputs.get(number) === output) {
+                pageOutputs.delete(number);
+                endOutput(number, outputEndings.person, "");
+            }
+        });
+        report();
+    };
+    haylen.closeOutput = function (number) {
+        const output = pageOutputs.get(number);
+        if (output !== undefined) {
+            pageOutputs.delete(number);
+            output.window.close();
+        }
+    };
+    const outputScreensChanged = () => {
+        for (const [number, output] of pageOutputs) {
+            if (!pageScreens.details.screens.includes(output.screen)) {
+                endOutput(number, outputEndings.disconnected, "");
+            }
+        }
+    };
 
     haylen.persist = function () {
         FS.syncfs(false, (error) => {

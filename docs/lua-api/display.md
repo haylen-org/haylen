@@ -51,6 +51,8 @@ print('The window is on', shown.name, 'at', shown.refreshRate, 'frames per secon
 
 Asks the platform to list every display and returns a promise. The promise resolves with `true` once `display.list()` holds every display. Desktops, phones, tablets, TVs and Android list every display from the start, so their promise resolves at once.
 
+From iOS 27, an iPhone or an iPad mirrors its screen on an external display until the app asks for every display, in an engine built with the SDK of iOS 27 or later. The function then registers the scene accessory of UIKit for external displays, so the external display shows the scene of the app instead of the mirror, and the display reaches the app as a `displayConnected` event once UIKit connects that scene. The promise resolves at once.
+
 A browser shows the page only its own screen until the person allows the page to see the others, through the Window Management API. The function then asks the person, which a browser allows only shortly after a click or a key. The screens that the answer adds reach the app as `displayConnected` events. The promise rejects with a failure table whose `code` is one of these:
 
 | Code | Meaning |

@@ -60,7 +60,7 @@ void Device::enableDebugLayers(bool validation) {
     }
 }
 
-Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)), dred(validation), surface(target) {
+Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)), dred(validation) {
     createDevice(validation);
     readCapabilities();
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
@@ -75,17 +75,14 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     bufferArena = std::make_unique<BufferArena>(*device.Get());
     rootSignatures = std::make_unique<RootSignatures>(*device.Get());
     timer = std::make_unique<FrameTimer>(*device.Get(), *queue.Get(), kFramesInFlight);
-    for (D3D12_CPU_DESCRIPTOR_HANDLE& view : backBufferViews) {
-        view = targetViews->allocate();
-    }
-    multisampleView = targetViews->allocate();
-    swapchainDepthView = depthViews->allocate();
+    chains.push_back(makeChain(target));
     pipelineSampleCount = getSwapchainSampleCount();
 
     // A window that has a drawable takes its swapchain now, so a window that Direct3D 12 cannot draw into fails the device while the platform can still try another API.
-    if (surface && surface->width > 0 && surface->height > 0) {
-        swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), *surface);
-        makeSwapchainTargets();
+    SurfaceChain& window = *chains.front();
+    if (target && target->width > 0 && target->height > 0) {
+        window.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), *target);
+        makeSwapchainTargets(window);
     }
 }
 
@@ -93,8 +90,7 @@ Device::~Device() {
     if (queue != nullptr && idleFence != nullptr && fenceEvent != nullptr) {
         waitIdle();
     }
-    releaseSwapchainTargets();
-    swapchain.reset();
+    chains.clear();
     if (fenceEvent != nullptr) {
         CloseHandle(fenceEvent);
     }
@@ -503,7 +499,8 @@ void Device::prepareProgram(const ProgramDesc& desc, core::JobSystem&) {
 }
 
 int Device::getSwapchainSampleCount() const noexcept {
-    return surface ? std::max(1, surface->sampleCount) : 1;
+    const std::optional<Surface>& window = chains.front()->surface;
+    return window ? std::max(1, window->sampleCount) : 1;
 }
 
 gpu::Device::Pipeline Device::makePipeline(const PipelineDesc& desc) {
@@ -652,47 +649,71 @@ void Device::writeImages(std::span<const ImageWrite> writes) {
     }
 }
 
-bool Device::prepareSwapchain() {
-    if (!surface || surface->width <= 0 || surface->height <= 0 || lost) {
+std::unique_ptr<Device::SurfaceChain> Device::makeChain(const std::optional<Surface>& target) {
+    auto chain = std::make_unique<SurfaceChain>(SurfaceChain{.surface = target});
+    for (D3D12_CPU_DESCRIPTOR_HANDLE& view : chain->backBufferViews) {
+        view = targetViews->allocate();
+    }
+    chain->multisampleView = targetViews->allocate();
+    chain->depthView = depthViews->allocate();
+    return chain;
+}
+
+Device::SurfaceChain& Device::requireChain(int number) const {
+    if (number < 0 || static_cast<std::size_t>(number) >= chains.size() || chains[static_cast<std::size_t>(number)] == nullptr) {
+        throw std::logic_error(std::format("The device has no surface {}.", number));
+    }
+    return *chains[static_cast<std::size_t>(number)];
+}
+
+Device::SurfaceChain& Device::requireAddedChain(int number) const {
+    if (number == 0) {
+        throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
+    }
+    return requireChain(number);
+}
+
+bool Device::prepareSwapchain(SurfaceChain& chain) {
+    if (!chain.surface || chain.surface->width <= 0 || chain.surface->height <= 0 || lost) {
         return false;
     }
-    if (swapchain == nullptr) {
-        swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), *surface);
-        makeSwapchainTargets();
+    if (chain.swapchain == nullptr) {
+        chain.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), *chain.surface);
+        makeSwapchainTargets(chain);
         return true;
     }
     // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
-    if (presentPending || (swapchain->getWidth() == surface->width && swapchain->getHeight() == surface->height)) {
+    if (chain.presentPending || (chain.swapchain->getWidth() == chain.surface->width && chain.swapchain->getHeight() == chain.surface->height)) {
         return true;
     }
 
     // The buffers resize only once the GPU let go of them and the device holds no reference to them.
     waitIdle();
-    releaseSwapchainTargets();
-    const HRESULT result = swapchain->resize(surface->width, surface->height);
+    releaseSwapchainTargets(chain);
+    const HRESULT result = chain.swapchain->resize(chain.surface->width, chain.surface->height);
     if (HResult::isDeviceLoss(result)) {
         loseDevice(result);
         return false;
     }
     HResult::check(result, "resize the swapchain");
-    makeSwapchainTargets();
+    makeSwapchainTargets(chain);
     return true;
 }
 
-void Device::makeSwapchainTargets() {
+void Device::makeSwapchainTargets(SurfaceChain& chain) {
     for (UINT index = 0; index < direct3d::Swapchain::kBufferCount; ++index) {
-        HResult::check(swapchain->get().GetBuffer(index, IID_PPV_ARGS(backBuffers[index].GetAddressOf())), "reach a buffer of the swapchain");
-        device->CreateRenderTargetView(backBuffers[index].Get(), nullptr, backBufferViews[index]);
-        backBuffers[index]->SetName(L"haylen-swapchain");
+        HResult::check(chain.swapchain->get().GetBuffer(index, IID_PPV_ARGS(chain.backBuffers[index].GetAddressOf())), "reach a buffer of the swapchain");
+        device->CreateRenderTargetView(chain.backBuffers[index].Get(), nullptr, chain.backBufferViews[index]);
+        chain.backBuffers[index]->SetName(L"haylen-swapchain");
     }
 
     D3D12_RESOURCE_DESC desc{};
     desc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
-    desc.Width = static_cast<UINT64>(swapchain->getWidth());
-    desc.Height = static_cast<UINT>(swapchain->getHeight());
+    desc.Width = static_cast<UINT64>(chain.swapchain->getWidth());
+    desc.Height = static_cast<UINT>(chain.swapchain->getHeight());
     desc.DepthOrArraySize = 1;
     desc.MipLevels = 1;
-    desc.SampleDesc.Count = static_cast<UINT>(getSwapchainSampleCount());
+    desc.SampleDesc.Count = static_cast<UINT>(std::max(1, chain.surface->sampleCount));
     desc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
     const D3D12_HEAP_PROPERTIES heap{.Type = D3D12_HEAP_TYPE_DEFAULT};
 
@@ -700,24 +721,24 @@ void Device::makeSwapchainTargets() {
     if (desc.SampleDesc.Count > 1) {
         desc.Format = Formats::kSwapchainColor;
         desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET;
-        HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(multisampleColor.GetAddressOf())), "create the multisampled color of the swapchain");
-        device->CreateRenderTargetView(multisampleColor.Get(), nullptr, multisampleView);
-        multisampleColor->SetName(L"haylen-swapchain-color");
+        HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_RENDER_TARGET, nullptr, IID_PPV_ARGS(chain.multisampleColor.GetAddressOf())), "create the multisampled color of the swapchain");
+        device->CreateRenderTargetView(chain.multisampleColor.Get(), nullptr, chain.multisampleView);
+        chain.multisampleColor->SetName(L"haylen-swapchain-color");
     }
 
     desc.Format = Formats::getDepthFormat(Formats::kSwapchainDepthFormat);
     desc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL | D3D12_RESOURCE_FLAG_DENY_SHADER_RESOURCE;
-    HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, nullptr, IID_PPV_ARGS(swapchainDepth.GetAddressOf())), "create the depth and stencil of the swapchain");
-    device->CreateDepthStencilView(swapchainDepth.Get(), nullptr, swapchainDepthView);
-    swapchainDepth->SetName(L"haylen-swapchain-depth");
+    HResult::check(device->CreateCommittedResource(&heap, D3D12_HEAP_FLAG_NONE, &desc, D3D12_RESOURCE_STATE_DEPTH_WRITE, nullptr, IID_PPV_ARGS(chain.depth.GetAddressOf())), "create the depth and stencil of the swapchain");
+    device->CreateDepthStencilView(chain.depth.Get(), nullptr, chain.depthView);
+    chain.depth->SetName(L"haylen-swapchain-depth");
 }
 
-void Device::releaseSwapchainTargets() {
-    for (ComPtr<ID3D12Resource>& buffer : backBuffers) {
+void Device::releaseSwapchainTargets(SurfaceChain& chain) {
+    for (ComPtr<ID3D12Resource>& buffer : chain.backBuffers) {
         buffer.Reset();
     }
-    multisampleColor.Reset();
-    swapchainDepth.Reset();
+    chain.multisampleColor.Reset();
+    chain.depth.Reset();
 }
 
 void Device::setViewportAndScissor(int width, int height) {
@@ -747,30 +768,31 @@ void Device::beginPass(const PassDesc& desc) {
 }
 
 void Device::beginSwapchainPass(const PassDesc& desc) {
-    skipping = !prepareSwapchain();
+    SurfaceChain& chain = requireChain(desc.surface);
+    skipping = !prepareSwapchain(chain);
     if (skipping) {
         return;
     }
 
     // The first pass of the frame into the swapchain takes the buffer that DXGI hands out next, and the frame presents it.
-    if (!presentPending) {
-        presentPending = true;
-        backBufferIndex = swapchain->get().GetCurrentBackBufferIndex();
-        if (multisampleColor == nullptr) {
-            const D3D12_RESOURCE_BARRIER barrier = makeTransition(backBuffers[backBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    if (!chain.presentPending) {
+        chain.presentPending = true;
+        chain.backBufferIndex = chain.swapchain->get().GetCurrentBackBufferIndex();
+        if (chain.multisampleColor == nullptr) {
+            const D3D12_RESOURCE_BARRIER barrier = makeTransition(chain.backBuffers[chain.backBufferIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
             commands->ResourceBarrier(1, &barrier);
         }
     }
 
     const D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE begin = desc.load == Load::Clear ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_CLEAR : (desc.load == Load::Keep ? D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_PRESERVE : D3D12_RENDER_PASS_BEGINNING_ACCESS_TYPE_DISCARD);
     D3D12_RENDER_PASS_RENDER_TARGET_DESC color{};
-    color.cpuDescriptor = multisampleColor != nullptr ? multisampleView : backBufferViews[backBufferIndex];
+    color.cpuDescriptor = chain.multisampleColor != nullptr ? chain.multisampleView : chain.backBufferViews[chain.backBufferIndex];
     color.BeginningAccess.Type = begin;
     color.BeginningAccess.Clear.ClearValue = {.Format = Formats::kSwapchainColor, .Color = {desc.clear.r, desc.clear.g, desc.clear.b, desc.clear.a}};
     color.EndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
     D3D12_RENDER_PASS_DEPTH_STENCIL_DESC depth{};
-    depth.cpuDescriptor = swapchainDepthView;
+    depth.cpuDescriptor = chain.depthView;
     depth.DepthBeginningAccess.Type = begin;
     depth.StencilBeginningAccess.Type = begin;
     const DXGI_FORMAT depthFormat = Formats::getDepthFormat(Formats::kSwapchainDepthFormat);
@@ -780,7 +802,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
     depth.StencilEndingAccess.Type = D3D12_RENDER_PASS_ENDING_ACCESS_TYPE_PRESERVE;
 
     commands->BeginRenderPass(1, &color, &depth, D3D12_RENDER_PASS_FLAG_NONE);
-    setViewportAndScissor(swapchain->getWidth(), swapchain->getHeight());
+    setViewportAndScissor(chain.swapchain->getWidth(), chain.swapchain->getHeight());
 }
 
 // The attachments leave the state that shaders read for the pass, and the barriers that bring them back wait for its end. A multisampled attachment resolves as its render pass ends, which tile GPUs do without writing the samples back to memory.
@@ -1103,16 +1125,21 @@ void Device::commit() {
     }
     openFrame();
 
-    if (presentPending && multisampleColor != nullptr) {
-        ID3D12Resource* backBuffer = backBuffers[backBufferIndex].Get();
-        const std::array<D3D12_RESOURCE_BARRIER, 2> toResolve{makeTransition(multisampleColor.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE), makeTransition(backBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST)};
-        commands->ResourceBarrier(static_cast<UINT>(toResolve.size()), toResolve.data());
-        commands->ResolveSubresource(backBuffer, 0, multisampleColor.Get(), 0, Formats::kSwapchainColor);
-        const std::array<D3D12_RESOURCE_BARRIER, 2> toPresent{makeTransition(multisampleColor.Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET), makeTransition(backBuffer, D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT)};
-        commands->ResourceBarrier(static_cast<UINT>(toPresent.size()), toPresent.data());
-    } else if (presentPending) {
-        const D3D12_RESOURCE_BARRIER barrier = makeTransition(backBuffers[backBufferIndex].Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-        commands->ResourceBarrier(1, &barrier);
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !chain->presentPending) {
+            continue;
+        }
+        ID3D12Resource* backBuffer = chain->backBuffers[chain->backBufferIndex].Get();
+        if (chain->multisampleColor != nullptr) {
+            const std::array<D3D12_RESOURCE_BARRIER, 2> toResolve{makeTransition(chain->multisampleColor.Get(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE), makeTransition(backBuffer, D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RESOLVE_DEST)};
+            commands->ResourceBarrier(static_cast<UINT>(toResolve.size()), toResolve.data());
+            commands->ResolveSubresource(backBuffer, 0, chain->multisampleColor.Get(), 0, Formats::kSwapchainColor);
+            const std::array<D3D12_RESOURCE_BARRIER, 2> toPresent{makeTransition(chain->multisampleColor.Get(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET), makeTransition(backBuffer, D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PRESENT)};
+            commands->ResourceBarrier(static_cast<UINT>(toPresent.size()), toPresent.data());
+        } else {
+            const D3D12_RESOURCE_BARRIER barrier = makeTransition(backBuffer, D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+            commands->ResourceBarrier(1, &barrier);
+        }
     }
     timer->end(*commands.Get(), frameIndex);
 
@@ -1127,8 +1154,12 @@ void Device::commit() {
     if (SUCCEEDED(commands->Close())) {
         queue->ExecuteCommandLists(1, &list);
     }
-    if (presentPending && swapchain != nullptr) {
-        const HRESULT result = swapchain->present();
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !chain->presentPending) {
+            continue;
+        }
+        chain->presentPending = false;
+        const HRESULT result = chain->swapchain->present();
         if (HResult::isDeviceLoss(result)) {
             loseDevice(result);
         }
@@ -1143,7 +1174,6 @@ void Device::commit() {
     frameIndex = (frameIndex + 1) % kFramesInFlight;
     frameOpen = false;
     transfersOpen = false;
-    presentPending = false;
 
     if (!lost && FAILED(device->GetDeviceRemovedReason())) {
         loseDevice(device->GetDeviceRemovedReason());
@@ -1158,22 +1188,24 @@ void Device::drainMessages() {
 }
 
 void Device::resizeSurface(int width, int height) {
-    if (surface) {
-        surface->width = width;
-        surface->height = height;
+    SurfaceChain& window = *chains.front();
+    if (window.surface) {
+        window.surface->width = width;
+        window.surface->height = height;
     }
 }
 
 void Device::detachSurface() {
+    SurfaceChain& window = *chains.front();
     waitIdle();
-    releaseSwapchainTargets();
-    swapchain.reset();
-    surface.reset();
+    releaseSwapchainTargets(window);
+    window.swapchain.reset();
+    window.surface.reset();
 }
 
 void Device::attachSurface(const Surface& target) {
     detachSurface();
-    surface = target;
+    chains.front()->surface = target;
     if (getSwapchainSampleCount() != pipelineSampleCount) {
         pipelineSampleCount = getSwapchainSampleCount();
         rebuildSwapchainPipelines();
@@ -1205,17 +1237,46 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(std::move(buffer), fence, fenceValue + 1, pitch, record.format, width, height);
 }
 
-// The device draws only into the window of the app, so the outputs of the app on other displays draw through the devices that draw into several surfaces, as the guide of the render hardware interface lists them.
-int Device::addSurface(const Surface&) {
-    throw std::runtime_error("The Direct3D 12 device draws only into the window of the app, not into a surface on another display.");
+// A surface beyond the window draws through the pipelines of the swapchain, so it takes their sample count, and it makes its swapchain now, so a surface that Direct3D 12 cannot draw into fails at once.
+int Device::addSurface(const Surface& added) {
+    Surface target = added;
+    target.sampleCount = pipelineSampleCount;
+    std::unique_ptr<SurfaceChain> chain = makeChain(target);
+    if (target.width > 0 && target.height > 0) {
+        chain->swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *queue.Get(), target);
+        makeSwapchainTargets(*chain);
+    }
+
+    const auto free = std::find(chains.begin() + 1, chains.end(), nullptr);
+    if (free != chains.end()) {
+        *free = std::move(chain);
+        return static_cast<int>(free - chains.begin());
+    }
+    chains.push_back(std::move(chain));
+    return static_cast<int>(chains.size()) - 1;
 }
 
-void Device::resizeSurface(int number, int, int) {
-    throw std::logic_error(std::format("The device has no surface {}.", number));
+void Device::resizeSurface(int number, int width, int height) {
+    SurfaceChain& chain = requireAddedChain(number);
+    chain.surface->width = width;
+    chain.surface->height = height;
 }
 
+// The frames in flight may still draw into the buffers of the swapchain, so the device waits for them before it lets go of the swapchain and its views.
 void Device::removeSurface(int number) {
-    throw std::logic_error(std::format("The device has no surface {}.", number));
+    SurfaceChain& chain = requireAddedChain(number);
+    if (chain.presentPending) {
+        throw std::logic_error("A surface goes between frames, after \"commit\".");
+    }
+    waitIdle();
+    releaseSwapchainTargets(chain);
+    chain.swapchain.reset();
+    for (const D3D12_CPU_DESCRIPTOR_HANDLE view : chain.backBufferViews) {
+        targetViews->free(view);
+    }
+    targetViews->free(chain.multisampleView);
+    depthViews->free(chain.depthView);
+    chains[static_cast<std::size_t>(number)].reset();
 }
 
 } // namespace haylen::gpu::d3d12

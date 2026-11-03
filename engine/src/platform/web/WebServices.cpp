@@ -249,6 +249,11 @@ std::optional<Fold> Services::getFold() {
     return Fold{.bounds = math::Rect::fromMinMax({values[0], values[1]}, {values[2], values[3]}), .axis = values[4] != 0.0F ? Fold::Axis::Vertical : Fold::Axis::Horizontal, .state = values[5] != 0.0F ? Fold::State::HalfOpened : Fold::State::Flat, .separating = values[6] != 0.0F, .occluding = values[7] != 0.0F};
 }
 
+// Browsers tell the insets that cutouts take through `env(safe-area-inset-*)`, never the shapes of the cutouts.
+void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+    cutouts.clear();
+}
+
 TextInput& Services::getTextInput() {
     static WebTextInput& input = *new WebTextInput();
     return input;

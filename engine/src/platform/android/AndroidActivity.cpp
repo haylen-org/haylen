@@ -7,6 +7,7 @@ namespace haylen::platform {
 std::mutex& AndroidActivity::mutex = *new std::mutex();
 math::Insets AndroidActivity::safeAreaInsets{};
 std::optional<Fold> AndroidActivity::fold;
+std::vector<math::Rect>& AndroidActivity::cutouts = *new std::vector<math::Rect>();
 std::atomic<bool> AndroidActivity::framePresented = false;
 std::atomic<float> AndroidActivity::splashFadeOut = 0.0F;
 std::atomic<bool> AndroidActivity::television = false;
@@ -54,6 +55,16 @@ void AndroidActivity::receiveFold(const FoldReport& report) {
     }
     const std::scoped_lock lock(mutex);
     fold = value;
+}
+
+void AndroidActivity::setCutouts(std::vector<math::Rect> value) {
+    const std::scoped_lock lock(mutex);
+    cutouts = std::move(value);
+}
+
+void AndroidActivity::getCutouts(std::vector<math::Rect>& value) {
+    const std::scoped_lock lock(mutex);
+    value.assign(cutouts.begin(), cutouts.end());
 }
 
 std::optional<Fold> AndroidActivity::getFold() {

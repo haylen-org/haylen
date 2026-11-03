@@ -723,6 +723,7 @@ The window publishes these events on [`haylen.events`](events.md#engine-events),
 | `windowOrientationChanged` | The screen turned between landscape and portrait. |
 | `windowSafeAreaChanged` | The safe area moved, such as when the status bar showed. |
 | `windowFoldChanged` | The fold across the window changed, or a simulation replaced it. |
+| `windowCutoutsChanged` | The cutouts of the screen over the window changed, as [`viewport.cutouts()`](viewport.md#viewportcutouts) reports them. |
 | `windowMoved` | The desktop window moved. |
 | `windowDisplayChanged` | The window moved to another display. |
 

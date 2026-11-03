@@ -56,6 +56,21 @@ math::Insets SafeAreaSimulation::getInsets(math::Vec2 framebuffer, float dpiScal
     return {.left = sides.left * scale.x, .top = sides.top * scale.y, .right = sides.right * scale.x, .bottom = sides.bottom * scale.y};
 }
 
+// A device in landscape lies with its top to the left, so the cutout at the top of its portrait screen sits along the left edge.
+void SafeAreaSimulation::getCutouts(math::Vec2 framebuffer, std::vector<math::Rect>& cutouts) const {
+    cutouts.clear();
+    if (!device || kDevices[*device].cutout.width <= 0.0F) {
+        return;
+    }
+    const Device& simulated = kDevices[*device];
+    const math::Rect& cutout = simulated.cutout;
+    const bool landscape = framebuffer.x > framebuffer.y;
+    const math::Vec2 screen = landscape ? math::Vec2{simulated.screen.y, simulated.screen.x} : simulated.screen;
+    const math::Rect turned = landscape ? math::Rect{cutout.y, simulated.screen.x - cutout.x - cutout.width, cutout.height, cutout.width} : cutout;
+    const math::Vec2 scale = framebuffer / screen;
+    cutouts.push_back({turned.x * scale.x, turned.y * scale.y, turned.width * scale.x, turned.height * scale.y});
+}
+
 core::Json SafeAreaSimulation::toJson() const {
     if (device) {
         return std::string(kDevices[*device].name);

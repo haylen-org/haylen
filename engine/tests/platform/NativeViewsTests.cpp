@@ -146,6 +146,30 @@ TEST_F(SafeAreaTest, KeepsTheWholeWindowSafeWhereNothingCoversIt) {
     expectSameRect(fixture.engine().getViewport().getSafeRect(), {30.0F, 0.0F, 930.0F, 486.0F});
 }
 
+TEST_F(SafeAreaTest, ReportsTheCutoutsOfTheScreenInDesignUnits) {
+    // The cutouts of the device reach Lua in design units, and the event announces each change with the new list.
+    test::EngineFixture fixture({{"app.json", app("fit")}});
+    fixture.host().resize({1920.0F, 1080.0F});
+    fixture.frames(1);
+    fixture.runLua("heard = {} require('haylen.events').on('windowCutoutsChanged', function(info) heard[#heard + 1] = #info.cutouts end)");
+    fixture.host().setCutouts({{900.0F, 0.0F, 120.0F, 60.0F}});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("local cutout = require('haylen.viewport').cutouts()[1] return table.concat({cutout.x, cutout.y, cutout.width, cutout.height}, ',')"), "450.0,0.0,60.0,30.0");
+    fixture.host().setCutouts({});
+    fixture.frames(1);
+    EXPECT_EQ(fixture.lua("return #require('haylen.viewport').cutouts() .. ' ' .. table.concat(heard, ',')"), "0 1,0");
+
+    // A simulated device brings the cutout of its screen, which turns with the window.
+    fixture.runLua("require('haylen.viewport').setSafeAreaSimulation('iphoneDynamicIsland')");
+    fixture.host().resize({1080.0F, 1920.0F});
+    fixture.frames(1);
+    ASSERT_EQ(fixture.engine().getCutouts().size(), 1U);
+    expectSameRect(fixture.engine().getCutouts()[0], {1080.0F * 133.5F / 393.0F, 1920.0F * 11.0F / 852.0F, 1080.0F * 126.0F / 393.0F, 1920.0F * 37.0F / 852.0F});
+    fixture.host().resize({1920.0F, 1080.0F});
+    fixture.frames(1);
+    expectSameRect(fixture.engine().getCutouts()[0], {1920.0F * 11.0F / 852.0F, 1080.0F * 133.5F / 393.0F, 1920.0F * 37.0F / 852.0F, 1080.0F * 126.0F / 393.0F});
+}
+
 TEST_F(AppCoverTest, MakesTheAppInactiveHaltedAndMutedWhileCovered) {
     test::EngineFixture fixture;
     core::Engine& engine = fixture.engine();

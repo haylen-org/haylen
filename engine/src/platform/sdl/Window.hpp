@@ -36,6 +36,11 @@ class Window final : public platform::NativeWindow {
 
     [[nodiscard]] gpu::Surface getSurface() const;
 
+    // The context of OpenGL, OpenGL ES or WebGL2 of the window, which only a window of those APIs has.
+    [[nodiscard]] const GlContext* getGlContext() const noexcept {
+        return gl.get();
+    }
+
     // Replaces the context of OpenGL, OpenGL ES or WebGL2 that the GPU lost with a new one for the device that replaces the lost one. Windows of the other graphics APIs keep what they have.
     void renewGlContext();
 

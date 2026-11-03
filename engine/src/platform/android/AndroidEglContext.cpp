@@ -35,6 +35,46 @@ AndroidEglContext::AndroidEglContext(int sampleCount, bool validation) : display
     makeCurrent();
 }
 
+// A window surface of EGL on another window, which the context of the activity draws into while it is current on it.
+class AndroidEglContext::Drawable final : public gpu::GlContext {
+  public:
+    Drawable(EGLDisplay owner, EGLConfig config, EGLContext shared, ANativeWindow& window) : display(owner), context(shared), surface(eglCreateWindowSurface(owner, config, &window, nullptr)) {
+        if (surface == EGL_NO_SURFACE) {
+            throw std::runtime_error("EGL could not make a surface of the window of the output.");
+        }
+    }
+
+    Drawable(const Drawable&) = delete;
+    Drawable& operator=(const Drawable&) = delete;
+
+    ~Drawable() override {
+        eglDestroySurface(display, surface);
+    }
+
+    void makeCurrent() override {
+        if (eglMakeCurrent(display, surface, surface, context) == EGL_FALSE) {
+            throw std::runtime_error("EGL could not make the context of OpenGL ES current on the window of the output.");
+        }
+    }
+
+    void swapBuffers() override {
+        eglSwapBuffers(display, surface);
+    }
+
+    void setSwapInterval(int value) override {
+        eglSwapInterval(display, value);
+    }
+
+    void* getProcAddress(const char* name) override {
+        return reinterpret_cast<void*>(eglGetProcAddress(name));
+    }
+
+  private:
+    EGLDisplay display;
+    EGLContext context;
+    EGLSurface surface;
+};
+
 AndroidEglContext::~AndroidEglContext() {
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     if (surface != EGL_NO_SURFACE) {
@@ -77,6 +117,10 @@ void AndroidEglContext::attachWindow(ANativeWindow& window) {
     }
     attached = &window;
     makeCurrent();
+}
+
+std::unique_ptr<gpu::GlContext> AndroidEglContext::makeDrawable(ANativeWindow& window) const {
+    return std::make_unique<Drawable>(display, config, context, window);
 }
 
 // The context stays current on no surface, which EGL_KHR_surfaceless_context of every device with OpenGL ES 3 allows.

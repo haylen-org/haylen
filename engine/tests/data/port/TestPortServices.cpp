@@ -101,6 +101,11 @@ std::optional<Fold> Services::getFold() {
     return std::nullopt;
 }
 
+// The window of the test port covers no cutout.
+void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+    cutouts.clear();
+}
+
 TextInput& Services::getTextInput() {
     static TextInput& input = *new TextInput();
     return input;

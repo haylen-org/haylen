@@ -94,6 +94,10 @@ class JavaBridge final {
     static void showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data);
     static void cancelDialog(std::uint64_t id);
 
+    // Shows an output in a presentation on the display of the number that the display manager gives, or dismisses it, through `HaylenOutputs`. A presentation that Java never took ends its output.
+    static void openOutput(std::uint32_t number, std::string_view display, std::string_view title);
+    static void closeOutput(std::uint32_t number);
+
     // Hands the tree of accessible elements, as the JSON of `{focused, elements}`, and the announcements of the app to the screen readers of the activity. The Java side tells whether it wants the tree, which the frame thread reads.
     static void updateAccessibility(std::string_view treeJson);
     static void announce(std::string_view text, bool interrupt);
@@ -174,6 +178,9 @@ class JavaBridge final {
     static jmethodID announceMethod;
     static jclass mediaSessionClass;
     static jmethodID updateMediaSessionMethod;
+    static jclass outputsClass;
+    static jmethodID openOutputMethod;
+    static jmethodID closeOutputMethod;
     static jclass permissionsClass;
     static jmethodID permissionStateMethod;
     static jmethodID requestPermissionMethod;

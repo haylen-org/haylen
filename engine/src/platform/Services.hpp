@@ -110,6 +110,9 @@ class Services final {
     // Returns the fold of a foldable or dual-screen device across the window, as `Window::getFold` describes.
     [[nodiscard]] static std::optional<Fold> getFold();
 
+    // Writes the cutouts of the screen over the window, as `Window::getCutouts` describes.
+    static void getCutouts(std::vector<math::Rect>& cutouts);
+
     // Returns the text input of the platforms whose native field edits the text, Apple platforms, Android and the web, which lives as long as the process. Windows and Linux type through the text input of SDL instead.
     [[nodiscard]] static TextInput& getTextInput();
 

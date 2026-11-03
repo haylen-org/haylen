@@ -1,5 +1,6 @@
 #include "platform/android/JavaBridge.hpp"
 
+#include <string>
 #include <utility>
 
 #include "haylen/core/Json.hpp"
@@ -7,6 +8,7 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
+#include "platform/android/AndroidOutputs.hpp"
 #include "varn/dataview/DataViewJni.h"
 #include "varn/http/AndroidHttpBridge.h"
 
@@ -39,6 +41,9 @@ jmethodID JavaBridge::clipboardMethod = nullptr;
 jmethodID JavaBridge::networkRequirementMethod = nullptr;
 jmethodID JavaBridge::packageNameMethod = nullptr;
 jmethodID JavaBridge::developmentServerMethod = nullptr;
+jclass JavaBridge::outputsClass = nullptr;
+jmethodID JavaBridge::openOutputMethod = nullptr;
+jmethodID JavaBridge::closeOutputMethod = nullptr;
 jclass JavaBridge::permissionsClass = nullptr;
 jmethodID JavaBridge::permissionStateMethod = nullptr;
 jmethodID JavaBridge::requestPermissionMethod = nullptr;
@@ -78,7 +83,8 @@ jint JavaBridge::load(JavaVM* vm) {
     accessibilityClass = findClass(*env, "dev/haylen/HaylenAccessibilityTree");
     mediaSessionClass = findClass(*env, "dev/haylen/HaylenMediaSession");
     permissionsClass = findClass(*env, "dev/haylen/HaylenPermissions");
-    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr || permissionsClass == nullptr) {
+    outputsClass = findClass(*env, "dev/haylen/HaylenOutputs");
+    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr || permissionsClass == nullptr || outputsClass == nullptr) {
         return JNI_ERR;
     }
     dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B[J)V");
@@ -108,9 +114,11 @@ jint JavaBridge::load(JavaVM* vm) {
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
     updateMediaSessionMethod = findMethod(*env, mediaSessionClass, "update", "([B[B)V");
     permissionStateMethod = findMethod(*env, permissionsClass, "state", "([B)[B");
+    openOutputMethod = findMethod(*env, outputsClass, "open", "(II[B)V");
+    closeOutputMethod = findMethod(*env, outputsClass, "close", "(I)V");
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, requestPermissionMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -258,6 +266,21 @@ std::string JavaBridge::getDevelopmentServer() {
 }
 
 // The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
+// The ids of the displays of Android are the numbers that the display manager gives them.
+void JavaBridge::openOutput(std::uint32_t number, std::string_view display, std::string_view title) {
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(outputsClass, openOutputMethod, static_cast<jint>(number), static_cast<jint>(std::stoi(std::string(display))), toBytes(env, title).get());
+    if (clearException(env, "dev.haylen.HaylenOutputs.open")) {
+        AndroidOutputs::receiveEnding(number, Output::Ending::Unsupported, "The activity could not open the presentation of the output.");
+    }
+}
+
+void JavaBridge::closeOutput(std::uint32_t number) {
+    JNIEnv& env = getEnv();
+    env.CallStaticVoidMethod(outputsClass, closeOutputMethod, static_cast<jint>(number));
+    clearException(env, "dev.haylen.HaylenOutputs.close");
+}
+
 void JavaBridge::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
     std::int64_t request = 0;
     {

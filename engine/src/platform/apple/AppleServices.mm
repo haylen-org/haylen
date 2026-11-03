@@ -24,6 +24,7 @@
 #import "platform/apple/AppleAccessibility.hpp"
 #import "platform/apple/AppleBattery.hpp"
 #import "platform/apple/AppleBridge.hpp"
+#import "platform/apple/AppleCutouts.hpp"
 #import "platform/apple/AppleDesktop.hpp"
 #import "platform/apple/AppleDialogs.hpp"
 #import "platform/apple/AppleDisplays.hpp"
@@ -33,6 +34,7 @@
 #import "platform/apple/AppleMediaSession.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
+#import "platform/apple/AppleOutputs.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleSplash.hpp"
@@ -176,8 +178,14 @@ std::string Services::getWindowDisplayId() {
 #endif
 }
 
-// Apple platforms list every display from the start.
+// Apple platforms list every display from the start, except an external display of iOS 27 and later, which an iPhone or an iPad mirrors until the app registers the scene accessory that connects the scene of that display.
 void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
+    if (window.rootViewController != nil) {
+        AppleOutputs::registerAccessory(window.rootViewController);
+    }
+#endif
     callback(Window::DisplayAccess::Granted);
 }
 
@@ -279,6 +287,32 @@ std::optional<Fold> Services::getFold() {
     return AppleFold::get();
 #else
     return std::nullopt;
+#endif
+}
+
+// A notched Mac reports the areas beside the housing of its camera, which lies between them along the top of the screen, and a window that reaches the top of the screen has it over its content. iPhones report the regions that elements of the screen occlude, which `AppleCutouts` follows.
+void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+    cutouts.clear();
+#if TARGET_OS_OSX
+    NSWindow* window = (__bridge NSWindow*)NativeWindow::getHandle();
+    NSScreen* screen = window.screen;
+    if (screen == nil || screen.safeAreaInsets.top <= 0.0) {
+        return;
+    }
+    const NSRect left = screen.auxiliaryTopLeftArea;
+    const NSRect right = screen.auxiliaryTopRightArea;
+    const NSRect housing = NSMakeRect(NSMaxX(left), NSMaxY(screen.frame) - screen.safeAreaInsets.top, NSMinX(right) - NSMaxX(left), screen.safeAreaInsets.top);
+    const NSRect content = [window contentRectForFrameRect:window.frame];
+    const NSRect covered = NSIntersectionRect(housing, content);
+    if (NSIsEmptyRect(covered)) {
+        return;
+    }
+    const float scale = NativeWindow::getScale();
+    const auto x = static_cast<float>(NSMinX(covered) - NSMinX(content));
+    const auto y = static_cast<float>(NSMaxY(content) - NSMaxY(covered));
+    cutouts.push_back({x * scale, y * scale, static_cast<float>(NSWidth(covered)) * scale, static_cast<float>(NSHeight(covered)) * scale});
+#elif TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleCutouts::get(cutouts);
 #endif
 }
 

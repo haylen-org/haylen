@@ -5,6 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <optional>
+#include <vector>
 
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Rect.hpp"
@@ -53,6 +54,10 @@ class AndroidActivity final {
     static void receiveFold(const FoldReport& report);
     [[nodiscard]] static std::optional<Fold> getFold();
 
+    // The cutouts of the screen over the window, in pixels of the window, which the activity reports with its insets.
+    static void setCutouts(std::vector<math::Rect> value);
+    static void getCutouts(std::vector<math::Rect>& value);
+
     // A TV has no touch screen, so the player drives the app with a remote or a gamepad.
     static void setTelevision(bool value) noexcept;
     [[nodiscard]] static bool isTelevision() noexcept;
@@ -69,6 +74,7 @@ class AndroidActivity final {
     static std::mutex& mutex;
     static math::Insets safeAreaInsets;
     static std::optional<Fold> fold;
+    static std::vector<math::Rect>& cutouts;
     static std::atomic<bool> framePresented;
     static std::atomic<float> splashFadeOut;
     static std::atomic<bool> television;

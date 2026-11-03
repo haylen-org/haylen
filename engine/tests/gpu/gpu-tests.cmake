@@ -9,6 +9,7 @@ set(haylen_gpu_test_sources
   "${haylen_tests_dir}/gpu/PassTests.cpp"
   "${haylen_tests_dir}/gpu/RendererImageTests.cpp"
   "${haylen_tests_dir}/gpu/ShaderPackageTests.cpp"
+  "${haylen_tests_dir}/gpu/SurfaceTests.cpp"
   "${haylen_tests_dir}/gpu/TextureTests.cpp"
   "${haylen_tests_dir}/gpu/support/GpuFixture.cpp"
   "${haylen_tests_dir}/gpu/support/ImageComparison.cpp"
@@ -31,6 +32,19 @@ else()
 endif()
 target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
+
+# The surfaces beyond the window are a `CAMetalLayer` on Apple platforms, a hidden window on Windows and a window of X11 on Linux, whose display server the tests reach when one runs.
+if(APPLE)
+  target_sources(haylen-gpu-tests PRIVATE "${haylen_tests_dir}/gpu/support/apple/SecondSurface.mm")
+  set_source_files_properties("${haylen_tests_dir}/gpu/support/apple/SecondSurface.mm" PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+  target_link_libraries(haylen-gpu-tests PRIVATE "-framework QuartzCore")
+else()
+  target_sources(haylen-gpu-tests PRIVATE "${haylen_tests_dir}/gpu/support/SecondSurface.cpp")
+endif()
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  find_package(X11 REQUIRED)
+  target_link_libraries(haylen-gpu-tests PRIVATE X11::X11)
+endif()
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
 # The material of the image tests compiles into every program of a material, the way "haylen.py shaders" compiles the materials of apps.
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/scattered-sampling.glsl" SYMBOL getScatteredSamplingShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT" "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT" "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT" "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")

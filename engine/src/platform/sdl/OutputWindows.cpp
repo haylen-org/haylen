@@ -69,7 +69,12 @@ void OutputWindows::open(std::uint32_t number, const Display& display, const Out
     }
     SDL_ShowWindow(entry.window);
 
-    entry.report.surface = Window::describe(entry.window, entry.view);
+    if (main.getGlContext() != nullptr) {
+        entry.gl = std::make_unique<GlContext>(entry.window, *main.getGlContext());
+        entry.report.surface = gpu::Surface{.kind = gpu::Surface::Kind::Gl, .gl = entry.gl.get()};
+    } else {
+        entry.report.surface = Window::describe(entry.window, entry.view);
+    }
     entry.report.surface->sampleCount = main.getSampleCount();
     entry.report.surface->vsync = main.isVsync();
     refresh(entry);
@@ -111,6 +116,7 @@ OutputWindows::Entry* OutputWindows::findNumber(std::uint32_t number) noexcept {
 }
 
 void OutputWindows::destroy(Entry& entry) noexcept {
+    entry.gl.reset();
     if (entry.view != nullptr) {
         SDL_Metal_DestroyView(entry.view);
         entry.view = nullptr;
@@ -127,9 +133,9 @@ void OutputWindows::refresh(Entry& entry) {
     entry.report.scale = SDL_GetWindowDisplayScale(entry.window);
 }
 
-// The window goes at once, and the report of the ending keeps no surface, so the output lets go of it before the next frame.
+// The window hides at once, and the report of the ending keeps no surface, so the output lets go of it before the window goes with the output.
 void OutputWindows::end(Entry& entry, Output::Ending ending) {
-    destroy(entry);
+    SDL_HideWindow(entry.window);
     entry.report = {.ending = ending};
     Player::postEvent({.type = platform::Event::Type::OutputChanged, .output = entry.number});
 }
@@ -139,7 +145,7 @@ bool OutputWindows::handle(const SDL_Event& event) {
         const std::vector<Display> displays = Services::getDisplays();
         for (Entry& entry : entries) {
             const bool connected = std::ranges::find(displays, entry.display, &Display::id) != displays.end();
-            if (!connected && entry.window != nullptr) {
+            if (!connected && entry.window != nullptr && !entry.report.ending) {
                 end(entry, Output::Ending::Disconnected);
             }
         }
@@ -148,7 +154,7 @@ bool OutputWindows::handle(const SDL_Event& event) {
 
     if (event.type >= SDL_EVENT_WINDOW_FIRST && event.type <= SDL_EVENT_WINDOW_LAST) {
         Entry* entry = findWindow(event.window.windowID);
-        if (entry != nullptr) {
+        if (entry != nullptr && !entry->report.ending) {
             handleWindow(*entry, event);
         }
         return entry != nullptr;

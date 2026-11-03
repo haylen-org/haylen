@@ -190,6 +190,20 @@ class Device final : public gpu::Device {
     };
 
     static void enableDebugLayers(bool validation);
+    // The swapchain of a surface, the window or one that `addSurface` made, with the views of its buffers and attachments, which stay in their heaps while the surface lives, and the buffer that the frame draws into. The window keeps its place while it has no surface, and a surface makes its swapchain once it has pixels.
+    struct SurfaceChain {
+        std::optional<Surface> surface;
+        std::unique_ptr<direct3d::Swapchain> swapchain;
+        std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, direct3d::Swapchain::kBufferCount> backBuffers;
+        std::array<D3D12_CPU_DESCRIPTOR_HANDLE, direct3d::Swapchain::kBufferCount> backBufferViews{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> multisampleColor;
+        D3D12_CPU_DESCRIPTOR_HANDLE multisampleView{};
+        Microsoft::WRL::ComPtr<ID3D12Resource> depth;
+        D3D12_CPU_DESCRIPTOR_HANDLE depthView{};
+        UINT backBufferIndex = 0;
+        bool presentPending = false;
+    };
+
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
@@ -202,9 +216,12 @@ class Device final : public gpu::Device {
     void describeRemoval() noexcept;
     void setHeaps();
     [[nodiscard]] int getSwapchainSampleCount() const noexcept;
-    [[nodiscard]] bool prepareSwapchain();
-    void makeSwapchainTargets();
-    void releaseSwapchainTargets();
+    [[nodiscard]] std::unique_ptr<SurfaceChain> makeChain(const std::optional<Surface>& target);
+    [[nodiscard]] SurfaceChain& requireChain(int number) const;
+    [[nodiscard]] SurfaceChain& requireAddedChain(int number) const;
+    [[nodiscard]] bool prepareSwapchain(SurfaceChain& chain);
+    void makeSwapchainTargets(SurfaceChain& chain);
+    static void releaseSwapchainTargets(SurfaceChain& chain);
     void rebuildSwapchainPipelines();
     void beginSwapchainPass(const PassDesc& desc);
     void beginOffscreenPass(const PassDesc& desc);
@@ -261,16 +278,8 @@ class Device final : public gpu::Device {
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList4> transfers;
     bool transfersOpen = false;
 
-    std::optional<Surface> surface;
-    std::unique_ptr<direct3d::Swapchain> swapchain;
-    std::array<Microsoft::WRL::ComPtr<ID3D12Resource>, direct3d::Swapchain::kBufferCount> backBuffers;
-    std::array<D3D12_CPU_DESCRIPTOR_HANDLE, direct3d::Swapchain::kBufferCount> backBufferViews{};
-    Microsoft::WRL::ComPtr<ID3D12Resource> multisampleColor;
-    D3D12_CPU_DESCRIPTOR_HANDLE multisampleView{};
-    Microsoft::WRL::ComPtr<ID3D12Resource> swapchainDepth;
-    D3D12_CPU_DESCRIPTOR_HANDLE swapchainDepthView{};
-    UINT backBufferIndex = 0;
-    bool presentPending = false;
+    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away.
+    std::vector<std::unique_ptr<SurfaceChain>> chains;
     int pipelineSampleCount = 1;
 
     ListState bound;

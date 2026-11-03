@@ -1,4 +1,4 @@
--- The function `viewport.setSafeAreaSimulation` replaces the safe area of the device while the app runs, with the insets of a known device in the orientation of the window or with custom insets in window points. The frame of the test follows the simulated safe area, and the preview holds a game HUD on a drawing of the device, inside the safe area the engine reports.
+-- The function `viewport.setSafeAreaSimulation` replaces the safe area of the device while the app runs, with the insets of a known device in the orientation of the window or with custom insets in window points. The frame of the test follows the simulated safe area, and the preview holds a game HUD on a drawing of the device, inside the safe area the engine reports, with the outline of every cutout that `viewport.cutouts` reports.
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
 local ui = require('haylen.ui')
@@ -14,7 +14,7 @@ Simulations.code = [[
 viewport.setSafeAreaSimulation('iphoneDynamicIsland')  -- Or "iphoneNotch", "ipad", "androidGestureBar" and "television".
 viewport.setSafeAreaSimulation({60, 0, 40, 120})  -- Top, right, bottom and left in window points.
 viewport.setSafeAreaSimulation(nil)  -- The safe area of the device again.
-print(viewport.safeAreaSimulation(), viewport.safeRect())]]
+print(viewport.safeAreaSimulation(), viewport.safeRect(), #viewport.cutouts())]]
 
 Simulations.sides = {'top', 'right', 'bottom', 'left'}
 
@@ -132,7 +132,9 @@ end
 function Simulations:update(dt)
     Simulations.super.update(self, dt)
     local points = Simulations.points()
-    self:status(string.format('%s, which keeps the HUD %d points from the top, %d from the right, %d from the bottom and %d from the left.', describe(viewport.safeAreaSimulation()), points.top, points.right, points.bottom, points.left))
+    local cutouts = #viewport.cutouts()
+    local counted = cutouts == 0 and 'no cutout' or (cutouts == 1 and 'one cutout' or string.format('%d cutouts', cutouts))
+    self:status(string.format('%s, which keeps the HUD %d points from the top, %d from the right, %d from the bottom and %d from the left, with %s over the window.', describe(viewport.safeAreaSimulation()), points.top, points.right, points.bottom, points.left, counted))
     -- The safe area of the preview takes the insets the engine reports, scaled to the screen of the preview.
     local screen = self.gui:bounds('screen')
     if screen then
@@ -157,6 +159,13 @@ function Simulations:render()
     end
     graphics2d.beginScreen()
     areas.drawDevice(areas.kinds[self.device] or 'island', {screen.x, screen.y, screen.width, screen.height}, {safe.x, safe.y, safe.width, safe.height}, self.wallpaper)
+
+    -- Each cutout lands on the preview where it lies on the visible area of the window.
+    local visible = viewport.visibleRect()
+    local scale = screen.width / visible.width
+    for _, cutout in ipairs(viewport.cutouts()) do
+        graphics2d.drawRectOutline({screen.x + (cutout.x - visible.x) * scale, screen.y + (cutout.y - visible.y) * scale, cutout.width * scale, cutout.height * scale}, 2, Test.warm)
+    end
 end
 
 return Simulations

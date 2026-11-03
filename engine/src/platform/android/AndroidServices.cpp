@@ -1,10 +1,12 @@
 #include "platform/Services.hpp"
 
 #include <android/multinetwork.h>
+#include <android/native_window_jni.h>
 #include <dlfcn.h>
 #include <jni.h>
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <span>
@@ -36,6 +38,7 @@
 #include "platform/android/AndroidKeys.hpp"
 #include "platform/android/AndroidMotion.hpp"
 #include "platform/android/AndroidMouseWheel.hpp"
+#include "platform/android/AndroidOutputs.hpp"
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/AndroidVideoDecoder.hpp"
 #include "platform/android/JavaBridge.hpp"
@@ -158,6 +161,13 @@ std::optional<Fold> Services::getFold() {
         fold->bounds = AndroidActivity::toFramebuffer(fold->bounds);
     }
     return fold;
+}
+
+void Services::getCutouts(std::vector<math::Rect>& cutouts) {
+    AndroidActivity::getCutouts(cutouts);
+    for (math::Rect& cutout : cutouts) {
+        cutout = AndroidActivity::toFramebuffer(cutout);
+    }
 }
 
 void Services::endSplashScreen(float fadeOutSeconds) {
@@ -298,6 +308,17 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenPluginContext_nativeUncoverApp(JNIE
     haylen::platform::NativeHost::getNativeViews().uncoverApp();
 }
 
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeCutouts(JNIEnv* env, jclass, jintArray edges) {
+    const jsize count = env->GetArrayLength(edges);
+    std::vector<jint> values(static_cast<std::size_t>(count));
+    env->GetIntArrayRegion(edges, 0, count, values.data());
+    std::vector<haylen::math::Rect> cutouts;
+    for (std::size_t index = 0; index + 3 < values.size(); index += 4) {
+        cutouts.push_back(haylen::math::Rect::fromMinMax({static_cast<float>(values[index]), static_cast<float>(values[index + 1])}, {static_cast<float>(values[index + 2]), static_cast<float>(values[index + 3])}));
+    }
+    haylen::platform::AndroidActivity::setCutouts(std::move(cutouts));
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeSafeArea(JNIEnv*, jclass, jint left, jint top, jint right, jint bottom, jint statusBar) {
     haylen::platform::AndroidActivity::setSafeAreaInsets({.left = static_cast<float>(left), .top = static_cast<float>(top), .right = static_cast<float>(right), .bottom = static_cast<float>(bottom)});
     haylen::platform::AndroidActivity::setStatusBarHeight(static_cast<float>(statusBar));
@@ -389,6 +410,26 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenDisplays_nativeDisplays(JNIEnv* env
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenDisplays_nativeRotation(JNIEnv*, jclass, jint quarterTurns) {
     haylen::platform::AndroidMotion::setQuarterTurns(quarterTurns);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenOutputs_nativeSurface(JNIEnv* env, jclass, jint number, jobject surface, jint width, jint height, jfloat density) {
+    ANativeWindow* window = surface != nullptr ? ANativeWindow_fromSurface(env, surface) : nullptr;
+    haylen::platform::AndroidOutputs::receiveSurface(static_cast<std::uint32_t>(number), window, width, height, density);
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenOutputs_nativeEnded(JNIEnv* env, jclass, jint number, jint ending, jbyteArray reason) {
+    haylen::platform::AndroidOutputs::receiveEnding(static_cast<std::uint32_t>(number), static_cast<haylen::platform::Output::Ending>(ending), haylen::platform::JavaBridge::toString(*env, reason));
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenOutputs_nativeTouch(JNIEnv* env, jclass, jint number, jint type, jintArray ids, jfloatArray points, jint changed) {
+    const jsize count = env->GetArrayLength(ids);
+    std::array<jint, haylen::platform::Event::kMaxTouchPoints> touchIds{};
+    std::array<jfloat, haylen::platform::Event::kMaxTouchPoints * 2> touchPoints{};
+    const jsize kept = std::min(count, static_cast<jsize>(haylen::platform::Event::kMaxTouchPoints));
+    env->GetIntArrayRegion(ids, 0, kept, touchIds.data());
+    env->GetFloatArrayRegion(points, 0, kept * 2, touchPoints.data());
+    const std::array<haylen::platform::Event::Type, 4> types{haylen::platform::Event::Type::TouchBegan, haylen::platform::Event::Type::TouchMoved, haylen::platform::Event::Type::TouchEnded, haylen::platform::Event::Type::TouchCancelled};
+    haylen::platform::AndroidOutputs::receiveTouch(static_cast<std::uint32_t>(number), types.at(static_cast<std::size_t>(type)), std::span<const int>(touchIds.data(), static_cast<std::size_t>(kept)), std::span<const float>(touchPoints.data(), static_cast<std::size_t>(kept) * 2), changed);
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenFold_nativeFold(JNIEnv*, jclass, jboolean present, jint left, jint top, jint right, jint bottom, jboolean vertical, jboolean halfOpened, jboolean separating, jboolean occluding) {

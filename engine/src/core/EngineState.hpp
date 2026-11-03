@@ -115,6 +115,10 @@ struct EngineState {
     std::optional<platform::SafeAreaSimulation> safeAreaSimulation;
     std::optional<platform::FoldSimulation> foldSimulation;
     std::optional<platform::Fold> fold;
+
+    // The cutouts of the screen over the window in framebuffer pixels, and the storage that each frame reads them into.
+    std::vector<math::Rect> cutouts;
+    std::vector<math::Rect> readCutouts;
     bool backLeavesApp = true;
     std::optional<math::Color> statusBarColor;
     math::Rect keyboardFrame;

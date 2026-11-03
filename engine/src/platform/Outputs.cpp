@@ -21,8 +21,8 @@ Outputs::Outputs(Host& source, Displays& known, graphics::Device& device, core::
 // The app that stops lets go of its outputs without hearing of them.
 Outputs::~Outputs() {
     for (const std::shared_ptr<Output>& output : outputs) {
-        host.closeOutput(output->id);
         releaseSurface(*output);
+        host.closeOutput(output->id);
         output->state = Output::State::Closed;
     }
 }
@@ -125,10 +125,10 @@ void Outputs::releaseSurface(Output& output) {
     }
 }
 
-// The platform forgets the output once it ended, however it ended.
+// The GPU device lets go of the surface before the platform forgets the output and closes what showed it, however it ended.
 void Outputs::end(Output& output, Output::Ending ending, std::string_view reason) {
-    host.closeOutput(output.id);
     releaseSurface(output);
+    host.closeOutput(output.id);
     output.state = Output::State::Closed;
     output.ending = ending;
     const std::string_view name = std::ranges::find(Output::kEndingNames, ending, &std::pair<std::string_view, Output::Ending>::second)->first;

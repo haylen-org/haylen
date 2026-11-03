@@ -8,6 +8,7 @@
 #include <filesystem>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -280,6 +281,9 @@ class Engine final {
 
     // The fold of a foldable or dual-screen device across the window in framebuffer pixels, the simulated one while a simulation replaces the fold that the device reports, or none. The debug.fold option of app.json sets the simulation at start, and the windowFoldChanged event announces every change of the fold or of the posture.
     [[nodiscard]] std::optional<platform::Fold> getFold() const;
+
+    // The cutouts of the screen over the window in framebuffer pixels, those of the simulated device while a safe area simulation names one, which the windowCutoutsChanged event announces as they change.
+    [[nodiscard]] std::span<const math::Rect> getCutouts() const noexcept;
     void setFoldSimulation(std::optional<platform::FoldSimulation> value);
     [[nodiscard]] const std::optional<platform::FoldSimulation>& getFoldSimulation() const noexcept;
 

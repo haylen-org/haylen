@@ -5,10 +5,48 @@
 
 #include <array>
 #include <format>
+#include <memory>
 #include <stdexcept>
 #include <string_view>
 
 namespace haylen::test {
+
+// A pixel buffer of the configuration of the context, which the context draws into once it is current on it.
+class OffscreenGlContext::Drawable final : public gpu::GlContext {
+  public:
+    Drawable(EGLDisplay owner, EGLConfig config, EGLContext shared, int pixelsWide, int pixelsHigh) : display(owner), context(shared) {
+        const std::array<EGLint, 5> attributes{EGL_WIDTH, pixelsWide, EGL_HEIGHT, pixelsHigh, EGL_NONE};
+        surface = eglCreatePbufferSurface(display, config, attributes.data());
+        if (surface == EGL_NO_SURFACE) {
+            throw std::runtime_error("EGL could not make another pixel buffer of the context.");
+        }
+    }
+
+    ~Drawable() override {
+        eglDestroySurface(display, surface);
+    }
+
+    void makeCurrent() override {
+        eglMakeCurrent(display, surface, surface, context);
+    }
+
+    void swapBuffers() override {
+        eglSwapBuffers(display, surface);
+    }
+
+    void setSwapInterval(int value) override {
+        eglSwapInterval(display, value);
+    }
+
+    void* getProcAddress(const char* name) override {
+        return reinterpret_cast<void*>(eglGetProcAddress(name));
+    }
+
+  private:
+    EGLDisplay display;
+    EGLContext context;
+    EGLSurface surface = EGL_NO_SURFACE;
+};
 
 // Mesa without a display server draws through its surfaceless platform, and Android has one display.
 OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int pixelsHigh) : width(pixelsWide), height(pixelsHigh) {
@@ -27,14 +65,15 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
         throw std::runtime_error(std::format("EGL does not run {} on this machine.", desktop ? "OpenGL" : "OpenGL ES"));
     }
     const std::array<EGLint, 17> configAttributes{EGL_SURFACE_TYPE, EGL_PBUFFER_BIT, EGL_RENDERABLE_TYPE, desktop ? EGL_OPENGL_BIT : EGL_OPENGL_ES3_BIT, EGL_RED_SIZE, 8, EGL_GREEN_SIZE, 8, EGL_BLUE_SIZE, 8, EGL_ALPHA_SIZE, 8, EGL_DEPTH_SIZE, 24, EGL_STENCIL_SIZE, 8, EGL_NONE};
-    EGLConfig config = nullptr;
+    EGLConfig chosen = nullptr;
     EGLint configs = 0;
-    if (eglChooseConfig(made, configAttributes.data(), &config, 1, &configs) == EGL_FALSE || configs == 0) {
+    if (eglChooseConfig(made, configAttributes.data(), &chosen, 1, &configs) == EGL_FALSE || configs == 0) {
         throw std::runtime_error("EGL has no configuration with a pixel buffer for the context.");
     }
+    config = chosen;
 
     const std::array<EGLint, 5> surfaceAttributes{EGL_WIDTH, width, EGL_HEIGHT, height, EGL_NONE};
-    surface = eglCreatePbufferSurface(made, config, surfaceAttributes.data());
+    surface = eglCreatePbufferSurface(made, chosen, surfaceAttributes.data());
     if (surface == EGL_NO_SURFACE) {
         throw std::runtime_error("EGL could not make the pixel buffer of the context.");
     }
@@ -44,7 +83,7 @@ OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int
     const char* extensions = eglQueryString(made, EGL_EXTENSIONS);
     const bool resets = extensions != nullptr && std::string_view(extensions).find("EGL_EXT_create_context_robustness") != std::string_view::npos;
     const std::array<EGLint, 7> embeddedAttributes{EGL_CONTEXT_MAJOR_VERSION_KHR, 3, EGL_CONTEXT_MINOR_VERSION_KHR, 0, resets ? EGL_CONTEXT_OPENGL_RESET_NOTIFICATION_STRATEGY_EXT : EGL_NONE, EGL_LOSE_CONTEXT_ON_RESET_EXT, EGL_NONE};
-    context = eglCreateContext(made, config, EGL_NO_CONTEXT, desktop ? desktopAttributes.data() : embeddedAttributes.data());
+    context = eglCreateContext(made, chosen, EGL_NO_CONTEXT, desktop ? desktopAttributes.data() : embeddedAttributes.data());
     if (context == EGL_NO_CONTEXT) {
         eglDestroySurface(made, surface);
         throw std::runtime_error(std::format("EGL could not make an {} context.", desktop ? "OpenGL 4.3 core" : "OpenGL ES 3.0"));
@@ -76,6 +115,10 @@ void* OffscreenGlContext::getProcAddress(const char* name) {
 
 gpu::Surface OffscreenGlContext::getSurface() {
     return {.kind = gpu::Surface::Kind::Gl, .gl = this, .width = width, .height = height};
+}
+
+std::unique_ptr<gpu::GlContext> OffscreenGlContext::makeDrawable(int pixelsWide, int pixelsHigh) {
+    return std::make_unique<Drawable>(display, config, context, pixelsWide, pixelsHigh);
 }
 
 } // namespace haylen::test

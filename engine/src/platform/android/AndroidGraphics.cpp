@@ -80,6 +80,14 @@ std::unique_ptr<gpu::Device> AndroidGraphics::open(gpu::Device::Api api) {
     return device;
 }
 
+gpu::Surface AndroidGraphics::describeOutput(ANativeWindow& native, int width, int height, std::unique_ptr<gpu::GlContext>& drawable) const {
+    if (egl != nullptr) {
+        drawable = egl->makeDrawable(native);
+        return {.kind = gpu::Surface::Kind::Gl, .gl = drawable.get(), .width = width, .height = height, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
+    }
+    return {.kind = gpu::Surface::Kind::Android, .window = &native, .width = width, .height = height, .sampleCount = settings.sampleCount, .vsync = settings.vsync};
+}
+
 // A device that draws into the window directly has no surface while the activity has no window, and one of OpenGL ES always draws through the context.
 std::optional<gpu::Surface> AndroidGraphics::describeSurface(gpu::Device::Api api) const {
     const int width = window.getFramebufferWidth();

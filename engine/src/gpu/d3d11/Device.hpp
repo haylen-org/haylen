@@ -196,13 +196,27 @@ class Device final : public gpu::Device {
         bool labeled = false;
     };
 
+    // The swapchain of a surface, the window or one that `addSurface` made, with the views that its passes draw into and whether the frame drew into it. The window keeps its place while it has no surface, and a surface makes its swapchain once it has pixels.
+    struct SurfaceChain {
+        std::optional<Surface> surface;
+        std::unique_ptr<direct3d::Swapchain> swapchain;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> backBufferView;
+        Microsoft::WRL::ComPtr<ID3D11Texture2D> multisampleColor;
+        Microsoft::WRL::ComPtr<ID3D11RenderTargetView> multisampleView;
+        Microsoft::WRL::ComPtr<ID3D11DepthStencilView> depthView;
+        bool presentPending = false;
+    };
+
     void createDevice(bool validation);
     void readCapabilities();
     void openFrame();
     void loseDevice(HRESULT reason) noexcept;
-    [[nodiscard]] bool prepareSwapchain();
-    void makeSwapchainTargets();
-    void releaseSwapchainTargets();
+    [[nodiscard]] SurfaceChain& requireChain(int number) const;
+    [[nodiscard]] SurfaceChain& requireAddedChain(int number) const;
+    [[nodiscard]] bool prepareSwapchain(SurfaceChain& chain);
+    void makeSwapchainTargets(SurfaceChain& chain);
+    void releaseSwapchainTargets(SurfaceChain& chain);
+    void releaseChain(SurfaceChain& chain);
     void unbindTextures();
     void setViewportAndScissor(int width, int height);
     void beginSwapchainPass(const PassDesc& desc);
@@ -243,13 +257,8 @@ class Device final : public gpu::Device {
     std::uint64_t frameNumber = 1;
     bool frameOpen = false;
 
-    std::optional<Surface> surface;
-    std::unique_ptr<direct3d::Swapchain> swapchain;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> backBufferView;
-    Microsoft::WRL::ComPtr<ID3D11Texture2D> multisampleColor;
-    Microsoft::WRL::ComPtr<ID3D11RenderTargetView> multisampleView;
-    Microsoft::WRL::ComPtr<ID3D11DepthStencilView> swapchainDepthView;
-    bool presentPending = false;
+    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away.
+    std::vector<std::unique_ptr<SurfaceChain>> chains;
 
     ContextState bound;
     PassState pass;

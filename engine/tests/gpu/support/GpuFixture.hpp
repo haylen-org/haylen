@@ -62,6 +62,9 @@ class GpuFixture : public ::testing::TestWithParam<gpu::Device::Api> {
     [[nodiscard]] const gpu::Device::Capabilities& capabilities() const noexcept {
         return made->getCapabilities();
     }
+    [[nodiscard]] OffscreenSurface& offscreen() noexcept {
+        return *surface;
+    }
 
     [[nodiscard]] gpu::Device::Program program(std::string_view name);
     [[nodiscard]] int attribute(std::string_view programName, std::string_view input) const;

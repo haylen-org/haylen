@@ -133,6 +133,15 @@ class HeadlessHost final : public Host {
     }
 
     // The headless screen has no fold until a test gives it one, as a foldable device reports it.
+    void getCutouts(std::vector<math::Rect>& cutouts) const override {
+        cutouts.assign(screenCutouts.begin(), screenCutouts.end());
+    }
+
+    // The cutouts of the screen that the headless window reports, in framebuffer pixels.
+    void setCutouts(std::vector<math::Rect> value) {
+        screenCutouts = std::move(value);
+    }
+
     [[nodiscard]] std::optional<Fold> getFold() const override {
         return fold;
     }
@@ -226,6 +235,7 @@ class HeadlessHost final : public Host {
     void closeOutput(std::uint32_t number) override {
         outputReports.erase(number);
         closedOutputs.push_back(number);
+        surfacesAtClose.push_back(gpu != nullptr ? gpu->getAddedSurfaces().size() : 0);
     }
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override {
         return outputReports.at(number);
@@ -418,6 +428,11 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] const std::vector<std::uint32_t>& getClosedOutputs() const noexcept {
         return closedOutputs;
+    }
+
+    // The surfaces beyond the window that the null device still had as each output closed.
+    [[nodiscard]] const std::vector<std::size_t>& getSurfacesAtClose() const noexcept {
+        return surfacesAtClose;
     }
     void setOutputReport(std::uint32_t number, OutputReport value) {
         outputReports[number] = std::move(value);
@@ -668,9 +683,11 @@ class HeadlessHost final : public Host {
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};
     DisplayAccess displayAccess = DisplayAccess::Granted;
+    std::vector<math::Rect> screenCutouts;
     Fullscreen fullscreenTarget;
     std::vector<OutputRequest> outputRequests;
     std::vector<std::uint32_t> closedOutputs;
+    std::vector<std::size_t> surfacesAtClose;
     std::unordered_map<std::uint32_t, OutputReport> outputReports;
     math::Rect frame;
     std::vector<math::Polygon::Outline> passthroughRegions;

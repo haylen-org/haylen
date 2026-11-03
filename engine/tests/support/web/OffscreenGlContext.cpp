@@ -3,6 +3,7 @@
 #include <emscripten/html5_webgl.h>
 
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 
 namespace haylen::test {
@@ -46,6 +47,11 @@ void* OffscreenGlContext::getProcAddress(const char* name) {
 
 gpu::Surface OffscreenGlContext::getSurface() {
     return {.kind = gpu::Surface::Kind::Gl, .gl = this, .width = width, .height = height};
+}
+
+// A WebGL2 context belongs to its one canvas and shares its objects with no other.
+std::unique_ptr<gpu::GlContext> OffscreenGlContext::makeDrawable(int, int) {
+    throw std::runtime_error("A WebGL2 context draws only into its own canvas.");
 }
 
 } // namespace haylen::test

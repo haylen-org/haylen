@@ -97,7 +97,7 @@ class Device final : public gpu::Device {
     void resizeSurface(int width, int height) override;
     void detachSurface() override;
     void attachSurface(const Surface& surface) override;
-    [[nodiscard]] int addSurface(const Surface& added) override;
+    [[nodiscard]] int addSurface(const Surface& surface) override;
     void resizeSurface(int number, int width, int height) override;
     void removeSurface(int number) override;
 
@@ -119,7 +119,6 @@ class Device final : public gpu::Device {
         VkCommandBuffer uploads = VK_NULL_HANDLE;
         VkCommandBuffer graphics = VK_NULL_HANDLE;
         VkFence fence = VK_NULL_HANDLE;
-        VkSemaphore acquired = VK_NULL_HANDLE;
         VkQueryPool timestamps = VK_NULL_HANDLE;
         std::uint64_t serial = 0;
         bool submitted = false;
@@ -211,7 +210,17 @@ class Device final : public gpu::Device {
         std::unique_ptr<StoredPipeline> stored;
     };
 
-    // The color format, depth format and sample count of the swapchain that pipelines drawing into it take, whose generation changes with any of them.
+    // The swapchain of a surface, the window or one that `addSurface` made, with its settings and what the frame that records holds of it: the image it acquired and whether a pass drew into that image. The window keeps its place while it has no swapchain.
+    struct SurfaceChain {
+        std::unique_ptr<Swapchain> swapchain;
+        Swapchain::Settings settings;
+        bool dirty = false;
+        bool acquired = false;
+        bool drawn = false;
+        std::uint32_t imageIndex = 0;
+    };
+
+    // The color format, depth format and sample count of the swapchain of the window that pipelines drawing into a swapchain take, whose generation changes with any of them. The swapchains of the other surfaces take them too.
     struct SwapchainTarget {
         VkFormat color = VK_FORMAT_B8G8R8A8_UNORM;
         VkFormat depth = VK_FORMAT_D24_UNORM_S8_UINT;
@@ -289,9 +298,13 @@ class Device final : public gpu::Device {
     void markLost(VkResult result);
     void waitIdle();
 
-    void reconfigureSwapchain();
+    [[nodiscard]] static std::vector<std::unique_ptr<SurfaceChain>> makeChains(const Instance& owner, const std::optional<Surface>& surface);
+    [[nodiscard]] SurfaceChain& requireChain(int surface) const;
+    [[nodiscard]] SurfaceChain& requireAddedChain(int surface) const;
+    void forgetViews(const Swapchain& chain);
+    void reconfigureSwapchain(SurfaceChain& chain);
     void updateSwapchainTarget();
-    [[nodiscard]] bool acquireSwapchainImage();
+    [[nodiscard]] bool acquireSwapchainImage(SurfaceChain& chain);
 
     [[nodiscard]] BufferRecord& requireBuffer(Buffer buffer) const;
     [[nodiscard]] ImageRecord& requireImage(Image image) const;
@@ -323,7 +336,9 @@ class Device final : public gpu::Device {
     [[nodiscard]] UploadRing::Allocation allocateUniform(std::size_t index, VkDeviceSize size);
 
     std::unique_ptr<Instance> instance;
-    std::unique_ptr<Swapchain> swapchain;
+
+    // The swapchains of the surfaces at their numbers, the window at 0, with an empty place for a surface that went away.
+    std::vector<std::unique_ptr<SurfaceChain>> chains;
     std::unique_ptr<Context> context;
     ReleaseQueue releases;
     LayoutCache layouts;
@@ -358,13 +373,9 @@ class Device final : public gpu::Device {
     std::optional<double> gpuFrameSeconds;
     bool lost = false;
 
-    Swapchain::Settings surfaceSettings;
     SwapchainTarget swapchainTarget;
-    bool swapchainDirty = false;
-    bool acquired = false;
-    std::uint32_t imageIndex = 0;
-    bool swapchainDrawn = false;
     bool swapchainRendering = false;
+    int renderingSurface = 0;
 
     PassState pass;
     DrawState bound;
@@ -374,6 +385,11 @@ class Device final : public gpu::Device {
     std::vector<VkBuffer> stagingSources;
     std::vector<VkWriteDescriptorSet> descriptorWrites;
     std::vector<VkDescriptorImageInfo> descriptorImages;
+
+    // The semaphores and stages of the submission of a frame, which waits for the image of every swapchain it draws into and signals each for its presentation.
+    std::vector<VkSemaphore> waitSemaphores;
+    std::vector<VkPipelineStageFlags> waitStages;
+    std::vector<VkSemaphore> signalSemaphores;
 };
 
 } // namespace haylen::gpu::vulkan

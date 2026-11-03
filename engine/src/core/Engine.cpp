@@ -419,6 +419,20 @@ void Engine::publishDeviceChanges() {
         current.events.emit(LifecycleEvent::kWindowFoldChanged, describeFold(fold));
     }
 
+    if (current.safeAreaSimulation) {
+        current.safeAreaSimulation->getCutouts(current.host.getFramebufferSize(), current.readCutouts);
+    } else {
+        current.host.getCutouts(current.readCutouts);
+    }
+    if (current.readCutouts != current.cutouts) {
+        std::swap(current.readCutouts, current.cutouts);
+        Json cutouts = Json::array();
+        for (const math::Rect& cutout : current.cutouts) {
+            cutouts.push_back(toDesignJson(cutout));
+        }
+        current.events.emit(LifecycleEvent::kWindowCutoutsChanged, {{"cutouts", std::move(cutouts)}});
+    }
+
     // Gamepads count from one in the event, as haylen.input counts them.
     for (std::size_t index = 0; index < current.gamepads.size(); ++index) {
         const auto& gamepad = current.gamepads[index];
@@ -886,6 +900,10 @@ std::optional<platform::Fold> Engine::getFold() const {
         return current.foldSimulation->getFold(current.host.getFramebufferSize(), current.host.getDpiScale());
     }
     return current.host.getFold();
+}
+
+std::span<const math::Rect> Engine::getCutouts() const noexcept {
+    return state->cutouts;
 }
 
 void Engine::setFoldSimulation(std::optional<platform::FoldSimulation> value) {

@@ -49,6 +49,9 @@ class AndroidHost final : public NativeHost {
     void requestWindowClose() override;
     void setWindowFocusable(bool) override {}
     void setScreenSaverSuspended(bool value) override;
+    void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
+    void closeOutput(std::uint32_t number) override;
+    [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
   private:
     AndroidRuntime& runtime;

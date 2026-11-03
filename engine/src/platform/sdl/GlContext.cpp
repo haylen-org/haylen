@@ -18,8 +18,12 @@ GlContext::GlContext(SDL_Window* value) : window(value), context(SDL_GL_CreateCo
     }
 }
 
+GlContext::GlContext(SDL_Window* value, const GlContext& shared) noexcept : window(value), context(shared.context), owned(false) {}
+
 GlContext::~GlContext() {
-    SDL_GL_DestroyContext(context);
+    if (owned) {
+        SDL_GL_DestroyContext(context);
+    }
 }
 
 void GlContext::makeCurrent() {

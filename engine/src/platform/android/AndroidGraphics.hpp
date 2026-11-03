@@ -38,6 +38,9 @@ class AndroidGraphics final {
     void resizeWindow(gpu::Device* device);
     void detachWindow(gpu::Device* device) noexcept;
 
+    // The surface of a window beyond the activity, such as the window of an output on another display, for the device of the running app: the window itself for Vulkan, or another drawable of the EGL context for OpenGL ES, which `drawable` keeps. Throws `std::runtime_error` when EGL cannot draw into the window.
+    [[nodiscard]] gpu::Surface describeOutput(ANativeWindow& native, int width, int height, std::unique_ptr<gpu::GlContext>& drawable) const;
+
     // Whether the device stopped working, as it reports itself or as the EGL context it draws through reports.
     [[nodiscard]] bool isLost(const gpu::Device& device) const noexcept;
 

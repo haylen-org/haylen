@@ -40,7 +40,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& target
     throw std::runtime_error(std::format("Direct3D 11 runs on no GPU of this machine.{}", reasons.empty() ? " Windows lists no GPU." : reasons));
 }
 
-Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)), surface(target) {
+Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, const std::optional<Surface>& target, bool validation) : factory(std::move(dxgiFactory)), adapter(std::move(card)) {
     createDevice(validation);
     readCapabilities();
     compiler = std::make_shared<direct3d::ShaderCompiler>(validation);
@@ -53,9 +53,11 @@ Device::Device(ComPtr<IDXGIFactory6> dxgiFactory, ComPtr<IDXGIAdapter1> card, co
     }
 
     // A window that has a drawable takes its swapchain now, so a window that Direct3D 11 cannot draw into fails the device while the platform can still try another API.
-    if (surface && surface->width > 0 && surface->height > 0) {
-        swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *surface);
-        makeSwapchainTargets();
+    chains.push_back(std::make_unique<SurfaceChain>(SurfaceChain{.surface = target}));
+    SurfaceChain& window = *chains.front();
+    if (target && target->width > 0 && target->height > 0) {
+        window.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *target);
+        makeSwapchainTargets(window);
     }
 }
 
@@ -64,8 +66,7 @@ Device::~Device() {
         context->ClearState();
         context->Flush();
     }
-    releaseSwapchainTargets();
-    swapchain.reset();
+    chains.clear();
 }
 
 // Validation asks for the debug layer, which only the Graphics Tools of Windows bring, so a machine without them runs the device unvalidated and says so.
@@ -494,69 +495,91 @@ void Device::openFrame() {
     timer->begin(*context.Get());
 }
 
-bool Device::prepareSwapchain() {
-    if (!surface || surface->width <= 0 || surface->height <= 0 || lost) {
+bool Device::prepareSwapchain(SurfaceChain& chain) {
+    if (!chain.surface || chain.surface->width <= 0 || chain.surface->height <= 0 || lost) {
         return false;
     }
-    if (swapchain == nullptr) {
-        swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *surface);
-        makeSwapchainTargets();
+    if (chain.swapchain == nullptr) {
+        chain.swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), *chain.surface);
+        makeSwapchainTargets(chain);
         return true;
     }
     // A new size applies from the first pass of a frame into the swapchain, so the passes of one frame draw into the same buffers.
-    if (presentPending || (swapchain->getWidth() == surface->width && swapchain->getHeight() == surface->height)) {
+    if (chain.presentPending || (chain.swapchain->getWidth() == chain.surface->width && chain.swapchain->getHeight() == chain.surface->height)) {
         return true;
     }
 
     // The buffers resize only once nothing refers to them, the views of the device and the bindings of the context.
-    releaseSwapchainTargets();
+    releaseSwapchainTargets(chain);
     context->OMSetRenderTargets(0, nullptr, nullptr);
     context->Flush();
-    const HRESULT result = swapchain->resize(surface->width, surface->height);
+    const HRESULT result = chain.swapchain->resize(chain.surface->width, chain.surface->height);
     if (HResult::isDeviceLoss(result)) {
         loseDevice(result);
         return false;
     }
     HResult::check(result, "resize the swapchain");
-    makeSwapchainTargets();
+    makeSwapchainTargets(chain);
     return true;
 }
 
-void Device::makeSwapchainTargets() {
+void Device::makeSwapchainTargets(SurfaceChain& chain) {
     ComPtr<ID3D11Texture2D> backBuffer;
-    HResult::check(swapchain->get().GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())), "reach the buffer of the swapchain");
-    HResult::check(device->CreateRenderTargetView(backBuffer.Get(), nullptr, backBufferView.GetAddressOf()), "create the view of the swapchain");
+    HResult::check(chain.swapchain->get().GetBuffer(0, IID_PPV_ARGS(backBuffer.GetAddressOf())), "reach the buffer of the swapchain");
+    HResult::check(device->CreateRenderTargetView(backBuffer.Get(), nullptr, chain.backBufferView.GetAddressOf()), "create the view of the swapchain");
 
     D3D11_TEXTURE2D_DESC desc{};
-    desc.Width = static_cast<UINT>(swapchain->getWidth());
-    desc.Height = static_cast<UINT>(swapchain->getHeight());
+    desc.Width = static_cast<UINT>(chain.swapchain->getWidth());
+    desc.Height = static_cast<UINT>(chain.swapchain->getHeight());
     desc.MipLevels = 1;
     desc.ArraySize = 1;
-    desc.SampleDesc.Count = static_cast<UINT>(std::max(1, surface->sampleCount));
+    desc.SampleDesc.Count = static_cast<UINT>(std::max(1, chain.surface->sampleCount));
     desc.Usage = D3D11_USAGE_DEFAULT;
 
     // Flip model swapchains hold one sample, so a multisampled window draws into a texture of its own that resolves into the swapchain when the frame is presented.
     if (desc.SampleDesc.Count > 1) {
         desc.Format = Formats::kSwapchainColor;
         desc.BindFlags = D3D11_BIND_RENDER_TARGET;
-        HResult::check(device->CreateTexture2D(&desc, nullptr, multisampleColor.GetAddressOf()), "create the multisampled color of the swapchain");
-        HResult::check(device->CreateRenderTargetView(multisampleColor.Get(), nullptr, multisampleView.GetAddressOf()), "create the view of the multisampled color of the swapchain");
-        setName(*multisampleColor.Get(), "haylen-swapchain-color");
+        HResult::check(device->CreateTexture2D(&desc, nullptr, chain.multisampleColor.GetAddressOf()), "create the multisampled color of the swapchain");
+        HResult::check(device->CreateRenderTargetView(chain.multisampleColor.Get(), nullptr, chain.multisampleView.GetAddressOf()), "create the view of the multisampled color of the swapchain");
+        setName(*chain.multisampleColor.Get(), "haylen-swapchain-color");
     }
 
     desc.Format = Formats::getDepthFormat(Formats::kSwapchainDepthFormat);
     desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
     ComPtr<ID3D11Texture2D> depth;
     HResult::check(device->CreateTexture2D(&desc, nullptr, depth.GetAddressOf()), "create the depth and stencil of the swapchain");
-    HResult::check(device->CreateDepthStencilView(depth.Get(), nullptr, swapchainDepthView.GetAddressOf()), "create the view of the depth and stencil of the swapchain");
+    HResult::check(device->CreateDepthStencilView(depth.Get(), nullptr, chain.depthView.GetAddressOf()), "create the view of the depth and stencil of the swapchain");
     setName(*depth.Get(), "haylen-swapchain-depth");
 }
 
-void Device::releaseSwapchainTargets() {
-    backBufferView.Reset();
-    multisampleView.Reset();
-    multisampleColor.Reset();
-    swapchainDepthView.Reset();
+void Device::releaseSwapchainTargets(SurfaceChain& chain) {
+    chain.backBufferView.Reset();
+    chain.multisampleView.Reset();
+    chain.multisampleColor.Reset();
+    chain.depthView.Reset();
+}
+
+// The context lets go of the views before the swapchain goes, so its window takes another swapchain at once.
+void Device::releaseChain(SurfaceChain& chain) {
+    context->OMSetRenderTargets(0, nullptr, nullptr);
+    releaseSwapchainTargets(chain);
+    chain.swapchain.reset();
+    context->Flush();
+}
+
+Device::SurfaceChain& Device::requireChain(int number) const {
+    if (number < 0 || static_cast<std::size_t>(number) >= chains.size() || chains[static_cast<std::size_t>(number)] == nullptr) {
+        throw std::logic_error(std::format("The device has no surface {}.", number));
+    }
+    return *chains[static_cast<std::size_t>(number)];
+}
+
+Device::SurfaceChain& Device::requireAddedChain(int number) const {
+    if (number == 0) {
+        throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
+    }
+    return requireChain(number);
 }
 
 // A render target sampled by one pass is drawn by a later one, and the context refuses to bind an image both ways, so a pass starts with no texture bound.
@@ -600,14 +623,15 @@ void Device::beginPass(const PassDesc& desc) {
 }
 
 void Device::beginSwapchainPass(const PassDesc& desc) {
-    skipping = !prepareSwapchain();
+    SurfaceChain& chain = requireChain(desc.surface);
+    skipping = !prepareSwapchain(chain);
     if (skipping) {
         return;
     }
-    presentPending = true;
-    pass.colors[0] = multisampleView != nullptr ? multisampleView.Get() : backBufferView.Get();
+    chain.presentPending = true;
+    pass.colors[0] = chain.multisampleView != nullptr ? chain.multisampleView.Get() : chain.backBufferView.Get();
     pass.colorCount = 1;
-    pass.depthStencil = swapchainDepthView.Get();
+    pass.depthStencil = chain.depthView.Get();
     context->OMSetRenderTargets(1, pass.colors.data(), pass.depthStencil);
 
     if (desc.load == Load::Clear) {
@@ -618,7 +642,7 @@ void Device::beginSwapchainPass(const PassDesc& desc) {
         context->DiscardView(pass.colors[0]);
         context->DiscardView(pass.depthStencil);
     }
-    setViewportAndScissor(swapchain->getWidth(), swapchain->getHeight());
+    setViewportAndScissor(chain.swapchain->getWidth(), chain.swapchain->getHeight());
 }
 
 void Device::beginOffscreenPass(const PassDesc& desc) {
@@ -952,11 +976,12 @@ void Device::commit() {
     }
     openFrame();
 
-    const bool presenting = presentPending && swapchain != nullptr;
-    if (presenting && multisampleColor != nullptr) {
-        ComPtr<ID3D11Resource> backBuffer;
-        backBufferView->GetResource(backBuffer.GetAddressOf());
-        context->ResolveSubresource(backBuffer.Get(), 0, multisampleColor.Get(), 0, Formats::kSwapchainColor);
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr && chain->presentPending && chain->multisampleColor != nullptr) {
+            ComPtr<ID3D11Resource> backBuffer;
+            chain->backBufferView->GetResource(backBuffer.GetAddressOf());
+            context->ResolveSubresource(backBuffer.Get(), 0, chain->multisampleColor.Get(), 0, Formats::kSwapchainColor);
+        }
     }
 
     // The queries close the work of the frame before it is presented, so the time of the GPU leaves out the wait for the display.
@@ -966,10 +991,13 @@ void Device::commit() {
     frameIndex = (frameIndex + 1) % kFramesInFlight;
     ++frameNumber;
     frameOpen = false;
-    presentPending = false;
 
-    if (presenting) {
-        const HRESULT result = swapchain->present();
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !chain->presentPending) {
+            continue;
+        }
+        chain->presentPending = false;
+        const HRESULT result = chain->swapchain->present();
         if (HResult::isDeviceLoss(result)) {
             loseDevice(result);
         }
@@ -988,23 +1016,22 @@ void Device::drainMessages() {
 }
 
 void Device::resizeSurface(int width, int height) {
-    if (surface) {
-        surface->width = width;
-        surface->height = height;
+    SurfaceChain& window = *chains.front();
+    if (window.surface) {
+        window.surface->width = width;
+        window.surface->height = height;
     }
 }
 
 void Device::detachSurface() {
-    context->OMSetRenderTargets(0, nullptr, nullptr);
-    releaseSwapchainTargets();
-    swapchain.reset();
-    context->Flush();
-    surface.reset();
+    SurfaceChain& window = *chains.front();
+    releaseChain(window);
+    window.surface.reset();
 }
 
 void Device::attachSurface(const Surface& target) {
     detachSurface();
-    surface = target;
+    chains.front()->surface = target;
 }
 
 std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width, int height) {
@@ -1036,17 +1063,36 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
     return std::make_unique<ImageReadback>(context, std::move(staging), std::move(finished), record.format, width, height);
 }
 
-// The device draws only into the window of the app, so the outputs of the app on other displays draw through the devices that draw into several surfaces, as the guide of the render hardware interface lists them.
-int Device::addSurface(const Surface&) {
-    throw std::runtime_error("The Direct3D 11 device draws only into the window of the app, not into a surface on another display.");
+// A surface beyond the window makes its swapchain now, so a surface that Direct3D 11 cannot draw into fails at once.
+int Device::addSurface(const Surface& added) {
+    auto chain = std::make_unique<SurfaceChain>(SurfaceChain{.surface = added});
+    if (added.width > 0 && added.height > 0) {
+        chain->swapchain = std::make_unique<direct3d::Swapchain>(*factory.Get(), *device.Get(), added);
+        makeSwapchainTargets(*chain);
+    }
+
+    const auto free = std::find(chains.begin() + 1, chains.end(), nullptr);
+    if (free != chains.end()) {
+        *free = std::move(chain);
+        return static_cast<int>(free - chains.begin());
+    }
+    chains.push_back(std::move(chain));
+    return static_cast<int>(chains.size()) - 1;
 }
 
-void Device::resizeSurface(int number, int, int) {
-    throw std::logic_error(std::format("The device has no surface {}.", number));
+void Device::resizeSurface(int number, int width, int height) {
+    SurfaceChain& chain = requireAddedChain(number);
+    chain.surface->width = width;
+    chain.surface->height = height;
 }
 
 void Device::removeSurface(int number) {
-    throw std::logic_error(std::format("The device has no surface {}.", number));
+    SurfaceChain& chain = requireAddedChain(number);
+    if (chain.presentPending) {
+        throw std::logic_error("A surface goes between frames, after \"commit\".");
+    }
+    releaseChain(chain);
+    chains[static_cast<std::size_t>(number)].reset();
 }
 
 } // namespace haylen::gpu::d3d11

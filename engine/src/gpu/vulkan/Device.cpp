@@ -27,7 +27,7 @@ std::unique_ptr<gpu::Device> Device::create(const std::optional<Surface>& surfac
     return std::make_unique<Device>(surface, Settings{.validation = options.validation, .software = options.software, .lowPower = options.lowPower});
 }
 
-Device::Device(const std::optional<Surface>& surface, const Settings& settings) : instance(std::make_unique<Instance>(settings.validation)), swapchain(surface ? std::make_unique<Swapchain>(instance->getHandle(), instance->createSurface(*surface)) : nullptr), context(std::make_unique<Context>(*instance, swapchain ? swapchain->getSurface() : VK_NULL_HANDLE, Context::Preference{.software = settings.software, .lowPower = settings.lowPower})), releases(*context), layouts(*context), descriptors(*context, releases), renderPasses(*context, releases), staging(*context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, kStagingChunkSize, kFramesInFlight, "haylen-staging"), uniforms(*context, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, kUniformChunkSize, kFramesInFlight, "haylen-uniforms"), readbacks(*context), prepared(std::make_shared<PreparedModules>(*context)), vk(context->getFunctions()), dynamicRendering(settings.dynamicRendering && context->hasDynamicRendering()) {
+Device::Device(const std::optional<Surface>& surface, const Settings& settings) : instance(std::make_unique<Instance>(settings.validation)), chains(makeChains(*instance, surface)), context(std::make_unique<Context>(*instance, chains.front()->swapchain ? chains.front()->swapchain->getSurface() : VK_NULL_HANDLE, Context::Preference{.software = settings.software, .lowPower = settings.lowPower})), releases(*context), layouts(*context), descriptors(*context, releases), renderPasses(*context, releases), staging(*context, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, kStagingChunkSize, kFramesInFlight, "haylen-staging"), uniforms(*context, VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, kUniformChunkSize, kFramesInFlight, "haylen-uniforms"), readbacks(*context), prepared(std::make_shared<PreparedModules>(*context)), vk(context->getFunctions()), dynamicRendering(settings.dynamicRendering && context->hasDynamicRendering()) {
     try {
         const VkPipelineCacheCreateInfo cacheInfo{.sType = VK_STRUCTURE_TYPE_PIPELINE_CACHE_CREATE_INFO};
         Context::check(vk.vkCreatePipelineCache(context->getDevice(), &cacheInfo, nullptr, &pipelineCache), "make its pipeline cache");
@@ -43,9 +43,10 @@ Device::Device(const std::optional<Surface>& surface, const Settings& settings) 
         swapchainTarget.depth = context->getDepthStencilFormat();
 
         if (surface) {
-            swapchain->attach(*context);
-            surfaceSettings = {.width = surface->width, .height = surface->height, .sampleCount = surface->sampleCount, .vsync = surface->vsync, .transparent = surface->transparent};
-            swapchain->configure(surfaceSettings);
+            SurfaceChain& window = *chains.front();
+            window.swapchain->attach(*context, frames.size());
+            window.settings = {.width = surface->width, .height = surface->height, .sampleCount = surface->sampleCount, .vsync = surface->vsync, .transparent = surface->transparent};
+            window.swapchain->configure(window.settings);
             updateSwapchainTarget();
         }
     } catch (...) {
@@ -69,11 +70,19 @@ Device::~Device() {
     shutdown();
 }
 
+std::vector<std::unique_ptr<Device::SurfaceChain>> Device::makeChains(const Instance& owner, const std::optional<Surface>& surface) {
+    std::vector<std::unique_ptr<SurfaceChain>> made;
+    made.push_back(std::make_unique<SurfaceChain>());
+    if (surface) {
+        made.front()->swapchain = std::make_unique<Swapchain>(owner.getHandle(), owner.createSurface(*surface));
+    }
+    return made;
+}
+
 void Device::createFrames() {
     const VkDevice device = context->getDevice();
     const VkCommandPoolCreateInfo poolInfo{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .flags = VK_COMMAND_POOL_CREATE_TRANSIENT_BIT, .queueFamilyIndex = context->getQueueFamily()};
     const VkFenceCreateInfo fenceInfo{.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO, .flags = VK_FENCE_CREATE_SIGNALED_BIT};
-    const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     const VkQueryPoolCreateInfo queryInfo{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO, .queryType = VK_QUERY_TYPE_TIMESTAMP, .queryCount = 2};
     for (Frame& frame : frames) {
         Context::check(vk.vkCreateCommandPool(device, &poolInfo, nullptr, &frame.pool), "make the command pool of a frame");
@@ -83,7 +92,6 @@ void Device::createFrames() {
         frame.uploads = commands[0];
         frame.graphics = commands[1];
         Context::check(vk.vkCreateFence(device, &fenceInfo, nullptr, &frame.fence), "make the fence of a frame");
-        Context::check(vk.vkCreateSemaphore(device, &semaphoreInfo, nullptr, &frame.acquired), "make a semaphore of a frame");
         if (context->getTimestampBits() > 0) {
             Context::check(vk.vkCreateQueryPool(device, &queryInfo, nullptr, &frame.timestamps), "make the timestamp queries of a frame");
         }
@@ -111,7 +119,7 @@ void Device::fillCapabilities() {
     }
 }
 
-// The device waits for the GPU and destroys what it made in the order its objects need: the ones that frames used, the frames, and the swapchain before the logical device.
+// The device waits for the GPU and destroys what it made in the order its objects need: the ones that frames used, the frames, and the swapchains before the logical device.
 void Device::shutdown() noexcept {
     if (!context) {
         return;
@@ -149,7 +157,6 @@ void Device::shutdown() noexcept {
 
     for (const Frame& frame : frames) {
         vk.vkDestroyQueryPool(device, frame.timestamps, nullptr);
-        vk.vkDestroySemaphore(device, frame.acquired, nullptr);
         vk.vkDestroyFence(device, frame.fence, nullptr);
         vk.vkDestroyCommandPool(device, frame.pool, nullptr);
     }
@@ -157,7 +164,7 @@ void Device::shutdown() noexcept {
     vk.vkDestroyPipelineCache(device, pipelineCache, nullptr);
     pipelineCache = VK_NULL_HANDLE;
     releases.clear();
-    swapchain.reset();
+    chains.clear();
 }
 
 gpu::Device::Language Device::getLanguage() const noexcept {
@@ -224,7 +231,11 @@ bool Device::ensureFrame() {
     frame.serial = nextSerial;
     frameOpen = true;
     bufferCopies = false;
-    swapchainDrawn = false;
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain != nullptr) {
+            chain->drawn = false;
+        }
+    }
     bound.uniformBuffer = VK_NULL_HANDLE;
     bound.uniformMask = 0;
     return true;
@@ -302,9 +313,23 @@ void Device::commit() {
         const VkMemoryBarrier barrier{.sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT, .dstAccessMask = VK_ACCESS_VERTEX_ATTRIBUTE_READ_BIT | VK_ACCESS_INDEX_READ_BIT};
         vk.vkCmdPipelineBarrier(frame.uploads, VK_PIPELINE_STAGE_TRANSFER_BIT, VK_PIPELINE_STAGE_VERTEX_INPUT_BIT, 0, 1, &barrier, 0, nullptr, 0, nullptr);
     }
-    if (swapchainDrawn) {
-        const VkImageMemoryBarrier toPresent{.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = swapchain->getImage(imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}};
-        vk.vkCmdPipelineBarrier(frame.graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, 1, &toPresent);
+
+    // Every image that the frame acquired goes to its presentation, which waits for the semaphore that the submission signals for it.
+    imageBarriers.clear();
+    waitSemaphores.clear();
+    waitStages.clear();
+    signalSemaphores.clear();
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !chain->acquired) {
+            continue;
+        }
+        imageBarriers.push_back({.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER, .srcAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT, .dstAccessMask = 0, .oldLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, .newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED, .image = chain->swapchain->getImage(chain->imageIndex), .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1}});
+        waitSemaphores.push_back(chain->swapchain->getAcquired(frameIndex));
+        waitStages.push_back(VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+        signalSemaphores.push_back(chain->swapchain->getFinished(chain->imageIndex));
+    }
+    if (!imageBarriers.empty()) {
+        vk.vkCmdPipelineBarrier(frame.graphics, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
     }
     if (frame.timestamps != VK_NULL_HANDLE) {
         vk.vkCmdWriteTimestamp(frame.graphics, VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, frame.timestamps, 1);
@@ -315,17 +340,15 @@ void Device::commit() {
     uniforms.flush();
 
     const std::array<VkCommandBuffer, 2> commands{frame.uploads, frame.graphics};
-    const VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-    const VkSemaphore finished = acquired ? swapchain->getFinished(imageIndex) : VK_NULL_HANDLE;
     const VkSubmitInfo submit{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-        .waitSemaphoreCount = acquired ? 1U : 0U,
-        .pWaitSemaphores = &frame.acquired,
-        .pWaitDstStageMask = &waitStage,
+        .waitSemaphoreCount = static_cast<std::uint32_t>(waitSemaphores.size()),
+        .pWaitSemaphores = waitSemaphores.data(),
+        .pWaitDstStageMask = waitStages.data(),
         .commandBufferCount = static_cast<std::uint32_t>(commands.size()),
         .pCommandBuffers = commands.data(),
-        .signalSemaphoreCount = acquired ? 1U : 0U,
-        .pSignalSemaphores = &finished,
+        .signalSemaphoreCount = static_cast<std::uint32_t>(signalSemaphores.size()),
+        .pSignalSemaphores = signalSemaphores.data(),
     };
     frameOpen = false;
     const VkResult submitted = vk.vkQueueSubmit(context->getQueue(), 1, &submit, frame.fence);
@@ -336,14 +359,17 @@ void Device::commit() {
     Context::check(submitted, "submit a frame");
     frame.submitted = true;
 
-    if (acquired) {
-        const VkResult presented = swapchain->present(imageIndex);
+    for (const std::unique_ptr<SurfaceChain>& chain : chains) {
+        if (chain == nullptr || !chain->acquired) {
+            continue;
+        }
+        const VkResult presented = chain->swapchain->present(chain->imageIndex);
         if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR || presented == VK_ERROR_SURFACE_LOST_KHR) {
-            swapchainDirty = true;
+            chain->dirty = true;
         } else if (presented == VK_ERROR_DEVICE_LOST) {
             markLost(presented);
         }
-        acquired = false;
+        chain->acquired = false;
     }
 
     ++nextSerial;
@@ -355,98 +381,164 @@ void Device::commit() {
 }
 
 void Device::resizeSurface(int width, int height) {
-    if (surfaceSettings.width == width && surfaceSettings.height == height) {
+    SurfaceChain& window = *chains.front();
+    if (window.settings.width == width && window.settings.height == height) {
         return;
     }
-    surfaceSettings.width = width;
-    surfaceSettings.height = height;
-    swapchainDirty = true;
+    window.settings.width = width;
+    window.settings.height = height;
+    window.dirty = true;
 }
 
 void Device::detachSurface() {
-    if (!swapchain) {
+    SurfaceChain& window = *chains.front();
+    if (!window.swapchain) {
         return;
     }
-    if (acquired) {
+    if (window.acquired) {
         throw std::logic_error("The surface goes between frames, after \"commit\".");
     }
     waitIdle();
-    for (VkImageView view : swapchain->getViews()) {
-        renderPasses.forgetView(view, completedSerial);
-    }
+    forgetViews(*window.swapchain);
     releases.collect(completedSerial);
-    swapchain.reset();
+    window.swapchain.reset();
 }
 
 void Device::attachSurface(const Surface& surface) {
     detachSurface();
     auto made = std::make_unique<Swapchain>(instance->getHandle(), instance->createSurface(surface));
-    made->attach(*context);
-    swapchain = std::move(made);
-    surfaceSettings = {.width = surface.width, .height = surface.height, .sampleCount = surface.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
-    swapchainDirty = true;
+    made->attach(*context, frames.size());
+    SurfaceChain& window = *chains.front();
+    window.swapchain = std::move(made);
+    window.settings = {.width = surface.width, .height = surface.height, .sampleCount = surface.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
+    window.dirty = true;
+}
+
+// A surface beyond the window draws through the pipelines of the swapchain, so its swapchain takes the sample count of the window and must take its color format.
+int Device::addSurface(const Surface& surface) {
+    if (frameOpen) {
+        throw std::logic_error("A surface is added between frames, after \"commit\".");
+    }
+    auto chain = std::make_unique<SurfaceChain>();
+    chain->swapchain = std::make_unique<Swapchain>(instance->getHandle(), instance->createSurface(surface));
+    chain->swapchain->attach(*context, frames.size());
+    if (chain->swapchain->getFormat() != swapchainTarget.color) {
+        throw std::runtime_error("The surface takes another color format than the swapchain of the window, whose pipelines the Vulkan device draws every surface with.");
+    }
+    chain->settings = {.width = surface.width, .height = surface.height, .sampleCount = chains.front()->settings.sampleCount, .vsync = surface.vsync, .transparent = surface.transparent};
+    chain->dirty = true;
+
+    const auto free = std::find(chains.begin() + 1, chains.end(), nullptr);
+    if (free != chains.end()) {
+        *free = std::move(chain);
+        return static_cast<int>(free - chains.begin());
+    }
+    chains.push_back(std::move(chain));
+    return static_cast<int>(chains.size()) - 1;
+}
+
+void Device::resizeSurface(int number, int width, int height) {
+    SurfaceChain& chain = requireAddedChain(number);
+    if (chain.settings.width == width && chain.settings.height == height) {
+        return;
+    }
+    chain.settings.width = width;
+    chain.settings.height = height;
+    chain.dirty = true;
+}
+
+// The frames in flight may still draw into the swapchain, so the device waits for them before it destroys it.
+void Device::removeSurface(int number) {
+    SurfaceChain& chain = requireAddedChain(number);
+    if (chain.acquired) {
+        throw std::logic_error("A surface goes between frames, after \"commit\".");
+    }
+    waitIdle();
+    forgetViews(*chain.swapchain);
+    releases.collect(completedSerial);
+    chains[static_cast<std::size_t>(number)].reset();
+}
+
+Device::SurfaceChain& Device::requireChain(int surface) const {
+    if (surface < 0 || static_cast<std::size_t>(surface) >= chains.size() || chains[static_cast<std::size_t>(surface)] == nullptr) {
+        throw std::logic_error(std::format("The device has no surface {}.", surface));
+    }
+    return *chains[static_cast<std::size_t>(surface)];
+}
+
+Device::SurfaceChain& Device::requireAddedChain(int surface) const {
+    if (surface == 0) {
+        throw std::logic_error("The surface 0 is the window, which \"addSurface\" did not make.");
+    }
+    return requireChain(surface);
+}
+
+void Device::forgetViews(const Swapchain& chain) {
+    for (VkImageView view : chain.getViews()) {
+        renderPasses.forgetView(view, completedSerial);
+    }
 }
 
 // The frames in flight may still draw into the old swapchain, so the device waits for them before it makes the new one.
-void Device::reconfigureSwapchain() {
+void Device::reconfigureSwapchain(SurfaceChain& chain) {
     waitIdle();
     if (lost) {
         return;
     }
-    for (VkImageView view : swapchain->getViews()) {
-        renderPasses.forgetView(view, completedSerial);
-    }
+    forgetViews(*chain.swapchain);
     releases.collect(completedSerial);
-    swapchain->configure(surfaceSettings);
-    swapchainDirty = false;
-    updateSwapchainTarget();
+    chain.swapchain->configure(chain.settings);
+    chain.dirty = false;
+    if (&chain == chains.front().get()) {
+        updateSwapchainTarget();
+    }
 }
 
 void Device::updateSwapchainTarget() {
-    if (!swapchain->hasImages()) {
+    const Swapchain& window = *chains.front()->swapchain;
+    if (!window.hasImages()) {
         return;
     }
-    const SwapchainTarget next{.color = swapchain->getFormat(), .depth = swapchain->getDepthFormat(), .samples = swapchain->getSamples(), .generation = swapchainTarget.generation};
+    const SwapchainTarget next{.color = window.getFormat(), .depth = window.getDepthFormat(), .samples = window.getSamples(), .generation = swapchainTarget.generation};
     if (next.color != swapchainTarget.color || next.depth != swapchainTarget.depth || next.samples != swapchainTarget.samples) {
         swapchainTarget = next;
         ++swapchainTarget.generation;
     }
 }
 
-// A swapchain that went out of date is made again once, and a window without pixels or a lost surface draws no frame.
-bool Device::acquireSwapchainImage() {
-    if (acquired) {
+// A swapchain that went out of date is made again once, and a surface without pixels or a lost surface draws no frame.
+bool Device::acquireSwapchainImage(SurfaceChain& chain) {
+    if (chain.acquired) {
         return true;
     }
-    if (!swapchain) {
+    if (!chain.swapchain) {
         return false;
     }
-    if (swapchainDirty) {
-        reconfigureSwapchain();
+    if (chain.dirty) {
+        reconfigureSwapchain(chain);
     }
-    if (lost || !swapchain->hasImages()) {
+    if (lost || !chain.swapchain->hasImages()) {
         return false;
     }
 
-    const VkSemaphore signaled = frames[frameIndex].acquired;
-    VkResult result = swapchain->acquire(signaled, imageIndex);
+    VkResult result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
     if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-        reconfigureSwapchain();
-        if (lost || !swapchain->hasImages()) {
+        reconfigureSwapchain(chain);
+        if (lost || !chain.swapchain->hasImages()) {
             return false;
         }
-        result = swapchain->acquire(signaled, imageIndex);
+        result = chain.swapchain->acquire(frameIndex, chain.imageIndex);
     }
     if (result == VK_SUBOPTIMAL_KHR) {
-        swapchainDirty = true;
+        chain.dirty = true;
     } else if (result == VK_ERROR_DEVICE_LOST) {
         markLost(result);
         return false;
     } else if (result != VK_SUCCESS) {
-        swapchainDirty = true;
+        chain.dirty = true;
         return false;
     }
-    acquired = true;
+    chain.acquired = true;
     return true;
 }
 
@@ -1111,7 +1203,7 @@ void Device::beginPass(const PassDesc& desc) {
 
     const bool toSwapchain = desc.colors.empty() && !desc.depthStencil;
     pass.swapchain = toSwapchain;
-    const bool continues = toSwapchain && swapchainRendering && desc.load == Load::Keep;
+    const bool continues = toSwapchain && swapchainRendering && renderingSurface == desc.surface && desc.load == Load::Keep;
     if (!continues) {
         endSwapchainRendering();
     }
@@ -1143,38 +1235,42 @@ void Device::beginPass(const PassDesc& desc) {
 
 // The depth and stencil and the multisampled color of the swapchain last while swapchain passes that keep them follow each other, while its image keeps what the passes of the frame drew until it is presented.
 void Device::beginSwapchainPass(const PassDesc& desc) {
-    if (!acquireSwapchainImage()) {
+    SurfaceChain& chain = requireChain(desc.surface);
+    if (!acquireSwapchainImage(chain)) {
         pass.skipped = true;
         return;
     }
+    const Swapchain& swapchain = *chain.swapchain;
+    const std::uint32_t imageIndex = chain.imageIndex;
     const VkCommandBuffer commands = frames[frameIndex].graphics;
-    const bool multisampled = swapchain->getSamples() != VK_SAMPLE_COUNT_1_BIT;
+    const bool multisampled = swapchain.getSamples() != VK_SAMPLE_COUNT_1_BIT;
     const VkAttachmentLoadOp load = Conversions::toLoad(desc.load);
-    const VkImageLayout previous = swapchainDrawn && desc.load == Load::Keep ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
+    const VkImageLayout previous = chain.drawn && desc.load == Load::Keep ? VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_UNDEFINED;
 
     // The image of the swapchain keeps what earlier passes of the frame drew when the pass keeps it, while the attachments that last for one pass start anew.
     imageBarriers.clear();
     const VkImageSubresourceRange colorRange{.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT, .levelCount = 1, .layerCount = 1};
     const VkImageLayout colorLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
     const VkImageLayout depthLayout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL;
-    imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain->getImage(imageIndex), colorRange, swapchainDrawn ? colorLayout : VK_IMAGE_LAYOUT_UNDEFINED, previous, colorLayout));
+    imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getImage(imageIndex), colorRange, chain.drawn ? colorLayout : VK_IMAGE_LAYOUT_UNDEFINED, previous, colorLayout));
     if (multisampled) {
-        imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain->getColorImage(), colorRange, colorLayout, VK_IMAGE_LAYOUT_UNDEFINED, colorLayout));
+        imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getColorImage(), colorRange, colorLayout, VK_IMAGE_LAYOUT_UNDEFINED, colorLayout));
     }
-    imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain->getDepthImage(), {.aspectMask = Conversions::getAspects(swapchain->getDepthFormat()), .levelCount = 1, .layerCount = 1}, depthLayout, VK_IMAGE_LAYOUT_UNDEFINED, depthLayout));
+    imageBarriers.push_back(ImageLayouts::makeBarrier(swapchain.getDepthImage(), {.aspectMask = Conversions::getAspects(swapchain.getDepthFormat()), .levelCount = 1, .layerCount = 1}, depthLayout, VK_IMAGE_LAYOUT_UNDEFINED, depthLayout));
     const VkPipelineStageFlags stages = ImageLayouts::getStages(colorLayout) | ImageLayouts::getStages(depthLayout);
     vk.vkCmdPipelineBarrier(commands, stages, stages, 0, 0, nullptr, 0, nullptr, static_cast<std::uint32_t>(imageBarriers.size()), imageBarriers.data());
-    swapchainDrawn = true;
+    chain.drawn = true;
+    renderingSurface = desc.surface;
 
-    PassTarget target{.colorCount = 1, .hasDepth = true, .extent = swapchain->getExtent()};
+    PassTarget target{.colorCount = 1, .hasDepth = true, .extent = swapchain.getExtent()};
     AttachmentTarget& color = target.colors[0];
-    color = {.view = multisampled ? swapchain->getColorView() : swapchain->getView(imageIndex), .format = swapchain->getFormat(), .samples = swapchain->getSamples(), .load = load, .store = multisampled ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE};
+    color = {.view = multisampled ? swapchain.getColorView() : swapchain.getView(imageIndex), .format = swapchain.getFormat(), .samples = swapchain.getSamples(), .load = load, .store = multisampled ? VK_ATTACHMENT_STORE_OP_DONT_CARE : VK_ATTACHMENT_STORE_OP_STORE};
     color.clear.color = {{desc.clear.r, desc.clear.g, desc.clear.b, desc.clear.a}};
     if (multisampled) {
-        color.resolveView = swapchain->getView(imageIndex);
-        color.resolveFormat = swapchain->getFormat();
+        color.resolveView = swapchain.getView(imageIndex);
+        color.resolveFormat = swapchain.getFormat();
     }
-    target.depth = {.view = swapchain->getDepthView(), .format = swapchain->getDepthFormat(), .samples = swapchain->getSamples(), .load = load, .store = VK_ATTACHMENT_STORE_OP_DONT_CARE, .stencilLoad = load, .stencilStore = VK_ATTACHMENT_STORE_OP_DONT_CARE};
+    target.depth = {.view = swapchain.getDepthView(), .format = swapchain.getDepthFormat(), .samples = swapchain.getSamples(), .load = load, .store = VK_ATTACHMENT_STORE_OP_DONT_CARE, .stencilLoad = load, .stencilStore = VK_ATTACHMENT_STORE_OP_DONT_CARE};
     target.depth.clear.depthStencil = {.depth = desc.clearDepth, .stencil = desc.clearStencil};
     beginRendering(target);
 }
@@ -1666,19 +1762,6 @@ std::unique_ptr<gpu::Device::Readback> Device::readImage(Image image, int width,
         throw std::invalid_argument(std::format("A readback of {}x{} pixels does not fit the render target of {}x{} pixels.", width, height, record.width, record.height));
     }
     return std::make_unique<ImageReadback>(readbacks.start({.image = record.image, .layout = record.restLayout, .width = width, .height = height, .format = record.pixelFormat}));
-}
-
-// The device draws only into the window of the app, so the outputs of the app on other displays draw through the devices that draw into several surfaces, as the guide of the render hardware interface lists them.
-int Device::addSurface(const Surface&) {
-    throw std::runtime_error("The Vulkan device draws only into the window of the app, not into a surface on another display.");
-}
-
-void Device::resizeSurface(int number, int, int) {
-    throw std::logic_error(std::format("The device has no surface {}.", number));
-}
-
-void Device::removeSurface(int number) {
-    throw std::logic_error(std::format("The device has no surface {}.", number));
 }
 
 } // namespace haylen::gpu::vulkan

@@ -5,6 +5,7 @@
 #include "platform/android/AndroidActivity.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidMotion.hpp"
+#include "platform/android/AndroidOutputs.hpp"
 #include "platform/android/AndroidRuntime.hpp"
 #include "platform/android/JavaBridge.hpp"
 
@@ -78,6 +79,18 @@ void AndroidHost::requestWindowClose() {
 
 void AndroidHost::setScreenSaverSuspended(bool value) {
     JavaBridge::keepScreenOn(value);
+}
+
+void AndroidHost::openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) {
+    AndroidOutputs::open(number, display, options);
+}
+
+void AndroidHost::closeOutput(std::uint32_t number) {
+    AndroidOutputs::close(number);
+}
+
+AndroidHost::OutputReport AndroidHost::getOutputReport(std::uint32_t number) const {
+    return AndroidOutputs::getReport(number, runtime.getGraphics());
 }
 
 } // namespace haylen::platform

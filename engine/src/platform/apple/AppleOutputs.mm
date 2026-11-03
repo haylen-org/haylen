@@ -7,11 +7,13 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/Player.hpp"
 #import "platform/apple/AppleDisplays.hpp"
+#import "platform/apple/HaylenDisplaySceneDelegate.h"
 #import "platform/apple/HaylenOutputView.h"
 
 namespace haylen::platform {
 
 std::map<std::uint32_t, AppleOutputs::Entry>& AppleOutputs::entries = *new std::map<std::uint32_t, AppleOutputs::Entry>();
+NSObject* AppleOutputs::accessory = nil;
 
 void AppleOutputs::announce(std::uint32_t number) {
     Player::postEvent({.type = Event::Type::OutputChanged, .output = number});
@@ -79,6 +81,20 @@ void AppleOutputs::resize(std::uint32_t number) {
     entry.report.surface->height = height;
     entry.report.scale = static_cast<float>(scale);
     announce(number);
+}
+
+// An SDK before iOS 27 declares no scene accessory, so an engine built with it leaves the scene of an external display to connect as earlier releases do.
+void AppleOutputs::registerAccessory([[maybe_unused]] UIViewController* controller) {
+#if __IPHONE_OS_VERSION_MAX_ALLOWED >= 270000
+    if (@available(iOS 27.0, *)) {
+        if (accessory != nil) {
+            return;
+        }
+        UISceneConfiguration* configuration = [[UISceneConfiguration alloc] initWithName:@"HaylenDisplay" sessionRole:UIWindowSceneSessionRoleExternalDisplayNonInteractive];
+        configuration.delegateClass = HaylenDisplaySceneDelegate.class;
+        accessory = [controller registerSceneAccessory:[UISceneAccessory externalNonInteractiveSceneAccessoryWithConfiguration:configuration]];
+    }
+#endif
 }
 
 void AppleOutputs::disconnect(UIScene* scene) {

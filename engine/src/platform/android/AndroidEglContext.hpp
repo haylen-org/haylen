@@ -3,6 +3,7 @@
 #include <EGL/egl.h>
 #include <android/native_window.h>
 
+#include <memory>
 #include <vector>
 
 #include "haylen/gpu/Surface.hpp"
@@ -28,12 +29,17 @@ class AndroidEglContext final : public gpu::GlContext {
     // Lets go of the window, whose objects the context keeps.
     void releaseWindow() noexcept;
 
+    // Another window that the context draws into once the device makes it current, such as the surface of an output on another display, with the configuration of the window of the activity. Throws `std::runtime_error` when EGL cannot make a surface of it.
+    [[nodiscard]] std::unique_ptr<gpu::GlContext> makeDrawable(ANativeWindow& window) const;
+
     // Whether the GPU lost the context, such as after a reset of the driver, after which a new context replaces it.
     [[nodiscard]] bool isLost() const noexcept {
         return lost;
     }
 
   private:
+    class Drawable;
+
     [[nodiscard]] std::vector<EGLint> describeContext(const AndroidGlesVersion& version, bool validation) const;
     [[nodiscard]] EGLConfig chooseConfig(int sampleCount) const;
     [[nodiscard]] bool isExact(EGLConfig candidate, EGLint samples) const;

@@ -54,6 +54,7 @@ class CoreLua final {
     static int viewportDesignSize(lua_State* L);
     static int viewportVisibleRect(lua_State* L);
     static int viewportSafeRect(lua_State* L);
+    static int viewportCutouts(lua_State* L);
     static int viewportReservedInsets(lua_State* L);
     static int viewportPixelRect(lua_State* L);
     static int viewportPixelsPerUnit(lua_State* L);

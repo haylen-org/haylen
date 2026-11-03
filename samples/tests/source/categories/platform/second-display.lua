@@ -9,7 +9,7 @@ local Test = require('harness.test')
 
 local SecondDisplay = haylen.class('SecondDisplay', Test)
 
-SecondDisplay.code = "local board = display.open(other.id, {clearColor = '#FF000000'})\ncamera.x, camera.y = board.width / 2, board.height / 2\ngraphics2d.beginTarget(board.target, camera, {clear = '#FF14202C'})\ngraphics2d.drawText(nil, 'Score', board.width / 2, board.height / 2)\nevents.on('outputInput', function(info) print(info.type, info.x, info.y) end)\nboard:close()"
+SecondDisplay.code = "display.request():await()\nlocal board = display.open(other.id, {clearColor = '#FF000000'})\ncamera.x, camera.y = board.width / 2, board.height / 2\ngraphics2d.beginTarget(board.target, camera, {clear = '#FF14202C'})\ngraphics2d.drawText(nil, 'Score', board.width / 2, board.height / 2)\nevents.on('outputInput', function(info) print(info.type, info.x, info.y) end)"
 SecondDisplay.ringSeconds = 1.2
 
 function SecondDisplay:enter()
@@ -37,20 +37,24 @@ function SecondDisplay:enter()
         if info.type == 'mouseDown' and self.output and info.output == self.output.id then
             self.rings[#self.rings + 1] = {x = info.x * self.output.scale, y = info.y * self.output.scale, age = 0}
         end
-    end, {owner = self})
+    end)
 end
 
+-- A browser and an iPhone or iPad of iOS 27 show the app every display only once it asks, so the button asks first, inside the click that a browser needs.
 function SecondDisplay:open()
-    local current = display.current().id
-    for _, shown in ipairs(display.list()) do
-        if shown.id ~= current then
-            self:closeOutput()
-            self.output = display.open(shown.id, {title = 'Scoreboard', clearColor = '#FF000000'})
-            self:set('answer', {text = string.format('Opening on "%s".', shown.name ~= '' and shown.name or shown.id)})
-            return
+    self:spawn(function()
+        display.request():await()
+        local current = display.current().id
+        for _, shown in ipairs(display.list()) do
+            if shown.id ~= current then
+                self:closeOutput()
+                self.output = display.open(shown.id, {title = 'Scoreboard', clearColor = '#FF000000'})
+                self:set('answer', {text = string.format('Opening on "%s".', shown.name ~= '' and shown.name or shown.id)})
+                return
+            end
         end
-    end
-    self:set('answer', {text = 'Only the display of the window is connected.'})
+        self:set('answer', {text = 'Only the display of the window is connected. An external display of an iPad shows up a moment after the first press.'})
+    end, {owner = self})
 end
 
 function SecondDisplay:closeOutput()

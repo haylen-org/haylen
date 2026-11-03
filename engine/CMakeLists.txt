@@ -850,6 +850,7 @@ elseif(APPLE)
     src/platform/apple/AppleBridge.mm
     src/platform/apple/AppleDesktop.mm
     src/platform/apple/AppleDisplays.mm
+    src/platform/apple/AppleCutouts.mm
     src/platform/apple/AppleFold.mm
     src/platform/apple/AppleOutputs.mm
     src/platform/apple/AppleDialogs.mm
@@ -905,9 +906,9 @@ elseif(APPLE)
 elseif(WIN32)
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/windows/WindowsAccessibility.cpp src/platform/windows/WindowsAccessibilityElement.cpp src/platform/windows/WindowsAccessibilityRoot.cpp src/platform/windows/WindowsAccessibilityTree.cpp src/platform/windows/WindowsDesktop.cpp src/platform/windows/WindowsDialogs.cpp src/platform/windows/WindowsMediaSession.cpp src/platform/windows/WindowsServices.cpp src/platform/windows/WindowsSettings.cpp src/platform/windows/WindowsSystem.cpp src/platform/windows/WindowsPackageStream.cpp src/platform/windows/WindowsText.cpp src/platform/windows/WindowsVideoDecoder.cpp)
 elseif(ANDROID)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidDisplays.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMotion.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/android/AndroidActivity.cpp src/platform/android/AndroidAssetPackage.cpp src/platform/android/AndroidAssetReader.cpp src/platform/android/AndroidDisplays.cpp src/platform/android/AndroidEglContext.cpp src/platform/android/AndroidGamepads.cpp src/platform/android/AndroidGraphics.cpp src/platform/android/AndroidHost.cpp src/platform/android/AndroidInputEvents.cpp src/platform/android/AndroidKeys.cpp src/platform/android/AndroidMessageQueue.cpp src/platform/android/AndroidMotion.cpp src/platform/android/AndroidMouseWheel.cpp src/platform/android/AndroidOutputs.cpp src/platform/android/AndroidRuntime.cpp src/platform/android/AndroidServices.cpp src/platform/android/AndroidStreams.cpp src/platform/android/AndroidTextInput.cpp src/platform/android/AndroidVideoDecoder.cpp src/platform/android/AndroidWindow.cpp src/platform/android/JavaBridge.cpp)
 elseif(EMSCRIPTEN)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebDisplays.cpp src/platform/web/WebMotion.cpp src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/web/WebDisplays.cpp src/platform/web/WebMotion.cpp src/platform/web/WebOutputs.cpp src/platform/web/WebPage.cpp src/platform/web/WebServices.cpp src/platform/web/WebStoreFiles.cpp src/platform/web/WebTextInput.cpp src/platform/web/WebVideoDecoder.cpp)
 else()
   list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/linux/LinuxAccessibility.cpp src/platform/linux/LinuxDesktop.cpp src/platform/linux/LinuxDialogs.cpp src/platform/linux/LinuxGlib.cpp src/platform/linux/LinuxServices.cpp src/platform/linux/LinuxSystem.cpp src/platform/linux/LinuxSettings.cpp)
 endif()

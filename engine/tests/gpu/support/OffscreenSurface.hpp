@@ -24,6 +24,9 @@ class OffscreenSurface final {
         return surface;
     }
 
+    // Another drawable of the context of the APIs that draw through a `gpu::GlContext`. Throws `std::runtime_error` with the reason for the other APIs and where the context has no other drawable.
+    [[nodiscard]] std::unique_ptr<gpu::GlContext> makeDrawable(int width, int height);
+
   private:
     std::unique_ptr<gpu::GlContext> context;
     std::optional<gpu::Surface> surface;

@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <cstddef>
 #include <string>
 #include <vector>
 
@@ -185,7 +186,7 @@ TEST_F(DisplayLuaTest, ShowsAnOutputOnAnotherDisplay) {
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return table.concat(heard, ', ')"), "outputInput mouseDown");
 
-    // A person that closes the window of the output ends it, and the platform forgets it.
+    // A person that closes the window of the output ends it, and the platform forgets it once the GPU device let go of its surface.
     fixture.runLua("heard = {}");
     fixture.host().setOutputReport(1, {.ending = Output::Ending::Person});
     fixture.engine().handleEvent({.type = Event::Type::OutputChanged, .output = 1});
@@ -193,6 +194,7 @@ TEST_F(DisplayLuaTest, ShowsAnOutputOnAnotherDisplay) {
     EXPECT_EQ(fixture.lua("return output.state .. ' ' .. output.ending .. ' ' .. table.concat(heard, ', ')"), "closed person outputClosed person");
     EXPECT_TRUE(fixture.host().getGpu().getAddedSurfaces().empty());
     EXPECT_EQ(fixture.host().getClosedOutputs(), (std::vector<std::uint32_t>{1}));
+    EXPECT_EQ(fixture.host().getSurfacesAtClose(), (std::vector<std::size_t>{0}));
     EXPECT_TRUE(fixture.engine().getOutputs().getAll().empty());
 }
 

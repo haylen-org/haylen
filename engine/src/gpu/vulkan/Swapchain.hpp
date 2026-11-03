@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 #include <vector>
 
@@ -28,8 +29,8 @@ class Swapchain final {
     Swapchain(const Swapchain&) = delete;
     Swapchain& operator=(const Swapchain&) = delete;
 
-    // Joins the device that draws into the surface, which must present to it.
-    void attach(const Context& owner);
+    // Joins the device that draws into the surface, whose queue must present to it, with a semaphore of acquired images for each of its frames in flight. Throws `std::runtime_error` when the queue cannot present to the surface.
+    void attach(const Context& owner, std::size_t frames);
 
     [[nodiscard]] VkSurfaceKHR getSurface() const noexcept {
         return surface;
@@ -38,8 +39,13 @@ class Swapchain final {
     // Makes the swapchain again for the settings once the GPU finished every frame, and gives whether it has images, which a window without pixels lacks.
     bool configure(const Settings& settings);
 
-    [[nodiscard]] VkResult acquire(VkSemaphore signaled, std::uint32_t& index) const;
+    // Acquires the next image for the frame in flight, whose semaphore `getAcquired` gives to the submission that waits for it.
+    [[nodiscard]] VkResult acquire(std::size_t frame, std::uint32_t& index) const;
     [[nodiscard]] VkResult present(std::uint32_t index) const;
+
+    [[nodiscard]] VkSemaphore getAcquired(std::size_t frame) const noexcept {
+        return acquired[frame];
+    }
 
     [[nodiscard]] bool hasImages() const noexcept {
         return handle != VK_NULL_HANDLE;
@@ -126,6 +132,7 @@ class Swapchain final {
     VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT;
     VkExtent2D extent{};
     std::vector<SwapchainImage> images;
+    std::vector<VkSemaphore> acquired;
     Attachment color;
     Attachment depth;
     bool warnedOpaque = false;

@@ -5,6 +5,7 @@
 
 #include <array>
 #include <cstdint>
+#include <memory>
 #include <stdexcept>
 
 namespace haylen::test {
@@ -51,6 +52,52 @@ class OffscreenGlContext::Native final {
             throw std::runtime_error("Windows has no pixel format for an OpenGL context.");
         }
     }
+};
+
+// Another hidden window of the pixel format of the context, which the context draws into once it is current on its device context.
+class OffscreenGlContext::Drawable final : public gpu::GlContext {
+  public:
+    Drawable(HGLRC shared, int pixelsWide, int pixelsHigh) : context(shared), window(Native::makeWindow(pixelsWide, pixelsHigh)) {
+        if (window == nullptr) {
+            throw std::runtime_error("Windows could not open another hidden window of the OpenGL context.");
+        }
+        deviceContext = GetDC(window);
+        try {
+            Native::choosePixelFormat(deviceContext);
+        } catch (...) {
+            ReleaseDC(window, deviceContext);
+            DestroyWindow(window);
+            throw;
+        }
+    }
+
+    ~Drawable() override {
+        ReleaseDC(window, deviceContext);
+        DestroyWindow(window);
+    }
+
+    void makeCurrent() override {
+        wglMakeCurrent(deviceContext, context);
+    }
+
+    void swapBuffers() override {
+        SwapBuffers(deviceContext);
+    }
+
+    void setSwapInterval(int value) override {
+        if (const auto swapInterval = reinterpret_cast<Native::SwapInterval>(reinterpret_cast<void*>(wglGetProcAddress("wglSwapIntervalEXT")))) {
+            swapInterval(value);
+        }
+    }
+
+    void* getProcAddress(const char* name) override {
+        return reinterpret_cast<void*>(wglGetProcAddress(name));
+    }
+
+  private:
+    HGLRC context;
+    HWND window;
+    HDC deviceContext = nullptr;
 };
 
 OffscreenGlContext::OffscreenGlContext(gpu::Device::Api api, int pixelsWide, int pixelsHigh) : width(pixelsWide), height(pixelsHigh) {
@@ -115,6 +162,10 @@ void* OffscreenGlContext::getProcAddress(const char* name) {
 
 gpu::Surface OffscreenGlContext::getSurface() {
     return {.kind = gpu::Surface::Kind::Gl, .gl = this, .width = width, .height = height};
+}
+
+std::unique_ptr<gpu::GlContext> OffscreenGlContext::makeDrawable(int pixelsWide, int pixelsHigh) {
+    return std::make_unique<Drawable>(static_cast<HGLRC>(context), pixelsWide, pixelsHigh);
 }
 
 } // namespace haylen::test

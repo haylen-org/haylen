@@ -56,6 +56,11 @@
     static void announce(byte[], boolean);
 }
 
+-keep class dev.haylen.HaylenOutputs {
+    static void open(int, int, byte[]);
+    static void close(int);
+}
+
 -keep class dev.haylen.HaylenMediaSession {
     static void update(byte[], byte[]);
 }

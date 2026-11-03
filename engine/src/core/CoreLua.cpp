@@ -314,6 +314,19 @@ int CoreLua::viewportReservedInsets(lua_State* L) {
     return 1;
 }
 
+// Returns the cutouts of the screen over the window as a list of rectangles of design units.
+int CoreLua::viewportCutouts(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const graphics::Viewport& viewport = engine.getViewport();
+    const std::span<const math::Rect> cutouts = engine.getCutouts();
+    lua_createtable(L, static_cast<int>(cutouts.size()), 0);
+    for (std::size_t index = 0; index < cutouts.size(); ++index) {
+        lua::Stack::push(L, math::Rect::fromMinMax(viewport.toDesign(cutouts[index].getMin()), viewport.toDesign(cutouts[index].getMax())));
+        lua_rawseti(L, -2, static_cast<lua_Integer>(index) + 1);
+    }
+    return 1;
+}
+
 int CoreLua::viewportPixelRect(lua_State* L) {
     lua::Stack::push(L, lua::Runtime::getEngine(L).getViewport().getPixelRect());
     return 1;
@@ -379,7 +392,7 @@ int CoreLua::viewportSetSafeAreaSimulation(lua_State* L) {
 
 int CoreLua::openViewport(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"designSize", &viewportDesignSize}, {"visibleRect", &viewportVisibleRect}, {"safeRect", &viewportSafeRect}, {"reservedInsets", &viewportReservedInsets}, {"pixelRect", &viewportPixelRect}, {"pixelsPerUnit", &viewportPixelsPerUnit}, {"toDesign", &viewportToDesign}, {"toFramebuffer", &viewportToFramebuffer}, {"scaling", &viewportScaling}, {"setScaling", &viewportSetScaling}, {"setDesignSize", &lua::Binding::native<&viewportSetDesignSize>}, {"safeAreaSimulation", &viewportSafeAreaSimulation}, {"setSafeAreaSimulation", &lua::Binding::native<&viewportSetSafeAreaSimulation>}, {nullptr, nullptr},
+        {"designSize", &viewportDesignSize}, {"visibleRect", &viewportVisibleRect}, {"safeRect", &viewportSafeRect}, {"reservedInsets", &viewportReservedInsets}, {"cutouts", &viewportCutouts}, {"pixelRect", &viewportPixelRect}, {"pixelsPerUnit", &viewportPixelsPerUnit}, {"toDesign", &viewportToDesign}, {"toFramebuffer", &viewportToFramebuffer}, {"scaling", &viewportScaling}, {"setScaling", &viewportSetScaling}, {"setDesignSize", &lua::Binding::native<&viewportSetDesignSize>}, {"safeAreaSimulation", &viewportSafeAreaSimulation}, {"setSafeAreaSimulation", &lua::Binding::native<&viewportSetSafeAreaSimulation>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

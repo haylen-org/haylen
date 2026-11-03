@@ -10,12 +10,17 @@
 
 namespace haylen::gpu::vulkan {
 
-void Swapchain::attach(const Context& owner) {
+void Swapchain::attach(const Context& owner, std::size_t frames) {
     if (!owner.hasSwapchain() || !owner.canPresent(surface)) {
-        throw std::runtime_error("The GPU of the Vulkan device cannot present to the window.");
+        throw std::runtime_error("The queue of the Vulkan device cannot present to the surface.");
     }
     context = &owner;
     depthFormat = owner.getDepthStencilFormat();
+    const VkSemaphoreCreateInfo semaphoreInfo{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
+    acquired.resize(frames, VK_NULL_HANDLE);
+    for (VkSemaphore& semaphore : acquired) {
+        Context::check(owner.getFunctions().vkCreateSemaphore(owner.getDevice(), &semaphoreInfo, nullptr, &semaphore), "make a semaphore of the swapchain");
+    }
 
     std::uint32_t count = 0;
     vkGetPhysicalDeviceSurfaceFormatsKHR(context->getPhysicalDevice(), surface, &count, nullptr);
@@ -29,6 +34,9 @@ void Swapchain::attach(const Context& owner) {
 Swapchain::~Swapchain() {
     if (context != nullptr) {
         destroyImages();
+        for (const VkSemaphore semaphore : acquired) {
+            context->getFunctions().vkDestroySemaphore(context->getDevice(), semaphore, nullptr);
+        }
     }
     if (handle != VK_NULL_HANDLE) {
         context->getFunctions().vkDestroySwapchainKHR(context->getDevice(), handle, nullptr);
@@ -188,8 +196,8 @@ bool Swapchain::configure(const Settings& settings) {
     return true;
 }
 
-VkResult Swapchain::acquire(VkSemaphore signaled, std::uint32_t& index) const {
-    return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, UINT64_MAX, signaled, VK_NULL_HANDLE, &index);
+VkResult Swapchain::acquire(std::size_t frame, std::uint32_t& index) const {
+    return context->getFunctions().vkAcquireNextImageKHR(context->getDevice(), handle, UINT64_MAX, acquired[frame], VK_NULL_HANDLE, &index);
 }
 
 VkResult Swapchain::present(std::uint32_t index) const {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "haylen/gpu/Device.hpp"
 #include "haylen/gpu/Surface.hpp"
 
@@ -22,12 +24,17 @@ class OffscreenGlContext final : public gpu::GlContext {
     // The surface that hands the context to the device.
     [[nodiscard]] gpu::Surface getSurface();
 
+    // Another drawable that the context draws into, a pixel buffer of the same configuration of EGL or another hidden window of the same pixel format on Windows, which a test hands to the device as a surface beyond the window. Throws `std::runtime_error` where the context has no other drawable, as on the web.
+    [[nodiscard]] std::unique_ptr<gpu::GlContext> makeDrawable(int pixelsWide, int pixelsHigh);
+
   private:
     class Native;
+    class Drawable;
 
     void* display = nullptr;
     void* surface = nullptr;
     void* context = nullptr;
+    void* config = nullptr;
     int width = 0;
     int height = 0;
 };
