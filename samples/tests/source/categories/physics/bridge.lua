@@ -26,9 +26,10 @@ Bridge.rail = 54
 Bridge.river = 330
 Bridge.left = {{-1700, 0}, {-574, 0}, {-556, 18}, {-586, 120}, {-570, 230}, {-620, 420}, {-1700, 420}}
 Bridge.right = {{574, 0}, {1700, 0}, {1700, 420}, {620, 420}, {570, 230}, {586, 120}, {556, 18}}
--- The far wall of the gorge fades from the haze of its top into the shadow of the depths.
+-- The far wall of the gorge is rock in the shade, under a haze at its top that darkens into the shadow of the depths.
 Bridge.gorge = {{-640, 30}, {-430, 10}, {-250, 50}, {-60, 20}, {130, 60}, {340, 24}, {640, 40}}
-Bridge.gorgeTop, Bridge.gorgeBottom = '#FFC6C5E4', '#FF5C5890'
+Bridge.gorgeRock = '#FF9C98C4'
+Bridge.gorgeTop, Bridge.gorgeBottom = '#80D6D5EE', '#C03A3666'
 Bridge.rock = Look.tint('stone', '#FF9F98C2', '#FF77709C', '#FFCAC4E2')
 
 function Bridge:enter()
@@ -48,8 +49,9 @@ function Bridge:enter()
     self.rightGrass = Scenery.newGrass({{570, 0}, {1700, 0}})
     self.cliffs = {Look.newShape(Bridge.left, Bridge.rock), Look.newShape(Bridge.right, Bridge.rock)}
     self.rail = {}
-    self.gorge = {vertices = {}, indices = {}}
+    self.gorge = {vertices = {}, indices = {}, outline = {{Bridge.gorge[#Bridge.gorge][1], 420}, {Bridge.gorge[1][1], 420}}}
     for index, point in ipairs(Bridge.gorge) do
+        table.insert(self.gorge.outline, index, point)
         self.gorge.vertices[#self.gorge.vertices + 1] = {x = point[1], y = point[2], color = Bridge.gorgeTop}
         self.gorge.vertices[#self.gorge.vertices + 1] = {x = point[1], y = 420, color = Bridge.gorgeBottom}
         if index > 1 then
@@ -130,6 +132,7 @@ end
 
 function Bridge:draw(area)
     Scenery.sky(self.camera, 30)
+    Scenery.drawSurface(self.gorge.outline, 'rock', Bridge.gorgeRock, -15)
     graphics2d.drawMesh(nil, self.gorge.vertices, self.gorge.indices, {layer = -14})
     Scenery.water(-900, 900, Bridge.river, {layer = -12})
     for _, cliff in ipairs(self.cliffs) do

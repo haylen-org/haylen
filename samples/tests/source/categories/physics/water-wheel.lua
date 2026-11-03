@@ -18,7 +18,7 @@ local WaterWheel = haylen.class('WaterWheel', PhysicsTest)
 WaterWheel.code = [[
 local water = physics2d.newFluid(world, {radius = 4, smoothingRadius = 16, maxParticles = 2600, viscosity = 0.2})
 water:fill({-705, -250, 370, 125})  -- The reservoir behind the dam.
-world:createJoint('revolute', axle, wheel, {ax = 20, ay = 120, enableMotor = true, maxMotorTorque = 2000})
+world:createJoint('revolute', axle, wheel, {ax = 120, ay = 120, enableMotor = true, maxMotorTorque = 2000})
 gate:moveTo(-320, gate.y - 400 * step, 0)  -- Slides the dam open.
 water:remove(index)  -- The pump takes a drop out of the basin.
 water:spawn(x, y, 0, 220)  -- And pours it from the spout.]]
@@ -27,7 +27,7 @@ WaterWheel.particleRadius = 4
 WaterWheel.maxParticles = 2600
 WaterWheel.ground = 390
 -- The wheel stands left of where the chute pours, so the water falls on its far side and turns it, against the friction of its bearing.
-WaterWheel.wheelSpot = {20, 120}
+WaterWheel.wheelSpot = {120, 120}
 WaterWheel.bearing = 2000
 WaterWheel.gatePath = {x = -320, closed = -200, open = -290, speed = 400}
 WaterWheel.pumpLine = 300
