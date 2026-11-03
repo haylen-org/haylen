@@ -7,7 +7,9 @@
 
 #include <ctime>
 #include <exception>
+#include <format>
 #include <memory>
+#include <string_view>
 #include <variant>
 
 #include "gpu/DeviceFactory.hpp"
@@ -271,13 +273,19 @@ int AndroidRuntime::tick() {
     return pacer.getWaitMilliseconds(getTime());
 }
 
-// A device that stopped working, after a reset of the GPU, a lost context or `VK_ERROR_DEVICE_LOST`, gives way to a new one, made through the order of graphics APIs again, on which the app starts again.
+// A device that stopped working, after a reset of the GPU, a lost context or `VK_ERROR_DEVICE_LOST`, gives way to a new one, made through the order of graphics APIs again, on which the app starts again. A device gets one replacement, and a replacement that stops working too ends the app with the reason.
 void AndroidRuntime::replaceLostDevice() {
     const gpu::Device* device = Player::getGpuDevice();
     if (device == nullptr || !graphics.isLost(*device)) {
         return;
     }
-    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", gpu::DeviceFactory::getApiName(device->getApi()));
+    const std::string_view api = gpu::DeviceFactory::getApiName(device->getApi());
+    if (replacedLostDevice) {
+        Player::fail(std::format("The GPU device of \"{}\" stopped working again after it replaced a lost one, so the app cannot draw.", api));
+        return;
+    }
+    replacedLostDevice = true;
+    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", api);
     graphics.loseDevice(device->getApi());
     Player::restart();
 }

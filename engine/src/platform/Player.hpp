@@ -101,6 +101,9 @@ class Player final {
     // Ends the running app and leaves an empty screen until the next restart.
     static void stop();
 
+    // Ends the running app with a failure that no app can recover from, such as a GPU that keeps no device for it. The reason reaches the log and the web page, and a window of the desktop closes with the exit status 1.
+    static void fail(std::string_view reason);
+
     // Pauses or resumes the running app. A paused app keeps its last frame on screen, and the engine sees it as suspended until it resumes.
     static void setPaused(bool value);
     [[nodiscard]] static bool isPaused() noexcept;

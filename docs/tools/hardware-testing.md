@@ -67,7 +67,7 @@ The web runs in Chrome, which `haylen.py` starts without a window. Install Chrom
 | What | Command |
 | --- | --- |
 | GPU tests on WebGPU and WebGL2 | `haylen test --gpu --platform web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
-| The checks of the page | `haylen test --platform web` runs the error screen check, the wake lock check and the memory check, which only a browser can show. |
+| The checks of the page | `haylen test --platform web` runs the error screen check, the wake lock check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
 | The test project | `haylen run samples/tests --platform web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
 
 Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen run` too, for a check by hand.
@@ -88,7 +88,7 @@ Every platform but the Apple TV and the Apple Vision Pro, which no cloud rents a
 | iPhone and iPad | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
 | Android, emulator | A Linux machine that runs KVM, such as an Azure `D4s_v5` with nested virtualization or an EC2 `.metal` instance | Install the Android SDK and run `haylen test --gpu --platform android`, which starts the emulator without a window. | About US$ 0.20 an hour on Azure, much more on an EC2 `.metal` instance |
 | Android, real devices | Device Farm | [Real devices on Device Farm](#real-devices-on-device-farm) | About US$ 0.17 per device minute |
-| Browser, software | Any small Linux machine with Chrome | `haylen test --gpu --platform web` and `haylen test --platform web` | About US$ 0.08 to 0.10 an hour |
+| Browser, software | Any small Linux machine with Chrome | `haylen test --gpu --platform web` and `haylen test --platform web --graphics-api webGl2` | About US$ 0.08 to 0.10 an hour |
 | Browser, real GPU | EC2 `g4dn.xlarge` or Azure `Standard_NG8ads_V620_v1`, with Chrome started with `--enable-gpu` | The same pages as [Browser](#browser). | The price of the machine |
 | Browsers on Device Farm | Device Farm desktop browsers, such as Chrome, Firefox and Edge | A Selenium session that opens the page of `haylen run --platform web`, served where the browsers reach it. | About US$ 0.005 per browser minute |
 

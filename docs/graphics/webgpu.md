@@ -62,12 +62,14 @@ The browser validates every call of WebGPU in every build. Errors that no scope 
 
 ```sh
 haylen test --gpu --platform web
-haylen test --graphics-api webGpu --platform web
+haylen test --gpu --graphics-api webGpu --platform web
 ```
 
 ## Lost devices
 
-The browser loses the device of a page when the GPU process restarts or the GPU resets. The device reports it through `isLost`, a loss for an unknown reason reaches the log as an error, and the platform layer asks the browser for a new adapter and device through `gpu::DeviceFactory::prepare` before it starts the app again.
+The browser loses the device of a page when the GPU process restarts or the GPU resets. The device reports it through `isLost`, and every loss but that of a device the engine released reaches the log as an error with the message of the browser, also a device the browser destroyed on its own. The platform layer then asks the browser for a new adapter and device through `gpu::DeviceFactory::prepare` before it starts the app again. A lost device gets one replacement, as the [RHI guide](rhi.md#lost-devices) describes, and a replacement that the browser takes away too ends the app with the reason, which reaches the log and the page.
+
+Headless Chrome on Linux draws WebGPU through SwiftShader, which cannot share the swapchain of a WebGPU canvas with the compositor of the browser. So it takes the device away from a page that presents WebGPU, and the replacement too, and the app ends with its reason after the one replacement. Pages there draw through WebGL2, which ANGLE presents on SwiftShader, and the checks of WebGPU pages run on a Mac, as the [testing guide](../tools/testing.md#the-error-screen-check-of-the-web) describes.
 
 ## Limits
 

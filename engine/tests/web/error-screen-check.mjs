@@ -1,5 +1,7 @@
-// Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. The page address names the graphics API with `?graphicsApi=`, which the app must draw through, since a restart makes a new GPU device. With "granted" the browser lets the page write the clipboard, and the check expects the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R. With "unknownApi" the address names a graphics API that the engine does not know, and the check expects its reason in the log of the page and in the failure that the page shows, and no exception.
+// Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. The page address names the graphics API with `?graphicsApi=`, which the app must draw through, since a restart makes a new GPU device. With "granted" the browser lets the page write the clipboard, and the check expects the app drawn on after the page draws into a canvas of its own, the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R. With "unknownApi" the address names a graphics API that the engine does not know, and the check expects its reason in the log of the page and in the failure that the page shows, and no exception.
 // Run it with Node: node error-screen-check.mjs <debugging port> <page address> <granted|refused|missing|unknownApi>
+import { inflateSync } from "node:zlib";
+
 const [port, url, mode] = process.argv.slice(2);
 const api = new URL(url).searchParams.get("graphicsApi");
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
@@ -97,17 +99,40 @@ const click = async (x, y) => {
     }
 };
 
-// Reads the screenshot of the page in the page itself, which decodes it, and returns its pixels as rows of RGB values.
+// Decodes the screenshot of the page here, never in the page, whose canvas of its own would share the GPU of the browser with the app it checks, and returns its pixels as RGB values. The screenshot is an 8-bit PNG with or without alpha, whose rows each start with their filter.
 const capture = async () => {
     const { data } = await send("Page.captureScreenshot", { format: "png" }, sessionId);
-    const pixels = await evaluate(`(async () => {
-        const image = await createImageBitmap(await (await fetch("data:image/png;base64,${data}")).blob());
-        const canvas = new OffscreenCanvas(image.width, image.height);
-        const context = canvas.getContext("2d");
-        context.drawImage(image, 0, 0);
-        return Array.from(context.getImageData(0, 0, image.width, image.height).data);
-    })()`);
-    return (x, y) => pixels.slice((y * width + x) * 4, (y * width + x) * 4 + 3);
+    const file = Buffer.from(data, "base64");
+    const chunks = [];
+    let channels = 4;
+    for (let offset = 8; offset < file.length; ) {
+        const length = file.readUInt32BE(offset);
+        const type = file.toString("latin1", offset + 4, offset + 8);
+        const body = file.subarray(offset + 8, offset + 8 + length);
+        if (type === "IHDR") {
+            channels = body[9] === 6 ? 4 : 3;
+        } else if (type === "IDAT") {
+            chunks.push(body);
+        }
+        offset += length + 12;
+    }
+    const filtered = inflateSync(Buffer.concat(chunks));
+    const stride = width * channels;
+    const pixels = Buffer.alloc(stride * height);
+    for (let row = 0; row < height; row += 1) {
+        const filter = filtered[row * (stride + 1)];
+        for (let index = 0; index < stride; index += 1) {
+            const value = filtered[row * (stride + 1) + 1 + index];
+            const left = index >= channels ? pixels[row * stride + index - channels] : 0;
+            const up = row > 0 ? pixels[(row - 1) * stride + index] : 0;
+            const corner = row > 0 && index >= channels ? pixels[(row - 1) * stride + index - channels] : 0;
+            const guess = left + up - corner;
+            const nearest = Math.abs(guess - left) <= Math.abs(guess - up) && Math.abs(guess - left) <= Math.abs(guess - corner) ? left : Math.abs(guess - up) <= Math.abs(guess - corner) ? up : corner;
+            const predicted = [0, left, up, (left + up) >> 1, nearest][filter];
+            pixels[row * stride + index] = (value + predicted) & 0xff;
+        }
+    }
+    return (x, y) => [...pixels.subarray((y * width + x) * channels, (y * width + x) * channels + 3)];
 };
 
 const near = (pixel, color) => pixel.every((value, index) => Math.abs(value - color[index]) <= 4);
@@ -150,6 +175,23 @@ const findRestartButton = async () => {
     return button ? { x: (button.start + button.end) / 2, y: (top + bottom) / 2 } : null;
 };
 
+// A page that draws into a canvas of its own, as this one that decodes a screenshot of itself does, may make the browser take the GPU away from the app, as headless Chrome on Linux with SwiftShader does. The app then starts again on the one replacement of its device and draws on.
+const drawsOn = async (name) => {
+    const since = result.log.length;
+    const { data } = await send("Page.captureScreenshot", { format: "png" }, sessionId);
+    await evaluate(`(async () => {
+        const image = await createImageBitmap(await (await fetch("data:image/png;base64,${data}")).blob());
+        const canvas = new OffscreenCanvas(image.width, image.height);
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0);
+        return context.getImageData(0, 0, 1, 1).data.length;
+    })()`);
+    const lost = await logged("stopped working", { seconds: 3, since });
+    const started = !lost || (await logged("The error screen check is ready.", { since }));
+    const failed = () => result.log.slice(since).some((line) => line.includes("cannot draw"));
+    return step(name, started && (await shows(magenta)) && !failed());
+};
+
 const clipboard = () => evaluate("navigator.clipboard ? navigator.clipboard.readText() : ''");
 
 // The app stops once E is pressed, and the error screen replaces its magenta.
@@ -178,7 +220,7 @@ if (mode === "unknownApi") {
 }
 
 const ready = (await logged("The error screen check is ready.", { seconds: 60, since: 0 })) && (await logged(`The app draws through "${api}".`, { since: 0 }));
-if (step("ready", ready && (await shows(magenta))) && (await stop("stopped"))) {
+if (step("ready", ready && (await shows(magenta))) && (mode !== "granted" || (await drawsOn("drew on after a canvas of the page"))) && (await stop("stopped"))) {
     if (mode === "granted") {
         await press("c", "KeyC", 67);
         await pause(500);

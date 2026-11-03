@@ -223,10 +223,20 @@ jobs:
       - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
         run: python haylen.py --verbose test --gpu --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
 
-  # The release that the checks of the web build needs the content tool of the desktop artifacts, which links the libraries of Linux windows.
+  # The release that the checks of the web build needs the content tool of the desktop artifacts, which links the libraries of Linux windows on Linux. Headless Chrome on Linux draws WebGPU through SwiftShader, which cannot share the swapchain of a WebGPU canvas with the compositor, so the pages of WebGPU run on macOS, where Chrome draws WebGPU through Metal, and those of WebGL2 on Linux.
   web:
-    name: Web
-    runs-on: ubuntu-latest
+    name: Web on ${{ matrix.system }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: Linux
+            graphics-api: webGl2
+          - runner: macos-latest
+            system: macOS
+            graphics-api: webGpu
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
@@ -237,8 +247,8 @@ jobs:
           emscripten: "true"
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
-      - name: Check the error screen, the wake lock and the memory of pages in the headless Chrome of the runner
-        run: python haylen.py --verbose test --platform web --jobs ${{ env.JOBS }}
+      - name: Check the error screen, the wake lock and the memory of pages on ${{ matrix.graphics-api }} in the headless Chrome of the runner
+        run: python haylen.py --verbose test --platform web --graphics-api ${{ matrix.graphics-api }} --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
 

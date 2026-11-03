@@ -99,6 +99,7 @@ class AndroidRuntime final {
     bool stopping = false;
     bool quitRequested = false;
     bool quitOrdered = false;
+    bool replacedLostDevice = false;
 };
 
 } // namespace haylen::platform

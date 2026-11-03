@@ -797,13 +797,15 @@ WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses
 WEB_ERROR_SCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-error-screen"
 WEB_ERROR_SCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "error-screen-check.mjs"
 WEB_ERROR_SCREEN_STEPS = {
-    "granted": ["ready", "stopped", "copied", "restarted by the key", "stopped again", "restarted by a click"],
+    "granted": ["ready", "drew on after a canvas of the page", "stopped", "copied", "restarted by the key", "stopped again", "restarted by a click"],
     "refused": ["ready", "stopped", "refused", "restarted by the key"],
     "missing": ["ready", "stopped", "refused", "restarted by the key"],
 }
 WEB_ERROR_SCREEN_BROWSERS = {"granted": "lets the page write the clipboard", "refused": "refuses the clipboard", "missing": "has no clipboard API"}
 # A page that names a graphics API the engine does not know shows the reason, which also reaches its log, instead of waiting for an app that never starts.
 WEB_UNKNOWN_API_STEPS = ["reported", "shown"]
+# The graphics APIs of the web, which the pages of the checks of the web draw through, each one or the one that "--graphics-api" names.
+WEB_GRAPHICS_APIS = ("webGpu", "webGl2")
 CHROME_PATHS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
 
 
@@ -822,7 +824,9 @@ def free_port() -> int:
 
 
 def command_test_web(args: argparse.Namespace) -> None:
-    """Runs the error screen check, the wake lock check and the memory check of the web in headless browsers."""
+    """Runs the error screen check, the wake lock check and the memory check of the web in headless browsers, whose pages draw through the graphics API that "--graphics-api" names, or the error screen check on each one and the other checks through the first that starts."""
+    if args.graphics_api is not None and args.graphics_api not in WEB_GRAPHICS_APIS:
+        raise BuildError(f'The checks of the web draw through "{WEB_GRAPHICS_APIS[0]}" or "{WEB_GRAPHICS_APIS[1]}", not "{args.graphics_api}".')
     args.config = "Release"
     args.engine_config = "Release"
     args.previous_release = None
@@ -841,12 +845,17 @@ def serve_site(site: Path) -> LocalServer:
     return server
 
 
+def web_page_query(args: argparse.Namespace) -> str:
+    """The query of the address of a page of the checks of the web, which names the graphics API of "--graphics-api" when it names one."""
+    return f"?graphicsApi={args.graphics_api}" if args.graphics_api else ""
+
+
 def check_web_error_screen(args: argparse.Namespace, target) -> None:
-    """Builds the site of the error screen check app, opens it on WebGPU and on WebGL2 in a headless browser that lets the page write the clipboard, one that refuses it and one without its API, and stops when a page misses a step or reports an error. The browser draws through SwiftShader like the GPU tests of the web, so WebGPU starts on a machine without a GPU for it."""
+    """Builds the site of the error screen check app, opens it on WebGPU and on WebGL2, or on the API that "--graphics-api" names, in a headless browser that lets the page write the clipboard, one that refuses it and one without its API, and stops when a page misses a step or reports an error. The browser draws through SwiftShader like the GPU tests of the web, so WebGPU starts on a machine without a GPU for it."""
     site = target.prepare(App(WEB_ERROR_SCREEN_APP, target.plugins), args)
     server = serve_site(site)
     try:
-        for api in ("webGpu", "webGl2"):
+        for api in [args.graphics_api] if args.graphics_api else WEB_GRAPHICS_APIS:
             for mode, steps in WEB_ERROR_SCREEN_STEPS.items():
                 with headless_browser(WEB_GPU_BROWSER_FLAGS, "the error screen check of the web") as debugging:
                     terminal.step(f'Running the error screen check of the web on "{api}" in a headless browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}')
@@ -870,7 +879,7 @@ def check_web_wake_lock(args: argparse.Namespace, target) -> None:
         for mode, steps in WEB_WAKE_LOCK_STEPS.items():
             with headless_browser([], "the wake lock check of the web") as debugging:
                 terminal.step(f"Running the wake lock check of the web in a headless browser that {WEB_WAKE_LOCK_BROWSERS[mode]}")
-                report = json.loads(capture([emsdk_node(), WEB_WAKE_LOCK_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/", mode]))
+                report = json.loads(capture([emsdk_node(), WEB_WAKE_LOCK_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/{web_page_query(args)}", mode]))
             check_web_page_steps(report, steps, f"The page of the wake lock check in a browser that {WEB_WAKE_LOCK_BROWSERS[mode]}")
     finally:
         server.shutdown()
@@ -903,7 +912,7 @@ def check_web_memory_pages(args: argparse.Namespace, target) -> None:
     site = target.prepare(App(folder, target.plugins), args)
     server = serve_site(site)
     try:
-        reports = {store: run_web_memory_page(f"http://127.0.0.1:{server.server_address[1]}/", store) for store in ("files", "memory")}
+        reports = {store: run_web_memory_page(f"http://127.0.0.1:{server.server_address[1]}/{web_page_query(args)}", store) for store in ("files", "memory")}
     finally:
         server.shutdown()
         server.server_close()
@@ -991,7 +1000,8 @@ def command_test(args: argparse.Namespace) -> None:
             raise BuildError('The option "--port" builds the test port for this machine, so it takes neither "--gpu", "--graphics-api" nor "--platform".')
         command_test_port(args)
         return
-    if args.platform == "web" and gpu:
+    # The checks of the web draw too, so on the web "--graphics-api" names the API of their pages unless "--gpu" asks for the GPU tests.
+    if args.platform == "web" and args.gpu:
         command_test_gpu_web(args)
         return
     if args.platform == "web":
@@ -7137,7 +7147,7 @@ def add_build_options(parser: argparse.ArgumentParser, gpu_tests: bool = False) 
     parser.add_argument("--platform", default=host_name(), choices=[*PLATFORMS, *APPLE_GPU_TEST_SLICES] if gpu_tests else PLATFORMS, help='Platform of the build tree, this machine by default. The GPU tests also run on "ios-simulator", "tvos-simulator" and "catalyst".' if gpu_tests else "Platform of the build tree, this machine by default.")
     parser.add_argument("--config", default="Debug", choices=CONFIGS, help='Configuration of the build tree, "Debug" by default.')
     if gpu_tests:
-        parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone.')
+        parser.add_argument("--graphics-api", choices=GPU_GRAPHICS_APIS, help='A name of "gpu::Device::kApiNames", such as "vulkan", which runs the GPU tests on that device alone. With "--platform web" and without "--gpu", "webGpu" or "webGl2" names the API that the pages of the checks of the web draw through.')
         parser.add_argument("--gpu", action="store_true", help="Run the GPU tests, the conformance suite of the GPU devices and the images of the 2D renderer, on every device the build compiled that starts on this machine, instead of the engine tests.")
         parser.add_argument("--device", help='Android device that "--platform android" runs the GPU tests on, the only one connected or an emulator it starts by default, the name or id of the simulator of "--platform ios-simulator" or "tvos-simulator", a booted one or the first iPhone or Apple TV by default, or the name or id of the device of "--platform ios" or "tvos", which "haylen devices" lists.')
         parser.add_argument("--ui", metavar="app", help='Run the UI tests of the app of this folder, the Swift tests of its folder "ui-tests", on the simulator of "--platform ios-simulator", "tvos-simulator" or "visionos-simulator", instead of the engine tests. The configuration is the one of the engine artifacts the app uses.')

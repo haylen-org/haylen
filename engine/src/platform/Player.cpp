@@ -154,6 +154,17 @@ void Player::stop() {
     getCurrent().replace({.package = std::make_shared<io::MemoryPackage>("stopped"), .config = {}, .application = std::make_unique<StoppedApplication>(), .playing = false});
 }
 
+void Player::fail(std::string_view reason) {
+    Player& runtime = getCurrent();
+    runtime.close();
+    core::Log::error("{}", reason);
+    Services::reportError(lua::Error(std::string(reason)).toJson());
+#if !defined(__EMSCRIPTEN__)
+    getProcess().exitStatus = 1;
+    runtime.host->closeWindow();
+#endif
+}
+
 // A page that pauses an app in a hidden tab, or resumes it there, changes nothing the app hears until the tab shows again.
 void Player::setPaused(bool value) {
     Player& runtime = getCurrent();
