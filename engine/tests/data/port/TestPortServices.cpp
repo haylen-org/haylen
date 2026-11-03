@@ -63,10 +63,6 @@ std::string Services::getWindowDisplayId() {
     return "test-port";
 }
 
-void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
-    callback(Window::DisplayAccess::Granted);
-}
-
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
 
 void Services::startWindowDrag() {}

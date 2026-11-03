@@ -10,7 +10,7 @@ local display = require('haylen.display')
 
 ### display.list()
 
-Returns every display of the device as a list of tables, in the order of the platform. The list always holds at least one display, and the primary one is flagged. A browser lists only the screen of the page until the person allows more with [`display.request()`](#displayrequest).
+Returns every display of the device as a list of tables, in the order of the platform. The list always holds at least one display, and the primary one is flagged. A browser lists only the screen of the page until the app holds the permission [`'screens'`](system.md#permissions), which [`system.requestPermission('screens')`](system.md#systemrequestpermissionname) asks the person for.
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -46,39 +46,6 @@ local display = require('haylen.display')
 local shown = display.current()
 print('The window is on', shown.name, 'at', shown.refreshRate, 'frames per second.')
 ```
-
-### display.request()
-
-Asks the platform to list every display and returns a promise. The promise resolves with `true` once `display.list()` holds every display. Desktops, phones, tablets, TVs and Android list every display from the start, so their promise resolves at once.
-
-From iOS 27, an iPhone or an iPad mirrors its screen on an external display until the app asks for every display, in an engine built with the SDK of iOS 27 or later. The function then registers the scene accessory of UIKit for external displays, so the external display shows the scene of the app instead of the mirror, and the display reaches the app as a `displayConnected` event once UIKit connects that scene. The promise resolves at once.
-
-A browser shows the page only its own screen until the person allows the page to see the others, through the Window Management API. The function then asks the person, which a browser allows only shortly after a click or a key. The screens that the answer adds reach the app as `displayConnected` events. The promise rejects with a failure table whose `code` is one of these:
-
-| Code | Meaning |
-| --- | --- |
-| `denied` | The person or the browser did not let the page see every screen. |
-| `unsupported` | The browser has no Window Management API, as Firefox and Safari do not. |
-
-The app asked for the answer, so a rejection that nothing awaits never stops the app.
-
-```lua
-local async = require('async')
-local display = require('haylen.display')
-
-async.spawn(function()
-    local listed, message, failure = display.request():await()
-    if listed then
-        print('Every display:', #display.list())
-    elseif failure.code == 'unsupported' then
-        print('This browser shows only the screen of the page.')
-    else
-        print(message)
-    end
-end)
-```
-
-## Outputs
 
 ### display.open(id, options)
 
@@ -177,7 +144,7 @@ end)
 
 ## C++
 
-C++ code reads the displays through `platform::Displays` of `haylen/platform/Displays.hpp`, which `core::Engine::getDisplays()` returns, and opens outputs through `platform::Outputs` of `haylen/platform/Outputs.hpp`, which `core::Engine::getOutputs()` returns. Its `open(id, options)` returns a `std::shared_ptr<platform::Output>` with the `getTarget()` that the app draws into. Its `getAll()` returns the `platform::Display` values of `haylen/platform/Display.hpp`, `find(id)` returns the display with an id or null, `getWindowDisplay()` returns the display of the window, and `request(callback)` calls back on a later frame with a `platform::Window::DisplayAccess`. The platform reports its displays through `platform::Window::getDisplays()` and `getDisplayId()`.
+C++ code reads the displays through `platform::Displays` of `haylen/platform/Displays.hpp`, which `core::Engine::getDisplays()` returns, and opens outputs through `platform::Outputs` of `haylen/platform/Outputs.hpp`, which `core::Engine::getOutputs()` returns. Its `open(id, options)` returns a `std::shared_ptr<platform::Output>` with the `getTarget()` that the app draws into. Its `getAll()` returns the `platform::Display` values of `haylen/platform/Display.hpp`, `find(id)` returns the display with an id or null, and `getWindowDisplay()` returns the display of the window. The platform reports its displays through `platform::Window::getDisplays()` and `getDisplayId()`.
 
 ## Errors
 
@@ -185,8 +152,6 @@ These messages are raised by the functions of the module.
 
 | Message | Cause |
 | --- | --- |
-| `The person or the browser did not let the app see every display.` | The rejection of `display.request()` with the code `denied`. |
-| `The browser cannot list the screens of the device, since it has no Window Management API.` | The rejection of `display.request()` with the code `unsupported`. |
 | `There is no display "<id>" to open an output on. The function "display.list()" lists the displays.` | The function `display.open` got a display that is not connected. |
 | `The display "<id>" shows the window of the app, so it shows no output.` | The function `display.open` got the display of the window. |
 | `The display "<id>" shows another output already.` | The function `display.open` got a display that shows an open output. |

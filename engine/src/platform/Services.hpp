@@ -78,9 +78,6 @@ class Services final {
     // Returns the id of the display that shows the window.
     [[nodiscard]] static std::string getWindowDisplayId();
 
-    // Asks to list every display and calls back once on the frame thread, as `Window::requestDisplays` describes.
-    static void requestDisplays(std::function<void(Window::DisplayAccess access)> callback);
-
     // Lets clicks through the window everywhere, or everywhere outside the regions in framebuffer pixels.
     static void setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions);
 

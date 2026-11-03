@@ -76,13 +76,16 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool isFullscreen() const noexcept override {
         return fullscreen;
     }
-    void setFullscreen(bool value) override {
-        fullscreen = value;
-        fullscreenTarget = {};
+    void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override {
+        if (windowAnswer.state == Permission::State::Granted) {
+            fullscreen = value;
+            fullscreenTarget = {};
+        }
+        callback(windowAnswer);
     }
 
     // Goes fullscreen like a desktop, on the display and in the mode of the target, which `getFullscreenTarget` reports.
-    void enterFullscreen(const Fullscreen& value) override;
+    void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] const Fullscreen& getFullscreenTarget() const noexcept {
         return fullscreenTarget;
     }
@@ -101,8 +104,11 @@ class HeadlessHost final : public Host {
     void setCursorVisible(bool value) override {
         cursorVisible = value;
     }
-    void setMouseLocked(bool value) override {
-        mouseLocked = value;
+    void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override {
+        if (windowAnswer.state == Permission::State::Granted) {
+            mouseLocked = value;
+        }
+        callback(windowAnswer);
     }
     void setKeyboardVisible(bool value) override {
         keyboardVisible = value;
@@ -168,8 +174,11 @@ class HeadlessHost final : public Host {
     [[nodiscard]] bool isScreenKeptOn() const noexcept override {
         return screenKeptOn;
     }
-    void setKeepScreenOn(bool value) override {
-        screenKeptOn = value;
+    void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override {
+        if (windowAnswer.state == Permission::State::Granted) {
+            screenKeptOn = value;
+        }
+        callback(windowAnswer);
     }
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return transparencySupported;
@@ -225,9 +234,6 @@ class HeadlessHost final : public Host {
     // The window is on the display that holds most of its frame, like a desktop window.
     [[nodiscard]] std::string getDisplayId() const override {
         return Display::findHolding(displays, frame).id;
-    }
-    void requestDisplays(std::function<void(DisplayAccess access)> callback) override {
-        callback(displayAccess);
     }
 
     // Outputs open on the headless platform as the requests record them, and tests report them with `setOutputReport` and the event `OutputChanged`.
@@ -471,9 +477,9 @@ class HeadlessHost final : public Host {
         outputReports[number] = std::move(value);
     }
 
-    // How the headless platform answers an app that asks to list every display.
-    void setDisplayAccess(DisplayAccess value) noexcept {
-        displayAccess = value;
+    // How the headless window answers fullscreen, the lock of the pointer and keeping the screen on, at once, the way a browser refuses them without an input of the person.
+    void setWindowAnswer(Permission::Answer value) {
+        windowAnswer = std::move(value);
     }
 
     // The ids of the plugins whose native part the headless platform reports as loaded.
@@ -720,7 +726,7 @@ class HeadlessHost final : public Host {
 
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};
-    DisplayAccess displayAccess = DisplayAccess::Granted;
+    Permission::Answer windowAnswer{.state = Permission::State::Granted};
     std::vector<math::Rect> screenCutouts;
     Fullscreen fullscreenTarget;
     std::vector<OutputRequest> outputRequests;

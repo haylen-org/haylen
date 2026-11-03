@@ -19,7 +19,13 @@ bool TestPortHost::isFullscreen() const noexcept {
     return true;
 }
 
-void TestPortHost::setFullscreen(bool) {}
+void TestPortHost::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
+    if (!value) {
+        callback({.state = Permission::State::Unsupported, .message = "The window of the test port always fills its screen."});
+        return;
+    }
+    callback({.state = Permission::State::Granted});
+}
 
 void TestPortHost::setTitle(std::string_view) {}
 
@@ -27,7 +33,13 @@ void TestPortHost::setCursor(Cursor) {}
 
 void TestPortHost::setCursorVisible(bool) {}
 
-void TestPortHost::setMouseLocked(bool) {}
+void TestPortHost::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+    if (value) {
+        callback({.state = Permission::State::Unsupported, .message = "The test port has no pointer to lock."});
+        return;
+    }
+    callback({.state = Permission::State::Granted});
+}
 
 void TestPortHost::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
     clipboard = value;
@@ -92,6 +104,9 @@ void TestPortHost::requestWindowClose() {
 
 void TestPortHost::setWindowFocusable(bool) {}
 
-void TestPortHost::setScreenSaverSuspended(bool) {}
+// The test port has no screen saver, so its screen stays on.
+void TestPortHost::setScreenSaverSuspended(bool, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
+}
 
 } // namespace haylen::platform

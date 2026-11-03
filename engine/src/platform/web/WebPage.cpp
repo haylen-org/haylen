@@ -56,12 +56,16 @@ EM_JS(void, haylen_js_reloaded, (const char* json), {
     Module.haylen.reportReloaded(JSON.parse(UTF8ToString(json)));
 });
 
-EM_JS(void, haylen_js_set_fullscreen, (int value, const char* display), {
-    Module.haylen.setFullscreen(value !== 0, UTF8ToString(display));
+EM_JS(void, haylen_js_set_fullscreen, (double id, int value, const char* display), {
+    Module.haylen.setFullscreen(id, value !== 0, UTF8ToString(display));
 });
 
-EM_JS(void, haylen_js_keep_screen_on, (int value), {
-    Module.haylen.keepScreenOn(value !== 0);
+EM_JS(void, haylen_js_keep_screen_on, (double id, int value), {
+    Module.haylen.keepScreenOn(id, value !== 0);
+});
+
+EM_JS(void, haylen_js_await_pointer_lock, (double id, int value), {
+    Module.haylen.awaitPointerLock(id, value !== 0);
 });
 
 EM_JS(void, haylen_js_write_clipboard, (double id, const char* text), {
@@ -110,12 +114,16 @@ template <typename Body> int WebPage::answer(Body&& body) {
     }
 }
 
-void WebPage::setFullscreen(bool value, std::string_view display) {
-    haylen_js_set_fullscreen(value ? 1 : 0, std::string(display).c_str());
+void WebPage::setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_set_fullscreen(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0, std::string(display).c_str());
 }
 
-void WebPage::setScreenKeptOn(bool value) {
-    haylen_js_keep_screen_on(value ? 1 : 0);
+void WebPage::setScreenKeptOn(bool value, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_keep_screen_on(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
+}
+
+void WebPage::awaitPointerLock(bool value, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_await_pointer_lock(awaitGatedCall(withoutText(std::move(callback))), value ? 1 : 0);
 }
 
 void WebPage::setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback) {

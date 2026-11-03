@@ -22,11 +22,14 @@ HeadlessHost::HeadlessHost(std::filesystem::path directory, math::Vec2 size) : d
 }
 
 // The window moves to the display it covers, as a desktop window does.
-void HeadlessHost::enterFullscreen(const Fullscreen& value) {
+void HeadlessHost::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
     const FullscreenTarget target = FullscreenTarget::resolve(displays, getDisplayId(), value);
-    frame = target.display.bounds;
-    fullscreen = true;
-    fullscreenTarget = {.display = target.display.id, .mode = target.mode};
+    if (windowAnswer.state == Permission::State::Granted) {
+        frame = target.display.bounds;
+        fullscreen = true;
+        fullscreenTarget = {.display = target.display.id, .mode = target.mode};
+    }
+    callback(windowAnswer);
 }
 
 std::unique_ptr<gpu::Device> HeadlessHost::createGpuDevice() {

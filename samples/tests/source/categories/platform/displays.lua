@@ -3,6 +3,7 @@ local display = require('haylen.display')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 local window = require('haylen.window')
 
@@ -10,7 +11,7 @@ local Test = require('harness.test')
 
 local Displays = haylen.class('Displays', Test)
 
-Displays.code = "for _, shown in ipairs(display.list()) do print(shown.id, shown.bounds, shown.refreshRate) end\nwindow.place({anchor = 'center', display = other.id})\nwindow.setFullscreen(true, {display = other.id, mode = other.modes[#other.modes]})\nevents.on('displayConnected', function(info) print(info.name) end)\ndisplay.request():await()  -- Every screen of a browser."
+Displays.code = "for _, shown in ipairs(display.list()) do print(shown.id, shown.bounds, shown.refreshRate) end\nwindow.place({anchor = 'center', display = other.id})\nwindow.setFullscreen(true, {display = other.id, mode = other.modes[#other.modes]})\nevents.on('displayConnected', function(info) print(info.name) end)\nsystem.requestPermission('screens'):await()  -- Every screen of a browser."
 Displays.margin = 48
 
 function Displays:enter()
@@ -65,14 +66,22 @@ function Displays:cover(exclusive)
             lowest = mode
         end
     end
-    local ok, message = pcall(window.setFullscreen, true, {display = other.id, mode = exclusive and lowest or nil})
-    self:set('answer', {text = ok and string.format('Fullscreen on "%s"%s.', other.name ~= '' and other.name or other.id, exclusive and lowest and string.format(' at %d by %d', lowest.width, lowest.height) or '') or message})
+    local ok, answer = pcall(window.setFullscreen, true, {display = other.id, mode = exclusive and lowest or nil})
+    if not ok then
+        self:set('answer', {text = answer})
+        return
+    end
+    self:spawn(function()
+        local _, message = answer:await()
+        self:set('answer', {text = message or string.format('Fullscreen on "%s"%s.', other.name ~= '' and other.name or other.id, exclusive and lowest and string.format(' at %d by %d', lowest.width, lowest.height) or '')})
+    end)
 end
 
+-- A browser lists every screen once the app holds the permission "screens", which it asks the person for.
 function Displays:request()
     self:spawn(function()
-        local listed, message = display.request():await()
-        self:set('answer', {text = listed and string.format('The app sees %d displays.', #display.list()) or message})
+        local state, message = system.requestPermission('screens'):await()
+        self:set('answer', {text = state == 'granted' and string.format('The app sees %d displays.', #display.list()) or message or string.format('The permission "screens" is "%s".', state)})
     end)
 end
 

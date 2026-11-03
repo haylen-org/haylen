@@ -188,7 +188,7 @@ Plugins talk to each other only through public methods, never through the intern
 
 ## The host boundary
 
-The portable engine reaches the platform only through `platform::Host`, declared in `engine/src/platform/Host.hpp`. `Host` extends the public `platform::Window` interface, which covers the framebuffer size, the DPI scale, fullscreen, the title, the cursor, the mouse lock, the on-screen keyboard, quit requests, the orientation, the fold, the status bar, text input, transparency and the modes of desktop windows. `Host` adds what the engine needs to run.
+The portable engine reaches the platform only through `platform::Host`, declared in `engine/src/platform/Host.hpp`. `Host` extends the public `platform::Window` interface, which covers the framebuffer size, the DPI scale, fullscreen, the title, the cursor, the mouse lock, the on-screen keyboard, quit requests, the orientation, the fold, the status bar, text input, transparency and the modes of desktop windows. Fullscreen, the mouse lock and keeping the screen on answer with a `platform::Permission::Answer`, since a browser refuses them without an input of the person, and `platform::System::awaitAnswer` brings the answer to the frame. `Host` adds what the engine needs to run.
 
 | Method | Purpose |
 | --- | --- |

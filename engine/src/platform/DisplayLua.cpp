@@ -65,33 +65,12 @@ int DisplayLua::current(lua_State* L) {
     return 1;
 }
 
-// Resolves with `true` once every display is listed, and rejects with the code `denied` when the person or the browser refused, or `unsupported` where the browser cannot list its screens. The app asked, so a rejection that nothing awaits never stops it.
-int DisplayLua::request(lua_State* L) {
-    core::Engine& engine = lua::Runtime::getEngine(L);
-    const lua::Promise promise(engine);
-    // clang-format off
-    engine.getDisplays().request([promise, &engine](Window::DisplayAccess access) {
-        if (access == Window::DisplayAccess::Granted) {
-            promise.resolve(true);
-            return;
-        }
-        lua_State* main = engine.getLuaState();
-        const bool denied = access == Window::DisplayAccess::Denied;
-        lua_createtable(main, 0, 2);
-        lua::Stack::push(main, denied ? "The person or the browser did not let the app see every display." : "The browser cannot list the screens of the device, since it has no Window Management API.");
-        lua_setfield(main, -2, "error");
-        lua::Stack::push(main, denied ? "denied" : "unsupported");
-        lua_setfield(main, -2, "code");
-        promise.rejectHandledFailure(main);
-    });
-    // clang-format on
-    promise.push(L);
-    return 1;
-}
-
 int DisplayLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"list", &lua::Binding::native<&list>}, {"current", &lua::Binding::native<&current>}, {"request", &lua::Binding::native<&request>}, {"open", &lua::Binding::native<&OutputLua::open>}, {nullptr, nullptr},
+        {"list", &lua::Binding::native<&list>},
+        {"current", &lua::Binding::native<&current>},
+        {"open", &lua::Binding::native<&OutputLua::open>},
+        {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

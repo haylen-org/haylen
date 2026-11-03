@@ -197,10 +197,6 @@ std::string Services::getWindowDisplayId() {
     return WebDisplays::getWindowDisplayId();
 }
 
-void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
-    WebDisplays::request(std::move(callback));
-}
-
 void Services::setMousePassthrough(Window::Passthrough, std::span<const math::Polygon::Outline>) {}
 
 void Services::startWindowDrag() {}

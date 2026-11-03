@@ -89,12 +89,9 @@ bool NativeHost::isScreenKeptOn() const noexcept {
     return screenKeptOn;
 }
 
-void NativeHost::setKeepScreenOn(bool value) {
-    if (screenKeptOn == value) {
-        return;
-    }
+void NativeHost::setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) {
     screenKeptOn = value;
-    setScreenSaverSuspended(value);
+    setScreenSaverSuspended(value, std::move(callback));
 }
 
 bool NativeHost::isTransparent() const noexcept {
@@ -174,20 +171,17 @@ std::string NativeHost::getDisplayId() const {
     return Services::getWindowDisplayId();
 }
 
-void NativeHost::requestDisplays(std::function<void(DisplayAccess access)> callback) {
-    Services::requestDisplays(std::move(callback));
-}
-
 FullscreenTarget NativeHost::resolveFullscreen(const Fullscreen& value) const {
     return FullscreenTarget::resolve(getDisplays(), getDisplayId(), value);
 }
 
-void NativeHost::enterFullscreen(const Fullscreen& value) {
+void NativeHost::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
     const FullscreenTarget target = resolveFullscreen(value);
     if (target.display.id != getDisplayId() || target.mode) {
-        throw std::runtime_error("The window of this platform stays on the display that shows it, in the mode that the system picks.");
+        callback({.state = Permission::State::Unsupported, .message = "The window of this platform stays on the display that shows it, in the mode that the system picks."});
+        return;
     }
-    setFullscreen(true);
+    setFullscreen(true, std::move(callback));
 }
 
 void NativeHost::openOutput(std::uint32_t number, std::string_view, const Output::Options&) {

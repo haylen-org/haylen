@@ -26,11 +26,14 @@ class WebPage final {
     // Returns the CSS selector of the canvas the page handed to the runtime as `Module.canvas`.
     [[nodiscard]] static std::string getCanvasSelector();
 
-    // Puts the element that holds the canvas and the overlay of the page in fullscreen on the screen with the id, or takes the page out of it. The window of SDL follows the change, so it reports whether the page is fullscreen.
-    static void setFullscreen(bool value, std::string_view display);
+    // Puts the element that holds the canvas and the overlay of the page in fullscreen on the screen with the id, or takes the page out of it, and answers once the browser settled it. The window of SDL follows the change, so it reports whether the page is fullscreen.
+    static void setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback);
 
-    // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go.
-    static void setScreenKeptOn(bool value);
+    // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go, and answers with the first request of the lock.
+    static void setScreenKeptOn(bool value, std::function<void(Permission::Answer answer)> callback);
+
+    // Answers once the browser locked the pointer that SDL asked for, or refused it, within a bound.
+    static void awaitPointerLock(bool value, std::function<void(Permission::Answer answer)> callback);
 
     // The calls that a browser may gate: the writes and reads of its clipboard and the checks and requests of permissions, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `Permission::Answer::fromJson` and the text of a read.
     static void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);

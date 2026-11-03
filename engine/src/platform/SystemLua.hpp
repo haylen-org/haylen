@@ -26,9 +26,6 @@ class SystemLua final {
     static void install(lua_State* L);
 
   private:
-    // The sentences of the refused calls the engine logged, once each.
-    static std::unordered_set<std::string> loggedRefusals;
-
     static constexpr std::array<std::string_view, 8> kNowPlayingFields{"title", "artist", "album", "duration", "position", "playing", "artwork", "commands"};
 
     static int info(lua_State* L);
@@ -40,9 +37,6 @@ class SystemLua final {
     static int vibrate(lua_State* L);
     static int permission(lua_State* L);
     static int requestPermission(lua_State* L);
-    static void settlePermission(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer);
-    static void settle(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer, std::optional<std::string> value);
-    static void reject(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer);
     static int setNowPlaying(lua_State* L);
     static int clearNowPlaying(lua_State* L);
     static int open(lua_State* L);

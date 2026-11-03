@@ -233,10 +233,17 @@ void Engine::applyWindowOptions() {
     host.setShowInTaskbar(window.showInTaskbar);
     host.setFocusable(window.focusable);
     host.setStatusBar(window.statusBar);
-    host.setKeepScreenOn(window.keepScreenOn);
+    // clang-format off
+    host.setKeepScreenOn(window.keepScreenOn, [](const platform::Permission::Answer& answer) {
+        if (answer.state != platform::Permission::State::Granted) {
+            Log::warning("The screen follows the settings of the system instead of the \"window.keepScreenOn\" of \"app.json\". {}", answer.message);
+        }
+    });
+    // clang-format on
     current.statusBarColor = window.statusBarColor;
     host.setMousePassthrough(window.mousePassthrough ? platform::Window::Passthrough::Whole : platform::Window::Passthrough::Off, {});
-    host.setMouseLocked(false);
+    // A pointer that goes free needs no answer.
+    host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
     host.setCursorVisible(true);
     host.setCursor(platform::Window::Cursor::Default);
     host.setKeyboardVisible(false);
@@ -333,7 +340,6 @@ void Engine::frame(double frameSeconds) {
             current.platform->pump();
             current.system->pump();
             current.motion->pump();
-            current.displays->pump();
             current.mediaSession->pump();
             current.accessibility->pump();
             current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
@@ -1028,7 +1034,7 @@ void Engine::reportError(const std::exception& exception) {
     // The player reaches the buttons of the error screen with the mouse, also when the app locked or hid it.
     const auto* scriptError = dynamic_cast<const lua::Error*>(&exception);
     current.errorScreen = std::make_unique<ErrorScreen>(*this, scriptError != nullptr ? *scriptError : lua::Error(exception.what()), !lifecycle);
-    current.host.setMouseLocked(false);
+    current.host.setMouseLocked(false, [](const platform::Permission::Answer&) {});
     current.host.setCursorVisible(true);
     Log::error("{}", current.errorScreen->getReport());
     const Json report = current.errorScreen->getError().toJson();

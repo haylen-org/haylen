@@ -56,35 +56,4 @@ void Displays::refreshWindowDisplay() {
     }
 }
 
-// The platform may answer during the request, and the answer waits for the next pump like any other.
-void Displays::request(std::function<void(Window::DisplayAccess access)> callback) {
-    const std::uint64_t id = nextRequest++;
-    pending.emplace(id, std::move(callback));
-    // clang-format off
-    window.requestDisplays([shared = std::weak_ptr<Inbox>(inbox), id](Window::DisplayAccess access) {
-        if (const std::shared_ptr<Inbox> alive = shared.lock()) {
-            const std::scoped_lock lock(alive->mutex);
-            alive->answers.push_back({.id = id, .access = access});
-        }
-    });
-    // clang-format on
-}
-
-void Displays::pump() {
-    std::vector<Answer> answers;
-    {
-        const std::scoped_lock lock(inbox->mutex);
-        answers.swap(inbox->answers);
-    }
-    for (const Answer& answer : answers) {
-        const auto found = pending.find(answer.id);
-        if (found == pending.end()) {
-            continue;
-        }
-        const std::function<void(Window::DisplayAccess)> callback = std::move(found->second);
-        pending.erase(found);
-        callback(answer.access);
-    }
-}
-
 } // namespace haylen::platform

@@ -12,6 +12,10 @@
 #include <utility>
 
 #include "haylen/core/Log.hpp"
+#include "platform/NativeWindow.hpp"
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+#import "platform/apple/AppleOutputs.hpp"
+#endif
 #if !TARGET_OS_OSX
 #import "platform/apple/AppleMotion.hpp"
 #endif
@@ -101,6 +105,14 @@ void ApplePermissions::request(Permission::Kind kind, std::function<void(Permiss
         return;
     case Permission::Kind::Clipboard:
     case Permission::Kind::Screens:
+        // An iPhone or an iPad of iOS 27 and later mirrors an external display until the app registers the scene accessory that connects the scene of that display, which needs no answer of the person.
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+        if (UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle(); window.rootViewController != nil) {
+            AppleOutputs::registerAccessory(window.rootViewController);
+        }
+#endif
+        check(kind, std::move(callback));
+        return;
     case Permission::Kind::LocalNetwork:
         check(kind, std::move(callback));
         return;

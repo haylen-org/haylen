@@ -141,7 +141,7 @@ An output opens, shows, may hide and closes, and each step publishes an event. I
 | macOS | A window of its own that covers the display, in a space of its own, or a window of the chosen size in the middle of it. | The mouse over the window. | Works with Metal. |
 | Windows | A window of its own, as on macOS. | The mouse over the window. | Works with Direct3D 12, Direct3D 11, Vulkan and OpenGL. |
 | Linux | A window of its own, as on macOS, on X11. | The mouse over the window. | Works with Vulkan and OpenGL. |
-| iOS and iPadOS | A window in the scene that UIKit connects for an external display, such as a TV through a cable or AirPlay. From iOS 27, UIKit connects that scene only for an app that registered the scene accessory of external displays, which [`display.request()`](../lua-api/display.md#displayrequest) does, and the display mirrors the app until then. | None, since UIKit gives the scene of an external display no input. | Works with Metal. A display that Stage Manager extends the windows of an iPad to has no such scene, so an output there ends as `unsupported`. |
+| iOS and iPadOS | A window in the scene that UIKit connects for an external display, such as a TV through a cable or AirPlay. From iOS 27, UIKit connects that scene only for an app that registered the scene accessory of external displays, which [`system.requestPermission('screens')`](../lua-api/system.md#systemrequestpermissionname) does, and the display mirrors the app until then. | None, since UIKit gives the scene of an external display no input. | Works with Metal. A display that Stage Manager extends the windows of an iPad to has no such scene, so an output there ends as `unsupported`. |
 | tvOS, visionOS, Mac Catalyst | None, since these platforms show an app on the display of its window alone. | None. | Ends as `unsupported`. |
 | Android | A `Presentation` of the display manager that covers the display, such as an external display, a cast screen or the secondary screen of a device, with a view whose surface the device draws into. Android shows presentations only on displays other than the built-in one, so an output on the built-in screen of an app that runs on another display ends as `unsupported` with the reason of Android. The window manager of Android takes a display a moment after the display manager reports it, so an output opened right as `displayConnected` arrives may end the same way, and opening it again a moment later shows it. | The touches on the display, where it takes touch. | Works with Vulkan and OpenGL ES. |
 | Web | A window of the browser that the page opens on the screen of the output through the Window Management API, which covers the work area of that screen or sits in the middle of it, with a canvas that fills it. A browser opens a window only shortly after a click or a key of the person, so an app opens an output from a button, and a window that the browser blocks ends the output as `unsupported` with the reason. A page cannot make that window fullscreen, since fullscreen needs a gesture inside it. | The mouse over the canvas. | Draws through WebGPU. A WebGL2 context belongs to its one canvas and shares no object with another one, so with WebGL2 the output ends as `unsupported`. |
@@ -150,24 +150,25 @@ The engine draws each output through the GPU device of the app, the one that dra
 
 ## Every screen of a browser
 
-A page sees only the screen it shows on, until the person allows it to see the others. The function `display.request()` asks for that through the Window Management API, which Chrome and Edge offer. A browser asks the person only shortly after a click or a key, so an app calls it from a button. The screens that the answer adds reach the app as `displayConnected` events. A browser without the API rejects the promise with the code `unsupported`, and a refusal rejects it with the code `denied`. On iPhones and iPads from iOS 27 the function lets the scene of an external display connect, as the table of outputs above explains. On every other platform the promise resolves at once, since the list already holds every display.
+A page sees only the screen it shows on, until the app holds the [permission](../lua-api/system.md#permissions) `'screens'`. The function `system.requestPermission('screens')` asks for it through the Window Management API, which Chrome and Edge offer. A browser asks the person only shortly after a click or a key, so an app asks from a button. The screens that the answer adds reach the app as `displayConnected` events. A browser without the API rejects the promise with the code `unsupported`, and a refusal answers `'denied'`. On iPhones and iPads from iOS 27 the request lets the scene of an external display connect, as the table of outputs above explains. Every other platform answers `'granted'` at once, since the list already holds every display.
 
 ```lua
 local async = require('async')
 local display = require('haylen.display')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 
 ui.mount(ui.button{text = 'Use every screen', onClick = function()
     async.spawn(function()
-        local listed, message = display.request():await()
-        print(listed and ('Screens: ' .. #display.list()) or message)
+        local state, message = system.requestPermission('screens'):await()
+        print(state == 'granted' and ('Screens: ' .. #display.list()) or message or state)
     end)
 end})
 ```
 
 ## C++
 
-C++ code reads the displays through `platform::Displays`, which `core::Engine::getDisplays()` returns, and each display is a `platform::Display`. The platform reports them through `platform::Window::getDisplays()` and `getDisplayId()`, and asks for every screen through `requestDisplays`.
+C++ code reads the displays through `platform::Displays`, which `core::Engine::getDisplays()` returns, and each display is a `platform::Display`. The platform reports them through `platform::Window::getDisplays()` and `getDisplayId()`, and a browser lists every screen once the app holds the permission `Permission::Kind::Screens`.
 
 ```cpp
 #include "haylen/core/Application.hpp"

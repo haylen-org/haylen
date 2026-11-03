@@ -45,7 +45,7 @@ print('Fullscreen:', window.fullscreen())
 
 ### window.setFullscreen(enabled, options)
 
-Switches between fullscreen and a window. Nothing happens when the window already is in that mode on that display. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame.
+Switches between fullscreen and a window, and returns a Varn promise that resolves on a later frame, with nothing once the window is in that mode. Nothing changes when the window already is in that mode on that display. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame. A platform that refuses the change rejects the promise with a [failure](system.md#failures) of the code `'denied'`, such as a browser without a click, a tap or a key of the person shortly before, or of the code `'unsupported'` with the reason, such as a phone that cannot move its window to another display. The engine logs each reason once, and a rejection that nothing awaits never stops the app.
 
 The table `options` goes only with `true`, and chooses where and how the window goes fullscreen. Without it, the window covers the display that shows it, at the mode that the desktop runs in.
 
@@ -54,14 +54,20 @@ The table `options` goes only with `true`, and chooses where and how the window 
 | `display` | The display of the window | The id of the display to cover, from [`display.list()`](display.md#displaylist). A desktop window moves there first. |
 | `mode` | none | A mode of the display, such as one of the `modes` of `display.list()`, which makes the fullscreen exclusive: the display runs in that mode while the window holds it, and goes back to its own mode when the window leaves fullscreen. It needs `width` and `height` in pixels, and `refreshRate` picks the rate, the highest rate of the size without it. |
 
-Exclusive fullscreen works on macOS, Windows and Linux. On the web the page puts the element that holds the canvas in fullscreen, so the dialogs and the views of plugins stay over the app. A page covers another screen once the person let it see every screen through [`display.request()`](display.md#displayrequest). Browsers allow fullscreen only shortly after a click, a tap or a key of the person, so the `fullscreen` key of `app.json` leaves a page as it is when it loads, and browsers have no modes. Phones, tablets and TVs keep the window on its display in the mode that the system picks, and Android ignores the function, since the window of the app always fills the screen.
+Exclusive fullscreen works on macOS, Windows and Linux. On the web the page puts the element that holds the canvas in fullscreen, so the dialogs and the views of plugins stay over the app. A page covers another screen once the app holds the [permission](system.md#permissions) `'screens'`. Browsers allow fullscreen only shortly after a click, a tap or a key of the person, so the `fullscreen` key of `app.json` leaves a page as it is when it loads, and browsers have no modes. Phones, tablets and TVs keep the window on its display in the mode that the system picks, and another display or a mode answers `'unsupported'` there. The window of an Android app always fills the screen, so `true` resolves at once and `false` rejects with the code `'unsupported'`.
 
 ```lua
+local async = require('async')
 local display = require('haylen.display')
 local window = require('haylen.window')
 
 local function toggleFullscreen()
-    window.setFullscreen(not window.fullscreen())
+    async.spawn(function()
+        local _, message = window.setFullscreen(not window.fullscreen()):await()
+        if message then
+            print(message)
+        end
+    end)
 end
 
 -- Cover the second display in its first mode, which the display runs in until the window leaves fullscreen.
@@ -150,7 +156,7 @@ window.setCursorVisible(false)
 
 ### window.setMouseLocked(locked)
 
-Locks the mouse to the window and hides it, or frees it. While the mouse is locked its position stops changing, and `input.mouseDelta()` of [`haylen.input`](input.md) reads how it moves. Browsers grant the lock only in answer to a click or a key. The error screen frees and shows the mouse. An app that restarts starts with the mouse free, the cursor shown in its default shape and the on-screen keyboard hidden.
+Locks the mouse to the window and hides it, or frees it, and returns a Varn promise that resolves on a later frame, with nothing once the mouse is locked or free. While the mouse is locked its position stops changing, and `input.mouseDelta()` of [`haylen.input`](input.md) reads how it moves. Browsers grant the lock only in answer to a click or a key, at once or at the next one, and the promise rejects with a [failure](system.md#failures) of the code `'denied'` when no lock comes within 5 seconds. Android rejects a lock with the code `'unsupported'`, since the engine reads its pointer as it moves on the screen. The error screen frees and shows the mouse. An app that restarts starts with the mouse free, the cursor shown in its default shape and the on-screen keyboard hidden.
 
 ```lua
 local input = require('haylen.input')
@@ -348,7 +354,7 @@ print('Screen kept on:', window.keepScreenOn())
 
 ### window.setKeepScreenOn(enabled)
 
-Keeps the screen on while the app shows, or leaves it to the settings of the system again. While it is `true`, the screen saver of a desktop or an Apple TV does not start, an iPhone or an iPad does not lock and an Android device does not turn its screen off. The input of game controllers does not count as activity for iOS, tvOS and desktops, so an app that players drive with them keeps the screen on while they play, and so does an app that plays a cutscene or runs a long task without input. iOS, tvOS and Mac Catalyst turn the idle timer of the app off, macOS, Windows and Linux hold off the screen saver of the desktop, Android keeps the screen of the activity on, and a browser keeps it on through its Screen Wake Lock API while the page shows. The browser releases that lock whenever the page hides, and the page takes it again each time it shows while the app keeps the screen on. A browser without the API, or one that refuses the lock, leaves the screen to the system, and the page says so with a warning in its log, while the app runs on. The setting ends with the app, and a restarted app starts with the value of `app.json` again.
+Keeps the screen on while the app shows, or leaves it to the settings of the system again. While it is `true`, the screen saver of a desktop or an Apple TV does not start, an iPhone or an iPad does not lock and an Android device does not turn its screen off. The input of game controllers does not count as activity for iOS, tvOS and desktops, so an app that players drive with them keeps the screen on while they play, and so does an app that plays a cutscene or runs a long task without input. iOS, tvOS and Mac Catalyst turn the idle timer of the app off, macOS, Windows and Linux hold off the screen saver of the desktop, Android keeps the screen of the activity on, and a browser keeps it on through its Screen Wake Lock API while the page shows. The browser releases that lock whenever the page hides, and the page takes it again each time it shows while the app keeps the screen on. The function returns a Varn promise that resolves on a later frame, with nothing once the screen stays on or follows the system again. A browser that refuses the lock, such as for a page that hides or a device that saves battery, rejects it with a [failure](system.md#failures) of the code `'denied'`, and a browser without the API rejects it with the code `'unsupported'`, while the app runs on with the screen of the system. The setting ends with the app, and a restarted app starts with the value of `app.json` again.
 
 ```lua
 local window = require('haylen.window')
@@ -746,7 +752,7 @@ These messages are raised by the functions of the module.
 | `There is no display "<id>" to go fullscreen on. The function "display.list()" lists the displays.` | The `display` of `window.setFullscreen` is not connected. |
 | `The display "<id>" has no mode of <width> by <height> pixels at <rate> frames per second. The modes of "display.list()" are the ones it runs in.` | The `mode` of `window.setFullscreen` is not a mode of the display. |
 | `A fullscreen mode needs a positive "width" and "height" in pixels.` | The `mode` of `window.setFullscreen` has no size. |
-| `The window of this platform stays on the display that shows it, in the mode that the system picks.` | A phone, a tablet or a TV got another display or a mode in `window.setFullscreen`. |
+| `The window of this platform stays on the display that shows it, in the mode that the system picks.` | The rejection of `window.setFullscreen` with the code `'unsupported'` on a phone, a tablet or a TV that got another display or a mode. |
 | `bad argument #2 to 'setFullscreen' (options only go with true)` | The function `window.setFullscreen(false, options)` got options. |
 | `bad argument #1 to '<function>' (unknown value '<name>')` | The functions `setCursor`, `lockOrientation` or `setStatusBar` got a name they do not know. |
 | `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.` | The function `window.setTransparent(true)` ran on a window that opened opaque. |

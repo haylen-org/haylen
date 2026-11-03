@@ -1629,14 +1629,6 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // Answers 0 once the page sees every screen, 1 when the person or the browser refused it and 2 where the browser has no Window Management API.
-    haylen.requestDisplays = function (id) {
-        if (typeof window.getScreenDetails !== "function") {
-            queueMicrotask(() => Module._haylen_web_displays_answered(id, 2));
-            return;
-        }
-        seeEveryScreen().then(() => Module._haylen_web_displays_answered(id, 0), () => Module._haylen_web_displays_answered(id, 1));
-    };
     if (window.screen.addEventListener) {
         window.screen.addEventListener("change", displaysChanged);
     }
@@ -2445,39 +2437,69 @@ Module.haylen = Module.haylen || {};
     // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
     // Fullscreen covers the element that holds the canvas and the overlay of the runtime, so the dialogs, the fields and the views of plugins stay over the app. Browsers grant it only shortly after an input of the person, and Safari before 16.4 names it with its prefix.
     // The Fullscreen API takes the screen to cover once the person let the page see every screen, and a page that is fullscreen on another screen moves there.
-    haylen.setFullscreen = function (value, display) {
-        const holder = Module.canvas.parentElement;
-        const current = document.fullscreenElement || document.webkitFullscreenElement;
-        const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
-        if (value && (!current || target !== undefined)) {
-            const request = holder.requestFullscreen ? holder.requestFullscreen(target !== undefined ? { screen: target } : {}) : holder.webkitRequestFullscreen && holder.webkitRequestFullscreen();
-            Promise.resolve(request).catch((error) => console.warn("The page could not enter fullscreen: " + error.message));
-        } else if (!value && current) {
-            const exit = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen && document.webkitExitFullscreen();
-            Promise.resolve(exit).catch((error) => console.warn("The page could not leave fullscreen: " + error.message));
-        }
+    haylen.setFullscreen = function (id, value, display) {
+        settleGatedCall(id, async () => {
+            const holder = Module.canvas.parentElement;
+            const current = document.fullscreenElement || document.webkitFullscreenElement;
+            const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
+            if (value && (!current || target !== undefined)) {
+                if (!holder.requestFullscreen && !holder.webkitRequestFullscreen) {
+                    return { state: "unsupported", message: "The browser has no Fullscreen API." };
+                }
+                try {
+                    await (holder.requestFullscreen ? holder.requestFullscreen(target !== undefined ? { screen: target } : {}) : holder.webkitRequestFullscreen());
+                } catch (error) {
+                    return { state: "denied", message: "The browser refused fullscreen: " + error.message + " Browsers go fullscreen only shortly after an input of the person, such as a click or a key." };
+                }
+            } else if (!value && current) {
+                await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
+            }
+            return { state: "granted" };
+        });
     };
 
-    // The browser releases a wake lock whenever the page hides, so the page asks for it again each time it shows while the app keeps the screen on. A browser without the Screen Wake Lock API leaves the screen to the system, which the log says once.
+    // The browser locks the pointer that SDL asks for during an input of the person, at once or at the next one, and tells the page through its events. A lock that no event settles within the bound is one that the browser keeps waiting for an input of the person.
+    const kPointerLockMilliseconds = 5000;
+    haylen.awaitPointerLock = function (id, value) {
+        settleGatedCall(id, () => new Promise((resolve) => {
+            if (!value || document.pointerLockElement === Module.canvas) {
+                resolve({ state: "granted" });
+                return;
+            }
+            if (typeof Module.canvas.requestPointerLock !== "function") {
+                resolve({ state: "unsupported", message: "The browser has no Pointer Lock API." });
+                return;
+            }
+            const refusal = "The browser locks the pointer only during a click or a key of the person, so the app locks it from one.";
+            const settle = (answer) => {
+                clearTimeout(timer);
+                document.removeEventListener("pointerlockchange", changed);
+                document.removeEventListener("pointerlockerror", failed);
+                resolve(answer);
+            };
+            const changed = () => settle(document.pointerLockElement === Module.canvas ? { state: "granted" } : { state: "denied", message: refusal });
+            const failed = () => settle({ state: "denied", message: refusal });
+            const timer = setTimeout(failed, kPointerLockMilliseconds);
+            document.addEventListener("pointerlockchange", changed);
+            document.addEventListener("pointerlockerror", failed);
+        }));
+    };
+
+    // The browser releases a wake lock whenever the page hides, so the page asks for it again each time it shows while the app keeps the screen on, and answers the app with the first request.
     let screenKeptOn = false;
     let wakeLock = null;
-    let requestingWakeLock = false;
-    let warnedWithoutWakeLock = false;
+    let requestingWakeLock = null;
     const requestWakeLock = function () {
-        if (!screenKeptOn || wakeLock || requestingWakeLock || document.visibilityState !== "visible") {
-            return;
+        if (!screenKeptOn || wakeLock) {
+            return Promise.resolve({ state: "granted" });
         }
-        if (!navigator.wakeLock) {
-            if (!warnedWithoutWakeLock) {
-                warnedWithoutWakeLock = true;
-                console.warn("The page cannot keep the screen on, because this browser has no Screen Wake Lock API, so the screen follows the settings of the system.");
-            }
-            return;
+        if (document.visibilityState !== "visible") {
+            return Promise.resolve({ state: "denied", message: "The browser keeps the screen on only for a page that shows, so the page asks again once it shows." });
         }
-        requestingWakeLock = true;
-        navigator.wakeLock.request("screen").finally(() => {
-            requestingWakeLock = false;
-        }).then((lock) => {
+        if (requestingWakeLock) {
+            return requestingWakeLock;
+        }
+        requestingWakeLock = navigator.wakeLock.request("screen").then((lock) => {
             wakeLock = lock;
             lock.addEventListener("release", () => {
                 wakeLock = null;
@@ -2485,16 +2507,31 @@ Module.haylen = Module.haylen || {};
             if (!screenKeptOn) {
                 lock.release();
             }
-        }).catch((error) => console.warn("The page could not keep the screen on: " + error.message));
+            return { state: "granted" };
+        }, (error) => ({ state: "denied", message: "The browser refused to keep the screen on: " + error.message })).finally(() => {
+            requestingWakeLock = null;
+        });
+        return requestingWakeLock;
     };
-    document.addEventListener("visibilitychange", requestWakeLock);
-    haylen.keepScreenOn = function (value) {
-        screenKeptOn = value;
-        if (value) {
+    document.addEventListener("visibilitychange", () => {
+        if (navigator.wakeLock) {
             requestWakeLock();
-        } else if (wakeLock) {
-            wakeLock.release();
         }
+    });
+    haylen.keepScreenOn = function (id, value) {
+        settleGatedCall(id, () => {
+            screenKeptOn = value;
+            if (!value) {
+                if (wakeLock) {
+                    wakeLock.release();
+                }
+                return { state: "granted" };
+            }
+            if (!navigator.wakeLock) {
+                return { state: "unsupported", message: "The browser has no Screen Wake Lock API, so the screen follows the settings of the system." };
+            }
+            return requestWakeLock();
+        });
     };
 
     // Browsers let a page write the clipboard only in a secure context, served over https or from localhost, and shortly after an input of the person. Chromium reads it for a page that the person allowed, and the other browsers show a paste control at each read. So a write and a read answer the engine once the browser settles them, and a paste of the person into a field of the UI takes the text of the last paste of the page or the last text it wrote.

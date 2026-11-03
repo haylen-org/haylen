@@ -398,7 +398,7 @@ The other events come from the engine itself and fire the same way everywhere: `
 | `windowFoldChanged` | The Viewport Segments and Device Posture APIs where the browser offers them, as [folds and dual screens](../lua-api/window.md#folds-and-dual-screens) describes. |
 | `windowSafeAreaChanged` | The part of the CSS `env(safe-area-inset-*)` insets that covers the canvas, and the native views of plugins. |
 | `windowMoved` | Never, because a page has no place on a desktop. |
-| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The change of the screen of the page, and once the person allowed it through `display.request()`, the changes of the screens of the Window Management API. |
+| `displayConnected`, `displayDisconnected`, `displayChanged`, `windowDisplayChanged` | The change of the screen of the page, and once the app holds the permission `'screens'` of `system.requestPermission`, the changes of the screens of the Window Management API. |
 | `keyboardShown`, `keyboardHidden` | The `visualViewport` of the page while a text field edits on a phone or a tablet. |
 | `networkOnline`, `networkOffline` | The `online` and `offline` events of the browser. |
 | `audioInterrupted`, `audioResumed` | Never, because browsers suspend the audio of the page without telling it why. The runtime resumes it at the next tap, click or key, as the [audio guide](../audio/audio.md#sessions-and-interruptions) describes. |

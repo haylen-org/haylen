@@ -23,11 +23,11 @@ class AndroidHost final : public NativeHost {
     [[nodiscard]] bool isFullscreen() const noexcept override {
         return true;
     }
-    void setFullscreen(bool) override {}
+    void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void setTitle(std::string_view) override {}
     void setCursor(Cursor) override {}
     void setCursorVisible(bool) override {}
-    void setMouseLocked(bool) override {}
+    void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
@@ -49,7 +49,7 @@ class AndroidHost final : public NativeHost {
   protected:
     void requestWindowClose() override;
     void setWindowFocusable(bool) override {}
-    void setScreenSaverSuspended(bool value) override;
+    void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) override;
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;

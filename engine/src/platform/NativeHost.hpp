@@ -38,7 +38,7 @@ class NativeHost : public Host {
     void setStatusBar(StatusBar value) override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool isScreenKeptOn() const noexcept override;
-    void setKeepScreenOn(bool value) override;
+    void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] bool isTransparent() const noexcept override;
     void setTransparent(bool value) override;
     [[nodiscard]] bool isDecorated() const noexcept override;
@@ -55,7 +55,7 @@ class NativeHost : public Host {
     void setMousePassthrough(Passthrough mode, std::span<const math::Polygon::Outline> regions) override;
     void startDrag() override;
     // Platforms whose window stays on its display go fullscreen only on that display, in the mode that the system picks.
-    void enterFullscreen(const Fullscreen& value) override;
+    void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::vector<Display> getDisplays() const override;
 
     // Platforms without outputs end every output they are asked for, with the reason.
@@ -63,7 +63,6 @@ class NativeHost : public Host {
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
     [[nodiscard]] std::string getDisplayId() const override;
-    void requestDisplays(std::function<void(DisplayAccess access)> callback) override;
 
     [[nodiscard]] std::string_view getPlatformName() const noexcept override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
@@ -161,7 +160,7 @@ class NativeHost : public Host {
     // Asks the window to close as its close button does, which the app hears before it closes.
     virtual void requestWindowClose() = 0;
     virtual void setWindowFocusable(bool value) = 0;
-    virtual void setScreenSaverSuspended(bool value) = 0;
+    virtual void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
 
     // Fullscreen windows keep the style of the platform, and leaving fullscreen brings this one back.
     void applyStyle();

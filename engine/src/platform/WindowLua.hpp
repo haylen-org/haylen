@@ -1,11 +1,13 @@
 #pragma once
 
 #include <array>
+#include <functional>
 #include <string_view>
 
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Display.hpp"
+#include "haylen/platform/Permission.hpp"
 
 struct lua_State;
 
@@ -28,6 +30,7 @@ class WindowLua final {
     [[nodiscard]] static Display::Mode readMode(lua_State* L, int index);
     [[nodiscard]] static math::Polygon::Outline readRegion(lua_State* L, int index);
     [[nodiscard]] static math::Rect toDesign(const graphics::Viewport& viewport, const math::Rect& pixels);
+    [[nodiscard]] static std::function<void(Permission::Answer)> awaitAnswer(lua_State* L);
 
     static int framebufferSize(lua_State* L);
     static int dpiScale(lua_State* L);

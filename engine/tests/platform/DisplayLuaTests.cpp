@@ -119,36 +119,6 @@ TEST_F(DisplayLuaTest, GoesFullscreenOnAChosenDisplayInAChosenMode) {
     EXPECT_NE(fixture.lua("window.setFullscreen(false, {display = 'main-id'})").find("options only go with true"), std::string::npos);
 }
 
-TEST_F(DisplayLuaTest, AsksToListEveryDisplay) {
-    test::EngineFixture fixture;
-    // clang-format off
-    fixture.runLua(R"(
-        display = require('haylen.display')
-        async = require('async')
-        answers = {}
-        function ask()
-            local request = display.request()
-            async.spawn(function()
-                local granted, message, failure = request:await()
-                answers[#answers + 1] = granted and 'granted' or (failure.code .. ': ' .. message)
-            end)
-        end
-        ask()
-    )");
-    // clang-format on
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "1"; }));
-
-    // A refusal and a browser without the Window Management API reject with their codes, and neither stops the app when nothing awaits it.
-    fixture.host().setDisplayAccess(Window::DisplayAccess::Denied);
-    fixture.runLua("ask()");
-    fixture.host().setDisplayAccess(Window::DisplayAccess::Unsupported);
-    fixture.runLua("ask() display.request()");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "3"; }));
-    fixture.frames(2);
-    EXPECT_EQ(fixture.lua("return table.concat(answers, ' | ')"), "granted | denied: The person or the browser did not let the app see every display. | unsupported: The browser cannot list the screens of the device, since it has no Window Management API.");
-    EXPECT_EQ(fixture.engine().getError(), nullptr);
-}
-
 TEST_F(DisplayLuaTest, ShowsAnOutputOnAnotherDisplay) {
     test::EngineFixture fixture;
     showOutput(fixture, 1280, 1024);

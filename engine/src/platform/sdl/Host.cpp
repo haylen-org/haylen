@@ -108,48 +108,53 @@ Host::OutputReport Host::getOutputReport(std::uint32_t number) const {
 }
 
 // A desktop window goes fullscreen on the display that shows it, in the mode that the desktop runs in.
-void Host::setFullscreen(bool value) {
+void Host::setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) {
     if (value && Services::hasDesktop()) {
-        enterFullscreen({});
+        enterFullscreen({}, std::move(callback));
         return;
     }
     if (isFullscreen() == value) {
+        callback({.state = Permission::State::Granted});
         return;
     }
 #if defined(__EMSCRIPTEN__)
-    WebPage::setFullscreen(value, getDisplayId());
+    WebPage::setFullscreen(value, getDisplayId(), std::move(callback));
 #else
     SDL_Window* window = runtime.getWindow().get();
-    SDL_SetWindowFullscreen(window, value);
+    if (!SDL_SetWindowFullscreen(window, value)) {
+        callback({.state = Permission::State::Unsupported, .message = std::format("The window could not {} fullscreen. {}", value ? "go" : "leave", SDL_GetError())});
+        return;
+    }
     // Leaving fullscreen restores the mode of the desktop and the default style of the window, which may have lost its decorations or its fixed size.
     if (!value) {
         SDL_SetWindowFullscreenMode(window, nullptr);
         applyStyle();
     }
+    callback({.state = Permission::State::Granted});
 #endif
 }
 
 // The page puts the element that holds the canvas and its overlay in fullscreen, so the dialogs, the fields and the views of plugins stay over the app, on the screen that the Fullscreen API takes. Desktops move the window, and the other platforms keep it on its display.
-void Host::enterFullscreen(const Fullscreen& value) {
+void Host::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     const FullscreenTarget target = resolveFullscreen(value);
-    WebPage::setFullscreen(true, target.display.id);
+    WebPage::setFullscreen(true, target.display.id, std::move(callback));
 #else
     if (!Services::hasDesktop()) {
-        NativeHost::enterFullscreen(value);
+        NativeHost::enterFullscreen(value, std::move(callback));
         return;
     }
-    enterDesktopFullscreen(resolveFullscreen(value));
+    enterDesktopFullscreen(resolveFullscreen(value), std::move(callback));
 #endif
 }
 
 // The modes of SDL count their size in the units of the desktop, whose pixels are the size times the density.
-SDL_DisplayMode Host::findMode(SDL_DisplayID display, const Display::Mode& mode) {
+std::optional<SDL_DisplayMode> Host::findMode(SDL_DisplayID display, const Display::Mode& mode) {
     constexpr float kRateTolerance = 0.5F;
     int count = 0;
     SDL_DisplayMode** modes = SDL_GetFullscreenDisplayModes(display, &count);
-    SDL_DisplayMode found{};
-    for (int index = 0; index < count && found.displayID == 0; ++index) {
+    std::optional<SDL_DisplayMode> found;
+    for (int index = 0; index < count && !found; ++index) {
         const SDL_DisplayMode& candidate = *modes[index];
         const bool size = std::lround(static_cast<float>(candidate.w) * candidate.pixel_density) == mode.width && std::lround(static_cast<float>(candidate.h) * candidate.pixel_density) == mode.height;
         if (size && std::abs(candidate.refresh_rate - mode.refreshRate) <= kRateTolerance) {
@@ -157,22 +162,25 @@ SDL_DisplayMode Host::findMode(SDL_DisplayID display, const Display::Mode& mode)
         }
     }
     SDL_free(static_cast<void*>(modes));
-    if (found.displayID == 0) {
-        throw std::runtime_error(std::format("SDL lists no fullscreen mode of {} by {} pixels at {} frames per second.", mode.width, mode.height, mode.refreshRate));
-    }
     return found;
 }
 
 // A fullscreen window leaves fullscreen before it moves, and the move ends before the window covers the display, so the fullscreen lands on the display that the app chose.
-void Host::enterDesktopFullscreen(const FullscreenTarget& target) {
+void Host::enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(Permission::Answer answer)> callback) {
     SDL_Window* window = runtime.getWindow().get();
     const SDL_DisplayID display = sdl::Window::findDisplay(target.display);
-    const std::optional<SDL_DisplayMode> exclusive = target.mode ? std::optional(findMode(display, *target.mode)) : std::nullopt;
+    const std::optional<SDL_DisplayMode> exclusive = target.mode ? findMode(display, *target.mode) : std::nullopt;
+    if (target.mode && !exclusive) {
+        callback({.state = Permission::State::Unsupported, .message = std::format("SDL lists no fullscreen mode of {} by {} pixels at {} frames per second.", target.mode->width, target.mode->height, target.mode->refreshRate)});
+        return;
+    }
     const SDL_DisplayMode* current = SDL_GetWindowFullscreenMode(window);
     const bool sameMode = exclusive ? current != nullptr && current->w == exclusive->w && current->h == exclusive->h && current->refresh_rate == exclusive->refresh_rate && current->pixel_density == exclusive->pixel_density : current == nullptr;
     if (isFullscreen() && sameMode && SDL_GetDisplayForWindow(window) == display) {
+        callback({.state = Permission::State::Granted});
         return;
     }
+
     if (isFullscreen()) {
         SDL_SetWindowFullscreen(window, false);
         SDL_SyncWindow(window);
@@ -182,8 +190,10 @@ void Host::enterDesktopFullscreen(const FullscreenTarget& target) {
         SDL_SyncWindow(window);
     }
     if (!SDL_SetWindowFullscreenMode(window, exclusive ? &*exclusive : nullptr) || !SDL_SetWindowFullscreen(window, true)) {
-        throw std::runtime_error("The window could not go fullscreen on the display \"" + target.display.id + "\". " + SDL_GetError());
+        callback({.state = Permission::State::Unsupported, .message = "The window could not go fullscreen on the display \"" + target.display.id + "\". " + SDL_GetError()});
+        return;
     }
+    callback({.state = Permission::State::Granted});
 }
 
 void Host::setTitle(std::string_view value) {
@@ -210,8 +220,17 @@ void Host::setCursorVisible(bool value) {
     SDL_HideCursor();
 }
 
-void Host::setMouseLocked(bool value) {
-    SDL_SetWindowRelativeMouseMode(runtime.getWindow().get(), value);
+// The page locks the pointer once the browser lets it, which the page answers.
+void Host::setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) {
+    if (!SDL_SetWindowRelativeMouseMode(runtime.getWindow().get(), value)) {
+        callback({.state = Permission::State::Unsupported, .message = std::format("The pointer could not be {}. {}", value ? "locked" : "released", SDL_GetError())});
+        return;
+    }
+#if defined(__EMSCRIPTEN__)
+    WebPage::awaitPointerLock(value, std::move(callback));
+#else
+    callback({.state = Permission::State::Granted});
+#endif
 }
 
 // SDL has no clipboard of the browser, so the page writes it and keeps what it may read.
@@ -356,15 +375,15 @@ void Host::setWindowFocusable(bool value) {
 }
 
 // SDL keeps the screen on through the idle timer of UIKit, the power assertions of macOS, the execution state of Windows and the inhibitors of Linux desktops, and the page asks the browser for a wake lock.
-void Host::setScreenSaverSuspended(bool value) {
+void Host::setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
-    WebPage::setScreenKeptOn(value);
+    WebPage::setScreenKeptOn(value, std::move(callback));
 #else
-    if (value) {
-        SDL_DisableScreenSaver();
-    } else {
-        SDL_EnableScreenSaver();
+    if (!(value ? SDL_DisableScreenSaver() : SDL_EnableScreenSaver())) {
+        callback({.state = Permission::State::Unsupported, .message = std::format("The screen saver could not be {}. {}", value ? "kept away" : "let back", SDL_GetError())});
+        return;
     }
+    callback({.state = Permission::State::Granted});
 #endif
 }
 

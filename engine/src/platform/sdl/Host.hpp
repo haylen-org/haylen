@@ -33,12 +33,12 @@ class Host final : public platform::NativeHost {
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override;
     [[nodiscard]] float getDpiScale() const noexcept override;
     [[nodiscard]] bool isFullscreen() const noexcept override;
-    void setFullscreen(bool value) override;
-    void enterFullscreen(const Fullscreen& value) override;
+    void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) override;
     void setTitle(std::string_view value) override;
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
-    void setMouseLocked(bool value) override;
+    void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) override;
     void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
     void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
@@ -62,14 +62,14 @@ class Host final : public platform::NativeHost {
   protected:
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
-    void setScreenSaverSuspended(bool value) override;
+    void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) override;
 
   private:
     static constexpr std::size_t kCursorCount = static_cast<std::size_t>(Cursor::NotAllowed) + 1;
 
     [[nodiscard]] static SDL_SystemCursor toSystemCursor(Cursor cursor) noexcept;
-    [[nodiscard]] static SDL_DisplayMode findMode(SDL_DisplayID display, const Display::Mode& mode);
-    void enterDesktopFullscreen(const FullscreenTarget& target);
+    [[nodiscard]] static std::optional<SDL_DisplayMode> findMode(SDL_DisplayID display, const Display::Mode& mode);
+    void enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(Permission::Answer answer)> callback);
 
     Runtime& runtime;
 

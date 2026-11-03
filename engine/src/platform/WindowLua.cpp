@@ -12,6 +12,7 @@
 #include "haylen/graphics/Viewport.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/JsonConverter.hpp"
+#include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
@@ -20,8 +21,11 @@
 #include "haylen/platform/Displays.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/FoldSimulation.hpp"
+#include "haylen/platform/System.hpp"
 #include "haylen/platform/Window.hpp"
 #include "haylen/platform/WindowPlacement.hpp"
+#include "platform/AnswerLua.hpp"
+#include "platform/FullscreenTarget.hpp"
 
 namespace haylen::platform {
 
@@ -95,13 +99,13 @@ Display::Mode WindowLua::readMode(lua_State* L, int index) {
     return mode;
 }
 
-// Takes `setFullscreen(enabled, {display, mode})`, where the options choose the display that the window covers and a mode of it for exclusive fullscreen.
+// Takes `setFullscreen(enabled, {display, mode})`, where the options choose the display that the window covers and a mode of it for exclusive fullscreen, and returns a promise of the answer.
 int WindowLua::setFullscreen(lua_State* L) {
-    Window& window = lua::Runtime::getEngine(L).getWindow();
+    core::Engine& engine = lua::Runtime::getEngine(L);
     const bool enabled = lua::Stack::read<bool>(L, 1);
     if (lua_isnoneornil(L, 2)) {
-        window.setFullscreen(enabled);
-        return 0;
+        engine.getWindow().setFullscreen(enabled, awaitAnswer(L));
+        return 1;
     }
     luaL_checktype(L, 2, LUA_TTABLE);
     lua::Table::checkFields(L, 2, {kFullscreenOptions});
@@ -113,8 +117,18 @@ int WindowLua::setFullscreen(lua_State* L) {
         target.mode = readMode(L, lua_gettop(L));
     }
     lua_pop(L, 1);
-    window.enterFullscreen(target);
-    return 0;
+    // A display that is not connected or a mode that it does not list raises before the call waits for an answer.
+    static_cast<void>(FullscreenTarget::resolve(engine.getDisplays().getAll(), engine.getWindow().getDisplayId(), target));
+    engine.getWindow().enterFullscreen(target, awaitAnswer(L));
+    return 1;
+}
+
+// Pushes a promise that the answer of a call of the window settles at the next frame, and returns what the window calls with it.
+std::function<void(Permission::Answer)> WindowLua::awaitAnswer(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const lua::Promise promise(engine);
+    promise.push(L);
+    return engine.getSystem().awaitAnswer([&engine, promise](const Permission::Answer& answer) { AnswerLua::settle(engine, promise, answer); });
 }
 
 int WindowLua::resizable(lua_State* L) {
@@ -143,8 +157,9 @@ int WindowLua::setCursorVisible(lua_State* L) {
 }
 
 int WindowLua::setMouseLocked(lua_State* L) {
-    lua::Runtime::getEngine(L).getWindow().setMouseLocked(lua::Stack::read<bool>(L, 1));
-    return 0;
+    const bool locked = lua::Stack::read<bool>(L, 1);
+    lua::Runtime::getEngine(L).getWindow().setMouseLocked(locked, awaitAnswer(L));
+    return 1;
 }
 
 int WindowLua::setKeyboardVisible(lua_State* L) {
@@ -272,8 +287,9 @@ int WindowLua::keepScreenOn(lua_State* L) {
 }
 
 int WindowLua::setKeepScreenOn(lua_State* L) {
-    lua::Runtime::getEngine(L).getWindow().setKeepScreenOn(lua::Stack::read<bool>(L, 1));
-    return 0;
+    const bool kept = lua::Stack::read<bool>(L, 1);
+    lua::Runtime::getEngine(L).getWindow().setKeepScreenOn(kept, awaitAnswer(L));
+    return 1;
 }
 
 int WindowLua::canBeTransparent(lua_State* L) {

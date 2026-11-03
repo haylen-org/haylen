@@ -59,6 +59,38 @@ TEST(WindowLuaTest, KeepsTheScreenOnAsTheAppAsks) {
     EXPECT_TRUE(fixture.host().isScreenKeptOn());
 }
 
+// Fullscreen, the lock of the pointer and keeping the screen on answer on a later frame, and a refusal, such as a browser without an input of the person, rejects with its code and sentence and changes nothing.
+TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        window = require('haylen.window')
+        async = require('async')
+        answers = {}
+        function remember(promise)
+            async.spawn(function()
+                local _, message, failure = promise:await()
+                answers[#answers + 1] = failure and (failure.code .. ': ' .. message) or 'done'
+            end)
+        end
+        remember(window.setFullscreen(true)) remember(window.setMouseLocked(true)) remember(window.setKeepScreenOn(true))
+    )");
+    // clang-format on
+    EXPECT_EQ(fixture.lua("return #answers"), "0");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "3"; }));
+    EXPECT_TRUE(fixture.host().isFullscreen());
+    EXPECT_TRUE(fixture.host().isMouseLocked());
+
+    fixture.host().setWindowAnswer({.state = Permission::State::Denied, .message = "The browser refused fullscreen."});
+    fixture.runLua("remember(window.setFullscreen(false)) window.setMouseLocked(false)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
+    fixture.frames(2);
+    EXPECT_EQ(fixture.lua("return table.concat(answers, ' | ')"), "done | done | done | denied: The browser refused fullscreen.");
+    EXPECT_TRUE(fixture.host().isFullscreen());
+    EXPECT_TRUE(fixture.host().isMouseLocked());
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::EngineFixture fixture;
     fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");

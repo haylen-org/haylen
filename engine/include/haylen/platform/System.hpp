@@ -73,6 +73,9 @@ class System final {
     void guardCrashes(const std::filesystem::path& report);
     void setCrashContext(std::string_view json);
 
+    // Keeps the callback of a call that a platform may gate until its answer, and returns what the platform calls with the answer from any thread, which reaches the callback at the next pump, such as the answers of the fullscreen of the window.
+    [[nodiscard]] std::function<void(Permission::Answer)> awaitAnswer(std::function<void(Permission::Answer)> callback);
+
     // Delivers the answers the platform gave since the last pump and publishes the changes of the theme and the battery. The engine calls it at the start of every frame.
     void pump();
 
@@ -98,7 +101,6 @@ class System final {
 
     // Keeps the callback of a call until its answer, and returns what the platform calls with the answer, which waits for the next pump.
     [[nodiscard]] Callback awaitReply(Callback callback);
-    [[nodiscard]] std::function<void(Permission::Answer)> awaitAnswer(std::function<void(Permission::Answer)> callback);
 
     Host& host;
     core::EventBus& events;

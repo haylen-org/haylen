@@ -532,6 +532,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/System.cpp
   src/platform/SystemInfo.cpp
   src/platform/SystemLua.cpp
+  src/platform/AnswerLua.cpp
   src/platform/SystemState.cpp
   src/platform/VideoStream.cpp
   src/platform/Display.cpp

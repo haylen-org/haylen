@@ -34,7 +34,6 @@
 #import "platform/apple/AppleMediaSession.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
-#import "platform/apple/AppleOutputs.hpp"
 #import "platform/apple/ApplePermissions.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
@@ -177,17 +176,6 @@ std::string Services::getWindowDisplayId() {
 #else
     return AppleDisplays::getWindowDisplayId();
 #endif
-}
-
-// Apple platforms list every display from the start, except an external display of iOS 27 and later, which an iPhone or an iPad mirrors until the app registers the scene accessory that connects the scene of that display.
-void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
-#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
-    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
-    if (window.rootViewController != nil) {
-        AppleOutputs::registerAccessory(window.rootViewController);
-    }
-#endif
-    callback(Window::DisplayAccess::Granted);
 }
 
 void Services::setMousePassthrough([[maybe_unused]] Window::Passthrough mode, [[maybe_unused]] std::span<const math::Polygon::Outline> regions) {

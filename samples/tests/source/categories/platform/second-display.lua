@@ -3,13 +3,14 @@ local display = require('haylen.display')
 local events = require('haylen.events')
 local graphics2d = require('haylen.graphics2d')
 local haylen = require('haylen')
+local system = require('haylen.system')
 local ui = require('haylen.ui')
 
 local Test = require('harness.test')
 
 local SecondDisplay = haylen.class('SecondDisplay', Test)
 
-SecondDisplay.code = "display.request():await()\nlocal board = display.open(other.id, {clearColor = '#FF000000'})\ncamera.x, camera.y = board.width / 2, board.height / 2\ngraphics2d.beginTarget(board.target, camera, {clear = '#FF14202C'})\ngraphics2d.drawText(nil, 'Score', board.width / 2, board.height / 2)\nevents.on('outputInput', function(info) print(info.type, info.x, info.y) end)"
+SecondDisplay.code = "system.requestPermission('screens'):await()\nlocal board = display.open(other.id, {clearColor = '#FF000000'})\ncamera.x, camera.y = board.width / 2, board.height / 2\ngraphics2d.beginTarget(board.target, camera, {clear = '#FF14202C'})\ngraphics2d.drawText(nil, 'Score', board.width / 2, board.height / 2)\nevents.on('outputInput', function(info) print(info.type, info.x, info.y) end)"
 SecondDisplay.ringSeconds = 1.2
 
 function SecondDisplay:enter()
@@ -40,10 +41,10 @@ function SecondDisplay:enter()
     end)
 end
 
--- A browser and an iPhone or iPad of iOS 27 show the app every display only once it asks, so the button asks first, inside the click that a browser needs.
+-- A browser and an iPhone or iPad of iOS 27 show the app every display only once it holds the permission "screens", so the button asks first, inside the click that a browser needs.
 function SecondDisplay:open()
     self:spawn(function()
-        display.request():await()
+        system.requestPermission('screens'):await()
         local current = display.current().id
         for _, shown in ipairs(display.list()) do
             if shown.id ~= current then

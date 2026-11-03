@@ -16,6 +16,7 @@
 #include "haylen/platform/Display.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/TextInput.hpp"
 
 namespace haylen::platform {
@@ -66,13 +67,6 @@ class Window {
         Dark,
     };
 
-    // How the platform answers an app that asks to list every display. Browsers show the screens beyond the one of the page only once the person allows it, and the other platforms list every display from the start.
-    enum class DisplayAccess : std::uint8_t {
-        Granted,
-        Denied,
-        Unsupported,
-    };
-
     // Where and how the window goes fullscreen, as `enterFullscreen` describes. A mode with a refresh rate of 0 runs at the highest rate of its size.
     struct Fullscreen {
         std::string display;
@@ -93,17 +87,19 @@ class Window {
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
     [[nodiscard]] virtual bool isFullscreen() const noexcept = 0;
 
-    // Leaves fullscreen, or covers the display of the window at the mode that the desktop runs in.
-    virtual void setFullscreen(bool value) = 0;
+    // Leaves fullscreen, or covers the display of the window at the mode that the desktop runs in. The callback runs exactly once on the frame thread, during the call or at a later frame, with `Granted` once the window is fullscreen or left it, or `Denied` or `Unsupported` with the sentence that says why, such as a browser that goes fullscreen only shortly after an input of the person.
+    virtual void setFullscreen(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
 
-    // Covers the display with the id, or the display of the window while the id is empty, at the mode that the desktop runs in, or exclusively in a mode of the display, which the display runs in while the window holds it. Desktops move the window to the display first, browsers go fullscreen on the screen where the person let the page see every screen, and the other platforms keep the window on its display in the mode that the system picks. Throws `std::invalid_argument` for a display that is not connected or a mode that the display does not list, and `std::runtime_error` where the platform cannot go fullscreen there.
-    virtual void enterFullscreen(const Fullscreen& value) = 0;
+    // Covers the display with the id, or the display of the window while the id is empty, at the mode that the desktop runs in, or exclusively in a mode of the display, which the display runs in while the window holds it. Desktops move the window to the display first, browsers go fullscreen on the screen where the person let the page see every screen, and the other platforms keep the window on its display in the mode that the system picks. Throws `std::invalid_argument` for a display that is not connected or a mode that the display does not list,. It answers like `setFullscreen`, with `Unsupported` where the platform cannot go fullscreen there.
+    virtual void enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) = 0;
     [[nodiscard]] virtual bool isResizable() const noexcept = 0;
     virtual void setResizable(bool value) = 0;
     virtual void setTitle(std::string_view value) = 0;
     virtual void setCursor(Cursor value) = 0;
     virtual void setCursorVisible(bool value) = 0;
-    virtual void setMouseLocked(bool value) = 0;
+
+    // Hides the pointer and reports only its movement, or brings it back, and answers like `setFullscreen`. Browsers lock the pointer only during a click or a key of the person.
+    virtual void setMouseLocked(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
     virtual void setKeyboardVisible(bool value) = 0;
     virtual void requestQuit() = 0;
 
@@ -126,9 +122,9 @@ class Window {
     [[nodiscard]] virtual StatusBar getStatusBar() const noexcept = 0;
     virtual void setStatusBar(StatusBar value) = 0;
 
-    // Keeps the screen on and its saver away while the app shows, or leaves them to the settings of the system. Game controllers keep neither the idle timer of iOS and tvOS nor the screen saver of desktops from running, so an app that players drive with them or that plays without input keeps the screen on.
+    // Keeps the screen on and its saver away while the app shows, or leaves them to the settings of the system, and answers like `setFullscreen`, with `Denied` where a browser refuses its wake lock, such as for a page that hides. Game controllers keep neither the idle timer of iOS and tvOS nor the screen saver of desktops from running, so an app that players drive with them or that plays without input keeps the screen on.
     [[nodiscard]] virtual bool isScreenKeptOn() const noexcept = 0;
-    virtual void setKeepScreenOn(bool value) = 0;
+    virtual void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
 
     [[nodiscard]] virtual TextInput& getTextInput() noexcept = 0;
 
@@ -166,9 +162,6 @@ class Window {
 
     // Returns the id of the display that shows the window, the one that holds most of it on desktops.
     [[nodiscard]] virtual std::string getDisplayId() const = 0;
-
-    // Asks the platform to list every display, which browsers ask the person for, and calls back once on the frame thread with the answer. The displays that a grant adds reach the app as a change of the displays.
-    virtual void requestDisplays(std::function<void(DisplayAccess access)> callback) = 0;
 
   private:
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;

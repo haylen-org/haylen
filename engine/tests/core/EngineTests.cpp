@@ -550,7 +550,7 @@ TEST(EngineTest, PublishesWindowAndGamepadChanges) {
     EXPECT_EQ(log, (std::vector<std::string>{R"(gamepadConnected {"gamepad":2,"name":"Pad"})"}));
 
     log.clear();
-    fixture.host().setFullscreen(true);
+    fixture.host().setFullscreen(true, [](const platform::Permission::Answer&) {});
     fixture.host().setSafeAreaInsets({.top = 108.0F});
     fixture.host().setGamepad(1, {});
     fixture.frames(2);

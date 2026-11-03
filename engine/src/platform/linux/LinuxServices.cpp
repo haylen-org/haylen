@@ -108,11 +108,6 @@ std::string Services::getWindowDisplayId() {
     return LinuxDesktop::getWindowDisplayId();
 }
 
-// Linux lists every display from the start.
-void Services::requestDisplays(std::function<void(Window::DisplayAccess access)> callback) {
-    callback(Window::DisplayAccess::Granted);
-}
-
 void Services::setMousePassthrough(Window::Passthrough mode, std::span<const math::Polygon::Outline> regions) {
     LinuxDesktop::setPassthrough(mode, regions);
 }
