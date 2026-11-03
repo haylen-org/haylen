@@ -2,7 +2,7 @@
 return {
     prefix = 'INP',
     title = 'Input',
-    description = 'The keyboard, the mouse, touches, gestures, gamepads, the action map, remapping, touch controls and a hero that every device moves.',
+    description = 'The keyboard, the mouse, touches, gestures, gamepads, motion sensors, the action map, remapping, touch controls and a hero that every device moves.',
     tests = {
         {code = 'INP-001', title = 'Keyboard', description = 'Keys held, pressed and released, modifiers, key events with repeats and the text typed with the layout of the platform.', module = 'keyboard'},
         {code = 'INP-002', title = 'Mouse', description = 'Buttons, the wheel and the trackpad with their units and the scroll speed, the movement of a frame, cursor shapes, a hidden cursor, a captured mouse and a finger acting as the mouse.', module = 'mouse', platforms = {'macos', 'windows', 'linux', 'ios', 'android', 'web', 'headless'}, unsupported = {tvos = 'Apple TV has no mouse or pointer, so there are no buttons, wheel, cursor or capture to show.'}},
@@ -17,5 +17,6 @@ return {
         {code = 'INP-011', title = 'Players', description = 'A seat for the keyboard and touch and one for each of eight gamepads, each with an action map that reads only its own devices, joined with the start button of its gamepad.', module = 'players'},
         {code = 'INP-012', title = 'Commands', description = 'A command buffer that types runs, a jump attack and specials from keys, gamepads and touch buttons that a sliding thumb presses in turn, with the kept command, its age, the facing and a freeze like hit stop.', module = 'commands'},
         {code = 'INP-013', title = 'Replay', description = 'A run recorded on fixed steps with the state of its random generator and replayed in place of the devices, with a hash of every step that shows the replay matches.', module = 'replay'},
+        {code = 'INP-014', title = 'Motion', description = 'A ball that rolls with the tilt of the device or of a gamepad through the action map, the raw readings of the accelerometer, the gyroscope and the attitude, the touchpad of a gamepad, and the reason of the platform for every sensor that does not run.', module = 'motion'},
     },
 }
