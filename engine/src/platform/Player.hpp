@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstdint>
 #include <filesystem>
@@ -116,6 +117,9 @@ class Player final {
     // Queues a press of the back button of the activity from any thread, which the next frame hands to the app or, in a launched app that does not take back, turns into a quit to the app that launched it.
     static void postBack();
 
+    // Records from any thread whether the back button of the platform is down, which leaves a launched app once it is held long enough. A release returns whether it ends a hold that left a launched app, which the platform then swallows, so the app that starts again never hears it.
+    [[nodiscard]] static bool holdBack(bool pressed);
+
     // Whether the running app takes the next press of the back button of the platform instead of leaving, as the engine decides from its app and its open popups.
     [[nodiscard]] static bool isBackCaptured();
 
@@ -171,6 +175,8 @@ class Player final {
         std::vector<Event> posted;
         int backPresses = 0;
         int exitStatus = 0;
+        std::atomic<bool> backHeld = false;
+        std::atomic<bool> backSwallowed = false;
     };
 
     [[nodiscard]] static Process& getProcess() noexcept;

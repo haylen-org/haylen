@@ -518,6 +518,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/native/NativeSignature.cpp
   src/platform/NativeViews.cpp
   src/platform/Permission.cpp
+  src/platform/ReturnHold.cpp
   src/platform/PlatformLua.cpp
   src/platform/PluginStreams.cpp
   src/platform/Fold.cpp
@@ -565,6 +566,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/Procedural2DPlugin.cpp
   src/plugins/Plugin.cpp
   src/plugins/PluginRegistry.cpp
+  src/plugins/ReturnHoldPlugin.cpp
   src/plugins/Spatial2DPlugin.cpp
   src/plugins/StoragePlugin.cpp
   src/plugins/TextPlugin.cpp

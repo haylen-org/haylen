@@ -29,6 +29,7 @@
 #include "plugins/Physics2DPlugin.hpp"
 #include "plugins/PlatformPlugin.hpp"
 #include "plugins/Procedural2DPlugin.hpp"
+#include "plugins/ReturnHoldPlugin.hpp"
 #include "plugins/Spatial2DPlugin.hpp"
 #include "plugins/TiledPlugin.hpp"
 
@@ -59,6 +60,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<DebuggerPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<UiPlugin>());
+    registry.add(std::make_unique<ReturnHoldPlugin>(host));
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement(), host.getBlockedReason()));
     registry.add(std::make_unique<PlatformPlugin>());
     registry.add(std::make_unique<NativePlugin>());

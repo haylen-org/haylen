@@ -111,6 +111,12 @@ class NativeHost : public Host {
     void setLaunched(bool value) noexcept {
         launched = value;
     }
+    [[nodiscard]] bool isBackHeld() const noexcept override {
+        return backHeld;
+    }
+    void setBackHeld(bool value) noexcept {
+        backHeld = value;
+    }
 
     // Plays the apps of this runtime in development, with a session that scans the package folder it is given or connects to the development server whose address the launch gave.
     void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
@@ -165,6 +171,7 @@ class NativeHost : public Host {
     std::unordered_map<std::uint32_t, OutputReport> refusedOutputs;
     std::unique_ptr<DevelopmentSession> developmentSession;
     bool launched = false;
+    bool backHeld = false;
     std::uint64_t keyboardRevision = 0;
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;

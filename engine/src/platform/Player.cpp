@@ -215,6 +215,12 @@ void Player::postBack() {
     ++process.backPresses;
 }
 
+bool Player::holdBack(bool pressed) {
+    Process& process = getProcess();
+    process.backHeld.store(pressed);
+    return !pressed && process.backSwallowed.exchange(false);
+}
+
 int Player::takeBackPresses() {
     Process& process = getProcess();
     const std::scoped_lock lock(process.postedMutex);
@@ -325,6 +331,7 @@ void Player::frame(double seconds) {
     if (runtime.engine == nullptr) {
         return;
     }
+    runtime.host->setBackHeld(getProcess().backHeld.load());
     Services::updateWindow();
     if (MemoryWarning::take()) {
         runtime.engine->handleEvent({.type = Event::Type::LowMemory});
@@ -389,6 +396,10 @@ void Player::returnToLauncher() {
     Launcher launcher = std::move(launchers.back());
     launchers.pop_back();
     host->setLaunched(!launchers.empty());
+    // A hold of back that left the launched app ends with a release, which the app that starts again never hears.
+    if (getProcess().backHeld.load()) {
+        getProcess().backSwallowed.store(true);
+    }
     const std::unique_ptr<DevelopmentSession> ended = host->exchangeDevelopmentSession(std::move(launcher.development));
     replace(load([&launcher] { return std::move(launcher.package); }));
 }
@@ -421,6 +432,9 @@ gpu::Device* Player::getGpuDevice() noexcept {
 
 // The back button leaves the app from its root screen, which on the Apple TV means the system takes the press, and goes back inside the app everywhere else. A launched app leaves to the app that launched it instead.
 Player::Back Player::routeBack(bool pressed) {
+    if (holdBack(pressed)) {
+        return Back::Player;
+    }
     Player& runtime = getCurrent();
     if (runtime.engine == nullptr) {
         return Back::System;
@@ -442,7 +456,7 @@ Player::Back Player::routeBack(bool pressed) {
 
 #if defined(__ANDROID__)
 void Player::reportBackCapture() {
-    const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing() || host->isLaunched();
+    const bool captured = engine->isBackCaptured() || AndroidTextInput::isEditing() || host->isLaunched() || getProcess().backHeld.load();
     if (captured == backReported) {
         return;
     }

@@ -8,4 +8,8 @@ void AndroidKeys::receiveBack() {
     Player::postBack();
 }
 
+bool AndroidKeys::receiveBackHeld(bool pressed) {
+    return Player::holdBack(pressed);
+}
+
 } // namespace haylen::platform

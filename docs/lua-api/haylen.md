@@ -647,7 +647,16 @@ haylen.quit({status = broken == 0 and 0 or 1})
 
 Runs another app package in place of this app, once the current frame ends. The string `path` names a folder or a zip file of the file system that holds an `app.json`. The launched app starts with a new engine and a new Lua state. Use it for an app that opens other apps, such as one that downloads a package and plays it.
 
-When the launched app quits, this app starts again from its own package. The launched app quits through [`haylen.quit`](#haylenquitoptions), the Close button of its error screen, or the back button at the root of the app on Android and Apple TV. A launched app can launch another app in turn.
+When the launched app quits, this app starts again from its own package. The launched app quits through [`haylen.quit`](#haylenquitoptions), the Close button of its error screen, the back button at the root of the app on Android and Apple TV, or a hold that the launched app cannot take, which works on every device:
+
+| Device | Hold for 1.5 seconds |
+| --- | --- |
+| Keyboard, on desktops, the web, Mac Catalyst and tablets with a keyboard | `Escape` |
+| Apple TV and Android TV remotes, and the back button or gesture of Android | The back or Menu button, or the back gesture kept before you let go |
+| Gamepad | The back button, such as View or Select |
+| Touch screen | Three fingers that stay still |
+
+Apple Vision Pro has the holds of a keyboard and a gamepad, since a pinch there acts as one finger. The launched app hears the keys, buttons and fingers of the hold as always, so a short press does what the app does with it. A panel at the top of the screen fills its bar while the hold lasts, and the release that ends the hold never reaches the app that starts again. A launched app can launch another app in turn.
 
 The table `options` is optional.
 
@@ -698,6 +707,41 @@ local ui = require('haylen.ui')
 if haylen.launched() then
     ui.mount(ui.button{text = 'Back', anchor = 'topLeft', margin = 16, onClick = function() haylen.quit() end})
 end
+```
+
+### haylen.packageInfo(path)
+
+Reads what an app package says about itself, such as the name and the logo that a list of downloaded apps shows, without running it. The string `path` names a folder or a zip file of the file system that holds an `app.json`. It returns a Varn promise that resolves on a later frame with a table, since it opens the package on the I/O pool.
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `name` | string | The `name` of `app.json`. |
+| `identifier` | string | The `identifier` of `app.json`. |
+| `version` | string | The `version` of `app.json`. |
+| `logo` | string or nil | The path of `splash.logo`, relative to `content/`, or nil when `app.json` names none. |
+| `logoBytes` | string or nil | The bytes of that file, such as the text of an SVG document or the bytes of a PNG image, which [`graphics.newTexture`](graphics.md#graphicsnewtexturebytes-options) or [`graphics.newVectorImage`](graphics.md#graphicsnewvectorimagetext) turn into a picture. |
+
+A path with nothing at it rejects with `The app package could not be read. No app package is at "<path>". Name a folder or a zip file that holds "app.json".`, and a package that cannot open, or whose `app.json` is not valid, rejects with the reason after the same first sentence.
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+local haylen = require('haylen')
+local storage = require('haylen.storage')
+local ui = require('haylen.ui')
+
+-- Shows the name and the logo of a downloaded package before it plays.
+async.spawn(function()
+    local info, failure = haylen.packageInfo(storage.root() .. '/demo.zip'):await()
+    if not info then
+        print(failure)
+        return
+    end
+    if info.logo then
+        ui.setImage('@demo', info.logo:match('%.svg$') and graphics.newVectorImage(info.logoBytes) or graphics.newTexture(info.logoBytes))
+    end
+    ui.mount(ui.row{gap = 12, ui.image{image = info.logo and '@demo' or 'ui/app.svg', width = 48, height = 48}, ui.label{text = info.name}})
+end)
 ```
 
 ### haylen.requestRestart()
@@ -795,6 +839,7 @@ These messages are raised by the functions of the module.
 | `The option "status" of "quit" is invalid: <reason>.` | The `status` of `haylen.quit` is not an integer from `0` to `255`. |
 | `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".` | Nothing is at the path of `haylen.launch`. |
 | `The development server "<address>" is not an address that starts with "ws://" or "wss://".` | The option `developmentServer` of `haylen.launch` is not the address of a development server. |
+| `The app package could not be read. <reason>` | The promise of `haylen.packageInfo` rejects, such as for a path with nothing at it. |
 | `An autoload needs a name.` | The name of `haylen.autoload` is empty. |
 | `An autoload named "<name>" already exists.` | Another module is already the autoload of that name. |
 | `The autoload module "<module>" must return a table.` | The module of `haylen.autoload` returned something other than a table. |

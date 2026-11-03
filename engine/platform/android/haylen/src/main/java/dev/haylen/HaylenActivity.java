@@ -32,7 +32,9 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
+import androidx.activity.BackEventCompat;
 import androidx.activity.OnBackPressedCallback;
+import androidx.annotation.NonNull;
 import androidx.core.graphics.Insets;
 import androidx.core.view.DisplayCutoutCompat;
 import androidx.core.view.ViewCompat;
@@ -117,10 +119,23 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         splash.show();
         ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), this::applyInsets);
 
+        // The engine follows how long back stays down, from the start of the back gesture or press to its end, since a long hold leaves an app that another app launched.
         backCallback = new OnBackPressedCallback(false) {
             @Override
+            public void handleOnBackStarted(@NonNull BackEventCompat event) {
+                nativeBackHeld(true);
+            }
+
+            @Override
+            public void handleOnBackCancelled() {
+                nativeBackHeld(false);
+            }
+
+            @Override
             public void handleOnBackPressed() {
-                onBack();
+                if (!nativeBackHeld(false)) {
+                    onBack();
+                }
             }
         };
         getOnBackPressedDispatcher().addCallback(this, backCallback);
@@ -659,6 +674,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeOrientation(boolean portrait);
 
     private static native void nativeBack();
+    // Tells the engine whether back is down, and returns on a release whether the engine took the whole hold, so the press goes nowhere else.
+    private static native boolean nativeBackHeld(boolean pressed);
 
     private static native void nativeUrlOpened(long request, boolean opened);
 

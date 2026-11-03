@@ -7,6 +7,9 @@ class AndroidKeys final {
   public:
     // Hands a press of back to the runtime for the back callback of the activity, which Android calls from its UI thread once the back gesture completes. The app hears it as escape, which the UI reads as `uiCancel`, and a launched app that does not take back quits to the app that launched it.
     static void receiveBack();
+
+    // Hands whether back is down to the runtime, from the start of the back gesture or press to its end or cancel, and returns on a release whether the runtime took the whole hold, since it left a launched app.
+    [[nodiscard]] static bool receiveBackHeld(bool pressed);
 };
 
 } // namespace haylen::platform

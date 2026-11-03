@@ -379,6 +379,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeBack(JNIEnv*, jclass
     haylen::platform::AndroidKeys::receiveBack();
 }
 
+JNIEXPORT jboolean JNICALL Java_dev_haylen_HaylenActivity_nativeBackHeld(JNIEnv*, jclass, jboolean pressed) {
+    return haylen::platform::AndroidKeys::receiveBackHeld(pressed == JNI_TRUE) ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenPermissions_nativeAnswered(JNIEnv* env, jclass, jlong request, jbyteArray answer) {
     haylen::platform::JavaBridge::answerPermission(request, haylen::platform::JavaBridge::toString(*env, answer));
 }

@@ -407,6 +407,12 @@ class HeadlessHost final : public Host {
     void setLaunched(bool value) noexcept {
         launched = value;
     }
+    [[nodiscard]] bool isBackHeld() const noexcept override {
+        return backHeld;
+    }
+    void setBackHeld(bool value) noexcept {
+        backHeld = value;
+    }
 
     // Plays the apps of this host in development from now on, with a session that scans the package folder when one is given, the way the player does with "--dev", and that connects to a development server when its address is given.
     void enableDevelopment(std::optional<std::filesystem::path> folder = std::nullopt, std::string server = {}) {
@@ -706,6 +712,7 @@ class HeadlessHost final : public Host {
     bool finishingHalts = false;
     int haltedPumps = 0;
     bool launched = false;
+    bool backHeld = false;
     const audio::OutputBackend* audioOutput = nullptr;
     Permission::Answer urlAnswer{.state = Permission::State::Granted};
     Permission::Answer clipboardAnswer{.state = Permission::State::Granted};

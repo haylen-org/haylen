@@ -190,6 +190,7 @@ set(HAYLEN_TEST_SOURCES
   platform/PlatformLuaTests.cpp
   platform/PlatformTests.cpp
   platform/PluginLoadOrderTests.cpp
+  platform/ReturnHoldTests.cpp
   platform/ScreensTests.cpp
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp

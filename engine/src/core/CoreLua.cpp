@@ -4,22 +4,29 @@
 
 #include <array>
 #include <cstdint>
+#include <filesystem>
 #include <memory>
 #include <optional>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 #include "core/ClassLua.hpp"
+#include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/FrameClock.hpp"
+#include "haylen/core/JobSystem.hpp"
 #include "haylen/core/Version.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Viewport.hpp"
+#include "haylen/io/Package.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/ClassBuilder.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
+#include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Reference.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
@@ -109,6 +116,53 @@ int CoreLua::rootLaunch(lua_State* L) {
     }
     lua::Runtime::getEngine(L).requestLaunch(std::move(launch));
     return 0;
+}
+
+// Opens the package and reads its `app.json` and the logo of its splash, which a package without one leaves empty. A package that cannot open fails with the reason.
+CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path) {
+    std::error_code error;
+    if (!std::filesystem::exists(path, error)) {
+        throw std::invalid_argument("No app package is at \"" + path.string() + "\". Name a folder or a zip file that holds \"app.json\".");
+    }
+    const std::unique_ptr<io::Package> package = io::Package::open(path);
+    const AppConfig config = AppConfig::fromPackage(*package);
+    PackageInfo info{.name = config.name, .identifier = config.identifier, .version = config.version, .logo = config.splash.logo};
+    if (!info.logo.empty()) {
+        info.logoBytes = package->read("content/" + info.logo);
+    }
+    return info;
+}
+
+// Reads what an app package says about itself with `haylen.packageInfo(path)` on the I/O pool, such as the name and the logo that a list of downloaded apps shows, and resolves on a later frame.
+int CoreLua::rootPackageInfo(lua_State* L) {
+    Engine& engine = lua::Runtime::getEngine(L);
+    std::filesystem::path path(lua::Stack::read<std::string_view>(L, 1));
+    const lua::Promise promise(engine);
+    // clang-format off
+    engine.getJobs().runIo([path = std::move(path)] { return readPackageInfo(path); }, [promise](JobSystem::Result<PackageInfo> result) {
+        if (!result.isOk()) {
+            promise.reject("The app package could not be read. " + result.error);
+            return;
+        }
+        promise.resolveWith([info = std::move(*result.value)](lua_State* state) {
+            lua_createtable(state, 0, 5);
+            lua::Stack::push(state, info.name);
+            lua_setfield(state, -2, "name");
+            lua::Stack::push(state, info.identifier);
+            lua_setfield(state, -2, "identifier");
+            lua::Stack::push(state, info.version);
+            lua_setfield(state, -2, "version");
+            if (!info.logo.empty()) {
+                lua::Stack::push(state, info.logo);
+                lua_setfield(state, -2, "logo");
+                lua_pushlstring(state, reinterpret_cast<const char*>(info.logoBytes.data()), info.logoBytes.size());
+                lua_setfield(state, -2, "logoBytes");
+            }
+        });
+    });
+    // clang-format on
+    promise.push(L);
+    return 1;
 }
 
 int CoreLua::rootLaunched(lua_State* L) {
@@ -276,7 +330,7 @@ int CoreLua::rootAutoload(lua_State* L) {
 int CoreLua::openRoot(lua_State* L) {
     Engine& owner = lua::Runtime::getEngine(L);
     const luaL_Reg functions[] = {
-        {"quit", &rootQuit}, {"canQuit", &rootCanQuit}, {"launch", &lua::Binding::native<&rootLaunch>}, {"launched", &rootLaunched}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &lua::Binding::native<&rootSetTimeScale>}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"recoverable", &rootRecoverable}, {"setRecoverable", &lua::Binding::native<&rootSetRecoverable>}, {"recover", &rootRecover}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
+        {"quit", &rootQuit}, {"canQuit", &rootCanQuit}, {"launch", &lua::Binding::native<&rootLaunch>}, {"launched", &rootLaunched}, {"packageInfo", &lua::Binding::native<&rootPackageInfo>}, {"requestRestart", &rootRequestRestart}, {"elapsed", &rootElapsed}, {"delta", &rootDelta}, {"unscaledDelta", &rootUnscaledDelta}, {"frameIndex", &rootFrameIndex}, {"timeScale", &rootTimeScale}, {"setTimeScale", &lua::Binding::native<&rootSetTimeScale>}, {"fixedStep", &rootFixedStep}, {"interpolation", &rootInterpolation}, {"reportError", &lua::Binding::native<&rootReportError>}, {"recoverable", &rootRecoverable}, {"setRecoverable", &lua::Binding::native<&rootSetRecoverable>}, {"recover", &rootRecover}, {"paused", &rootPaused}, {"setPaused", &lua::Binding::native<&rootSetPaused>}, {"appState", &rootAppState}, {"appCovered", &rootAppCovered}, {"networkState", &rootNetworkState}, {"halted", &rootHalted}, {"lifecycle", &rootLifecycle}, {"setLifecycle", &lua::Binding::native<&rootSetLifecycle>}, {"autoload", &lua::Binding::native<&rootAutoload>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ClassLua::push(L);

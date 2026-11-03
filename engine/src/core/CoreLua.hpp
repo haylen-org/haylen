@@ -1,8 +1,11 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
+#include <filesystem>
 #include <string>
 #include <string_view>
+#include <vector>
 
 #include "haylen/core/Log.hpp"
 
@@ -16,17 +19,28 @@ class CoreLua final {
     static void install(lua_State* L);
 
   private:
+    // What an app package says about itself, which `haylen.packageInfo` reads on the I/O pool.
+    struct PackageInfo {
+        std::string name;
+        std::string identifier;
+        std::string version;
+        std::string logo;
+        std::vector<std::uint8_t> logoBytes;
+    };
+
     static constexpr std::array<std::string_view, 1> kQuitFields{"status"};
     static constexpr std::array<std::string_view, 1> kLaunchFields{"developmentServer"};
     static constexpr std::array<std::string_view, 3> kLifecycleFields{"pauseOnBackground", "pauseOnFocusLoss", "muteOnFocusLoss"};
 
     [[nodiscard]] static std::string joinArguments(lua_State* L);
+    [[nodiscard]] static PackageInfo readPackageInfo(const std::filesystem::path& path);
     template <Log::Level Level> static int logMessage(lua_State* L);
     static int openLog(lua_State* L);
 
     static int rootQuit(lua_State* L);
     static int rootLaunch(lua_State* L);
     static int rootLaunched(lua_State* L);
+    static int rootPackageInfo(lua_State* L);
     static int rootCanQuit(lua_State* L);
     static int rootRequestRestart(lua_State* L);
     static int rootElapsed(lua_State* L);
