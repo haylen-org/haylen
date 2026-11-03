@@ -88,10 +88,10 @@ void Body::moveTo(math::Vec2 position, float rotation, float seconds) {
     // The velocities move the center of mass to where the target puts it, and a target the body already holds stops it.
     const b2Transform current = b2Body_GetTransform(body);
     const b2Transform target{Box2DConverter::toMeters(position, world->getPixelsPerMeter()), b2MakeRot(rotation)};
-    const b2Vec2 center = b2Body_GetLocalCenterOfMass(body);
+    const b2Vec2 center = b2Body_GetLocalCenter(body);
     b2Body_SetLinearVelocity(body, b2MulSV(1.0F / seconds, b2Sub(b2TransformPoint(target, center), b2TransformPoint(current, center))));
-    if (!b2Body_IsFixedRotation(body)) {
-        b2Body_SetAngularVelocity(body, b2RelativeAngle(target.q, current.q) / seconds);
+    if (!b2Body_GetMotionLocks(body).angularZ) {
+        b2Body_SetAngularVelocity(body, b2RelativeAngle(current.q, target.q) / seconds);
     }
 }
 
@@ -134,7 +134,7 @@ void Body::setMassData(const MassData& value) {
 }
 
 void Body::resetMassData() {
-    b2Body_ApplyMassFromShapes(b2LoadBodyId(checkedId()));
+    b2Body_UpdateMassFromShapes(b2LoadBodyId(checkedId()));
 }
 
 float Body::getMass() const {
@@ -170,7 +170,7 @@ void Body::setInertia(float value) {
 
 math::Vec2 Body::getWorldCenter() const {
     const b2BodyId body = b2LoadBodyId(checkedId());
-    return Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(body), world->getPixelsPerMeter());
+    return Box2DConverter::toPixels(b2Body_GetWorldCenter(body), world->getPixelsPerMeter());
 }
 
 void Body::applyForce(math::Vec2 force, std::optional<math::Vec2> point) {
@@ -228,11 +228,14 @@ void Body::setGravityScale(float value) {
 }
 
 bool Body::isFixedRotation() const {
-    return b2Body_IsFixedRotation(b2LoadBodyId(checkedId()));
+    return b2Body_GetMotionLocks(b2LoadBodyId(checkedId())).angularZ;
 }
 
 void Body::setFixedRotation(bool value) {
-    b2Body_SetFixedRotation(b2LoadBodyId(checkedId()), value);
+    const b2BodyId body = b2LoadBodyId(checkedId());
+    b2MotionLocks locks = b2Body_GetMotionLocks(body);
+    locks.angularZ = value;
+    b2Body_SetMotionLocks(body, locks);
 }
 
 bool Body::isBullet() const {
@@ -244,11 +247,11 @@ void Body::setBullet(bool value) {
 }
 
 bool Body::isSleepEnabled() const {
-    return b2Body_IsSleepEnabled(b2LoadBodyId(checkedId()));
+    return b2Body_IsSleepingEnabled(b2LoadBodyId(checkedId()));
 }
 
 void Body::setSleepEnabled(bool value) {
-    b2Body_EnableSleep(b2LoadBodyId(checkedId()), value);
+    b2Body_EnableSleeping(b2LoadBodyId(checkedId()), value);
 }
 
 float Body::getSleepThreshold() const {
@@ -365,22 +368,30 @@ std::vector<Shape> Body::addPolygon(std::span<const math::Vec2> points, const Sh
 }
 
 std::vector<Shape> Body::addChain(std::span<const math::Vec2> points, bool loop, const Shape::Options& options) {
-    if (points.size() < (loop ? 4U : 2U)) {
-        throw std::invalid_argument("A physics chain needs at least four points for a loop and two for an open chain.");
+    // Box2D needs every segment of a chain longer than its linear slop, so a point that close to the one before it merges into it, and so does the end of a loop that closes on its start.
+    std::vector<b2Vec2> local;
+    for (const b2Vec2 point : Box2DConverter::toLocalPoints(points, options, world->getPixelsPerMeter())) {
+        if (local.empty() || b2Distance(local.back(), point) > Box2DConverter::kLinearSlop) {
+            local.push_back(point);
+        }
+    }
+    while (loop && local.size() > 1 && b2Distance(local.front(), local.back()) <= Box2DConverter::kLinearSlop) {
+        local.pop_back();
+    }
+    if (local.size() < (loop ? 4U : 2U)) {
+        throw std::invalid_argument("A physics chain needs at least four points for a loop and two for an open chain, each more than 0.005 meters from the one before it.");
     }
 
-    // Box2D keeps the first and last points of an open chain to smooth the contacts at its ends, so the world adds points that continue the first and last segments, and every segment listed collides.
-    std::vector<math::Vec2> listed(points.begin(), points.end());
-    if (!loop) {
-        listed.insert(listed.begin(), points[0] * 2.0F - points[1]);
-        listed.push_back(points[points.size() - 1] * 2.0F - points[points.size() - 2]);
-    }
-    const std::vector<b2Vec2> local = Box2DConverter::toLocalPoints(listed, options, world->getPixelsPerMeter());
+    // Box2D smooths the contacts at the ends of an open chain with ghost points, which continue its first and last segments.
     const b2SurfaceMaterial material = Box2DConverter::toSurfaceMaterial(options);
 
     b2ChainDef def = b2DefaultChainDef();
     def.points = local.data();
-    def.count = static_cast<int>(local.size());
+    def.pointCount = static_cast<int>(local.size());
+    if (!loop) {
+        def.ghost1 = b2Sub(b2MulSV(2.0F, local[0]), local[1]);
+        def.ghost2 = b2Sub(b2MulSV(2.0F, local[local.size() - 1]), local[local.size() - 2]);
+    }
     def.materials = &material;
     def.materialCount = 1;
     def.filter = Box2DConverter::toFilter(options.filter);
@@ -423,10 +434,10 @@ std::vector<Body::Contact> Body::getContacts() const {
         }
         // The manifold reads from the first shape toward the second, and the contact reads from the shape of this body.
         const bool first = B2_ID_EQUALS(b2Shape_GetBody(contact.shapeIdA), body);
-        const b2BodyId other = b2Shape_GetBody(first ? contact.shapeIdB : contact.shapeIdA);
-        ContactManifold manifold = Box2DConverter::toManifold(contact.manifold, body, other, scale, world->getLastStep() / static_cast<float>(world->getSubSteps()));
+        ContactManifold manifold = Box2DConverter::toManifold(contact.manifold, b2Shape_GetBody(contact.shapeIdA), b2Shape_GetBody(contact.shapeIdB), scale, world->getLastStep() / static_cast<float>(world->getSubSteps()));
         if (!first) {
             manifold.normal = -manifold.normal;
+            manifold.relativeVelocity = -manifold.relativeVelocity;
         }
         contacts.push_back({.shape = {world, b2StoreShapeId(first ? contact.shapeIdA : contact.shapeIdB)}, .other = {world, b2StoreShapeId(first ? contact.shapeIdB : contact.shapeIdA)}, .manifold = manifold});
     }

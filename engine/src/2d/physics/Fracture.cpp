@@ -107,7 +107,7 @@ std::vector<Body> Fracture::shatter(Body body, const Options& options) {
     // Every piece moves like the point of the original body where it sits, spinning at the same rate.
     const math::Vec2 velocity = body.getVelocity();
     const float spin = body.getAngularVelocity();
-    const math::Vec2 center = Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(source), scale);
+    const math::Vec2 center = Box2DConverter::toPixels(b2Body_GetWorldCenter(source), scale);
     const Body::Options settings{.type = body.getType(), .position = position, .rotation = rotation, .angularVelocity = spin, .linearDamping = body.getLinearDamping(), .angularDamping = body.getAngularDamping(), .gravityScale = body.getGravityScale(), .bullet = body.isBullet()};
 
     // Cells that meet near the impact point leave slivers thinner than the tolerance of Box2D, which add nothing to the collision and are left out. A failure halfway, such as a triangulation that fails, leaves the body whole.

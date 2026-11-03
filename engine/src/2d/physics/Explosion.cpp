@@ -79,7 +79,7 @@ std::vector<Explosion::Hit> Explosion::apply(World& world, const Options& option
         // A center inside the body pushes from its center of mass, and a center right on it pushes up.
         math::Vec2 direction = hit.point - options.center;
         if (direction.isZero()) {
-            direction = Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(b2LoadBodyId(hit.body.getId())), scale) - options.center;
+            direction = Box2DConverter::toPixels(b2Body_GetWorldCenter(b2LoadBodyId(hit.body.getId())), scale) - options.center;
         }
         if (direction.isZero()) {
             direction = {0.0F, -1.0F};

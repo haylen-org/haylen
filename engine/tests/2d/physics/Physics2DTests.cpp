@@ -182,6 +182,26 @@ TEST_F(PhysicsWorldTest, SensesQueriesAndCastsRays) {
     EXPECT_EQ(moved.getFilter().mask, 1U);
 }
 
+TEST_F(PhysicsWorldTest, MergesChainPointsCloserThanTheLinearSlop) {
+    // Points a tenth of a world unit apart merge, and so does a loop end that closes on its start, so the outline keeps one segment per side.
+    physics2d::World world;
+    physics2d::Body ground = world.createBody({.type = physics2d::Body::Type::Static});
+    const std::vector<math::Vec2> square{{0.0F, 0.0F}, {100.0F, 0.0F}, {100.1F, 0.0F}, {100.0F, 100.0F}, {0.0F, 100.0F}, {0.0F, 0.1F}};
+    EXPECT_EQ(ground.addChain(square, true).size(), 4U);
+    const std::vector<math::Vec2> speck{{0.0F, 0.0F}, {0.1F, 0.0F}, {0.1F, 0.1F}, {0.0F, 0.1F}};
+    EXPECT_THROW((void)ground.addChain(speck, true), std::invalid_argument);
+}
+
+TEST_F(PhysicsWorldTest, FindsPointsOnTheDiagonalsOfAPolygon) {
+    // The middle of a small box away from the origin of its body lies on both diagonals of the box, where a search for the distance to the box loses its direction.
+    physics2d::World world;
+    physics2d::Body holder = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 100.0F}});
+    holder.addBox({8.0F, 8.0F}, {.sensor = true, .offset = {-4.0F, 4.0F}});
+    EXPECT_EQ(world.queryPoint({96.0F, 104.0F}).size(), 1U);
+    EXPECT_EQ(world.queryPoint({98.0F, 102.0F}).size(), 1U);
+    EXPECT_TRUE(world.queryPoint({91.0F, 104.0F}).empty());
+}
+
 TEST_F(PhysicsWorldTest, BuildsPolygonsChainsAndCapsules) {
     physics2d::World world;
     physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static});
@@ -464,6 +484,7 @@ TEST_F(PhysicsWorldTest, ConnectsBodiesWithJoints) {
     EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Revolute, anchor, ghost, {.lower = 0.5F, .upper = -0.5F}), std::invalid_argument);
     EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Prismatic, anchor, ghost, {.lower = 10.0F, .upper = -10.0F}), std::invalid_argument);
     EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Wheel, anchor, ghost, {.lower = 10.0F, .upper = -10.0F}), std::invalid_argument);
+    EXPECT_THROW(world.createJoint(physics2d::Joint::Type::Prismatic, anchor, ghost, {.axis = {}}), std::invalid_argument);
     EXPECT_TRUE(world.createJoint(physics2d::Joint::Type::Revolute, anchor, ghost, {.lower = -3.1F, .upper = 3.1F}).isValid());
     EXPECT_EQ(physics2d::Joint::typeFromName("wheel"), physics2d::Joint::Type::Wheel);
     EXPECT_EQ(physics2d::Joint::typeName(physics2d::Joint::Type::Motor), "motor");

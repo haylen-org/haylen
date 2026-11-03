@@ -3,6 +3,7 @@
 #include <box2d/box2d.h>
 
 #include <algorithm>
+#include <cfloat>
 #include <cmath>
 #include <stdexcept>
 
@@ -78,10 +79,8 @@ Joint::Type Joint::getType() const {
         return Type::Weld;
     case b2_wheelJoint:
         return Type::Wheel;
-    case b2_mouseJoint:
-        return Type::Mouse;
     case b2_motorJoint:
-        return Type::Motor;
+        return world->mouseJoints.contains(id) ? Type::Mouse : Type::Motor;
     default:
         return Type::Filter;
     }
@@ -97,12 +96,12 @@ Body Joint::getBodyB() const {
 
 math::Vec2 Joint::getAnchorA() const {
     const b2JointId joint = b2LoadJointId(checkedId());
-    return Box2DConverter::toPixels(b2Body_GetWorldPoint(b2Joint_GetBodyA(joint), b2Joint_GetLocalAnchorA(joint)), world->getPixelsPerMeter());
+    return Box2DConverter::toPixels(b2Body_GetWorldPoint(b2Joint_GetBodyA(joint), b2Joint_GetLocalFrameA(joint).p), world->getPixelsPerMeter());
 }
 
 math::Vec2 Joint::getAnchorB() const {
     const b2JointId joint = b2LoadJointId(checkedId());
-    return Box2DConverter::toPixels(b2Body_GetWorldPoint(b2Joint_GetBodyB(joint), b2Joint_GetLocalAnchorB(joint)), world->getPixelsPerMeter());
+    return Box2DConverter::toPixels(b2Body_GetWorldPoint(b2Joint_GetBodyB(joint), b2Joint_GetLocalFrameB(joint).p), world->getPixelsPerMeter());
 }
 
 math::Vec2 Joint::getConstraintForce() const {
@@ -146,64 +145,53 @@ void Joint::setConstraintDampingRatio(float value) {
     b2Joint_SetConstraintTuning(b2LoadJointId(checkedId()), getConstraintHertz(), value);
 }
 
+// Box2D reports an awake joint whose load reaches its threshold, so a new limit wakes the joint, and a joint without a limit has the largest float as its threshold.
 std::optional<float> Joint::getBreakForce() const {
-    const std::uint64_t checked = checkedId();
-    const auto found = world->breakLimits.find(checked);
-    if (found == world->breakLimits.end() || !found->second.force) {
-        return std::nullopt;
-    }
-    return *found->second.force * getScale();
+    const float threshold = b2Joint_GetForceThreshold(b2LoadJointId(checkedId()));
+    return threshold < FLT_MAX ? std::optional(threshold * getScale()) : std::nullopt;
 }
 
 void Joint::setBreakForce(std::optional<float> value) {
-    const std::uint64_t checked = checkedId();
+    const b2JointId joint = b2LoadJointId(checkedId());
     if (value && !(*value >= 0.0F)) {
         throw std::invalid_argument("A joint needs a break force and a break torque of zero or more.");
     }
-    World::BreakLimit& limit = world->breakLimits[checked];
-    limit.force = value ? std::optional(*value / getScale()) : std::nullopt;
-    if (!limit.force && !limit.torque) {
-        world->breakLimits.erase(checked);
-    }
+    b2Joint_SetForceThreshold(joint, value ? *value / getScale() : FLT_MAX);
+    b2Joint_WakeBodies(joint);
 }
 
 std::optional<float> Joint::getBreakTorque() const {
-    const std::uint64_t checked = checkedId();
-    const auto found = world->breakLimits.find(checked);
-    if (found == world->breakLimits.end() || !found->second.torque) {
-        return std::nullopt;
-    }
-    return *found->second.torque * getScale() * getScale();
+    const float threshold = b2Joint_GetTorqueThreshold(b2LoadJointId(checkedId()));
+    return threshold < FLT_MAX ? std::optional(threshold * getScale() * getScale()) : std::nullopt;
 }
 
 void Joint::setBreakTorque(std::optional<float> value) {
-    const std::uint64_t checked = checkedId();
+    const b2JointId joint = b2LoadJointId(checkedId());
     if (value && !(*value >= 0.0F)) {
         throw std::invalid_argument("A joint needs a break force and a break torque of zero or more.");
     }
-    World::BreakLimit& limit = world->breakLimits[checked];
-    limit.torque = value ? std::optional(*value / (getScale() * getScale())) : std::nullopt;
-    if (!limit.force && !limit.torque) {
-        world->breakLimits.erase(checked);
-    }
+    b2Joint_SetTorqueThreshold(joint, value ? *value / (getScale() * getScale()) : FLT_MAX);
+    b2Joint_WakeBodies(joint);
 }
 
+// The target of a mouse joint is the frame of the joint on the first body.
 math::Vec2 Joint::getTarget() const {
-    return Box2DConverter::toPixels(b2MouseJoint_GetTarget(b2LoadJointId(checkedId({Type::Mouse}, "Only mouse joints have a target."))), getScale());
+    const b2JointId joint = b2LoadJointId(checkedId({Type::Mouse}, "Only mouse joints have a target."));
+    return Box2DConverter::toPixels(b2Body_GetWorldPoint(b2Joint_GetBodyA(joint), b2Joint_GetLocalFrameA(joint).p), getScale());
 }
 
 void Joint::setTarget(math::Vec2 value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Mouse}, "Only mouse joints have a target."));
-    b2MouseJoint_SetTarget(joint, Box2DConverter::toMeters(value, getScale()));
+    b2Joint_SetLocalFrameA(joint, {.p = b2Body_GetLocalPoint(b2Joint_GetBodyA(joint), Box2DConverter::toMeters(value, getScale())), .q = b2Rot_identity});
     b2Joint_WakeBodies(joint);
 }
 
 float Joint::getAngle() const {
-    return b2RevoluteJoint_GetAngle(b2LoadJointId(checkedId({Type::Revolute}, "Only revolute joints have an angle.")));
+    return b2RevoluteJoint_GetCurrentAngle(b2LoadJointId(checkedId({Type::Revolute}, "Only revolute joints have an angle.")));
 }
 
 float Joint::getTranslation() const {
-    return b2PrismaticJoint_GetTranslation(b2LoadJointId(checkedId({Type::Prismatic}, "Only prismatic joints have a translation."))) * getScale();
+    return b2PrismaticJoint_GetCurrentTranslation(b2LoadJointId(checkedId({Type::Prismatic}, "Only prismatic joints have a translation."))) * getScale();
 }
 
 float Joint::getCurrentLength() const {
@@ -253,7 +241,7 @@ float Joint::getLower() const {
     case Type::Wheel:
         return b2WheelJoint_GetLowerLimit(joint) * getScale();
     default:
-        return b2DistanceJoint_GetMinLength(joint) * getScale();
+        return b2DistanceJoint_GetLowerLimit(joint) * getScale();
     }
 }
 
@@ -267,7 +255,7 @@ float Joint::getUpper() const {
     case Type::Wheel:
         return b2WheelJoint_GetUpperLimit(joint) * getScale();
     default:
-        return b2DistanceJoint_GetMaxLength(joint) * getScale();
+        return b2DistanceJoint_GetUpperLimit(joint) * getScale();
     }
 }
 
@@ -290,7 +278,7 @@ void Joint::setLimits(float lower, float upper) {
         b2WheelJoint_SetLimits(joint, lower / getScale(), upper / getScale());
         break;
     default:
-        b2DistanceJoint_SetLengthRange(joint, std::max(lower / getScale(), Box2DConverter::kLinearSlop), std::max(upper / getScale(), Box2DConverter::kLinearSlop));
+        b2DistanceJoint_SetLimits(joint, std::max(lower / getScale(), Box2DConverter::kLinearSlop), std::max(upper / getScale(), Box2DConverter::kLinearSlop));
         break;
     }
     b2Joint_WakeBodies(joint);
@@ -333,13 +321,13 @@ float Joint::getMotorSpeed() const {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Revolute, Type::Prismatic, Type::Wheel, Type::Distance}, "Only revolute, prismatic, wheel and distance joints have a motor speed."));
     switch (getType()) {
     case Type::Revolute:
-        return b2RevoluteJoint_GetMotorSpeed(joint);
+        return b2RevoluteJoint_GetTargetMotorSpeed(joint);
     case Type::Prismatic:
-        return b2PrismaticJoint_GetMotorSpeed(joint) * getScale();
+        return b2PrismaticJoint_GetTargetMotorSpeed(joint) * getScale();
     case Type::Wheel:
-        return b2WheelJoint_GetMotorSpeed(joint);
+        return b2WheelJoint_GetTargetMotorSpeed(joint);
     default:
-        return b2DistanceJoint_GetMotorSpeed(joint) * getScale();
+        return b2DistanceJoint_GetTargetMotorSpeed(joint) * getScale();
     }
 }
 
@@ -347,16 +335,16 @@ void Joint::setMotorSpeed(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Revolute, Type::Prismatic, Type::Wheel, Type::Distance}, "Only revolute, prismatic, wheel and distance joints have a motor speed."));
     switch (getType()) {
     case Type::Revolute:
-        b2RevoluteJoint_SetMotorSpeed(joint, value);
+        b2RevoluteJoint_SetTargetMotorSpeed(joint, value);
         break;
     case Type::Prismatic:
-        b2PrismaticJoint_SetMotorSpeed(joint, value / getScale());
+        b2PrismaticJoint_SetTargetMotorSpeed(joint, value / getScale());
         break;
     case Type::Wheel:
-        b2WheelJoint_SetMotorSpeed(joint, value);
+        b2WheelJoint_SetTargetMotorSpeed(joint, value);
         break;
     default:
-        b2DistanceJoint_SetMotorSpeed(joint, value / getScale());
+        b2DistanceJoint_SetTargetMotorSpeed(joint, value / getScale());
         break;
     }
 
@@ -371,10 +359,8 @@ float Joint::getMaxMotorForce() const {
         return b2PrismaticJoint_GetMaxMotorForce(joint) * getScale();
     case Type::Distance:
         return b2DistanceJoint_GetMaxMotorForce(joint) * getScale();
-    case Type::Mouse:
-        return b2MouseJoint_GetMaxForce(joint) * getScale();
     default:
-        return b2MotorJoint_GetMaxForce(joint) * getScale();
+        return b2MotorJoint_GetMaxSpringForce(joint) * getScale();
     }
 }
 
@@ -392,10 +378,11 @@ void Joint::setMaxMotorForce(float value) {
         b2DistanceJoint_SetMaxMotorForce(joint, force);
         break;
     case Type::Mouse:
-        b2MouseJoint_SetMaxForce(joint, force);
+        b2MotorJoint_SetMaxSpringForce(joint, force);
+        b2MotorJoint_SetMaxVelocityTorque(joint, World::getMouseTurnFriction(b2StoreBodyId(b2Joint_GetBodyB(joint)), force));
         break;
     default:
-        b2MotorJoint_SetMaxForce(joint, force);
+        b2MotorJoint_SetMaxSpringForce(joint, force);
         break;
     }
     b2Joint_WakeBodies(joint);
@@ -410,7 +397,7 @@ float Joint::getMaxMotorTorque() const {
     case Type::Wheel:
         return b2WheelJoint_GetMaxMotorTorque(joint) * scale;
     default:
-        return b2MotorJoint_GetMaxTorque(joint) * scale;
+        return b2MotorJoint_GetMaxSpringTorque(joint) * scale;
     }
 }
 
@@ -428,7 +415,7 @@ void Joint::setMaxMotorTorque(float value) {
         b2WheelJoint_SetMaxMotorTorque(joint, torque);
         break;
     default:
-        b2MotorJoint_SetMaxTorque(joint, torque);
+        b2MotorJoint_SetMaxSpringTorque(joint, torque);
         break;
     }
     b2Joint_WakeBodies(joint);
@@ -436,16 +423,16 @@ void Joint::setMaxMotorTorque(float value) {
 
 float Joint::getMotorForce() const {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Prismatic, Type::Distance}, "Only prismatic and distance joints report a motor force."));
-    return (getType() == Type::Prismatic ? b2PrismaticJoint_GetMotorForce(joint) : b2DistanceJoint_GetMotorForce(joint)) * getScale();
+    return (getType() == Type::Prismatic ? b2PrismaticJoint_GetCurrentMotorForce(joint) : b2DistanceJoint_GetCurrentMotorForce(joint)) * getScale();
 }
 
 float Joint::getMotorTorque() const {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Revolute, Type::Wheel}, "Only revolute and wheel joints report a motor torque."));
-    return (getType() == Type::Revolute ? b2RevoluteJoint_GetMotorTorque(joint) : b2WheelJoint_GetMotorTorque(joint)) * getScale() * getScale();
+    return (getType() == Type::Revolute ? b2RevoluteJoint_GetCurrentMotorTorque(joint) : b2WheelJoint_GetCurrentMotorTorque(joint)) * getScale() * getScale();
 }
 
 bool Joint::isSpringEnabled() const {
-    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse and weld joints have a spring."));
+    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
     switch (getType()) {
     case Type::Distance:
         return b2DistanceJoint_IsSpringEnabled(joint);
@@ -480,7 +467,7 @@ void Joint::setSpringEnabled(bool value) {
 }
 
 float Joint::getHertz() const {
-    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse and weld joints have a spring."));
+    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
     switch (getType()) {
     case Type::Distance:
         return b2DistanceJoint_GetSpringHertz(joint);
@@ -491,14 +478,15 @@ float Joint::getHertz() const {
     case Type::Wheel:
         return b2WheelJoint_GetSpringHertz(joint);
     case Type::Mouse:
-        return b2MouseJoint_GetSpringHertz(joint);
+    case Type::Motor:
+        return b2MotorJoint_GetLinearHertz(joint);
     default:
         return b2WeldJoint_GetLinearHertz(joint);
     }
 }
 
 void Joint::setHertz(float value) {
-    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse and weld joints have a spring."));
+    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint spring needs a finite stiffness and damping ratio of zero or more.");
     }
@@ -516,7 +504,11 @@ void Joint::setHertz(float value) {
         b2WheelJoint_SetSpringHertz(joint, value);
         break;
     case Type::Mouse:
-        b2MouseJoint_SetSpringHertz(joint, value);
+        b2MotorJoint_SetLinearHertz(joint, value);
+        break;
+    case Type::Motor:
+        b2MotorJoint_SetLinearHertz(joint, value);
+        b2MotorJoint_SetAngularHertz(joint, value);
         break;
     default:
         b2WeldJoint_SetLinearHertz(joint, value);
@@ -527,7 +519,7 @@ void Joint::setHertz(float value) {
 }
 
 float Joint::getDampingRatio() const {
-    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse and weld joints have a spring."));
+    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
     switch (getType()) {
     case Type::Distance:
         return b2DistanceJoint_GetSpringDampingRatio(joint);
@@ -538,14 +530,15 @@ float Joint::getDampingRatio() const {
     case Type::Wheel:
         return b2WheelJoint_GetSpringDampingRatio(joint);
     case Type::Mouse:
-        return b2MouseJoint_GetSpringDampingRatio(joint);
+    case Type::Motor:
+        return b2MotorJoint_GetLinearDampingRatio(joint);
     default:
         return b2WeldJoint_GetLinearDampingRatio(joint);
     }
 }
 
 void Joint::setDampingRatio(float value) {
-    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse and weld joints have a spring."));
+    const b2JointId joint = b2LoadJointId(checkedId({Type::Distance, Type::Revolute, Type::Prismatic, Type::Wheel, Type::Mouse, Type::Motor, Type::Weld}, "Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring."));
     if (!std::isfinite(value) || value < 0.0F) {
         throw std::invalid_argument("A joint spring needs a finite stiffness and damping ratio of zero or more.");
     }
@@ -563,7 +556,11 @@ void Joint::setDampingRatio(float value) {
         b2WheelJoint_SetSpringDampingRatio(joint, value);
         break;
     case Type::Mouse:
-        b2MouseJoint_SetSpringDampingRatio(joint, value);
+        b2MotorJoint_SetLinearDampingRatio(joint, value);
+        break;
+    case Type::Motor:
+        b2MotorJoint_SetLinearDampingRatio(joint, value);
+        b2MotorJoint_SetAngularDampingRatio(joint, value);
         break;
     default:
         b2WeldJoint_SetLinearDampingRatio(joint, value);
@@ -574,7 +571,7 @@ void Joint::setDampingRatio(float value) {
 }
 
 float Joint::getLength() const {
-    return b2DistanceJoint_GetLength(b2LoadJointId(checkedId({Type::Distance}, "Only distance joints have a length."))) * getScale();
+    return b2DistanceJoint_GetRestLength(b2LoadJointId(checkedId({Type::Distance}, "Only distance joints have a length."))) * getScale();
 }
 
 void Joint::setLength(float value) {
@@ -582,7 +579,7 @@ void Joint::setLength(float value) {
     if (!(value / getScale() >= Box2DConverter::kLinearSlop)) {
         throw std::invalid_argument("A distance joint needs a length of at least 0.005 meters.");
     }
-    b2DistanceJoint_SetLength(joint, value / getScale());
+    b2DistanceJoint_SetRestLength(joint, value / getScale());
     b2Joint_WakeBodies(joint);
 }
 
@@ -606,23 +603,25 @@ void Joint::setTargetTranslation(float value) {
     b2Joint_WakeBodies(joint);
 }
 
+// The offsets of a motor joint are the frame of the joint on the first body, which the spring pulls the origin of the second body toward.
 math::Vec2 Joint::getLinearOffset() const {
-    return Box2DConverter::toPixels(b2MotorJoint_GetLinearOffset(b2LoadJointId(checkedId({Type::Motor}, "Only motor joints have offsets."))), getScale());
+    return Box2DConverter::toPixels(b2Joint_GetLocalFrameA(b2LoadJointId(checkedId({Type::Motor}, "Only motor joints have offsets."))).p, getScale());
 }
 
 void Joint::setLinearOffset(math::Vec2 value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Motor}, "Only motor joints have offsets."));
-    b2MotorJoint_SetLinearOffset(joint, Box2DConverter::toMeters(value, getScale()));
+    b2Joint_SetLocalFrameA(joint, {.p = Box2DConverter::toMeters(value, getScale()), .q = b2Joint_GetLocalFrameA(joint).q});
     b2Joint_WakeBodies(joint);
 }
 
 float Joint::getAngularOffset() const {
-    return b2MotorJoint_GetAngularOffset(b2LoadJointId(checkedId({Type::Motor}, "Only motor joints have offsets.")));
+    const b2Rot rotation = b2Joint_GetLocalFrameA(b2LoadJointId(checkedId({Type::Motor}, "Only motor joints have offsets."))).q;
+    return std::atan2(rotation.s, rotation.c);
 }
 
 void Joint::setAngularOffset(float value) {
     const b2JointId joint = b2LoadJointId(checkedId({Type::Motor}, "Only motor joints have offsets."));
-    b2MotorJoint_SetAngularOffset(joint, value);
+    b2Joint_SetLocalFrameA(joint, {.p = b2Joint_GetLocalFrameA(joint).p, .q = {.c = std::cos(value), .s = std::sin(value)}});
     b2Joint_WakeBodies(joint);
 }
 

@@ -123,7 +123,7 @@ bool Mover::isWalkable(math::Vec2 normal) const noexcept {
 void Mover::gatherPlanes(bool flattenSteep) {
     planeCount = 0;
     const b2Capsule capsule = Query::capsule(*this, position);
-    b2World_CollideMover(b2LoadWorldId(world.getHandle()), &capsule, Box2DConverter::toQueryFilter(options.filter), &Query::addPlane, this);
+    b2World_CollideMover(b2LoadWorldId(world.getHandle()), b2Pos_zero, &capsule, Box2DConverter::toQueryFilter(options.filter), &Query::addPlane, this);
     if (!flattenSteep) {
         return;
     }
@@ -138,7 +138,7 @@ Mover::Probe Mover::cast(math::Vec2 from, math::Vec2 translation) const {
     Query::Search search{.mover = this, .motion = translation};
     const b2Capsule capsule = Query::capsule(*this, from);
     const b2ShapeProxy proxy = b2MakeProxy(&capsule.center1, 2, capsule.radius);
-    b2World_CastShape(b2LoadWorldId(world.getHandle()), &proxy, Box2DConverter::toMeters(translation, scale), Box2DConverter::toQueryFilter(options.filter), &Query::addHit, &search);
+    b2World_CastShape(b2LoadWorldId(world.getHandle()), b2Pos_zero, &proxy, Box2DConverter::toMeters(translation, scale), Box2DConverter::toQueryFilter(options.filter), &Query::addHit, &search);
     return search.probe;
 }
 
@@ -162,7 +162,7 @@ math::Vec2 Mover::slide(math::Vec2 delta, bool flattenSteep) {
             solverPlanes[index] = {.plane = {Query::meters(planes[index].normal), planes[index].offset}, .pushLimit = FLT_MAX, .clipVelocity = true};
         }
         const b2PlaneSolverResult solved = b2SolvePlanes(Box2DConverter::toMeters(target - position, scale), solverPlanes.data(), static_cast<int>(planeCount));
-        const math::Vec2 translation = Box2DConverter::toPixels(solved.translation, scale);
+        const math::Vec2 translation = Box2DConverter::toPixels(solved.delta, scale);
         const math::Vec2 step = translation * cast(position, translation).fraction;
         position += step;
         if (step.getLength() < kTolerance * scale) {
@@ -228,7 +228,7 @@ void Mover::push(math::Vec2 delta) {
         }
         // The mover pushes at the height of its middle, so a crate slides instead of tipping over its foot.
         const b2Vec2 direction = Query::meters(-plane.normal);
-        const b2Vec2 point = b2Body_GetWorldCenterOfMass(pushed);
+        const b2Vec2 point = b2Body_GetWorldCenter(pushed);
         const float missing = into / seconds - b2Dot(b2Body_GetLinearVelocity(pushed), direction);
         if (missing > 0.0F) {
             const float impulse = std::min(b2Body_GetMass(pushed) * missing, options.pushForce / scale * seconds);

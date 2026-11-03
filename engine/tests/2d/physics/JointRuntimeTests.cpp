@@ -139,6 +139,11 @@ TEST_F(JointRuntimeTest, MotorAndMouseJointsChangeWhileRunning) {
     simulate(2.0F);
     EXPECT_NEAR(puppet.getPosition().y, -100.0F, 2.0F);
     EXPECT_NEAR(puppet.getRotation(), 0.5F, 0.05F);
+    EXPECT_TRUE(motor.isSpringEnabled());
+    motor.setHertz(4.0F);
+    motor.setDampingRatio(0.5F);
+    EXPECT_FLOAT_EQ(motor.getHertz(), 4.0F);
+    EXPECT_FLOAT_EQ(motor.getDampingRatio(), 0.5F);
 
     Body crate = box({400.0F, 0.0F});
     Joint drag = world.createJoint(Joint::Type::Mouse, anchor, crate, {.anchorB = {400.0F, 0.0F}});
@@ -147,6 +152,9 @@ TEST_F(JointRuntimeTest, MotorAndMouseJointsChangeWhileRunning) {
     drag.setTarget({400.0F, -200.0F});
     simulate(1.0F);
     EXPECT_NEAR(crate.getPosition().y, -200.0F, 5.0F);
+    EXPECT_EQ(drag.getType(), Joint::Type::Mouse);
+    EXPECT_EQ(motor.getType(), Joint::Type::Motor);
+    EXPECT_NEAR(drag.getTarget().y, -200.0F, 1e-3F);
     drag.setConstraintHertz(30.0F);
     drag.setConstraintDampingRatio(1.0F);
     EXPECT_FLOAT_EQ(drag.getConstraintHertz(), 30.0F);

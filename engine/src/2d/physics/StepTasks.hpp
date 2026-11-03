@@ -4,7 +4,6 @@
 
 #include <atomic>
 #include <condition_variable>
-#include <cstdint>
 #include <memory>
 #include <mutex>
 #include <vector>
@@ -15,10 +14,10 @@ class JobSystem;
 
 namespace haylen::physics2d {
 
-// Runs the tasks of a Box2D step on the job system. Each task splits into at most one chunk per worker, and the chunk index is the worker index Box2D receives, so no two chunks of a task share per-worker memory. The stepping thread finishes every task by running the chunks no worker took yet, so a step never waits behind other work queued on the pool. Waking workers costs more than a small step saves, so a step of a small world, and every task of one chunk, runs on the stepping thread alone.
+// Runs the tasks of a Box2D step on the job system. Box2D splits its work into one task per worker itself, so each task goes to the pool whole. The stepping thread finishes a task by running it when no worker took it yet, so a step never waits behind other work queued on the pool. Waking workers costs more than a small step saves, so the tasks of a step of a small world wait for the stepping thread to finish them. They never run inside the call that enqueues them, because the solver tasks of the workers wait for the one the stepping thread runs.
 class StepTasks final {
   public:
-    StepTasks(core::JobSystem& jobSystem, int workerCount) noexcept;
+    explicit StepTasks(core::JobSystem& jobSystem) noexcept;
 
     StepTasks(const StepTasks&) = delete;
     StepTasks& operator=(const StepTasks&) = delete;
@@ -28,31 +27,31 @@ class StepTasks final {
         parallel = value;
     }
 
-    static void* enqueue(b2TaskCallback* callback, int itemCount, int minRange, void* taskContext, void* userContext);
+    static void* enqueue(b2TaskCallbackFcn* callback, void* taskContext, void* userContext);
     static void finish(void* userTask, void* userContext);
 
   private:
-    // A worker touches the callback only after it claimed a chunk, and the stepping thread waits for every claimed chunk, so a worker that starts after the task finished finds nothing to claim.
+    // Whoever claims a task first runs it, a worker or the stepping thread, and the stepping thread waits for a task a worker claimed. A task that never went to the pool serves the next steps again, so a step of a small world allocates no task once the first ones exist.
     struct Task {
-        b2TaskCallback* callback = nullptr;
+        b2TaskCallbackFcn* callback = nullptr;
         void* context = nullptr;
-        int itemCount = 0;
-        int chunkSize = 0;
-        int chunkCount = 0;
-        std::atomic<int> nextChunk = 0;
-        std::atomic<int> finishedChunks = 0;
+        bool posted = false;
+        std::atomic<bool> claimed = false;
+        bool done = false;
         std::mutex mutex;
         std::condition_variable finished;
 
-        void runChunks();
+        void run();
     };
 
+    [[nodiscard]] std::shared_ptr<Task> takeTask();
+
     core::JobSystem& jobs;
-    int workers;
     bool parallel = false;
 
-    // Box2D enqueues and finishes every task on the stepping thread, so only that thread touches this list.
+    // Box2D enqueues and finishes every task on the stepping thread, so only that thread touches these lists.
     std::vector<std::shared_ptr<Task>> running;
+    std::vector<std::shared_ptr<Task>> idle;
 };
 
 } // namespace haylen::physics2d

@@ -154,6 +154,29 @@ TEST_F(AssemblyTest, ConveyorsCarryBodiesAlongTheirSurface) {
     EXPECT_LT(crate.getVelocity().x, -100.0F);
 }
 
+TEST_F(AssemblyTest, MaterialsReachBodiesAtRest) {
+    // A crate that rests on a still belt starts moving once the belt runs, and slides down a ramp once the ramp turns to ice, although nothing moved between them.
+    Body belt = world.createBody({.type = Body::Type::Static, .position = {0.0F, 0.0F}});
+    Shape surface = belt.addBox({2000.0F, 10.0F}, {.friction = 0.8F});
+    Body crate = world.createBody({.position = {0.0F, -20.0F}, .sleepEnabled = false});
+    crate.addBox({20.0F, 20.0F});
+
+    Body ramp = world.createBody({.type = Body::Type::Static, .position = {0.0F, 400.0F}, .rotation = 0.3F});
+    Shape slope = ramp.addBox({400.0F, 10.0F}, {.friction = 1.0F});
+    Body block = world.createBody({.position = {6.0F, 380.0F}, .rotation = 0.3F, .sleepEnabled = false});
+    block.addBox({20.0F, 20.0F}, {.friction = 1.0F});
+    simulate(1.0F);
+    EXPECT_NEAR(crate.getVelocity().x, 0.0F, 1.0F);
+    EXPECT_LT(block.getVelocity().getLength(), 1.0F);
+
+    surface.setTangentSpeed(120.0F);
+    slope.setFriction(0.0F);
+    block.getShapes()[0].setFriction(0.0F);
+    simulate(1.0F);
+    EXPECT_NEAR(crate.getVelocity().x, 120.0F, 10.0F);
+    EXPECT_GT(block.getVelocity().getLength(), 100.0F);
+}
+
 TEST_F(AssemblyTest, RopesWithALengthLimitHoldHeavyLoads) {
     // A load a hundred times the mass of a segment stretches a plain chain, and the length limit holds it at the length of the rope.
     for (const bool limited : {false, true}) {

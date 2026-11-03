@@ -119,7 +119,7 @@ class Joint final {
     [[nodiscard]] float getMotorForce() const;
     [[nodiscard]] float getMotorTorque() const;
 
-    // Distance, revolute, prismatic and wheel joints have springs that can be switched on, and mouse and weld joints are always springy, where a weld joint with 0 hertz is rigid.
+    // Distance, revolute, prismatic and wheel joints have springs that can be switched on, and mouse, motor and weld joints are always springy, where a weld joint with 0 hertz is rigid. The spring of a motor joint drives both its offset and its angle.
     [[nodiscard]] bool isSpringEnabled() const;
     void setSpringEnabled(bool value);
     [[nodiscard]] float getHertz() const;

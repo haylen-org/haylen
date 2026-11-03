@@ -156,7 +156,7 @@ void ForceField::gather() {
     const math::Rect bounds = getBounds();
     const b2AABB box{Box2DConverter::toMeters(bounds.getMin(), scale), Box2DConverter::toMeters(bounds.getMax(), scale)};
     // clang-format off
-    b2World_OverlapAABB(b2LoadWorldId(world.getHandle()), box, b2DefaultQueryFilter(), [](b2ShapeId shape, void* context) {
+    b2World_OverlapAABB(b2LoadWorldId(world.getHandle()), b2Pos_zero, box, b2DefaultQueryFilter(), [](b2ShapeId shape, void* context) {
         auto& field = *static_cast<ForceField*>(context);
         const b2BodyId body = b2Shape_GetBody(shape);
         if (!b2Shape_IsSensor(shape) && b2Body_GetType(body) == b2_dynamicBody && Box2DConverter::collides(field.options.filter, b2Shape_GetFilter(shape))) {

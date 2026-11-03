@@ -1,0 +1,26 @@
+--- a/src/geometry.c
++++ b/src/geometry.c
+@@ -540,6 +540,23 @@
+ 
+ bool b2PointInPolygon( const b2Polygon* shape, b2Vec2 point )
+ {
++	// A point behind every edge is inside, which the distance below misses for a point on a diagonal, where its search direction fades to round-off.
++	float separation = -FLT_MAX;
++	for ( int i = 0; i < shape->count; ++i )
++	{
++		separation = b2MaxFloat( separation, b2Dot( shape->normals[i], b2Sub( point, shape->vertices[i] ) ) );
++	}
++
++	if ( separation <= 0.0f )
++	{
++		return true;
++	}
++
++	if ( separation > shape->radius )
++	{
++		return false;
++	}
++
+ 	b2DistanceInput input = { 0 };
+ 	input.proxyA = b2MakeProxy( shape->vertices, shape->count, 0.0f );
+ 	input.proxyB = b2MakeProxy( &point, 1, 0.0f );

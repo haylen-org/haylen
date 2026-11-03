@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <bit>
+#include <cfloat>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
@@ -22,15 +23,24 @@ const float World::kRevoluteLimit = 0.99F * math::Math::kPi;
 debug::ObjectCounter& World::bodyCounter = *new debug::ObjectCounter("PhysicsBody", debug::ObjectCounter::Kind::Native);
 debug::ObjectCounter& World::contactCounter = *new debug::ObjectCounter("PhysicsContact", debug::ObjectCounter::Kind::Native);
 
-// Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds. It may run on several threads at once, so it only reads the platforms, the dropping bodies and the standing contacts, which change between steps, and the velocities of bodies, which stay still while Box2D collides.
+// Decides in the pre-solve callback of Box2D whether a contact with a one-way platform holds, and in its pre-continuous callback whether a fast body stops on one. They may run on several threads at once, so they only read the platforms, the dropping bodies and the standing contacts, which change between steps, and the bodies, which stay still while Box2D collides.
 class World::OneWayFilter final {
   public:
-    static bool preSolve(b2ShapeId shapeA, b2ShapeId shapeB, b2Manifold* manifold, void* context) {
+    // The manifold normal points from the first shape to the second, and a contact that does not hold loses its points.
+    static void preSolve(b2ShapeId shapeA, b2ShapeId shapeB, b2Manifold* manifold, void* context) {
         const auto& world = *static_cast<const World*>(context);
         const math::Vec2 normal{manifold->normal.x, manifold->normal.y};
+        const Touch touch = deepest(shapeA, *manifold);
+        if (!holds(world, shapeA, shapeB, normal, touch) || !holds(world, shapeB, shapeA, -normal, touch)) {
+            manifold->pointCount = 0;
+        }
+    }
 
-        // The manifold normal points from the first shape to the second.
-        return holds(world, shapeA, shapeB, normal, *manifold) && holds(world, shapeB, shapeA, -normal, *manifold);
+    // A fast body reaches the surface it hits, so it stands on a platform it falls on from the open side.
+    static bool preContinuous(b2ShapeId shapeA, b2ShapeId shapeB, b2Pos point, b2Vec2 normal, void* context) {
+        const auto& world = *static_cast<const World*>(context);
+        const Touch touch{.point = point, .separation = 0.0F};
+        return holds(world, shapeA, shapeB, {normal.x, normal.y}, touch) && holds(world, shapeB, shapeA, {-normal.x, -normal.y}, touch);
     }
 
     // Lists the shapes that touch a one-way platform after a step, which only those the platform held do, sorted for the lookups of the next step.
@@ -63,8 +73,26 @@ class World::OneWayFilter final {
     }
 
   private:
+    // The deepest point of a contact in world space and how far the shapes overlap there, negative while they do.
+    struct Touch {
+        b2Vec2 point{};
+        float separation = 0.0F;
+    };
+
+    // Box2D measures the points of a manifold it has not solved yet from the origin of the body of the first shape.
+    [[nodiscard]] static Touch deepest(b2ShapeId shapeA, const b2Manifold& manifold) {
+        Touch touch{.point = manifold.points[0].anchorA, .separation = 0.0F};
+        for (int index = 0; index < manifold.pointCount; ++index) {
+            if (manifold.points[index].separation < touch.separation) {
+                touch = {.point = manifold.points[index].anchorA, .separation = manifold.points[index].separation};
+            }
+        }
+        touch.point = b2Add(b2Body_GetPosition(b2Shape_GetBody(shapeA)), touch.point);
+        return touch;
+    }
+
     // Returns whether a contact whose normal points from the platform to the other shape holds. It holds when the normal leans toward the open side of the platform and the other shape stood on the platform in the last step or was outside it at the start of this one, which the separation and the speed between them tell.
-    static bool holds(const World& world, b2ShapeId platform, b2ShapeId other, math::Vec2 normal, const b2Manifold& manifold) {
+    static bool holds(const World& world, b2ShapeId platform, b2ShapeId other, math::Vec2 normal, const Touch& touch) {
         const auto found = world.oneWayShapes.find(b2StoreShapeId(platform));
         if (found == world.oneWayShapes.end()) {
             return true;
@@ -76,22 +104,13 @@ class World::OneWayFilter final {
         if (std::binary_search(world.oneWayFilter->standing.begin(), world.oneWayFilter->standing.end(), std::pair{b2StoreShapeId(platform), b2StoreShapeId(other)})) {
             return true;
         }
-
-        float separation = 0.0F;
-        b2Vec2 point = manifold.points[0].point;
-        for (int index = 0; index < manifold.pointCount; ++index) {
-            if (manifold.points[index].separation < separation) {
-                separation = manifold.points[index].separation;
-                point = manifold.points[index].point;
-            }
-        }
-        if (separation >= -kOneWayDepth) {
+        if (touch.separation >= -kOneWayDepth) {
             return true;
         }
 
-        const b2Vec2 relative = b2Sub(b2Body_GetWorldPointVelocity(otherBody, point), b2Body_GetWorldPointVelocity(b2Shape_GetBody(platform), point));
+        const b2Vec2 relative = b2Sub(b2Body_GetWorldPointVelocity(otherBody, touch.point), b2Body_GetWorldPointVelocity(b2Shape_GetBody(platform), touch.point));
         const float approach = -(relative.x * normal.x + relative.y * normal.y);
-        return separation + approach * world.lastStep >= -kOneWayDepth;
+        return touch.separation + approach * world.lastStep >= -kOneWayDepth;
     }
 
     std::vector<std::pair<std::uint64_t, std::uint64_t>> standing;
@@ -114,7 +133,7 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
     def.contactHertz = settings.contactHertz;
     def.contactDampingRatio = settings.contactDampingRatio;
     if (settings.contactPushSpeed) {
-        def.maxContactPushSpeed = *settings.contactPushSpeed / pixelsPerMeter;
+        def.contactSpeed = *settings.contactPushSpeed / pixelsPerMeter;
     }
     if (settings.maxSpeed) {
         def.maximumLinearSpeed = *settings.maxSpeed / pixelsPerMeter;
@@ -127,15 +146,16 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
     }
     contactHertz = def.contactHertz;
     contactDampingRatio = def.contactDampingRatio;
-    contactPushSpeed = def.maxContactPushSpeed * pixelsPerMeter;
+    contactPushSpeed = def.contactSpeed * pixelsPerMeter;
 
 #if defined(__EMSCRIPTEN__)
     // The web runs everything on one thread.
     threads = 1;
 #else
+    // Box2D steps a world without task callbacks on threads of its own, so a world of one thread gives none and Box2D steps it on the calling thread.
     if (threads > 1) {
         threads = std::min(threads, kMaxThreads);
-        tasks = std::make_unique<StepTasks>(*jobSystem, threads);
+        tasks = std::make_unique<StepTasks>(*jobSystem);
         def.workerCount = threads;
         def.enqueueTask = &StepTasks::enqueue;
         def.finishTask = &StepTasks::finish;
@@ -148,7 +168,7 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
         throw std::runtime_error("Too many physics worlds exist at once to create another one.");
     }
     handle = b2StoreWorldId(world);
-    b2World_SetPreSolveCallback(world, &OneWayFilter::preSolve, this);
+    b2World_SetPreSolveCallback(world, &OneWayFilter::preSolve, &OneWayFilter::preContinuous, this);
 }
 
 World::~World() {
@@ -166,7 +186,7 @@ void World::destroy() {
     events = {};
     jointBreaks.clear();
     destroyedBodies.clear();
-    breakLimits.clear();
+    mouseJoints.clear();
     chainTies.clear();
     motions.clear();
     oneWayShapes.clear();
@@ -197,7 +217,7 @@ Body World::createBody(const Body::Options& options) {
     def.linearDamping = Box2DConverter::toDamping(options.linearDamping);
     def.angularDamping = Box2DConverter::toDamping(options.angularDamping);
     def.gravityScale = options.gravityScale;
-    def.fixedRotation = options.fixedRotation;
+    def.motionLocks.angularZ = options.fixedRotation;
     def.isBullet = options.bullet;
     def.allowFastRotation = options.fastRotation;
     def.enableSleep = options.sleepEnabled;
@@ -229,9 +249,20 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
     const b2BodyId b = b2LoadBodyId(second.getId());
     const b2Vec2 anchorA = Box2DConverter::toMeters(options.anchorA, pixelsPerMeter);
     const b2Vec2 anchorB = Box2DConverter::toMeters(options.anchorB, pixelsPerMeter);
-    const float relativeAngle = b2RelativeAngle(b2Body_GetRotation(b), b2Body_GetRotation(a));
     const float maxForce = options.maxMotorForce / pixelsPerMeter;
     const float maxTorque = options.maxMotorTorque / (pixelsPerMeter * pixelsPerMeter);
+
+    // Both frames sit on the anchor, turned along the axis in the world, so every joint measures its angle from the pose the bodies have now, and the x axis of the first frame is the slide axis of prismatic and wheel joints.
+    const math::Vec2 direction = type == Joint::Type::Prismatic || type == Joint::Type::Wheel ? options.axis.getNormalized() : math::Vec2{1.0F, 0.0F};
+    const b2Vec2 axis = b2Body_GetLocalVector(a, {direction.x, direction.y});
+    b2JointDef base = b2DefaultFilterJointDef().base;
+    base.bodyIdA = a;
+    base.bodyIdB = b;
+    base.localFrameA = {.p = b2Body_GetLocalPoint(a, anchorA), .q = {.c = axis.x, .s = axis.y}};
+    base.localFrameB = {.p = b2Body_GetLocalPoint(b, anchorA), .q = b2InvMulRot(b2Body_GetRotation(b), b2MulRot(b2Body_GetRotation(a), base.localFrameA.q))};
+    base.forceThreshold = options.breakForce ? *options.breakForce / pixelsPerMeter : FLT_MAX;
+    base.torqueThreshold = options.breakTorque ? *options.breakTorque / (pixelsPerMeter * pixelsPerMeter) : FLT_MAX;
+    base.collideConnected = options.collideConnected;
     b2JointId joint{};
 
     switch (type) {
@@ -241,10 +272,8 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
             throw std::invalid_argument("A distance joint needs a length of at least 0.005 meters.");
         }
         b2DistanceJointDef def = b2DefaultDistanceJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
-        def.localAnchorB = b2Body_GetLocalPoint(b, anchorB);
+        def.base = base;
+        def.base.localFrameB.p = b2Body_GetLocalPoint(b, anchorB);
         def.length = length;
         def.enableSpring = options.enableSpring;
         def.hertz = options.hertz;
@@ -255,17 +284,12 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.enableMotor = options.enableMotor;
         def.motorSpeed = options.motorSpeed / pixelsPerMeter;
         def.maxMotorForce = maxForce;
-        def.collideConnected = options.collideConnected;
         joint = b2CreateDistanceJoint(world, &def);
         break;
     }
     case Joint::Type::Revolute: {
         b2RevoluteJointDef def = b2DefaultRevoluteJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
-        def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
-        def.referenceAngle = relativeAngle;
+        def.base = base;
         def.enableLimit = options.enableLimit;
         def.lowerAngle = options.lower;
         def.upperAngle = options.upper;
@@ -276,18 +300,12 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.hertz = options.hertz;
         def.dampingRatio = options.dampingRatio;
         def.targetAngle = options.targetAngle;
-        def.collideConnected = options.collideConnected;
         joint = b2CreateRevoluteJoint(world, &def);
         break;
     }
     case Joint::Type::Prismatic: {
         b2PrismaticJointDef def = b2DefaultPrismaticJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
-        def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
-        def.localAxisA = b2Body_GetLocalVector(a, b2Normalize(b2Vec2{options.axis.x, options.axis.y}));
-        def.referenceAngle = relativeAngle;
+        def.base = base;
         def.enableLimit = options.enableLimit;
         def.lowerTranslation = options.lower / pixelsPerMeter;
         def.upperTranslation = options.upper / pixelsPerMeter;
@@ -298,32 +316,22 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.hertz = options.hertz;
         def.dampingRatio = options.dampingRatio;
         def.targetTranslation = options.targetTranslation / pixelsPerMeter;
-        def.collideConnected = options.collideConnected;
         joint = b2CreatePrismaticJoint(world, &def);
         break;
     }
     case Joint::Type::Weld: {
         b2WeldJointDef def = b2DefaultWeldJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
-        def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
-        def.referenceAngle = relativeAngle;
+        def.base = base;
         def.linearHertz = options.hertz;
         def.angularHertz = options.hertz;
         def.linearDampingRatio = options.dampingRatio;
         def.angularDampingRatio = options.dampingRatio;
-        def.collideConnected = options.collideConnected;
         joint = b2CreateWeldJoint(world, &def);
         break;
     }
     case Joint::Type::Wheel: {
         b2WheelJointDef def = b2DefaultWheelJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.localAnchorA = b2Body_GetLocalPoint(a, anchorA);
-        def.localAnchorB = b2Body_GetLocalPoint(b, anchorA);
-        def.localAxisA = b2Body_GetLocalVector(a, b2Normalize(b2Vec2{options.axis.x, options.axis.y}));
+        def.base = base;
         def.enableSpring = options.enableSpring;
         def.hertz = options.hertz;
         def.dampingRatio = options.dampingRatio;
@@ -333,47 +341,53 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
         def.enableMotor = options.enableMotor;
         def.motorSpeed = options.motorSpeed;
         def.maxMotorTorque = maxTorque;
-        def.collideConnected = options.collideConnected;
         joint = b2CreateWheelJoint(world, &def);
         break;
     }
     case Joint::Type::Mouse: {
-        b2MouseJointDef def = b2DefaultMouseJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.target = anchorB;
-        def.hertz = options.hertz > 0.0F ? options.hertz : def.hertz;
-        def.dampingRatio = options.dampingRatio > 0.0F ? options.dampingRatio : def.dampingRatio;
-        def.maxForce = maxForce > 0.0F ? maxForce : 1000.0F * b2Body_GetMass(b);
-        def.collideConnected = options.collideConnected;
-        joint = b2CreateMouseJoint(world, &def);
+        // A mouse joint is a motor joint whose spring pulls the grabbed point of the second body toward a target held by the first, and whose turning friction keeps the body from spinning around the point.
+        b2MotorJointDef def = b2DefaultMotorJointDef();
+        def.base = base;
+        def.base.localFrameA = {.p = b2Body_GetLocalPoint(a, anchorB), .q = b2Rot_identity};
+        def.base.localFrameB = {.p = b2Body_GetLocalPoint(b, anchorB), .q = b2Rot_identity};
+        def.linearHertz = options.hertz > 0.0F ? options.hertz : kMouseHertz;
+        def.linearDampingRatio = options.dampingRatio > 0.0F ? options.dampingRatio : kMouseDampingRatio;
+        def.maxSpringForce = maxForce > 0.0F ? maxForce : kMouseAcceleration * b2Body_GetMass(b);
+        def.maxVelocityTorque = getMouseTurnFriction(second.getId(), def.maxSpringForce);
+        joint = b2CreateMotorJoint(world, &def);
+        mouseJoints.insert(b2StoreJointId(joint));
         break;
     }
     case Joint::Type::Motor: {
+        // The spring of a motor joint pulls the origin of the second body toward the offset it has now in the space of the first.
         b2MotorJointDef def = b2DefaultMotorJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
-        def.linearOffset = b2Body_GetLocalPoint(a, b2Body_GetPosition(b));
-        def.angularOffset = relativeAngle;
-        def.maxForce = maxForce;
-        def.maxTorque = maxTorque;
-        def.collideConnected = options.collideConnected;
+        def.base = base;
+        def.base.localFrameA = {.p = b2Body_GetLocalPoint(a, b2Body_GetPosition(b)), .q = b2InvMulRot(b2Body_GetRotation(a), b2Body_GetRotation(b))};
+        def.base.localFrameB = b2Transform_identity;
+        def.linearHertz = options.hertz > 0.0F ? options.hertz : kMotorHertz;
+        def.angularHertz = def.linearHertz;
+        def.linearDampingRatio = options.dampingRatio > 0.0F ? options.dampingRatio : kMotorDampingRatio;
+        def.angularDampingRatio = def.linearDampingRatio;
+        def.maxSpringForce = maxForce;
+        def.maxSpringTorque = maxTorque;
         joint = b2CreateMotorJoint(world, &def);
         break;
     }
     case Joint::Type::Filter: {
         b2FilterJointDef def = b2DefaultFilterJointDef();
-        def.bodyIdA = a;
-        def.bodyIdB = b;
+        def.base.bodyIdA = a;
+        def.base.bodyIdB = b;
         joint = b2CreateFilterJoint(world, &def);
         break;
     }
     }
+    return {this, b2StoreJointId(joint)};
+}
 
-    Joint created{this, b2StoreJointId(joint)};
-    created.setBreakForce(options.breakForce);
-    created.setBreakTorque(options.breakTorque);
-    return created;
+// Returns the most torque, in Box2D units, with which a mouse joint keeps its body from spinning around the grabbed point: a share of its pull at the radius of gyration of the body, the distance at which the mass of the body turns as it does.
+float World::getMouseTurnFriction(std::uint64_t body, float force) {
+    const b2MassData mass = b2Body_GetMassData(b2LoadBodyId(body));
+    return mass.mass > 0.0F ? kMouseTurnFriction * std::sqrt(mass.rotationalInertia / mass.mass) * force : 0.0F;
 }
 
 // Box2D rejects limits it cannot hold even while they are disabled.
@@ -384,6 +398,9 @@ void World::checkLimits(Joint::Type type, const Joint::Options& options) {
     }
     if ((type == Joint::Type::Prismatic || type == Joint::Type::Wheel || type == Joint::Type::Distance) && !ordered) {
         throw std::invalid_argument("A prismatic, wheel or distance joint needs a lower limit that is not above the upper one.");
+    }
+    if ((type == Joint::Type::Prismatic || type == Joint::Type::Wheel) && options.axis.isZero()) {
+        throw std::invalid_argument("A prismatic or wheel joint needs an axis that is not zero.");
     }
     if ((options.breakForce && !(*options.breakForce >= 0.0F)) || (options.breakTorque && !(*options.breakTorque >= 0.0F))) {
         throw std::invalid_argument("A joint needs a break force and a break torque of zero or more.");
@@ -486,27 +503,24 @@ void World::step(float deltaSeconds) {
     hookMilliseconds = std::chrono::duration<float, std::milli>(hookTime).count();
 }
 
-// Destroys the joints whose force or torque passed their break limits in this step, in the order of their ids.
+// Destroys the joints whose force or torque passed their break limits in a sub-step of this step, which Box2D reports in the order of their ids, and forgets the mouse joints that are gone.
 void World::breakJoints() {
-    std::erase_if(breakLimits, [](const auto& limit) { return !b2Joint_IsValid(b2LoadJointId(limit.first)); });
-    for (auto limit = breakLimits.begin(); limit != breakLimits.end();) {
-        const b2JointId joint = b2LoadJointId(limit->first);
-        const b2Vec2 force = b2Joint_GetConstraintForce(joint);
-        const float torque = b2Joint_GetConstraintTorque(joint);
-        if ((!limit->second.force || b2Length(force) <= *limit->second.force) && (!limit->second.torque || std::abs(torque) <= *limit->second.torque)) {
-            ++limit;
+    const b2JointEvents loaded = b2World_GetJointEvents(b2LoadWorldId(getHandle()));
+    for (int index = 0; index < loaded.count; ++index) {
+        const b2JointId joint = loaded.jointEvents[index].jointId;
+        if (!b2Joint_IsValid(joint)) {
             continue;
         }
         jointBreaks.push_back({
-            .joint = {this, limit->first},
+            .joint = {this, b2StoreJointId(joint)},
             .first = {this, b2StoreBodyId(b2Joint_GetBodyA(joint))},
             .second = {this, b2StoreBodyId(b2Joint_GetBodyB(joint))},
-            .force = Box2DConverter::toPixels(force, pixelsPerMeter),
-            .torque = torque * pixelsPerMeter * pixelsPerMeter,
+            .force = Box2DConverter::toPixels(b2Joint_GetConstraintForce(joint), pixelsPerMeter),
+            .torque = b2Joint_GetConstraintTorque(joint) * pixelsPerMeter * pixelsPerMeter,
         });
         b2DestroyJoint(joint);
-        limit = breakLimits.erase(limit);
     }
+    std::erase_if(mouseJoints, [](std::uint64_t joint) { return !b2Joint_IsValid(b2LoadJointId(joint)); });
 }
 
 // Keeps the transforms of the last two steps of every body that moved, indexed by the slot of the body.
@@ -565,19 +579,25 @@ void World::readContactEvents() const {
 
     auto* self = const_cast<World*>(this);
     const b2ContactEvents contacts = b2World_GetContactEvents(b2LoadWorldId(getHandle()));
+    const float subStep = lastStep / static_cast<float>(subSteps);
     for (int index = 0; index < contacts.beginCount; ++index) {
         const b2ContactBeginTouchEvent& event = contacts.beginEvents[index];
-        events.contactBegins.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = Box2DConverter::toSolvedManifold(event.shapeIdA, event.shapeIdB, event.manifold, pixelsPerMeter, lastStep / static_cast<float>(subSteps))});
+        events.contactBegins.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = Box2DConverter::toSolvedManifold(event.contactId, pixelsPerMeter, subStep)});
     }
     for (int index = 0; index < contacts.endCount; ++index) {
         const b2ContactEndTouchEvent& event = contacts.endEvents[index];
         events.contactEnds.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}});
     }
+
+    // A hit whose contact ended within the step keeps the point and normal Box2D recorded for it.
     for (int index = 0; index < contacts.hitCount; ++index) {
         const b2ContactHitEvent& event = contacts.hitEvents[index];
-        b2Manifold point{.normal = event.normal, .pointCount = 1};
-        point.points[0].point = event.point;
-        ContactManifold hit = Box2DConverter::toSolvedManifold(event.shapeIdA, event.shapeIdB, point, pixelsPerMeter, lastStep / static_cast<float>(subSteps));
+        ContactManifold hit = Box2DConverter::toSolvedManifold(event.contactId, pixelsPerMeter, subStep);
+        if (hit.pointCount == 0) {
+            hit.pointCount = 1;
+            hit.points[0].point = Box2DConverter::toPixels(event.point, pixelsPerMeter);
+            hit.normal = {event.normal.x, event.normal.y};
+        }
         hit.approachSpeed = event.approachSpeed * pixelsPerMeter;
         events.contactHits.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = hit});
     }
@@ -717,11 +737,11 @@ bool World::isSleepEnabled() const {
 }
 
 void World::setMaxSpeed(float value) {
-    b2World_SetMaximumLinearSpeed(b2LoadWorldId(getHandle()), Box2DConverter::toSpeed(value, pixelsPerMeter));
+    b2World_SetMaxLinearSpeed(b2LoadWorldId(getHandle()), Box2DConverter::toSpeed(value, pixelsPerMeter));
 }
 
 float World::getMaxSpeed() const {
-    return b2World_GetMaximumLinearSpeed(b2LoadWorldId(getHandle())) * pixelsPerMeter;
+    return b2World_GetMaxLinearSpeed(b2LoadWorldId(getHandle())) * pixelsPerMeter;
 }
 
 void World::applyContactTuning() {
@@ -771,7 +791,7 @@ std::vector<Shape> World::overlapBounds(const math::Rect& area, const CollisionF
 
     const b2AABB box{Box2DConverter::toMeters(area.getMin(), pixelsPerMeter), Box2DConverter::toMeters(area.getMax(), pixelsPerMeter)};
     // clang-format off
-    b2World_OverlapAABB(b2LoadWorldId(getHandle()), box, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
+    b2World_OverlapAABB(b2LoadWorldId(getHandle()), b2Pos_zero, box, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
         auto* found = static_cast<Query*>(context);
         found->shapes.emplace_back(found->world, b2StoreShapeId(shape));
         return true;
@@ -798,7 +818,7 @@ std::vector<Shape> World::queryCircle(math::Vec2 center, float radius, const Col
     } query{const_cast<World*>(this), {}};
 
     // clang-format off
-    b2World_OverlapShape(b2LoadWorldId(getHandle()), &proxy, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
+    b2World_OverlapShape(b2LoadWorldId(getHandle()), b2Pos_zero, &proxy, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
         auto* found = static_cast<Query*>(context);
         found->shapes.emplace_back(found->world, b2StoreShapeId(shape));
         return true;

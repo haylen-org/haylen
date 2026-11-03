@@ -416,7 +416,7 @@ class Fluid::Collider final {
             .mass = std::max(b2Body_GetMass(id), kLeastMass),
             .inverseInertia = inertia > 0.0F ? 1.0F / inertia : 0.0F,
             .fall = fluid.world.getGravity() * (b2Body_GetGravityScale(id) * stepSeconds),
-            .center = Box2DConverter::toPixels(b2Body_GetWorldCenterOfMass(id), scale),
+            .center = Box2DConverter::toPixels(b2Body_GetWorldCenter(id), scale),
             .velocity = {velocity.x * scale, velocity.y * scale},
             .angularVelocity = b2Body_GetAngularVelocity(id),
         });
@@ -474,7 +474,7 @@ class Fluid::Collider final {
             return;
         }
 
-        const b2AABB box = b2Shape_GetAABB(shape);
+        const b2AABB box = b2Shape_GetBounds(shape);
         solid.bounds = math::Rect::fromMinMax(Box2DConverter::toPixels(box.lowerBound, scale) - math::Vec2{travel, travel}, Box2DConverter::toPixels(box.upperBound, scale) + math::Vec2{travel, travel});
         solid.body = addBody(owner);
         solids.push_back(solid);
@@ -484,7 +484,7 @@ class Fluid::Collider final {
         const b2AABB box{Box2DConverter::toMeters(origin, scale), Box2DConverter::toMeters(origin + extent, scale)};
         std::pair<const CollisionFilter*, std::vector<b2ShapeId>> found{&fluid.options.filter, {}};
         // clang-format off
-        b2World_OverlapAABB(b2LoadWorldId(fluid.world.getHandle()), box, b2DefaultQueryFilter(), [](b2ShapeId shape, void* context) {
+        b2World_OverlapAABB(b2LoadWorldId(fluid.world.getHandle()), b2Pos_zero, box, b2DefaultQueryFilter(), [](b2ShapeId shape, void* context) {
             auto& [filter, shapes] = *static_cast<std::pair<const CollisionFilter*, std::vector<b2ShapeId>>*>(context);
             if (!b2Shape_IsSensor(shape) && Box2DConverter::collides(*filter, b2Shape_GetFilter(shape))) {
                 shapes.push_back(shape);

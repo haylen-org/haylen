@@ -1,0 +1,53 @@
+--- a/src/shape.c
++++ b/src/shape.c
+@@ -1299,6 +1299,26 @@
+ 	return shape->density;
+ }
+ 
++// A recycled contact keeps the material it had, so a new material clears the recycling of the contacts of the shape and the next step updates them.
++static void b2ResetContactMaterials( b2World* world, b2Shape* shape )
++{
++	b2Body* body = b2Array_Get( world->bodies, shape->bodyId );
++	int contactKey = body->headContactKey;
++	while ( contactKey != B2_NULL_INDEX )
++	{
++		int contactId = contactKey >> 1;
++		int edgeIndex = contactKey & 1;
++		b2Contact* contact = b2Array_Get( world->contacts, contactId );
++		contactKey = contact->edges[edgeIndex].nextKey;
++
++		if ( contact->shapeIdA == shape->id || contact->shapeIdB == shape->id )
++		{
++			b2ContactSim* contactSim = b2GetContactSim( world, contact );
++			contactSim->simFlags &= ~b2_simRelativeTransformValid;
++		}
++	}
++}
++
+ void b2Shape_SetFriction( b2ShapeId shapeId, float friction )
+ {
+ 	B2_CHECK_INPUT( b2IsValidFloat( friction ) && friction >= 0.0f );
+@@ -1314,6 +1334,7 @@
+ 
+ 	b2Shape* shape = b2GetShape( world, shapeId );
+ 	shape->material.friction = friction;
++	b2ResetContactMaterials( world, shape );
+ }
+ 
+ float b2Shape_GetFriction( b2ShapeId shapeId )
+@@ -1338,6 +1359,7 @@
+ 
+ 	b2Shape* shape = b2GetShape( world, shapeId );
+ 	shape->material.restitution = restitution;
++	b2ResetContactMaterials( world, shape );
+ }
+ 
+ float b2Shape_GetRestitution( b2ShapeId shapeId )
+@@ -1384,6 +1406,7 @@
+ 	B2_REC( world, ShapeSetSurfaceMaterial, shapeId, *surfaceMaterial );
+ 	b2Shape* shape = b2GetShape( world, shapeId );
+ 	shape->material = *surfaceMaterial;
++	b2ResetContactMaterials( world, shape );
+ }
+ 
+ b2Filter b2Shape_GetFilter( b2ShapeId shapeId )

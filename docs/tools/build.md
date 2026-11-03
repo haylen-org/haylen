@@ -324,7 +324,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | fast_float | v8.3.2 | Headers only. It parses floating point numbers on every platform, since `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
 | Dear ImGui | v1.93.0 | Compiled as `haylen-imgui` with the ImGui configuration of the engine. |
 | miniaudio | 0.11.25 | Compiled as `haylen-miniaudio`. |
-| Box2D | v3.1.1 | |
+| Box2D | v3.2.0 | With the [patches](#patches) of `engine/cmake/patches`. It picks its SIMD instructions when the app starts, AVX2 where the processor has it and SSE2 otherwise on x64, Neon on 64-bit ARM, plain math on 32-bit ARM and the SIMD of WebAssembly on the web. |
 | Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. |
 | zstd | v1.5.7 | A static library for compressed Tiled layers and for the chunks of protected content. |
 | Monocypher | 4.0.3 | BSD 2-clause or CC0. The authenticated encryption (XChaCha20-Poly1305), the hashes and key derivation (BLAKE2b) and the manifest signatures (Ed25519) of protected content, compiled from its two sources as `haylen-monocypher`. It is audited, has no dependencies and builds the same on every target, the web included. This release fixes a timing leak of its signatures. |
@@ -334,10 +334,11 @@ Every package is pinned by the URL of a release archive, or of a commit archive 
 
 ```cmake
 CPMAddPackage(
-  NAME box2d
-  URL "https://github.com/erincatto/box2d/archive/refs/tags/v3.1.1.tar.gz"
-  URL_HASH SHA256=fb6ef914b50f4312d7d921a600eabc12318bb3c55a0b8c0b90608fa4488ef2e4
-  OPTIONS "BOX2D_SAMPLES OFF" "BOX2D_BENCHMARKS OFF" "BOX2D_DOCS OFF" "BOX2D_UNIT_TESTS OFF" "BOX2D_VALIDATE OFF"
+  NAME clipper2
+  URL "https://github.com/AngusJohnson/Clipper2/archive/refs/tags/Clipper2_2.0.1.tar.gz"
+  URL_HASH SHA256=2a3693aceab4aed3e39b743e038d87701acc53cf05ed7b2013aab3e0aec5287e
+  SOURCE_SUBDIR CPP
+  OPTIONS "CLIPPER2_UTILS OFF" "CLIPPER2_EXAMPLES OFF" "CLIPPER2_TESTS OFF" "CLIPPER2_USINGZ OFF"
   SYSTEM YES
 )
 ```
@@ -385,6 +386,14 @@ SDL listens for the keys of the whole page on the window of the browser. So a pa
 #### sdl-windows-composition.patch
 
 The Direct3D devices compose a transparent window of Windows with the desktop through a swapchain of DirectComposition with premultiplied alpha. SDL creates every window with a redirection surface, which covers the visual of that swapchain. The patch creates the transparent windows that draw through neither OpenGL nor Vulkan with `WS_EX_NOREDIRECTIONBITMAP`, so the visual shows. The windows of OpenGL keep the redirection surface, through which SDL makes them transparent.
+
+#### box2d-material-contacts.patch
+
+Box2D recycles a contact between two shapes that moved less than about 5 centimeters or 11 degrees against each other since its last update. A recycled contact keeps its points and also the friction, restitution, rolling resistance and tangent speed it mixed from the shapes then. So a crate at rest on a belt that starts to run, or on a ramp that turns to ice, never felt the new material. The patch makes `b2Shape_SetFriction`, `b2Shape_SetRestitution` and `b2Shape_SetSurfaceMaterial` clear the recycling of every contact of the shape, so the next step updates those contacts with the new material.
+
+#### box2d-point-in-polygon.patch
+
+Box2D tells whether a point lies in a polygon from the distance between them, which it finds by search. For a point on a diagonal of the polygon, such as the center of a square, the direction of that search fades to round-off, and the search stops with a tiny distance instead of zero. So `b2Shape_TestPoint` reported the center of a box as outside it, and `world:queryPoint` missed the box. The patch first checks the point against every edge of the polygon, which finds every point inside it, and leaves the distance to rounded polygons whose rounding the point may lie in.
 
 #### nanosvg-visibility.patch
 

@@ -114,7 +114,7 @@ std::optional<RaycastHit> Raycaster::castShape(std::span<const math::Vec2> point
         gather.scale = scale;
         gather.length = translation.getLength();
         gather.skipOverlap = false;
-        b2World_CastShape(b2LoadWorldId(world.getHandle()), &proxy, Box2DConverter::toMeters(translation, scale), gather.getQueryFilter(), &Gather::report, &gather);
+        b2World_CastShape(b2LoadWorldId(world.getHandle()), b2Pos_zero, &proxy, Box2DConverter::toMeters(translation, scale), gather.getQueryFilter(), &Gather::report, &gather);
     });
     // clang-format on
 }

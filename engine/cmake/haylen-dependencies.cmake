@@ -236,11 +236,16 @@ CPMAddPackage(
   DOWNLOAD_ONLY YES
 )
 
+# Box2D recycles the contacts of shapes that barely moved with the material they had, so a patch makes a new material of a shape reach its contacts in the next step, and another one finds the points that lie on a diagonal of a polygon inside it.
+set(box2d_patches "${CMAKE_CURRENT_LIST_DIR}/patches/box2d-material-contacts.patch" "${CMAKE_CURRENT_LIST_DIR}/patches/box2d-point-in-polygon.patch")
+set(box2d_hash ffec747b27a2267016f8d0240d658c82d187fb2271fa0f69fcbe53fbc067180d)
+haylen_patched_package_key(box2d_cache_key ${box2d_hash} ${box2d_patches})
 CPMAddPackage(
   NAME box2d
-  URL "https://github.com/erincatto/box2d/archive/refs/tags/v3.1.1.tar.gz"
-  URL_HASH SHA256=fb6ef914b50f4312d7d921a600eabc12318bb3c55a0b8c0b90608fa4488ef2e4
-  OPTIONS "BOX2D_SAMPLES OFF" "BOX2D_BENCHMARKS OFF" "BOX2D_DOCS OFF" "BOX2D_UNIT_TESTS OFF" "BOX2D_VALIDATE OFF"
+  URL "https://github.com/erincatto/box2d/archive/refs/tags/v3.2.0.tar.gz"
+  URL_HASH SHA256=${box2d_hash}
+  PATCHES ${box2d_patches}
+  CUSTOM_CACHE_KEY ${box2d_cache_key}
   SYSTEM YES
 )
 

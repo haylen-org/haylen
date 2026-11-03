@@ -19,7 +19,7 @@ void DebugDraw::draw(b2WorldId world) {
     callbacks.DrawCircleFcn = &drawCircle;
     callbacks.DrawSolidCircleFcn = &drawSolidCircle;
     callbacks.DrawSolidCapsuleFcn = &drawSolidCapsule;
-    callbacks.DrawSegmentFcn = &drawSegment;
+    callbacks.DrawLineFcn = &drawLine;
     callbacks.DrawPointFcn = &drawPoint;
     b2World_Draw(world, &callbacks);
 }
@@ -33,11 +33,11 @@ math::Vec2 DebugDraw::toPixels(b2Vec2 value) const noexcept {
     return {value.x * scale, value.y * scale};
 }
 
-void DebugDraw::drawPolygon(const b2Vec2* vertices, int count, b2HexColor color, void* context) {
+void DebugDraw::drawPolygon(b2Transform transform, const b2Vec2* vertices, int count, b2HexColor color, void* context) {
     const auto& self = *static_cast<DebugDraw*>(context);
     std::vector<math::Vec2> points;
     for (int index = 0; index < count; ++index) {
-        points.push_back(self.toPixels(vertices[index]));
+        points.push_back(self.toPixels(b2TransformPoint(transform, vertices[index])));
     }
     self.renderer.drawPolyline(points, self.lineWidth, toColor(color), true, self.order);
 }
@@ -56,9 +56,9 @@ void DebugDraw::drawCircle(b2Vec2 center, float radius, b2HexColor color, void* 
     self.renderer.drawRing(self.toPixels(center), radius * self.scale, self.lineWidth, toColor(color), self.order);
 }
 
-void DebugDraw::drawSolidCircle(b2Transform transform, float radius, b2HexColor color, void* context) {
+void DebugDraw::drawSolidCircle(b2Transform transform, b2Vec2 center, float radius, b2HexColor color, void* context) {
     const auto& self = *static_cast<DebugDraw*>(context);
-    self.renderer.drawRing(self.toPixels(transform.p), radius * self.scale, self.lineWidth, toColor(color), self.order);
+    self.renderer.drawRing(self.toPixels(b2TransformPoint(transform, center)), radius * self.scale, self.lineWidth, toColor(color), self.order);
 }
 
 void DebugDraw::drawSolidCapsule(b2Vec2 first, b2Vec2 second, float radius, b2HexColor color, void* context) {
@@ -68,7 +68,7 @@ void DebugDraw::drawSolidCapsule(b2Vec2 first, b2Vec2 second, float radius, b2He
     self.renderer.drawLine(self.toPixels(first), self.toPixels(second), self.lineWidth, toColor(color), self.order);
 }
 
-void DebugDraw::drawSegment(b2Vec2 first, b2Vec2 second, b2HexColor color, void* context) {
+void DebugDraw::drawLine(b2Vec2 first, b2Vec2 second, b2HexColor color, void* context) {
     const auto& self = *static_cast<DebugDraw*>(context);
     self.renderer.drawLine(self.toPixels(first), self.toPixels(second), self.lineWidth, toColor(color), self.order);
 }

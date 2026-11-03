@@ -3,7 +3,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
-#include <map>
 #include <memory>
 #include <optional>
 #include <span>
@@ -79,7 +78,7 @@ class World final {
         float hookMilliseconds = 0.0F;
     };
 
-    // A joint the last step destroyed because its force or torque passed its break limit, with the force and torque it held.
+    // A joint the last step destroyed because its force or torque passed its break limit in one of its sub-steps, with the force and torque it held at the end of the step.
     struct JointBreak {
         Joint joint;
         Body first;
@@ -116,8 +115,8 @@ class World final {
 
     Body createBody(const Body::Options& options = {});
 
-    // Anchors are world positions. Distance joints keep the anchors apart, at their current distance unless a length is given. Revolute joints pin the bodies at `anchorA`, prismatic and wheel joints slide along the axis, and weld joints glue the bodies. Mouse joints pull the second body toward `anchorB` with 4 hertz, a damping ratio of 1 and enough force to accelerate it at a thousand meters per second squared unless the options set them. Motor joints drive the second body toward its current offset from the first.
-    // Prismatic motors, distance motors, mouse joints and motor joints limit their force with `maxMotorForce`, and revolute motors, wheel motors and motor joints limit their torque with `maxMotorTorque`. A joint with a break force or torque is destroyed by the first step that loads it beyond them.
+    // Anchors are world positions. Distance joints keep the anchors apart, at their current distance unless a length is given. Revolute joints pin the bodies at `anchorA`, prismatic and wheel joints slide along the axis, and weld joints glue the bodies. Mouse joints pull `anchorB` on the second body toward a target that starts there and moves with the first body, with 4 hertz, a damping ratio of 1 and enough force to accelerate the second body at a thousand meters per second squared unless the options set them. Motor joints drive the second body on a spring of 10 hertz and a damping ratio of 1, unless the options set them, toward its current offset and angle from the first.
+    // Prismatic motors, distance motors, mouse joints and motor joints limit their force with `maxMotorForce`, and revolute motors, wheel motors and motor joints limit their torque with `maxMotorTorque`. A joint with a break force or torque is destroyed by the first step that loads it to them in one of its sub-steps.
     // Revolute and prismatic joints measure their angle from the pose the bodies have at creation, so revolute limits are angles away from that pose. Throws `std::invalid_argument` for a distance joint shorter than 0.005 meters, revolute limits beyond 0.99 pi radians, any limits whose lower value is above the upper one and negative break limits.
     Joint createJoint(Joint::Type type, Body first, Body second, const Joint::Options& options = {});
 
@@ -239,12 +238,6 @@ class World final {
         math::Vec2 worldDirection{};
     };
 
-    // The break limits of a joint in newtons and newton meters, the units Box2D reports its loads in.
-    struct BreakLimit {
-        std::optional<float> force;
-        std::optional<float> torque;
-    };
-
     // A joint that holds only while every joint of its chain holds, such as the length limit of a rope, which goes once any link of the rope is cut or broken.
     struct ChainTie {
         std::uint64_t joint = 0;
@@ -275,7 +268,15 @@ class World final {
     static debug::ObjectCounter& contactCounter;
 
     // Box2D steps a world on at most this many workers.
-    static constexpr int kMaxThreads = 64;
+    static constexpr int kMaxThreads = 32;
+
+    // The spring of a motor joint of 10 hertz and a damping ratio of 1 closes most of its gap within a frame, as stiff as a joint that corrects a third of its error in every sub-step.
+    static constexpr float kMouseHertz = 4.0F;
+    static constexpr float kMouseDampingRatio = 1.0F;
+    static constexpr float kMouseAcceleration = 1000.0F;
+    static constexpr float kMouseTurnFriction = 0.01F;
+    static constexpr float kMotorHertz = 10.0F;
+    static constexpr float kMotorDampingRatio = 1.0F;
 
     // Box2D keeps revolute limits within this many radians of zero.
     static const float kRevoluteLimit;
@@ -302,6 +303,7 @@ class World final {
     void forgetBody(std::uint64_t id);
     [[nodiscard]] Transform blendMotion(const Body& body, float blend) const;
     static void checkLimits(Joint::Type type, const Joint::Options& options);
+    [[nodiscard]] static float getMouseTurnFriction(std::uint64_t body, float force);
 
     std::uint32_t handle = 0;
     float pixelsPerMeter = 64.0F;
@@ -320,7 +322,8 @@ class World final {
     std::vector<std::uint64_t> destroyedBodies;
     std::vector<Hook> hooks;
     std::uint64_t nextHook = 1;
-    std::map<std::uint64_t, BreakLimit> breakLimits;
+    // Box2D builds mouse joints as motor joints, so the world remembers which motor joints are mouse joints.
+    std::unordered_set<std::uint64_t> mouseJoints;
     std::vector<ChainTie> chainTies;
     std::vector<Motion> motions;
     std::uint64_t motionStep = 0;

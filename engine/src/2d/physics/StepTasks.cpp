@@ -6,38 +6,37 @@
 
 namespace haylen::physics2d {
 
-StepTasks::StepTasks(core::JobSystem& jobSystem, int workerCount) noexcept : jobs(jobSystem), workers(workerCount) {}
+StepTasks::StepTasks(core::JobSystem& jobSystem) noexcept : jobs(jobSystem) {}
 
-void StepTasks::Task::runChunks() {
-    for (int chunk = nextChunk.fetch_add(1); chunk < chunkCount; chunk = nextChunk.fetch_add(1)) {
-        const int begin = chunk * chunkSize;
-        callback(begin, std::min(itemCount, begin + chunkSize), static_cast<std::uint32_t>(chunk), context);
-        if (finishedChunks.fetch_add(1) + 1 == chunkCount) {
-            const std::scoped_lock lock(mutex);
-            finished.notify_all();
-        }
+void StepTasks::Task::run() {
+    if (claimed.exchange(true)) {
+        return;
     }
+    callback(context);
+    const std::scoped_lock lock(mutex);
+    done = true;
+    finished.notify_all();
 }
 
-void* StepTasks::enqueue(b2TaskCallback* callback, int itemCount, int minRange, void* taskContext, void* userContext) {
-    auto& self = *static_cast<StepTasks*>(userContext);
-    const int range = std::max(1, minRange);
-
-    // Box2D runs a task that returns nothing as finished. The solver workers past the first then find the solve done and return at once.
-    if (!self.parallel || itemCount <= range) {
-        callback(0, itemCount, 0, taskContext);
-        return nullptr;
+std::shared_ptr<StepTasks::Task> StepTasks::takeTask() {
+    if (idle.empty()) {
+        return std::make_shared<Task>();
     }
-    auto task = std::make_shared<Task>();
+    std::shared_ptr<Task> task = std::move(idle.back());
+    idle.pop_back();
+    task->claimed = false;
+    task->done = false;
+    return task;
+}
+
+void* StepTasks::enqueue(b2TaskCallbackFcn* callback, void* taskContext, void* userContext) {
+    auto& self = *static_cast<StepTasks*>(userContext);
+    std::shared_ptr<Task> task = self.takeTask();
     task->callback = callback;
     task->context = taskContext;
-    task->itemCount = itemCount;
-    task->chunkCount = std::clamp((itemCount + range - 1) / range, 1, self.workers);
-    task->chunkSize = (itemCount + task->chunkCount - 1) / task->chunkCount;
-
-    // Box2D enqueues the solver workers one task at a time before it finishes any, so every chunk goes to the pool, and the stepping thread takes what is left when it finishes the task.
-    for (int chunk = 0; chunk < task->chunkCount; ++chunk) {
-        self.jobs.post([task] { task->runChunks(); });
+    task->posted = self.parallel;
+    if (task->posted) {
+        self.jobs.post([task] { task->run(); });
     }
     return self.running.emplace_back(std::move(task)).get();
 }
@@ -45,12 +44,17 @@ void* StepTasks::enqueue(b2TaskCallback* callback, int itemCount, int minRange, 
 void StepTasks::finish(void* userTask, void* userContext) {
     auto& self = *static_cast<StepTasks*>(userContext);
     auto* task = static_cast<Task*>(userTask);
-    task->runChunks();
+    task->run();
     {
         std::unique_lock lock(task->mutex);
-        task->finished.wait(lock, [task] { return task->finishedChunks.load() == task->chunkCount; });
+        task->finished.wait(lock, [task] { return task->done; });
     }
-    std::erase_if(self.running, [task](const std::shared_ptr<Task>& item) { return item.get() == task; });
+
+    const auto found = std::ranges::find_if(self.running, [task](const std::shared_ptr<Task>& item) { return item.get() == task; });
+    if (!task->posted) {
+        self.idle.push_back(std::move(*found));
+    }
+    self.running.erase(found);
 }
 
 } // namespace haylen::physics2d

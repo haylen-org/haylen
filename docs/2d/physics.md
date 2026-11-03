@@ -215,7 +215,7 @@ scene.push({
 
 Box2D splits a step into tasks, such as finding contacts, or solving the constraints of one color of the graph of contacts. The engine runs those tasks on its job system through the private class `StepTasks`. Each task splits into at most one chunk per thread of the world. The workers of the task pool take chunks as they come. The thread that steps runs every chunk that no worker took yet. So a step never waits behind other work queued on the pool, such as a navigation mesh that builds in the background. A task of one chunk runs on the stepping thread alone.
 
-A world steps on the number of threads of its `threads` option. The default is the number of workers of the job system, but at most 4, because the solver gains little from more workers and slow cores hold it back. A world uses at most 64 threads, whatever it asks for. It uses its threads only while at least 1000 of its bodies are awake. Below that, waking the workers costs more than they save. So a world of a few hundred bodies steps on the frame thread at no extra cost. The web build has one thread, so every world there steps on one thread and `world.threads` reads 1.
+A world steps on the number of threads of its `threads` option. The default is the number of workers of the job system, but at most 4, because the solver gains little from more workers and slow cores hold it back. A world uses at most 32 threads, whatever it asks for. It uses its threads only while at least 1000 of its bodies are awake. Below that, waking the workers costs more than they save. So a world of a few hundred bodies steps on the frame thread at no extra cost. The web build has one thread, so every world there steps on one thread and `world.threads` reads 1.
 
 Threads never change the result. Box2D solves in the same order on any number of threads. So a world steps to the same positions and velocities, bit for bit, on one thread or on eight. The method [`world:stateHash(bodies)`](../lua-api/physics2d.md#worldstatehashbodies) returns the same number for both. It also checks that a replay matches its recording. The physics benchmark steps a pile of 4000 falling boxes in 2.12 milliseconds on one thread, 1.75 on two, 1.53 on four and 1.52 on eight.
 
@@ -317,7 +317,7 @@ Every contact tells what happened in the step that solved it. The tables of `onC
 - **The relative velocity** of the bodies at the contact after the step, such as how fast a crate slides along the floor or a wheel spins on it.
 - **The force** that presses the shapes together at the end of the step. For a body at rest it is its weight. So a pressure plate, a scale or a crate that crushes what lies under it can read it. Each point also has its impulses along the normal and along the surface.
 
-Box2D records the manifold of a new contact, its points and normal, before it solves the step. The engine reads the contact as the step left it, with its impulses and approach speeds. For a contact that ended within the same step, it keeps the manifold of the event. In C++ the class `physics2d::ContactManifold` holds the same values, in the `manifold` of a `ContactEvent` and of a `Body::Contact`. The test project shows contacts in `PHY-064`.
+Box2D finds the manifold of a contact, its points and normal, before it solves the step. The engine reads the contact as the step left it, with its impulses and approach speeds. A hit whose contact is gone by the time the app reads it keeps the point and normal of the hit, and a new contact whose shapes are gone has no points. In C++ the class `physics2d::ContactManifold` holds the same values, in the `manifold` of a `ContactEvent` and of a `Body::Contact`. The test project shows contacts in `PHY-064`.
 
 ### Who collides with whom
 
@@ -452,6 +452,8 @@ A contact with the platform holds only while it leans at most 60 degrees from th
 
 To fall through the platform a body stands on, call [`body:dropThrough(seconds)`](../lua-api/physics2d.md#bodydropthroughseconds) or [`mover:dropThrough(seconds)`](../lua-api/physics2d.md#moverdropthroughseconds). The body passes every platform for 0.2 seconds by default, and then until it leaves the platform it is inside. So it lands on the next platform below. Tiled objects and tile shapes whose `oneWay` property is `true` become such platforms.
 
+Box2D recycles a contact between shapes that barely moved against each other since the last step, and a recycled contact skips the check of the platform. So a body that holds a one-way shape never recycles its contacts, and its platforms decide about every body in every step, including one that stands still and then drops through.
+
 ```lua
 local physics2d = require('haylen.physics2d')
 
@@ -542,6 +544,8 @@ local chain = physics2d.newRope(world, {from = {0, 0}, to = {0, 380}, segments =
 Contacts act as soft springs. Their stiffness is `contactHertz`, 30 by default. Their damping is `contactDampingRatio`, 10 by default. Together they decide how fast overlapping shapes separate, but never faster than `contactPushSpeed`, 3 meters per second by default.
 
 Bodies spawned inside each other, or squeezed by a heavy load, fly apart when the push is strong. A lower `contactPushSpeed` separates them gently. Spawning bodies apart avoids the problem. A tall stack that sways or jitters settles with more sub-steps, which also allow a stiffer `contactHertz`. Once a stack settles, sleeping stops it entirely.
+
+Box2D also recycles the contacts of shapes that moved less than about 5 centimeters or 11 degrees against each other since their last update, which keeps resting stacks still and saves most of the cost of the contacts. A recycled contact keeps its points, and a new friction, restitution, rolling resistance or tangent speed of one of its shapes reaches it in the next step all the same.
 
 ```lua
 local physics2d = require('haylen.physics2d')

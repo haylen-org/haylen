@@ -173,7 +173,7 @@ void Shape::setFilter(const CollisionFilter& value) {
 }
 
 math::Rect Shape::getBounds() const {
-    const b2AABB box = b2Shape_GetAABB(b2LoadShapeId(checkedId()));
+    const b2AABB box = b2Shape_GetBounds(b2LoadShapeId(checkedId()));
     const float scale = world->getPixelsPerMeter();
     return math::Rect::fromMinMax(Box2DConverter::toPixels(box.lowerBound, scale), Box2DConverter::toPixels(box.upperBound, scale));
 }
@@ -229,7 +229,7 @@ void Shape::setRollingResistance(float value) {
     const b2ShapeId shape = b2LoadShapeId(checkedId());
     b2SurfaceMaterial material = b2Shape_GetSurfaceMaterial(shape);
     material.rollingResistance = checkMaterial(value);
-    b2Shape_SetSurfaceMaterial(shape, material);
+    b2Shape_SetSurfaceMaterial(shape, &material);
 }
 
 bool Shape::hasContactEvents() const {
@@ -262,7 +262,7 @@ std::vector<Shape> Shape::getOverlaps() const {
         throw std::logic_error("Only sensor shapes have overlaps.");
     }
     std::vector<b2ShapeId> ids(static_cast<std::size_t>(b2Shape_GetSensorCapacity(shape)));
-    ids.resize(static_cast<std::size_t>(b2Shape_GetSensorOverlaps(shape, ids.data(), static_cast<int>(ids.size()))));
+    ids.resize(static_cast<std::size_t>(b2Shape_GetSensorData(shape, ids.data(), static_cast<int>(ids.size()))));
     std::vector<Shape> overlaps;
     overlaps.reserve(ids.size());
     for (const b2ShapeId overlap : ids) {
@@ -283,7 +283,7 @@ void Shape::setTangentSpeed(float value) {
     const b2ShapeId shape = b2LoadShapeId(checkedId());
     b2SurfaceMaterial material = b2Shape_GetSurfaceMaterial(shape);
     material.tangentSpeed = -value / world->getPixelsPerMeter();
-    b2Shape_SetSurfaceMaterial(shape, material);
+    b2Shape_SetSurfaceMaterial(shape, &material);
 }
 
 std::optional<math::Vec2> Shape::getOneWay() const {
@@ -303,6 +303,11 @@ void Shape::setOneWay(std::optional<math::Vec2> value) {
         world->oneWayShapes.erase(id);
     }
     b2Shape_EnablePreSolveEvents(shape, value.has_value());
+
+    // Box2D skips the pre-solve callback of a contact it recycles, so the contacts of a body that holds a one-way platform never recycle, and the platform decides about each of them in every step.
+    if (value) {
+        b2Body_EnableContactRecycling(b2Shape_GetBody(shape), false);
+    }
 }
 
 } // namespace haylen::physics2d

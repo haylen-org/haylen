@@ -870,7 +870,8 @@ Adds a chain of one-sided segments through the points and returns a list of its 
 
 - With `loop` set to `true`, the chain closes its outline and needs at least four points.
 - An open chain needs at least two points. It collides along every segment between the points it lists.
-- Fewer points raise `A physics chain needs at least four points for a loop and two for an open chain.`.
+- A point at most 0.005 meters from the one before it merges into it, and so does the last point of a loop that closes on the first, because Box2D needs every segment longer than that. That is 0.32 world units at the default 64 pixels per meter.
+- Fewer points left raise `A physics chain needs at least four points for a loop and two for an open chain, each more than 0.005 meters from the one before it.`.
 - Chains use `friction`, `restitution`, `rollingResistance`, `tangentSpeed`, `oneWay`, the collision filter, the event switches, `offsetX`, `offsetY` and `rotation` from the options. They ignore `density` and `sensor`.
 - Destroying any segment destroys the whole chain.
 
@@ -1119,38 +1120,39 @@ Connects the bodies `a` and `b` of this world with a joint of the given `type` a
 | `'prismatic'` | Lets `b` slide relative to `a` along the axis through `ax, ay`, like a piston or an elevator. It keeps the angle between them that they have when the joint is created. Its spring pulls toward `targetTranslation`. |
 | `'weld'` | Glues both bodies together at `ax, ay`, rigidly or on a spring. |
 | `'wheel'` | Lets `b` slide along the axis through `ax, ay`, usually on a spring, and rotate freely, like a car suspension. |
-| `'mouse'` | Pulls `b` on a soft spring toward a target that starts at `bx, by`. Body `a` is usually a static body, and the joint does not move it. |
-| `'motor'` | Drives `b` toward an offset and an angle from `a`. Both start at those the bodies have when the joint is created. |
+| `'mouse'` | Pulls the point `bx, by` of `b` on a soft spring toward a target that starts there. The target moves with `a`, which is usually a static body. |
+| `'motor'` | Drives `b` on a spring toward an offset and an angle from `a`. Both start at those the bodies have when the joint is created. |
 | `'filter'` | Only keeps `a` and `b` from colliding with each other, without holding them together. |
 
 | Option | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `ax`, `ay` | number | `0` | Anchor on `a`. Revolute, prismatic, weld and wheel joints use it as their shared anchor. |
-| `bx`, `by` | number | `0` | Anchor on `b` for distance joints, and the first target of mouse joints. |
+| `bx`, `by` | number | `0` | Anchor on `b` for distance and mouse joints, where a mouse joint starts its target. |
 | `collideConnected` | boolean | `false` | Lets the two bodies keep colliding with each other. |
 | `enableLimit` | boolean | `false` | Turns on the `lower` and `upper` limits of revolute, prismatic, wheel and distance joints. |
 | `lower`, `upper` | number | `0` | The limits: angles in radians for revolute joints, measured from the pose at creation, translations in world units for prismatic and wheel joints, and the shortest and longest length for distance joints. |
 | `enableMotor` | boolean | `false` | Turns on the motor of revolute, prismatic, wheel and distance joints. |
 | `motorSpeed` | number | `0` | Motor speed in radians per second for revolute and wheel joints, or in world units per second for prismatic and distance joints. |
-| `maxMotorForce` | number | `0` | The most force of the motor of prismatic and distance joints, of motor joints and of the pull of mouse joints, as a force in world units. |
-| `maxMotorTorque` | number | `0` | The most torque of the motor of revolute and wheel joints, and of motor joints, as a torque in world units. |
+| `maxMotorForce` | number | `0` | The most force of the motor of prismatic and distance joints, of the spring of motor joints and of the pull of mouse joints, as a force in world units. |
+| `maxMotorTorque` | number | `0` | The most torque of the motor of revolute and wheel joints, and of the spring of motor joints, as a torque in world units. |
 | `enableSpring` | boolean | `false` | Makes distance, revolute, prismatic and wheel joints springy. |
-| `hertz` | number | `0` | Spring stiffness in cycles per second. Weld joints use it for both the linear and the angular spring, and 0 keeps them rigid. |
+| `hertz` | number | `0` | Spring stiffness in cycles per second. Weld and motor joints use it for both the linear and the angular spring, and 0 keeps a weld joint rigid. |
 | `dampingRatio` | number | `0` | Spring damping. At 1 the oscillation stops without overshoot. |
 | `targetAngle` | number | `0` | Angle in radians that the spring of a revolute joint pulls toward. |
 | `targetTranslation` | number | `0` | Translation in world units that the spring of a prismatic joint pulls toward. |
-| `axisX`, `axisY` | number | `1`, `0` | Slide axis of prismatic and wheel joints. |
+| `axisX`, `axisY` | number | `1`, `0` | Slide axis of prismatic and wheel joints, which cannot be zero. |
 | `length` | number | `0` | Rest length of a distance joint. Zero keeps the distance that the anchors have when the joint is created. |
-| `breakForce` | number | `nil` | Force beyond which a step breaks the joint, as [breaking joints](#breaking-joints) describes. Without it, the joint never breaks from a force. |
-| `breakTorque` | number | `nil` | Torque beyond which a step breaks the joint. Without it, the joint never breaks from a torque. |
+| `breakForce` | number | `nil` | Force at which a step breaks the joint, as [breaking joints](#breaking-joints) describes. Without it, the joint never breaks from a force. |
+| `breakTorque` | number | `nil` | Torque at which a step breaks the joint. Without it, the joint never breaks from a torque. |
 
-Mouse joints have their own values for the settings left at 0. Their `hertz` is 4 and their `dampingRatio` is 1. Their `maxMotorForce` is a pull that accelerates `b` at up to `1000 * pixelsPerMeter` units per second squared. Filter joints ignore every option. Every setting also changes while the joint runs, as [Joint properties](#joint-properties) lists.
+Mouse joints have their own values for the settings left at 0. Their `hertz` is 4 and their `dampingRatio` is 1. Their `maxMotorForce` is a pull that accelerates `b` at up to `1000 * pixelsPerMeter` units per second squared. They also keep `b` from spinning around the point they hold, with a torque of a hundredth of their pull at the radius of gyration of `b`, the distance from its center of mass at which its whole mass would turn the same way. Motor joints drive both their offset and their angle with a `hertz` of 10 and a `dampingRatio` of 1 when those are left at 0, which closes most of the gap within a frame. Their spring pulls with at most `maxMotorForce` and turns with at most `maxMotorTorque`, so a motor joint without them does nothing. Filter joints ignore every option. Every setting also changes while the joint runs, as [Joint properties](#joint-properties) lists.
 
 Box2D checks limits even while `enableLimit` is `false`. So the joint is not created when its limits are out of range:
 
 - A distance joint shorter than 0.005 meters raises `A distance joint needs a length of at least 0.005 meters.`. That is 0.32 world units at the default 64 pixels per meter. The default options put both anchors at `0, 0`, which is too short, so give a distance joint its anchors or a `length`.
 - Revolute limits must lie within 0.99 pi radians of zero, with `lower` not above `upper`. Otherwise the call raises `A revolute joint needs a lower limit that is not above the upper one, both within 0.99 pi radians of zero.`.
 - Prismatic, wheel and distance joints with `lower` above `upper` raise `A prismatic, wheel or distance joint needs a lower limit that is not above the upper one.`.
+- A prismatic or wheel joint whose `axisX` and `axisY` are both 0 raises `A prismatic or wheel joint needs an axis that is not zero.`.
 - A negative `breakForce` or `breakTorque` raises `A joint needs a break force and a break torque of zero or more.`.
 
 ```lua
@@ -1222,7 +1224,7 @@ print(link.valid)
 | `constraintHertz` | All | read and write | Stiffness that holds the joint together in cycles per second, `60` by default. Lower values make the joint soft. |
 | `constraintDampingRatio` | All | read and write | Damping of that stiffness, `2` by default. |
 | `breakForce`, `breakTorque` | All | read and write | The load beyond which a step breaks the joint, or `nil` for a joint that never breaks from it. |
-| `target` | Mouse | read and write | The point the joint pulls `bodyB` toward, as a `Vec2`. Writing takes a `Vec2` or `{x, y}`. |
+| `target` | Mouse | read and write | The point the joint pulls `bodyB` toward, as a `Vec2`, which moves with `bodyA`. Writing takes a `Vec2` or `{x, y}`. |
 | `angle` | Revolute | read | The angle from the pose at creation, in radians. |
 | `translation` | Prismatic | read | The translation along the axis, in world units. |
 | `currentLength` | Distance | read | The distance between the anchors. |
@@ -1231,17 +1233,17 @@ print(link.valid)
 | `lower`, `upper` | Revolute, prismatic, wheel, distance | read and write | The limits: angles for revolute joints, translations for prismatic and wheel joints, and the shortest and longest length for distance joints. |
 | `enableMotor` | Revolute, prismatic, wheel, distance | read and write | Whether the motor drives the joint. |
 | `motorSpeed` | Revolute, prismatic, wheel, distance | read and write | The motor speed, as [`joint.motorSpeed`](#jointmotorspeed) describes. |
-| `maxMotorForce` | Prismatic, distance, mouse, motor | read and write | The most force the motor or the pull applies. |
-| `maxMotorTorque` | Revolute, wheel, motor | read and write | The most torque the motor applies. |
+| `maxMotorForce` | Prismatic, distance, mouse, motor | read and write | The most force the motor, the pull or the spring applies. |
+| `maxMotorTorque` | Revolute, wheel, motor | read and write | The most torque the motor or the spring applies. |
 | `motorForce` | Prismatic, distance | read | The force the motor applied in the last step. |
 | `motorTorque` | Revolute, wheel | read | The torque the motor applied in the last step. |
-| `enableSpring` | Distance, revolute, prismatic, wheel, mouse, weld | read and write | Whether the spring acts. Mouse and weld joints are always springy and read `true`. Only distance, revolute, prismatic and wheel joints can switch it. |
-| `hertz`, `dampingRatio` | Distance, revolute, prismatic, wheel, mouse, weld | read and write | The stiffness of the spring in cycles per second, and its damping. A weld joint of 0 hertz is rigid. |
+| `enableSpring` | Distance, revolute, prismatic, wheel, mouse, motor, weld | read and write | Whether the spring acts. Mouse, motor and weld joints are always springy and read `true`. Only distance, revolute, prismatic and wheel joints can switch it. |
+| `hertz`, `dampingRatio` | Distance, revolute, prismatic, wheel, mouse, motor, weld | read and write | The stiffness of the spring in cycles per second, and its damping. A weld joint of 0 hertz is rigid. |
 | `targetAngle` | Revolute | read and write | The angle the spring pulls toward. |
 | `targetTranslation` | Prismatic | read and write | The translation the spring pulls toward. |
 | `linearOffset`, `angularOffset` | Motor | read and write | The offset of `bodyB` from `bodyA` in the space of `bodyA`, as a `Vec2`, and the angle between them, which the joint drives toward. |
 
-A member that the joint type lacks raises one of these messages: `Only mouse joints have a target.`, `Only revolute joints have an angle.`, `Only prismatic joints have a translation.`, `Only distance joints have a current length.`, `Only distance joints have a length.`, `Only revolute, prismatic, wheel and distance joints have limits.`, `Only revolute, prismatic, wheel and distance joints have a motor.`, `Only revolute, prismatic, wheel and distance joints have a motor speed.`, `Only prismatic, distance, mouse and motor joints have a maximum motor force.`, `Only revolute, wheel and motor joints have a maximum motor torque.`, `Only prismatic and distance joints report a motor force.`, `Only revolute and wheel joints report a motor torque.`, `Only distance, revolute, prismatic, wheel, mouse and weld joints have a spring.`, `Only distance, revolute, prismatic and wheel joints switch their spring.`, `Only revolute joints have a target angle.`, `Only prismatic joints have a target translation.` or `Only motor joints have offsets.`.
+A member that the joint type lacks raises one of these messages: `Only mouse joints have a target.`, `Only revolute joints have an angle.`, `Only prismatic joints have a translation.`, `Only distance joints have a current length.`, `Only distance joints have a length.`, `Only revolute, prismatic, wheel and distance joints have limits.`, `Only revolute, prismatic, wheel and distance joints have a motor.`, `Only revolute, prismatic, wheel and distance joints have a motor speed.`, `Only prismatic, distance, mouse and motor joints have a maximum motor force.`, `Only revolute, wheel and motor joints have a maximum motor torque.`, `Only prismatic and distance joints report a motor force.`, `Only revolute and wheel joints report a motor torque.`, `Only distance, revolute, prismatic, wheel, mouse, motor and weld joints have a spring.`, `Only distance, revolute, prismatic and wheel joints switch their spring.`, `Only revolute joints have a target angle.`, `Only prismatic joints have a target translation.` or `Only motor joints have offsets.`.
 
 Values out of range raise these errors:
 
@@ -1343,7 +1345,7 @@ print(fan.motorSpeed) -- -4.0
 
 ### Breaking joints
 
-A joint with a `breakForce` breaks once the force it applies to hold its bodies passes that value. A joint with a `breakTorque` breaks once its torque passes that value. Both are in world units. The step that loads the joint beyond its limit destroys it after Box2D advances the bodies. It then calls [`world.onJointBreak`](#worldonjointbreakjoint-info) with it, in the order of the joints. Without the callback the joint breaks all the same.
+A joint with a `breakForce` breaks once the force it applies to hold its bodies reaches that value. A joint with a `breakTorque` breaks once its torque reaches that value. Both are in world units. Box2D checks the load in every sub-step, so a short jolt within a step breaks the joint too. The step that loads the joint to its limit destroys it after Box2D advances the bodies. It then calls [`world.onJointBreak`](#worldonjointbreakjoint-info) with it, in the order of the joints. Without the callback the joint breaks all the same.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -3627,7 +3629,7 @@ Invalid input raises Lua errors with these messages.
 | `A physics polygon needs at least three points.` | The method `body:addPolygon()` got fewer than three points. |
 | `A physics polygon needs at least three points that are not on one line.` | The method `body:addPolygon()` got a convex outline without area. |
 | `A physics polygon needs a non-degenerate outline.` | The method `body:addPolygon()` got an outline whose pieces have no area. |
-| `A physics chain needs at least four points for a loop and two for an open chain.` | The method `body:addChain()` got too few points. |
+| `A physics chain needs at least four points for a loop and two for an open chain, each more than 0.005 meters from the one before it.` | The method `body:addChain()` got too few points apart from each other. |
 | `The shape was destroyed.` | A destroyed shape was used. |
 | `Only sensor shapes have overlaps.` | The method `shape:overlaps()` ran on a shape that is not a sensor. |
 | `A joint needs two bodies of this world.` | A body of a joint, or an end body of a rope, is destroyed or belongs to another world. |
