@@ -44,7 +44,13 @@ std::pair<int, int> VectorImage::getRasterSize(math::Vec2 size, float scale) noe
     return {std::max(1, static_cast<int>(std::ceil(size.x * scale))), std::max(1, static_cast<int>(std::ceil(size.y * scale)))};
 }
 
+// The size is checked in floating point before it becomes whole pixels, so a document of any size fails with the reason instead of overflowing.
 Image VectorImage::rasterize(float scale) const {
+    const math::Vec2 extent = resource->size * scale;
+    if (!(std::ceil(extent.x) <= static_cast<float>(Image::kMaxSide) && std::ceil(extent.y) <= static_cast<float>(Image::kMaxSide))) {
+        throw std::invalid_argument("The raster of the vector image at this scale would have more than " + std::to_string(Image::kMaxSide) + " pixels on a side. Rasterize it at a smaller scale.");
+    }
+
     const auto [width, height] = getRasterSize(resource->size, scale);
     std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
     const std::unique_ptr<NSVGrasterizer, decltype(&nsvgDeleteRasterizer)> rasterizer(nsvgCreateRasterizer(), &nsvgDeleteRasterizer);

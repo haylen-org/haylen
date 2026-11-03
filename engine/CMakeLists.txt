@@ -383,6 +383,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/ImagePalette.cpp
   src/graphics/ImagePlaceholder.cpp
   src/graphics/Image.cpp
+  src/graphics/PixelMemory.cpp
   src/graphics/RenderTarget.cpp
   src/graphics/ResourceGraveyard.cpp
   src/graphics/Shader.cpp

@@ -244,8 +244,9 @@ std::string Device::getAdapterName() const {
     return state->gpu->getAdapterName();
 }
 
+// A texture never outgrows the longest side of an image, which the pixels of every texture and every read back pass through.
 int Device::getMaxTextureSize() const noexcept {
-    return state->gpu->getCapabilities().maxImageSize;
+    return std::min(state->gpu->getCapabilities().maxImageSize, Image::kMaxSide);
 }
 
 std::vector<Device::Pool> Device::getPools() const {

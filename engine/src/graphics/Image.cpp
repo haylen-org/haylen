@@ -6,12 +6,24 @@
 #include <cstddef>
 #include <cstring>
 #include <limits>
+#include <new>
 #include <stdexcept>
 #include <string>
+#include <utility>
+
+#include "graphics/PixelMemory.hpp"
 
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_STDIO
 #define STBI_FAILURE_USERMSG
+#define STBI_ONLY_PNG
+#define STBI_ONLY_JPEG
+#define STBI_ONLY_TGA
+#define STBI_ONLY_BMP
+#define STBI_ONLY_GIF
+#define STBI_MALLOC(size) haylen::graphics::PixelMemory::allocate(size)
+#define STBI_REALLOC_SIZED(block, oldSize, newSize) haylen::graphics::PixelMemory::reallocate(block, oldSize, newSize)
+#define STBI_FREE(block) haylen::graphics::PixelMemory::release(block)
 #include "stb_image.h"
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #define STBI_WRITE_NO_STDIO
@@ -19,21 +31,34 @@
 
 namespace haylen::graphics {
 
+Image::Pixels::Pixels(std::vector<std::uint8_t> bytes) noexcept : owned(std::move(bytes)) {}
+
+Image::Pixels::Pixels(std::uint8_t* bytes, std::size_t size) noexcept : adopted(bytes), adoptedSize(size) {}
+
+Image::Pixels::Pixels(const Pixels& other) : owned(other.data(), other.data() + other.size()) {}
+
+Image::Pixels& Image::Pixels::operator=(const Pixels& other) {
+    if (this != &other) {
+        *this = Pixels(other);
+    }
+    return *this;
+}
+
+void Image::Pixels::Release::operator()(std::uint8_t* bytes) const noexcept {
+    PixelMemory::release(bytes);
+}
+
 std::size_t Image::byteCount(int columns, int rows) {
     if (columns < 0 || rows < 0) {
         throw std::invalid_argument("Image dimensions cannot be negative.");
     }
-
-    // The byte count must fit in a pointer difference, which also keeps it from overflowing on 32-bit platforms.
-    const auto columnCount = static_cast<std::size_t>(columns);
-    const auto rowCount = static_cast<std::size_t>(rows);
-    if (rowCount != 0 && columnCount > static_cast<std::size_t>(std::numeric_limits<std::ptrdiff_t>::max()) / 4U / rowCount) {
-        throw std::invalid_argument("Image dimensions are too large to hold in memory.");
+    if (columns > kMaxSide || rows > kMaxSide) {
+        throw std::invalid_argument("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large. An image has at most " + std::to_string(kMaxSide) + " pixels on a side.");
     }
-    return columnCount * rowCount * 4U;
+    return static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U;
 }
 
-Image::Image(int imageWidth, int imageHeight, math::Color fill) : width(imageWidth), height(imageHeight), pixels(byteCount(imageWidth, imageHeight)) {
+Image::Image(int imageWidth, int imageHeight, math::Color fill) : width(imageWidth), height(imageHeight), pixels(std::vector<std::uint8_t>(byteCount(imageWidth, imageHeight))) {
     const std::uint32_t packed = fill.toRgba8();
     for (std::size_t offset = 0; offset < pixels.size(); offset += 4) {
         pixels[offset + 0] = static_cast<std::uint8_t>(packed & 0xFFU);
@@ -49,18 +74,37 @@ Image::Image(int imageWidth, int imageHeight, std::vector<std::uint8_t> data) : 
     }
 }
 
-Image Image::decode(std::span<const std::uint8_t> encoded) {
-    int decodedWidth = 0;
-    int decodedHeight = 0;
+Image::Image(int imageWidth, int imageHeight, Pixels data) noexcept : width(imageWidth), height(imageHeight), pixels(std::move(data)) {}
+
+// The decoder allocates through the pixel memory, capped at the largest buffer an image of the size its header declares needs: the compressed data it gathers in a buffer that doubles as it grows, and the rows of four 16-bit channels with a filter byte each. A stream that inflates past its image therefore fails instead of growing a buffer without end.
+Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
+    if (maxSide < 1 || maxSide > kMaxSide) {
+        throw std::invalid_argument("The largest side of a decoded image is from 1 to " + std::to_string(kMaxSide) + " pixels.");
+    }
+    if (encoded.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        throw std::runtime_error("The encoded image of " + std::to_string(encoded.size()) + " bytes is too large to decode. An encoded image holds at most " + std::to_string(std::numeric_limits<int>::max()) + " bytes.");
+    }
+
+    const int size = static_cast<int>(encoded.size());
+    int columns = 0;
+    int rows = 0;
     int channels = 0;
-    stbi_uc* decoded = stbi_load_from_memory(encoded.data(), static_cast<int>(encoded.size()), &decodedWidth, &decodedHeight, &channels, STBI_rgb_alpha);
+    if (stbi_info_from_memory(encoded.data(), size, &columns, &rows, &channels) == 0) {
+        throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
+    }
+    if (columns > maxSide || rows > maxSide) {
+        throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large to decode. The image may have at most " + std::to_string(maxSide) + " pixels on a side.");
+    }
+
+    const PixelMemory::Cap cap(encoded.size() * 2U + static_cast<std::size_t>(rows) * (1U + static_cast<std::size_t>(columns) * 8U) + kDecodeSlack);
+    stbi_uc* decoded = stbi_load_from_memory(encoded.data(), size, &columns, &rows, &channels, STBI_rgb_alpha);
+    if (decoded == nullptr && cap.hasRefused()) {
+        throw std::runtime_error("The image could not be decoded, because its data holds more than an image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels.");
+    }
     if (decoded == nullptr) {
         throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
     }
-
-    std::vector<std::uint8_t> data(decoded, decoded + byteCount(decodedWidth, decodedHeight));
-    stbi_image_free(decoded);
-    return Image(decodedWidth, decodedHeight, std::move(data));
+    return {columns, rows, Pixels(decoded, static_cast<std::size_t>(columns) * static_cast<std::size_t>(rows) * 4U)};
 }
 
 std::vector<std::uint8_t> Image::encodePng() const {

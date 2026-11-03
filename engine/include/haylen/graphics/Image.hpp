@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
 #include <span>
 #include <vector>
 
@@ -29,12 +30,15 @@ class Image final {
         Blend,
     };
 
+    // The longest side of an image in pixels, which keeps every image within a size that memory and the pixel arithmetic of 32 bits hold.
+    static constexpr int kMaxSide = 16384;
+
     Image() = default;
     Image(int imageWidth, int imageHeight, math::Color fill = math::Color::transparent());
     Image(int imageWidth, int imageHeight, std::vector<std::uint8_t> data);
 
-    // Decodes PNG, JPG, TGA, BMP and GIF data. Throws `std::runtime_error` when the data is not a supported image.
-    [[nodiscard]] static Image decode(std::span<const std::uint8_t> encoded);
+    // Decodes PNG, JPG, TGA, BMP and GIF data into the buffer the decoder fills, checking the size its header declares before it allocates a pixel, so data from anywhere, such as a downloaded picture, can name the longest side it accepts. Throws `std::runtime_error` when the data is not a supported image or declares an image with a side longer than the largest side, and `std::invalid_argument` for a largest side under 1 or above `kMaxSide`.
+    [[nodiscard]] static Image decode(std::span<const std::uint8_t> encoded, int maxSide = kMaxSide);
 
     // Turns the pixels a render target holds, premultiplied by alpha and with the bottom row first where the GPU device stores them so, into an image of straight colors with the top row first.
     [[nodiscard]] static Image fromRendered(std::vector<std::uint8_t> data, int columns, int rows, bool bottomUp);
@@ -55,13 +59,13 @@ class Image final {
         return pixels.empty();
     }
     [[nodiscard]] std::span<const std::uint8_t> getPixels() const noexcept {
-        return pixels;
+        return {pixels.data(), pixels.size()};
     }
 
     // Returns the pixels to change in place, which drops the mipmaps made from them.
     [[nodiscard]] std::span<std::uint8_t> getWritablePixels() noexcept {
         mipmaps.clear();
-        return pixels;
+        return {pixels.data(), pixels.size()};
     }
 
     [[nodiscard]] math::Color getPixel(int x, int y) const noexcept;
@@ -101,12 +105,58 @@ class Image final {
     }
 
   private:
+    // The RGBA8 bytes of an image: a vector it was given or made, or the buffer the decoder filled, which a decoded image keeps instead of copying it.
+    class Pixels final {
+      public:
+        Pixels() = default;
+        explicit Pixels(std::vector<std::uint8_t> bytes) noexcept;
+        Pixels(std::uint8_t* bytes, std::size_t size) noexcept;
+        Pixels(const Pixels& other);
+        Pixels(Pixels&& other) noexcept = default;
+        Pixels& operator=(const Pixels& other);
+        Pixels& operator=(Pixels&& other) noexcept = default;
+        ~Pixels() = default;
+
+        [[nodiscard]] std::uint8_t* data() noexcept {
+            return adopted ? adopted.get() : owned.data();
+        }
+        [[nodiscard]] const std::uint8_t* data() const noexcept {
+            return adopted ? adopted.get() : owned.data();
+        }
+        [[nodiscard]] std::size_t size() const noexcept {
+            return adopted ? adoptedSize : owned.size();
+        }
+        [[nodiscard]] bool empty() const noexcept {
+            return size() == 0;
+        }
+        [[nodiscard]] std::uint8_t& operator[](std::size_t index) noexcept {
+            return data()[index];
+        }
+        [[nodiscard]] const std::uint8_t& operator[](std::size_t index) const noexcept {
+            return data()[index];
+        }
+
+      private:
+        struct Release {
+            void operator()(std::uint8_t* bytes) const noexcept;
+        };
+
+        std::vector<std::uint8_t> owned;
+        std::unique_ptr<std::uint8_t, Release> adopted;
+        std::size_t adoptedSize = 0;
+    };
+
+    // The bytes past what an image needs that its decode may allocate, for the tables of the decoder and the buffers of tiny images.
+    static constexpr std::size_t kDecodeSlack = 65536;
+
+    Image(int imageWidth, int imageHeight, Pixels data) noexcept;
+
     [[nodiscard]] static std::size_t byteCount(int columns, int rows);
     [[nodiscard]] static Area clip(const Area& area, int columns, int rows) noexcept;
 
     int width = 0;
     int height = 0;
-    std::vector<std::uint8_t> pixels;
+    Pixels pixels;
     std::vector<Image> mipmaps;
 };
 

@@ -47,10 +47,16 @@ class ImageLua final {
     // Creates an image with `graphics.newImage(width, height, fill)`.
     static int create(lua_State* L);
 
-    // Decodes the bytes of an image file with `graphics.decodeImage(bytes)`, and on the task pool with `graphics.decodeImageAsync(bytes)`, which returns a promise of the image.
+    // Decodes the bytes of an image file with `graphics.decodeImage(bytes, {maxSize})`, and on the task pool with `graphics.decodeImageAsync(bytes, {maxSize})`, which returns a promise of the image.
     static int decode(lua_State* L);
     static int decodeAsync(lua_State* L);
     static int decodePlaceholder(lua_State* L);
+
+    // Returns the longest side of an image with `graphics.maxImageSize()`.
+    static int maxSize(lua_State* L);
+
+    // Reads the longest side that the options of a decode at the index accept.
+    [[nodiscard]] static int readMaxSide(lua_State* L, int index);
 
     // Returns the image at the index as one Lua may change.
     [[nodiscard]] static Image& checkWritable(lua_State* L, int index);
@@ -63,6 +69,7 @@ class ImageLua final {
 
   private:
     static constexpr std::array<std::string_view, 2> kBlitFields{"source", "blend"};
+    static constexpr std::array<std::string_view, 1> kDecodeFields{"maxSize"};
     static constexpr std::array<std::string_view, 2> kPlaceholderFields{"columns", "rows"};
     static constexpr std::array<std::string_view, 7> kGradientFields{"kind", "stops", "colors", "angle", "center", "radius", "dither"};
     static constexpr std::array<std::string_view, 4> kAdjustFields{"brightness", "contrast", "saturation", "hue"};

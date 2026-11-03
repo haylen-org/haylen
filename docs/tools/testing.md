@@ -12,7 +12,7 @@ The suite lives in `engine/tests/` and builds into one executable, `haylen-tests
 | `engine/tests/2d/<module>/` | The tests of the 2D modules, which follow the `2d` folders of the engine: `animation`, `graphics` (the renderer, fonts, cameras and their Lua binding), `lighting`, `navigation`, `particles`, `physics`, `spatial` and `tiled`. |
 | `engine/tests/lua/` | The binding tests of the core, math, input and assets modules, and of the Lua runtime and the binding toolkit. Other modules keep their binding tests next to their C++ tests, such as `Spatial2DLuaTest` in `2d/spatial/Spatial2DTests.cpp`. |
 | `engine/tests/support/` | The shared helpers in `haylen::test`, which [the engine fixture](#the-engine-fixture) lists. |
-| `engine/tests/fuzz/` | The entry points of the fuzzers of the content formats, of input recordings, of MessagePack and of image placeholders, which the option `HAYLEN_BUILD_FUZZERS` builds. |
+| `engine/tests/fuzz/` | The entry points of the fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files and of SVG documents, which the option `HAYLEN_BUILD_FUZZERS` builds. |
 | `engine/tests/data/fonts/` | Subsets of open fonts, with their licenses, that keep only the characters that the text, shaping and UI tests draw: Latin serif and CFF faces, Arabic, Hebrew, Devanagari, Thai, Japanese and symbols. CMake passes the folder to the tests as `HAYLEN_TEST_FONTS`, so the engine tests read no file of the samples. |
 | `engine/tests/data/audio/` | Short tones made for the tests in Ogg Vorbis, in MP3 with and without the header that tells its length, and in FLAC, which the streaming tests decode. CMake passes the folder as `HAYLEN_TEST_AUDIO`. |
 | `engine/tests/data/video/` | A short H.264 and AAC clip made for the tests, which the Windows tests decode through Media Foundation. CMake passes the folder as `HAYLEN_TEST_VIDEO`. |
@@ -403,14 +403,16 @@ A fuzzer feeds a parser with inputs that libFuzzer generates, to find the inputs
 | `--llvm` | the variable `HAYLEN_LLVM`, or else the LLVM of a package manager | The `bin` folder of an LLVM whose Clang links libFuzzer. Without either, the command looks in `/opt/homebrew/opt/llvm/bin`, `/usr/local/opt/llvm/bin` and `/usr/lib/llvm-<version>/bin` for the versions 20, 19 and 18. Apple Clang does not ship libFuzzer. |
 | `--jobs` | the processors minus one | The parallel jobs of the build. |
 
-The command configures `build/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the four fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
+The command configures `build/fuzz` in the Debug configuration with that Clang and `HAYLEN_BUILD_FUZZERS`, which instruments every target for libFuzzer and AddressSanitizer. It builds the six fuzzers and runs each on inputs of at most 64 KiB. Each fuzzer has a corpus of its own in `build/fuzz/corpus/<fuzzer>`, which keeps the inputs that reached new code for the next run. A crash stops the command with the input that caused it.
 
 | Fuzzer | What it checks | Tests that drive the same code on every run |
 | --- | --- | --- |
 | `haylen-content-fuzzer` | The parsers of the content formats treat every file as hostile. The first byte of an input picks the chunk record, the shard header, the shard index, the catalog, the manifest or the channel descriptor, and the parser may reject the rest only with a content error. | The hostile input tests in `engine/tests/content/HostileInputTests.cpp`, with random bytes and damaged copies of valid files. |
+| `haylen-image-fuzzer` | It decodes each input with `graphics::Image::decode` as a PNG, JPEG, GIF, BMP or TGA file, which its first byte picks by putting the signature of that format before the rest, and bleeds and halves what decodes. The decode may fail only as data that is not an image of at most 1024 pixels on a side. | The image tests in `engine/tests/graphics/GraphicsTests.cpp`, with a header that declares a side too long and data that inflates past its image. |
 | `haylen-input-fuzzer` | The reader of input recordings may reject an input only as a malformed recording. | `InputRecordingTest`, with truncated, trailing and oversized inputs. |
 | `haylen-messagepack-fuzzer` | It decodes each input with `core::MessagePack` and encodes the result again, which may fail only as bytes that are not valid MessagePack. | `MessagePackTest`, with truncated, trailing, deeply nested and oversized messages. |
 | `haylen-placeholder-fuzzer` | It decodes each input as an image placeholder of `graphics::ImagePlaceholder`, which may fail only as a text that is not a placeholder. | `ImagePlaceholderTest`, with empty, cut, padded, foreign and oversized texts. |
+| `haylen-vector-image-fuzzer` | It reads each input as an SVG document with `graphics::VectorImage::parse` and rasterizes what reads at 64 pixels on its longest side, which may fail only as a text that is not an SVG document with a size. | `VectorImageTest`, with documents without a size and rasters too large. |
 
 ## Coverage
 

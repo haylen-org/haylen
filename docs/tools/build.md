@@ -247,7 +247,7 @@ The script `haylen.py` sets these cache variables for you. A project that adds t
 | `HAYLEN_BUILD_FRAMEWORK` | off | On Apple platforms, with `HAYLEN_BUILD_SDK`, merges the SDK and the player into the `libhaylen.a` of one slice of `Haylen.xcframework`, which the `haylen-framework` component installs. |
 | `HAYLEN_ENABLE_COVERAGE` | off | Instruments the engine and the tests with LLVM coverage. It needs Clang. |
 | `HAYLEN_SANITIZERS` | `OFF` | The sanitizers of desktop builds that do not use MSVC: `OFF`, `ADDRESS` for AddressSanitizer and UndefinedBehaviorSanitizer on the targets of the engine, or `THREAD` for ThreadSanitizer on every C and C++ target of the build, dependencies included. |
-| `HAYLEN_BUILD_FUZZERS` | off | Builds the fuzzers `haylen-content-fuzzer`, `haylen-input-fuzzer`, `haylen-messagepack-fuzzer` and `haylen-placeholder-fuzzer`, and instruments every target for libFuzzer and AddressSanitizer. It needs a Clang that links libFuzzer, which Apple Clang does not ship. |
+| `HAYLEN_BUILD_FUZZERS` | off | Builds the fuzzers `haylen-content-fuzzer`, `haylen-image-fuzzer`, `haylen-input-fuzzer`, `haylen-messagepack-fuzzer`, `haylen-placeholder-fuzzer` and `haylen-vector-image-fuzzer`, and instruments every target for libFuzzer and AddressSanitizer. It needs a Clang that links libFuzzer, which Apple Clang does not ship. |
 
 The workspace `CMakeLists.txt` at the root of the repository is the project `haylen-workspace`. It adds `engine/` and turns the player, the tests, the benchmarks and the content tool on. The options of apps, such as `HAYLEN_PROTECTED_RELEASE`, belong to [`haylen_add_app`](embedding.md#haylen_add_app).
 

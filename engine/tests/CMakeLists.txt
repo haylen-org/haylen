@@ -322,7 +322,7 @@ gtest_discover_tests(haylen-tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings, of MessagePack and of image placeholders run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files and of SVG documents run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -348,4 +348,16 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen-placeholder-fuzzer PRIVATE haylen::engine)
   target_link_options(haylen-placeholder-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-placeholder-fuzzer)
+
+  add_executable(haylen-image-fuzzer fuzz/ImageFuzzer.cpp)
+  set_target_properties(haylen-image-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen-image-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-image-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-image-fuzzer)
+
+  add_executable(haylen-vector-image-fuzzer fuzz/VectorImageFuzzer.cpp)
+  set_target_properties(haylen-vector-image-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_link_libraries(haylen-vector-image-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-vector-image-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-vector-image-fuzzer)
 endif()

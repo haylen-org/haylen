@@ -111,6 +111,12 @@ TEST(GraphicsLuaTest, EditsImagesAndPacksThemIntoAtlases) {
     EXPECT_NE(fixture.lua("canvas:crop({10, 4, 8, 8})").find("is not inside the image of 16 by 8 pixels."), std::string::npos);
     EXPECT_NE(fixture.lua("canvas:blit(tile, 0, 0, {mode = 'add'})").find("Unknown option \"mode\"."), std::string::npos);
     EXPECT_NE(fixture.lua("graphics.decodeImage('not an image')").find("The image could not be decoded"), std::string::npos);
+    EXPECT_EQ(fixture.lua("return graphics.maxImageSize()"), "16384");
+    EXPECT_EQ(fixture.lua("return graphics.decodeImage(png, {maxSize = 6}).width"), "6");
+    EXPECT_NE(fixture.lua("graphics.decodeImage(png, {maxSize = 4})").find("pixels is too large to decode. The image may have at most 4 pixels on a side."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.decodeImageAsync(png, {maxSize = 0})").find("The option \"maxSize\" of a decode is from 1 to 16384 pixels."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.decodeImage(png, {size = 4})").find("Unknown option \"size\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("graphics.newImage(20000, 4)").find("The image of 20000 by 4 pixels is too large. An image has at most 16384 pixels on a side."), std::string::npos);
     EXPECT_NE(fixture.lua("animation2d.newAtlasBuilder():build()").find("An atlas needs at least one image."), std::string::npos);
     EXPECT_NE(fixture.lua("local b = animation2d.newAtlasBuilder() b:add('a', canvas) b:add('a', canvas)").find("The atlas has the frame \"a\" twice."), std::string::npos);
     EXPECT_NE(fixture.lua("local b = animation2d.newAtlasBuilder() b:add('a', canvas) b:build({maxSize = 8})").find("need more room than a texture of 8 pixels."), std::string::npos);

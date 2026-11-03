@@ -34,7 +34,7 @@ class VectorImage final {
     // Returns the size in pixels of the raster at a scale, which covers the whole image.
     [[nodiscard]] static std::pair<int, int> getRasterSize(math::Vec2 size, float scale) noexcept;
 
-    // Rasterizes the whole image at a scale into straight RGBA pixels of the size `getRasterSize` gives, with the colors of the edges spread into the transparent pixels around them so filtering never darkens them. Safe on any thread.
+    // Rasterizes the whole image at a scale into straight RGBA pixels of the size `getRasterSize` gives, with the colors of the edges spread into the transparent pixels around them so filtering never darkens them. Safe on any thread. Throws `std::invalid_argument` when a side of the raster would be longer than `Image::kMaxSide`.
     [[nodiscard]] Image rasterize(float scale) const;
 
     [[nodiscard]] const std::shared_ptr<VectorImageResource>& getResource() const noexcept {

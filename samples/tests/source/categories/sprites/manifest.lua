@@ -25,5 +25,6 @@ return {
         {code = 'SPR-019', title = 'Batches of several textures', description = 'A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite.', module = 'batch-textures'},
         {code = 'SPR-020', title = 'Blend modes', description = 'Every blend mode of a group over the same picture, from the blends of the GPU to overlay, darken, lighten, the dodges and burns, the lights, difference and exclusion, which mix with what lies below.', module = 'blend-modes'},
         {code = 'SPR-021', title = 'Paths', description = 'Shapes of lines, curves and arcs filled by the nonzero or the even-odd rule and stroked with joins and dashes, a kept gear drawn turned and zoomed and a wave given again every frame.', module = 'paths'},
+        {code = 'SPR-022', title = 'Untrusted images', description = 'A picture decoded only within the longest side the app accepts, and two damaged files, a header that declares a huge image and data that inflates past its image, refused before they take memory.', module = 'untrusted-images'},
     },
 }

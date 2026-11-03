@@ -4,6 +4,8 @@
 
 #include <cmath>
 #include <cstddef>
+#include <stdexcept>
+#include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
@@ -56,19 +58,38 @@ int ImageLua::create(lua_State* L) {
     return 1;
 }
 
+int ImageLua::maxSize(lua_State* L) {
+    lua::Stack::push(L, Image::kMaxSide);
+    return 1;
+}
+
+int ImageLua::readMaxSide(lua_State* L, int index) {
+    int maxSide = Image::kMaxSide;
+    if (!lua_isnoneornil(L, index)) {
+        luaL_checktype(L, index, LUA_TTABLE);
+        lua::Table::checkFields(L, index, {kDecodeFields});
+        lua::Table::readField(L, index, "maxSize", maxSide);
+    }
+    if (maxSide < 1 || maxSide > Image::kMaxSide) {
+        throw std::invalid_argument("The option \"maxSize\" of a decode is from 1 to " + std::to_string(Image::kMaxSide) + " pixels.");
+    }
+    return maxSide;
+}
+
 int ImageLua::decode(lua_State* L) {
     const auto bytes = lua::Stack::read<std::string_view>(L, 1);
-    push(L, Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()}));
+    push(L, Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()}, readMaxSide(L, 2)));
     return 1;
 }
 
 int ImageLua::decodeAsync(lua_State* L) {
     std::string bytes(lua::Stack::read<std::string_view>(L, 1));
+    const int maxSide = readMaxSide(L, 2);
     core::Engine& engine = lua::Runtime::getEngine(L);
     auto promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
     // clang-format off
-    engine.getJobs().run([bytes = std::move(bytes)] {
-        return Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()});
+    engine.getJobs().run([bytes = std::move(bytes), maxSide] {
+        return Image::decode({reinterpret_cast<const std::uint8_t*>(bytes.data()), bytes.size()}, maxSide);
     }, [promise](core::JobSystem::Result<Image> result) {
         if (!result.isOk()) {
             promise->reject(result.error);

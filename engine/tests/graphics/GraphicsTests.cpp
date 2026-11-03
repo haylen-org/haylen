@@ -44,8 +44,65 @@ TEST(ImageTest, CreatesDecodesAndEditsPixels) {
     EXPECT_THROW(graphics::Image(2, 2, std::vector<std::uint8_t>(3)), std::invalid_argument);
     EXPECT_THROW(graphics::Image(-1, 2), std::invalid_argument);
 
-    // A size whose bytes no pointer difference can span fails before any pixel is allocated.
+    // A side past the longest an image has fails before any pixel is allocated.
+    test::AllocationTracker tracker;
     EXPECT_THROW(graphics::Image(std::numeric_limits<int>::max(), std::numeric_limits<int>::max()), std::invalid_argument);
+    EXPECT_THROW(graphics::Image(graphics::Image::kMaxSide + 1, 1), std::invalid_argument);
+    EXPECT_LT(tracker.getLargest(), 1024U);
+}
+
+TEST(ImageTest, RefusesAnImageWhoseHeaderDeclaresASideTooLongBeforeDecodingIt) {
+    // The width and the height of the header of a PNG file are the big-endian numbers at bytes 16 and 20.
+    std::vector<std::uint8_t> png = test::TestFiles::pngImage(4, 4, 0xFF0000FFU);
+    const std::uint32_t width = graphics::Image::kMaxSide + 1;
+    const std::uint32_t height = 16000;
+    for (std::size_t index = 0; index < 4; ++index) {
+        png[16 + index] = static_cast<std::uint8_t>(width >> (24U - index * 8U));
+        png[20 + index] = static_cast<std::uint8_t>(height >> (24U - index * 8U));
+    }
+
+    // The decoder reads the header with buffers of its own, far smaller than the pixels it declares.
+    test::AllocationTracker tracker;
+    try {
+        (void)graphics::Image::decode(png);
+        FAIL() << "The image decoded.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "The image of 16385 by 16000 pixels is too large to decode. The image may have at most 16384 pixels on a side.");
+    }
+    EXPECT_LT(tracker.getLargest(), 64U * 1024U);
+    EXPECT_THROW((void)graphics::Image::decode(test::TestFiles::pngImage(4, 4, 0xFF0000FFU), 3), std::runtime_error);
+    EXPECT_THROW((void)graphics::Image::decode(png, 0), std::invalid_argument);
+}
+
+TEST(ImageTest, StopsADecodeWhoseDataInflatesPastItsImage) {
+    // The pixels of a large image in the header of an image of one pixel inflate to far more than that pixel needs.
+    std::vector<std::uint8_t> png = graphics::Image(1024, 1024).encodePng();
+    for (std::size_t index = 16; index < 24; ++index) {
+        png[index] = index % 4 == 3 ? 1 : 0;
+    }
+
+    test::AllocationTracker tracker;
+    try {
+        (void)graphics::Image::decode(png);
+        FAIL() << "The image decoded.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "The image could not be decoded, because its data holds more than an image of 1 by 1 pixels.");
+    }
+    EXPECT_LT(tracker.getLargest(), 256U * 1024U);
+}
+
+TEST(ImageTest, KeepsTheBufferTheDecoderFilledInsteadOfACopy) {
+    graphics::Image source(512, 512);
+    source.fill({0, 0, 256, 512}, math::Color::fromHex(0x3366CCFFU));
+    const std::vector<std::uint8_t> png = source.encodePng();
+    const std::size_t pixelBytes = 512U * 512U * 4U;
+
+    // The decoder needs the inflated rows and the pixels, and a copy of the pixels would add a third buffer of their size.
+    test::AllocationTracker tracker;
+    const graphics::Image decoded = graphics::Image::decode(png);
+    EXPECT_EQ(decoded.getPixel(300, 7), math::Color::transparent());
+    EXPECT_EQ(decoded.getPixel(7, 300), math::Color::fromHex(0x3366CCFFU));
+    EXPECT_LT(tracker.getTotal(), pixelBytes * 5U / 2U);
 }
 
 TEST(ImageTest, FillsBlitsCropsAndExtrudesAreas) {

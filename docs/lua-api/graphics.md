@@ -24,7 +24,7 @@ end
 
 ### graphics.maxTextureSize()
 
-Returns the largest width and height in pixels that a texture or render target can have on this device. A larger size raises `Texture dimensions exceed the device limit.`.
+Returns the largest width and height in pixels that a texture or render target can have on this device, which is never more than [`graphics.maxImageSize()`](#graphicsmaximagesize). A larger size raises `Texture dimensions exceed the device limit.`.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -32,6 +32,18 @@ local graphics = require('haylen.graphics')
 local size = math.min(4096, graphics.maxTextureSize())
 local atlas = graphics.newRenderTarget(size, size)
 print(atlas.width, graphics.maxTextureSize())
+```
+
+### graphics.maxImageSize()
+
+Returns the longest side in pixels that an `Image` can have on every platform, 16384. It keeps every image within the memory of a device and within the 32-bit arithmetic of its pixels. The images that `graphics.newImage` and `graphics.decodeImage` make and the rasters of vector images never have a longer side.
+
+```lua
+local graphics = require('haylen.graphics')
+
+local side = math.min(8192, graphics.maxImageSize())
+local canvas = graphics.newImage(side, 64)
+print(canvas.width)
 ```
 
 ## Texture
@@ -201,7 +213,7 @@ Work on the task pool, such as `image:blitAsync` and `builder:buildAsync`, reads
 
 ### graphics.newImage(width, height, fill)
 
-Makes an `Image` of `width` by `height` pixels, every pixel `fill`, which is transparent by default. A size under one pixel raises `An image needs a width and a height of one pixel or more.`, and a size too large for memory raises `Image dimensions are too large to hold in memory.`.
+Makes an `Image` of `width` by `height` pixels, every pixel `fill`, which is transparent by default. A size under one pixel raises `An image needs a width and a height of one pixel or more.`, and a side longer than [`graphics.maxImageSize()`](#graphicsmaximagesize) raises `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.`.
 
 ```lua
 local graphics = require('haylen.graphics')
@@ -210,9 +222,11 @@ local canvas = graphics.newImage(256, 128, '#FF1E2A44')
 print(canvas.width, canvas.height)
 ```
 
-### graphics.decodeImage(bytes)
+### graphics.decodeImage(bytes, options)
 
 Decodes the bytes of a PNG, JPEG, TGA, BMP or GIF file into an `Image` on the frame thread. Bytes that are not an image raise `The image could not be decoded, and the decoder reported "<reason>".`. The `image` asset type of [`haylen.assets`](assets.md) loads the images of the package the same way, and `assets.loadAsync(path, 'image')` does it off the frame thread.
+
+The decoder reads the size in the header of the file before it allocates a pixel. The table `options` takes `maxSize`, the longest side in pixels that the image may have, from 1 to `graphics.maxImageSize()`, which is the default. A larger image raises `The image of <width> by <height> pixels is too large to decode. The image may have at most <maxSize> pixels on a side.`. Bytes from outside the app, such as a picture that a person uploads, should name the size the app expects, so a small file that declares a huge image never takes the memory of one.
 
 ```lua
 local assets = require('haylen.assets')
@@ -220,11 +234,13 @@ local graphics = require('haylen.graphics')
 
 local icon = graphics.decodeImage(assets.bytes('icons/star.png'))
 print(icon.width, icon.height)
+local avatar = graphics.decodeImage(assets.bytes('icons/avatar.png'), {maxSize = 512})
+print(avatar.width)
 ```
 
-### graphics.decodeImageAsync(bytes)
+### graphics.decodeImageAsync(bytes, options)
 
-Decodes like `graphics.decodeImage` on the task pool, and returns a promise of the image. The promise rejects with the same message when the bytes are not an image.
+Decodes like `graphics.decodeImage`, with the same `options`, on the task pool, and returns a promise of the image. The promise rejects with the same message when the bytes are not an image or the image is too large.
 
 ```lua
 local async = require('async')
@@ -233,7 +249,7 @@ local http = require('http')
 
 async.spawn(function()
     local response = http.client.get('https://example.com/shoes.png'):await()
-    local image, failure = graphics.decodeImageAsync(response.body):await()
+    local image, failure = graphics.decodeImageAsync(response.body, {maxSize = 1024}):await()
     print(image and image.width or failure)
 end)
 ```
@@ -1152,7 +1168,10 @@ These messages come from the functions and methods of the module.
 | `The pixels do not match the size of the dynamic texture.` | The pixels of `texture:update` have another length. |
 | `The image could not be decoded, and the decoder reported "<reason>".` | The bytes of `graphics.newTexture`, `graphics.decodeImage` or `graphics.decodeImageAsync` are not an image. |
 | `An image needs a width and a height of one pixel or more.` | The size of `graphics.newImage` is under one pixel. |
-| `Image dimensions are too large to hold in memory.` | The size of `graphics.newImage` is too large. |
+| `The image of <width> by <height> pixels is too large. An image has at most 16384 pixels on a side.` | A side of `graphics.newImage` is longer than `graphics.maxImageSize()`. |
+| `The image of <width> by <height> pixels is too large to decode. The image may have at most <maxSize> pixels on a side.` | The header of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` declares a side longer than the option `maxSize`. |
+| `The image could not be decoded, because its data holds more than an image of <width> by <height> pixels.` | The compressed data of the bytes of `graphics.decodeImage` or `graphics.decodeImageAsync` inflates past the size that their header declares, so the file is damaged. |
+| `The option "maxSize" of a decode is from 1 to 16384 pixels.` | The option `maxSize` of `graphics.decodeImage` or `graphics.decodeImageAsync` is out of range. |
 | `A read needs a valid render target.` | The target of `graphics.readTarget` is not valid. |
 | `The area <x>, <y>, <w> by <h> is not inside the image of <w> by <h> pixels.` | The area of `image:crop` lies outside the image. |
 | `An empty image has no PNG file.` | The image of `image:encodePng` has no pixels. |

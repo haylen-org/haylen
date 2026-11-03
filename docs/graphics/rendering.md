@@ -585,6 +585,20 @@ A texture made with the `linear` filter samples the pixels around each point. So
 
 The texture option `mipmaps` keeps smaller copies of the image, down to one pixel, made when it decodes. A texture drawn smaller than its size samples those copies instead of skipping pixels. The copies average each block of pixels by alpha, so transparent pixels never darken them. A texture with the `linear` filter keeps them by default, because art painted in high definition is often drawn far below its size, such as a character sheet of 256 pixel cells drawn 50 pixels tall, a ship on a map or the thin end of a textured ribbon. Without the smaller copies, each pixel of the screen picks one texel of the full image, so edges turn jagged, thin lines break into dots and fine detail shimmers as it moves. The copies take a third more memory than the image and upload with it. A texture loaded with `assets.texture` makes them on the worker that decodes it, so they cost the frame nothing, while a texture made from an `Image` with `graphics.newTexture` makes them when it is made. Pixel art keeps the `nearest` filter and no mipmaps by default, so its pixels stay hard. The option `mipmaps = false` turns them off for a linear texture that never draws smaller than its size, such as a background drawn at its own size. Render targets and textures that change in place have no mipmaps.
 
+An image file can come from anywhere, such as a picture that a person uploads or an avatar that the app downloads, so the engine treats its bytes as hostile. The function `graphics::Image::decode` reads the size in the header of the file before it allocates a pixel. It refuses a side longer than `Image::kMaxSide`, 16384 pixels, or than the smaller side the caller names, which is the option `maxSize` of `graphics.decodeImage` in Lua. A file of a few bytes that declares a huge image therefore fails at once, without taking the memory of one. The decoder also caps every buffer it allocates at what an image of the declared size needs, so a compressed stream that inflates past its image fails instead of growing a buffer until memory runs out. The decoder reads PNG, JPEG, TGA, BMP and GIF files and nothing else, and the image keeps the pixels the decoder wrote, without a copy. Fuzzers feed the decoders and the SVG reader with generated input, as the [testing guide](../tools/testing.md#fuzzing) describes.
+
+```lua
+local async = require('async')
+local graphics = require('haylen.graphics')
+local http = require('http')
+
+async.spawn(function()
+    local response = http.client.get('https://example.com/avatar.png'):await()
+    local avatar, failure = graphics.decodeImageAsync(response.body, {maxSize = 512}):await()
+    print(avatar and avatar.width or failure)
+end)
+```
+
 Compressed texture formats are left out, because no format decodes on every graphics API of the engine. Desktop GPUs read BC, mobile GPUs read ETC2 and ASTC, and WebGPU and WebGL2 offer each one only where the device has it. A compressed release would need a copy for every family of devices.
 
 Separate textures split batches, as the [render benchmark](#render-benchmark) shows. The class `animation2d::AtlasBuilder`, `animation2d.newAtlasBuilder` in Lua, packs images, areas of images and the frames of whole atlases with their animations into one texture while the app runs:

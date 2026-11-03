@@ -9,6 +9,7 @@
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/VectorImage.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -40,6 +41,14 @@ TEST_F(VectorImageTest, ReadsTheSizeOfTheDocument) {
     EXPECT_NE(image.getId(), parse(kIcon).getId());
     EXPECT_EQ(parse(R"(<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 12"><path d="M0 0h24v12z"/></svg>)").getSize(), math::Vec2(24.0F, 12.0F));
     EXPECT_EQ(VectorImage::getRasterSize({40.0F, 20.0F}, 0.33F), std::make_pair(14, 7));
+}
+
+TEST_F(VectorImageTest, RefusesARasterWithASideTooLongBeforeAllocatingIt) {
+    const VectorImage huge = parse(R"(<svg xmlns="http://www.w3.org/2000/svg" width="1e30" height="10"/>)");
+    test::AllocationTracker tracker;
+    EXPECT_THROW((void)huge.rasterize(1.0F), std::invalid_argument);
+    EXPECT_THROW((void)parse(kIcon).rasterize(1000.0F), std::invalid_argument);
+    EXPECT_LT(tracker.getLargest(), 1024U);
 }
 
 TEST_F(VectorImageTest, RasterizesFillsStrokesGradientsAndGroupsAtAScale) {

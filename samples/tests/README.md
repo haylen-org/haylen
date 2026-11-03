@@ -142,6 +142,7 @@ Sprites, atlases, animation, batches, pools, render targets, shapes, paths and t
 | `SPR-019` | Batches of several textures | A meadow of sprites from four separate images in one batch and one draw call, swayed by a material through the data of each sprite. |  |
 | `SPR-020` | Blend modes | Every blend mode of a group over the same picture, from the blends of the GPU to overlay, darken, lighten, the dodges and burns, the lights, difference and exclusion, which mix with what lies below. |  |
 | `SPR-021` | Paths | Shapes of lines, curves and arcs filled by the nonzero or the even-odd rule and stroked with joins and dashes, a kept gear drawn turned and zoomed and a wave given again every frame. |  |
+| `SPR-022` | Untrusted images | A picture decoded only within the longest side the app accepts, and two damaged files, a header that declares a huge image and data that inflates past its image, refused before they take memory. |  |
 
 #### Animation (ANI)
 
