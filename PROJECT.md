@@ -2270,6 +2270,11 @@ Bridge e plugins:
 - [ ] O template de projeto Lua e o C++ 100% prontos e perfeitos: criar, rodar e empacotar em todas as plataformas a partir de `haylen new`, revisado arquivo por arquivo.
 - [ ] Adicionar plugins é fácil e sem limites, qualquer que seja a complexidade: os projetos do Xcode, do Visual Studio (CMake) e do Android Studio nunca impedem o desenvolvedor de criar ou adicionar plugins, com dependências, recursos, extensões e código próprio. Revisar o fluxo inteiro de `plugin new` e `plugin add` em cada plataforma e corrigir o que limitar.
 
+Integração contínua e GitHub:
+
+- [ ] Revisar a CI inteira: os arquivos `.yml` ficam organizados e fáceis de ler, e a execução é otimizada dentro do ambiente que existe, sem perder nada do que ela testa, sem gambiarras e sem atalhos que baixem a qualidade dos testes (por exemplo o cache do GitHub para as fontes do CPM, o ccache e os SDKs, jobs que não repetem trabalho e dependências entre jobs bem pensadas). Medir o tempo de cada job antes e depois.
+- [ ] Os arquivos do GitHub que o dono colocou (`.github/FUNDING.yml` e os modelos de issue em `.github/ISSUE_TEMPLATE/`) entram no repositório, seguindo as regras de nomes e de escrita do projeto onde o GitHub permitir.
+
 Repositórios irmãos:
 
 - [x] `haylen-shader-compiler` 100% perfeito e funcional, com a release nomeada só pela versão (por exemplo `1.0.0`), nunca por um texto. Feito: o compilador compila e passa os 294 testes no macOS (com o compilador Metal do Xcode) e na CI de macOS, Linux, Windows x64 e Windows ARM64, os testes passaram a compilar os shaders atuais da engine (`effect.glsl` e `material.glsl` tinham mudado), a release `v1.0.0` foi renomeada para `1.0.0` e o workflow de release passou a dar à release só a versão como nome. O pin de `engine/cmake/haylen-shader-compiler.json` confere: o commit é o da tag, o SHA-256 do código-fonte e dos cinco arquivos da release batem, e o binário universal do macOS da release gera um pacote idêntico byte a byte ao do build local.
