@@ -190,7 +190,7 @@ class Host : public Window {
     // Whether the app that plays was launched by another app of the process, which starts again when it quits.
     [[nodiscard]] virtual bool isLaunched() const noexcept = 0;
 
-    // Whether the person holds the back button of the platform down, such as the back button of a TV remote, which apps hear only as presses.
+    // Whether the person holds the back button of the platform down, such as the back button or gesture of Android, which apps hear only as presses.
     [[nodiscard]] virtual bool isBackHeld() const noexcept = 0;
 };
 

@@ -654,7 +654,8 @@ When the launched app quits, this app starts again from its own package. The lau
 | Device | Hold for 1.5 seconds |
 | --- | --- |
 | Keyboard, on desktops, the web, Mac Catalyst and tablets with a keyboard | `Escape` |
-| Apple TV and Android TV remotes, and the back button or gesture of Android | The back or Menu button, or the back gesture kept before you let go |
+| Apple TV and Android TV remotes | Play and pause, since the Apple TV takes a hold of its Menu button to the Home screen of the system |
+| Android phones, tablets and TVs | The back button, or the back gesture kept before you let go |
 | Gamepad | The back button, such as View or Select |
 | Touch screen | Three fingers that stay still |
 

@@ -60,6 +60,14 @@ TEST_F(ReturnHoldTest, IgnoresShortPressesAndKeysThatAWindowStoppedHearing) {
     EXPECT_FALSE(hold(ReturnHold::kSeconds * 2.0F));
 }
 
+// The play and pause button of a TV remote presses the key "pause", whose hold leaves too, since the Apple TV takes a hold of Menu to its Home screen.
+TEST_F(ReturnHoldTest, CompletesForPlayAndPauseOfATvRemoteHeld) {
+    returnHold.handleEvent({.type = Event::Type::KeyDown, .key = input::Key::Pause}, 1.0F);
+    EXPECT_TRUE(hold(ReturnHold::kSeconds + 0.1F));
+    returnHold.handleEvent({.type = Event::Type::KeyUp, .key = input::Key::Pause}, 1.0F);
+    EXPECT_FALSE(hold(ReturnHold::kSeconds + 0.1F));
+}
+
 TEST_F(ReturnHoldTest, CompletesForTheBackButtonHeld) {
     EXPECT_FALSE(hold(ReturnHold::kSeconds * 0.5F, true));
     EXPECT_TRUE(hold(ReturnHold::kSeconds * 0.6F, true));

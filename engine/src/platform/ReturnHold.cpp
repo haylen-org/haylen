@@ -13,16 +13,15 @@ void ReturnHold::handleEvent(const Event& event, float pointScale) {
     case Event::Type::FocusLost:
     case Event::Type::Suspended:
         escapeHeld = false;
+        pauseHeld = false;
         fingers.clear();
         return;
     case Event::Type::KeyDown:
-        if (event.key == input::Key::Escape) {
-            escapeHeld = true;
-        }
-        return;
     case Event::Type::KeyUp:
         if (event.key == input::Key::Escape) {
-            escapeHeld = false;
+            escapeHeld = event.type == Event::Type::KeyDown;
+        } else if (event.key == input::Key::Pause) {
+            pauseHeld = event.type == Event::Type::KeyDown;
         }
         return;
     case Event::Type::TouchBegan:
@@ -76,7 +75,7 @@ float ReturnHold::getProgress() const noexcept {
 
 bool ReturnHold::isHolding(bool backHeld) const noexcept {
     const bool fingersHeld = static_cast<int>(fingers.size()) == kFingers && std::ranges::all_of(fingers, &Finger::still);
-    return escapeHeld || backHeld || fingersHeld;
+    return escapeHeld || pauseHeld || backHeld || fingersHeld;
 }
 
 } // namespace haylen::platform

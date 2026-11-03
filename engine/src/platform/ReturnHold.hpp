@@ -9,7 +9,7 @@ namespace haylen::platform {
 
 struct Event;
 
-// The hold that leaves an app that another app launched, on every kind of device: Escape held on a keyboard, the back button of the platform or of a gamepad held, or three fingers held still on a touch screen. The app receives the same input as always, and only a press held for the whole hold leaves it, so the launched app can never keep the person in it.
+// The hold that leaves an app that another app launched, on every kind of device: Escape held on a keyboard, play and pause held on a TV remote, which presses the key `pause`, since the Apple TV takes a hold of its Menu button to the Home screen of the system, the back button of Android or of a gamepad held, or three fingers held still on a touch screen. The app receives the same input as always, and only a press held for the whole hold leaves it, so the launched app can never keep the person in it.
 class ReturnHold final {
   public:
     static constexpr float kSeconds = 1.5F;
@@ -42,6 +42,7 @@ class ReturnHold final {
 
     std::vector<Finger> fingers;
     bool escapeHeld = false;
+    bool pauseHeld = false;
     float held = 0.0F;
     bool completed = false;
 };

@@ -432,9 +432,6 @@ gpu::Device* Player::getGpuDevice() noexcept {
 
 // The back button leaves the app from its root screen, which on the Apple TV means the system takes the press, and goes back inside the app everywhere else. A launched app leaves to the app that launched it instead.
 Player::Back Player::routeBack(bool pressed) {
-    if (holdBack(pressed)) {
-        return Back::Player;
-    }
     Player& runtime = getCurrent();
     if (runtime.engine == nullptr) {
         return Back::System;
