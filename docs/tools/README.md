@@ -15,6 +15,7 @@ Tools build, test, debug and ship the engine and its apps.
 | Hardware testing | Where to run every test from the command line without continuous integration: the machines you have, simulators, emulators, real devices, and GPUs and phones rented on Amazon Web Services and Microsoft Azure, with their costs and the rules that keep them low. | [`hardware-testing.md`](hardware-testing.md) |
 | Installers in CI | A GitHub Actions workflow that builds an app with signed installers and store packages for every platform, and the secrets it needs. | [`ci-installers.md`](ci-installers.md) |
 | Testing | The test suite, the headless host, the engine fixture, Lua binding tests, the test project, sanitizers, fuzzing, coverage, formatting and continuous integration. | [`testing.md`](testing.md) |
+| Upgrading | How to bring an app, its platform projects and its plugins up to the current templates: the reference to compare with, what to compare in every folder and file, what to adopt and what to keep, and how to verify the result. | [`upgrading.md`](upgrading.md) |
 
 ## Lua API
 

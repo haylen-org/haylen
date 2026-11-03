@@ -1,0 +1,217 @@
+# ⬆️ Upgrading projects and plugins
+
+This guide explains how to bring an app and its plugins up to the current templates of Haylen. It is written for people and for AI assistants alike. It says where to look, what to compare and what to change in every folder and file, so nobody has to work the process out again.
+
+## Why projects fall behind
+
+The templates of Haylen change over time. A new Xcode needs a new setting, Android Gradle Plugin moves a key, a CMake project gains a step, or `app.json` gains a field. An app copies the templates once, when `haylen new` creates it, and then the copies belong to the developer. The same is true of a plugin that `haylen plugin new` created. So an older app and an older plugin keep the shape of the templates of their time.
+
+Two kinds of files exist in an app:
+
+- Files that the developer owns: `app.json`, `source/`, `content/`, the root files and every `platform/<platform>/` project. Haylen never edits them, so an upgrade changes them by hand.
+- Files that Haylen writes: the folder `haylen/` inside each platform project and everything under `build/`. These are written again by every build, so they are always current, and an upgrade never touches them.
+
+An upgrade is the work of making the first kind match the current templates again, while keeping every choice that the developer made on purpose.
+
+## Before you start
+
+1. Update the engine, the repository of Haylen that you build with, to the version you want.
+2. Commit or set aside every change of the app and of its plugins, so the upgrade is one diff that you can read and undo.
+3. Build the engine artifacts of the new version once, which also proves that the toolchain of the machine is current.
+
+```sh
+cd ~/haylen
+git pull
+haylen engine
+```
+
+## Make a reference
+
+The current templates are the reference. The simplest way to read them is a new app and a new plugin made with the same options as yours, in a scratch folder that you delete at the end.
+
+```sh
+haylen new /tmp/reference-app --kind lua --name "My Game" --identifier com.example.mygame --orientation landscape
+haylen new /tmp/reference-cpp --kind cpp
+haylen plugin new /tmp/reference-plugin --id my-plugin --with camera,microphone
+```
+
+Use `--kind cpp` for a C++ app, and give `plugin new` the same id and the same `--with` features that your plugin started with, so the reference holds the same blocks of code.
+
+## Compare the whole app
+
+Compare the app folder with the reference, leaving out what is written by builds and what is your own code and art:
+
+```sh
+diff -ru --exclude=build --exclude=haylen --exclude=content --exclude=source /tmp/reference-app ~/apps/my-game
+```
+
+Then compare each platform project with its template, one at a time. The command `platform diff` prints the files that only one side has and a unified diff of every text file that differs. It leaves out `haylen/`, build outputs and the state of Xcode for each person, and it changes nothing.
+
+```sh
+haylen platform diff ~/apps/my-game apple
+haylen platform diff ~/apps/my-game android
+haylen platform diff ~/apps/my-game web
+haylen platform diff ~/apps/my-game windows
+haylen platform diff ~/apps/my-game linux
+```
+
+A C++ app has only `android` and `web` projects, since its `CMakeLists.txt` builds the other platforms. An app without a `platform/<platform>/` folder needs nothing for that platform, because it builds a fresh copy of the template every time.
+
+## How to read each difference
+
+Every difference falls into one of three groups. Decide the group first, then act:
+
+| Group | How you recognize it | What to do |
+| --- | --- | --- |
+| A change of the template | A setting, a key, a step, a file or a version that the reference has and your project lacks or has in an older form, and that you never chose. | Adopt it as the reference has it. |
+| A choice of the developer | A value that names your company, your app, your signing, your store, your art or a feature you added, such as a usage description in your words, an extra framework or a custom build step. | Keep it. |
+| Both | A file where the template changed and you also edited it, such as `project.yml` with your extra target. | Merge by hand: take the new lines of the template and keep your lines. |
+
+The values that come from `app.json`, such as the name, the identifier, the version and the orientation, never need copying into a project, since builds write them into `haylen/`. A project that holds one of those values by hand should read it from `haylen/` again, the way the reference does.
+
+## The root of the app
+
+| File | What to compare | What usually changes |
+| --- | --- | --- |
+| `app.json` | Run the app. Every unknown key and every invalid value stops the start with a sentence that names it and says what is expected. Compare with the reference and with [every field of `app.json`](../lua-api/haylen.md#haylenconfig). | A key that was renamed or moved into another section, a value whose names changed, and new fields whose defaults you may want to set. |
+| `.gitignore` | Diff it with the reference. | New build outputs and caches of tools that the app must never commit. |
+| `.editorconfig`, `.clang-format` | Diff them with the reference. | The style of the code of the engine, which your native code follows. |
+| `source/` | Run the app on the desktop with `haylen run`, then on each platform. A removed Lua function or option raises an error that names it. Look the name up in the [Lua API reference](../lua-api/README.md), which documents the current form. | Calls that became asynchronous and return a promise, options that moved into an options table, and names that changed. |
+| `content/` | Usually nothing. Shaders of the app compile again by themselves with `haylen shaders`. | A shader that includes the shader library of the engine may need the current names of the library. |
+
+## The Apple project
+
+The project lives in `platform/apple/`. Its source of truth is `project.yml`, and `App.xcodeproj` is generated from it.
+
+| File | What to compare | Notes |
+| --- | --- | --- |
+| `project.yml` | `options` (the minimum versions), `settings`, the targets and their `templates`, `sources`, `excludes` and the `include` of `haylen/project.yml`. | Merge: keep your own targets, frameworks and settings, and take the new keys of the reference. Never remove the include or the `templates` of a target unless you link the engine yourself. |
+| `App.xcconfig` | The `#include "haylen/Haylen.xcconfig"` line and the settings around it. | Your settings after the include win, so keep them. |
+| `ios/Info.plist`, `tvos/Info.plist`, `macos/Info.plist`, `visionos/Info.plist` | Every key of the reference. | Keep your usage descriptions and your keys. Take the keys that the reference gained. Keys of plugins and of `app.json` are filled into the completed copy in `haylen/` by the build, so they need no copy here. |
+| Entitlements | The entitlements files of the reference, if any. | Keep yours. Plugins add theirs at build time. |
+| `ios/LaunchScreen.storyboard` | Diff it. | It shows the splash of `app.json`, so keep your art in `app.json`, not in the storyboard. |
+| `source/main.m`, `source/AppBridge.swift`, `source/HaylenBridging.h` | Diff them. | Keep your bridge handlers. Take changes of the registration code and of the bridging header. |
+| Asset catalogs | Diff the `Contents.json` files. | Keep your icons. |
+
+When `project.yml` is done, generate the Xcode project again and build:
+
+```sh
+haylen platform xcodegen ~/apps/my-game
+haylen run ~/apps/my-game --platform ios-simulator
+```
+
+If `run` says that `App.xcodeproj` changed since its last generation, move the changes that were made in Xcode into `project.yml`, then generate it again. The section on [generating App.xcodeproj](distribution.md#generating-appxcodeproj) explains that check.
+
+## The Android project
+
+The project lives in `platform/android/`. It is a Gradle project that reads `haylen/haylen.properties`.
+
+| File | What to compare | Notes |
+| --- | --- | --- |
+| `settings.gradle.kts` | The plugin management, the repositories, the inclusion of plugin modules and asset packs, and the extra property `haylenEngineVersion`. | Take the reference. Keep only repositories and modules that you added yourself. |
+| `build.gradle.kts` (root) | The versions of the Android Gradle Plugin and Kotlin, and the build script repositories. | Take the versions of the reference, since the engine builds with them. |
+| `app/build.gradle.kts` | `compileSdk`, `targetSdk`, `minSdk`, `ndkVersion`, `namespace`, the dependencies on the `haylen` libraries, signing, and the way it reads `haylen.properties`. | Keep your signing, flavors and extra dependencies. Take every value that the reference reads from `haylen.properties`. |
+| `gradle.properties` | Every property. | Keep your memory settings if you raised them. |
+| `gradle/wrapper/gradle-wrapper.properties` | The Gradle version and its checksum. | Take the reference. |
+| `app/src/main/AndroidManifest.xml` | Permissions, the activity, its intent filters, `android:configChanges` and the application class. | Keep your permissions and filters. Take what the reference gained, such as a permission that a newer system requires. A permission you removed on purpose with `tools:node="remove"` stays removed. |
+| `app/src/main/kotlin/` | The `App` class and its bridge handlers. | Keep your handlers. Take changes to how they register. |
+| `app/src/main/res/` | Icons, themes and values. | Keep your icons. Take changes to the themes of the template, which the status bar and the splash depend on. |
+
+Then build and install on the emulator:
+
+```sh
+haylen run ~/apps/my-game --platform android
+```
+
+## The web project
+
+The project lives in `platform/web/`.
+
+| File | What to compare | Notes |
+| --- | --- | --- |
+| `index.html` | The structure of the page, the elements that `loader.js` uses and the scripts it loads. | Keep your texts and your extra tags. |
+| `loader.js` | The whole file. | Take the reference, since it talks to the runtime of the engine. Keep only edits that you made on purpose, and move them to `app.js` if they are app code. |
+| `loader.css` | The variables at the top and the rules below them. | Keep your values of the variables. Take the rules of the reference. |
+| `app.js` | The page code and its bridge handlers. | Keep your handlers. |
+
+```sh
+haylen run ~/apps/my-game --platform web
+```
+
+## The Windows and Linux projects
+
+The projects live in `platform/windows/` and `platform/linux/`. Each is a CMake project that includes `haylen/haylen.cmake` and calls `haylen_app` on its executable.
+
+| File | What to compare | Notes |
+| --- | --- | --- |
+| `CMakeLists.txt` | `cmake_minimum_required`, the include of `haylen/haylen.cmake`, `haylen_app(<target>)`, the install rules and the packaging. | Merge: keep your extra sources and libraries. |
+| `signing.cmake` (Windows) | The signing step. | Keep the name of your certificate variable. |
+| `resources/` | The icon, the version resource and the manifest on Windows. The desktop entry, the metainfo and the icons on Linux. | Keep your icons and texts. Take new fields of the manifest, the desktop entry and the metainfo. |
+
+```sh
+haylen run ~/apps/my-game --platform windows
+haylen run ~/apps/my-game --platform linux
+```
+
+## A C++ app
+
+A C++ app is a CMake project, so compare these files with the C++ reference as well:
+
+| File | What to compare | Notes |
+| --- | --- | --- |
+| `CMakeLists.txt` | The version range of CMake, how it adds the engine (`HAYLEN_ENGINE_SOURCE` or `find_package`), the `haylen_add_app` call and its options. | Keep your sources and libraries. |
+| `src/App.cpp` | The app class and the desktop bridge handlers. | Your code stays. Compile errors point to engine APIs that changed, and the public headers under `engine/include/haylen/` hold their current form. |
+| `src/AppBridge.mm` | The Objective-C bridge handler. | Keep your handlers. |
+
+## Plugins
+
+A plugin lives in `plugins/<id>/` of the app, or in a repository of its own. Compare it with the reference plugin made with the same id and features:
+
+```sh
+diff -ru /tmp/reference-plugin ~/apps/my-game/plugins/my-plugin
+```
+
+| Part | What to compare | Notes |
+| --- | --- | --- |
+| `plugin.json` | Every section against [the plugin.json format](../platform/plugins.md#pluginjson). Builds validate it, and an unknown key or an invalid value stops the build with a sentence that names it. | Keys of the `apple`, `android`, `web` and `native` sections change most often. Keep your parameters and their defaults. |
+| `source/` | The Lua API of the plugin, against the [Lua API of a plugin](../platform/plugins.md#the-lua-api-of-a-plugin). | Calls that a platform may gate answer with states and promises, as the [permissions](../platform/plugins.md#permissions) section describes. |
+| `apple/` | The plugin class, its context and how it reports requirements and permissions. | Keep your Swift or Objective-C code. Take changes to the protocol and to the helper calls. |
+| `android/` | `build.gradle.kts` (its versions, `compileSdk`, `minSdk` and the dependencies on `haylen-plugins`, `haylen-links` or `haylen-coroutines`) and the plugin class. | Take the versions of the reference. Keep your dependencies and code. |
+| `web/` | The ES module and how it registers with its context. | Keep your code. |
+| `native/` | `CMakeLists.txt` and the init function of the desktop library. | Keep your code. |
+| `.gitignore`, `.editorconfig`, `.clang-format` | Diff them. | Take the reference. |
+
+Then list the plugins of the app, which reports each problem that keeps one from building:
+
+```sh
+haylen plugin list --app ~/apps/my-game
+```
+
+## Verify
+
+An upgrade is done when every platform of the app builds, runs and passes its checks:
+
+```sh
+haylen check ~/apps/my-game --platform ios-simulator
+haylen check ~/apps/my-game --platform android
+haylen check ~/apps/my-game --platform web
+haylen check ~/apps/my-game --platform ios-simulator --config Release
+```
+
+The command `check` compares the last build with what the engine and every plugin need, and prints each missing piece with the snippet to add and the file to add it to, as [check](distribution.md#check) describes. Run the app on every platform it ships to, in Debug and in Release, and try each feature that uses a plugin. When everything passes, delete the reference folders and commit the upgrade as one change.
+
+```sh
+rm -rf /tmp/reference-app /tmp/reference-cpp /tmp/reference-plugin
+```
+
+## For AI assistants
+
+An assistant that upgrades a project follows the steps of this guide in order and never guesses a value. Its rules:
+
+1. Read the current templates from a reference made with `haylen new` and `haylen plugin new`, and compare with `diff` and `haylen platform diff`. Never rely on memory of an older template.
+2. Sort every difference into a change of the template, a choice of the developer or both, as [how to read each difference](#how-to-read-each-difference) describes. Adopt changes of the template, keep choices of the developer, and merge files that hold both.
+3. Never edit `haylen/` or `build/`, since builds write them again.
+4. Never copy values of `app.json` into a project, and never remove the lines that include `haylen/`.
+5. Generate `App.xcodeproj` from `project.yml` with `haylen platform xcodegen`, and never edit `project.pbxproj` by hand.
+6. Treat every error of a build, of `check` or of the start of the app as the list of what remains, and fix each one where its sentence points.
+7. Report every choice of the developer that it kept and every merge it made, so a person can review them.
