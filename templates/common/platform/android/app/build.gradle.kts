@@ -33,6 +33,8 @@ val haylenKeys = listOf("debug", "release").mapNotNull { type -> haylenKey(type)
 
 android {
     namespace = "com.haylen.app"
+    // The NDK that built the native libraries of the app strips their debug information from the APK, while the build folder keeps it for the debugger.
+    ndkVersion = haylen.getProperty("ndkVersion")
     compileSdk {
         version = release(37) {
             minorApiLevel = 2

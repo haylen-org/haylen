@@ -283,6 +283,21 @@ class StarterAppTest(unittest.TestCase):
         self.assertNotEqual(app.description, app.name)
 
 
+class AndroidNdkTest(unittest.TestCase):
+    def test_the_android_project_strips_native_libraries_with_the_ndk_of_the_engine(self):
+        # Without the NDK that built them, the Android Gradle plugin packs the native libraries of a debug build with all their debug information.
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch) / "app"
+            shutil.copytree(haylen.COMMON_TEMPLATE / "content", app / "content")
+            shutil.copy2(haylen.COMMON_TEMPLATE / "app.json", app / "app.json")
+            root = Path(scratch) / "android"
+            with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                haylen.prepare_android(haylen.App(app, "android"), root, "main", "Debug", 1)
+            properties = (root / "haylen" / "haylen.properties").read_text(encoding="utf-8")
+        self.assertIn(f"ndkVersion={haylen.ANDROID_NDK_VERSION}", properties.splitlines())
+        self.assertIn('ndkVersion = haylen.getProperty("ndkVersion")', (haylen.COMMON_TEMPLATE / "platform" / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8"))
+
+
 class TextFileTest(unittest.TestCase):
     def test_every_text_file_is_read_and_written_as_utf_8(self):
         # Windows reads and writes text in its own code page by default, which turns the copyright sign of `app.json` into a byte that no UTF-8 tool reads.

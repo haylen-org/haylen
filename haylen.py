@@ -3920,6 +3920,7 @@ def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, 
     values = {
         "repository": (ARTIFACTS_DIR / "android" / "maven").as_posix(),
         "engineVersion": engine_version(),
+        "ndkVersion": ANDROID_NDK_VERSION,
         "name": app.name,
         "identifier": app.identifier,
         "versionName": app.version,

@@ -871,6 +871,7 @@ The Gradle scripts of the developer read `haylen/haylen.properties`:
 | Key | Value |
 | --- | --- |
 | `repository`, `engineVersion` | The local Maven repository of the artifacts and the engine version. The file `settings.gradle.kts` gives every module the version as the extra property `haylenEngineVersion`, with which plugin modules depend on the engine libraries. |
+| `ndkVersion` | The NDK of the engine, which builds the native libraries and strips their debug information from the APK of every build type, while the build folder keeps the libraries with it for the debugger. |
 | `name`, `identifier`, `versionName`, `versionCode`, `orientation`, `statusBar` | The identity, version, orientation and status bar of `app.json`. |
 | `library` | The native library that `HaylenActivity` loads: `haylen`, the Lua player, for the debug builds of Lua apps, `haylen-app` for their release builds, or the library of a C++ app. The template stops a release build of a project whose library is `haylen`, since that project holds the development package. |
 | `plugins`, `gradlePlugins`, `placeholder.<name>` | The plugin modules as `id=folder` entries, their Gradle plugins as `id=version` entries and their manifest placeholders, as the [plugin guide](../platform/plugins.md#android) describes. |
