@@ -86,7 +86,7 @@ The script downloads, or builds, the other tools the first time a command needs 
 | Tool | Version | Folder | Used by |
 | --- | --- | --- | --- |
 | `haylen-shaderc` | The release that `engine/cmake/haylen-shader-compiler.json` pins | `.tools/haylen-shaderc-<commit>` | Every build and the command `shaders`, as [the shader compiler](#the-shader-compiler) explains. |
-| Emscripten SDK | 6.0.12 | `.tools/emsdk` | Web builds. |
+| Emscripten SDK | 6.0.13 | `.tools/emsdk` | Web builds. |
 | Gradle | 9.8.2 | `.tools/gradle-9.8.2` | The Android libraries and Android apps. |
 | XcodeGen | 2.46.0 | `.tools/xcodegen-2.46.0` | Apple apps whose `App.xcodeproj` haylen.py generates again. macOS only. |
 | bundletool | 1.18.3 | `.tools/bundletool-1.18.3.jar` | Release runs on Android of apps whose packs Google Play delivers, which install in the local testing mode of Google Play. |

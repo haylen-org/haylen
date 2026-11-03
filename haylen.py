@@ -113,7 +113,7 @@ APPIMAGE_TOOLS_SHA256 = {
 INNO_SETUP_VERSION = "7.1.1"
 INNO_SETUP_SHA256 = "8a5a6711c3766a6e5fb74f280ba0e3551e719ce94538d901fdbd1f8f9920b3f0"
 ANDROID_NDK_VERSION = "30.0.16248370"
-EMSDK_VERSION = "6.0.12"
+EMSDK_VERSION = "6.0.13"
 # The file in every web build tree that records the version of Emscripten that configured it.
 EMSCRIPTEN_MARKER = "emscripten-version.txt"
 # The file that a build tree holds once CMake configured and generated it, so a tree whose configure failed, which keeps a cache without the files of its generator, configures again.
