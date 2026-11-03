@@ -94,7 +94,7 @@ SHADER_LIBRARY_DIR = ENGINE_DIR / "shaders" / "include"
 # Every material compiles once per kind of draw and once more for lit canvases, and the engine picks the program of a draw by these names.
 SHADER_PROGRAMS = {"sprite": [], "sprite_lit": ["HAYLEN_LIT"], "batch": ["HAYLEN_BATCH"], "batch_lit": ["HAYLEN_BATCH", "HAYLEN_LIT"], "text": ["HAYLEN_TEXT"], "text_lit": ["HAYLEN_TEXT", "HAYLEN_LIT"], "mesh": ["HAYLEN_MESH"], "mesh_lit": ["HAYLEN_MESH", "HAYLEN_LIT"], "shape": ["HAYLEN_SHAPE"], "shape_lit": ["HAYLEN_SHAPE", "HAYLEN_LIT"]}
 SHADER_WATCH_SECONDS = 0.5
-GRADLE_VERSION = "9.8.1"
+GRADLE_VERSION = "9.8.2"
 # XcodeGen generates the Apple projects from their `project.yml`. The hash is the one of the `xcodegen.zip` asset of the release.
 XCODEGEN_VERSION = "2.46.0"
 XCODEGEN_SHA256 = "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
