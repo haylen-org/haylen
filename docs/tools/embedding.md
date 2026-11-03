@@ -137,7 +137,7 @@ haylen sdk --check-consumers
 haylen sdk --check-consumers subdirectory cpm
 ```
 
-Without a list it builds all three. The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`. Each way builds in `build/consumers/<mode>-<config>`. The `subdirectory` and `cpm` ways share the dependency cache and the shader compiler of the engine builds. The option builds for this machine only, so it takes no other `--platform`. The `desktop` job of [continuous integration](testing.md#continuous-integration) runs the `package` way on macOS, Linux and Windows.
+Without a list it builds all three. The project reads the way from its cache variable `HAYLEN_CONSUMER_MODE`. Each way builds in `build/consumers/<mode>-<config>`. The `subdirectory` and `cpm` ways share the dependency cache and the shader compiler of the engine builds. The option builds for this machine only, so it takes no other `--platform`. The `desktop-sdk` job of [continuous integration](testing.md#continuous-integration) runs the `package` way on macOS, Linux and Windows.
 
 ## haylen_add_app
 

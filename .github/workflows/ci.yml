@@ -38,7 +38,7 @@ jobs:
 
   # The GPU tests run the conformance suite and the reference scenes of the 2D renderer on every device that a hosted runner can start, with the validation of each API on: Mesa lavapipe and llvmpipe on Linux, WARP on Windows and the paravirtual GPU of macOS. Windows runners have no Vulkan driver and only the OpenGL 1.1 of the system, so their Vulkan and OpenGL devices do not run here.
   desktop:
-    name: Desktop on ${{ matrix.system }}
+    name: Engine tests on ${{ matrix.system }}
     strategy:
       fail-fast: false
       matrix:
@@ -57,7 +57,7 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
           save-sources: "true"
           cache: desktop
-          cache-size: 2500M
+          cache-size: 2G
       - name: Install the Graphics Tools of Windows, whose debug layer validates Direct3D
         if: runner.os == 'Windows'
         shell: pwsh
@@ -85,8 +85,51 @@ jobs:
       - name: Run the GPU tests on Metal
         if: runner.os == 'macOS'
         run: python haylen.py --verbose test --gpu --config Debug --graphics-api metal --jobs ${{ env.JOBS }}
+
+  # The test port and the SDK build trees of their own, so they build next to the engine tests instead of after them.
+  desktop-port:
+    name: Test port on ${{ matrix.system }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: Linux
+          - runner: windows-latest
+            system: Windows
+          - runner: macos-latest
+            system: macOS
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+          cache: desktop-port
+          cache-size: 1G
       - name: Build the engine with the test port and play its app on it
         run: python haylen.py --verbose test --port --config Debug --jobs ${{ env.JOBS }}
+
+  desktop-sdk:
+    name: SDK on ${{ matrix.system }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: Linux
+          - runner: windows-latest
+            system: Windows
+          - runner: macos-latest
+            system: macOS
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+          cache: desktop-sdk
+          cache-size: 1G
       - name: Build the SDK and a project that finds it with "find_package"
         run: python haylen.py --verbose sdk --config Release --check-consumers package --jobs ${{ env.JOBS }}
 
@@ -112,7 +155,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: desktop
-          cache-size: 2500M
+          cache-size: 2G
           save-cache: "false"
       - name: Build the headless player
         run: python haylen.py --verbose build --config Debug --target haylen-headless --jobs ${{ env.JOBS }}
@@ -261,20 +304,39 @@ jobs:
       - name: Build and check its protected release APK
         run: python haylen.py --verbose run build/starter --platform android --config Release --build-only --jobs ${{ env.JOBS }}
 
+  # Every family of slices of "Haylen.xcframework" builds in a job of its own, and the iOS job also builds the starter app for the simulator from the slices it built.
   apple:
-    name: Apple
+    name: Apple ${{ matrix.family }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - family: iOS
+            cache: ios
+            slices: ios ios-simulator
+          - family: tvOS
+            cache: tvos
+            slices: tvos tvos-simulator
+          - family: visionOS
+            cache: visionos
+            slices: xros xros-simulator
+          - family: macOS and Mac Catalyst
+            cache: mac
+            slices: macos ios-maccatalyst
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: apple
-          cache-size: 1500M
-      - name: Build "Haylen.xcframework"
-        run: python haylen.py --verbose engine --platform apple --jobs ${{ env.JOBS }}
+          cache: apple-${{ matrix.cache }}
+          cache-size: 500M
+      - name: Build the slices of "Haylen.xcframework"
+        run: python haylen.py --verbose engine --platform apple --slices ${{ matrix.slices }} --jobs ${{ env.JOBS }}
       - name: Create the starter app
+        if: matrix.family == 'iOS'
         run: python haylen.py --verbose new build/starter
       - name: Build and check its protected release for the iOS simulator
+        if: matrix.family == 'iOS'
         run: python haylen.py --verbose run build/starter --platform ios-simulator --config Release --build-only --jobs ${{ env.JOBS }}
 
   desktop-apps:
@@ -296,7 +358,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
           cache: desktop-apps
-          cache-size: 3G
+          cache-size: 1G
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
         run: pip install cmake
@@ -313,6 +375,25 @@ jobs:
       - name: Validate the desktop entry
         if: runner.os == 'Linux'
         run: desktop-file-validate build/apps/starter-*/installed/linux/share/applications/*.desktop
+
+  cpp-apps:
+    name: C++ apps on ${{ matrix.system }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: Linux
+          - runner: windows-latest
+            system: Windows
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+          cache: cpp-apps
+          cache-size: 2500M
       - name: Create the starter C++ app
         run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build the starter C++ app from the C++ template

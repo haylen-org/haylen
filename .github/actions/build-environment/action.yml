@@ -64,13 +64,14 @@ runs:
         path: .cache/cpm
         key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
 
+    # Before the cache is saved, it drops the objects that no run used for a day, so a run that a newer push cancels early keeps the objects of the runs before it.
     - name: Restore the compiler cache
       if: inputs.cache != ''
       uses: hendrikmuhs/ccache-action@v1.2.24
       with:
         key: ${{ inputs.cache }}-${{ runner.os }}-${{ runner.arch }}${{ inputs.emscripten == 'true' && format('-emscripten-{0}', steps.machine.outputs.emscripten) || '' }}
         max-size: ${{ inputs.cache-size }}
-        evict-old-files: job
+        evict-old-files: 1d
         save: ${{ inputs.save-cache }}
 
     - name: Compile through the compiler cache
