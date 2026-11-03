@@ -60,6 +60,9 @@ function Stress:enter()
 end
 
 function Stress:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, subSteps = 4})
     self.boxes, self.balls = {}, {}
     self.boxSprites, self.ballSprites = {}, {}

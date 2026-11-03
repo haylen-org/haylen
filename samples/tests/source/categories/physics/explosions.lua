@@ -51,6 +51,9 @@ function Explosions:enter()
 end
 
 function Explosions:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.bodies = {}
     local ground = self.world:createBody({type = 'static', x = 0, y = Explosions.ground + 30})

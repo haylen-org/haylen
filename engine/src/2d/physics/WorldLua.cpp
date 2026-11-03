@@ -21,7 +21,19 @@
 namespace haylen::physics2d {
 
 World& WorldLua::check(lua_State* L) {
-    return lua::Userdata::check<World>(L, 1);
+    World& world = lua::Userdata::check<World>(L, 1);
+    if (world.isDestroyed()) {
+        luaL_error(L, "The physics world was destroyed.");
+    }
+    return world;
+}
+
+void WorldLua::resetState(lua_State* L, int index) {
+    const int world = lua_absindex(L, index);
+    lua_createtable(L, 0, static_cast<int>(kCallbacks.size()));
+    lua_newtable(L);
+    lua_setfield(L, -2, "data");
+    lua_setiuservalue(L, world, 1);
 }
 
 Body::Options WorldLua::readBodyOptions(lua_State* L, int index) {
@@ -288,6 +300,18 @@ int WorldLua::wakeAll(lua_State* L) {
     return 0;
 }
 
+// Destroys the world at once and lets its callbacks and the data of its bodies go, so nothing of it draws, steps or calls back while the collector has not freed the object.
+int WorldLua::destroy(lua_State* L) {
+    lua::Userdata::check<World>(L, 1).destroy();
+    resetState(L, 1);
+    return 0;
+}
+
+int WorldLua::isDestroyed(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<World>(L, 1).isDestroyed());
+    return 1;
+}
+
 // Returns `{bodies, awakeBodies, shapes, contacts, joints, islands, stepMilliseconds, collideMilliseconds, solveMilliseconds, continuousMilliseconds, sleepMilliseconds, hookMilliseconds}`.
 int WorldLua::stats(lua_State* L) {
     const World::Stats stats = check(L).getStats();
@@ -510,7 +534,7 @@ template <std::size_t Index> int WorldLua::setCallback(lua_State* L) {
 }
 
 void WorldLua::install(lua_State* L) {
-    lua::ClassBuilder<World>(L).function("createBody", &lua::Binding::native<&createBody>).function("createJoint", &lua::Binding::native<&createJoint>).function("step", &lua::Binding::native<&step>).function("wakeAll", &lua::Binding::native<&wakeAll>).function("stats", &lua::Binding::native<&stats>).function("stateHash", &lua::Binding::native<&stateHash>).function("predictPath", &lua::Binding::native<&predictPath>).function("readTransforms", &lua::Binding::native<&readTransforms>).function("writeTransforms", &lua::Binding::native<&writeTransforms>).function("raycast", &lua::Binding::native<&WorldRaycastLua::raycast>).function("raycastAll", &lua::Binding::native<&WorldRaycastLua::raycastAll>).function("castCircle", &lua::Binding::native<&WorldRaycastLua::castCircle>).function("castBox", &lua::Binding::native<&WorldRaycastLua::castBox>).function("castCapsule", &lua::Binding::native<&WorldRaycastLua::castCapsule>).function("castPolygon", &lua::Binding::native<&WorldRaycastLua::castPolygon>).function("bounceRay", &lua::Binding::native<&WorldRaycastLua::bounceRay>).function("rayFan", &lua::Binding::native<&WorldRaycastLua::rayFan>).function("lineOfSight", &lua::Binding::native<&WorldRaycastLua::lineOfSight>).function("raycastBatch", &lua::Binding::native<&WorldRaycastLua::raycastBatch>).function("pick", &lua::Binding::native<&WorldRaycastLua::pick>).function("debugDrawRays", &lua::Binding::native<&WorldRaycastLua::debugDrawRays>).property("debugRays", &WorldRaycastLua::isDebuggingRays, &lua::Binding::native<&WorldRaycastLua::setDebuggingRays>).function("queryRect", &lua::Binding::native<&queryRect>).function("queryCircle", &lua::Binding::native<&queryCircle>).function("queryPoint", &lua::Binding::native<&queryPoint>).function("debugDraw", &lua::Binding::native<&debugDraw>).property("gravity", &getGravity, &lua::Binding::native<&setGravity>).property("bodyCount", &getBodyCount).property("awakeBodyCount", &getAwakeBodyCount).property("pixelsPerMeter", &getPixelsPerMeter).property("threads", &getThreads).property("interpolate", &isInterpolating).property("subSteps", &getSubSteps, &lua::Binding::native<&setSubSteps>).property("continuous", &isContinuous, &lua::Binding::native<&setContinuous>).property("sleepEnabled", &isSleepEnabled, &lua::Binding::native<&setSleepEnabled>).property("maxSpeed", &getMaxSpeed, &lua::Binding::native<&setMaxSpeed>).property("contactHertz", &getContactHertz, &lua::Binding::native<&setContactHertz>).property("contactDampingRatio", &getContactDampingRatio, &lua::Binding::native<&setContactDampingRatio>).property("contactPushSpeed", &getContactPushSpeed, &lua::Binding::native<&setContactPushSpeed>).property("restitutionThreshold", &getRestitutionThreshold, &lua::Binding::native<&setRestitutionThreshold>).property("hitThreshold", &getHitThreshold, &lua::Binding::native<&setHitThreshold>).property("onContactBegin", &getCallback<0>, &setCallback<0>).property("onContactEnd", &getCallback<1>, &setCallback<1>).property("onHit", &getCallback<2>, &setCallback<2>).property("onSensorBegin", &getCallback<3>, &setCallback<3>).property("onSensorEnd", &getCallback<4>, &setCallback<4>).property("onJointBreak", &getCallback<5>, &setCallback<5>).install();
+    lua::ClassBuilder<World>(L).function("createBody", &lua::Binding::native<&createBody>).function("createJoint", &lua::Binding::native<&createJoint>).function("step", &lua::Binding::native<&step>).function("wakeAll", &lua::Binding::native<&wakeAll>).function("destroy", &lua::Binding::native<&destroy>).property("destroyed", &isDestroyed).function("stats", &lua::Binding::native<&stats>).function("stateHash", &lua::Binding::native<&stateHash>).function("predictPath", &lua::Binding::native<&predictPath>).function("readTransforms", &lua::Binding::native<&readTransforms>).function("writeTransforms", &lua::Binding::native<&writeTransforms>).function("raycast", &lua::Binding::native<&WorldRaycastLua::raycast>).function("raycastAll", &lua::Binding::native<&WorldRaycastLua::raycastAll>).function("castCircle", &lua::Binding::native<&WorldRaycastLua::castCircle>).function("castBox", &lua::Binding::native<&WorldRaycastLua::castBox>).function("castCapsule", &lua::Binding::native<&WorldRaycastLua::castCapsule>).function("castPolygon", &lua::Binding::native<&WorldRaycastLua::castPolygon>).function("bounceRay", &lua::Binding::native<&WorldRaycastLua::bounceRay>).function("rayFan", &lua::Binding::native<&WorldRaycastLua::rayFan>).function("lineOfSight", &lua::Binding::native<&WorldRaycastLua::lineOfSight>).function("raycastBatch", &lua::Binding::native<&WorldRaycastLua::raycastBatch>).function("pick", &lua::Binding::native<&WorldRaycastLua::pick>).function("debugDrawRays", &lua::Binding::native<&WorldRaycastLua::debugDrawRays>).property("debugRays", &WorldRaycastLua::isDebuggingRays, &lua::Binding::native<&WorldRaycastLua::setDebuggingRays>).function("queryRect", &lua::Binding::native<&queryRect>).function("queryCircle", &lua::Binding::native<&queryCircle>).function("queryPoint", &lua::Binding::native<&queryPoint>).function("debugDraw", &lua::Binding::native<&debugDraw>).property("gravity", &getGravity, &lua::Binding::native<&setGravity>).property("bodyCount", &getBodyCount).property("awakeBodyCount", &getAwakeBodyCount).property("pixelsPerMeter", &getPixelsPerMeter).property("threads", &getThreads).property("interpolate", &isInterpolating).property("subSteps", &getSubSteps, &lua::Binding::native<&setSubSteps>).property("continuous", &isContinuous, &lua::Binding::native<&setContinuous>).property("sleepEnabled", &isSleepEnabled, &lua::Binding::native<&setSleepEnabled>).property("maxSpeed", &getMaxSpeed, &lua::Binding::native<&setMaxSpeed>).property("contactHertz", &getContactHertz, &lua::Binding::native<&setContactHertz>).property("contactDampingRatio", &getContactDampingRatio, &lua::Binding::native<&setContactDampingRatio>).property("contactPushSpeed", &getContactPushSpeed, &lua::Binding::native<&setContactPushSpeed>).property("restitutionThreshold", &getRestitutionThreshold, &lua::Binding::native<&setRestitutionThreshold>).property("hitThreshold", &getHitThreshold, &lua::Binding::native<&setHitThreshold>).property("onContactBegin", &getCallback<0>, &setCallback<0>).property("onContactEnd", &getCallback<1>, &setCallback<1>).property("onHit", &getCallback<2>, &setCallback<2>).property("onSensorBegin", &getCallback<3>, &setCallback<3>).property("onSensorEnd", &getCallback<4>, &setCallback<4>).property("onJointBreak", &getCallback<5>, &setCallback<5>).install();
 }
 
 } // namespace haylen::physics2d

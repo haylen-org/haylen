@@ -81,6 +81,9 @@ function Platformer:enter()
 end
 
 function Platformer:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, gravity = {0, Platformer.gravity}})
     self.ground = self.world:createBody({type = 'static'})
     self.ground:addChain(Platformer.outline, false, {friction = 0.8})

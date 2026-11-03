@@ -62,6 +62,9 @@ function PegBoard:enter()
 end
 
 function PegBoard:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     local center, spacing, half = PegBoard.center, PegBoard.spacing, PegBoard.slots / 2 * PegBoard.spacing
     local board = self.world:createBody({type = 'static'})

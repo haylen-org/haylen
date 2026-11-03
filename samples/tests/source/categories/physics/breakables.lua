@@ -92,6 +92,9 @@ function Breakables.smoothOutline(outline, steps)
 end
 
 function Breakables:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.whole, self.vases, self.pieces, self.balls, self.lastImpact = {}, {}, {}, {}, 0
 

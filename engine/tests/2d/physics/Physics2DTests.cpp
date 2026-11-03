@@ -293,6 +293,41 @@ TEST_F(PhysicsWorldTest, DetectsHandlesOfADestroyedWorldWhoseSlotANewWorldReuses
     EXPECT_EQ(reused.getBodyCount(), 2U);
 }
 
+// A world destroyed before the object goes ends its bodies, shapes, joints and hooks at once, and every later use fails with a sentence instead of reaching Box2D.
+TEST_F(PhysicsWorldTest, DestroysTheWorldBeforeItsObjectGoes) {
+    physics2d::World world;
+    physics2d::Body body = world.createBody();
+    const physics2d::Shape shape = body.addBox({10.0F, 10.0F});
+    const physics2d::Joint joint = world.createJoint(physics2d::Joint::Type::Weld, body, world.createBody({.position = {20.0F, 0.0F}}));
+    int hookRuns = 0;
+    world.addStepHook(physics2d::World::StepPhase::Before, [&hookRuns](float) { ++hookRuns; });
+
+    world.destroy();
+    world.destroy();
+    EXPECT_TRUE(world.isDestroyed());
+    EXPECT_FALSE(body.isValid() || shape.isValid() || joint.isValid());
+    EXPECT_EQ(hookRuns, 0);
+    for (const auto& [use, message] : std::array<std::pair<std::function<void()>, std::string>, 6>{{
+             {[&world] { world.step(1.0F / 60.0F); }, "The physics world was destroyed."},
+             {[&world] { (void)world.createBody(); }, "The physics world was destroyed."},
+             {[&world] { (void)world.queryPoint({0.0F, 0.0F}); }, "The physics world was destroyed."},
+             {[&world] { (void)world.raycast({0.0F, 0.0F}, {10.0F, 0.0F}); }, "The physics world was destroyed."},
+             {[&world] { world.addStepHook(physics2d::World::StepPhase::After, [](float) {}); }, "The physics world was destroyed."},
+             {[&body] { (void)body.getPosition(); }, "The physics world of the body was destroyed."},
+         }}) {
+        try {
+            use();
+            ADD_FAILURE() << message;
+        } catch (const std::logic_error& error) {
+            EXPECT_EQ(std::string(error.what()), message);
+        }
+    }
+
+    // Handles of the destroyed world destroy nothing, so the owners of bodies, such as vehicles and terrains, go quietly after it.
+    body.destroy();
+    EXPECT_FALSE(body.isValid());
+}
+
 TEST_F(PhysicsWorldTest, ReportsTheGeometryAndOutlinesOfShapes) {
     physics2d::World world;
     physics2d::Body body = world.createBody({.type = physics2d::Body::Type::Static, .position = {100.0F, 50.0F}, .rotation = std::numbers::pi_v<float> * 0.5F});
@@ -596,6 +631,35 @@ TEST(Physics2DLuaTest, DeliversEveryEventWhenACallbackStepsTheWorld) {
 
     // The callback steps the world again, which replaces its event lists, yet the events of the outer step still arrive.
     EXPECT_EQ(fixture.lua("world:step(1 / 60) return table.concat(events, ',')"), "contact,sensor");
+}
+
+// A world that `destroy` ended lets its callbacks and the data of its bodies go, and its world, bodies, shapes and joints fail with sentences that name what was destroyed.
+TEST(Physics2DLuaTest, DestroysWorldsFromLua) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        physics2d = require('haylen.physics2d')
+        world = physics2d.newWorld({gravity = {0, 0}})
+        crate = world:createBody({x = 0, y = 0})
+        box = crate:addBox(10, 10)
+        hinge = world:createJoint('weld', crate, world:createBody({x = 20, y = 0}))
+        crate.data = {name = 'Crate'}
+        world.onContactBegin = function() end
+        world:destroy()
+        world:destroy()
+    )");
+    // clang-format on
+
+    EXPECT_EQ(fixture.lua("return tostring(world.destroyed) .. ' ' .. tostring(crate.valid) .. ' ' .. tostring(box.valid) .. ' ' .. tostring(hinge.valid)"), "true false false false");
+    EXPECT_NE(fixture.lua("world:step(1 / 60)").find("The physics world was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("return world.bodyCount").find("The physics world was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("return world.onContactBegin").find("The physics world was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("world:raycast(0, 0, 10, 0)").find("The physics world was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("physics2d.newVehicle(world, {x = 0, y = 0})").find("The physics world was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("return crate.x").find("The physics world of the body was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("return box.friction").find("The physics world of the shape was destroyed."), std::string::npos);
+    EXPECT_NE(fixture.lua("return hinge.type").find("The physics world of the joint was destroyed."), std::string::npos);
+    EXPECT_EQ(fixture.lua("crate:destroy() return tostring(physics2d.newWorld().destroyed)"), "false");
 }
 
 } // namespace haylen

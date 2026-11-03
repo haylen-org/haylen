@@ -48,6 +48,9 @@ function Collision:enter()
 end
 
 function Collision:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.walls = self.map:buildCollision(self.world)
     self.balls = {}

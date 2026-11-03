@@ -46,6 +46,9 @@ function Materials:enter()
 end
 
 function Materials:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.bodies, self.written = {}, {}

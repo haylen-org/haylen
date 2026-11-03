@@ -43,6 +43,11 @@ function JointStability:enter()
 end
 
 function JointStability:build()
+    if self.cases then
+        for _, case in ipairs(self.cases) do
+            case.world:destroy()
+        end
+    end
     self.cases = {}
     local layout = {
         {x = -600, kind = 'rope', limit = false, subSteps = 4, title = 'A rope without a limit'},

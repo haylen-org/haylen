@@ -60,7 +60,7 @@ scene.push({
 
 ### How long things live
 
-Body, shape and joint handles keep their world alive. A world goes away once no Lua value refers to it, to one of its handles or to one of its helpers.
+Body, shape and joint handles keep their world alive. A world goes away once no Lua value refers to it, to one of its handles or to one of its helpers. The method [`world:destroy`](../lua-api/physics2d.md#worlddestroy) ends a world at once, before that. Its bodies, shapes, joints and helpers end with it, its handles fail with a clear error, and the physics drawing stops showing it. Use it when the app builds a new world in place of an old one, such as when a level starts over.
 
 Some helpers own bodies or act in every step: vehicles, movers, grabbers, force fields, terrains and fluids. Each one lives while a Lua value refers to it. When the garbage collector takes it, it leaves the world and takes with it what it added. So keep these helpers in a variable or in the table of their scene.
 

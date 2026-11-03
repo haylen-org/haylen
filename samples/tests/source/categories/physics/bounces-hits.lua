@@ -45,6 +45,11 @@ function BouncesHits:enter()
 end
 
 function BouncesHits:build()
+    if self.halves then
+        for _, half in ipairs(self.halves) do
+            half.world:destroy()
+        end
+    end
     self.halves = {}
     for index, low in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400

@@ -44,6 +44,9 @@ function Ropes:enter()
 end
 
 function Ropes:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.bodies = {}

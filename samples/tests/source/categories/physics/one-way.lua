@@ -61,6 +61,9 @@ function OneWay:enter()
 end
 
 function OneWay:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, gravity = {0, 2200}})
     self.platforms = {}
     self.time = 0

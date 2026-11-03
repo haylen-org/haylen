@@ -34,7 +34,7 @@ std::string_view Shape::kindName(Kind value) noexcept {
     return kKindNames.back().first;
 }
 
-Shape::Shape(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->getHandle() : 0), id(handle) {}
+Shape::Shape(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->handle : 0), id(handle) {}
 
 std::uint64_t Shape::checkedId() const {
     if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {

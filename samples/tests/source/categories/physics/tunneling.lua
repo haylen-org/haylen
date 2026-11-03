@@ -51,6 +51,11 @@ end
 
 -- The left world has no continuous collision and fires plain bodies, and the right world keeps it on and fires bullets.
 function Tunneling:build()
+    if self.halves then
+        for _, half in ipairs(self.halves) do
+            half.world:destroy()
+        end
+    end
     self.halves = {}
     for index, fixed in ipairs({false, true}) do
         local origin = index == 1 and -400 or 400

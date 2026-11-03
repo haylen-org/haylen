@@ -43,7 +43,7 @@ A world has many methods. This section describes those that step and read the wo
 
 | Topic | Members |
 | --- | --- |
-| Stepping and reading | [`world:step`](#worldstepdeltaseconds), [`world:wakeAll`](#worldwakeall), [`world:readTransforms`](#worldreadtransformsbodies-buffer-first-interpolated), [`world:writeTransforms`](#worldwritetransformsbodies-buffer-first), [`world:stats`](#worldstats), [`world:stateHash`](#worldstatehashbodies) and [`world:debugDraw`](#worlddebugdraworder) |
+| Stepping and reading | [`world:step`](#worldstepdeltaseconds), [`world:wakeAll`](#worldwakeall), [`world:destroy`](#worlddestroy), [`world:readTransforms`](#worldreadtransformsbodies-buffer-first-interpolated), [`world:writeTransforms`](#worldwritetransformsbodies-buffer-first), [`world:stats`](#worldstats), [`world:stateHash`](#worldstatehashbodies) and [`world:debugDraw`](#worlddebugdraworder) |
 | Bodies | [`world:createBody`](#worldcreatebodyoptions) |
 | Joints | [`world:createJoint`](#worldcreatejointtype-a-b-options) |
 | Queries | [`world:queryRect`](#worldqueryrectrect-filter), [`world:queryCircle`](#worldquerycirclex-y-radius-filter), [`world:queryPoint`](#worldquerypointx-y-filter) and [`world:pick`](#worldpickcamera-x-y-filter) |
@@ -70,7 +70,7 @@ Creates an empty world and returns it. The table `options` is optional, and an u
 | `maxSpeed` | number | `400 * pixelsPerMeter` | Speed limit of every body in world units per second, 25600 at the default scale. |
 | `restitutionThreshold` | number | `pixelsPerMeter` | Impacts slower than this, in world units per second, never bounce, whatever the restitution. |
 | `hitThreshold` | number | `pixelsPerMeter` | Impacts slower than this, in world units per second, call no `onHit`. |
-| `owner` | table or userdata | the default owner | The owner of the world, such as the scene that simulates it. The [physics drawing](debug.md#drawings) shows the world until its owner ends. |
+| `owner` | table or userdata | the default owner | The owner of the world, such as the scene that simulates it. The [physics drawing](debug.md#drawings) shows the world until its owner ends or [`world:destroy()`](#worlddestroy) ends it. |
 
 The scale, the threads and `interpolate` stay as the world was created. Every other option is also a [world property](#world-properties) that changes while the world runs. The speeds you leave out keep the values Box2D is tuned for in meters. That is a speed limit of 400 meters per second, overlaps pushed apart at up to 3 meters per second, and bounces and hits from 1 meter per second.
 
@@ -136,6 +136,31 @@ scene.push({
         world:step(step)
     end,
 })
+```
+
+### world:destroy()
+
+Destroys the world at once with all its bodies, shapes, joints and helpers, and lets its event callbacks and the `data` of its bodies go. The [physics drawing](debug.md#drawings) stops showing it in the same frame. Call it when the app builds a world again under the same owner, such as a level that starts over, so the old world neither steps nor draws while the garbage collector has not freed it. Destroying a world twice does nothing.
+
+After it, `world.destroyed` is `true`, and every other method and property of the world raises `The physics world was destroyed.`. The bodies, shapes and joints of the world report `valid` as `false`, and their other members raise `The physics world of the body was destroyed.`, `The physics world of the shape was destroyed.` or `The physics world of the joint was destroyed.`. Their `destroy` methods do nothing. A helper of the world, such as a vehicle or a terrain, fails the same way, and making a helper for it raises `The physics world was destroyed.`.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local Level = {}
+
+function Level:build()
+    if self.world then
+        self.world:destroy()
+    end
+    self.world = physics2d.newWorld({owner = self})
+    local ground = self.world:createBody({type = 'static', y = 300})
+    ground:addBox(800, 40)
+end
+
+function Level:startOver()
+    self:build()
+end
 ```
 
 ### world:readTransforms(bodies, buffer, first, interpolated)
@@ -298,6 +323,7 @@ scene.push({
 | Property | Type | Access | Meaning |
 | --- | --- | --- | --- |
 | `gravity` | Vec2 | read and write | Gravity in world units per second squared. Writing takes a `Vec2` or a table `{x, y}` and wakes every body. |
+| `destroyed` | boolean | read | Whether [`world:destroy()`](#worlddestroy) ended the world. |
 | `bodyCount` | integer | read | Number of bodies in the world. |
 | `awakeBodyCount` | integer | read | Number of bodies that are awake. |
 | `pixelsPerMeter` | number | read | The scale the world was created with. |

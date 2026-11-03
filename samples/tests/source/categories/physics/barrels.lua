@@ -58,6 +58,9 @@ function Barrels:enter()
 end
 
 function Barrels:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, hitThreshold = Barrels.hitSpeed})
     self.barrels, self.crates = {}, {}
     self.exploded, self.longest, self.depth = 0, 0, 0

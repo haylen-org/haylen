@@ -164,6 +164,30 @@ TEST_F(DebugDrawingTest, DrawsOnlyTheWorldsOfLiveOwners) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+// A world that `destroy` ended leaves the physics drawing at once while its owner lives on, so a test that builds its world again draws only the new one.
+TEST_F(DebugDrawingTest, StopsDrawingAWorldOnceItIsDestroyed) {
+    // clang-format off
+    fixture.runLua(R"(
+        physics2d = require('haylen.physics2d') graphics2d = require('haylen.graphics2d') scene = require('haylen.scene')
+        camera = graphics2d.newCamera()
+        level = {render = function() graphics2d.beginWorld(camera) graphics2d.drawRect({0, 0, 10, 10}, '#FFFFFFFF') end}
+        world = physics2d.newWorld({gravity = {0, 0}, owner = level})
+        crate = world:createBody({x = 100, y = 100})
+        crate:addBox(40, 40)
+        scene.push(level)
+    )");
+    // clang-format on
+    fixture.frames(1);
+    getPlugin().setDrawing("physics", true);
+    fixture.frames(1);
+    const std::size_t drawn = fixture.engine().getRenderer2D().getStats().vertices;
+
+    fixture.runLua("world:destroy()");
+    fixture.frames(1);
+    EXPECT_LT(fixture.engine().getRenderer2D().getStats().vertices, drawn);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
 // The debug drawings stay out of a canvas that turns them off, such as the canvas of the UI, whose units are not those of the worlds and the sprites of the app.
 TEST_F(DebugDrawingTest, KeepsTheDrawingsOutOfCanvasesThatTurnThemOff) {
     // clang-format off

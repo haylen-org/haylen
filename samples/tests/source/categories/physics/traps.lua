@@ -67,6 +67,9 @@ function Traps:enter()
 end
 
 function Traps:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.dolls, self.crates, self.groups, self.hardHits, self.boulderTime, self.crushTime = {}, {}, 0, 0, 0, 0

@@ -66,6 +66,9 @@ function RopeCutting:enter()
 end
 
 function RopeCutting:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.trail, self.cuts, self.state = {}, 0, 'hanging'
 

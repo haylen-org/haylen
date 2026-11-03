@@ -76,6 +76,9 @@ function Interpolation:enter()
 end
 
 function Interpolation:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, interpolate = true})
     local pivot, hub = Interpolation.pivot, Interpolation.hub
     local anchor = self.world:createBody({type = 'static', x = pivot[1], y = pivot[2]})

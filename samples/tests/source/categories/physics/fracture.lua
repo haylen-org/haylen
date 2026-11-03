@@ -59,6 +59,9 @@ function Fracture:enter()
 end
 
 function Fracture:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.whole, self.fragments = {}, 0
     local ground = self.world:createBody({type = 'static', x = 0, y = Fracture.ground + 30})

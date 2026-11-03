@@ -22,7 +22,7 @@ class Physics2DPlugin final : public Plugin {
   public:
     static constexpr std::string_view kDrawing = "physics";
 
-    // A world that the debug drawing shows until it is gone or its link ends, which the owner of the world ends when it ends, so the world of a scene that unloaded never draws again, even before the collector frees it. A blocked world skips the drawing.
+    // A world that the debug drawing shows until it is destroyed, gone or its link ends, which the owner of the world ends when it ends, so the world of a scene that unloaded or a world that `destroy` ended never draws again, even before the collector frees it. A blocked world skips the drawing.
     class TrackedWorld final : public core::Connection::Link {
       public:
         explicit TrackedWorld(const std::shared_ptr<physics2d::World>& tracked);
@@ -32,7 +32,7 @@ class Physics2DPlugin final : public Plugin {
         void setBlocked(bool value) override;
         [[nodiscard]] bool isBlocked() const noexcept override;
 
-        // Returns the world while it lives and its link holds, or null.
+        // Returns the world while it lives, is not destroyed and its link holds, or null.
         [[nodiscard]] std::shared_ptr<physics2d::World> lock() const;
 
       private:

@@ -49,6 +49,11 @@ function Sleeping:enter()
 end
 
 function Sleeping:build()
+    if self.halves then
+        for _, half in ipairs(self.halves) do
+            half.world:destroy()
+        end
+    end
     self.halves = {}
     local size = Sleeping.size
     for index, sleeping in ipairs({false, true}) do

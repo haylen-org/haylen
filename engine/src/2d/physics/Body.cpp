@@ -34,7 +34,7 @@ std::string_view Body::typeName(Type value) noexcept {
     return kTypeNames.back().first;
 }
 
-Body::Body(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->getHandle() : 0), id(handle) {}
+Body::Body(World* owner, std::uint64_t handle) noexcept : world(owner), worldHandle(owner != nullptr ? owner->handle : 0), id(handle) {}
 
 std::uint64_t Body::checkedId() const {
     if (world != nullptr && !b2World_IsValid(b2LoadWorldId(worldHandle))) {

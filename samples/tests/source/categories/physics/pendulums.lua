@@ -66,6 +66,9 @@ end
 
 function Pendulums:build()
     -- A low restitution threshold keeps the cradle bouncing at the small speeds of its last swings.
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, restitutionThreshold = 20})
     self.grab = Grab(self.world)
     local bar = self.world:createBody({type = 'static', x = Pendulums.cradleX, y = Pendulums.cradleTop})

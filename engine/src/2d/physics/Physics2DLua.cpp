@@ -97,10 +97,7 @@ int Physics2DLua::newWorld(lua_State* L) {
         lua_remove(L, owner);
     }
     lua::Userdata::emplace<World>(L, world);
-    lua_createtable(L, 0, 6);
-    lua_newtable(L);
-    lua_setfield(L, -2, "data");
-    lua_setiuservalue(L, -2, 1);
+    WorldLua::resetState(L, -1);
     return 1;
 }
 

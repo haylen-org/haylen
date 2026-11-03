@@ -58,6 +58,9 @@ void ShapeLua::pushOutline(lua_State* L, const Shape::Outline& outline) {
 
 Shape& ShapeLua::check(lua_State* L) {
     ScriptedHandle<Shape>& self = lua::Userdata::check<ScriptedHandle<Shape>>(L, 1);
+    if (self.world->isDestroyed()) {
+        luaL_error(L, "The physics world of the shape was destroyed.");
+    }
     if (!self.handle.isValid()) {
         luaL_error(L, "The shape was destroyed.");
     }

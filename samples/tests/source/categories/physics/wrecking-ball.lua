@@ -66,6 +66,9 @@ function WreckingBall:enter()
 end
 
 function WreckingBall:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     local ground = WreckingBall.ground
     local floor = self.world:createBody({type = 'static', x = 0, y = ground + 30})

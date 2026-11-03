@@ -41,6 +41,9 @@ end
 function Digging:build()
     self.map = MapTest.loadMap('tiled/maps/collision.tmj')
     self.wallGid = self.map:tile(kWallLayer, 0, 0)
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, gravity = {0, 0}})
     self.bodies = self.map:buildCollision(self.world)
     -- The bodies come in map order, one per tile layer that collides and one per object layer with collision objects, so the walls layer gives the second one.

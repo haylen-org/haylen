@@ -68,6 +68,9 @@ function Seesaw:enter()
 end
 
 function Seesaw:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     local ground = self.world:createBody({type = 'static', x = 0, y = Seesaw.ground + 30})

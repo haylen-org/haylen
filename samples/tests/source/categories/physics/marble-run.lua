@@ -80,6 +80,9 @@ function MarbleRun:enter()
 end
 
 function MarbleRun:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.grab = Grab(self.world)
     self.marbles, self.trips = {}, 0

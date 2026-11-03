@@ -14,6 +14,9 @@ namespace haylen::physics2d {
 
 Joint& JointLua::check(lua_State* L) {
     ScriptedHandle<Joint>& self = lua::Userdata::check<ScriptedHandle<Joint>>(L, 1);
+    if (self.world->isDestroyed()) {
+        luaL_error(L, "The physics world of the joint was destroyed.");
+    }
     if (!self.handle.isValid()) {
         luaL_error(L, "The physics joint was destroyed.");
     }

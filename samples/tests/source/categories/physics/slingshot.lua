@@ -74,6 +74,9 @@ function Slingshot:enter()
 end
 
 function Slingshot:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     local ground = self.world:createBody({type = 'static', x = 0, y = Slingshot.ground + 30})
     ground:addBox(8000, 60, {category = Slingshot.worldCategory})

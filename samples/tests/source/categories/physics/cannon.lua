@@ -72,6 +72,9 @@ function Cannon:enter()
 end
 
 function Cannon:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     local ground = self.world:createBody({type = 'static', x = 0, y = Cannon.ground + 30})
     ground:addBox(8000, 60)

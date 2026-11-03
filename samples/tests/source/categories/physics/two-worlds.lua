@@ -99,6 +99,10 @@ function TwoWorlds:makePlanet(spec)
 end
 
 function TwoWorlds:build()
+    if self.home then
+        self.home.world:destroy()
+        self.moon.world:destroy()
+    end
     self.home = self:makePlanet(TwoWorlds.planets.home)
     self.moon = self:makePlanet(TwoWorlds.planets.moon)
     self.bodies, self.shots = {}, {}

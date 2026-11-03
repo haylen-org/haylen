@@ -32,7 +32,8 @@ void Physics2DPlugin::TrackedWorld::disconnect() {
 }
 
 bool Physics2DPlugin::TrackedWorld::isConnected() const noexcept {
-    return connected && !world.expired();
+    const std::shared_ptr<physics2d::World> live = world.lock();
+    return connected && live != nullptr && !live->isDestroyed();
 }
 
 void Physics2DPlugin::TrackedWorld::setBlocked(bool value) {
@@ -44,7 +45,7 @@ bool Physics2DPlugin::TrackedWorld::isBlocked() const noexcept {
 }
 
 std::shared_ptr<physics2d::World> Physics2DPlugin::TrackedWorld::lock() const {
-    return connected && !blocked ? world.lock() : nullptr;
+    return isConnected() && !blocked ? world.lock() : nullptr;
 }
 
 std::shared_ptr<Physics2DPlugin::TrackedWorld> Physics2DPlugin::track(const std::shared_ptr<physics2d::World>& world) {

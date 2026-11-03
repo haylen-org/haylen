@@ -67,6 +67,9 @@ function Dominoes.valley(x)
 end
 
 function Dominoes:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     local floor, stairs = Dominoes.floor, Dominoes.stairs
     local top = floor - stairs.rise * stairs.count

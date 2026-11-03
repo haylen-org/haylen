@@ -62,6 +62,11 @@ end
 
 -- Both sides have the same tiles, made of one box per tile on the left and of one chain loop around each row on the right.
 function TileSeams:build()
+    if self.halves then
+        for _, half in ipairs(self.halves) do
+            half.world:destroy()
+        end
+    end
     self.halves = {}
     local tile = TileSeams.tile
     for index, merged in ipairs({false, true}) do

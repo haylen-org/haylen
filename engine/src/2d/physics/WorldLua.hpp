@@ -26,6 +26,9 @@ class WorldLua final {
     // Reads `{type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, fastRotation, sleepEnabled, sleepThreshold}`, where `nil` gives the defaults.
     [[nodiscard]] static Body::Options readBodyOptions(lua_State* L, int index);
 
+    // Gives the world object at `index` a new state table, without callbacks and with no data of its bodies.
+    static void resetState(lua_State* L, int index);
+
   private:
     static constexpr std::array<std::string_view, 15> kBodyFields{"type", "x", "y", "rotation", "vx", "vy", "angularVelocity", "linearDamping", "angularDamping", "gravityScale", "fixedRotation", "bullet", "fastRotation", "sleepEnabled", "sleepThreshold"};
     static constexpr std::array<std::string_view, 22> kJointFields{"ax", "ay", "bx", "by", "collideConnected", "enableLimit", "lower", "upper", "enableMotor", "motorSpeed", "maxMotorForce", "maxMotorTorque", "enableSpring", "hertz", "dampingRatio", "targetAngle", "targetTranslation", "axisX", "axisY", "length", "breakForce", "breakTorque"};
@@ -57,6 +60,8 @@ class WorldLua final {
     static int writeTransforms(lua_State* L);
     static int step(lua_State* L);
     static int wakeAll(lua_State* L);
+    static int destroy(lua_State* L);
+    static int isDestroyed(lua_State* L);
     static int stats(lua_State* L);
     static int stateHash(lua_State* L);
     static int predictPath(lua_State* L);

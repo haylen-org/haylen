@@ -152,7 +152,39 @@ World::World(const Settings& settings, core::JobSystem* jobSystem) : pixelsPerMe
 }
 
 World::~World() {
+    destroy();
+}
+
+void World::destroy() {
+    if (isDestroyed()) {
+        return;
+    }
     b2DestroyWorld(b2LoadWorldId(handle));
+    handle = 0;
+
+    hooks.clear();
+    events = {};
+    jointBreaks.clear();
+    destroyedBodies.clear();
+    breakLimits.clear();
+    chainTies.clear();
+    motions.clear();
+    oneWayShapes.clear();
+    droppingBodies.clear();
+    fastBodies.clear();
+    liveBodies.set(0);
+    liveContacts.set(0);
+}
+
+std::uint32_t World::getHandle() const {
+    checkLive();
+    return handle;
+}
+
+void World::checkLive() const {
+    if (isDestroyed()) {
+        throw std::logic_error("The physics world was destroyed.");
+    }
 }
 
 Body World::createBody(const Body::Options& options) {
@@ -172,7 +204,7 @@ Body World::createBody(const Body::Options& options) {
     if (options.sleepThreshold) {
         def.sleepThreshold = Box2DConverter::toSpeed(*options.sleepThreshold, pixelsPerMeter);
     }
-    const Body body{this, b2StoreBodyId(b2CreateBody(b2LoadWorldId(handle), &def))};
+    const Body body{this, b2StoreBodyId(b2CreateBody(b2LoadWorldId(getHandle()), &def))};
     if (options.fastRotation) {
         fastBodies.insert(body.getId());
     }
@@ -181,7 +213,7 @@ Body World::createBody(const Body::Options& options) {
 }
 
 void World::countObjects() {
-    const b2Counters counters = b2World_GetCounters(b2LoadWorldId(handle));
+    const b2Counters counters = b2World_GetCounters(b2LoadWorldId(getHandle()));
     liveBodies.set(static_cast<std::size_t>(counters.bodyCount));
     liveContacts.set(static_cast<std::size_t>(counters.contactCount));
 }
@@ -192,7 +224,7 @@ Joint World::createJoint(Joint::Type type, Body first, Body second, const Joint:
     }
     checkLimits(type, options);
 
-    const b2WorldId world = b2LoadWorldId(handle);
+    const b2WorldId world = b2LoadWorldId(getHandle());
     const b2BodyId a = b2LoadBodyId(first.getId());
     const b2BodyId b = b2LoadBodyId(second.getId());
     const b2Vec2 anchorA = Box2DConverter::toMeters(options.anchorA, pixelsPerMeter);
@@ -359,6 +391,7 @@ void World::checkLimits(Joint::Type type, const Joint::Options& options) {
 }
 
 std::uint64_t World::addStepHook(StepPhase phase, StepHook hook) {
+    checkLive();
     const std::uint64_t id = nextHook++;
     hooks.push_back({.id = id, .phase = phase, .function = std::move(hook)});
     return id;
@@ -425,7 +458,7 @@ bool World::isDroppingThrough(const Body& body) const {
 }
 
 void World::step(float deltaSeconds) {
-    const b2WorldId world = b2LoadWorldId(handle);
+    const b2WorldId world = b2LoadWorldId(getHandle());
     releaseBrokenChains();
     const auto hooksStart = std::chrono::steady_clock::now();
     runHooks(StepPhase::Before, deltaSeconds);
@@ -479,7 +512,7 @@ void World::breakJoints() {
 // Keeps the transforms of the last two steps of every body that moved, indexed by the slot of the body.
 void World::recordMotion() {
     ++motionStep;
-    const b2BodyEvents moves = b2World_GetBodyEvents(b2LoadWorldId(handle));
+    const b2BodyEvents moves = b2World_GetBodyEvents(b2LoadWorldId(getHandle()));
     for (int index = 0; index < moves.moveCount; ++index) {
         const b2BodyMoveEvent& move = moves.moveEvents[index];
         const auto slot = static_cast<std::size_t>(move.bodyId.index1 - 1);
@@ -531,7 +564,7 @@ void World::readContactEvents() const {
     events.contactHits.clear();
 
     auto* self = const_cast<World*>(this);
-    const b2ContactEvents contacts = b2World_GetContactEvents(b2LoadWorldId(handle));
+    const b2ContactEvents contacts = b2World_GetContactEvents(b2LoadWorldId(getHandle()));
     for (int index = 0; index < contacts.beginCount; ++index) {
         const b2ContactBeginTouchEvent& event = contacts.beginEvents[index];
         events.contactBegins.push_back({.first = {self, b2StoreShapeId(event.shapeIdA)}, .second = {self, b2StoreShapeId(event.shapeIdB)}, .manifold = Box2DConverter::toSolvedManifold(event.shapeIdA, event.shapeIdB, event.manifold, pixelsPerMeter, lastStep / static_cast<float>(subSteps))});
@@ -559,7 +592,7 @@ void World::readSensorEvents() const {
     events.sensorEnds.clear();
 
     auto* self = const_cast<World*>(this);
-    const b2SensorEvents sensors = b2World_GetSensorEvents(b2LoadWorldId(handle));
+    const b2SensorEvents sensors = b2World_GetSensorEvents(b2LoadWorldId(getHandle()));
     for (int index = 0; index < sensors.beginCount; ++index) {
         events.sensorBegins.push_back({.sensor = {self, b2StoreShapeId(sensors.beginEvents[index].sensorShapeId)}, .visitor = {self, b2StoreShapeId(sensors.beginEvents[index].visitorShapeId)}});
     }
@@ -643,17 +676,17 @@ void World::writeTransforms(std::span<const Body> bodies, std::span<const float>
 }
 
 void World::setGravity(math::Vec2 value) {
-    b2World_SetGravity(b2LoadWorldId(handle), Box2DConverter::toMeters(value, pixelsPerMeter));
+    b2World_SetGravity(b2LoadWorldId(getHandle()), Box2DConverter::toMeters(value, pixelsPerMeter));
     wakeAll();
 }
 
 math::Vec2 World::getGravity() const {
-    return Box2DConverter::toPixels(b2World_GetGravity(b2LoadWorldId(handle)), pixelsPerMeter);
+    return Box2DConverter::toPixels(b2World_GetGravity(b2LoadWorldId(getHandle())), pixelsPerMeter);
 }
 
 // Box2D wakes every sleeping island when sleeping turns off.
 void World::wakeAll() {
-    const b2WorldId world = b2LoadWorldId(handle);
+    const b2WorldId world = b2LoadWorldId(getHandle());
     if (b2World_IsSleepingEnabled(world)) {
         b2World_EnableSleeping(world, false);
         b2World_EnableSleeping(world, true);
@@ -668,31 +701,31 @@ void World::setSubSteps(int value) {
 }
 
 void World::setContinuousEnabled(bool value) {
-    b2World_EnableContinuous(b2LoadWorldId(handle), value);
+    b2World_EnableContinuous(b2LoadWorldId(getHandle()), value);
 }
 
 bool World::isContinuousEnabled() const {
-    return b2World_IsContinuousEnabled(b2LoadWorldId(handle));
+    return b2World_IsContinuousEnabled(b2LoadWorldId(getHandle()));
 }
 
 void World::setSleepEnabled(bool value) {
-    b2World_EnableSleeping(b2LoadWorldId(handle), value);
+    b2World_EnableSleeping(b2LoadWorldId(getHandle()), value);
 }
 
 bool World::isSleepEnabled() const {
-    return b2World_IsSleepingEnabled(b2LoadWorldId(handle));
+    return b2World_IsSleepingEnabled(b2LoadWorldId(getHandle()));
 }
 
 void World::setMaxSpeed(float value) {
-    b2World_SetMaximumLinearSpeed(b2LoadWorldId(handle), Box2DConverter::toSpeed(value, pixelsPerMeter));
+    b2World_SetMaximumLinearSpeed(b2LoadWorldId(getHandle()), Box2DConverter::toSpeed(value, pixelsPerMeter));
 }
 
 float World::getMaxSpeed() const {
-    return b2World_GetMaximumLinearSpeed(b2LoadWorldId(handle)) * pixelsPerMeter;
+    return b2World_GetMaximumLinearSpeed(b2LoadWorldId(getHandle())) * pixelsPerMeter;
 }
 
 void World::applyContactTuning() {
-    b2World_SetContactTuning(b2LoadWorldId(handle), contactHertz, contactDampingRatio, contactPushSpeed / pixelsPerMeter);
+    b2World_SetContactTuning(b2LoadWorldId(getHandle()), contactHertz, contactDampingRatio, contactPushSpeed / pixelsPerMeter);
 }
 
 void World::setContactHertz(float value) {
@@ -711,19 +744,19 @@ void World::setContactPushSpeed(float value) {
 }
 
 void World::setRestitutionThreshold(float value) {
-    b2World_SetRestitutionThreshold(b2LoadWorldId(handle), Box2DConverter::toSpeed(value, pixelsPerMeter));
+    b2World_SetRestitutionThreshold(b2LoadWorldId(getHandle()), Box2DConverter::toSpeed(value, pixelsPerMeter));
 }
 
 float World::getRestitutionThreshold() const {
-    return b2World_GetRestitutionThreshold(b2LoadWorldId(handle)) * pixelsPerMeter;
+    return b2World_GetRestitutionThreshold(b2LoadWorldId(getHandle())) * pixelsPerMeter;
 }
 
 void World::setHitThreshold(float value) {
-    b2World_SetHitEventThreshold(b2LoadWorldId(handle), Box2DConverter::toSpeed(value, pixelsPerMeter));
+    b2World_SetHitEventThreshold(b2LoadWorldId(getHandle()), Box2DConverter::toSpeed(value, pixelsPerMeter));
 }
 
 float World::getHitThreshold() const {
-    return b2World_GetHitEventThreshold(b2LoadWorldId(handle)) * pixelsPerMeter;
+    return b2World_GetHitEventThreshold(b2LoadWorldId(getHandle())) * pixelsPerMeter;
 }
 
 std::optional<RaycastHit> World::raycast(math::Vec2 from, math::Vec2 to, const CollisionFilter& filter) const {
@@ -738,7 +771,7 @@ std::vector<Shape> World::overlapBounds(const math::Rect& area, const CollisionF
 
     const b2AABB box{Box2DConverter::toMeters(area.getMin(), pixelsPerMeter), Box2DConverter::toMeters(area.getMax(), pixelsPerMeter)};
     // clang-format off
-    b2World_OverlapAABB(b2LoadWorldId(handle), box, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
+    b2World_OverlapAABB(b2LoadWorldId(getHandle()), box, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
         auto* found = static_cast<Query*>(context);
         found->shapes.emplace_back(found->world, b2StoreShapeId(shape));
         return true;
@@ -765,7 +798,7 @@ std::vector<Shape> World::queryCircle(math::Vec2 center, float radius, const Col
     } query{const_cast<World*>(this), {}};
 
     // clang-format off
-    b2World_OverlapShape(b2LoadWorldId(handle), &proxy, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
+    b2World_OverlapShape(b2LoadWorldId(getHandle()), &proxy, Box2DConverter::toQueryFilter(filter), [](b2ShapeId shape, void* context) {
         auto* found = static_cast<Query*>(context);
         found->shapes.emplace_back(found->world, b2StoreShapeId(shape));
         return true;
@@ -822,19 +855,19 @@ std::uint64_t World::computeStateHash(std::span<const Body> bodies) const {
 }
 
 void World::debugDraw(graphics2d::Renderer& renderer, const graphics2d::DrawOrder& order) const {
-    DebugDraw(renderer, order, pixelsPerMeter).draw(b2LoadWorldId(handle));
+    DebugDraw(renderer, order, pixelsPerMeter).draw(b2LoadWorldId(getHandle()));
 }
 
 std::size_t World::getBodyCount() const {
-    return static_cast<std::size_t>(b2World_GetCounters(b2LoadWorldId(handle)).bodyCount);
+    return static_cast<std::size_t>(b2World_GetCounters(b2LoadWorldId(getHandle())).bodyCount);
 }
 
 std::size_t World::getAwakeBodyCount() const {
-    return static_cast<std::size_t>(b2World_GetAwakeBodyCount(b2LoadWorldId(handle)));
+    return static_cast<std::size_t>(b2World_GetAwakeBodyCount(b2LoadWorldId(getHandle())));
 }
 
 World::Stats World::getStats() const {
-    const b2WorldId world = b2LoadWorldId(handle);
+    const b2WorldId world = b2LoadWorldId(getHandle());
     const b2Counters counters = b2World_GetCounters(world);
     const b2Profile profile = b2World_GetProfile(world);
     return {

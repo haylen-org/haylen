@@ -84,6 +84,9 @@ function Thrusters:enter()
 end
 
 function Thrusters:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, gravity = {0, Thrusters.gravity}})
     self.fuel, self.state, self.still, self.touchdown = Thrusters.fuelTank, 'flying', 0, 0
     self.readoutTime, self.fuelShown = Test.statusInterval, 100

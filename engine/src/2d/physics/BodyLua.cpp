@@ -15,6 +15,9 @@ namespace haylen::physics2d {
 
 Body& BodyLua::check(lua_State* L) {
     ScriptedHandle<Body>& self = lua::Userdata::check<ScriptedHandle<Body>>(L, 1);
+    if (self.world->isDestroyed()) {
+        luaL_error(L, "The physics world of the body was destroyed.");
+    }
     if (!self.handle.isValid()) {
         luaL_error(L, "The body was destroyed.");
     }

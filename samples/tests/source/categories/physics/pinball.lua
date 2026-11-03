@@ -84,6 +84,9 @@ function Pinball:enter()
 end
 
 function Pinball:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self, gravity = {0, 700}})
     self.score, self.balls, self.autoPull = 0, 1, 0
 

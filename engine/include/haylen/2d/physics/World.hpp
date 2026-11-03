@@ -108,6 +108,12 @@ class World final {
     World(const World&) = delete;
     World& operator=(const World&) = delete;
 
+    // Destroys the Box2D world at once with its bodies, shapes, joints and step hooks, before the last owner lets the object go. Every handle of the world turns invalid, and every later call that needs the Box2D world throws `std::logic_error`. Destroying a destroyed world does nothing.
+    void destroy();
+    [[nodiscard]] bool isDestroyed() const noexcept {
+        return handle == 0;
+    }
+
     Body createBody(const Body::Options& options = {});
 
     // Anchors are world positions. Distance joints keep the anchors apart, at their current distance unless a length is given. Revolute joints pin the bodies at `anchorA`, prismatic and wheel joints slide along the axis, and weld joints glue the bodies. Mouse joints pull the second body toward `anchorB` with 4 hertz, a damping ratio of 1 and enough force to accelerate it at a thousand meters per second squared unless the options set them. Motor joints drive the second body toward its current offset from the first.
@@ -118,7 +124,7 @@ class World final {
     // Releases the length limits of the ropes that lost a link, runs the hooks before the step, advances the world, breaks the joints loaded beyond their limits and runs the hooks after the step.
     void step(float deltaSeconds);
 
-    // Adds a function that runs at the given phase of every step until it is removed, which is how vehicles, force fields and fluids act on the world, and returns its id. Hooks never add or remove hooks while they run.
+    // Adds a function that runs at the given phase of every step until it is removed or the world is destroyed, which is how vehicles, force fields and fluids act on the world, and returns its id. Hooks never add or remove hooks while they run.
     std::uint64_t addStepHook(StepPhase phase, StepHook hook);
     void removeStepHook(std::uint64_t id);
 
@@ -212,9 +218,8 @@ class World final {
     [[nodiscard]] core::JobSystem* getJobs() const noexcept {
         return jobs;
     }
-    [[nodiscard]] std::uint32_t getHandle() const noexcept {
-        return handle;
-    }
+    // Returns the Box2D world. Throws `std::logic_error` once the world is destroyed.
+    [[nodiscard]] std::uint32_t getHandle() const;
 
   private:
     friend class Body;
@@ -277,6 +282,9 @@ class World final {
 
     // Returns the shapes whose bounds overlap the area, in world units.
     [[nodiscard]] std::vector<Shape> overlapBounds(const math::Rect& area, const CollisionFilter& filter) const;
+
+    // Throws `std::logic_error` once the world is destroyed.
+    void checkLive() const;
 
     // Reports the bodies and contacts of the world to the debug statistics.
     void countObjects();

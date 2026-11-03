@@ -70,6 +70,9 @@ function GrapplingHook:enter()
 end
 
 function GrapplingHook:build()
+    if self.world then
+        self.world:destroy()
+    end
     self.world = physics2d.newWorld({owner = self})
     self.statics, self.crates = {}, {}
     for index, block in ipairs(GrapplingHook.blocks) do
