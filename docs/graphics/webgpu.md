@@ -67,7 +67,7 @@ haylen test --graphics-api webGpu --platform web
 
 ## Lost devices
 
-The browser loses the device of a page when the GPU process restarts or the GPU resets. The device reports it through `isLost`, a loss for an unknown reason reaches the log as an error, and the platform layer asks the browser for a new adapter and device through `gpu::DeviceFactory::prepare` before it starts the app again.
+The browser loses the device of a page when the GPU process restarts or the GPU resets. The device reports it through `isLost`, and every loss but that of a device the engine released reaches the log as an error with the message of the browser, also a device the browser destroyed on its own. A page that draws into a canvas of its own, such as one that decodes an image through an `OffscreenCanvas`, can make a browser without a GPU for WebGPU take the device away, as headless Chrome on Linux with SwiftShader does. Either way, the platform layer asks the browser for a new adapter and device through `gpu::DeviceFactory::prepare` before it starts the app again. A lost device gets one replacement, as the [RHI guide](rhi.md#lost-devices) describes.
 
 ## Limits
 

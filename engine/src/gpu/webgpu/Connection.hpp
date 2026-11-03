@@ -22,9 +22,10 @@ class Connection final {
         Failed,
     };
 
-    // What the callbacks of the device report. The callback of its loss holds it until it runs, which is the last callback of a device, so the callback of its errors can point at it.
+    // What the callbacks of the device report, and whether the engine released the device, whose loss is then no failure. The callback of its loss holds it until it runs, which is the last callback of a device, so the callback of its errors can point at it.
     struct Events {
         bool lost = false;
+        bool released = false;
         int errors = 0;
     };
 

@@ -15,6 +15,7 @@ Connection::Status Connection::status = Connection::Status::Idle;
 std::string Connection::failure;
 
 Connection::~Connection() {
+    events->released = true;
     if (queue != nullptr) {
         wgpuQueueRelease(queue);
     }
@@ -128,13 +129,18 @@ void Connection::receiveDevice(WGPURequestDeviceStatus result, WGPUDevice create
     status = Status::Ready;
 }
 
-// A device that the engine destroys, or that never came to be, reports its loss too, which only releases what the callbacks share.
+// A device that the engine released reports its loss too, which then only releases what the callbacks share. Any other loss is a failure whose message the browser gives, also a device that the browser destroyed on its own when it took the GPU away from the page.
 void Connection::reportLoss(WGPUDevice const*, WGPUDeviceLostReason reason, WGPUStringView message, void* first, void*) {
     const std::unique_ptr<std::shared_ptr<Events>> events(static_cast<std::shared_ptr<Events>*>(first));
     (*events)->lost = true;
-    if (reason == WGPUDeviceLostReason_Unknown) {
-        core::Log::error("The WebGPU device was lost: {}", Conversion::fromText(message));
+    if ((*events)->released) {
+        return;
     }
+    if (reason == WGPUDeviceLostReason_FailedCreation) {
+        core::Log::error("The WebGPU device could not be created: {}", Conversion::fromText(message));
+        return;
+    }
+    core::Log::error("The WebGPU device was lost: {}", Conversion::fromText(message));
 }
 
 void Connection::reportError(WGPUDevice const*, WGPUErrorType, WGPUStringView message, void* first, void*) {

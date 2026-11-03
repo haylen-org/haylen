@@ -1,7 +1,9 @@
 #include "platform/sdl/Runtime.hpp"
 
 #include <exception>
+#include <format>
 #include <stdexcept>
+#include <string_view>
 #include <utility>
 
 // The runtime holds the entry points itself and enters the main callbacks of SDL through the functions they name.
@@ -250,13 +252,19 @@ SDL_AppResult Runtime::iterate() {
     return closing ? SDL_APP_SUCCESS : SDL_APP_CONTINUE;
 }
 
-// A device that stopped working, after a reset of the GPU, the removal of the adapter or a lost context, gives way to a new one, which the app starts again on once the graphics API prepared it.
+// A device that stopped working, after a reset of the GPU, the removal of the adapter or a lost context, gives way to a new one, which the app starts again on once the graphics API prepared it. A device gets one replacement, and a replacement that stops working too shows a GPU that keeps no device for the app, which then ends with the reason.
 void Runtime::recover() {
     const gpu::Device* device = Player::getGpuDevice();
     if (device == nullptr || !device->isLost()) {
         return;
     }
-    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", gpu::DeviceFactory::getApiName(window.getApi()));
+    const std::string_view api = gpu::DeviceFactory::getApiName(window.getApi());
+    if (replacedLostDevice) {
+        Player::fail(std::format("The GPU device of \"{}\" stopped working again after it replaced a lost one, so the app cannot draw.", api));
+        return;
+    }
+    replacedLostDevice = true;
+    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", api);
     recovering = true;
     Player::restart();
 }

@@ -797,7 +797,7 @@ WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses
 WEB_ERROR_SCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-error-screen"
 WEB_ERROR_SCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "error-screen-check.mjs"
 WEB_ERROR_SCREEN_STEPS = {
-    "granted": ["ready", "stopped", "copied", "restarted by the key", "stopped again", "restarted by a click"],
+    "granted": ["ready", "drew on after a canvas of the page", "stopped", "copied", "restarted by the key", "stopped again", "restarted by a click"],
     "refused": ["ready", "stopped", "refused", "restarted by the key"],
     "missing": ["ready", "stopped", "refused", "restarted by the key"],
 }

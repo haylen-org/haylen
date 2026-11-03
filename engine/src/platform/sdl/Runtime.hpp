@@ -148,8 +148,9 @@ class Runtime final {
     // Whether the keyboard went from the window of the app to the window of an output, which keeps the app focused.
     bool focusInOutput = false;
 
-    // Whether the device of the app stopped working, until its replacement exists.
+    // Whether the device of the app stopped working, until its replacement exists, and whether a device already replaced a lost one.
     bool recovering = false;
+    bool replacedLostDevice = false;
 
     // Whether the frames run at the rate of a window that shows nothing.
     bool paced = false;
