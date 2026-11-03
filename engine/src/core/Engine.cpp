@@ -233,6 +233,7 @@ void Engine::applyWindowOptions() {
     host.setShowInTaskbar(window.showInTaskbar);
     host.setFocusable(window.focusable);
     host.setStatusBar(window.statusBar);
+    host.setSystemGestures(window.systemGestures);
     // clang-format off
     host.setKeepScreenOn(window.keepScreenOn, [](const platform::Permission::Answer& answer) {
         if (answer.state != platform::Permission::State::Granted) {

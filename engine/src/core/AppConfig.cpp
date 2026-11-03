@@ -296,7 +296,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("window")) {
         const Json& windowJson = document.at("window");
-        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"app.json\"");
         readValue(windowJson, "title", config.window.title);
         readValue(windowJson, "width", config.window.width);
         readValue(windowJson, "height", config.window.height);
@@ -324,6 +324,15 @@ AppConfig AppConfig::fromJson(const Json& document) {
                 throw std::invalid_argument("The \"window.statusBar\" value \"" + statusBarText + "\" in \"app.json\" is unknown. It is \"hidden\", \"auto\", \"light\" or \"dark\".");
             }
             config.window.statusBar = *statusBar;
+        }
+        if (windowJson.contains("systemGestures")) {
+            std::string systemGesturesText;
+            readValue(windowJson, "systemGestures", systemGesturesText);
+            const std::optional<platform::Window::SystemGestures> systemGestures = platform::Window::systemGesturesFromName(systemGesturesText);
+            if (!systemGestures) {
+                throw std::invalid_argument("The \"window.systemGestures\" value \"" + systemGesturesText + "\" in \"app.json\" is unknown. It is \"system\", \"deferred\" or \"autoHideIndicator\".");
+            }
+            config.window.systemGestures = *systemGestures;
         }
         std::string statusBarColorText;
         readValue(windowJson, "statusBarColor", statusBarColorText);
@@ -563,6 +572,7 @@ Json AppConfig::toJson() const {
     }
     Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"lowPowerGpu", window.lowPowerGpu}};
     windowJson["statusBar"] = platform::Window::statusBarName(window.statusBar);
+    windowJson["systemGestures"] = platform::Window::systemGesturesName(window.systemGestures);
     if (window.statusBarColor) {
         windowJson["statusBarColor"] = window.statusBarColor->toHex();
     }

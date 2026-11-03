@@ -1,6 +1,6 @@
 # 📖 `haylen.window`
 
-The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
+The module `haylen.window` controls the window that the app runs in, or the canvas on the web. It covers the size, fullscreen, the title, the mouse cursor, the on-screen keyboard, the orientation and the status bar of phones, the system gestures at the edges of the screen, the back button, keeping the screen on and the fold of foldable devices. On desktops it also covers frameless, transparent, always-on-top and click-through windows and their frame. The module [`haylen.display`](display.md) lists the displays. The `window` section of `app.json` sets the window when the app starts, as the [Lua guide](../core/lua.md) lists. Drawing works in design units, so layout code usually reads [`haylen.viewport`](viewport.md) instead of the window size. The [desktop guide](../platform/desktop.md) explains how the desktop options fit together.
 
 ```lua
 local window = require('haylen.window')
@@ -299,6 +299,45 @@ local window = require('haylen.window')
 window.setStatusBar('light')
 window.setStatusBarColor('#FF1E2A44')
 window.setStatusBarColor(nil)
+```
+
+## System gestures
+
+Phones and tablets take some swipes that start at an edge of the screen for the system. A swipe up from the bottom edge goes to the home screen, and on Android a swipe in from a side edge goes back. A game with controls near the edges loses the game when a thumb slides off a control. The [input guide](../input/input.md#system-gestures-at-the-edges) explains when to use each choice.
+
+### window.systemGestures()
+
+Returns how the system gestures at the edges of the screen answer a swipe. The key `window.systemGestures` of `app.json` sets it when the app starts, and it is `'deferred'` by default. Platforms without such gestures keep reporting the value that was set.
+
+```lua
+local window = require('haylen.window')
+
+print('System gestures:', window.systemGestures())
+```
+
+### window.setSystemGestures(value)
+
+Decides how the system gestures at the edges of the screen answer a swipe. An unknown name raises a bad argument error.
+
+| Value | What it does |
+| --- | --- |
+| `'system'` | The gestures act on the first swipe, as the system does for every app, and the home indicator or the navigation bar shows. It suits apps such as a shop or a reader. |
+| `'deferred'` | The first swipe from an edge reaches the app, and the system acts only on a second swipe. It protects a game with controls at the edges. |
+| `'autoHideIndicator'` | The gestures act on the first swipe, and the home indicator hides until the person touches the screen. It suits videos and cutscenes. |
+
+Each platform does this.
+
+- iPhones and iPads answer through the view controller of the window. With `'deferred'`, every edge defers its gesture, so the first swipe up from the bottom only wakes the home indicator, and the first swipe down from the top only shows a tab for the notification and control centers. With `'autoHideIndicator'`, the home indicator fades out a few seconds after the last touch. A native screen of a plugin that covers the app decides for itself while it shows.
+- Android shows the navigation bar with `'system'`, so a swipe from the bottom goes home and a swipe from a side goes back at once. The other values hide the navigation bar, so the first swipe from the bottom or a side only shows the system bars for a while, and a second swipe acts. With `'deferred'`, Android also keeps the back gesture off the lowest 200 dp of each side edge, which is the most that Android lets an app keep, so every swipe there reaches the app, while a swipe higher on the edge still goes back on the second swipe. The [safe area](viewport.md#viewportsaferect) leaves the navigation bar out while it shows.
+- Desktops, Mac Catalyst, TVs, Apple Vision Pro and browsers ignore it. Desktops and TVs have no such gestures. Windows only lets a fullscreen window turn the swipes of a touch screen off for good, which none of the values asks for. A page has no say over the gestures of the system and the browser.
+
+```lua
+local window = require('haylen.window')
+
+-- A level with a virtual stick at the left edge, a menu with the gestures of the system and a cutscene without the home indicator.
+window.setSystemGestures('deferred')
+window.setSystemGestures('system')
+window.setSystemGestures('autoHideIndicator')
 ```
 
 ## Back button
@@ -754,7 +793,7 @@ These messages are raised by the functions of the module.
 | `A fullscreen mode needs a positive "width" and "height" in pixels.` | The `mode` of `window.setFullscreen` has no size. |
 | `The window of this platform stays on the display that shows it, in the mode that the system picks.` | The rejection of `window.setFullscreen` with the code `'unsupported'` on a phone, a tablet or a TV that got another display or a mode. |
 | `bad argument #2 to 'setFullscreen' (options only go with true)` | The function `window.setFullscreen(false, options)` got options. |
-| `bad argument #1 to '<function>' (unknown value '<name>')` | The functions `setCursor`, `lockOrientation` or `setStatusBar` got a name they do not know. |
+| `bad argument #1 to '<function>' (unknown value '<name>')` | The functions `setCursor`, `lockOrientation`, `setStatusBar` or `setSystemGestures` got a name they do not know. |
 | `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.` | The function `window.setTransparent(true)` ran on a window that opened opaque. |
 | `bad argument #3 to 'setFrame' (positive width expected)` | The width of `window.setFrame` is not positive. |
 | `bad argument #4 to 'setFrame' (positive height expected)` | The height of `window.setFrame` is not positive. |

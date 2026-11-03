@@ -142,6 +142,9 @@ void Services::lockOrientation(Orientation) {}
 // Linux desktops have no status bar over the window of an app.
 void Services::setStatusBar(Window::StatusBar) {}
 
+// Linux desktops let no app defer the swipes that their touch screens take at the edges.
+void Services::setSystemGestures(Window::SystemGestures) {}
+
 float Services::getStatusBarHeight() {
     return 0.0F;
 }

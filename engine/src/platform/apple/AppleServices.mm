@@ -40,6 +40,7 @@
 #import "platform/apple/AppleSplash.hpp"
 #import "platform/apple/AppleStatusBar.hpp"
 #import "platform/apple/AppleSystem.hpp"
+#import "platform/apple/AppleSystemGestures.hpp"
 #import "platform/apple/AppleTextInput.hpp"
 #import "platform/apple/AppleVideoDecoder.hpp"
 #import "platform/apple/CatalystWindow.hpp"
@@ -251,6 +252,13 @@ void Services::lockOrientation([[maybe_unused]] Orientation value) {
 void Services::setStatusBar([[maybe_unused]] Window::StatusBar value) {
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
     AppleStatusBar::set(value);
+#endif
+}
+
+// Only iPhones and iPads take swipes at the edges of the screen and show a home indicator, while Macs, Mac Catalyst windows, TVs and Apple Vision Pro have neither.
+void Services::setSystemGestures([[maybe_unused]] Window::SystemGestures value) {
+#if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
+    AppleSystemGestures::set(value);
 #endif
 }
 

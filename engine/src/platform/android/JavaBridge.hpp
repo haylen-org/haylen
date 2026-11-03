@@ -52,6 +52,9 @@ class JavaBridge final {
     // Takes the value of `Window::StatusBar`: 0 hides the status bar, and 1, 2 and 3 show it with the content of the theme of the system, light content or dark content.
     static void setStatusBar(int value);
 
+    // Takes the value of `Window::SystemGestures`: 0 shows the navigation bar and leaves the gestures to the system, 1 hides the navigation bar and keeps the back gesture off the lower part of the side edges, and 2 hides the navigation bar.
+    static void setSystemGestures(int value);
+
     // Keeps the screen of the device on while the activity shows, or leaves it to the system.
     static void keepScreenOn(bool value);
 
@@ -161,6 +164,7 @@ class JavaBridge final {
     static jclass activityClass;
     static jmethodID lockOrientationMethod;
     static jmethodID setStatusBarMethod;
+    static jmethodID setSystemGesturesMethod;
     static jmethodID keepScreenOnMethod;
     static jmethodID captureBackMethod;
     static jmethodID systemInfoMethod;

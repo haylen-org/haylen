@@ -49,7 +49,7 @@ The reference lists every Lua module of Haylen: each function, type, method, pro
 | `haylen.ui` | The 64 component kinds of retained GUIs with their properties and events, layout and anchors, themes and styles, focus and navigation, accessibility, long collections, and the types `Gui`, `UiCollection`, `UiCell` and `UiTransform`. | [`ui.md`](ui.md) |
 | `haylen.video` | Video files of the package played into a texture with the decoder of each platform, with play, pause, seek, loop, rate, sound through a bus of the mixer, events and asynchronous loads. | [`video.md`](video.md) |
 | `haylen.viewport` | The design size and the scaling policy, which change while the app runs, the visible area, the safe area, the edges that native views reserve, conversions between design units and pixels, and the simulated safe area of other devices. | [`viewport.md`](viewport.md) |
-| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard, orientation, status bar, back button and folds, and on desktops frameless, transparent, always-on-top and click-through windows with their frame. | [`window.md`](window.md) |
+| `haylen.window` | Window size, fullscreen, title, cursor, on-screen keyboard, orientation, status bar, system gestures, back button and folds, and on desktops frameless, transparent, always-on-top and click-through windows with their frame. | [`window.md`](window.md) |
 
 ## Varn modules
 

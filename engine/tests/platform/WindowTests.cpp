@@ -128,6 +128,26 @@ TEST_F(WindowConfigTest, ReadsTheStatusBarOfAppJson) {
     }
 }
 
+TEST_F(WindowConfigTest, ReadsTheSystemGesturesOfAppJson) {
+    const core::AppConfig config = core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "system"}})"));
+    EXPECT_EQ(config.window.systemGestures, Window::SystemGestures::System);
+    EXPECT_EQ(core::AppConfig::fromJson(config.toJson()).toJson(), config.toJson());
+
+    const core::AppConfig defaults = core::AppConfig::fromJson(core::Json::object());
+    EXPECT_EQ(defaults.window.systemGestures, Window::SystemGestures::Deferred);
+    EXPECT_EQ(defaults.toJson().at("window").at("systemGestures"), "deferred");
+
+    try {
+        (void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"systemGestures": "hidden"}})"));
+        FAIL();
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), R"(The "window.systemGestures" value "hidden" in "app.json" is unknown. It is "system", "deferred" or "autoHideIndicator".)");
+    }
+    for (const char* document : {R"({"window": {"systemGestures": ""}})", R"({"window": {"systemGestures": 1}})"}) {
+        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
+    }
+}
+
 TEST_F(WindowPlacementTest, AnchorsWindowsToTheAreaOfADisplay) {
     EXPECT_EQ(place(R"("center")"), (math::Rect{760.0F, 470.0F, 400.0F, 100.0F}));
     EXPECT_EQ(place(R"({"anchor": "bottom"})"), (math::Rect{760.0F, 940.0F, 400.0F, 100.0F}));

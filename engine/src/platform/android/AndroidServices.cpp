@@ -145,6 +145,10 @@ void Services::setStatusBar(Window::StatusBar value) {
     JavaBridge::setStatusBar(static_cast<int>(value));
 }
 
+void Services::setSystemGestures(Window::SystemGestures value) {
+    JavaBridge::setSystemGestures(static_cast<int>(value));
+}
+
 float Services::getStatusBarHeight() {
     return AndroidActivity::getStatusBarHeight() * NativeWindow::getScale();
 }

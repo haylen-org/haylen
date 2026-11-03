@@ -24,6 +24,7 @@
 -keep class dev.haylen.HaylenActivity {
     static void lockOrientation(int);
     static void setStatusBar(int);
+    static void setSystemGestures(int);
     static void keepScreenOn(boolean);
     static void captureBack(boolean);
     static byte[] systemInfo();

@@ -32,7 +32,7 @@ namespace haylen::core {
 
 // App settings read from `app.json` before any script runs, because the window exists before `source/main.lua`.
 struct AppConfig {
-    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless `clearColor` says otherwise. The desktop options change at run time through the window, and `position` places the window when it opens. The status bar of phones and tablets launches as `statusBar` says, and the engine paints `statusBarColor` behind it while it shows.
+    // A transparent window opens able to let the desktop show through its transparent pixels, which it keeps for the whole run, and clears to transparent unless `clearColor` says otherwise. The desktop options change at run time through the window, and `position` places the window when it opens. The status bar of phones and tablets launches as `statusBar` says, and the engine paints `statusBarColor` behind it while it shows. The system gestures at the edges of phones and tablets follow `systemGestures`.
     struct Window {
         std::string title = "Haylen";
         int width = 1280;
@@ -52,6 +52,7 @@ struct AppConfig {
         std::optional<platform::WindowPlacement> position;
         platform::Window::StatusBar statusBar = platform::Window::StatusBar::Hidden;
         std::optional<math::Color> statusBarColor;
+        platform::Window::SystemGestures systemGestures = platform::Window::SystemGestures::Deferred;
 
         // The graphics APIs the window tries first, in order, before the other APIs of the build in the order of the platform, which an empty list leaves as it is.
         std::vector<gpu::Device::Api> graphicsApis;

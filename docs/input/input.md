@@ -490,6 +490,25 @@ scene.push({
 
 App code can write virtual inputs itself, for controls of its own, with `input.setVirtualButton(name, down)`, `input.setVirtualStick(name, x, y)` and `input.clearVirtual()`. Values written during a frame reach the actions at the start of the next frame, and that holds for touch controls too. A virtual input that app code wrote stays as it was until the code writes it again. So give the controls of the app names of their own, apart from the names of UI controls.
 
+### System gestures at the edges
+
+Phones and tablets keep some swipes from the edges of the screen for the system. On an iPhone or an iPad a swipe up from the bottom goes home, and on Android a swipe in from a side also goes back. A thumb that slides off a stick near an edge can leave the game by accident. The option `window.systemGestures` of `app.json`, and [`window.setSystemGestures`](../lua-api/window.md#windowsetsystemgesturesvalue) while the app runs, choose how those swipes answer.
+
+- `'deferred'`, the default, lets the first swipe from an edge reach the app, and the system acts only on a second swipe. It suits games with touch controls, so a game keeps it during play.
+- `'system'` lets the system act on the first swipe and shows the home indicator or the navigation bar. It suits apps such as a shop, a reader or the menus of a game, where people expect to leave with one swipe.
+- `'autoHideIndicator'` acts on the first swipe too, and hides the home indicator until the person touches the screen. It suits videos and cutscenes that nobody touches.
+
+On Android every value except `'system'` hides the navigation bar, so a first swipe only shows the bars. Android limits how much of each side edge an app can keep from the back gesture, so `'deferred'` keeps the lowest 200 dp of each side, where the thumbs hold the controls of a game, and a second swipe higher on the edge still goes back. Place controls that a thumb drags near a side edge in the lower part of the screen. The [reference](../lua-api/window.md#system-gestures) says what each platform does.
+
+```lua
+local events = require('haylen.events')
+local window = require('haylen.window')
+
+events.on('levelStarted', function() window.setSystemGestures('deferred') end)
+events.on('cutsceneStarted', function() window.setSystemGestures('autoHideIndicator') end)
+events.on('menuOpened', function() window.setSystemGestures('system') end)
+```
+
 ## Prompts for the last device
 
 The function `input.lastDevice()` returns the kind of device that the player used last: `'keyboardMouse'`, `'touch'` or `'gamepad'`. Use it to show matching prompts, such as "Press Space" or "Press A". Moving the mouse alone does not change it. Neither do key repeats or a gamepad button or stick that stays held. So a player who holds a trigger and then presses a key gets keyboard prompts. The function `input.gamepadLabels(index)` tells which letter or shape the bottom button shows.

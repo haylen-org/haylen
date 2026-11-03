@@ -87,6 +87,8 @@ void Services::lockOrientation(Orientation) {}
 
 void Services::setStatusBar(Window::StatusBar) {}
 
+void Services::setSystemGestures(Window::SystemGestures) {}
+
 float Services::getStatusBarHeight() {
     return 0.0F;
 }

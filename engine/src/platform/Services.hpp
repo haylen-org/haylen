@@ -104,6 +104,9 @@ class Services final {
     static void setStatusBar(Window::StatusBar value);
     [[nodiscard]] static float getStatusBarHeight();
 
+    // Applies how the system gestures at the edges of the screen answer a swipe where the platform has such gestures.
+    static void setSystemGestures(Window::SystemGestures value);
+
     // Returns the fold of a foldable or dual-screen device across the window, as `Window::getFold` describes.
     [[nodiscard]] static std::optional<Fold> getFold();
 

@@ -227,6 +227,9 @@ void Services::lockOrientation(Orientation value) {
 // The status bar of a phone belongs to the browser, which shows it above the page.
 void Services::setStatusBar(Window::StatusBar) {}
 
+// A page has no say over the swipes that the system and the browser take at the edges of the screen.
+void Services::setSystemGestures(Window::SystemGestures) {}
+
 float Services::getStatusBarHeight() {
     return 0.0F;
 }

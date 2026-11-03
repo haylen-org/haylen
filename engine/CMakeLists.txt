@@ -879,6 +879,7 @@ elseif(APPLE)
     src/platform/apple/AppleServices.mm
     src/platform/apple/AppleSplash.mm
     src/platform/apple/AppleStatusBar.mm
+    src/platform/apple/AppleSystemGestures.mm
     src/platform/apple/AppleSystem.mm
     src/platform/apple/AppleTextInput.mm
     src/platform/apple/AppleTheme.mm

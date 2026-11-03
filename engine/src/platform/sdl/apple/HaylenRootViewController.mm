@@ -5,11 +5,13 @@
 #import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/AppleStatusBar.hpp"
+#import "platform/apple/AppleSystemGestures.hpp"
 
 using haylen::platform::AppleCutouts;
 using haylen::platform::AppleFold;
 using haylen::platform::AppleOrientation;
 using haylen::platform::AppleStatusBar;
+using haylen::platform::AppleSystemGestures;
 using haylen::platform::Window;
 
 @implementation HaylenRootViewController
@@ -28,6 +30,14 @@ using haylen::platform::Window;
 
 - (UIStatusBarStyle)preferredStatusBarStyle {
     return AppleStatusBar::getStyle();
+}
+
+- (BOOL)prefersHomeIndicatorAutoHidden {
+    return AppleSystemGestures::isHomeIndicatorAutoHidden();
+}
+
+- (UIRectEdge)preferredScreenEdgesDeferringSystemGestures {
+    return AppleSystemGestures::getDeferredEdges();
 }
 
 // The view controller allows the orientations that the application delegate allows, so UIKit never lays the window out in an orientation the app refuses, such as for the lock screen or a snapshot of the app in the background.

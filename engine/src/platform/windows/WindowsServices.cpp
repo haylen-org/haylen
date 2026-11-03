@@ -158,6 +158,9 @@ void Services::lockOrientation(Orientation) {}
 // Windows desktops have no status bar over the window of an app.
 void Services::setStatusBar(Window::StatusBar) {}
 
+// Windows only lets a fullscreen window turn the swipes at the edges of a touch screen off for good, which no mode asks for, since a deferred gesture still acts on the second swipe.
+void Services::setSystemGestures(Window::SystemGestures) {}
+
 float Services::getStatusBarHeight() {
     return 0.0F;
 }

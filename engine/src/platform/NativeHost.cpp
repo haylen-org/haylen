@@ -81,6 +81,15 @@ void NativeHost::setStatusBar(StatusBar value) {
     Services::setStatusBar(value);
 }
 
+Window::SystemGestures NativeHost::getSystemGestures() const noexcept {
+    return systemGestures;
+}
+
+void NativeHost::setSystemGestures(SystemGestures value) {
+    systemGestures = value;
+    Services::setSystemGestures(value);
+}
+
 bool NativeHost::hasPointerDevice() const noexcept {
     return Services::hasPointerDevice();
 }

@@ -36,6 +36,8 @@ class NativeHost : public Host {
     void getCutouts(std::vector<math::Rect>& cutouts) const override;
     [[nodiscard]] StatusBar getStatusBar() const noexcept override;
     void setStatusBar(StatusBar value) override;
+    [[nodiscard]] SystemGestures getSystemGestures() const noexcept override;
+    void setSystemGestures(SystemGestures value) override;
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool isScreenKeptOn() const noexcept override;
     void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
@@ -175,6 +177,7 @@ class NativeHost : public Host {
     WindowStyle style;
     Passthrough passthrough = Passthrough::Off;
     StatusBar statusBar = StatusBar::Hidden;
+    SystemGestures systemGestures = SystemGestures::Deferred;
     bool focusable = true;
     bool screenKeptOn = false;
 };

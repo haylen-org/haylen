@@ -49,6 +49,8 @@ class WindowLua final {
     static int setStatusBar(lua_State* L);
     static int statusBarColor(lua_State* L);
     static int setStatusBarColor(lua_State* L);
+    static int systemGestures(lua_State* L);
+    static int setSystemGestures(lua_State* L);
     static int fold(lua_State* L);
     static int posture(lua_State* L);
     static int segments(lua_State* L);

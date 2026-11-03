@@ -67,6 +67,13 @@ class Window {
         Dark,
     };
 
+    // How the system gestures at the edges of a phone or tablet answer a swipe: at once with the home indicator showing, only on a second swipe so the app keeps the first one, or at once with a home indicator that hides until the person touches the screen.
+    enum class SystemGestures : std::uint8_t {
+        System,
+        Deferred,
+        AutoHideIndicator,
+    };
+
     // Where and how the window goes fullscreen, as `enterFullscreen` describes. A mode with a refresh rate of 0 runs at the highest rate of its size.
     struct Fullscreen {
         std::string display;
@@ -82,6 +89,10 @@ class Window {
     // Resolves the status bar names `hidden`, `auto`, `light` and `dark` that `app.json` and Lua share.
     [[nodiscard]] static std::optional<StatusBar> statusBarFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view statusBarName(StatusBar value) noexcept;
+
+    // Resolves the system gesture names `system`, `deferred` and `autoHideIndicator` that `app.json` and Lua share.
+    [[nodiscard]] static std::optional<SystemGestures> systemGesturesFromName(std::string_view name) noexcept;
+    [[nodiscard]] static std::string_view systemGesturesName(SystemGestures value) noexcept;
 
     [[nodiscard]] virtual math::Vec2 getFramebufferSize() const noexcept = 0;
     [[nodiscard]] virtual float getDpiScale() const noexcept = 0;
@@ -121,6 +132,10 @@ class Window {
     // Shows or hides the status bar where the platform has one, which iPhones, iPads and Android do, and keeps reporting the value that was set elsewhere.
     [[nodiscard]] virtual StatusBar getStatusBar() const noexcept = 0;
     virtual void setStatusBar(StatusBar value) = 0;
+
+    // Lets the system gestures at the edges of the screen act at once or defers them to a second swipe, and hides the home indicator until a touch, where the platform has such gestures, which iPhones, iPads and Android do, and keeps reporting the value that was set elsewhere.
+    [[nodiscard]] virtual SystemGestures getSystemGestures() const noexcept = 0;
+    virtual void setSystemGestures(SystemGestures value) = 0;
 
     // Keeps the screen on and its saver away while the app shows, or leaves them to the settings of the system, and answers like `setFullscreen`, with `Denied` where a browser refuses its wake lock, such as for a page that hides. Game controllers keep neither the idle timer of iOS and tvOS nor the screen saver of desktops from running, so an app that players drive with them or that plays without input keeps the screen on.
     [[nodiscard]] virtual bool isScreenKeptOn() const noexcept = 0;
@@ -166,6 +181,7 @@ class Window {
   private:
     static const std::array<std::pair<std::string_view, Orientation>, 3> kOrientationNames;
     static const std::array<std::pair<std::string_view, StatusBar>, 4> kStatusBarNames;
+    static const std::array<std::pair<std::string_view, SystemGestures>, 3> kSystemGesturesNames;
 };
 
 } // namespace haylen::platform

@@ -165,6 +165,12 @@ class HeadlessHost final : public Host {
     void setStatusBar(StatusBar value) override {
         statusBar = value;
     }
+    [[nodiscard]] SystemGestures getSystemGestures() const noexcept override {
+        return systemGestures;
+    }
+    void setSystemGestures(SystemGestures value) override {
+        systemGestures = value;
+    }
     [[nodiscard]] HeadlessTextInput& getTextInput() noexcept override {
         return textInput;
     }
@@ -675,6 +681,7 @@ class HeadlessHost final : public Host {
     float dpiScale = 1.0F;
     math::Insets safeAreaInsets{};
     StatusBar statusBar = StatusBar::Hidden;
+    SystemGestures systemGestures = SystemGestures::Deferred;
     float statusBarHeight = 0.0F;
     std::optional<Fold> fold;
     std::array<input::GamepadState, input::Input::kMaxGamepads> gamepads{};

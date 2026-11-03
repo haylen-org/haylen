@@ -91,6 +91,22 @@ TEST(WindowLuaTest, AnswersFullscreenThePointerAndTheScreenOrSaysWhyNot) {
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
+// The system gestures start as app.json asks, a script changes them later, and a restarted app starts again with the value of app.json.
+TEST(WindowLuaTest, AppliesTheSystemGesturesTheAppAsksFor) {
+    test::EngineFixture fixture({{"app.json", R"({"window": {"systemGestures": "autoHideIndicator"}})"}});
+    fixture.runLua("window = require('haylen.window')");
+    EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
+    EXPECT_EQ(fixture.lua("return window.systemGestures()"), "autoHideIndicator");
+
+    fixture.runLua("window.setSystemGestures('system')");
+    EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::System);
+    EXPECT_EQ(fixture.lua("return window.systemGestures()"), "system");
+    EXPECT_NE(fixture.lua("window.setSystemGestures('hidden')").find("error: "), std::string::npos);
+
+    fixture.restart();
+    EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
+}
+
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::EngineFixture fixture;
     fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");

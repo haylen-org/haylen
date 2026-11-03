@@ -44,6 +44,7 @@ import androidx.core.view.WindowInsetsControllerCompat;
 import com.google.androidgamesdk.GameActivity;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -65,6 +66,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static final int STATUS_BAR_AUTO = 1;
     private static final int STATUS_BAR_DARK = 3;
 
+    // The values of `Window::SystemGestures` in the engine, and the height of each side edge that Android lets an app keep the back gesture off, which `View.setSystemGestureExclusionRects` documents.
+    private static final int SYSTEM_GESTURES_SYSTEM = 0;
+    private static final int SYSTEM_GESTURES_DEFERRED = 1;
+    private static final int GESTURE_EXCLUSION_HEIGHT_DP = 200;
+
     // The link that `HaylenLinkActivity` received while no activity ran, which the next activity of the process takes. A launch that brings an existing task to the front keeps the intent that the task started with, even when Android restores its activity after the end of the process, so the link waits here instead of in the intent. Only the main thread reaches it.
     private static Intent pendingLink;
 
@@ -83,6 +89,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private int statusBar;
     // Whether the app keeps the screen on, which outlives the activity, so an activity that the system creates again keeps the screen on too.
     private static volatile boolean screenKeptOn;
+    // How the system gestures at the edges answer, which outlives the activity like the screen that stays on.
+    private static volatile int systemGestures = SYSTEM_GESTURES_DEFERRED;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -118,6 +126,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         HaylenEditText.attach(editor);
         splash.show();
         ViewCompat.setOnApplyWindowInsetsListener(getWindow().getDecorView(), this::applyInsets);
+        getWindow().getDecorView().addOnLayoutChangeListener((view, left, top, right, bottom, oldLeft, oldTop, oldRight, oldBottom) -> excludeBackGesture());
 
         // The engine follows how long back stays down, from the start of the back gesture or press to its end, since a long hold leaves an app that another app launched.
         backCallback = new OnBackPressedCallback(false) {
@@ -157,7 +166,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
     }
 
-    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, besides the status bar that the app shows, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
+    // The class `GameActivity` sets up the window before it creates the activity. The app draws edge to edge, under the cutout, with the system bars hidden until a swipe shows them, besides the status bar and the navigation bar that the app shows, and the software keyboard lies over the app without resizing it, while the engine lifts the focused field above it.
     @Override
     protected void onSetUpWindow() {
         Window window = getWindow();
@@ -172,6 +181,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         controller.setSystemBarsBehavior(WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
         statusBar = launchStatusBar();
         applyStatusBar();
+        applySystemGestures();
         applyScreenKeptOn();
     }
 
@@ -204,6 +214,29 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
         controller.show(WindowInsetsCompat.Type.statusBars());
         controller.setAppearanceLightStatusBars(statusBar == STATUS_BAR_DARK || (statusBar == STATUS_BAR_AUTO && !isDark(getResources().getConfiguration())));
+    }
+
+    // The navigation bar shows while the system takes its gestures at once, and otherwise hides like the status bar, so the first swipe from the bottom or a side only shows the bars for a while and a second swipe acts. The deferred gestures also keep the back gesture off the lower part of the side edges, where the thumbs hold the controls of a game.
+    private void applySystemGestures() {
+        Window window = getWindow();
+        WindowInsetsControllerCompat controller = WindowCompat.getInsetsController(window, window.getDecorView());
+        if (systemGestures == SYSTEM_GESTURES_SYSTEM) {
+            controller.show(WindowInsetsCompat.Type.navigationBars());
+        } else {
+            controller.hide(WindowInsetsCompat.Type.navigationBars());
+        }
+        excludeBackGesture();
+    }
+
+    // The band at the bottom of the window covers both side edges and is as tall as Android allows on each edge.
+    private void excludeBackGesture() {
+        View view = getWindow().getDecorView();
+        if (systemGestures != SYSTEM_GESTURES_DEFERRED) {
+            ViewCompat.setSystemGestureExclusionRects(view, Collections.emptyList());
+            return;
+        }
+        int height = Math.round(GESTURE_EXCLUSION_HEIGHT_DP * getResources().getDisplayMetrics().density);
+        ViewCompat.setSystemGestureExclusionRects(view, Collections.singletonList(new Rect(0, Math.max(0, view.getHeight() - height), view.getWidth(), view.getHeight())));
     }
 
     @Override
@@ -347,6 +380,15 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
             activity.statusBar = value;
             activity.applyStatusBar();
         });
+    }
+
+    // Called from the frame thread of the engine with the value of `Window::SystemGestures`.
+    static void setSystemGestures(int value) {
+        systemGestures = value;
+        HaylenActivity activity = HaylenBridge.activity();
+        if (activity != null) {
+            activity.runOnUiThread(activity::applySystemGestures);
+        }
     }
 
     // Called from the frame thread of the engine when the app keeps the screen on or leaves it to the system.

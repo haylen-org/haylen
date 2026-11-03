@@ -587,6 +587,15 @@ template <> struct EnumNames<platform::Window::StatusBar> {
     }
 };
 
+template <> struct EnumNames<platform::Window::SystemGestures> {
+    static std::optional<platform::Window::SystemGestures> fromName(std::string_view name) {
+        return platform::Window::systemGesturesFromName(name);
+    }
+    static std::string_view name(platform::Window::SystemGestures value) {
+        return platform::Window::systemGesturesName(value);
+    }
+};
+
 template <> struct EnumNames<platform::Orientation> {
     static std::optional<platform::Orientation> fromName(std::string_view name) {
         return platform::Window::orientationFromName(name);

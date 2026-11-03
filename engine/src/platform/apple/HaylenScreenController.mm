@@ -65,6 +65,10 @@
     return content;
 }
 
+- (UIViewController*)childViewControllerForScreenEdgesDeferringSystemGestures {
+    return content;
+}
+
 - (UIInterfaceOrientationMask)supportedInterfaceOrientations {
     return content.supportedInterfaceOrientations;
 }
