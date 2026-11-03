@@ -285,6 +285,19 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
     AppleSystem::openUrl(url, std::move(callback));
 }
 
+// Apple platforms ask the person for the local network the first time the app reaches it, and tell apps neither the answer nor a way to ask before, so the state stays unknown.
+Permission::State Services::getPermission(Permission::Kind) {
+    return Permission::State::Unknown;
+}
+
+void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Unknown});
+}
+
+std::string Services::explainBlockedSocket(std::intptr_t) {
+    return {};
+}
+
 void Services::vibrate(float) {
     AppleSystem::vibrate();
 }

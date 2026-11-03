@@ -15,6 +15,7 @@
 
 #include "haylen/input/Input.hpp"
 #include "haylen/platform/Battery.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
 
@@ -50,6 +51,12 @@ class System final {
     // Puts the text on the clipboard of the system and calls back at a later pump with whether it got there. A browser refuses a page outside a secure context or without a recent input of the person, such as a click or a key.
     void setClipboard(std::string_view text, std::function<void(bool written)> callback);
 
+    // The state of a permission that the person grants at run time, as far as the platform tells it.
+    [[nodiscard]] Permission::State getPermission(Permission::Kind kind) const;
+
+    // Asks the person for a permission with the prompt of the system where the platform has one, and calls back at a later pump with the state the person left, or with the requirements the project of the app lacks, such as the line of the Android manifest that declares the permission.
+    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+
     // Vibrates the device for the given seconds where it can vibrate. Throws `std::invalid_argument` unless the seconds are positive.
     void vibrate(float seconds);
 
@@ -78,6 +85,7 @@ class System final {
     struct Inbox {
         std::mutex mutex;
         std::vector<Answer> answers;
+        std::vector<std::pair<std::uint64_t, Permission::Answer>> permissions;
     };
 
     static const std::array<std::pair<std::string_view, Theme>, 2> kThemeNames;
@@ -93,6 +101,7 @@ class System final {
     std::bitset<input::Input::kMaxGamepads> rumbling;
     std::uint64_t nextRequest = 1;
     std::unordered_map<std::uint64_t, std::function<void(bool)>> pending;
+    std::unordered_map<std::uint64_t, std::function<void(Permission::Answer)>> pendingPermissions;
     std::shared_ptr<Inbox> inbox = std::make_shared<Inbox>();
 };
 

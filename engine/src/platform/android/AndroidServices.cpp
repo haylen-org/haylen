@@ -1,9 +1,12 @@
 #include "platform/Services.hpp"
 
+#include <android/multinetwork.h>
+#include <dlfcn.h>
 #include <jni.h>
 
 #include <algorithm>
 #include <cmath>
+#include <cstdint>
 #include <span>
 #include <string>
 #include <utility>
@@ -163,6 +166,24 @@ void Services::openUrl(const std::string& url, std::function<void(bool opened)> 
     JavaBridge::openUrl(url, std::move(callback));
 }
 
+Permission::State Services::getPermission(Permission::Kind kind) {
+    return JavaBridge::getPermission(kind);
+}
+
+void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    JavaBridge::requestPermission(kind, std::move(callback));
+}
+
+// Android 17 records why it dropped the packets of a socket, which Local Network Protection does for an app that may not reach the local network. Older systems lack the function, which the library of the app looks up while it runs, since it starts on Android 8.1.
+std::string Services::explainBlockedSocket(std::intptr_t socket) {
+    using ReadBlockedReason = std::int32_t (*)(int socket);
+    static const auto readBlockedReason = reinterpret_cast<ReadBlockedReason>(dlsym(RTLD_DEFAULT, "android_getnetworkblockedreason"));
+    if (readBlockedReason == nullptr || readBlockedReason(static_cast<int>(socket)) != ANDROID_NETWORK_BLOCKED_REASON_LNP) {
+        return {};
+    }
+    return "Android blocked the connection, because the app may not reach the local network without the permission \"android.permission.ACCESS_LOCAL_NETWORK\". Ask the person for it with \"system.requestPermission('localNetwork')\".";
+}
+
 // A vibration of Android lasts at least a millisecond.
 void Services::vibrate(float seconds) {
     JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
@@ -317,6 +338,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeControllerRemoved(JN
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeBack(JNIEnv*, jclass) {
     haylen::platform::AndroidKeys::receiveBack();
+}
+
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenPermissions_nativeAnswered(JNIEnv* env, jclass, jlong request, jbyteArray answer) {
+    haylen::platform::JavaBridge::answerPermission(request, haylen::platform::JavaBridge::toString(*env, answer));
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeUrlOpened(JNIEnv*, jclass, jlong request, jboolean opened) {

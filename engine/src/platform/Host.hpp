@@ -21,6 +21,7 @@
 #include "haylen/platform/Battery.hpp"
 #include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/MediaSession.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/Theme.hpp"
@@ -39,6 +40,9 @@ class DevelopmentSession;
 // Boundary between the portable engine and a platform. The hosts of the platform layers implement it for real devices, the one of SDL and the one of Android, and the headless host implements it for tests.
 class Host : public Window {
   public:
+    // Explains, from any thread, why the platform blocked the connection of a socket, given its descriptor, or answers an empty text when it blocked nothing or cannot tell.
+    using BlockedReason = std::function<std::string(std::intptr_t socket)>;
+
     [[nodiscard]] virtual std::string_view getPlatformName() const noexcept = 0;
     // Creates the GPU device, which draws into the window of the host. One exists while an app runs.
     [[nodiscard]] virtual std::unique_ptr<gpu::Device> createGpuDevice() = 0;
@@ -108,6 +112,15 @@ class Host : public Window {
 
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble, and does nothing elsewhere. Zero intensities stop the gamepad.
     virtual void rumbleGamepad(std::size_t index, float low, float high, float seconds) = 0;
+
+    // The state of a permission that the person grants at run time, as far as the platform tells it.
+    [[nodiscard]] virtual Permission::State getPermission(Permission::Kind kind) const = 0;
+
+    // Asks the person for a permission with the prompt of the system where the platform has one. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with the state the person left or the requirements the project of the app lacks.
+    virtual void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) = 0;
+
+    // The explanation of blocked sockets that the connections the engine opens itself read when they fail, such as the Local Network Protection of Android. It never refers to the host, so connections that outlive the host may still call it.
+    [[nodiscard]] virtual BlockedReason getBlockedReason() const = 0;
 
     // The sentence that engine-owned network errors end with while the project of the app lacks what network access needs on this platform, such as the permission `INTERNET` that an Android app does not declare, or an empty text. The engine reads it when an app starts.
     [[nodiscard]] virtual std::string getNetworkRequirement() const = 0;

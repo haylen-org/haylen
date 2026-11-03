@@ -77,6 +77,9 @@ class NativeHost : public Host {
     void vibrate(float seconds) override;
     void guardCrashes(const std::filesystem::path& report) override;
     void setCrashContext(std::string_view json) override;
+    [[nodiscard]] Permission::State getPermission(Permission::Kind kind) const override;
+    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
+    [[nodiscard]] BlockedReason getBlockedReason() const override;
     [[nodiscard]] std::string getNetworkRequirement() const override;
     void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override;
     void cancelDialog(std::uint64_t id) override;
@@ -94,7 +97,7 @@ class NativeHost : public Host {
 
     // Plays the apps of this runtime in development, with a session that scans the package folder it is given or connects to the development server whose address the launch gave.
     void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
-        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder), std::move(server));
+        developmentSession = std::make_unique<DevelopmentSession>(*this, std::move(folder), std::move(server));
     }
 
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.

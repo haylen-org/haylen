@@ -36,6 +36,10 @@
     static byte[] developmentServer();
 }
 
+-keep class dev.haylen.HaylenPermissions {
+    static byte[] state(byte[]);
+    static void request(long, byte[]);
+}
 -keep class dev.haylen.HaylenDialogs {
     static void show(long, byte[], byte[]);
     static void cancel(long);

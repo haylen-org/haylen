@@ -287,6 +287,18 @@ void NativeHost::setCrashContext(std::string_view json) {
 }
 
 // Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
+Permission::State NativeHost::getPermission(Permission::Kind kind) const {
+    return Services::getPermission(kind);
+}
+
+void NativeHost::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    Services::requestPermission(kind, std::move(callback));
+}
+
+Host::BlockedReason NativeHost::getBlockedReason() const {
+    return &Services::explainBlockedSocket;
+}
+
 std::string NativeHost::getNetworkRequirement() const {
 #if defined(__ANDROID__)
     return JavaBridge::getNetworkRequirement();

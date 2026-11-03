@@ -1,13 +1,14 @@
 #pragma once
 
 #include <array>
+#include <cstdint>
 #include <string_view>
 
 struct lua_State;
 
 namespace haylen::platform {
 
-// Installs `haylen.system`, which tells what the device is, its theme and its battery, opens urls, reads and writes the clipboard, vibrates the device and shows what the app plays in the now-playing controls of the system.
+// Installs `haylen.system`, which tells what the device is, its theme and its battery, opens urls, reads and writes the clipboard, vibrates the device, reads and asks for the permissions the person grants at run time and shows what the app plays in the now-playing controls of the system.
 class SystemLua final {
   public:
     static void install(lua_State* L);
@@ -22,6 +23,9 @@ class SystemLua final {
     static int clipboard(lua_State* L);
     static int setClipboard(lua_State* L);
     static int vibrate(lua_State* L);
+    static int permission(lua_State* L);
+    static int requestPermission(lua_State* L);
+    [[nodiscard]] static bool keepPermissionRequest(lua_State* L, std::uint64_t id);
     static int setNowPlaying(lua_State* L);
     static int clearNowPlaying(lua_State* L);
     static int open(lua_State* L);

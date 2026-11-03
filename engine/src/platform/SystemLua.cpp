@@ -2,20 +2,41 @@
 
 #include <lua.hpp>
 
+#include <cstdint>
 #include <cstring>
+#include <memory>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/lua/Binding.hpp"
+#include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
 #include "haylen/lua/Promise.hpp"
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
+#include "haylen/lua/Userdata.hpp"
 #include "haylen/platform/MediaSession.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/System.hpp"
+#include "platform/PlatformLua.hpp"
+#include "varn/async/Promise.h"
+
+namespace haylen::lua {
+
+template <> struct EnumNames<platform::Permission::Kind> {
+    static std::optional<platform::Permission::Kind> fromName(std::string_view name) {
+        return platform::Permission::kindFromName(name);
+    }
+    static std::string_view name(platform::Permission::Kind value) {
+        return platform::Permission::kindName(value);
+    }
+};
+
+} // namespace haylen::lua
 
 namespace haylen::platform {
 
@@ -57,6 +78,42 @@ int SystemLua::setClipboard(lua_State* L) {
     engine.getSystem().setClipboard(text, [promise](bool written) { promise.resolve(written); });
     promise.push(L);
     return 1;
+}
+
+int SystemLua::permission(lua_State* L) {
+    lua::Stack::push(L, Permission::stateName(lua::Runtime::getEngine(L).getSystem().getPermission(lua::Stack::read<Permission::Kind>(L, 1))));
+    return 1;
+}
+
+// Returns a call that resolves on a later frame with the state the person left, or fails with the code `unsupported` and the requirements the project of the app lacks in `data.missing`.
+int SystemLua::requestPermission(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const auto kind = lua::Stack::read<Permission::Kind>(L, 1);
+    auto pending = std::make_shared<PlatformLua::Call>();
+    pending->promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
+    pending->cancel = &keepPermissionRequest;
+
+    // clang-format off
+    engine.getSystem().requestPermission(kind, [pending](Permission::Answer answer) {
+        if (!answer.missing.empty()) {
+            pending->fail(Bridge::Error{.message = answer.message, .code = "unsupported", .data = {{"missing", answer.missingToJson()}}});
+            return;
+        }
+        if (!answer.message.empty()) {
+            pending->fail(Bridge::Error{.message = answer.message, .code = "failed"});
+            return;
+        }
+        pending->promise->resolve(std::string(Permission::stateName(answer.state)));
+    });
+    // clang-format on
+
+    lua::Userdata::emplace<PlatformLua::Call>(L, std::move(pending));
+    return 1;
+}
+
+// The prompt of a permission belongs to the system, so the app cannot take it back once it shows.
+bool SystemLua::keepPermissionRequest(lua_State*, std::uint64_t) {
+    return false;
 }
 
 int SystemLua::vibrate(lua_State* L) {
@@ -115,7 +172,7 @@ int SystemLua::clearNowPlaying(lua_State* L) {
 
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

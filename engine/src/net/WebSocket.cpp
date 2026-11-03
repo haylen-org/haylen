@@ -37,7 +37,7 @@ double WebSocket::getSteadySeconds() {
     return std::chrono::duration<double>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
-WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), connectTimeout(options.connectTimeout), reconnect(options.reconnect), failureHint(std::move(options.failureHint)), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
+WebSocket::WebSocket(std::string address, Options options) : url(std::move(address)), protocols(std::move(options.protocols)), maxMessageSize(options.maxMessageSize), connectTimeout(options.connectTimeout), reconnect(options.reconnect), failureHint(std::move(options.failureHint)), blockedReason(std::move(options.blockedReason)), clock(options.clock ? std::move(options.clock) : Clock(&getSteadySeconds)), random(options.seed != 0 ? options.seed : std::random_device{}()), inbox(std::make_shared<Inbox>()) {
     if (!url.starts_with("ws://") && !url.starts_with("wss://")) {
         throw std::invalid_argument("The WebSocket address \"" + url + "\" must start with \"ws://\" or \"wss://\".");
     }
@@ -60,7 +60,7 @@ void WebSocket::connect() {
     state = State::Connecting;
     attemptStartedAt = clock();
     // clang-format off
-    transport = WebSocketTransport::open(url, protocols, maxMessageSize, connectTimeout, [delivery = inbox](WebSocketTransport::Event event) {
+    transport = WebSocketTransport::open(url, protocols, maxMessageSize, connectTimeout, blockedReason, [delivery = inbox](WebSocketTransport::Event event) {
         const std::scoped_lock lock(delivery->mutex);
         delivery->events.push_back(std::move(event));
     });

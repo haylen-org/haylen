@@ -113,6 +113,19 @@ void Services::openUrl(const std::string&, std::function<void(bool opened)> call
     callback(false);
 }
 
+// This platform asks the person for none of the permissions of `Permission::Kind`, so the app always holds them.
+Permission::State Services::getPermission(Permission::Kind) {
+    return Permission::State::Granted;
+}
+
+void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
+    callback({.state = Permission::State::Granted});
+}
+
+std::string Services::explainBlockedSocket(std::intptr_t) {
+    return {};
+}
+
 void Services::vibrate(float) {}
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}

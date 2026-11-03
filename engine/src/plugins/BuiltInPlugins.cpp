@@ -57,7 +57,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession() != nullptr));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<UiPlugin>());
-    registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement()));
+    registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement(), host.getBlockedReason()));
     registry.add(std::make_unique<PlatformPlugin>());
     registry.add(std::make_unique<NativePlugin>());
 }

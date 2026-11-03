@@ -385,6 +385,26 @@ A web page lives inside the rules of the browser. They keep a page from acting a
 
 The Android template declares the permissions `INTERNET` and `ACCESS_NETWORK_STATE`. Every connection needs the first, and the network events need the second. The HTTP client of Varn runs on `HttpURLConnection` there. So Android refuses plain `http://` addresses unless the network security configuration of the app allows cleartext traffic. The `haylen.net` sockets and the `socket` module open their own connections, so they speak plain TCP and `ws://` as on desktops. The emulator reaches the machine that runs it at `10.0.2.2`.
 
+From Android 17, an app that targets it reaches the devices of the local network only with the permission `ACCESS_LOCAL_NETWORK`, which the person grants at run time. The manifest of the template declares it, and the app asks for it with [`system.requestPermission('localNetwork')`](../lua-api/system.md#systemrequestpermissionname) before it looks for a device on the same Wi-Fi. Without it, Android drops the packets of the connection instead of refusing it. A socket of `haylen.net` then fails at once with a sentence that names the permission, since Android tells the engine why it dropped them. The HTTP client and the `socket` module of Varn need the same permission, and without it their requests to the local network fail only at their deadline, so the app asks for it before it reaches the local network. The internet, and the addresses of the device itself such as the ones `adb reverse` forwards, need no permission.
+
+```lua
+local async = require('async')
+local net = require('haylen.net')
+local system = require('haylen.system')
+
+async.spawn(function()
+    local state = system.requestPermission('localNetwork'):await()
+    if state == 'denied' then
+        print('The game on this Wi-Fi is out of reach.')
+        return
+    end
+    local socket = net.connectWebSocket('ws://192.168.1.20:7000/game')
+    socket:on('open', function()
+        socket:send('Hello.')
+    end)
+end)
+```
+
 ### Apple platforms
 
 On Apple platforms the HTTP client of Varn runs on `NSURLSession`. So App Transport Security, set in the `Info.plist`, decides which plain `http://` addresses an app may load.

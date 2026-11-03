@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Reaching the devices of the local network, such as a development server on this computer or a game on the same Wi-Fi, needs this permission from Android 17. The person grants it at run time, so the app asks for it with "system.requestPermission('localNetwork')", which the development session of a debug build does by itself. An app that reaches only the internet deletes it. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
     <!-- Phones, tablets and TVs run the app, so it needs neither a touchscreen nor a screen orientation, and it takes gamepads and TV remotes. -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.hardware.screen.portrait" android:required="false" />

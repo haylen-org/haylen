@@ -5,12 +5,15 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <utility>
 #include <vector>
 
 #include "haylen/core/Engine.hpp"
 #include "haylen/core/EventBus.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
 #include "haylen/graphics/Device.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/System.hpp"
 #include "platform/SystemState.hpp"
 #include "platform/headless/HeadlessHost.hpp"
@@ -159,6 +162,37 @@ TEST_F(SystemTest, WritesTheClipboardWithAnAnswerOnALaterFrame) {
     EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
 }
 
+TEST_F(SystemTest, AsksForPermissionsWithAnAnswerOnALaterFrame) {
+    test::EngineFixture fixture;
+    System& system = fixture.engine().getSystem();
+    EXPECT_EQ(system.getPermission(Permission::Kind::LocalNetwork), Permission::State::Granted);
+    fixture.host().setPermission(Permission::State::Prompt);
+    EXPECT_EQ(system.getPermission(Permission::Kind::LocalNetwork), Permission::State::Prompt);
+
+    std::vector<Permission::Answer> answers;
+    fixture.host().setPermissionAnswer({.state = Permission::State::Denied});
+    system.requestPermission(Permission::Kind::LocalNetwork, [&answers](Permission::Answer answer) { answers.push_back(std::move(answer)); });
+    EXPECT_TRUE(answers.empty());
+
+    fixture.frames(1);
+    ASSERT_EQ(answers.size(), 1U);
+    EXPECT_EQ(answers.front().state, Permission::State::Denied);
+    EXPECT_EQ(fixture.host().getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
+}
+
+// Native code answers with JSON, whose broken parts read as missing so the request fails instead of the engine.
+TEST_F(SystemTest, ReadsTheAnswersOfNativeCode) {
+    const Permission::Answer answer = Permission::Answer::fromJson(core::Json::parse(R"({"state": "denied", "message": "The engine needs a line.", "missing": [{"kind": "permission", "name": "android.permission.ACCESS_LOCAL_NETWORK", "file": "app/src/main/AndroidManifest.xml", "snippet": "<uses-permission />"}, 3]})"));
+    EXPECT_EQ(answer.state, Permission::State::Denied);
+    EXPECT_EQ(answer.message, "The engine needs a line.");
+    ASSERT_EQ(answer.missing.size(), 1U);
+    EXPECT_EQ(answer.missing.front().name, "android.permission.ACCESS_LOCAL_NETWORK");
+    EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), "<uses-permission />");
+
+    EXPECT_EQ(Permission::Answer::fromJson(core::Json::parse(R"({"state": 5})")).state, Permission::State::Unknown);
+    EXPECT_FALSE(Permission::Answer::fromJson(core::Json::array()).message.empty());
+}
+
 TEST_F(SystemTest, VibratesForAPositiveNumberOfSeconds) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
@@ -230,6 +264,27 @@ TEST(SystemLuaTest, WritesAndReadsTheClipboard) {
     EXPECT_EQ(fixture.lua("return table.concat(answers, ' ')"), "true false");
     EXPECT_EQ(fixture.lua("return system.clipboard()"), "Island seed: 184467");
     EXPECT_NE(fixture.lua("system.setClipboard()").find("string expected"), std::string::npos);
+}
+
+TEST(SystemLuaTest, ReadsAndAsksForPermissions) {
+    test::EngineFixture fixture;
+    fixture.runLua("system = require('haylen.system') async = require('async')");
+    EXPECT_EQ(fixture.lua("return system.permission('localNetwork')"), "granted");
+    fixture.host().setPermission(Permission::State::Prompt);
+    EXPECT_EQ(fixture.lua("return system.permission('localNetwork')"), "prompt");
+    EXPECT_NE(fixture.lua("return system.permission('camera')").find("camera"), std::string::npos);
+
+    fixture.host().setPermissionAnswer({.state = Permission::State::Granted});
+    fixture.runLua("asking = system.requestPermission('localNetwork') async.spawn(function() granted = asking:await() end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(granted)") == "granted"; }));
+
+    // A project that lacks the permission fails the request with the code "unsupported" and the line it lacks.
+    fixture.host().setPermissionAnswer({.state = Permission::State::Denied, .missing = {{.kind = "permission", .name = "android.permission.ACCESS_LOCAL_NETWORK", .file = "app/src/main/AndroidManifest.xml", .snippet = "<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />"}}, .message = "The engine needs the permission, which the app lacks."});
+    fixture.runLua("missing = system.requestPermission('localNetwork') async.spawn(function() local _, failure = missing:await() reason = failure end)");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return type(reason)") == "table"; }));
+    EXPECT_EQ(fixture.lua("return reason.code .. ' ' .. reason.data.missing[1].name .. ' ' .. reason.message"), "unsupported android.permission.ACCESS_LOCAL_NETWORK The engine needs the permission, which the app lacks.");
+    EXPECT_EQ(fixture.lua("return tostring(missing:cancel())"), "false");
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 
 } // namespace haylen::platform

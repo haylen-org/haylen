@@ -29,7 +29,7 @@ namespace haylen::net {
 // Owns one connection on a thread of its own, which is the only thread that touches the socket, so TLS never sees two threads at once. Closing and destroying never wait for that thread: it keeps what it needs alive by itself, stops as soon as it can and reports nothing more. The thread sleeps until the socket or the app has something for it, and it keeps reading while it waits for room to write, so a connection where both sides send large messages never stalls.
 class PocoWebSocket final : public WebSocketTransport {
   public:
-    PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, std::chrono::steady_clock::duration timeout, Sink target);
+    PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, std::chrono::steady_clock::duration timeout, BlockedReason blocked, Sink target);
     ~PocoWebSocket() override;
 
     PocoWebSocket(const PocoWebSocket&) = delete;
@@ -58,6 +58,7 @@ class PocoWebSocket final : public WebSocketTransport {
         std::vector<std::string> protocols;
         std::size_t maxMessageSize = 0;
         std::chrono::steady_clock::duration connectTimeout{};
+        BlockedReason blockedReason;
         Sink sink;
         std::mutex mutex;
         std::vector<Outgoing> outgoing;
@@ -99,6 +100,9 @@ class PocoWebSocket final : public WebSocketTransport {
 
     static constexpr auto kCloseTimeout = std::chrono::seconds(5);
 
+    // How often a connection that waits to open asks the platform whether it blocked the socket.
+    static constexpr auto kBlockedCheck = std::chrono::milliseconds(100);
+
     // Bounds a sleep that every event of the socket or the app interrupts, so an idle connection wakes only once a minute.
     static constexpr auto kIdleWait = std::chrono::minutes(1);
     static constexpr std::size_t kMaxControlPayload = 125;
@@ -132,6 +136,8 @@ class PocoWebSocket final : public WebSocketTransport {
 
     // Connects, completes the TLS handshake of `wss://` and upgrades to a WebSocket within the connect timeout, or returns nothing once the app abandoned the connection.
     [[nodiscard]] static std::unique_ptr<Poco::Net::WebSocket> open(Connection& target, Workers& workers, const Poco::Net::SocketAddress& address, std::string& protocol);
+    // Throws the explanation of a platform that blocked the socket.
+    static void checkBlocked(const Connection& target, const Poco::Net::StreamSocket& socket);
     [[nodiscard]] static bool connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline);
     [[nodiscard]] static bool completeHandshake(Connection& target, Poco::Net::SecureStreamSocket& socket, std::chrono::steady_clock::time_point deadline);
 

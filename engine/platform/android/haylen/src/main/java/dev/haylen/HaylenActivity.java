@@ -124,9 +124,10 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         followNetwork();
         HaylenPlugins.checkLoaded(getApplication());
 
-        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the dialogs and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
+        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the dialogs, of the permissions and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
         getLifecycle().addObserver(new HaylenAudioFocus(this));
         HaylenDialogs.activityCreated(this);
+        HaylenPermissions.activityCreated(this);
         HaylenScreens.activityCreated(this);
         HaylenPlugins.activityCreated(this, savedInstanceState);
         if (link != null && savedInstanceState != null) {
@@ -514,6 +515,11 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
 
     HaylenOverlayLayer overlays() {
         return overlays;
+    }
+
+    // What the project of the app holds, which the services of the engine check before they call a system API that needs it.
+    HaylenRequirements requirements() {
+        return requirements;
     }
 
     // Following the network needs the permission `ACCESS_NETWORK_STATE`, without which the engine never hears of the network, which the log tells once.

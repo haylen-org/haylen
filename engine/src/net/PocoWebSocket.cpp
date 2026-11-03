@@ -18,14 +18,16 @@
 #include <algorithm>
 #include <exception>
 #include <iterator>
+#include <stdexcept>
+#include <string>
 #include <thread>
 
 #include "varn/tls/SystemTrust.h"
 
 namespace haylen::net {
 
-std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, float connectTimeout, Sink sink) {
-    return std::make_unique<PocoWebSocket>(url, protocols, maxMessageSize, std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<float>(connectTimeout)), std::move(sink));
+std::unique_ptr<WebSocketTransport> WebSocketTransport::open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, float connectTimeout, BlockedReason blockedReason, Sink sink) {
+    return std::make_unique<PocoWebSocket>(url, protocols, maxMessageSize, std::chrono::duration_cast<std::chrono::steady_clock::duration>(std::chrono::duration<float>(connectTimeout)), std::move(blockedReason), std::move(sink));
 }
 
 // OpenSSL starts before the workers finish constructing, so its cleanup at exit runs only after they finished.
@@ -95,8 +97,9 @@ PocoWebSocket::Workers& PocoWebSocket::getWorkers() {
 }
 
 // The address is parsed here, so the thread never needs the static state of Poco that parsing uses.
-PocoWebSocket::PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, std::chrono::steady_clock::duration timeout, Sink target) : connection(std::make_shared<Connection>()) {
+PocoWebSocket::PocoWebSocket(const std::string& url, std::vector<std::string> protocols, std::size_t messageLimit, std::chrono::steady_clock::duration timeout, BlockedReason blocked, Sink target) : connection(std::make_shared<Connection>()) {
     connection->url = url;
+    connection->blockedReason = std::move(blocked);
     connection->protocols = std::move(protocols);
     connection->maxMessageSize = messageLimit;
     connection->connectTimeout = timeout;
@@ -257,13 +260,17 @@ int PocoWebSocket::waitFor(Connection& target, const Poco::Net::Socket& socket, 
     return ready.empty() ? 0 : ready.begin()->second;
 }
 
+// A platform that drops the packets of a connection it blocks records why, so the wait checks that reason between short polls and fails at once with it instead of at the deadline.
 bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& socket, const Poco::Net::SocketAddress& address, std::chrono::steady_clock::time_point deadline) {
     socket.connectNB(address);
     while (!target.stopping) {
-        if (std::chrono::steady_clock::now() >= deadline) {
+        const auto now = std::chrono::steady_clock::now();
+        if (now >= deadline) {
             throw Poco::TimeoutException("The connection to \"" + target.host + "\" timed out.");
         }
-        if (!waitFor(target, socket, Poco::Net::PollSet::POLL_WRITE, deadline)) {
+
+        checkBlocked(target, socket);
+        if (!waitFor(target, socket, Poco::Net::PollSet::POLL_WRITE, target.blockedReason ? std::min(deadline, now + kBlockedCheck) : deadline)) {
             continue;
         }
         const int error = socket.impl()->socketError();
@@ -273,6 +280,15 @@ bool PocoWebSocket::connectSocket(Connection& target, Poco::Net::StreamSocket& s
         return true;
     }
     return false;
+}
+
+void PocoWebSocket::checkBlocked(const Connection& target, const Poco::Net::StreamSocket& socket) {
+    if (!target.blockedReason) {
+        return;
+    }
+    if (std::string reason = target.blockedReason(static_cast<std::intptr_t>(socket.impl()->sockfd())); !reason.empty()) {
+        throw std::runtime_error(reason);
+    }
 }
 
 // The handshake runs without blocking, so abandoning the connection interrupts it. A finished handshake returns 1, and a connection the server closed returns 0. Verifying the host name of the certificate is the step a handshake that does not block leaves to the caller.

@@ -29,6 +29,7 @@ class WebSocketTransport {
 
     // Receives transport events from any thread. A transport reports a failure before its closed event, and nothing after it.
     using Sink = std::function<void(Event)>;
+    using BlockedReason = std::function<std::string(std::intptr_t socket)>;
 
     virtual ~WebSocketTransport() = default;
 
@@ -39,8 +40,8 @@ class WebSocketTransport {
     // The bytes of messages that were sent and still wait to be written to the network.
     [[nodiscard]] virtual std::size_t getBufferedAmount() const noexcept = 0;
 
-    // Opens the transport of the platform: Poco on native builds, which refuses messages larger than the maximum size and gives up on an attempt that has not opened within the connect timeout in seconds, and the WebSocket of the page in the browser, which applies the limits of the browser and leaves the timeout to the socket.
-    [[nodiscard]] static std::unique_ptr<WebSocketTransport> open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, float connectTimeout, Sink sink);
+    // Opens the transport of the platform: Poco on native builds, which refuses messages larger than the maximum size, gives up on an attempt that has not opened within the connect timeout in seconds and fails at once with the blocked reason of a socket that the platform blocked, and the WebSocket of the page in the browser, which applies the limits of the browser and leaves the timeout to the socket.
+    [[nodiscard]] static std::unique_ptr<WebSocketTransport> open(const std::string& url, const std::vector<std::string>& protocols, std::size_t maxMessageSize, float connectTimeout, BlockedReason blockedReason, Sink sink);
 };
 
 } // namespace haylen::net

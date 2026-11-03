@@ -58,6 +58,24 @@ std::function<void(bool)> System::awaitAnswer(std::function<void(bool)> callback
     // clang-format on
 }
 
+Permission::State System::getPermission(Permission::Kind kind) const {
+    return host.getPermission(kind);
+}
+
+// The platform may answer during the request, and the answer waits for the next pump like any other.
+void System::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    const std::uint64_t id = nextRequest++;
+    pendingPermissions.emplace(id, std::move(callback));
+    // clang-format off
+    host.requestPermission(kind, [shared = std::weak_ptr<Inbox>(inbox), id](Permission::Answer answer) {
+        if (const std::shared_ptr<Inbox> alive = shared.lock()) {
+            const std::scoped_lock lock(alive->mutex);
+            alive->permissions.emplace_back(id, std::move(answer));
+        }
+    });
+    // clang-format on
+}
+
 void System::vibrate(float seconds) {
     if (!std::isfinite(seconds) || seconds <= 0.0F) {
         throw std::invalid_argument("A vibration lasts a positive number of seconds.");
@@ -98,9 +116,11 @@ void System::stopRumbles() {
 
 void System::pump() {
     std::vector<Answer> answers;
+    std::vector<std::pair<std::uint64_t, Permission::Answer>> permissions;
     {
         const std::scoped_lock lock(inbox->mutex);
         answers.swap(inbox->answers);
+        permissions.swap(inbox->permissions);
     }
     for (const Answer& answer : answers) {
         const auto found = pending.find(answer.id);
@@ -112,6 +132,16 @@ void System::pump() {
         if (callback) {
             callback(answer.succeeded);
         }
+    }
+
+    for (auto& [id, answer] : permissions) {
+        const auto found = pendingPermissions.find(id);
+        if (found == pendingPermissions.end()) {
+            continue;
+        }
+        const std::function<void(Permission::Answer)> callback = std::move(found->second);
+        pendingPermissions.erase(found);
+        callback(std::move(answer));
     }
 
     const Theme reportedTheme = host.getTheme();

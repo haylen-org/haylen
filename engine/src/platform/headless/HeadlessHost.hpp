@@ -289,6 +289,17 @@ class HeadlessHost final : public Host {
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override {
         rumbles.push_back({.index = index, .low = low, .high = high, .seconds = seconds});
     }
+    [[nodiscard]] Permission::State getPermission(Permission::Kind) const override {
+        return permissionState;
+    }
+    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override {
+        permissionRequests.push_back(kind);
+        callback(permissionAnswer);
+    }
+    // Every socket of the headless platform reads the reason a test set, the way a platform explains a socket it blocked.
+    [[nodiscard]] BlockedReason getBlockedReason() const override {
+        return [reason = blockedReason](std::intptr_t) { return reason; };
+    }
     [[nodiscard]] std::string getNetworkRequirement() const override {
         return networkRequirement;
     }
@@ -323,7 +334,7 @@ class HeadlessHost final : public Host {
 
     // Plays the apps of this host in development from now on, with a session that scans the package folder when one is given, the way the player does with "--dev", and that connects to a development server when its address is given.
     void enableDevelopment(std::optional<std::filesystem::path> folder = std::nullopt, std::string server = {}) {
-        developmentSession = std::make_unique<DevelopmentSession>(std::move(folder), std::move(server));
+        developmentSession = std::make_unique<DevelopmentSession>(*this, std::move(folder), std::move(server));
     }
 
     void resize(math::Vec2 size) noexcept {
@@ -403,6 +414,22 @@ class HeadlessHost final : public Host {
 
     void setWritesClipboard(bool value) noexcept {
         writesClipboard = value;
+    }
+
+    // The state of every permission and the answer of every request for one, which the person gives on a real device.
+    void setPermission(Permission::State value) noexcept {
+        permissionState = value;
+    }
+    void setPermissionAnswer(Permission::Answer value) {
+        permissionAnswer = std::move(value);
+    }
+    [[nodiscard]] const std::vector<Permission::Kind>& getPermissionRequests() const noexcept {
+        return permissionRequests;
+    }
+
+    // What the platform explains for a socket of the connections that start after the change, such as a connection that Local Network Protection of Android blocked.
+    void setBlockedReason(std::string value) {
+        blockedReason = std::move(value);
     }
 
     // What the network errors of the apps that start after the change end with, the way a platform reports what the project of the app lacks for network access.
@@ -511,6 +538,10 @@ class HeadlessHost final : public Host {
     std::vector<float> vibrations;
     std::vector<Rumble> rumbles;
     std::string networkRequirement;
+    Permission::State permissionState = Permission::State::Granted;
+    Permission::Answer permissionAnswer{.state = Permission::State::Granted};
+    std::vector<Permission::Kind> permissionRequests;
+    std::string blockedReason;
     std::vector<AccessibilityTree> accessibilityTrees;
     std::vector<Announcement> announcements;
     std::optional<MediaSession::NowPlaying> nowPlaying;

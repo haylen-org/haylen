@@ -20,6 +20,8 @@ class OverlayPackage;
 
 namespace haylen::platform {
 
+class Host;
+
 class DevelopmentConnection;
 
 // The development state of a process that plays apps while they are being made: the queue of changed package paths, the scanner of the package folder, the connection to the development server with the overlay of the package it writes into, and the listeners of what each batch of changes did. The runtime owns it, so the changes, the snapshot of the folder and the connection outlive every app that restarts under it, and only a process in development has one.
@@ -44,8 +46,8 @@ class DevelopmentSession final {
         DevelopmentSession& session;
     };
 
-    // A session for a package folder takes the snapshot that changes count from at once, so nothing saved while the app starts is lost, and a session with the address of a development server connects to it.
-    explicit DevelopmentSession(std::optional<std::filesystem::path> folder = std::nullopt, std::string server = {});
+    // A session for a package folder takes the snapshot that changes count from at once, so nothing saved while the app starts is lost, and a session with the address of a development server connects to it. A server outside the device waits for the person to grant the local network where the host asks for it, and a refusal says why the app never connects.
+    explicit DevelopmentSession(Host& host, std::optional<std::filesystem::path> folder = std::nullopt, std::string server = {});
     ~DevelopmentSession();
 
     DevelopmentSession(const DevelopmentSession&) = delete;
@@ -84,6 +86,8 @@ class DevelopmentSession final {
     }
 
   private:
+    void awaitLocalNetwork(Host& host);
+
     std::unique_ptr<io::PackageWatcher> watcher;
     std::unique_ptr<DevelopmentConnection> connection;
     std::shared_ptr<io::OverlayPackage> overlay;

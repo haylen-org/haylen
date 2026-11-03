@@ -44,13 +44,17 @@ class WebSocket final {
     // Returns the current time in seconds, which tests replace to drive the delays. Without one, the socket reads the steady clock.
     using Clock = std::function<double()>;
 
-    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. An attempt that does not open within the connect timeout, above 0 and at most 3600 seconds, fails on every platform, and on native builds it also bounds the connection, the TLS handshake and the upgrade request. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access.
+    // Explains, from the thread of the connection, why the platform blocked a socket, given its descriptor, or answers an empty text.
+    using BlockedReason = std::function<std::string(std::intptr_t socket)>;
+
+    // Native builds refuse a message of the server larger than the maximum size in bytes, at most 2147483647, and close the connection with status 1009. An attempt that does not open within the connect timeout, above 0 and at most 3600 seconds, fails on every platform, and on native builds it also bounds the connection, the TLS handshake and the upgrade request. The failure hint is a sentence that the message of every failure ends with, such as what the project of the app lacks for network access. On native builds the blocked reason explains a connection that the platform blocked, such as one that Local Network Protection of Android drops, which then fails at once with the explanation instead of at its timeout.
     struct Options {
         std::vector<std::string> protocols;
         std::size_t maxMessageSize = 16U * 1024U * 1024U;
         float connectTimeout = 10.0F;
         Reconnect reconnect;
         std::string failureHint;
+        BlockedReason blockedReason;
         Clock clock;
         std::uint64_t seed = 0;
     };
@@ -140,6 +144,7 @@ class WebSocket final {
     float connectTimeout = 0.0F;
     Reconnect reconnect;
     std::string failureHint;
+    BlockedReason blockedReason;
     Clock clock;
     math::Random random;
     std::string protocol;

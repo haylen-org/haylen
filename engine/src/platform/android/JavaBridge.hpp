@@ -14,13 +14,14 @@
 #include <unordered_map>
 #include <vector>
 
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "platform/android/JavaLocalRef.hpp"
 #include "varn/dataview/DataView.h"
 
 namespace haylen::platform {
 
-// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the native dialogs of `dev.haylen.HaylenDialogs`, the screens of plugins of `dev.haylen.HaylenScreens` and the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
+// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the native dialogs of `dev.haylen.HaylenDialogs`, the screens of plugins of `dev.haylen.HaylenScreens` and the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree` and the permissions of `dev.haylen.HaylenPermissions`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
 class JavaBridge final {
   public:
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which `JNI_OnLoad` does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or `JNI_ERR` when the APK lacks a class.
@@ -71,6 +72,11 @@ class JavaBridge final {
     static void answerUrl(std::int64_t request, bool opened);
 
     static void vibrate(std::int64_t milliseconds);
+
+    // The state of a permission as Java reads it, from any thread, and the request for it, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A request that Java never took fails at once.
+    [[nodiscard]] static Permission::State getPermission(Permission::Kind kind);
+    static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+    static void answerPermission(std::int64_t request, std::string_view answerJson);
 
     // Hands the media session of the activity what plays, as the JSON of `{title, artist, album, duration, position, playing, commands}` with the bytes of its artwork, or an empty JSON to leave the controls.
     static void updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork);
@@ -164,12 +170,20 @@ class JavaBridge final {
     static jmethodID announceMethod;
     static jclass mediaSessionClass;
     static jmethodID updateMediaSessionMethod;
+    static jclass permissionsClass;
+    static jmethodID permissionStateMethod;
+    static jmethodID requestPermissionMethod;
     static std::atomic<bool> accessibilityWanted;
 
     // The callbacks of the urls that wait for the answer of Java, by request.
     static std::mutex& urlMutex;
     static std::unordered_map<std::int64_t, std::function<void(bool)>>& urlCallbacks;
     static std::int64_t nextUrl;
+
+    // The callbacks of the permission requests that wait for the answer of Java, by request.
+    static std::mutex& permissionMutex;
+    static std::unordered_map<std::int64_t, std::function<void(Permission::Answer)>>& permissionCallbacks;
+    static std::int64_t nextPermission;
 };
 
 } // namespace haylen::platform

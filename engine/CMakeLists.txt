@@ -509,6 +509,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/platform/native/NativeLua.cpp
   src/platform/native/NativeSignature.cpp
   src/platform/NativeViews.cpp
+  src/platform/Permission.cpp
   src/platform/PlatformLua.cpp
   src/platform/PluginStreams.cpp
   src/platform/Fold.cpp

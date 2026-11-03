@@ -20,7 +20,10 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
+#include "platform/DevelopmentSession.hpp"
+#include "platform/headless/HeadlessHost.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TemporaryDirectory.hpp"
 
 namespace haylen::platform {
 
@@ -152,6 +155,38 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("The development server sent the path \"../secret.lua\", which is not a file of the package, so it was refused.") != std::string::npos; }));
     EXPECT_EQ(std::ranges::count_if(lines, [](const std::string& line) { return line.find("The development server sent a message that this engine does not know.") != std::string::npos; }), 4);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// A server outside the device is on the local network, which a platform such as Android 17 lets the app reach only once the person grants it, so the session asks first and says why it never connects when the person refuses, instead of waiting for packets the platform drops.
+TEST(DevelopmentConnectionTest, AsksForTheLocalNetworkBeforeItReachesAServerOutsideTheDevice) {
+    std::vector<std::string> lines;
+    std::mutex linesMutex;
+    // clang-format off
+    const std::uint64_t listener = core::Log::addListener([&](core::Log::Level, std::string_view line) {
+        const std::scoped_lock lock(linesMutex);
+        lines.emplace_back(line);
+    });
+    // clang-format on
+
+    const test::TemporaryDirectory directory;
+    HeadlessHost host(directory.getPath());
+    host.setPermission(Permission::State::Prompt);
+    host.setPermissionAnswer({.state = Permission::State::Denied});
+    DevelopmentSession refused(host, std::nullopt, "ws://192.0.2.10:7777/haylen/development");
+    refused.pump();
+    refused.pump();
+    EXPECT_EQ(host.getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
+
+    // A server on the device, such as the one that "adb reverse" forwards, and a platform that needs no permission never ask.
+    DevelopmentSession onDevice(host, std::nullopt, "ws://127.0.0.1:7777/haylen/development");
+    host.setPermission(Permission::State::Granted);
+    DevelopmentSession granted(host, std::nullopt, "ws://[fd00::10]:7777/haylen/development");
+    EXPECT_EQ(host.getPermissionRequests().size(), 1U);
+
+    core::Log::removeListener(listener);
+    const std::scoped_lock lock(linesMutex);
+    EXPECT_EQ(std::ranges::count_if(lines, [](const std::string& line) { return line.find("The app does not connect to the development server at \"ws://192.0.2.10:7777/haylen/development\". The person did not grant the access to the local network that reaching it needs.") != std::string::npos; }), 1);
+    EXPECT_FALSE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("out of reach") != std::string::npos; }));
 }
 
 } // namespace haylen::platform

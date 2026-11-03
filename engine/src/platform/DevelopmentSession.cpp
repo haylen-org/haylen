@@ -2,23 +2,47 @@
 
 #include <algorithm>
 #include <exception>
+#include <optional>
 #include <utility>
 
 #include "haylen/core/Log.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentConnection.hpp"
+#include "platform/Host.hpp"
 
 namespace haylen::platform {
 
-DevelopmentSession::DevelopmentSession(std::optional<std::filesystem::path> folder, std::string server) {
+DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem::path> folder, std::string server) {
     if (folder) {
         watcher = std::make_unique<io::PackageWatcher>(*folder);
         core::Log::info("Watching \"{}\" for changes.", folder->generic_string());
     }
     if (!server.empty()) {
-        connection = std::make_unique<DevelopmentConnection>(std::move(server), *this);
+        connection = std::make_unique<DevelopmentConnection>(std::move(server), *this, host.getBlockedReason());
         addReporter([target = connection.get()](const core::Json& value) { target->report(value); });
+        awaitLocalNetwork(host);
     }
+}
+
+// A server outside this device is on the local network, which a platform such as Android 17 lets an app reach only once the person grants it, so the connection waits for the answer instead of waiting for packets the platform drops.
+void DevelopmentSession::awaitLocalNetwork(Host& host) {
+    if (connection->isOnThisDevice()) {
+        return;
+    }
+    const Permission::State state = host.getPermission(Permission::Kind::LocalNetwork);
+    if (state == Permission::State::Granted || state == Permission::State::Unknown) {
+        return;
+    }
+
+    // clang-format off
+    host.requestPermission(Permission::Kind::LocalNetwork, [release = connection->hold()](Permission::Answer answer) {
+        if (answer.state == Permission::State::Granted) {
+            release(std::nullopt);
+            return;
+        }
+        release(answer.message.empty() ? "The person did not grant the access to the local network that reaching it needs." : answer.message);
+    });
+    // clang-format on
 }
 
 DevelopmentSession::~DevelopmentSession() = default;

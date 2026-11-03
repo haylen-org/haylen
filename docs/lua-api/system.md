@@ -1,6 +1,6 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard and vibrates the device. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device and asks the person for the permissions that a system grants while the app runs. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -151,6 +151,53 @@ end
 onHit()
 ```
 
+### system.permission(name)
+
+Returns the state of the permission `name`, as far as the platform tells it, without asking the person. The only permission is `'localNetwork'`, the access to the devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. Another name raises a bad argument error.
+
+| State | Meaning |
+| --- | --- |
+| `'granted'` | The app holds the permission, or the platform needs none for it. |
+| `'prompt'` | The app does not hold it yet, and [`system.requestPermission`](#systemrequestpermissionname) may show the prompt of the system. |
+| `'denied'` | The person refused it. |
+| `'unknown'` | The platform cannot tell, as on Apple platforms, which ask the person the first time the app reaches the local network and tell apps nothing of it. |
+
+```lua
+local system = require('haylen.system')
+
+if system.permission('localNetwork') == 'prompt' then
+    print('The app will ask for the local network before it looks for players nearby.')
+end
+```
+
+### system.requestPermission(name)
+
+Asks the person for the permission `name` with the prompt of the system, where the platform has one, and returns a call of the kind that [`haylen.dialogs`](dialogs.md) returns. The method `call:await()` returns the state the person left, `'granted'`, `'denied'` or `'unknown'`, once they answer. A permission that the app holds already answers `'granted'` at once, without a prompt.
+
+| Platform | `'localNetwork'` |
+| --- | --- |
+| Android | An app that targets Android 17 or later, on Android 17 or later, shows the prompt of the system for `android.permission.ACCESS_LOCAL_NETWORK`. Older systems and older targets need no permission and answer `'granted'`. |
+| iOS, iPadOS, Mac Catalyst, tvOS, visionOS and macOS | The system asks the person the first time the app reaches the local network, with the text of `NSLocalNetworkUsageDescription` of the `Info.plist`, and tells the app nothing of it, so the call answers `'unknown'`. |
+| Web, Windows and Linux | No permission is needed, so the call answers `'granted'`. |
+
+On Android the manifest of the app must declare the permission. The manifest of the Android template declares it as a visible default. Without it the request shows no prompt, logs once with the tag `haylen` what is missing and the line that adds it, and fails with the code `'unsupported'`. Its `data.missing` lists what is missing as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. The prompt belongs to the system, so `call:cancel()` returns `false` and changes nothing.
+
+```lua
+local async = require('async')
+local system = require('haylen.system')
+
+async.spawn(function()
+    local state, failure = system.requestPermission('localNetwork'):await()
+    if failure then
+        print(failure.message)
+        return
+    end
+    if state == 'denied' then
+        print('The app cannot find players on this Wi-Fi.')
+    end
+end)
+```
+
 ### system.setNowPlaying(info)
 
 Shows what the app plays in the now-playing controls of the system, such as the lock screen and the control center of iPhones, the media notification of Android, the media controls of Windows and the media hub of browsers. From then on the media keys of keyboards, the buttons of headsets and the play and pause buttons of TV remotes reach the app as [`mediaCommand` events](#events).
@@ -261,13 +308,14 @@ The browser and Windows have no toggle button. So an app that offers `'togglePla
 
 ## Android permissions
 
-The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The manifest of the Android template declares all three as visible defaults, and an app deletes the ones it does not use. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing and the line that adds it to `app/src/main/AndroidManifest.xml`, and goes on without it.
+The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The manifest of the Android template declares all four as visible defaults, and an app deletes the ones it does not use. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing and the line that adds it to `app/src/main/AndroidManifest.xml`, and goes on without it.
 
 | Permission | Feature | Without it |
 | --- | --- | --- |
 | `android.permission.VIBRATE` | `system.vibrate`. | It does nothing, which the log tells once as a warning. |
 | `android.permission.ACCESS_NETWORK_STATE` | The network state of [`haylen.networkState()`](haylen.md#haylennetworkstate) and the events `networkOnline` and `networkOffline` of [`haylen.events`](events.md#engine-events), which the platform reports as `networkChanged`. | The engine never follows the network. The state stays `'unknown'` and the events never fire, which the log tells once at the info level. |
 | `android.permission.INTERNET` | Network access: the `http` and `socket` modules of Varn and [`haylen.net`](net.md). | Connections fail. The `error` events of `haylen.net` sockets end with a sentence that names the missing permission and how to add it, while Varn reports what the system tells it. |
+| `android.permission.ACCESS_LOCAL_NETWORK` | Reaching the devices of the local network from Android 17, for an app that targets it. The person grants it at run time, so the app asks with [`system.requestPermission('localNetwork')`](#systemrequestpermissionname), and the development session of a debug build asks by itself before it reaches a development server outside the device. | The request fails with the code `'unsupported'`. Android drops the packets of a connection to the local network, so `haylen.net` sockets fail at once with a sentence that names the permission, and the development session says why it does not connect. |
 
 The [plugin guide](../platform/plugins.md#requirements) describes how plugins check their own requirements the same way.
 
@@ -284,6 +332,8 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getClipboard()` | The text on the clipboard of the system. |
 | `setClipboard(text, callback)` | Puts the text on the clipboard and calls back on the frame thread, at a later frame, with whether it got there. |
 | `vibrate(seconds)` | Vibrates the device. |
+| `getPermission(kind)` | The `haylen::platform::Permission::State` of a `Permission::Kind`. |
+| `requestPermission(kind, callback)` | Asks the person and calls back on the frame thread, at a later frame, with a `Permission::Answer`, whose `missing` lists what the project of the app lacks. |
 
 The functions `openUrl` and `vibrate` throw `std::invalid_argument` for the values that Lua rejects. The function `graphics::Device::getAdapterName()` names the GPU on its own.
 

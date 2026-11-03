@@ -11,7 +11,7 @@
 
 namespace haylen::plugins {
 
-NetPlugin::NetPlugin(std::string networkRequirement) : requirement(std::move(networkRequirement)) {}
+NetPlugin::NetPlugin(std::string networkRequirement, net::WebSocket::BlockedReason blockedReason) : requirement(std::move(networkRequirement)), explainBlocked(std::move(blockedReason)) {}
 
 void NetPlugin::start(core::Engine& engine) {
     events = &engine.getEvents();
@@ -19,6 +19,7 @@ void NetPlugin::start(core::Engine& engine) {
 
 std::shared_ptr<net::WebSocket> NetPlugin::connectWebSocket(std::string url, net::WebSocket::Options options) {
     options.failureHint = requirement;
+    options.blockedReason = explainBlocked;
     auto socket = std::make_shared<net::WebSocket>(std::move(url), std::move(options));
     if (events != nullptr) {
         publishEvents(*socket);

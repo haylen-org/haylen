@@ -563,7 +563,7 @@ TEST_F(WebSocketTest, TransportsEndTlsHandshakesAtTheirDeadline) {
     std::mutex mutex;
     std::vector<WebSocketTransport::Event> events;
     // clang-format off
-    const std::unique_ptr<WebSocketTransport> transport = WebSocketTransport::open(server.getUrl("wss"), {}, 1024, 0.3F, [&](WebSocketTransport::Event event) {
+    const std::unique_ptr<WebSocketTransport> transport = WebSocketTransport::open(server.getUrl("wss"), {}, 1024, 0.3F, nullptr, [&](WebSocketTransport::Event event) {
         const std::scoped_lock lock(mutex);
         events.push_back(std::move(event));
     });
@@ -596,6 +596,25 @@ TEST_F(WebSocketTest, TimesOutAttemptsThatNeverOpen) {
     EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = 0.0F}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = std::numeric_limits<float>::infinity()}), std::invalid_argument);
     EXPECT_THROW(WebSocket(server.getUrl("ws"), {.connectTimeout = 3601.0F}), std::invalid_argument);
+}
+
+// A platform that drops the packets of a socket it blocks, such as Android with its Local Network Protection, records why, so the attempt fails at once with that reason instead of at its timeout.
+TEST_F(WebSocketTest, FailsAtOnceWithTheReasonOfABlockedSocket) {
+    SilentServer server;
+    std::atomic<std::intptr_t> asked = -1;
+    // clang-format off
+    WebSocket socket(server.getUrl("ws"), {.connectTimeout = 30.0F, .blockedReason = [&asked](std::intptr_t descriptor) {
+        asked = descriptor;
+        return std::string("The platform blocked the socket.");
+    }});
+    // clang-format on
+    std::string failure;
+    socket.failed.connect([&failure](std::string_view message) { failure = message; });
+    const auto started = std::chrono::steady_clock::now();
+    ASSERT_TRUE(pumpUntil(socket, [&] { return socket.getState() == WebSocket::State::Closed; }));
+    EXPECT_LT(std::chrono::steady_clock::now() - started, std::chrono::seconds(3));
+    EXPECT_EQ(failure, "The WebSocket connection to \"" + server.getUrl("ws") + "\" failed. The platform blocked the socket.");
+    EXPECT_GE(asked.load(), 0);
 }
 
 TEST_F(WebSocketTest, GivesUpAnUpgradeRequestWithTheConnectTimeout) {

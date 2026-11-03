@@ -22,6 +22,7 @@
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Monitor.hpp"
 #include "haylen/platform/Orientation.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/ScreenRequest.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 #include "haylen/platform/TextInput.hpp"
@@ -117,6 +118,13 @@ class Services final {
 
     // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread, with whether an app took the url.
     static void openUrl(const std::string& url, std::function<void(bool opened)> callback);
+
+    // The state of a permission and the request for it, as `Host::getPermission` and `Host::requestPermission` describe.
+    [[nodiscard]] static Permission::State getPermission(Permission::Kind kind);
+    static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+
+    // Explains, from any thread, why the platform blocked the connection of the socket with the descriptor, or answers an empty text, as `Host::BlockedReason` describes.
+    [[nodiscard]] static std::string explainBlockedSocket(std::intptr_t socket);
 
     // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
     static void vibrate(float seconds);
