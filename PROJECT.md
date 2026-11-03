@@ -2305,7 +2305,7 @@ Repositórios irmãos:
 
 Engines de consulta:
 
-- [ ] Ler as atualizações recentes dos repositórios da pasta de engines do dono e trazer para a Haylen o que fizer sentido, sem citar a origem.
+- [x] Ler as atualizações recentes dos repositórios da pasta de engines do dono e trazer para a Haylen o que fizer sentido, sem citar a origem. Feito: entraram a taxa de quadros alvo (`window.frameRate`, com ProMotion e `CADisableMinimumFrameDurationOnPhone` no iPhone, `preferredFrameRateRange` no display link de UIKit, `ANativeWindow_setFrameRate` no Android, o ritmo do SDL no desktop e os quadros de animação na web, medidos a 120, 60, 30 e 24 quadros por segundo no macOS, no simulador do iPhone e no Chrome sem janela com WebGPU e WebGL2, e no emulador Android), o Box2D 3.2 com travas de movimento, limiar contínuo e vento (`PHY-067`), o emoji colorido pelo rasterizador do HarfBuzz 15 (`TXT-015`), o depurador Lua pelo protocolo de depuração dos editores, a decodificação segura de imagens com limite de lado antes de alocar, teto para os buffers do decodificador, sem cópia e fuzzers de imagens e de SVG (`SPR-022`), os sensores de movimento de aparelhos e controles (`INP-014`), os gestos de sistema nas bordas da tela (`SAF-006`) e as dependências na última versão (Dear ImGui, HarfBuzz, stb, fast_float, BudouX, Vulkan Headers, miniaudio, Gradle, plugin do Android, patchelf, Inno Setup e Emscripten). Cada um passou nos testes da engine, no player headless do projeto de testes e na CI, e foi conferido nas plataformas que toca. Ficaram para outra rodada o limite de densidade de pixels, o gradiente no texto, as bibliotecas Metal pré-compiladas, as texturas KTX2, o `Trim` do Direct3D 11 e os itens menores do relatório.
 
 Consoles e ports:
 
