@@ -61,6 +61,17 @@ graphics2d.drawCircle(320, 180, 24, '#FFE0A040', {layer = 2, blend = 'additive'}
 - A rejection that the app may act on carries a table next to its message, which `await` returns as its third value. The table holds the message in `error` and the same fields as the other failures of its module, such as the `code` and the IDs of the content failures.
 - A promise resolves with one value, which follows the rules of returns, so its result grows like any other.
 
+### Capabilities that a platform may gate
+
+Each platform decides on its own when a person grants a capability, such as the camera, the microphone, the location, notifications, the local network, the clipboard or the screens of the desktop. One platform grants it at once, another asks the person, and another never asks. So every API of such a capability takes its shape from the strictest platform, and an app runs the same flow everywhere.
+
+- A call that a platform may gate is asynchronous on every platform. It returns a promise or a call, even where the platform answers at once.
+- Its answer is a state from one shared vocabulary, never a boolean: `granted`, `prompt` (the person has not been asked yet), `denied` (the person refused, or the system stopped asking) and `unknown` (the platform does not tell the app until it tries), plus `unsupported` with its reason where the platform has no such capability.
+- Every gated capability can be checked before it is used and requested on its own, through `system.permission(name)` and `system.requestPermission(name)`. A platform that never asks answers `granted`, so an app never needs a branch per platform.
+- A requirement that the app must declare, such as a manifest permission or a usage text, is checked first. When it is missing, the call logs once what is missing and how to add it, then fails with `unsupported` and `data.missing`.
+- The use of a capability that was refused or revoked fails with its own clear error, which names the capability and how to ask for it again. It never waits silently or returns empty data.
+- The reference page of each gated capability lists what every platform answers and when it asks the person, so the behavior is predictable on all of them.
+
 ### Value types
 
 - Enums cross into Lua as their `camelCase` string names, from the one table of names of the enum. So a new value is a new name, and old names keep their meaning.
