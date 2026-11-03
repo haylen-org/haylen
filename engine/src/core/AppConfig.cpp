@@ -296,7 +296,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
 
     if (document.contains("window")) {
         const Json& windowJson = document.at("window");
-        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"app.json\"");
+        JsonValidator::requireKnownKeys(windowJson, {"title", "width", "height", "fullscreen", "highDpi", "resizable", "vsync", "frameRate", "sampleCount", "decorated", "transparent", "alwaysOnTop", "showInTaskbar", "focusable", "mousePassthrough", "keepScreenOn", "position", "statusBar", "statusBarColor", "systemGestures", "graphicsApis", "lowPowerGpu"}, "the \"window\" section of \"app.json\"");
         readValue(windowJson, "title", config.window.title);
         readValue(windowJson, "width", config.window.width);
         readValue(windowJson, "height", config.window.height);
@@ -304,6 +304,7 @@ AppConfig AppConfig::fromJson(const Json& document) {
         readValue(windowJson, "highDpi", config.window.highDpi);
         readValue(windowJson, "resizable", config.window.resizable);
         readValue(windowJson, "vsync", config.window.vsync);
+        readValue(windowJson, "frameRate", config.window.frameRate);
         readValue(windowJson, "sampleCount", config.window.sampleCount);
         readValue(windowJson, "decorated", config.window.decorated);
         readValue(windowJson, "transparent", config.window.transparent);
@@ -316,6 +317,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
         requirePositive(config.window.width, "window.width");
         requirePositive(config.window.height, "window.height");
         requirePositive(config.window.sampleCount, "window.sampleCount");
+        if (config.window.frameRate < 0 || config.window.frameRate > platform::Window::kMaxFrameRate) {
+            throw std::invalid_argument("The \"window.frameRate\" value " + std::to_string(config.window.frameRate) + " in \"app.json\" is out of range. It is 0 for every refresh of the display, or from 1 to " + std::to_string(platform::Window::kMaxFrameRate) + " frames per second.");
+        }
         std::string statusBarText;
         readValue(windowJson, "statusBar", statusBarText);
         if (!statusBarText.empty()) {
@@ -570,7 +574,7 @@ Json AppConfig::toJson() const {
     if (splash.darkBackground) {
         splashJson["darkBackground"] = splash.darkBackground->toHex();
     }
-    Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"lowPowerGpu", window.lowPowerGpu}};
+    Json windowJson = {{"title", window.title}, {"width", window.width}, {"height", window.height}, {"fullscreen", window.fullscreen}, {"highDpi", window.highDpi}, {"resizable", window.resizable}, {"vsync", window.vsync}, {"frameRate", window.frameRate}, {"sampleCount", window.sampleCount}, {"decorated", window.decorated}, {"transparent", window.transparent}, {"alwaysOnTop", window.alwaysOnTop}, {"showInTaskbar", window.showInTaskbar}, {"focusable", window.focusable}, {"mousePassthrough", window.mousePassthrough}, {"keepScreenOn", window.keepScreenOn}, {"lowPowerGpu", window.lowPowerGpu}};
     windowJson["statusBar"] = platform::Window::statusBarName(window.statusBar);
     windowJson["systemGestures"] = platform::Window::systemGesturesName(window.systemGestures);
     if (window.statusBarColor) {

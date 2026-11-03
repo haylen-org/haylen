@@ -5,6 +5,8 @@
 #include <jni.h>
 #include <pthread.h>
 
+#include <algorithm>
+#include <cmath>
 #include <ctime>
 #include <exception>
 #include <memory>
@@ -15,7 +17,9 @@
 #include "gpu/DeviceFactory.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/platform/Display.hpp"
 #include "platform/Player.hpp"
+#include "platform/android/AndroidDisplays.hpp"
 #include "platform/android/AndroidHost.hpp"
 #include "platform/android/AndroidInputEvents.hpp"
 #include "platform/android/AndroidOutputs.hpp"
@@ -121,7 +125,10 @@ void AndroidRuntime::onFrameCallback(std::int64_t frameNanoseconds, void* data) 
         return;
     }
     runtime.requestFrame();
-    runtime.drawFrame(static_cast<double>(frameNanoseconds) / 1.0e9);
+    const double now = static_cast<double>(frameNanoseconds) / 1.0e9;
+    if (runtime.frameRate.takeFrame(now)) {
+        runtime.drawFrame(now);
+    }
 }
 
 // The player reads the bundled package through the activity, so the window is installed first. Devices before Android 10 lack `AChoreographer_postFrameCallback64` and draw a frame per turn of the loop instead, which the swap of each frame paces.
@@ -133,6 +140,7 @@ void AndroidRuntime::run() {
     if (postFrameCallback != nullptr) {
         choreographer = AChoreographer_getInstance();
     }
+    setWindowFrameRate = reinterpret_cast<SetWindowFrameRate>(dlsym(RTLD_DEFAULT, "ANativeWindow_setFrameRate"));
 
     NativeWindow::install(&window);
     window.setRunning(true);
@@ -157,10 +165,11 @@ void AndroidRuntime::loop() {
             ALooper_pollOnce(tick(), nullptr, nullptr, nullptr);
             continue;
         }
-        if (pacer.isDrawing()) {
-            drawFrame(getTime());
+        const double now = getTime();
+        if (pacer.isDrawing() && frameRate.takeFrame(now)) {
+            drawFrame(now);
         }
-        ALooper_pollOnce(pacer.isDrawing() ? 0 : tick(), nullptr, nullptr, nullptr);
+        ALooper_pollOnce(pacer.isDrawing() ? static_cast<int>(std::ceil(frameRate.getWaitSeconds(getTime()) * 1000.0)) : tick(), nullptr, nullptr, nullptr);
     }
 }
 
@@ -214,6 +223,9 @@ void AndroidRuntime::openWindow(const AndroidMessageQueue::Window& message) {
     const bool resized = window.getNative() == message.window;
     window.open(*message.window, message.width, message.height);
     pacer.setWindow(true);
+    if (!resized) {
+        voteFrameRate();
+    }
     try {
         if (resized) {
             graphics.resizeWindow(Player::getGpuDevice());
@@ -241,6 +253,36 @@ void AndroidRuntime::requestFrame() {
     }
     postFrameCallback(choreographer, &onFrameCallback, this);
     frameRequested = true;
+}
+
+void AndroidRuntime::setFrameRate(int framesPerSecond) {
+    frameRate.setTarget(framesPerSecond);
+    voteFrameRate();
+}
+
+// Android picks the refresh of the display among the modes of its resolution from the votes of the windows, and a window without a vote may stay at 60 hertz on a display that refreshes faster, so a window without a frame rate votes for the highest refresh of its display.
+void AndroidRuntime::voteFrameRate() {
+    ANativeWindow* nativeWindow = window.getNative();
+    if (setWindowFrameRate == nullptr || nativeWindow == nullptr) {
+        return;
+    }
+
+    float rate = static_cast<float>(frameRate.getTarget());
+    if (rate == 0.0F) {
+        const std::string id = AndroidDisplays::getWindowDisplayId();
+        for (const Display& display : AndroidDisplays::getDisplays()) {
+            if (display.id != id) {
+                continue;
+            }
+            rate = display.refreshRate;
+            for (const Display::Mode& mode : display.modes) {
+                rate = std::max(rate, mode.refreshRate);
+            }
+        }
+    }
+    if (setWindowFrameRate(nativeWindow, rate, ANATIVEWINDOW_FRAME_RATE_COMPATIBILITY_DEFAULT) != 0) {
+        core::Log::warning("Android refused the frame rate {} of the window.", rate);
+    }
 }
 
 // The app starts with the first frame, when the activity first shows its window.

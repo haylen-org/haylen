@@ -763,6 +763,7 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-008` | Displays | Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays. |  |
 | `PLT-009` | Second display | A scoreboard on a display other than the one of the window, drawn into the target of an output every frame, with its preview, its events and the clicks on its window. |  |
 | `PLT-010` | Permissions | The state of every permission of "haylen.system" on this platform, a request for each one, and the errors of a clipboard and motion sensors that the person refused. |  |
+| `PLT-011` | Frame rate | The app aiming for every refresh of the display or for 120, 60, 30 or 24 frames per second, with the frames it played in the last second, a ball that swings by the real time and a mark for each frame. |  |
 
 #### Plugins (PLG)
 

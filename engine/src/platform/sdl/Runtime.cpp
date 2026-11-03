@@ -1,5 +1,7 @@
 #include "platform/sdl/Runtime.hpp"
 
+#include <algorithm>
+#include <cstdint>
 #include <exception>
 #include <optional>
 #include <stdexcept>
@@ -259,9 +261,13 @@ SDL_AppResult Runtime::iterate() {
     if (!started) {
         return start();
     }
+    const std::uint64_t now = SDL_GetTicksNS();
+    if (!closing && !frameRate.takeFrame(static_cast<double>(now) / 1.0e9)) {
+        return SDL_APP_CONTINUE;
+    }
     if (!closing) {
         recover();
-        Player::frame(timer.next(SDL_GetTicksNS()));
+        Player::frame(timer.next(now));
     }
 #if defined(__APPLE__) && !TARGET_OS_OSX && !defined(NDEBUG)
     AppleApplication::checkSurface(surfaceCheck);
@@ -401,10 +407,10 @@ void Runtime::followWindow(const SDL_Event& event) {
     case SDL_EVENT_WINDOW_SHOWN:
     case SDL_EVENT_WINDOW_OCCLUDED:
     case SDL_EVENT_WINDOW_EXPOSED: {
-        const bool hidden = (SDL_GetWindowFlags(window.get()) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN | SDL_WINDOW_OCCLUDED)) != 0U;
-        if (hidden != paced) {
-            paced = hidden;
-            SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, hidden ? kHiddenRate : "0");
+        const bool nowHidden = (SDL_GetWindowFlags(window.get()) & (SDL_WINDOW_MINIMIZED | SDL_WINDOW_HIDDEN | SDL_WINDOW_OCCLUDED)) != 0U;
+        if (nowHidden != hidden) {
+            hidden = nowHidden;
+            updateCallbackRate();
         }
         return;
     }
@@ -416,6 +422,26 @@ void Runtime::followWindow(const SDL_Event& event) {
     default:
         return;
     }
+}
+
+void Runtime::setFrameRate(int framesPerSecond) {
+    frameRate.setTarget(framesPerSecond);
+    updateCallbackRate();
+}
+
+// The iterations follow the frame rate of the app, which SDL keeps by sleeping between them on desktops and by the rate of the display link on UIKit, and the display paces them without one. A hidden window, which no display paces, runs them at most at `kHiddenRate`. The page keeps the animation frames of the browser, which the frame rate thins out, since the timers that would replace them fire late.
+void Runtime::updateCallbackRate() {
+    const int target = frameRate.getTarget();
+    int rate = target;
+    if (hidden) {
+        rate = target > 0 ? std::min(target, kHiddenRate) : kHiddenRate;
+    }
+#if defined(__EMSCRIPTEN__)
+    if (!hidden) {
+        rate = 0;
+    }
+#endif
+    SDL_SetHint(SDL_HINT_MAIN_CALLBACK_RATE, std::to_string(rate).c_str());
 }
 
 } // namespace haylen::platform::sdl

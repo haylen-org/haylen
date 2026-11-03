@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "platform/DeviceRecovery.hpp"
+#include "platform/FrameRateGate.hpp"
 #include "platform/android/AndroidFramePacer.hpp"
 #include "platform/android/AndroidGraphics.hpp"
 #include "platform/android/AndroidKeyClaims.hpp"
@@ -41,6 +42,9 @@ class AndroidRuntime final {
         quitOrdered = true;
     }
 
+    // Plays a frame every few refreshes of the display for a frame rate below its refresh, and asks Android for the refresh that suits the rate, or for the highest refresh of the display for 0. It runs on the frame thread.
+    void setFrameRate(int framesPerSecond);
+
     // Whether the UI thread waits for the frame thread to let go of the window or the activity, from any thread.
     [[nodiscard]] bool isEnding() {
         return messages.isEnding();
@@ -48,6 +52,7 @@ class AndroidRuntime final {
 
   private:
     using PostFrameCallback = void (*)(AChoreographer* choreographer, AChoreographer_frameCallback64 callback, void* data);
+    using SetWindowFrameRate = std::int32_t (*)(ANativeWindow* nativeWindow, float frameRate, std::int8_t compatibility);
 
     [[nodiscard]] static AndroidRuntime& from(GameActivity* gameActivity) noexcept {
         return *static_cast<AndroidRuntime*>(gameActivity->instance);
@@ -73,6 +78,7 @@ class AndroidRuntime final {
     void openWindow(const AndroidMessageQueue::Window& message);
     void closeWindow();
     void requestFrame();
+    void voteFrameRate();
     void drawFrame(double now);
     void replaceLostDevice();
     [[nodiscard]] int tick();
@@ -85,6 +91,7 @@ class AndroidRuntime final {
     AndroidGraphics graphics;
     AndroidMessageQueue messages;
     AndroidFramePacer pacer;
+    FrameRateGate frameRate;
 
     // The keys that the app took from the views, which only the UI thread reaches.
     AndroidKeyClaims keys;
@@ -94,6 +101,9 @@ class AndroidRuntime final {
     ALooper* looper = nullptr;
     AChoreographer* choreographer = nullptr;
     PostFrameCallback postFrameCallback = nullptr;
+
+    // The vote of a window for the refresh of its display, from Android 11 on.
+    SetWindowFrameRate setWindowFrameRate = nullptr;
     bool frameRequested = false;
     bool started = false;
     bool ended = false;

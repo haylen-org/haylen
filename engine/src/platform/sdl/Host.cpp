@@ -374,6 +374,10 @@ void Host::setWindowFocusable(bool value) {
     SDL_SetWindowFocusable(runtime.getWindow().get(), value);
 }
 
+void Host::applyFrameRate(int framesPerSecond) {
+    runtime.setFrameRate(framesPerSecond);
+}
+
 // SDL keeps the screen on through the idle timer of UIKit, the power assertions of macOS, the execution state of Windows and the inhibitors of Linux desktops, and the page asks the browser for a wake lock.
 void Host::setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) {
 #if defined(__EMSCRIPTEN__)

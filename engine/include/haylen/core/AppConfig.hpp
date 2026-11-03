@@ -41,6 +41,9 @@ struct AppConfig {
         bool highDpi = true;
         bool resizable = true;
         bool vsync = true;
+
+        // The frames per second the app aims for, or 0 for every refresh of the display, as `platform::Window::setFrameRate` describes.
+        int frameRate = 0;
         int sampleCount = 1;
         bool decorated = true;
         bool transparent = false;

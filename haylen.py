@@ -3158,10 +3158,10 @@ def read_plist(path: Path) -> dict:
 
 
 def write_apple_plists(app: App, root: Path, generated: Path) -> None:
-    """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with and the Dock setting of `app.json` and the `infoPlist` keys of the plugins, where the values of the developer win."""
+    """Writes `haylen/<platform>/Info.plist` for each target template: the `Info.plist` of the developer, completed with the orientations, the status bar the app launches with and the Dock setting of `app.json`, the refresh rates above 60 hertz that iPhones allow only with `CADisableMinimumFrameDurationOnPhone`, and the `infoPlist` keys of the plugins, where the values of the developer win."""
     phone, pad = IOS_ORIENTATIONS
     status_bar = {"UIStatusBarHidden": True} if app.status_bar == "hidden" else {"UIStatusBarHidden": False, "UIStatusBarStyle": IOS_STATUS_BAR_STYLES[app.status_bar]}
-    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, **status_bar}, "tvos": {}, "visionos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
+    fills = {"ios": {"UISupportedInterfaceOrientations": phone, "UISupportedInterfaceOrientations~ipad": pad, "CADisableMinimumFrameDurationOnPhone": True, **status_bar}, "tvos": {}, "visionos": {}, "macos": {} if app.show_in_taskbar else {"LSUIElement": True}}
     warnings: list[str] = []
     for template, (folder, platforms, _) in APPLE_TEMPLATES.items():
         own = root / folder / "Info.plist"

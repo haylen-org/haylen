@@ -817,6 +817,7 @@ add_library(haylen-platform STATIC
   src/platform/DeviceRecovery.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
+  src/platform/FrameRateGate.cpp
   src/platform/GraphicsApiOrder.cpp
   src/platform/KeyboardTranslator.cpp
   src/platform/PluginLoadOrder.cpp

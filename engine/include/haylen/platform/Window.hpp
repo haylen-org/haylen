@@ -80,7 +80,13 @@ class Window {
         std::optional<Display::Mode> mode;
     };
 
+    // The highest frame rate an app may aim for, in frames per second.
+    static constexpr int kMaxFrameRate = 1000;
+
     virtual ~Window() = default;
+
+    // Throws `std::invalid_argument` for a frame rate below 0 or above `kMaxFrameRate`.
+    static void requireFrameRate(int value);
 
     // Resolves the orientation names `landscape`, `portrait` and `any` that `app.json` and Lua share.
     [[nodiscard]] static std::optional<Orientation> orientationFromName(std::string_view name) noexcept;
@@ -140,6 +146,10 @@ class Window {
     // Keeps the screen on and its saver away while the app shows, or leaves them to the settings of the system, and answers like `setFullscreen`, with `Denied` where a browser refuses its wake lock, such as for a page that hides. Game controllers keep neither the idle timer of iOS and tvOS nor the screen saver of desktops from running, so an app that players drive with them or that plays without input keeps the screen on.
     [[nodiscard]] virtual bool isScreenKeptOn() const noexcept = 0;
     virtual void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
+
+    // The frames per second the app aims for, or 0 for a frame at every refresh of the display, at the highest rate the display shows. Displays that change their refresh, such as those of iPhones, iPads and Android devices, slow down to the rate, and every platform plays a frame every few refreshes when the display refreshes faster, so the frames average the rate. A rate above the refresh of the display plays every refresh while vsync is on, and caps the frames of a window without vsync, which keeps a simple app from spending a whole core. Throws `std::invalid_argument` as `requireFrameRate` does.
+    [[nodiscard]] virtual int getFrameRate() const noexcept = 0;
+    virtual void setFrameRate(int value) = 0;
 
     [[nodiscard]] virtual TextInput& getTextInput() noexcept = 0;
 

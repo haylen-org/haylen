@@ -103,6 +103,16 @@ void NativeHost::setKeepScreenOn(bool value, std::function<void(Permission::Answ
     setScreenSaverSuspended(value, std::move(callback));
 }
 
+int NativeHost::getFrameRate() const noexcept {
+    return frameRate;
+}
+
+void NativeHost::setFrameRate(int value) {
+    requireFrameRate(value);
+    frameRate = value;
+    applyFrameRate(value);
+}
+
 bool NativeHost::isTransparent() const noexcept {
     return style.transparent;
 }

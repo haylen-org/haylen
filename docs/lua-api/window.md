@@ -411,6 +411,47 @@ startRace()
 endRace()
 ```
 
+## Frame rate
+
+### window.frameRate()
+
+Returns the frames per second that the app aims for, or `0` for a frame at every refresh of the display. It starts as `window.frameRate` of `app.json` says, `0` by default.
+
+```lua
+local window = require('haylen.window')
+
+print('Frame rate:', window.frameRate())
+```
+
+### window.setFrameRate(framesPerSecond)
+
+Aims for `framesPerSecond` frames per second, from 1 to 1000, or for a frame at every refresh of the display with `0`, at the highest refresh the display has. A calm screen, such as a menu, a card game or a puzzle, saves battery at 30 frames per second, and a fast game takes every refresh of a display of 120 hertz. The [frame rate guide](../core/architecture.md#frame-rate) explains how each platform paces the frames:
+
+- The displays of iPhones, iPads and Android devices slow down to the rate where they can.
+- Every platform plays a frame every few refreshes when the display refreshes faster, so the frames average the rate.
+- A rate above the refresh of the display plays every refresh while `window.vsync` is on, and caps the frames of a window without vsync.
+
+The rate ends with the app, and a restarted app starts with the value of `app.json` again. A rate out of range raises `The frame rate <rate> is out of range. It is 0 for every refresh of the display, or from 1 to 1000 frames per second.`.
+
+```lua
+local display = require('haylen.display')
+local window = require('haylen.window')
+
+-- The menu needs few frames, and the race takes every refresh of the display.
+local function openMenu()
+    window.setFrameRate(30)
+end
+
+local function startRace()
+    window.setFrameRate(0)
+    local shown = display.list()[1]
+    print('The display refreshes at', shown.refreshRate, 'hertz')
+end
+
+openMenu()
+startRace()
+```
+
 ## Folds and dual screens
 
 Foldable phones and tablets fold their screen along a line, and dual-screen devices join two screens with a hinge. The window reports that fold, the posture the device is held in and the segments of the window on each side of the fold. An app uses them to lay its content out around the fold. It may put a map on one side and its controls on the other, or a game on the top half and its buttons on the bottom half of a tabletop. Positions are in design units, like [`viewport.safeRect`](viewport.md#viewportsaferect). The event `windowFoldChanged` announces every change, such as when the device folds, unfolds or turns, or the window moves across the hinge.
@@ -788,6 +829,7 @@ These messages are raised by the functions of the module.
 | Message | Cause |
 | --- | --- |
 | `bad argument #1 to '<function>' (boolean expected, got <type>)` | A function that takes a boolean got another value. |
+| `The frame rate <rate> is out of range. It is 0 for every refresh of the display, or from 1 to 1000 frames per second.` | The rate of `window.setFrameRate` is below 0 or above 1000. |
 | `There is no display "<id>" to go fullscreen on. The function "display.list()" lists the displays.` | The `display` of `window.setFullscreen` is not connected. |
 | `The display "<id>" has no mode of <width> by <height> pixels at <rate> frames per second. The modes of "display.list()" are the ones it runs in.` | The `mode` of `window.setFullscreen` is not a mode of the display. |
 | `A fullscreen mode needs a positive "width" and "height" in pixels.` | The `mode` of `window.setFullscreen` has no size. |

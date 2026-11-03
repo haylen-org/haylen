@@ -1,0 +1,52 @@
+Paces the display link of the main callbacks of iOS, iPadOS, tvOS and visionOS at the rate of SDL_HINT_MAIN_CALLBACK_RATE, as the main callbacks of the other platforms follow it, so an app that aims for fewer frames per second than the display shows lets the display slow down. Without the hint the display link keeps running at the highest rate of the display.
+
+--- a/src/main/ios/SDL_sysmain_callbacks.m
++++ b/src/main/ios/SDL_sysmain_callbacks.m
+@@ -37,6 +37,23 @@
+ 
+ static SDLIosMainCallbacksDisplayLink *globalDisplayLink;
+ 
++static void SDLCALL MainCallbackRateHintChanged(void *userdata, const char *name, const char *oldValue, const char *newValue)
++{
++    SDLIosMainCallbacksDisplayLink *link = (__bridge SDLIosMainCallbacksDisplayLink *)userdata;
++    if (@available(iOS 15.0, tvOS 15.0, *)) {
++        const float callback_rate = newValue ? (float)SDL_atof(newValue) : 0.0f;
++        const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay());
++        if (callback_rate > 0.0f) {
++            link.displayLink.preferredFrameRateRange = CAFrameRateRangeMake(callback_rate, callback_rate, callback_rate);
++        } else if (mode && mode->refresh_rate > 60.0f) {
++            int frame_rate = (int)mode->refresh_rate;
++            link.displayLink.preferredFrameRateRange = CAFrameRateRangeMake((frame_rate * 2) / 3, frame_rate, frame_rate);
++        } else {
++            link.displayLink.preferredFrameRateRange = CAFrameRateRangeDefault;
++        }
++    }
++}
++
+ @implementation SDLIosMainCallbacksDisplayLink
+ 
+ - (instancetype)init:(SDL_AppIterate_func)_appiter quitfunc:(SDL_AppQuit_func)_appquit;
+@@ -47,13 +64,8 @@
+         // To enable this on phones, you should add the following line to Info.plist:
+         // <key>CADisableMinimumFrameDurationOnPhone</key> <true/>
+         // If main callbacks are used then this CADisplayLink will affect framerate, not one in SDL_uikitviewcontroller.
+-        if (@available(iOS 15.0, tvOS 15.0, *)) {
+-            const SDL_DisplayMode *mode = SDL_GetDesktopDisplayMode(SDL_GetPrimaryDisplay());
+-            if (mode && mode->refresh_rate > 60.0f) {
+-                int frame_rate = (int)mode->refresh_rate;
+-                self.displayLink.preferredFrameRateRange = CAFrameRateRangeMake((frame_rate * 2) / 3, frame_rate, frame_rate);
+-            }
+-        }
++        // SDL_HINT_MAIN_CALLBACK_RATE asks the display link for its rate, and without it the display link runs at the highest rate of the display.
++        SDL_AddHintCallback(SDL_HINT_MAIN_CALLBACK_RATE, MainCallbackRateHintChanged, (__bridge void *)self);
+         [self.displayLink addToRunLoop:[NSRunLoop currentRunLoop] forMode:NSDefaultRunLoopMode];
+     }
+     return self;
+@@ -63,6 +75,7 @@
+ {
+     const SDL_AppResult rc = SDL_IterateMainCallbacks(true);
+     if (rc != SDL_APP_CONTINUE) {
++        SDL_RemoveHintCallback(SDL_HINT_MAIN_CALLBACK_RATE, MainCallbackRateHintChanged, (__bridge void *)self);
+         [self.displayLink invalidate];
+         self.displayLink = nil;
+         globalDisplayLink = nil;

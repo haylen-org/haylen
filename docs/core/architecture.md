@@ -350,6 +350,24 @@ Some input comes from the platform itself, because SDL leaves it out. The scroll
 
 A halted app, which the lifecycle options decide by the app state, skips steps 8 and 9 and advances the clock by zero. An app in the background, or under an opaque screen of a plugin, also skips drawing, like a covered app once it drew its covered frame, as the [lifecycle guide](lifecycle.md) explains. The game pause of `Engine::setPaused` gates scenes, autoloads, timers and tweens by their `ProcessMode` inside those steps.
 
+### Frame rate
+
+The platform layer plays a frame for every refresh of the display by default, at the highest refresh the display has. The frame rate of the app, `window.frameRate` in `app.json` or [`window.setFrameRate`](../lua-api/window.md#windowsetframerateframespersecond) in Lua, aims for fewer frames, such as 30 frames per second for a calm screen that saves battery, or caps a window without vsync, which would otherwise draw as fast as it can and spend a whole core. The host hands the rate to its platform layer through `NativeHost::applyFrameRate`, and each one paces its frames where its system does:
+
+- Desktops sleep between the frames until the next one is due, through the callback rate of SDL, and vsync then shows each frame at the next refresh.
+- iPhones, iPads, Mac Catalyst, the Apple TV and the Vision Pro ask the display link that calls the frames for the rate, through `preferredFrameRateRange`. A display with ProMotion then slows down to the rate, and without a rate the display link runs at the highest refresh. An iPhone shows more than 60 frames per second only when the `Info.plist` sets `CADisableMinimumFrameDurationOnPhone`, which `haylen.py` and `haylen_add_app` add.
+- Android asks the system for the refresh that suits the rate through `ANativeWindow_setFrameRate` from Android 11 on, and for the highest refresh of the display without a rate, since a window that asks for nothing may stay at 60 hertz on a faster display. The Choreographer then calls the frames at each refresh.
+- The web keeps the animation frames of the browser, one for each refresh, because timers fire too late to pace frames.
+
+Then `platform::FrameRateGate` decides which refreshes play a frame. A refresh plays when it comes no more than a quarter of a frame early, so frames always come a whole number of refreshes apart, and they average the rate when the display refreshes faster than it. A display of 120 hertz shows an app of 60 frames per second at every other refresh, and a display of 144 hertz shows it two or three refreshes apart. The app measures each frame from the one it played before, so the time it sees grows by the real time between its frames.
+
+```lua
+local window = require('haylen.window')
+
+window.setFrameRate(30)
+print(window.frameRate())
+```
+
 ### Events between frames
 
 Platform events arrive between frames through `Engine::handleEvent`. The mouse and the fingers first reach the app as the device that the app asked for, which may turn one event into several, and the scroll speed of the app scales every scroll. Input then converts positions to design coordinates. Lifecycle events update the app state and emit the engine signals `appStateChanged`, `resized`, `quitRequested` and `lowMemory`, with the matching events on the `EventBus`. Then every plugin and the top scene receive the event, even when a listener of the engine event failed. So a plugin that keeps data, such as the preferences, still saves it when the app goes to the background.

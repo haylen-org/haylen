@@ -104,6 +104,10 @@ void AndroidHost::setMouseLocked(bool value, std::function<void(Permission::Answ
     callback({.state = Permission::State::Granted});
 }
 
+void AndroidHost::applyFrameRate(int framesPerSecond) {
+    runtime.setFrameRate(framesPerSecond);
+}
+
 void AndroidHost::openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) {
     AndroidOutputs::open(number, display, options);
 }

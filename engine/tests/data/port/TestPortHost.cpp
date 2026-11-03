@@ -109,4 +109,7 @@ void TestPortHost::setScreenSaverSuspended(bool, std::function<void(Permission::
     callback({.state = Permission::State::Granted});
 }
 
+// The runtime of the test port plays frames of a fixed length that no display paces.
+void TestPortHost::applyFrameRate(int) {}
+
 } // namespace haylen::platform

@@ -41,6 +41,8 @@ class NativeHost : public Host {
     [[nodiscard]] bool hasPointerDevice() const noexcept override;
     [[nodiscard]] bool isScreenKeptOn() const noexcept override;
     void setKeepScreenOn(bool value, std::function<void(Permission::Answer answer)> callback) override;
+    [[nodiscard]] int getFrameRate() const noexcept override;
+    void setFrameRate(int value) override;
     [[nodiscard]] bool isTransparent() const noexcept override;
     void setTransparent(bool value) override;
     [[nodiscard]] bool isDecorated() const noexcept override;
@@ -164,6 +166,9 @@ class NativeHost : public Host {
     virtual void setWindowFocusable(bool value) = 0;
     virtual void setScreenSaverSuspended(bool value, std::function<void(Permission::Answer answer)> callback) = 0;
 
+    // Paces the frames of the platform at the frames per second, or at every refresh of the display for 0.
+    virtual void applyFrameRate(int framesPerSecond) = 0;
+
     // Fullscreen windows keep the style of the platform, and leaving fullscreen brings this one back.
     void applyStyle();
 
@@ -180,6 +185,7 @@ class NativeHost : public Host {
     SystemGestures systemGestures = SystemGestures::Deferred;
     bool focusable = true;
     bool screenKeptOn = false;
+    int frameRate = 0;
 };
 
 } // namespace haylen::platform

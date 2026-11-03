@@ -107,6 +107,22 @@ TEST(WindowLuaTest, AppliesTheSystemGesturesTheAppAsksFor) {
     EXPECT_EQ(fixture.host().getSystemGestures(), Window::SystemGestures::AutoHideIndicator);
 }
 
+// The app plays at the frame rate of app.json from the start, a script lowers it for a calm screen or brings back every refresh, and a restarted app starts again with the value of app.json.
+TEST(WindowLuaTest, AimsForTheFrameRateTheAppAsks) {
+    test::EngineFixture fixture({{"app.json", R"({"window": {"frameRate": 30}})"}});
+    fixture.runLua("window = require('haylen.window')");
+    EXPECT_EQ(fixture.host().getFrameRate(), 30);
+    EXPECT_EQ(fixture.lua("return window.frameRate()"), "30");
+
+    fixture.runLua("window.setFrameRate(0)");
+    EXPECT_EQ(fixture.host().getFrameRate(), 0);
+    EXPECT_NE(fixture.lua("window.setFrameRate(-1)").find("The frame rate -1 is out of range. It is 0 for every refresh of the display, or from 1 to 1000 frames per second."), std::string::npos);
+    EXPECT_NE(fixture.lua("window.setFrameRate('fast')").find("error: "), std::string::npos);
+
+    fixture.restart();
+    EXPECT_EQ(fixture.host().getFrameRate(), 30);
+}
+
 TEST(WindowLuaTest, GivesARestartedAppTheMouseCursorAndKeyboardOfANewWindow) {
     test::EngineFixture fixture;
     fixture.runLua("window = require('haylen.window') window.setCursor('pointingHand') window.setCursorVisible(false) window.setMouseLocked(true) window.setKeyboardVisible(true)");

@@ -379,6 +379,10 @@ SDL sets the frame of the view of its UIKit window itself whenever the keyboard 
 
 SDL reads mice through GameController on iOS, iPadOS and tvOS only when the `Info.plist` sets `UIApplicationSupportsIndirectInputEvents`, which makes iOS tell the touches of a pointer apart from the touches of a finger. That key exists only on iOS and iPadOS, and tvOS has no such touches, so every tvOS app logged at launch that the key is missing. The patch reads mice on tvOS without the key.
 
+#### sdl-uikit-frame-rate.patch
+
+SDL calls the main callbacks of iOS, iPadOS, Mac Catalyst, tvOS and visionOS from a display link, which it sets once to the highest rate of the display. The main callbacks of the other platforms follow the hint `SDL_HINT_MAIN_CALLBACK_RATE`, but that display link ignored it, so an app that aims for 30 or 60 frames per second on a display of 120 hertz woke 120 times a second and kept the display at its highest rate. The patch makes the display link follow the hint through `preferredFrameRateRange`, so the display slows down to the rate of the app, and runs it at the highest rate of the display without one. The engine sets the hint from the [frame rate](../core/architecture.md#frame-rate) of the app.
+
 #### sdl-web-page-keys.patch
 
 SDL listens for the keys of the whole page on the window of the browser. So a page that hosts the app next to elements of its own, such as the editor of a website, could keep their keys from the app only by stopping them before they reach those elements. The patch skips a key whose time stamp the runtime names in `Module.haylenIgnoredKey`. The runtime does this for the keys of elements that are not the canvas, the page or the fields of the runtime, so those elements still hear them.

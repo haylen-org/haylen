@@ -1,6 +1,8 @@
 #include "haylen/platform/Window.hpp"
 
 #include <algorithm>
+#include <stdexcept>
+#include <string>
 
 namespace haylen::platform {
 
@@ -20,6 +22,12 @@ std::string_view Window::orientationName(Orientation value) noexcept {
 std::optional<Window::StatusBar> Window::statusBarFromName(std::string_view name) noexcept {
     const auto found = std::ranges::find(kStatusBarNames, name, &std::pair<std::string_view, StatusBar>::first);
     return found != kStatusBarNames.end() ? std::optional(found->second) : std::nullopt;
+}
+
+void Window::requireFrameRate(int value) {
+    if (value < 0 || value > kMaxFrameRate) {
+        throw std::invalid_argument("The frame rate " + std::to_string(value) + " is out of range. It is 0 for every refresh of the display, or from 1 to " + std::to_string(kMaxFrameRate) + " frames per second.");
+    }
 }
 
 std::string_view Window::statusBarName(StatusBar value) noexcept {

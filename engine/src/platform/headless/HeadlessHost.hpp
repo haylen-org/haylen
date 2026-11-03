@@ -186,6 +186,13 @@ class HeadlessHost final : public Host {
         }
         callback(windowAnswer);
     }
+    [[nodiscard]] int getFrameRate() const noexcept override {
+        return frameRate;
+    }
+    void setFrameRate(int value) override {
+        requireFrameRate(value);
+        frameRate = value;
+    }
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return transparencySupported;
     }
@@ -758,6 +765,7 @@ class HeadlessHost final : public Host {
     bool quitRequested = false;
     bool pointerDevice = true;
     bool screenKeptOn = false;
+    int frameRate = 0;
     bool transparencySupported = false;
     bool transparent = false;
     bool decorated = true;

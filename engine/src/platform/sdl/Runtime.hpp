@@ -13,6 +13,7 @@
 #include "haylen/gpu/Device.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/DeviceRecovery.hpp"
+#include "platform/FrameRateGate.hpp"
 #include "platform/sdl/Events.hpp"
 #include "platform/sdl/FrameTimer.hpp"
 #include "platform/sdl/OutputWindows.hpp"
@@ -82,6 +83,9 @@ class Runtime final {
         closing = true;
     }
 
+    // Paces the iterations at the frames per second of the app, or at every refresh of the display for 0.
+    void setFrameRate(int framesPerSecond);
+
     // Queues an event that the platform read on its own, in the order of the events of SDL, such as the scrolls of macOS trackpads with their phases.
     void post(const platform::Event& event);
 
@@ -96,7 +100,7 @@ class Runtime final {
 
   private:
     // The highest number of iterations per second while the window shows nothing, minimized or hidden, which the display no longer paces, so the app keeps running timers and network callbacks without spending a core.
-    static constexpr const char* kHiddenRate = "60";
+    static constexpr int kHiddenRate = 60;
 
 #if !defined(__APPLE__) || TARGET_OS_OSX
     static constexpr SDL_InitFlags kSubsystems = SDL_INIT_VIDEO | SDL_INIT_GAMEPAD;
@@ -127,6 +131,7 @@ class Runtime final {
     [[nodiscard]] bool takes(const SDL_Event& event) const noexcept;
     [[nodiscard]] Events::Context getContext() const noexcept;
     void followWindow(const SDL_Event& event);
+    void updateCallbackRate();
 
     Window window;
     OutputWindows outputs;
@@ -138,6 +143,7 @@ class Runtime final {
     TextInput textInput{window};
 #endif
     FrameTimer timer;
+    FrameRateGate frameRate;
     std::vector<platform::Event> translated;
     std::unique_ptr<gpu::Device> openedDevice;
 
@@ -157,7 +163,7 @@ class Runtime final {
     DeviceRecovery deviceRecovery;
 
     // Whether the frames run at the rate of a window that shows nothing.
-    bool paced = false;
+    bool hidden = false;
 #if defined(__APPLE__) && !TARGET_OS_OSX
 
     // The check of debug builds that the view and the drawable of the window cover the window at every frame.

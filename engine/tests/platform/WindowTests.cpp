@@ -98,6 +98,9 @@ TEST_F(WindowConfigTest, ReadsTheDesktopOptionsOfAppJson) {
     EXPECT_TRUE(defaults.window.focusable);
     EXPECT_FALSE(defaults.window.mousePassthrough);
     EXPECT_FALSE(defaults.window.keepScreenOn);
+    EXPECT_EQ(defaults.window.frameRate, 0);
+    EXPECT_EQ(core::AppConfig::fromJson(core::Json::parse(R"({"window": {"frameRate": 120}})")).window.frameRate, 120);
+    EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(R"({"window": {"frameRate": 1001}})")), std::invalid_argument);
     EXPECT_FALSE(defaults.window.position.has_value());
     EXPECT_FALSE(defaults.toJson().at("window").contains("position"));
 }

@@ -223,6 +223,9 @@ class StatusBarTest(unittest.TestCase):
         with self.assertRaises(haylen.BuildError):
             self.launch({"statusBar": "white"})
 
+    def test_iphones_may_refresh_above_60_hertz(self):
+        self.assertTrue(self.launch({})["CADisableMinimumFrameDurationOnPhone"])
+
 
 class SplashTest(unittest.TestCase):
     def test_the_dark_background_becomes_the_dark_appearance_and_the_night_resources(self):

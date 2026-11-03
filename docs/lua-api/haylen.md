@@ -103,6 +103,7 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | `window.highDpi` | boolean | `true` | Uses the full density of the display for the framebuffer. |
 | `window.resizable` | boolean | `true` | Whether the player may resize a desktop window. [`window.setResizable`](window.md#desktop-windows) changes it later. |
 | `window.vsync` | boolean | `true` | Waits for the refresh of the display before it shows a frame. |
+| `window.frameRate` | integer | `0` | The frames per second the app aims for, from 1 to 1000, or `0` for every refresh of the display. [`window.setFrameRate`](window.md#windowsetframerateframespersecond) changes it later. |
 | `window.sampleCount` | integer | `1` | The sample count of multisampling. |
 | `window.decorated` | boolean | `true` | Whether the desktop window has a title bar and a border. |
 | `window.transparent` | boolean | `false` | Opens the window able to be transparent, and transparent, so the desktop shows through its transparent pixels. It also makes `clearColor` default to `"#00000000"`. Only a window that opened this way can turn transparent again after `window.setTransparent(false)`. |
