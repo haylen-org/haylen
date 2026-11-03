@@ -2525,12 +2525,19 @@ class WebErrorScreenTest(unittest.TestCase):
             commands.append(command)
             return "{}"
 
-        arguments = mock.Mock(graphics_api="webGl2")
-        with mock.patch.object(haylen, "App"), mock.patch.object(haylen, "serve_site", return_value=server), mock.patch.object(haylen, "headless_browser", side_effect=browser), mock.patch.object(haylen, "emsdk_node"), mock.patch.object(haylen, "capture", side_effect=capture), mock.patch.object(haylen, "check_web_page_steps"), mock.patch.object(haylen, "terminal"):
-            haylen.check_web_error_screen(arguments, target)
-            haylen.check_web_wake_lock(arguments, target)
-        named = "http://127.0.0.1:8000/?graphicsApi=webGl2"
-        self.assertEqual([command[3] for command in commands], [named] * len(haylen.WEB_ERROR_SCREEN_STEPS) + ["http://127.0.0.1:8000/?graphicsApi=bogus"] + [named] * len(haylen.WEB_WAKE_LOCK_STEPS))
+        def pages(api):
+            commands.clear()
+            arguments = mock.Mock(graphics_api=api)
+            with mock.patch.object(haylen, "App"), mock.patch.object(haylen, "serve_site", return_value=server), mock.patch.object(haylen, "headless_browser", side_effect=browser), mock.patch.object(haylen, "emsdk_node"), mock.patch.object(haylen, "capture", side_effect=capture), mock.patch.object(haylen, "check_web_page_steps"), mock.patch.object(haylen, "terminal"):
+                haylen.check_web_error_screen(arguments, target)
+                haylen.check_web_wake_lock(arguments, target)
+            return [command[3] for command in commands]
+
+        # The page with an unknown graphics API draws its error screen through the first API that starts, so only the checks of that API open it.
+        unknown = "http://127.0.0.1:8000/?graphicsApi=bogus"
+        for api, opens_unknown in (("webGpu", True), ("webGl2", False)):
+            named = f"http://127.0.0.1:8000/?graphicsApi={api}"
+            self.assertEqual(pages(api), [named] * len(haylen.WEB_ERROR_SCREEN_STEPS) + [unknown] * opens_unknown + [named] * len(haylen.WEB_WAKE_LOCK_STEPS))
 
     def test_on_the_web_a_graphics_api_names_the_api_of_the_checks_unless_the_gpu_tests_run(self):
         with mock.patch.object(haylen, "command_test_web") as checks, mock.patch.object(haylen, "command_test_gpu_web") as gpu:
