@@ -14,8 +14,5 @@ target_compile_definitions(haylen-gpu PUBLIC HAYLEN_GPU_WEBGPU)
 target_compile_options(haylen-gpu PUBLIC --use-port=emdawnwebgpu)
 target_link_options(haylen-gpu INTERFACE --use-port=emdawnwebgpu)
 
-# The headers of the port come with the compile option, where the module scan of CMake does not look for them.
-set_target_properties(haylen-gpu PROPERTIES CXX_SCAN_FOR_MODULES OFF)
-
 # The GPU tests of the web check how the timeline of the device turns timestamps into the time of a frame.
 list(APPEND HAYLEN_GPU_TEST_SOURCES "${HAYLEN_ENGINE_DIR}/tests/gpu/webgpu/PassTimelineTests.cpp")

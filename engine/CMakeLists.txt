@@ -11,6 +11,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+# The engine and its dependencies use no C++ modules, so their sources compile without the module scan, which would preprocess each of them once more.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
+# MSVC writes the debug information into each object instead of one PDB that every compile of a target shares, so parallel compiles never wait for that file and compiler caches keep the objects.
+set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:Embedded>")
 
 set(HAYLEN_ENGINE_DIR "${CMAKE_CURRENT_LIST_DIR}" CACHE INTERNAL "Haylen engine source directory.")
 set(HAYLEN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}/cmake" CACHE INTERNAL "Haylen CMake module directory.")

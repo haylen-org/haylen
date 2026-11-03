@@ -255,6 +255,20 @@ The workspace `CMakeLists.txt` at the root of the repository is the project `hay
 
 Every CMake target, project and install component uses dashes, such as `haylen-engine`, `haylen-runtime`, `haylen-tests` and `haylen-sdk`. So does every library, executable and other file that the build makes, such as `libhaylen-app.so`. An underscore appears only where a name must be an identifier, such as the CMake function `haylen_add_app` and the variable `HAYLEN_PLATFORM`. Projects reach the libraries through the aliases `haylen::engine` and `haylen::runtime`, as the [embedding guide](embedding.md#what-a-project-gets) lists.
 
+### Settings of every build
+
+The file `engine/CMakeLists.txt` sets two things for the engine and its dependencies in every configuration:
+
+- The targets compile without the scan for C++ modules, through `CMAKE_CXX_SCAN_FOR_MODULES`, since neither the engine nor its dependencies use modules. So each source compiles in one step, without a second pass of the preprocessor before it.
+- MSVC writes the debug information of Debug builds into each object, through `CMAKE_MSVC_DEBUG_INFORMATION_FORMAT`, instead of one PDB file that every compile of a target writes. So parallel compiles never wait for that file, and a compiler cache can keep the objects. The linker still writes the PDB of each program.
+
+A compiler cache, such as ccache, speeds up builds that compile the same sources again. CMake runs every compile through the launcher that the environment variables `CMAKE_C_COMPILER_LAUNCHER`, `CMAKE_CXX_COMPILER_LAUNCHER`, `CMAKE_OBJC_COMPILER_LAUNCHER` and `CMAKE_OBJCXX_COMPILER_LAUNCHER` name when it configures a build tree, so the commands of `haylen` use a cache once they name it:
+
+```sh
+export CMAKE_C_COMPILER_LAUNCHER=ccache CMAKE_CXX_COMPILER_LAUNCHER=ccache CMAKE_OBJC_COMPILER_LAUNCHER=ccache CMAKE_OBJCXX_COMPILER_LAUNCHER=ccache
+haylen test
+```
+
 ### Settings of release binaries
 
 The file `engine/cmake/haylen-release.cmake` sets how every target of the engine and its dependencies compiles:

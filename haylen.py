@@ -1515,8 +1515,7 @@ def command_fuzz(args: argparse.Namespace) -> None:
     clang, clangxx = fuzzing_compilers(args.llvm)
     directory = BUILD_ROOT / "fuzz"
     terminal.step(f"Building the fuzzers with `{shown_path(clangxx)}` in `{shown_path(directory)}`")
-    # The engine uses no C++ modules, so the build skips the scan for them, which would need the "clang-scan-deps" of the same LLVM.
-    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DCMAKE_CXX_SCAN_FOR_MODULES=OFF", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}"])
+    run(["cmake", "-S", ROOT, "-B", directory, "-G", "Ninja", f"-DCMAKE_C_COMPILER={clang}", f"-DCMAKE_CXX_COMPILER={clangxx}", "-DCMAKE_BUILD_TYPE=Debug", "-DHAYLEN_BUILD_FUZZERS=ON", f"-DHAYLEN_SHADERC={ensure_shaderc()}", f"-DPython3_EXECUTABLE={python_executable()}"])
     run(["cmake", "--build", directory, "--target", *FUZZERS, "--parallel", str(args.jobs)])
 
     # Each fuzzer keeps the inputs that reached new code in a corpus of its own, which the next run starts from.
