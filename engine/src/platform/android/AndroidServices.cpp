@@ -38,6 +38,7 @@
 #include "platform/android/AndroidTextInput.hpp"
 #include "platform/android/AndroidVideoDecoder.hpp"
 #include "platform/android/JavaBridge.hpp"
+#include "varn/http/HttpClientFailureNote.h"
 
 namespace haylen::platform {
 
@@ -46,10 +47,18 @@ std::string_view Services::getName() noexcept {
 }
 
 // Every activity of the process starts the runtime anew, and the first one may have ended before.
+// Android drops the packets of a request to the local network while the app does not hold the permission for it, so the HTTP requests that fail say so while the person has not granted it, which is the state of the permission and no guess about the address.
 void Services::initialize() {
     AndroidActivity::holdSplashScreen();
     AndroidGamepads::enableAxes();
     AndroidMouseWheel::enableAxes();
+
+    // clang-format off
+    varn::http::client::FailureNote::install([](const std::string&) {
+        const Permission::State state = JavaBridge::getPermission(Permission::Kind::LocalNetwork);
+        return state == Permission::State::Prompt || state == Permission::State::Denied ? std::string("Access to the local network is not granted, so Android blocks a request to the local network until \"system.requestPermission('localNetwork')\" grants it.") : std::string();
+    });
+    // clang-format on
 }
 
 void Services::shutdown() noexcept {}
