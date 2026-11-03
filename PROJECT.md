@@ -2248,7 +2248,7 @@ Testes do projeto de testes apontados pelo dono:
 
 Revisão pendente:
 
-- [ ] Levar para o `main` as correções das sete worktrees pausadas da revisão (`agent-a048f0fbe2d1d4e2c`, `agent-a59b49949c18a46f0`, `agent-a6c7ddfd87caa336f`, `agent-a692f931afaad4a75`, `agent-a38a2aee9235fd7a3`, `agent-a8de4351b9812abc6` e `agent-ab23669eaf4bc87f9`), adaptadas à RHI nova, cada uma terminada, testada e commitada em blocos.
+- [x] Levar para o `main` as correções das sete worktrees pausadas da revisão (`agent-a048f0fbe2d1d4e2c`, `agent-a59b49949c18a46f0`, `agent-a6c7ddfd87caa336f`, `agent-a692f931afaad4a75`, `agent-a38a2aee9235fd7a3`, `agent-a8de4351b9812abc6` e `agent-ab23669eaf4bc87f9`), adaptadas à RHI nova, cada uma terminada, testada e commitada em blocos. Feito: as sete entraram no `main` em commits por categoria, `agent-a8de4351b9812abc6` e `agent-ab23669eaf4bc87f9` pelo fluxo de correções da engine (c4a1e011 a 816d437d), `agent-a38a2aee9235fd7a3` e `agent-a6c7ddfd87caa336f` pelo segundo fluxo de samples, e `agent-a048f0fbe2d1d4e2c`, `agent-a59b49949c18a46f0` e `agent-a692f931afaad4a75` pelo primeiro fluxo de samples (até 4d0e800e), cada um com `haylen test`, o projeto de testes sem janela com os 431 testes passando e as capturas na web.
 - [ ] Revisão visual dos 452 testes, dos jogos, dos apps e das amostras de estresse pela RHI nova, na web e nas plataformas, até nenhum ter defeito.
 
 Ferramenta `haylen.py`:
