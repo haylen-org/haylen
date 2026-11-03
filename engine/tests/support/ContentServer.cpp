@@ -17,9 +17,24 @@
 
 namespace haylen::test {
 
+// A handler counts among the ones the server waits for until it goes away, which Poco does once its answer ends, also when an exception ends it.
 class ContentServer::Handler final : public Poco::Net::HTTPRequestHandler {
   public:
-    explicit Handler(ContentServer& owner) : server(owner) {}
+    explicit Handler(ContentServer& owner) : server(owner) {
+        std::scoped_lock lock(server.mutex);
+        ++server.handlers;
+    }
+
+    ~Handler() override {
+        {
+            std::scoped_lock lock(server.mutex);
+            --server.handlers;
+        }
+        server.idle.notify_all();
+    }
+
+    Handler(const Handler&) = delete;
+    Handler& operator=(const Handler&) = delete;
 
     void handleRequest(Poco::Net::HTTPServerRequest& request, Poco::Net::HTTPServerResponse& response) override {
         Poco::Net::StreamSocket& socket = static_cast<Poco::Net::HTTPServerRequestImpl&>(request).socket();
@@ -49,9 +64,12 @@ ContentServer::ContentServer(std::filesystem::path servedFolder) : folder(std::m
     server->start();
 }
 
+// Aborting the connections ends their answers, which still touch the server until their handlers go away.
 ContentServer::~ContentServer() {
     stopping = true;
     server->stopAll(true);
+    std::unique_lock lock(mutex);
+    idle.wait(lock, [this] { return handlers == 0; });
 }
 
 std::string ContentServer::getUrl() const {

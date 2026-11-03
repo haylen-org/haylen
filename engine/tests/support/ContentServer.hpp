@@ -6,6 +6,7 @@
 #include <Poco/Net/StreamSocket.h>
 
 #include <atomic>
+#include <condition_variable>
 #include <cstdint>
 #include <filesystem>
 #include <map>
@@ -106,6 +107,8 @@ class ContentServer final {
     std::atomic<int> drops = 0;
     std::atomic<bool> stopping = false;
     mutable std::mutex mutex;
+    std::condition_variable idle;
+    int handlers = 0;
     std::map<std::string, int> versions;
     std::map<std::string, int> statuses;
     std::vector<Exchange> exchanges;
