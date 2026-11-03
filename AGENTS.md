@@ -7,6 +7,7 @@ This file is binding for every change. It describes the project as it is and the
 ## Core principles
 
 - No shortcuts, hacks, kludges, ad hoc workarounds, silent fallbacks, dead or obsolete code, legacy compatibility paths, backward-compatibility shims, or speculative abstractions. Fix root causes instead of masking symptoms. Implement the intended design directly, using the simplest correct, robust, and maintainable solution. Remove superseded implementations rather than preserving parallel code paths. Introduce abstractions only when justified by concrete requirements. Handle errors explicitly, never conceal failures, and never sacrifice correctness or architectural integrity for convenience.
+- The engine respects the limits of every system it runs on. It never tries to get around a restriction, a permission or a policy of a platform, never guesses what the system decides on its own, and never piles up attempts to beat it. A limit is handled as what it is, through the APIs the platform offers for it: an explicit error or exception with a clear message, a documented requirement, or a documented gap.
 - Replace or refactor code that no longer fits instead of carrying it forward, whatever the size of the change. There are no aliases for old names and no checks for how something used to work.
 - Only change what makes sense to change. Do not add code, tests, comments or files just to show work, and do not guard against situations that cannot happen.
 - Every change is finished only when it is implemented, exported to Lua, tested and documented.
