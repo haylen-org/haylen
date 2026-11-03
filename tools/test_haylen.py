@@ -2486,6 +2486,23 @@ class WebMemoryTest(unittest.TestCase):
                 haylen.check_web_memory_without_files({**refused, **change})
 
 
+class WebErrorScreenTest(unittest.TestCase):
+    def test_the_browsers_of_the_check_draw_through_swiftshader_so_webgpu_starts_without_a_gpu(self):
+        target = mock.Mock(plugins="web")
+        target.prepare.return_value = Path("site")
+        browsers = []
+
+        @contextlib.contextmanager
+        def browser(arguments, purpose):
+            browsers.append(arguments)
+            yield 0
+
+        with mock.patch.object(haylen, "App"), mock.patch.object(haylen, "serve_site"), mock.patch.object(haylen, "headless_browser", side_effect=browser), mock.patch.object(haylen, "emsdk_node"), mock.patch.object(haylen, "capture", return_value="{}"), mock.patch.object(haylen, "check_web_page_steps"), mock.patch.object(haylen, "terminal"):
+            haylen.check_web_error_screen(mock.Mock(), target)
+        self.assertEqual(len(browsers), 2 * len(haylen.WEB_ERROR_SCREEN_STEPS))
+        self.assertTrue(all(arguments == haylen.WEB_GPU_BROWSER_FLAGS for arguments in browsers))
+
+
 class CppReleaseTest(unittest.TestCase):
     """The Release configuration of a C++ project ships the protected release with the content tool of the desktop artifacts, and every other configuration turns it off again in the cache of the build tree."""
 

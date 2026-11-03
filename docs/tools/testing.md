@@ -263,7 +263,7 @@ haylen test --platform web
 A web page writes the clipboard only through the asynchronous clipboard API of the browser, which may refuse it, and a restart from the error screen creates a new GPU device, which WebGPU hands over only in a later turn of the event loop of the page. So `haylen test --platform web` first runs this check in a browser:
 
 1. It builds the release site of the app `engine/tests/data/web-error-screen`, which clears the canvas to magenta and stops with an error when the key E is pressed, and serves it.
-2. The driver `engine/tests/web/error-screen-check.mjs` opens the page in a headless Chrome that lets the page write the clipboard, stops the app and presses C on the error screen. The clipboard must then hold the report of the error.
+2. The driver `engine/tests/web/error-screen-check.mjs` opens the page in a headless Chrome that lets the page write the clipboard, stops the app and presses C on the error screen. Like the [GPU tests of the web](#the-gpu-tests), every browser of the check draws WebGPU and WebGL2 through SwiftShader, so both start on a machine without a GPU. The clipboard must then hold the report of the error.
 3. It presses R, and the app must start again and draw its magenta. Then it stops the app again, finds the restart button in a screenshot of the page and clicks it, with the same result.
 4. Then a browser that refuses every write of the clipboard and one without the clipboard API open the page. The copy must warn in the log of the page and leave the clipboard alone, and R must still bring the app back.
 5. Every page opens twice, with `?graphicsApi=webGpu` and with `?graphicsApi=webGl2`, and the app must draw through the API that the address names, since each restart makes a new GPU device of that API.
