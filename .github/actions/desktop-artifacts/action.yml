@@ -1,0 +1,36 @@
+name: Desktop artifacts
+description: Hands the desktop artifacts of the system, the player, the content tool and the SDK that the job "desktop-artifacts" of the system builds, to the other jobs of the same run through an artifact of the run, which no release and no other run reads and which GitHub deletes after a day. With "upload" the job that built them hands them over, and without it a job takes them where haylen.py finds them current, from the sources of the same commit.
+
+inputs:
+  upload:
+    description: Whether the job hands over the artifacts it built instead of taking them.
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    # A tar keeps the modes of the executables, which an artifact of the run drops.
+    - name: Pack the desktop artifacts
+      if: inputs.upload == 'true'
+      shell: bash
+      run: tar -cf desktop-artifacts.tar build/artifacts/desktop build/artifacts/manifest.json
+
+    - name: Hand the desktop artifacts to the other jobs of the run
+      if: inputs.upload == 'true'
+      uses: actions/upload-artifact@v7
+      with:
+        name: desktop-artifacts-${{ runner.os }}
+        path: desktop-artifacts.tar
+        retention-days: 1
+        if-no-files-found: error
+
+    - name: Take the desktop artifacts of the run
+      if: inputs.upload != 'true'
+      uses: actions/download-artifact@v8
+      with:
+        name: desktop-artifacts-${{ runner.os }}
+
+    - name: Unpack the desktop artifacts
+      if: inputs.upload != 'true'
+      shell: bash
+      run: tar -xf desktop-artifacts.tar && rm desktop-artifacts.tar

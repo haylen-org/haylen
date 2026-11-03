@@ -1,5 +1,5 @@
 name: Compiler cache
-description: Saves the compiler cache that the action "build-environment" restored, under the name of this run, and deletes the caches of the same name that earlier runs saved, so the repository keeps one compiler cache of each name. Only pushes to the default branch save, and the runs of other branches and of pull requests read its caches. A job runs it last, also when it fails or a newer push cancels it, so the next run starts from every object this one compiled.
+description: Saves the compiler cache that the action "build-environment" restored, under the name of this run, and deletes the caches of the same name that earlier runs saved, so the repository keeps one compiler cache of each name. Only the runs of the default branch save, pushed or started by hand, and the runs of other branches and of pull requests read its caches. A job runs it last, also when it fails or a newer push cancels it, so the next run starts from every object this one compiled.
 
 inputs:
   job-status:
@@ -12,7 +12,7 @@ runs:
     # A job that compiled nothing, such as one cancelled before its build, keeps the cache it restored. A job that ran to its end keeps only the objects it used, so the cache holds one build of the job and never grows, while a cancelled job keeps every object.
     - name: Keep the objects that this run used
       id: objects
-      if: env.COMPILER_CACHE != '' && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+      if: env.COMPILER_CACHE != '' && github.event_name != 'pull_request' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       shell: bash
       run: |
         ccache --show-stats

@@ -1,17 +1,18 @@
 name: CI
 
-# The workflow only tests: it publishes nothing, and tags and releases start no run. A change that touches only Markdown, the docs or the brand images starts no run either, since the tools tests check the docs on every machine before a commit.
+# The workflow only tests: it publishes nothing, and tags and releases start no run. Its jobs hand built engine artifacts to each other only within a run. A change that touches only Markdown, the docs or the brand images starts no run either, since the tools tests check the docs on every machine before a commit. A run started by hand tests the whole branch at once.
 on:
   push:
     branches: ["**"]
     paths-ignore: ["**.md", "docs/**", "extras/**"]
   pull_request:
     paths-ignore: ["**.md", "docs/**", "extras/**"]
+  workflow_dispatch:
 
-# A newer push to the same branch or pull request supersedes the run in progress, so only the run of the newest commit goes on.
+# A newer push to the same branch or pull request supersedes the run in progress, so only the run of the newest commit goes on. A run started by hand has a group of its own, so no push cancels it and it cancels nothing.
 concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  group: ci-${{ github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'changes' }}
+  cancel-in-progress: ${{ github.event_name != 'workflow_dispatch' }}
 
 # The jobs read the repository, and a run deletes the compiler caches that the runs before it saved.
 permissions:
@@ -231,9 +232,50 @@ jobs:
       - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
         run: python haylen.py --verbose test --gpu --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
 
-  # The release that the checks of the web build needs the content tool of the desktop artifacts, which links the libraries of Linux windows. The pages draw through WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas, and the macOS job of the test port checks them on WebGPU.
+  # The player, the content tool and the SDK of Linux and Windows build once per run, and the jobs that release apps take them from these jobs instead of building them again. The Linux artifacts link the libraries of Linux windows. The macOS artifacts build in the two macOS jobs that need them, since a job of their own would hold up the slices of the iOS job.
+  desktop-artifacts-linux:
+    name: Desktop artifacts on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+          cache: desktop-artifacts
+          cache-size: 600M
+      - name: Build the player, the content tool and the SDK of Linux
+        run: python haylen.py --verbose engine --platform desktop --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/desktop-artifacts
+        with:
+          upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+        with:
+          job-status: ${{ job.status }}
+
+  desktop-artifacts-windows:
+    name: Desktop artifacts on Windows
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          cache: desktop-artifacts
+          cache-size: 600M
+      - name: Build the player, the content tool and the SDK of Windows
+        run: python haylen.py --verbose engine --platform desktop --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/desktop-artifacts
+        with:
+          upload: "true"
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+        with:
+          job-status: ${{ job.status }}
+
+  # The release that the checks of the web build takes the content tool of the desktop artifacts. The pages draw through WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas, and the macOS job of the test port checks them on WebGPU.
   web:
     name: Web
+    needs: desktop-artifacts-linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -243,6 +285,7 @@ jobs:
           cache: web
           cache-size: 800M
           emscripten: "true"
+      - uses: ./.github/actions/desktop-artifacts
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
       - name: Check the error screen, the wake lock and the memory of pages on WebGL2 in the headless Chrome of the runner
@@ -255,6 +298,7 @@ jobs:
   # The keys of this job are made for it and thrown away with the runner, so no secret is involved. The job builds the same artifacts as the web job, so it reads the compiler cache of that job.
   release:
     name: Protected web release
+    needs: desktop-artifacts-linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -264,6 +308,7 @@ jobs:
           cache: web
           cache-size: 800M
           emscripten: "true"
+      - uses: ./.github/actions/desktop-artifacts
       - name: Build the protected release of the test project for the web
         run: python haylen.py --verbose prepare samples/tests --platform web --config Release --jobs ${{ env.JOBS }}
       - name: Inspect it for anything a release never holds
@@ -298,9 +343,10 @@ jobs:
       - name: Run the GPU tests on the emulator
         run: python haylen.py --verbose test --gpu --platform android --jobs ${{ env.JOBS }}
 
-  # The protected release of an Android app takes the content tool of the desktop artifacts, which links the libraries of Linux windows.
+  # The protected release of an Android app takes the content tool of the desktop artifacts.
   android:
     name: Android
+    needs: desktop-artifacts-linux
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -315,7 +361,8 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: android
-          cache-size: 1800M
+          cache-size: 2200M
+      - uses: ./.github/actions/desktop-artifacts
       - name: Build the Android library and publish it to the local Maven repository
         run: python haylen.py --verbose engine --platform android --jobs ${{ env.JOBS }}
       - name: Create the starter app
@@ -370,6 +417,7 @@ jobs:
 
   desktop-apps:
     name: Desktop apps on ${{ matrix.system }}
+    needs: [desktop-artifacts-linux, desktop-artifacts-windows]
     strategy:
       fail-fast: false
       matrix:
@@ -388,6 +436,7 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
           cache: desktop-apps
           cache-size: 600M
+      - uses: ./.github/actions/desktop-artifacts
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
         run: pip install cmake
@@ -409,6 +458,7 @@ jobs:
         with:
           job-status: ${{ job.status }}
 
+  # The Debug build of the C++ template compiles the engine with the app, and the Release build ships its protected release with the content tool of the desktop artifacts, each in a job of its own.
   cpp-apps:
     name: C++ apps on ${{ matrix.system }}
     strategy:
@@ -417,10 +467,10 @@ jobs:
         include:
           - runner: ubuntu-latest
             system: Linux
-            cache-size: 1200M
+            cache-size: 900M
           - runner: windows-latest
             system: Windows
-            cache-size: 2300M
+            cache-size: 2500M
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
@@ -433,6 +483,35 @@ jobs:
         run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build the starter C++ app from the C++ template
         run: python haylen.py --verbose run build/starter-cpp --build-only --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+        with:
+          job-status: ${{ job.status }}
+
+  cpp-releases:
+    name: C++ releases on ${{ matrix.system }}
+    needs: [desktop-artifacts-linux, desktop-artifacts-windows]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            system: Linux
+            cache-size: 900M
+          - runner: windows-latest
+            system: Windows
+            cache-size: 1500M
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          packages: ${{ env.LINUX_PACKAGES }}
+          cache: cpp-releases
+          cache-size: ${{ matrix.cache-size }}
+      - uses: ./.github/actions/desktop-artifacts
+      - name: Create the starter C++ app
+        run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build and check the protected release of the starter C++ app
         run: python haylen.py --verbose run build/starter-cpp --config Release --build-only --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
