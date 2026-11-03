@@ -179,8 +179,8 @@ CPMAddPackage(
 # HarfBuzz shapes text with the OpenType tables of its font: ligatures, contextual forms, mark positioning and kerning.
 CPMAddPackage(
   NAME harfbuzz
-  URL "https://github.com/harfbuzz/harfbuzz/releases/download/14.6.0/harfbuzz-14.6.0.tar.xz"
-  URL_HASH SHA256=d07a007327277708a2a73ae437887cdbaf282937f6d03ca5467723e9099af586
+  URL "https://github.com/harfbuzz/harfbuzz/releases/download/15.0.0/harfbuzz-15.0.0.tar.xz"
+  URL_HASH SHA256=968536e9abd782f07f7954044c0c4020199fcdd39b41d221ec42d2a3be4a44df
   DOWNLOAD_ONLY YES
 )
 
