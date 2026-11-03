@@ -4759,7 +4759,8 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
 
 # Serving a package: `serve <app>` serves the zip of the package of a Lua app and its development server on the local network, for a player on another device that downloads the package and launches it in development with the option `developmentServer` of `haylen.launch`.
 
-PACKAGE_PATH = "/haylen/app.zip"
+# The zip of the package, with the token of the run in its path, so its address holds only letters, digits and the marks that every keyboard of a phone or a TV types on its first pages.
+PACKAGE_PATH = re.compile(r"/haylen/([0-9a-f]+)/app\.zip")
 # The header of the zip that names the development server with its token, so a player plays the app with hot reload from the address of the zip alone.
 DEVELOPMENT_HEADER = "Haylen-Development-Server"
 
@@ -4776,10 +4777,11 @@ class PackageHandler(http.server.BaseHTTPRequestHandler):
         if parts.path == DEVELOPMENT_PATH:
             self.development.accept(self)
             return
-        if parts.path != PACKAGE_PATH:
+        package = PACKAGE_PATH.fullmatch(parts.path)
+        if package is None:
             self.send_error(404, "The server only serves the zip of the app and its development path.")
             return
-        if urllib.parse.parse_qs(parts.query).get("token") != [self.development.token]:
+        if package[1] != self.development.token:
             self.send_error(403, "The server needs the token of this run.")
             return
         self.send_response(200)
@@ -4818,7 +4820,7 @@ def serve_app(app: Path, args: argparse.Namespace) -> None:
         reached = lan_address() if listen == "0.0.0.0" else listen
     except OSError as error:
         raise BuildError(f'This machine has no address on a network that devices reach: {error.strerror}. Join a network, or name the address with "--host".') from error
-    address = f"http://{reached}:{args.port}{PACKAGE_PATH}?token={development.token}"
+    address = f"http://{reached}:{args.port}/haylen/{development.token}/app.zip"
     handler = type("Handler", (PackageHandler,), {"development": development, "archive": archive, "development_address": f"ws://{reached}:{args.port}{DEVELOPMENT_PATH}?token={development.token}"})
     try:
         server = LocalServer((listen, args.port), handler)

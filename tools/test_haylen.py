@@ -3069,12 +3069,13 @@ class PackageServerTest(unittest.TestCase):
             response = connection.getresponse()
             return response, response.read()
 
-        response, body = get(f"{haylen.PACKAGE_PATH}?token={development.token}")
+        response, body = get(f"/haylen/{development.token}/app.zip")
         self.assertEqual(response.status, 200)
         self.assertEqual(body, archive.read_bytes())
         self.assertEqual(response.getheader(haylen.DEVELOPMENT_HEADER), "ws://192.168.1.20:8000/haylen/development?token=0123456789ab")
         self.assertEqual(response.getheader("Access-Control-Expose-Headers"), haylen.DEVELOPMENT_HEADER)
-        self.assertEqual(get(f"{haylen.PACKAGE_PATH}?token=wrong")[0].status, 403)
+        self.assertEqual(get("/haylen/0123456789ab/app.zip")[0].status, 403)
+        self.assertEqual(get(f"/haylen/app.zip?token={development.token}")[0].status, 404)
         self.assertEqual(get("/app.json")[0].status, 404)
 
     def test_only_the_package_of_a_lua_app_is_served(self):
