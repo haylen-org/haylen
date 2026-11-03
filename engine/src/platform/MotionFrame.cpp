@@ -48,7 +48,7 @@ std::array<float, 4> MotionFrame::fromAngles(double alpha, double beta, double g
     return multiply(multiply(aroundZ, aroundX), aroundY);
 }
 
-// Browsers measure the push that holds the device up, as the engine does, and the rotation rate in degrees per second named after the angles: alpha around z, beta around x and gamma around y.
+// Browsers measure the push that holds the device up, as the engine does, and the rotation rate in degrees per second that they name alpha, beta and gamma for the x, y and z axes.
 void MotionFrame::readBrowser(input::MotionState& state, const std::array<float, 9>& values, const std::bitset<input::Controls::kMotionSensorCount>& sensors, int quarterTurns) noexcept {
     constexpr float kRadiansPerDegree = std::numbers::pi_v<float> / 180.0F;
     state.sensors = sensors;
@@ -56,7 +56,7 @@ void MotionFrame::readBrowser(input::MotionState& state, const std::array<float,
         state.acceleration = {values[0], values[1], values[2]};
     }
     if (sensors.test(static_cast<std::size_t>(input::MotionSensor::Gyroscope))) {
-        state.rotationRate = {values[4] * kRadiansPerDegree, values[5] * kRadiansPerDegree, values[3] * kRadiansPerDegree};
+        state.rotationRate = {values[3] * kRadiansPerDegree, values[4] * kRadiansPerDegree, values[5] * kRadiansPerDegree};
     }
     if (sensors.test(static_cast<std::size_t>(input::MotionSensor::Attitude))) {
         state.attitude = fromAngles(values[6], values[7], values[8]);

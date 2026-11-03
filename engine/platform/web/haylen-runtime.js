@@ -1280,7 +1280,7 @@ Module.haylen = Module.haylen || {};
         notify("onStats", stats);
     };
 
-    // The motion of the device from the motion and orientation events of the page, which the runtime listens to only while the engine runs its sensors. Safari asks the person first, only during a tap or a click, and until the page loads again, while the other browsers ask nothing. The values hold the acceleration with gravity, the rotation rate as alpha, beta and gamma in degrees per second, and the angles alpha, beta and gamma of the attitude.
+    // The motion of the device from the motion and orientation events of the page, which the runtime listens to only while the engine runs its sensors. Safari asks the person first, only during a tap or a click, and until the page loads again, while the other browsers ask nothing. The values hold the acceleration with gravity, the rotation rate around x, y and z in degrees per second, which browsers name alpha, beta and gamma, and the angles alpha, beta and gamma of the attitude.
     haylen.motion = (function () {
         const values = new Float32Array(9);
         const gated = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function";

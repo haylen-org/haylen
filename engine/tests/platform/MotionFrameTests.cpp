@@ -58,8 +58,8 @@ TEST_F(MotionFrameTest, ReadsTheAnglesOfBrowsers) {
     MotionFrame::readBrowser(state, values, sensors, 0);
     EXPECT_EQ(state.sensors, sensors);
     EXPECT_FLOAT_EQ(state.acceleration[2], 9.81F);
-    EXPECT_NEAR(state.rotationRate[0], std::numbers::pi_v<float>, 1.0e-5F);
-    EXPECT_NEAR(state.rotationRate[2], std::numbers::pi_v<float> / 2.0F, 1.0e-5F);
+    EXPECT_NEAR(state.rotationRate[0], std::numbers::pi_v<float> / 2.0F, 1.0e-5F);
+    EXPECT_NEAR(state.rotationRate[1], std::numbers::pi_v<float>, 1.0e-5F);
     expectNear(state.attitude, {0.0F, 0.0F, 0.0F, 1.0F});
 }
 
