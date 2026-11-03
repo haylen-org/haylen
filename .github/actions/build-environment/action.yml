@@ -1,5 +1,5 @@
 name: Build environment
-description: Installs what a job of the workflow builds the engine with, restores the sources of the dependencies, and compiles through a cache of compiled objects that the next run of the job starts from.
+description: Installs what a job of the workflow builds the engine with, restores the sources of the dependencies, and compiles through the cache of compiled objects that the last run of the job saved.
 
 inputs:
   packages:
@@ -9,14 +9,11 @@ inputs:
     description: Whether the job saves the sources of the dependencies that its builds fetch, which the desktop job of each system does, while the other jobs of the system only read them.
     default: "false"
   cache:
-    description: The name of the compiler cache, which the system, the processor and, for builds with Emscripten, its version complete. Jobs that compile the same build trees share one, and a job without one compiles without a cache.
+    description: The name of the compiler cache, which the system, the processor and, for builds with Emscripten, its version complete. Jobs that compile the same build trees share one, and a job without one compiles without a cache. A job that saves the cache ends with the action "compiler-cache".
     default: ""
   cache-size:
     description: The largest size of the compiler cache, above every object that one run of the job compiles, since a smaller cache drops what the next run needs.
     default: ""
-  save-cache:
-    description: Whether the job saves its compiler cache, or only reads the cache that another job saves for the same build trees.
-    default: "true"
   emscripten:
     description: Whether the job compiles with Emscripten, whose version then keys the compiler cache.
     default: "false"
@@ -31,7 +28,7 @@ runs:
     - name: Install the Linux packages
       if: runner.os == 'Linux' && inputs.packages != ''
       shell: bash
-      run: sudo apt-get update && sudo apt-get install -y ${{ inputs.packages }}
+      run: sudo apt-get update && sudo apt-get install -y ${{ inputs.packages }} ${{ inputs.cache != '' && 'ccache' || '' }}
 
     - name: Set up MSVC
       if: runner.os == 'Windows'
@@ -64,15 +61,35 @@ runs:
         path: .cache/cpm
         key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
 
-    # Before the cache is saved, it drops the objects that no run used for a day, so a run that a newer push cancels early keeps the objects of the runs before it.
+    - name: Install ccache on macOS
+      if: inputs.cache != '' && runner.os == 'macOS'
+      shell: bash
+      env:
+        HOMEBREW_NO_AUTO_UPDATE: "1"
+      run: brew install ccache
+
+    - name: Install ccache on Windows
+      if: inputs.cache != '' && runner.os == 'Windows'
+      shell: bash
+      run: choco install ccache --no-progress
+
+    # The name of the cache ends with the run that saves it, so a run restores the newest cache of its name.
+    - name: Name the compiler cache
+      if: inputs.cache != ''
+      shell: bash
+      run: |
+        echo "COMPILER_CACHE=ccache-${{ inputs.cache }}-${{ runner.os }}-${{ runner.arch }}${{ inputs.emscripten == 'true' && format('-emscripten-{0}', steps.machine.outputs.emscripten) || '' }}-" >> "$GITHUB_ENV"
+        echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> "$GITHUB_ENV"
+        echo "CCACHE_MAXSIZE=${{ inputs.cache-size }}" >> "$GITHUB_ENV"
+        echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+
     - name: Restore the compiler cache
       if: inputs.cache != ''
-      uses: hendrikmuhs/ccache-action@v1.2.24
+      uses: actions/cache/restore@v6
       with:
-        key: ${{ inputs.cache }}-${{ runner.os }}-${{ runner.arch }}${{ inputs.emscripten == 'true' && format('-emscripten-{0}', steps.machine.outputs.emscripten) || '' }}
-        max-size: ${{ inputs.cache-size }}
-        evict-old-files: 1d
-        save: ${{ inputs.save-cache }}
+        path: .ccache
+        key: ${{ env.COMPILER_CACHE }}${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: ${{ env.COMPILER_CACHE }}
 
     - name: Compile through the compiler cache
       if: inputs.cache != ''

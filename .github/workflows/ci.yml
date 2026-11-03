@@ -13,6 +13,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# The jobs read the repository, and a run deletes the compiler caches that the runs before it saved.
+permissions:
+  contents: read
+  actions: write
+
 env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
   # The development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL.
@@ -85,6 +90,8 @@ jobs:
       - name: Run the GPU tests on Metal
         if: runner.os == 'macOS'
         run: python haylen.py --verbose test --gpu --config Debug --graphics-api metal --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The test port and the SDK build trees of their own, so they build next to the engine tests instead of after them.
   desktop-port:
@@ -109,6 +116,8 @@ jobs:
           cache-size: 1G
       - name: Build the engine with the test port and play its app on it
         run: python haylen.py --verbose test --port --config Debug --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   desktop-sdk:
     name: SDK on ${{ matrix.system }}
@@ -132,6 +141,8 @@ jobs:
           cache-size: 1G
       - name: Build the SDK and a project that finds it with "find_package"
         run: python haylen.py --verbose sdk --config Release --check-consumers package --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The Intel runners of macOS are virtual machines without a Metal device, so they build the engine for x86-64 and run the engine tests on the null device alone, and the Metal paths of Intel Macs stay untested in CI. The report of the displays shows whether a runner gained a Metal device.
   macos-intel:
@@ -156,7 +167,6 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: desktop
           cache-size: 2G
-          save-cache: "false"
       - name: Build the headless player
         run: python haylen.py --verbose build --config Debug --target haylen-headless --jobs ${{ env.JOBS }}
       - name: Build the test library that the native tests load next to the player
@@ -229,6 +239,8 @@ jobs:
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
       - name: Check the error screen, the wake lock and the memory of pages in the headless Chrome of the runner
         run: python haylen.py --verbose test --platform web --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # The keys of this job are made for it and thrown away with the runner, so no secret is involved. The job builds the same artifacts as the web job, so it reads the compiler cache of that job.
   release:
@@ -241,7 +253,6 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: web
           cache-size: 1G
-          save-cache: "false"
           emscripten: "true"
       - name: Build the protected release of the test project for the web
         run: python haylen.py --verbose prepare samples/tests --platform web --config Release --jobs ${{ env.JOBS }}
@@ -303,6 +314,8 @@ jobs:
         run: python haylen.py --verbose distribution android-key build/starter
       - name: Build and check its protected release APK
         run: python haylen.py --verbose run build/starter --platform android --config Release --build-only --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   # Every family of slices of "Haylen.xcframework" builds in a job of its own, and the iOS job also builds the starter app for the simulator from the slices it built.
   apple:
@@ -338,6 +351,8 @@ jobs:
       - name: Build and check its protected release for the iOS simulator
         if: matrix.family == 'iOS'
         run: python haylen.py --verbose run build/starter --platform ios-simulator --config Release --build-only --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   desktop-apps:
     name: Desktop apps on ${{ matrix.system }}
@@ -375,6 +390,8 @@ jobs:
       - name: Validate the desktop entry
         if: runner.os == 'Linux'
         run: desktop-file-validate build/apps/starter-*/installed/linux/share/applications/*.desktop
+      - uses: ./.github/actions/compiler-cache
+        if: always()
 
   cpp-apps:
     name: C++ apps on ${{ matrix.system }}
@@ -400,3 +417,5 @@ jobs:
         run: python haylen.py --verbose run build/starter-cpp --build-only --jobs ${{ env.JOBS }}
       - name: Build and check the protected release of the starter C++ app
         run: python haylen.py --verbose run build/starter-cpp --config Release --build-only --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()

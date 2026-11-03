@@ -1,0 +1,27 @@
+name: Compiler cache
+description: Saves the compiler cache that the action "build-environment" restored, under the name of this run, and deletes the caches of the same name that earlier runs of the branch saved, so the repository keeps one compiler cache of each name. A job runs it last, also when it fails or a newer push cancels it, so the next run starts from every object this one compiled.
+
+runs:
+  using: composite
+  steps:
+    # The objects that a run reuses stay, and the ones that no run used for a day leave, so a run cancelled early keeps the objects of the runs before it.
+    - name: Drop the objects that no run used for a day
+      if: env.COMPILER_CACHE != ''
+      shell: bash
+      run: ccache --evict-older-than 1d && ccache --show-stats
+
+    - name: Save the compiler cache
+      if: env.COMPILER_CACHE != ''
+      uses: actions/cache/save@v6
+      with:
+        path: .ccache
+        key: ${{ env.COMPILER_CACHE }}${{ github.run_id }}-${{ github.run_attempt }}
+
+    # Pull requests may come from forks, whose runs cannot delete caches, so only pushes clean up after themselves.
+    - name: Delete the compiler caches of earlier runs
+      if: env.COMPILER_CACHE != '' && github.event_name == 'push'
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SAVED: ${{ env.COMPILER_CACHE }}${{ github.run_id }}-${{ github.run_attempt }}
+      run: gh cache list --repo "$GITHUB_REPOSITORY" --ref "$GITHUB_REF" --key "$COMPILER_CACHE" --limit 100 --json id,key --jq ".[] | select(.key != \"$SAVED\") | .id" | while read -r id; do gh cache delete "$id" --repo "$GITHUB_REPOSITORY"; done
