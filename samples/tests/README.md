@@ -681,6 +681,7 @@ Hot reload while the project runs in development, with "haylen run samples/tests
 | `DEV-009` | Profiler traces | A trace of 60 frames with the scopes of the frame, the jobs of the workers and the time of the GPU, written to user storage and counted by kind. |  |
 | `DEV-010` | Crashes and breadcrumbs | Breadcrumbs with their event, the report of the native crash that ended the last run and a button that crashes the app. |  |
 | `DEV-011` | Inspector | A watched table and camera listed and edited through the inspector, an edit that a setter refuses and the inspector window. |  |
+| `DEV-012` | Debugger | A counter whose function takes a breakpoint of an attached editor and a button that halts the app with `debug.breakpoint`. |  |
 
 #### Files and storage (FIL)
 

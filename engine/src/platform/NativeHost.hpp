@@ -101,6 +101,9 @@ class NativeHost : public Host {
     [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
         return developmentSession.get();
     }
+    [[nodiscard]] bool canHaltFrames() const noexcept override {
+        return true;
+    }
     [[nodiscard]] bool isLaunched() const noexcept override {
         return launched;
     }

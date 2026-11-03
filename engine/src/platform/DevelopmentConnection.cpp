@@ -6,6 +6,7 @@
 #include <string_view>
 #include <utility>
 
+#include "debug/Debugger.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/core/Version.hpp"
 #include "haylen/io/PackageWatcher.hpp"
@@ -65,6 +66,11 @@ void DevelopmentConnection::pump() {
         open();
         return;
     }
+    if (!held.empty() && !session.getDebugger().isHalted()) {
+        for (const auto& [data, binary] : std::exchange(held, {})) {
+            receive(data, binary);
+        }
+    }
     socket->pump();
 }
 
@@ -76,6 +82,7 @@ void DevelopmentConnection::open() {
     socket->opened.connect([this] { sendHello(); });
     socket->received.connect([this](std::string_view data, bool binary) { receive(data, binary); });
     socket->failed.connect([](std::string_view message) { core::Log::warning("The development server is out of reach: {}", message); });
+    socket->disconnected.connect([this](int, std::string_view) { session.getDebugger().reset(); });
 }
 
 // The session and revision of the last batch tell the server which files the app already has, so after a restart of the server or the app it sends only what changed since.
@@ -96,7 +103,19 @@ void DevelopmentConnection::report(const core::Json& value) {
     socket->send(message.dump());
 }
 
+// Lua strings may hold any bytes, which the text of the message replaces where they are no UTF-8.
+void DevelopmentConnection::sendDebug(const core::Json& value) {
+    if (socket && socket->getState() == net::WebSocket::State::Open) {
+        socket->send(core::Json{{"type", "debug"}, {"message", value}}.dump(-1, ' ', false, core::Json::error_handler_t::replace));
+    }
+}
+
 void DevelopmentConnection::receive(std::string_view data, bool binary) {
+    const bool halted = session.getDebugger().isHalted();
+    if (binary && halted) {
+        held.emplace_back(data, true);
+        return;
+    }
     if (binary) {
         if (batch.is_object()) {
             contents.emplace_back(reinterpret_cast<const std::uint8_t*>(data.data()), reinterpret_cast<const std::uint8_t*>(data.data()) + data.size());
@@ -109,6 +128,14 @@ void DevelopmentConnection::receive(std::string_view data, bool binary) {
 
     const core::Json message = core::Json::parse(data, nullptr, false);
     const std::string type = readText(message, "type");
+    if (type == "debug" && message.contains("message")) {
+        session.getDebugger().receive(message.at("message"));
+        return;
+    }
+    if (halted) {
+        held.emplace_back(data, false);
+        return;
+    }
     if (type == "shaderError") {
         core::Log::error("The shader \"{}\" did not compile: {}", readText(message, "path"), readText(message, "message"));
         return;

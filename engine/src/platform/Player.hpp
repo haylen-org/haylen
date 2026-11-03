@@ -95,6 +95,9 @@ class Player final {
     // The development session of the process, or null when it plays the app the way it ships.
     [[nodiscard]] static DevelopmentSession* getDevelopmentSession() noexcept;
 
+    // Whether the Lua debugger halts the app inside a frame, while the events that reach the player wait for the frames after the halt and the platform layer runs no frame.
+    [[nodiscard]] static bool isHalted() noexcept;
+
     // Ends the running app and leaves an empty screen until the next restart.
     static void stop();
 

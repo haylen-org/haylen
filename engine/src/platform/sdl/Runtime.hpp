@@ -90,6 +90,9 @@ class Runtime final {
     // Ends the app at once as its window closes, after telling it that the system asked it to quit, for the system that ends the process right after.
     void terminate();
 
+    // Processes the events of the platform while the debugger halts the frame thread and returns whether the person or the system asks the app to quit.
+    [[nodiscard]] bool pumpHaltedEvents();
+
   private:
     // The highest number of iterations per second while the window shows nothing, minimized or hidden, which the display no longer paces, so the app keeps running timers and network callbacks without spending a core.
     static constexpr const char* kHiddenRate = "60";

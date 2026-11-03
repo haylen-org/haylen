@@ -41,6 +41,11 @@ void AndroidHost::closeWindow() {
     runtime.quit();
 }
 
+// The UI thread hands the frame thread its lifecycle and input through a queue that waits for the halt to end, and only the end of the window or the activity holds the UI thread until the frame thread handles it.
+bool AndroidHost::pumpHaltedEvents() {
+    return runtime.isEnding();
+}
+
 TextInput& AndroidHost::getTextInput() noexcept {
     return Services::getTextInput();
 }

@@ -55,6 +55,17 @@ bool AndroidMessageQueue::pop(Message& message) {
     return true;
 }
 
+bool AndroidMessageQueue::isEnding() {
+    const std::scoped_lock lock(mutex);
+    for (std::size_t index = 0; index < count; ++index) {
+        const Payload& payload = items[(head + index) % items.size()].payload;
+        if (const Signal* signal = std::get_if<Signal>(&payload); signal != nullptr && (*signal == Signal::WindowDestroyed || *signal == Signal::Destroyed)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void AndroidMessageQueue::markHandled(std::uint64_t sequence) {
     {
         const std::scoped_lock lock(mutex);

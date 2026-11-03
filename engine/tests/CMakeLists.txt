@@ -112,6 +112,8 @@ set(HAYLEN_TEST_SOURCES
   core/TweenTests.cpp
   debug/ConsoleTests.cpp
   debug/DebugTests.cpp
+  debug/DebuggerConnectionTests.cpp
+  debug/DebuggerTests.cpp
   debug/DrawingTests.cpp
   debug/HotReloadTests.cpp
   debug/InspectorTests.cpp
@@ -208,6 +210,7 @@ set(HAYLEN_TEST_SOURCES
   support/ContentParsers.cpp
   support/ContentServer.cpp
   support/CountingPackage.cpp
+  support/DebugClient.cpp
   support/EngineFixture.cpp
   support/EventLoop.cpp
   support/FakeVideoDecoder.cpp

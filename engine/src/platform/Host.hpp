@@ -172,6 +172,12 @@ class Host : public Window {
     // The development session of a process that plays an app while it is being made, or null for every app that ships. It outlives the apps that restart on the host.
     [[nodiscard]] virtual DevelopmentSession* getDevelopmentSession() const noexcept = 0;
 
+    // Whether the Lua debugger may halt the frame thread while the platform keeps running, which a web page cannot, since it runs the app on the thread that delivers every message.
+    [[nodiscard]] virtual bool canHaltFrames() const noexcept = 0;
+
+    // Keeps the platform responsive while the Lua debugger halts the frame thread: it processes the pending window and system events, which reach the app only once it goes on, and returns whether the platform asks the frame to finish, such as a quit or a window that goes away.
+    [[nodiscard]] virtual bool pumpHaltedEvents() = 0;
+
     // Opens an output on a display that does not show the window, which the platform announces with `Event::Type::OutputChanged` for its number whenever its report changes: once it shows with its surface, when the surface resizes, goes away or comes back, and once it ends. The report keeps the surface of the last announcement until the frame thread reads the next one, and a platform without outputs on that display ends the output with `Output::Ending::Unsupported` and its reason.
     virtual void openOutput(std::uint32_t number, std::string_view display, const Output::Options& options) = 0;
 

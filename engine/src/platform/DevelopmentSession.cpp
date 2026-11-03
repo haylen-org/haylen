@@ -5,6 +5,7 @@
 #include <optional>
 #include <utility>
 
+#include "debug/Debugger.hpp"
 #include "haylen/core/Log.hpp"
 #include "io/OverlayPackage.hpp"
 #include "platform/DevelopmentConnection.hpp"
@@ -12,7 +13,15 @@
 
 namespace haylen::platform {
 
+// The debugger talks to its client through the connection, and while it halts the app it pumps the connection itself, since no frame pumps it then.
 DevelopmentSession::DevelopmentSession(Host& host, std::optional<std::filesystem::path> folder, std::string server) {
+    // clang-format off
+    debugger = std::make_unique<debug::Debugger>(host, [this](const core::Json& message) {
+        if (connection) {
+            connection->sendDebug(message);
+        }
+    }, [this] { pump(); });
+    // clang-format on
     if (folder) {
         watcher = std::make_unique<io::PackageWatcher>(*folder);
         core::Log::info("Watching \"{}\" for changes.", folder->generic_string());

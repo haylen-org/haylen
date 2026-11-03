@@ -379,6 +379,28 @@ class HeadlessHost final : public Host {
     [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {
         return developmentSession.get();
     }
+    [[nodiscard]] bool canHaltFrames() const noexcept override {
+        return haltable;
+    }
+    // No person watches a headless app, so a halt whose client never lets it go on ends at a bound instead of holding a test forever.
+    [[nodiscard]] bool pumpHaltedEvents() override {
+        ++haltedPumps;
+        return finishingHalts || haltedPumps > kMaxHaltedPumps;
+    }
+
+    // Whether the debugger may halt the frames, which a test turns off to play a web page, and whether the platform asks a halted frame to finish, as a quit does.
+    void setHaltable(bool value) noexcept {
+        haltable = value;
+    }
+    void setFinishingHalts(bool value) noexcept {
+        finishingHalts = value;
+    }
+
+    // How often the debugger kept the platform responsive while it halted.
+    [[nodiscard]] int getHaltedPumps() const noexcept {
+        return haltedPumps;
+    }
+
     [[nodiscard]] bool isLaunched() const noexcept override {
         return launched;
     }
@@ -674,7 +696,12 @@ class HeadlessHost final : public Host {
     std::vector<std::uint64_t> cancelledScreens;
     std::filesystem::path crashReport;
     std::string crashContext;
+    static constexpr int kMaxHaltedPumps = 2000;
+
     std::unique_ptr<DevelopmentSession> developmentSession;
+    bool haltable = true;
+    bool finishingHalts = false;
+    int haltedPumps = 0;
     bool launched = false;
     const audio::OutputBackend* audioOutput = nullptr;
     bool opensUrls = true;

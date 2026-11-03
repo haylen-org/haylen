@@ -4668,6 +4668,7 @@ def run_rows(app: App, device: str, args: argparse.Namespace, session: RunSessio
     rows = [("App", f'{app.name} ("{app.identifier}")'), ("Device", device), ("Configuration", f'"{args.config}", with the engine in "{args.engine_config}"')]
     if session.development is not None:
         rows.append(("Hot reload", "Every file saved in the app reloads in it"))
+        rows.append(("Debugger", f"Attach an editor to port {session.development.debugger.port} of this machine"))
     return rows
 
 
@@ -4702,6 +4703,11 @@ def run_session(app: App, package: Path, args: argparse.Namespace, device: str |
     except OSError as error:
         raise BuildError(f'The development server cannot listen on port {args.port} of "{listen}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
     threading.Thread(target=server.serve_forever, daemon=True).start()
+    try:
+        development.listen_debugger(args.debugger_port)
+    except BuildError:
+        server.server_close()
+        raise
     stop = threading.Event()
     threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
     if device is not None:
@@ -4711,6 +4717,7 @@ def run_session(app: App, package: Path, args: argparse.Namespace, device: str |
             yield session
     finally:
         stop.set()
+        development.close()
         server.shutdown()
         server.server_close()
         if device is not None:
@@ -4727,12 +4734,15 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
     development = start_web_development(app, site) if args.config != "Release" else None
     stop = threading.Event()
     if development is not None:
+        development.listen_debugger(args.debugger_port)
         threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
     try:
         with RunSession(development) as session:
             serve(site, args.host, args.port, args.coep, args.coop, args.open, development, session, app)
     finally:
         stop.set()
+        if development is not None:
+            development.close()
 
 
 # Windows and Linux: the CMake project of `platform/windows` or `platform/linux` includes `haylen/haylen.cmake`, which brings the SDK of the desktop artifacts, the package, the native libraries and the values of `app.json`, and haylen.py builds it in place and installs the app into the build folder of the app.
@@ -6585,6 +6595,7 @@ def serve(directory: Path, host: str, port: int, coep: str = "off", coop: str = 
             rows = [("App", f'{app.name} ("{app.identifier}")'), ("Page", f"`{url}`"), ("Site", f"`{shown_path(directory)}`")]
             if development is not None:
                 rows.append(("Hot reload", "Every file saved in the app reloads in the open pages"))
+                rows.append(("Debugger", f"Attach an editor to port {development.debugger.port} of this machine, for log points, since a page cannot halt"))
             session.show(rows, server.shutdown)
         if open_page:
             webbrowser.open(url)
@@ -6680,6 +6691,186 @@ class DevelopmentClient:
             return False
 
 
+# The debugger: an editor attaches to a TCP port of this machine with the Debug Adapter Protocol, and the development server carries its messages to the app, whose engine runs the debugger itself.
+
+DEBUGGER_PORT = 4711
+# The requests that configure the debugger, which the relay sends again to an app that connects after them, such as one that restarted.
+DEBUGGER_CONFIGURATION = ("initialize", "attach", "setBreakpoints", "setExceptionBreakpoints", "configurationDone")
+# The sequence numbers of the requests that the relay sends again start here, so the answers of the app to them never reach the editor.
+DEBUGGER_REPLAY_SEQUENCE = 1 << 40
+
+
+def read_debug_message(stream) -> dict | None:
+    """Reads one message of the Debug Adapter Protocol, a header with its length and a JSON body, and returns nothing once the connection ended."""
+    length = None
+    while True:
+        line = stream.readline()
+        if not line:
+            return None
+        line = line.strip()
+        if not line:
+            break
+        name, _, value = line.decode("ascii", errors="replace").partition(":")
+        if name.strip().lower() == "content-length":
+            length = int(value.strip())
+    if length is None:
+        return None
+    body = stream.read(length)
+    if len(body) < length:
+        return None
+    return json.loads(body)
+
+
+def debug_message_frame(message: dict) -> bytes:
+    body = json.dumps(message).encode()
+    return f"Content-Length: {len(body)}\r\n\r\n".encode() + body
+
+
+def debug_source_paths(value, convert: Callable[[str], str]):
+    """Returns the message with the path of every source in it turned by the function, such as the path of a breakpoint or of a frame of the stack."""
+    if isinstance(value, list):
+        return [debug_source_paths(item, convert) for item in value]
+    if not isinstance(value, dict):
+        return value
+    converted = {key: debug_source_paths(item, convert) for key, item in value.items()}
+    source = converted.get("source")
+    if isinstance(source, dict) and isinstance(source.get("path"), str):
+        converted["source"] = {**source, "path": convert(source["path"])}
+    return converted
+
+
+class DebugRelay:
+    """Carries the messages of the Debug Adapter Protocol between one editor, which attaches to a TCP port of this machine, and the app that connected last to the development server, whose engine runs the debugger. The paths of the editor become package paths, such as `source/main.lua`, and back. The relay keeps the requests that configure the debugger and sends them again to an app that connects later, such as one that restarted, answering none of them twice, and holds the requests of the editor while no app is connected."""
+
+    def __init__(self, folder: Path, port: int) -> None:
+        self.folder = folder.resolve()
+        try:
+            self.listener = socket.create_server(("127.0.0.1", port))
+        except OSError as error:
+            raise BuildError(f'The debugger cannot listen on port {port}: {error.strerror}. Stop what uses the port, or pick another one with "--debugger-port".') from error
+        self.port = self.listener.getsockname()[1]
+        self.lock = threading.Lock()
+        self.editor: socket.socket | None = None
+        self.app: DevelopmentClient | None = None
+        self.configuration: dict[tuple, dict] = {}
+        self.pending: list[dict] = []
+        self.replayed = DEBUGGER_REPLAY_SEQUENCE
+        self.silenced = 0
+
+    def start(self) -> None:
+        threading.Thread(target=self.accept, daemon=True).start()
+
+    def close(self) -> None:
+        self.listener.close()
+        with self.lock:
+            editor, self.editor = self.editor, None
+        if editor is not None:
+            editor.close()
+
+    def accept(self) -> None:
+        """Takes one editor at a time, and turns away another one while an editor is attached."""
+        while True:
+            try:
+                connection, _ = self.listener.accept()
+            except OSError:
+                return
+            with self.lock:
+                busy = self.editor is not None
+                if not busy:
+                    self.editor = connection
+            if busy:
+                connection.close()
+                terminal.warning(f"An editor tried to attach to port {self.port} while another one is attached, so it was turned away.")
+                continue
+            terminal.info(f"An editor attached to the debugger on port {self.port}.")
+            threading.Thread(target=self.read, args=(connection,), daemon=True).start()
+
+    def read(self, connection: socket.socket) -> None:
+        """Hands every message of the editor to the app until the editor leaves, and then lets the app forget it, as a request "disconnect" does."""
+        stream = connection.makefile("rb")
+        with contextlib.suppress(OSError, ValueError):
+            while (message := read_debug_message(stream)) is not None:
+                self.from_editor(message)
+        with self.lock:
+            if self.editor is connection:
+                self.editor = None
+            self.configuration.clear()
+            self.pending.clear()
+            app = self.app
+        if app is not None:
+            self.send_app(app, self.replay_request("disconnect"))
+        connection.close()
+        terminal.info("The editor left the debugger.")
+
+    def to_package(self, path: str) -> str:
+        with contextlib.suppress(ValueError):
+            return Path(path).resolve().relative_to(self.folder).as_posix()
+        return path
+
+    def to_editor(self, path: str) -> str:
+        return path if Path(path).is_absolute() else str(self.folder / path)
+
+    def replay_request(self, command: str, arguments: dict | None = None) -> dict:
+        self.replayed += 1
+        return {"seq": self.replayed, "type": "request", "command": command, "arguments": arguments or {}}
+
+    def from_editor(self, message: dict) -> None:
+        message = debug_source_paths(message, self.to_package)
+        with self.lock:
+            app = self.app
+            if app is None:
+                self.pending.append(message)
+                return
+            self.remember(message)
+        self.send_app(app, message)
+
+    def remember(self, message: dict) -> None:
+        """Keeps a request that configures the debugger, the last one of its kind, and of the breakpoints the last one of each file."""
+        command = message.get("command")
+        if message.get("type") != "request" or command not in DEBUGGER_CONFIGURATION:
+            return
+        path = message.get("arguments", {}).get("source", {}).get("path") if command == "setBreakpoints" else None
+        self.configuration[(command, path)] = message
+
+    def send_app(self, app: DevelopmentClient, message: dict) -> None:
+        app.send(WEBSOCKET_TEXT, json.dumps({"type": "debug", "message": message}).encode())
+
+    def from_app(self, client: DevelopmentClient, message) -> None:
+        """Hands a message of the app to the editor, except the answers to the requests the relay sent again and the event that their initialization sends."""
+        if not isinstance(message, dict):
+            return
+        with self.lock:
+            if client is not self.app or self.editor is None:
+                return
+            if message.get("type") == "response" and message.get("request_seq", 0) > DEBUGGER_REPLAY_SEQUENCE:
+                return
+            if message.get("type") == "event" and message.get("event") == "initialized" and self.silenced > 0:
+                self.silenced -= 1
+                return
+            editor = self.editor
+        with contextlib.suppress(OSError):
+            editor.sendall(debug_message_frame(debug_source_paths(message, self.to_editor)))
+
+    def app_connected(self, client: DevelopmentClient) -> None:
+        """Makes the app that connected last the one the editor debugs, sends it the configuration of the editor again and then what the editor sent while no app was connected."""
+        with self.lock:
+            self.app = client
+            if self.editor is None:
+                return
+            replay = [self.replay_request(request["command"], request.get("arguments")) for request in self.configuration.values()]
+            self.silenced += sum(1 for request in replay if request["command"] == "initialize")
+            pending, self.pending = self.pending, []
+            for message in pending:
+                self.remember(message)
+        for message in [*replay, *pending]:
+            self.send_app(client, message)
+
+    def app_left(self, client: DevelopmentClient) -> None:
+        with self.lock:
+            if self.app is client:
+                self.app = None
+
+
 class DevelopmentServer:
     """Watches the package of an app in development and pushes every file the developer saves to every connected app, such as browser tabs, as a JSON message of the batch followed by the bytes of each file. A connection needs the token of the run, the shaders compile again as their sources change, and an app that connects late catches up: a fresh page gets the files that changed since the package it loaded was made, an app of an earlier run of the server gets every file, and an app that only lost its connection gets what changed since the package was made again."""
 
@@ -6695,6 +6886,17 @@ class DevelopmentServer:
         self.scanning = threading.Lock()
         self.files = self.snapshot()
         self.lines = 0
+        self.debugger: DebugRelay | None = None
+
+    def listen_debugger(self, port: int) -> int:
+        """Lets an editor attach to the debugger of the apps on the port of this machine, and returns the port."""
+        self.debugger = DebugRelay(self.folder, port)
+        self.debugger.start()
+        return self.debugger.port
+
+    def close(self) -> None:
+        if self.debugger is not None:
+            self.debugger.close()
 
     @staticmethod
     def hash_files(folder: Path, paths) -> dict[str, str]:
@@ -6771,6 +6973,8 @@ class DevelopmentServer:
         with self.lock:
             if client in self.clients:
                 self.clients.remove(client)
+        if self.debugger is not None:
+            self.debugger.app_left(client)
 
     def watch(self, stop: threading.Event) -> None:
         """Scans the package twice a second, compiles the shaders whose sources changed, which the scan then pushes as compiled files, and reports their errors to the apps too."""
@@ -6879,6 +7083,10 @@ class DevelopmentServer:
         return reached
 
     def receive(self, client: DevelopmentClient, message: dict) -> None:
+        if message.get("type") == "debug":
+            if self.debugger is not None:
+                self.debugger.from_app(client, message.get("message"))
+            return
         if message.get("type") == "report":
             self.report(message)
             return
@@ -6897,6 +7105,8 @@ class DevelopmentServer:
         terminal.info("An app connected to the development server.")
         if update is not None and (update[0]["files"] or update[0]["removed"]):
             client.send_batch(*update)
+        if self.debugger is not None:
+            self.debugger.app_connected(client)
 
 
 def command_serve(args: argparse.Namespace) -> None:
@@ -6983,6 +7193,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_jobs_option(run_app)
     add_previous_release_option(run_app)
     add_web_server_options(run_app, 8000)
+    run_app.add_argument("--debugger-port", type=int, default=DEBUGGER_PORT, help=f"Port of this machine that an editor attaches its debugger to with the Debug Adapter Protocol, in the Debug configuration, {DEBUGGER_PORT} by default. The development server carries the messages of the editor to the app.")
     run_app.set_defaults(handler=command_run)
 
     devices = commands.add_parser("devices", parents=[common], help="List the simulators, emulators and devices of every platform on this machine, with the identifier that \"--device\" takes.")

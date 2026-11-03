@@ -34,6 +34,7 @@ class TestPortHost final : public NativeHost {
     [[nodiscard]] bool prepareGpuDevice() override;
     [[nodiscard]] audio::Mixer::Setup getAudioSetup() const override;
     void closeWindow() override;
+    [[nodiscard]] bool pumpHaltedEvents() override;
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
     [[nodiscard]] input::MotionSensors::Support getMotionSupport() override;

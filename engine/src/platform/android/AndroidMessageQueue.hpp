@@ -55,6 +55,9 @@ class AndroidMessageQueue final {
     void quiet() noexcept;
     [[nodiscard]] bool pop(Message& message);
 
+    // Whether a waiting message ends the window or the activity, whose callback holds the UI thread until the frame thread handles it.
+    [[nodiscard]] bool isEnding();
+
     // Tells the UI thread that the frame thread handled the messages up to the sequence.
     void markHandled(std::uint64_t sequence);
     void waitHandled(std::uint64_t sequence);

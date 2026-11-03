@@ -50,6 +50,7 @@ class DebugLua final {
     static int endScope(lua_State* L);
     static int profile(lua_State* L);
     static int recentLog(lua_State* L);
+    static int breakpoint(lua_State* L);
     static int open(lua_State* L);
 };
 

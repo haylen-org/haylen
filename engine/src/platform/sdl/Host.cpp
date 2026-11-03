@@ -261,6 +261,19 @@ void Host::closeWindow() {
     runtime.close();
 }
 
+// A web page runs the app on the thread of the browser that delivers every message, which only goes on once the frame returns.
+bool Host::canHaltFrames() const noexcept {
+#if defined(__EMSCRIPTEN__)
+    return false;
+#else
+    return true;
+#endif
+}
+
+bool Host::pumpHaltedEvents() {
+    return runtime.pumpHaltedEvents();
+}
+
 // UIKit apps read their controllers through GameController, which reads the Siri Remote as a controller of its own while UIKit keeps its presses for the focus, and SDL reads them through GameController there too, so it would add nothing.
 void Host::pollGamepads(std::span<input::GamepadState> gamepads) {
 #if defined(__APPLE__) && !TARGET_OS_OSX

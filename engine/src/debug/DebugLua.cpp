@@ -11,6 +11,7 @@
 
 #include "debug/ConsoleLua.hpp"
 #include "debug/CrashLua.hpp"
+#include "debug/Debugger.hpp"
 #include "debug/InspectorLua.hpp"
 #include "debug/TraceLua.hpp"
 #include "haylen/core/Engine.hpp"
@@ -455,9 +456,17 @@ int DebugLua::recentLog(lua_State* L) {
     return 1;
 }
 
+// Halts the app at the line that calls `breakpoint()` while a debugger is attached, and does nothing otherwise.
+int DebugLua::breakpoint(lua_State* L) {
+    if (Debugger* debugger = Debugger::find(L)) {
+        debugger->breakHere(L);
+    }
+    return 0;
+}
+
 int DebugLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setStatsItem", &lua::Binding::native<&setStatsItem>}, {"statsItem", &lua::Binding::native<&statsItem>}, {"statsItems", &lua::Binding::native<&statsItems>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {nullptr, nullptr},
+        {"setStatsMode", &lua::Binding::native<&setStatsMode>}, {"statsMode", &lua::Binding::native<&statsMode>}, {"setStatsItem", &lua::Binding::native<&setStatsItem>}, {"statsItem", &lua::Binding::native<&statsItem>}, {"statsItems", &lua::Binding::native<&statsItems>}, {"setToggleKey", &lua::Binding::native<&setToggleKey>}, {"toggleKey", &lua::Binding::native<&toggleKey>}, {"setDrawing", &lua::Binding::native<&setDrawing>}, {"drawing", &lua::Binding::native<&drawing>}, {"drawings", &lua::Binding::native<&drawings>}, {"drawingNames", &lua::Binding::native<&drawingNames>}, {"setDrawKey", &lua::Binding::native<&setDrawKey>}, {"drawKey", &lua::Binding::native<&drawKey>}, {"addDrawer", &lua::Binding::native<&addDrawer>}, {"setObjectEvents", &lua::Binding::native<&setObjectEvents>}, {"objectEvents", &lua::Binding::native<&objectEvents>}, {"stats", &lua::Binding::native<&stats>}, {"addMonitor", &lua::Binding::native<&addMonitor>}, {"removeMonitor", &lua::Binding::native<&removeMonitor>}, {"monitors", &lua::Binding::native<&monitors>}, {"frame", &lua::Binding::native<&frame>}, {"frameHistory", &lua::Binding::native<&frameHistory>}, {"beginScope", &lua::Binding::native<&beginScope>}, {"endScope", &lua::Binding::native<&endScope>}, {"profile", &lua::Binding::native<&profile>}, {"recentLog", &lua::Binding::native<&recentLog>}, {"breakpoint", &lua::Binding::native<&breakpoint>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     ConsoleLua::addFunctions(L);

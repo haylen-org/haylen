@@ -1,6 +1,6 @@
 # 📖 `haylen.debug`
 
-The module `haylen.debug` holds the tools that measure and inspect a running app: the debug statistics, the debug drawings, object counts, monitors, the frame profiler, the recent log, traces, breadcrumbs with the report of the last native crash, the developer console and the inspector. Use it to find where frame time goes, to see what the app draws and simulates, and to show performance numbers in your own debug tools. The [Lua guide](../core/lua.md#errors-and-stack-traces) explains the error screen, and the [architecture guide](../core/architecture.md#the-frame) explains the frame that the profiler measures.
+The module `haylen.debug` holds the tools that measure and inspect a running app: the debug statistics, the debug drawings, object counts, monitors, the frame profiler, the recent log, traces, breadcrumbs with the report of the last native crash, the developer console, the inspector and the breakpoints of the debugger. Use it to find where frame time goes, to see what the app draws and simulates, and to show performance numbers in your own debug tools. The [Lua guide](../core/lua.md#errors-and-stack-traces) explains the error screen, and the [architecture guide](../core/architecture.md#the-frame) explains the frame that the profiler measures.
 
 ```lua
 local debug = require('haylen.debug')
@@ -880,6 +880,25 @@ Returns whether the inspector window shows.
 local debug = require('haylen.debug')
 
 print(debug.inspectorVisible())
+```
+
+## Debugger
+
+An editor attaches to the debugger of an app in development with the Debug Adapter Protocol, as the [debugger guide](../tools/debugger.md) explains, and sets its breakpoints there. The app can also halt itself.
+
+### debug.breakpoint()
+
+Halts the app at the line that calls it while an editor is attached to its debugger, as a breakpoint of the editor does, and returns once the editor lets the app go on. Without an attached editor, in an app that ships and on a web page, which cannot halt, it does nothing.
+
+```lua
+local debugging = require('haylen.debug')
+
+function Enemy:hit(damage)
+    self.health = self.health - damage
+    if self.health < 0 then
+        debugging.breakpoint()
+    end
+end
 ```
 
 ## Events

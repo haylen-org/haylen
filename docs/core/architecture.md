@@ -159,6 +159,7 @@ The class `plugins::BuiltInPlugins` in `engine/src/plugins/BuiltInPlugins.cpp` r
 | `storage` | `haylen.storage`, `haylen.preferences` | Loads the preferences on start, and writes them on suspend and stop. |
 | `debug` | `haylen.debug` | Draws the compact statistics with the renderer and the full debug overlay with ImGui, which F3 cycles by default. It runs the debug drawings over every canvas through a canvas overlay of the renderer, which F4 switches by default. It samples monitors and publishes object events. Plugins add drawings with `DebugPlugin::addDrawer`, as the `physics2d` plugin does for the worlds that Lua makes. |
 | `hotReload` | `haylen.hotReload` | Applies the changes of an app in development, as [development and hot reload](#development-and-hot-reload) describes. |
+| `debugger` | | Lets the Lua debugger of the development session follow the Lua state of the app and hands it the requests of its editor at the start of every frame, as [the debugger](#the-debugger) describes. |
 | `ui` | `haylen.ui`, `haylen.imgui` | Starts the ImGui frame in `beginFrame`. At the start of the first `renderUi` of a frame, before any GUI draws, it lets the collections of mounted GUIs bind their cells and run their Lua binders. It draws mounted GUIs in `renderUi`: the GUIs of the scenes of each view into the image of the view, a leaving view in an ImGui window of its own that draws before the frame ends and takes no input, and the GUIs of no scene with the current view. |
 | `net` | `haylen.net` | Delivers WebSocket events in `beginFrame`. |
 | `platform` | `haylen.platform`, `haylen.system`, `haylen.dialogs`, `haylen.accessibility` | Connects the bridge relay of native code and the relay of native dialogs to the running app. Keeps the textures of the video streams that the app draws current at the start of every frame. |
@@ -216,6 +217,7 @@ The portable engine reaches the platform only through `platform::Host`, declared
 | `openScreen(request)`, `cancelScreen(id)` | Open the screen of a plugin over the app once the engine covered it, and dismiss a screen that the app gave up. The platform ends the screen once, from any thread, through `ScreenRelay::finish` with the same id. It keeps the id, the plugin, the screen and the state where they survive the end of the process, as the [plugin guide](../platform/plugins.md#the-native-contract) describes. |
 | `guardCrashes(report)`, `setCrashContext(json)` | Capture the native crashes of the process into a report file, and publish the context that the report of a crash carries. |
 | `getDevelopmentSession()` | The [development session](#development-and-hot-reload) of a process that plays an app while it is being made, or null for every app that ships. |
+| `canHaltFrames()`, `pumpHaltedEvents()` | Whether [the debugger](#the-debugger) may halt the frame thread, which a web page cannot, and the events of the window and the system that the host processes while it halts, which reach the app after the halt. It answers whether the platform asks the frame to finish, such as a quit or a window that goes away. |
 | `isLaunched()` | Whether another app of the process launched the app that plays. |
 
 ### The native host and the player
@@ -579,3 +581,22 @@ A module that fails changes nothing, and the batch goes on with the next one. On
 **The web and the development server.** The runtime of the web plays every package, except a protected release, under an `io::OverlayPackage`. So the files that the page sends with `setFile` replace the files of the package that plays, and `applyChanges` queues their paths in the session of a page in development. A page in development that names a development server, and an app launched with `--dev-server <address>`, connect to it through `platform::DevelopmentConnection`. It is a `net::WebSocket` that reconnects on its own. It writes every file that the server pushes into the overlay, after it checks that the file belongs to the package, queues its path in the session, and answers with the report of the batch.
 
 The command `haylen.py run <app> --platform web` serves the site with that server on the same port. The command `run` with a device, a simulator, the emulator or this Mac launches the app with `--dev-server`. On Android the address travels as the extra `dev.haylen.developmentServer` of the launch intent, which `JavaBridge::getDevelopmentServer` reads for a debuggable app, as the [distribution guide](../tools/distribution.md#development-mode) describes.
+
+### The debugger
+
+The session owns the Lua debugger, `debug::Debugger`, so its editor, its breakpoints and the errors it watches outlive every app that restarts under it. The [debugger guide](../tools/debugger.md) explains what a person does with it. An editor attaches to a TCP port of `haylen.py run`, and the development server carries the messages of the Debug Adapter Protocol through the development connection, as text messages of the type `debug`. The debugger is made of these classes of `engine/src/debug/`:
+
+| Class | What it does |
+| --- | --- |
+| `Debugger` | Handles the requests of the protocol and holds the frame thread during a halt. |
+| `Tracer` | Sets the hooks of Lua, decides where the app halts and follows the steps. |
+| `Breakpoints` | Indexes the breakpoints by package path and line, with their conditions, counts of hits and log messages. |
+| `HaltedStack` | Lists the frames, scopes and values of a halt, reading every value raw. |
+| `Evaluation` | Runs an expression on a coroutine of its own with a time bound. |
+| `ThreadWalk` | Walks the Lua heap from the registry to find every coroutine. |
+
+**Hooks.** Lua sets its hooks per coroutine and lists no coroutine, and a new coroutine takes the hook of the one that creates it. So while nothing is watched, no coroutine has a hook, and when a breakpoint, a step, a pause or the uncaught errors filter starts a watch, `ThreadWalk` hooks every coroutine that the heap holds. A watched coroutine reports its calls and returns, and its lines only inside the functions whose lines hold a breakpoint, or everywhere while a step or a pause needs them. A coroutine that a native function resumes, such as a task of the async library after its `await`, reports the return of the function that yielded first, so it takes the hooks of its current function before its next line. When the watch ends, each coroutine drops its hook at its next event.
+
+**Uncaught errors.** Lua calls the message handler of a protected call where an error rises, before the stack unwinds. A call of the handler of the engine, `lua::Runtime::handleMessage`, or of the tasks of Varn is an error that no protected call of the app caught, so the call hook halts there with the stack intact.
+
+**Halts.** `DebuggerPlugin` attaches the debugger to the Lua state of each app and hands it the requests of the frame. A halt runs inside the hook, or inside `debug.breakpoint`, and loops until the editor lets the app go on: `Host::pumpHaltedEvents` keeps the platform responsive, the development session pumps the development connection, whose other messages wait for the end of the halt, and the requests of the editor run. The collector holds during the halt. The player hands the events that reach it during the halt to the next frame, and the SDL platform layer runs no frame during it.

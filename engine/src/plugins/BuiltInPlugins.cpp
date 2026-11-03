@@ -17,6 +17,7 @@
 #include "plugins/ContentPlugin.hpp"
 #include "plugins/ConversationPlugin.hpp"
 #include "plugins/CorePlugin.hpp"
+#include "plugins/DebuggerPlugin.hpp"
 #include "plugins/Graphics2DPlugin.hpp"
 #include "plugins/HotReloadPlugin.hpp"
 #include "plugins/InputPlugin.hpp"
@@ -56,6 +57,7 @@ void BuiltInPlugins::registerAll(PluginRegistry& registry, platform::Host& host)
     registry.add(std::make_unique<StoragePlugin>());
     registry.add(std::make_unique<DebugPlugin>(host.getDevelopmentSession() != nullptr));
     registry.add(std::make_unique<HotReloadPlugin>(host.getDevelopmentSession()));
+    registry.add(std::make_unique<DebuggerPlugin>(host.getDevelopmentSession()));
     registry.add(std::make_unique<UiPlugin>());
     registry.add(std::make_unique<NetPlugin>(host.getNetworkRequirement(), host.getBlockedReason()));
     registry.add(std::make_unique<PlatformPlugin>());

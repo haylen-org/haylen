@@ -13,6 +13,10 @@ namespace haylen::core {
 class Engine;
 }
 
+namespace haylen::debug {
+class Tracer;
+}
+
 namespace haylen::lua {
 
 class Environment;
@@ -57,6 +61,7 @@ class Runtime final {
   private:
     friend class Environment;
     friend class Task;
+    friend class debug::Tracer;
 
     static constexpr const char* kEngineKey = "haylen.engine";
     static constexpr const char* kErrorType = "haylen.Error";

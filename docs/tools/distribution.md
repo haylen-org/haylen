@@ -97,6 +97,7 @@ Runs an app. First it compiles the shaders of the app whose sources changed, as 
 | `--host` | `127.0.0.1` | The address that the local web server listens on, and the development server of a Debug run on a device, a simulator or this Mac. The address of this machine on the network lets phones and other computers open the page, which then runs without sound, because browsers offer `AudioWorklet` only to pages served over https or from localhost. Apple devices reach the development server on every address of this machine unless this option names one. |
 | `--port` | `8000` | The port of the local web server, and of the development server of a Debug run. |
 | `--coep`, `--coop`, `--open` | off | The headers and the browser of the web server, as [serve](#serve) describes. |
+| `--debugger-port` | `4711` | The port of this machine that an editor attaches its debugger to in the Debug configuration, as [Debugger](debugger.md) explains. |
 
 Without `--platform`, `run` does this:
 
@@ -1122,6 +1123,7 @@ The page of `run --platform web` connects to the development server that `haylen
 - It sends every batch of saved files to every open page as one JSON message, followed by the bytes of each file. A page reloads them in place, and the terminal prints what each page did, such as `The app reloaded "source/scenes/level.lua" in 4 ms.`
 - A page that opens or reconnects later gets the files that changed since the package was made. A page of an earlier run of the server gets every file, so it always plays the files on disk.
 - A file larger than 16 MiB stays out, with an error that names it. A shader that fails to compile prints its error in the terminal and on the pages, which keep the last good shader.
+- It listens on the port of `--debugger-port`, 4711 by default, for one editor that attaches its debugger, and carries the messages of the Debug Adapter Protocol between the editor and the app that connected last, as [Debugger](debugger.md) explains.
 
 The command `run` without `--platform`, and with any other platform in the Debug configuration, starts the same development server once the app is built. It runs alone on the port of `--port`, 8000 by default, and the app launches with `--dev-server` and its address. So every file saved in the app reloads in it, as it does in the pages. The manifest of the server holds the files of the package that the build placed in the project, or the files of the app folder for the player, in `haylen/app` of the Apple project and `haylen/assets/app` of the Android project. So the app catches up on what changed while it was built. The server stops when the launch ends, such as when the app quits, the key `q` quits or Ctrl+C stops the streamed log.
 

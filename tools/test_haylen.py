@@ -2872,7 +2872,7 @@ class DevelopmentServerTest(unittest.TestCase):
         with socket.socket() as probe:
             probe.bind(("127.0.0.1", 0))
             port = probe.getsockname()[1]
-        options = mock.Mock(config="Debug", platform="ios-simulator", host="127.0.0.1", port=port)
+        options = mock.Mock(config="Debug", platform="ios-simulator", host="127.0.0.1", port=port, debugger_port=0)
         with haylen.run_session(app, shipped, options) as session:
             arguments = session.arguments
             self.assertEqual(arguments[0], "--dev-server")
@@ -2892,6 +2892,85 @@ class DevelopmentServerTest(unittest.TestCase):
                 _, _, message = haylen.read_websocket_frame(stream)
                 self.assertEqual([file["path"] for file in json.loads(message)["files"]], ["source/level.lua"])
                 stream.close()
+
+
+
+class DebugRelayTest(unittest.TestCase):
+    class App:
+        """An app connected to the development server, which keeps the messages of the debugger that the relay sends it."""
+
+        def __init__(self):
+            self.messages = []
+
+        def send(self, opcode, payload):
+            self.messages.append(json.loads(payload)["message"])
+            return True
+
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        self.folder = Path(self.scratch.name).resolve() / "app"
+        (self.folder / "source").mkdir(parents=True)
+        quiet = mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))
+        quiet.start()
+        self.addCleanup(quiet.stop)
+
+    def wait(self, condition):
+        deadline = time.monotonic() + 5
+        while not condition():
+            self.assertLess(time.monotonic(), deadline, "The relay did not get there in time.")
+            time.sleep(0.01)
+
+    def test_messages_keep_their_framing_and_source_paths_turn_into_package_paths_and_back(self):
+        message = {"seq": 1, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": "/app/source/main.lua"}}}
+        self.assertEqual(haylen.read_debug_message(io.BytesIO(haylen.debug_message_frame(message))), message)
+        self.assertIsNone(haylen.read_debug_message(io.BytesIO(b"Content-Length: 10\r\n\r\n{}")))
+        frames = {"body": {"stackFrames": [{"source": {"name": "main.lua", "path": "source/main.lua"}}, {"name": "[C]"}]}}
+        self.assertEqual(haylen.debug_source_paths(frames, lambda path: "/app/" + path)["body"]["stackFrames"][0]["source"]["path"], "/app/source/main.lua")
+
+    def test_the_relay_holds_requests_until_an_app_connects_and_configures_every_app_that_connects_later(self):
+        relay = haylen.DebugRelay(self.folder, 0)
+        relay.start()
+        self.addCleanup(relay.close)
+        editor = socket.create_connection(("127.0.0.1", relay.port), timeout=5)
+        self.addCleanup(editor.close)
+        stream = editor.makefile("rb")
+        self.addCleanup(stream.close)
+        script = str(self.folder / "source" / "main.lua")
+        editor.sendall(haylen.debug_message_frame({"seq": 1, "type": "request", "command": "initialize", "arguments": {}}))
+        editor.sendall(haylen.debug_message_frame({"seq": 2, "type": "request", "command": "setBreakpoints", "arguments": {"source": {"path": script}, "breakpoints": [{"line": 3}]}}))
+        self.wait(lambda: len(relay.pending) == 2)
+
+        # The first app receives what the editor sent, with package paths, and its answers reach the editor with the paths of this machine.
+        first = self.App()
+        relay.app_connected(first)
+        self.assertEqual([message["command"] for message in first.messages], ["initialize", "setBreakpoints"])
+        self.assertEqual(first.messages[1]["arguments"]["source"]["path"], "source/main.lua")
+        relay.from_app(first, {"seq": 1, "type": "response", "request_seq": 2, "success": True, "command": "setBreakpoints", "body": {"breakpoints": [{"verified": True, "source": {"path": "source/main.lua"}}]}})
+        relay.from_app(first, {"seq": 2, "type": "event", "event": "initialized"})
+        self.assertEqual(haylen.read_debug_message(stream)["body"]["breakpoints"][0]["source"]["path"], script)
+        self.assertEqual(haylen.read_debug_message(stream)["event"], "initialized")
+
+        # An app that connects later, such as one that restarted, gets the configuration again, and the editor hears none of its answers to it.
+        relay.app_left(first)
+        second = self.App()
+        relay.app_connected(second)
+        self.assertEqual([message["command"] for message in second.messages], ["initialize", "setBreakpoints"])
+        self.assertTrue(all(message["seq"] > haylen.DEBUGGER_REPLAY_SEQUENCE for message in second.messages))
+        relay.from_app(second, {"seq": 1, "type": "response", "request_seq": second.messages[1]["seq"], "success": True, "command": "setBreakpoints"})
+        relay.from_app(second, {"seq": 2, "type": "event", "event": "initialized"})
+        relay.from_app(first, {"seq": 3, "type": "event", "event": "output", "body": {"output": "From an app that left."}})
+        relay.from_app(second, {"seq": 3, "type": "event", "event": "stopped", "body": {"reason": "breakpoint"}})
+        self.assertEqual(haylen.read_debug_message(stream)["event"], "stopped")
+
+        # An editor that leaves lets the app forget it, and a second editor waits for the first to leave.
+        intruder = socket.create_connection(("127.0.0.1", relay.port), timeout=5)
+        self.assertEqual(intruder.recv(1), b"")
+        intruder.close()
+        stream.close()
+        editor.close()
+        self.wait(lambda: second.messages[-1]["command"] == "disconnect")
+        self.assertEqual(relay.configuration, {})
 
 
 if __name__ == "__main__":

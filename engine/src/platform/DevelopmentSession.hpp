@@ -14,6 +14,10 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/io/PackageWatcher.hpp"
 
+namespace haylen::debug {
+class Debugger;
+}
+
 namespace haylen::io {
 class OverlayPackage;
 }
@@ -24,7 +28,7 @@ class Host;
 
 class DevelopmentConnection;
 
-// The development state of a process that plays apps while they are being made: the queue of changed package paths, the scanner of the package folder, the connection to the development server with the overlay of the package it writes into, and the listeners of what each batch of changes did. The runtime owns it, so the changes, the snapshot of the folder and the connection outlive every app that restarts under it, and only a process in development has one.
+// The development state of a process that plays apps while they are being made: the queue of changed package paths, the scanner of the package folder, the connection to the development server with the overlay of the package it writes into, the listeners of what each batch of changes did and the Lua debugger, whose client reaches it through the development server. The runtime owns it, so the changes, the snapshot of the folder, the connection and the breakpoints outlive every app that restarts under it, and only a process in development has one.
 class DevelopmentSession final {
   public:
     // Hears the report of every batch of changes, such as the page or the development server.
@@ -77,6 +81,11 @@ class DevelopmentSession final {
     // Delivers what the development server sent since the last call, on the frame thread.
     void pump();
 
+    // The Lua debugger, which the client of the development server drives.
+    [[nodiscard]] debug::Debugger& getDebugger() const noexcept {
+        return *debugger;
+    }
+
     // Records that the developer asked the development server to restart the app, which the frame thread takes once.
     void requestRestart() noexcept {
         restartRequested = true;
@@ -89,6 +98,7 @@ class DevelopmentSession final {
     void awaitLocalNetwork(Host& host);
 
     std::unique_ptr<io::PackageWatcher> watcher;
+    std::unique_ptr<debug::Debugger> debugger;
     std::unique_ptr<DevelopmentConnection> connection;
     std::shared_ptr<io::OverlayPackage> overlay;
     std::atomic<bool> scanning = false;

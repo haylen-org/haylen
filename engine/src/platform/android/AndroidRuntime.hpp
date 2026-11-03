@@ -40,6 +40,11 @@ class AndroidRuntime final {
         quitOrdered = true;
     }
 
+    // Whether the UI thread waits for the frame thread to let go of the window or the activity, from any thread.
+    [[nodiscard]] bool isEnding() {
+        return messages.isEnding();
+    }
+
   private:
     using PostFrameCallback = void (*)(AChoreographer* choreographer, AChoreographer_frameCallback64 callback, void* data);
 

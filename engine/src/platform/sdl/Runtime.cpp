@@ -78,9 +78,19 @@ void Runtime::scroll(math::Vec2 value, bool precise, int modifiers) {
     running->post({.type = platform::Event::Type::MouseScroll, .modifiers = held, .scroll = value, .preciseScroll = precise});
 }
 
+// An app that the debugger halts never goes on once the system ends the process, so nothing of it runs as it ends.
 void Runtime::terminate() {
+    if (Player::isHalted()) {
+        return;
+    }
     Player::handleEvent({.type = platform::Event::Type::QuitRequested});
     quit();
+}
+
+// SDL keeps the events that it reads during a halt in its queue for the frames after it. The events that the platform needs at once, such as the moves to the background, and every frame that UIKit or a live resize asks for come back into the runtime during the pump, where the player holds the events and the frames do nothing.
+bool Runtime::pumpHaltedEvents() {
+    SDL_PumpEvents();
+    return closing || SDL_HasEvent(SDL_EVENT_QUIT) || SDL_HasEvent(SDL_EVENT_WINDOW_CLOSE_REQUESTED) || SDL_HasEvent(SDL_EVENT_TERMINATING);
 }
 
 int Runtime::enter(int argc, char* argv[]) {
@@ -95,6 +105,9 @@ SDL_AppResult Runtime::onInitialize(void** state, int argc, char* argv[]) {
 }
 
 SDL_AppResult Runtime::onIterate(void* state) {
+    if (Player::isHalted()) {
+        return SDL_APP_CONTINUE;
+    }
     return static_cast<Runtime*>(state)->iterate();
 }
 
@@ -119,7 +132,11 @@ SDL_AppResult Runtime::onEvent(void* state, SDL_Event* event) {
     return static_cast<Runtime*>(state)->handle(*event);
 }
 
+// The process ends right after, so an app that the debugger halts ends with it without going on.
 void Runtime::onQuit(void* state, SDL_AppResult) {
+    if (Player::isHalted()) {
+        return;
+    }
     auto* runtime = static_cast<Runtime*>(state);
     runtime->quit();
     delete runtime;

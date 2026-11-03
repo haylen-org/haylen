@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "content/ReleasePackage.hpp"
+#include "debug/Debugger.hpp"
 #include "haylen/assets/Manager.hpp"
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/Engine.hpp"
@@ -170,9 +171,22 @@ bool Player::isPaused() noexcept {
 
 // Observers of the system outlive the player, such as those of GameController, so an event after the window closed goes nowhere.
 void Player::handleEvent(const Event& event) {
+    if (isHalted()) {
+        postEvent(event);
+        return;
+    }
     if (const std::unique_ptr<Player>& current = getProcess().current) {
         current->deliver(event);
     }
+}
+
+bool Player::isHalted() noexcept {
+    const std::unique_ptr<Player>& current = getProcess().current;
+    if (current == nullptr) {
+        return false;
+    }
+    const DevelopmentSession* session = current->host->getDevelopmentSession();
+    return session != nullptr && session->getDebugger().isHalted();
 }
 
 void Player::postEvent(Event event) {

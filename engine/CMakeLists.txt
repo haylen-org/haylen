@@ -350,11 +350,15 @@ set(HAYLEN_ENGINE_SOURCES
   src/core/TweenProperty.cpp
   src/core/TweenValue.cpp
   src/core/Utf8.cpp
+  src/debug/Breakpoints.cpp
   src/debug/Console.cpp
   src/debug/ConsoleLua.cpp
   src/debug/ConsoleWindow.cpp
   src/debug/CrashLua.cpp
   src/debug/DebugLua.cpp
+  src/debug/Debugger.cpp
+  src/debug/Evaluation.cpp
+  src/debug/HaltedStack.cpp
   src/debug/Inspector.cpp
   src/debug/InspectorLua.cpp
   src/debug/InspectorWindow.cpp
@@ -364,8 +368,10 @@ set(HAYLEN_ENGINE_SOURCES
   src/debug/Profiler.cpp
   src/debug/Stats.cpp
   src/debug/StatsDisplay.cpp
+  src/debug/ThreadWalk.cpp
   src/debug/TraceLua.cpp
   src/debug/TraceRecorder.cpp
+  src/debug/Tracer.cpp
   src/graphics/BlendMode.cpp
   src/graphics/Device.cpp
   src/graphics/DeviceState.cpp
@@ -544,6 +550,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/plugins/CorePlugin.cpp
   src/plugins/DebugPlugin.cpp
   src/plugins/Graphics2DPlugin.cpp
+  src/plugins/DebuggerPlugin.cpp
   src/plugins/HotReloadPlugin.cpp
   src/plugins/InputPlugin.cpp
   src/plugins/JobsPlugin.cpp

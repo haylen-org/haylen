@@ -63,6 +63,11 @@ void TestPortHost::closeWindow() {
     runtime.close();
 }
 
+// The window of the test port has no events of its own, so a halt keeps nothing of the platform waiting.
+bool TestPortHost::pumpHaltedEvents() {
+    return false;
+}
+
 void TestPortHost::pollGamepads(std::span<input::GamepadState>) {}
 
 void TestPortHost::rumbleGamepad(std::size_t, float, float, float) {}
