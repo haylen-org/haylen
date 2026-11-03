@@ -1367,11 +1367,15 @@ class RunCppTest(unittest.TestCase):
         (self.scratch / "project" / "CMakeLists.txt").write_text("")
         (self.scratch / "project" / "app.json").write_text(json.dumps({"name": "Game", "identifier": "com.haylen.game", "version": "1.0.0"}))
         executable = self.scratch / "app"
+        # Windows and Linux read the package of the built app to place its native libraries next to it.
+        built = self.scratch / "builds" / f"{haylen.host_name()}-debug" / "bin" / "main"
+        built.mkdir(parents=True)
+        (built / "package.txt").write_text(str(self.scratch / "project"))
         for options, launched in (([], True), (["--build-only"], False)):
             args = haylen.build_parser().parse_args(["run", str(self.scratch / "project"), *options])
             # On macOS the configuration also gives the app the Apple parts of its plugins, which the test of those parts covers.
             configure = mock.patch.object(haylen, "configure_cpp_apple", side_effect=lambda target, directory, command, platform, given: haylen.run(command))
-            with mock.patch.object(haylen, "run") as run, configure, mock.patch.object(haylen.RunSession, "follow") as follow, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            with mock.patch.object(haylen, "run") as run, configure, mock.patch.object(haylen, "CPP_BUILDS_DIR", self.scratch), mock.patch.object(haylen, "build_folder_name", return_value="builds"), mock.patch.object(haylen, "prepare_host_native"), mock.patch.object(haylen.RunSession, "follow") as follow, mock.patch.object(haylen, "ensure_shaderc", return_value="shaderc"), mock.patch.object(haylen, "cmake_app_executable", return_value=executable), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
                 haylen.run_cpp_app(self.scratch / "project", args)
             self.assertEqual([call.args[0] for call in follow.call_args_list], [[executable]] if launched else [])
             self.assertIn(f"-DHAYLEN_ENGINE_SOURCE={haylen.ENGINE_DIR.as_posix()}", run.call_args_list[0].args[0])
