@@ -388,6 +388,7 @@ void DebugPlugin::startTrace(std::optional<int> frames, std::size_t capacity) {
     trace->nameThread("frame");
     owner->getProfiler().setTraceRecorder(trace);
     owner->getJobs().setTraceRecorder(trace);
+    debug::TraceRecorder::setThreadRecorder(trace.get());
     traceFramesLeft = frames;
     lastGpuSeconds = 0.0;
     tracing = true;
@@ -404,6 +405,7 @@ void DebugPlugin::detachTrace() {
     }
     owner->getProfiler().setTraceRecorder(nullptr);
     owner->getJobs().setTraceRecorder(nullptr);
+    debug::TraceRecorder::setThreadRecorder(nullptr);
     tracing = false;
 }
 

@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include <cstddef>
+#include <map>
 #include <set>
 #include <string>
 #include <thread>
@@ -9,7 +10,9 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/debug/TraceRecorder.hpp"
+#include "haylen/debug/TraceSpan.hpp"
 #include "support/EngineFixture.hpp"
+#include "support/TestFiles.hpp"
 
 namespace haylen::debug {
 
@@ -137,6 +140,48 @@ TEST(TraceLuaTest, TracesFramesAndJobsIntoAFileOffTheFrameThread) {
     EXPECT_NE(fixture.lua("debugging.stopTraceAsync('traces/again.json')").find("No trace is recording. Start one with \"debug.startTrace\"."), std::string::npos);
     EXPECT_NE(fixture.lua("debugging.startTrace({frames = 0})").find("A trace records at least 1 frame."), std::string::npos);
     EXPECT_NE(fixture.lua("debugging.startTrace({seconds = 2})").find("Unknown option \"seconds\"."), std::string::npos);
+}
+
+TEST(TraceLuaTest, NamesTheReadDecodeAndCreationOfEachAssetLoad) {
+    const std::vector<std::uint8_t> image = test::TestFiles::pngImage(8, 4, 0xFFFFFFFFU);
+    test::EngineFixture fixture({{"content/images/hero.png", std::string(image.begin(), image.end())}});
+    // clang-format off
+    fixture.runLua(R"(
+        debugging = require('haylen.debug')
+        debugging.startTrace()
+        require('async').spawn(function()
+            require('haylen.assets').loadAsync('images/hero.png'):await()
+            written = debugging.stopTraceAsync('traces/loads.json'):await()
+        end)
+    )");
+    // clang-format on
+    ASSERT_TRUE(fixture.frameUntil([&fixture] { return fixture.lua("return tostring(written ~= nil)") == "true"; }));
+
+    const core::Json trace = core::Json::parse(fixture.lua("return require('haylen.storage').readText('traces/loads.json')"));
+    std::map<std::string, int> lanes;
+    for (const core::Json& event : trace.at("traceEvents")) {
+        if (event.at("ph") == "X") {
+            lanes.emplace(event.at("name").get<std::string>(), event.at("tid").get<int>());
+        }
+    }
+    ASSERT_TRUE(lanes.contains("read content/images/hero.png"));
+    ASSERT_TRUE(lanes.contains("decode images/hero.png"));
+    ASSERT_TRUE(lanes.contains("create images/hero.png"));
+    EXPECT_NE(lanes.at("read content/images/hero.png"), lanes.at("create images/hero.png"));
+    EXPECT_NE(lanes.at("decode images/hero.png"), lanes.at("create images/hero.png"));
+}
+
+TEST_F(TraceRecorderTest, RecordsSpansIntoTheRecorderOfTheThreadAlone) {
+    EXPECT_EQ(TraceRecorder::getThreadRecorder(), nullptr);
+    TraceRecorder trace;
+    TraceRecorder::setThreadRecorder(&trace);
+    { const TraceSpan span("read", "content/a.png"); }
+    TraceRecorder::setThreadRecorder(nullptr);
+    { const TraceSpan span("read", "content/b.png"); }
+
+    const std::vector<core::Json> spans = spansOf(core::Json::parse(trace.toJson()));
+    ASSERT_EQ(spans.size(), 1U);
+    EXPECT_EQ(spans.front().at("name"), "read content/a.png");
 }
 
 } // namespace haylen::debug

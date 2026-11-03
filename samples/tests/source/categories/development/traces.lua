@@ -1,4 +1,5 @@
--- Profiler traces: a trace of a number of frames with the scopes of the frame thread, jobs of the workers and the time of the GPU, written to user storage off the frame thread and read back to count its spans by lane, which bars compare.
+-- Profiler traces: a trace of a number of frames with the scopes of the frame thread, jobs of the workers, the named steps of an asset load and the time of the GPU, written to user storage off the frame thread and read back to count its spans by kind, which bars compare.
+local assets = require('haylen.assets')
 local async = require('async')
 local debugging = require('haylen.debug')
 local haylen = require('haylen')
@@ -13,18 +14,21 @@ local LogCard = require('categories.development.log-card')
 local Traces = haylen.class('Traces', Test)
 
 Traces.path = 'traces/test-project.json'
+Traces.asset = 'development/settings.json'
 Traces.code = [[
 debugging.startTrace({frames = 60})
 scene.spawn(self, function()
+    assets.loadAsync('development/settings.json'):await()  -- Shows as read, decode and create spans.
     while debugging.tracing() do async.sleep(50):await() end
     local trace = debugging.stopTraceAsync('traces/test-project.json'):await()  -- Written on the I/O pool.
     print(trace.path, trace.spans, trace.dropped, debugging.frame().gpuMilliseconds)
 end)]]
--- The lanes of the trace that the bars compare, by the names of their spans.
+-- The kinds of spans that the bars compare, by the names of their spans or the step that starts the name of a load.
 Traces.kinds = {
     {name = 'frame', text = 'Frames'},
     {name = 'update', text = 'Updates'},
     {name = 'job', text = 'Worker jobs'},
+    {name = 'load', text = 'Load steps'},
     {name = 'gpuFrame', text = 'GPU frames'},
 }
 
@@ -39,7 +43,7 @@ function Traces:enter()
         }
     end
     self:frame{
-        hint = 'Record a trace of 60 frames while workers decode messages, then open the file in the profiler of a browser.',
+        hint = 'Record a trace of 60 frames while workers decode messages and an asset loads, then open the file in the profiler of a browser.',
         code = Traces.code,
         content = {ui.row{wrap = true, grow = 1, gap = 24, alignItems = 'stretch',
             ui.panel{width = 560, gap = 12,
@@ -76,6 +80,7 @@ function Traces:record()
         for _ = 1, 8 do
             net.decodeMessagePackAsync(message):await()
         end
+        assets.loadAsync(Traces.asset):await()
         while debugging.tracing() do
             async.sleep(50):await()
         end
@@ -84,11 +89,25 @@ function Traces:record()
     end)
 end
 
+-- The kind of a span: its name, or `load` for a step of a load, whose name is the step and the path.
+function Traces.kindOf(name)
+    local step = name:match('^(%a+) ')
+    if step == 'read' or step == 'decode' or step == 'create' then
+        return 'load'
+    end
+    return name
+end
+
 function Traces:report(trace)
     local counts = {}
+    local loads = {}
     for _, event in ipairs(json.decode(storage.readText(trace.path)).traceEvents) do
         if event.ph == 'X' then
-            counts[event.name] = (counts[event.name] or 0) + 1
+            local kind = Traces.kindOf(event.name)
+            counts[kind] = (counts[kind] or 0) + 1
+            if kind == 'load' and event.name:find(Traces.asset, 1, true) then
+                loads[#loads + 1] = event.name
+            end
         end
     end
     local most = 1
@@ -101,7 +120,7 @@ function Traces:report(trace)
         self:set('count-' .. kind.name, {text = tostring(count)})
     end
     self:set('state', {text = 'Written', tone = 'success'})
-    self.files:add(string.format('Wrote "%s"', trace.path), string.format('%d spans, with %d dropped.', trace.spans, trace.dropped))
+    self.files:add(string.format('Wrote "%s"', trace.path), string.format('%d spans, with %d dropped. The load of the asset: %s.', trace.spans, trace.dropped, #loads > 0 and table.concat(loads, ', ') or 'cached, so not read again'))
     local gpu = debugging.frame().gpuMilliseconds
     self:set('gpu', {text = gpu and string.format('The GPU took %.3f ms for a frame.', gpu) or 'This graphics API does not measure the GPU time of a frame.'})
 end

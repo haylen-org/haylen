@@ -12,7 +12,7 @@
 
 namespace haylen::debug {
 
-// Records spans of time from any thread into a bounded buffer and writes them in the trace event JSON format that the profilers of browsers and trace viewers open, with one lane per thread. The profiler records its scopes and frames into it on the frame thread, the job system records the jobs of its workers, and the renderer records how long the GPU took for each frame where the GPU device measures it. Recording stops taking spans once the buffer is full, and counts the spans it dropped.
+// Records spans of time from any thread into a bounded buffer and writes them in the trace event JSON format that the profilers of browsers and trace viewers open, with one lane per thread. The profiler records its scopes and frames into it on the frame thread, the job system records the jobs of its workers, the renderer records how long the GPU took for each frame where the GPU device measures it, and every `TraceSpan` records into the recorder of its thread, such as the reads of the package and the decodes of assets. Recording stops taking spans once the buffer is full, and counts the spans it dropped.
 class TraceRecorder final {
   public:
     static constexpr std::size_t kDefaultCapacity = 262144;
@@ -36,6 +36,14 @@ class TraceRecorder final {
     // Names the lane of the calling thread, such as `frame`, which every span of the thread shows under.
     void nameThread(std::string_view name);
 
+    // The recorder that the trace spans of the calling thread record into, or null. A trace sets it on the frame thread, and the job system on a worker while it runs a job of the trace.
+    [[nodiscard]] static TraceRecorder* getThreadRecorder() noexcept {
+        return threadRecorder;
+    }
+    static void setThreadRecorder(TraceRecorder* value) noexcept {
+        threadRecorder = value;
+    }
+
     // The seconds of the steady clock that every span measures with.
     [[nodiscard]] static double now() noexcept;
 
@@ -54,6 +62,7 @@ class TraceRecorder final {
     };
 
     static constexpr std::uint32_t kGpuLane = 0;
+    static inline thread_local TraceRecorder* threadRecorder = nullptr;
 
     [[nodiscard]] std::uint32_t intern(std::string_view name);
     [[nodiscard]] std::uint32_t laneOfThisThread();

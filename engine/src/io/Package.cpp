@@ -7,6 +7,7 @@
 #include <stdexcept>
 #include <system_error>
 
+#include "haylen/debug/TraceSpan.hpp"
 #include "haylen/io/Path.hpp"
 #include "io/DirectoryPackage.hpp"
 #include "io/ZipArchive.hpp"
@@ -78,6 +79,7 @@ bool Package::isLuaBytecode(std::string_view) const {
 }
 
 std::vector<std::uint8_t> Package::read(std::string_view path) const {
+    const debug::TraceSpan span("read", path);
     const std::unique_ptr<PackageReader> reader = openReader(path);
     const std::uint64_t size = reader->getSize();
     if (size > kMaxReadSize) {
@@ -90,6 +92,7 @@ std::vector<std::uint8_t> Package::read(std::string_view path) const {
 }
 
 std::vector<std::uint8_t> Package::readRange(std::string_view path, std::uint64_t offset, std::size_t size) const {
+    const debug::TraceSpan span("read", path);
     const std::unique_ptr<PackageReader> reader = openReader(path);
     const std::uint64_t available = offset < reader->getSize() ? reader->getSize() - offset : 0;
     const std::uint64_t count = std::min<std::uint64_t>(size, available);

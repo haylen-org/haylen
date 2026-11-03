@@ -65,16 +65,20 @@ std::string JobSystem::describe(const std::exception_ptr& error) {
     }
 }
 
-// Varn drops exceptions that escape a job, so every job is wrapped to hand its failure to the frame thread instead.
+// Varn drops exceptions that escape a job, so every job is wrapped to hand its failure to the frame thread instead. The trace spans of the job record into the recorder of the job, and the thread gets its own back after, since the browser build runs jobs on the frame thread.
 std::function<void()> JobSystem::guardWorker(std::function<void()> work, std::string_view name, std::shared_ptr<debug::TraceRecorder> recorder) {
     // clang-format off
     return [this, work = std::move(work), name, recorder = std::move(recorder)] {
         const double start = recorder ? debug::TraceRecorder::now() : 0.0;
+        debug::TraceRecorder* const previous = debug::TraceRecorder::getThreadRecorder();
+        debug::TraceRecorder::setThreadRecorder(recorder.get());
         try {
             work();
         } catch (...) {
             postToFrame([this, message = describe(std::current_exception())] { onError(message); });
         }
+        debug::TraceRecorder::setThreadRecorder(previous);
+
         if (recorder) {
             recorder->record(name, start, debug::TraceRecorder::now());
         }

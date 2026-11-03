@@ -56,13 +56,16 @@ class Manager final {
         core::Json options;
     };
 
+    using Decoder = std::function<std::shared_ptr<void>(Request&)>;
+    using Finalizer = std::function<std::shared_ptr<void>(std::shared_ptr<void>, const Request&)>;
+
     // Loader for one kind of asset. The function `normalize` validates the options and returns their canonical form, so equal options share one cached asset. The function `decode` runs on a worker thread with the file bytes, and `finalize` runs on the frame thread, where GPU resources may be created. An asset for whose normalized options `streams` returns true never has its file read whole: its decoder receives a reader of the file instead and runs on the I/O pool, since it reads as it decodes, so files of any size, such as long music, load in bounded memory.
     struct Type {
         std::string name;
         std::vector<std::string> extensions;
         std::function<core::Json(const core::Json&)> normalize;
-        std::function<std::shared_ptr<void>(Request&)> decode;
-        std::function<std::shared_ptr<void>(std::shared_ptr<void>, const Request&)> finalize;
+        Decoder decode;
+        Finalizer finalize;
         std::function<bool(const core::Json&)> streams;
 
         // Updates a live asset in place from the fresh bytes of its file. Types without it leave the cache on reload, so the next load reads the file again, and the live asset announces with `assetChanged` that it is stale.
@@ -168,7 +171,7 @@ class Manager final {
     struct Upload {
         std::string key;
         std::shared_ptr<Request> request;
-        std::function<std::shared_ptr<void>(std::shared_ptr<void>, const Request&)> finalize;
+        Finalizer finalize;
         std::shared_ptr<void> decoded;
         std::string error;
         std::vector<std::shared_ptr<void>> held;
@@ -226,6 +229,10 @@ class Manager final {
     // Gives the request the bytes of its file, or a reader of it for an asset that streams.
     void readFile(Request& request, bool streamed) const;
     [[nodiscard]] static bool isStreamed(const Request& request, const Type& assetType);
+
+    // Run the decoder and the finalizer of an asset inside the trace spans that name them by the path of the asset.
+    [[nodiscard]] static std::shared_ptr<void> decode(Request& request, const Decoder& decoder);
+    [[nodiscard]] static std::shared_ptr<void> finalize(std::shared_ptr<void> decoded, const Request& request, const Finalizer& finalizer);
 
     // Throws for an asset whose bytes are not on the device, which a synchronous read never waits for.
     void requireLocal(std::string_view path) const;

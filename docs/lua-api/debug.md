@@ -519,6 +519,7 @@ A trace records a span of frames into a file in the trace event JSON format, whi
 
 - `frame`, with every frame and every profiler scope, nested as they ran.
 - A lane for each worker of the task pool and of the I/O pool, with the jobs it ran as `job` and `ioJob`.
+- The loads, on the lane of the thread that did each step, named by the step and the path: `read content/sprites/hero.png` for each whole read of a file of the package, `decode sprites/hero.png` for the decoder of an asset and `create sprites/hero.png` for the step on the frame thread that makes the asset, such as its texture on the GPU. A step inside a job shows nested in its `job` or `ioJob`, so a slow load shows which file it was and where its time went.
 - `gpu`, with the time that the GPU took for each frame as `gpuFrame`, where the GPU device measures it, as the [capability matrix](../graphics/rhi.md#capability-matrix) lists. Elsewhere the lane stays empty. A GPU span ends when the frame thread learns that the GPU finished, a frame or two after the frame it measures. So its length is exact, while its place on the timeline is late.
 
 A trace keeps at most 262144 spans in memory by default, and counts the spans it drops once it is full. Recording costs a lock per span, so a trace measures a little more than the frames take without one.

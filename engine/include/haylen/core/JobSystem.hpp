@@ -61,7 +61,7 @@ class JobSystem final {
         return workerCount;
     }
 
-    // Records every job that a worker runs from now on into the recorder as a span named `job` or `ioJob` on the lane of its thread, until it is set to null.
+    // Records every job that a worker runs from now on into the recorder as a span named `job` or `ioJob` on the lane of its thread, with the trace spans of the job inside it, until it is set to null.
     void setTraceRecorder(std::shared_ptr<debug::TraceRecorder> value);
 
   private:

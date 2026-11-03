@@ -15,6 +15,7 @@
 #include "haylen/core/JsonNumber.hpp"
 #include "haylen/core/JsonValidator.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
+#include "haylen/debug/TraceSpan.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/Image.hpp"
 #include "haylen/graphics/VectorImage.hpp"
@@ -294,7 +295,7 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
         requireLocal(shared.path);
         Request loading = shared;
         readFile(loading, isStreamed(loading, assetType));
-        std::shared_ptr<void> decoded = assetType.decode(loading);
+        std::shared_ptr<void> decoded = decode(loading, assetType.decode);
 
         // The dependencies stay cached while the finalizer takes them.
         std::vector<std::shared_ptr<void>> held;
@@ -303,7 +304,7 @@ std::shared_ptr<void> Manager::load(std::string_view typeName, std::string_view 
                 held.push_back(load(dependency.type, dependency.path, dependency.options));
             }
         }
-        return assetType.finalize(std::move(decoded), loading);
+        return finalize(std::move(decoded), loading, assetType.finalize);
     });
     // clang-format on
 }
@@ -389,11 +390,11 @@ void Manager::readAndDecode(const std::shared_ptr<Request>& loading, const std::
             }
         });
     };
-    const auto decodeFile = [loading, decode = assetType.decode, deliver] {
+    const auto decodeFile = [loading, &assetType, deliver] {
         std::shared_ptr<void> decoded;
         std::string error;
         try {
-            decoded = decode(*loading);
+            decoded = decode(*loading, assetType.decode);
         } catch (const std::exception& exception) {
             error = exception.what();
         }
@@ -455,6 +456,16 @@ void Manager::queueUpload(Upload upload, const Type& assetType) {
             arrive(nullptr, exception.what());
         }
     }
+}
+
+std::shared_ptr<void> Manager::decode(Request& request, const Decoder& decoder) {
+    const debug::TraceSpan span("decode", request.path);
+    return decoder(request);
+}
+
+std::shared_ptr<void> Manager::finalize(std::shared_ptr<void> decoded, const Request& request, const Finalizer& finalizer) {
+    const debug::TraceSpan span("create", request.path);
+    return finalizer(std::move(decoded), request);
 }
 
 bool Manager::isStreamed(const Request& request, const Type& assetType) {
@@ -866,7 +877,7 @@ void Manager::finalizePending() {
         } else if (upload.error.empty()) {
             try {
                 const Request& request = *upload.request;
-                asset = track(upload.finalize(std::move(upload.decoded), request), request);
+                asset = track(finalize(std::move(upload.decoded), request, upload.finalize), request);
                 cache.insert_or_assign(upload.key, Cached{.asset = asset, .type = request.type, .path = request.path, .options = request.options});
             } catch (const std::exception& exception) {
                 upload.error = exception.what();
