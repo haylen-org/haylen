@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -102,6 +103,10 @@ class TextSession final {
     static void apply(ImGuiInputTextCallbackData& data, const platform::TextInput::Edit& edit);
     [[nodiscard]] static std::pair<int, int> getSelection(const ImGuiInputTextCallbackData& data);
 
+    // The keys and buttons that open the field that the focus is on, as the navigation of the UI reads them.
+    static constexpr std::array<ImGuiKey, 4> kAcceptKeys{ImGuiKey_Enter, ImGuiKey_KeypadEnter, ImGuiKey_Space, ImGuiKey_GamepadFaceDown};
+
+    [[nodiscard]] bool isOpenedByAHeldPress() const;
     [[nodiscard]] math::Rect toFramebuffer(const math::Rect& rect) const noexcept;
     void publishVisibleFields();
 

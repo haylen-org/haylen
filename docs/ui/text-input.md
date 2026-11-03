@@ -17,7 +17,7 @@ When a text component of [`haylen.ui`](../lua-api/ui.md) takes the focus, the UI
 - The label of the return key: default, done, go, next, search or send.
 - The autocorrection, which is off by default, the capitalization and the length limit.
 
-The platform places its native field over the field of the UI and shows the keyboard.
+The platform places its native field over the field of the UI and shows the keyboard. A field that the accept of a keyboard, a gamepad or a remote opens reaches the platform only once that press ends, as native controls act on the release. So the release never types into the keyboard of the system, such as the fullscreen keyboard of the Apple TV, which takes the select of the remote as a press of the key under its focus.
 
 What the user types comes back as the whole text of the native field, its selection and the range that the input method composes. It comes with the revision that the native field last received. The UI applies it inside the ImGui callback of the field, on the frame thread, which keeps the undo history and the caret of the field right.
 

@@ -177,7 +177,7 @@ void TextSession::publish() {
             published.reset();
             input.finish();
         }
-    } else if (!composing) {
+    } else if (!composing && !isOpenedByAHeldPress()) {
         // The field compares with the one the platform has in place, so a field that did not change costs no copy of its text.
         const math::Rect fieldBounds = toFramebuffer(bounds);
         const math::Rect caret = toFramebuffer(caretRect);
@@ -189,6 +189,12 @@ void TextSession::publish() {
         }
     }
     publishVisibleFields();
+}
+
+// A field that the accept of a keyboard, a gamepad or a remote opens reaches the platform once the press ends, as native controls act on the release, so the release never types into the keyboard of the system, such as the key under the focus of the keyboard of the Apple TV.
+bool TextSession::isOpenedByAHeldPress() const {
+    const bool opening = !published || published->id != active;
+    return opening && std::ranges::any_of(kAcceptKeys, [](ImGuiKey key) { return ImGui::IsKeyDown(key); });
 }
 
 math::Rect TextSession::toFramebuffer(const math::Rect& rect) const noexcept {

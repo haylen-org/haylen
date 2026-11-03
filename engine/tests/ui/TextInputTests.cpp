@@ -145,6 +145,27 @@ TEST_F(TextInputTest, PublishesTheFocusedFieldWithItsKeyboard) {
     EXPECT_FALSE(getInput().isEditing());
 }
 
+// The press of accept that opens a field ends before the platform edits it, so its release never types into the keyboard of the system, as the remote of the Apple TV would type the key under the focus.
+TEST_F(TextInputTest, OpensTheNativeFieldOnceThePressOfAcceptEnds) {
+    mount(R"({"kind": "column", "children": [{"kind": "button", "id": "go", "text": "Go", "autofocus": true}, {"kind": "textField", "id": "name"}]})");
+    // The first key shows the focus, and the next one moves it to the field.
+    for (int press = 0; press < 2; ++press) {
+        send({.type = platform::Event::Type::KeyDown, .key = input::Key::Down});
+        send({.type = platform::Event::Type::KeyUp, .key = input::Key::Down});
+    }
+    ASSERT_EQ(fixture.lua("return require('haylen.ui').focused().id"), "name");
+    ASSERT_FALSE(getInput().isEditing());
+
+    send({.type = platform::Event::Type::KeyDown, .key = input::Key::Enter});
+    fixture.frames(30);
+    ASSERT_NE(getUi().getContext().getBackend().getTextSession().getActiveField(), 0U) << "The press opens the field.";
+    EXPECT_FALSE(getInput().isEditing());
+    EXPECT_TRUE(getInput().getPublished().empty());
+    send({.type = platform::Event::Type::KeyUp, .key = input::Key::Enter});
+    ASSERT_TRUE(getInput().isEditing());
+    EXPECT_EQ(getPublished().id, getInput().getVisibleFields().front().id);
+}
+
 TEST_F(TextInputTest, TakesTheKeyboardFromTheFieldOfTheAppAndGivesItBack) {
     auto gui = mount(R"({"kind": "textField", "id": "name", "value": "Ana"})");
     input::AppTextField& appField = getEngine().getAppTextField();
