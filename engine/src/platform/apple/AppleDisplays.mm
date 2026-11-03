@@ -10,6 +10,20 @@
 
 namespace haylen::platform {
 
+#if TARGET_OS_VISION
+// The window of the app is its display, in its own points, with the safe area of the window as the work area. visionOS tells no rate and no modes of what shows the window.
+std::vector<Display> AppleDisplays::getDisplays() {
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
+    const CGRect bounds = window != nil ? window.bounds : CGRectZero;
+    const CGRect work = window != nil ? UIEdgeInsetsInsetRect(bounds, window.safeAreaInsets) : CGRectZero;
+    const float scale = window != nil ? static_cast<float>(window.traitCollection.displayScale) : 1.0F;
+    return {{.id = "main", .bounds = {0.0F, 0.0F, static_cast<float>(bounds.size.width), static_cast<float>(bounds.size.height)}, .workArea = {static_cast<float>(work.origin.x), static_cast<float>(work.origin.y), static_cast<float>(work.size.width), static_cast<float>(work.size.height)}, .scale = scale, .primary = true}};
+}
+
+std::string AppleDisplays::getWindowDisplayId() {
+    return "main";
+}
+#else
 NSMapTable<UIScreen*, NSString*>* AppleDisplays::ids = [NSMapTable weakToStrongObjectsMapTable];
 NSUInteger AppleDisplays::counted = 0;
 
@@ -73,6 +87,7 @@ std::string AppleDisplays::getWindowDisplayId() {
     UIScreen* screen = window.windowScene.screen;
     return getId(screen != nil ? screen : UIScreen.mainScreen).UTF8String;
 }
+#endif
 
 void AppleDisplays::changed() {
     Player::postEvent({.type = Event::Type::DisplaysChanged});

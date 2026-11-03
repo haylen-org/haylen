@@ -26,6 +26,7 @@ The place of a display in the list changes as other displays connect and disconn
 | Linux | The name of the connector of RandR, such as `DP-1` or `HDMI-1`. | Yes, while the monitor stays on its connector. |
 | iOS and iPadOS | `main` for the built-in screen, and `external-1`, `external-2` and on for the other screens in the order the app first sees them. | Only `main`. |
 | tvOS | `main`, the TV. | Yes. |
+| visionOS | `main`, the window of the app, since visionOS has no screens. | Yes. |
 | Android | The number of the display that the display manager gives, such as `0` for the built-in screen. | Only `0`. |
 | Web | `screen-1`, `screen-2` and on, in the order the page first sees each screen. | No. |
 
@@ -44,6 +45,7 @@ The work area leaves out what the system keeps for itself: the taskbar of Window
 | Linux | The monitors of RandR through X11, and their first output. Wayland sessions read them through XWayland. | The rate of the mode of the output, and its modes. |
 | iOS and iPadOS | The screen of the device, and the screen of every scene of the app, such as the scene that UIKit connects for an external display, or a window that Stage Manager moved to an external display. | The most frames per second of the screen, and the sizes of its modes. |
 | tvOS | The TV. | The most frames per second of the screen. tvOS lists no modes. |
+| visionOS | The window of the app in the space around the person, with its size in points, the scale of its traits and its safe area as the work area, since visionOS shows apps in windows and has no screens. | None, since visionOS tells neither. |
 | Mac Catalyst | The screen of the window. | As on iPadOS. |
 | Android | The display manager, which reports the built-in screen, external displays, cast screens and the secondary screens of a device. | The rate of the display and its modes. |
 | Web | The screen of the page, and every screen of the device once the person allows it through the Window Management API. | None, since browsers tell neither. |
@@ -77,7 +79,7 @@ On a desktop the window moves among the displays. The function `window.place` pu
 | Windows | Yes. | Yes. | Yes. |
 | Linux | Yes, on X11. Wayland places windows itself, and the app runs through XWayland. | Yes. | Yes. |
 | Web | No, the page has no desktop. | Yes, on any screen once the person let the page see every screen. | No, browsers have no modes. |
-| iOS, iPadOS, tvOS, Android | No. | The window always fills its display. | No. |
+| iOS, iPadOS, tvOS, visionOS, Android | No. | The window always fills its display. | No. |
 
 ```lua
 local display = require('haylen.display')
