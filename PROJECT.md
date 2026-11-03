@@ -2285,7 +2285,7 @@ Atualização de projetos:
 
 Plugins de terceiros:
 
-- [ ] Os 13 plugins de SDKs de terceiros da pasta `haylen-plugins` do dono (admob, app-tracking-transparency, background-assets, firebase, firebase-analytics, firebase-crashlytics, firebase-messaging, google-analytics, pack-lab, play-asset-delivery, playgama, plugin-lab e revenuecat) revisados um a um pelo formato atual dos plugins e pelo guia `docs/tools/upgrading.md`, com o SDK na última versão, funcionando em todas as plataformas que declaram, com README no padrão da Haylen, e publicados como repositórios em `haylen-org` só quando estiverem prontos e com o aval do dono.
+- [ ] Os plugins de SDKs de terceiros do dono, que vivem fora deste repositório, revisados um a um pelo formato atual dos plugins e pelo guia `docs/tools/upgrading.md`, com o SDK na última versão, funcionando em todas as plataformas que declaram, com README no padrão da Haylen, e publicados cada um no seu próprio repositório em `haylen-org` só quando estiverem prontos e com o aval do dono. Nada deles entra neste repositório.
 
 Integração contínua e GitHub:
 
