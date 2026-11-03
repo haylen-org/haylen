@@ -54,15 +54,15 @@ function Home.greeting()
     return hour < 12 and 'Good morning' or (hour < 18 and 'Good afternoon' or 'Good evening')
 end
 
--- The mix of the day: its cover beside its name and the button that plays it, over the colors of its genre, with the illustration of the app on wide windows.
+-- The mix of the day: its cover beside its name and the button that plays it, over the colors of its genre, with the illustration of the app on wide windows. The texts keep the width they need to read, so a card that has no room for the illustration beside them, such as on a tablet in portrait whose sidebar takes part of the window, shows it on a line of its own.
 function Home:layoutChanged(wide)
     local space = Style.space
     local mix = Catalog.mixes[1]
     local shade = Covers.deepText(mix.genre, 0.7)
     local card = ui.card{padding = wide and space.l or space.m, gap = space.m, style = {colors = {raised = shade, border = shade}, metrics = {panelRadius = Style.radius.card}},
-        ui.row{gap = space.l,
+        ui.row{gap = space.l, wrap = wide, justify = 'center',
             ui.image{image = mix.cover, width = wide and 180 or 120, height = wide and 180 or 120, radius = Style.radius.cover},
-            ui.column{gap = space.xxs, grow = 1,
+            ui.column{gap = space.xxs, grow = 1, minWidth = wide and Style.size.featuredText or 0,
                 ui.label{text = 'Mix of the day', font = 'caption', color = 'text'},
                 ui.label{text = mix.name, font = 'title', wrap = false, style = Style.text('title', wide and Style.type.title or Style.type.heading)},
                 ui.label{text = mix.description, color = 'text', visible = wide},

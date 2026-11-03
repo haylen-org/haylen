@@ -37,6 +37,7 @@ Style.size = {
     cover = 200,
     artist = 170,
     page = 1400,
+    featuredText = 280,
 }
 
 -- The width in UI units from which the window shows the sidebar and the player bar of a desktop.
