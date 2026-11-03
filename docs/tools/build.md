@@ -322,7 +322,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | libunibreak | 8.0 | zlib license. Line breaks and grapheme clusters of Unicode 17, compiled as `haylen-unibreak`. |
 | BudouX | v0.9.3 | Apache 2.0. Only its Thai phrase model, a JSON file that the engine embeds to break Thai lines. |
 | fast_float | v8.3.2 | Headers only. It parses floating point numbers on every platform, since `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
-| Dear ImGui | v1.92.9b | Compiled as `haylen-imgui` with the ImGui configuration of the engine. |
+| Dear ImGui | v1.93.0 | Compiled as `haylen-imgui` with the ImGui configuration of the engine. |
 | miniaudio | 0.11.25 | Compiled as `haylen-miniaudio`. |
 | Box2D | v3.1.1 | |
 | Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. |

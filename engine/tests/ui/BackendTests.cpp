@@ -128,13 +128,13 @@ TEST_F(BackendTest, FadesCurvesOverOnePixelAtEveryScale) {
         });
         // clang-format on
 
-        // Every point of the outline has a vertex half a pixel inside it with the full color and one half a pixel outside it that is clear.
+        // Every point of the outline has a vertex half a pixel inside it with the full color, all of them first, and one half a pixel outside it that is clear.
         ASSERT_NE(list, nullptr);
         const int count = (list->VtxBuffer.Size - first) / 2;
         ASSERT_GT(count, 8) << scale;
         for (int point = 0; point < count; ++point) {
-            const ImDrawVert& inner = list->VtxBuffer[first + point * 2];
-            const ImDrawVert& outer = list->VtxBuffer[first + point * 2 + 1];
+            const ImDrawVert& inner = list->VtxBuffer[first + point];
+            const ImDrawVert& outer = list->VtxBuffer[first + count + point];
             const float innerDistance = std::hypot(inner.pos.x - kCenter.x, inner.pos.y - kCenter.y);
             const float outerDistance = std::hypot(outer.pos.x - kCenter.x, outer.pos.y - kCenter.y);
             EXPECT_NEAR((outerDistance - innerDistance) * pixels, 1.0F, 0.05F) << scale;

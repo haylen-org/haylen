@@ -98,7 +98,7 @@ void Surfaces::fill(Context& context, const math::Rect& bounds, math::Color colo
 
 void Surfaces::outline(Context& context, const math::Rect& bounds, math::Color color, float radius, float width) {
     if (color.a > 0.0F && width > 0.0F) {
-        drawShape(context, {.bounds = bounds, .radii = getRadii(radius, ImDrawFlags_RoundCornersAll), .color = math::Color::transparent(), .borderWidth = width, .borderColor = color});
+        drawShape(context, {.bounds = bounds, .radii = getRadii(radius, ImDrawFlags_RoundAll), .color = math::Color::transparent(), .borderWidth = width, .borderColor = color});
     }
 }
 
@@ -119,7 +119,7 @@ void Surfaces::drawShape(Context& context, graphics2d::Shape shape) {
 
 std::array<float, 4> Surfaces::getRadii(float radius, ImDrawFlags corners) noexcept {
     const auto rounded = [radius, corners](ImDrawFlags corner) { return (corners & corner) != 0 ? radius : 0.0F; };
-    return {rounded(ImDrawFlags_RoundCornersTopLeft), rounded(ImDrawFlags_RoundCornersTopRight), rounded(ImDrawFlags_RoundCornersBottomRight), rounded(ImDrawFlags_RoundCornersBottomLeft)};
+    return {rounded(ImDrawFlags_RoundTopLeft), rounded(ImDrawFlags_RoundTopRight), rounded(ImDrawFlags_RoundBottomRight), rounded(ImDrawFlags_RoundBottomLeft)};
 }
 
 float Surfaces::getInnerRadius(float radius, float inset) noexcept {

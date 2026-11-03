@@ -329,6 +329,7 @@ Backend::Backend(graphics::Device& graphicsDevice, platform::Window& hostWindow,
     platform.Renderer_TextureMaxHeight = graphicsDevice.getMaxTextureSize();
 
     ImGui::GetStyle().FontSizeBase = kBaseFontSize;
+    ImGui::GetStyle().CircleTessellationMaxError = kCurveTolerance;
     addFont(std::string(kDefaultFontName), {.regular = {defaultFontData.begin(), defaultFontData.end()}});
     addFont(std::string(kMonospaceFontName), {.regular = {monospaceFontData.begin(), monospaceFontData.end()}});
 }
@@ -688,14 +689,9 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
         io.AddMousePosEvent(point.x, point.y);
     }
 
+    // ImGui measures the tolerance of its curves and the fringe that fades its edges in the pixels of the framebuffer scale, so every curve it draws stays within a fraction of a pixel of the true curve and fades over one pixel.
     io.DisplaySize = {visible.width / scale, visible.height / scale};
     io.DisplayFramebufferScale = {density.x, density.y};
-
-    // ImGui measures the tolerance of curves and the fringe that fades its edges in UI units, so both follow the pixels a UI unit covers, and every curve it draws stays within a fraction of a pixel of the true curve and fades over one pixel.
-    const float pixels = std::min(density.x, density.y);
-    if (pixels > 0.0F) {
-        ImGui::GetStyle().CircleTessellationMaxError = kCurveTolerance / pixels;
-    }
     io.DeltaTime = std::max(deltaSeconds, 1.0F / 1000.0F);
 
     // ImGui takes in the presses and releases of this frame in its new frame, so a press that lets go now still holds the UI in place for the frame of its release.
@@ -722,9 +718,6 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     renderedLists.clear();
     ImGui::NewFrame();
     scrollArbiter->beginFrame(deltaSeconds);
-    if (pixels > 0.0F) {
-        GImGui->DrawListSharedData.InitialFringeScale = 1.0F / pixels;
-    }
     ImGui::ErrorRecoveryStoreState(&recovery->state);
     frameActive = true;
 }

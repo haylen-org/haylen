@@ -121,7 +121,7 @@ void Window::drawTitle(Context& context, const math::Rect& bar) {
     } else {
         const float border = context.getMetric(Theme::Metric::BorderWidth);
         const math::Rect fill = math::Rect::fromMinMax({bar.x + border, bar.y + border}, {bar.getRight() - border, bar.getBottom()});
-        Surfaces::fill(context, fill, context.getColor(Theme::Color::Raised), Surfaces::getInnerRadius(context.getMetric(Theme::Metric::PanelRadius), border), ImDrawFlags_RoundCornersTop);
+        Surfaces::fill(context, fill, context.getColor(Theme::Color::Raised), Surfaces::getInnerRadius(context.getMetric(Theme::Metric::PanelRadius), border), ImDrawFlags_RoundTop);
         Widgets::line(context, {bar.x, bar.getBottom()}, {bar.getRight(), bar.getBottom()}, border, context.getColor(Theme::Color::Border));
     }
     const math::Rect text = grip.inset(Surfaces::getPadding(context, Theme::Surface::TitleBar));
