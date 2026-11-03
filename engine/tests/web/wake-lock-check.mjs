@@ -102,7 +102,7 @@ if (await step("ready", "The wake lock check is ready", { seconds: 60 })) {
         await pressSpace();
         await step("released when the app lets the screen sleep", "The wake lock check saw the lock released.", { since });
     } else {
-        await step("warned", "keep the screen on", { since: 0 });
+        await step("warned", 'instead of the "window.keepScreenOn" of "app.json"', { since: 0 });
         const since = result.log.length;
         await pressSpace();
         await step("runs on", "The wake lock check lets the screen sleep.", { since });
