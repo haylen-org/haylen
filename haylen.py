@@ -110,8 +110,8 @@ APPIMAGE_TOOLS_SHA256 = {
     "aarch64": {"appimagetool": "f0837e7448a0c1e4e650a93bb3e85802546e60654ef287576f46c71c126a9158", "runtime": "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444", "patchelf": "2281dd071995b449b9ce7c53c71d6d56ec3a280ae1cc66b779442abf624f7c10"},
 }
 # The installer generator of CPack makes the Windows installer with Inno Setup. The hash is the one of the x64 installer of the release.
-INNO_SETUP_VERSION = "7.1.0"
-INNO_SETUP_SHA256 = "0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f"
+INNO_SETUP_VERSION = "7.1.1"
+INNO_SETUP_SHA256 = "8a5a6711c3766a6e5fb74f280ba0e3551e719ce94538d901fdbd1f8f9920b3f0"
 ANDROID_NDK_VERSION = "30.0.16248370"
 EMSDK_VERSION = "6.0.12"
 # The file in every web build tree that records the version of Emscripten that configured it.
