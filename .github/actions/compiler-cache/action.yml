@@ -1,25 +1,41 @@
 name: Compiler cache
-description: Saves the compiler cache that the action "build-environment" restored, under the name of this run, and deletes the caches of the same name that earlier runs of the branch saved, so the repository keeps one compiler cache of each name. A job runs it last, also when it fails or a newer push cancels it, so the next run starts from every object this one compiled.
+description: Saves the compiler cache that the action "build-environment" restored, under the name of this run, and deletes the caches of the same name that earlier runs saved, so the repository keeps one compiler cache of each name. Only pushes to the default branch save, and the runs of other branches and of pull requests read its caches. A job runs it last, also when it fails or a newer push cancels it, so the next run starts from every object this one compiled.
+
+inputs:
+  job-status:
+    description: The status of the job, "job.status", since a job that a newer push cancelled used only part of its objects.
+    required: true
 
 runs:
   using: composite
   steps:
-    # The objects that a run reuses stay, and the ones that no run used for a day leave, so a run cancelled early keeps the objects of the runs before it.
-    - name: Drop the objects that no run used for a day
-      if: env.COMPILER_CACHE != ''
+    # A job that compiled nothing, such as one cancelled before its build, keeps the cache it restored. A job that ran to its end keeps only the objects it used, so the cache holds one build of the job and never grows, while a cancelled job keeps every object.
+    - name: Keep the objects that this run used
+      id: objects
+      if: env.COMPILER_CACHE != '' && github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
       shell: bash
-      run: ccache --evict-older-than 1d && ccache --show-stats
+      run: |
+        ccache --show-stats
+        compiled=$(ccache --print-stats | awk '$1 == "direct_cache_hit" || $1 == "preprocessed_cache_hit" || $1 == "cache_miss" { total += $2 } END { print total + 0 }')
+        if [ "$compiled" -eq 0 ]; then
+          echo "The job compiled nothing, so it keeps the compiler cache it restored."
+          exit 0
+        fi
+        if [ "${{ inputs.job-status }}" != "cancelled" ]; then
+          ccache --evict-older-than "$(( $(date +%s) - COMPILER_CACHE_START + 1 ))s"
+          ccache --show-stats | grep -i "cache size"
+        fi
+        echo "save=true" >> "$GITHUB_OUTPUT"
 
     - name: Save the compiler cache
-      if: env.COMPILER_CACHE != ''
+      if: steps.objects.outputs.save == 'true'
       uses: actions/cache/save@v6
       with:
         path: .ccache
         key: ${{ env.COMPILER_CACHE }}${{ github.run_id }}-${{ github.run_attempt }}
 
-    # Pull requests may come from forks, whose runs cannot delete caches, so only pushes clean up after themselves.
     - name: Delete the compiler caches of earlier runs
-      if: env.COMPILER_CACHE != '' && github.event_name == 'push'
+      if: steps.objects.outputs.save == 'true'
       shell: bash
       env:
         GH_TOKEN: ${{ github.token }}

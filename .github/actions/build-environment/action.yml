@@ -9,7 +9,7 @@ inputs:
     description: Whether the job saves the sources of the dependencies that its builds fetch, which the desktop job of each system does, while the other jobs of the system only read them.
     default: "false"
   cache:
-    description: The name of the compiler cache, which the system, the processor and, for builds with Emscripten, its version complete. Jobs that compile the same build trees share one, and a job without one compiles without a cache. A job that saves the cache ends with the action "compiler-cache".
+    description: The name of the compiler cache, which the system, the processor and, for builds with Emscripten, its version complete. A job that compiles the same build trees as another reads its cache, and a job without one compiles without a cache. A job that saves the cache ends with the action "compiler-cache".
     default: ""
   cache-size:
     description: The largest size of the compiler cache, above every object that one run of the job compiles, since a smaller cache drops what the next run needs.
@@ -73,7 +73,7 @@ runs:
       shell: bash
       run: choco install ccache --no-progress
 
-    # The name of the cache ends with the run that saves it, so a run restores the newest cache of its name.
+    # The name of the cache ends with the run that saves it, so a run restores the newest cache of its name. The objects take the level of compression that keeps them about a seventh smaller than the default at a small cost on each compile that misses.
     - name: Name the compiler cache
       if: inputs.cache != ''
       shell: bash
@@ -82,6 +82,7 @@ runs:
         echo "CCACHE_DIR=${{ github.workspace }}/.ccache" >> "$GITHUB_ENV"
         echo "CCACHE_MAXSIZE=${{ inputs.cache-size }}" >> "$GITHUB_ENV"
         echo "CCACHE_COMPILERCHECK=content" >> "$GITHUB_ENV"
+        echo "CCACHE_COMPRESSLEVEL=6" >> "$GITHUB_ENV"
 
     - name: Restore the compiler cache
       if: inputs.cache != ''
@@ -91,10 +92,13 @@ runs:
         key: ${{ env.COMPILER_CACHE }}${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: ${{ env.COMPILER_CACHE }}
 
+    # The counts start at zero and the time of the start is kept, so the action "compiler-cache" sees what this run compiled and which objects it used.
     - name: Compile through the compiler cache
       if: inputs.cache != ''
       shell: bash
       run: |
+        ccache --zero-stats
+        echo "COMPILER_CACHE_START=$(date +%s)" >> "$GITHUB_ENV"
         for language in C CXX OBJC OBJCXX; do
           echo "CMAKE_${language}_COMPILER_LAUNCHER=ccache" >> "$GITHUB_ENV"
         done

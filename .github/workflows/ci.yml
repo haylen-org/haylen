@@ -50,10 +50,13 @@ jobs:
         include:
           - runner: ubuntu-latest
             system: Linux
+            cache-size: 1G
           - runner: windows-latest
             system: Windows
+            cache-size: 1200M
           - runner: macos-latest
             system: macOS
+            cache-size: 900M
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
@@ -62,7 +65,7 @@ jobs:
           packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
           save-sources: "true"
           cache: desktop
-          cache-size: 2G
+          cache-size: ${{ matrix.cache-size }}
       - name: Install the Graphics Tools of Windows, whose debug layer validates Direct3D
         if: runner.os == 'Windows'
         shell: pwsh
@@ -92,57 +95,49 @@ jobs:
         run: python haylen.py --verbose test --gpu --config Debug --graphics-api metal --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
 
-  # The test port and the SDK build trees of their own, so they build next to the engine tests instead of after them.
+  # The test port and the SDK build trees of their own, next to the engine tests instead of after them, in one job of each system with one compiler cache. Headless Chrome on Linux draws WebGPU through SwiftShader, which cannot share the swapchain of a WebGPU canvas with the compositor, so the macOS job also checks the pages of the web on WebGPU, which Chrome draws there through Metal, and the web needs no macOS runner of its own.
   desktop-port:
-    name: Test port on ${{ matrix.system }}
+    name: ${{ matrix.name }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - runner: ubuntu-latest
-            system: Linux
+            name: Test port and SDK on Linux
+            cache-size: 800M
           - runner: windows-latest
-            system: Windows
+            name: Test port and SDK on Windows
+            cache-size: 800M
           - runner: macos-latest
-            system: macOS
+            name: Test port, SDK and WebGPU pages on macOS
+            cache-size: 1500M
+            web: true
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }}
-          cache: desktop-port
-          cache-size: 1G
+          cache: port-sdk
+          cache-size: ${{ matrix.cache-size }}
+          emscripten: ${{ matrix.web == true }}
       - name: Build the engine with the test port and play its app on it
         run: python haylen.py --verbose test --port --config Debug --jobs ${{ env.JOBS }}
-      - uses: ./.github/actions/compiler-cache
-        if: always()
-
-  desktop-sdk:
-    name: SDK on ${{ matrix.system }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            system: Linux
-          - runner: windows-latest
-            system: Windows
-          - runner: macos-latest
-            system: macOS
-    runs-on: ${{ matrix.runner }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: ./.github/actions/build-environment
-        with:
-          packages: ${{ env.LINUX_PACKAGES }}
-          cache: desktop-sdk
-          cache-size: 1G
       - name: Build the SDK and a project that finds it with "find_package"
         run: python haylen.py --verbose sdk --config Release --check-consumers package --jobs ${{ env.JOBS }}
+      - name: Build the prebuilt player for WebGPU and WebGL2
+        if: matrix.web
+        run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
+      - name: Check the error screen, the wake lock and the memory of pages on WebGPU in the headless Chrome of the runner
+        if: matrix.web
+        run: python haylen.py --verbose test --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
 
   # The Intel runners of macOS are virtual machines without a Metal device, so they build the engine for x86-64 and run the engine tests on the null device alone, and the Metal paths of Intel Macs stay untested in CI. The report of the displays shows whether a runner gained a Metal device.
   macos-intel:
@@ -151,10 +146,17 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
+        with:
+          cache: macos-intel
+          cache-size: 900M
       - name: Show the displays of the runner and whether they support Metal
         run: system_profiler SPDisplaysDataType
       - name: Run the engine tests
         run: python haylen.py --verbose test --config Debug --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+        with:
+          job-status: ${{ job.status }}
 
   # The test project builds the headless player in the Linux tree of the desktop job, so it reads the compiler cache of that job.
   tests-project:
@@ -166,7 +168,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: desktop
-          cache-size: 2G
+          cache-size: 1G
       - name: Build the headless player
         run: python haylen.py --verbose build --config Debug --target haylen-headless --jobs ${{ env.JOBS }}
       - name: Build the test library that the native tests load next to the player
@@ -206,8 +208,14 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }} clang libclang-rt-dev
+          cache: fuzz
+          cache-size: 600M
       - name: Fuzz the parsers that read hostile bytes for a minute each
         run: python haylen.py --verbose fuzz --seconds 60 --llvm /usr/bin --jobs ${{ env.JOBS }}
+      - uses: ./.github/actions/compiler-cache
+        if: always()
+        with:
+          job-status: ${{ job.status }}
 
   # WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader in the headless Chrome of the runner.
   web-gpu:
@@ -223,34 +231,26 @@ jobs:
       - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
         run: python haylen.py --verbose test --gpu --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
 
-  # The release that the checks of the web build needs the content tool of the desktop artifacts, which links the libraries of Linux windows on Linux. Headless Chrome on Linux draws WebGPU through SwiftShader, which cannot share the swapchain of a WebGPU canvas with the compositor, so the pages of WebGPU run on macOS, where Chrome draws WebGPU through Metal, and those of WebGL2 on Linux.
+  # The release that the checks of the web build needs the content tool of the desktop artifacts, which links the libraries of Linux windows. The pages draw through WebGL2, since headless Chrome on Linux cannot present a WebGPU canvas, and the macOS job of the test port checks them on WebGPU.
   web:
-    name: Web on ${{ matrix.system }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - runner: ubuntu-latest
-            system: Linux
-            graphics-api: webGl2
-          - runner: macos-latest
-            system: macOS
-            graphics-api: webGpu
-    runs-on: ${{ matrix.runner }}
+    name: Web
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: web
-          cache-size: 1G
+          cache-size: 800M
           emscripten: "true"
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
-      - name: Check the error screen, the wake lock and the memory of pages on ${{ matrix.graphics-api }} in the headless Chrome of the runner
-        run: python haylen.py --verbose test --platform web --graphics-api ${{ matrix.graphics-api }} --jobs ${{ env.JOBS }}
+      - name: Check the error screen, the wake lock and the memory of pages on WebGL2 in the headless Chrome of the runner
+        run: python haylen.py --verbose test --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
 
   # The keys of this job are made for it and thrown away with the runner, so no secret is involved. The job builds the same artifacts as the web job, so it reads the compiler cache of that job.
   release:
@@ -262,7 +262,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: web
-          cache-size: 1G
+          cache-size: 800M
           emscripten: "true"
       - name: Build the protected release of the test project for the web
         run: python haylen.py --verbose prepare samples/tests --platform web --config Release --jobs ${{ env.JOBS }}
@@ -315,7 +315,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: android
-          cache-size: 2G
+          cache-size: 1800M
       - name: Build the Android library and publish it to the local Maven repository
         run: python haylen.py --verbose engine --platform android --jobs ${{ env.JOBS }}
       - name: Create the starter app
@@ -326,6 +326,8 @@ jobs:
         run: python haylen.py --verbose run build/starter --platform android --config Release --build-only --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
 
   # Every family of slices of "Haylen.xcframework" builds in a job of its own, and the iOS job also builds the starter app for the simulator from the slices it built.
   apple:
@@ -352,7 +354,7 @@ jobs:
       - uses: ./.github/actions/build-environment
         with:
           cache: apple-${{ matrix.cache }}
-          cache-size: 500M
+          cache-size: 600M
       - name: Build the slices of "Haylen.xcframework"
         run: python haylen.py --verbose engine --platform apple --slices ${{ matrix.slices }} --jobs ${{ env.JOBS }}
       - name: Create the starter app
@@ -363,6 +365,8 @@ jobs:
         run: python haylen.py --verbose run build/starter --platform ios-simulator --config Release --build-only --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
 
   desktop-apps:
     name: Desktop apps on ${{ matrix.system }}
@@ -383,7 +387,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
           cache: desktop-apps
-          cache-size: 1G
+          cache-size: 600M
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
         run: pip install cmake
@@ -402,6 +406,8 @@ jobs:
         run: desktop-file-validate build/apps/starter-*/installed/linux/share/applications/*.desktop
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
 
   cpp-apps:
     name: C++ apps on ${{ matrix.system }}
@@ -411,8 +417,10 @@ jobs:
         include:
           - runner: ubuntu-latest
             system: Linux
+            cache-size: 1200M
           - runner: windows-latest
             system: Windows
+            cache-size: 2300M
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
@@ -420,7 +428,7 @@ jobs:
         with:
           packages: ${{ env.LINUX_PACKAGES }}
           cache: cpp-apps
-          cache-size: 2500M
+          cache-size: ${{ matrix.cache-size }}
       - name: Create the starter C++ app
         run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build the starter C++ app from the C++ template
@@ -429,3 +437,5 @@ jobs:
         run: python haylen.py --verbose run build/starter-cpp --config Release --build-only --jobs ${{ env.JOBS }}
       - uses: ./.github/actions/compiler-cache
         if: always()
+        with:
+          job-status: ${{ job.status }}
