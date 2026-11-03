@@ -17,298 +17,323 @@ env:
   CPM_SOURCE_CACHE: ${{ github.workspace }}/.cache/cpm
   # The development packages that the engine builds against on Linux: Ninja, the X11, Wayland and input libraries that SDL compiles against and loads when the app starts, and the headers of EGL and OpenGL.
   LINUX_PACKAGES: ninja-build libx11-dev libxext-dev libxrandr-dev libxcursor-dev libxfixes-dev libxi-dev libxss-dev libxtst-dev libgl1-mesa-dev libegl-dev libwayland-dev libxkbcommon-dev libdecor-0-dev libdbus-1-dev libibus-1.0-dev libudev-dev
+  # Mesa lavapipe for Vulkan with its validation layers, and Mesa llvmpipe for OpenGL through EGL, which draw the GPU tests of Linux without a GPU.
+  MESA_PACKAGES: mesa-vulkan-drivers libvulkan1 vulkan-validationlayers libegl-mesa0 libgl1-mesa-dri
 
 jobs:
   format:
+    name: Format and tool tests
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.15"
-      - run: pip install clang-format==23.1.3
-      - run: python haylen.py --verbose format --check
+      - name: Install clang-format
+        run: pip install clang-format==23.1.3
+      - name: Check the format
+        run: python haylen.py --verbose format --check
       - name: Test the rules of haylen.py
         run: python -m unittest discover -s tools -p "test_*.py"
 
-  desktop:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      - name: Install Linux packages
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
-      - name: Set up MSVC
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1.13.0
-      - name: Install Ninja
-        if: runner.os == 'Windows'
-        run: pip install ninja
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - name: Test
-        run: python haylen.py --verbose test --config Debug
-      - name: Build the engine with the test port and play its app on it
-        run: python haylen.py --verbose test --port --config Debug
-      - name: Build the SDK and a project that finds it with "find_package"
-        run: python haylen.py --verbose sdk --config Release --check-consumers package
-
   # The GPU tests run the conformance suite and the reference scenes of the 2D renderer on every device that a hosted runner can start, with the validation of each API on: Mesa lavapipe and llvmpipe on Linux, WARP on Windows and the paravirtual GPU of macOS. Windows runners have no Vulkan driver and only the OpenGL 1.1 of the system, so their Vulkan and OpenGL devices do not run here.
-  gpu:
+  desktop:
+    name: Desktop on ${{ matrix.system }}
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+        include:
+          - runner: ubuntu-latest
+            system: Linux
+          - runner: windows-latest
+            system: Windows
+          - runner: macos-latest
+            system: macOS
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: ./.github/actions/build-environment
         with:
-          python-version: "3.15"
-      - name: Install Linux packages with Mesa lavapipe for Vulkan, its validation layers and Mesa llvmpipe for OpenGL through EGL
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES mesa-vulkan-drivers libvulkan1 vulkan-validationlayers libegl-mesa0 libgl1-mesa-dri
-      - name: Set up MSVC
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1.13.0
-      - name: Install Ninja
-        if: runner.os == 'Windows'
-        run: pip install ninja
+          cache: desktop
+          cache-size: 3G
+          sources: desktop
+          packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
       - name: Install the Graphics Tools of Windows, whose debug layer validates Direct3D
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          if (-not (Test-Path "$env:SystemRoot\System32\d3d12SDKLayers.dll")) {
-            Add-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0
-          }
-          if (-not (Test-Path "$env:SystemRoot\System32\d3d12SDKLayers.dll")) {
-            throw "The Graphics Tools of Windows did not install the debug layer of Direct3D."
-          }
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+          if (-not (Test-Path "$env:SystemRoot\System32\d3d12SDKLayers.dll")) { Add-WindowsCapability -Online -Name Tools.Graphics.DirectX~~~~0.0.1.0 }
+          if (-not (Test-Path "$env:SystemRoot\System32\d3d12SDKLayers.dll")) { throw "The Graphics Tools of Windows did not install the debug layer of Direct3D." }
+      - name: Run the engine tests
+        run: python haylen.py --verbose test --config Debug --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on Vulkan through Mesa lavapipe
         if: runner.os == 'Linux'
-        run: python haylen.py --verbose test --gpu --config Debug --graphics-api vulkan
+        run: python haylen.py --verbose test --gpu --config Debug --graphics-api vulkan --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on OpenGL through Mesa llvmpipe and EGL without a display
         if: runner.os == 'Linux'
-        run: python haylen.py --verbose test --gpu --config Debug --graphics-api openGl
+        run: python haylen.py --verbose test --gpu --config Debug --graphics-api openGl --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on Direct3D 12 through WARP
         if: runner.os == 'Windows'
         env:
           HAYLEN_TEST_GPU_SOFTWARE: "1"
-        run: python haylen.py --verbose test --gpu --config Debug --graphics-api direct3D12
+        run: python haylen.py --verbose test --gpu --config Debug --graphics-api direct3D12 --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on Direct3D 11 through WARP
         if: runner.os == 'Windows'
         env:
           HAYLEN_TEST_GPU_SOFTWARE: "1"
-        run: python haylen.py --verbose test --gpu --config Debug --graphics-api direct3D11
+        run: python haylen.py --verbose test --gpu --config Debug --graphics-api direct3D11 --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on Metal
         if: runner.os == 'macOS'
-        run: python haylen.py --verbose test --gpu --config Debug --graphics-api metal
+        run: python haylen.py --verbose test --gpu --config Debug --graphics-api metal --jobs ${{ env.JOBS }}
+      - name: Build the engine with the test port and play its app on it
+        run: python haylen.py --verbose test --port --config Debug --jobs ${{ env.JOBS }}
+      - name: Build the SDK and a project that finds it with "find_package"
+        run: python haylen.py --verbose sdk --config Release --check-consumers package --jobs ${{ env.JOBS }}
 
   # The Intel runners of macOS are virtual machines without a Metal device, so they build the engine for x86-64 and run the engine tests on the null device alone, and the Metal paths of Intel Macs stay untested in CI. The report of the displays shows whether a runner gained a Metal device.
   macos-intel:
+    name: macOS on Intel
     runs-on: macos-26-intel
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: ./.github/actions/build-environment
         with:
-          python-version: "3.15"
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+          cache: desktop
+          cache-size: 1500M
+          sources: desktop
       - name: Show the displays of the runner and whether they support Metal
         run: system_profiler SPDisplaysDataType
-      - name: Test
-        run: python haylen.py --verbose test --config Debug
+      - name: Run the engine tests
+        run: python haylen.py --verbose test --config Debug --jobs ${{ env.JOBS }}
 
-  # WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader in the headless Chrome of the runner.
-  web-gpu:
+  # The test project builds the headless player in the Linux tree of the desktop job, so it reads the compiler cache of that job.
+  tests-project:
+    name: Test project
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: ./.github/actions/build-environment
         with:
-          python-version: "3.15"
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build
-      - uses: actions/cache@v6
+          cache: desktop
+          cache-size: 3G
+          save-cache: "false"
+          sources: desktop
+          packages: ${{ env.LINUX_PACKAGES }}
+      - name: Build the headless player
+        run: python haylen.py --verbose build --config Debug --target haylen-headless --jobs ${{ env.JOBS }}
+      - name: Build the test library that the native tests load next to the player
+        run: python haylen.py --verbose build --config Debug --target haylen-native-test --jobs ${{ env.JOBS }}
+      - name: Run every test of the test project
+        run: build/linux-debug/bin/haylen-headless samples/tests --frames 60000
+
+  coverage:
+    name: Coverage
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
         with:
-          path: .cache/cpm
-          key: cpm-web-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - uses: actions/cache@v6
+          cache: coverage
+          cache-size: 1500M
+          sources: desktop
+      - name: Measure the coverage of the engine tests
+        run: python haylen.py --verbose coverage --jobs ${{ env.JOBS }}
+
+  sanitizers:
+    name: Sanitizer ${{ matrix.sanitizer }}
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, thread]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
         with:
-          path: .tools/emsdk
-          key: emsdk-${{ hashFiles('haylen.py') }}
+          cache: sanitizer-${{ matrix.sanitizer }}
+          cache-size: 1500M
+          sources: desktop
+          packages: ${{ env.LINUX_PACKAGES }}
+      - name: Run the engine tests under the sanitizer
+        run: python haylen.py --verbose test --sanitizers ${{ matrix.sanitizer }} --jobs ${{ env.JOBS }}
+
+  fuzz:
+    name: Fuzzers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          cache: fuzz
+          cache-size: 1500M
+          sources: desktop
+          packages: ${{ env.LINUX_PACKAGES }} clang libclang-rt-dev
+      - name: Fuzz the parsers that read hostile bytes for a minute each
+        run: python haylen.py --verbose fuzz --seconds 60 --llvm /usr/bin --jobs ${{ env.JOBS }}
+
+  # WebGPU draws through SwiftShader and WebGL2 through ANGLE on SwiftShader in the headless Chrome of the runner.
+  web-gpu:
+    name: Web GPU tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          cache: web-gpu
+          cache-size: 1G
+          sources: web
+          packages: ninja-build
+          emscripten: "true"
       - name: Run the GPU tests on WebGPU in the headless Chrome of the runner
-        run: python haylen.py --verbose test --gpu --platform web --graphics-api webGpu
+        run: python haylen.py --verbose test --gpu --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
-        run: python haylen.py --verbose test --gpu --platform web --graphics-api webGl2
+        run: python haylen.py --verbose test --gpu --platform web --graphics-api webGl2 --jobs ${{ env.JOBS }}
+
+  # The release that the checks of the web build needs the content tool of the desktop artifacts, which links the libraries of Linux windows.
+  web:
+    name: Web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          cache: web
+          cache-size: 1G
+          sources: web
+          packages: ${{ env.LINUX_PACKAGES }}
+          emscripten: "true"
+      - name: Build the prebuilt player for WebGPU and WebGL2
+        run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
+      - name: Check the error screen, the wake lock and the memory of pages in the headless Chrome of the runner
+        run: python haylen.py --verbose test --platform web --jobs ${{ env.JOBS }}
+
+  # The keys of this job are made for it and thrown away with the runner, so no secret is involved.
+  release:
+    name: Protected web release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/build-environment
+        with:
+          cache: release
+          cache-size: 1G
+          sources: web
+          packages: ${{ env.LINUX_PACKAGES }}
+          emscripten: "true"
+      - name: Build the protected release of the test project for the web
+        run: python haylen.py --verbose prepare samples/tests --platform web --config Release --jobs ${{ env.JOBS }}
+      - name: Inspect it for anything a release never holds
+        run: python haylen.py --verbose check samples/tests --platform web --config Release
 
   # The emulator of an x86-64 image runs on the KVM of the Linux runner and draws through SwiftShader, and the tests run on every device of the Android build that starts there.
   android-gpu:
+    name: Android GPU tests
     runs-on: ubuntu-latest
     env:
       ANDROID_AVD_HOME: ${{ github.workspace }}/.android/avd
       HAYLEN_TEST_GPU_SOFTWARE: "1"
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
-      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
-      - run: sudo apt-get update && sudo apt-get install -y ninja-build
+      - name: Install the NDK, CMake, the emulator and its system image
+        run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
+      - uses: ./.github/actions/build-environment
+        with:
+          cache: android-gpu
+          cache-size: 1G
+          sources: android
+          packages: ninja-build
       - name: Let the emulator use KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Create the virtual device that the tests start
-        run: |
-          mkdir -p "$ANDROID_AVD_HOME"
-          echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-android-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+        run: mkdir -p "$ANDROID_AVD_HOME" && echo no | avdmanager create avd --name haylen-gpu-tests --package "system-images;android-37.0;default;x86_64"
       - name: Run the GPU tests on the emulator
-        run: python haylen.py --verbose test --gpu --platform android
+        run: python haylen.py --verbose test --gpu --platform android --jobs ${{ env.JOBS }}
 
-  coverage:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - run: python haylen.py --verbose coverage
-
-  web:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      # The release that the memory check builds needs the content tool of the desktop artifacts, which links the libraries of Linux windows.
-      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-web-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - uses: actions/cache@v6
-        with:
-          path: .tools/emsdk
-          key: emsdk-${{ hashFiles('haylen.py') }}
-      - name: Build the prebuilt player for WebGPU and WebGL2
-        run: python haylen.py --verbose engine --platform web
-      - name: Check the memory of a page that downloads a large release
-        run: python haylen.py --verbose test --platform web
-
+  # The protected release of an Android app takes the content tool of the desktop artifacts, which links the libraries of Linux windows.
   android:
+    name: Android
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "25"
       - uses: android-actions/setup-android@v4.0.4
-      - run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
-      - run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
-      - uses: actions/cache@v6
+      - name: Install the NDK, CMake and the platform
+        run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
+      - uses: ./.github/actions/build-environment
         with:
-          path: .cache/cpm
-          key: cpm-android-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+          cache: android
+          cache-size: 2G
+          sources: android
+          packages: ${{ env.LINUX_PACKAGES }}
       - name: Build the Android library and publish it to the local Maven repository
-        run: python haylen.py --verbose engine --platform android
-      - name: Build and check the protected release APK of the starter app, with the content tool of the desktop artifacts
-        run: |
-          python haylen.py --verbose new build/starter
-          python haylen.py --verbose distribution android-key build/starter
-          python haylen.py --verbose run build/starter --platform android --config Release --build-only
+        run: python haylen.py --verbose engine --platform android --jobs ${{ env.JOBS }}
+      - name: Create the starter app
+        run: python haylen.py --verbose new build/starter
+      - name: Give it an upload key
+        run: python haylen.py --verbose distribution android-key build/starter
+      - name: Build and check its protected release APK
+        run: python haylen.py --verbose run build/starter --platform android --config Release --build-only --jobs ${{ env.JOBS }}
 
   apple:
+    name: Apple
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: ./.github/actions/build-environment
         with:
-          python-version: "3.15"
-      - run: brew install ninja
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-apple-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
+          cache: apple
+          cache-size: 1500M
+          sources: apple
       - name: Build "Haylen.xcframework"
-        run: python haylen.py --verbose engine --platform apple
-      - name: Build and check the protected release of the starter app for the iOS simulator
-        run: |
-          python haylen.py --verbose new build/starter
-          python haylen.py --verbose run build/starter --platform ios-simulator --config Release --build-only
+        run: python haylen.py --verbose engine --platform apple --jobs ${{ env.JOBS }}
+      - name: Create the starter app
+        run: python haylen.py --verbose new build/starter
+      - name: Build and check its protected release for the iOS simulator
+        run: python haylen.py --verbose run build/starter --platform ios-simulator --config Release --build-only --jobs ${{ env.JOBS }}
 
   desktop-apps:
+    name: Desktop apps on ${{ matrix.system }}
     strategy:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - runner: ubuntu-latest
+            system: Linux
             platform: linux
-          - os: windows-latest
+          - runner: windows-latest
+            system: Windows
             platform: windows
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: ./.github/actions/build-environment
         with:
-          python-version: "3.15"
-      - name: Install Linux packages
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES dpkg-dev desktop-file-utils
+          cache: desktop-apps
+          cache-size: 2500M
+          sources: desktop
+          packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
         run: pip install cmake
-      - name: Set up MSVC
-        if: runner.os == 'Windows'
-        uses: ilammy/msvc-dev-cmd@v1.13.0
-      - name: Install Ninja
-        if: runner.os == 'Windows'
-        run: pip install ninja
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
       - name: Create the starter app
         run: python haylen.py --verbose new build/starter
-      - name: Add a plugin from the plugin template, whose desktop library the app then builds
-        run: |
-          python haylen.py --verbose plugin new build/echo-check
-          python haylen.py --verbose plugin add build/echo-check --app build/starter
+      - name: Create a plugin from the plugin template, whose desktop library the app then builds
+        run: python haylen.py --verbose plugin new build/echo-check
+      - name: Add the plugin to the starter app
+        run: python haylen.py --verbose plugin add build/echo-check --app build/starter
       - name: Build the packages of the starter app from the template of the platform
-        run: python haylen.py --verbose distribution installer build/starter --platform ${{ matrix.platform }} --output build/dist
+        run: python haylen.py --verbose distribution installer build/starter --platform ${{ matrix.platform }} --output build/dist --jobs ${{ env.JOBS }}
       - name: Check the installed app
         run: python haylen.py --verbose check build/starter --platform ${{ matrix.platform }} --config Release
       - name: Validate the desktop entry
@@ -317,86 +342,6 @@ jobs:
       - name: Create the starter C++ app
         run: python haylen.py --verbose new build/starter-cpp --kind cpp
       - name: Build the starter C++ app from the C++ template
-        run: python haylen.py --verbose run build/starter-cpp --build-only
+        run: python haylen.py --verbose run build/starter-cpp --build-only --jobs ${{ env.JOBS }}
       - name: Build and check the protected release of the starter C++ app
-        run: python haylen.py --verbose run build/starter-cpp --config Release --build-only
-
-  sanitizers:
-    strategy:
-      fail-fast: false
-      matrix:
-        sanitizer: [address, thread]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-sanitizers-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - name: Run the engine tests under the sanitizer
-        run: python haylen.py --verbose test --sanitizers ${{ matrix.sanitizer }}
-
-  fuzz:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES clang libclang-rt-dev
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-fuzz-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - name: Fuzz the parsers that read hostile bytes for a minute each
-        run: python haylen.py --verbose fuzz --seconds 60 --llvm /usr/bin
-
-  tests-project:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - name: Build the headless player and the test library that the native tests load next to it
-        run: |
-          python haylen.py --verbose build --config Debug --target haylen-headless
-          python haylen.py --verbose build --config Debug --target haylen-native-test
-      - name: Run every test of the test project
-        run: build/linux-debug/bin/haylen-headless samples/tests --frames 60000
-
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
-        with:
-          python-version: "3.15"
-      # The release takes the content tool of the desktop artifacts, which build with the player of this system.
-      - name: Install Linux packages
-        run: sudo apt-get update && sudo apt-get install -y $LINUX_PACKAGES
-      - uses: actions/cache@v6
-        with:
-          path: .cache/cpm
-          key: cpm-release-${{ hashFiles('engine/cmake/haylen-dependencies.cmake') }}
-      - uses: actions/cache@v6
-        with:
-          path: .tools/emsdk
-          key: emsdk-${{ hashFiles('haylen.py') }}
-      # The keys of this job are made for it and thrown away with the runner, so no secret is involved.
-      - name: Build the protected release of the test project for the web
-        run: python haylen.py --verbose prepare samples/tests --platform web --config Release
-      - name: Inspect it for anything a release never holds
-        run: python haylen.py --verbose check samples/tests --platform web --config Release
+        run: python haylen.py --verbose run build/starter-cpp --config Release --build-only --jobs ${{ env.JOBS }}
