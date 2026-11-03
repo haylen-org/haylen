@@ -249,9 +249,15 @@ class Engine final {
     void requestRestart() noexcept;
     [[nodiscard]] bool isRestartRequested() const noexcept;
 
-    // Asks the runtime to run the app package at the path, a folder or a zip file, in place of this app once this frame ends, and to start this app again when that app quits. Throws `std::invalid_argument` when nothing is at the path.
-    void requestLaunch(const std::filesystem::path& package);
-    [[nodiscard]] const std::optional<std::filesystem::path>& getLaunchRequest() const noexcept;
+    // The app that `requestLaunch` runs: the package at a path, a folder or a zip file, and the address of the development server that plays it in development with hot reload, or an empty text for an app that plays as it is.
+    struct Launch {
+        std::filesystem::path package;
+        std::string developmentServer;
+    };
+
+    // Asks the runtime to run an app in place of this app once this frame ends, and to start this app again when that app quits. Throws `std::invalid_argument` when nothing is at the path or the development server is not a "ws://" or "wss://" address.
+    void requestLaunch(Launch launch);
+    [[nodiscard]] const std::optional<Launch>& getLaunchRequest() const noexcept;
 
     // Whether another app launched this one, so that quitting it starts that app again.
     [[nodiscard]] bool isLaunched() const noexcept;

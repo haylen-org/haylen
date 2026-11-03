@@ -15,6 +15,7 @@ class Package;
 
 namespace haylen::platform {
 
+class DevelopmentSession;
 class HeadlessHost;
 
 // Runs an app package without a window, GPU or audio device on the headless host, at 60 frames per second of real time, so asynchronous work finishes the way it does on a device. The app runs until it quits, until an error stops an app that is not recoverable, or for the number of frames that `--frames` allows, and `--dev` runs it in development with hot reload of its folder, like the player. The exit status is the status the app quit with, or 1 when an error was reported or the app did not quit in time, which suits automatic runs such as continuous integration.
@@ -34,6 +35,12 @@ class HeadlessPlayer final {
     static int run(const Options& options);
 
   private:
+    // An app that launched the one that plays, which starts again from its package with its development session when that app quits.
+    struct Launcher {
+        std::shared_ptr<io::Package> package;
+        std::unique_ptr<DevelopmentSession> development;
+    };
+
     static int play(const Options& options);
     [[nodiscard]] static std::unique_ptr<core::Engine> launch(HeadlessHost& host, const std::shared_ptr<io::Package>& package);
 };

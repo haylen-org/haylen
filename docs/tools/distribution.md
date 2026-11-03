@@ -332,6 +332,24 @@ The option `--coop same-origin` with `--coep credentialless` or `--coep require-
 
 The server names the MIME type of `.wasm` (`application/wasm`), `.js` and `.mjs` (`text/javascript`), `.json`, `.zip`, `.html`, `.css`, `.svg`, `.png` and `.data` itself. A request for a file that also exists as `<file>.br` or `<file>.gz` receives the compressed copy with its `Content-Encoding`, when the browser accepts that encoding.
 
+#### Serving an app
+
+```sh
+haylen serve ~/apps/my-game
+haylen serve ~/apps/my-game --port 8100
+haylen serve ~/apps/my-game --host 192.168.1.20
+```
+
+With the folder of a Lua app, `serve` serves the package of the app to a player on another device of the local network, such as an app that downloads packages and plays them with [`haylen.launch`](../lua-api/haylen.md#haylenlaunchpath-options):
+
+1. It compiles the shaders of the app and writes the zip of its package, as [package](#package) does, into `served/app.zip` of the build folder of the app.
+2. It serves the zip at `/haylen/app.zip` and the [development server](#the-development-server) at `/haylen/development`, on one port of every address of this machine, or of the address that `--host` names. Both need the token of the run, twelve hexadecimal digits that a person can also type on the remote of a TV.
+3. It prints the address of the zip with its token and the keys of [while the app runs](#while-the-app-runs).
+
+The zip answers with the header `Haylen-Development-Server`, the WebSocket address of the development server with its token, and exposes it to pages of other origins. A player that launches the downloaded package with that address in the option `developmentServer` plays it in development. So every file saved in the app reloads on the device, the keys `r`, `R` and `d` act on it, and the terminal prints what each player did. The manifest of the server holds the files of the zip, so a player that downloads it catches up on what changed since. The server serves the next player that opens the address until the key `q` or Ctrl+C stops it.
+
+The device and this machine must share a network. A C++ app has no package to serve, and the options `--open`, `--coep` and `--coop` belong to web pages, so they stop the command.
+
 ### distribution
 
 The command `distribution` builds what ships an app. Its actions are `installer`, `steam` and `android-key`:
@@ -1109,6 +1127,7 @@ Other options are ignored, because systems add their own, such as the ones that 
 Among the commands of `haylen.py`, only `run` turns development on:
 
 - `run` without `--platform` starts a development server and passes `--dev-server` to the player of this machine.
+- `serve` with the folder of an app serves its package with a development server to players on other devices, as [serving an app](#serving-an-app) describes.
 - `run --platform web` in the Debug configuration serves a page that turns on development through `Module.haylen.development`.
 - `run` with any other platform in the Debug configuration starts a development server and launches the app connected to it.
 

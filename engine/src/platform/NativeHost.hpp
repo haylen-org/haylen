@@ -7,6 +7,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "haylen/math/Insets.hpp"
@@ -114,6 +115,11 @@ class NativeHost : public Host {
     // Plays the apps of this runtime in development, with a session that scans the package folder it is given or connects to the development server whose address the launch gave.
     void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
         developmentSession = std::make_unique<DevelopmentSession>(*this, std::move(folder), std::move(server));
+    }
+
+    // Takes the development session of the next app and hands back the one of the app before it, such as when a launched app plays with a session of its own, or with none, while the app that launched it keeps its own for its return.
+    [[nodiscard]] std::unique_ptr<DevelopmentSession> exchangeDevelopmentSession(std::unique_ptr<DevelopmentSession> value) noexcept {
+        return std::exchange(developmentSession, std::move(value));
     }
 
     // The native views of plugins over the app, which the platform services update from any thread. They belong to the process, so a reservation or a cover outlives the apps that restart under it.

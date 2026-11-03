@@ -4757,6 +4757,86 @@ def run_web(app: App, site: Path, args: argparse.Namespace) -> None:
             development.close()
 
 
+# Serving a package: `serve <app>` serves the zip of the package of a Lua app and its development server on the local network, for a player on another device that downloads the package and launches it in development with the option `developmentServer` of `haylen.launch`.
+
+PACKAGE_PATH = "/haylen/app.zip"
+# The header of the zip that names the development server with its token, so a player plays the app with hot reload from the address of the zip alone.
+DEVELOPMENT_HEADER = "Haylen-Development-Server"
+
+
+class PackageHandler(http.server.BaseHTTPRequestHandler):
+    """Serves the zip of the package, with the address of the development server in its header, and the development path, both only with the token of the run."""
+
+    development: DevelopmentServer
+    archive: Path
+    development_address: str
+
+    def do_GET(self) -> None:
+        parts = urllib.parse.urlsplit(self.path)
+        if parts.path == DEVELOPMENT_PATH:
+            self.development.accept(self)
+            return
+        if parts.path != PACKAGE_PATH:
+            self.send_error(404, "The server only serves the zip of the app and its development path.")
+            return
+        if urllib.parse.parse_qs(parts.query).get("token") != [self.development.token]:
+            self.send_error(403, "The server needs the token of this run.")
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "application/zip")
+        self.send_header("Content-Length", str(self.archive.stat().st_size))
+        self.send_header("Cache-Control", "no-store")
+        self.send_header(DEVELOPMENT_HEADER, self.development_address)
+        # A player in a web page downloads from another origin, and reads the header only when the server exposes it.
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Expose-Headers", DEVELOPMENT_HEADER)
+        self.end_headers()
+        with self.archive.open("rb") as stream:
+            shutil.copyfileobj(stream, self.wfile)
+        terminal.info("A player downloaded the app.")
+
+    def log_message(self, format: str, *arguments) -> None:
+        pass
+
+
+def serve_app(app: Path, args: argparse.Namespace) -> None:
+    """Serves the zip of the package and the development server of a Lua app on one port of the local network, both behind the token of the run, and prints the address of the zip with the keys of the run until the key "q" or Ctrl+C stops it. The manifest of the development server holds the files of the zip, so a player that downloaded it catches up on what changed since."""
+    if app_kind(app) == "cpp":
+        raise BuildError(f'The app `{shown_path(app)}` is a C++ app, which has no package to serve. Run it with "{TOOL} run {shown_path(app)}".')
+    if args.open or args.coep != "off" or args.coop != "off":
+        raise BuildError('The options "--open", "--coep" and "--coop" serve a web page, while the folder of an app serves the zip of its package.')
+    compile_app_shaders(app)
+    info = App(app, host_name())
+    archive = info.build_folder / "served" / "app.zip"
+    package_folder(app, archive)
+    with zipfile.ZipFile(archive) as opened:
+        manifest = {name: hashlib.sha256(opened.read(name)).hexdigest() for name in opened.namelist()}
+    development = DevelopmentServer(app, manifest)
+
+    listen = "0.0.0.0" if args.host == "127.0.0.1" else args.host
+    try:
+        reached = lan_address() if listen == "0.0.0.0" else listen
+    except OSError as error:
+        raise BuildError(f'This machine has no address on a network that devices reach: {error.strerror}. Join a network, or name the address with "--host".') from error
+    address = f"http://{reached}:{args.port}{PACKAGE_PATH}?token={development.token}"
+    handler = type("Handler", (PackageHandler,), {"development": development, "archive": archive, "development_address": f"ws://{reached}:{args.port}{DEVELOPMENT_PATH}?token={development.token}"})
+    try:
+        server = LocalServer((listen, args.port), handler)
+    except OSError as error:
+        raise BuildError(f'The server cannot listen on port {args.port} of "{listen}": {error.strerror}. Stop what uses the port, or pick another one with "--port".') from error
+
+    stop = threading.Event()
+    threading.Thread(target=development.watch, args=(stop,), daemon=True).start()
+    try:
+        with server, RunSession(development) as session:
+            rows = [("App", f'{info.name} ("{info.identifier}")'), ("Address", f"`{address}`"), ("Hot reload", "Every file saved in the app reloads in the players that play it")]
+            session.show(rows, server.shutdown)
+            with contextlib.suppress(KeyboardInterrupt):
+                server.serve_forever()
+    finally:
+        stop.set()
+
+
 # Windows and Linux: the CMake project of `platform/windows` or `platform/linux` includes `haylen/haylen.cmake`, which brings the SDK of the desktop artifacts, the package, the native libraries and the values of `app.json`, and haylen.py builds it in place and installs the app into the build folder of the app.
 
 # Where the installed app keeps its executable, its package and its native libraries: next to each other on Windows, and in `lib/<executable>` on Linux, where `bin/<executable>` links to the executable.
@@ -6890,7 +6970,8 @@ class DevelopmentServer:
         self.folder = folder
         self.manifest = manifest
         self.session = os.urandom(8).hex()
-        self.token = base64.urlsafe_b64encode(os.urandom(18)).decode()
+        # A token of hexadecimal digits, which a person also types on the remote of a TV.
+        self.token = os.urandom(6).hex()
         self.revision = 0
         self.clients: list[DevelopmentClient] = []
         self.lock = threading.Lock()
@@ -7124,7 +7205,10 @@ class DevelopmentServer:
 def command_serve(args: argparse.Namespace) -> None:
     directory = Path(args.directory).resolve()
     if not directory.is_dir():
-        raise BuildError(f"The folder `{shown_path(directory)}` does not exist. Name the folder of a web page.")
+        raise BuildError(f"The folder `{shown_path(directory)}` does not exist. Name the folder of a web page or of an app.")
+    if (directory / "app.json").is_file():
+        serve_app(directory, args)
+        return
     serve(directory, args.host, args.port, args.coep, args.coop, args.open)
 
 
@@ -7277,8 +7361,8 @@ def build_parser() -> argparse.ArgumentParser:
     shaders.add_argument("--force", action="store_true", help="Compile every shader, including the ones that are up to date.")
     shaders.set_defaults(handler=command_shaders)
 
-    serve_folder = commands.add_parser("serve", parents=[common], help="Serve a folder with the headers WebAssembly pages need.")
-    serve_folder.add_argument("directory", help="The folder of the web page.")
+    serve_folder = commands.add_parser("serve", parents=[common], help="Serve a folder with the headers WebAssembly pages need, or the package of an app with its development server on the local network.")
+    serve_folder.add_argument("directory", help="The folder of the web page, or of a Lua app, whose package and development server it serves to players on other devices.")
     add_web_server_options(serve_folder, 8000)
     serve_folder.set_defaults(handler=command_serve)
 

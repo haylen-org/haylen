@@ -2916,7 +2916,7 @@ class DevelopmentServerTest(unittest.TestCase):
         development = haylen.start_web_development(app, site)
         config = json.loads((site / "config.json").read_text())
         self.assertEqual(config["development"], {"path": haylen.DEVELOPMENT_PATH, "token": development.token})
-        self.assertGreaterEqual(len(base64.urlsafe_b64decode(development.token)), 16)
+        self.assertRegex(development.token, r"^[0-9a-f]{12}$")
         self.assertEqual(development.manifest, self.manifest)
 
     def test_device_runs_reach_the_server_by_their_platform(self):
@@ -3038,6 +3038,54 @@ class DebugRelayTest(unittest.TestCase):
         editor.close()
         self.wait(lambda: second.messages[-1]["command"] == "disconnect")
         self.assertEqual(relay.configuration, {})
+
+
+class PackageServerTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = tempfile.TemporaryDirectory()
+        self.addCleanup(self.scratch.cleanup)
+        quiet = mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))
+        quiet.start()
+        self.addCleanup(quiet.stop)
+
+    def test_the_zip_needs_the_token_and_names_the_development_server(self):
+        folder = Path(self.scratch.name) / "app"
+        (folder / "source").mkdir(parents=True)
+        (folder / "app.json").write_text("{}")
+        (folder / "source" / "main.lua").write_text("print(1)")
+        archive = Path(self.scratch.name) / "app.zip"
+        haylen.package_folder(folder, archive)
+        development = haylen.DevelopmentServer(folder, {})
+        handler = type("Handler", (haylen.PackageHandler,), {"development": development, "archive": archive, "development_address": "ws://192.168.1.20:8000/haylen/development?token=0123456789ab"})
+        server = haylen.LocalServer(("127.0.0.1", 0), handler)
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        self.addCleanup(server.server_close)
+        self.addCleanup(server.shutdown)
+
+        def get(path):
+            connection = http.client.HTTPConnection("127.0.0.1", server.server_address[1], timeout=5)
+            self.addCleanup(connection.close)
+            connection.request("GET", path)
+            response = connection.getresponse()
+            return response, response.read()
+
+        response, body = get(f"{haylen.PACKAGE_PATH}?token={development.token}")
+        self.assertEqual(response.status, 200)
+        self.assertEqual(body, archive.read_bytes())
+        self.assertEqual(response.getheader(haylen.DEVELOPMENT_HEADER), "ws://192.168.1.20:8000/haylen/development?token=0123456789ab")
+        self.assertEqual(response.getheader("Access-Control-Expose-Headers"), haylen.DEVELOPMENT_HEADER)
+        self.assertEqual(get(f"{haylen.PACKAGE_PATH}?token=wrong")[0].status, 403)
+        self.assertEqual(get("/app.json")[0].status, 404)
+
+    def test_only_the_package_of_a_lua_app_is_served(self):
+        folder = Path(self.scratch.name) / "app"
+        folder.mkdir()
+        options = argparse.Namespace(open=False, coep="off", coop="off", host="127.0.0.1", port=0)
+        with self.assertRaisesRegex(haylen.BuildError, '"--open", "--coep" and "--coop"'):
+            haylen.serve_app(folder, argparse.Namespace(**{**vars(options), "open": True}))
+        (folder / "CMakeLists.txt").write_text("")
+        with self.assertRaisesRegex(haylen.BuildError, "C\\+\\+ app"):
+            haylen.serve_app(folder, options)
 
 
 if __name__ == "__main__":

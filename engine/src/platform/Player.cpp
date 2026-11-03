@@ -81,10 +81,7 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
         // A player that a development server feeds takes the saved files from the server alone, so a save never reloads twice.
         std::error_code error;
         const bool watched = options.developmentServer.empty() && !options.package.empty() && std::filesystem::is_directory(options.package, error);
-        runtime.host->enableDevelopment(watched ? std::optional<std::filesystem::path>(options.package) : std::nullopt, options.developmentServer);
-#if defined(__EMSCRIPTEN__)
-        runtime.host->getDevelopmentSession()->addReporter(&WebPage::reportReloaded);
-#endif
+        runtime.enableDevelopment(watched ? std::optional<std::filesystem::path>(options.package) : std::nullopt, options.developmentServer);
     }
     // clang-format off
     runtime.pending = runtime.load([&options] {
@@ -302,8 +299,7 @@ std::shared_ptr<io::Package> Player::withOverlay(std::shared_ptr<io::Package> so
     const DevelopmentSession* session = host->getDevelopmentSession();
     const bool overlaid = session != nullptr && session->isConnected();
 #endif
-    // A launched app plays as it is, since the development server sends the files of the app that launched it.
-    if (!overlaid || !launchers.empty() || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
+    if (!overlaid || std::dynamic_pointer_cast<io::OverlayPackage>(source) || std::dynamic_pointer_cast<content::ReleasePackage>(source)) {
         return source;
     }
     return std::make_shared<io::OverlayPackage>(std::move(source));
@@ -365,23 +361,36 @@ void Player::frame(double seconds) {
     // A restart or a launch happens between frames, where no engine code is on the stack.
     if (runtime.engine->isRestartRequested()) {
         restart();
-    } else if (const std::optional<std::filesystem::path>& request = runtime.engine->getLaunchRequest()) {
+    } else if (const std::optional<core::Engine::Launch>& request = runtime.engine->getLaunchRequest()) {
         runtime.launchPackage(*request);
     }
 }
 
-// The app that launches keeps its package for its return, and the launched app opens like any package, showing the error screen when it cannot.
-void Player::launchPackage(const std::filesystem::path& path) {
-    launchers.push_back(package);
-    host->setLaunched(true);
-    replace(load([&path] { return std::shared_ptr<io::Package>(io::Package::open(path)); }));
+// The page hears what every batch of a development server did, as the web editor shows it.
+void Player::enableDevelopment(std::optional<std::filesystem::path> folder, std::string server) {
+    host->enableDevelopment(std::move(folder), std::move(server));
+#if defined(__EMSCRIPTEN__)
+    host->getDevelopmentSession()->addReporter(&WebPage::reportReloaded);
+#endif
 }
 
+// The app that launches keeps its package and its development session for its return, and the launched app opens like any package, in development with a session of its own when it names a development server, and with the error screen when it cannot open.
+void Player::launchPackage(const core::Engine::Launch& request) {
+    launchers.push_back({.package = package, .development = host->exchangeDevelopmentSession(nullptr)});
+    host->setLaunched(true);
+    if (!request.developmentServer.empty()) {
+        enableDevelopment(std::nullopt, request.developmentServer);
+    }
+    replace(load([&request] { return std::shared_ptr<io::Package>(io::Package::open(request.package)); }));
+}
+
+// The session of the launched app lasts until its engine closed, since the plugins of that engine hold it.
 void Player::returnToLauncher() {
-    std::shared_ptr<io::Package> launcher = std::move(launchers.back());
+    Launcher launcher = std::move(launchers.back());
     launchers.pop_back();
     host->setLaunched(!launchers.empty());
-    replace(load([&launcher] { return std::move(launcher); }));
+    const std::unique_ptr<DevelopmentSession> ended = host->exchangeDevelopmentSession(std::move(launcher.development));
+    replace(load([&launcher] { return std::move(launcher.package); }));
 }
 
 // The launch screen of the platform stays until the app drew its first frame and the splash of app.json lasted its duration since the launch.

@@ -152,7 +152,7 @@ struct EngineState {
     bool running = true;
     std::uint8_t exitStatus = 0;
     bool restartRequested = false;
-    std::optional<std::filesystem::path> launchRequest;
+    std::optional<Engine::Launch> launchRequest;
 };
 
 } // namespace haylen::core

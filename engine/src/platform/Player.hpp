@@ -16,16 +16,13 @@
 
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Application.hpp"
+#include "haylen/core/Engine.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/platform/Event.hpp"
 #include "platform/NativeHost.hpp"
 #include "platform/ReportedState.hpp"
-
-namespace haylen::core {
-class Engine;
-}
 
 namespace haylen::gpu {
 class Device;
@@ -152,6 +149,12 @@ class Player final {
         bool playing = true;
     };
 
+    // An app that launched the one that plays, which starts again from its package with its development session when that app quits.
+    struct Launcher {
+        std::shared_ptr<io::Package> package;
+        std::unique_ptr<DevelopmentSession> development;
+    };
+
     // The package to play, or none for the bundled one, whether it plays in development, which only --dev turns on and shipped apps never pass, the address of the development server that --dev-server gives, the folders where native.load looks first, such as the one haylen.py builds the libraries of an app into, and the graphics API that --graphics-api names, which the web page passes the same way.
     struct LaunchOptions {
         std::string package;
@@ -190,7 +193,8 @@ class Player final {
     void launchWhenReady();
     void close() noexcept;
     void replace(App app);
-    void launchPackage(const std::filesystem::path& path);
+    void enableDevelopment(std::optional<std::filesystem::path> folder, std::string server);
+    void launchPackage(const core::Engine::Launch& request);
     void returnToLauncher();
     void deliver(const Event& event);
 
@@ -201,8 +205,8 @@ class Player final {
     std::shared_ptr<io::Package> package;
     std::unique_ptr<core::Engine> engine;
 
-    // The packages of the apps that launched the one that plays, the latest last, each of which starts again when the app it launched quits.
-    std::vector<std::shared_ptr<io::Package>> launchers;
+    // The apps that launched the one that plays, the latest last.
+    std::vector<Launcher> launchers;
 
     // What the platform reported last, which every new app hears when it starts, so an app that restarts in the background, such as under the activity of a screen on Android, starts there and draws nothing.
     ReportedState reported;

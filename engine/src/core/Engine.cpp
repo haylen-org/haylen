@@ -9,6 +9,7 @@
 #include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -1088,15 +1089,19 @@ bool Engine::isRestartRequested() const noexcept {
     return state->restartRequested;
 }
 
-void Engine::requestLaunch(const std::filesystem::path& package) {
+void Engine::requestLaunch(Launch launch) {
     std::error_code error;
-    if (!std::filesystem::exists(package, error)) {
-        throw std::invalid_argument("No app package is at \"" + package.string() + "\". Launch a folder or a zip file that holds \"app.json\".");
+    if (!std::filesystem::exists(launch.package, error)) {
+        throw std::invalid_argument("No app package is at \"" + launch.package.string() + "\". Launch a folder or a zip file that holds \"app.json\".");
     }
-    state->launchRequest = package;
+    const std::string_view server = launch.developmentServer;
+    if (!server.empty() && !server.starts_with("ws://") && !server.starts_with("wss://")) {
+        throw std::invalid_argument("The development server \"" + launch.developmentServer + "\" is not an address that starts with \"ws://\" or \"wss://\".");
+    }
+    state->launchRequest = std::move(launch);
 }
 
-const std::optional<std::filesystem::path>& Engine::getLaunchRequest() const noexcept {
+const std::optional<Engine::Launch>& Engine::getLaunchRequest() const noexcept {
     return state->launchRequest;
 }
 

@@ -586,7 +586,7 @@ print(ana == Hero.new('Ana'), tostring(Hero)) -- true class Hero
 
 ### haylen.canQuit()
 
-Returns whether [`haylen.quit`](#haylenquitoptions) closes the app. It does on macOS, Windows, Linux, Android and the headless player. iPhones, iPads, Apple TVs, Mac Catalyst windows and web pages close only through the system or the browser. There the function returns `false`, and a quit only stops the app. An app that [another app launched](#haylenlaunchpath) is the exception: its quit goes back to that app everywhere. Show a Quit button only where this returns `true`.
+Returns whether [`haylen.quit`](#haylenquitoptions) closes the app. It does on macOS, Windows, Linux, Android and the headless player. iPhones, iPads, Apple TVs, Mac Catalyst windows and web pages close only through the system or the browser. There the function returns `false`, and a quit only stops the app. An app that [another app launched](#haylenlaunchpath-options) is the exception: its quit goes back to that app everywhere. Show a Quit button only where this returns `true`.
 
 ```lua
 local haylen = require('haylen')
@@ -643,13 +643,21 @@ end
 haylen.quit({status = broken == 0 and 0 or 1})
 ```
 
-### haylen.launch(path)
+### haylen.launch(path, options)
 
 Runs another app package in place of this app, once the current frame ends. The string `path` names a folder or a zip file of the file system that holds an `app.json`. The launched app starts with a new engine and a new Lua state. Use it for an app that opens other apps, such as one that downloads a package and plays it.
 
-When the launched app quits, this app starts again from its own package. The launched app quits through [`haylen.quit`](#haylenquitoptions), the Close button of its error screen, or the back button at the root of the app on Android and Apple TV. A launched app can launch another app in turn. It plays as it is, without the files that a development server sends to the app that launched it.
+When the launched app quits, this app starts again from its own package. The launched app quits through [`haylen.quit`](#haylenquitoptions), the Close button of its error screen, or the back button at the root of the app on Android and Apple TV. A launched app can launch another app in turn.
 
-A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".`. A package that cannot open, such as one without a valid `app.json`, shows the error screen in place of the launched app.
+The table `options` is optional.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `developmentServer` | string | none | The `ws://` or `wss://` address of a development server, with its token, which plays the launched app in development. The server sends the files saved on the machine of the developer, which [hot reload](../core/lua.md#hot-reload) applies in place, and the keys of the run restart the app and reach its developer console. An app without it plays as it is. |
+
+Each app plays with its own development session. A launched app that names a server plays in development even when the app that launched it ships as a release, and an app that names none plays without the files that a development server sends to the app that launched it. The app that launched it starts again with its own session, or with none.
+
+A path with nothing at it raises `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".`, and a `developmentServer` of another kind raises `The development server "<address>" is not an address that starts with "ws://" or "wss://".`. An unknown key raises `Unknown option "<key>".`. A package that cannot open, such as one without a valid `app.json`, shows the error screen in place of the launched app.
 
 ```lua
 local async = require('async')
@@ -671,9 +679,17 @@ async.spawn(function()
 end)
 ```
 
+```lua
+local haylen = require('haylen')
+local storage = require('haylen.storage')
+
+-- Plays a downloaded package in development, connected to the server that "haylen serve" runs for the app on the computer of the developer.
+haylen.launch(storage.root() .. '/demo.zip', {developmentServer = 'ws://192.168.0.10:8000/haylen/development?token=3f9a1c2b7d4e'})
+```
+
 ### haylen.launched()
 
-Returns `true` when another app [launched](#haylenlaunchpath) this one, so quitting it starts that app again. Use it to offer a way back only when something launched the app.
+Returns `true` when another app [launched](#haylenlaunchpath-options) this one, so quitting it starts that app again. Use it to offer a way back only when something launched the app.
 
 ```lua
 local haylen = require('haylen')
@@ -778,6 +794,7 @@ These messages are raised by the functions of the module.
 | `Unknown option "<key>".` | The table of `haylen.setLifecycle` or `haylen.quit` has a key that the function does not take. |
 | `The option "status" of "quit" is invalid: <reason>.` | The `status` of `haylen.quit` is not an integer from `0` to `255`. |
 | `No app package is at "<path>". Launch a folder or a zip file that holds "app.json".` | Nothing is at the path of `haylen.launch`. |
+| `The development server "<address>" is not an address that starts with "ws://" or "wss://".` | The option `developmentServer` of `haylen.launch` is not the address of a development server. |
 | `An autoload needs a name.` | The name of `haylen.autoload` is empty. |
 | `An autoload named "<name>" already exists.` | Another module is already the autoload of that name. |
 | `The autoload module "<module>" must return a table.` | The module of `haylen.autoload` returned something other than a table. |

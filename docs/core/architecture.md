@@ -557,9 +557,9 @@ How the runtime behaves:
 
 ## Development and hot reload
 
-An app runs in development when the player gets `--dev` or `--dev-server`, or when a page sets `Module.haylen.development`. The [Lua guide](lua.md#hot-reload) explains what a save does to the app. This section explains how the engine does it.
+An app runs in development when the player gets `--dev` or `--dev-server`, when a page sets `Module.haylen.development`, or when the app that launches it names a development server in the option `developmentServer` of `haylen.launch`. The [Lua guide](lua.md#hot-reload) explains what a save does to the app. This section explains how the engine does it.
 
-**The session.** The runtime gives its host a `platform::DevelopmentSession`, which belongs to the process and outlives every engine. At launch, the session takes a snapshot of `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of the folder. It holds the queue of changed paths. Because the session keeps the snapshot and the queue, changes saved while the app restarts reach the next app.
+**The session.** The runtime gives its host a `platform::DevelopmentSession`, which belongs to the process and outlives every engine. At launch, the session takes a snapshot of `app.json`, `source/`, `content/` and the `plugin.json` and `source/` of every plugin of the folder. It holds the queue of changed paths. Because the session keeps the snapshot and the queue, changes saved while the app restarts reach the next app. An app that another app launches plays with a session of its own, which connects to the server that the launch named, or with none, while the app that launched it keeps its session for its return. The launched app closes before its session ends, since its plugins hold the session.
 
 **The scan.** Every half second of real time, also while the app is halted, `HotReloadPlugin` posts a scan of the folder to the I/O pool, and the scan queues the changed paths in the session. The plugin takes the queue at the start of a frame, even from the error screen. A scan ignores hidden files, backup files and files under the `source/` folders that are not Lua, and it leaves files that are still being written for the next scan.
 

@@ -413,6 +413,11 @@ class HeadlessHost final : public Host {
         developmentSession = std::make_unique<DevelopmentSession>(*this, std::move(folder), std::move(server));
     }
 
+    // Takes the development session of the next app and hands back the one of the app before it, such as when a launched app plays with a session of its own, or with none, while the app that launched it keeps its own for its return.
+    [[nodiscard]] std::unique_ptr<DevelopmentSession> exchangeDevelopmentSession(std::unique_ptr<DevelopmentSession> value) noexcept {
+        return std::exchange(developmentSession, std::move(value));
+    }
+
     void resize(math::Vec2 size) noexcept {
         framebufferSize = size;
     }

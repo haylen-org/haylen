@@ -22,6 +22,7 @@
 #include "haylen/core/Log.hpp"
 #include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
+#include "platform/headless/HeadlessPlayer.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TemporaryDirectory.hpp"
 
@@ -155,6 +156,45 @@ TEST(DevelopmentConnectionTest, AppliesPushedFilesAndRefusesPathsOutsideThePacka
     EXPECT_TRUE(std::ranges::any_of(lines, [](const std::string& line) { return line.find("The development server sent the path \"../secret.lua\", which is not a file of the package, so it was refused.") != std::string::npos; }));
     EXPECT_EQ(std::ranges::count_if(lines, [](const std::string& line) { return line.find("The development server sent a message that this engine does not know.") != std::string::npos; }), 4);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
+}
+
+// An app that launches another app with the address of a development server, as a runner of apps does, plays that app in development with the files the server sends, and starts again as it ships once that app quits.
+TEST(DevelopmentConnectionTest, PlaysALaunchedAppInDevelopmentWithTheServerItNames) {
+    PushingServer server;
+    test::TemporaryDirectory guest;
+    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.tests"})");
+    guest.write("source/counter.lua", "return {value = 'packaged'}");
+    // clang-format off
+    guest.write("source/main.lua", R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        local counter = require('counter')
+        require('haylen.scene').push({update = function()
+            if counter.value == 'pushed' then
+                preferences.set('pushed', true)
+                preferences.save()
+                haylen.quit()
+            end
+        end})
+    )");
+    test::TemporaryDirectory launcher;
+    launcher.write("app.json", R"({"name": "Launcher", "identifier": "com.haylen.tests"})");
+    launcher.write("source/main.lua", R"(
+        local haylen = require('haylen')
+        local preferences = require('haylen.preferences')
+        if preferences.get('pushed', false) then
+            preferences.remove('pushed')
+            preferences.save()
+            haylen.quit({status = haylen.launched() and 1 or 7})
+        else
+            haylen.launch(')" + guest.getPath().generic_string() + "', {developmentServer = '" + server.getUrl() + R"('})
+        end
+    )");
+    // clang-format on
+
+    EXPECT_EQ(HeadlessPlayer::run({.package = launcher.getPath(), .frames = 600}), 7);
+    const std::vector<core::Json> messages = server.getMessages();
+    EXPECT_TRUE(std::ranges::any_of(messages, [](const core::Json& message) { return message.at("type") == "hello"; }));
 }
 
 // A server outside the device is on the local network, which a platform such as Android 17 lets the app reach only once the person grants it, so the session asks first and says why it never connects when the person refuses, instead of waiting for packets the platform drops.

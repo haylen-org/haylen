@@ -12,6 +12,8 @@
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
 #include "haylen/lua/Application.hpp"
+#include "io/OverlayPackage.hpp"
+#include "platform/DevelopmentSession.hpp"
 #include "platform/headless/HeadlessHost.hpp"
 
 namespace haylen::platform {
@@ -59,16 +61,18 @@ int HeadlessPlayer::play(const Options& options) {
     std::shared_ptr<io::Package> playing = package;
     std::unique_ptr<core::Engine> engine = launch(host, playing);
 
-    // An app that another app launched starts that app again when it quits, the way the player does.
-    std::vector<std::shared_ptr<io::Package>> launchers;
+    // An app that another app launched starts that app again when it quits, with the development session of that app, the way the player does.
+    std::vector<Launcher> launchers;
     long long frame = 0;
     auto next = std::chrono::steady_clock::now();
     while (engine->isRunning() || !launchers.empty()) {
         if (!engine->isRunning()) {
-            playing = std::move(launchers.back());
+            Launcher launcher = std::move(launchers.back());
             launchers.pop_back();
             host.setLaunched(!launchers.empty());
             engine.reset();
+            (void)host.exchangeDevelopmentSession(std::move(launcher.development));
+            playing = std::move(launcher.package);
             engine = launch(host, playing);
         }
         if (options.frames && frame >= *options.frames) {
@@ -81,11 +85,15 @@ int HeadlessPlayer::play(const Options& options) {
         if (engine->isRestartRequested()) {
             engine.reset();
             engine = launch(host, playing);
-        } else if (const std::optional<std::filesystem::path> request = engine->getLaunchRequest()) {
-            launchers.push_back(playing);
-            playing = io::Package::open(*request);
+        } else if (const std::optional<core::Engine::Launch> request = engine->getLaunchRequest()) {
+            launchers.push_back({.package = playing, .development = host.exchangeDevelopmentSession(nullptr)});
             host.setLaunched(true);
             engine.reset();
+            playing = io::Package::open(request->package);
+            if (!request->developmentServer.empty()) {
+                host.enableDevelopment(std::nullopt, request->developmentServer);
+                playing = std::make_shared<io::OverlayPackage>(std::move(playing));
+            }
             engine = launch(host, playing);
         }
 
@@ -105,6 +113,9 @@ std::unique_ptr<core::Engine> HeadlessPlayer::launch(HeadlessHost& host, const s
     auto application = std::make_unique<lua::Application>();
     application->configure(config);
     host.setTransparencySupported(config.window.transparent);
+    if (DevelopmentSession* session = host.getDevelopmentSession()) {
+        session->setOverlay(std::dynamic_pointer_cast<io::OverlayPackage>(package));
+    }
     auto engine = std::make_unique<core::Engine>(host, package, std::move(config), std::move(application));
     engine->start();
     return engine;

@@ -65,7 +65,7 @@ scene.push({
 
 ### Launching another app
 
-An app can launch another app package with [`haylen.launch(path)`](../lua-api/haylen.md#haylenlaunchpath), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, or through the back button at its root on Android and Apple TV. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started.
+An app can launch another app package with [`haylen.launch(path, options)`](../lua-api/haylen.md#haylenlaunchpath-options), such as one that it downloaded. Once the frame ends, the app stops the way a restart does, and the launched package starts with a new engine. The launched app may stop through `haylen.quit()`, through the Close button of its error screen, or through the back button at its root on Android and Apple TV. Then the launcher starts again from its own package, as a new run of the whole start. The function [`haylen.launched()`](../lua-api/haylen.md#haylenlaunched) tells an app which way it started. A launched app plays in development when the app that launches it names a development server, such as the one that [`haylen serve`](../tools/distribution.md#serving-an-app) runs for an app, and the launcher keeps its own development session for its return.
 
 ## App states
 

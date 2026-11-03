@@ -67,9 +67,16 @@ TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
     test::EngineFixture fixture;
     EXPECT_EQ(fixture.lua("return tostring(require('haylen').launched())"), "false");
     EXPECT_FALSE(fixture.engine().getLaunchRequest().has_value());
-    fixture.runLua("require('haylen').launch('" + guest.getPath().generic_string() + "')");
-    EXPECT_EQ(fixture.engine().getLaunchRequest(), guest.getPath());
+    const std::string path = guest.getPath().generic_string();
+    fixture.runLua("require('haylen').launch('" + path + "')");
+    ASSERT_TRUE(fixture.engine().getLaunchRequest().has_value());
+    EXPECT_EQ(fixture.engine().getLaunchRequest()->package, guest.getPath());
+    EXPECT_EQ(fixture.engine().getLaunchRequest()->developmentServer, "");
+    fixture.runLua("require('haylen').launch('" + path + "', {developmentServer = 'ws://192.168.0.10:8000/haylen/development?token=run'})");
+    EXPECT_EQ(fixture.engine().getLaunchRequest()->developmentServer, "ws://192.168.0.10:8000/haylen/development?token=run");
     EXPECT_NE(fixture.lua("require('haylen').launch('" + (guest.getPath() / "missing.zip").generic_string() + "')").find("No app package is at"), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen').launch('" + path + "', {developmentServer = 'http://192.168.0.10:8000/'})").find("The development server \"http://192.168.0.10:8000/\" is not an address that starts with \"ws://\" or \"wss://\"."), std::string::npos);
+    EXPECT_NE(fixture.lua("require('haylen').launch('" + path + "', {server = 'ws://192.168.0.10:8000/'})").find("Unknown option \"server\"."), std::string::npos);
     fixture.host().setLaunched(true);
     EXPECT_EQ(fixture.lua("return tostring(require('haylen').launched())"), "true");
 }
