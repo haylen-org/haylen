@@ -918,7 +918,7 @@ def headless_browser(arguments: list[str], purpose: str):
     """Starts a headless Chrome of its own with a profile that goes away with it, and yields the port of its debugging protocol once it answers."""
     debugging = free_port()
     profile = Path(tempfile.mkdtemp())
-    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", *arguments, "about:blank"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    browser = subprocess.Popen([find_chrome(), "--headless=new", f"--remote-debugging-port={debugging}", f"--user-data-dir={profile}", "--no-first-run", "--enable-logging=stderr", "--log-level=1", *arguments, "about:blank"], stdout=subprocess.DEVNULL)
     try:
         deadline = time.monotonic() + 30
         while True:
@@ -1060,7 +1060,7 @@ def command_test_gpu(args: argparse.Namespace) -> None:
 # The GPU tests of the web: a tree of their own builds them for the browser, and a page of a headless Chrome runs them, whose WebGPU draws through SwiftShader on a machine without a GPU for it.
 WEB_GPU_TESTS_DRIVER = ENGINE_DIR / "tests" / "web" / "gpu-tests.mjs"
 WEB_GPU_TESTS_SECONDS = 1200
-WEB_GPU_BROWSER_FLAGS = ["--enable-unsafe-webgpu", "--enable-unsafe-swiftshader", "--use-angle=swiftshader"]
+WEB_GPU_BROWSER_FLAGS = ["--enable-unsafe-webgpu", "--enable-unsafe-swiftshader", "--use-angle=swiftshader", "--disable-gpu-compositing"]
 
 
 def command_test_gpu_web(args: argparse.Namespace) -> None:
