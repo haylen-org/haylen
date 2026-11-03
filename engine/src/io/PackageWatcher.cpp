@@ -59,6 +59,7 @@ PackageWatcher::Stamp PackageWatcher::stamp(const std::string& path) const {
 std::map<std::string, PackageWatcher::Stamp> PackageWatcher::snapshot() const {
     std::map<std::string, Stamp> found;
     std::error_code error;
+    // The stamps come from the files themselves, as the scan reads them after it waits, never from the listing of their folder, whose sizes and times Windows updates only some time after a write.
     // clang-format off
     const auto record = [&](const std::filesystem::directory_entry& entry) {
         if (!entry.is_regular_file(error)) {
@@ -68,8 +69,7 @@ std::map<std::string, PackageWatcher::Stamp> PackageWatcher::snapshot() const {
         if (!isWatched(path)) {
             return;
         }
-        const Stamp current{.time = entry.last_write_time(error), .size = error ? 0 : entry.file_size(error)};
-        if (!error) {
+        if (const Stamp current = stamp(path); current != Stamp{}) {
             found.emplace(std::move(path), current);
         }
     };
