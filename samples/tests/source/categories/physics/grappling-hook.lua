@@ -91,7 +91,7 @@ function GrapplingHook:build()
     end
     local reach = GrapplingHook.height / 2 - GrapplingHook.radius
     local start = GrapplingHook.start
-    self.hero = self.world:createBody({x = start.x, y = start.y, fixedRotation = true, sleepEnabled = false})
+    self.hero = self.world:createBody({x = start.x, y = start.y, lockRotation = true, sleepEnabled = false})
     self.hero:addCapsule(0, -reach, 0, reach, GrapplingHook.radius, {friction = 0, category = GrapplingHook.heroCategory})
     self.facing = 1
     self.line, self.hook = nil, nil

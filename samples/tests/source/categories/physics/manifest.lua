@@ -70,5 +70,6 @@ return {
         {code = 'PHY-064', title = 'Collision report', description = 'Impacts that mark their points, normal and kept velocity with their speed and force, and crates at rest that show the force of their weight.', module = 'collisions'},
         {code = 'PHY-065', title = 'Playground', description = 'A room to try every value of a body and the world, with bodies dropped, grabbed, pushed and shot and a card that reads the chosen body.', module = 'playground'},
         {code = 'PHY-066', title = 'Two worlds', description = 'Two planets with physics worlds of their own and bubbles of pull, where shots from a slingshot move to the world of the icy moon they reach.', module = 'two-worlds'},
+        {code = 'PHY-067', title = 'Locks and air', description = 'Motion locks that hold a lift, a sledge and a turnstile on their lines, a thin sensor gate that counts shots too fast to stop in it, and a wind field with lift.', module = 'locks-and-air'},
     },
 }

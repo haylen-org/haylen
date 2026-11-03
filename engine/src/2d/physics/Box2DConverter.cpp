@@ -117,6 +117,13 @@ float Box2DConverter::toDamping(float value) {
     return value;
 }
 
+float Box2DConverter::toContinuousThreshold(float value) {
+    if (!isFiniteAndNotNegative(value)) {
+        throw std::invalid_argument("A physics body needs a finite continuous threshold of zero or more.");
+    }
+    return value;
+}
+
 float Box2DConverter::toSpeed(float value, float scale) {
     if (!isFiniteAndNotNegative(value)) {
         throw std::invalid_argument("A physics speed needs to be finite and zero or more.");

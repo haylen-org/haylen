@@ -53,7 +53,7 @@ ForceField& ForceFieldLua::check(lua_State* L) {
     return field;
 }
 
-// Creates a field with `newForceField(world, {kind, x, y, radius, width, height, points, strength, direction, falloff, minDistance, acceleration, density, linearDrag, angularDrag, flow, category, mask, group, enabled})`. Its user value is the world object.
+// Creates a field with `newForceField(world, {kind, x, y, radius, width, height, points, strength, direction, falloff, minDistance, acceleration, density, linearDrag, angularDrag, airDrag, lift, flow, category, mask, group, enabled})`. Its user value is the world object.
 int ForceFieldLua::newForceField(lua_State* L) {
     const std::shared_ptr<World>& world = lua::Userdata::checkShared<World>(L, 1);
     luaL_checktype(L, 2, LUA_TTABLE);
@@ -74,6 +74,8 @@ int ForceFieldLua::newForceField(lua_State* L) {
     lua::Table::readField(L, 2, "density", options.density);
     lua::Table::readField(L, 2, "linearDrag", options.linearDrag);
     lua::Table::readField(L, 2, "angularDrag", options.angularDrag);
+    lua::Table::readField(L, 2, "airDrag", options.airDrag);
+    lua::Table::readField(L, 2, "lift", options.lift);
     lua::Table::readField(L, 2, "flow", options.flow);
     lua::Table::readField(L, 2, "enabled", options.enabled);
     options.filter = ShapeLua::readFilter(L, 2, {});
@@ -178,6 +180,26 @@ int ForceFieldLua::setAngularDrag(lua_State* L) {
     return 0;
 }
 
+int ForceFieldLua::getAirDrag(lua_State* L) {
+    lua::Stack::push(L, check(L).getOptions().airDrag);
+    return 1;
+}
+
+int ForceFieldLua::setAirDrag(lua_State* L) {
+    check(L).setAirDrag(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
+int ForceFieldLua::getLift(lua_State* L) {
+    lua::Stack::push(L, check(L).getOptions().lift);
+    return 1;
+}
+
+int ForceFieldLua::setLift(lua_State* L) {
+    check(L).setLift(lua::Stack::read<float>(L, 3));
+    return 0;
+}
+
 int ForceFieldLua::getBounds(lua_State* L) {
     lua::Stack::push(L, check(L).getBounds());
     return 1;
@@ -189,7 +211,7 @@ int ForceFieldLua::getBodyCount(lua_State* L) {
 }
 
 void ForceFieldLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedOwner<ForceField>>(L).function("destroy", &lua::Binding::native<&destroy>).property("valid", &lua::Binding::native<&isValid>).property("kind", &lua::Binding::native<&getKind>).property("enabled", &lua::Binding::native<&isEnabled>, &lua::Binding::native<&setEnabled>).property("strength", &lua::Binding::native<&getStrength>, &lua::Binding::native<&setStrength>).property("position", &lua::Binding::native<&getPosition>, &lua::Binding::native<&setPosition>).property("direction", &lua::Binding::native<&getDirection>, &lua::Binding::native<&setDirection>).property("flow", &lua::Binding::native<&getFlow>, &lua::Binding::native<&setFlow>).property("density", &lua::Binding::native<&getDensity>, &lua::Binding::native<&setDensity>).property("linearDrag", &lua::Binding::native<&getLinearDrag>, &lua::Binding::native<&setLinearDrag>).property("angularDrag", &lua::Binding::native<&getAngularDrag>, &lua::Binding::native<&setAngularDrag>).property("bounds", &lua::Binding::native<&getBounds>).property("bodyCount", &lua::Binding::native<&getBodyCount>).install();
+    lua::ClassBuilder<ScriptedOwner<ForceField>>(L).function("destroy", &lua::Binding::native<&destroy>).property("valid", &lua::Binding::native<&isValid>).property("kind", &lua::Binding::native<&getKind>).property("enabled", &lua::Binding::native<&isEnabled>, &lua::Binding::native<&setEnabled>).property("strength", &lua::Binding::native<&getStrength>, &lua::Binding::native<&setStrength>).property("position", &lua::Binding::native<&getPosition>, &lua::Binding::native<&setPosition>).property("direction", &lua::Binding::native<&getDirection>, &lua::Binding::native<&setDirection>).property("flow", &lua::Binding::native<&getFlow>, &lua::Binding::native<&setFlow>).property("density", &lua::Binding::native<&getDensity>, &lua::Binding::native<&setDensity>).property("linearDrag", &lua::Binding::native<&getLinearDrag>, &lua::Binding::native<&setLinearDrag>).property("angularDrag", &lua::Binding::native<&getAngularDrag>, &lua::Binding::native<&setAngularDrag>).property("airDrag", &lua::Binding::native<&getAirDrag>, &lua::Binding::native<&setAirDrag>).property("lift", &lua::Binding::native<&getLift>, &lua::Binding::native<&setLift>).property("bounds", &lua::Binding::native<&getBounds>).property("bodyCount", &lua::Binding::native<&getBodyCount>).install();
 }
 
 void ForceFieldLua::addFunctions(lua_State* L) {

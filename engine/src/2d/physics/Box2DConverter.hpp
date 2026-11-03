@@ -43,6 +43,9 @@ class Box2DConverter final {
     // Returns the damping of a body, and throws `std::invalid_argument` when it is negative or not finite.
     [[nodiscard]] static float toDamping(float value);
 
+    // Returns the continuous threshold of a body, and throws `std::invalid_argument` when it is negative or not finite.
+    [[nodiscard]] static float toContinuousThreshold(float value);
+
     // Converts a speed in world units per second to meters per second, and throws `std::invalid_argument` when it is negative or not finite.
     [[nodiscard]] static float toSpeed(float value, float scale);
 

@@ -14,7 +14,7 @@
 
 namespace haylen::physics2d {
 
-const std::array<std::pair<std::string_view, ForceField::Kind>, 4> ForceField::kKindNames{{{"radial", Kind::Radial}, {"directional", Kind::Directional}, {"vortex", Kind::Vortex}, {"buoyancy", Kind::Buoyancy}}};
+const std::array<std::pair<std::string_view, ForceField::Kind>, 5> ForceField::kKindNames{{{"radial", Kind::Radial}, {"directional", Kind::Directional}, {"vortex", Kind::Vortex}, {"buoyancy", Kind::Buoyancy}, {"wind", Kind::Wind}}};
 const std::array<std::pair<std::string_view, ForceField::Falloff>, 3> ForceField::kFalloffNames{{{"none", Falloff::None}, {"linear", Falloff::Linear}, {"inverseSquare", Falloff::InverseSquare}}};
 
 std::optional<ForceField::Kind> ForceField::kindFromName(std::string_view name) noexcept {
@@ -60,9 +60,9 @@ void ForceField::destroy() {
 void ForceField::check() const {
     const bool shaped = options.radius > 0.0F || area.size() >= 3;
     const bool convex = options.kind != Kind::Buoyancy || (options.radius <= 0.0F && math::Geometry::isConvex(area));
-    const bool drags = options.linearDrag >= 0.0F && options.angularDrag >= 0.0F && options.density >= 0.0F && options.minDistance >= 0.0F;
+    const bool drags = options.linearDrag >= 0.0F && options.angularDrag >= 0.0F && options.airDrag >= 0.0F && std::isfinite(options.lift) && options.density >= 0.0F && options.minDistance >= 0.0F;
     if (!shaped || !convex || !drags || options.direction.isZero() || (options.falloff == Falloff::InverseSquare && options.minDistance <= 0.0F)) {
-        throw std::invalid_argument("A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, and a minimum distance for an inverse square falloff.");
+        throw std::invalid_argument("A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, a finite lift, and a minimum distance for an inverse square falloff.");
     }
 }
 
@@ -114,6 +114,22 @@ void ForceField::setAngularDrag(float value) {
         throw std::invalid_argument("A force field needs drags of zero or more.");
     }
     options.angularDrag = value;
+}
+
+void ForceField::setAirDrag(float value) {
+    if (!(value >= 0.0F)) {
+        throw std::invalid_argument("A force field needs drags of zero or more.");
+    }
+    options.airDrag = value;
+    wake();
+}
+
+void ForceField::setLift(float value) {
+    if (!std::isfinite(value)) {
+        throw std::invalid_argument("A force field needs a finite lift.");
+    }
+    options.lift = value;
+    wake();
 }
 
 math::Rect ForceField::getBounds() const {
@@ -185,6 +201,8 @@ void ForceField::update(float) {
         const Body body(&world, targets[index].body);
         if (options.kind == Kind::Buoyancy) {
             floatShape(body, targets[index].shape);
+        } else if (options.kind == Kind::Wind) {
+            blowShape(targets[index].shape);
         } else if (index == 0 || targets[index - 1].body != targets[index].body) {
             push(body);
         }
@@ -214,6 +232,7 @@ void ForceField::push(const Body& body) {
         pull = distance > 0.0F ? math::Vec2{-offset.y, offset.x} * (options.strength * fade(distance) / distance) : math::Vec2{};
         break;
     case Kind::Buoyancy:
+    case Kind::Wind:
         break;
     }
 
@@ -251,6 +270,18 @@ void ForceField::floatShape(const Body& body, std::uint64_t shape) {
         const float share = wet / std::abs(math::Geometry::signedArea(outline));
         b2Body_ApplyTorque(id, -options.angularDrag * share * b2Body_GetRotationalInertia(id) * b2Body_GetAngularVelocity(id), false);
     }
+}
+
+// Blows on a shape whose middle lies in the area. Box2D pushes it with the air that passes it, by the size it shows that air, and turns the lift of the push across the wind. Box2D blows only on circles, capsules and polygons.
+void ForceField::blowShape(std::uint64_t shape) {
+    const b2ShapeId id = b2LoadShapeId(shape);
+    const float scale = world.getPixelsPerMeter();
+    const math::Vec2 middle = Box2DConverter::toPixels(b2AABB_Center(b2Shape_GetBounds(id)), scale);
+    if (!contains(middle)) {
+        return;
+    }
+    const math::Vec2 wind = options.direction.getNormalized() * (options.strength * fade((middle - options.position).getLength()));
+    b2Shape_ApplyWind(id, Box2DConverter::toMeters(wind, scale), options.airDrag, options.lift, false);
 }
 
 std::vector<math::Vec2> ForceField::outlineOf(std::uint64_t shape) const {

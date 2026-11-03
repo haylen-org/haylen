@@ -18,7 +18,7 @@ class ForceFieldLua final {
     static void addFunctions(lua_State* L);
 
   private:
-    static constexpr std::array<std::string_view, 20> kFieldFields{"kind", "x", "y", "radius", "width", "height", "points", "strength", "direction", "falloff", "minDistance", "acceleration", "density", "linearDrag", "angularDrag", "flow", "category", "mask", "group", "enabled"};
+    static constexpr std::array<std::string_view, 22> kFieldFields{"kind", "x", "y", "radius", "width", "height", "points", "strength", "direction", "falloff", "minDistance", "acceleration", "density", "linearDrag", "angularDrag", "airDrag", "lift", "flow", "category", "mask", "group", "enabled"};
 
     [[nodiscard]] static ForceField& check(lua_State* L);
 
@@ -42,6 +42,10 @@ class ForceFieldLua final {
     static int setLinearDrag(lua_State* L);
     static int getAngularDrag(lua_State* L);
     static int setAngularDrag(lua_State* L);
+    static int getAirDrag(lua_State* L);
+    static int setAirDrag(lua_State* L);
+    static int getLift(lua_State* L);
+    static int setLift(lua_State* L);
     static int getBounds(lua_State* L);
     static int getBodyCount(lua_State* L);
 };

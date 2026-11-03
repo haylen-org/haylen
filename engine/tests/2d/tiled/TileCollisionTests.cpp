@@ -42,7 +42,7 @@ TEST_F(TileCollisionTest, BodiesSlideAcrossTheJointsOfMergedTiles) {
     collision.update();
 
     for (physics2d::World* space : {&separate, &world}) {
-        physics2d::Body box = space->createBody({.position = {0.0F, 10.0F * kCell - 15.0F}, .velocity = {600.0F, 0.0F}, .fixedRotation = true});
+        physics2d::Body box = space->createBody({.position = {0.0F, 10.0F * kCell - 15.0F}, .velocity = {600.0F, 0.0F}, .locks = {.rotation = true}});
         (void)box.addBox({30.0F, 30.0F}, {.friction = 0.0F});
         for (int step = 0; step < 120; ++step) {
             space->step(1.0F / 60.0F);

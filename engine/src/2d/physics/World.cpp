@@ -217,8 +217,9 @@ Body World::createBody(const Body::Options& options) {
     def.linearDamping = Box2DConverter::toDamping(options.linearDamping);
     def.angularDamping = Box2DConverter::toDamping(options.angularDamping);
     def.gravityScale = options.gravityScale;
-    def.motionLocks.angularZ = options.fixedRotation;
+    def.motionLocks = {.linearX = options.locks.x, .linearY = options.locks.y, .angularZ = options.locks.rotation};
     def.isBullet = options.bullet;
+    def.safetyFactor = Box2DConverter::toContinuousThreshold(options.continuousThreshold);
     def.allowFastRotation = options.fastRotation;
     def.enableSleep = options.sleepEnabled;
     if (options.sleepThreshold) {

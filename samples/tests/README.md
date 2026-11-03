@@ -512,6 +512,7 @@ Bodies, materials, sensors, joints and the ready-made ropes, bridges, ragdolls, 
 | `PHY-064` | Collision report | Impacts that mark their points, normal and kept velocity with their speed and force, and crates at rest that show the force of their weight. |  |
 | `PHY-065` | Playground | A room to try every value of a body and the world, with bodies dropped, grabbed, pushed and shot and a card that reads the chosen body. |  |
 | `PHY-066` | Two worlds | Two planets with physics worlds of their own and bubbles of pull, where shots from a slingshot move to the world of the icy moon they reach. |  |
+| `PHY-067` | Locks and air | Motion locks that hold a lift on its line, a sledge at its height and a turnstile on its pin, a thin sensor gate that counts shots too fast to stop in it in any step, and a wind field whose lift sails tilted plates. |  |
 
 #### Procedural generation (GEN)
 

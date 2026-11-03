@@ -386,13 +386,15 @@ Creates a body and returns it. The table `options` is optional, and an unknown k
 | `linearDamping` | number | `0` | Slows the linear velocity over time. |
 | `angularDamping` | number | `0` | Slows the spin over time. |
 | `gravityScale` | number | `1` | Multiplies the world gravity for this body. |
-| `fixedRotation` | boolean | `false` | Keeps the body from rotating. |
+| `lockX`, `lockY` | boolean | `false` | Keeps the body from moving along the x or the y axis of the world, as the [guide](../2d/physics.md#bodies-held-on-one-line) explains. |
+| `lockRotation` | boolean | `false` | Keeps the body from rotating. |
 | `bullet` | boolean | `false` | Sweeps the body against dynamic and kinematic bodies too, not only static ones, so a fast projectile never passes a thin moving body. |
+| `continuousThreshold` | number | `0.5` | How far the body may move in one step before continuous collision sweeps it, as a share of the distance at which it could pass through a surface. A lower value also sweeps slower bodies, as the [guide](../2d/physics.md#fast-bodies-pass-through-walls) explains. |
 | `fastRotation` | boolean | `false` | Lifts the limit of 45 degrees of rotation per step, so wheels and rotors spin as fast as they are driven. Only creation sets it. |
 | `sleepEnabled` | boolean | `true` | Lets the body fall asleep when it comes to rest. |
 | `sleepThreshold` | number | `0.05 * pixelsPerMeter` | Speed in units per second below which the body may fall asleep, 3.2 at the default scale. |
 
-A damping that is negative or not finite raises `A physics body needs a finite damping of zero or more.`. A sleep threshold that is negative or not finite raises `A physics speed needs to be finite and zero or more.`.
+A damping that is negative or not finite raises `A physics body needs a finite damping of zero or more.`. A sleep threshold that is negative or not finite raises `A physics speed needs to be finite and zero or more.`. A continuous threshold that is negative or not finite raises `A physics body needs a finite continuous threshold of zero or more.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -401,7 +403,7 @@ local world = physics2d.newWorld()
 local floor = world:createBody({type = 'static', x = 0, y = 300})
 local platform = world:createBody({type = 'kinematic', x = 0, y = 100, vx = 60})
 local arrow = world:createBody({x = -300, y = 0, vx = 900, rotation = 0.1, bullet = true, gravityScale = 0.5})
-local player = world:createBody({x = 0, y = 0, fixedRotation = true, linearDamping = 0.2, sleepEnabled = false})
+local player = world:createBody({x = 0, y = 0, lockRotation = true, linearDamping = 0.2, sleepEnabled = false})
 local wheel = world:createBody({x = 200, y = 0, fastRotation = true, sleepThreshold = 1})
 ```
 
@@ -466,7 +468,7 @@ local scene = require('haylen.scene')
 local world = physics2d.newWorld()
 local ground = world:createBody({type = 'static', x = 0, y = 200})
 ground:addBox(800, 40)
-local player = world:createBody({x = 0, y = 0, fixedRotation = true})
+local player = world:createBody({x = 0, y = 0, lockRotation = true})
 player:addCapsule(0, -16, 0, 16, 12)
 
 -- The ground lies below the player, so its normal points down, toward positive y.
@@ -527,7 +529,7 @@ local input = require('haylen.input')
 local scene = require('haylen.scene')
 
 local world = physics2d.newWorld()
-local player = world:createBody({fixedRotation = true})
+local player = world:createBody({lockRotation = true})
 player:addBox(32, 48)
 
 scene.push({
@@ -659,7 +661,7 @@ local scene = require('haylen.scene')
 local world = physics2d.newWorld()
 local ledge = world:createBody({type = 'static', x = 0, y = 100})
 ledge:addBox(240, 8, {oneWay = {0, -1}})
-local player = world:createBody({x = 0, y = 60, fixedRotation = true})
+local player = world:createBody({x = 0, y = 60, lockRotation = true})
 player:addCapsule(0, -12, 0, 12, 10)
 
 scene.push({
@@ -759,8 +761,10 @@ print(rock.world == space, rock.data.name)
 | `linearDamping` | number | read and write | Slows the linear velocity over time. It must be finite and not negative. |
 | `angularDamping` | number | read and write | Slows the spin over time. It must be finite and not negative. |
 | `gravityScale` | number | read and write | Multiplies the world gravity for this body. |
-| `fixedRotation` | boolean | read and write | Keeps the body from rotating. |
+| `lockX`, `lockY` | boolean | read and write | Keeps the body from moving along the x or the y axis of the world. |
+| `lockRotation` | boolean | read and write | Keeps the body from rotating. |
 | `bullet` | boolean | read and write | Sweeps the body against dynamic and kinematic bodies too. |
+| `continuousThreshold` | number | read and write | How far the body may move in one step before continuous collision sweeps it, as a share of the distance at which it could pass through a surface. |
 | `data` | any | read and write | Any Lua value attached to the body, such as the entity it belongs to. |
 
 The world keeps `data` until the body is destroyed. The method `body:destroy()` releases it at once. The next `world:step()` releases the data of bodies destroyed any other way:
@@ -774,7 +778,7 @@ These errors can happen:
 
 - A mass, inertia or center of mass that is negative or not finite raises `A physics body needs a finite mass, center of mass and inertia of zero or more.`.
 - A damping that is negative or not finite raises `A physics body needs a finite damping of zero or more.`.
-- A sleep threshold that is negative or not finite raises `A physics speed needs to be finite and zero or more.`.
+- A sleep threshold that is negative or not finite raises `A physics speed needs to be finite and zero or more.`. A continuous threshold that is negative or not finite raises `A physics body needs a finite continuous threshold of zero or more.`.
 
 ```lua
 local physics2d = require('haylen.physics2d')
@@ -828,7 +832,7 @@ Adds a capsule and returns its shape. A capsule is the segment from `x1, y1` to 
 local physics2d = require('haylen.physics2d')
 
 local world = physics2d.newWorld()
-local hero = world:createBody({x = 0, y = 0, fixedRotation = true})
+local hero = world:createBody({x = 0, y = 0, lockRotation = true})
 hero:addCapsule(0, -16, 0, 16, 12, {friction = 0})
 ```
 
@@ -1061,7 +1065,7 @@ for _, y in ipairs({0, 120, 240}) do
     ledge:addBox(240, 8, {oneWay = {0, -1}})
 end
 
-local player = world:createBody({x = 0, y = -40, fixedRotation = true})
+local player = world:createBody({x = 0, y = -40, lockRotation = true})
 player:addCapsule(0, -12, 0, 12, 10)
 
 scene.push({
@@ -2887,6 +2891,7 @@ Creates a `ForceField`. It pushes the bodies inside it every step, before Box2D 
 - A `'radial'` field pulls toward its center, like a magnet, an attractor or the gravity of a planet. A negative strength pushes away.
 - A `'directional'` field pushes one way, like wind or a jet of air.
 - A `'vortex'` field swirls, clockwise on screen with a positive strength.
+- A `'wind'` field is air that blows along its `direction` at the speed `strength`, in units per second. It pushes each circle, capsule and polygon whose middle lies in the area, by the size the shape shows the wind and by the square of the speed at which the air passes it. A body that moves with the wind feels less of it, so light bodies drift at about the speed of the wind and heavy ones barely move, and `lift` makes tilted plates and leaves sail across the wind. A step applies the push of the wind as one force, so a shape that is light for the area it shows the wind can pass the speed of the wind within one step and shake. A shape stays steady while its density times its thickness along the wind in meters is above 0.6 times the speed of the wind in meters per second times the length of a step. A plate 6 units thick of density 2.5 meets that in a wind of 700 units per second at 60 steps per second.
 - A `'buoyancy'` field is water. It floats each shape by the area it has under the surface, at the center of that area, with the weight of the water it displaces. It also drags the shape toward the flow. So bodies lighter than the water float, and heavier ones sink.
 
 Radial, directional and vortex fields push a body whose center of mass lies in the area. Applying a field never wakes a body, so floating and resting bodies fall asleep. Changing the field wakes the bodies in it. The table `options` is required, and an unknown key raises `Unknown option "<key>".`.
@@ -2895,30 +2900,33 @@ The area is a circle of `radius` around the position when the radius is positive
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `kind` | string | `'radial'` | One of `'radial'`, `'directional'`, `'vortex'` or `'buoyancy'`. |
+| `kind` | string | `'radial'` | One of `'radial'`, `'directional'`, `'vortex'`, `'buoyancy'` or `'wind'`. |
 | `x`, `y` | number | `0` | Position of the field. |
 | `radius` | number | `0` | Radius of a circular area. |
 | `width`, `height` | number | `0` | Size of a rectangular area. |
 | `points` | list of Vec2 | none | Corners of a polygonal area, relative to the position. |
-| `strength` | number | `0` | Acceleration in units per second squared, the same for every body. When `acceleration` is `false`, it is a force in world units. |
-| `direction` | Vec2 | `{1, 0}` | Direction of a directional field. |
+| `strength` | number | `0` | Acceleration in units per second squared, the same for every body. When `acceleration` is `false`, it is a force in world units. A wind field takes it as the speed of its air in units per second. |
+| `direction` | Vec2 | `{1, 0}` | Direction of a directional or wind field. |
 | `falloff` | string | `'none'` | How the strength fades with the distance from the position. With `'linear'` it falls to zero at the radius, or at half the larger side of other areas. With `'inverseSquare'` it is multiplied by the square of `minDistance` over the squared distance, like gravity. |
 | `minDistance` | number | `0` | Distance within which an inverse square field keeps its full strength, such as the surface of a planet. |
 | `acceleration` | boolean | `true` | Treats `strength` as an acceleration. A field of forces pushes light bodies further than heavy ones. |
 | `density` | number | `1` | Density of the water of a buoyancy field, in kilograms per square meter. |
 | `linearDrag` | number | `0` | Share of their speed relative to the flow that bodies lose every second. |
 | `angularDrag` | number | `0` | Share of their spin that bodies lose every second. |
+| `airDrag` | number | `1` | Share of the speed of a body that the air of a wind field resists. At 1 a body that moves as fast as the wind feels none of it, and at 0 the wind pushes a moving body as hard as a still one. |
+| `lift` | number | `0` | Share of the push of a wind field that turns across the wind, which makes plates and leaves sail. |
 | `flow` | Vec2 | `{0, 0}` | Velocity that the drag pulls bodies toward, such as a current or the wind of a drag field. |
 | `category`, `mask`, `group` | integer | `1`, all bits, `0` | The bodies the field pushes, chosen like the shapes that would collide with a shape of this filter, as [collision filtering](#collision-filtering) describes. |
 | `enabled` | boolean | `true` | Whether the field pushes. |
 
-Bad options raise `A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, and a minimum distance for an inverse square falloff.`. These options are bad:
+Bad options raise `A force field needs a circle, a rectangle or a polygon of at least three points, convex for buoyancy, a direction that is not zero, drags, a density and a minimum distance of zero or more, a finite lift, and a minimum distance for an inverse square falloff.`. These options are bad:
 
 - An area without size.
 - A polygon of fewer than three points.
 - A buoyancy area that is not convex.
 - A zero direction.
 - A negative drag, density or minimum distance.
+- A lift that is not finite.
 - An inverse square falloff without a minimum distance.
 
 An unknown kind or falloff raises a bad argument error with `unknown value '<name>'`.
@@ -3001,10 +3009,11 @@ print(field.valid) -- false
 | `enabled` | boolean | read and write | Whether the field pushes. |
 | `strength` | number | read and write | The strength of the field. |
 | `position` | Vec2 | read and write | The position of the field, which moves its area. |
-| `direction` | Vec2 | read and write | The direction of a directional field. |
+| `direction` | Vec2 | read and write | The direction of a directional or wind field. |
 | `flow` | Vec2 | read and write | The velocity the drag pulls toward. |
 | `density` | number | read and write | The density of the water. |
 | `linearDrag`, `angularDrag` | number | read and write | The drags of the field. |
+| `airDrag`, `lift` | number | read and write | The drag and the lift of the air of a wind field. |
 | `bounds` | Rect | read | The bounds of the area. |
 | `bodyCount` | integer | read | The bodies the field pushed in the last step. |
 | `valid` | boolean | read | The value is `false` once the field was destroyed. |
@@ -3014,6 +3023,7 @@ These errors can happen:
 - A zero direction raises `A force field needs a direction that is not zero.`.
 - A negative density raises `A force field needs a density of zero or more.`.
 - A negative drag raises `A force field needs drags of zero or more.`.
+- A lift that is not finite raises `A force field needs a finite lift.`.
 - Every member except `valid` and `destroy` raises `The force field was destroyed.` once the field is destroyed.
 
 ```lua

@@ -25,7 +25,14 @@ class Body final {
         Dynamic,
     };
 
-    // A bullet sweeps against dynamic and kinematic bodies too, so a fast projectile never passes a thin moving wall. Fast rotation, which only creation sets, lifts the limit of an eighth of a turn per step that fast wheels pass. The sleep threshold is the speed in world units per second below which the body may fall asleep, 0.05 meters per second when unset.
+    // A body locked along an axis of the world keeps its position on that axis, and a body locked in rotation keeps its angle, whatever pushes it, while it still moves freely along the others.
+    struct MotionLocks {
+        bool x = false;
+        bool y = false;
+        bool rotation = false;
+    };
+
+    // A bullet sweeps against dynamic and kinematic bodies too, so a fast projectile never passes a thin moving wall. Fast rotation, which only creation sets, lifts the limit of an eighth of a turn per step that fast wheels pass. The sleep threshold is the speed in world units per second below which the body may fall asleep, 0.05 meters per second when unset. The continuous threshold is the share of the distance at which a body could pass through a surface in one step that it may move in one step before continuous collision sweeps it, 0.5 by default, so a lower one sweeps slower bodies too.
     struct Options {
         Type type = Type::Dynamic;
         math::Vec2 position{};
@@ -35,8 +42,9 @@ class Body final {
         float linearDamping = 0.0F;
         float angularDamping = 0.0F;
         float gravityScale = 1.0F;
-        bool fixedRotation = false;
+        MotionLocks locks{};
         bool bullet = false;
+        float continuousThreshold = 0.5F;
         bool fastRotation = false;
         bool sleepEnabled = true;
         std::optional<float> sleepThreshold;
@@ -106,10 +114,13 @@ class Body final {
     void setAngularDamping(float value);
     [[nodiscard]] float getGravityScale() const;
     void setGravityScale(float value);
-    [[nodiscard]] bool isFixedRotation() const;
-    void setFixedRotation(bool value);
+    [[nodiscard]] MotionLocks getMotionLocks() const;
+    void setMotionLocks(const MotionLocks& value);
     [[nodiscard]] bool isBullet() const;
     void setBullet(bool value);
+    // Throws `std::invalid_argument` for a threshold that is negative or not finite.
+    [[nodiscard]] float getContinuousThreshold() const;
+    void setContinuousThreshold(float value);
     [[nodiscard]] bool isAwake() const;
     void setAwake(bool value);
     [[nodiscard]] bool isSleepEnabled() const;

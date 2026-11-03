@@ -242,13 +242,42 @@ int BodyLua::setGravityScale(lua_State* L) {
     return 0;
 }
 
-int BodyLua::isFixedRotation(lua_State* L) {
-    lua::Stack::push(L, check(L).isFixedRotation());
+int BodyLua::isLockedX(lua_State* L) {
+    lua::Stack::push(L, check(L).getMotionLocks().x);
     return 1;
 }
 
-int BodyLua::setFixedRotation(lua_State* L) {
-    check(L).setFixedRotation(lua::Stack::read<bool>(L, 3));
+int BodyLua::setLockedX(lua_State* L) {
+    Body& body = check(L);
+    Body::MotionLocks locks = body.getMotionLocks();
+    locks.x = lua::Stack::read<bool>(L, 3);
+    body.setMotionLocks(locks);
+    return 0;
+}
+
+int BodyLua::isLockedY(lua_State* L) {
+    lua::Stack::push(L, check(L).getMotionLocks().y);
+    return 1;
+}
+
+int BodyLua::setLockedY(lua_State* L) {
+    Body& body = check(L);
+    Body::MotionLocks locks = body.getMotionLocks();
+    locks.y = lua::Stack::read<bool>(L, 3);
+    body.setMotionLocks(locks);
+    return 0;
+}
+
+int BodyLua::isRotationLocked(lua_State* L) {
+    lua::Stack::push(L, check(L).getMotionLocks().rotation);
+    return 1;
+}
+
+int BodyLua::setRotationLocked(lua_State* L) {
+    Body& body = check(L);
+    Body::MotionLocks locks = body.getMotionLocks();
+    locks.rotation = lua::Stack::read<bool>(L, 3);
+    body.setMotionLocks(locks);
     return 0;
 }
 
@@ -259,6 +288,16 @@ int BodyLua::isBullet(lua_State* L) {
 
 int BodyLua::setBullet(lua_State* L) {
     check(L).setBullet(lua::Stack::read<bool>(L, 3));
+    return 0;
+}
+
+int BodyLua::getContinuousThreshold(lua_State* L) {
+    lua::Stack::push(L, check(L).getContinuousThreshold());
+    return 1;
+}
+
+int BodyLua::setContinuousThreshold(lua_State* L) {
+    check(L).setContinuousThreshold(lua::Stack::read<float>(L, 3));
     return 0;
 }
 
@@ -442,7 +481,7 @@ int BodyLua::equal(lua_State* L) {
 }
 
 void BodyLua::install(lua_State* L) {
-    lua::ClassBuilder<ScriptedHandle<Body>>(L).function("addBox", &lua::Binding::native<&addBox>).function("addCircle", &lua::Binding::native<&addCircle>).function("addCapsule", &lua::Binding::native<&addCapsule>).function("addSegment", &lua::Binding::native<&addSegment>).function("addPolygon", &lua::Binding::native<&addPolygon>).function("addChain", &lua::Binding::native<&addChain>).function("shapes", &lua::Binding::native<&shapes>).function("outlines", &lua::Binding::native<&outlines>).function("applyForce", &lua::Binding::native<&applyForce>).function("applyImpulse", &lua::Binding::native<&applyImpulse>).function("applyTorque", &lua::Binding::native<&applyTorque>).function("applyAngularImpulse", &lua::Binding::native<&applyAngularImpulse>).function("setTransform", &lua::Binding::native<&setTransform>).function("moveTo", &lua::Binding::native<&moveTo>).function("velocityAt", &lua::Binding::native<&velocityAt>).function("resetMass", &lua::Binding::native<&resetMass>).function("dropThrough", &lua::Binding::native<&dropThrough>).function("contacts", &lua::Binding::native<&contacts>).function("renderTransform", &lua::Binding::native<&renderTransform>).function("destroy", &lua::Binding::native<&destroy>).function("moveToWorld", &lua::Binding::native<&moveToWorld>).property("valid", &isValid).property("world", &getWorld).property("type", &lua::Binding::native<&getType>, &lua::Binding::native<&setType>).property("x", &lua::Binding::native<&getX>, &lua::Binding::native<&setX>).property("y", &lua::Binding::native<&getY>, &lua::Binding::native<&setY>).property("position", &lua::Binding::native<&getPosition>, &lua::Binding::native<&setPosition>).property("rotation", &lua::Binding::native<&getRotation>, &lua::Binding::native<&setRotation>).property("velocity", &lua::Binding::native<&getVelocity>, &lua::Binding::native<&setVelocity>).property("angularVelocity", &lua::Binding::native<&getAngularVelocity>, &lua::Binding::native<&setAngularVelocity>).property("mass", &lua::Binding::native<&getMass>, &lua::Binding::native<&setMass>).property("centerOfMass", &lua::Binding::native<&getCenterOfMass>, &lua::Binding::native<&setCenterOfMass>).property("inertia", &lua::Binding::native<&getInertia>, &lua::Binding::native<&setInertia>).property("worldCenter", &lua::Binding::native<&getWorldCenter>).property("sleepEnabled", &lua::Binding::native<&isSleepEnabled>, &lua::Binding::native<&setSleepEnabled>).property("sleepThreshold", &lua::Binding::native<&getSleepThreshold>, &lua::Binding::native<&setSleepThreshold>).property("awake", &lua::Binding::native<&isAwake>, &lua::Binding::native<&setAwake>).property("enabled", &lua::Binding::native<&isEnabled>, &lua::Binding::native<&setEnabled>).property("linearDamping", &lua::Binding::native<&getLinearDamping>, &lua::Binding::native<&setLinearDamping>).property("angularDamping", &lua::Binding::native<&getAngularDamping>, &lua::Binding::native<&setAngularDamping>).property("gravityScale", &lua::Binding::native<&getGravityScale>, &lua::Binding::native<&setGravityScale>).property("fixedRotation", &lua::Binding::native<&isFixedRotation>, &lua::Binding::native<&setFixedRotation>).property("bullet", &lua::Binding::native<&isBullet>, &lua::Binding::native<&setBullet>).property("data", &lua::Binding::native<&getData>, &lua::Binding::native<&setData>).meta("__eq", &equal).install();
+    lua::ClassBuilder<ScriptedHandle<Body>>(L).function("addBox", &lua::Binding::native<&addBox>).function("addCircle", &lua::Binding::native<&addCircle>).function("addCapsule", &lua::Binding::native<&addCapsule>).function("addSegment", &lua::Binding::native<&addSegment>).function("addPolygon", &lua::Binding::native<&addPolygon>).function("addChain", &lua::Binding::native<&addChain>).function("shapes", &lua::Binding::native<&shapes>).function("outlines", &lua::Binding::native<&outlines>).function("applyForce", &lua::Binding::native<&applyForce>).function("applyImpulse", &lua::Binding::native<&applyImpulse>).function("applyTorque", &lua::Binding::native<&applyTorque>).function("applyAngularImpulse", &lua::Binding::native<&applyAngularImpulse>).function("setTransform", &lua::Binding::native<&setTransform>).function("moveTo", &lua::Binding::native<&moveTo>).function("velocityAt", &lua::Binding::native<&velocityAt>).function("resetMass", &lua::Binding::native<&resetMass>).function("dropThrough", &lua::Binding::native<&dropThrough>).function("contacts", &lua::Binding::native<&contacts>).function("renderTransform", &lua::Binding::native<&renderTransform>).function("destroy", &lua::Binding::native<&destroy>).function("moveToWorld", &lua::Binding::native<&moveToWorld>).property("valid", &isValid).property("world", &getWorld).property("type", &lua::Binding::native<&getType>, &lua::Binding::native<&setType>).property("x", &lua::Binding::native<&getX>, &lua::Binding::native<&setX>).property("y", &lua::Binding::native<&getY>, &lua::Binding::native<&setY>).property("position", &lua::Binding::native<&getPosition>, &lua::Binding::native<&setPosition>).property("rotation", &lua::Binding::native<&getRotation>, &lua::Binding::native<&setRotation>).property("velocity", &lua::Binding::native<&getVelocity>, &lua::Binding::native<&setVelocity>).property("angularVelocity", &lua::Binding::native<&getAngularVelocity>, &lua::Binding::native<&setAngularVelocity>).property("mass", &lua::Binding::native<&getMass>, &lua::Binding::native<&setMass>).property("centerOfMass", &lua::Binding::native<&getCenterOfMass>, &lua::Binding::native<&setCenterOfMass>).property("inertia", &lua::Binding::native<&getInertia>, &lua::Binding::native<&setInertia>).property("worldCenter", &lua::Binding::native<&getWorldCenter>).property("sleepEnabled", &lua::Binding::native<&isSleepEnabled>, &lua::Binding::native<&setSleepEnabled>).property("sleepThreshold", &lua::Binding::native<&getSleepThreshold>, &lua::Binding::native<&setSleepThreshold>).property("awake", &lua::Binding::native<&isAwake>, &lua::Binding::native<&setAwake>).property("enabled", &lua::Binding::native<&isEnabled>, &lua::Binding::native<&setEnabled>).property("linearDamping", &lua::Binding::native<&getLinearDamping>, &lua::Binding::native<&setLinearDamping>).property("angularDamping", &lua::Binding::native<&getAngularDamping>, &lua::Binding::native<&setAngularDamping>).property("gravityScale", &lua::Binding::native<&getGravityScale>, &lua::Binding::native<&setGravityScale>).property("lockX", &lua::Binding::native<&isLockedX>, &lua::Binding::native<&setLockedX>).property("lockY", &lua::Binding::native<&isLockedY>, &lua::Binding::native<&setLockedY>).property("lockRotation", &lua::Binding::native<&isRotationLocked>, &lua::Binding::native<&setRotationLocked>).property("bullet", &lua::Binding::native<&isBullet>, &lua::Binding::native<&setBullet>).property("continuousThreshold", &lua::Binding::native<&getContinuousThreshold>, &lua::Binding::native<&setContinuousThreshold>).property("data", &lua::Binding::native<&getData>, &lua::Binding::native<&setData>).meta("__eq", &equal).install();
 }
 
 } // namespace haylen::physics2d

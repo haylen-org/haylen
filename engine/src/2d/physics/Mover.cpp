@@ -85,7 +85,7 @@ Mover::Mover(World& owner, const Options& settings) : world(owner), options(sett
     setMaxSlope(options.maxSlope);
     setSnapDistance(options.snapDistance);
 
-    body = world.createBody({.type = Body::Type::Kinematic, .position = position, .fixedRotation = true});
+    body = world.createBody({.type = Body::Type::Kinematic, .position = position, .locks = {.rotation = true}});
     const float top = -options.height * 0.5F + options.radius;
     const float bottom = options.height * 0.5F - options.stepHeight - options.radius;
     body.addCapsule({0.0F, top}, {0.0F, bottom}, options.radius, {.filter = options.filter, .contactEvents = false, .hitEvents = false});

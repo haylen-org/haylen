@@ -328,7 +328,7 @@ TEST_F(AssemblyTest, OneWayPlatformsHoldWhatLandsDeepInThem) {
     }
     std::vector<Body> heroes;
     for (int drop = 0; drop < 12; ++drop) {
-        Body hero = steep.createBody({.position = {static_cast<float>(drop) * 200.0F, -42.0F - 20.0F - static_cast<float>(drop) * 7.0F}, .fixedRotation = true});
+        Body hero = steep.createBody({.position = {static_cast<float>(drop) * 200.0F, -42.0F - 20.0F - static_cast<float>(drop) * 7.0F}, .locks = {.rotation = true}});
         hero.addCapsule({0.0F, -22.0F}, {0.0F, 22.0F}, 20.0F, {.friction = 0.0F});
         heroes.push_back(hero);
     }
@@ -346,7 +346,7 @@ TEST_F(AssemblyTest, DropThroughPassesOnePlatform) {
         Body platform = world.createBody({.type = Body::Type::Static, .position = {0.0F, y}});
         platform.addBox({200.0F, 8.0F}, {.oneWay = math::Vec2{0.0F, -1.0F}});
     }
-    Body hero = world.createBody({.position = {0.0F, -30.0F}, .fixedRotation = true});
+    Body hero = world.createBody({.position = {0.0F, -30.0F}, .locks = {.rotation = true}});
     hero.addCapsule({0.0F, -10.0F}, {0.0F, 10.0F}, 8.0F);
     simulate(1.0F);
     EXPECT_NEAR(hero.getPosition().y, -22.0F, 2.0F);

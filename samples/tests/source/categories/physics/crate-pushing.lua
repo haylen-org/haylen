@@ -14,7 +14,7 @@ local CratePushing = haylen.class('CratePushing', PhysicsTest)
 CratePushing.code = [[
 local world = physics2d.newWorld({gravity = {0, 0}})
 local crate = world:createBody({x = 150, y = -150, linearDamping = 4, angularDamping = 8})
-local hero = world:createBody({x = -350, y = -50, fixedRotation = true, sleepEnabled = false})
+local hero = world:createBody({x = -350, y = -50, lockRotation = true, sleepEnabled = false})
 hero:applyForce(fx, fy)  -- Steers toward the stick with a limited force.
 local goal = pad:addBox(70, 70, {sensor = true})
 local filled = #goal:overlaps() > 0]]
@@ -122,7 +122,7 @@ function CratePushing:build()
                 local pad = self.world:createBody({type = 'static', x = x, y = y})
                 self.goals[#self.goals + 1] = {x = x, y = y, sensor = pad:addBox(70, 70, {sensor = true}), filled = false}
             elseif cell == '@' then
-                self.hero = self.world:createBody({x = x, y = y, fixedRotation = true, sleepEnabled = false})
+                self.hero = self.world:createBody({x = x, y = y, lockRotation = true, sleepEnabled = false})
                 self.hero:addCircle(30, {friction = 0.6})
             end
         end

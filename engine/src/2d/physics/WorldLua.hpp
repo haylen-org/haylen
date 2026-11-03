@@ -23,14 +23,14 @@ class WorldLua final {
   public:
     static void install(lua_State* L);
 
-    // Reads `{type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, fastRotation, sleepEnabled, sleepThreshold}`, where `nil` gives the defaults.
+    // Reads `{type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, lockX, lockY, lockRotation, bullet, continuousThreshold, fastRotation, sleepEnabled, sleepThreshold}`, where `nil` gives the defaults.
     [[nodiscard]] static Body::Options readBodyOptions(lua_State* L, int index);
 
     // Gives the world object at `index` a new state table, without callbacks and with no data of its bodies.
     static void resetState(lua_State* L, int index);
 
   private:
-    static constexpr std::array<std::string_view, 15> kBodyFields{"type", "x", "y", "rotation", "vx", "vy", "angularVelocity", "linearDamping", "angularDamping", "gravityScale", "fixedRotation", "bullet", "fastRotation", "sleepEnabled", "sleepThreshold"};
+    static constexpr std::array<std::string_view, 18> kBodyFields{"type", "x", "y", "rotation", "vx", "vy", "angularVelocity", "linearDamping", "angularDamping", "gravityScale", "lockX", "lockY", "lockRotation", "bullet", "continuousThreshold", "fastRotation", "sleepEnabled", "sleepThreshold"};
     static constexpr std::array<std::string_view, 22> kJointFields{"ax", "ay", "bx", "by", "collideConnected", "enableLimit", "lower", "upper", "enableMotor", "motorSpeed", "maxMotorForce", "maxMotorTorque", "enableSpring", "hertz", "dampingRatio", "targetAngle", "targetTranslation", "axisX", "axisY", "length", "breakForce", "breakTorque"};
     static constexpr std::array<std::string_view, 2> kFilterFields{"category", "mask"};
     static constexpr std::array<std::string_view, 6> kPredictFields{"steps", "step", "radius", "gravityScale", "linearDamping", "group"};

@@ -17,7 +17,7 @@ namespace haylen::physics2d {
 class Body;
 class World;
 
-// An area of a world that pushes the dynamic bodies inside it every step, in C++ without a call per body: radial fields pull toward their center, like magnets, attractors and the gravity of planets, or push away with a negative strength, directional fields push one way like wind and conveyors of air, vortex fields swirl, and buoyancy fields are water that floats bodies by the area they have under the surface and drags them toward its flow. Applying a field never wakes a body, so floating and resting bodies fall asleep, and changing the field wakes the bodies in it. The field acts every step of its world until it is destroyed, so it must go before its world.
+// An area of a world that pushes the dynamic bodies inside it every step, in C++ without a call per body: radial fields pull toward their center, like magnets, attractors and the gravity of planets, or push away with a negative strength, directional fields push one way like wind and conveyors of air, vortex fields swirl, buoyancy fields are water that floats bodies by the area they have under the surface and drags them toward its flow, and wind fields are air that pushes each shape by the size it shows the wind and by how fast the air passes it. Applying a field never wakes a body, so floating and resting bodies fall asleep, and changing the field wakes the bodies in it. The field acts every step of its world until it is destroyed, so it must go before its world.
 class ForceField final {
   public:
     enum class Kind : std::uint8_t {
@@ -25,6 +25,7 @@ class ForceField final {
         Directional,
         Vortex,
         Buoyancy,
+        Wind,
     };
 
     // How the strength fades with the distance from the center: not at all, linearly to zero at the radius, or with the inverse square of the distance beyond `minDistance`, like gravity.
@@ -34,7 +35,7 @@ class ForceField final {
         InverseSquare,
     };
 
-    // The area is a circle of `radius` around the position when the radius is positive, a rectangle of `size` centered on it when the size is not zero, and otherwise the polygon of `points` around it. The strength is an acceleration in world units per second squared, the same for every body, or a force when `acceleration` is false, which pushes light bodies further. Radial fields pull toward the center and vortex fields turn clockwise on screen with a positive strength. Drag slows bodies toward the flow by that share of their speed every second. Buoyancy fields float bodies with the density of their water in kilograms per square meter and need a convex area whose top is the surface.
+    // The area is a circle of `radius` around the position when the radius is positive, a rectangle of `size` centered on it when the size is not zero, and otherwise the polygon of `points` around it. The strength is an acceleration in world units per second squared, the same for every body, or a force when `acceleration` is false, which pushes light bodies further. Radial fields pull toward the center and vortex fields turn clockwise on screen with a positive strength. Drag slows bodies toward the flow by that share of their speed every second. Buoyancy fields float bodies with the density of their water in kilograms per square meter and need a convex area whose top is the surface. The strength of a wind field is the speed of its air in world units per second along the direction. Its air resists the motion of a body by the share `airDrag` of the speed of the body, so a body that moves with the wind feels none at 1, and turns the share `lift` of its push across the wind, which makes plates and leaves sail.
     struct Options {
         Kind kind = Kind::Radial;
         math::Vec2 position{};
@@ -49,12 +50,14 @@ class ForceField final {
         float density = 1.0F;
         float linearDrag = 0.0F;
         float angularDrag = 0.0F;
+        float airDrag = 1.0F;
+        float lift = 0.0F;
         math::Vec2 flow{};
         CollisionFilter filter{};
         bool enabled = true;
     };
 
-    // Throws `std::invalid_argument` for an area without size, a polygon with fewer than three points, a buoyancy area that is not convex, a zero direction, negative drags, density or minimum distance, or an inverse square falloff without a minimum distance.
+    // Throws `std::invalid_argument` for an area without size, a polygon with fewer than three points, a buoyancy area that is not convex, a zero direction, negative drags, density or minimum distance, a lift that is not finite, or an inverse square falloff without a minimum distance.
     ForceField(World& owner, const Options& settings);
     ~ForceField();
 
@@ -77,6 +80,8 @@ class ForceField final {
     void setDensity(float value);
     void setLinearDrag(float value);
     void setAngularDrag(float value);
+    void setAirDrag(float value);
+    void setLift(float value);
 
     // Stops the field for good, which also happens when it is destroyed.
     void destroy();
@@ -96,7 +101,7 @@ class ForceField final {
         std::uint64_t shape = 0;
     };
 
-    static const std::array<std::pair<std::string_view, Kind>, 4> kKindNames;
+    static const std::array<std::pair<std::string_view, Kind>, 5> kKindNames;
     static const std::array<std::pair<std::string_view, Falloff>, 3> kFalloffNames;
 
     // Circles and capsules become polygons with this many points on each half turn when they are clipped against water.
@@ -111,6 +116,7 @@ class ForceField final {
     void update(float deltaSeconds);
     void push(const Body& body);
     void floatShape(const Body& body, std::uint64_t shape);
+    void blowShape(std::uint64_t shape);
     [[nodiscard]] std::vector<math::Vec2> outlineOf(std::uint64_t shape) const;
     // Clips a polygon against the convex area of the field.
     [[nodiscard]] std::vector<math::Vec2> clip(std::vector<math::Vec2> polygon) const;

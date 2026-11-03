@@ -67,7 +67,7 @@ TEST_F(PhysicsWorldTest, DropsBodiesOntoGroundAndReportsContacts) {
 
 TEST_F(PhysicsWorldTest, MovesAndConfiguresBodies) {
     physics2d::World world({.gravity = {}});
-    physics2d::Body body = world.createBody({.position = {10.0F, 20.0F}, .rotation = 0.5F, .velocity = {64.0F, 0.0F}, .linearDamping = 0.5F, .angularDamping = 0.25F, .gravityScale = 2.0F, .fixedRotation = true, .bullet = true});
+    physics2d::Body body = world.createBody({.position = {10.0F, 20.0F}, .rotation = 0.5F, .velocity = {64.0F, 0.0F}, .linearDamping = 0.5F, .angularDamping = 0.25F, .gravityScale = 2.0F, .locks = {.rotation = true}, .bullet = true});
     body.addCircle(16.0F);
     EXPECT_EQ(body.getPosition(), math::Vec2(10.0F, 20.0F));
     EXPECT_NEAR(body.getRotation(), 0.5F, 0.002F);
@@ -75,13 +75,13 @@ TEST_F(PhysicsWorldTest, MovesAndConfiguresBodies) {
     EXPECT_FLOAT_EQ(body.getLinearDamping(), 0.5F);
     EXPECT_FLOAT_EQ(body.getAngularDamping(), 0.25F);
     EXPECT_FLOAT_EQ(body.getGravityScale(), 2.0F);
-    EXPECT_TRUE(body.isFixedRotation());
+    EXPECT_TRUE(body.getMotionLocks().rotation);
     EXPECT_TRUE(body.isBullet());
 
     body.setLinearDamping(0.0F);
     body.setAngularDamping(0.0F);
     body.setGravityScale(1.0F);
-    body.setFixedRotation(false);
+    body.setMotionLocks({});
     body.setBullet(false);
     body.setTransform({100.0F, 100.0F}, 0.0F);
     body.setVelocity({});
@@ -180,6 +180,58 @@ TEST_F(PhysicsWorldTest, SensesQueriesAndCastsRays) {
     moved.setFilter({.category = 4, .mask = 1});
     EXPECT_EQ(moved.getFilter().category, 4U);
     EXPECT_EQ(moved.getFilter().mask, 1U);
+}
+
+TEST_F(PhysicsWorldTest, LocksBodiesAlongTheAxesOfTheWorld) {
+    // A body locked along x falls straight down whatever pushes it sideways, one locked along y floats at its height under gravity, and one locked in rotation keeps its angle when it is spun.
+    physics2d::World world;
+    physics2d::Body lift = world.createBody({.velocity = {300.0F, 0.0F}, .locks = {.x = true}});
+    lift.addBox({20.0F, 20.0F});
+    physics2d::Body sledge = world.createBody({.position = {100.0F, 0.0F}, .velocity = {300.0F, 0.0F}, .locks = {.y = true}});
+    sledge.addBox({20.0F, 20.0F});
+    physics2d::Body turnstile = world.createBody({.position = {200.0F, -300.0F}, .locks = {.x = true, .y = true}});
+    turnstile.addBox({80.0F, 10.0F});
+    physics2d::Body upright = world.createBody({.position = {300.0F, -600.0F}, .locks = {.rotation = true}});
+    upright.addBox({20.0F, 40.0F});
+    turnstile.applyAngularImpulse(turnstile.getInertia() * 3.0F);
+    upright.applyAngularImpulse(upright.getInertia() * 3.0F + 1000.0F);
+    simulate(world, 0.5F);
+    EXPECT_NEAR(lift.getPosition().x, 0.0F, 0.01F);
+    EXPECT_GT(lift.getPosition().y, 50.0F);
+    EXPECT_NEAR(sledge.getPosition().y, 0.0F, 0.01F);
+    EXPECT_GT(sledge.getPosition().x, 200.0F);
+    EXPECT_NEAR(turnstile.getPosition().y, -300.0F, 0.01F);
+    EXPECT_GT(std::abs(turnstile.getRotation()), 1.0F);
+    EXPECT_NEAR(upright.getRotation(), 0.0F, 1e-4F);
+
+    // Locks change while the body runs, so a sledge set free falls.
+    EXPECT_TRUE(sledge.getMotionLocks().y);
+    sledge.setMotionLocks({});
+    EXPECT_FALSE(sledge.getMotionLocks().y);
+    simulate(world, 0.5F);
+    EXPECT_GT(sledge.getPosition().y, 50.0F);
+}
+
+TEST_F(PhysicsWorldTest, SweepsBodiesFromTheirContinuousThreshold) {
+    // A thin sensor in the path of a fast body sees it cross, although the body stands on neither side of it at the end of any step.
+    physics2d::World world({.gravity = {}});
+    physics2d::Body gate = world.createBody({.type = physics2d::Body::Type::Static, .position = {200.0F, 0.0F}});
+    gate.addBox({4.0F, 200.0F}, {.sensor = true});
+    physics2d::Body shot = world.createBody({.velocity = {6000.0F, 0.0F}, .bullet = false, .continuousThreshold = 0.1F});
+    shot.addCircle(4.0F);
+    EXPECT_FLOAT_EQ(shot.getContinuousThreshold(), 0.1F);
+    std::size_t seen = 0;
+    for (int step = 0; step < 10; ++step) {
+        world.step(1.0F / 60.0F);
+        seen += world.getSensorBegins().size();
+    }
+    EXPECT_EQ(seen, 1U);
+    EXPECT_GT(shot.getPosition().x, 400.0F);
+
+    shot.setContinuousThreshold(0.5F);
+    EXPECT_FLOAT_EQ(shot.getContinuousThreshold(), 0.5F);
+    EXPECT_THROW(shot.setContinuousThreshold(-1.0F), std::invalid_argument);
+    EXPECT_THROW((void)world.createBody({.continuousThreshold = std::nanf("")}), std::invalid_argument);
 }
 
 TEST_F(PhysicsWorldTest, MergesChainPointsCloserThanTheLinearSlop) {
@@ -544,7 +596,7 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
         ground:addBox(1000, 20, {friction = 0.8, category = 2})
         zone = world:createBody({type = 'static', x = 0, y = 200})
         zone:addBox(200, 40, {sensor = true})
-        crate = world:createBody({x = 0, y = 0, fixedRotation = true, linearDamping = 0.1})
+        crate = world:createBody({x = 0, y = 0, lockRotation = true, linearDamping = 0.1})
         crate:addBox(32, 32, {density = 2, restitution = 0, offsetX = 0, offsetY = 0, rotation = 0})
         crate.data = {name = 'crate'}
         events = {}
@@ -559,7 +611,7 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
 
     EXPECT_EQ(fixture.lua("return table.concat(events, ',')"), "sensed crate true,left,begin crate");
     EXPECT_EQ(fixture.lua("return math.floor(crate.y + 0.5) .. ' ' .. tostring(hitSpeed > 0) .. ' ' .. world.bodyCount .. ' ' .. world.pixelsPerMeter"), "374 true 3 64.0");
-    EXPECT_EQ(fixture.lua("return crate.type .. ' ' .. tostring(crate.valid) .. ' ' .. tostring(crate.world == world) .. ' ' .. tostring(crate.fixedRotation) .. ' ' .. tostring(crate.mass > 0)"), "dynamic true true true true");
+    EXPECT_EQ(fixture.lua("return crate.type .. ' ' .. tostring(crate.valid) .. ' ' .. tostring(crate.world == world) .. ' ' .. tostring(crate.lockRotation) .. ' ' .. tostring(crate.mass > 0)"), "dynamic true true true true");
 
     // A contact that begins tells how fast the crate landed, where, from which side and with what force, point by point, and the contacts of a body tell the same while it rests.
     EXPECT_EQ(fixture.lua("return tostring(begun.speed > 100) .. ' ' .. #begun.points .. ' ' .. tostring(begun.points[1].approachSpeed > 100) .. ' ' .. math.abs(begun.normalY) .. ' ' .. type(begun.relativeVelocityX) .. ' ' .. tostring(begun.force > 0) .. ' ' .. tostring(begun.points[1].separation < 1)"), "true 2 true 1.0 number true true");
@@ -590,6 +642,9 @@ TEST(Physics2DLuaTest, SimulatesWorldsFromLua) {
         for i = 1, 10 do world:step(1 / 60) end
     )");
     // clang-format on
+    EXPECT_EQ(fixture.lua("local slider = world:createBody({lockX = true}) slider.lockY = true slider.lockX = false local locks = tostring(slider.lockX) .. ' ' .. tostring(slider.lockY) .. ' ' .. tostring(slider.lockRotation) slider:destroy() return locks"), "false true false");
+    EXPECT_EQ(fixture.lua("local coin = world:createBody({continuousThreshold = 0.2}) coin.continuousThreshold = 0.25 local threshold = coin.continuousThreshold coin:destroy() return tostring(threshold)"), "0.25");
+    EXPECT_NE(fixture.lua("world:createBody({continuousThreshold = -1})").find("A physics body needs a finite continuous threshold of zero or more."), std::string::npos);
     EXPECT_EQ(fixture.lua("joint.motorSpeed = 2 mouse.target = {610, 10} return tostring(joint.valid) .. ' ' .. #bob:shapes() .. ' ' .. joint.motorSpeed .. ' ' .. math.floor(mouse.target.x + 0.5)"), "true 3 2.0 610");
     EXPECT_NE(fixture.lua("return joint.target").find("Only mouse joints have a target."), std::string::npos);
     EXPECT_NE(fixture.lua("mouse.motorSpeed = 1").find("Only revolute, prismatic, wheel and distance joints have a motor speed."), std::string::npos);

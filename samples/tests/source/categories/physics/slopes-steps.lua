@@ -101,7 +101,7 @@ function SlopesSteps:build()
 
     local left, right = self.halves[1], self.halves[2]
     local reach = SlopesSteps.height / 2 - SlopesSteps.radius
-    self.capsule = left.world:createBody({x = left.origin - 160, y = 80, fixedRotation = true, sleepEnabled = false})
+    self.capsule = left.world:createBody({x = left.origin - 160, y = 80, lockRotation = true, sleepEnabled = false})
     self.capsule:addCapsule(0, -reach, 0, reach, SlopesSteps.radius, {friction = 0})
     self.mover = physics2d.newMover(right.world, {x = right.origin - 160, y = 80, radius = SlopesSteps.radius, height = SlopesSteps.height, stepHeight = 20, snapDistance = 20, maxSlope = self.maxSlope})
     self.velocity = {x = 0, y = 0}

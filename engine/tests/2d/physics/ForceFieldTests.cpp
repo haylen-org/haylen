@@ -92,13 +92,40 @@ TEST_F(ForceFieldTest, WindPushesLightBodiesHarder) {
     EXPECT_GT(leaf.getVelocity().y, 50.0F);
 }
 
+TEST_F(ForceFieldTest, WindFieldsCarryLightBodiesUpToTheWindSpeed) {
+    // The air resists a body by the speed between them, so a plate drifts at about the speed of the wind and never faster, a heavy ball of the same size barely moves, and lift turns the push of a tilted plate across the wind.
+    World space({.gravity = {}});
+    ForceField wind(space, {.kind = ForceField::Kind::Wind, .size = {4000.0F, 4000.0F}, .strength = 300.0F});
+    Body plate = space.createBody({.position = {-1000.0F, 0.0F}, .rotation = 1.5707963F});
+    plate.addBox({60.0F, 6.0F}, {.density = 2.5F});
+    Body boulder = space.createBody({.position = {-1000.0F, 400.0F}});
+    boulder.addCircle(30.0F, {.density = 20.0F});
+    simulate(space, 3.0F);
+    EXPECT_GT(plate.getVelocity().x, 200.0F);
+    EXPECT_LT(plate.getVelocity().x, 310.0F);
+    EXPECT_LT(boulder.getVelocity().x, plate.getVelocity().x * 0.5F);
+    EXPECT_EQ(wind.getBodyCount(), 2U);
+
+    World tilted({.gravity = {}});
+    ForceField sail(tilted, {.kind = ForceField::Kind::Wind, .size = {4000.0F, 4000.0F}, .strength = 300.0F, .lift = 1.0F});
+    Body leaf = tilted.createBody({.rotation = 0.4F, .locks = {.rotation = true}});
+    leaf.addBox({60.0F, 6.0F}, {.density = 2.5F});
+    simulate(tilted, 1.0F);
+    EXPECT_GT(std::abs(leaf.getVelocity().y), 20.0F);
+    sail.setLift(0.0F);
+    sail.setAirDrag(0.5F);
+    EXPECT_FLOAT_EQ(sail.getOptions().airDrag, 0.5F);
+    EXPECT_THROW(sail.setAirDrag(-1.0F), std::invalid_argument);
+    EXPECT_THROW(sail.setLift(std::nanf("")), std::invalid_argument);
+}
+
 TEST_F(ForceFieldTest, BuoyancyFloatsBodiesAtTheirDensity) {
     // In water of density 1, a box of density 0.5 floats with half its height under the surface, and a box of density 2 sinks.
     World world({.subSteps = 8});
     Body bottom = world.createBody({.type = Body::Type::Static, .position = {0.0F, 520.0F}});
     bottom.addBox({2000.0F, 40.0F});
     ForceField water(world, {.kind = ForceField::Kind::Buoyancy, .position = {0.0F, 250.0F}, .size = {2000.0F, 500.0F}, .density = 1.0F, .linearDrag = 2.0F, .angularDrag = 2.0F});
-    Body cork = world.createBody({.position = {-200.0F, -100.0F}, .fixedRotation = true});
+    Body cork = world.createBody({.position = {-200.0F, -100.0F}, .locks = {.rotation = true}});
     cork.addBox({64.0F, 64.0F}, {.density = 0.5F});
     Body stone = world.createBody({.position = {200.0F, -100.0F}});
     stone.addBox({64.0F, 64.0F}, {.density = 2.0F});

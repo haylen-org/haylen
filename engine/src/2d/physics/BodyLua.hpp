@@ -66,10 +66,16 @@ class BodyLua final {
     static int setAngularDamping(lua_State* L);
     static int getGravityScale(lua_State* L);
     static int setGravityScale(lua_State* L);
-    static int isFixedRotation(lua_State* L);
-    static int setFixedRotation(lua_State* L);
+    static int isLockedX(lua_State* L);
+    static int setLockedX(lua_State* L);
+    static int isLockedY(lua_State* L);
+    static int setLockedY(lua_State* L);
+    static int isRotationLocked(lua_State* L);
+    static int setRotationLocked(lua_State* L);
     static int isBullet(lua_State* L);
     static int setBullet(lua_State* L);
+    static int getContinuousThreshold(lua_State* L);
+    static int setContinuousThreshold(lua_State* L);
     static int getData(lua_State* L);
     static int setData(lua_State* L);
 

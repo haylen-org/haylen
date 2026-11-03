@@ -97,7 +97,7 @@ function TileSeams:launch()
                 body:addCircle(16, {friction = 0.2})
                 Look.dress(body, 'yellow', {spin = true})
             else
-                body = half.world:createBody({x = x, y = top - 18, vx = self.speed, fixedRotation = kind == 2})
+                body = half.world:createBody({x = x, y = top - 18, vx = self.speed, lockRotation = kind == 2})
                 body:addBox(36, 36, {friction = 0})
                 Look.dress(body, kind == 1 and 'red' or 'teal')
             end

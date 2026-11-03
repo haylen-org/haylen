@@ -227,15 +227,13 @@ void Body::setGravityScale(float value) {
     b2Body_SetGravityScale(b2LoadBodyId(checkedId()), value);
 }
 
-bool Body::isFixedRotation() const {
-    return b2Body_GetMotionLocks(b2LoadBodyId(checkedId())).angularZ;
+Body::MotionLocks Body::getMotionLocks() const {
+    const b2MotionLocks locks = b2Body_GetMotionLocks(b2LoadBodyId(checkedId()));
+    return {.x = locks.linearX, .y = locks.linearY, .rotation = locks.angularZ};
 }
 
-void Body::setFixedRotation(bool value) {
-    const b2BodyId body = b2LoadBodyId(checkedId());
-    b2MotionLocks locks = b2Body_GetMotionLocks(body);
-    locks.angularZ = value;
-    b2Body_SetMotionLocks(body, locks);
+void Body::setMotionLocks(const MotionLocks& value) {
+    b2Body_SetMotionLocks(b2LoadBodyId(checkedId()), {.linearX = value.x, .linearY = value.y, .angularZ = value.rotation});
 }
 
 bool Body::isBullet() const {
@@ -244,6 +242,14 @@ bool Body::isBullet() const {
 
 void Body::setBullet(bool value) {
     b2Body_SetBullet(b2LoadBodyId(checkedId()), value);
+}
+
+float Body::getContinuousThreshold() const {
+    return b2Body_GetSafetyFactor(b2LoadBodyId(checkedId()));
+}
+
+void Body::setContinuousThreshold(float value) {
+    b2Body_SetSafetyFactor(b2LoadBodyId(checkedId()), Box2DConverter::toContinuousThreshold(value));
 }
 
 bool Body::isSleepEnabled() const {
@@ -547,7 +553,7 @@ Body Body::moveToWorld(World& target) {
         throw std::invalid_argument("A body moves only to another world.");
     }
 
-    Body moved = target.createBody({.type = getType(), .position = getPosition(), .rotation = getRotation(), .velocity = getVelocity(), .angularVelocity = getAngularVelocity(), .linearDamping = getLinearDamping(), .angularDamping = getAngularDamping(), .gravityScale = getGravityScale(), .fixedRotation = isFixedRotation(), .bullet = isBullet(), .fastRotation = world->fastBodies.contains(id), .sleepEnabled = isSleepEnabled(), .sleepThreshold = getSleepThreshold()});
+    Body moved = target.createBody({.type = getType(), .position = getPosition(), .rotation = getRotation(), .velocity = getVelocity(), .angularVelocity = getAngularVelocity(), .linearDamping = getLinearDamping(), .angularDamping = getAngularDamping(), .gravityScale = getGravityScale(), .locks = getMotionLocks(), .bullet = isBullet(), .continuousThreshold = getContinuousThreshold(), .fastRotation = world->fastBodies.contains(id), .sleepEnabled = isSleepEnabled(), .sleepThreshold = getSleepThreshold()});
     // The rotation goes over as the cosine and sine Box2D holds, since an angle read back and made into a rotation again drifts a little.
     b2Body_SetTransform(b2LoadBodyId(moved.getId()), Box2DConverter::toMeters(getPosition(), target.getPixelsPerMeter()), b2Body_GetRotation(b2LoadBodyId(id)));
     copyShapesTo(moved);

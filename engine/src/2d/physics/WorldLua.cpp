@@ -53,8 +53,11 @@ Body::Options WorldLua::readBodyOptions(lua_State* L, int index) {
     lua::Table::readField(L, index, "linearDamping", options.linearDamping);
     lua::Table::readField(L, index, "angularDamping", options.angularDamping);
     lua::Table::readField(L, index, "gravityScale", options.gravityScale);
-    lua::Table::readField(L, index, "fixedRotation", options.fixedRotation);
+    lua::Table::readField(L, index, "lockX", options.locks.x);
+    lua::Table::readField(L, index, "lockY", options.locks.y);
+    lua::Table::readField(L, index, "lockRotation", options.locks.rotation);
     lua::Table::readField(L, index, "bullet", options.bullet);
+    lua::Table::readField(L, index, "continuousThreshold", options.continuousThreshold);
     lua::Table::readField(L, index, "fastRotation", options.fastRotation);
     lua::Table::readField(L, index, "sleepEnabled", options.sleepEnabled);
     lua::Table::readField(L, index, "sleepThreshold", options.sleepThreshold);
@@ -192,7 +195,7 @@ void WorldLua::dispatchJointBreaks(lua_State* L, int worldIndex, const std::vect
     }
 }
 
-// Creates a body with `createBody({type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, fixedRotation, bullet, fastRotation, sleepEnabled, sleepThreshold})`.
+// Creates a body with `createBody({type, x, y, rotation, vx, vy, angularVelocity, linearDamping, angularDamping, gravityScale, lockX, lockY, lockRotation, bullet, continuousThreshold, fastRotation, sleepEnabled, sleepThreshold})`.
 int WorldLua::createBody(lua_State* L) {
     World& world = check(L);
     Physics2DLua::push(L, 1, world.createBody(readBodyOptions(L, 2)));

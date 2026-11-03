@@ -129,7 +129,7 @@ local physics2d = require('haylen.physics2d')
 
 -- A game of 16-pixel tiles, whose hero of 24 units stands about 0.75 meters tall.
 local world = physics2d.newWorld({pixelsPerMeter = 32})
-local hero = world:createBody({x = 0, y = 0, fixedRotation = true})
+local hero = world:createBody({x = 0, y = 0, lockRotation = true})
 hero:addCapsule(0, -6, 0, 6, 6)
 print(world.maxSpeed) -- 12800.0, which is 400 meters per second at this scale.
 ```
@@ -391,7 +391,7 @@ Physics games meet the same problems again and again. Each problem below names t
 
 | Problem | Solution | Test |
 | --- | --- | --- |
-| [Fast bodies pass through walls](#fast-bodies-pass-through-walls) | The world option `continuous`, the body option `bullet` and `maxSpeed` | `PHY-019` |
+| [Fast bodies pass through walls](#fast-bodies-pass-through-walls) | The world option `continuous`, the body options `bullet` and `continuousThreshold`, and `maxSpeed` | `PHY-019`, `PHY-067` |
 | [Bodies catch on the joints between tiles](#bodies-catch-on-the-joints-between-tiles) | Chains, and the merged collision of Tiled maps | `PHY-020`, `TLD-013` |
 | [Platforms to jump through and drop through](#platforms-to-jump-through-and-drop-through) | The shape option `oneWay` and `dropThrough` | `PHY-013`, `PHY-031` |
 | [Characters on slopes and steps](#characters-on-slopes-and-steps) | The mover of `physics2d.newMover` | `PHY-021`, `PHY-031` |
@@ -405,8 +405,9 @@ Physics games meet the same problems again and again. Each problem below names t
 | [Ragdolls that get stuck](#ragdolls-that-get-stuck) | The `stiffness` of `physics2d.newRagdoll` | `PHY-007`, `PHY-027` |
 | [Vehicles that flip](#vehicles-that-flip) | `physics2d.newVehicle` and `physics2d.newTopDownVehicle` | `PHY-008`, `PHY-028` |
 | [Tall bodies that tip over](#tall-bodies-that-tip-over) | The body property `centerOfMass` | `PHY-029` |
+| [Bodies held on one line](#bodies-held-on-one-line) | The body options `lockX`, `lockY` and `lockRotation` | `PHY-067` |
 | [Balls that roll forever](#balls-that-roll-forever) | The shape option `rollingResistance` | `PHY-036`, `PHY-042`, `PHY-044` |
-| [Wind, magnets, planets and water](#wind-magnets-planets-and-water) | Force fields | `PHY-048` to `PHY-051` |
+| [Wind, magnets, planets and water](#wind-magnets-planets-and-water) | Force fields | `PHY-048` to `PHY-051`, `PHY-067` |
 | [Aiming throws](#aiming-throws) | `world:predictPath` | `PHY-035` |
 | [Picking thin or small bodies](#picking-thin-or-small-bodies) | The `radius` of `world:pick` and the `pickRadius` of a grabber | `PHY-027` |
 | [Liquids](#liquids) | The fluid of `physics2d.newFluid` | `PHY-012`, `PHY-059` |
@@ -416,6 +417,16 @@ Physics games meet the same problems again and again. Each problem below names t
 A body that moves farther in one step than a wall is thick can end the step on the far side of the wall. This is called tunneling.
 
 The world option `continuous` is on by default. It sweeps every fast dynamic body against static shapes along its path. So balls, characters and debris stop at thin walls, floors and terrain. The sweep skips dynamic and kinematic shapes. A projectile reaches those with the body option `bullet = true`. A bullet sweeps against every body, so it stops at a thin moving door or a thin dynamic plank. Each bullet costs a sweep, which [`world:stats()`](../lua-api/physics2d.md#worldstats) reports as `continuousMilliseconds`. So give `bullet` only to small fast bodies, such as arrows and bullets.
+
+The sweep runs only for a body that moves far enough in one step to risk passing through a surface. The body option `continuousThreshold` sets how far, as a share of the distance at which the body could pass through, 0.5 by default. A lower value, such as 0.1, also sweeps a slower body, which keeps a small coin from sinking into a thin floor. It costs a sweep in more steps. Static sensors catch fast bodies too. A fast body that crosses a static sensor within one step still raises its begin event, and its end event follows. A bullet does the same with the sensors of moving bodies.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld()
+local coin = world:createBody({x = 0, y = -400, vy = 3000, continuousThreshold = 0.1})
+coin:addCircle(4)
+```
 
 Other settings help too. More sub-steps make contacts stiffer, so a fast heavy body does not push into a wall or a pile. A higher `fixedRate` in `app.json` shortens how far a body moves between two steps. The world option `maxSpeed` caps the speed of every body, 400 meters per second by default. A body asked to go faster moves at the cap. A lower cap keeps everything within what continuous collision catches well.
 
@@ -460,7 +471,7 @@ local physics2d = require('haylen.physics2d')
 local world = physics2d.newWorld()
 local ledge = world:createBody({type = 'static', x = 0, y = 0})
 ledge:addBox(200, 8, {oneWay = {0, -1}})
-local crate = world:createBody({x = -60, y = -40, fixedRotation = true})
+local crate = world:createBody({x = -60, y = -40, lockRotation = true})
 crate:addBox(24, 24)
 local hero = physics2d.newMover(world, {x = 60, y = -40})
 -- Called when the player presses down while standing on the ledge.
@@ -652,6 +663,21 @@ buoy:addBox(30, 120)
 buoy.centerOfMass = {0, 50}
 ```
 
+### Bodies held on one line
+
+A piston, a sliding door or a bead on a wire moves along one line, and a turnstile only turns. A joint to a static body holds such a body, but the body options `lockX`, `lockY` and `lockRotation` do it without one. A body locked along the x axis of the world keeps its x whatever pushes it, and still falls and bounces along y. A body locked in rotation keeps its angle, which keeps characters upright. The locks are properties too, so a crate can freeze in place along one axis and move again later.
+
+```lua
+local physics2d = require('haylen.physics2d')
+
+local world = physics2d.newWorld()
+local elevator = world:createBody({x = 0, y = 0, lockX = true, lockRotation = true})
+elevator:addBox(120, 16)
+local hero = world:createBody({x = 200, y = 0, lockRotation = true})
+hero:addCapsule(0, -20, 0, 20, 12)
+elevator.lockY = true -- The elevator stops where it is.
+```
+
 ### Balls that roll forever
 
 Friction stops a body that slides. A ball rolls without sliding, so on a flat floor it rolls on until something hits it. Rolling resistance slows round shapes that roll.
@@ -674,6 +700,7 @@ A force applied from Lua to every body in an area costs one call per body per st
 - A `'directional'` field pushes one way. Use it for wind and jets.
 - A `'vortex'` field swirls.
 - A `'buoyancy'` field is water. It floats each shape by the area it has under the surface. So bodies lighter than the water float with the right share under it, and heavier ones sink.
+- A `'wind'` field is air. It pushes each shape by the size it shows the wind and by how fast the air passes it, so a light board flies away while an iron ball of the same size barely moves, and a body that already moves with the wind feels little of it. Its `lift` turns part of the push across the wind, so tilted plates and leaves sail and flags flutter. A shape that is very light for the area it shows the wind shakes, as the [reference](../lua-api/physics2d.md#physics2dnewforcefieldworld-options) explains.
 
 The strength is an acceleration, the same for every body, unless `acceleration` is `false`, which pushes light bodies further. A field can fade with distance, with a `'linear'` falloff or an `'inverseSquare'` one, which works like gravity. Drags slow bodies toward a `flow`, for currents and air resistance. A field never wakes the bodies it pushes, so floating bodies fall asleep.
 
@@ -682,7 +709,8 @@ local physics2d = require('haylen.physics2d')
 
 local world = physics2d.newWorld()
 local pool = physics2d.newForceField(world, {kind = 'buoyancy', x = 0, y = 300, width = 800, height = 200, density = 1.2, linearDrag = 1})
-local wind = physics2d.newForceField(world, {kind = 'directional', x = -600, y = 0, width = 300, height = 600, strength = 900, direction = {1, 0}})
+local fan = physics2d.newForceField(world, {kind = 'directional', x = -600, y = 0, width = 300, height = 600, strength = 900, direction = {1, 0}})
+local breeze = physics2d.newForceField(world, {kind = 'wind', x = 600, y = 0, width = 800, height = 600, strength = 400, direction = {1, 0}, lift = 0.5})
 ```
 
 ### Aiming throws

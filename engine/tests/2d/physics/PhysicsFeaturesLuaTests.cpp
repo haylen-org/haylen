@@ -398,6 +398,7 @@ TEST_F(PhysicsFeaturesLuaTest, PushesBodiesWithFieldsAndDrivesTopDownCars) {
         ball:addCircle(10)
         magnet = physics2d.newForceField(space, {kind = 'radial', x = 0, y = 0, radius = 400, strength = 1000, falloff = 'linear', linearDrag = 1, mask = 1})
         wind = physics2d.newForceField(space, {kind = 'directional', x = 0, y = 2000, width = 400, height = 400, strength = 500, direction = {0, -1}, acceleration = false, enabled = false})
+        breeze = physics2d.newForceField(space, {kind = 'wind', x = 0, y = 6000, width = 400, height = 400, strength = 300, airDrag = 0.8, lift = 0.5})
         water = physics2d.newForceField(space, {kind = 'buoyancy', x = 0, y = 4000, points = {{-200, 0}, {200, 0}, {200, 200}, {-200, 200}}, density = 1.5, linearDrag = 2, angularDrag = 1, flow = {50, 0}})
         for i = 1, 60 do space:step(1 / 60) end
     )");
@@ -405,6 +406,8 @@ TEST_F(PhysicsFeaturesLuaTest, PushesBodiesWithFieldsAndDrivesTopDownCars) {
     EXPECT_EQ(lua("return tostring(ball.x < 200) .. ' ' .. magnet.kind .. ' ' .. magnet.bodyCount .. ' ' .. tostring(magnet.valid) .. ' ' .. magnet.bounds.width"), "true radial 1 true 800.0");
     EXPECT_EQ(lua("magnet.strength = -500 magnet.position = {10, 0} magnet.enabled = false magnet.linearDrag = 0 magnet.angularDrag = 0 return magnet.strength .. ' ' .. magnet.position.x .. ' ' .. tostring(magnet.enabled) .. ' ' .. magnet.linearDrag"), "-500.0 10.0 false 0.0");
     EXPECT_EQ(lua("wind.direction = {1, 0} wind.enabled = true water.density = 2 water.flow = {0, 0} return wind.direction.x .. ' ' .. tostring(wind.enabled) .. ' ' .. water.density .. ' ' .. water.flow.x .. ' ' .. water.kind"), "1.0 true 2.0 0.0 buoyancy");
+    EXPECT_EQ(lua("breeze.airDrag = 0.5 breeze.lift = 0.25 return breeze.kind .. ' ' .. breeze.airDrag .. ' ' .. breeze.lift"), "wind 0.5 0.25");
+    EXPECT_NE(lua("breeze.lift = 0 / 0").find("A force field needs a finite lift."), std::string::npos);
     EXPECT_EQ(lua("magnet:destroy() return tostring(magnet.valid)"), "false");
     EXPECT_NE(lua("return magnet.strength").find("The force field was destroyed."), std::string::npos);
     EXPECT_NE(lua("physics2d.newForceField(space, {kind = 'tornado', radius = 10})").find("unknown value 'tornado'"), std::string::npos);

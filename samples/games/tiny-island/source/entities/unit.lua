@@ -9,7 +9,7 @@ unit.__index = unit
 
 -- Creates the body and the sprite of a unit. The animator gives the sprite its frame and the pivot at the feet every time it draws.
 function unit.setup(self, world, character, x, y, radius, category, mask)
-    self.body = world:createBody({type = 'dynamic', x = x, y = y, fixedRotation = true, linearDamping = 8})
+    self.body = world:createBody({type = 'dynamic', x = x, y = y, lockRotation = true, linearDamping = 8})
     self.body:addCircle(radius, {category = category, mask = mask, friction = 0})
     self.radius = radius
     self.animator, self.art = art.newAnimator(character)

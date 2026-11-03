@@ -83,7 +83,7 @@ function OneWay:build()
     self.lift = self:platform('kinematic', OneWay.lift[1], OneWay.lift[2], OneWay.lift[3])
 
     local reach = OneWay.height / 2 - OneWay.radius
-    self.hero = self.world:createBody({x = -660, y = OneWay.groundY - OneWay.height / 2 - 4, fixedRotation = true, sleepEnabled = false})
+    self.hero = self.world:createBody({x = -660, y = OneWay.groundY - OneWay.height / 2 - 4, lockRotation = true, sleepEnabled = false})
     self.hero:addCapsule(0, -reach, 0, reach, OneWay.radius, {friction = 0, category = OneWay.heroCategory})
 end
 
