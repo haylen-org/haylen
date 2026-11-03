@@ -54,10 +54,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: desktop
-          cache-size: 3G
-          sources: desktop
           packages: ${{ env.LINUX_PACKAGES }} ${{ env.MESA_PACKAGES }}
+          save-sources: "true"
+          cache: desktop
+          cache-size: 2500M
       - name: Install the Graphics Tools of Windows, whose debug layer validates Direct3D
         if: runner.os == 'Windows'
         shell: pwsh
@@ -97,10 +97,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
-        with:
-          cache: desktop
-          cache-size: 1500M
-          sources: desktop
       - name: Show the displays of the runner and whether they support Metal
         run: system_profiler SPDisplaysDataType
       - name: Run the engine tests
@@ -114,11 +110,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: desktop
-          cache-size: 3G
-          save-cache: "false"
-          sources: desktop
           packages: ${{ env.LINUX_PACKAGES }}
+          cache: desktop
+          cache-size: 2500M
+          save-cache: "false"
       - name: Build the headless player
         run: python haylen.py --verbose build --config Debug --target haylen-headless --jobs ${{ env.JOBS }}
       - name: Build the test library that the native tests load next to the player
@@ -132,10 +127,6 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
-        with:
-          cache: coverage
-          cache-size: 1500M
-          sources: desktop
       - name: Measure the coverage of the engine tests
         run: python haylen.py --verbose coverage --jobs ${{ env.JOBS }}
 
@@ -150,9 +141,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: sanitizer-${{ matrix.sanitizer }}
-          cache-size: 1500M
-          sources: desktop
           packages: ${{ env.LINUX_PACKAGES }}
       - name: Run the engine tests under the sanitizer
         run: python haylen.py --verbose test --sanitizers ${{ matrix.sanitizer }} --jobs ${{ env.JOBS }}
@@ -164,9 +152,6 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: fuzz
-          cache-size: 1500M
-          sources: desktop
           packages: ${{ env.LINUX_PACKAGES }} clang libclang-rt-dev
       - name: Fuzz the parsers that read hostile bytes for a minute each
         run: python haylen.py --verbose fuzz --seconds 60 --llvm /usr/bin --jobs ${{ env.JOBS }}
@@ -179,11 +164,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: web-gpu
-          cache-size: 1G
-          sources: web
           packages: ninja-build
-          emscripten: "true"
       - name: Run the GPU tests on WebGPU in the headless Chrome of the runner
         run: python haylen.py --verbose test --gpu --platform web --graphics-api webGpu --jobs ${{ env.JOBS }}
       - name: Run the GPU tests on WebGL2 in the headless Chrome of the runner
@@ -197,17 +178,16 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
+          packages: ${{ env.LINUX_PACKAGES }}
           cache: web
           cache-size: 1G
-          sources: web
-          packages: ${{ env.LINUX_PACKAGES }}
           emscripten: "true"
       - name: Build the prebuilt player for WebGPU and WebGL2
         run: python haylen.py --verbose engine --platform web --jobs ${{ env.JOBS }}
       - name: Check the error screen, the wake lock and the memory of pages in the headless Chrome of the runner
         run: python haylen.py --verbose test --platform web --jobs ${{ env.JOBS }}
 
-  # The keys of this job are made for it and thrown away with the runner, so no secret is involved.
+  # The keys of this job are made for it and thrown away with the runner, so no secret is involved. The job builds the same artifacts as the web job, so it reads the compiler cache of that job.
   release:
     name: Protected web release
     runs-on: ubuntu-latest
@@ -215,10 +195,10 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: release
-          cache-size: 1G
-          sources: web
           packages: ${{ env.LINUX_PACKAGES }}
+          cache: web
+          cache-size: 1G
+          save-cache: "false"
           emscripten: "true"
       - name: Build the protected release of the test project for the web
         run: python haylen.py --verbose prepare samples/tests --platform web --config Release --jobs ${{ env.JOBS }}
@@ -243,9 +223,6 @@ jobs:
         run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platform-tools" "emulator" "system-images;android-37.0;default;x86_64"
       - uses: ./.github/actions/build-environment
         with:
-          cache: android-gpu
-          cache-size: 1G
-          sources: android
           packages: ninja-build
       - name: Let the emulator use KVM
         run: |
@@ -272,10 +249,9 @@ jobs:
         run: sdkmanager "ndk;30.0.16248370" "cmake;4.1.2" "platforms;android-37.2"
       - uses: ./.github/actions/build-environment
         with:
+          packages: ${{ env.LINUX_PACKAGES }}
           cache: android
           cache-size: 2G
-          sources: android
-          packages: ${{ env.LINUX_PACKAGES }}
       - name: Build the Android library and publish it to the local Maven repository
         run: python haylen.py --verbose engine --platform android --jobs ${{ env.JOBS }}
       - name: Create the starter app
@@ -294,7 +270,6 @@ jobs:
         with:
           cache: apple
           cache-size: 1500M
-          sources: apple
       - name: Build "Haylen.xcframework"
         run: python haylen.py --verbose engine --platform apple --jobs ${{ env.JOBS }}
       - name: Create the starter app
@@ -319,10 +294,9 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./.github/actions/build-environment
         with:
-          cache: desktop-apps
-          cache-size: 2500M
-          sources: desktop
           packages: ${{ env.LINUX_PACKAGES }} dpkg-dev desktop-file-utils
+          cache: desktop-apps
+          cache-size: 3G
       - name: Install CMake with the AppImage generator of CPack
         if: runner.os == 'Linux'
         run: pip install cmake

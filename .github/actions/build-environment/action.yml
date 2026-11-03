@@ -2,23 +2,23 @@ name: Build environment
 description: Installs what a job of the workflow builds the engine with, restores the sources of the dependencies, and compiles through a cache of compiled objects that the next run of the job starts from.
 
 inputs:
-  cache:
-    description: The name of the compiler cache. Jobs that compile the same build trees on the same system share it, and the system and processor complete it.
-    required: true
-  cache-size:
-    description: The largest size of the compiler cache, above every object that one run of the job compiles, since a smaller cache drops what the next run needs.
-    required: true
-  save-cache:
-    description: Whether the job saves its compiler cache, or only reads the cache that another job saves for the same build trees.
-    default: "true"
-  sources:
-    description: The set of dependency sources that the builds of the job fetch, "desktop", "web", "android" or "apple", which jobs that fetch the same set share.
-    required: true
   packages:
     description: The Linux packages that the job installs.
     default: ""
+  save-sources:
+    description: Whether the job saves the sources of the dependencies that its builds fetch, which the desktop job of each system does, while the other jobs of the system only read them.
+    default: "false"
+  cache:
+    description: The name of the compiler cache, which the system, the processor and, for builds with Emscripten, its version complete. Jobs that compile the same build trees share one, and a job without one compiles without a cache.
+    default: ""
+  cache-size:
+    description: The largest size of the compiler cache, above every object that one run of the job compiles, since a smaller cache drops what the next run needs.
+    default: ""
+  save-cache:
+    description: Whether the job saves its compiler cache, or only reads the cache that another job saves for the same build trees.
+    default: "true"
   emscripten:
-    description: Whether the job builds for the web, which restores the Emscripten SDK and keys the compiler cache with its version.
+    description: Whether the job compiles with Emscripten, whose version then keys the compiler cache.
     default: "false"
 
 runs:
@@ -42,7 +42,7 @@ runs:
       shell: bash
       run: pip install ninja
 
-    # Objects of one version of Emscripten never mix with another, so its version keys the caches of web builds, and every build compiles with every processor of the runner.
+    # Objects of one version of Emscripten never mix with another, so its version keys the compiler cache, and every build compiles with every processor of the runner.
     - name: Read the version of Emscripten and the processors of the runner
       id: machine
       shell: bash
@@ -50,20 +50,22 @@ runs:
         echo "emscripten=$(python -c 'import haylen; print(haylen.EMSDK_VERSION)')" >> "$GITHUB_OUTPUT"
         echo "JOBS=$(python -c 'import os; print(os.cpu_count())')" >> "$GITHUB_ENV"
 
-    - name: Restore the sources of the dependencies
+    - name: Restore and save the sources of the dependencies
+      if: inputs.save-sources == 'true'
       uses: actions/cache@v6
       with:
         path: .cache/cpm
-        key: cpm-${{ runner.os }}-${{ inputs.sources }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
+        key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
 
-    - name: Restore the Emscripten SDK
-      if: inputs.emscripten == 'true'
-      uses: actions/cache@v6
+    - name: Restore the sources of the dependencies
+      if: inputs.save-sources != 'true'
+      uses: actions/cache/restore@v6
       with:
-        path: .tools/emsdk
-        key: emsdk-${{ runner.os }}-${{ steps.machine.outputs.emscripten }}
+        path: .cache/cpm
+        key: cpm-${{ runner.os }}-${{ hashFiles('engine/cmake/haylen-dependencies.cmake', 'engine/cmake/patches/**') }}
 
     - name: Restore the compiler cache
+      if: inputs.cache != ''
       uses: hendrikmuhs/ccache-action@v1.2.24
       with:
         key: ${{ inputs.cache }}-${{ runner.os }}-${{ runner.arch }}${{ inputs.emscripten == 'true' && format('-emscripten-{0}', steps.machine.outputs.emscripten) || '' }}
@@ -72,6 +74,7 @@ runs:
         save: ${{ inputs.save-cache }}
 
     - name: Compile through the compiler cache
+      if: inputs.cache != ''
       shell: bash
       run: |
         for language in C CXX OBJC OBJCXX; do
