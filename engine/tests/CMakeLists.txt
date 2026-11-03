@@ -159,6 +159,7 @@ set(HAYLEN_TEST_SOURCES
   math/TriangulatorTests.cpp
   math/UtilityTests.cpp
   math/VectorTests.cpp
+  net/HttpDownloadTests.cpp
   net/WebSocketTests.cpp
   platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp

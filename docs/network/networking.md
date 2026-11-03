@@ -116,35 +116,74 @@ end)
 
 ### Large downloads
 
-A request keeps its whole body in memory. For a large file, use `http.client.stream(options, onChunk)` instead. It first calls `onResponse` of its options with the status and the headers. Then it calls `onChunk` with each piece of the body as it arrives, and it resolves once the body ended. A callback that falls behind holds only a bounded window of the body, so a slow app never gathers a whole download in memory. Save the file with the `fs` module of Varn under the folder of [`haylen.storage`](../lua-api/storage.md#storageroot).
+A request keeps its whole body in memory, so a large file takes one of two other ways. Both hold no more than a bounded piece of the body in memory, whatever its size.
+
+- The function `http.client.download(options)` writes the body to the file of `options.path` as it arrives. The body goes into a partial file next to it, `<path>.part`, which becomes the file only once the body is whole. A download that fails or is cancelled removes the partial file and leaves the file at `path` as it was. Its `onProgress(received, total)` reports how far it got, and it resolves to `{status, headers, path, size, resumed}`.
+- The function `http.client.open(options)` resolves to the response once its head arrives, and `response:read()` resolves to each piece of the body in turn and to `nil` at its end. The pieces the app has not read yet hold the transfer back, so an app that reads slowly slows the download down instead of filling its memory. Use it to parse a body as it arrives, such as a long list of records.
+
+Keep downloaded files under the folder of [`haylen.storage`](../lua-api/storage.md#storageroot). A large download raises `maxResponseBytes`, 64 MiB by default, and `timeoutSeconds`, which is one deadline for the whole download. The [reference of the `http` module of Varn](https://github.com/varn-org/varn/blob/main/docs/lua-api/http.md#downloading-to-a-file) lists every option. On the web the files of the page live in its memory, and `storage.flush()` copies them to IndexedDB, so a download there holds its file in the memory of the page.
 
 ```lua
 local async = require('async')
-local fs = require('fs')
 local http = require('http')
 local storage = require('haylen.storage')
 
 async.spawn(function()
-    local pieces, received, expected = {}, 0, nil
-    local done, failure = http.client.stream({
+    local done, failure = http.client.download({
         url = 'https://cdn.example.com/levels/forest.bin',
-        timeoutSeconds = 120,
-        maxResponseBytes = 256 * 1024 * 1024,
-        onResponse = function(status, headers)
-            expected = tonumber(headers['content-length'])
+        path = storage.root() .. '/downloads/forest.bin',
+        timeoutSeconds = 600,
+        maxResponseBytes = 1024 * 1024 * 1024,
+        onProgress = function(received, total)
+            print(string.format('%d of %s bytes', received, total or 'unknown'))
         end,
-    }, function(piece)
-        pieces[#pieces + 1] = piece
-        received = received + #piece
-        print(string.format('%d of %s bytes', received, expected or 'unknown'))
-    end):await()
+    }):await()
     if not done then
         print('The download failed: ' .. failure)
         return
     end
-    fs.mkdir(storage.root() .. '/downloads'):await()
-    fs.writeFile(storage.root() .. '/downloads/forest.bin', table.concat(pieces)):await()
+    print('Saved ' .. done.size .. ' bytes.')
 end)
+```
+
+A download with `resume = true` keeps its partial file when it fails, together with the validator of the response, its `ETag` or its `Last-Modified` date. The next download of the same `path` with `resume = true` asks the server for the rest with the headers `Range` and `If-Range`. A server that still has the same file sends only the rest, and one whose file changed sends the whole new file. Use it for large files on networks that drop, where starting over would waste what already arrived.
+
+```lua
+local http = require('http')
+local storage = require('haylen.storage')
+
+-- Runs inside a task, such as one of `scene.spawn`. Each try continues where the one before it stopped.
+local function fetchPack()
+    for _ = 1, 3 do
+        local done = http.client.download({
+            url = 'https://cdn.example.com/packs/music.pak',
+            path = storage.root() .. '/packs/music.pak',
+            resume = true,
+            timeoutSeconds = 900,
+            maxResponseBytes = 2 * 1024 * 1024 * 1024,
+        }):await()
+        if done then
+            return done.path
+        end
+    end
+end
+```
+
+The option `bodyFile` sends a file as the body of a request, read from the disk as it is sent, so a large upload never sits in memory either, except on the web, where the browser gathers the body before it sends it.
+
+```lua
+local http = require('http')
+local storage = require('haylen.storage')
+
+-- Runs inside a task, such as one of `scene.spawn`.
+local function uploadReplay()
+    return http.client.request({
+        url = 'https://game.example.com/replays',
+        method = 'PUT',
+        bodyFile = storage.root() .. '/replays/latest.bin',
+        timeoutSeconds = 300,
+    }):await()
+end
 ```
 
 ## WebSockets
@@ -415,11 +454,35 @@ Every kind of connection has its own way to stop waiting.
 
 - A socket of `haylen.net` fails an attempt that has not opened after `connectTimeout` seconds, `10` by default. The opening of the connection, the TLS handshake and the upgrade request share that time. With the option `reconnect` the socket then tries again on its own. A socket with an `owner` closes with code `1000` when the owner ends, such as the scene that opened it.
 - A request of `http.client` ends at its `timeoutSeconds` deadline, which counts from the connection to the last byte of the body, as the [Lua guide](../core/lua.md#asynchronous-code) details.
-- The function `async.timeout(promise, ms)` stops waiting for any promise at a deadline of the app. A task of `scene.spawn` stops for good when its owner ends and never resumes. Neither of them cancels the request itself: it runs to its end, and nobody receives its answer.
+- A controller of `http.client.controller()` cancels every request of `http.client` that names it in its option `controller`, at once, when the app calls `controller:cancel()`. A controller in a to-be-closed variable, `local scope <close> = http.client.controller()`, cancels them when its scope ends. A task of `scene.spawn` that stops because its owner ended closes its variables, so a request made with such a controller ends with the scene that started it, and a download removes its partial file.
+- The function `async.timeout(promise, ms)` stops waiting for any promise at a deadline of the app, and a task of `scene.spawn` stops for good when its owner ends and never resumes. Neither of them cancels a request by itself: without a controller, the request runs to its end, and nobody receives its answer.
 - The option `timeoutMs` of `socket.tcp.connect(host, port, {timeoutMs = 1000})` fails a connection that takes longer, the lookup of its host name included.
 - A `receive` of the `socket` module has no timeout of its own. A task waits for it with `async.timeout` and closes the socket when the peer stays silent, which rejects the pending `receive` with `The socket was closed.`.
 - A server that `listen` returned closes with `server:close()`. With `server:close({graceful = true})` it first lets the requests in flight finish. Either way its port is free again at once.
 - A listener of the `socket` module closes with `listener:close()`, which rejects a pending `accept` with `The listener was closed.`.
+
+```lua
+local http = require('http')
+local scene = require('haylen.scene')
+local storage = require('haylen.storage')
+
+local shop = {}
+
+function shop:enter()
+    -- The download belongs to the scene: leaving it closes the controller, which cancels the download.
+    scene.spawn(self, function()
+        local scope <close> = http.client.controller()
+        local done = http.client.download({
+            url = 'https://cdn.example.com/shop/catalog.bin',
+            path = storage.root() .. '/shop/catalog.bin',
+            controller = scope,
+        }):await()
+        if done then
+            print('The catalog is ready.')
+        end
+    end)
+end
+```
 
 ```lua
 local async = require('async')
@@ -448,7 +511,7 @@ Backpressure means that a sender slows down to the speed of the receiver, so dat
 - A socket of `haylen.net` queues what the app sends, and `socket.bufferedAmount` counts the bytes that still wait. An app that sends faster than the network takes waits until that number falls, as the [reference](../lua-api/net.md#socketbufferedamount) shows.
 - On native builds, the thread of a `haylen.net` socket keeps reading while it waits for room to write. So two sides that both send large messages never block each other, and messages up to `maxMessageSize`, 16 MiB by default, arrive whole.
 - An awaited `send` of the `socket` module waits until the data left for the peer. So a task that awaits its sends never queues more than the peer takes. Sends that nobody awaits queue up to `maxQueuedBytes`, 64 MiB by default, and a send past that rejects at once.
-- Requests of `http.client` hold their bodies in memory, up to `maxResponseBytes` for a response. The function `http.client.stream` hands a response to a callback in pieces as they arrive, as [large downloads](#large-downloads) shows.
+- Requests of `http.client` hold their bodies in memory, up to `maxResponseBytes` for a response. The function `http.client.download` writes a response to a file as it arrives, `http.client.open` hands it to the app one piece per `response:read()` and holds the transfer back while the app does not read, and `http.client.stream` hands each piece to a callback, as [large downloads](#large-downloads) shows. The option `bodyFile` sends a file as the body of a request without reading it into memory.
 - A handler of a server inside the app streams a body with `ctx:write(data)`. Its promise settles once the data left for the client, so a handler that awaits its writes never holds more than the client takes.
 - A WebSocket route of `app:ws` sends with `conn:send(data, {binary = true})`. Its promise resolves to `true` once the message left and to `false` when the connection closed first, and `conn.bufferedAmount` counts what waits.
 
