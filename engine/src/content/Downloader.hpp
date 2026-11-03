@@ -125,6 +125,9 @@ class Downloader final {
         std::vector<Digest> records;
         Progress progress;
         bool changed = false;
+
+        // The first failure of a request, which it reports once the records that arrived before it are on the device.
+        std::optional<Error> failure;
     };
 
     // A record that requests wait for, with what it must be.
@@ -133,6 +136,7 @@ class Downloader final {
         Digest shard;
         std::vector<std::uint64_t> requests;
         bool transferring = false;
+        bool verifying = false;
     };
 
     struct Shard {
@@ -170,6 +174,7 @@ class Downloader final {
     void verify(const Digest& shard, const Digest& storedId, std::vector<std::uint8_t> record);
     void stored(const Digest& storedId, std::optional<Error> failure);
     void fail(const Digest& storedId, const Error& error);
+    void fail(std::uint64_t request, const Digest& storedId, const Error& error);
     void complete(std::uint64_t request, std::optional<Error> failure);
     void dropUnwanted();
 

@@ -27,6 +27,7 @@
 #include "support/BrowserStoreFiles.hpp"
 #include "support/ContentServer.hpp"
 #include "support/CrashingStoreFiles.hpp"
+#include "support/GatedStoreFiles.hpp"
 #include "support/LimitedStoreFiles.hpp"
 #include "support/QuotaStoreFiles.hpp"
 #include "support/ReleaseFixture.hpp"
@@ -452,6 +453,42 @@ TEST_F(UpdaterTest, ResumesAnUpdateThatStoppedAndCommitsOnlyOnceItIsWhole) {
 
     const std::unique_ptr<Client> restarted = connect();
     EXPECT_EQ(restarted->package->read("content/maps/world.bin"), update.at("content/maps/world.bin"));
+}
+
+// The records that arrived before a download stopped are still checked and written when the install reports the failure, so the attempt after it, even in an app that starts again at once, downloads none of them again.
+TEST_F(UpdaterTest, ReportsADownloadThatStoppedOnceTheRecordsThatArrivedAreOnTheDevice) {
+    Files update = makeUpdate(2);
+    update["content/maps/world.bin"] = test::TestFiles::randomBytes(6 * kMegabyte, 21);
+    publish(update);
+    std::uint64_t whole = 0;
+    {
+        auto files = std::make_unique<test::GatedStoreFiles>(store.getPath());
+        test::GatedStoreFiles& gate = *files;
+        const auto client = std::make_unique<Client>(*this, std::move(files));
+        const UpdateOffer offer = requireOffer(*client);
+        whole = offer.downloadBytes;
+
+        gate.close();
+        server.dropAfter(1500 * 1024, 1);
+        std::optional<std::optional<Error>> result;
+        client->updater->install(offer, {}, [&result](std::optional<Error> error) { result.emplace(std::move(error)); });
+        // clang-format off
+        ASSERT_TRUE(runtime.pumpUntil([this, &gate] {
+            const std::vector<test::ContentServer::Exchange> exchanges = server.getExchanges();
+            return gate.isHolding() && std::ranges::any_of(exchanges, [](const test::ContentServer::Exchange& exchange) { return exchange.bytes == 1500 * 1024; });
+        }));
+        // clang-format on
+        (void)runtime.pumpUntil([] { return false; }, std::chrono::milliseconds(300));
+        EXPECT_FALSE(result) << "The install waits for the record that the store writes.";
+
+        gate.open();
+        ASSERT_TRUE(runtime.pumpUntil([&result] { return result.has_value(); }));
+        ASSERT_TRUE(*result);
+        EXPECT_TRUE((*result)->isRetryable());
+    }
+
+    const std::unique_ptr<Client> restarted = connect();
+    EXPECT_LT(requireOffer(*restarted).downloadBytes, whole);
 }
 
 TEST_F(UpdaterTest, FallsBackToThePreviousContentWhenTheActiveOneIsDamaged) {

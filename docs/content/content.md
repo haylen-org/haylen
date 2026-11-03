@@ -524,6 +524,8 @@ Content that is not on the device arrives over HTTP or HTTPS through `content::H
 
 The class `content::RangePlanner` turns the records that an app needs from one shard into few requests. Records with a gap of at most 256 KiB between them share one request, which stays within 16 MiB. So many small records cost few requests, a small shard whose records are all needed arrives in one request, and a large shard is never fetched for a few of its records.
 
+A download that fails, such as when the connection drops in the middle of a range, keeps what it received. The records that arrived whole are still checked and written to the store, and the download reports its failure only once they are there, so an attempt right after it, even by an app that starts again, never downloads them again. The record that stopped keeps its first bytes for a resume, as the validator above describes.
+
 ### What a content server needs
 
 A server of protected content serves byte ranges of its files, sends `ETag` for them and leaves them uncompressed, since the shards are encrypted and do not compress. Every file of a publication tree is immutable except the channel pointers. So packs and manifests take long cache lifetimes, such as `Cache-Control: public, max-age=31536000, immutable`, and a channel pointer takes `Cache-Control: no-cache`. A server on another origin than a web page allows the requests of the page with `Access-Control-Allow-Origin`, `Access-Control-Allow-Headers: Range, If-Range` and `Access-Control-Expose-Headers: Content-Range, Content-Length, ETag`.
