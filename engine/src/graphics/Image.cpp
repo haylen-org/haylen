@@ -92,6 +92,9 @@ Image Image::decode(std::span<const std::uint8_t> encoded, int maxSide) {
     if (stbi_info_from_memory(encoded.data(), size, &columns, &rows, &channels) == 0) {
         throw std::runtime_error(std::string("The image could not be decoded, and the decoder reported \"") + stbi_failure_reason() + "\".");
     }
+    if (columns < 1 || rows < 1) {
+        throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels has no pixels to decode.");
+    }
     if (columns > maxSide || rows > maxSide) {
         throw std::runtime_error("The image of " + std::to_string(columns) + " by " + std::to_string(rows) + " pixels is too large to decode. The image may have at most " + std::to_string(maxSide) + " pixels on a side.");
     }

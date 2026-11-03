@@ -74,6 +74,18 @@ TEST(ImageTest, RefusesAnImageWhoseHeaderDeclaresASideTooLongBeforeDecodingIt) {
     EXPECT_THROW((void)graphics::Image::decode(png, 0), std::invalid_argument);
 }
 
+TEST(ImageTest, RefusesAGifWithoutWidth) {
+    // A GIF file whose screen is 0 pixels wide and 4 tall, with a global color table of two colors and no frame, which the decoder would hand over without pixels.
+    const std::vector<std::uint8_t> gif = {'G', 'I', 'F', '8', '9', 'a', 0, 0, 4, 0, 0x80, 0, 0, 0, 0, 0, 255, 255, 255, 0x2C, 0, 0, 0, 0, 0, 0, 4, 0, 0, 2, 2, 0x44, 0x01, 0, 0x3B};
+    try {
+        graphics::Image image = graphics::Image::decode(gif);
+        image.buildMipmaps();
+        FAIL() << "The image decoded.";
+    } catch (const std::runtime_error& error) {
+        EXPECT_STREQ(error.what(), "The image of 0 by 4 pixels has no pixels to decode.");
+    }
+}
+
 TEST(ImageTest, StopsADecodeWhoseDataInflatesPastItsImage) {
     // The pixels of a large image in the header of an image of one pixel inflate to far more than that pixel needs.
     std::vector<std::uint8_t> png = graphics::Image(1024, 1024).encodePng();
