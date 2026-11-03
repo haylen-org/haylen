@@ -1617,13 +1617,14 @@ class ShaderCompilerTest(unittest.TestCase):
     def host(self) -> str:
         return f"{haylen.host_name()}-{haylen.host_arch()}"
 
-    def test_the_release_binary_of_the_machine_downloads_once_into_a_folder_of_its_version(self):
+    def test_the_release_binary_of_the_machine_downloads_once_into_a_folder_of_its_commit(self):
         executable = haylen.executable_name("haylen-shaderc")
-        url, digest = self.archive("haylen-shaderc-9.9.9-host.zip" if haylen.host_name() == "windows" else "haylen-shaderc-9.9.9-host.tar.gz", {executable: "compiler", "LICENSE": "license"})
+        name = "haylen-shaderc-9.9.9-host.zip" if haylen.host_name() == "windows" else "haylen-shaderc-9.9.9-host.tar.gz"
+        url, digest = self.archive(name, {executable: "compiler", "LICENSE": "license"})
         pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": "file:///missing.tar.gz", "sha256": "0" * 64}, "binaries": {self.host(): {"url": url, "sha256": digest}}}
         run, compiler = self.provide(pins)
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(compiler, self.scratch / "cache" / "haylen-shaderc-9.9.9" / executable)
+        self.assertEqual(compiler, self.scratch / "cache" / "haylen-shaderc-abcdef0" / executable)
         self.assertEqual(compiler.read_text(), "compiler")
         self.assertTrue(os.access(compiler, os.X_OK))
         self.assertEqual([path.name for path in compiler.parent.iterdir()], [executable])
@@ -1632,6 +1633,13 @@ class ShaderCompilerTest(unittest.TestCase):
         run, again = self.provide(pins)
         self.assertEqual((run.returncode, again), (0, compiler))
 
+        # The release keeps its version when it is rebuilt at another commit, so the new pin downloads the new binary.
+        url, digest = self.archive(name, {executable: "rebuilt"})
+        run, rebuilt = self.provide({**pins, "commit": "1234567890abcdef", "binaries": {self.host(): {"url": url, "sha256": digest}}})
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(rebuilt, self.scratch / "cache" / "haylen-shaderc-1234567" / executable)
+        self.assertEqual(rebuilt.read_text(), "rebuilt")
+
     def test_a_download_that_differs_from_its_digest_fails_and_keeps_nothing(self):
         url, digest = self.archive("haylen-shaderc-9.9.9-host.tar.gz", {"haylen-shaderc": "compiler"})
         pins = {"version": "9.9.9", "commit": "abcdef0123456789", "source": {"url": url, "sha256": digest}, "binaries": {self.host(): {"url": url, "sha256": "0" * 64}}}
@@ -1639,7 +1647,7 @@ class ShaderCompilerTest(unittest.TestCase):
         self.assertNotEqual(run.returncode, 0)
         self.assertIn("haylen-shaderc-9.9.9-host.tar.gz", run.stderr)
         self.assertIsNone(compiler)
-        self.assertEqual(list((self.scratch / "cache" / "haylen-shaderc-9.9.9").iterdir()), [])
+        self.assertEqual(list((self.scratch / "cache" / "haylen-shaderc-abcdef0").iterdir()), [])
 
     def test_a_machine_without_a_binary_builds_the_commit_without_the_toolchain_of_a_cross_build(self):
         executable = haylen.executable_name("haylen-shaderc")
@@ -1667,7 +1675,7 @@ add_custom_target(haylen-shaderc ALL COMMAND ${{CMAKE_COMMAND}} -E copy ${{CMAKE
         (script.parent / "haylen-shader-compiler.json").write_text(json.dumps({"version": "9.9.9", "commit": "abcdef0123456789", "binaries": {self.host(): {"url": url, "sha256": digest}}}))
         environment = {key: value for key, value in os.environ.items() if key != haylen.SHADER_COMPILER_VARIABLE}
         with mock.patch.dict(os.environ, environment, clear=True), mock.patch.object(haylen, "SHADER_COMPILER_SCRIPT", script), mock.patch.object(haylen, "TOOLS_DIR", self.scratch / "tools"), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
-            self.assertEqual(haylen.ensure_shaderc(), self.scratch / "tools" / "haylen-shaderc-9.9.9" / executable)
+            self.assertEqual(haylen.ensure_shaderc(), self.scratch / "tools" / "haylen-shaderc-abcdef0" / executable)
 
     def test_the_pins_name_the_archives_of_their_release_and_the_source_of_their_commit(self):
         pins = json.loads((haylen.SHADER_COMPILER_SCRIPT.parent / "haylen-shader-compiler.json").read_text())

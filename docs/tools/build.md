@@ -85,7 +85,7 @@ The script downloads, or builds, the other tools the first time a command needs 
 
 | Tool | Version | Folder | Used by |
 | --- | --- | --- | --- |
-| `haylen-shaderc` | The release that `engine/cmake/haylen-shader-compiler.json` pins | `.tools/haylen-shaderc-<version>`, or `.tools/haylen-shaderc-<commit>` when it is built here | Every build and the command `shaders`, as [the shader compiler](#the-shader-compiler) explains. |
+| `haylen-shaderc` | The release that `engine/cmake/haylen-shader-compiler.json` pins | `.tools/haylen-shaderc-<commit>` | Every build and the command `shaders`, as [the shader compiler](#the-shader-compiler) explains. |
 | Emscripten SDK | 6.0.12 | `.tools/emsdk` | Web builds. |
 | Gradle | 9.8.1 | `.tools/gradle-9.8.1` | The Android libraries and Android apps. |
 | XcodeGen | 2.46.0 | `.tools/xcodegen-2.46.0` | Apple apps whose `App.xcodeproj` haylen.py generates again. macOS only. |
@@ -97,14 +97,14 @@ Emscripten comes from its repository through `git`. An SDK of another version fe
 
 ### The shader compiler
 
-The Haylen shader compiler, `haylen-shaderc`, compiles the shaders of the engine and of apps. It lives in its own repository, [haylen-shader-compiler](https://github.com/haylen-org/haylen-shader-compiler). The file `engine/cmake/haylen-shader-compiler.json` pins one release of it and the commit of that release. It lists a prebuilt binary with its SHA-256 hash for each system and processor, and the source archive of the commit with its hash.
+The Haylen shader compiler, `haylen-shaderc`, compiles the shaders of the engine and of apps. It lives in its own repository, [haylen-shader-compiler](https://github.com/haylen-org/haylen-shader-compiler). The compiler keeps one version, `1.0.0`, with one release of that name, which every change of the compiler rebuilds at its one commit. The file `engine/cmake/haylen-shader-compiler.json` pins that release and the commit it was built from. It lists a prebuilt binary with its SHA-256 hash for each system and processor, and the source archive of the commit with its hash.
 
 The script `engine/cmake/haylen-shader-compiler.cmake` provides the compiler from those pins, in the same way for `haylen.py` and for CMake:
 
 1. It names the machine by its system and processor, such as `macos-arm64` or `windows-x64`.
 2. The release ships binaries for macOS on Apple silicon and Intel, Linux on x64 and ARM64 with glibc 2.28 or later, and Windows on x64, and on ARM64 from Windows 11. On those machines the script downloads the binary and checks its hash.
 3. On any other machine, it downloads the source of the commit, checks its hash and builds the compiler with CMake on half of the processors.
-4. It keeps the compiler in a folder named after the version, or after the first seven characters of the commit when it built it. A new pin therefore brings its own compiler.
+4. It keeps the compiler in a folder named after the first seven characters of the commit. The compiler keeps one version and rebuilds its release at every change, so a new pin brings its own compiler under the same version.
 5. Builds that configure at the same time wait for the first one, which moves the finished compiler into place.
 
 The script `haylen.py` runs it with `.tools/` as the folder of the compilers and hands the result to every build tree as `HAYLEN_SHADERC`. Set the environment variable `HAYLEN_SHADER_COMPILER` to a build of the compiler, and `haylen.py` uses that one instead. A CMake project that adds the engine runs the same script when `HAYLEN_SHADERC` is empty, as the [CMake options](#cmake-options) describe.

@@ -1,4 +1,4 @@
-# Provides the Haylen shader compiler `haylen-shaderc`, pinned in `haylen-shader-compiler.json` to a release and the commit of that release. A machine whose system and processor the release ships a binary for downloads it and checks its SHA-256, and any other machine downloads the source of the commit, checks it the same way and builds the compiler there, so every machine that runs CMake gets a compiler. Each version lives in a folder of its own under the cache folder, so a new pin brings its own compiler and every build tree shares one.
+# Provides the Haylen shader compiler `haylen-shaderc`, pinned in `haylen-shader-compiler.json` to a release and the commit of that release. A machine whose system and processor the release ships a binary for downloads it and checks its SHA-256, and any other machine downloads the source of the commit, checks it the same way and builds the compiler there, so every machine that runs CMake gets a compiler. Each pinned commit lives in a folder of its own under the cache folder, so a new pin brings its own compiler, also under the same version, and every build tree shares one.
 # The engine includes this file when `HAYLEN_SHADERC` names no compiler, and `haylen.py` runs it as a script, `cmake -D HAYLEN_SHADERC_CACHE=<folder> -D HAYLEN_SHADERC_RESULT=<file> -P haylen-shader-compiler.cmake`, which writes the path of the compiler into the result file.
 
 # The system and processor of the machine as the pins name them, such as `macos-arm64` or `windows-x64`.
@@ -32,11 +32,7 @@ function(haylen_shader_compiler output pins cache)
   endif()
   haylen_shader_compiler_host(host)
   string(JSON binary ERROR_VARIABLE missing GET "${document}" binaries "${host}")
-  if(missing)
-    set(folder "${cache}/haylen-shaderc-${short}")
-  else()
-    set(folder "${cache}/haylen-shaderc-${version}")
-  endif()
+  set(folder "${cache}/haylen-shaderc-${short}")
   set(${output} "${folder}/${executable}" PARENT_SCOPE)
   if(EXISTS "${folder}/${executable}")
     return()
