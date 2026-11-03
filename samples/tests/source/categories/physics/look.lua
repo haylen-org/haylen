@@ -657,11 +657,28 @@ end
 local block = {kind = 'box', x = 0, y = 0, angle = 0, width = 0, height = 0, size = 0}
 local blockLook = {radius = 3}
 
--- Draws a rounded block of a material that no body holds, such as a support, a bracket or a frame, with the look of a dressed box.
+-- Draws a rounded block of a material that no body holds, such as a support, a bracket or a frame, with the look of a dressed box. A block of a material with a painted surface, such as stone, shows that surface like a large shape, and keeps the shape it made for the same place and size, so a block that stays still makes no table after its first frame.
 function Look.block(x, y, width, height, material, layer, rotation)
-    block.width, block.height, block.size = width, height, math.min(width, height)
     rotation = rotation or 0
-    drawPart(block, Look.material(material), blockLook, x, y, math.cos(rotation), math.sin(rotation), rotation, layer or 0)
+    local look = Look.material(material)
+    if look.surface and math.min(width, height) >= Look.blockSurfaceSize then
+        local key = string.format('%s %.1f %.1f %.1f %.1f %.3f', tostring(material), x, y, width, height, rotation)
+        local shape = Look.blockShapes[key]
+        if not shape then
+            local cos, sin, hw, hh = math.cos(rotation), math.sin(rotation), width / 2, height / 2
+            local points = {}
+            for index, corner in ipairs({{-hw, -hh}, {hw, -hh}, {hw, hh}, {-hw, hh}}) do
+                points[index] = {x + corner[1] * cos - corner[2] * sin, y + corner[1] * sin + corner[2] * cos}
+            end
+            shape = Look.newShape(points, look)
+            shape.surfaceSize = Look.blockSurfaceSize
+            Look.blockShapes[key] = shape
+        end
+        Look.drawShape(shape, layer)
+        return
+    end
+    block.width, block.height, block.size = width, height, math.min(width, height)
+    drawPart(block, look, blockLook, x, y, math.cos(rotation), math.sin(rotation), rotation, layer or 0)
 end
 
 local disc = {kind = 'circle', x = 0, y = 0, radius = 0, size = 0}
@@ -674,19 +691,22 @@ function Look.disc(x, y, radius, material, layer, rotation)
     drawPart(disc, Look.material(material), discLook, x, y, math.cos(rotation), math.sin(rotation), rotation, layer or 0)
 end
 
--- Shapes at least this many world units across take the painted surface of their material.
+-- Shapes at least this many world units across take the painted surface of their material, and blocks this many.
 Look.surfaceSize = 90
+Look.blockSurfaceSize = 30
+-- The shapes of the still blocks of a painted surface, by their place and size.
+Look.blockShapes = setmetatable({}, {__mode = 'v'})
 
 -- Returns a polygon of a material that no body holds, in world units, such as a ramp or a rock face, which `Look.drawShape` draws every frame.
 function Look.newShape(points, material)
     return {part = polygonPart(points), material = Look.material(material), look = {}}
 end
 
--- A large shape of a material with a painted surface shows it inside its rim, under its outline.
+-- A large shape of a material with a painted surface shows it inside its rim, under its outline. A shape may lower the size from which it does with its own `surfaceSize`.
 function Look.drawShape(shape, layer)
     local part, material = shape.part, shape.material
     layer = layer or 0
-    if not material.surface or part.size < Look.surfaceSize then
+    if not material.surface or part.size < (shape.surfaceSize or Look.surfaceSize) then
         drawPart(part, material, shape.look, 0, 0, 1, 0, 0, layer)
         return
     end
