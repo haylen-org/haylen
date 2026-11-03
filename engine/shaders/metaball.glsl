@@ -12,10 +12,12 @@ layout(binding=0) uniform metaball_vs_params {
 in vec2 corner;
 out vec2 field_uv;
 out float haylen_output_premultiply;
+out vec2 haylen_output_point;
 
 void main() {
     haylen_output_premultiply = field.y;
-    vec4 position = view_projection * vec4(area.xy + corner * area.zw, 0.0, 1.0);
+    haylen_output_point = area.xy + corner * area.zw;
+    vec4 position = view_projection * vec4(haylen_output_point, 0.0, 1.0);
     gl_Position = position;
     vec2 device = position.xy / position.w;
     field_uv = vec2(device.x * 0.5 + 0.5, field.x > 0.5 ? device.y * 0.5 + 0.5 : 0.5 - device.y * 0.5);

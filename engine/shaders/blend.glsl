@@ -14,9 +14,11 @@ layout(binding=0) uniform blend_vs_params {
 in vec2 corner;
 out vec2 uv;
 out float haylen_output_premultiply;
+out vec2 haylen_output_point;
 
 void main() {
-    gl_Position = view_projection * vec4(placement.xy + corner.x * placement.zw + corner.y * columns.xy, 0.0, 1.0);
+    haylen_output_point = placement.xy + corner.x * placement.zw + corner.y * columns.xy;
+    gl_Position = view_projection * vec4(haylen_output_point, 0.0, 1.0);
     uv = corner;
     haylen_output_premultiply = premultiply;
 }

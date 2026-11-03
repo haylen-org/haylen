@@ -333,6 +333,53 @@ scene.push({
 })
 ```
 
+### graphics2d.pushFade(rect, options)
+
+Fades the alpha of the following draws of the open canvas out toward the edges of `rect`, in the coordinates of the canvas, so whatever lies below them shows through. The options give the `length` of the fade and the strength of each edge. A strength of `0` keeps the draws along that edge as they are, and `1` leaves nothing of them at the edge. From the edge, the alpha grows back to full over the length. The fade does not clip, and draws past an edge that fades fade further, down to nothing. Nested fades multiply, and fades end with `graphics2d.popFade` or when a new canvas begins. The [rendering guide](../graphics/rendering.md#fades) explains how draws take a fade.
+
+| Option | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `length` | number | `0` | How far from each edge the fade reaches, in canvas units. The value `0` fades nothing. |
+| `left` | number | `0` | The strength of the fade at the left edge, from `0` to `1`. |
+| `top` | number | `0` | The strength of the fade at the top edge, from `0` to `1`. |
+| `right` | number | `0` | The strength of the fade at the right edge, from `0` to `1`. |
+| `bottom` | number | `0` | The strength of the fade at the bottom edge, from `0` to `1`. |
+
+A draw takes at most eight edges of the fades around it whose fade reaches into its clip, and more raise `A draw takes <count> edges of the fades around it, and the most it takes is 8. Nest fewer fading areas around it.`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.pushFade({100, 100, 600, 200}, {length = 80, right = 1})
+        graphics2d.drawText(nil, 'This line fades out before its end', 100, 160, {size = 48})
+        graphics2d.popFade()
+    end,
+})
+```
+
+### graphics2d.popFade()
+
+Removes the fade that the last `graphics2d.pushFade` added. A call without a matching push raises `The "popFade" call has no matching "pushFade".`.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.pushFade({0, 0, 400, 400}, {length = 100, bottom = 1})
+        graphics2d.drawCircle(200, 200, 200, '#FF4080FF')
+        graphics2d.popFade()
+        graphics2d.drawCircle(600, 200, 100, '#FFFF8040')
+    end,
+})
+```
+
 ### graphics2d.pushLayerOffset(offset)
 
 Adds `offset` to the layer of every following draw of the open canvas until `graphics2d.popLayerOffset`. Nested offsets add up, and a new canvas starts without offsets. It lets a group of draws that sets its own layers, such as a character with its shadow and its name, move to another layer as a whole. Without an open canvas it raises `No canvas is active. Call "beginWorld", "beginScreen" or "beginTarget" before drawing.`.
@@ -3932,6 +3979,9 @@ These messages come from the functions and methods of the module, besides the er
 | `A capture needs a valid render target.` | The target of `graphics2d.beginCapture` is not valid. |
 | `A draw cannot sample the render target that its canvas draws into.` | A draw used the texture of its own target. |
 | `The "popClip" call has no matching "pushClip".` | The function `graphics2d.popClip` had no clip to remove. |
+| `The "popFade" call has no matching "pushFade".` | The function `graphics2d.popFade` had no fade to remove. |
+| `A fade needs a length of zero or more and strengths from 0 to 1.` | The `length` of a fade is negative, or one of its strengths is outside `0` to `1`. |
+| `A draw takes <count> edges of the fades around it, and the most it takes is 8. Nest fewer fading areas around it.` | Too many fading edges reach into the clip of one draw. |
 | `The "popLayerOffset" call has no matching "pushLayerOffset".` | The function `graphics2d.popLayerOffset` had no offset to remove. |
 | `The "endCapture" call has no matching "beginCapture".` | The function `graphics2d.endCapture` had no open capture. |
 | `The "endGroup" call has no matching "beginGroup".` | The function `graphics2d.endGroup` had no open group. |

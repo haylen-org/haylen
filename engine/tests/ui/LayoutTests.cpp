@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <span>
 #include <string>
 #include <utility>
 #include <vector>
@@ -37,30 +38,11 @@ class LayoutTest : public ::testing::Test, public test::UiFixture {
         return false;
     }
 
-    // Whether the last frame drew a vertex of the color on the line across the screen at the height.
-    [[nodiscard]] static bool hasVertex(math::Color color, float y) {
-        const ImU32 packed = ImGui::ColorConvertFloat4ToU32({color.r, color.g, color.b, color.a});
-        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
-            for (const ImDrawVert& vertex : list->VtxBuffer) {
-                if (vertex.col == packed && std::fabs(vertex.pos.y - y) < 0.5F) {
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    // Tells whether any vertex of the frame has the color whatever its alpha, so a fade drawn with no strength counts too.
-    [[nodiscard]] static bool hasColor(math::Color color) {
-        const ImU32 packed = ImGui::ColorConvertFloat4ToU32({color.r, color.g, color.b, 0.0F});
-        for (const ImDrawList* list : ImGui::GetDrawData()->CmdLists) {
-            for (const ImDrawVert& vertex : list->VtxBuffer) {
-                if ((vertex.col & ~IM_COL32_A_MASK) == packed) {
-                    return true;
-                }
-            }
-        }
-        return false;
+    // The fade that the last frame pushed over the area, or none.
+    [[nodiscard]] const Backend::Fade* findFade(const math::Rect& area) {
+        const std::span<const Backend::Fade> fades = getUi().getBackend().getFades();
+        const auto found = std::ranges::find(fades, area, &Backend::Fade::area);
+        return found != fades.end() ? &*found : nullptr;
     }
 };
 
@@ -186,36 +168,64 @@ TEST_F(LayoutTest, FillsTheAreaOfAScrollWithAShorterChild) {
     EXPECT_EQ(getBounds(*gui, "bottom").y, 100.0F);
 }
 
-// An area that scrolls fades its content into the theme color along each edge where the content continues, and only there.
+// An area that scrolls fades the alpha of its content out along each edge where the content continues, and only there, as strongly as the share of the length of the fade that the content continues past that edge.
 TEST_F(LayoutTest, FadesTheEdgesOfAScrollWhereTheContentContinues) {
     auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "area", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
     frames(2);
-    getUi().getBackend().makeCurrent();
-    const math::Color fade = getUi().getTheme().getColor(Theme::Color::ScrollFade);
     const math::Rect area = getBounds(*gui, "area");
-    EXPECT_TRUE(hasVertex(fade, area.getBottom()));
-    EXPECT_FALSE(hasVertex(fade, area.y));
+    const float length = getUi().getTheme().getMetric(Theme::Metric::ScrollFade);
+    const Backend::Fade* fade = findFade(area);
+    ASSERT_NE(fade, nullptr);
+    EXPECT_EQ(fade->edges.length, length);
+    EXPECT_EQ(fade->edges.top, 0.0F);
+    EXPECT_EQ(fade->edges.bottom, 1.0F);
+    EXPECT_EQ(fade->edges.left + fade->edges.right, 0.0F);
+
+    gui->command(getUi().getContext(), "area", "scrollTo", core::Json{{"offset", length * 0.25F}, {"animated", false}});
+    frames(2);
+    fade = findFade(area);
+    ASSERT_NE(fade, nullptr);
+    EXPECT_FLOAT_EQ(fade->edges.top, 0.25F);
+    EXPECT_EQ(fade->edges.bottom, 1.0F);
 
     gui->command(getUi().getContext(), "area", "scrollTo", core::Json{{"offset", 600}, {"animated", false}});
     frames(2);
-    EXPECT_TRUE(hasVertex(fade, area.y));
-    EXPECT_FALSE(hasVertex(fade, area.getBottom()));
+    fade = findFade(area);
+    ASSERT_NE(fade, nullptr);
+    EXPECT_EQ(fade->edges.top, 1.0F);
+    EXPECT_EQ(fade->edges.bottom, 0.0F);
 }
 
-// A scroll draws no fade at all while its content rests at its start or fits inside it, so a list that the player has not moved shows no shade at its start.
+// A scroll fades nothing at an edge where its content rests, and pushes no fade at all while its content fits inside it, so a list that the player has not moved shows nothing at its start and a list that fits costs nothing.
 TEST_F(LayoutTest, DrawsNoFadeWhereTheContentRestsOrFits) {
-    auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollFade": "#FF00FF80"}}, "children": [{"kind": "scroll", "id": "long", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "long", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [{"kind": "spacer", "height": 900}]}]}]})");
     frames(2);
-    getUi().getBackend().makeCurrent();
-    const math::Color fade = *math::Color::parse("#FF00FF80");
-    const math::Rect area = getBounds(*gui, "long");
-    EXPECT_TRUE(hasVertex(fade, area.getBottom()));
-    EXPECT_FALSE(hasVertex(fade.withAlpha(0.0F), area.y));
+    const Backend::Fade* fade = findFade(getBounds(*gui, "long"));
+    ASSERT_NE(fade, nullptr);
+    EXPECT_EQ(fade->edges.top, 0.0F);
 
     gui->set("long", {{"height", 1000}});
     frames(2);
-    getUi().getBackend().makeCurrent();
-    EXPECT_FALSE(hasColor(fade));
+    EXPECT_TRUE(getUi().getBackend().getFades().empty());
+}
+
+// A list that scrolls across inside a page that scrolls down fades along its own axis inside the fade of the page, which the renderer multiplies with its own.
+TEST_F(LayoutTest, FadesNestedScrollsAlongTheirOwnAxes) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "scroll", "id": "page", "height": 300, "scrollbar": false, "children": [{"kind": "column", "children": [
+        {"kind": "scroll", "id": "shelf", "axis": "horizontal", "scrollbar": false, "height": 100, "children": [{"kind": "row", "children": [{"kind": "spacer", "width": 3000, "height": 100}]}]},
+        {"kind": "spacer", "height": 900}
+    ]}]}]})");
+    // clang-format on
+    frames(2);
+    const std::span<const Backend::Fade> fades = getUi().getBackend().getFades();
+    ASSERT_EQ(fades.size(), 2U);
+    EXPECT_EQ(fades[0].area, getBounds(*gui, "page"));
+    EXPECT_EQ(fades[0].edges.bottom, 1.0F);
+    EXPECT_EQ(fades[0].edges.right, 0.0F);
+    EXPECT_EQ(fades[1].area, getBounds(*gui, "shelf"));
+    EXPECT_EQ(fades[1].edges.right, 1.0F);
+    EXPECT_EQ(fades[1].edges.bottom, 0.0F);
 }
 
 TEST_F(LayoutTest, KeepsMarginsAroundChildrenAndPaddingInsideContainers) {

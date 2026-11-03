@@ -1386,7 +1386,7 @@ TEST_F(ComponentAssetTest, DrawsCarouselArrowsAbovePagesThatFillIt) {
     EXPECT_GT(last(true), last(false));
 }
 
-// Once a GUI has drawn, its frames allocate nothing more than frames without it: the texts, rich texts, shapes and nine-slices of the frame live in storage that frames reuse, and literal texts reach the draws without copies.
+// Once a GUI has drawn, its frames allocate nothing more than frames without it: the texts, rich texts, shapes, nine-slices and fades of the frame live in storage that frames reuse, and literal texts reach the draws without copies.
 TEST_F(ComponentAssetTest, DrawsFramesWithoutAllocating) {
     getUi().setTheme(getUi().loadTheme(getEngine(), "themes/wood.json"));
     // clang-format off
@@ -1427,6 +1427,7 @@ TEST_F(ComponentAssetTest, DrawsFramesWithoutAllocating) {
     frames(30);
     EXPECT_EQ(getEngine().getError(), nullptr);
     EXPECT_GT(getBounds(*gui, "header").height, 0.0F);
+    EXPECT_FALSE(getUi().getBackend().getFades().empty());
     EXPECT_EQ(measure(), empty);
 
     // The elements that screen readers read build every frame without allocating once they settled.

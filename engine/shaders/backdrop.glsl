@@ -1,3 +1,5 @@
+@include haylen/output.glsl
+
 @vs backdrop_vs
 layout(binding=0) uniform backdrop_vs_params {
     mat4 view_projection;
@@ -9,9 +11,11 @@ layout(binding=0) uniform backdrop_vs_params {
 
 in vec2 corner;
 out vec2 uv;
+out vec2 haylen_output_point;
 
 void main() {
-    gl_Position = view_projection * vec4(placement.xy + corner.x * placement.zw + corner.y * columns.xy, 0.0, 1.0);
+    haylen_output_point = placement.xy + corner.x * placement.zw + corner.y * columns.xy;
+    gl_Position = view_projection * vec4(haylen_output_point, 0.0, 1.0);
     uv = corner;
 }
 @end
@@ -30,6 +34,8 @@ layout(binding=0) uniform sampler backdrop_sampler;
 
 in vec2 uv;
 out vec4 frag_color;
+
+@include_block haylen_fade
 
 vec3 screen(vec3 below, vec3 above) {
     return below + above - below * above;
@@ -76,12 +82,12 @@ vec3 blend(vec3 below, vec3 above) {
     return below + above - 2.0 * below * above;
 }
 
-// The image of the group lands on the image below as the blend mode mixes their colors where both cover, and as plain compositing where only one of them does. Both images hold premultiplied colors, and so does the result, which replaces the pixel below.
+// The image of the group, with its opacity and its fade, lands on the image below as the blend mode mixes their colors where both cover, and as plain compositing where only one of them does. Both images hold premultiplied colors, and so does the result, which replaces the pixel below.
 void main() {
     vec4 above = texture(sampler2D(image_texture, backdrop_sampler), flips.x > 0.5 ? vec2(uv.x, 1.0 - uv.y) : uv);
     float cover = texture(sampler2D(mask_texture, backdrop_sampler), flips.y > 0.5 ? vec2(uv.x, 1.0 - uv.y) : uv).a;
     cover = settings.z > 0.5 ? 1.0 - cover : cover;
-    above *= mix(1.0, cover, settings.y) * settings.w;
+    above *= mix(1.0, cover, settings.y) * settings.w * haylen_fade();
     vec4 below = texelFetch(sampler2D(backdrop_texture, backdrop_sampler), ivec2(gl_FragCoord.xy), 0);
 
     vec3 aboveColor = above.a > 0.0 ? above.rgb / above.a : vec3(0.0);

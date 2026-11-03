@@ -150,6 +150,33 @@ scene.push({
 })
 ```
 
+### Fades
+
+A fade makes the next draws of the open canvas transparent toward the edges of a rectangle, so whatever lies below them shows through. It is a mask on the alpha of the draws, not a color painted over them. Each edge of the rectangle has a strength from 0 to 1: the alpha of a draw at that edge drops by the strength, and grows back to full over the length of the fade. The functions `graphics2d.pushFade(rect, options)` and `graphics2d.popFade()` open and close a fade, `Renderer::pushFade` and `Renderer::popFade` in C++. The areas of `haylen.ui` that scroll fade their content this way along the edges where it continues.
+
+Every program that draws into a canvas takes the fade: sprites, text, meshes, shapes, materials, image blends, metaballs and the images of groups. The fragment shader multiplies the alpha it writes by the coverage of every edge, so a rounded card, its border, its shadow and its text fade alike. A fade does not clip, so pair it with a clip when the draws must stop at the rectangle. Nested fades multiply, and a group fades its whole image once instead of each draw inside it.
+
+A draw takes only the edges whose fade reaches into its clip, so a draw away from every fading edge pays nothing for the fade. One draw takes at most eight edges at once, which covers four nested lists that each fade along both of their ends. Draws that share their fade and their clip still merge into one draw call.
+
+```lua
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawRect({100, 100, 400, 300}, '#3050A0')
+        graphics2d.pushClip({100, 100, 400, 300})
+        graphics2d.pushFade({100, 100, 400, 300}, {length = 60, top = 1, bottom = 1})
+        for row = 0, 9 do
+            graphics2d.drawText(nil, 'Row ' .. row, 120, 80 + row * 40, {size = 32})
+        end
+        graphics2d.popFade()
+        graphics2d.popClip()
+    end,
+})
+```
+
 ## Design units and the viewport
 
 An app draws and lays out in design units, not in pixels. The `design` section of `app.json` sets the design size, 1920 by 1080 units by default, and a scaling policy, `expand` by default. The viewport maps the design area onto the real framebuffer by that policy, so the same layout fits a phone, a tablet and a desktop window. The [`haylen.viewport` reference](../lua-api/viewport.md#scaling-policies) lists the policies, and `viewport.setScaling` and `viewport.setDesignSize` change them while the app runs.
@@ -307,10 +334,11 @@ After it sorts a canvas, the renderer walks its draws and merges neighbours into
 - The program, such as the sprite, shape or text program.
 - The blend mode.
 - The clip rectangle.
+- The fade.
 - The texture.
 - The shading: the material with its values and, in lit canvases, the lighting options and the layer of the draw.
 
-The renderer lays the instance data out in draw order before the upload. So any run of neighbours that match becomes one instanced draw, whatever order the app recorded them in. A different texture, blend mode, program, clip or shading between two draws starts a new draw call, and a static batch is always a draw call of its own.
+The renderer lays the instance data out in draw order before the upload. So any run of neighbours that match becomes one instanced draw, whatever order the app recorded them in. A different texture, blend mode, program, clip, fade or shading between two draws starts a new draw call, and a static batch is always a draw call of its own.
 
 This table shows which program and texture each kind of draw uses, so you can tell which draws can merge:
 
@@ -722,7 +750,7 @@ A group draws several draws as one image, so parts that overlap fade together in
 
 A group, and the shape and the content of a mask, each draw into an image of their own. That image is a render target canvas with the view and the options of the canvas they draw over, and with the pixel size of its pass. It has no clear color, no lighting and no post-processing. The images come from a pool that frames reuse in order, and a frame gives back the ones past what it used.
 
-When a group or mask ends, its draws and metaballs move ahead of the draws of the canvas it drew over, together with those of the groups inside it. Its canvas moves ahead of that canvas too. So the draws of every canvas stay in one run, and its image renders before anything samples it. The canvas then opens again with the clips and layer offsets it had. It draws the image as one draw of the image blend program: a quad whose corners follow the view however the camera turns or zooms.
+When a group or mask ends, its draws and metaballs move ahead of the draws of the canvas it drew over, together with those of the groups inside it. Its canvas moves ahead of that canvas too. So the draws of every canvas stay in one run, and its image renders before anything samples it. The canvas then opens again with the clips, fades and layer offsets it had. It draws the image as one draw of the image blend program: a quad whose corners follow the view however the camera turns or zooms.
 
 The `mask` pattern of `Renderer::drawImageBlend` multiplies the content by the alpha of the shape, or by what the shape leaves uncovered. So the edge of a mask is as smooth as the shape drawn into it. The opacity of a group scales the whole image, whose colors stay premultiplied. Masks need no stencil buffer and no multisampling, and they cost one extra pass each for the shape and for the content.
 

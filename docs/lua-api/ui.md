@@ -886,7 +886,7 @@ end})
 
 A text area is a text entry of several lines. Enter, and the return key of the on-screen keyboard, start a new line. It takes the properties of `textField` except `keyboard`, plus `rows`. It reports `change` and never reports `submit`. It shows its `placeholder` while it is empty.
 
-A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways. Text taller than the field scrolls with the wheel and with the caret. A [scroll bar](#scroll-bars) then shows inside the border of the field, from the frame after the text grew taller. The bar narrows the lines that wrap. The lines fade into the theme color `scrollFade` along the edges where more text continues.
+A line longer than the field wraps between its words onto the lines below, so the text never scrolls sideways. Text taller than the field scrolls with the wheel and with the caret. A [scroll bar](#scroll-bars) then shows inside the border of the field, from the frame after the text grew taller. The bar narrows the lines that wrap. The lines fade out to transparent along the edges where more text continues, so the field shows through them.
 
 | Property | Type | Default | Meaning |
 | --- | --- | --- | --- |
@@ -1918,7 +1918,7 @@ The lane takes room from the content only while the content is longer than its a
 
 The layout never changes back and forth as the bar comes and goes. A scroll and a dialog decide from the size of their content at the whole width. A popup decides before it opens. A collection and a text area take the lane from the frame after their content grew longer than the view, and show the bar from then on.
 
-A `scroll`, a `collection` and a `textArea` also fade their content into the theme color `scrollFade` along each edge where the content continues past the area. The fade is as long as the theme metric `scrollFade`, and it shows whether the bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. A theme sets the metric to `0` to draw no fade.
+A `scroll`, a `collection` and a `textArea` also fade their content out to transparent along each edge where the content continues past the area. The fade is a mask on the alpha of the content, not a color painted over it, so whatever lies below shows through: a card, a gradient, an image or the page. The fade is as long as the theme metric `scrollFade`, and it shows whether the bar shows or not. It grows in as the content moves away from that end, and it is gone once the content rests at that end. Content that rests at both ends, or fits, fades nothing and costs nothing. An area inside another area that scrolls fades inside the fade of the outer area. A theme sets the metric to `0` to draw no fade.
 
 The thumb runs in a groove along the whole bar, as wide as the thumb and with the same round ends. So the bar shows how long the content is and where the view lies in it. The colors `scrollbar` and `scrollbarHover` paint the thumb, and `scrollbarTrack` paints the groove, which a transparent color leaves out. The [surfaces](#theme-surfaces) `scrollbar`, `scrollbarHover` and `scrollbarTrack` paint the thumb and its groove with images in the same place. A `style` changes all of them for one node and the nodes inside it.
 
@@ -2290,7 +2290,6 @@ Colors are `'#RRGGBB'` or `'#AARRGGBB'` strings. The accent and the four tones `
 | `onInformation` | `#FFFFFFFF` | `#FFFFFFFF` | The ink on the information fill. |
 | `informationBackground` | `#263AA8E0` | `#1F2A8CC0` | The subtle background of the information tone. |
 | `informationText` | `#FF7FCBF2` | `#FF1D6A93` | The text of the information tone. |
-| `scrollFade` | `#CC0F111A` | `#CCF4F5F9` | The color that the content of a `scroll`, a `collection` or a `textArea` fades into along an edge where it continues past the area. |
 
 ### ui.themeColor(role)
 
@@ -2370,7 +2369,7 @@ Metrics size the parts of the components. Both built-in themes share these value
 | `splitterSize` | `10` | The thickness of the handle of splitters. |
 | `scrollLine` | `64` | The distance that one step of a mouse wheel scrolls a `scroll`, a `collection`, a `textArea`, a `dialog` and a popup. A trackpad scrolls them by the points it moves instead. |
 | `sliderValueWidth` | `96` | The least room a slider or a range slider keeps for the value it shows. So the tracks of the sliders of one column line up, whatever their ends. |
-| `scrollFade` | `32` | The length of the fade along an edge of a `scroll`, a `collection` or a `textArea` where the content continues past the area. The value `0` draws none. |
+| `scrollFade` | `32` | The length of the fade to transparent along an edge of a `scroll`, a `collection` or a `textArea` where the content continues past the area. The value `0` draws none. |
 | `readingWidth` | `880` | The widest line of the title and the message of an empty state, which keeps a long message easy to read on a wide screen. |
 | `cellRadius` | `12` | The corner radius of the backgrounds of interactive collection cells and of the focus ring around them. |
 | `refreshDistance` | `120` | How far a pull at the start of a refreshable collection goes before it refreshes. |

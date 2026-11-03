@@ -301,7 +301,9 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
         graphics2d.drawLight({x = 10, y = 10, radius = 64, color = '#FFAA00', intensity = 0.9})
         graphics2d.drawLight({x = 10, y = 10, texture = hero, rotation = 1, scaleX = 2, scaleY = 2})
         graphics2d.pushClip({0, 0, 50, 50})
+        graphics2d.pushFade({0, 0, 50, 50}, {length = 10, top = 1, bottom = 0.5})
         graphics2d.drawText(nil, 'Hello', 5, 5, {size = 20, color = '#FFFFFF', align = 'center', outlineWidth = 1, maxWidth = 100})
+        graphics2d.popFade()
         graphics2d.popClip()
         graphics2d.beginScreen()
         graphics2d.drawText(graphics2d.defaultFont(), 'UI', 0, 0)
@@ -317,6 +319,9 @@ TEST_F(Graphics2DLuaTest, DrawsShapesTextMeshesAndLights) {
 
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.drawMesh(hero, {{x = 0, y = 0}}, {0})").find("mesh indices start at 1"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popClip()").find("The \"popClip\" call has no matching \"pushClip\""), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.popFade()").find("The \"popFade\" call has no matching \"pushFade\"."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushFade({0, 0, 10, 10}, {length = 4, left = 2})").find("A fade needs a length of zero or more and strengths from 0 to 1."), std::string::npos);
+    EXPECT_NE(render("graphics2d.beginScreen() graphics2d.pushFade({0, 0, 10, 10}, {size = 4})").find("Unknown option \"size\"."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen({sort = 'random'})").find("random"), std::string::npos);
     EXPECT_NE(render("graphics2d.beginScreen({clear = '#000000'})").find("Screen canvases do not support a clear color."), std::string::npos);
     EXPECT_NE(render("graphics2d.beginWorld(graphics2d.newCamera(), {clear = '#000000'})").find("World canvases only support a clear color with lighting or post-processing."), std::string::npos);

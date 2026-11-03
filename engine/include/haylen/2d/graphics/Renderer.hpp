@@ -69,6 +69,9 @@ struct RendererState;
 // Records 2D draw commands into canvases during a frame and submits them to the GPU at the end of the frame.
 class Renderer final {
   public:
+    // The edges of the fades around a draw that the GPU takes at once, two for each of four nested areas that fade along one axis.
+    static constexpr std::size_t kMaxFadeEdges = 8;
+
     // The kinds of canvas: a world canvas through a camera, a screen canvas in design units and a render target canvas.
     enum class CanvasKind : std::uint8_t {
         World,
@@ -111,6 +114,15 @@ class Renderer final {
     struct GroupOptions {
         float opacity = 1.0F;
         DrawOrder order{};
+    };
+
+    // How draws fade out toward the edges of a rectangle: over the length in canvas units inward from each edge, from the strength of that edge at the edge to nothing at the length. A strength of 0 keeps the draws along its edge as they are, and 1 leaves nothing of them at the edge.
+    struct Fade {
+        float length = 0.0F;
+        float left = 0.0F;
+        float top = 0.0F;
+        float right = 0.0F;
+        float bottom = 0.0F;
     };
 
     struct MetaballStyle {
@@ -260,6 +272,10 @@ class Renderer final {
 
     [[nodiscard]] static std::optional<MaskMode> maskModeFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view maskModeName(MaskMode value) noexcept;
+
+    // Fades the alpha of the following draws of the current canvas out toward the edges of a rectangle in canvas coordinates until popped, so what lies below them shows through. A fade does not clip, and draws past an edge that fades fade further, down to nothing. Nested fades multiply, and a draw takes the edges of the fades around it whose fade reaches into its clip, at most `kMaxFadeEdges`, past which it throws `std::length_error`. Throws `std::invalid_argument` for a negative length or a strength outside 0 to 1.
+    void pushFade(const math::Rect& rect, const Fade& fade);
+    void popFade();
 
     // Adds the offset to the layer of the following draws of the current canvas until popped. Nested offsets add up.
     void pushLayerOffset(int offset);

@@ -58,6 +58,7 @@ out vec4 haylen_shape_radii;
 out vec4 haylen_shape_border;
 #endif
 out float haylen_output_premultiply;
+out vec2 haylen_output_point;
 
 // Decodes a two's complement byte of the instance parameters.
 float haylen_signed_byte(float value) {
@@ -79,6 +80,7 @@ void haylen_vertex_main() {
     haylen_output_premultiply = haylen_premultiply;
 #ifdef HAYLEN_MESH
     gl_Position = view_projection * vec4(position, 0.0, 1.0);
+    haylen_output_point = position;
     uv = texcoord;
     color = color0;
     haylen_flash = vec4(0.0);
@@ -93,6 +95,7 @@ void haylen_vertex_main() {
     float cosine = cos(shape_rotation);
     vec2 world = shape_center + vec2(local.x * cosine - local.y * sine, local.x * sine + local.y * cosine);
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
+    haylen_output_point = world;
     float flags = floor(shape_form.w * 65535.0 + 0.5);
     uv = local / shape_half_size * 0.5 + 0.5;
     if (flags >= 2.0) {
@@ -125,6 +128,7 @@ void haylen_vertex_main() {
 #endif
     vec2 world = instance_position + turned;
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
+    haylen_output_point = world;
 
     // Text reads the outline, the spread of a synthetic bold and the softness from its parameters and takes the rectangle of its glyph as it is, since glyphs never flip or repeat. Sprites read flip flags that follow Tiled: bit 0 flips horizontally, bit 1 vertically and bit 2 swaps the axes. Tiled swaps the image first and flips the result, so the lookup flips first and swaps last.
 #ifdef HAYLEN_TEXT

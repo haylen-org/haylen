@@ -26,6 +26,7 @@ void main() {
     turned.y *= 1.0 - instance_parameters.w;
     vec2 world = instance_position + turned;
     gl_Position = view_projection * vec4(world, 0.0, 1.0);
+    haylen_output_point = world;
 
     float flags = floor(instance_parameters.x * 255.0 + 0.5);
     vec2 texel = grown;

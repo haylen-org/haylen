@@ -811,9 +811,13 @@ void Renderer::openGroup(GroupScope scope) {
     scope.itemStart = state->items.size();
     scope.metaballStart = state->metaballs.size();
     scope.clipStart = state->savedClips.size();
+    scope.fadeEdgeStart = state->savedFadeEdges.size();
+    scope.fadeMarkStart = state->savedFadeMarks.size();
     scope.layerOffsetStart = state->savedLayerOffsets.size();
     scope.layerOffset = state->layerOffset;
     state->savedClips.insert(state->savedClips.end(), state->clipStack.begin(), state->clipStack.end());
+    state->savedFadeEdges.insert(state->savedFadeEdges.end(), state->openFadeEdges.begin(), state->openFadeEdges.end());
+    state->savedFadeMarks.insert(state->savedFadeMarks.end(), state->fadeMarks.begin(), state->fadeMarks.end());
     state->savedLayerOffsets.insert(state->savedLayerOffsets.end(), state->layerOffsets.begin(), state->layerOffsets.end());
     state->groups.push_back(std::move(scope));
     state->openCanvas(std::move(next));
@@ -852,8 +856,13 @@ graphics::Texture Renderer::closeGroup() {
     std::rotate(parentPlace, parentPlace + 1, canvases.end());
 
     state->clipStack.assign(state->savedClips.begin() + static_cast<std::ptrdiff_t>(scope.clipStart), state->savedClips.end());
+    state->openFadeEdges.assign(state->savedFadeEdges.begin() + static_cast<std::ptrdiff_t>(scope.fadeEdgeStart), state->savedFadeEdges.end());
+    state->fadeMarks.assign(state->savedFadeMarks.begin() + static_cast<std::ptrdiff_t>(scope.fadeMarkStart), state->savedFadeMarks.end());
+    state->fadeClip.reset();
     state->layerOffsets.assign(state->savedLayerOffsets.begin() + static_cast<std::ptrdiff_t>(scope.layerOffsetStart), state->savedLayerOffsets.end());
     state->savedClips.resize(scope.clipStart);
+    state->savedFadeEdges.resize(scope.fadeEdgeStart);
+    state->savedFadeMarks.resize(scope.fadeMarkStart);
     state->savedLayerOffsets.resize(scope.layerOffsetStart);
     state->layerOffset = scope.layerOffset;
     state->canvasOpen = true;
@@ -954,6 +963,7 @@ void Renderer::finishCanvas() {
         const math::Color flash = state->canvases.back().flash;
         state->canvases.back().flash = math::Color::transparent();
         state->clipStack.clear();
+        state->clearFades();
         state->layerOffset = 0;
         drawRect(getCanvasBounds().expanded(1.0F), flash, {.layer = std::numeric_limits<int>::max() / 2 - 1, .unshaded = true});
     }
@@ -961,6 +971,7 @@ void Renderer::finishCanvas() {
         std::vector<std::pair<std::uint64_t, CanvasOverlay>>& overlays = state->overlaySnapshot;
         overlays = state->overlays;
         state->clipStack.clear();
+        state->clearFades();
         state->layerOffsets.clear();
         state->layerOffset = 0;
         state->drawingOverlays = true;
@@ -1050,6 +1061,15 @@ void Renderer::popClip() {
         throw std::logic_error("The \"popClip\" call has no matching \"pushClip\".");
     }
     state->clipStack.pop_back();
+}
+
+void Renderer::pushFade(const math::Rect& rect, const Fade& fade) {
+    (void)state->getCanvas();
+    state->pushFade(rect, fade);
+}
+
+void Renderer::popFade() {
+    state->popFade();
 }
 
 void Renderer::pushLayerOffset(int offset) {

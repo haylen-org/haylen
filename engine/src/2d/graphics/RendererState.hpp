@@ -16,6 +16,7 @@
 #include "2d/graphics/Capture.hpp"
 #include "2d/graphics/Command.hpp"
 #include "2d/graphics/DrawItem.hpp"
+#include "2d/graphics/FadeEdge.hpp"
 #include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/GpuVertex.hpp"
 #include "2d/graphics/GroupScope.hpp"
@@ -69,11 +70,13 @@ struct RendererState {
     static constexpr int kMetaballTextureSize = 64;
     static constexpr std::size_t kProgramCount = 13;
 
-    // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
+    // The bind slots of the programs of the renderer, which their sources declare with `layout(binding = ...)` and `getProgram` checks against the reflection of their packages. Every program reads its view projection from the vertex block slot, its fade from the fade block slot and the lighting of lit passes from the lit block slot, which the shader library reserves.
     static constexpr int kVertexBlock = 0;
     static constexpr std::uint32_t kVertexBlockSize = 80;
     static constexpr std::uint32_t kLitBlockSize = 32;
     static constexpr int kFragmentBlock = 1;
+    static constexpr int kFadeBlock = 6;
+    static constexpr std::uint32_t kFadeBlockSize = 96;
     static constexpr int kLitBlock = 7;
     static constexpr int kSpriteTexture = 0;
     static constexpr int kSpriteSampler = 0;
@@ -140,6 +143,14 @@ struct RendererState {
     std::vector<std::size_t> closedCaptures;
     std::vector<math::Rect> clips;
     std::vector<std::uint32_t> clipStack;
+
+    // The edges of the open fades from the outermost and how many of them the fades below each open fade hold. The fades that draws take are ranges of the fade edges of the frame, each the open edges that reach into the clip of its draws, and the last one is kept for the clip it was taken for until the open fades change.
+    std::vector<FadeEdge> openFadeEdges;
+    std::vector<std::uint32_t> fadeMarks;
+    std::vector<FadeEdge> fadeEdges;
+    std::vector<std::pair<std::uint32_t, std::uint32_t>> fades;
+    std::optional<std::uint32_t> fadeClip;
+    std::uint32_t fade = 0;
     std::vector<int> layerOffsets;
     std::vector<Shade> shades;
     std::vector<std::uint8_t> uniformBytes;
@@ -150,9 +161,11 @@ struct RendererState {
     std::vector<MetaballDraw> metaballs;
     std::vector<LitTargets> litTargets;
 
-    // The open groups and masks from the outermost, the clips and layer offsets of the canvases they draw over, and the images they draw into, which frames reuse by their order.
+    // The open groups and masks from the outermost, the clips, fades and layer offsets of the canvases they draw over, and the images they draw into, which frames reuse by their order.
     std::vector<GroupScope> groups;
     std::vector<std::uint32_t> savedClips;
+    std::vector<FadeEdge> savedFadeEdges;
+    std::vector<std::uint32_t> savedFadeMarks;
     std::vector<int> savedLayerOffsets;
     std::vector<graphics::RenderTarget> groupTargets;
     std::size_t groupTargetsUsed = 0;
@@ -255,6 +268,16 @@ struct RendererState {
 
     // Throws when a draw would sample the image its canvas draws into, which no GPU can read and write in one pass.
     void requireReadable(const graphics::TextureResource* texture);
+
+    // Opens a fade over the open fades with the edges of the rectangle that fade, and closes the last one.
+    void pushFade(const math::Rect& rect, const Renderer::Fade& value);
+    void popFade();
+
+    // Closes every open fade, as a new canvas or the overlays of a canvas start without them.
+    void clearFades() noexcept;
+
+    // Returns the fade that a draw with the clip takes, 0 when no open edge reaches into the clip, which throws `std::length_error` when more than `Renderer::kMaxFadeEdges` do.
+    [[nodiscard]] std::uint32_t getFade(std::uint32_t clip);
 
     // The standing y is the point a y-sorted canvas sorts the draw by, and a draw of the batch program names every texture of its batch, the first one being the texture of the draw.
     DrawItem& addItem(Program program, const DrawOrder& order, graphics::TextureResource* texture, float standingY, std::span<const graphics::Texture> textures = {});

@@ -263,8 +263,10 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
     }
     const math::Vec2 origin = getOrigin(*laid, area, scroll, rightToLeft, multiline, options.centered);
 
+    // Lines that continue past the area fade out along its edges, as the content of the other areas that scroll does.
     ImDrawList& list = *ImGui::GetWindowDrawList();
     list.PushClipRect(ImGuiConverter::toImVec2(inner.getMin()), ImGuiConverter::toImVec2(inner.getMax()), true);
+    const bool faded = multiline && ScrollFade::begin(context, inner, false, scroll.y, overflow - scroll.y);
     if (state != nullptr && state->HasSelection()) {
         const std::size_t first = toPosition(std::min(state->GetSelectionStart(), state->GetSelectionEnd()));
         const std::size_t last = toPosition(std::max(state->GetSelectionStart(), state->GetSelectionEnd()));
@@ -307,9 +309,8 @@ TextEditor::Result TextEditor::draw(Context& context, const math::Rect& bounds, 
         }
     }
 
-    // Lines that continue past the area fade into the theme color along its edges, as the content of the other areas that scroll does.
-    if (multiline && overflow > 0.0F) {
-        ScrollFade::draw(context, inner, false, scroll.y, overflow - scroll.y);
+    if (faded) {
+        ScrollFade::end(context);
     }
     list.PopClipRect();
     if (barShown) {

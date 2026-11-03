@@ -16,6 +16,7 @@
 
 #include "haylen/2d/graphics/MeshVertex.hpp"
 #include "haylen/2d/graphics/NineSlice.hpp"
+#include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/graphics/Texture.hpp"
@@ -38,10 +39,6 @@ class Device;
 class Image;
 class Viewport;
 } // namespace haylen::graphics
-
-namespace haylen::graphics2d {
-class Renderer;
-}
 
 namespace haylen::input {
 class Input;
@@ -171,6 +168,21 @@ class Backend final {
     // Draws a nine-slice over an area in UI coordinates the same way, laid out with its border scale and then mapped by a scale and an offset, such as those of the nodes around it.
     void addNineSlice(const graphics2d::NineSlice& slice, const math::Rect& area, float borderScale, math::Vec2 areaScale, math::Vec2 offset, math::Color color);
 
+    // An area in UI coordinates whose content fades out toward its edges.
+    struct Fade {
+        math::Rect area;
+        graphics2d::Renderer::Fade edges;
+    };
+
+    // Fades the alpha of what the window being built draws from here until `popFade` out toward the edges of the area, the child windows it begins included, so whatever lies below shows through, as the renderer fades its draws.
+    void pushFade(const Fade& fade);
+    void popFade();
+
+    // The fades the frame pushed so far, in the order they were pushed.
+    [[nodiscard]] std::span<const Fade> getFades() const noexcept {
+        return fades;
+    }
+
     // The shapes the frame drew so far, in UI coordinates and in the order they were drawn, such as for checks of where a component draws.
     [[nodiscard]] std::span<const graphics2d::Shape> getShapes() const noexcept {
         return shapes;
@@ -251,6 +263,11 @@ class Backend final {
         const ImGuiWindow* window = nullptr;
     };
 
+    struct FadeCall {
+        Backend* owner = nullptr;
+        std::size_t index = 0;
+    };
+
     // A draw of the frame that a run of a callback command draws, one of its shapes, texts, rich texts or nine-slices.
     struct Draw {
         enum class Kind : std::uint8_t { Shape, Text, RichText, Sprites };
@@ -302,6 +319,8 @@ class Backend final {
     static void runRenderCall(const ImDrawList* list, const ImDrawCmd* command);
     static void runChildCall(const ImDrawList* list, const ImDrawCmd* command);
     static void runDraws(const ImDrawList* list, const ImDrawCmd* command);
+    static void runPushFade(const ImDrawList* list, const ImDrawCmd* command);
+    static void runPopFade(const ImDrawList* list, const ImDrawCmd* command);
 
     [[nodiscard]] Face addFace(const std::string& name, std::vector<std::uint8_t> bytes, std::span<const std::span<std::uint8_t>> fallbacks);
     [[nodiscard]] const Face& findFace(std::string_view name, bool bold, bool italic) const;
@@ -336,6 +355,7 @@ class Backend final {
     std::vector<std::function<void(graphics2d::Renderer&)>> renderCalls;
     std::vector<Draw> draws;
     std::vector<graphics2d::Shape> shapes;
+    std::vector<Fade> fades;
     std::vector<Text> texts;
     std::string characters;
     std::vector<RichTextDraw> richTexts;

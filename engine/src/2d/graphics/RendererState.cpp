@@ -227,6 +227,7 @@ void RendererState::openCanvas(Canvas next) {
     }
     canvases.push_back(std::move(next));
     clipStack.clear();
+    clearFades();
     layerOffsets.clear();
     layerOffset = 0;
     canvasOpen = true;
@@ -276,6 +277,8 @@ void RendererState::resetFrame() noexcept {
     blends.clear();
     groups.clear();
     savedClips.clear();
+    savedFadeEdges.clear();
+    savedFadeMarks.clear();
     savedLayerOffsets.clear();
 
     // Images past what this frame used go back to the device.
@@ -289,6 +292,9 @@ void RendererState::resetFrame() noexcept {
     closedCaptures.clear();
     clips.clear();
     clipStack.clear();
+    clearFades();
+    fadeEdges.clear();
+    fades.clear();
     layerOffsets.clear();
     shades.clear();
     uniformBytes.clear();
@@ -305,6 +311,77 @@ void RendererState::resetFrame() noexcept {
     sequence = 0;
     layerOffset = 0;
     canvasOpen = false;
+}
+
+// Each edge that fades starts at its strength below full coverage and reaches full coverage at the length inside the rectangle.
+void RendererState::pushFade(const math::Rect& rect, const Renderer::Fade& value) {
+    const std::array<float, 4> strengths{value.left, value.top, value.right, value.bottom};
+    if (!(value.length >= 0.0F) || std::ranges::any_of(strengths, [](float strength) { return !(strength >= 0.0F && strength <= 1.0F); })) {
+        throw std::invalid_argument("A fade needs a length of zero or more and strengths from 0 to 1.");
+    }
+
+    fadeMarks.push_back(static_cast<std::uint32_t>(openFadeEdges.size()));
+    fadeClip.reset();
+    if (value.length <= 0.0F) {
+        return;
+    }
+    const std::array<std::pair<math::Vec2, float>, 4> sides{{{{1.0F, 0.0F}, rect.x}, {{0.0F, 1.0F}, rect.y}, {{-1.0F, 0.0F}, -rect.getRight()}, {{0.0F, -1.0F}, -rect.getBottom()}}};
+    for (std::size_t side = 0; side < sides.size(); ++side) {
+        const float rate = strengths[side] / value.length;
+        if (rate > 0.0F) {
+            const auto& [inward, start] = sides[side];
+            openFadeEdges.push_back({.slope = inward * rate, .offset = 1.0F - strengths[side] - start * rate});
+        }
+    }
+}
+
+void RendererState::popFade() {
+    if (fadeMarks.empty()) {
+        throw std::logic_error("The \"popFade\" call has no matching \"pushFade\".");
+    }
+    openFadeEdges.resize(fadeMarks.back());
+    fadeMarks.pop_back();
+    fadeClip.reset();
+}
+
+void RendererState::clearFades() noexcept {
+    openFadeEdges.clear();
+    fadeMarks.clear();
+    fadeClip.reset();
+}
+
+// An edge reaches into a clip when it covers one of its corners with less than all, and a draw without a clip takes every open edge. Draws one after the other that take the same edges share their fade, so they can share a draw call.
+std::uint32_t RendererState::getFade(std::uint32_t clip) {
+    if (openFadeEdges.empty()) {
+        return 0;
+    }
+    if (fadeClip == clip) {
+        return fade;
+    }
+
+    const auto begin = static_cast<std::uint32_t>(fadeEdges.size());
+    const math::Rect* area = clip == 0 ? nullptr : &clips[clip - 1U];
+    for (const FadeEdge& edge : openFadeEdges) {
+        if (area == nullptr || std::min({edge.getCoverage(area->getMin()), edge.getCoverage(area->getMax()), edge.getCoverage({area->x, area->getBottom()}), edge.getCoverage({area->getRight(), area->y})}) < 1.0F) {
+            fadeEdges.push_back(edge);
+        }
+    }
+    const auto count = static_cast<std::uint32_t>(fadeEdges.size()) - begin;
+    if (count > Renderer::kMaxFadeEdges) {
+        fadeEdges.resize(begin);
+        throw std::length_error(std::format("A draw takes {} edges of the fades around it, and the most it takes is {}. Nest fewer fading areas around it.", count, Renderer::kMaxFadeEdges));
+    }
+
+    const std::span<const FadeEdge> taken = std::span(fadeEdges).subspan(begin);
+    const bool repeats = !fades.empty() && std::ranges::equal(std::span(fadeEdges).subspan(fades.back().first, fades.back().second), taken);
+    if (count == 0 || repeats) {
+        fadeEdges.resize(begin);
+    } else {
+        fades.emplace_back(begin, count);
+    }
+    fade = count == 0 ? 0U : static_cast<std::uint32_t>(fades.size());
+    fadeClip = clip;
+    return fade;
 }
 
 std::uint32_t RendererState::getShade(Program program, const DrawOrder& order, std::span<const graphics::Texture> textures) {
@@ -436,6 +513,7 @@ DrawItem& RendererState::addItem(Program program, const DrawOrder& order, graphi
         .program = program,
         .blend = distorts ? graphics::BlendMode::Type::Additive : order.blend,
         .clip = clipStack.empty() ? 0U : clipStack.back(),
+        .fade = getFade(clipStack.empty() ? 0U : clipStack.back()),
         .shade = getShade(program, order, textures),
         .texture = texture,
         .distortion = distorts,
@@ -749,7 +827,7 @@ const graphics::ShaderResource::Compiled& RendererState::getMaterialProgram(Mate
 
     // The renderer fills the blocks of the shader library itself, so a shader compiled with another version of the library cannot draw.
     const bool lit = target == graphics::PassTarget::LitScene;
-    if (made.blockSizes[kVertexBlock] != kVertexBlockSize || (lit && made.blockSizes[kLitBlock] != kLitBlockSize)) {
+    if (made.blockSizes[kVertexBlock] != kVertexBlockSize || made.blockSizes[kFadeBlock] != kFadeBlockSize || (lit && made.blockSizes[kLitBlock] != kLitBlockSize)) {
         throw std::invalid_argument(std::format("The shader \"{}\" was compiled with another version of the shader library. Compile it again with \"haylen.py shaders\".", shader.name));
     }
     return made;

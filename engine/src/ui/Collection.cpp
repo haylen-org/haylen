@@ -978,17 +978,19 @@ void Collection::render(Context& context, const math::Rect& bounds) {
     ImGui::PushClipRect(ImGuiConverter::toImVec2(bounds.getMin()), ImGuiConverter::toImVec2(bounds.getMax()), true);
     const std::optional<double> dragged = barShown ? scrollbar->interact(context, bounds, !isVertical(), rightToLeft && !isVertical(), scroller->getOffset(), scroller->getMaximum(), getMainLength()) : std::nullopt;
     ImGui::PushClipRect(ImGuiConverter::toImVec2(cellArea.getMin()), ImGuiConverter::toImVec2(cellArea.getMax()), true);
+
+    // A mirrored collection starts at its right end, so the content past its left edge is what its offset has not reached yet.
+    const double shown = std::clamp(scroller->getOffset(), 0.0, scroller->getMaximum());
+    const double rest = scroller->getMaximum() - shown;
+    const bool mirrored = rightToLeft && !isVertical();
+    const bool faded = ScrollFade::begin(context, cellArea, !isVertical(), mirrored ? rest : shown, mirrored ? shown : rest);
     drawCells(context, *window, sticky);
     drawLeaving(context);
     drawRefresh(context);
-    ImGui::PopClipRect();
-    if (scroller->getMaximum() > 0.0) {
-        // A mirrored collection starts at its right end, so the content past its left edge is what its offset has not reached yet.
-        const double shown = std::clamp(scroller->getOffset(), 0.0, scroller->getMaximum());
-        const double rest = scroller->getMaximum() - shown;
-        const bool mirrored = rightToLeft && !isVertical();
-        ScrollFade::draw(context, cellArea, !isVertical(), mirrored ? rest : shown, mirrored ? shown : rest);
+    if (faded) {
+        ScrollFade::end(context);
     }
+    ImGui::PopClipRect();
     if (barShown) {
         const bool touch = context.getInput().getLastDevice() == input::InputDevice::Touch;
         scrollbar->draw(context, touch ? std::clamp(1.0F - (idle - kScrollbarFadeDelay) / kScrollbarFade, 0.0F, 1.0F) : 1.0F);

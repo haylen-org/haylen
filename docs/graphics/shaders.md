@@ -125,7 +125,7 @@ In development, `haylen.py run` keeps compiling the sources that change while th
 The file `haylen/material.glsl` holds what every material shares:
 
 - The vertex shader `haylen_vs`, which places sprites, glyphs, mesh vertices and shapes exactly like the programs of the engine.
-- The block `haylen_vertex`, with the body of `haylen_vs` as the function `haylen_vertex_main()`. A vertex shader with attributes of its own includes it and calls it.
+- The block `haylen_vertex`, with the body of `haylen_vs` as the function `haylen_vertex_main()`. A vertex shader with attributes of its own includes it and calls it, which also hands the fragment shader the point of the canvas that `haylen_output` fades by.
 - The block `haylen_fragment`, which a fragment shader includes first. It declares these names:
 
 | Name | Kind | Meaning |
@@ -142,7 +142,7 @@ The file `haylen/material.glsl` holds what every material shares:
 | `haylen_text(vec2 point)` | `vec4` | The glyph at a point with its fill and outline, which is how text draws. Its weight, outline and softness, with the smoothing of the edge on screen, stop a sixteenth of the field short of the border of the quad of the glyph and shrink together beyond it. |
 | `haylen_base(vec2 point)` | `vec4` | The function `haylen_text` in the text programs and `haylen_sprite` in the others: the color the draw has without the material. |
 | `haylen_world_normal(vec3 tangent)` | `vec2` | Turns a tangent-space normal, with y pointing up the image, into the world through the flips and rotation of the sprite. |
-| `haylen_output(vec4 color)` | function | Writes the result, a straight color. It multiplies the color by its alpha for draws whose blend mode needs that, `multiply` and `screen`. A shape fades the alpha by how much of the pixel it covers, so its edge stays smooth whatever color the material writes. In lit canvases it also writes the emission, surface and info images that the light pass reads, with a flat normal. |
+| `haylen_output(vec4 color)` | function | Writes the result, a straight color. It multiplies the color by its alpha for draws whose blend mode needs that, `multiply` and `screen`. A shape fades the alpha by how much of the pixel it covers, so its edge stays smooth whatever color the material writes, and every draw fades it by the [fade](rendering.md#fades) it draws in. In lit canvases it also writes the emission, surface and info images that the light pass reads, with a flat normal. |
 | `haylen_output_surface(vec4 color, vec2 normal, float specular, float shininess)` | function | Only with `HAYLEN_LIT`: writes the result with a world normal, a specular strength and a shininess divided by 255, for materials that light their own surface. |
 | `haylen_surface`, `haylen_info` | `vec4` uniforms | Only with `HAYLEN_LIT`: the lighting of the draw, which `haylen_output` applies. |
 
@@ -200,7 +200,7 @@ scene.push({
 
 A material fills the uniform blocks and textures that the fragment shader declares, by these rules:
 
-- Uniform blocks take the bindings 1 to 6. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, and binding 7 holds the lighting of lit canvases. The renderer fills both with the layout of the shader library it was built with. So a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` when a draw first uses it.
+- Uniform blocks take the bindings 1 to 5. Binding 0 holds the view projection of the vertex shader and whether the blend of the draw needs premultiplied colors, binding 6 holds the edges of the [fade](rendering.md#fades) of the draw, which `haylen_output` applies, and binding 7 holds the lighting of lit canvases. The renderer fills them with the layout of the shader library it was built with. So a shader compiled with another version of the library raises `The shader "<name>" was compiled with another version of the shader library. Compile it again with "haylen.py shaders".` when a draw first uses it.
 - Members are `float`, `vec2`, `vec3`, `vec4`, `int`, `ivec2`, `ivec3`, `ivec4` and `mat4`, and arrays of any of them. The std140 rules give every element of an array a whole vector of 16 bytes, so an array of `float` takes 16 bytes an element. The engine places the numbers that a material sets for an array at those strides.
 - A block holds floats or integers, not both, because the GLSL targets read each block as one array of `vec4` or `ivec4`. So integer uniforms go in a block of their own.
 - Textures take the bindings from 1 to 24, next to `sprite_texture` at 0, with samplers of their own from binding 1 up or with `sprite_sampler`. The bindings 25 to 31 hold the textures of a batch after its first, in the `batch` programs.

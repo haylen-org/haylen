@@ -52,11 +52,10 @@ enum class Side : std::uint8_t {
 
 class ScrollbarTest : public ::testing::Test, public test::UiFixture {
   protected:
-    // The bars draw in magenta and the selected rows of popups in cyan, which nothing else in these GUIs draws, and the tests that mark a fade or a groove mark it in green.
+    // The bars draw in magenta and the selected rows of popups in cyan, which nothing else in these GUIs draws, and the tests that mark a groove mark it in green.
     static constexpr const char* kMarks = R"("style": {"colors": {"scrollbar": "#FF00FF", "scrollbarHover": "#FF00FF", "selection": "#00FFFF"}})";
     static constexpr std::uint32_t kBarColor = 0xFF00FFU;
     static constexpr std::uint32_t kRowColor = 0xFFFF00U;
-    static constexpr std::uint32_t kFadeColor = 0x00FF00U;
     static constexpr std::uint32_t kGrooveColor = 0x00FF00U;
 
     // Twenty lines of text, four of which a text area shows at once.
@@ -391,23 +390,22 @@ TEST_F(ScrollbarTest, ScrollsTheTextOfATextAreaWithItsBar) {
     EXPECT_LT(top, before - field.height);
 }
 
-// A text area fades its text into the theme color along the edge where more of it continues, like the other areas that scroll, and only there.
+// A text area fades its lines out along the edge where more of them continue, like the other areas that scroll, and only there, over the box its text is cut to.
 TEST_F(ScrollbarTest, FadesTheTextOfATextAreaWhereItContinues) {
-    auto gui = mount(R"({"kind": "column", "style": {"colors": {"scrollFade": "#00FF00"}}, "children": [{"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("}]})");
+    auto gui = mount(R"({"kind": "column", "children": [{"kind": "textArea", "id": "notes", "width": 400, "rows": 4, "value": ")" + std::string(kNotes) + R"("}]})");
     frames(2);
     const math::Rect field = getBounds(*gui, "notes");
     const math::Rect clip = findTextClip(field);
-    const std::optional<math::Rect> below = findDrawn(kFadeColor, field);
-    ASSERT_TRUE(below.has_value());
-    EXPECT_NEAR(below->y, clip.getBottom(), 0.5F);
-    EXPECT_NEAR(below->getBottom(), clip.getBottom(), 0.5F);
+    ASSERT_EQ(getUi().getBackend().getFades().size(), 1U);
+    const Backend::Fade below = getUi().getBackend().getFades().front();
+    EXPECT_EQ(below.area, clip);
+    EXPECT_EQ(below.edges.top, 0.0F);
+    EXPECT_EQ(below.edges.bottom, 1.0F);
 
     wheel(field.getCenter(), -40.0F);
     frames(60);
-    const std::optional<math::Rect> above = findDrawn(kFadeColor, field);
-    ASSERT_TRUE(above.has_value());
-    EXPECT_NEAR(above->y, clip.y, 0.5F);
-    EXPECT_NEAR(above->getBottom(), clip.y, 0.5F);
+    ASSERT_EQ(getUi().getBackend().getFades().size(), 1U);
+    EXPECT_EQ(getUi().getBackend().getFades().front().edges.top, 1.0F);
 }
 
 // A text area has no motion of its own, so the momentum that the system adds to a trackpad once its fingers left keeps scrolling its text.

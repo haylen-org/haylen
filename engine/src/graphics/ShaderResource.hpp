@@ -116,7 +116,7 @@ struct ShaderResource {
     };
 
     // The uniform blocks and textures of the shader library, which the engine fills itself and materials never list.
-    static constexpr std::array<std::string_view, 2> kEngineBlocks{"haylen_vs_params", "haylen_lit_params"};
+    static constexpr std::array<std::string_view, 3> kEngineBlocks{"haylen_vs_params", "haylen_fade_params", "haylen_lit_params"};
     static constexpr std::array<std::string_view, 8> kEngineTextures{"sprite_texture", "sprite_texture_1", "sprite_texture_2", "sprite_texture_3", "sprite_texture_4", "sprite_texture_5", "sprite_texture_6", "sprite_texture_7"};
 
     std::string name;

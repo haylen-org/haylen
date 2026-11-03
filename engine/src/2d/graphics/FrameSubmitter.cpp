@@ -20,7 +20,7 @@ namespace haylen::graphics2d {
 const PostProcess FrameSubmitter::kNoPostProcess{};
 
 template <typename Block> void FrameSubmitter::applyBlock(int slot, const Block& block) {
-    static_assert(sizeof(VertexParams) == RendererState::kVertexBlockSize && sizeof(LitParams) == RendererState::kLitBlockSize && sizeof(LightParams) == 64 && sizeof(CompositeParams) == 176 && sizeof(FilterParams) == 32);
+    static_assert(sizeof(VertexParams) == RendererState::kVertexBlockSize && sizeof(FadeParams) == RendererState::kFadeBlockSize && sizeof(LitParams) == RendererState::kLitBlockSize && sizeof(LightParams) == 64 && sizeof(CompositeParams) == 176 && sizeof(FilterParams) == 32);
     static_assert(sizeof(BlendVertexParams) == 112 && sizeof(BlendFragmentParams) == 80 && sizeof(BackdropVertexParams) == 96 && sizeof(BackdropFragmentParams) == 32 && sizeof(MetaballVertexParams) == 96 && sizeof(MetaballFragmentParams) == 48);
     state.getGpu().applyUniforms(slot, std::as_bytes(std::span(&block, 1)));
 }
@@ -257,7 +257,7 @@ void FrameSubmitter::appendCanvas(const std::vector<std::uint32_t>& order, bool 
 }
 
 void FrameSubmitter::append(const DrawItem& item) {
-    Command command{.program = item.program, .blend = item.blend, .clip = item.clip, .shade = item.shade, .texture = item.texture, .batch = item.batch, .offset = item.offset, .count = item.count};
+    Command command{.program = item.program, .blend = item.blend, .clip = item.clip, .fade = item.fade, .shade = item.shade, .texture = item.texture, .batch = item.batch, .offset = item.offset, .count = item.count};
 
     if (item.program == Program::Mesh) {
         command.first = static_cast<std::uint32_t>(state.uploadIndices.size());
@@ -275,7 +275,7 @@ void FrameSubmitter::append(const DrawItem& item) {
     if (state.commands.size() > commandFloor) {
         Command& previous = state.commands.back();
         const bool sameShade = previous.shade == command.shade || state.shades[previous.shade].matches(state.shades[command.shade]);
-        const bool sameState = previous.program == command.program && previous.blend == command.blend && previous.clip == command.clip && sameShade && previous.texture == command.texture;
+        const bool sameState = previous.program == command.program && previous.blend == command.blend && previous.clip == command.clip && previous.fade == command.fade && sameShade && previous.texture == command.texture;
         const bool single = command.program == Program::ImageBlend || command.program == Program::Backdrop || command.program == Program::Metaball;
         const bool mergeable = !single && previous.batch == nullptr && command.batch == nullptr && previous.first + previous.count == command.first;
         if (sameState && mergeable) {
@@ -370,6 +370,7 @@ void FrameSubmitter::renderFields(const Canvas& canvas) {
         beginOffscreenPass(state.fields[draw.field], math::Color::transparent());
         state.getGpu().applyPipeline(state.getPipeline(Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Additive), graphics::PassTarget::Offscreen));
         applyUniforms(matrix, graphics::BlendMode::Type::Additive);
+        applyFade(0);
 
         gpu::Device::Bindings bindings;
         bindings.vertexBuffers[0] = state.quad;
@@ -695,6 +696,7 @@ void FrameSubmitter::drawPostMaterial(std::size_t shadeIndex, const graphics::Te
     const graphics::TextureResource& resource = *image.getResource();
     state.getGpu().applyPipeline(state.getMaterialPipeline(*shade.material, Program::Sprite, static_cast<std::uint8_t>(graphics::BlendMode::Type::Premultiplied), pass));
     applyUniforms(projection(math::Transform2D::identity(), {1.0F, 1.0F}), graphics::BlendMode::Type::Premultiplied);
+    applyFade(0);
     applyShade(shade, pass, Program::Sprite, graphics::BlendMode::Type::Premultiplied);
 
     gpu::Device::Bindings bindings;
@@ -734,6 +736,7 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
     graphics::TextureResource* currentTexture = nullptr;
     std::optional<std::uint32_t> currentClip;
     std::uint32_t currentShade = 0;
+    std::uint32_t currentFade = 0;
     math::Vec2 currentOffset{};
     std::optional<std::uint32_t> checkedClip;
     bool clipShows = true;
@@ -780,9 +783,11 @@ void FrameSubmitter::drawCommands(const Canvas& canvas, std::size_t begin, std::
             currentPipeline = pipeline;
             currentClip.reset();
         }
-        if (fresh || command.offset != currentOffset) {
+        if (fresh || command.offset != currentOffset || command.fade != currentFade) {
             applyUniforms(translated(matrix, command.offset), command.blend);
+            applyFade(command.fade, command.offset);
             currentOffset = command.offset;
+            currentFade = command.fade;
         }
         if (fresh || command.shade != currentShade) {
             applyShade(shade, pass, command.program, command.blend);
@@ -858,6 +863,7 @@ void FrameSubmitter::drawImageBlend(const Command& command, const Matrix& matrix
     vertex.columns[1] = draw.columns.y;
     vertex.premultiply = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     applyBlock(RendererState::kVertexBlock, vertex);
+    applyFade(command.fade);
 
     const float flips = (from.flipped ? 1.0F : 0.0F) + (to.flipped ? 2.0F : 0.0F);
     const float rows = draw.rows.getLength();
@@ -903,6 +909,7 @@ void FrameSubmitter::drawBackdrop(const Canvas& canvas, const Command& command, 
     vertex.columns[0] = draw.columns.x;
     vertex.columns[1] = draw.columns.y;
     applyBlock(RendererState::kVertexBlock, vertex);
+    applyFade(command.fade);
     const float mode = static_cast<float>(static_cast<int>(command.blend) - static_cast<int>(graphics::BlendMode::Type::Overlay));
     const BackdropFragmentParams fragment{
         .settings = {mode, draw.blend.progress, draw.blend.reversed ? 1.0F : 0.0F, draw.opacity},
@@ -931,6 +938,7 @@ void FrameSubmitter::drawMetaball(const Command& command, const Matrix& matrix) 
     vertex.field[0] = field.flipped ? 1.0F : 0.0F;
     vertex.field[1] = RendererState::expectsPremultiplied(command.blend) ? 1.0F : 0.0F;
     applyBlock(RendererState::kVertexBlock, vertex);
+    applyFade(command.fade);
 
     const Renderer::MetaballStyle& style = draw.style;
     const MetaballFragmentParams fragment{
@@ -946,6 +954,24 @@ void FrameSubmitter::drawMetaball(const Command& command, const Matrix& matrix) 
 void FrameSubmitter::applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend) {
     const VertexParams params{.viewProjection = matrix, .premultiply = RendererState::expectsPremultiplied(blend) ? 1.0F : 0.0F};
     applyBlock(RendererState::kVertexBlock, params);
+}
+
+void FrameSubmitter::applyFade(std::uint32_t fade, math::Vec2 offset) {
+    FadeParams params;
+    if (fade != 0) {
+        const auto [begin, count] = state.fades[fade - 1U];
+        for (std::uint32_t index = 0; index < count; ++index) {
+            const FadeEdge& edge = state.fadeEdges[begin + index];
+            const std::size_t lane = index % 4U;
+            Vector& x = index < 4U ? params.x : params.moreX;
+            Vector& y = index < 4U ? params.y : params.moreY;
+            Vector& shift = index < 4U ? params.offset : params.moreOffset;
+            x[lane] = edge.slope.x;
+            y[lane] = edge.slope.y;
+            shift[lane] = edge.getCoverage(offset);
+        }
+    }
+    applyBlock(RendererState::kFadeBlock, params);
 }
 
 // Alpha and opaque draws cover the surface and the info by straight alpha and premultiplied draws by premultiplied alpha, while adding, multiplying and screen draws leave them, and multiplying draws also leave the emission.

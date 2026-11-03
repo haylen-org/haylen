@@ -194,6 +194,7 @@ TEST_F(GroupTest, DrawsTheSameGroupsEveryFrameWithoutAllocating) {
         Renderer& renderer = engine.getRenderer2D();
         renderer.beginWorld(camera);
         renderer.pushClip({0.0F, 0.0F, 100.0F, 100.0F});
+        renderer.pushFade({0.0F, 0.0F, 100.0F, 100.0F}, {.length = 20.0F, .top = 1.0F, .right = 0.5F});
         renderer.pushMask(Renderer::MaskMode::Inside, {});
         renderer.drawCircle({0.0F, 0.0F}, 30.0F, math::Color::white());
         renderer.endMaskShape();
@@ -201,13 +202,16 @@ TEST_F(GroupTest, DrawsTheSameGroupsEveryFrameWithoutAllocating) {
         renderer.drawRect({0.0F, 0.0F, 50.0F, 50.0F}, math::Color::white());
         renderer.endGroup();
         renderer.popMask();
+        renderer.popFade();
         renderer.popClip();
         renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::Multiply}});
         renderer.drawRect({10.0F, 10.0F, 50.0F, 50.0F}, math::Color::white());
         renderer.endGroup();
+        renderer.pushFade({0.0F, 0.0F, 60.0F, 60.0F}, {.length = 10.0F, .left = 1.0F});
         renderer.beginGroup({.order = {.blend = graphics::BlendMode::Type::ColorBurn}});
         renderer.drawRect({10.0F, 10.0F, 50.0F, 50.0F}, math::Color::white());
         renderer.endGroup();
+        renderer.popFade();
     }));
     // clang-format on
     fixture.frames(3);

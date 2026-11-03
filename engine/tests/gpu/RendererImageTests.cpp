@@ -20,6 +20,7 @@
 #include "haylen/2d/graphics/Camera.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
+#include "haylen/2d/graphics/Shape.hpp"
 #include "haylen/2d/graphics/SpriteData.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/2d/lighting/Light.hpp"
@@ -29,6 +30,8 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
+#include "haylen/graphics/Texture.hpp"
+#include "haylen/math/Rect.hpp"
 #include "support/DrawingScene.hpp"
 #include "support/EngineFixture.hpp"
 
@@ -282,6 +285,39 @@ TEST_P(GpuRendererTest, BlendsGroupsWithWhatLiesBelow) {
             renderer.drawCircle({80.0F, y}, 22.0F, math::Color::fromHex(0xE9C46AFFU));
             renderer.endGroup();
         }
+    });
+    // clang-format on
+}
+
+// A card over stripes whose content fades out to transparent toward the edges where it continues, through every program: shapes, meshes, sprites, text and the image of a group, with a row that fades across inside the fade of the card. The stripes show through the fade, and nothing darkens it.
+TEST_P(GpuRendererTest, FadesDrawsTowardTheEdgesOfTheirFades) {
+    const graphics::Texture& white = fixture->engine().getGraphics().getWhiteTexture();
+    // clang-format off
+    expectScene("fades", [&white](core::Engine& engine, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::fromHex(0x1B2A41FFU)});
+        const std::array<std::uint32_t, 4> stripes{0xE63946FFU, 0xF1FAEEFFU, 0x457B9DFFU, 0xFFB703FFU};
+        for (std::size_t index = 0; index < stripes.size(); ++index) {
+            renderer.drawRect({static_cast<float>(index) * 32.0F, 0.0F, 32.0F, static_cast<float>(kSize)}, math::Color::fromHex(stripes[index]));
+        }
+        const math::Rect area{16.0F, 8.0F, 96.0F, 112.0F};
+        renderer.pushClip(area);
+        renderer.pushFade(area, {.length = 28.0F, .top = 1.0F, .bottom = 0.75F});
+        for (int row = 0; row < 7; ++row) {
+            const float y = 4.0F + static_cast<float>(row) * 18.0F;
+            renderer.drawShape({.bounds = {20.0F, y, 88.0F, 14.0F}, .radii = {6.0F, 6.0F, 6.0F, 6.0F}, .color = math::Color::fromHex(0x2A9D8FFFU), .borderWidth = 2.0F, .borderColor = math::Color::fromHex(0x0B3D3AFFU)});
+            renderer.draw({.texture = white, .position = {30.0F, y + 7.0F}, .size = {8.0F, 8.0F}, .color = math::Color::fromHex(0xE9C46AFFU)});
+            renderer.drawText(*engine.getDefaultFont(), "Row", {44.0F, y + 1.0F}, {.size = 12.0F, .color = math::Color::white()});
+        }
+        renderer.pushFade({16.0F, 58.0F, 96.0F, 20.0F}, {.length = 20.0F, .left = 1.0F, .right = 1.0F});
+        renderer.beginGroup({.opacity = 0.8F});
+        for (int column = 0; column < 6; ++column) {
+            renderer.drawCircle({24.0F + static_cast<float>(column) * 16.0F, 68.0F}, 7.0F, math::Color::fromHex(0xF4A261FFU));
+        }
+        renderer.endGroup();
+        renderer.drawLine({16.0F, 76.0F}, {112.0F, 76.0F}, 2.0F, math::Color::fromHex(0x264653FFU));
+        renderer.popFade();
+        renderer.popFade();
+        renderer.popClip();
     });
     // clang-format on
 }

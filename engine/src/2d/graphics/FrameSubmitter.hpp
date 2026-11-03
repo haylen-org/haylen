@@ -56,6 +56,16 @@ class FrameSubmitter final {
         std::array<float, 3> padding{};
     };
 
+    // The edges of a fade as the shader library reads them: the slopes along x, the slopes along y and the offsets of the first four edges, then of the next four, where the slots past the last edge cover every point.
+    struct FadeParams {
+        Vector x{};
+        Vector y{};
+        Vector offset{1.0F, 1.0F, 1.0F, 1.0F};
+        Vector moreX{};
+        Vector moreY{};
+        Vector moreOffset{1.0F, 1.0F, 1.0F, 1.0F};
+    };
+
     struct LitParams {
         Vector surface{};
         Vector info{};
@@ -197,6 +207,9 @@ class FrameSubmitter final {
     void drawBackdrop(const Canvas& canvas, const Command& command, const Matrix& matrix, const math::Rect& passRect);
     void drawMetaball(const Command& command, const Matrix& matrix);
     void applyUniforms(const Matrix& matrix, graphics::BlendMode::Type blend);
+
+    // Applies the edges of a fade of the frame, or of none for 0, moved with draws that the offset moves.
+    void applyFade(std::uint32_t fade, math::Vec2 offset = {});
 
     // Applies the uniforms of how a command is shaded: the lighting of lit passes, with how its blend covers the emission, the surface and the info, and the values of its material.
     void applyShade(const Shade& shade, graphics::PassTarget pass, Program program, graphics::BlendMode::Type blend);

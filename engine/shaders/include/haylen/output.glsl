@@ -1,5 +1,28 @@
-// Writes the result of a fragment shader, which a shape fades by how much of the pixel it covers. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
+// The fade of a draw, which fades its alpha out toward the edges of the fades around it. Each of its eight edges covers a point by `x * point.x + y * point.y + offset`, clamped to 0 and 1, and the coverages of the edges multiply, where an edge that fades nothing covers every point with 1. Every vertex stage of a program that reads it passes `haylen_output_point`, the point of the canvas it draws at.
+@block haylen_fade
+layout(binding=6) uniform haylen_fade_params {
+    vec4 haylen_fade_x;
+    vec4 haylen_fade_y;
+    vec4 haylen_fade_offset;
+    vec4 haylen_fade_more_x;
+    vec4 haylen_fade_more_y;
+    vec4 haylen_fade_more_offset;
+};
+
+in vec2 haylen_output_point;
+
+float haylen_fade() {
+    vec2 point = haylen_output_point;
+    vec4 first = clamp(haylen_fade_x * point.x + haylen_fade_y * point.y + haylen_fade_offset, 0.0, 1.0);
+    vec4 second = clamp(haylen_fade_more_x * point.x + haylen_fade_more_y * point.y + haylen_fade_more_offset, 0.0, 1.0);
+    vec4 both = first * second;
+    return both.x * both.y * both.z * both.w;
+}
+@end
+
+// Writes the result of a fragment shader, which a shape fades by how much of the pixel it covers and every draw by its fade. Lit canvases compile it with `HAYLEN_LIT`, which fills four images at once: the color, the emission, the surface normal with its specular strength, and the light mask, layer and shininess that the light pass reads. Every vertex stage of a program that writes through it passes `haylen_output_premultiply`, which is 1 when the blend mode of the draw expects colors premultiplied by their alpha.
 @block haylen_output
+@include_block haylen_fade
 in float haylen_output_premultiply;
 
 vec3 haylen_output_color(vec4 result) {
@@ -24,6 +47,7 @@ void haylen_output_surface(vec4 result, vec2 normal, float specular, float shini
 #ifdef HAYLEN_SHAPE
     result.a *= haylen_shape_cover().x;
 #endif
+    result.a *= haylen_fade();
     float unshaded = haylen_surface.z;
     vec3 color = haylen_output_color(result);
     frag_color = vec4(color * (1.0 - unshaded), result.a);
@@ -51,6 +75,7 @@ void haylen_output(vec4 result) {
 #ifdef HAYLEN_SHAPE
     result.a *= haylen_shape_cover().x;
 #endif
+    result.a *= haylen_fade();
     frag_color = vec4(haylen_output_color(result), result.a);
 }
 #endif

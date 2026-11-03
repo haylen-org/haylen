@@ -22,6 +22,8 @@ struct GroupScope {
     std::size_t metaballStart = 0;
     std::size_t target = 0;
     std::size_t clipStart = 0;
+    std::size_t fadeEdgeStart = 0;
+    std::size_t fadeMarkStart = 0;
     std::size_t layerOffsetStart = 0;
     int layerOffset = 0;
     float opacity = 1.0F;

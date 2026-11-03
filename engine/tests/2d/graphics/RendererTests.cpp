@@ -1,6 +1,8 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -11,6 +13,7 @@
 #include <vector>
 
 #include "2d/graphics/Canvas.hpp"
+#include "2d/graphics/FadeEdge.hpp"
 #include "2d/graphics/FrameSubmitter.hpp"
 #include "2d/graphics/RendererState.hpp"
 #include "gpu/NullDevice.hpp"
@@ -755,15 +758,18 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawStatic(baked, {}, {4.0F, 0.0F});
 
         renderer.beginWorld(camera, {.sort = graphics2d::Renderer::SortMode::Y, .ambientLight = math::Color{0.2F, 0.2F, 0.3F, 1.0F}, .postProcess = graphics2d::PostProcess{.blur = 2.0F, .bloomStrength = 0.5F}});
+        renderer.pushFade({-50.0F, -50.0F, 100.0F, 100.0F}, {.length = 20.0F, .left = 1.0F, .bottom = 0.5F});
         renderer.draw({.texture = texture, .order = {.distortion = 0.5F}});
         renderer.draw({.texture = capture.getTexture(), .partColors = {.red = math::Color::black()}, .order = {.partMask = texture}});
         renderer.drawLight({.position = {0.0F, 0.0F}, .radius = 80.0F, .shadows = true});
         renderer.drawOccluder(wall);
         renderer.drawMetaballs(points, 4.0F);
         parallax.draw(renderer, camera);
+        renderer.popFade();
 
         renderer.beginScreen();
         renderer.pushClip({0.0F, 0.0F, 300.0F, 300.0F});
+        renderer.pushFade({0.0F, 0.0F, 300.0F, 300.0F}, {.length = 32.0F, .top = 0.5F, .bottom = 1.0F});
         renderer.draw({.texture = target.getTexture(), .position = {50.0F, 50.0F}});
         renderer.drawNineSlice(stretched, {0.0F, 0.0F, 100.0F, 40.0F});
         renderer.drawNineSlice(tiled, {0.0F, 50.0F, 100.0F, 40.0F});
@@ -778,6 +784,7 @@ TEST(RendererTest, DrawsEveryKindOfDrawWithoutAllocating) {
         renderer.drawPoints(line, 3.0F, std::span(&dotColor, 1));
         renderer.drawMesh(texture, mesh, indices);
         renderer.drawText(*current.getDefaultFont(), "Every frame", {10.0F, 200.0F}, {.size = 24.0F, .outlineWidth = 2.0F, .shadowOffset = {2.0F, 2.0F}, .shadowColor = math::Color::black()});
+        renderer.popFade();
         renderer.popClip();
     });
     // clang-format on
@@ -797,6 +804,63 @@ TEST(RendererTest, ClipsToThePixelsWhoseCentersLieInside) {
     const math::Rect scaled{20.0F, 0.0F, 150.0F, 150.0F};
     EXPECT_EQ(graphics2d::FrameSubmitter::getScissor(canvas, {-10.0F, 50.0F, 70.0F, 70.0F}, scaled), (math::Rect{20.0F, 75.0F, 90.0F, 75.0F}));
     EXPECT_EQ(graphics2d::FrameSubmitter::getScissor(canvas, {200.0F, 0.0F, 10.0F, 10.0F}, scaled).width, 0.0F);
+}
+
+// A fade starts each edge at its strength below full coverage and reaches full coverage at its length inside the rectangle, and a draw takes only the edges that reach into its clip, so a draw away from every edge fades nothing.
+TEST(RendererTest, FadesDrawsAlongTheEdgesThatReachIntoTheirClip) {
+    test::EngineFixture fixture;
+    graphics2d::RendererState state(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    state.pushFade({0.0F, 0.0F, 100.0F, 200.0F}, {.length = 20.0F, .top = 1.0F, .bottom = 0.5F});
+    ASSERT_EQ(state.getFade(0), 1U);
+    ASSERT_EQ(state.fades[0].second, 2U);
+    const graphics2d::FadeEdge top = state.fadeEdges[state.fades[0].first];
+    const graphics2d::FadeEdge bottom = state.fadeEdges[state.fades[0].first + 1];
+    EXPECT_FLOAT_EQ(top.getCoverage({50.0F, 0.0F}), 0.0F);
+    EXPECT_FLOAT_EQ(top.getCoverage({50.0F, 10.0F}), 0.5F);
+    EXPECT_FLOAT_EQ(top.getCoverage({50.0F, 20.0F}), 1.0F);
+    EXPECT_FLOAT_EQ(bottom.getCoverage({50.0F, 200.0F}), 0.5F);
+    EXPECT_FLOAT_EQ(bottom.getCoverage({50.0F, 180.0F}), 1.0F);
+    EXPECT_EQ(state.getFade(0), 1U);
+
+    state.clips = {{0.0F, 50.0F, 100.0F, 100.0F}, {0.0F, 0.0F, 100.0F, 30.0F}};
+    EXPECT_EQ(state.getFade(1), 0U);
+    ASSERT_EQ(state.getFade(2), 2U);
+    ASSERT_EQ(state.fades[1].second, 1U);
+    EXPECT_EQ(state.fadeEdges[state.fades[1].first], top);
+
+    state.popFade();
+    EXPECT_EQ(state.getFade(0), 0U);
+    EXPECT_THROW(state.popFade(), std::logic_error);
+    EXPECT_THROW(state.pushFade({}, {.length = 10.0F, .left = 1.5F}), std::invalid_argument);
+    EXPECT_THROW(state.pushFade({}, {.length = -1.0F}), std::invalid_argument);
+}
+
+// Nested fades multiply, so a draw inside a horizontal list on a vertical page takes the edges of both, and goes back to the edges of the page once the list ends. A draw takes at most the edges the GPU holds.
+TEST(RendererTest, CombinesTheEdgesOfNestedFades) {
+    test::EngineFixture fixture;
+    graphics2d::RendererState state(fixture.engine().getGraphics(), fixture.engine().getJobs());
+    const graphics2d::Renderer::Fade page{.length = 20.0F, .top = 1.0F, .bottom = 1.0F};
+    state.pushFade({0.0F, 0.0F, 100.0F, 400.0F}, page);
+    const std::uint32_t outer = state.getFade(0);
+    state.pushFade({0.0F, 10.0F, 100.0F, 50.0F}, {.length = 8.0F, .left = 1.0F, .right = 0.25F});
+    const std::uint32_t inner = state.getFade(0);
+    ASSERT_EQ(state.fades[inner - 1U].second, 4U);
+    const std::span<const graphics2d::FadeEdge> edges = std::span(state.fadeEdges).subspan(state.fades[inner - 1U].first, 4);
+    EXPECT_FLOAT_EQ(edges[2].getCoverage({0.0F, 30.0F}), 0.0F);
+    EXPECT_FLOAT_EQ(edges[3].getCoverage({100.0F, 30.0F}), 0.75F);
+    EXPECT_FLOAT_EQ(edges[0].getCoverage({50.0F, 10.0F}), 0.5F);
+
+    state.popFade();
+    const std::uint32_t after = state.getFade(0);
+    ASSERT_NE(after, 0U);
+    EXPECT_TRUE(std::ranges::equal(std::span(state.fadeEdges).subspan(state.fades[after - 1U].first, state.fades[after - 1U].second), std::span(state.fadeEdges).subspan(state.fades[outer - 1U].first, state.fades[outer - 1U].second)));
+
+    for (std::size_t level = 1; level < graphics2d::Renderer::kMaxFadeEdges / 2; ++level) {
+        state.pushFade({0.0F, 0.0F, 100.0F, 400.0F}, page);
+    }
+    EXPECT_EQ(state.fades[state.getFade(0) - 1U].second, graphics2d::Renderer::kMaxFadeEdges);
+    state.pushFade({0.0F, 0.0F, 100.0F, 400.0F}, {.length = 20.0F, .left = 1.0F});
+    EXPECT_THROW((void)state.getFade(0), std::length_error);
 }
 
 // Canvases that split a destination of an odd size, such as two halves of a split screen, cover whole pixels and share their edge, with no column left to the clear color.

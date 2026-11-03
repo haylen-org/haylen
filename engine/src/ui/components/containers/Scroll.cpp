@@ -136,14 +136,19 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
         const float moved = shown - static_cast<float>(offset);
         const math::Vec2 shift = horizontal ? math::Vec2{moved, 0.0F} : math::Vec2{0.0F, moved};
 
-        // The child lays out in the box the lane leaves, scrolled, and draws only inside it.
+        // The child lays out in the box the lane leaves, scrolled, and draws only inside it, faded along the edges it continues past.
         points.clear();
         math::Vec2 origin;
         if (child != nullptr) {
             origin = math::Vec2{start.x, start.y} + (box.getMin() - bounds.getMin()) + shift;
             const math::Rect area = place(context, *child, size, {origin.x, origin.y, box.width, box.height});
+            const double shownOffset = std::clamp(offset, 0.0, scroller.getMaximum());
             ImGui::PushClipRect(ImGuiConverter::toImVec2(box.getMin()), ImGuiConverter::toImVec2(box.getMax()), true);
+            const bool faded = ScrollFade::begin(context, box, horizontal, shownOffset, scroller.getMaximum() - shownOffset);
             child->draw(context, area);
+            if (faded) {
+                ScrollFade::end(context);
+            }
             ImGui::PopClipRect();
             ImGui::SetCursorScreenPos(start);
             const math::Vec2 end = math::Vec2::max(area.getMax(), origin + box.getSize()) - shift;
@@ -172,10 +177,6 @@ void Scroll::render(Context& context, const math::Rect& bounds) {
             idle = 0.0F;
         }
         settle();
-        if (scroller.getMaximum() > 0.0) {
-            const double shownOffset = std::clamp(scroller.getOffset(), 0.0, scroller.getMaximum());
-            ScrollFade::draw(context, box, horizontal, shownOffset, scroller.getMaximum() - shownOffset);
-        }
         if (overflowing) {
             scrollbar.draw(context, 1.0F);
         }

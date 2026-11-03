@@ -40,6 +40,7 @@ class Graphics2DLua final {
 
   private:
     static constexpr std::array<std::string_view, 7> kCanvasFields{"sort", "order", "visibilityMask", "ambientLight", "clear", "postProcess", "debugDrawings"};
+    static constexpr std::array<std::string_view, 5> kFadeFields{"length", "left", "top", "right", "bottom"};
     static constexpr std::array<std::string_view, 8> kImageBlendFields{"pattern", "progress", "center", "cellSize", "blockSize", "color", "reversed", "angle"};
     static constexpr std::array<std::string_view, 22> kPostProcessFields{"tint", "saturation", "brightness", "contrast", "vignetteStrength", "vignetteRadius", "vignetteSoftness", "fade", "distortion", "chromaticAberration", "pixelate", "blur", "bloomStrength", "bloomThreshold", "bloomRadius", "colorLut", "colorLutStrength", "colorVision", "correctColorVision", "grain", "dither", "materials"};
     static constexpr std::array<std::string_view, 4> kMetaballFields{"color", "outlineColor", "outlineWidth", "threshold"};
@@ -103,6 +104,8 @@ class Graphics2DLua final {
     static int drawImageBlend(lua_State* L);
     static int pushClip(lua_State* L);
     static int popClip(lua_State* L);
+    static int pushFade(lua_State* L);
+    static int popFade(lua_State* L);
     static int pushLayerOffset(lua_State* L);
     static int popLayerOffset(lua_State* L);
 

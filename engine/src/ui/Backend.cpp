@@ -262,6 +262,19 @@ void Backend::runDraws(const ImDrawList* list, const ImDrawCmd* command) {
     owner.rendering->popClip();
 }
 
+void Backend::runPushFade(const ImDrawList* list, const ImDrawCmd* command) {
+    FadeCall call;
+    std::memcpy(&call, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(call));
+    const Fade& fade = call.owner->fades[call.index];
+    call.owner->rendering->pushFade(fade.area, fade.edges);
+}
+
+void Backend::runPopFade(const ImDrawList* list, const ImDrawCmd* command) {
+    FadeCall call;
+    std::memcpy(&call, list->_CallbacksDataBuf.Data + command->UserCallbackDataOffset, sizeof(call));
+    call.owner->rendering->popFade();
+}
+
 void Backend::runDraw(const Draw& draw) {
     switch (draw.kind) {
     case Draw::Kind::Shape:
@@ -700,6 +713,7 @@ void Backend::beginFrame(float deltaSeconds, const graphics::Viewport& viewport,
     renderCalls.clear();
     draws.clear();
     shapes.clear();
+    fades.clear();
     texts.clear();
     characters.clear();
     richTexts.clear();
@@ -779,6 +793,17 @@ bool Backend::beginChild(const char* id, math::Vec2 size, ImGuiChildFlags childF
     ChildCall call{.owner = this, .window = &child};
     child.ParentWindow->DrawList->AddCallback(&runChildCall, &call, sizeof(call));
     return visible;
+}
+
+void Backend::pushFade(const Fade& fade) {
+    fades.push_back(fade);
+    FadeCall call{.owner = this, .index = fades.size() - 1};
+    ImGui::GetWindowDrawList()->AddCallback(&runPushFade, &call, sizeof(call));
+}
+
+void Backend::popFade() {
+    FadeCall call{.owner = this};
+    ImGui::GetWindowDrawList()->AddCallback(&runPopFade, &call, sizeof(call));
 }
 
 void Backend::addShape(const graphics2d::Shape& shape) {
