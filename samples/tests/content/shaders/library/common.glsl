@@ -34,16 +34,17 @@ vec3 library_hue(float hue) {
     return clamp(abs(fract(hue + vec3(0.0, 2.0 / 3.0, 1.0 / 3.0)) * 6.0 - 3.0) - 1.0, 0.0, 1.0);
 }
 
-// The coverage of the shape that the alpha of the texture draws around a point, averaged over a disc of `reach` texels on a spiral of samples whose weights fall off like a bell, which glows add as light, the way a bloom spreads a bright shape. Each pixel turns the spiral by its own angle, so the samples leave a fine grain instead of copies of the shape.
+// The coverage of the shape that the alpha of the texture draws around a point, averaged over a disc of `reach` texels on a spiral of samples whose weights fall off like a bell, which glows add as light, the way a bloom spreads a bright shape. Every sample reads a mip level whose texels span about a quarter of the reach, so the samples blend into a smooth light without grain or copies of the shape.
 float library_glow(vec2 point, vec2 texel, float reach) {
+    vec2 slopeX = vec2(texel.x * max(reach * 0.25, 1.0), 0.0);
+    vec2 slopeY = vec2(0.0, texel.y * max(reach * 0.25, 1.0));
     float sum = 0.0;
     float total = 0.0;
-    float spin = library_hash(point * 4096.0) * 6.28318531;
-    for (int index = 0; index < 48; index++) {
-        float share = (float(index) + 0.5) / 48.0;
-        float angle = float(index) * 2.39996323 + spin;
+    for (int index = 0; index < 32; index++) {
+        float share = (float(index) + 0.5) / 32.0;
+        float angle = float(index) * 2.39996323;
         float weight = exp(-3.0 * share);
-        sum += haylen_texture(haylen_inside(point + vec2(cos(angle), sin(angle)) * sqrt(share) * reach * texel)).a * weight;
+        sum += haylen_texture_grad(haylen_inside(point + vec2(cos(angle), sin(angle)) * sqrt(share) * reach * texel), slopeX, slopeY).a * weight;
         total += weight;
     }
     return sum / total;

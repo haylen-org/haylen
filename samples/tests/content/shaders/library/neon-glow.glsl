@@ -19,9 +19,9 @@ void main() {
     float beat = 1.0 + pulse * sin(time * 7.0);
 
     // A tight glow hugs the shape and a wide one spreads far and thins out smoothly to nothing, as the bloom of a bright light does.
-    float near = library_glow(uv, texel, radius * 0.45);
-    float far = library_glow(uv, texel, radius * 1.6);
-    float halo = (near * 1.1 + far * 2.2) * intensity * 0.45 * beat;
+    float near = library_glow(uv, texel, radius * 0.6);
+    float far = library_glow(uv, texel, radius * 2.6);
+    float halo = (near * 1.2 + far * 3.6) * intensity * 0.45 * beat;
 
     // A thin core along the middle of the shape burns white, and the rest of the shape keeps the glow color.
     float heat = smoothstep(0.94, 1.0, near) * shape;

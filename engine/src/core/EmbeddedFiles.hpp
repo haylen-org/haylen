@@ -30,8 +30,9 @@ class EmbeddedFiles final {
     [[nodiscard]] static std::span<const std::uint8_t> getShapeShader();
     [[nodiscard]] static std::span<const std::uint8_t> getBackdropShader();
 
-    // The shader package of the conformance tests of the GPU devices, which only `haylen-gpu-tests` embeds.
+    // The shader packages of the conformance tests of the GPU devices and of the material of the image tests that reads its texture at scattered points, which only `haylen-gpu-tests` embeds.
     [[nodiscard]] static std::span<const std::uint8_t> getConformanceShader();
+    [[nodiscard]] static std::span<const std::uint8_t> getScatteredSamplingShader();
 };
 
 } // namespace haylen::core

@@ -316,13 +316,14 @@ vec4 haylen_texture_grad(vec2 point, vec2 slopeX, vec2 slopeY) {
 #endif
 }
 
-// The texture of the draw at a point. The index of the texture of a sprite of a batch is the same across the quad of the sprite, but compilers cannot tell, so the lookup takes the slopes of the point before it picks the texture.
+// The texture of the draw at a point, read at the mip level of the footprint of a pixel. A point that jumps between neighboring pixels, such as one clamped into the source, snapped to a cell or turned by a different angle in each pixel, has slopes far larger than the pixel covers, which would pick a tiny mip level and smear the texture. So the lookup takes the smaller of the slopes of the point and those of the texture coordinate of the draw, which hold the footprint of the pixel for a point shifted from it. The index of the texture of a sprite of a batch is the same across the quad of the sprite, but compilers cannot tell, so the lookup takes the slopes before it picks the texture.
 vec4 haylen_texture(vec2 point) {
-#ifdef HAYLEN_BATCH
-    return haylen_texture_grad(point, dFdx(point), dFdy(point));
-#else
-    return texture(sampler2D(sprite_texture, sprite_sampler), point);
-#endif
+    vec2 pointX = dFdx(point);
+    vec2 pointY = dFdy(point);
+    vec2 drawX = dFdx(uv);
+    vec2 drawY = dFdy(uv);
+    bool steady = dot(pointX, pointX) + dot(pointY, pointY) <= dot(drawX, drawX) + dot(drawY, drawY);
+    return haylen_texture_grad(point, steady ? pointX : drawX, steady ? pointY : drawY);
 }
 
 // The size in texels of the texture of the draw.

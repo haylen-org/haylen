@@ -12,12 +12,14 @@
 #include <utility>
 #include <vector>
 
+#include "core/EmbeddedFiles.hpp"
 #include "gpu/DeviceFactory.hpp"
 #include "gpu/support/GpuFixture.hpp"
 #include "gpu/support/ImageComparison.hpp"
 #include "gpu/support/LoggedErrors.hpp"
 #include "gpu/support/OffscreenSurface.hpp"
 #include "haylen/2d/graphics/Camera.hpp"
+#include "haylen/2d/graphics/Material.hpp"
 #include "haylen/2d/graphics/PostProcess.hpp"
 #include "haylen/2d/graphics/Renderer.hpp"
 #include "haylen/2d/graphics/Shape.hpp"
@@ -30,6 +32,7 @@
 #include "haylen/core/SceneManager.hpp"
 #include "haylen/graphics/Device.hpp"
 #include "haylen/graphics/RenderTarget.hpp"
+#include "haylen/graphics/Shader.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Rect.hpp"
 #include "support/DrawingScene.hpp"
@@ -320,6 +323,36 @@ TEST_P(GpuRendererTest, FadesDrawsTowardTheEdgesOfTheirFades) {
         renderer.popClip();
     });
     // clang-format on
+}
+
+// A material that reads a mipmapped texture at points that jump from one pixel to the next reads the full texture, at the level of the footprint of the pixel, instead of the smallest level that the jumps would pick, which smears a glow or a beam into a blur.
+TEST_P(GpuRendererTest, ReadsTexturesAtThePixelFootprintWherePointsJump) {
+    graphics::Image checker(64, 64, math::Color::white());
+    for (int y = 0; y < 64; ++y) {
+        for (int x = 0; x < 64; ++x) {
+            checker.setPixel(x, y, (x + y) % 2 == 0 ? math::Color::fromHex(0xFF0000FFU) : math::Color::fromHex(0x0000FFFFU));
+        }
+    }
+    const graphics::Texture texture = fixture->engine().getGraphics().createTexture(checker, {.filter = graphics::Texture::Filter::Linear, .mipmaps = true});
+    const graphics2d::Material material(graphics::Shader::parse(core::EmbeddedFiles::getScatteredSamplingShader()));
+
+    // Every texel of the draw reads a texel at an even column and row, which is red, so a smaller level of the checker would show purple.
+    std::optional<graphics::Image> image;
+    // clang-format off
+    readScene("scattered sampling", [&](core::Engine&, graphics2d::Renderer& renderer, const graphics::RenderTarget& into) {
+        renderer.beginTarget(into, topLeft(), {.clear = math::Color::black()});
+        renderer.draw({.texture = texture, .position = {64.0F, 64.0F}, .size = {64.0F, 64.0F}, .order = {.material = material}});
+    }, image);
+    // clang-format on
+    ASSERT_TRUE(image.has_value());
+    int red = 0;
+    for (int y = 34; y < 94; ++y) {
+        for (int x = 34; x < 94; ++x) {
+            const math::Color pixel = image->getPixel(x, y);
+            red += pixel.r > 0.9F && pixel.b < 0.1F ? 1 : 0;
+        }
+    }
+    EXPECT_GE(red, 60 * 60 * 98 / 100);
 }
 
 INSTANTIATE_TEST_SUITE_P(Devices, GpuRendererTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);

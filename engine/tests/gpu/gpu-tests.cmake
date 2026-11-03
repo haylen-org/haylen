@@ -32,6 +32,8 @@ endif()
 target_link_libraries(haylen-gpu-tests PRIVATE haylen::engine haylen::headless haylen::gpu ${HAYLEN_GPU_TEST_LIBRARIES} ${HAYLEN_GPU_OFFSCREEN_LIBRARIES})
 target_include_directories(haylen-gpu-tests PRIVATE "${haylen_tests_dir}" "${HAYLEN_ENGINE_DIR}/src")
 haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/conformance.glsl" SYMBOL getConformanceShader)
+# The material of the image tests compiles into every program of a material, the way "haylen.py shaders" compiles the materials of apps.
+haylen_compile_shader(haylen-gpu-tests SOURCE "${haylen_tests_dir}/gpu/shaders/scattered-sampling.glsl" SYMBOL getScatteredSamplingShader VARIANTS "sprite=" "sprite_lit=HAYLEN_LIT" "batch=HAYLEN_BATCH" "batch_lit=HAYLEN_BATCH,HAYLEN_LIT" "text=HAYLEN_TEXT" "text_lit=HAYLEN_TEXT,HAYLEN_LIT" "mesh=HAYLEN_MESH" "mesh_lit=HAYLEN_MESH,HAYLEN_LIT" "shape=HAYLEN_SHAPE" "shape_lit=HAYLEN_SHAPE,HAYLEN_LIT")
 haylen_enable_warnings(haylen-gpu-tests)
 # The drivers of a laptop with two GPUs read which one the tests want from variables of the executable itself, which the variable `HAYLEN_TEST_GPU_LOW_POWER` turns to the integrated GPU.
 if(WIN32)

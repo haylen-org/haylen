@@ -42,8 +42,10 @@ void main() {
     float bolt = abs(side - electricArc_path(along, jump, 1.0) * jitter);
     float smoothed = abs(side - electricArc_path(along, jump, 0.0) * jitter);
     float core = 1.0 - smoothstep(thickness * 0.15, thickness * 0.45, bolt);
-    float window = (1.0 - smoothstep(0.3, 0.5, abs(side))) * smoothstep(0.0, 0.02, along) * smoothstep(1.0, 0.98, along);
-    float glow = (exp(-bolt / max(thickness, 0.005) * 0.6) * 1.1 + exp(-smoothed * 5.0) * 0.6) * window;
+    // The glow narrows toward the pinned ends, so it closes round around them instead of ending at the ends of the stroke.
+    float taper = max(sqrt(sin(along * 3.14159265)), 0.02);
+    float window = (1.0 - smoothstep(0.25, 0.5, abs(side))) * smoothstep(0.0, 0.03, along) * smoothstep(1.0, 0.97, along);
+    float glow = (exp(-bolt / max(thickness * taper, 0.005) * 0.9) * 1.1 + exp(-smoothed * 14.0 / taper) * 0.45) * window;
 
     // A thinner fork follows another path and shows only on some of the jumps.
     float forked = step(0.45, library_hash(vec2(jump, 11.0)));
