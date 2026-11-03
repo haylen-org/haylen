@@ -342,10 +342,10 @@ target_include_directories(haylen-nanosvg SYSTEM PUBLIC "${nanosvg_SOURCE_DIR}/s
 add_library(haylen-fast-float INTERFACE)
 target_include_directories(haylen-fast-float SYSTEM INTERFACE "${fast_float_SOURCE_DIR}/include")
 
-# The amalgamated source of HarfBuzz builds its OpenType shaper alone, without the shapers of legacy and AAT fonts.
-add_library(haylen-harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc")
+# The amalgamated source of HarfBuzz builds its OpenType shaper alone, without the shapers of legacy and AAT fonts, and the rasterizer of HarfBuzz paints the color glyphs of COLR fonts. The readers of bitmap and SVG glyphs stay out, since the engine draws neither.
+add_library(haylen-harfbuzz STATIC "${harfbuzz_SOURCE_DIR}/src/harfbuzz.cc" "${harfbuzz_SOURCE_DIR}/src/hb-raster-draw.cc" "${harfbuzz_SOURCE_DIR}/src/hb-raster-image.cc" "${harfbuzz_SOURCE_DIR}/src/hb-raster-paint.cc")
 target_include_directories(haylen-harfbuzz SYSTEM PUBLIC "${harfbuzz_SOURCE_DIR}/src")
-target_compile_definitions(haylen-harfbuzz PRIVATE HB_MINI)
+target_compile_definitions(haylen-harfbuzz PRIVATE HB_MINI HB_NO_BITMAP HB_NO_SVG)
 
 add_library(haylen-sheenbidi STATIC "${sheenbidi_SOURCE_DIR}/Source/SheenBidi.c")
 target_include_directories(haylen-sheenbidi SYSTEM PUBLIC "${sheenbidi_SOURCE_DIR}/Headers" PRIVATE "${sheenbidi_SOURCE_DIR}/Source")

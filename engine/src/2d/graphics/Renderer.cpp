@@ -451,7 +451,7 @@ void Renderer::drawTextLayout(const text::Layout& layout, math::Vec2 position, c
         look.font->sync();
     }
     TextPainter& painter = state->painter;
-    painter.paintText(layout, position, style, style.pixelSnap ? state->getPixelGrid() : std::nullopt);
+    painter.paintText(layout, position, style, {.pixelsPerUnit = state->getPixelsPerUnit(), .frame = state->frame}, style.pixelSnap ? state->getPixelGrid() : std::nullopt);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y);
     }
@@ -469,7 +469,7 @@ void Renderer::drawRichText(text::RichText& richText, math::Vec2 position, const
         look.font->sync();
     }
     TextPainter& painter = state->painter;
-    painter.paintRichText(frame, position, scale, tint);
+    painter.paintRichText(frame, position, {.pixelsPerUnit = state->getPixelsPerUnit(), .frame = state->frame}, scale, tint);
     for (const TextPainter::Batch& batch : painter.getBatches()) {
         state->addInstances(batch.program, order, batch.texture, batch.instances, position.y + frame.size.y * scale.y);
     }

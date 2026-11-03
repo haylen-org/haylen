@@ -10,9 +10,9 @@
 
 namespace haylen::graphics {
 
-struct VectorImageResource;
+class VectorImageResource;
 
-// Shared handle to a vector image read from an SVG document: paths and basic shapes with their fills and strokes, line joins, caps and dashes, linear and radial gradients, transforms, groups, opacity and the view box. The color `currentColor` paints white, so the color of a draw tints the parts that use it. It rasterizes at any scale on any thread.
+// Shared handle to a vector image: an SVG document with its paths and basic shapes, their fills and strokes, line joins, caps and dashes, linear and radial gradients, transforms, groups, opacity and the view box, or the color glyph of a font that `text::Font::Glyph` holds. The color `currentColor` of a document paints white, so the color of a draw tints the parts that use it. It rasterizes at any scale on any thread.
 class VectorImage final {
   public:
     VectorImage() = default;

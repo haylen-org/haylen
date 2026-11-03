@@ -8,6 +8,11 @@
 #include <graphemebreak.h>
 #include <linebreak.h>
 
+extern "C" {
+#include <eastasianwidthdef.h>
+#include <emojidef.h>
+}
+
 #include "text/PhraseBreaker.hpp"
 
 namespace haylen::text {
@@ -155,6 +160,14 @@ bool Segmenter::isInvisible(char32_t codePoint) noexcept {
 bool Segmenter::isCommon(char32_t codePoint) noexcept {
     const SBScript script = SBCodepointGetScript(codePoint);
     return script == SBScriptZYYY || script == SBScriptZINH;
+}
+
+// The pictographs that Unicode presents as emoji by default are the wide ones, which East Asian text sets in a full cell.
+bool Segmenter::hasEmojiPresentation(char32_t codePoint) noexcept {
+    const bool skinTone = codePoint >= kFirstSkinTone && codePoint <= kLastSkinTone;
+    const bool regionalIndicator = codePoint >= kFirstRegionalIndicator && codePoint <= kLastRegionalIndicator;
+    const bool widePictograph = ub_is_extended_pictographic(codePoint) && ub_get_char_eaw_class(codePoint) == EAW_W;
+    return skinTone || regionalIndicator || widePictograph;
 }
 
 char32_t Segmenter::getMirror(char32_t codePoint) noexcept {

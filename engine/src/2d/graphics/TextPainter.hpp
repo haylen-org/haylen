@@ -8,6 +8,7 @@
 
 #include "2d/graphics/GpuInstance.hpp"
 #include "2d/graphics/Program.hpp"
+#include "2d/graphics/VectorAtlas.hpp"
 #include "haylen/2d/graphics/SpriteInstance.hpp"
 #include "haylen/graphics/Texture.hpp"
 #include "haylen/math/Color.hpp"
@@ -17,7 +18,7 @@
 
 namespace haylen::graphics2d {
 
-// Turns laid out text into the instances the renderer draws. Glyphs of distance field fonts go through the text program with their outline, weight, skew and softness, while bitmap glyphs, images and filled boxes go through the sprite program. Consecutive instances of one program and texture share a batch, and batches keep the drawing order, so backgrounds, glows and shadows lie under the glyphs. Every paint replaces the batches of the one before and reuses their storage, so painting text that was painted before allocates nothing.
+// Turns laid out text into the instances the renderer draws. Glyphs of distance field fonts go through the text program with their outline, weight, skew and softness, while bitmap glyphs, images and filled boxes go through the sprite program, and so do color glyphs, as the rasters of their vector images that the vector atlas keeps at the size they cover. Consecutive instances of one program and texture share a batch, and batches keep the drawing order, so backgrounds, glows and shadows lie under the glyphs. Every paint replaces the batches of the one before and reuses their storage, so painting text that was painted before allocates nothing.
 class TextPainter final {
   public:
     struct Batch {
@@ -35,13 +36,19 @@ class TextPainter final {
         [[nodiscard]] float snapY(float y) const noexcept;
     };
 
-    explicit TextPainter(graphics::Texture whiteTexture);
+    // The canvas a paint draws into: how many of its pixels one of its units covers, which sizes the rasters of color glyphs, and the frame that draws them, which keeps their atlas pages in use.
+    struct Target {
+        float pixelsPerUnit = 1.0F;
+        std::uint64_t frame = 0;
+    };
+
+    TextPainter(graphics::Texture whiteTexture, VectorAtlas& vectorAtlas);
 
     // Paints a layout of plain text in the color, outline and shadow of the style, stretched and turned by the style as one piece around the position, where its anchor lands. With a grid, text that does not turn puts the left edge and the baseline of every line on whole pixels.
-    void paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, const std::optional<PixelGrid>& grid = std::nullopt);
+    void paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, const Target& canvas, const std::optional<PixelGrid>& grid = std::nullopt);
 
     // Paints rich text with the top-left of its block at the position, scaled from that corner and with every color multiplied by the tint.
-    void paintRichText(const text::Layout& layout, math::Vec2 position, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
+    void paintRichText(const text::Layout& layout, math::Vec2 position, const Target& canvas, math::Vec2 scale = {1.0F, 1.0F}, math::Color tint = math::Color::white());
 
     [[nodiscard]] std::span<const Batch> getBatches() const noexcept {
         return {batches.data(), batchCount};
@@ -63,6 +70,7 @@ class TextPainter final {
     [[nodiscard]] math::Vec2 place(math::Vec2 local) const noexcept;
 
     void add(Program program, const graphics::Texture& texture, const GpuInstance& instance);
+    void addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance instance);
     void paintPlainGlyphs(const text::Layout& layout, const text::Style& style, Layer layer);
     void paintBoxes(const text::Layout& layout, bool underText);
     void paintGlows(const text::Layout& layout);
@@ -71,6 +79,8 @@ class TextPainter final {
     void paintGlyphs(const text::Layout& layout);
 
     graphics::Texture white;
+    VectorAtlas& vectors;
+    Target target;
     std::vector<Batch> batches;
     std::size_t batchCount = 0;
     math::Vec2 blockPosition{};

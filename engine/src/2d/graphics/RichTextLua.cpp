@@ -283,7 +283,7 @@ int RichTextLua::frame(lua_State* L) {
         const text::Layout::Look& look = frame.looks[glyph.look];
         std::string character;
         core::Utf8::append(character, glyph.codePoint);
-        lua_createtable(L, 0, 11);
+        lua_createtable(L, 0, 12);
         lua::Stack::push(L, character);
         lua_setfield(L, -2, "char");
         lua::Stack::push(L, glyph.index);
@@ -304,6 +304,10 @@ int RichTextLua::frame(lua_State* L) {
         lua_setfield(L, -2, "syntheticBold");
         lua::Stack::push(L, look.skew != 0.0F);
         lua_setfield(L, -2, "syntheticItalic");
+        if (glyph.image.isValid()) {
+            lua::Stack::push(L, glyph.image);
+            lua_setfield(L, -2, "image");
+        }
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
     lua_setfield(L, -2, "glyphs");

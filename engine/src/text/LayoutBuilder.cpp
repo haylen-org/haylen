@@ -1018,6 +1018,7 @@ void LayoutBuilder::emitPiece(const Flow& flow, std::u32string_view text, const 
             .source = placed.glyph.source,
             .page = placed.glyph.page,
             .color = getColor(piece.style),
+            .image = placed.glyph.image,
         });
     }
 }

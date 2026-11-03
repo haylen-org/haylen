@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/math/Color.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
@@ -32,7 +33,7 @@ struct Layout {
         std::optional<RichTextDocument::Glow> glow;
     };
 
-    // A glyph with its index in its font, the top-left and size of its quad, its baseline, which effects and the skew move it around, and the page region it shows. The code point is the first one of its character.
+    // A glyph with its index in its font, the top-left and size of its quad, its baseline, which effects and the skew move it around, and the page region it shows. The code point is the first one of its character. A color glyph shows the vector image of its colors in its quad instead, with the alpha of its color and without the rest of it.
     struct Glyph {
         std::size_t look = 0;
         std::size_t style = 0;
@@ -46,6 +47,7 @@ struct Layout {
         std::uint16_t page = 0;
         math::Color color = math::Color::white();
         bool visible = true;
+        graphics::VectorImage image;
     };
 
     // A filled rectangle. Backgrounds, underlines and strikes cover the characters of their text and grow with the reveal from the side their text starts, while rules and the backgrounds and borders of table cells show once the reveal reaches the character after them.

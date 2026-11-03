@@ -2,15 +2,14 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <string_view>
-#include <vector>
 
-#include "graphics/VectorImageResource.hpp"
+#include "graphics/SvgDocument.hpp"
 
 #include <nanosvg.h>
-#include <nanosvgrast.h>
 
 namespace haylen::graphics {
 
@@ -23,39 +22,34 @@ VectorImage VectorImage::parse(std::span<const std::uint8_t> bytes) {
         text.replace(found, kCurrent.size(), kWhite);
     }
 
-    auto resource = std::make_shared<VectorImageResource>();
-    resource->document = {nsvgParse(text.data(), "px", 96.0F), &nsvgDelete};
-    if (!resource->document || !(resource->document->width > 0.0F && resource->document->height > 0.0F)) {
+    std::unique_ptr<NSVGimage, void (*)(NSVGimage*)> document{nsvgParse(text.data(), "px", 96.0F), &nsvgDelete};
+    if (!document || !(document->width > 0.0F && document->height > 0.0F)) {
         throw std::invalid_argument("The bytes are not an SVG document with a size. Give its root element a view box, or a width and a height.");
     }
-    resource->size = {resource->document->width, resource->document->height};
-    return VectorImage(std::move(resource));
+    const math::Vec2 size{document->width, document->height};
+    return VectorImage(std::make_shared<SvgDocument>(std::move(document), size));
 }
 
 math::Vec2 VectorImage::getSize() const {
-    return resource->size;
+    return resource->getSize();
 }
 
 std::uint32_t VectorImage::getId() const {
-    return resource->id;
+    return resource->getId();
 }
 
 std::pair<int, int> VectorImage::getRasterSize(math::Vec2 size, float scale) noexcept {
     return {std::max(1, static_cast<int>(std::ceil(size.x * scale))), std::max(1, static_cast<int>(std::ceil(size.y * scale)))};
 }
 
-// The size is checked in floating point before it becomes whole pixels, so a document of any size fails with the reason instead of overflowing.
+// The size is checked in floating point before it becomes whole pixels, so an image of any size fails with the reason instead of overflowing.
 Image VectorImage::rasterize(float scale) const {
-    const math::Vec2 extent = resource->size * scale;
+    const math::Vec2 extent = resource->getSize() * scale;
     if (!(std::ceil(extent.x) <= static_cast<float>(Image::kMaxSide) && std::ceil(extent.y) <= static_cast<float>(Image::kMaxSide))) {
         throw std::invalid_argument("The raster of the vector image at this scale would have more than " + std::to_string(Image::kMaxSide) + " pixels on a side. Rasterize it at a smaller scale.");
     }
 
-    const auto [width, height] = getRasterSize(resource->size, scale);
-    std::vector<std::uint8_t> pixels(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
-    const std::unique_ptr<NSVGrasterizer, decltype(&nsvgDeleteRasterizer)> rasterizer(nsvgCreateRasterizer(), &nsvgDeleteRasterizer);
-    nsvgRasterize(rasterizer.get(), resource->document.get(), 0.0F, 0.0F, scale, pixels.data(), width, height, width * 4);
-    return {width, height, std::move(pixels)};
+    return resource->rasterize(scale);
 }
 
 } // namespace haylen::graphics

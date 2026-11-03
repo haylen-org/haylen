@@ -1,5 +1,6 @@
 #include "2d/graphics/TextPainter.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <utility>
 
@@ -8,7 +9,7 @@
 
 namespace haylen::graphics2d {
 
-TextPainter::TextPainter(graphics::Texture whiteTexture) : white(std::move(whiteTexture)) {}
+TextPainter::TextPainter(graphics::Texture whiteTexture, VectorAtlas& vectorAtlas) : white(std::move(whiteTexture)), vectors(vectorAtlas) {}
 
 float TextPainter::PixelGrid::snapX(float x) const noexcept {
     return (std::round(x * scale.x + offset.x) - offset.x) / scale.x;
@@ -39,9 +40,22 @@ void TextPainter::add(Program program, const graphics::Texture& texture, const G
     batches[batchCount - 1].instances.push_back(instance);
 }
 
-// Plain text turns as one piece around the position, so every glyph turns around its baseline at a turned place. It draws in layers: shadows, the same glyphs moved by the offset on the screen in the shadow color with the blur as softness, where a bitmap shadow is the silhouette of its glyph, then the outlines of every glyph, and the fills over them, so no outline covers a neighbouring letter.
-void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, const std::optional<PixelGrid>& grid) {
+// A color glyph draws the raster of its vector image that suits the pixels its quad covers, through the sprite program.
+void TextPainter::addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance instance) {
+    const math::Vec2 natural = glyph.image.getSize();
+    const float scale = std::max(std::fabs(instance.size.x) / natural.x, std::fabs(instance.size.y) / natural.y) * target.pixelsPerUnit;
+    if (!(scale > 0.0F && std::isfinite(scale))) {
+        return;
+    }
+    const VectorAtlas::Raster raster = vectors.find(glyph.image, scale, target.frame);
+    instance.source = raster.source;
+    add(Program::Sprite, raster.texture, GpuInstance::make(*raster.texture.getResource(), instance));
+}
+
+// Plain text turns as one piece around the position, so every glyph turns around its baseline at a turned place. It draws in layers: shadows, the same glyphs moved by the offset on the screen in the shadow color with the blur as softness, where the shadow of a bitmap or color glyph is its silhouette, then the outlines of every glyph, and the fills over them, so no outline covers a neighbouring letter.
+void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, const text::Style& style, const Target& canvas, const std::optional<PixelGrid>& grid) {
     clear();
+    target = canvas;
     blockPosition = position;
     blockOrigin = layout.size * style.anchor;
     blockScale = style.scale;
@@ -58,7 +72,7 @@ void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, con
     paintBoxes(layout, false);
 }
 
-// A synthetic bold bitmap glyph draws a second copy a native pixel to the right. Only distance field glyphs have outlines.
+// A synthetic bold bitmap glyph draws a second copy a native pixel to the right. Only distance field glyphs have outlines, and color glyphs fill with their own colors in the alpha of the text.
 void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style& style, Layer layer) {
     std::size_t line = 0;
     for (const text::Layout::Glyph& glyph : layout.glyphs) {
@@ -71,9 +85,20 @@ void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style
             lineShift = pixels->snapX(left) - left;
         }
         const text::Layout::Look& look = layout.looks[glyph.look];
-        const bool field = look.font->isDistanceField();
+        const bool colored = glyph.image.isValid();
+        const bool field = look.font->isDistanceField() && !colored;
         const float outline = look.font->toDistance(style.outlineWidth, look.size);
         if (layer == Layer::Outline && !(field && outline > 0.0F)) {
+            continue;
+        }
+
+        const math::Vec2 moved = layer == Layer::Shadow ? style.shadowOffset : math::Vec2{};
+        if (colored) {
+            const bool shadow = layer == Layer::Shadow;
+            const math::Color color = shadow ? style.shadowColor : math::Color::white().withAlpha(style.color.a);
+            SpriteInstance instance = placeGlyph(glyph, {}, color, shadow ? color.withAlpha(1.0F) : math::Color::transparent());
+            instance.position += moved;
+            addColorGlyph(glyph, instance);
             continue;
         }
 
@@ -93,7 +118,6 @@ void TextPainter::paintPlainGlyphs(const text::Layout& layout, const text::Style
 
         const graphics::Texture& page = look.font->getPage(glyph.page);
         const Program program = field ? Program::Text : Program::Sprite;
-        const math::Vec2 moved = layer == Layer::Shadow ? style.shadowOffset : math::Vec2{};
         SpriteInstance instance = placeGlyph(glyph, {}, color, flash);
         instance.position += moved;
         add(program, page, GpuInstance::makeGlyph(*page.getResource(), instance, parameters));
@@ -134,8 +158,9 @@ SpriteInstance TextPainter::placeGlyph(const text::Layout::Glyph& glyph, math::V
 }
 
 // Rich text draws in layers: backgrounds, glows, shadows, images, outlines, glyphs, and then the lines over the text.
-void TextPainter::paintRichText(const text::Layout& layout, math::Vec2 position, math::Vec2 scale, math::Color tint) {
+void TextPainter::paintRichText(const text::Layout& layout, math::Vec2 position, const Target& canvas, math::Vec2 scale, math::Color tint) {
     clear();
+    target = canvas;
     blockPosition = position;
     blockOrigin = {};
     blockScale = scale;
@@ -165,11 +190,11 @@ void TextPainter::paintBoxes(const text::Layout& layout, bool underText) {
     }
 }
 
-// A glow is the outline of the glyph grown by half the glow width and softened over the other half, so it fades out a glow width away from the edge of the outline. Only distance field fonts glow.
+// A glow is the outline of the glyph grown by half the glow width and softened over the other half, so it fades out a glow width away from the edge of the outline. Only the glyphs of distance fields glow.
 void TextPainter::paintGlows(const text::Layout& layout) {
     for (const text::Layout::Glyph& glyph : layout.glyphs) {
         const text::Layout::Look& look = layout.looks[glyph.look];
-        if (!glyph.visible || !look.glow || !look.font->isDistanceField()) {
+        if (!glyph.visible || !look.glow || !look.font->isDistanceField() || glyph.image.isValid()) {
             continue;
         }
         const float half = look.glow->width * 0.5F;
@@ -186,8 +211,12 @@ void TextPainter::paintShadows(const text::Layout& layout) {
         if (!glyph.visible || !look.shadow) {
             continue;
         }
-        const bool field = look.font->isDistanceField();
         const math::Color color = look.shadow->color.withAlpha(look.shadow->color.a * glyph.color.a);
+        if (glyph.image.isValid()) {
+            addColorGlyph(glyph, placeGlyph(glyph, look.shadow->offset, color, color.withAlpha(1.0F)));
+            continue;
+        }
+        const bool field = look.font->isDistanceField();
         const float outline = look.font->toDistance(look.outlineWidth, look.size);
         const math::Color flash = field ? color.withAlpha(outline > 0.0F ? color.a : 0.0F) : color.withAlpha(1.0F);
         const GpuInstance::TextParameters shadow{.outline = outline, .weight = look.font->toDistance(look.weight, look.size), .width = look.font->toDistance(glyph.size.x, look.size), .skew = look.skew, .softness = look.font->toDistance(look.shadow->blur, look.size)};
@@ -201,7 +230,7 @@ void TextPainter::paintOutlines(const text::Layout& layout) {
     for (const text::Layout::Glyph& glyph : layout.glyphs) {
         const text::Layout::Look& look = layout.looks[glyph.look];
         const float outline = look.font->toDistance(look.outlineWidth, look.size);
-        if (!glyph.visible || !look.font->isDistanceField() || outline <= 0.0F) {
+        if (!glyph.visible || !look.font->isDistanceField() || glyph.image.isValid() || outline <= 0.0F) {
             continue;
         }
         const math::Color flash = look.outlineColor.withAlpha(look.outlineColor.a * glyph.color.a);
@@ -211,10 +240,14 @@ void TextPainter::paintOutlines(const text::Layout& layout) {
     }
 }
 
-// A synthetic bold bitmap glyph draws a second copy a native pixel to the right.
+// A synthetic bold bitmap glyph draws a second copy a native pixel to the right, and a color glyph draws in its own colors with the alpha of its color.
 void TextPainter::paintGlyphs(const text::Layout& layout) {
     for (const text::Layout::Glyph& glyph : layout.glyphs) {
         if (!glyph.visible) {
+            continue;
+        }
+        if (glyph.image.isValid()) {
+            addColorGlyph(glyph, placeGlyph(glyph, {}, math::Color::white().withAlpha(glyph.color.a), math::Color::transparent()));
             continue;
         }
         const text::Layout::Look& look = layout.looks[glyph.look];

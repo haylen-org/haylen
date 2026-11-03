@@ -57,6 +57,7 @@ class FontLua final {
     [[nodiscard]] static float capHeight(text::Font& font, float size);
     [[nodiscard]] static float toDistance(text::Font& font, float pixels, float size);
     static int hasGlyph(lua_State* L);
+    static int hasColorGlyph(lua_State* L);
     static int glyph(lua_State* L);
     static int glyphByIndex(lua_State* L);
     static int shape(lua_State* L);

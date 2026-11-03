@@ -3400,7 +3400,7 @@ Returns the text as it draws at this moment, with its effects applied and the ch
 
 | Field | Entries |
 | --- | --- |
-| `glyphs` | `char` (the first code point of its character), `index` (the glyph index in its font), `character` (counted from 1), `rect` (the quad), `baseline`, `color`, `visible`, `size` (the text size), `syntheticBold` and `syntheticItalic`, in the order the lines show them. |
+| `glyphs` | `char` (the first code point of its character), `index` (the glyph index in its font), `character` (counted from 1), `rect` (the quad), `baseline`, `color`, `visible`, `size` (the text size), `syntheticBold` and `syntheticItalic`, and for a color glyph `image`, the `VectorImage` of its colors, in the order the lines show them. |
 | `boxes` | `kind` (`'background'`, `'underline'`, `'strike'`, `'rule'`, `'cellBackground'` or `'cellBorder'`), `rect`, `color` and `visible`. |
 | `images` | `rect`, `texture` and `visible` of every image and icon. |
 | `links` | `rect` and `link` of every piece of a link, several when it wraps. |

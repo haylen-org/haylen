@@ -232,7 +232,7 @@ struct RendererState {
     bool canvasOpen = false;
     Renderer::Stats stats{};
 
-    RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem), white(graphicsDevice.getWhiteTexture()), vectors(graphicsDevice, jobSystem), painter(white) {}
+    RendererState(graphics::Device& graphicsDevice, core::JobSystem& jobSystem) : device(graphicsDevice), jobs(jobSystem), white(graphicsDevice.getWhiteTexture()), vectors(graphicsDevice, jobSystem), painter(white, vectors) {}
 
     [[nodiscard]] gpu::Device& getGpu() noexcept {
         return device.getGpu();

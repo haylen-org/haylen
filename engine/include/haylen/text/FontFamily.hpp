@@ -47,7 +47,7 @@ class FontFamily final {
     // Picks the face for a style. Mono text uses the mono face, or the regular faces when the family has none, and the mono face synthesizes bold and italic.
     [[nodiscard]] Selection select(bool bold, bool italic, bool mono) const noexcept;
 
-    // Picks the font that draws one character, a letter with the marks and joiners of its cluster: the selected face when it has every code point that shows, otherwise the first fallback that has them all, which synthesizes the requested styles, then the first font that has the letter itself, and otherwise the selected face, which draws its missing glyph. Spaces, punctuation and digits pass the font of the text before them, which they keep when it is a fallback that has them, so a run of another script keeps its own spaces and punctuation.
+    // Picks the font that draws one character, a letter with the marks and joiners of its cluster: the selected face when it has every code point that shows, otherwise the first fallback that has them all, which synthesizes the requested styles, then the first font that has the letter itself, and otherwise the selected face, which draws its missing glyph. A character that shows as an emoji by default, such as a face or a star, or through the variation selector U+FE0F first looks for a font that draws it as a color glyph, and one with U+FE0E for a font that draws it in the color of the text. Spaces, punctuation and digits pass the font of the text before them, which they keep when it is a fallback that has them, so a run of another script keeps its own spaces and punctuation.
     [[nodiscard]] Selection resolve(const Selection& face, std::u32string_view cluster, bool bold, bool italic, Font* previous = nullptr) const;
 
     // Lays UTF-8 text out like a font does, with the faces the bold and italic of the style pick and the fallbacks for what they lack. Layouts are cached by text and style.
@@ -56,6 +56,9 @@ class FontFamily final {
     [[nodiscard]] math::Vec2 measure(std::string_view text, const Style& style);
 
   private:
+    static constexpr char32_t kTextPresentation = U'\U0000FE0E';
+    static constexpr char32_t kEmojiPresentation = U'\U0000FE0F';
+
     static debug::ObjectCounter& counter;
 
     [[nodiscard]] static bool covers(Font& font, std::u32string_view cluster);

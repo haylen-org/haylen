@@ -188,7 +188,7 @@ The 2D camera following, framing, shaking, turning and splitting the view, with 
 
 #### Text and fonts (TXT)
 
-TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wrapping, fitting text in a box, rich text, effects and measuring. The tests are in `source/categories/text/`. Each test draws on a page that fills its play area with a margin around it, at the zoom that fits the smallest size of the page, and spreads its content over the room the area adds, so every screen shows the same page at its own scale. Bitmap fonts draw at sizes where each pixel of the font covers whole pixels of the screen.
+TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wrapping, fitting text in a box, rich text, effects, color emoji and measuring. The tests are in `source/categories/text/`. Each test draws on a page that fills its play area with a margin around it, at the zoom that fits the smallest size of the page, and spreads its content over the room the area adds, so every screen shows the same page at its own scale. Bitmap fonts draw at sizes where each pixel of the font covers whole pixels of the screen.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -206,6 +206,7 @@ TrueType, OpenType and bitmap fonts, families and fallbacks, complex scripts, wr
 | `TXT-012` | Measuring text | Text sizes, glyph quads, ascent, baseline and line height, glyph metrics, shaped advances with kerning, and rich text layouts. |  |
 | `TXT-013` | Outlines and small text | Outlines that reach the letters beside them at every size, and small text that moves at its exact place or snapped to whole pixels. |  |
 | `TXT-014` | Fitting text in a box | A name that shrinks to fit the width of its plate and a story that shrinks until its lines fit the height of its box, down to the smallest scale. |  |
+| `TXT-015` | Color emoji | Color emoji in labels, a field, buttons and rich text, emoji sequences joined into one glyph, the variation selectors of symbols and emoji, and a font whose letters are color layers. |  |
 
 #### Lighting (LIT)
 

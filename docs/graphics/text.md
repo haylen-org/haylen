@@ -34,7 +34,7 @@ scene.push({
 
 Fonts live in `engine/include/haylen/text/`. Both kinds sit behind one interface, `text::Font`, which lays plain text out the same way for both: shaped glyphs at a native size, and texture pages that hold them.
 
-The class `text::TrueTypeFont` shapes text with HarfBuzz and draws through the distance field:
+The class `text::TrueTypeFont` shapes text with HarfBuzz and draws through the distance field, except the color glyphs that [color emoji](#color-emoji) describes:
 
 - A glyph is made by its index in the font the first time a string uses it. The reader `stb_truetype` reads its outline: lines, quadratic curves and the cubic curves of CFF fonts.
 - The core of msdfgen turns the outline into its exact distance field. It works at the `bakeSize` of the font, 48 by default, which is the size of the em square, with a distance `spread` of 8 pixels.
@@ -144,6 +144,52 @@ local story = graphics.newFontFamily({
     fallbacks = {assets.font('fonts/cjk.ttf')},
 })
 local face, syntheticBold, syntheticItalic = story:select({bold = true, italic = true})
+```
+
+## Color emoji
+
+A color font holds glyphs that paint themselves in colors: emoji, and the letters of display fonts drawn in several layers. Haylen draws the color glyphs of the `COLR` table of a TrueType or OpenType font, in both versions of the table:
+
+- Version 0 stacks layers of outlines, each filled with a color of the `CPAL` palette of the font.
+- Version 1 paints a graph of layers with solid colors, linear, radial and sweep gradients, transforms and blend modes, which is how current emoji fonts draw their shading.
+
+Emoji come from a fallback font. Add a `COLR` emoji font, such as the `COLR` build of Noto Color Emoji, to the fallbacks of a family. Then every place that draws text with that family shows its emoji: `graphics2d.drawText`, rich text, and the labels, buttons and fields of the UI. The engine embeds no emoji font, since a full one takes megabytes, so an app adds the one it wants, and a subset of the emoji it shows keeps the package small.
+
+A color glyph draws as a picture instead of a distance field:
+
+- The class `text::TrueTypeFont` gives a color glyph a vector image, a `graphics::VectorImage`, and no room in its atlas. The image is the box of what the glyph paints, at the native size of the font.
+- The rasterizer of HarfBuzz paints the image into RGBA pixels with the first palette of the font. It runs on any thread.
+- Text draws each color glyph from the vector atlas of the renderer, the way [`graphics2d.drawVector`](rendering.md#vector-images) draws an SVG image. It takes the raster of the step that covers the pixels the glyph takes on the screen, so emoji stay sharp at every size, zoom and density. The first raster of a glyph is made at once on the frame thread, and other sizes are made on the task pool. A frame that draws what the frame before drew makes no raster and allocates nothing.
+- A color glyph keeps its own colors. The color of the text does not tint it, but its alpha applies, so text that fades fades its emoji too.
+- The shadow of a color glyph is its silhouette in the shadow color, without blur. Outlines, glows, synthetic bold and synthetic italic come from the distance field, so a color glyph draws without them.
+- The parts that a glyph paints in the color of the text, the foreground of a `COLR` table, paint white.
+
+An emoji sequence joins several emoji into one, such as a thumb with a skin tone or a family of three people joined by zero-width joiners. The whole sequence is one character for the caret, the selection and the typewriter. It draws as the one glyph of its ligature when the font has one, and as its emoji side by side when the font lacks it.
+
+Many characters have a text form and an emoji form, and symbol fonts often have the same characters as emoji fonts. Unicode says which form each character shows by default. Wide pictographs, such as faces, hands and ⭐, show as emoji, and so do skin tones and the letters of flags. Narrow ones, such as ☀ and ❤, show as text. The layout takes the first font of the family that draws a character in the form it shows, a color glyph for an emoji and a glyph in the color of the text for text, and the usual order of the family when no font has that form. The variation selector U+FE0F after a character asks for its emoji form, and U+FE0E for its text form.
+
+The method `font:hasColorGlyph(character)` tells whether a font draws a character in color. The `image` of `font:glyph(character)` is the vector image of a color glyph, which `graphics2d.drawVector` draws as a picture of any size.
+
+```lua
+local assets = require('haylen.assets')
+local graphics = require('haylen.graphics')
+local graphics2d = require('haylen.graphics2d')
+local scene = require('haylen.scene')
+local ui = require('haylen.ui')
+
+local emoji = assets.font('fonts/noto-color-emoji-regular.ttf')
+local chat = graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {emoji}})
+ui.addFont('chat', chat)
+ui.setTheme(ui.addTheme({name = 'chat', fonts = {body = {font = 'chat'}}}, 'dark'))
+ui.mount(ui.column{ui.label{text = 'Party time \u{1F389}'}, ui.textField{value = 'Ship it \u{1F680}'}}, {placement = 'screen'})
+
+scene.push({
+    renderUi = function(self)
+        graphics2d.beginScreen()
+        graphics2d.drawText(chat, 'Level up \u{2B50}\u{FE0F}', 40, 400, {size = 48, color = '#C0FFFFFF'})
+        graphics2d.drawVector(emoji:glyph('\u{1F525}').image, 40, 480, {width = 128, height = 128, pivotX = 0, pivotY = 0})
+    end,
+})
 ```
 
 ## Scripts and directions
@@ -562,7 +608,7 @@ engine.getRenderer2D().drawText(world, "مرحبا 42 (Harbor)", {48.0F, 160.0F}
 - Bitmap fonts draw one glyph per code point, so Arabic, Indic and other scripts that join or combine their letters need a TrueType or OpenType font.
 - Lao, Khmer and Burmese lines break only at spaces and punctuation, since the engine has a phrase model for Thai alone.
 - Every line is shaped as part of its paragraph and never shaped again after it wraps. So a letter at the end of a wrapped line keeps the joining form it had before the break.
-- Glyphs draw from their outlines, so emoji come from a fallback font that holds them as outlines, such as Noto Emoji, in the color of the text. The images and color layers of color emoji fonts do not show. An emoji sequence joined by zero-width joiners stays one character, which draws as one glyph only where the font has a ligature for it.
+- Color glyphs come from the `COLR` table alone. The engine builds HarfBuzz without the readers of the bitmap tables `CBDT` and `sbix` and of the `SVG` table, so a font that holds its emoji only as bitmaps or SVG documents, such as the bitmap build of Noto Color Emoji, draws them from their outlines, and the emoji of such fonts have none, so they draw nothing. Bitmaps blur when they scale and take far more room than the curves of `COLR`, which suit text drawn at any size, so use the `COLR` build of such a font.
 - Vertical text and the ruby annotations of Japanese are not laid out.
 - Text has no tab stops, so a tab takes no room, and columns of text belong in a `[table]` or in separate draws.
-- Text drawn by `haylen.imgui` goes through Dear ImGui, which neither shapes nor orders it, so debug windows show complex scripts unshaped.
+- Text drawn by `haylen.imgui` goes through Dear ImGui, which neither shapes nor orders it and draws no color glyphs, so debug windows show complex scripts unshaped and no color emoji.

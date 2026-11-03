@@ -19,13 +19,14 @@ namespace haylen {
 
 class TextLuaTest : public ::testing::Test {
   protected:
-    // A bitmap font, an image and the Hebrew test font.
+    // A bitmap font, an image, the Hebrew test font and the color emoji test font.
     [[nodiscard]] static std::map<std::string, std::string> fontFiles() {
         const std::vector<std::uint8_t> image = test::TestFiles::pngImage(32, 16, 0xFFFFFFFFU);
         const std::string png(image.begin(), image.end());
         const std::string bmfont = "info face=\"Pixel\" size=8\ncommon lineHeight=10 base=8 pages=1\npage id=0 file=\"pixel.png\"\nchar id=65 x=0 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nchar id=66 x=8 y=0 width=8 height=8 xoffset=0 yoffset=0 xadvance=9 page=0\nkerning first=65 second=66 amount=-1\n";
         std::ifstream hebrew(std::string(HAYLEN_TEST_FONTS) + "/noto-sans-hebrew-regular.ttf", std::ios::binary);
-        return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}};
+        std::ifstream emoji(std::string(HAYLEN_TEST_FONTS) + "/noto-color-emoji-regular.ttf", std::ios::binary);
+        return {{"content/fonts/pixel.fnt", bmfont}, {"content/fonts/pixel.png", png}, {"content/images/coin.png", png}, {"content/fonts/hebrew.ttf", {std::istreambuf_iterator<char>(hebrew), std::istreambuf_iterator<char>()}}, {"content/fonts/emoji.ttf", {std::istreambuf_iterator<char>(emoji), std::istreambuf_iterator<char>()}}};
     }
 
     void SetUp() override {
@@ -99,6 +100,16 @@ TEST_F(TextLuaTest, InspectsFontsAndBuildsFamilies) {
     EXPECT_NE(lua("font:glyphByIndex(-1)").find("expected a glyph index"), std::string::npos);
 }
 
+// A color glyph tells it draws in its own colors and hands its vector image to the glyph, the quads of a layout and the glyphs of rich text, and the image draws as a sprite of any size.
+TEST_F(TextLuaTest, InspectsColorGlyphs) {
+    lua("emoji = assets.font('fonts/emoji.ttf') family = graphics.newFontFamily({regular = font, fallbacks = {emoji}})");
+    EXPECT_EQ(lua("return tostring(emoji:hasColorGlyph('\\u{1F600}')) .. ' ' .. tostring(emoji:hasColorGlyph('A')) .. ' ' .. tostring(font:hasColorGlyph('A')) .. ' ' .. tostring(font:glyph('A').image)"), "true false false nil");
+    EXPECT_EQ(lua("local glyph = emoji:glyph('\\u{1F600}') local width, height = glyph.image.width, glyph.image.height return tostring(glyph.visible) .. ' ' .. tostring(width == glyph.source.width and height == glyph.source.height and width > 40)"), "true true");
+    EXPECT_EQ(lua("local quads = family:layout('A\\u{1F680}', {size = 24}).quads return tostring(quads[1].image) .. ' ' .. tostring(quads[2].image == emoji:glyph('\\u{1F680}').image) .. ' ' .. tostring(quads[2].font == emoji)"), "nil true true");
+    EXPECT_EQ(lua("local glyphs = graphics2d.newRichText('A\\u{1F680}', {family = family}):frame().glyphs return tostring(glyphs[1].image) .. ' ' .. tostring(glyphs[2].image ~= nil)"), "nil true");
+    EXPECT_EQ(render("graphics2d.beginScreen() graphics2d.drawVector(emoji:glyph('\\u{1F525}').image, 10, 10, {width = 64, height = 64})"), "nil");
+}
+
 TEST_F(TextLuaTest, RejectsFontOptionsAndLengthsOutOfRange) {
     EXPECT_NE(lua("assets.font('fonts/hebrew.ttf', {bakeSize = 0})").find("The bake size of a TrueType font must be positive and at most the maximum texture size of"), std::string::npos);
     EXPECT_NE(lua("assets.font('fonts/hebrew.ttf', {spread = 0})").find("The spread of a TrueType font must be positive"), std::string::npos);
@@ -156,6 +167,10 @@ TEST_F(TextLuaTest, KeepsTheLayoutOfRichTextDrawnEveryFrame) {
     // clang-format on
     const std::size_t empty = measure("");
     EXPECT_EQ(measure("graphics2d.drawRichText('[wave]Moving[/wave] [b]bold[/b] text', 10, 20, {size = 24, maxWidth = 400}) graphics2d.measureRichText('[b]Score[/b]', {size = 24})"), empty);
+
+    // Color emoji draw the rasters their atlas keeps, so they allocate nothing either once they have drawn.
+    lua("emoji = graphics.newFontFamily({regular = font, fallbacks = {assets.font('fonts/emoji.ttf')}})");
+    EXPECT_EQ(measure("graphics2d.drawRichText('[wave]Party[/wave] \\u{1F389} [b]\\u{1F525}[/b]', 10, 20, {family = emoji, size = 24}) graphics2d.drawText(emoji, 'Ship \\u{1F680}\\u{2B50}', 10, 80, {size = 32, shadowOffset = {2, 2}, shadowColor = '#80000000'})"), empty);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_GT(lua("return graphics2d.stats().sprites"), "0");
 

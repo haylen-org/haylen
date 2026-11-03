@@ -222,6 +222,7 @@ set(HAYLEN_TEST_SOURCES
   support/TestFiles.cpp
   support/UiFixture.cpp
   text/BitmapFontTests.cpp
+  text/ColorGlyphTests.cpp
   text/FontTests.cpp
   text/RichTextLayoutTests.cpp
   text/RichTextMarkupTests.cpp

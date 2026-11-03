@@ -3,6 +3,8 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <fstream>
+#include <iterator>
 #include <memory>
 #include <span>
 #include <string>
@@ -15,7 +17,9 @@
 #include "haylen/graphics/Image.hpp"
 #include "haylen/plugins/TextPlugin.hpp"
 #include "haylen/text/BitmapFont.hpp"
+#include "haylen/text/FontFamily.hpp"
 #include "haylen/text/RichText.hpp"
+#include "haylen/text/TrueTypeFont.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::graphics2d {
@@ -33,10 +37,21 @@ class TextPainterTest : public ::testing::Test {
     }
 
     [[nodiscard]] std::vector<TextPainter::Batch> paint(text::RichText& richText) {
-        TextPainter painter(fixture.engine().getGraphics().getWhiteTexture());
-        painter.paintRichText(richText.getFrame(), {100.0F, 50.0F});
+        TextPainter painter = makePainter();
+        painter.paintRichText(richText.getFrame(), {100.0F, 50.0F}, {});
         const std::span<const TextPainter::Batch> batches = painter.getBatches();
         return {batches.begin(), batches.end()};
+    }
+
+    // The default font with the color emoji test font as its fallback.
+    [[nodiscard]] std::shared_ptr<text::FontFamily> makeEmojiFamily() {
+        std::ifstream file(std::string(HAYLEN_TEST_FONTS) + "/noto-color-emoji-regular.ttf", std::ios::binary);
+        auto emoji = std::make_shared<text::TrueTypeFont>(fixture.engine().getGraphics(), std::vector<std::uint8_t>(std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()));
+        return std::make_shared<text::FontFamily>(text::FontFamily::Faces{.regular = fixture.engine().getDefaultFont(), .fallbacks = {emoji}});
+    }
+
+    [[nodiscard]] TextPainter makePainter() {
+        return {fixture.engine().getGraphics().getWhiteTexture(), atlas};
     }
 
     // Decodes a parameter byte the way the shaders read a signed one.
@@ -45,6 +60,7 @@ class TextPainterTest : public ::testing::Test {
     }
 
     test::EngineFixture fixture;
+    VectorAtlas atlas{fixture.engine().getGraphics(), fixture.engine().getJobs()};
 };
 
 } // namespace
@@ -87,8 +103,8 @@ TEST_F(TextPainterTest, PacksSyntheticStylesIntoTheGlyphParameters) {
 TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
     text::Font& font = *fixture.engine().getDefaultFont();
     const text::Style style{.size = 48.0F, .color = math::Color::white(), .outlineWidth = 4.0F, .outlineColor = math::Color::black()};
-    TextPainter painter(fixture.engine().getGraphics().getWhiteTexture());
-    painter.paintText(*font.layout("WAVE", style), {}, style);
+    TextPainter painter = makePainter();
+    painter.paintText(*font.layout("WAVE", style), {}, style, {});
     ASSERT_EQ(painter.getBatches().size(), 1U);
     const std::vector<GpuInstance>& instances = painter.getBatches()[0].instances;
     ASSERT_EQ(instances.size(), 8U);
@@ -116,8 +132,8 @@ TEST_F(TextPainterTest, DrawsEveryOutlineUnderEveryFill) {
 
 TEST_F(TextPainterTest, ScalesAndTintsRichTextFromItsCorner) {
     text::RichText boxed = make("[bgcolor=white]ab[/bgcolor]", {.size = 20.0F});
-    TextPainter painter(fixture.engine().getGraphics().getWhiteTexture());
-    painter.paintRichText(boxed.getLayout(), {10.0F, 20.0F}, {2.0F, 3.0F}, math::Color{1.0F, 1.0F, 1.0F, 0.5F});
+    TextPainter painter = makePainter();
+    painter.paintRichText(boxed.getLayout(), {10.0F, 20.0F}, {}, {2.0F, 3.0F}, math::Color{1.0F, 1.0F, 1.0F, 0.5F});
     ASSERT_EQ(painter.getBatches().size(), 2U);
     const GpuInstance& background = painter.getBatches()[0].instances[0];
     const math::Rect& box = boxed.getLayout().boxes[0].rect;
@@ -172,20 +188,52 @@ TEST_F(TextPainterTest, DrawsBitmapGlyphsAsSprites) {
     EXPECT_EQ(signedByte(instances[4].parameters[2]), static_cast<int>(std::lround(0.2F * 127.0F)));
     EXPECT_EQ(instances[1].parameters[0], 0U);
 
-    TextPainter plain(fixture.engine().getGraphics().getWhiteTexture());
+    TextPainter plain = makePainter();
     const text::Style style{.size = 16.0F, .shadowOffset = {1.0F, 1.0F}, .shadowColor = math::Color::black(), .shadowBlur = 4.0F};
-    plain.paintText(*grid->layout("AB", style), {}, style);
+    plain.paintText(*grid->layout("AB", style), {}, style, {});
     ASSERT_EQ(plain.getBatches().size(), 1U);
     EXPECT_EQ(plain.getBatches()[0].program, Program::Sprite);
     EXPECT_EQ(plain.getBatches()[0].instances[0].parameters[3], 0U);
 
     text::Font& field = *fixture.engine().getDefaultFont();
-    TextPainter smooth(fixture.engine().getGraphics().getWhiteTexture());
-    smooth.paintText(*field.layout("AB", style), {}, style);
+    TextPainter smooth = makePainter();
+    smooth.paintText(*field.layout("AB", style), {}, style, {});
     ASSERT_EQ(smooth.getBatches().size(), 1U);
     EXPECT_EQ(smooth.getBatches()[0].program, Program::Text);
     EXPECT_GT(smooth.getBatches()[0].instances[0].parameters[3], 0U);
     EXPECT_EQ(smooth.getBatches()[0].instances[2].parameters[3], 0U);
+}
+
+// A color glyph draws the raster of its vector image through the sprite program in its own colors with the alpha of the text, its shadow is its silhouette, and it takes no outline.
+TEST_F(TextPainterTest, DrawsColorGlyphsAsRastersInTheirOwnColors) {
+    const std::shared_ptr<text::FontFamily> family = makeEmojiFamily();
+    text::RichText mixed = make("A\U0001F600", {.family = family, .size = 32.0F, .color = math::Color{1.0F, 0.0F, 0.0F, 0.5F}});
+    const std::vector<TextPainter::Batch> batches = paint(mixed);
+    ASSERT_EQ(batches.size(), 2U);
+    EXPECT_EQ(batches[0].program, Program::Text);
+    EXPECT_EQ(batches[1].program, Program::Sprite);
+    ASSERT_EQ(batches[1].instances.size(), 1U);
+    const GpuInstance& emoji = batches[1].instances[0];
+    EXPECT_EQ(emoji.color, math::Color(1.0F, 1.0F, 1.0F, 0.5F).toRgba8());
+    EXPECT_EQ(emoji.flash, 0U);
+    EXPECT_FLOAT_EQ(emoji.size[0], mixed.getLayout().glyphs[1].size.x);
+
+    const text::Style style{.size = 32.0F, .outlineWidth = 2.0F, .outlineColor = math::Color::black(), .shadowOffset = {2.0F, 2.0F}, .shadowColor = math::Color{0.0F, 0.0F, 0.5F, 0.5F}};
+    const std::shared_ptr<const text::Layout> face = family->layout("\U0001F602", style);
+    TextPainter painter = makePainter();
+    painter.paintText(*face, {}, style, {.pixelsPerUnit = 3.0F, .frame = 1});
+    ASSERT_EQ(painter.getBatches().size(), 1U);
+    const std::vector<GpuInstance>& instances = painter.getBatches()[0].instances;
+    ASSERT_EQ(instances.size(), 2U);
+    EXPECT_EQ(instances[0].flash, math::Color(0.0F, 0.0F, 0.5F, 1.0F).toRgba8());
+    EXPECT_FLOAT_EQ(instances[0].position[0], instances[1].position[0] + 2.0F);
+    EXPECT_EQ(instances[1].color, math::Color::white().toRgba8());
+
+    // A canvas of three pixels a unit takes the raster of the step that covers three times the size of the glyph.
+    const text::Layout::Glyph& glyph = face->glyphs[0];
+    const float scale = glyph.size.x / glyph.image.getSize().x * 3.0F;
+    EXPECT_EQ(atlas.find(glyph.image, scale, 1).source.width, std::ceil(glyph.image.getSize().x * VectorAtlas::scaleOf(VectorAtlas::stepOf(scale))));
+    EXPECT_EQ(painter.getBatches()[0].texture, atlas.find(glyph.image, scale, 1).texture);
 }
 
 TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
@@ -193,10 +241,10 @@ TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
     const std::shared_ptr<text::Font> grid = std::make_shared<text::BitmapFont>(text::BitmapFont::describeGrid({.characters = "AB", .cellWidth = 8.0F, .cellHeight = 8.0F}, page.getSize()), std::vector<graphics::Texture>{page});
     const text::Style style{.size = 8.0F};
     const text::Style stretched{.size = 8.0F, .scale = {2.0F, 3.0F}};
-    TextPainter plain(fixture.engine().getGraphics().getWhiteTexture());
-    plain.paintText(*grid->layout("AB", style), {10.0F, 20.0F}, style);
-    TextPainter wide(fixture.engine().getGraphics().getWhiteTexture());
-    wide.paintText(*grid->layout("AB", stretched), {10.0F, 20.0F}, stretched);
+    TextPainter plain = makePainter();
+    plain.paintText(*grid->layout("AB", style), {10.0F, 20.0F}, style, {});
+    TextPainter wide = makePainter();
+    wide.paintText(*grid->layout("AB", stretched), {10.0F, 20.0F}, stretched, {});
 
     // Every glyph grows by the scale and moves away from the position, where the anchor stays.
     const std::vector<GpuInstance>& before = plain.getBatches()[0].instances;
@@ -216,10 +264,10 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
     const text::Style style{.size = 11.0F, .lineSpacing = 1.13F, .pixelSnap = true};
     const std::shared_ptr<const text::Layout> layout = font.layout("Snap\nGrid", style);
     const TextPainter::PixelGrid grid{.scale = {2.0F, 2.0F}};
-    TextPainter snapped(fixture.engine().getGraphics().getWhiteTexture());
-    snapped.paintText(*layout, {10.3F, 20.6F}, style, grid);
-    TextPainter loose(fixture.engine().getGraphics().getWhiteTexture());
-    loose.paintText(*layout, {10.3F, 20.6F}, style);
+    TextPainter snapped = makePainter();
+    snapped.paintText(*layout, {10.3F, 20.6F}, style, {}, grid);
+    TextPainter loose = makePainter();
+    loose.paintText(*layout, {10.3F, 20.6F}, style, {});
 
     const std::vector<GpuInstance>& after = snapped.getBatches()[0].instances;
     const std::vector<GpuInstance>& before = loose.getBatches()[0].instances;
@@ -232,10 +280,10 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
     // Every centered line starts on a pixel column of its own, though a line half a pixel narrower than the block would start half a pixel in.
     const text::Style centered{.size = 11.0F, .align = text::Alignment::Center, .pixelSnap = true};
     const std::shared_ptr<const text::Layout> lines = font.layout("Snap the grid\nGrid\ni", centered);
-    TextPainter middle(fixture.engine().getGraphics().getWhiteTexture());
-    middle.paintText(*lines, {10.3F, 20.6F}, centered, grid);
-    TextPainter unsnapped(fixture.engine().getGraphics().getWhiteTexture());
-    unsnapped.paintText(*lines, {10.3F, 20.6F}, centered);
+    TextPainter middle = makePainter();
+    middle.paintText(*lines, {10.3F, 20.6F}, centered, {}, grid);
+    TextPainter unsnapped = makePainter();
+    unsnapped.paintText(*lines, {10.3F, 20.6F}, centered, {});
     std::size_t line = 0;
     for (std::size_t index = 0; index < lines->glyphs.size(); ++index) {
         while (lines->glyphs[index].character >= lines->lines[line].endCharacter) {
@@ -247,10 +295,10 @@ TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
 
     // Turned text keeps its place, since no pixel row runs along its baselines.
     const text::Style turned{.size = 11.0F, .rotation = 0.5F, .pixelSnap = true};
-    TextPainter rotated(fixture.engine().getGraphics().getWhiteTexture());
-    rotated.paintText(*layout, {10.3F, 20.6F}, turned, grid);
-    TextPainter free(fixture.engine().getGraphics().getWhiteTexture());
-    free.paintText(*layout, {10.3F, 20.6F}, turned);
+    TextPainter rotated = makePainter();
+    rotated.paintText(*layout, {10.3F, 20.6F}, turned, {}, grid);
+    TextPainter free = makePainter();
+    free.paintText(*layout, {10.3F, 20.6F}, turned, {});
     EXPECT_FLOAT_EQ(rotated.getBatches()[0].instances[0].position[0], free.getBatches()[0].instances[0].position[0]);
     EXPECT_FLOAT_EQ(rotated.getBatches()[0].instances[0].position[1], free.getBatches()[0].instances[0].position[1]);
 }

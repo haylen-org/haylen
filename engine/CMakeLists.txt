@@ -388,6 +388,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/graphics/ResourceGraveyard.cpp
   src/graphics/Shader.cpp
   src/graphics/ShaderResource.cpp
+  src/graphics/SvgDocument.cpp
   src/graphics/Texture.cpp
   src/graphics/TextureResource.cpp
   src/graphics/VectorImage.cpp
@@ -584,6 +585,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/storage/UserStorage.cpp
   src/text/BidiParagraph.cpp
   src/text/BitmapFont.cpp
+  src/text/ColorGlyphImage.cpp
   src/text/DistanceField.cpp
   src/text/Effect.cpp
   src/text/Font.cpp

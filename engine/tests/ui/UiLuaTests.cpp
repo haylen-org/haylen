@@ -19,6 +19,7 @@
 #include "haylen/platform/Event.hpp"
 #include "haylen/plugins/UiPlugin.hpp"
 #include "haylen/ui/Backend.hpp"
+#include "support/AllocationTracker.hpp"
 #include "support/EngineFixture.hpp"
 #include "support/TestFiles.hpp"
 
@@ -559,6 +560,46 @@ TEST_F(UiLuaFontTest, DrawsTextComponentsWithTheFacesAndFallbacksOfAFamily) {
     plugins::UiPlugin& plugin = fixture.engine().getPlugin<plugins::UiPlugin>();
     EXPECT_NE(plugin.getFontFamily(fixture.engine(), "story"), nullptr);
     EXPECT_EQ(plugin.getFontFamily(fixture.engine(), "missing"), nullptr);
+}
+
+// Labels, fields and rich text take color emoji from the fallback of their family, which draw as rasters that frames reuse, so a GUI with emoji allocates nothing more once it has drawn.
+TEST_F(UiLuaFontTest, DrawsColorEmojiInComponentsWithoutAllocating) {
+    test::EngineFixture fixture({{"content/fonts/emoji.ttf", readTestFont("noto-color-emoji-regular.ttf")}});
+    // clang-format off
+    fixture.runLua(R"(
+        assets = require('haylen.assets')
+        graphics = require('haylen.graphics')
+        graphics2d = require('haylen.graphics2d')
+        ui = require('haylen.ui')
+        ui.addFont('chat', graphics.newFontFamily({regular = graphics2d.defaultFont(), fallbacks = {assets.font('fonts/emoji.ttf')}}))
+        ui.setTheme(ui.addTheme({name = 'chat', fonts = {body = {font = 'chat'}}}))
+    )");
+    // clang-format on
+    // clang-format off
+    const auto measure = [&fixture] {
+        fixture.frames(5);
+        const test::AllocationTracker tracker;
+        fixture.frames(10);
+        return tracker.getTotal();
+    };
+    // clang-format on
+    const std::size_t empty = measure();
+
+    // clang-format off
+    fixture.runLua(R"(
+        screen = ui.mount(ui.column{
+            ui.label{id = 'party', text = 'Party \u{1F389}', align = 'start'},
+            ui.label{id = 'plain', text = 'Party ', align = 'start'},
+            ui.textField{id = 'message', value = 'Ship it \u{1F680}\u{1F469}\u{200D}\u{1F4BB}'},
+            ui.richText{id = 'rich', text = '[b]Hot[/b] \u{1F525} [color=#FF0000]love[/color] \u{2764}\u{FE0F}'},
+        }, {placement = 'screen'})
+    )");
+    // clang-format on
+    EXPECT_EQ(measure(), empty);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
+
+    // The emoji takes the room of its advance in the fallback, one em and a quarter of the body.
+    EXPECT_GT(std::stof(fixture.lua("return screen:bounds('party').width - screen:bounds('plain').width")), 26.0F);
 }
 
 // A size names the em square of every font, so a Japanese character that falls back advances by the size of its role whatever the ascent and descent of the face, and the lines of a face that reaches higher and lower grow taller instead.

@@ -65,6 +65,21 @@ FontFamily::Selection FontFamily::resolve(const Selection& face, std::u32string_
             }
         }
     }
+
+    // A character that shows as an emoji by default or through U+FE0F takes the first font that draws it as a color glyph, and one that U+FE0E asks to show as text the first font that draws it in the color of the text.
+    const bool text = std::ranges::find(cluster, kTextPresentation) != cluster.end();
+    const bool emoji = !text && !cluster.empty() && (std::ranges::find(cluster, kEmojiPresentation) != cluster.end() || Segmenter::hasEmojiPresentation(cluster.front()));
+    if (emoji || text) {
+        if (covers(*face.font, cluster) && face.font->hasColorGlyph(cluster.front()) == emoji) {
+            return face;
+        }
+        for (const std::shared_ptr<Font>& font : faces.fallbacks) {
+            if (covers(*font, cluster) && font->hasColorGlyph(cluster.front()) == emoji) {
+                return fallback(font);
+            }
+        }
+    }
+
     if (covers(*face.font, cluster)) {
         return face;
     }

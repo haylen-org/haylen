@@ -725,7 +725,7 @@ scene.push({
 
 ## Font
 
-A `Font` is a TrueType or OpenType font drawn through a signed distance field, or a bitmap font drawn from its own images, as the [text guide](../graphics/text.md#fonts) explains. Every function that takes a font takes either kind. A bitmap font draws pixel for pixel at its native size, scales at other sizes and draws nothing for the characters it lacks. Two font values compare equal with `==` when they refer to the same font, such as a face read twice from a family or a font loaded twice with the same options.
+A `Font` is a TrueType or OpenType font drawn through a signed distance field, or a bitmap font drawn from its own images, as the [text guide](../graphics/text.md#fonts) explains. Every function that takes a font takes either kind. The glyphs that the `COLR` table of a TrueType font paints, such as color emoji, draw in their own colors as [color glyphs](../graphics/text.md#color-emoji). A bitmap font draws pixel for pixel at its native size, scales at other sizes and draws nothing for the characters it lacks. Two font values compare equal with `==` when they refer to the same font, such as a face read twice from a family or a font loaded twice with the same options.
 
 The function `assets.font(path, options)` of [`haylen.assets`](assets.md#assetsfontpath-options) loads either kind by the extension of the file:
 
@@ -801,7 +801,7 @@ Lays `text` out with the layout keys of `style`, like `graphics2d.drawText` does
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `quads` | table | One entry per visible glyph in the order the lines show them, each with `position` (`Vec2`, the top-left corner), `size` (`Vec2`), `source` (`Rect` in the page), `page` (counted from 1) and `font`, the font that draws it. Spaces and line breaks have no entry. A shaped cluster, such as a ligature or a letter with its marks, has one entry per glyph the font draws for it. |
+| `quads` | table | One entry per visible glyph in the order the lines show them, each with `position` (`Vec2`, the top-left corner), `size` (`Vec2`), `source` (`Rect` in the page), `page` (counted from 1) and `font`, the font that draws it. A color glyph also has `image`, the `VectorImage` of its colors, which its quad shows in place of a region of a page. Spaces and line breaks have no entry. A shaped cluster, such as a ligature or a letter with its marks, has one entry per glyph the font draws for it. |
 | `size` | Vec2 | Width and height of the whole block, as `font:measure` returns them. |
 | `lineCount` | integer | Number of lines after wrapping. |
 
@@ -834,6 +834,17 @@ local font = graphics2d.defaultFont()
 print(font:hasGlyph('A'), font:hasGlyph(0x4E16))
 ```
 
+### font:hasColorGlyph(character)
+
+Returns whether the glyph of `character` draws in its own colors, such as an emoji of a color font, rather than in the color of the text. The `character` is a string of one character or a code point, as for `font:hasGlyph`. A bitmap font returns `false`, since the color of the text tints its images.
+
+```lua
+local assets = require('haylen.assets')
+
+local emoji = assets.font('fonts/noto-color-emoji-regular.ttf')
+print(emoji:hasColorGlyph('\u{1F600}'), emoji:hasColorGlyph(0x2600))
+```
+
 ### font:glyph(character)
 
 Returns the glyph that `character` shapes to on its own, at the native size, as a table:
@@ -841,11 +852,12 @@ Returns the glyph that `character` shapes to on its own, at the native size, as 
 | Field | Meaning |
 | --- | --- |
 | `index` | The glyph index in the font, 0 for a missing glyph. |
-| `source` | The `Rect` of the glyph in its page. |
+| `source` | The `Rect` of the glyph in its page. A color glyph lies in no page, and its source is the box of its image at the origin. |
 | `offset` | The `Vec2` from the pen on the baseline to the top-left corner of the image. |
 | `advance` | How far the pen moves after the glyph. |
 | `page` | The page that holds the glyph, counted from 1. |
 | `visible` | Whether the glyph draws anything. |
+| `image` | The `VectorImage` of the colors of a color glyph, as large as its box at the native size, and `nil` for every other glyph. It draws at any size with `graphics2d.drawVector`. |
 
 ```lua
 local graphics2d = require('haylen.graphics2d')
@@ -1101,7 +1113,7 @@ print(table.concat(shader.textures, ', '))
 
 ## VectorImage
 
-A `VectorImage` is an SVG document read into curves, which draws sharp at any size with [`graphics2d.drawVector`](graphics2d.md#graphics2ddrawvectorimage-x-y-options). Load one from a `.svg` file with `assets.vectorImage(path)` or `assets.load(path)`, or make one with `graphics.newVectorImage`. The [rendering guide](../graphics/rendering.md#vector-images) lists the parts of SVG that the engine reads and explains how it rasterizes them. Two images compare equal with `==` when they are the same image. A file that changes on disk loads anew the next time the app asks for it, and the images the app holds keep their document.
+A `VectorImage` is an SVG document read into curves, or the colors of a color glyph of a font, which draws sharp at any size with [`graphics2d.drawVector`](graphics2d.md#graphics2ddrawvectorimage-x-y-options). Load one from a `.svg` file with `assets.vectorImage(path)` or `assets.load(path)`, or make one with `graphics.newVectorImage`, and take the image of a color glyph from the `image` of [`font:glyph`](#fontglyphcharacter). The [rendering guide](../graphics/rendering.md#vector-images) lists the parts of SVG that the engine reads and explains how it rasterizes them. Two images compare equal with `==` when they are the same image. A file that changes on disk loads anew the next time the app asks for it, and the images the app holds keep their document.
 
 ### graphics.newVectorImage(text)
 

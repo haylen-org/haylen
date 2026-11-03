@@ -317,7 +317,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | stb | commit `d14d46f` | Headers only. |
 | NanoSVG | commit `239e102` | Headers only. It reads SVG documents into curves and rasterizes vector images. It publishes no releases, so it is pinned to a commit of its default branch. |
 | msdfgen | v1.13 | Only its core, which builds the distance fields of font glyphs from their whole outlines, the cubic curves of CFF fonts included. |
-| HarfBuzz | 15.0.0 | Old MIT license. Its amalgamated source compiles as `haylen-harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers. |
+| HarfBuzz | 15.0.0 | Old MIT license. Its amalgamated source compiles as `haylen-harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers, together with its rasterizer of color glyphs. The definitions `HB_NO_BITMAP` and `HB_NO_SVG` leave out the readers of bitmap and SVG glyphs, which the engine does not draw. |
 | SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen-sheenbidi`. |
 | libunibreak | 8.0 | zlib license. Line breaks and grapheme clusters of Unicode 17, compiled as `haylen-unibreak`. |
 | BudouX | v0.10.2 | Apache 2.0. Only its Thai phrase model, a JSON file that the engine embeds to break Thai lines. |

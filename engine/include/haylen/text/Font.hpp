@@ -9,6 +9,7 @@
 #include "haylen/debug/ObjectCounter.hpp"
 #include "haylen/debug/TrackedObject.hpp"
 #include "haylen/graphics/Texture.hpp"
+#include "haylen/graphics/VectorImage.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/math/Vec2.hpp"
 #include "haylen/text/Layout.hpp"
@@ -21,13 +22,14 @@ class LayoutCache;
 // A font whose glyph images live in texture pages: a TrueType font drawn through a signed distance field, or a bitmap font drawn from its own images. Sizes are pixel sizes, and every font shapes and lays text out the same way.
 class Font {
   public:
-    // One glyph at the native size of the font: the region of its image in a page, where the image goes from the pen on the baseline, and how far the pen moves after it.
+    // One glyph at the native size of the font: the region of its image in a page, where the image goes from the pen on the baseline, and how far the pen moves after it. A color glyph has the vector image of its colors instead of a region of a page, and its source is the box of that image at the origin.
     struct Glyph {
         math::Rect source{};
         math::Vec2 offset{};
         float advance = 0.0F;
         std::uint16_t page = 0;
         bool visible = false;
+        graphics::VectorImage image;
     };
 
     // A glyph of shaped text at the native size: its index in the font, the code point where its cluster starts, how far the pen moves after it, and where it sits from the pen with y pointing down.
@@ -62,6 +64,8 @@ class Font {
     // Tells whether the pages hold signed distance fields, which the text shader draws with outlines, weights and soft edges, rather than plain images.
     [[nodiscard]] virtual bool isDistanceField() const noexcept = 0;
     [[nodiscard]] virtual bool hasGlyph(char32_t codePoint) = 0;
+    // Tells whether the glyph of a code point draws in its own colors, such as an emoji of a color font, rather than in the color of the text.
+    [[nodiscard]] virtual bool hasColorGlyph(char32_t codePoint) = 0;
 
     // Shapes a run into glyphs in visual order, appended to the list. A TrueType font substitutes and places its glyphs through its OpenType tables, which join letters, form ligatures, place marks and kern, while a bitmap font sets one glyph per code point with its kerning pairs, mirrored and reversed in right-to-left runs.
     virtual void shape(const Run& run, std::vector<ShapedGlyph>& shaped) = 0;

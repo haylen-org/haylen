@@ -105,7 +105,7 @@ int FontLua::pushLayout(lua_State* L, const text::Layout& laid, const text::Styl
     lua_createtable(L, static_cast<int>(laid.glyphs.size()), 0);
     for (std::size_t index = 0; index < laid.glyphs.size(); ++index) {
         const text::Layout::Glyph& glyph = laid.glyphs[index];
-        lua_createtable(L, 0, 5);
+        lua_createtable(L, 0, 6);
         lua::Stack::push(L, glyph.position - anchorOffset);
         lua_setfield(L, -2, "position");
         lua::Stack::push(L, glyph.size);
@@ -116,6 +116,10 @@ int FontLua::pushLayout(lua_State* L, const text::Layout& laid, const text::Styl
         lua_setfield(L, -2, "page");
         lua_pushvalue(L, fonts + static_cast<int>(glyph.look));
         lua_setfield(L, -2, "font");
+        if (glyph.image.isValid()) {
+            lua::Stack::push(L, glyph.image);
+            lua_setfield(L, -2, "image");
+        }
         lua_rawseti(L, -2, static_cast<lua_Integer>(index + 1));
     }
     lua_setfield(L, -2, "quads");
@@ -156,6 +160,11 @@ int FontLua::hasGlyph(lua_State* L) {
     return 1;
 }
 
+int FontLua::hasColorGlyph(lua_State* L) {
+    lua::Stack::push(L, lua::Userdata::check<text::Font>(L, 1).hasColorGlyph(readCharacter(L, 2)));
+    return 1;
+}
+
 // Shapes a whole text as one run in the script of its first letter and the language of the options, reading in the direction of the options or of its first paragraph.
 std::vector<text::Font::ShapedGlyph> FontLua::shapeText(text::Font& font, std::u32string_view text, text::Direction direction, std::string_view language) {
     std::vector<text::Font::ShapedGlyph> shaped;
@@ -169,10 +178,10 @@ std::vector<text::Font::ShapedGlyph> FontLua::shapeText(text::Font& font, std::u
     return shaped;
 }
 
-// Pushes a glyph at the native size as `{index, source, offset, advance, page, visible}`.
+// Pushes a glyph at the native size as `{index, source, offset, advance, page, visible, image}`, where only a color glyph has an image.
 int FontLua::pushGlyph(lua_State* L, text::Font& font, std::uint32_t index) {
     const text::Font::Glyph& found = font.getGlyph(index);
-    lua_createtable(L, 0, 6);
+    lua_createtable(L, 0, 7);
     lua::Stack::push(L, index);
     lua_setfield(L, -2, "index");
     lua::Stack::push(L, found.source);
@@ -185,6 +194,10 @@ int FontLua::pushGlyph(lua_State* L, text::Font& font, std::uint32_t index) {
     lua_setfield(L, -2, "page");
     lua::Stack::push(L, found.visible);
     lua_setfield(L, -2, "visible");
+    if (found.image.isValid()) {
+        lua::Stack::push(L, found.image);
+        lua_setfield(L, -2, "image");
+    }
     return 1;
 }
 
@@ -346,7 +359,7 @@ int FontLua::familyLayout(lua_State* L) {
 }
 
 void FontLua::install(lua_State* L) {
-    lua::ClassBuilder<text::Font>(L).function("measure", &lua::Binding::native<&measure>).function("layout", &lua::Binding::native<&layout>).function("lineHeight", &lua::Binding::function<&lineHeight>).function("ascent", &lua::Binding::function<&ascent>).function("capHeight", &lua::Binding::function<&capHeight>).function("toDistance", &lua::Binding::function<&toDistance>).function("hasGlyph", &lua::Binding::native<&hasGlyph>).function("glyph", &lua::Binding::native<&glyph>).function("glyphByIndex", &lua::Binding::native<&glyphByIndex>).function("shape", &lua::Binding::native<&shape>).function("page", &lua::Binding::native<&page>).property("nativeSize", &nativeSize).property("distanceField", &distanceField).property("pageCount", &pageCount).meta("__eq", &lua::Userdata::equal<text::Font>).install();
+    lua::ClassBuilder<text::Font>(L).function("measure", &lua::Binding::native<&measure>).function("layout", &lua::Binding::native<&layout>).function("lineHeight", &lua::Binding::function<&lineHeight>).function("ascent", &lua::Binding::function<&ascent>).function("capHeight", &lua::Binding::function<&capHeight>).function("toDistance", &lua::Binding::function<&toDistance>).function("hasGlyph", &lua::Binding::native<&hasGlyph>).function("hasColorGlyph", &lua::Binding::native<&hasColorGlyph>).function("glyph", &lua::Binding::native<&glyph>).function("glyphByIndex", &lua::Binding::native<&glyphByIndex>).function("shape", &lua::Binding::native<&shape>).function("page", &lua::Binding::native<&page>).property("nativeSize", &nativeSize).property("distanceField", &distanceField).property("pageCount", &pageCount).meta("__eq", &lua::Userdata::equal<text::Font>).install();
     lua::ClassBuilder<text::FontFamily>(L).property("regular", &familyFace).property("bold", &familyFace).property("italic", &familyFace).property("boldItalic", &familyFace).property("mono", &familyFace).property("fallbacks", &familyFallbacks).function("select", &lua::Binding::native<&familySelect>).function("resolve", &lua::Binding::native<&familyResolve>).function("measure", &lua::Binding::native<&familyMeasure>).function("layout", &lua::Binding::native<&familyLayout>).meta("__eq", &lua::Userdata::equal<text::FontFamily>).install();
 }
 

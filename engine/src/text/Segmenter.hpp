@@ -40,10 +40,18 @@ class Segmenter final {
     // Tells whether a code point belongs to no script of its own, such as spaces, punctuation and digits, so it may draw with the font of the text around it.
     [[nodiscard]] static bool isCommon(char32_t codePoint) noexcept;
 
+    // Tells whether a code point shows as an emoji unless a variation selector asks for its text form: a wide pictograph such as an emoji face or a star, a skin tone modifier or a regional indicator of a flag. Narrow pictographs such as the sun and the heart show as text unless U+FE0F asks for the emoji.
+    [[nodiscard]] static bool hasEmojiPresentation(char32_t codePoint) noexcept;
+
     // Returns the mirrored form of a code point a right-to-left run draws, such as `)` for `(`, or the code point itself.
     [[nodiscard]] static char32_t getMirror(char32_t codePoint) noexcept;
 
   private:
+    static constexpr char32_t kFirstSkinTone = U'\U0001F3FB';
+    static constexpr char32_t kLastSkinTone = U'\U0001F3FF';
+    static constexpr char32_t kFirstRegionalIndicator = U'\U0001F1E6';
+    static constexpr char32_t kLastRegionalIndicator = U'\U0001F1FF';
+
     static void keepNames(std::u32string_view text, std::vector<Break>& found);
     static void addThaiPhrases(std::u32string_view text, std::vector<Break>& found);
     [[nodiscard]] static bool isLetterOrDigit(char32_t codePoint) noexcept;
