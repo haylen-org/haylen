@@ -296,8 +296,8 @@ CPMAddPackage(
 if("vulkan" IN_LIST HAYLEN_GRAPHICS_APIS)
   CPMAddPackage(
     NAME vulkan_headers
-    URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.366.tar.gz"
-    URL_HASH SHA256=577b90c208e6fd39ec9a1460e48772f63c76f6f5afb441df2a977a0fdb3f618c
+    URL "https://github.com/KhronosGroup/Vulkan-Headers/archive/refs/tags/v1.4.367.tar.gz"
+    URL_HASH SHA256=0df7d58b5df617e0a6a17dec521af459206719f9c7cb12d05d09275597c16f70
     DOWNLOAD_ONLY YES
   )
   CPMAddPackage(
