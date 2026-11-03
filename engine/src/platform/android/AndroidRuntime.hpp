@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <thread>
 
+#include "platform/DeviceRecovery.hpp"
 #include "platform/android/AndroidFramePacer.hpp"
 #include "platform/android/AndroidGraphics.hpp"
 #include "platform/android/AndroidKeyClaims.hpp"
@@ -99,7 +100,7 @@ class AndroidRuntime final {
     bool stopping = false;
     bool quitRequested = false;
     bool quitOrdered = false;
-    bool replacedLostDevice = false;
+    DeviceRecovery deviceRecovery;
 };
 
 } // namespace haylen::platform

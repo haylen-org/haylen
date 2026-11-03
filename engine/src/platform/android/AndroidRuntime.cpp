@@ -7,9 +7,9 @@
 
 #include <ctime>
 #include <exception>
-#include <format>
 #include <memory>
-#include <string_view>
+#include <optional>
+#include <string>
 #include <variant>
 
 #include "gpu/DeviceFactory.hpp"
@@ -279,13 +279,10 @@ void AndroidRuntime::replaceLostDevice() {
     if (device == nullptr || !graphics.isLost(*device)) {
         return;
     }
-    const std::string_view api = gpu::DeviceFactory::getApiName(device->getApi());
-    if (replacedLostDevice) {
-        Player::fail(std::format("The GPU device of \"{}\" stopped working again after it replaced a lost one, so the app cannot draw.", api));
+    if (const std::optional<std::string> failure = deviceRecovery.recordLoss(device->getApi())) {
+        Player::fail(*failure);
         return;
     }
-    replacedLostDevice = true;
-    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", api);
     graphics.loseDevice(device->getApi());
     Player::restart();
 }

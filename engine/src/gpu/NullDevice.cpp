@@ -66,7 +66,7 @@ std::vector<Device::Pool> NullDevice::getPools() const {
 }
 
 bool NullDevice::isLost() const noexcept {
-    return false;
+    return lost;
 }
 
 Device::Buffer NullDevice::makeBuffer(const BufferDesc& desc) {

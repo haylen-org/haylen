@@ -42,6 +42,7 @@ The class `platform::HeadlessHost`, in `engine/src/platform/headless/`, implemen
 - Its capabilities say what the engine may use. By default it renders every format, blends into and filters all but the 32-bit floats and resolves multisampled render targets, but blends every color of a pipeline alike, as OpenGL ES does. A test that makes it with other `gpu::Device::Capabilities` sees how the engine behaves on a device that lacks a feature.
 - Its pools limit how many images, buffers, samplers, programs and pipelines exist, like the pools of a real device.
 - It keeps what the last committed frame did, which a test reads with `fixture.host().getGpu().getLastFrame()`. That is its passes, with whether each drew into the swapchain, its clear color, the write masks of its pipelines and its draws, and the image writes, their bytes and the buffer writes of the frame.
+- The method `lose()` of `gpu::NullDevice` loses the device, as a reset of the GPU does, so `isLost` answers `true` and a test follows what the platform does with a lost device.
 - A `gpu::NullDevice` that a test makes with a shader language, such as `gpu::Device::Language::Glsl300es`, asks every program for code in that language. So a test sees what a shader package lacks.
 - The root module `haylen` reports `'none'` as its `graphicsApi` and `'headless'` as its `platform`.
 

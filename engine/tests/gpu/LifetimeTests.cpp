@@ -2,6 +2,7 @@
 
 #include <array>
 #include <chrono>
+#include <memory>
 #include <span>
 #include <string>
 #include <vector>
@@ -150,6 +151,20 @@ TEST_P(GpuLifetimeTest, MakesProgramsThatItPreparedAhead) {
     device().destroy(pipeline);
     device().destroy(prepared.getResource()->getProgram(device(), "plane").program);
     prepared.getResource()->compiled.clear();
+}
+
+// A device that the engine releases is no lost device, so the end of it that WebGPU reports in a later turn of the event loop logs no error. The devices of the other APIs report no end of a device that the engine releases.
+TEST_P(GpuLifetimeTest, ReleasesADeviceWithoutReportingItLost) {
+    if (GetParam() != Device::Api::WebGpu) {
+        GTEST_SKIP() << "Only WebGPU reports the end of a device that the engine releases.";
+    }
+    std::unique_ptr<test::OffscreenSurface> surface;
+    std::unique_ptr<Device> released = makeDevice(GetParam(), surface);
+    EXPECT_FALSE(released->isLost());
+    released.reset();
+    for (int turn = 0; turn < 8; ++turn) {
+        test::EventLoop::yield();
+    }
 }
 
 INSTANTIATE_TEST_SUITE_P(Devices, GpuLifetimeTest, ::testing::ValuesIn(test::GpuFixture::getTestedApis()), test::GpuFixture::nameApi);

@@ -176,6 +176,7 @@ set(HAYLEN_TEST_SOURCES
   platform/AndroidYuvImageTests.cpp
   platform/CrashGuardTests.cpp
   platform/DevelopmentConnectionTests.cpp
+  platform/DeviceRecoveryTests.cpp
   platform/DialogsTests.cpp
   platform/FoldTests.cpp
   platform/GraphicsApiOrderTests.cpp

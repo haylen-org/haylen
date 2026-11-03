@@ -1,9 +1,9 @@
 #include "platform/sdl/Runtime.hpp"
 
 #include <exception>
-#include <format>
+#include <optional>
 #include <stdexcept>
-#include <string_view>
+#include <string>
 #include <utility>
 
 // The runtime holds the entry points itself and enters the main callbacks of SDL through the functions they name.
@@ -275,13 +275,10 @@ void Runtime::recover() {
     if (device == nullptr || !device->isLost()) {
         return;
     }
-    const std::string_view api = gpu::DeviceFactory::getApiName(window.getApi());
-    if (replacedLostDevice) {
-        Player::fail(std::format("The GPU device of \"{}\" stopped working again after it replaced a lost one, so the app cannot draw.", api));
+    if (const std::optional<std::string> failure = deviceRecovery.recordLoss(window.getApi())) {
+        Player::fail(*failure);
         return;
     }
-    replacedLostDevice = true;
-    core::Log::warning("The GPU device of \"{}\" stopped working, so the app starts again on a new one.", api);
     recovering = true;
     Player::restart();
 }

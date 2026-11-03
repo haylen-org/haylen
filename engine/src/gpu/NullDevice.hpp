@@ -131,6 +131,11 @@ class NullDevice final : public Device {
         return programs.at(program.id);
     }
 
+    // Loses the device, as a reset of the GPU or a driver that fails does, so `isLost` answers `true` from then on.
+    void lose() noexcept {
+        lost = true;
+    }
+
   private:
     // A part of a dynamic buffer that the frame of the stamp wrote.
     struct WrittenRange {
@@ -224,6 +229,8 @@ class NullDevice final : public Device {
     Bindings bound;
     std::uint32_t appliedBlocks = 0;
     std::vector<bool> debugGroups;
+
+    bool lost = false;
 
     // The surface the swapchain passes draw into, which a headless window has from the start, and the surfaces beyond it by their numbers.
     bool surfaceAttached = true;

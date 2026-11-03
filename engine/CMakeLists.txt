@@ -814,6 +814,7 @@ haylen_enable_coverage(haylen-content-writer)
 # Portable pieces of the runtime, which the tests link without an app entry point. The readers of the platform folders compile everywhere, so every host tests them.
 add_library(haylen-platform STATIC
   src/platform/CrashGuard.cpp
+  src/platform/DeviceRecovery.cpp
   src/platform/GamepadSlots.cpp
   src/platform/GamepadVendors.cpp
   src/platform/GraphicsApiOrder.cpp

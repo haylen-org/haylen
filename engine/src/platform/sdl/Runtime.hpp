@@ -12,6 +12,7 @@
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/gpu/Device.hpp"
 #include "haylen/platform/Event.hpp"
+#include "platform/DeviceRecovery.hpp"
 #include "platform/sdl/Events.hpp"
 #include "platform/sdl/FrameTimer.hpp"
 #include "platform/sdl/OutputWindows.hpp"
@@ -151,9 +152,9 @@ class Runtime final {
     // Whether the keyboard went from the window of the app to the window of an output, which keeps the app focused.
     bool focusInOutput = false;
 
-    // Whether the device of the app stopped working, until its replacement exists, and whether a device already replaced a lost one.
+    // Whether the device of the app stopped working, until its replacement exists, and what a loss of the device leads to.
     bool recovering = false;
-    bool replacedLostDevice = false;
+    DeviceRecovery deviceRecovery;
 
     // Whether the frames run at the rate of a window that shows nothing.
     bool paced = false;
