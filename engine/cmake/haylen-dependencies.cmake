@@ -231,8 +231,8 @@ CPMAddPackage(
 
 CPMAddPackage(
   NAME miniaudio
-  URL "https://github.com/mackron/miniaudio/archive/refs/tags/0.11.25.tar.gz"
-  URL_HASH SHA256=b900edcffe979816e2560a0580b9b1216d674b4f17fbadeca8f777a7f8ab0274
+  URL "https://github.com/mackron/miniaudio/archive/refs/tags/0.11.26.tar.gz"
+  URL_HASH SHA256=838ba55a21c9142adf7b76bdc4351e5cd8b7ae128f46b25ec25f94ae9969c600
   DOWNLOAD_ONLY YES
 )
 

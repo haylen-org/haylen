@@ -323,7 +323,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | BudouX | v0.10.2 | Apache 2.0. Only its Thai phrase model, a JSON file that the engine embeds to break Thai lines. |
 | fast_float | v8.3.3 | Headers only. It parses floating point numbers on every platform, since `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
 | Dear ImGui | v1.93.0 | Compiled as `haylen-imgui` with the ImGui configuration of the engine. |
-| miniaudio | 0.11.25 | Compiled as `haylen-miniaudio`. |
+| miniaudio | 0.11.26 | Compiled as `haylen-miniaudio`. |
 | Box2D | v3.2.0 | With the [patches](#patches) of `engine/cmake/patches`. It picks its SIMD instructions when the app starts, AVX2 where the processor has it and SSE2 otherwise on x64, Neon on 64-bit ARM, plain math on 32-bit ARM and the SIMD of WebAssembly on the web. |
 | Clipper2 | 2.0.1 | The polygon booleans, offsets and constrained triangulations of `math::Polygon`. |
 | zstd | v1.5.7 | A static library for compressed Tiled layers and for the chunks of protected content. |
