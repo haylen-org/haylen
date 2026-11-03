@@ -5750,8 +5750,8 @@ def command_plugin_new(args: argparse.Namespace) -> None:
     terminal.info(f'Add it to an app with "{TOOL} plugin add {shown_path(folder)} --app <app folder>".')
 
 
-# The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, their simulators and Android. The bundles of `haylen_add_app` have no visionOS variant yet, so C++ apps run on visionOS as iPad apps.
-CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name not in {"macos", "visionos", "visionos-simulator"}), "android"]
+# The platforms a C++ app project runs on: this machine, the browser, Mac Catalyst, iOS, tvOS, visionOS, their simulators and Android.
+CPP_RUN_PLATFORMS = [host_name(), "web", *(name for name in APPLE_NATIVE_SLICES if name != "macos"), "android"]
 
 
 def cpp_engine_options() -> list[str]:
@@ -5854,9 +5854,9 @@ def cpp_release_problems(app: App, folder: Path, release: str) -> list[Requireme
 
 
 def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Namespace) -> None:
-    """Builds a C++ app for iOS, tvOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like `haylen.py run`."""
+    """Builds a C++ app for iOS, tvOS, visionOS or their simulators with the Xcode generator, which compiles the launch screen and signs the bundle, or for Mac Catalyst with Ninja and the Mac Catalyst toolchain, for the architecture of this Mac, then launches it like `haylen.py run`."""
     require_host("apple")
-    device = args.platform in {"ios", "tvos"}
+    device = args.platform in APPLE_DEVICE_SYSTEMS
     arch = "arm64" if device or host_arch() == "arm64" else "x86_64"
     directory = folder / f"{args.platform}-{args.config.lower()}"
     generator = "Ninja" if args.platform == "catalyst" else "Xcode"
@@ -5881,7 +5881,7 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
 
 
 # The destination that `xcodebuild` builds the Swift packages of the plugins of a C++ app for, and the suffix of the folder of its products, by the slice of the app.
-SWIFT_PACKAGE_DESTINATIONS = {"macos": ("generic/platform=macOS", ""), "ios-maccatalyst": ("generic/platform=macOS,variant=Mac Catalyst", "-maccatalyst"), "ios": ("generic/platform=iOS", "-iphoneos"), "ios-simulator": ("generic/platform=iOS Simulator", "-iphonesimulator"), "tvos": ("generic/platform=tvOS", "-appletvos"), "tvos-simulator": ("generic/platform=tvOS Simulator", "-appletvsimulator")}
+SWIFT_PACKAGE_DESTINATIONS = {"macos": ("generic/platform=macOS", ""), "ios-maccatalyst": ("generic/platform=macOS,variant=Mac Catalyst", "-maccatalyst"), "ios": ("generic/platform=iOS", "-iphoneos"), "ios-simulator": ("generic/platform=iOS Simulator", "-iphonesimulator"), "tvos": ("generic/platform=tvOS", "-appletvos"), "tvos-simulator": ("generic/platform=tvOS Simulator", "-appletvsimulator"), "xros": ("generic/platform=visionOS", "-xros"), "xros-simulator": ("generic/platform=visionOS Simulator", "-xrsimulator")}
 # The package that joins the Swift packages of the plugins of a C++ app into one dynamic framework.
 SWIFT_PACKAGES_PRODUCT = "HaylenPackages"
 
@@ -5903,7 +5903,7 @@ def write_swift_packages(packages: dict[str, dict], folder: Path) -> None:
         "",
         "let package = Package(",
         f'    name: "{SWIFT_PACKAGES_PRODUCT}",',
-        f'    platforms: [.iOS("{APPLE_MINIMUM_VERSIONS["iOS"]}"), .tvOS("{APPLE_MINIMUM_VERSIONS["tvOS"]}"), .macOS("{APPLE_MINIMUM_VERSIONS["macOS"]}")],',
+        f'    platforms: [.iOS("{APPLE_MINIMUM_VERSIONS["iOS"]}"), .tvOS("{APPLE_MINIMUM_VERSIONS["tvOS"]}"), .visionOS("{APPLE_MINIMUM_VERSIONS["visionOS"]}"), .macOS("{APPLE_MINIMUM_VERSIONS["macOS"]}")],',
         f'    products: [.library(name: "{SWIFT_PACKAGES_PRODUCT}", type: .dynamic, targets: ["{SWIFT_PACKAGES_PRODUCT}"])],',
         f"    dependencies: [\n        {dependencies}\n    ],",
         f'    targets: [.target(name: "{SWIFT_PACKAGES_PRODUCT}", dependencies: [{linked}])]',

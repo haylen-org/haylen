@@ -180,7 +180,7 @@ Lua apps embed the manifest of their Windows project instead, which selects the 
 
 ### Apple bundles
 
-C++ apps target iOS 16.3 on iPhone and iPad and tvOS 16.3, because the engine needs the C++ library of those releases. They sign automatically. macOS apps target macOS 13.3, the first release with that C++ library. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources.
+C++ apps target iOS 16.3 on iPhone and iPad, tvOS 16.3 and visionOS 1.0, because the engine needs the C++ library of those releases. A visionOS bundle has no orientations, status bar or launch screen, as its window has none, and takes the `Info.plist` template of `engine/platform/apple/visionos`. They sign automatically. macOS apps target macOS 13.3, the first release with that C++ library. The bundle name, identifier and version come from `name`, `identifier` and `version` in the `app.json` of the package. The templates in `engine/platform/apple` hold the `Info.plist` files, the launch screens and the privacy manifest of the engine, which every bundle carries among its resources.
 
 The function fills placeholders of the templates from `app.json`:
 

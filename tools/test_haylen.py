@@ -1121,7 +1121,8 @@ class VisionOSTest(unittest.TestCase):
         self.assertEqual(haylen.APPLE_SLICE_NATIVE_PLATFORMS["xros"], "ios")
         self.assertEqual(haylen.RUN_TARGETS["visionos-simulator"].plugins, "visionos")
         self.assertEqual(haylen.APPLE_RUNS["visionos"]["template"], "HaylenVisionOS")
-        self.assertNotIn("visionos", haylen.CPP_RUN_PLATFORMS)
+        self.assertIn("visionos", haylen.CPP_RUN_PLATFORMS, "The bundles of haylen_add_app have a visionOS variant.")
+        self.assertIn("visionos-simulator", haylen.CPP_RUN_PLATFORMS)
 
     def test_the_visionos_target_embeds_the_native_libraries_of_ios(self):
         with tempfile.TemporaryDirectory() as scratch:
@@ -1410,8 +1411,10 @@ class RunCppTest(unittest.TestCase):
         with mock.patch.object(haylen, "run_cpp_app") as built:
             haylen.command_run(haylen.build_parser().parse_args(["run", str(app)]))
         self.assertEqual(built.call_args.args[0], app.resolve())
-        with self.assertRaisesRegex(haylen.BuildError, 'A C\\+\\+ app runs on .* and not on "visionos-simulator".'):
-            haylen.run_cpp_app(app, haylen.build_parser().parse_args(["run", str(app), "--platform", "visionos-simulator"]))
+        # A desktop builds the C++ apps of its own system alone.
+        other = "linux" if haylen.host_name() != "linux" else "windows"
+        with self.assertRaisesRegex(haylen.BuildError, f'A C\\+\\+ app runs on .* and not on "{other}".'):
+            haylen.run_cpp_app(app, haylen.build_parser().parse_args(["run", str(app), "--platform", other]))
 
 
 class CommandNamesTest(unittest.TestCase):

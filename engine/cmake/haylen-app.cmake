@@ -109,6 +109,11 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     endif()
     set(plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist.in")
     configure_file("${project_dir}/mac/Info.plist.in" "${plist}" @ONLY)
+  elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    # The window of visionOS has no orientation, status bar or launch screen.
+    set(plist "${CMAKE_CURRENT_BINARY_DIR}/${target}-Info.plist.in")
+    configure_file("${project_dir}/visionos/Info.plist.in" "${plist}" @ONLY)
+    set(launch_screen "")
   elseif(HAYLEN_PLATFORM STREQUAL "ios")
     # The supported orientations follow the orientation of app.json, and the iPhone does not turn upside down.
     set(left "\t\t<string>UIInterfaceOrientationLandscapeLeft</string>\n\t\t<string>UIInterfaceOrientationLandscapeRight</string>\n")
@@ -154,7 +159,9 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
   )
 
-  if(HAYLEN_PLATFORM STREQUAL "ios")
+  if(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+    set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "7" XCODE_ATTRIBUTE_XROS_DEPLOYMENT_TARGET "1.0")
+  elseif(HAYLEN_PLATFORM STREQUAL "ios")
     set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "1,2" XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "16.3")
   elseif(HAYLEN_PLATFORM STREQUAL "tvos")
     set_target_properties(${target} PROPERTIES XCODE_ATTRIBUTE_TARGETED_DEVICE_FAMILY "3" XCODE_ATTRIBUTE_TVOS_DEPLOYMENT_TARGET "16.3")
@@ -377,6 +384,8 @@ function(haylen_add_apple_extension target name contents)
   elseif(minimum)
     if(HAYLEN_PLATFORM STREQUAL "macos")
       set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_MACOSX_DEPLOYMENT_TARGET "${minimum}")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "visionOS")
+      set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_XROS_DEPLOYMENT_TARGET "${minimum}")
     elseif(HAYLEN_PLATFORM STREQUAL "ios")
       set_target_properties(${extension} PROPERTIES XCODE_ATTRIBUTE_IPHONEOS_DEPLOYMENT_TARGET "${minimum}")
     else()
