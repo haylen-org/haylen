@@ -320,7 +320,7 @@ A patched package, such as SDL, keys its place in the cache with `haylen_patched
 | HarfBuzz | 15.0.0 | Old MIT license. Its amalgamated source compiles as `haylen-harfbuzz` with `HB_MINI`, the OpenType shaper without the AAT and legacy shapers. |
 | SheenBidi | v3.0.0 | Apache 2.0. The Unicode Bidirectional Algorithm and script runs, compiled from its unity source as `haylen-sheenbidi`. |
 | libunibreak | 8.0 | zlib license. Line breaks and grapheme clusters of Unicode 17, compiled as `haylen-unibreak`. |
-| BudouX | v0.9.3 | Apache 2.0. Only its Thai phrase model, a JSON file that the engine embeds to break Thai lines. |
+| BudouX | v0.10.2 | Apache 2.0. Only its Thai phrase model, a JSON file that the engine embeds to break Thai lines. |
 | fast_float | v8.3.3 | Headers only. It parses floating point numbers on every platform, since `std::from_chars` for floating point needs iOS, tvOS and macOS 26. |
 | Dear ImGui | v1.93.0 | Compiled as `haylen-imgui` with the ImGui configuration of the engine. |
 | miniaudio | 0.11.25 | Compiled as `haylen-miniaudio`. |

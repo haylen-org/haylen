@@ -209,8 +209,8 @@ CPMAddPackage(
 # The Thai model of BudouX finds where Thai text, which has no spaces between words, may break into lines.
 CPMAddPackage(
   NAME budoux
-  URL "https://github.com/google/budoux/archive/refs/tags/v0.9.3.tar.gz"
-  URL_HASH SHA256=55211d599d35c9dcfbb237b5f2050f382daa8e8fe8895986809ee5084e6da893
+  URL "https://github.com/google/budoux/archive/refs/tags/v0.10.2.tar.gz"
+  URL_HASH SHA256=4f652e7f1ea1d8b3850743ad1a8aa4866fcbb6ce7c9b7c34a86cc8d548b34a86
   DOWNLOAD_ONLY YES
 )
 
