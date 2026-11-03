@@ -19,9 +19,11 @@ LibraryBrowser.bulletCore = {75, 13}
 LibraryBrowser.targets = {sprite = 'on a sprite', bullet = 'on bullets', stroke = 'on a trail', beam = 'on a beam', disc = 'on a shield', quad = 'on a rectangle', picture = 'on a picture'}
 -- The trail keeps the points of its last second, however many frames that is.
 LibraryBrowser.trailSeconds = 1
--- The hero keeps its size on screen inside the margin its image gains.
-LibraryBrowser.heroMargin = 24
-LibraryBrowser.heroSize = 460 * (192 + 2 * 24) / 192
+-- The hero keeps its size on screen inside the margin its image gains, which holds the widest glow of the sprite shaders, the halo of the neon sign at its thickest tube.
+LibraryBrowser.heroMargin = 80
+LibraryBrowser.heroSize = 460 * (192 + 2 * LibraryBrowser.heroMargin) / 192
+-- Inside the shield the hero stands smaller, so the bubble keeps room around it.
+LibraryBrowser.shieldHeroSize = 360 * (192 + 2 * LibraryBrowser.heroMargin) / 192
 -- The size of the render target that every shader draws into once.
 LibraryBrowser.proofSize = {268, 152}
 
@@ -215,7 +217,7 @@ function LibraryBrowser:drawTarget(target, material, blend, width, height)
     if target == 'sprite' then
         graphics2d.draw(self.hero, width / 2, height / 2, {width = LibraryBrowser.heroSize, height = LibraryBrowser.heroSize, material = order.material, blend = order.blend})
     elseif target == 'disc' then
-        graphics2d.draw(self.hero, width / 2, height / 2, {width = 450, height = 450})
+        graphics2d.draw(self.hero, width / 2, height / 2, {width = LibraryBrowser.shieldHeroSize, height = LibraryBrowser.shieldHeroSize})
         graphics2d.draw(graphics.whiteTexture(), width / 2, height / 2, {width = 470, height = 470, material = order.material, blend = order.blend, layer = 1})
     elseif target == 'bullet' then
         local time = haylen.elapsed()
