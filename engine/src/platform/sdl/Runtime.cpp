@@ -13,6 +13,7 @@
 
 #include "gpu/DeviceFactory.hpp"
 #include "haylen/core/Log.hpp"
+#include "haylen/lua/Error.hpp"
 #include "platform/Player.hpp"
 #include "platform/Services.hpp"
 #include "platform/sdl/Host.hpp"
@@ -160,7 +161,14 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
     // SDL makes the process aware of the DPI of each monitor as it starts, while the player reads the monitors before, so the process is aware from the start and the monitors have the coordinates of the window.
     SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
 #endif
-    Player::create(argc, argv, std::make_unique<Host>(*this));
+    // Without a player there is no window and no error screen, so a failure to create one goes to the log and the page, which would otherwise wait for an app that never starts.
+    try {
+        Player::create(argc, argv, std::make_unique<Host>(*this));
+    } catch (const std::exception& error) {
+        core::Log::error("The player could not start: {}", error.what());
+        Services::reportError(lua::Error(error.what()).toJson());
+        return SDL_APP_FAILURE;
+    }
     const core::AppConfig& config = Player::getOpeningConfig();
     highDpi = config.window.highDpi;
     transparent = config.window.transparent;

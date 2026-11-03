@@ -806,6 +806,8 @@ WEB_ERROR_SCREEN_STEPS = {
     "missing": ["ready", "stopped", "refused", "restarted by the key"],
 }
 WEB_ERROR_SCREEN_BROWSERS = {"granted": "lets the page write the clipboard", "refused": "refuses the clipboard", "missing": "has no clipboard API"}
+# A page that names a graphics API the engine does not know shows the reason, which also reaches its log, instead of waiting for an app that never starts.
+WEB_UNKNOWN_API_STEPS = ["reported", "shown"]
 CHROME_PATHS = ["/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "google-chrome", "google-chrome-stable", "chromium", "chromium-browser", r"C:\Program Files\Google\Chrome\Application\chrome.exe"]
 
 
@@ -854,10 +856,14 @@ def check_web_error_screen(args: argparse.Namespace, target) -> None:
                     terminal.step(f'Running the error screen check of the web on "{api}" in a headless browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}')
                     report = json.loads(capture([emsdk_node(), WEB_ERROR_SCREEN_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/?graphicsApi={api}", mode]))
                 check_web_page_steps(report, steps, f'The page of the error screen check on "{api}" in a browser that {WEB_ERROR_SCREEN_BROWSERS[mode]}')
+        with headless_browser(WEB_GPU_BROWSER_FLAGS, "the error screen check of the web") as debugging:
+            terminal.step('Running the error screen check of the web with the unknown graphics API "bogus" in a headless browser')
+            report = json.loads(capture([emsdk_node(), WEB_ERROR_SCREEN_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/?graphicsApi=bogus", "unknownApi"]))
+        check_web_page_steps(report, WEB_UNKNOWN_API_STEPS, 'The page of the error screen check with the unknown graphics API "bogus"')
     finally:
         server.shutdown()
         server.server_close()
-    terminal.success("The error screen put its report on the clipboard where the browser allowed it, warned where the browser refused it or lacked it, and restarted the app from the key R and from its button, which drew again.")
+    terminal.success("The error screen put its report on the clipboard where the browser allowed it, warned where the browser refused it or lacked it, and restarted the app from the key R and from its button, which drew again, and a page that named an unknown graphics API showed the reason.")
 
 
 def check_web_wake_lock(args: argparse.Namespace, target) -> None:

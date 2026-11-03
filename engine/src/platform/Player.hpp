@@ -7,6 +7,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -167,6 +168,7 @@ class Player final {
     [[nodiscard]] static Player& getCurrent() noexcept;
     [[nodiscard]] static LaunchOptions parseLaunchOptions(int argc, char* argv[]);
     [[nodiscard]] App load(const std::function<std::shared_ptr<io::Package>()>& open);
+    [[nodiscard]] std::vector<gpu::Device::Api> resolveGraphicsApis(std::string_view requested, std::span<const gpu::Device::Api> configured);
     [[nodiscard]] static std::vector<Event> takePostedEvents();
     [[nodiscard]] static int takeBackPresses();
     void pressBack();

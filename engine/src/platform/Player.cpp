@@ -4,8 +4,10 @@
 #include <cmath>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <system_error>
 #include <utility>
 
@@ -93,7 +95,7 @@ void Player::create(int argc, char* argv[], std::unique_ptr<NativeHost> nativeHo
     // The window opens with its desktop options already in effect, so a frameless window never shows a title bar for its first frame. Whether it can be transparent lasts for the whole run.
     const core::AppConfig::Window& window = runtime.pending.config.window;
     runtime.openingSize = {static_cast<float>(window.width), static_cast<float>(window.height)};
-    runtime.graphicsApis = GraphicsApiOrder::resolve(options.graphicsApi, window.graphicsApis);
+    runtime.graphicsApis = runtime.resolveGraphicsApis(options.graphicsApi, window.graphicsApis);
     runtime.host->prepare({.transparent = window.transparent, .resizable = window.resizable, .decorated = window.decorated, .alwaysOnTop = window.alwaysOnTop, .shownInTaskbar = window.showInTaskbar}, window.focusable);
 }
 
@@ -254,6 +256,17 @@ Player::App Player::load(const std::function<std::shared_ptr<io::Package>()>& op
         app.application = std::make_unique<FailedApplication>(std::string("The app could not be loaded. ") + error.what());
     }
     return app;
+}
+
+// A graphics API that the command line or the web page names wrongly fails the app with the reason on its error screen, which opens through the order of the app.
+std::vector<gpu::Device::Api> Player::resolveGraphicsApis(std::string_view requested, std::span<const gpu::Device::Api> configured) {
+    try {
+        return GraphicsApiOrder::resolve(requested, configured);
+    } catch (const std::invalid_argument& error) {
+        core::Log::error("The app could not be loaded: {}", error.what());
+        pending.application = std::make_unique<FailedApplication>(std::string("The app could not be loaded. ") + error.what());
+        return GraphicsApiOrder::resolve({}, configured);
+    }
 }
 
 // The web plays every package under an overlay, which the page edits file by file, and so does an app that a development server sends files to. A protected release plays as it ships, since no file of it is ever replaced.

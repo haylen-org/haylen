@@ -1,5 +1,5 @@
-// Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. The page address names the graphics API with `?graphicsApi=`, which the app must draw through, since a restart makes a new GPU device. With "granted" the browser lets the page write the clipboard, and the check expects the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R.
-// Run it with Node: node error-screen-check.mjs <debugging port> <page address> <granted|refused|missing>
+// Opens the page of the error screen check in a headless browser over its debugging protocol, stops the app with an error, copies the report of the error screen and restarts the app from it, then prints what happened as JSON. The page address names the graphics API with `?graphicsApi=`, which the app must draw through, since a restart makes a new GPU device. With "granted" the browser lets the page write the clipboard, and the check expects the report on the clipboard, and the app drawn again after the key R and after a click on the restart button. With "refused" the browser refuses every write and with "missing" it has no clipboard API, and the check expects a warning in the log of the page, an untouched clipboard and the app drawn again after the key R. With "unknownApi" the address names a graphics API that the engine does not know, and the check expects its reason in the log of the page and in the failure that the page shows, and no exception.
+// Run it with Node: node error-screen-check.mjs <debugging port> <page address> <granted|refused|missing|unknownApi>
 const [port, url, mode] = process.argv.slice(2);
 const api = new URL(url).searchParams.get("graphicsApi");
 const version = await (await fetch(`http://127.0.0.1:${port}/json/version`)).json();
@@ -166,6 +166,16 @@ const restart = async (name, action) => {
 };
 
 const pressR = () => press("r", "KeyR", 82);
+
+// A page that names a graphics API the engine does not know never starts the app, and the reason reaches the log and the page, over the splash or on the error screen, with no exception of its own.
+if (mode === "unknownApi") {
+    const reason = `The graphics API "${api}" of "--graphics-api" is unknown.`;
+    step("reported", await logged(reason, { seconds: 60, since: 0 }));
+    // The loader shows the reason over its splash when the error comes before the start, and the error screen of the engine shows it on the canvas once the splash ends.
+    step("shown", (await evaluate("document.body.innerText")).includes(reason) || (await shows(errorBackground)));
+    console.log(JSON.stringify(result));
+    process.exit(0);
+}
 
 const ready = (await logged("The error screen check is ready.", { seconds: 60, since: 0 })) && (await logged(`The app draws through "${api}".`, { since: 0 }));
 if (step("ready", ready && (await shows(magenta))) && (await stop("stopped"))) {

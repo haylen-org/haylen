@@ -2499,7 +2499,8 @@ class WebErrorScreenTest(unittest.TestCase):
 
         with mock.patch.object(haylen, "App"), mock.patch.object(haylen, "serve_site"), mock.patch.object(haylen, "headless_browser", side_effect=browser), mock.patch.object(haylen, "emsdk_node"), mock.patch.object(haylen, "capture", return_value="{}"), mock.patch.object(haylen, "check_web_page_steps"), mock.patch.object(haylen, "terminal"):
             haylen.check_web_error_screen(mock.Mock(), target)
-        self.assertEqual(len(browsers), 2 * len(haylen.WEB_ERROR_SCREEN_STEPS))
+        # Every mode opens once per graphics API, and the page with an unknown graphics API opens once more.
+        self.assertEqual(len(browsers), 2 * len(haylen.WEB_ERROR_SCREEN_STEPS) + 1)
         self.assertTrue(all(arguments == haylen.WEB_GPU_BROWSER_FLAGS for arguments in browsers))
 
 
