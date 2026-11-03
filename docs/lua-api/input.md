@@ -710,7 +710,7 @@ Every reading follows the screen as the app shows it, or the face of a gamepad t
 
 ### input.startMotion(options)
 
-Starts the motion sensors and returns a call of the kind that [`haylen.dialogs`](dialogs.md) returns. The method `call:await()` returns a [`MotionRequest`](#motionrequest) once the sensors run. The sensors run while a request wants them and the app is in the foreground, at the highest rate that a running request asks for. They stop in the background and start again when the app comes back, and they stop when the last request ends. The table `options` holds these keys.
+Starts the motion sensors and returns a call of the kind that [`haylen.dialogs`](dialogs.md) returns. The method `call:await()` returns a [`MotionRequest`](#motionrequest) once the sensors run. The sensors run while a request wants them and the app is in the foreground, at the highest rate that a running request asks for. They stop in the background and start again when the app comes back, and they stop when the last request ends. A request for the sensors of the device asks for the permission `motion` where the platform gates it, so an app may also check it first with [`system.permission('motion')`](system.md#systempermissionname) and ask for it from a tap with [`system.requestPermission('motion')`](system.md#systemrequestpermissionname), whose page lists what each platform answers. The table `options` holds these keys.
 
 | Key | Type | Default | Meaning |
 | --- | --- | --- | --- |
