@@ -742,7 +742,7 @@ The trackpads and the mouse of macOS report the phases of their gestures. So a `
 Each gesture moves one area:
 
 - A gesture of the wheel or the trackpad keeps the axis it starts along, the one it moves most. It goes to the innermost area under the pointer that can move along that axis in that direction, or else to the innermost one that scrolls along that axis. So a vertical gesture over a horizontal list scrolls the page around it, and only a sideways gesture scrolls the list.
-- The gesture stays with that area until it pauses for a moment, or until the pointer moves away while it rests. It stays even when the content brings another area under the pointer. An area at its end leaves the next gesture that scrolls further to the area around it.
+- The gesture stays with that area until it pauses for a moment, until the pointer moves away while it rests, or until fingers touch the trackpad again, even while the momentum of the last swipe still moves the content. It stays even when the content brings another area under the pointer. An area at its end leaves the next gesture that scrolls further to the area around it.
 - On a touch screen, a finger that drags goes to an area once it travels past a small distance. It picks the innermost area it pressed whose axis the drag follows more than the other axis, and stays with it until it lifts. So a finger that drags up over a horizontal list scrolls the page, and one that drags sideways scrolls only the list.
 - A `scroll` and a `collection` fling on after the finger lets go, and stretch past their ends. The focus brings the control it moves to into view at once.
 

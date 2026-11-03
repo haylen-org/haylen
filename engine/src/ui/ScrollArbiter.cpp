@@ -96,9 +96,9 @@ void ScrollArbiter::beginFrame(float seconds) {
     areas.swap(previousAreas);
     areas.clear();
 
-    // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on. A wheel without phases that pauses, or that rests while the pointer moves on, ends its gesture. The next wheel starts a gesture along the axis it moves most.
+    // A gesture of a trackpad with phases lasts while its fingers are on it or its momentum goes on, until fingers touch it again. A wheel without phases that pauses, or that rests while the pointer moves on, ends its gesture. The next wheel starts a gesture along the axis it moves most.
     const bool scrolled = !isEmpty(wheel);
-    if (gesture && !fingers && ((phased && wheel.momentum.isZero()) || quiet > kGesturePause || (quiet > kPointerPause && (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel))) {
+    if (gesture && !fingers && (touched || (phased && wheel.momentum.isZero()) || quiet > kGesturePause || (quiet > kPointerPause && (pointer - wheelPointer).getLengthSquared() > kPointerTravel * kPointerTravel))) {
         gesture = false;
     }
     fingers = (fingers || touched || (framePhased && scrolled)) && !lifted;

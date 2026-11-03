@@ -57,6 +57,18 @@ class ScrollArbiterTest : public ::testing::Test, public test::UiFixture {
         frames();
     }
 
+    // Sends the sideways scroll of a trackpad that reports the phases of its gestures over a point and runs a frame.
+    void sideways(math::Vec2 point, float scroll, platform::Event::ScrollPhase value) {
+        pointer(platform::Event::Type::MouseMove, point);
+        platform::Event event;
+        event.type = platform::Event::Type::MouseScroll;
+        event.scroll = {scroll, 0.0F};
+        event.preciseScroll = true;
+        event.scrollPhase = value;
+        getEngine().handleEvent(event);
+        frames();
+    }
+
     // A page holding a draggable list of rows taller than the page.
     std::shared_ptr<Gui> mountDraggableList() {
         std::string items;
@@ -392,6 +404,71 @@ TEST_F(ScrollArbiterTest, AFingerGoesToTheInnermostAreaAlongTheSameAxis) {
     swipe(inside + math::Vec2{0.0F, 100.0F}, inside - math::Vec2{0.0F, 100.0F});
     EXPECT_EQ(getBounds(*gui, "pageContent").y, page);
     EXPECT_LT(getBounds(*gui, "innerContent").y, inner - 150.0F);
+}
+
+// A shelf of covers is a horizontal collection inside a vertical page, and a sideways wheel or trackpad over it scrolls the shelf while the page holds still.
+TEST_F(ScrollArbiterTest, ASidewaysGestureOverAHorizontalCollectionScrollsTheCollection) {
+    // clang-format off
+    auto gui = mount(R"({"kind": "scroll", "id": "page", "width": 600, "height": 400, "children": [{"kind": "column", "id": "content", "gap": 0, "children": [
+        {"kind": "spacer", "height": 100},
+        {"kind": "collection", "id": "shelf", "axis": "horizontal", "scrollbar": false, "height": 150, "gap": 0, "types": {"cover": {"template": {"kind": "label", "part": "title", "bind": {"text": "title"}, "width": 150}}}},
+        {"kind": "spacer", "height": 1500}
+    ]}]})");
+    // clang-format on
+    Collection& shelf = gui->getCollection("shelf");
+    std::vector<CollectionItems::Item> items;
+    for (int index = 1; index <= 40; ++index) {
+        items.push_back({.id = "c" + std::to_string(index), .type = "cover", .fields = core::Json{{"title", "Cover " + std::to_string(index)}}});
+    }
+    auto source = std::make_shared<CollectionItems>();
+    source->assign(std::move(items));
+    shelf.setSource(source);
+    frames(3);
+    const float top = getBounds(*gui, "content").y;
+
+    wheel(shelf.getBounds().getCenter(), 0.0F, -1.0F);
+    frames(kRest);
+    EXPECT_NEAR(shelf.getScrollOffset(), 64.0, 0.5);
+    EXPECT_EQ(getBounds(*gui, "content").y, top);
+
+    trackpad(shelf.getBounds().getCenter(), {-40.0F, 0.0F});
+    frames(kRest);
+    EXPECT_NEAR(shelf.getScrollOffset(), 104.0, 0.5);
+    EXPECT_EQ(getBounds(*gui, "content").y, top);
+
+    // A trackpad that reports the phases of its gestures, as on macOS, drags the shelf sideways the way a finger does.
+    using Phase = platform::Event::ScrollPhase;
+    const math::Vec2 inside = shelf.getBounds().getCenter();
+    sideways(inside, 0.0F, Phase::Began);
+    for (int step = 0; step < 5; ++step) {
+        sideways(inside, -20.0F, Phase::Changed);
+    }
+    sideways(inside, 0.0F, Phase::Ended);
+    frames(kRest);
+    EXPECT_GT(shelf.getScrollOffset(), 190.0);
+    EXPECT_EQ(getBounds(*gui, "content").y, top);
+
+    // Fingers that touch the trackpad while the momentum of a scroll of the page still arrives begin a new gesture, so a sideways swipe right after it scrolls the shelf.
+    const double before = shelf.getScrollOffset();
+    phase(inside, -30.0F, Phase::Began);
+    phase(inside, -30.0F, Phase::Changed);
+    phase(inside, 0.0F, Phase::Ended);
+    phase(inside, -20.0F, Phase::Momentum);
+    const float scrolledTop = getBounds(*gui, "content").y;
+    EXPECT_LT(scrolledTop, top);
+    platform::Event momentum;
+    momentum.type = platform::Event::Type::MouseScroll;
+    momentum.scroll = {0.0F, -20.0F};
+    momentum.preciseScroll = true;
+    momentum.scrollPhase = Phase::Momentum;
+    getEngine().handleEvent(momentum);
+    sideways(getBounds(*gui, "shelf").getCenter(), 0.0F, Phase::Began);
+    for (int step = 0; step < 5; ++step) {
+        sideways(getBounds(*gui, "shelf").getCenter(), -20.0F, Phase::Changed);
+    }
+    sideways(getBounds(*gui, "shelf").getCenter(), 0.0F, Phase::Ended);
+    frames(kRest);
+    EXPECT_GT(shelf.getScrollOffset(), before + 90.0);
 }
 
 } // namespace haylen::ui
