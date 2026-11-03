@@ -58,18 +58,18 @@ void HeadlessHost::pollGamepads(std::span<input::GamepadState> states) {
     std::copy_n(gamepads.begin(), std::min(states.size(), gamepads.size()), states.begin());
 }
 
-void HeadlessHost::authorizeMotion(std::function<void(Permission::Answer answer)> callback) {
-    ++motionAuthorizations;
-    if (motionAnswersHeld) {
-        heldMotionAnswers.push_back(std::move(callback));
+void HeadlessHost::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    permissionRequests.push_back(kind);
+    if (permissionAnswersHeld) {
+        heldPermissionAnswers.push_back(std::move(callback));
         return;
     }
-    callback(motionAnswer);
+    callback(permissionAnswer);
 }
 
-void HeadlessHost::answerMotion() {
-    for (const std::function<void(Permission::Answer)>& callback : std::exchange(heldMotionAnswers, {})) {
-        callback(motionAnswer);
+void HeadlessHost::answerPermissions() {
+    for (const std::function<void(Permission::Answer)>& callback : std::exchange(heldPermissionAnswers, {})) {
+        callback(permissionAnswer);
     }
 }
 
@@ -77,9 +77,9 @@ void HeadlessHost::dispatchPlatformCall(std::uint64_t id, std::string_view metho
     platformCalls.push_back({.id = id, .method = std::string(method), .paramsJson = std::string(paramsJson), .buffers = {buffers.begin(), buffers.end()}, .views = {views.begin(), views.end()}});
 }
 
-void HeadlessHost::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+void HeadlessHost::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
     openedUrls.emplace_back(url);
-    callback(opensUrls);
+    callback(urlAnswer);
 }
 
 } // namespace haylen::platform

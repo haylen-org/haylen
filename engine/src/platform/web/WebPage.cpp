@@ -68,6 +68,18 @@ EM_JS(void, haylen_js_write_clipboard, (double id, const char* text), {
     Module.haylen.writeClipboard(id, UTF8ToString(text));
 });
 
+EM_JS(void, haylen_js_read_clipboard, (double id), {
+    Module.haylen.readClipboard(id);
+});
+
+EM_JS(void, haylen_js_check_permission, (double id, const char* kind), {
+    Module.haylen.checkPermission(id, UTF8ToString(kind));
+});
+
+EM_JS(void, haylen_js_request_permission, (double id, const char* kind), {
+    Module.haylen.requestPermission(id, UTF8ToString(kind));
+});
+
 EM_JS(char*, haylen_js_clipboard, (), {
     return stringToNewUTF8(Module.haylen.clipboardText());
 });
@@ -85,8 +97,8 @@ namespace haylen::platform {
 
 std::vector<std::string>& WebPage::touched = *new std::vector<std::string>();
 std::string& WebPage::lastError = *new std::string();
-std::unordered_map<std::uint64_t, std::function<void(bool)>>& WebPage::clipboardWrites = *new std::unordered_map<std::uint64_t, std::function<void(bool)>>();
-std::uint64_t WebPage::nextClipboardWrite = 1;
+std::unordered_map<std::uint64_t, WebPage::GatedCallback>& WebPage::gatedCalls = *new std::unordered_map<std::uint64_t, GatedCallback>();
+std::uint64_t WebPage::nextGatedCall = 1;
 double WebPage::lastStats = 0.0;
 
 template <typename Body> int WebPage::answer(Body&& body) {
@@ -106,20 +118,42 @@ void WebPage::setScreenKeptOn(bool value) {
     haylen_js_keep_screen_on(value ? 1 : 0);
 }
 
-void WebPage::setClipboard(std::string_view text, std::function<void(bool written)> callback) {
-    const std::uint64_t id = nextClipboardWrite++;
-    clipboardWrites.emplace(id, std::move(callback));
-    haylen_js_write_clipboard(static_cast<double>(id), std::string(text).c_str());
+void WebPage::setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_write_clipboard(awaitGatedCall(withoutText(std::move(callback))), std::string(text).c_str());
 }
 
-void WebPage::answerClipboard(double id, bool written) {
-    const auto found = clipboardWrites.find(static_cast<std::uint64_t>(id));
-    if (found == clipboardWrites.end()) {
+void WebPage::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+    haylen_js_read_clipboard(awaitGatedCall(std::move(callback)));
+}
+
+void WebPage::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_check_permission(awaitGatedCall(withoutText(std::move(callback))), std::string(Permission::kindName(kind)).c_str());
+}
+
+void WebPage::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    haylen_js_request_permission(awaitGatedCall(withoutText(std::move(callback))), std::string(Permission::kindName(kind)).c_str());
+}
+
+double WebPage::awaitGatedCall(GatedCallback callback) {
+    const std::uint64_t id = nextGatedCall++;
+    gatedCalls.emplace(id, std::move(callback));
+    return static_cast<double>(id);
+}
+
+WebPage::GatedCallback WebPage::withoutText(std::function<void(Permission::Answer answer)> callback) {
+    return [callback = std::move(callback)](Permission::Answer answer, std::string) { callback(std::move(answer)); };
+}
+
+void WebPage::answerGatedCall(double id, const char* json) {
+    const auto found = gatedCalls.find(static_cast<std::uint64_t>(id));
+    if (found == gatedCalls.end()) {
         return;
     }
-    const std::function<void(bool)> callback = std::move(found->second);
-    clipboardWrites.erase(found);
-    callback(written);
+    const GatedCallback callback = std::move(found->second);
+    gatedCalls.erase(found);
+    const core::Json value = core::Json::parse(json, nullptr, false);
+    const auto text = value.is_object() ? value.find("text") : value.end();
+    callback(Permission::Answer::fromJson(value), text != value.end() && text->is_string() ? text->get<std::string>() : std::string());
 }
 
 std::string WebPage::getClipboard() {
@@ -384,8 +418,8 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_media_command(int command, double position)
     haylen::platform::WebEntry::guard("haylen_web_media_command", [&] { haylen::platform::MediaSession::receive(static_cast<haylen::platform::MediaSession::Command>(command), position); });
 }
 
-EMSCRIPTEN_KEEPALIVE void haylen_web_clipboard_written(double id, int written) {
-    haylen::platform::WebEntry::guard("haylen_web_clipboard_written", [&] { haylen::platform::WebPage::answerClipboard(id, written != 0); });
+EMSCRIPTEN_KEEPALIVE void haylen_web_answer_gated_call(double id, const char* json) {
+    haylen::platform::WebEntry::guard("haylen_web_answer_gated_call", [&] { haylen::platform::WebPage::answerGatedCall(id, json); });
 }
 
 EMSCRIPTEN_KEEPALIVE const char* haylen_web_last_error() {

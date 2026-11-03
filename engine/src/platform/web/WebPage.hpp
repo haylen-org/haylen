@@ -11,6 +11,7 @@
 #include <vector>
 
 #include "haylen/core/Json.hpp"
+#include "haylen/platform/Permission.hpp"
 
 namespace haylen::core {
 class Engine;
@@ -31,9 +32,14 @@ class WebPage final {
     // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go.
     static void setScreenKeptOn(bool value);
 
-    // The clipboard of the browser, which the page writes asynchronously and answers through `answerClipboard`, and whose text the page knows only from the last paste into it or the last text it wrote.
-    static void setClipboard(std::string_view text, std::function<void(bool written)> callback);
-    static void answerClipboard(double id, bool written);
+    // The calls that a browser may gate: the writes and reads of its clipboard and the checks and requests of permissions, which the page answers asynchronously through `answerGatedCall` with the JSON `{state, message, missing, text}` of `Permission::Answer::fromJson` and the text of a read.
+    static void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);
+    static void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback);
+    static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+    static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+    static void answerGatedCall(double id, const char* json);
+
+    // The text of the last paste into the page or the last text it wrote, which a paste of the person into a field of the UI reads.
     [[nodiscard]] static std::string getClipboard();
 
     // Tells the page when an app starts and stops, and passes it frame statistics about once per second.
@@ -91,9 +97,15 @@ class WebPage final {
     // The paths the page changed since its last `applyChanges`.
     static std::vector<std::string>& touched;
 
-    // The writes of the clipboard that the page has not answered yet.
-    static std::unordered_map<std::uint64_t, std::function<void(bool)>>& clipboardWrites;
-    static std::uint64_t nextClipboardWrite;
+    using GatedCallback = std::function<void(Permission::Answer answer, std::string text)>;
+
+    // Keeps the callback of a gated call until the page answers it, and returns its id.
+    [[nodiscard]] static double awaitGatedCall(GatedCallback callback);
+    [[nodiscard]] static GatedCallback withoutText(std::function<void(Permission::Answer answer)> callback);
+
+    // The gated calls that the page has not answered yet.
+    static std::unordered_map<std::uint64_t, GatedCallback>& gatedCalls;
+    static std::uint64_t nextGatedCall;
     static std::string& lastError;
     static double lastStats;
 

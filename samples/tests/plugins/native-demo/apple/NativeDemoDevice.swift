@@ -122,10 +122,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
             #if os(tvOS)
             throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
             #else
-            try self.context.require(.usageDescription("NSCameraUsageDescription"))
-            guard await AVCaptureDevice.requestAccess(for: .video) else {
-                throw HaylenFailure("The person has not allowed the camera.", code: "permissionDenied")
-            }
+            try await self.context.requirePermission("camera")
             guard let stream = self.context.openVideoStream("camera", width: NativeDemoCamera.width, height: NativeDemoCamera.height, format: .BGRA8) else {
                 throw HaylenFailure("The video stream \"camera\" did not open.", code: "streamFailed")
             }
@@ -163,10 +160,7 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
             #if os(tvOS)
             throw HaylenFailure("Apple TV gives apps no microphone.", code: "unsupported")
             #else
-            try self.context.require(.usageDescription("NSMicrophoneUsageDescription"))
-            guard await AVCaptureDevice.requestAccess(for: .audio) else {
-                throw HaylenFailure("The person has not allowed the microphone.", code: "permissionDenied")
-            }
+            try await self.context.requirePermission("microphone")
             self.microphone?.stop()
             let context = self.context
             let microphone = try NativeDemoMicrophone(context: context) { level in
@@ -186,21 +180,13 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    // The location asks for the permission while the app is in use, then for one fix of Core Location.
+    // The location needs the permission of the engine while the app is in use, then asks for one fix of Core Location.
     private func registerLocation() {
         context.register("location") { [unowned self] (_: Empty) async throws -> Place in
-            #if os(macOS)
-            try self.context.require(.usageDescription("NSLocationUsageDescription"))
-            #else
-            try self.context.require(.usageDescription("NSLocationWhenInUseUsageDescription"))
-            #endif
+            try await self.context.requirePermission("location")
             let location = try await withCheckedThrowingContinuation { continuation in
                 self.located.append(continuation)
-                if self.locations.authorizationStatus == .notDetermined {
-                    self.locations.requestWhenInUseAuthorization()
-                } else {
-                    self.locations.requestLocation()
-                }
+                self.locations.requestLocation()
             }
             return Place(latitude: location.coordinate.latitude, longitude: location.coordinate.longitude, accuracy: location.horizontalAccuracy, language: Self.language)
         }
@@ -282,13 +268,6 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         }
     }
 
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        let status = manager.authorizationStatus
-        Task { @MainActor in
-            self.authorizationChanged(status)
-        }
-    }
-
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let location = locations.last else {
             return
@@ -302,20 +281,6 @@ final class NativeDemoDevice: NSObject, CLLocationManagerDelegate {
         let failure = HaylenFailure("The location is unknown: \(error.localizedDescription)", code: "locationUnknown")
         Task { @MainActor in
             self.finishLocation(.failure(failure))
-        }
-    }
-
-    private func authorizationChanged(_ status: CLAuthorizationStatus) {
-        guard !located.isEmpty else {
-            return
-        }
-        switch status {
-        case .notDetermined:
-            return
-        case .denied, .restricted:
-            finishLocation(.failure(HaylenFailure("The person has not allowed the location.", code: "permissionDenied")))
-        default:
-            locations.requestLocation()
         }
     }
 

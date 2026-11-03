@@ -370,6 +370,7 @@ The engine and the platforms fail calls with these codes:
 | `invalidView` | Native code answered with a data view token that names no live view, with a message such as `The JSON names the data view 7, which is no longer alive.`. |
 | `exception` | A Java, Kotlin, Swift or JavaScript handler threw an error without a code of its own. The field `data.type` names the class of the exception or the type of the error. |
 | `unsupported` | The platform cannot serve the call, or the project of the app lacks what the call needs. That may be a permission of the Android manifest, a usage description of the `Info.plist` or an API of the browser. In the second case `data.missing` lists each missing requirement as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. |
+| `denied` | The person refused a [permission](system.md#permissions) that the call needs, or revoked it. The message names the permission and how to ask for it again, as the [plugin guide](../platform/plugins.md#permissions) describes. |
 
 A native failure that is a string becomes the message. A failure object gives its `message`, `code` and `data`. A failure without a string `message`, such as `null` or a number, fails with `The native platform call failed without a message.`. A Lua handler of `platform.registerHandler` fails with the error it raised and its stack trace as the message.
 

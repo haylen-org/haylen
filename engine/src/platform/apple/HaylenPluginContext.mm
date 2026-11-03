@@ -3,14 +3,17 @@
 #include <cstddef>
 #include <cstdint>
 #include <exception>
+#include <optional>
 #include <stdexcept>
 #include <utility>
 
 #include "haylen/core/Log.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/PluginStreams.hpp"
 #include "platform/NativeHost.hpp"
 #include "platform/NativeWindow.hpp"
 #import "platform/apple/AppleBridge.hpp"
+#import "platform/apple/ApplePermissions.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/HaylenAudioStream+Runtime.h"
 #import "platform/apple/HaylenOverlay+Runtime.h"
@@ -23,9 +26,11 @@
 
 using haylen::core::Log;
 using haylen::platform::AppleBridge;
+using haylen::platform::ApplePermissions;
 using haylen::platform::AppleScreens;
 using haylen::platform::AudioStream;
 using haylen::platform::NativeHost;
+using haylen::platform::Permission;
 using haylen::platform::PluginStreams;
 using haylen::platform::VideoStream;
 
@@ -148,6 +153,51 @@ using haylen::platform::VideoStream;
     for (NSInteger index = 0; index < open; ++index) {
         NativeHost::getNativeViews().uncoverApp();
     }
+}
+
+// The request runs on the main thread, where the permissions of Apple platforms live, and so does the completion. A permission that the platform tells nothing of until the app tries, such as the local network, lets the plugin go on.
+- (void)requirePermission:(NSString*)name completion:(void (^)(NSError* _Nullable error))completion {
+    const std::optional<Permission::Kind> kind = Permission::kindFromName(name.UTF8String);
+    if (!kind) {
+        NSString* message = [NSString stringWithFormat:@"The plugin \"%@\" asks for the permission \"%@\", which \"system.permission\" does not name.", self.identifier, name];
+        completion([NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported"}]);
+        return;
+    }
+
+    const Permission::Kind asked = *kind;
+    // clang-format off
+    dispatch_block_t request = ^{
+        ApplePermissions::request(asked, [completion, asked](Permission::Answer answer) {
+            dispatch_async(dispatch_get_main_queue(), ^{ completion([HaylenPluginContext failureOf:answer kind:asked]); });
+        });
+    };
+    // clang-format on
+    if (NSThread.isMainThread) {
+        request();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), request);
+    }
+}
+
++ (nullable NSError*)failureOf:(const Permission::Answer&)answer kind:(Permission::Kind)kind {
+    if (answer.state == Permission::State::Granted || answer.state == Permission::State::Unknown) {
+        return nil;
+    }
+    if (answer.state != Permission::State::Unsupported) {
+        NSString* message = @(Permission::refusal(kind).c_str());
+        return [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"denied"}];
+    }
+
+    NSString* message = @(answer.message.c_str());
+    NSMutableDictionary<NSString*, id>* failure = [NSMutableDictionary dictionaryWithDictionary:@{NSLocalizedDescriptionKey : message, @"message" : message, @"code" : @"unsupported"}];
+    if (!answer.missing.empty()) {
+        NSMutableArray<NSDictionary<NSString*, NSString*>*>* missing = [NSMutableArray array];
+        for (const Permission::Requirement& requirement : answer.missing) {
+            [missing addObject:@{@"kind" : @(requirement.kind.c_str()), @"name" : @(requirement.name.c_str()), @"file" : @(requirement.file.c_str()), @"snippet" : @(requirement.snippet.c_str())}];
+        }
+        failure[@"data"] = @{@"missing" : missing};
+    }
+    return [NSError errorWithDomain:@"HaylenPermissions" code:0 userInfo:failure];
 }
 
 - (NSString*)qualify:(NSString*)name {

@@ -16,11 +16,13 @@ namespace haylen::platform {
 class AppleMotion final {
   public:
     [[nodiscard]] static input::MotionSensors::Support getSupport();
+
+    // Asks the person for the motion sensors where the system gates them, after it checked the `NSMotionUsageDescription` that the prompt shows, as the permission `motion` of `Permission` does.
     static void authorize(std::function<void(Permission::Answer answer)> callback);
     static void set(input::MotionSensors::Sensors sensors, float rate);
     static void read(input::MotionState& state);
 
-    // The state of the permission of the motion sensors, which a `Permission::Kind` of the motion sensors answers with.
+    // The state of the permission `motion` of `Permission`.
     [[nodiscard]] static Permission::State getPermission();
 
   private:
@@ -31,7 +33,6 @@ class AppleMotion final {
     static constexpr NSInteger kStatusRestricted = 1;
     static constexpr NSInteger kStatusDenied = 2;
     static constexpr NSUInteger kVerticalFrame = 1;
-    static constexpr const char* kDeniedMessage = "The person did not allow the motion sensors. They allow them again in the privacy settings of the device.";
 
     // The manager of Core Motion, one per process as Core Motion asks, or nil where the system has no Core Motion.
     [[nodiscard]] static id<HaylenMotionManager> getManager();

@@ -28,9 +28,9 @@
     static void captureBack(boolean);
     static byte[] systemInfo();
     static void openUrl(long, byte[]);
-    static void vibrate(long);
+    static byte[] vibrate(long);
     static void rumbleGamepad(int, float, float, long);
-    static boolean setClipboard(byte[]);
+    static byte[] setClipboard(byte[]);
     static byte[] clipboard();
     static byte[] networkRequirement();
     static byte[] packageName();
@@ -38,8 +38,9 @@
 }
 
 -keep class dev.haylen.HaylenPermissions {
-    static byte[] state(byte[]);
+    static void state(long, byte[]);
     static void request(long, byte[]);
+    static boolean isHeld(byte[]);
 }
 -keep class dev.haylen.HaylenDialogs {
     static void show(long, byte[], byte[]);

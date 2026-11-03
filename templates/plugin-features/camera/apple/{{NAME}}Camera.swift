@@ -28,10 +28,7 @@ final class {{NAME}}Camera {
             #if os(tvOS)
             throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
             #else
-            try context.require(.usageDescription("NSCameraUsageDescription"))
-            guard await AVCaptureDevice.requestAccess(for: .video) else {
-                throw HaylenFailure("The person has not allowed the camera.", code: "permissionDenied")
-            }
+            try await context.requirePermission("camera")
             guard let stream = context.openVideoStream("camera", width: {{NAME}}CameraCapture.width, height: {{NAME}}CameraCapture.height, format: .BGRA8) else {
                 throw HaylenFailure("The video stream \"camera\" did not open.", code: "streamFailed")
             }

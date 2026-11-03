@@ -285,6 +285,7 @@ TEST(DialogsLuaTest, RaisesClearErrorsForInvalidOptions) {
 TEST(DialogResultTest, ReadsTheNamesOfItsCodes) {
     EXPECT_EQ(DialogResult::codeName(DialogResult::Code::Timeout), "timeout");
     EXPECT_EQ(DialogResult::codeFromName("unsupported"), DialogResult::Code::Unsupported);
+    EXPECT_EQ(DialogResult::codeFromName("denied"), DialogResult::Code::Denied);
     EXPECT_FALSE(DialogResult::codeFromName("busy"));
 }
 

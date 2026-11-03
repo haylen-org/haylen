@@ -115,6 +115,9 @@ NS_SWIFT_NAME(HaylenOverlay.Item)
 - (void)emitRetained:(NSString*)event payload:(nullable id)payload;
 - (void)emit:(NSString*)event payload:(nullable id)payload retain:(BOOL)retain batched:(BOOL)batched;
 
+// Asks for the permission `name` of `system.permission`, such as `camera`, where the app does not hold it yet, before the plugin uses the capability. The completion runs on the main thread with `nil` once the app holds it, or with an error whose user info holds the failure that a handler replies with: `message`, the code `denied` when the person refused it or `unsupported` with the reason, and `data`, whose `missing` lists the requirements the project lacks.
+- (void)requirePermission:(NSString*)name completion:(void (^)(NSError* _Nullable error))completion NS_SWIFT_DISABLE_ASYNC;
+
 // Native UI that covers the app, such as a full screen ad or a sign-in sheet, covers it while it shows, which halts and mutes the app. Covers are counted, and the covers of a plugin end when the window of the app goes away.
 - (void)coverApp;
 - (void)uncoverApp;

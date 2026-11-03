@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <initializer_list>
@@ -16,6 +17,7 @@
 #include "haylen/input/MotionSensors.hpp"
 #include "haylen/input/VirtualInput.hpp"
 #include "haylen/platform/Event.hpp"
+#include "haylen/platform/Permission.hpp"
 #include "support/EngineFixture.hpp"
 
 namespace haylen::input {
@@ -72,7 +74,7 @@ TEST_F(MotionSensorsTest, StayOffUntilARequestRunsAndAnswerInALaterFrame) {
     EXPECT_TRUE(sensors.isRunning(id));
     EXPECT_EQ(fixture.host().getMotionSensors(), makeSensors({MotionSensor::Accelerometer}));
     EXPECT_FLOAT_EQ(fixture.host().getMotionRate(), MotionSensors::kDefaultRate);
-    EXPECT_EQ(fixture.host().getMotionAuthorizations(), 1);
+    EXPECT_EQ(std::ranges::count(fixture.host().getPermissionRequests(), platform::Permission::Kind::Motion), 1);
 }
 
 TEST_F(MotionSensorsTest, RunWhatEveryRequestWantsAtTheHighestRateAndStopWithTheLast) {
@@ -112,7 +114,7 @@ TEST_F(MotionSensorsTest, FailSensorsThatTheDeviceLacksWithTheReason) {
     EXPECT_EQ(answers[0]->message, "The test device has no sensors at all.");
     EXPECT_EQ(answers[1]->message, "The device has no motion sensors \"gyroscope\" and \"attitude\".");
     EXPECT_EQ(answers[2]->message, "The device has no motion sensor \"gyroscope\".");
-    EXPECT_EQ(fixture.host().getMotionAuthorizations(), 0);
+    EXPECT_EQ(std::ranges::count(fixture.host().getPermissionRequests(), platform::Permission::Kind::Motion), 0);
     EXPECT_TRUE(fixture.host().getMotionSensors().none());
 }
 
@@ -122,13 +124,13 @@ TEST_F(MotionSensorsTest, FailWithTheAnswerOfThePlatform) {
     MotionSensors& sensors = fixture.engine().getMotionSensors();
     const MotionSensors::Options options{.sensors = makeSensors({MotionSensor::Accelerometer})};
 
-    fixture.host().setMotionAnswer({.state = platform::Permission::State::Denied});
+    fixture.host().setPermissionAnswer({.state = platform::Permission::State::Denied});
     start(sensors, options);
     fixture.frames(1);
-    fixture.host().setMotionAnswer({.state = platform::Permission::State::Prompt, .missing = {{.kind = "usageDescription", .name = "NSMotionUsageDescription"}}, .message = "The motion sensors need a usage description."});
+    fixture.host().setPermissionAnswer({.state = platform::Permission::State::Unsupported, .missing = {{.kind = "usageDescription", .name = "NSMotionUsageDescription"}}, .message = "The motion sensors need a usage description."});
     start(sensors, options);
     fixture.frames(1);
-    fixture.host().setMotionAnswer({.state = platform::Permission::State::Prompt, .message = "The browser asks only during a tap."});
+    fixture.host().setPermissionAnswer({.state = platform::Permission::State::Prompt, .message = "The browser asks only during a tap."});
     start(sensors, options);
     fixture.frames(1);
 
@@ -146,14 +148,14 @@ TEST_F(MotionSensorsTest, FailWithTheAnswerOfThePlatform) {
 TEST_F(MotionSensorsTest, CancelARequestThatStopsBeforeItsAnswer) {
     test::EngineFixture fixture;
     giveSensors(fixture, {MotionSensor::Accelerometer});
-    fixture.host().setMotionAnswersHeld(true);
+    fixture.host().setPermissionAnswersHeld(true);
     MotionSensors& sensors = fixture.engine().getMotionSensors();
     const std::uint64_t id = start(sensors, {.sensors = makeSensors({MotionSensor::Accelerometer})});
     fixture.frames(2);
     EXPECT_TRUE(answers.empty());
 
     sensors.stop(id);
-    fixture.host().answerMotion();
+    fixture.host().answerPermissions();
     fixture.frames(2);
     ASSERT_EQ(answers.size(), 1U);
     EXPECT_EQ(answers.front()->code, "cancelled");
@@ -186,7 +188,7 @@ TEST_F(MotionSensorsTest, RunTheSensorsOfGamepadsWithoutAsking) {
     fixture.frames(1);
     ASSERT_EQ(answers.size(), 1U);
     EXPECT_FALSE(answers.front().has_value());
-    EXPECT_EQ(fixture.host().getMotionAuthorizations(), 0);
+    EXPECT_EQ(std::ranges::count(fixture.host().getPermissionRequests(), platform::Permission::Kind::Motion), 0);
     EXPECT_TRUE(fixture.host().getMotionSensors().none());
     EXPECT_EQ(fixture.host().getGamepadMotion(), makeSensors({MotionSensor::Accelerometer, MotionSensor::Gyroscope}));
 
@@ -381,14 +383,14 @@ TEST_F(MotionSensorsTest, FailTheCallFromLuaWithItsCode) {
     EXPECT_EQ(fixture.lua("return reason.code .. ' ' .. reason.message"), "unsupported The test device has no sensors at all.");
 
     fixture.host().setMotionSupport({.sensors = makeSensors({MotionSensor::Accelerometer})});
-    fixture.host().setMotionAnswer({.state = platform::Permission::State::Prompt, .missing = {{.kind = "usageDescription", .name = "NSMotionUsageDescription", .file = "ios/Info.plist", .snippet = "<key>NSMotionUsageDescription</key>"}}, .message = "The motion sensors need a usage description."});
+    fixture.host().setPermissionAnswer({.state = platform::Permission::State::Unsupported, .missing = {{.kind = "usageDescription", .name = "NSMotionUsageDescription", .file = "ios/Info.plist", .snippet = "<key>NSMotionUsageDescription</key>"}}, .message = "The motion sensors need a usage description."});
     fixture.runLua("async.spawn(function() local _, failure = input.startMotion():await() missing = failure end)");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return type(missing)") == "table"; }));
     EXPECT_EQ(fixture.lua("return missing.code .. ' ' .. missing.data.missing[1].name"), "unsupported NSMotionUsageDescription");
 
     // A call that the app gives up before its answer stops the request.
-    fixture.host().setMotionAnswer({.state = platform::Permission::State::Granted});
-    fixture.host().setMotionAnswersHeld(true);
+    fixture.host().setPermissionAnswer({.state = platform::Permission::State::Granted});
+    fixture.host().setPermissionAnswersHeld(true);
     fixture.runLua("waiting = input.startMotion() async.spawn(function() local _, failure = waiting:await() given = failure end)");
     fixture.frames(1);
     EXPECT_EQ(fixture.lua("return tostring(waiting:cancel())"), "true");

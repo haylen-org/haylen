@@ -1,5 +1,6 @@
 #include "platform/android/JavaBridge.hpp"
 
+#include <format>
 #include <string>
 #include <utility>
 
@@ -46,6 +47,7 @@ jmethodID JavaBridge::openOutputMethod = nullptr;
 jmethodID JavaBridge::closeOutputMethod = nullptr;
 jclass JavaBridge::permissionsClass = nullptr;
 jmethodID JavaBridge::permissionStateMethod = nullptr;
+jmethodID JavaBridge::permissionHeldMethod = nullptr;
 jmethodID JavaBridge::requestPermissionMethod = nullptr;
 jclass JavaBridge::dialogsClass = nullptr;
 jmethodID JavaBridge::showDialogMethod = nullptr;
@@ -60,7 +62,7 @@ jclass JavaBridge::mediaSessionClass = nullptr;
 jmethodID JavaBridge::updateMediaSessionMethod = nullptr;
 std::atomic<bool> JavaBridge::accessibilityWanted{false};
 std::mutex& JavaBridge::urlMutex = *new std::mutex();
-std::unordered_map<std::int64_t, std::function<void(bool)>>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, std::function<void(bool)>>();
+std::unordered_map<std::int64_t, JavaBridge::PendingUrl>& JavaBridge::urlCallbacks = *new std::unordered_map<std::int64_t, PendingUrl>();
 std::mutex& JavaBridge::permissionMutex = *new std::mutex();
 std::unordered_map<std::int64_t, std::function<void(Permission::Answer)>>& JavaBridge::permissionCallbacks = *new std::unordered_map<std::int64_t, std::function<void(Permission::Answer)>>();
 std::int64_t JavaBridge::nextPermission = 1;
@@ -99,9 +101,9 @@ jint JavaBridge::load(JavaVM* vm) {
     captureBackMethod = findMethod(*env, activityClass, "captureBack", "(Z)V");
     systemInfoMethod = findMethod(*env, activityClass, "systemInfo", "()[B");
     openUrlMethod = findMethod(*env, activityClass, "openUrl", "(J[B)V");
-    vibrateMethod = findMethod(*env, activityClass, "vibrate", "(J)V");
+    vibrateMethod = findMethod(*env, activityClass, "vibrate", "(J)[B");
     rumbleGamepadMethod = findMethod(*env, activityClass, "rumbleGamepad", "(IFFJ)V");
-    setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)Z");
+    setClipboardMethod = findMethod(*env, activityClass, "setClipboard", "([B)[B");
     clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
     networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
     packageNameMethod = findMethod(*env, activityClass, "packageName", "()[B");
@@ -113,12 +115,13 @@ jint JavaBridge::load(JavaVM* vm) {
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
     announceMethod = findMethod(*env, accessibilityClass, "announce", "([BZ)V");
     updateMediaSessionMethod = findMethod(*env, mediaSessionClass, "update", "([B[B)V");
-    permissionStateMethod = findMethod(*env, permissionsClass, "state", "([B)[B");
+    permissionStateMethod = findMethod(*env, permissionsClass, "state", "(J[B)V");
+    permissionHeldMethod = findMethod(*env, permissionsClass, "isHeld", "([B)Z");
     openOutputMethod = findMethod(*env, outputsClass, "open", "(II[B)V");
     closeOutputMethod = findMethod(*env, outputsClass, "close", "(I)V");
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, openUrlMethod, vibrateMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, packageNameMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -239,10 +242,13 @@ std::string JavaBridge::getSystemInfo() {
     return callText(env, activityClass, systemInfoMethod, "dev.haylen.HaylenActivity.systemInfo", "{}");
 }
 
-bool JavaBridge::setClipboard(std::string_view text) {
+Permission::Answer JavaBridge::setClipboard(std::string_view text) {
     JNIEnv& env = getEnv();
-    const jboolean written = env.CallStaticBooleanMethod(activityClass, setClipboardMethod, toBytes(env, text).get());
-    return !clearException(env, "dev.haylen.HaylenActivity.setClipboard") && written == JNI_TRUE;
+    const JavaLocalRef answer(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, setClipboardMethod, toBytes(env, text).get())));
+    if (clearException(env, "dev.haylen.HaylenActivity.setClipboard")) {
+        return {.state = Permission::State::Unsupported, .message = "The clipboard could not be written, because Java failed."};
+    }
+    return Permission::Answer::fromJson(core::Json::parse(toString(env, answer.get()), nullptr, false));
 }
 
 std::string JavaBridge::getClipboard() {
@@ -265,7 +271,6 @@ std::string JavaBridge::getDevelopmentServer() {
     return callText(env, activityClass, developmentServerMethod, "dev.haylen.HaylenActivity.developmentServer", "");
 }
 
-// The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
 // The ids of the displays of Android are the numbers that the display manager gives them.
 void JavaBridge::openOutput(std::uint32_t number, std::string_view display, std::string_view title) {
     JNIEnv& env = getEnv();
@@ -281,12 +286,13 @@ void JavaBridge::closeOutput(std::uint32_t number) {
     clearException(env, "dev.haylen.HaylenOutputs.close");
 }
 
-void JavaBridge::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+// The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
+void JavaBridge::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
     std::int64_t request = 0;
     {
         const std::scoped_lock lock(urlMutex);
         request = nextUrl++;
-        urlCallbacks.emplace(request, std::move(callback));
+        urlCallbacks.emplace(request, PendingUrl{.url = std::string(url), .callback = std::move(callback)});
     }
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(activityClass, openUrlMethod, static_cast<jlong>(request), toBytes(env, url).get());
@@ -296,30 +302,40 @@ void JavaBridge::openUrl(std::string_view url, std::function<void(bool opened)> 
 }
 
 void JavaBridge::answerUrl(std::int64_t request, bool opened) {
-    std::function<void(bool)> callback;
+    PendingUrl pending;
     {
         const std::scoped_lock lock(urlMutex);
         const auto found = urlCallbacks.find(request);
         if (found == urlCallbacks.end()) {
             return;
         }
-        callback = std::move(found->second);
+        pending = std::move(found->second);
         urlCallbacks.erase(found);
     }
-    callback(opened);
-}
-
-Permission::State JavaBridge::getPermission(Permission::Kind kind) {
-    JNIEnv& env = getEnv();
-    const JavaLocalRef state(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(permissionsClass, permissionStateMethod, toBytes(env, Permission::kindName(kind)).get())));
-    if (clearException(env, "dev.haylen.HaylenPermissions.state")) {
-        return Permission::State::Unknown;
+    if (opened) {
+        pending.callback({.state = Permission::State::Granted});
+        return;
     }
-    return Permission::stateFromName(toString(env, state.get())).value_or(Permission::State::Unknown);
+    pending.callback({.state = Permission::State::Unsupported, .message = std::format("No app on this device opens \"{}\".", pending.url)});
 }
 
-// The callback waits outside the lock, because Java answers at once, from inside the call, when no activity runs.
+void JavaBridge::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    callPermission(permissionStateMethod, "dev.haylen.HaylenPermissions.state", kind, std::move(callback));
+}
+
 void JavaBridge::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    callPermission(requestPermissionMethod, "dev.haylen.HaylenPermissions.request", kind, std::move(callback));
+}
+
+// A call that Java failed counts as held, so a failure explains nothing it cannot tell.
+bool JavaBridge::isPermissionHeld(Permission::Kind kind) {
+    JNIEnv& env = getEnv();
+    const jboolean held = env.CallStaticBooleanMethod(permissionsClass, permissionHeldMethod, toBytes(env, Permission::kindName(kind)).get());
+    return clearException(env, "dev.haylen.HaylenPermissions.isHeld") || held == JNI_TRUE;
+}
+
+// The callback waits outside the lock, since Java answers on the main thread, which may be the thread of the call.
+void JavaBridge::callPermission(jmethodID method, std::string_view name, Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
     std::int64_t request = 0;
     {
         const std::scoped_lock lock(permissionMutex);
@@ -327,9 +343,9 @@ void JavaBridge::requestPermission(Permission::Kind kind, std::function<void(Per
         permissionCallbacks.emplace(request, std::move(callback));
     }
     JNIEnv& env = getEnv();
-    env.CallStaticVoidMethod(permissionsClass, requestPermissionMethod, static_cast<jlong>(request), toBytes(env, Permission::kindName(kind)).get());
-    if (clearException(env, "dev.haylen.HaylenPermissions.request")) {
-        answerPermission(request, R"({"state": "unknown", "message": "The request for the permission failed in Java."})");
+    env.CallStaticVoidMethod(permissionsClass, method, static_cast<jlong>(request), toBytes(env, Permission::kindName(kind)).get());
+    if (clearException(env, name)) {
+        answerPermission(request, core::Json{{"state", "unsupported"}, {"message", std::format("The permission \"{}\" could not be read, because Java failed.", Permission::kindName(kind))}}.dump());
     }
 }
 
@@ -347,10 +363,13 @@ void JavaBridge::answerPermission(std::int64_t request, std::string_view answerJ
     callback(Permission::Answer::fromJson(core::Json::parse(answerJson, nullptr, false)));
 }
 
-void JavaBridge::vibrate(std::int64_t milliseconds) {
+Permission::Answer JavaBridge::vibrate(std::int64_t milliseconds) {
     JNIEnv& env = getEnv();
-    env.CallStaticVoidMethod(activityClass, vibrateMethod, static_cast<jlong>(milliseconds));
-    clearException(env, "dev.haylen.HaylenActivity.vibrate");
+    const JavaLocalRef answer(env, static_cast<jbyteArray>(env.CallStaticObjectMethod(activityClass, vibrateMethod, static_cast<jlong>(milliseconds))));
+    if (clearException(env, "dev.haylen.HaylenActivity.vibrate")) {
+        return {.state = Permission::State::Unsupported, .message = "The device could not vibrate, because Java failed."};
+    }
+    return Permission::Answer::fromJson(core::Json::parse(toString(env, answer.get()), nullptr, false));
 }
 
 void JavaBridge::rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds) {

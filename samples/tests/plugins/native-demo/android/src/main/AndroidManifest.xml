@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-    <!-- The permissions that `requestPermission`, the camera, the microphone and the location ask the person for and that `notify` needs from Android 13 on, which the plugin checks before it asks. Devices without a camera, a microphone or a location, such as TVs, still install the app. -->
+    <!-- The permissions that the camera, the microphone and the location ask the person for and that `notify` needs from Android 13 on, which the engine checks before it asks. Devices without a camera, a microphone or a location, such as TVs, still install the app. -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />

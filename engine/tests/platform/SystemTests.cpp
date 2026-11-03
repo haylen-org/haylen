@@ -133,51 +133,65 @@ TEST_F(SystemTest, KeepsTheLastReportOfEveryThread) {
 TEST_F(SystemTest, OpensUrlsWithAnAnswerOnALaterFrame) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
-    std::vector<bool> answers;
-    system.openUrl("https://example.com", [&answers](bool opened) { answers.push_back(opened); });
-    fixture.host().setOpensUrls(false);
-    system.openUrl("mailto:island@example.com", [&answers](bool opened) { answers.push_back(opened); });
+    std::vector<Permission::State> answers;
+    const auto record = [&answers](Permission::Answer answer) { answers.push_back(answer.state); };
+    system.openUrl("https://example.com", record);
+    fixture.host().setUrlAnswer({.state = Permission::State::Unsupported, .message = "No app opens the url."});
+    system.openUrl("mailto:island@example.com", record);
     EXPECT_TRUE(answers.empty());
 
     fixture.frames(1);
-    EXPECT_EQ(answers, (std::vector<bool>{true, false}));
+    EXPECT_EQ(answers, (std::vector<Permission::State>{Permission::State::Granted, Permission::State::Unsupported}));
     EXPECT_EQ(fixture.host().getOpenedUrls(), (std::vector<std::string>{"https://example.com", "mailto:island@example.com"}));
-    EXPECT_THROW(system.openUrl("", [](bool) {}), std::invalid_argument);
+    EXPECT_THROW(system.openUrl("", record), std::invalid_argument);
 }
 
-TEST_F(SystemTest, WritesTheClipboardWithAnAnswerOnALaterFrame) {
+TEST_F(SystemTest, WritesAndReadsTheClipboardWithAnswersOnALaterFrame) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
-    std::vector<bool> answers;
-    system.setClipboard("Island seed: 184467", [&answers](bool written) { answers.push_back(written); });
+    std::vector<std::string> answers;
+    system.setClipboard("Island seed: 184467", [&answers](Permission::Answer answer) { answers.emplace_back(Permission::stateName(answer.state)); });
+    system.readClipboard([&answers](Permission::Answer answer, std::string text) { answers.push_back(std::string(Permission::stateName(answer.state)) + " " + text); });
     EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
 
-    // A refused write leaves the clipboard as it was, the way a browser refuses a page without a recent input of the person.
-    fixture.host().setWritesClipboard(false);
-    system.setClipboard("Refused", [&answers](bool written) { answers.push_back(written); });
+    // A refused write leaves the clipboard as it was, the way a browser refuses a page without a recent input of the person, and a refused read brings no text.
+    fixture.host().setClipboardAnswer({.state = Permission::State::Denied, .message = Permission::refusal(Permission::Kind::Clipboard)});
+    system.setClipboard("Refused", [&answers](Permission::Answer answer) { answers.emplace_back(Permission::stateName(answer.state)); });
+    system.readClipboard([&answers](Permission::Answer answer, std::string text) { answers.push_back(std::string(Permission::stateName(answer.state)) + " " + text); });
     EXPECT_TRUE(answers.empty());
 
     fixture.frames(1);
-    EXPECT_EQ(answers, (std::vector<bool>{true, false}));
+    EXPECT_EQ(answers, (std::vector<std::string>{"granted", "granted Island seed: 184467", "denied", "denied "}));
     EXPECT_EQ(system.getClipboard(), "Island seed: 184467");
 }
 
-TEST_F(SystemTest, AsksForPermissionsWithAnAnswerOnALaterFrame) {
+TEST_F(SystemTest, ChecksAndAsksForPermissionsWithAnswersOnALaterFrame) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
-    EXPECT_EQ(system.getPermission(Permission::Kind::LocalNetwork), Permission::State::Granted);
-    fixture.host().setPermission(Permission::State::Prompt);
-    EXPECT_EQ(system.getPermission(Permission::Kind::LocalNetwork), Permission::State::Prompt);
-
     std::vector<Permission::Answer> answers;
+    const auto record = [&answers](Permission::Answer answer) { answers.push_back(std::move(answer)); };
+    fixture.host().setPermission({.state = Permission::State::Prompt});
+    system.checkPermission(Permission::Kind::Camera, record);
     fixture.host().setPermissionAnswer({.state = Permission::State::Denied});
-    system.requestPermission(Permission::Kind::LocalNetwork, [&answers](Permission::Answer answer) { answers.push_back(std::move(answer)); });
+    system.requestPermission(Permission::Kind::LocalNetwork, record);
     EXPECT_TRUE(answers.empty());
 
     fixture.frames(1);
-    ASSERT_EQ(answers.size(), 1U);
-    EXPECT_EQ(answers.front().state, Permission::State::Denied);
+    ASSERT_EQ(answers.size(), 2U);
+    EXPECT_EQ(answers[0].state, Permission::State::Prompt);
+    EXPECT_EQ(answers[1].state, Permission::State::Denied);
     EXPECT_EQ(fixture.host().getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
+}
+
+TEST_F(SystemTest, NamesEveryPermissionAndHowToAskAgain) {
+    for (const std::string_view name : {"camera", "microphone", "location", "preciseLocation", "backgroundLocation", "notifications", "photos", "clipboard", "motion", "screens", "localNetwork"}) {
+        const std::optional<Permission::Kind> kind = Permission::kindFromName(name);
+        ASSERT_TRUE(kind.has_value()) << name;
+        EXPECT_EQ(Permission::kindName(*kind), name);
+    }
+    EXPECT_FALSE(Permission::kindFromName("bluetooth").has_value());
+    EXPECT_EQ(Permission::stateFromName("unsupported"), Permission::State::Unsupported);
+    EXPECT_EQ(Permission::refusal(Permission::Kind::PreciseLocation), "The person has not allowed the precise location. Ask for it with \"system.requestPermission('preciseLocation')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.");
 }
 
 // Native code answers with JSON, whose broken parts read as missing so the request fails instead of the engine.
@@ -190,16 +204,22 @@ TEST_F(SystemTest, ReadsTheAnswersOfNativeCode) {
     EXPECT_EQ(answer.missingToJson().at(0).at("snippet"), "<uses-permission />");
 
     EXPECT_EQ(Permission::Answer::fromJson(core::Json::parse(R"({"state": 5})")).state, Permission::State::Unknown);
+    EXPECT_EQ(Permission::Answer::fromJson(core::Json::array()).state, Permission::State::Unsupported);
     EXPECT_FALSE(Permission::Answer::fromJson(core::Json::array()).message.empty());
 }
 
-TEST_F(SystemTest, VibratesForAPositiveNumberOfSeconds) {
+TEST_F(SystemTest, VibratesForAPositiveNumberOfSecondsWithAnAnswerOnALaterFrame) {
     test::EngineFixture fixture;
     System& system = fixture.engine().getSystem();
-    system.vibrate(0.25F);
+    std::vector<Permission::State> answers;
+    system.vibrate(0.25F, [&answers](Permission::Answer answer) { answers.push_back(answer.state); });
     EXPECT_EQ(fixture.host().getVibrations(), (std::vector<float>{0.25F}));
+    EXPECT_TRUE(answers.empty());
+    fixture.frames(1);
+    EXPECT_EQ(answers, (std::vector<Permission::State>{Permission::State::Granted}));
+
     for (const float seconds : {0.0F, -1.0F, std::numeric_limits<float>::quiet_NaN(), std::numeric_limits<float>::infinity()}) {
-        EXPECT_THROW(system.vibrate(seconds), std::invalid_argument);
+        EXPECT_THROW(system.vibrate(seconds, {}), std::invalid_argument);
     }
     EXPECT_EQ(fixture.host().getVibrations().size(), 1U);
 }
@@ -233,57 +253,103 @@ TEST(SystemLuaTest, ReportsTheInfoThemeAndBattery) {
     EXPECT_EQ(fixture.lua("local battery = system.battery() return system.theme() .. ' ' .. battery.level .. ' ' .. tostring(battery.charging) .. ' ' .. battery.state"), "dark 0.5 true charging");
 }
 
-TEST(SystemLuaTest, OpensUrlsAndVibrates) {
+TEST(SystemLuaTest, OpensUrlsAndVibratesOrSaysWhyNot) {
     test::EngineFixture fixture;
-    fixture.runLua("system = require('haylen.system') async = require('async') answers = {}");
-    fixture.runLua("opening = system.openUrl('https://example.com') async.spawn(function() local opened = opening:await() answers[#answers + 1] = tostring(opened) end)");
-    fixture.host().setOpensUrls(false);
-    fixture.runLua("refusing = system.openUrl('island://settings') async.spawn(function() local opened = refusing:await() answers[#answers + 1] = tostring(opened) end)");
+    // clang-format off
+    fixture.runLua(R"(
+        system = require('haylen.system')
+        async = require('async')
+        answers = {}
+        function remember(promise)
+            async.spawn(function()
+                local _, message, failure = promise:await()
+                answers[#answers + 1] = failure and (failure.code .. ': ' .. message) or 'done'
+            end)
+        end
+    )");
+    // clang-format on
+    fixture.runLua("remember(system.openUrl('https://example.com'))");
+    fixture.host().setUrlAnswer({.state = Permission::State::Denied, .message = "The browser blocked the new tab."});
+    fixture.runLua("remember(system.openUrl('island://settings'))");
+    fixture.runLua("remember(system.vibrate(0.25))");
+    fixture.host().setVibrationAnswer({.state = Permission::State::Unsupported, .message = "This device has no vibration motor."});
+    fixture.runLua("remember(system.vibrate(0.5)) system.vibrate(0.5)");
     EXPECT_EQ(fixture.lua("return #answers"), "0");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
-    EXPECT_EQ(fixture.lua("return table.concat(answers, ' ')"), "true false");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
+    EXPECT_EQ(fixture.lua("return table.concat(answers, ' | ')"), "done | denied: The browser blocked the new tab. | done | unsupported: This device has no vibration motor.");
     EXPECT_EQ(fixture.host().getOpenedUrls(), (std::vector<std::string>{"https://example.com", "island://settings"}));
+    EXPECT_EQ(fixture.host().getVibrations(), (std::vector<float>{0.25F, 0.5F, 0.5F}));
 
+    // A refusal that nothing awaits never stops the app.
+    fixture.frames(2);
+    EXPECT_EQ(fixture.engine().getError(), nullptr);
     EXPECT_NE(fixture.lua("system.openUrl('')").find("Opening a url needs a url."), std::string::npos);
     EXPECT_NE(fixture.lua("system.openUrl()").find("string expected"), std::string::npos);
-
-    fixture.runLua("system.vibrate(0.25)");
-    EXPECT_EQ(fixture.host().getVibrations(), (std::vector<float>{0.25F}));
     EXPECT_NE(fixture.lua("system.vibrate(0)").find("A vibration lasts a positive number of seconds."), std::string::npos);
     EXPECT_NE(fixture.lua("system.vibrate('long')").find("number expected"), std::string::npos);
 }
 
-TEST(SystemLuaTest, WritesAndReadsTheClipboard) {
+TEST(SystemLuaTest, WritesAndReadsTheClipboardOrSaysWhyNot) {
     test::EngineFixture fixture;
-    fixture.runLua("system = require('haylen.system') async = require('async') answers = {}");
-    fixture.runLua("copying = system.setClipboard('Island seed: 184467') async.spawn(function() local written = copying:await() answers[#answers + 1] = tostring(written) end)");
-    fixture.host().setWritesClipboard(false);
-    fixture.runLua("refusing = system.setClipboard('Refused') async.spawn(function() local written = refusing:await() answers[#answers + 1] = tostring(written) end)");
-    EXPECT_EQ(fixture.lua("return #answers"), "0");
+    // clang-format off
+    fixture.runLua(R"(
+        system = require('haylen.system')
+        async = require('async')
+        answers = {}
+        function remember(promise)
+            async.spawn(function()
+                local text, message, failure = promise:await()
+                answers[#answers + 1] = failure and (failure.code .. ': ' .. message) or tostring(text)
+            end)
+        end
+    )");
+    // clang-format on
+    fixture.runLua("remember(system.setClipboard('Island seed: 184467')) remember(system.clipboard())");
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "2"; }));
-    EXPECT_EQ(fixture.lua("return table.concat(answers, ' ')"), "true false");
-    EXPECT_EQ(fixture.lua("return system.clipboard()"), "Island seed: 184467");
+    fixture.host().setClipboardAnswer({.state = Permission::State::Denied, .message = Permission::refusal(Permission::Kind::Clipboard)});
+    fixture.runLua("remember(system.setClipboard('Refused')) remember(system.clipboard())");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return #answers") == "4"; }));
+    EXPECT_EQ(fixture.lua("return answers[1] .. ' | ' .. answers[2]"), "nil | Island seed: 184467");
+    EXPECT_EQ(fixture.lua("return answers[4]"), "denied: " + Permission::refusal(Permission::Kind::Clipboard));
     EXPECT_NE(fixture.lua("system.setClipboard()").find("string expected"), std::string::npos);
 }
 
-TEST(SystemLuaTest, ReadsAndAsksForPermissions) {
+TEST(SystemLuaTest, ChecksAndAsksForPermissions) {
     test::EngineFixture fixture;
-    fixture.runLua("system = require('haylen.system') async = require('async')");
-    EXPECT_EQ(fixture.lua("return system.permission('localNetwork')"), "granted");
-    fixture.host().setPermission(Permission::State::Prompt);
-    EXPECT_EQ(fixture.lua("return system.permission('localNetwork')"), "prompt");
-    EXPECT_NE(fixture.lua("return system.permission('camera')").find("camera"), std::string::npos);
-
+    // clang-format off
+    fixture.runLua(R"(
+        system = require('haylen.system')
+        async = require('async')
+        answers = {}
+        function remember(name, promise)
+            async.spawn(function()
+                local state, message, failure = promise:await()
+                answers[name] = state or (failure.code .. ' ' .. message .. ' ' .. (failure.data and failure.data.missing[1].name or 'none'))
+            end)
+        end
+    )");
+    // clang-format on
+    fixture.host().setPermission({.state = Permission::State::Prompt});
+    fixture.runLua("remember('checked', system.permission('camera'))");
     fixture.host().setPermissionAnswer({.state = Permission::State::Granted});
-    fixture.runLua("asking = system.requestPermission('localNetwork') async.spawn(function() granted = asking:await() end)");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(granted)") == "granted"; }));
+    fixture.runLua("remember('asked', system.requestPermission('localNetwork'))");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(answers.asked)") == "granted"; }));
+    EXPECT_EQ(fixture.lua("return answers.checked"), "prompt");
+    EXPECT_EQ(fixture.host().getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
+    EXPECT_NE(fixture.lua("system.permission('bluetooth')").find("bluetooth"), std::string::npos);
 
-    // A project that lacks the permission fails the request with the code "unsupported" and the line it lacks.
-    fixture.host().setPermissionAnswer({.state = Permission::State::Denied, .missing = {{.kind = "permission", .name = "android.permission.ACCESS_LOCAL_NETWORK", .file = "app/src/main/AndroidManifest.xml", .snippet = "<uses-permission android:name=\"android.permission.ACCESS_LOCAL_NETWORK\" />"}}, .message = "The engine needs the permission, which the app lacks."});
-    fixture.runLua("missing = system.requestPermission('localNetwork') async.spawn(function() local _, failure = missing:await() reason = failure end)");
-    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return type(reason)") == "table"; }));
-    EXPECT_EQ(fixture.lua("return reason.code .. ' ' .. reason.data.missing[1].name .. ' ' .. reason.message"), "unsupported android.permission.ACCESS_LOCAL_NETWORK The engine needs the permission, which the app lacks.");
-    EXPECT_EQ(fixture.lua("return tostring(missing:cancel())"), "false");
+    // A platform without the capability and a project that lacks a requirement reject with the code "unsupported", the reason and the line the project lacks.
+    fixture.host().setPermission({.state = Permission::State::Unsupported, .message = "Apple TV has no camera."});
+    fixture.runLua("remember('tv', system.permission('camera'))");
+    fixture.host().setPermissionAnswer({.state = Permission::State::Unsupported, .missing = {{.kind = "permission", .name = "android.permission.CAMERA", .file = "app/src/main/AndroidManifest.xml", .snippet = "<uses-permission android:name=\"android.permission.CAMERA\" />"}}, .message = "The engine needs the permission, which the app lacks."});
+    fixture.runLua("remember('missing', system.requestPermission('camera'))");
+    ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return tostring(answers.missing)") != "nil"; }));
+    EXPECT_EQ(fixture.lua("return answers.tv"), "unsupported Apple TV has no camera. none");
+    EXPECT_EQ(fixture.lua("return answers.missing"), "unsupported The engine needs the permission, which the app lacks. android.permission.CAMERA");
+
+    // The app asked, so an answer that nothing awaits never stops it.
+    fixture.runLua("system.requestPermission('camera')");
+    fixture.frames(2);
     EXPECT_EQ(fixture.engine().getError(), nullptr);
 }
 

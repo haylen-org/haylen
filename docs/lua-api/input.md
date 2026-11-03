@@ -725,7 +725,7 @@ The call fails with the code in `failure.code` and a sentence in `failure.messag
 | Code | When |
 | --- | --- |
 | `'unsupported'` | The device lacks a sensor of `sensors`, such as a computer or a TV, with the reason of the platform, or the project of the app lacks what the sensors need, which `failure.data.missing` lists as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. |
-| `'denied'` | The person did not allow the motion sensors. |
+| `'denied'` | The person did not allow the motion sensors, the permission `motion` of [`haylen.system`](system.md#permissions), with the sentence that says how to ask again. |
 | `'failed'` | The platform did not ask the person, such as a browser that asks only during a tap or a click. |
 | `'cancelled'` | The owner ended, or `call:cancel()` gave the call up, before the sensors ran. Then `call:cancel()` returns `true`, and it returns `false` once the call settled. |
 

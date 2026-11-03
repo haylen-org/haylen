@@ -184,11 +184,6 @@ function demo.pickFile()
     return handle:call('pickFile')
 end
 
--- Asks the person for the permission `kind`, `camera` or `notifications`, and answers with `{kind, granted, status, language}`. The camera prompt shows the usage description of the `cameraUsage` parameter on Apple platforms.
-function demo.requestPermission(kind)
-    return handle:call('requestPermission', {kind = kind})
-end
-
 -- Schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`.
 function demo.notify(seconds)
     return handle:call('notify', {seconds = seconds, title = 'Native Demo', body = 'Tap to open Haylen Tests.'})

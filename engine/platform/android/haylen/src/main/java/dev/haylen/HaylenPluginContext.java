@@ -6,6 +6,7 @@ import android.os.Looper;
 import android.util.Log;
 import androidx.activity.result.contract.ActivityResultContract;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import org.json.JSONObject;
 
@@ -108,6 +109,26 @@ public final class HaylenPluginContext {
     // What the project of the app holds, which the plugin checks before it calls a system API that needs it, from any thread.
     public HaylenRequirements requirements() {
         return requirements;
+    }
+
+    // Runs `granted` on the main thread once the app holds the permission `name` of `system.permission`, such as `camera`, after it asked the person where the app does not hold it yet, as `system.requestPermission` does. A permission that the person refused fails the call with the code `denied` and the sentence that names it and how to ask again, a manifest that lacks it fails the call with the code `unsupported` and the missing lines in `data.missing`, and a `granted` that throws, a `HaylenBridge.Failure` among them, fails the call with its error. A platform that tells nothing until the app tries, which Android does only while no activity exists, runs `granted` too. Throws an `IllegalArgumentException` for a name that `haylen.system` does not know.
+    public void requirePermission(String name, HaylenBridge.Reply reply, Runnable granted) {
+        if (!HaylenPermissions.isKnown(name)) {
+            throw new IllegalArgumentException("The permission \"" + name + "\" is not one of \"haylen.system\".");
+        }
+        runOnMainThread(() -> HaylenPermissions.ask(name, application, requirements, (state, message, missing) -> {
+            if (state.equals("granted") || state.equals("unknown")) {
+                try {
+                    granted.run();
+                } catch (Exception error) {
+                    reply.failure(error);
+                }
+            } else if (state.equals("unsupported")) {
+                reply.failure(message, "unsupported", missing.isEmpty() ? null : Collections.singletonMap("missing", missing));
+            } else {
+                reply.failure(HaylenPermissions.refusal(name), "denied", null);
+            }
+        }));
     }
 
     // Tells the app that native UI of the plugin covers it, such as a full screen ad, which halts and mutes the app until the matching `uncoverApp`. Covers nest, and the ones still open when the activity is destroyed end with it.

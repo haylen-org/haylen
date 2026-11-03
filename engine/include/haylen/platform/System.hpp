@@ -42,23 +42,26 @@ class System final {
     [[nodiscard]] Theme getTheme() const noexcept;
     [[nodiscard]] const Battery& getBattery() const noexcept;
 
-    // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with whether an app took it. Throws `std::invalid_argument` for an empty url.
-    void openUrl(std::string_view url, std::function<void(bool opened)> callback);
+    // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with `Granted` once an app took it, `Unsupported` when no app opens it or `Denied` when the platform refused it, such as a browser that opens a tab only shortly after an input of the person. Throws `std::invalid_argument` for an empty url.
+    void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback);
 
-    // The text on the clipboard of the system, or an empty string when it holds no text.
+    // The text on the clipboard for a paste of the person into a field of the UI, or an empty string when it holds no text.
     [[nodiscard]] std::string getClipboard() const;
 
-    // Puts the text on the clipboard of the system and calls back at a later pump with whether it got there. A browser refuses a page outside a secure context or without a recent input of the person, such as a click or a key.
-    void setClipboard(std::string_view text, std::function<void(bool written)> callback);
+    // Reads the text on the clipboard for the app and calls back at a later pump with `Granted` and the text, or with `Denied` or `Unsupported` and the sentence that says why. Some platforms ask the person before an app reads it, such as iOS and browsers.
+    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback);
 
-    // The state of a permission that the person grants at run time, as far as the platform tells it.
-    [[nodiscard]] Permission::State getPermission(Permission::Kind kind) const;
+    // Puts the text on the clipboard of the system and calls back at a later pump with `Granted` once it got there, or with `Denied` or `Unsupported` and the sentence that says why. A browser refuses a page outside a secure context or without a recent input of the person, such as a click or a key.
+    void setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback);
 
-    // Asks the person for a permission with the prompt of the system where the platform has one, and calls back at a later pump with the state the person left, or with the requirements the project of the app lacks, such as the line of the Android manifest that declares the permission.
+    // Reads the state of a permission as far as the platform tells it, without asking the person, and calls back at a later pump with the answer, which is `Unsupported` with its reason where the platform has no such capability.
+    void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
+
+    // Asks the person for a permission with the prompt of the system where the platform has one, and calls back at a later pump with the state the person left, or `Unsupported` with the reason and the requirements the project of the app lacks, such as the line of the Android manifest that declares the permission.
     void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
 
-    // Vibrates the device for the given seconds where it can vibrate. Throws `std::invalid_argument` unless the seconds are positive.
-    void vibrate(float seconds);
+    // Vibrates the device for the given seconds and calls back at a later pump with `Granted` once it vibrated, or with `Denied` or `Unsupported` and the sentence that says why, such as a device without a motor. Throws `std::invalid_argument` unless the seconds are positive.
+    void vibrate(float seconds, std::function<void(Permission::Answer answer)> callback);
 
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble. Throws `std::invalid_argument` for a gamepad outside `input::Input::kMaxGamepads`, an intensity outside 0 to 1 or seconds that are not positive.
     void rumbleGamepad(std::size_t index, float low, float high, float seconds);
@@ -76,22 +79,26 @@ class System final {
     [[nodiscard]] static std::string_view themeName(Theme value) noexcept;
 
   private:
-    struct Answer {
+    using Callback = std::function<void(Permission::Answer answer, std::string text)>;
+
+    // The answer of the platform to a call, with the text that a read of the clipboard brings.
+    struct Reply {
         std::uint64_t id = 0;
-        bool succeeded = false;
+        Permission::Answer answer;
+        std::string text;
     };
 
     // Answers wait here, shared with the callbacks the platform holds, so an answer that comes after the engine is gone touches nothing.
     struct Inbox {
         std::mutex mutex;
-        std::vector<Answer> answers;
-        std::vector<std::pair<std::uint64_t, Permission::Answer>> permissions;
+        std::vector<Reply> replies;
     };
 
     static const std::array<std::pair<std::string_view, Theme>, 2> kThemeNames;
 
-    // Keeps the callback of a request until its answer, and returns what the platform calls with the answer, which waits for the next pump.
-    [[nodiscard]] std::function<void(bool)> awaitAnswer(std::function<void(bool)> callback);
+    // Keeps the callback of a call until its answer, and returns what the platform calls with the answer, which waits for the next pump.
+    [[nodiscard]] Callback awaitReply(Callback callback);
+    [[nodiscard]] std::function<void(Permission::Answer)> awaitAnswer(std::function<void(Permission::Answer)> callback);
 
     Host& host;
     core::EventBus& events;
@@ -100,8 +107,7 @@ class System final {
     Battery battery;
     std::bitset<input::Input::kMaxGamepads> rumbling;
     std::uint64_t nextRequest = 1;
-    std::unordered_map<std::uint64_t, std::function<void(bool)>> pending;
-    std::unordered_map<std::uint64_t, std::function<void(Permission::Answer)>> pendingPermissions;
+    std::unordered_map<std::uint64_t, Callback> pending;
     std::shared_ptr<Inbox> inbox = std::make_shared<Inbox>();
 };
 

@@ -2,15 +2,17 @@
 
 #include <lua.hpp>
 
-#include <cstdint>
 #include <cstring>
-#include <memory>
+#include <functional>
 #include <optional>
 #include <string>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
 
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
+#include "haylen/core/Log.hpp"
 #include "haylen/lua/Binding.hpp"
 #include "haylen/lua/EnumNames.hpp"
 #include "haylen/lua/JsonConverter.hpp"
@@ -18,12 +20,9 @@
 #include "haylen/lua/Runtime.hpp"
 #include "haylen/lua/Stack.hpp"
 #include "haylen/lua/Table.hpp"
-#include "haylen/lua/Userdata.hpp"
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Permission.hpp"
 #include "haylen/platform/System.hpp"
-#include "platform/PlatformLua.hpp"
-#include "varn/async/Promise.h"
 
 namespace haylen::lua {
 
@@ -40,6 +39,8 @@ template <> struct EnumNames<platform::Permission::Kind> {
 
 namespace haylen::platform {
 
+std::unordered_set<std::string> SystemLua::loggedRefusals;
+
 int SystemLua::info(lua_State* L) {
     lua::JsonConverter::push(L, lua::Runtime::getEngine(L).getSystem().getInfo().toJson());
     return 1;
@@ -55,70 +56,101 @@ int SystemLua::battery(lua_State* L) {
     return 1;
 }
 
-// Returns a promise that resolves on a later frame with whether an app took the url.
+// Returns a promise that resolves on a later frame once an app took the url.
 int SystemLua::openUrl(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const auto url = lua::Stack::read<std::string_view>(L, 1);
     const lua::Promise promise(engine);
-    engine.getSystem().openUrl(url, [promise](bool opened) { promise.resolve(opened); });
+    engine.getSystem().openUrl(url, [&engine, promise](Permission::Answer answer) { settle(engine, promise, answer, {}); });
     promise.push(L);
     return 1;
 }
 
+// Returns a promise that resolves on a later frame with the text on the clipboard.
 int SystemLua::clipboard(lua_State* L) {
-    lua::Stack::push(L, lua::Runtime::getEngine(L).getSystem().getClipboard());
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const lua::Promise promise(engine);
+    engine.getSystem().readClipboard([&engine, promise](Permission::Answer answer, std::string text) { settle(engine, promise, answer, std::move(text)); });
+    promise.push(L);
     return 1;
 }
 
-// Returns a promise that resolves on a later frame with whether the text reached the clipboard.
+// Returns a promise that resolves on a later frame once the text reached the clipboard.
 int SystemLua::setClipboard(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const auto text = lua::Stack::read<std::string_view>(L, 1);
     const lua::Promise promise(engine);
-    engine.getSystem().setClipboard(text, [promise](bool written) { promise.resolve(written); });
+    engine.getSystem().setClipboard(text, [&engine, promise](Permission::Answer answer) { settle(engine, promise, answer, {}); });
     promise.push(L);
     return 1;
 }
 
+// Returns a promise that resolves on a later frame with the name of the state, as `requestPermission` does, without asking the person.
 int SystemLua::permission(lua_State* L) {
-    lua::Stack::push(L, Permission::stateName(lua::Runtime::getEngine(L).getSystem().getPermission(lua::Stack::read<Permission::Kind>(L, 1))));
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const auto kind = lua::Stack::read<Permission::Kind>(L, 1);
+    const lua::Promise promise(engine);
+    engine.getSystem().checkPermission(kind, [&engine, promise](Permission::Answer answer) { settlePermission(engine, promise, answer); });
+    promise.push(L);
     return 1;
 }
 
-// Returns a call that resolves on a later frame with the state the person left, or fails with the code `unsupported` and the requirements the project of the app lacks in `data.missing`.
+// Returns a promise that resolves on a later frame with the name of the state the person left.
 int SystemLua::requestPermission(lua_State* L) {
     core::Engine& engine = lua::Runtime::getEngine(L);
     const auto kind = lua::Stack::read<Permission::Kind>(L, 1);
-    auto pending = std::make_shared<PlatformLua::Call>();
-    pending->promise = std::make_shared<varn::async::Promise>(engine.getScriptRuntime());
-    pending->cancel = &keepPermissionRequest;
-
-    // clang-format off
-    engine.getSystem().requestPermission(kind, [pending](Permission::Answer answer) {
-        if (!answer.missing.empty()) {
-            pending->fail(Bridge::Error{.message = answer.message, .code = "unsupported", .data = {{"missing", answer.missingToJson()}}});
-            return;
-        }
-        if (!answer.message.empty()) {
-            pending->fail(Bridge::Error{.message = answer.message, .code = "failed"});
-            return;
-        }
-        pending->promise->resolve(std::string(Permission::stateName(answer.state)));
-    });
-    // clang-format on
-
-    lua::Userdata::emplace<PlatformLua::Call>(L, std::move(pending));
+    const lua::Promise promise(engine);
+    engine.getSystem().requestPermission(kind, [&engine, promise](Permission::Answer answer) { settlePermission(engine, promise, answer); });
+    promise.push(L);
     return 1;
 }
 
-// The prompt of a permission belongs to the system, so the app cannot take it back once it shows.
-bool SystemLua::keepPermissionRequest(lua_State*, std::uint64_t) {
-    return false;
+// Returns a promise that resolves on a later frame once the device vibrated.
+int SystemLua::vibrate(lua_State* L) {
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    const auto seconds = lua::Stack::read<float>(L, 1);
+    const lua::Promise promise(engine);
+    engine.getSystem().vibrate(seconds, [&engine, promise](Permission::Answer answer) { settle(engine, promise, answer, {}); });
+    promise.push(L);
+    return 1;
 }
 
-int SystemLua::vibrate(lua_State* L) {
-    lua::Runtime::getEngine(L).getSystem().vibrate(lua::Stack::read<float>(L, 1));
-    return 0;
+// A state other than `unsupported` resolves, since the answer is the state itself. The app asked, and a missing requirement logs once on its own, so a rejection that nothing awaits never stops the app.
+void SystemLua::settlePermission(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer) {
+    if (answer.state != Permission::State::Unsupported) {
+        promise.resolve(std::string(Permission::stateName(answer.state)));
+        return;
+    }
+    reject(engine, promise, answer);
+}
+
+// The call did its work on `granted`, which resolves with the value, such as the text of the clipboard, or with nothing. A refusal logs once per sentence, so a call whose promise nothing awaits, such as a vibration on a device without a motor, never stops the app and still tells the developer why.
+void SystemLua::settle(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer, std::optional<std::string> value) {
+    if (answer.state == Permission::State::Granted) {
+        promise.resolve(value ? core::Json(std::move(*value)) : core::Json());
+        return;
+    }
+    if (loggedRefusals.insert(answer.message).second) {
+        core::Log::warning("{}", answer.message);
+    }
+    reject(engine, promise, answer);
+}
+
+// Rejects with the sentence in `error`, the code `denied` for a refusal of the person or the platform and `unsupported` otherwise, and, when the project lacks requirements, those in `data.missing`.
+void SystemLua::reject(core::Engine& engine, const lua::Promise& promise, const Permission::Answer& answer) {
+    lua_State* main = engine.getLuaState();
+    lua_createtable(main, 0, 3);
+    lua::Stack::push(main, answer.message);
+    lua_setfield(main, -2, "error");
+    lua::Stack::push(main, answer.state == Permission::State::Denied ? "denied" : "unsupported");
+    lua_setfield(main, -2, "code");
+    if (!answer.missing.empty()) {
+        lua_createtable(main, 0, 1);
+        lua::JsonConverter::push(main, answer.missingToJson());
+        lua_setfield(main, -2, "missing");
+        lua_setfield(main, -2, "data");
+    }
+    promise.rejectHandledFailure(main);
 }
 
 // Shows what plays with `setNowPlaying({title, artist, album, duration, position, playing, artwork, commands})`, where the artwork is the bytes of a PNG or JPEG image and the commands are the names of the controls to offer.

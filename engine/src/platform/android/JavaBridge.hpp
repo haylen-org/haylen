@@ -70,24 +70,26 @@ class JavaBridge final {
     // The WebSocket address of the development server that the intent of a debuggable app names, which `haylen.py run` launches it with, or an empty text.
     [[nodiscard]] static std::string getDevelopmentServer();
 
-    // Opens the url with the app that handles it on the main thread, and `answerUrl` hands the callback whether one took it.
-    static void openUrl(std::string_view url, std::function<void(bool opened)> callback);
+    // Opens the url with the app that handles it on the main thread, and `answerUrl` hands the callback whether one took it, as an answer that names the url when none did.
+    static void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback);
     static void answerUrl(std::int64_t request, bool opened);
 
-    static void vibrate(std::int64_t milliseconds);
+    [[nodiscard]] static Permission::Answer vibrate(std::int64_t milliseconds);
 
-    // The state of a permission as Java reads it, from any thread, and the request for it, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A request that Java never took fails at once.
-    [[nodiscard]] static Permission::State getPermission(Permission::Kind kind);
+    // The check of a permission and the request for it, from any thread, which Java answers on the main thread through `answerPermission` with the JSON of `Permission::Answer::fromJson`. A call that Java never took fails at once.
+    static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void answerPermission(std::int64_t request, std::string_view answerJson);
+
+    // Whether the app holds a permission now, from any thread and without a prompt, for the failures that explain a missing one, such as the HTTP requests that Android keeps from the local network.
+    [[nodiscard]] static bool isPermissionHeld(Permission::Kind kind);
 
     // Hands the media session of the activity what plays, as the JSON of `{title, artist, album, duration, position, playing, commands}` with the bytes of its artwork, or an empty JSON to leave the controls.
     static void updateMediaSession(std::string_view infoJson, std::span<const std::byte> artwork);
     static void rumbleGamepad(std::int32_t device, float low, float high, std::int64_t milliseconds);
 
-    // The clipboard of the system, which the frame thread reads and writes.
-    // Returns whether the text reached the clipboard, which it misses while no activity exists or when Java fails.
-    [[nodiscard]] static bool setClipboard(std::string_view text);
+    // The clipboard of the system, which the frame thread reads and writes. A write answers unsupported while no activity exists or when Java fails.
+    [[nodiscard]] static Permission::Answer setClipboard(std::string_view text);
     [[nodiscard]] static std::string getClipboard();
 
     // Shows the dialog that the JSON of `AndroidDialogJson` describes, with the data of a save as bytes, and the Java side answers through the dialog relay. A dialog that Java never took fails at once.
@@ -133,6 +135,9 @@ class JavaBridge final {
 
     // Returns the text of a byte array that a static method of Java returns, or `fallback` when the method threw.
     [[nodiscard]] static std::string callText(JNIEnv& env, jclass owner, jmethodID method, std::string_view name, std::string_view fallback);
+
+    // Hands Java the check or the request of a permission under a new request, which `answerPermission` settles.
+    static void callPermission(jmethodID method, std::string_view name, Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
 
     // Return a global reference to the class, or the static method, and log an engine error that names it when it is missing.
     [[nodiscard]] static jclass findClass(JNIEnv& env, const char* name);
@@ -183,15 +188,22 @@ class JavaBridge final {
     static jmethodID closeOutputMethod;
     static jclass permissionsClass;
     static jmethodID permissionStateMethod;
+    static jmethodID permissionHeldMethod;
     static jmethodID requestPermissionMethod;
     static std::atomic<bool> accessibilityWanted;
 
-    // The callbacks of the urls that wait for the answer of Java, by request.
+    // A url that waits for the answer of Java, with the callback that hears it.
+    struct PendingUrl {
+        std::string url;
+        std::function<void(Permission::Answer)> callback;
+    };
+
+    // The urls that wait for the answer of Java, by request.
     static std::mutex& urlMutex;
-    static std::unordered_map<std::int64_t, std::function<void(bool)>>& urlCallbacks;
+    static std::unordered_map<std::int64_t, PendingUrl>& urlCallbacks;
     static std::int64_t nextUrl;
 
-    // The callbacks of the permission requests that wait for the answer of Java, by request.
+    // The callbacks of the checks and the requests of permissions that wait for the answer of Java, by request.
     static std::mutex& permissionMutex;
     static std::unordered_map<std::int64_t, std::function<void(Permission::Answer)>>& permissionCallbacks;
     static std::int64_t nextPermission;

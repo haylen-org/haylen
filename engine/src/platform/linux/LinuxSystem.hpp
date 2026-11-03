@@ -4,6 +4,7 @@
 #include <functional>
 #include <string>
 
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 
 namespace haylen::platform {
@@ -12,7 +13,10 @@ namespace haylen::platform {
 class LinuxSystem final {
   public:
     [[nodiscard]] static SystemInfo getInfo();
-    static void openUrl(const std::string& url, std::function<void(bool opened)> callback);
+    static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
+
+    // What Linux tells of a permission, which it never asks the person for through a prompt the engine reaches.
+    [[nodiscard]] static Permission::Answer answerPermission(Permission::Kind kind);
 
     // Reports the battery now and then every 30 seconds from a thread of its own, since Linux announces no change and some batteries take a while to read.
     static void watchBattery();

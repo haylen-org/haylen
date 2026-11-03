@@ -1,6 +1,6 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device and asks the person for the permissions that a system grants while the app runs. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme and the battery of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
@@ -78,44 +78,53 @@ end
 
 ### system.openUrl(url)
 
-Opens `url` with the app that the system picks for it: the browser for a web page, the store for a store link or the mail app for a `mailto:` link. It returns a Varn promise that resolves on a later frame, with `true` when an app took the url and `false` otherwise. A url that is not a string raises a bad argument error, and an empty url raises `Opening a url needs a url.`.
+Opens `url` with the app that the system picks for it: the browser for a web page, the store for a store link or the mail app for a `mailto:` link. It returns a Varn promise that resolves on a later frame, with nothing once an app took the url. A url that is not a string raises a bad argument error, and an empty url raises `Opening a url needs a url.`.
 
-Every platform opens urls: macOS through the workspace, iOS, iPadOS, Mac Catalyst and tvOS through the application, Android with a view intent, Windows through the shell and Linux with `xdg-open`. The web opens a new tab, which a popup blocker may refuse.
+The promise rejects with a [failure](#failures) of the code `'unsupported'` when no app on the device opens the url, such as an unknown scheme, and of the code `'denied'` when the browser blocked the new tab, which it does without an input of the person shortly before, such as a click or a key. Every platform opens urls: macOS through the workspace, iOS, iPadOS, Mac Catalyst and tvOS through the application, Android with a view intent, Windows through the shell, Linux with `xdg-open` and the web in a new tab.
 
 ```lua
 local async = require('async')
 local system = require('haylen.system')
 
 async.spawn(function()
-    if not system.openUrl('https://example.com/tiny-island'):await() then
-        print('No app opens web pages on this device.')
+    local _, message = system.openUrl('https://example.com/tiny-island'):await()
+    if message then
+        print(message)
     end
 end)
 ```
 
 ### system.clipboard()
 
-Returns the text on the clipboard of the system, or an empty string when it holds no text. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux and the Apple TV.
+Reads the text on the clipboard of the system. It returns a Varn promise that resolves on a later frame with the text, or with an empty string when the clipboard holds no text. Some systems ask the person before an app reads text that another app wrote, and the promise waits for the answer. A refusal rejects with a [failure](#failures) of the code `'denied'`, and the permission [`'clipboard'`](#permissions) tells beforehand what the platform does. The engine keeps up to 64 KiB of clipboard text on macOS, Windows, Linux and the Apple TV.
 
-- iOS shows its notice that the app pasted.
+- iOS, iPadOS and visionOS ask the person whether the app may paste, or show their notice that the app pasted, as the settings of the app say.
+- macOS 15.4 and later follow the setting of the pasteboard for the app, which may ask the person.
 - Android gives the clipboard only to the app that has the focus.
 - An Apple TV has no clipboard, so the text stays inside the app.
-- Browsers give a page only the text that the person pastes into it. So the function returns the text of the last paste into the page, or the last text that the app wrote there, whichever came later.
+- Browsers read the clipboard only in a secure context, served over https or from localhost. Chromium asks the person the first time, and Safari and Firefox show a paste control at each read. Outside a secure context the promise rejects with the code `'unsupported'`.
+
+A paste of the person into a field of the UI reads the clipboard on its own, without this function.
 
 ```lua
+local async = require('async')
 local system = require('haylen.system')
 
-local code = system.clipboard()
-if #code > 0 then
-    print('Pasted the invite code ' .. code .. '.')
-end
+async.spawn(function()
+    local code, message = system.clipboard():await()
+    if not code then
+        print(message)
+    elseif #code > 0 then
+        print('Pasted the invite code ' .. code .. '.')
+    end
+end)
 ```
 
 ### system.setClipboard(text)
 
-Puts `text` on the clipboard of the system. It returns a Varn promise that resolves on a later frame, with `true` when the text reached the clipboard and `false` when the system refused it. A `text` that is not a string raises a bad argument error.
+Puts `text` on the clipboard of the system. It returns a Varn promise that resolves on a later frame, with nothing once the text reached the clipboard. A `text` that is not a string raises a bad argument error.
 
-Desktops, phones, tablets and TVs take the text at once, and an Apple TV keeps it inside the app. A browser writes the clipboard only for a page served over https or from localhost, which has the focus and an input of the person shortly before, such as a click or a key. So a copy that a button or a key of the app asks for reaches the clipboard, while a copy without an input of the person resolves with `false` and the browser console says why. A page without the clipboard API, served over plain http from another machine, resolves with `false` too, which the console explains once.
+Desktops, phones, tablets and TVs take the text at once, and an Apple TV keeps it inside the app. A browser writes the clipboard only for a page served over https or from localhost, which has the focus and an input of the person shortly before, such as a click or a key. So a copy that a button or a key of the app asks for reaches the clipboard, while a copy without an input of the person rejects with a [failure](#failures) of the code `'denied'` and the reason of the browser. A page without the clipboard API, served over plain http from another machine, rejects with the code `'unsupported'`.
 
 ```lua
 local async = require('async')
@@ -123,23 +132,23 @@ local system = require('haylen.system')
 
 local seed = 184467
 async.spawn(function()
-    if system.setClipboard('Island seed: ' .. seed):await() then
-        print('Copied the seed.')
-    else
-        print('The system refused the copy, so the seed shows on the screen instead.')
+    local _, message = system.setClipboard('Island seed: ' .. seed):await()
+    if message then
+        print('The seed shows on the screen instead, because ' .. message)
     end
 end)
 ```
 
 ### system.vibrate(seconds)
 
-Vibrates the device for `seconds` where it can vibrate, and does nothing elsewhere. A number that is not positive raises `A vibration lasts a positive number of seconds.`.
+Vibrates the device for `seconds`. It returns a Varn promise that resolves on a later frame, with nothing once the device vibrated. A number that is not positive raises `A vibration lasts a positive number of seconds.`.
 
 - Android phones, and the browsers of phones with the Vibration API, vibrate for the time given.
 - iPhones play a medium impact on their haptic engine, whatever the time.
-- The other devices do nothing.
+- The other devices have no motor that apps reach, so the promise rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `A Mac has no vibration motor.`.
+- A browser vibrates only after an input of the person, such as a tap, and rejects with the code `'denied'` before.
 
-On Android the app needs the permission `android.permission.VIBRATE`, which the manifest of the Android template declares. Without it `vibrate` logs once what is missing and how to add it, and does nothing, as [Android permissions](#android-permissions) describes.
+On Android the app needs the permission `android.permission.VIBRATE`, which the manifest of the Android template declares. Without it the promise rejects with the code `'unsupported'` and `data.missing`, as [Android permissions](#android-permissions) describes. A vibration often plays on its own, such as on every hit, so the engine logs each reason of a refusal once and a rejection that nothing awaits never stops the app.
 
 ```lua
 local system = require('haylen.system')
@@ -153,43 +162,45 @@ onHit()
 
 ### system.permission(name)
 
-Returns the state of the permission `name`, as far as the platform tells it, without asking the person. The only permission is `'localNetwork'`, the access to the devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. Another name raises a bad argument error.
+Reads the state of the [permission](#permissions) `name`, as far as the platform tells it, without asking the person. It returns a Varn promise that resolves on a later frame with the state, since some platforms, such as browsers, tell it only asynchronously. A name that is not a permission raises a bad argument error.
 
 | State | Meaning |
 | --- | --- |
 | `'granted'` | The app holds the permission, or the platform needs none for it. |
-| `'prompt'` | The app does not hold it yet, and [`system.requestPermission`](#systemrequestpermissionname) may show the prompt of the system. |
-| `'denied'` | The person refused it. |
-| `'unknown'` | The platform cannot tell, as on Apple platforms, which ask the person the first time the app reaches the local network and tell apps nothing of it. |
+| `'prompt'` | The person was not asked yet, so [`system.requestPermission`](#systemrequestpermissionname) shows the prompt of the system. |
+| `'denied'` | The person refused it, or the system no longer asks. A request then answers `'denied'` at once, and the person allows it in the settings of the system. |
+| `'unknown'` | The platform does not tell the app until it tries, as Apple platforms do for the local network, and asks the person at the first use. |
 
-```lua
-local system = require('haylen.system')
-
-if system.permission('localNetwork') == 'prompt' then
-    print('The app will ask for the local network before it looks for players nearby.')
-end
-```
-
-### system.requestPermission(name)
-
-Asks the person for the permission `name` with the prompt of the system, where the platform has one, and returns a call of the kind that [`haylen.dialogs`](dialogs.md) returns. The method `call:await()` returns the state the person left, `'granted'`, `'denied'` or `'unknown'`, once they answer. A permission that the app holds already answers `'granted'` at once, without a prompt.
-
-| Platform | `'localNetwork'` |
-| --- | --- |
-| Android | An app that targets Android 17 or later, on Android 17 or later, shows the prompt of the system for `android.permission.ACCESS_LOCAL_NETWORK`. Older systems and older targets need no permission and answer `'granted'`. |
-| iOS, iPadOS, Mac Catalyst, tvOS, visionOS and macOS | The system asks the person the first time the app reaches the local network, with the text of `NSLocalNetworkUsageDescription` of the `Info.plist`, and tells the app nothing of it, so the call answers `'unknown'`. |
-| Web, Windows and Linux | No permission is needed, so the call answers `'granted'`. |
-
-On Android the manifest of the app must declare the permission. The manifest of the Android template declares it as a visible default. Without it the request shows no prompt, logs once with the tag `haylen` what is missing and the line that adds it, and fails with the code `'unsupported'`. Its `data.missing` lists what is missing as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. The prompt belongs to the system, so `call:cancel()` returns `false` and changes nothing.
+A platform that has no such capability rejects with a [failure](#failures) of the code `'unsupported'` and the reason, such as `Browsers have no photo library.`.
 
 ```lua
 local async = require('async')
 local system = require('haylen.system')
 
 async.spawn(function()
-    local state, failure = system.requestPermission('localNetwork'):await()
+    local state, reason = system.permission('camera'):await()
+    if state == 'prompt' then
+        print('The app explains why it wants the camera before it asks.')
+    elseif not state then
+        print(reason)
+    end
+end)
+```
+
+### system.requestPermission(name)
+
+Asks the person for the [permission](#permissions) `name` with the prompt of the system, where the platform has one, and returns a Varn promise that resolves on a later frame with the state that the person left: `'granted'`, `'denied'`, `'unknown'`, or `'prompt'` when the system did not ask, such as Safari, which asks only during a tap or a click. A permission that the app holds already answers `'granted'` at once, without a prompt, and so does a platform that never asks.
+
+The engine first checks what the project of the app must declare for the permission: the usage description of the `Info.plist` on Apple platforms and the permission of the manifest on Android. Without it the request shows no prompt, logs once with the tag `haylen` what is missing and how to add it, and rejects with a [failure](#failures) of the code `'unsupported'`, whose `data.missing` lists what is missing as `{kind, name, file, snippet}`, as the [plugin guide](../platform/plugins.md#requirements) describes. A platform without the capability rejects with the same code and its reason. The app asked, so a rejection that nothing awaits never stops it.
+
+```lua
+local async = require('async')
+local system = require('haylen.system')
+
+async.spawn(function()
+    local state, message, failure = system.requestPermission('localNetwork'):await()
     if failure then
-        print(failure.message)
+        print(failure.code, message)
         return
     end
     if state == 'denied' then
@@ -277,6 +288,76 @@ events.on('batteryChanged', function(battery)
 end)
 ```
 
+## Permissions
+
+A capability that at least one platform gates behind a permission, a prompt or a policy has a permission of `haylen.system`, so an app checks it with [`system.permission`](#systempermissionname) and asks for it with [`system.requestPermission`](#systemrequestpermissionname) the same way everywhere. A platform that never asks answers `'granted'`. The engine itself uses the clipboard, the motion sensors of [`input.startMotion`](input.md#inputstartmotionoptions) and the local network, while the camera, the microphone, the location, notifications and the photos serve the native plugins, which ask for them through their context before they use them, as the [plugin guide](../platform/plugins.md#permissions) describes.
+
+| Name | What it gives the app |
+| --- | --- |
+| `'camera'` | The camera. |
+| `'microphone'` | The microphone. |
+| `'location'` | The location while the app is in use, at the precision the person allows. |
+| `'preciseLocation'` | The exact location, which a person may withhold while they allow an approximate one. |
+| `'backgroundLocation'` | The location while the app is in the background. |
+| `'notifications'` | The notifications that the app shows. |
+| `'photos'` | The library of photos and videos of the device. The file pickers of [`haylen.dialogs`](dialogs.md) need no permission. |
+| `'clipboard'` | A read of text that another app put on the clipboard. |
+| `'motion'` | The motion sensors of the device. |
+| `'screens'` | Every screen of the device, with where it sits, for windows and outputs on other screens. |
+| `'localNetwork'` | The devices of the local network, such as a development server on the computer of the developer, a game on the same Wi-Fi or a device of the home. |
+
+These tables tell what each platform answers and when it asks the person.
+
+| Name | iOS, iPadOS, Mac Catalyst, visionOS and macOS | tvOS |
+| --- | --- | --- |
+| `'camera'`, `'microphone'` | The state of AVFoundation, and its prompt with `NSCameraUsageDescription` or `NSMicrophoneUsageDescription`. | The same from tvOS 17. Earlier versions answer `'unsupported'`. |
+| `'location'` | Core Location while the app is in use, and its prompt with `NSLocationWhenInUseUsageDescription`, or `NSLocationUsageDescription` on macOS. | The same. |
+| `'preciseLocation'` | `'granted'` with full accuracy and `'denied'` with reduced accuracy. A request first asks for the location, whose prompt has the switch of the precision, and otherwise asks for full accuracy for a while, with the text of the key `preciseLocation` of `NSLocationTemporaryUsageDescriptionDictionary`. | The same. |
+| `'backgroundLocation'` | The authorization always, with `NSLocationAlwaysAndWhenInUseUsageDescription`. It answers `'prompt'` while the location is allowed in use until the engine asked once, since the system shows that prompt once. macOS answers like `'location'`, and visionOS `'unsupported'`. | `'unsupported'`. |
+| `'notifications'` | UserNotifications, which the engine loads at run time, with alerts, sounds and badges. A Mac process without a bundle, such as the desktop player, answers `'unsupported'`. | Badges alone. |
+| `'photos'` | Photos, which the engine loads at run time, to read and write, with `NSPhotoLibraryUsageDescription`. A selection of photos that the person limited counts as `'granted'`. | The same. |
+| `'clipboard'` | `'unknown'` on iOS, iPadOS, Mac Catalyst and visionOS, which ask at each paste from another app. macOS 15.4 and later follow the setting of the pasteboard, `'prompt'` while it asks, and earlier versions answer `'granted'`. | `'granted'`, since the clipboard stays inside the app. |
+| `'motion'` | Core Motion, which asks from version 27.2 with `NSMotionUsageDescription`, and `'granted'` on earlier versions and on macOS. | `'granted'`. |
+| `'screens'` | `'granted'`. | `'granted'`. |
+| `'localNetwork'` | `'unknown'`, since the system asks the person the first time the app reaches the local network, with `NSLocalNetworkUsageDescription`, and tells the app nothing of it. | `'unknown'`. |
+
+| Name | Android | Web | Windows | Linux |
+| --- | --- | --- | --- | --- |
+| `'camera'` | `android.permission.CAMERA`. | The Permissions API, and `getUserMedia` for the prompt, whose tracks stop at once. A device without a camera answers `'unsupported'`. | The privacy setting of the camera, through `AppCapability`. | `'granted'`. |
+| `'microphone'` | `android.permission.RECORD_AUDIO`. | The same as the camera. | The privacy setting of the microphone. | `'granted'`. |
+| `'location'` | `ACCESS_COARSE_LOCATION`, with `ACCESS_FINE_LOCATION` in the same prompt where the manifest declares it. | The Permissions API, and `getCurrentPosition` for the prompt. | The privacy setting of the location. | `'unknown'`, since the location service of the desktop asks on its own. |
+| `'preciseLocation'` | `ACCESS_FINE_LOCATION`, whose prompt turns an approximate location into an exact one. | The same as `'location'`, since browsers ask for no precision. | The same as `'location'`. | `'unknown'`. |
+| `'backgroundLocation'` | `ACCESS_BACKGROUND_LOCATION` from Android 10, which the request asks for after the location. Earlier versions answer like `'location'`. | `'unsupported'`, since a page reads the location only while it shows. | The same as `'location'`. | `'unknown'`. |
+| `'notifications'` | `POST_NOTIFICATIONS` from Android 13. Earlier versions answer whether the notifications of the app are on, without a prompt. | The Notification API. | `'unknown'`, since the person turns them off in the settings, which the app cannot read. | `'unknown'`. |
+| `'photos'` | `READ_MEDIA_IMAGES` and `READ_MEDIA_VIDEO` from Android 13, `READ_MEDIA_VISUAL_USER_SELECTED` from Android 14 for a selection where the manifest declares it, and `READ_EXTERNAL_STORAGE` before. | `'unsupported'`, since browsers have no photo library. | `'granted'`. | `'granted'`. |
+| `'clipboard'` | `'granted'`. | The state of `clipboard-read` in Chromium, which asks at the first read, and `'unknown'` in Safari and Firefox, which show a paste control at each read. | `'granted'`. | `'granted'`. |
+| `'motion'` | `'granted'`. | The prompt of Safari during a tap or a click, which the page keeps until it loads again, the states of `accelerometer` and `gyroscope` in Chromium, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
+| `'screens'` | `'granted'`. | The Window Management API, with the prompt of `getScreenDetails`. A browser without it answers `'unsupported'`. | `'granted'`. | `'granted'`. |
+| `'localNetwork'` | `ACCESS_LOCAL_NETWORK` for an app that targets Android 17, on Android 17 or later. Older systems and older targets answer `'granted'`. | The state of `local-network-access` in Chromium, where a request answers `'unknown'` while the browser would ask at the first access, and `'granted'` elsewhere. | `'granted'`. | `'granted'`. |
+
+On Android a permission is `'denied'` once the engine asked for it before and Android no longer explains why the app wants it, which it does after a person refused twice. Browsers need a secure context, served over https or from localhost, for the camera, the microphone, the location, notifications, the clipboard, the motion sensors and every screen, and a page in a frame needs the feature in the `allow` attribute of its frame. Without them the call rejects with the code `'unsupported'` and `data.missing`.
+
+## Failures
+
+A promise of this module that a platform or the person refuses rejects with the message, and with a table that `await` returns as its third value. Its field `error` holds the message, and `code` is one of these.
+
+| Code | When |
+| --- | --- |
+| `'denied'` | The person or the platform refused the call, such as a clipboard that the person did not allow or a browser that wants an input of the person first. The message names the capability and how to ask for it again. |
+| `'unsupported'` | The platform has no such capability, with the reason, or the project of the app lacks a requirement, which `data.missing` lists as `{kind, name, file, snippet}`. |
+
+```lua
+local async = require('async')
+local system = require('haylen.system')
+
+async.spawn(function()
+    local text, message, failure = system.clipboard():await()
+    if failure and failure.code == 'denied' then
+        print(message)
+    end
+end)
+```
+
 ## Platforms
 
 This table tells where each platform reads the theme, the battery and what the device is.
@@ -308,11 +389,11 @@ The browser and Windows have no toggle button. So an app that offers `'togglePla
 
 ## Android permissions
 
-The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The manifest of the Android template declares all four as visible defaults, and an app deletes the ones it does not use. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing and the line that adds it to `app/src/main/AndroidManifest.xml`, and goes on without it.
+The engine library of Android declares no permission, so the manifest of the app declares the ones that its features need. The manifest of the Android template declares these four as visible defaults, and an app deletes the ones it does not use. The [permissions](#permissions) that plugins use, such as `android.permission.CAMERA`, come with the manifest of their module. A feature whose permission is missing never crashes the app. It logs once, with the tag `haylen`, what is missing and the line that adds it to `app/src/main/AndroidManifest.xml`, and goes on without it.
 
 | Permission | Feature | Without it |
 | --- | --- | --- |
-| `android.permission.VIBRATE` | `system.vibrate`. | It does nothing, which the log tells once as a warning. |
+| `android.permission.VIBRATE` | `system.vibrate`. | It rejects with the code `'unsupported'` and `data.missing`, which the log tells once as a warning. |
 | `android.permission.ACCESS_NETWORK_STATE` | The network state of [`haylen.networkState()`](haylen.md#haylennetworkstate) and the events `networkOnline` and `networkOffline` of [`haylen.events`](events.md#engine-events), which the platform reports as `networkChanged`. | The engine never follows the network. The state stays `'unknown'` and the events never fire, which the log tells once at the info level. |
 | `android.permission.INTERNET` | Network access: the `http` and `socket` modules of Varn and [`haylen.net`](net.md). | Connections fail. The `error` events of `haylen.net` sockets end with a sentence that names the missing permission and how to add it, while Varn reports what the system tells it. |
 | `android.permission.ACCESS_LOCAL_NETWORK` | Reaching the devices of the local network from Android 17, for an app that targets it. The person grants it at run time, so the app asks with [`system.requestPermission('localNetwork')`](#systemrequestpermissionname), and the development session of a debug build asks by itself before it reaches a development server outside the device. | The request fails with the code `'unsupported'`. Android drops the packets of a connection to the local network, so `haylen.net` sockets and connects of the `socket` module fail at once with a sentence that names the permission, the requests of the `http` module that fail end with a sentence that says that access to the local network is not granted, and the development session says why it does not connect. |
@@ -328,19 +409,20 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getInfo()` | The `haylen::platform::SystemInfo`. Its enums `Os` and `DeviceKind` name the operating system and the kind of device. Its empty strings and zeros are the values that the platform does not report. |
 | `getTheme()` | The `haylen::platform::Theme`, `Light` or `Dark`. |
 | `getBattery()` | The `haylen::platform::Battery`, with its optional `level`, `charging` and `State`. |
-| `openUrl(url, callback)` | Opens the url and calls back on the frame thread with whether an app took it. |
-| `getClipboard()` | The text on the clipboard of the system. |
-| `setClipboard(text, callback)` | Puts the text on the clipboard and calls back on the frame thread, at a later frame, with whether it got there. |
-| `vibrate(seconds)` | Vibrates the device. |
-| `getPermission(kind)` | The `haylen::platform::Permission::State` of a `Permission::Kind`. |
-| `requestPermission(kind, callback)` | Asks the person and calls back on the frame thread, at a later frame, with a `Permission::Answer`, whose `missing` lists what the project of the app lacks. |
+| `openUrl(url, callback)` | Opens the url and calls back on the frame thread, at a later frame, with a `haylen::platform::Permission::Answer`, whose state is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
+| `getClipboard()` | The text on the clipboard for a paste of the person into a field of the UI. |
+| `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back at a later frame with an `Answer` and the text. |
+| `setClipboard(text, callback)` | Puts the text on the clipboard and calls back at a later frame with an `Answer`. |
+| `vibrate(seconds, callback)` | Vibrates the device and calls back at a later frame with an `Answer`. |
+| `checkPermission(kind, callback)` | Reads the state of a `Permission::Kind` and calls back at a later frame with an `Answer`, whose state is `Unsupported` with the reason where the platform has no such capability. |
+| `requestPermission(kind, callback)` | Asks the person and calls back at a later frame with an `Answer`, whose `missing` lists what the project of the app lacks. |
 
 The functions `openUrl` and `vibrate` throw `std::invalid_argument` for the values that Lua rejects. The function `graphics::Device::getAdapterName()` names the GPU on its own.
 
 ```cpp
 const haylen::platform::SystemInfo& info = engine.getSystem().getInfo();
 haylen::core::Log::info("Running on {} with {} cores", haylen::platform::SystemInfo::osName(info.os), info.cpuCores);
-engine.getSystem().openUrl("https://example.com", [](bool opened) {
-    haylen::core::Log::info("The page {}", opened ? "opened" : "did not open");
+engine.getSystem().openUrl("https://example.com", [](haylen::platform::Permission::Answer answer) {
+    haylen::core::Log::info("The page {}", answer.state == haylen::platform::Permission::State::Granted ? "opened" : answer.message);
 });
 ```

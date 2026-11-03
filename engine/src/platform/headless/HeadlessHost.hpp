@@ -107,15 +107,18 @@ class HeadlessHost final : public Host {
     void setKeyboardVisible(bool value) override {
         keyboardVisible = value;
     }
-    // The clipboard keeps the text unless the test refuses writes, the way a browser refuses a page, and answers at once.
-    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override {
-        if (writesClipboard) {
+    // The clipboard keeps the text unless the test refuses it, the way a browser refuses a page, and answers at once.
+    void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override {
+        if (clipboardAnswer.state == Permission::State::Granted) {
             clipboard = value;
         }
-        callback(writesClipboard);
+        callback(clipboardAnswer);
     }
     [[nodiscard]] std::string getClipboard() const override {
         return clipboard;
+    }
+    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override {
+        callback(clipboardAnswer, clipboardAnswer.state == Permission::State::Granted ? clipboard : std::string());
     }
     void requestQuit() override {
         quitRequested = true;
@@ -279,7 +282,6 @@ class HeadlessHost final : public Host {
     [[nodiscard]] input::MotionSensors::Support getMotionSupport() override {
         return motionSupport;
     }
-    void authorizeMotion(std::function<void(Permission::Answer answer)> callback) override;
     void setMotion(input::MotionSensors::Sensors sensors, float rate) override {
         motionSensors = sensors;
         motionRate = rate;
@@ -336,20 +338,18 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) override {
         return videoOpener ? videoOpener(std::move(file), path) : nullptr;
     }
-    void openUrl(std::string_view url, std::function<void(bool opened)> callback) override;
-    void vibrate(float seconds) override {
+    void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) override;
+    [[nodiscard]] Permission::Answer vibrate(float seconds) override {
         vibrations.push_back(seconds);
+        return vibrationAnswer;
     }
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override {
         rumbles.push_back({.index = index, .low = low, .high = high, .seconds = seconds});
     }
-    [[nodiscard]] Permission::State getPermission(Permission::Kind) const override {
-        return permissionState;
+    void checkPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) override {
+        callback(permissionState);
     }
-    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override {
-        permissionRequests.push_back(kind);
-        callback(permissionAnswer);
-    }
+    void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
     // Every socket of the headless platform reads the reason a test set, the way a platform explains a socket it blocked.
     [[nodiscard]] BlockedReason getBlockedReason() const override {
         return [reason = blockedReason](std::intptr_t) { return reason; };
@@ -510,37 +510,40 @@ class HeadlessHost final : public Host {
         return announcements;
     }
 
-    // Whether the headless system finds an app for the urls the engine opens, which it answers at once.
-    void setOpensUrls(bool value) noexcept {
-        opensUrls = value;
+    // How the headless system answers the urls the engine opens, at once.
+    void setUrlAnswer(Permission::Answer value) {
+        urlAnswer = std::move(value);
     }
 
-    void setWritesClipboard(bool value) noexcept {
-        writesClipboard = value;
+    // The answer of every write and read of the clipboard, which a browser or the person may refuse on a real device.
+    void setClipboardAnswer(Permission::Answer value) {
+        clipboardAnswer = std::move(value);
+    }
+    void setVibrationAnswer(Permission::Answer value) {
+        vibrationAnswer = std::move(value);
     }
 
-    // The state of every permission and the answer of every request for one, which the person gives on a real device.
-    void setPermission(Permission::State value) noexcept {
-        permissionState = value;
+    // The answer of every check of a permission and of every request for one, which the platform and the person give on a real device.
+    void setPermission(Permission::Answer value) {
+        permissionState = std::move(value);
     }
     void setPermissionAnswer(Permission::Answer value) {
         permissionAnswer = std::move(value);
     }
+
+    // Holds the answers of the requests for permissions until `answerPermissions`, the way a person takes a while to answer the prompt of the system.
+    void setPermissionAnswersHeld(bool value) noexcept {
+        permissionAnswersHeld = value;
+    }
+    void answerPermissions();
     [[nodiscard]] const std::vector<Permission::Kind>& getPermissionRequests() const noexcept {
         return permissionRequests;
     }
 
-    // The motion sensors of the headless device, which has none until a test gives it some, and the answer that it gives the apps that ask to run them, at once unless the test holds the answers until `answerMotion`.
+    // The motion sensors of the headless device, which has none until a test gives it some.
     void setMotionSupport(input::MotionSensors::Support value) {
         motionSupport = std::move(value);
     }
-    void setMotionAnswer(Permission::Answer value) {
-        motionAnswer = std::move(value);
-    }
-    void setMotionAnswersHeld(bool value) noexcept {
-        motionAnswersHeld = value;
-    }
-    void answerMotion();
 
     // The readings that the sensors of the headless device deliver while they run, the way a fake sensor would.
     void setMotionReadings(const input::MotionState& value) noexcept {
@@ -556,9 +559,6 @@ class HeadlessHost final : public Host {
     }
     [[nodiscard]] input::MotionSensors::Sensors getGamepadMotion() const noexcept {
         return gamepadMotion;
-    }
-    [[nodiscard]] int getMotionAuthorizations() const noexcept {
-        return motionAuthorizations;
     }
 
     // What the platform explains for a socket of the connections that start after the change, such as a connection that Local Network Protection of Android blocked.
@@ -672,14 +672,12 @@ class HeadlessHost final : public Host {
     std::vector<float> vibrations;
     std::vector<Rumble> rumbles;
     std::string networkRequirement;
-    Permission::State permissionState = Permission::State::Granted;
+    Permission::Answer permissionState{.state = Permission::State::Granted};
     Permission::Answer permissionAnswer{.state = Permission::State::Granted};
     std::vector<Permission::Kind> permissionRequests;
+    std::vector<std::function<void(Permission::Answer)>> heldPermissionAnswers;
+    bool permissionAnswersHeld = false;
     input::MotionSensors::Support motionSupport{.reason = "The headless platform has no motion sensors."};
-    Permission::Answer motionAnswer{.state = Permission::State::Granted};
-    std::vector<std::function<void(Permission::Answer)>> heldMotionAnswers;
-    bool motionAnswersHeld = false;
-    int motionAuthorizations = 0;
     input::MotionState motionReadings;
     input::MotionSensors::Sensors motionSensors;
     float motionRate = 0.0F;
@@ -704,8 +702,9 @@ class HeadlessHost final : public Host {
     int haltedPumps = 0;
     bool launched = false;
     const audio::OutputBackend* audioOutput = nullptr;
-    bool opensUrls = true;
-    bool writesClipboard = true;
+    Permission::Answer urlAnswer{.state = Permission::State::Granted};
+    Permission::Answer clipboardAnswer{.state = Permission::State::Granted};
+    Permission::Answer vibrationAnswer{.state = Permission::State::Granted};
 
     // The headless desktop is one 1920 by 1080 display at 60 frames per second whose work area leaves a 40 point taskbar at the bottom, with the window at the top left corner of it.
     std::vector<Display> displays{{.id = "headless", .name = "headless", .bounds = {0.0F, 0.0F, 1920.0F, 1080.0F}, .workArea = {0.0F, 0.0F, 1920.0F, 1040.0F}, .scale = 1.0F, .refreshRate = 60.0F, .primary = true, .modes = {{.width = 1920, .height = 1080, .refreshRate = 60.0F, .scale = 1.0F}, {.width = 1280, .height = 720, .refreshRate = 60.0F, .scale = 1.0F}}}};

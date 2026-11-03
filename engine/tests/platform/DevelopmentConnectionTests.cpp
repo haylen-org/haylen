@@ -170,17 +170,14 @@ TEST(DevelopmentConnectionTest, AsksForTheLocalNetworkBeforeItReachesAServerOuts
 
     const test::TemporaryDirectory directory;
     HeadlessHost host(directory.getPath());
-    host.setPermission(Permission::State::Prompt);
     host.setPermissionAnswer({.state = Permission::State::Denied});
     DevelopmentSession refused(host, std::nullopt, "ws://192.0.2.10:7777/haylen/development");
     refused.pump();
     refused.pump();
     EXPECT_EQ(host.getPermissionRequests(), (std::vector<Permission::Kind>{Permission::Kind::LocalNetwork}));
 
-    // A server on the device, such as the one that "adb reverse" forwards, and a platform that needs no permission never ask.
+    // A server on the device, such as the one that "adb reverse" forwards, never asks.
     DevelopmentSession onDevice(host, std::nullopt, "ws://127.0.0.1:7777/haylen/development");
-    host.setPermission(Permission::State::Granted);
-    DevelopmentSession granted(host, std::nullopt, "ws://[fd00::10]:7777/haylen/development");
     EXPECT_EQ(host.getPermissionRequests().size(), 1U);
 
     core::Log::removeListener(listener);

@@ -137,9 +137,13 @@ math::Vec2 ErrorScreen::toCanvas(math::Vec2 framebufferPoint) const {
 
 void ErrorScreen::copyReport() {
     // clang-format off
-    engine.getSystem().setClipboard(report, [state = std::weak_ptr<CopyState>(copyState)](bool written) {
+    engine.getSystem().setClipboard(report, [state = std::weak_ptr<CopyState>(copyState)](const platform::Permission::Answer& answer) {
+        const bool copied = answer.state == platform::Permission::State::Granted;
+        if (!copied) {
+            core::Log::warning("The report of the error stays off the clipboard. {}", answer.message);
+        }
         if (const std::shared_ptr<CopyState> alive = state.lock()) {
-            *alive = written ? CopyState::Copied : CopyState::Refused;
+            *alive = copied ? CopyState::Copied : CopyState::Refused;
         }
     });
     // clang-format on

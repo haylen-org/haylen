@@ -124,14 +124,14 @@ Permission::State AppleMotion::getPermission() {
 void AppleMotion::authorize(std::function<void(Permission::Answer answer)> callback) {
     const Permission::State state = getPermission();
     if (state != Permission::State::Prompt) {
-        callback({.state = state, .message = state == Permission::State::Denied ? kDeniedMessage : ""});
+        callback({.state = state});
         return;
     }
 
     NSError* error = nil;
     HaylenRequirements* requirements = [[HaylenRequirements alloc] initWithOwner:@"The motion sensors"];
     if (![requirements require:@[ [HaylenRequirement usageDescription:@"NSMotionUsageDescription"] ] error:&error]) {
-        Permission::Answer answer{.state = Permission::State::Prompt, .message = [error.userInfo[@"message"] UTF8String]};
+        Permission::Answer answer{.state = Permission::State::Unsupported, .message = [error.userInfo[@"message"] UTF8String]};
         for (NSDictionary<NSString*, NSString*>* entry in error.userInfo[@"data"][@"missing"]) {
             answer.missing.push_back({.kind = entry[@"kind"].UTF8String, .name = entry[@"name"].UTF8String, .file = entry[@"file"].UTF8String, .snippet = entry[@"snippet"].UTF8String});
         }
@@ -151,8 +151,7 @@ void AppleMotion::prompt(std::function<void(Permission::Answer answer)> callback
             return;
         }
         [manager stopDeviceMotionUpdates];
-        const Permission::State state = getPermission();
-        (*pending)({.state = state, .message = state == Permission::State::Denied ? kDeniedMessage : ""});
+        (*pending)({.state = getPermission()});
         *pending = nullptr;
     }];
     // clang-format on

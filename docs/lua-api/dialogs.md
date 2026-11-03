@@ -175,6 +175,7 @@ A failed dialog returns the same [`PlatformError`](platform.md#platformerror) as
 | `cancelled` | The method `call:cancel()` gave the dialog up. |
 | `timeout` | The `timeout` of the dialog passed first. |
 | `failed` | The platform could not show the dialog or write the file. The message gives its reason. |
+| `denied` | The platform refused the dialog, such as a browser that shows its pickers only right after an input of the person. The message says how to ask again. |
 
 ## Platforms
 
@@ -190,7 +191,7 @@ A failed dialog returns the same [`PlatformError`](platform.md#platformerror) as
 
 These notes describe how each platform behaves:
 
-- **Web.** Browsers open their file pickers only in the moments after a click, a tap or a key press of the user. So a web app asks for files, and for the save picker, from an input handler. A call without that activation fails with the code `failed`. A download needs no activation. The web closes a message that the app gives up. A picker of the browser stays open, since pages cannot close it, and its answer goes nowhere.
+- **Web.** Browsers open their file pickers only in the moments after a click, a tap or a key press of the user. So a web app asks for files, and for the save picker, from an input handler. A call without that activation fails with the code `denied`. A download needs no activation. The web closes a message that the app gives up. A picker of the browser stays open, since pages cannot close it, and its answer goes nowhere.
 - **Windows.** Windows shows its dialogs one after the other, on a thread of their own. The window of the app keeps drawing but takes no input while one shows, as with every dialog of Windows.
 - **Linux.** Linux loads GTK 3 with the first dialog. Without GTK 3 every dialog fails with the code `unsupported` and a message that names GTK 3.
 - **Android messages.** An Android app keeps running while a message shows. So a cancel or a timeout closes the message at once. A message that is still open when its activity goes away closes with it.

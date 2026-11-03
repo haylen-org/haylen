@@ -3,12 +3,10 @@ package com.haylen.plugins.nativedemo
 import android.Manifest
 import android.content.ActivityNotFoundException
 import android.content.Intent
-import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.net.Uri
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -18,7 +16,6 @@ import android.util.Log
 import com.varn.VarnDataView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.NotificationManagerCompat
 import dev.haylen.HaylenActivity
 import dev.haylen.HaylenAudioStream
 import dev.haylen.HaylenBridge
@@ -45,8 +42,6 @@ class NativeDemoPlugin : HaylenPlugin() {
     private var bannerTaps = 0
     private var picker: ActivityResultLauncher<Array<String>>? = null
     private var picking: HaylenBridge.Reply? = null
-    private var permissions: ActivityResultLauncher<String>? = null
-    private var asking: ((Boolean) -> Unit)? = null
     private lateinit var device: NativeDemoDevice
     private var video: NativeDemoVideo? = null
     private var tone: NativeDemoTone? = null
@@ -54,7 +49,7 @@ class NativeDemoPlugin : HaylenPlugin() {
 
     override fun onLoad(context: HaylenPluginContext) {
         this.context = context
-        device = NativeDemoDevice(context, ::ask)
+        device = NativeDemoDevice(context)
         device.register()
         NativeDemoStore(context).register()
         registerCalls()
@@ -63,7 +58,7 @@ class NativeDemoPlugin : HaylenPlugin() {
         registerStreams()
         registerBanner()
         registerScreens()
-        registerPermissions()
+        registerNotifications()
         registerRequirements()
         context.emitRetained("loaded", JSONObject().put("language", LANGUAGE).put("platform", "android"))
     }
@@ -314,62 +309,18 @@ class NativeDemoPlugin : HaylenPlugin() {
         }
     }
 
-    // The permissions go through the Activity Result API after the plugin checked that the manifest of the app declares them, and the notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed.
-    private fun registerPermissions() {
-        context.register("requestPermission") { params, reply ->
-            val kind = (params as JSONObject).getString("kind")
-            val permission = when (kind) {
-                "camera" -> Manifest.permission.CAMERA
-                "notifications" -> Manifest.permission.POST_NOTIFICATIONS
-                else -> throw HaylenBridge.Failure("The permission is \"camera\" or \"notifications\", not \"$kind\".", "invalidPermission", null)
-            }
-            if (kind == "camera" && !context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
-                throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
-            }
-            // Android 12 and earlier ask for no permission to post notifications, which the person turns off in the settings instead.
-            if (kind == "notifications" && Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
-                reply.success(permissionAnswer(kind, NotificationManagerCompat.from(context.application()).areNotificationsEnabled()))
-                return@register
-            }
-            context.requirements().require(HaylenRequirements.Requirement.permission(permission))
-            ask(permission) { granted -> reply.success(permissionAnswer(kind, granted)) }
-        }
-
+    // The notification comes after its seconds through an alarm, whether the app runs, waits in the background or was closed, once the app holds the permission for notifications, which the engine asks for.
+    private fun registerNotifications() {
         context.register("notify") { params, reply ->
             val json = params as JSONObject
-            context.requirements().require(HaylenRequirements.Requirement.permission(Manifest.permission.POST_NOTIFICATIONS))
-            if (!NotificationManagerCompat.from(context.application()).areNotificationsEnabled()) {
-                throw HaylenBridge.Failure("The person has not allowed the notifications of the app. Ask with \"requestPermission('notifications')\" first.", "permissionDenied", null)
+            context.requirePermission("notifications", reply) {
+                val identifier = NOTIFICATION_PREFIX + UUID.randomUUID()
+                val seconds = json.getDouble("seconds")
+                NativeDemoNotifier.schedule(context.application(), identifier, json.getString("title"), json.getString("body"), seconds)
+                reply.success(JSONObject().put("identifier", identifier).put("seconds", seconds).put("language", LANGUAGE))
             }
-            val identifier = NOTIFICATION_PREFIX + UUID.randomUUID()
-            val seconds = json.getDouble("seconds")
-            NativeDemoNotifier.schedule(context.application(), identifier, json.getString("title"), json.getString("body"), seconds)
-            reply.success(JSONObject().put("identifier", identifier).put("seconds", seconds).put("language", LANGUAGE))
         }
     }
-
-    // Asks the person for a permission through the launcher of the activity and calls `answered` with whether the person granted it. One request shows at a time.
-    private fun ask(permission: String, answered: (Boolean) -> Unit) {
-        val launcher = permissions ?: throw HaylenBridge.Failure("The app has no activity yet.", "noWindow", null)
-        if (asking != null) {
-            throw HaylenBridge.Failure("Another permission request shows.", "busy", null)
-        }
-        asking = answered
-        launcher.launch(permission)
-    }
-
-    // A request that ends after the process ended reaches the launcher of the new activity, while no call of the new app waits for it.
-    private fun onPermission(granted: Boolean) {
-        val answered = asking ?: run {
-            Log.i(TAG, "The permission request answered ${if (granted) "granted" else "not granted"} after the app started again, and no call waits for it.")
-            return
-        }
-        asking = null
-        answered(granted)
-    }
-
-    private fun permissionAnswer(kind: String, granted: Boolean): JSONObject =
-        JSONObject().put("kind", kind).put("granted", granted).put("status", if (granted) "authorized" else "denied").put("language", LANGUAGE)
 
     // The plugin needs the permission to read the contacts, which its manifest leaves out on purpose, so the call shows how a requirement that the project of the app lacks fails with the code `unsupported` and lists what is missing in `data.missing`. An app that declares the permission gets the answer.
     private fun registerRequirements() {
@@ -410,7 +361,6 @@ class NativeDemoPlugin : HaylenPlugin() {
     // A link that launches the app arrives with the intent of the new activity, and one that reaches the running app arrives as a new intent. The retained event waits for the first listener either way.
     override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
         picker = activity.activityResultRegistry.register(PICK_KEY, activity, ActivityResultContracts.OpenDocument(), ::onPicked)
-        permissions = activity.activityResultRegistry.register(PERMISSION_KEY, activity, ActivityResultContracts.RequestPermission(), ::onPermission)
         if (savedInstanceState == null) {
             openUrl(activity.intent)
             openNotification(activity.intent)
@@ -441,7 +391,6 @@ class NativeDemoPlugin : HaylenPlugin() {
         banner = null
         device.activityDestroyed()
         picker = null
-        permissions = null
     }
 
     // The error screen of the app shows this error. The plugin keeps it and hands it to the next app when that app sends `start`.
@@ -461,7 +410,6 @@ class NativeDemoPlugin : HaylenPlugin() {
         const val LANGUAGE = "Kotlin"
         const val TAG = "native-demo"
         const val PICK_KEY = "native-demo.pickFile"
-        const val PERMISSION_KEY = "native-demo.requestPermission"
 
         // The notifications of the plugin carry this prefix in their identifiers, as on Apple platforms.
         const val NOTIFICATION_PREFIX = "native-demo."

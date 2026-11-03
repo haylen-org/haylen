@@ -20,6 +20,9 @@
 #include <TargetConditionals.h>
 #endif
 #include "platform/Services.hpp"
+#if defined(__APPLE__) && !TARGET_OS_TV
+#include "platform/apple/ApplePasteboard.hpp"
+#endif
 #if defined(__APPLE__) && !TARGET_OS_OSX
 #include "platform/apple/AppleGamepads.hpp"
 #include "platform/apple/AppleMotion.hpp"
@@ -212,15 +215,15 @@ void Host::setMouseLocked(bool value) {
 }
 
 // SDL has no clipboard of the browser, so the page writes it and keeps what it may read.
-void Host::setClipboard(std::string_view value, std::function<void(bool written)> callback) {
+void Host::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     WebPage::setClipboard(value, std::move(callback));
 #else
-    const bool written = SDL_SetClipboardText(std::string(value).c_str());
-    if (!written) {
-        core::Log::error("The clipboard could not be written: {}", SDL_GetError());
+    if (!SDL_SetClipboardText(std::string(value).c_str())) {
+        callback({.state = Permission::State::Unsupported, .message = std::format("The clipboard could not be written: {}", SDL_GetError())});
+        return;
     }
-    callback(written);
+    callback({.state = Permission::State::Granted});
 #endif
 }
 
@@ -232,6 +235,17 @@ std::string Host::getClipboard() const {
     std::string result = text != nullptr ? text : "";
     SDL_free(text);
     return result;
+#endif
+}
+
+// The pasteboards of Apple platforms and the clipboard of the browser may ask the person before the app reads them, while Windows, Linux and the clipboard that an Apple TV keeps inside the app answer during the call.
+void Host::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+#if defined(__EMSCRIPTEN__)
+    WebPage::readClipboard(std::move(callback));
+#elif defined(__APPLE__) && !TARGET_OS_TV
+    ApplePasteboard::read(std::move(callback));
+#else
+    callback({.state = Permission::State::Granted}, getClipboard());
 #endif
 }
 
@@ -299,17 +313,6 @@ input::MotionSensors::Support Host::getMotionSupport() {
     return WebMotion::getSupport();
 #else
     return sensors.getSupport();
-#endif
-}
-
-// Computers read their sensors without a permission.
-void Host::authorizeMotion(std::function<void(Permission::Answer answer)> callback) {
-#if defined(__APPLE__) && !TARGET_OS_OSX
-    AppleMotion::authorize(std::move(callback));
-#elif defined(__EMSCRIPTEN__)
-    WebMotion::authorize(std::move(callback));
-#else
-    callback({.state = Permission::State::Granted});
 #endif
 }
 

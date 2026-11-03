@@ -20,12 +20,17 @@ float AndroidHost::getDpiScale() const noexcept {
     return AndroidActivity::getDensity() * NativeWindow::getScale();
 }
 
-void AndroidHost::setClipboard(std::string_view value, std::function<void(bool written)> callback) {
+void AndroidHost::setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) {
     callback(JavaBridge::setClipboard(value));
 }
 
 std::string AndroidHost::getClipboard() const {
     return JavaBridge::getClipboard();
+}
+
+// Android gives the clipboard to the app that has the focus without a prompt, and tells the person with a notice that the app pasted.
+void AndroidHost::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+    callback({.state = Permission::State::Granted}, JavaBridge::getClipboard());
 }
 
 // The devices of Vulkan and OpenGL ES start during the call that creates them.
@@ -60,11 +65,6 @@ void AndroidHost::rumbleGamepad(std::size_t index, float low, float high, float 
 
 input::MotionSensors::Support AndroidHost::getMotionSupport() {
     return AndroidMotion::getSupport();
-}
-
-// Android asks the person for none of the motion sensors that the engine reads.
-void AndroidHost::authorizeMotion(std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
 }
 
 void AndroidHost::setMotion(input::MotionSensors::Sensors sensors, float rate) {

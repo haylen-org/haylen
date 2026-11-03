@@ -59,8 +59,7 @@ void Services::initialize() {
 
     // clang-format off
     varn::http::client::FailureNote::install([](const std::string&) {
-        const Permission::State state = JavaBridge::getPermission(Permission::Kind::LocalNetwork);
-        return state == Permission::State::Prompt || state == Permission::State::Denied ? std::string("Access to the local network is not granted, so Android blocks a request to the local network until \"system.requestPermission('localNetwork')\" grants it.") : std::string();
+        return JavaBridge::isPermissionHeld(Permission::Kind::LocalNetwork) ? std::string() : std::string("Access to the local network is not granted, so Android blocks a request to the local network until \"system.requestPermission('localNetwork')\" grants it.");
     });
     // clang-format on
 }
@@ -191,12 +190,12 @@ SystemInfo Services::getSystemInfo() {
     return AndroidDeviceInfo::toSystemInfo(JavaBridge::getSystemInfo());
 }
 
-void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
     JavaBridge::openUrl(url, std::move(callback));
 }
 
-Permission::State Services::getPermission(Permission::Kind kind) {
-    return JavaBridge::getPermission(kind);
+void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    JavaBridge::checkPermission(kind, std::move(callback));
 }
 
 void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
@@ -214,8 +213,8 @@ std::string Services::explainBlockedSocket(std::intptr_t socket) {
 }
 
 // A vibration of Android lasts at least a millisecond.
-void Services::vibrate(float seconds) {
-    JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
+Permission::Answer Services::vibrate(float seconds) {
+    return JavaBridge::vibrate(std::max<std::int64_t>(1, std::lround(seconds * 1000.0F)));
 }
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {

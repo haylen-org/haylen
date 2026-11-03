@@ -22,11 +22,11 @@ The command `plugin add` copies the plugin into `plugins/native-demo/` of the ap
 
 | Platform | Native part | What it uses |
 | --- | --- | --- |
-| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | `NativeDemoDevice.swift` with AVFoundation for the camera and the microphone, Core Location, a MapKit view over the app, `UIActivityViewController` and the links of other apps, `NativeDemoStore.swift` with the fake store, ads and sign-in as screens of the plugin in alerts of `NativeDemoSheet.swift`, UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `AVCaptureDevice` and `UNUserNotificationCenter` for the permissions and the notification, with `AVFoundation.framework` and `UserNotifications.framework` in the `frameworks` of `plugin.json` and the plugin class a `HaylenNotificationPlugin`, `CFBundleURLTypes`, `scene(_:openURLContexts:)`, `context.require` for the requirements and CoreGraphics with ImageIO for the image. |
-| tvOS | `apple/`, Swift | The same, without a file picker, a camera, a microphone for apps, a share sheet and notifications that show, so `pickFile`, `requestPermission('camera')`, `startCamera`, `takePhoto`, `startMicrophone`, `share` and `notify` fail with the code `unsupported`. |
+| iOS, iPadOS, Mac Catalyst | `apple/`, Swift | `NativeDemoDevice.swift` with AVFoundation for the camera and the microphone, Core Location, a MapKit view over the app, `UIActivityViewController` and the links of other apps, `NativeDemoStore.swift` with the fake store, ads and sign-in as screens of the plugin in alerts of `NativeDemoSheet.swift`, UIKit views over the app, a presented view controller, `UIDocumentPickerViewController`, a UIKit and a SwiftUI screen, the latter in a window of its own on Mac Catalyst, `CVPixelBuffer`s drawn with CoreGraphics and floats from dispatch queues for the streams, `context.requirePermission` for the permissions of `haylen.system` and `UNUserNotificationCenter` for the notification, with `AVFoundation.framework` and `UserNotifications.framework` in the `frameworks` of `plugin.json` and the plugin class a `HaylenNotificationPlugin`, `CFBundleURLTypes`, `scene(_:openURLContexts:)`, `context.require` for the requirements and CoreGraphics with ImageIO for the image. |
+| tvOS | `apple/`, Swift | The same, without a file picker, a camera, a microphone for apps, a share sheet and notifications that show, so `pickFile`, `startCamera`, `takePhoto`, `startMicrophone`, `share` and `notify` fail with the code `unsupported`. |
 | macOS app | `apple/`, Swift | The simulations of iOS with `NSSharingServicePicker`, `NSWorkspace` and `NSAlert` sheets, with the entitlements of the hardened runtime that the camera, the microphone and the location need, AppKit views over the app, a sheet, `NSOpenPanel`, an AppKit sheet and a SwiftUI window for the screens, the streams, the permissions and the notification as on iOS, `CFBundleURLTypes`, `application(_:open:)` and CoreGraphics with ImageIO for the image. |
-| Android | `android/`, a Kotlin library module | `NativeDemoDevice.kt` with Camera2, `AudioRecord` and `LocationManager`, a drawn map in `NativeDemoMap.kt`, the share sheet and other apps through intents, `NativeDemoStore.kt` with the fake store, ads and sign-in as screens of the plugin in dialogs, the permissions `RECORD_AUDIO`, `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` next to the others, views of the overlay over the app, a full screen `Dialog`, an `AppCompatActivity` of its own for the confirm screen, `ActivityResultContracts.OpenDocument` and `RequestPermission` through the Activity Result API, an intent filter of `HaylenLinkActivity` of `dev.haylen:haylen-links` for the URL scheme and the taps on notifications, an alarm and `NotificationManagerCompat` for the notification, `HaylenRequirements` for the permissions, a `Bitmap` and a `Canvas` for the image and the video stream, and the streams of the context. |
-| Web | `web/native-demo.js`, `web/simulations.js` and `web/screen.html` | `getUserMedia` with an audio worklet for the camera and the microphone, the Geolocation API, a drawn map in the overlay, the Web Share API, links of other apps, and `<dialog>` elements for the fake store, ads and sign-in as screens of the plugin, all through `context.require` for a secure context and the API, DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, timers of the page for the tone and the bursts, `getUserMedia` and the Notification API for the permissions and the notification, and `context.require` for the requirements. |
+| Android | `android/`, a Kotlin library module | `NativeDemoDevice.kt` with Camera2, `AudioRecord` and `LocationManager`, a drawn map in `NativeDemoMap.kt`, the share sheet and other apps through intents, `NativeDemoStore.kt` with the fake store, ads and sign-in as screens of the plugin in dialogs, the permissions `RECORD_AUDIO`, `ACCESS_FINE_LOCATION` and `ACCESS_COARSE_LOCATION` next to the others, views of the overlay over the app, a full screen `Dialog`, an `AppCompatActivity` of its own for the confirm screen, `ActivityResultContracts.OpenDocument` through the Activity Result API, `context.requirePermission` for the permissions of `haylen.system`, an intent filter of `HaylenLinkActivity` of `dev.haylen:haylen-links` for the URL scheme and the taps on notifications, an alarm and `NotificationManagerCompat` for the notification, `HaylenRequirements` for the permissions, a `Bitmap` and a `Canvas` for the image and the video stream, and the streams of the context. |
+| Web | `web/native-demo.js`, `web/simulations.js` and `web/screen.html` | `getUserMedia` with an audio worklet for the camera and the microphone, the Geolocation API, a drawn map in the overlay, the Web Share API, links of other apps, and `<dialog>` elements for the fake store, ads and sign-in as screens of the plugin, all through `context.require` for a secure context and the API, DOM elements in the overlay, a modal `<dialog>`, a popup and a redirect to `screen.html` for the confirm screen, an `<input type="file">`, the hash of the page address, a `<canvas>` with `toBlob` for the image and the video stream, timers of the page for the tone and the bursts, `context.requirePermission` for the permissions of `haylen.system`, the Notification API for the notification, and `context.require` for the requirements. |
 | Desktop player, Windows, Linux | `native/`, a C library | Threads of the system and `HaylenNativeApi`, with a PNG encoder of its own, the video and audio streams of the engine and a window of its own for the confirm screen: a sheet with AppKit on macOS, an owned window with Win32 on Windows and a transient window with Xlib on Linux. The same windows show the fake store, ads and sign-in, and the shell of the system opens other apps. The desktops place no views of native libraries over the app, so `showBanner`, `setBannerVisible`, `removeBanner`, `showScreen`, `showMap` and `pickFile` fail with the code `unsupported`, and so do the camera, the microphone, the location and `share`, whose desktop APIs differ on each system, and `nativeConfig`, since native libraries receive no plugin parameters. The desktops open no URLs of the scheme either. |
 
 The Lua API loads the C library with `native.load('native-demo', {init = 'native_demo_haylen_init'})` when it runs on macOS, Windows or Linux and no other native part loaded, which is the case of the desktop player and of Windows and Linux apps. The macOS app built from the Apple template runs the Swift part, which loads before any Lua runs.
@@ -422,34 +422,38 @@ async.spawn(function()
 end)
 ```
 
-### demo.requestPermission(kind)
+### Permissions
 
-Asks the person for the permission `kind`, `'camera'` or `'notifications'`, with the prompt of the system, and answers with `{kind, granted, status, language}` once the person answered, or at once when the person answered before. On Apple platforms the camera prompt shows the text of the `cameraUsage` parameter, `status` is the authorization status of `AVCaptureDevice` or `UNUserNotificationCenter`, such as `'authorized'` or `'denied'`, and tvOS fails the camera with the code `unsupported`. On Android the plugin first checks that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does, and fails with the code `unsupported` and `data.missing` otherwise, `status` is `'authorized'` or `'denied'`, notifications ask for nothing before Android 13, where the answer tells whether the person left them on, and a device without a camera fails the camera with the code `unsupported`. On the web the camera asks through `getUserMedia`, whose tracks stop at once, notifications ask through `Notification.requestPermission`, `status` is `'authorized'`, `'denied'` or `'notDetermined'`, and a page outside a secure context or without the API fails with the code `unsupported` and `data.missing`. The desktops answer with the code `noHandler`. Another kind fails with the code `invalidPermission`, and a second request while one shows with the code `busy`.
+The plugin asks for no permission of its own. The app checks and asks for the camera, the microphone, the location and notifications through [`system.permission` and `system.requestPermission`](../../../../docs/lua-api/system.md#systempermissionname), and every native part asks for the permission it needs through `context.requirePermission` before it uses the capability, where the app does not hold it yet. A call whose permission the person refused fails with the code `denied` and the sentence that names it and how to ask again, and a project that lacks a requirement, such as the usage description of the `Info.plist` or the line of the Android manifest, fails with `unsupported` and `data.missing`.
 
 ```lua
 local async = require('async')
 local demo = require('native-demo')
+local system = require('haylen.system')
 
 async.spawn(function()
-    local answer, err = demo.requestPermission('notifications'):await()
-    print(answer and answer.status or err.code)
+    if system.requestPermission('camera'):await() == 'granted' then
+        local started, err = demo.startCamera('back'):await()
+        print(started and started.width or err.message)
+    end
 end)
 ```
 
 ### demo.notify(seconds), demo.onNotificationOpened(listener)
 
-The method `notify` schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`. The notification shows while the app is in front too, and when the person taps it the native part sends `notificationOpened` retained with `{identifier, title, action, language}`, so a tap that launched the closed app reaches the first listener however late it connects. On Apple platforms it goes through `UNUserNotificationCenter`, which the plugin links with `UserNotifications.framework` in the `frameworks` of its `plugin.json`, and whose delegate the runtime then owns and hands to the plugin class, a `HaylenNotificationPlugin`, and tvOS fails `notify` with the code `unsupported`, since TVs show no notifications. On Android an alarm posts the notification through `NotificationManagerCompat` on the channel `native-demo`, also when the app was closed, its tap starts `HaylenLinkActivity`, which hands it to the app, and `notify` fails with the code `permissionDenied` while the notifications of the app are off. On the web a timer of the page shows a notification of the Notification API, whose click focuses the page and reaches the app, so it shows only while the page is open, and `notify` fails with the code `permissionDenied` until the person allows the notifications of the page.
+The method `notify` schedules a local notification of the plugin after `seconds` and answers with `{identifier, seconds, language}`. The notification shows while the app is in front too, and when the person taps it the native part sends `notificationOpened` retained with `{identifier, title, action, language}`, so a tap that launched the closed app reaches the first listener however late it connects. On Apple platforms it goes through `UNUserNotificationCenter`, which the plugin links with `UserNotifications.framework` in the `frameworks` of its `plugin.json`, and whose delegate the runtime then owns and hands to the plugin class, a `HaylenNotificationPlugin`, and tvOS fails `notify` with the code `unsupported`, since TVs show no notifications. On Android an alarm posts the notification through `NotificationManagerCompat` on the channel `native-demo`, also when the app was closed, its tap starts `HaylenLinkActivity`, which hands it to the app, and `notify` fails with the code `denied` while the notifications of the app are off. On the web a timer of the page shows a notification of the Notification API, whose click focuses the page and reaches the app, so it shows only while the page is open, and `notify` fails with the code `denied` until the person allows the notifications of the page.
 
 ```lua
 local async = require('async')
 local demo = require('native-demo')
+local system = require('haylen.system')
 
 demo.onNotificationOpened(function(tap)
     print('Opened from ' .. tap.identifier)
 end)
 
 async.spawn(function()
-    demo.requestPermission('notifications'):await()
+    system.requestPermission('notifications'):await()
     demo.notify(5):await()
 end)
 ```
@@ -500,7 +504,7 @@ The functions below stand in for the SDKs that real plugins bring. Each answers 
 
 ### demo.startCamera(facing), demo.stopCamera(), demo.cameraStream(), demo.takePhoto()
 
-Starts the camera, `'back'` by default or `'front'`, after the permission of the person, and answers with `{width, height, facing, language}` once frames flow. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C library fail with `unsupported`, a refused permission with `permissionDenied`, and `takePhoto` without a camera with `cameraOff`.
+Starts the camera, `'back'` by default or `'front'`, after the permission `camera` of the person, and answers with `{width, height, facing, language}` once frames flow. The native part pushes its frames into the video stream `camera`, which `demo.cameraStream()` returns, and `takePhoto` answers with `{jpeg, width, height, language}`, the newest frame as the bytes of a JPEG file. A device without a camera, Apple TV and the desktops of the C library fail with `unsupported`, a refused permission with `denied`, and `takePhoto` without a camera with `cameraOff`.
 
 ```lua
 local async = require('async')
@@ -521,7 +525,7 @@ end)
 
 ### demo.startMicrophone(), demo.stopMicrophone(), demo.microphoneStream(), demo.onMicrophoneLevel(listener)
 
-Starts the microphone after the permission of the person and answers with `{sampleRate, channels, language}`. The native part pushes mono floats into the audio stream `microphone`, which `demo.microphoneStream()` returns and the app plays or reads, and sends `microphoneLevel` with `{level, language}`, the level of the newest samples from 0 to 1, about ten times per second. On iOS the plugin switches the audio session to record while the microphone runs and restores it afterwards.
+Starts the microphone after the permission `microphone` of the person and answers with `{sampleRate, channels, language}`. The native part pushes mono floats into the audio stream `microphone`, which `demo.microphoneStream()` returns and the app plays or reads, and sends `microphoneLevel` with `{level, language}`, the level of the newest samples from 0 to 1, about ten times per second. On iOS the plugin switches the audio session to record while the microphone runs and restores it afterwards.
 
 ```lua
 local async = require('async')
@@ -536,7 +540,7 @@ end)
 
 ### demo.location(), demo.showMap(anchor, latitude, longitude), demo.removeMap()
 
-The call `location` asks for the permission of the person while the app is in use and answers with `{latitude, longitude, accuracy, language}`, the accuracy in meters, or fails with `permissionDenied` or `locationUnknown`. The call `showMap` places a native map of 360 by 220 points at the `'top'` or `'bottom'` of the app, centered on the place, and answers with `{anchor, latitude, longitude, drawnWith, language}`: MapKit on Apple platforms, and a view that draws the map on Android and the web, as the view of a map SDK would.
+The call `location` asks for the permission `location` of the person and answers with `{latitude, longitude, accuracy, language}`, the accuracy in meters, or fails with `denied` or `locationUnknown`. The call `showMap` places a native map of 360 by 220 points at the `'top'` or `'bottom'` of the app, centered on the place, and answers with `{anchor, latitude, longitude, drawnWith, language}`: MapKit on Apple platforms, and a view that draws the map on Android and the web, as the view of a map SDK would.
 
 ```lua
 local async = require('async')

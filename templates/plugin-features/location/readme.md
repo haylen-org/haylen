@@ -1,6 +1,6 @@
 ### plugin.locate()
 
-Asks for one fix of the location and gives `{latitude, longitude, accuracy}`, with the accuracy in meters. The platform asks the person for the location while the app is in use the first time, and the call fails with the code `permissionDenied` when the person refuses, with `locationUnknown` when the device finds no fix, and with `unsupported` on a device whose location is off and on the desktop library.
+Asks for one fix of the location and gives `{latitude, longitude, accuracy}`, with the accuracy in meters. The call asks for the permission `location` of `system.requestPermission` where the app does not hold it yet, which is the location while the app is in use at the precision the person allows, and the fix is precise only while the app holds `preciseLocation`. It fails with the code `denied` when the person refused the location, with a message that says how to ask again, with `locationUnknown` when the device finds no fix, and with `unsupported` on a device whose location is off and on the desktop library.
 
 ```lua
 local async = require('async')
@@ -14,7 +14,7 @@ end)
 
 ### plugin.watchLocation(), plugin.stopWatchingLocation() and plugin.onLocated(listener)
 
-Start and stop sending every change of the location. The changes are batched events, so `listener(places)` runs once per frame with the list of the changes that arrived since the frame before, each `{latitude, longitude, accuracy}`, and `onLocated` returns the connection of the listener, whose `disconnect()` stops it. Apple TV gives one fix but no updates, so watching fails there with the code `unsupported`.
+Start and stop sending every change of the location, after the same permission as `locate`. The changes are batched events, so `listener(places)` runs once per frame with the list of the changes that arrived since the frame before, each `{latitude, longitude, accuracy}`, and `onLocated` returns the connection of the listener, whose `disconnect()` stops it. Apple TV gives one fix but no updates, so watching fails there with the code `unsupported`.
 
 ```lua
 local plugin = require('{{ID}}')

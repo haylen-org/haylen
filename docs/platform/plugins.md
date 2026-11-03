@@ -86,7 +86,7 @@ The option `--with` starts a plugin with working code for a common kind of nativ
 | `location` | `locate`, `watchLocation`, `stopWatchingLocation` and `onLocated`. One fix of Core Location, `LocationManager` and `navigator.geolocation`, and every change while the app watches, as [batched events](platform-bridge.md#batched-events). |
 | `banner` | `showBanner`, `hideBanner` and `onBannerTapped`. A native bar with a text and a button, which the [overlay](#apple-overlays) places over the app at its top or bottom edge. Its button sends an event. |
 
-The features that ask for a permission check the usage description of Apple platforms and the manifest of Android first. Then they ask with the prompt of the system, through the Activity Result API on Android, whose launcher the shared file `<Name>Permissions.kt` registers for every activity. They fail with the code `permissionDenied` when the person refuses.
+The features that need a permission ask for it through `context.requirePermission`, as [permissions](#permissions) describes, and fail with the code `denied` when the person refused it.
 
 The usage descriptions are parameters of the plugin: `cameraUsage`, `microphoneUsage` and `locationUsage`. The parameter `macDevices` signs the macOS app with the entitlements of the hardened runtime. The desktop library answers the methods of every feature with the code `unsupported`, since the desktops lack the devices of phones, tablets and browsers. Apple TV has no camera, gives apps no microphone and gives one fix of the location without updates, so it answers those calls with the same code.
 
@@ -813,7 +813,7 @@ engine.getScreens().open("paywall", "offer", {.json = {{"offering", "gold"}}}, {
 
 The Android and Xcode projects of an app belong to its developer, so the engine forces no permission, framework, component or declaration into them. Each plugin declares what it needs, and the developer keeps it or takes it out. The plugin then checks each requirement while the app runs, before it calls the system API that needs it.
 
-When a requirement is missing, the plugin logs once what is missing and how to add it. It fails the call with the code `unsupported`, whose `data.missing` lists every missing requirement, instead of crashing the app. The features of the engine follow the same rule, as [Android permissions](../lua-api/system.md#android-permissions) describes. The ones that answer nothing, such as `system.vibrate`, just do nothing after the log.
+When a requirement is missing, the plugin logs once what is missing and how to add it. It fails the call with the code `unsupported`, whose `data.missing` lists every missing requirement, instead of crashing the app. The features of the engine follow the same rule, as [Android permissions](../lua-api/system.md#android-permissions) describes. The ones that answer nothing, such as `input.rumble`, just do nothing after the log.
 
 | Field of each entry of `data.missing` | Meaning |
 | --- | --- |
@@ -952,6 +952,39 @@ context.register("pick", async () => {
 
 ```text
 The plugin "contacts" needs the API "navigator.contacts", which the page lacks, so the calls that need it fail with the code "unsupported". Run the app in a browser that offers it.
+```
+
+## Permissions
+
+A plugin asks for no permission of its own. The camera, the microphone, the location, notifications, the photos and every other capability that a platform gates are the [permissions of `haylen.system`](../lua-api/system.md#permissions), with one vocabulary of states on every platform. So the app checks and asks for them with `system.permission` and `system.requestPermission`, and the native part of the plugin asks for the permission it needs through its context, before it uses the capability, where the app does not hold it yet. The engine checks the usage description of the `Info.plist` and the permission of the Android manifest first, shows the prompt of the system, and on Android asks through a launcher of the Activity Result API of its own, under the key `haylen.permissions`.
+
+| Language | Call | What it does |
+| --- | --- | --- |
+| Swift | `try await context.requirePermission("camera")` | Returns once the app holds the permission, or throws a `HaylenFailure` with the code `denied` or `unsupported`. |
+| Objective-C | `[context requirePermission:@"camera" completion:^(NSError* error) { ... }]` | Calls back on the main thread with `nil`, or with an error whose user info holds `message`, `code` and `data`. |
+| Kotlin and Java | `context.requirePermission("camera", reply) { ... }` | Runs the block on the main thread once the app holds the permission, or fails `reply`. A block that throws fails `reply` with the error. |
+| JavaScript | `await context.requirePermission("camera")` | Resolves once the page holds the permission, or rejects with an error whose `code` is `denied` or `unsupported`. |
+
+A refusal fails with the code `denied` and the same sentence on every platform, which names the capability and how to ask for it again, such as `The person has not allowed the camera. Ask for it with "system.requestPermission('camera')", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.`. A project that lacks the requirement fails with `unsupported` and `data.missing`, as [requirements](#requirements) describes, and a platform without the capability fails with `unsupported` and the reason. A permission whose platform tells nothing until the app tries, `unknown`, lets the plugin go on. The manifest of the Android module of the plugin declares the permissions it needs, and the `infoPlist` of its `apple` section gives the usage descriptions.
+
+```swift
+context.register("startCamera") { (_: Empty) async throws -> Started in
+    try await context.requirePermission("camera")
+    return try self.startCapture()
+}
+```
+
+```kotlin
+context.register("startCamera") { _, reply ->
+    context.requirePermission("camera", reply) { reply.success(startCapture()) }
+}
+```
+
+```js
+context.register("startCamera", async () => {
+    await context.requirePermission("camera");
+    return startCapture();
+});
 ```
 
 ## The Apple part
@@ -1372,12 +1405,12 @@ The activity is a `ComponentActivity`. So plugins start activities for a result,
 
 Sometimes the activity is gone by the time the other activity returns, after the activity was recreated or the process ended while the other app showed. Then Android keeps the result, and delivers it to the launcher with the same key of the new activity once that one starts. No call of the app waits for it then, and no app of the new process listens yet. So a plugin that reports such a result to the app sends it retained, which waits for the first listener.
 
-The activity registers launchers of its own, under keys that start with `haylen.`, for the [dialogs](../lua-api/dialogs.md) of the engine and the [screens](#android-screens) of plugins. So plugins keep their keys out of that prefix.
+The activity registers launchers of its own, under keys that start with `haylen.`, for the [dialogs](../lua-api/dialogs.md) of the engine, the [permissions](#permissions) and the [screens](#android-screens) of plugins. So plugins keep their keys out of that prefix, and ask for the permissions of `haylen.system` through `context.requirePermission` instead of a launcher of their own.
 
 ```kotlin
 override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
-    camera = activity.activityResultRegistry.register("scanner.camera", activity, ActivityResultContracts.RequestPermission()) { granted ->
-        pending?.success(JSONObject().put("granted", granted))
+    scan = activity.activityResultRegistry.register("scanner.scan", activity, ActivityResultContracts.StartActivityForResult()) { result ->
+        pending?.success(JSONObject().put("code", result.data?.getStringExtra("code")))
         pending = null
     }
 }
@@ -1680,10 +1713,10 @@ A cancelled picker answers `nil`.
 
 ### Permissions and notifications
 
-The call `requestPermission` asks the person for `camera` or `notifications` with the prompt of the system, and answers with `{kind, granted, status, language}`.
+The app asks for the camera and for notifications through `system.requestPermission`, and the plugin asks for the permission that a call needs through `context.requirePermission`, as [permissions](#permissions) describes, so `startCamera` and `notify` fail with the code `denied` once the person refused.
 
-- **Apple platforms.** The camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, and tvOS has no camera. The notifications ask through `UNUserNotificationCenter`. The call `notify(seconds)` schedules a local notification of the plugin. It shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications. That works also when the tap launches the closed app. The plugin sends the tap as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample.
-- **Android.** The plugin checks with `context.requirements()` that the manifest of the app declares `android.permission.CAMERA` or `android.permission.POST_NOTIFICATIONS`, which the manifest of its module does. It asks through a launcher of `ActivityResultContracts.RequestPermission` that it registers in `onActivityCreated`, and answers with the status `authorized` or `denied`. Before Android 13 notifications need no permission, so the answer tells whether the person left them on. The method `notify` fails with the code `permissionDenied` while the notifications of the app are off. Otherwise it sets an alarm, which starts the process when it was closed. The receiver of the alarm, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
+- **Apple platforms.** The camera prompt shows the `NSCameraUsageDescription` that the `infoPlist` of `plugin.json` gives, and tvOS has no camera before tvOS 17. The call `notify(seconds)` schedules a local notification of the plugin. It shows while the app is in front too, since the plugin class answers `userNotificationCenter(_:willPresent:withCompletionHandler:)` for its own notifications. Its tap reaches `userNotificationCenter(_:didReceive:withCompletionHandler:)` of the plugin class, which adopts `HaylenNotificationPlugin`, through the delegate of the notification center that the runtime sets because the plugin links UserNotifications. That works also when the tap launches the closed app. The plugin sends the tap as `notificationOpened`, retained, so it waits for the listener of the Permissions test of the sample.
+- **Android.** The manifest of the module declares `android.permission.CAMERA` and `android.permission.POST_NOTIFICATIONS`. Before Android 13 notifications need no permission, so the permission tells whether the person left them on. The method `notify` sets an alarm, which starts the process when it was closed. The receiver of the alarm, `NativeDemoNotifier`, posts the notification through `NotificationManagerCompat` on a channel of its own. The tap starts `HaylenLinkActivity`, and the plugin sends `notificationOpened` from `onActivityCreated` or `onNewIntent`.
 
 ### Requirements of the demo
 

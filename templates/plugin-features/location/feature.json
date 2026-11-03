@@ -2,7 +2,6 @@
     "choice": true,
     "description": "One fix of the location, or every change while the app watches as batched events, after the person allowed the location.",
     "parts": [
-        "permissions",
         "desktop-unsupported"
     ],
     "blocks": {
@@ -16,7 +15,7 @@
             "private lateinit var location: {{NAME}}Location"
         ],
         "ANDROID_LOAD": [
-            "location = {{NAME}}Location(context, permissions)",
+            "location = {{NAME}}Location(context)",
             "location.register()"
         ],
         "ANDROID_MANIFEST": [

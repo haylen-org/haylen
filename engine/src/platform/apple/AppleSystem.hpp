@@ -5,6 +5,7 @@
 #include <functional>
 #include <string>
 
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 
 namespace haylen::platform {
@@ -13,10 +14,12 @@ namespace haylen::platform {
 class AppleSystem final {
   public:
     [[nodiscard]] static SystemInfo getInfo();
-    static void openUrl(const std::string& url, std::function<void(bool opened)> callback);
-    static void vibrate();
+    static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
+    [[nodiscard]] static Permission::Answer vibrate();
 
   private:
+    [[nodiscard]] static Permission::Answer answerOpened(bool opened, const std::string& url);
+
     // The first preferred language as a BCP 47 tag, the format every platform reports.
     [[nodiscard]] static NSString* getLanguageTag();
 

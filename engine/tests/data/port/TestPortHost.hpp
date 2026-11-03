@@ -26,8 +26,9 @@ class TestPortHost final : public NativeHost {
     void setCursor(Cursor value) override;
     void setCursorVisible(bool value) override;
     void setMouseLocked(bool value) override;
-    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override;
+    void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
+    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
     [[nodiscard]] bool canBeTransparent() const noexcept override;
     [[nodiscard]] TextInput& getTextInput() noexcept override;
     [[nodiscard]] std::unique_ptr<gpu::Device> createGpuDevice() override;
@@ -38,7 +39,6 @@ class TestPortHost final : public NativeHost {
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
     [[nodiscard]] input::MotionSensors::Support getMotionSupport() override;
-    void authorizeMotion(std::function<void(Permission::Answer answer)> callback) override;
     void setMotion(input::MotionSensors::Sensors sensors, float rate) override;
     void readMotion(input::MotionState& state) override;
     void setGamepadMotion(input::MotionSensors::Sensors sensors) override;

@@ -62,7 +62,7 @@ function System:enter()
             ui.button{id = 'open', text = 'Open "example.com"', variant = 'primary', onClick = function() self:open('https://example.com') end},
             ui.button{id = 'openNothing', text = 'Open an address no app takes', onClick = function() self:open('haylen-tests-nothing://open') end},
             ui.button{id = 'vibrate', text = 'Vibrate for 80 ms', onClick = function() self:vibrate() end},
-            ui.label{text = haylen.platform == 'android' and 'On an emulator, "adb shell cmd uimode night yes" switches the theme, and "adb shell dumpsys battery set level 37" changes the battery.' or 'Android phones and phone browsers vibrate, iPhones play a haptic impact and the other devices do nothing.', color = 'textMuted', font = 'caption'},
+            ui.label{text = haylen.platform == 'android' and 'On an emulator, "adb shell cmd uimode night yes" switches the theme, and "adb shell dumpsys battery set level 37" changes the battery.' or 'Android phones and phone browsers vibrate, iPhones play a haptic impact and the other devices answer why they cannot.', color = 'textMuted', font = 'caption'},
         },
         content = {ui.row{grow = 1, gap = 24, align = 'stretch',
             ui.panel{grow = 1, align = 'stretch', gap = 12,
@@ -78,7 +78,7 @@ function System:enter()
                 ui.scroll{id = 'eventsScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'events', items = {}}},
             },
         }},
-        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level)\nlocal opened = system.openUrl('https://example.com'):await()\nsystem.vibrate(0.08)",
+        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level)\nlocal _, message = system.openUrl('https://example.com'):await()\nlocal _, why = system.vibrate(0.08):await()",
     }
     self:showValues()
 end
@@ -97,14 +97,26 @@ function System:open(url)
     local frame = haylen.frameIndex()
     self:record('Opening an address', '"' .. url .. '"')
     self:spawn(function()
-        local opened = system.openUrl(url):await()
-        self:record(opened and 'An app took the address' or 'No app took the address', string.format('"%s" answered after %d frames.', url, haylen.frameIndex() - frame))
+        local _, message, failure = system.openUrl(url):await()
+        local frames = haylen.frameIndex() - frame
+        if failure then
+            self:record(string.format('The address failed with "%s"', failure.code), string.format('%s It answered after %d frames.', message, frames))
+            return
+        end
+        self:record('An app took the address', string.format('"%s" answered after %d frames.', url, frames))
     end)
 end
 
+-- A device without a motor answers "unsupported" with the reason, and a browser refuses a vibration before the first input of the person.
 function System:vibrate()
-    system.vibrate(0.08)
-    self:record('Vibrating', 'The call "system.vibrate(0.08)" asked for 80 ms.')
+    self:spawn(function()
+        local _, message, failure = system.vibrate(0.08):await()
+        if failure then
+            self:record(string.format('The vibration failed with "%s"', failure.code), message)
+            return
+        end
+        self:record('Vibrating', 'The call "system.vibrate(0.08)" vibrated for 80 ms.')
+    end)
 end
 
 -- The value of each field for people, with the fields the platform does not report marked so.

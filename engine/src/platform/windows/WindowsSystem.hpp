@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "haylen/platform/Permission.hpp"
 #include "haylen/platform/SystemInfo.hpp"
 
 namespace haylen::platform {
@@ -13,7 +14,7 @@ namespace haylen::platform {
 class WindowsSystem final {
   public:
     [[nodiscard]] static SystemInfo getInfo();
-    static void openUrl(const std::string& url, std::function<void(bool opened)> callback);
+    static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
 
     // Reports the theme, the accessibility settings and the battery to the engine, which the services do when the app starts and the window whenever Windows tells it that they changed.
     static void reportTheme();

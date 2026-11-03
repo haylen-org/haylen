@@ -9,10 +9,6 @@ import AppKit
 import UIKit
 #endif
 
-#if !os(tvOS)
-import AVFoundation
-#endif
-
 // Native part of the Native Demo plugin on iOS, iPadOS, Mac Catalyst, tvOS and macOS, built on the frameworks of the system alone, with the simulations of SDKs in `NativeDemoDevice` and `NativeDemoStore`. The runtime creates it by the class name that `plugin.json` gives and loads it while the app launches, and hands it the events of the notification center, since it adopts the notification plugin protocol.
 @objc(NativeDemoPlugin)
 final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
@@ -118,17 +114,6 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         let language: String
     }
 
-    struct PermissionRequest: Decodable {
-        let kind: String
-    }
-
-    struct Permission: Encodable {
-        let kind: String
-        let granted: Bool
-        let status: String
-        let language: String
-    }
-
     struct Notify: Decodable {
         let seconds: Double
         let title: String
@@ -178,7 +163,7 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         registerStreams(context)
         registerBanner(context)
         registerScreens(context)
-        registerPermissions(context)
+        registerNotifications(context)
         registerRequirements(context)
         context.emitRetained("loaded", payload: ["language": Self.language, "platform": Self.platform])
     }
@@ -498,32 +483,14 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
 
-    // The camera asks with the usage description that `plugin.json` puts into the `Info.plist`, and the notifications with the prompt of the system alone.
-    private func registerPermissions(_ context: HaylenPluginContext) {
-        context.register("requestPermission") { (params: PermissionRequest) async throws -> Permission in
-            switch params.kind {
-            case "camera":
-                #if os(tvOS)
-                throw HaylenFailure("Apple TV has no camera.", code: "unsupported")
-                #else
-                let granted = await AVCaptureDevice.requestAccess(for: .video)
-                return Permission(kind: params.kind, granted: granted, status: Self.name(of: AVCaptureDevice.authorizationStatus(for: .video)), language: Self.language)
-                #endif
-            case "notifications":
-                let center = UNUserNotificationCenter.current()
-                let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
-                let settings = await center.notificationSettings()
-                return Permission(kind: params.kind, granted: granted, status: Self.name(of: settings.authorizationStatus), language: Self.language)
-            default:
-                throw HaylenFailure("The permission is \"camera\" or \"notifications\", not \"\(params.kind)\".", code: "invalidPermission")
-            }
-        }
-
+    // The notifications need the permission of the engine, which shows the prompt of the system the first time.
+    private func registerNotifications(_ context: HaylenPluginContext) {
         // The notification comes after the seconds pass, whether the app runs, waits in the background or was closed.
         context.register("notify") { (params: Notify) async throws -> Scheduled in
             #if os(tvOS)
             throw HaylenFailure("Apple TV shows no notifications.", code: "unsupported")
             #else
+            try await context.requirePermission("notifications")
             let content = UNMutableNotificationContent()
             content.title = params.title
             content.body = params.body
@@ -584,42 +551,6 @@ final class NativeDemoPlugin: NSObject, HaylenNotificationPlugin {
         }
     }
     #endif
-
-    #if !os(tvOS)
-    private static func name(of status: AVAuthorizationStatus) -> String {
-        switch status {
-        case .authorized:
-            return "authorized"
-        case .denied:
-            return "denied"
-        case .restricted:
-            return "restricted"
-        case .notDetermined:
-            return "notDetermined"
-        @unknown default:
-            return "unknown"
-        }
-    }
-    #endif
-
-    private static func name(of status: UNAuthorizationStatus) -> String {
-        switch status {
-        case .authorized:
-            return "authorized"
-        case .denied:
-            return "denied"
-        case .provisional:
-            return "provisional"
-        case .notDetermined:
-            return "notDetermined"
-        #if os(iOS) || os(visionOS)
-        case .ephemeral:
-            return "ephemeral"
-        #endif
-        @unknown default:
-            return "unknown"
-        }
-    }
 
     // The colors of a frame of the camera that the demo simulates, which move with the index of the frame, the same on every platform.
     private static func fillFrame(_ pixels: UnsafeMutablePointer<UInt8>, width: Int, height: Int, index: Int) {

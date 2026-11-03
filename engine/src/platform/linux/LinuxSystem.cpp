@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
+#include <format>
 #include <system_error>
 #include <thread>
 #include <utility>
@@ -39,20 +40,37 @@ SystemInfo LinuxSystem::getInfo() {
 }
 
 // Starts `xdg-open` without blocking the frame thread, and a helper thread waits for it to tell whether an application took the url.
-void LinuxSystem::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+void LinuxSystem::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
     pid_t child = 0;
     const std::array<char*, 3> arguments{const_cast<char*>("xdg-open"), const_cast<char*>(url.c_str()), nullptr};
     if (posix_spawnp(&child, "xdg-open", nullptr, nullptr, arguments.data(), environ) != 0) {
-        callback(false);
+        callback({.state = Permission::State::Unsupported, .message = "The url cannot open, because the command \"xdg-open\" of the desktop is missing."});
         return;
     }
     // clang-format off
-    std::thread([child, done = std::move(callback)] {
+    std::thread([child, url, done = std::move(callback)] {
         int status = 0;
         const bool exited = waitpid(child, &status, 0) == child;
-        done(exited && WIFEXITED(status) && WEXITSTATUS(status) == 0);
+        if (exited && WIFEXITED(status) && WEXITSTATUS(status) == 0) {
+            done({.state = Permission::State::Granted});
+            return;
+        }
+        done({.state = Permission::State::Unsupported, .message = std::format("No app on this device opens \"{}\".", url)});
     }).detach();
     // clang-format on
+}
+
+// Linux gates no device of an app outside a sandbox, while the location comes from a service whose agent may ask the person, and the notification server may hide the notifications of an app, neither telling the app before it tries.
+Permission::Answer LinuxSystem::answerPermission(Permission::Kind kind) {
+    switch (kind) {
+    case Permission::Kind::Location:
+    case Permission::Kind::PreciseLocation:
+    case Permission::Kind::BackgroundLocation:
+    case Permission::Kind::Notifications:
+        return {.state = Permission::State::Unknown};
+    default:
+        return {.state = Permission::State::Granted};
+    }
 }
 
 void LinuxSystem::watchBattery() {

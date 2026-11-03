@@ -125,18 +125,18 @@ class Services final {
     // What the device and its operating system are, read once per process. The graphics device names the GPU, so `gpuName` stays empty.
     [[nodiscard]] static SystemInfo getSystemInfo();
 
-    // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread, with whether an app took the url.
-    static void openUrl(const std::string& url, std::function<void(bool opened)> callback);
+    // Opens the url with the app the system picks for it, as `Host::openUrl` describes.
+    static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
 
-    // The state of a permission and the request for it, as `Host::getPermission` and `Host::requestPermission` describe.
-    [[nodiscard]] static Permission::State getPermission(Permission::Kind kind);
+    // The state of a permission and the request for it, as `Host::checkPermission` and `Host::requestPermission` describe.
+    static void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
     static void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback);
 
     // Explains, from any thread, why the platform blocked the connection of the socket with the descriptor, or answers an empty text, as `Host::BlockedReason` describes.
     [[nodiscard]] static std::string explainBlockedSocket(std::intptr_t socket);
 
-    // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
-    static void vibrate(float seconds);
+    // Vibrates the device for the given seconds, as `Host::vibrate` describes.
+    [[nodiscard]] static Permission::Answer vibrate(float seconds);
 
     // Shows what the app plays in the now-playing and lock-screen controls of the platform, or takes the app out of them, as `Host::setNowPlaying` describes. Linux has no such controls the engine reaches and ignores it.
     static void setNowPlaying(const std::optional<MediaSession::NowPlaying>& value);

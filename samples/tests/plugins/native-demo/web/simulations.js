@@ -163,12 +163,12 @@ export default function simulate(context) {
 
     // The camera plays in a video element of its own, which a timer copies into the stream 30 times per second.
     context.register("startCamera", async (params) => {
-        context.require({ secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" });
+        await context.requirePermission("camera");
         stopCamera();
         try {
             camera.media = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: params.facing === "front" ? "user" : "environment" } });
         } catch (error) {
-            throw failure("The camera did not start: " + error.message, error.name === "NotAllowedError" ? "permissionDenied" : "unsupported");
+            throw failure("The camera did not start: " + error.message, "cameraFailed");
         }
         camera.video = Object.assign(document.createElement("video"), { muted: true, playsInline: true, srcObject: camera.media });
         await camera.video.play();
@@ -193,12 +193,13 @@ export default function simulate(context) {
 
     // The microphone plays into an audio worklet whose processor posts every block of samples to the page, which pushes them into the stream and measures their level about ten times per second.
     context.register("startMicrophone", async () => {
-        context.require({ secureContext: true, api: ["navigator.mediaDevices.getUserMedia", "AudioWorkletNode"], permissionsPolicy: "microphone" });
+        context.require({ api: "AudioWorkletNode" });
+        await context.requirePermission("microphone");
         stopMicrophone();
         try {
             microphone.media = await navigator.mediaDevices.getUserMedia({ audio: true });
         } catch (error) {
-            throw failure("The microphone did not start: " + error.message, error.name === "NotAllowedError" ? "permissionDenied" : "unsupported");
+            throw failure("The microphone did not start: " + error.message, "microphoneFailed");
         }
         microphone.audio = new AudioContext();
         const sampleRate = microphone.audio.sampleRate;
@@ -229,12 +230,12 @@ export default function simulate(context) {
         return null;
     });
 
-    context.register("location", () => {
-        context.require({ secureContext: true, api: "navigator.geolocation", permissionsPolicy: "geolocation" });
+    context.register("location", async () => {
+        await context.requirePermission("location");
         return new Promise((resolve, reject) => {
             navigator.geolocation.getCurrentPosition(
                 (position) => resolve({ latitude: position.coords.latitude, longitude: position.coords.longitude, accuracy: position.coords.accuracy, language }),
-                (error) => reject(failure("The location is unknown: " + error.message, error.code === error.PERMISSION_DENIED ? "permissionDenied" : "locationUnknown")),
+                (error) => reject(failure("The location is unknown: " + error.message, "locationUnknown")),
                 { timeout: 15000 },
             );
         });

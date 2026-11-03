@@ -293,7 +293,7 @@ AccessibilitySettings NativeHost::getAccessibilitySettings() const {
     return getSystemState().getAccessibility();
 }
 
-void NativeHost::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+void NativeHost::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
     Services::openUrl(std::string(url), std::move(callback));
 }
 
@@ -301,8 +301,8 @@ void NativeHost::setNowPlaying(const std::optional<MediaSession::NowPlaying>& va
     Services::setNowPlaying(value);
 }
 
-void NativeHost::vibrate(float seconds) {
-    Services::vibrate(seconds);
+Permission::Answer NativeHost::vibrate(float seconds) {
+    return Services::vibrate(seconds);
 }
 
 bool NativeHost::isAccessibilityTreeWanted() const {
@@ -329,9 +329,8 @@ void NativeHost::setCrashContext(std::string_view json) {
     CrashGuard::setContext(json);
 }
 
-// Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
-Permission::State NativeHost::getPermission(Permission::Kind kind) const {
-    return Services::getPermission(kind);
+void NativeHost::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    Services::checkPermission(kind, std::move(callback));
 }
 
 void NativeHost::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
@@ -342,6 +341,7 @@ Host::BlockedReason NativeHost::getBlockedReason() const {
     return &Services::explainBlockedSocket;
 }
 
+// Android is the only platform where the project of an app declares network access, through the permission `INTERNET` of its manifest.
 std::string NativeHost::getNetworkRequirement() const {
 #if defined(__ANDROID__)
     return JavaBridge::getNetworkRequirement();

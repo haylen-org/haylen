@@ -1,6 +1,5 @@
 package com.haylen.plugins.{{PACKAGE}}
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.media.AudioFormat
@@ -12,7 +11,7 @@ import dev.haylen.HaylenPluginContext
 import org.json.JSONObject
 
 // The microphone of the {{TITLE}} plugin on Android: `AudioRecord` into the audio stream `microphone`, after the person allowed the microphone.
-class {{NAME}}Microphone(private val context: HaylenPluginContext, private val permissions: {{NAME}}Permissions) {
+class {{NAME}}Microphone(private val context: HaylenPluginContext) {
     private var recording: Recording? = null
 
     fun register() {
@@ -20,7 +19,7 @@ class {{NAME}}Microphone(private val context: HaylenPluginContext, private val p
             if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) {
                 throw HaylenBridge.Failure("This device has no microphone.", "unsupported", null)
             }
-            permissions.withPermission(context, Manifest.permission.RECORD_AUDIO, reply) {
+            context.requirePermission("microphone", reply) {
                 recording?.stop()
                 recording = null
                 val record = Recording.open() ?: throw HaylenBridge.Failure("The microphone of this device does not record.", "unsupported", null)

@@ -176,24 +176,26 @@ SystemInfo Services::getSystemInfo() {
     return LinuxSystem::getInfo();
 }
 
-void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
     LinuxSystem::openUrl(url, std::move(callback));
 }
 
-// This platform asks the person for none of the permissions of `Permission::Kind`, so the app always holds them.
-Permission::State Services::getPermission(Permission::Kind) {
-    return Permission::State::Granted;
+void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    callback(LinuxSystem::answerPermission(kind));
 }
 
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+// Nothing of Linux shows a prompt the engine can ask for, so a request answers what a check does.
+void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    callback(LinuxSystem::answerPermission(kind));
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
 }
 
-void Services::vibrate(float) {}
+Permission::Answer Services::vibrate(float) {
+    return {.state = Permission::State::Unsupported, .message = "Linux gives apps no vibration motor."};
+}
 
 // The now-playing controls of Linux desktops listen on the session bus for players that serve MPRIS, which the engine does not serve, as the reference of `haylen.system` explains.
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>&) {}

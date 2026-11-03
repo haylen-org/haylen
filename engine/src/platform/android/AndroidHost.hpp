@@ -28,8 +28,9 @@ class AndroidHost final : public NativeHost {
     void setCursor(Cursor) override {}
     void setCursorVisible(bool) override {}
     void setMouseLocked(bool) override {}
-    void setClipboard(std::string_view value, std::function<void(bool written)> callback) override;
+    void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] std::string getClipboard() const override;
+    void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) override;
     [[nodiscard]] bool canBeTransparent() const noexcept override {
         return false;
     }
@@ -41,7 +42,6 @@ class AndroidHost final : public NativeHost {
     void pollGamepads(std::span<input::GamepadState> gamepads) override;
     void rumbleGamepad(std::size_t index, float low, float high, float seconds) override;
     [[nodiscard]] input::MotionSensors::Support getMotionSupport() override;
-    void authorizeMotion(std::function<void(Permission::Answer answer)> callback) override;
     void setMotion(input::MotionSensors::Sensors sensors, float rate) override;
     void readMotion(input::MotionState& state) override;
     void setGamepadMotion(input::MotionSensors::Sensors sensors) override;

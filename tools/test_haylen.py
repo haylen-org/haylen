@@ -924,14 +924,13 @@ class PluginTemplateTest(unittest.TestCase):
             self.assertEqual(manifest["parameters"]["macDevices"]["platforms"], ["macos"])
             self.assertEqual(set(manifest["apple"]["entitlements"].values()), {"${macDevices}"})
 
-            # The shared parts come once, before the features that need them, and the Android hooks hold the lines of every feature.
+            # The shared parts come once, before the features that need them, the Android hooks hold the lines of the features, and the features ask for their permissions through the engine.
             kotlin = (folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitPlugin.kt").read_text()
             imports = [line for line in kotlin.splitlines() if line.startswith("import ")]
             self.assertEqual(imports, sorted(imports))
-            self.assertIn("import android.os.Bundle", imports)
-            self.assertEqual(kotlin.count("private val permissions = DeviceKitPermissions()"), 1)
-            self.assertIn("    override fun onActivityDestroyed(activity: HaylenActivity) {\n        permissions.unregister()\n        banner.activityDestroyed()\n    }", kotlin)
-            self.assertTrue((folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitPermissions.kt").is_file())
+            self.assertIn("    override fun onActivityDestroyed(activity: HaylenActivity) {\n        banner.activityDestroyed()\n    }", kotlin)
+            self.assertIn("camera = DeviceKitCamera(context)", kotlin)
+            self.assertIn('context.requirePermission("camera", reply)', (folder / "android" / "src" / "main" / "kotlin" / "com" / "haylen" / "plugins" / "devicekit" / "DeviceKitCamera.kt").read_text())
             self.assertIn('<uses-permission android:name="android.permission.CAMERA" />', (folder / "android" / "src" / "main" / "AndroidManifest.xml").read_text())
 
             swift = (folder / "apple" / "DeviceKitPlugin.swift").read_text()

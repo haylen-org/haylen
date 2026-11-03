@@ -73,9 +73,6 @@ class Host : public Window {
     // The motion sensors that the device has, which the engine reads before it starts any of them.
     [[nodiscard]] virtual input::MotionSensors::Support getMotionSupport() = 0;
 
-    // Checks what the project of the app needs for the motion sensors of the device and asks the person for them with the prompt of the system, where the platform gates them. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with `granted` or `unknown` when the sensors may run, `denied` when the person refused them, the requirements the project lacks, or a sentence for a request the platform did not take.
-    virtual void authorizeMotion(std::function<void(Permission::Answer answer)> callback) = 0;
-
     // Runs the motion sensors of the device in the set at the readings per second, which the platform keeps within what its hardware delivers, or stops every one of them with an empty set.
     virtual void setMotion(input::MotionSensors::Sensors sensors, float rate) = 0;
 
@@ -85,9 +82,14 @@ class Host : public Window {
     // Runs the motion sensors in the set on every gamepad that has them, also on those that connect later, or stops them with an empty set. Their readings arrive with the gamepads.
     virtual void setGamepadMotion(input::MotionSensors::Sensors sensors) = 0;
 
-    // Puts the text on the clipboard of the system and calls back with whether it got there. Browsers write the clipboard of a page asynchronously and refuse a page without a recent input of the person or outside a secure context, so their answer comes later and may be a refusal, while the other platforms answer during the call.
-    virtual void setClipboard(std::string_view value, std::function<void(bool written)> callback) = 0;
+    // Puts the text on the clipboard of the system and calls back with `Granted` once it got there, or `Denied` or `Unsupported` with the sentence that says why. Browsers write the clipboard of a page asynchronously and refuse a page without a recent input of the person or outside a secure context, so their answer comes later, while the other platforms answer during the call.
+    virtual void setClipboard(std::string_view value, std::function<void(Permission::Answer answer)> callback) = 0;
+
+    // The text on the clipboard for a paste of the person into a field of the UI, read during the call.
     [[nodiscard]] virtual std::string getClipboard() const = 0;
+
+    // Reads the text on the clipboard for the app, which iOS, macOS and browsers may let the app read only once the person allows it in a prompt that the read shows. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with `Granted` and the text, or `Denied` or `Unsupported` with the sentence that says why.
+    virtual void readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) = 0;
 
     // Hands a platform call to the handlers of the platform, with the byte buffers that its parameters refer to, which stay valid until it returns.
     virtual void dispatchPlatformCall(std::uint64_t id, std::string_view method, std::string_view paramsJson, std::span<const std::vector<std::byte>> buffers, std::span<const varn::dataview::DataView> views) = 0;
@@ -130,19 +132,19 @@ class Host : public Window {
     // Asks the screen reader to say a text, after what it says now or interrupting it, where the platform has a screen reader.
     virtual void announce(std::string_view text, bool interrupt) = 0;
 
-    // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with whether an app took the url.
-    virtual void openUrl(std::string_view url, std::function<void(bool opened)> callback) = 0;
+    // Opens the url with the app the system picks for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with `Granted` once an app took the url, `Unsupported` when no app opens it or `Denied` when the platform refused it, such as a browser that blocks a tab without a recent input of the person.
+    virtual void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) = 0;
 
-    // Vibrates the device for the given seconds where it can vibrate, and does nothing elsewhere.
-    virtual void vibrate(float seconds) = 0;
+    // Vibrates the device for the given seconds and answers `Granted`, or `Denied` or `Unsupported` with the sentence that says why, such as a device without a motor or an Android app without the permission `VIBRATE`.
+    [[nodiscard]] virtual Permission::Answer vibrate(float seconds) = 0;
 
     // Runs the low and the high frequency motors of a gamepad, each from 0 to 1, for the seconds, where the gamepad and the platform rumble, and does nothing elsewhere. Zero intensities stop the gamepad.
     virtual void rumbleGamepad(std::size_t index, float low, float high, float seconds) = 0;
 
-    // The state of a permission that the person grants at run time, as far as the platform tells it.
-    [[nodiscard]] virtual Permission::State getPermission(Permission::Kind kind) const = 0;
+    // Reads the state of a permission without asking the person, which some platforms tell only asynchronously, such as browsers. The callback runs exactly once, on any thread and possibly after the engine that asked is gone.
+    virtual void checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) = 0;
 
-    // Asks the person for a permission with the prompt of the system where the platform has one. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with the state the person left or the requirements the project of the app lacks.
+    // Asks the person for a permission with the prompt of the system where the platform has one, after it checked what the project of the app must declare for it. The callback runs exactly once, on any thread and possibly after the engine that asked is gone, with the state the person left, or `Unsupported` with the reason and the requirements the project lacks.
     virtual void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) = 0;
 
     // The explanation of blocked sockets that the connections the engine opens itself read when they fail, such as the Local Network Protection of Android. It never refers to the host, so connections that outlive the host may still call it.

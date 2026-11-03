@@ -72,7 +72,7 @@ std::uint64_t MotionSensors::start(const Options& options, Callback callback) {
 
     requests.push_back({.id = id, .options = options, .callback = std::move(callback)});
     // clang-format off
-    host.authorizeMotion([shared = std::weak_ptr<Inbox>(inbox), id](platform::Permission::Answer answer) {
+    host.requestPermission(platform::Permission::Kind::Motion, [shared = std::weak_ptr<Inbox>(inbox), id](platform::Permission::Answer answer) {
         if (const std::shared_ptr<Inbox> alive = shared.lock()) {
             const std::lock_guard lock(alive->mutex);
             alive->answers.emplace_back(id, std::move(answer));
@@ -108,15 +108,18 @@ MotionSensors::Request* MotionSensors::find(std::uint64_t id) noexcept {
     return found != requests.end() ? &*found : nullptr;
 }
 
+// A state that the person did not settle, such as a browser that asks only during a tap, fails the request with the reason, and the sensors run where the platform tells nothing before they start.
 std::optional<MotionSensors::Failure> MotionSensors::readAnswer(const platform::Permission::Answer& answer) {
-    if (!answer.missing.empty()) {
+    switch (answer.state) {
+    case platform::Permission::State::Unsupported:
         return Failure{.code = "unsupported", .message = answer.message, .missing = answer.missing};
-    }
-    if (answer.state == platform::Permission::State::Denied) {
-        return Failure{.code = "denied", .message = answer.message.empty() ? "The person did not allow the app to read the motion sensors." : answer.message};
-    }
-    if (!answer.message.empty()) {
-        return Failure{.code = "failed", .message = answer.message};
+    case platform::Permission::State::Denied:
+        return Failure{.code = "denied", .message = platform::Permission::refusal(platform::Permission::Kind::Motion)};
+    case platform::Permission::State::Prompt:
+        return Failure{.code = "failed", .message = answer.message.empty() ? "The platform did not ask the person for the motion sensors." : answer.message};
+    case platform::Permission::State::Granted:
+    case platform::Permission::State::Unknown:
+        break;
     }
     return std::nullopt;
 }

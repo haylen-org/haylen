@@ -24,6 +24,7 @@
 #include "platform/windows/WindowsDesktop.hpp"
 #include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
+#include "platform/windows/WindowsPermissions.hpp"
 #include "platform/windows/WindowsSystem.hpp"
 #include "platform/windows/WindowsVideoDecoder.hpp"
 
@@ -191,24 +192,25 @@ SystemInfo Services::getSystemInfo() {
     return WindowsSystem::getInfo();
 }
 
-void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
     WindowsSystem::openUrl(url, std::move(callback));
 }
 
-// This platform asks the person for none of the permissions of `Permission::Kind`, so the app always holds them.
-Permission::State Services::getPermission(Permission::Kind) {
-    return Permission::State::Granted;
+void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    WindowsPermissions::check(kind, std::move(callback));
 }
 
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    WindowsPermissions::request(kind, std::move(callback));
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
 }
 
-void Services::vibrate(float) {}
+Permission::Answer Services::vibrate(float) {
+    return {.state = Permission::State::Unsupported, .message = "Windows gives apps no vibration motor."};
+}
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {
     WindowsMediaSession::update(value);

@@ -1,7 +1,7 @@
 import CoreLocation
 import Foundation
 
-// The location of the {{TITLE}} plugin on Apple platforms: one fix of Core Location, or every change while the app watches, sent batched as the event `located`, after the person allowed the location while the app is in use. Apple TV gives one fix but no updates, so watching fails there with the code `unsupported`.
+// The location of the {{TITLE}} plugin on Apple platforms: one fix of Core Location, or every change while the app watches, sent batched as the event `located`, once the app holds the permission `location` of the engine. Apple TV gives one fix but no updates, so watching fails there with the code `unsupported`.
 final class {{NAME}}Location: NSObject, CLLocationManagerDelegate {
     struct Place: Encodable {
         let latitude: Double
@@ -24,10 +24,10 @@ final class {{NAME}}Location: NSObject, CLLocationManagerDelegate {
     func register(_ context: HaylenPluginContext) {
         self.context = context
         context.register("locate") { [unowned self] (_: Empty) async throws -> Place in
-            try self.requireUsage()
+            try await context.requirePermission("location")
             let location = try await withCheckedThrowingContinuation { continuation in
                 self.waiting.append(continuation)
-                self.askOrLocate()
+                self.manager.requestLocation()
             }
             return Self.place(of: location)
         }
@@ -36,9 +36,9 @@ final class {{NAME}}Location: NSObject, CLLocationManagerDelegate {
             #if os(tvOS)
             throw HaylenFailure("Apple TV gives one fix of the location but no updates.", code: "unsupported")
             #else
-            try self.requireUsage()
+            try await context.requirePermission("location")
             self.watching = true
-            self.askOrLocate()
+            self.manager.startUpdatingLocation()
             return Empty()
             #endif
         }
@@ -49,46 +49,6 @@ final class {{NAME}}Location: NSObject, CLLocationManagerDelegate {
             self.manager.stopUpdatingLocation()
             #endif
             return Empty()
-        }
-    }
-
-    private func requireUsage() throws {
-        #if os(macOS)
-        try context?.require(.usageDescription("NSLocationUsageDescription"))
-        #else
-        try context?.require(.usageDescription("NSLocationWhenInUseUsageDescription"))
-        #endif
-    }
-
-    // Asks for the permission the first time, and starts what waits once the person answered.
-    private func askOrLocate() {
-        switch manager.authorizationStatus {
-        case .notDetermined:
-            manager.requestWhenInUseAuthorization()
-        case .denied, .restricted:
-            fail(HaylenFailure("The person has not allowed the location.", code: "permissionDenied"))
-        default:
-            start()
-        }
-    }
-
-    private func start() {
-        if !waiting.isEmpty {
-            manager.requestLocation()
-        }
-        #if !os(tvOS)
-        if watching {
-            manager.startUpdatingLocation()
-        }
-        #endif
-    }
-
-    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
-        Task { @MainActor in
-            guard !self.waiting.isEmpty || self.watching, manager.authorizationStatus != .notDetermined else {
-                return
-            }
-            self.askOrLocate()
         }
     }
 

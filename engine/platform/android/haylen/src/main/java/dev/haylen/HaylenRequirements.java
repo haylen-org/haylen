@@ -144,6 +144,11 @@ public final class HaylenRequirements {
         this.owner = owner;
     }
 
+    // What needs the requirements, at the start of a sentence.
+    String owner() {
+        return owner;
+    }
+
     // Whether the merged manifest declares the permission.
     public boolean hasPermission(String name) {
         String[] requested = readPackage().requestedPermissions;

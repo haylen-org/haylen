@@ -1,4 +1,4 @@
-// The camera of the {{TITLE}} plugin on the web: `getUserMedia` into the video stream `camera`, and photos as JPEG bytes. The browser asks the person for the camera, which it offers only to secure pages.
+// The camera of the {{TITLE}} plugin on the web: `getUserMedia` into the video stream `camera`, and photos as JPEG bytes, once the page holds the permission `camera`, which the browser offers only to secure pages.
 const failure = (message, code) => Object.assign(new Error(message), { code });
 
 export default function registerCamera(context) {
@@ -23,13 +23,13 @@ export default function registerCamera(context) {
     };
 
     context.register("startCamera", async (params) => {
-        context.require({ secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" });
+        await context.requirePermission("camera");
         const facing = params.facing || "back";
         stop();
         try {
             media = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480, facingMode: facing === "front" ? "user" : "environment" } });
         } catch (error) {
-            throw failure(`The camera did not start: ${error.message}`, error.name === "NotAllowedError" ? "permissionDenied" : "unsupported");
+            throw failure(`The camera did not start: ${error.message}`, "cameraFailed");
         }
         video = document.createElement("video");
         video.muted = true;

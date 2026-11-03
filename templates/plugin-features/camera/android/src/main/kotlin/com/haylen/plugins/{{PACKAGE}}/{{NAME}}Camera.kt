@@ -1,6 +1,5 @@
 package com.haylen.plugins.{{PACKAGE}}
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
@@ -26,7 +25,7 @@ import java.nio.ByteOrder
 import org.json.JSONObject
 
 // The camera of the {{TITLE}} plugin on Android: Camera2 into the video stream `camera`, and photos as JPEG bytes, after the person allowed the camera.
-class {{NAME}}Camera(private val context: HaylenPluginContext, private val permissions: {{NAME}}Permissions) {
+class {{NAME}}Camera(private val context: HaylenPluginContext) {
     private var capture: Capture? = null
 
     fun register() {
@@ -35,7 +34,7 @@ class {{NAME}}Camera(private val context: HaylenPluginContext, private val permi
             if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
                 throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
             }
-            permissions.withPermission(context, Manifest.permission.CAMERA, reply) {
+            context.requirePermission("camera", reply) {
                 val stream = context.openVideoStream("camera", Capture.WIDTH, Capture.HEIGHT, HaylenVideoStream.Format.RGBA8)
                 capture?.stop()
                 capture = Capture(context.application(), facing, stream) { failure ->

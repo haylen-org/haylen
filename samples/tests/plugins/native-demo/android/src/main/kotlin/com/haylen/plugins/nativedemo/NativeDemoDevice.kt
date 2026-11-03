@@ -33,7 +33,6 @@ import dev.haylen.HaylenBridge
 import dev.haylen.HaylenOverlay
 import dev.haylen.HaylenPlacement
 import dev.haylen.HaylenPluginContext
-import dev.haylen.HaylenRequirements
 import dev.haylen.HaylenVideoStream
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
@@ -41,8 +40,8 @@ import java.nio.ByteOrder
 import kotlin.math.sqrt
 import org.json.JSONObject
 
-// The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The permissions go through the launcher of the plugin, which `ask` reaches, after the plugin checked that the manifest of the app declares them.
-class NativeDemoDevice(private val context: HaylenPluginContext, private val ask: (String, (Boolean) -> Unit) -> Unit) {
+// The device simulations of the demo on Android, which stand in for the SDKs of cameras, maps and sharing with the APIs of the platform alone: the camera of Camera2 into the video stream `camera` with photos as JPEG bytes, the microphone of `AudioRecord` into the audio stream `microphone` with its level, the location of `LocationManager`, a drawn map over the app, the share sheet and other apps through their intents. The plugin asks for the permissions through the engine, as `system.requestPermission` does.
+class NativeDemoDevice(private val context: HaylenPluginContext) {
     private var camera: Camera? = null
     private var microphone: Microphone? = null
     private var map: HaylenOverlay.Panel? = null
@@ -75,7 +74,7 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val ask
             if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_CAMERA_ANY)) {
                 throw HaylenBridge.Failure("This device has no camera.", "unsupported", null)
             }
-            withPermission(Manifest.permission.CAMERA, reply) {
+            context.requirePermission("camera", reply) {
                 val stream = context.openVideoStream("camera", Camera.WIDTH, Camera.HEIGHT, HaylenVideoStream.Format.RGBA8)
                 camera?.stop()
                 camera = Camera(context.application(), facing, stream) { failure ->
@@ -106,7 +105,7 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val ask
             if (!context.application().packageManager.hasSystemFeature(PackageManager.FEATURE_MICROPHONE)) {
                 throw HaylenBridge.Failure("This device has no microphone.", "unsupported", null)
             }
-            withPermission(Manifest.permission.RECORD_AUDIO, reply) {
+            context.requirePermission("microphone", reply) {
                 microphone?.stop()
                 microphone = null
                 val record = Microphone.open() ?: throw HaylenBridge.Failure("The microphone of this device does not record.", "unsupported", null)
@@ -123,10 +122,10 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val ask
         }
     }
 
-    // One fix of the location, from the GPS where it is on and from the network otherwise.
+    // One fix of the location, from the GPS where it is on and the person allowed the precise location, and from the network otherwise.
     private fun registerLocation() {
         context.register("location") { _, reply ->
-            withPermission(Manifest.permission.ACCESS_FINE_LOCATION, reply) { locate(reply) }
+            context.requirePermission("location", reply) { locate(reply) }
         }
 
         context.register("showMap") { params, reply ->
@@ -158,7 +157,9 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val ask
     @SuppressLint("MissingPermission")
     private fun locate(reply: HaylenBridge.Reply) {
         val locations = context.application().getSystemService(LocationManager::class.java)
-        val provider = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).firstOrNull { locations?.isProviderEnabled(it) == true }
+        val precise = ContextCompat.checkSelfPermission(context.application(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val providers = if (precise) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER) else listOf(LocationManager.NETWORK_PROVIDER)
+        val provider = providers.firstOrNull { locations?.isProviderEnabled(it) == true }
         if (locations == null || provider == null) {
             reply.failure("This device has no location turned on.", "unsupported", null)
             return
@@ -201,22 +202,6 @@ class NativeDemoDevice(private val context: HaylenPluginContext, private val ask
                 false
             }
             reply.success(JSONObject().put("opened", opened).put("language", LANGUAGE))
-        }
-    }
-
-    // Runs `granted` once the app holds the permission, asking the person when it does not yet, and fails the call when the manifest lacks the permission, the person refuses it or `granted` throws.
-    private fun withPermission(permission: String, reply: HaylenBridge.Reply, granted: () -> Unit) {
-        context.requirements().require(HaylenRequirements.Requirement.permission(permission))
-        if (ContextCompat.checkSelfPermission(context.application(), permission) == PackageManager.PERMISSION_GRANTED) {
-            granted()
-            return
-        }
-        ask(permission) { allowed ->
-            try {
-                if (allowed) granted() else reply.failure("The person has not allowed \"$permission\".", "permissionDenied", null)
-            } catch (error: Exception) {
-                reply.failure(error)
-            }
         }
     }
 

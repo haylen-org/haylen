@@ -72,10 +72,12 @@ Module.haylen = Module.haylen || {};
         return true;
     };
 
+    // Answers 0 without the Vibration API, 1 once the device vibrates and 2 when the browser refused, as it does before the first input of the person.
     haylen.vibrate = function (seconds) {
-        if (navigator.vibrate) {
-            navigator.vibrate(Math.max(1, Math.round(seconds * 1000)));
+        if (!navigator.vibrate) {
+            return 0;
         }
+        return navigator.vibrate(Math.max(1, Math.round(seconds * 1000))) ? 1 : 2;
     };
 
     // The now-playing controls of the browser through the Media Session API, whose actions the media keys of keyboards and headsets send too. The commands reach the engine in the order of `MediaSession::Command`, and the play and pause actions send the toggle of an app that offers only the toggle, since browsers have no toggle action.
@@ -839,7 +841,7 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    const dialogFailure = (message) => ({ failure: { code: "failed", message } });
+    const dialogFailure = (message, code = "failed") => ({ failure: { code, message } });
 
     const hasActivation = () => !navigator.userActivation || navigator.userActivation.isActive;
 
@@ -949,7 +951,7 @@ Module.haylen = Module.haylen || {};
     // Browsers answer a closed picker with the `cancel` event of the input, which older browsers never send.
     const openFiles = (id, dialog, request) => {
         if (!hasActivation()) {
-            answerDialog(id, dialogFailure(kActivationMessage));
+            answerDialog(id, dialogFailure(kActivationMessage, "denied"));
             return;
         }
         const input = document.createElement("input");
@@ -991,7 +993,7 @@ Module.haylen = Module.haylen || {};
             return;
         }
         if (!hasActivation()) {
-            answerDialog(id, dialogFailure(kActivationMessage));
+            answerDialog(id, dialogFailure(kActivationMessage, "denied"));
             return;
         }
         let handle;
@@ -1153,6 +1155,14 @@ Module.haylen = Module.haylen || {};
                 throw new TypeError("A plugin requires \"secureContext\", \"api\" or \"permissionsPolicy\", not \"" + key + "\".");
             }
         }
+        const failure = findMissing("The plugin \"" + id + "\"", id, needs);
+        if (failure) {
+            throw Object.assign(new Error(failure.message), { code: "unsupported", data: { missing: failure.missing } });
+        }
+    };
+
+    // Returns what the page lacks of the needs of an owner, as the sentence that names it and the list of `{kind, name, file, snippet}`, after it logged each missing one once, or nothing when the page holds everything.
+    const findMissing = (owner, key, needs) => {
         const missing = [];
         if (needs.secureContext && !window.isSecureContext) {
             missing.push(describeRequirement("secureContext", "https"));
@@ -1164,14 +1174,13 @@ Module.haylen = Module.haylen || {};
             missing.push(describeRequirement("permissionsPolicy", feature));
         }
         if (missing.length === 0) {
-            return;
+            return null;
         }
 
-        const owner = "The plugin \"" + id + "\"";
         for (const requirement of missing) {
-            const key = id + "\n" + requirement.entry.kind + "\n" + requirement.entry.name;
-            if (!requirements.reported.has(key)) {
-                requirements.reported.add(key);
+            const reported = key + "\n" + requirement.entry.kind + "\n" + requirement.entry.name;
+            if (!requirements.reported.has(reported)) {
+                requirements.reported.add(reported);
                 const message = owner + " needs " + requirement.summary + ", which the page lacks, so the calls that need it fail with the code \"unsupported\". " + requirement.instructions;
                 console.warn(message);
                 notify("onLog", "warning", message);
@@ -1179,7 +1188,167 @@ Module.haylen = Module.haylen || {};
         }
         const summaries = missing.map((requirement) => requirement.summary);
         const list = summaries.length === 1 ? summaries[0] : summaries.slice(0, -1).join(", ") + " and " + summaries[summaries.length - 1];
-        throw Object.assign(new Error(owner + " needs " + list + ", which the page lacks."), { code: "unsupported", data: { missing: missing.map((requirement) => requirement.entry) } });
+        return { message: owner + " needs " + list + ", which the page lacks.", missing: missing.map((requirement) => requirement.entry) };
+    };
+
+    // The permissions of `system.permission`, which a plugin also asks for through `context.requirePermission`. Each kind names what the page needs for it, the name of the Permissions API that tells its state, where the browser knows it, and how the page asks for it, which answers `{state, message, missing}`. A name that the Permissions API does not know answers the state of `unnamed`.
+    const permissions = {
+        camera: { needs: { secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "camera" }, query: "camera", unnamed: "unknown", request: () => requestMedia("camera", { video: true }, "The device has no camera.") },
+        microphone: { needs: { secureContext: true, api: "navigator.mediaDevices.getUserMedia", permissionsPolicy: "microphone" }, query: "microphone", unnamed: "unknown", request: () => requestMedia("microphone", { audio: true }, "The device has no microphone.") },
+        location: { needs: { secureContext: true, api: "navigator.geolocation", permissionsPolicy: "geolocation" }, query: "geolocation", unnamed: "unknown", request: () => requestLocation() },
+        preciseLocation: { needs: { secureContext: true, api: "navigator.geolocation", permissionsPolicy: "geolocation" }, query: "geolocation", unnamed: "unknown", request: () => requestLocation() },
+        backgroundLocation: { unsupported: "A page reads the location only while it shows." },
+        notifications: { needs: { secureContext: true, api: "Notification" }, check: () => ({ state: notificationState(Notification.permission) }), request: async () => ({ state: notificationState(await Notification.requestPermission()) }) },
+        photos: { unsupported: "Browsers have no photo library. The function \"dialogs.openFiles\" picks images without a permission." },
+        clipboard: { needs: { secureContext: true, api: "navigator.clipboard.readText", permissionsPolicy: "clipboard-read" }, query: "clipboard-read", unnamed: "unknown", request: () => requestClipboard() },
+        motion: { needs: { secureContext: true, permissionsPolicy: ["accelerometer", "gyroscope"] }, unavailable: () => (typeof DeviceMotionEvent === "undefined" ? "The browser reads no motion sensors." : null), check: () => checkMotion(), request: () => requestMotion() },
+        screens: { needs: { secureContext: true, permissionsPolicy: "window-management" }, unavailable: () => (typeof window.getScreenDetails !== "function" ? "The browser cannot list every screen." : null), query: "window-management", unnamed: "unknown", request: () => seeEveryScreen().then(() => ({ state: "granted" }), (error) => (error.name === "NotAllowedError" ? { state: "denied" } : { state: "unsupported", message: "The browser cannot list every screen: " + error.message })) },
+        localNetwork: { query: "local-network-access", unnamed: "granted", request: () => requestLocalNetwork() },
+    };
+    const permissionDescriptions = { camera: "the camera", microphone: "the microphone", location: "the location", preciseLocation: "the precise location", backgroundLocation: "the location in the background", notifications: "notifications", photos: "the photos", clipboard: "the clipboard", motion: "the motion sensors", screens: "every screen", localNetwork: "the local network" };
+
+    // The sentence of a use of a capability that the person refused, the same as the one of the engine.
+    const permissionRefusal = (kind) => "The person has not allowed " + permissionDescriptions[kind] + ". Ask for it with \"system.requestPermission('" + kind + "')\", which shows the prompt of the system while the system still asks, or the person allows it in the settings of the system.";
+
+    // Answers the state of a name of the Permissions API, or nothing for a name that the browser does not know.
+    const queryPermission = async (name) => {
+        if (!navigator.permissions || typeof navigator.permissions.query !== "function") {
+            return null;
+        }
+        try {
+            return (await navigator.permissions.query({ name })).state;
+        } catch {
+            return null;
+        }
+    };
+
+    const notificationState = (value) => (value === "default" ? "prompt" : value);
+
+    // A capability that the browser lacks, or that the page lacks a requirement of, answers `unsupported` before anything asks.
+    const blockedPermission = (kind, owner, key) => {
+        const permission = permissions[kind];
+        if (permission.unsupported) {
+            return { state: "unsupported", message: permission.unsupported };
+        }
+        const missing = permission.needs ? findMissing(owner, key, permission.needs) : null;
+        if (missing) {
+            return { state: "unsupported", message: missing.message, missing: missing.missing };
+        }
+        const unavailable = permission.unavailable ? permission.unavailable() : null;
+        return unavailable ? { state: "unsupported", message: unavailable } : null;
+    };
+
+    const checkPermission = async (kind, owner = "The engine", key = "engine") => {
+        const blocked = blockedPermission(kind, owner, key);
+        if (blocked) {
+            return blocked;
+        }
+        const permission = permissions[kind];
+        if (permission.check) {
+            return permission.check();
+        }
+        return { state: (await queryPermission(permission.query)) || permission.unnamed };
+    };
+
+    const requestPermission = async (kind, owner = "The engine", key = "engine") => {
+        const blocked = blockedPermission(kind, owner, key);
+        return blocked || permissions[kind].request();
+    };
+
+    // The page asks for the camera or the microphone by opening it, and closes it at once, unless it holds it already.
+    const requestMedia = async (kind, constraints, absent) => {
+        if ((await queryPermission(kind)) === "granted") {
+            return { state: "granted" };
+        }
+        try {
+            const media = await navigator.mediaDevices.getUserMedia(constraints);
+            media.getTracks().forEach((track) => track.stop());
+            return { state: "granted" };
+        } catch (error) {
+            if (error.name === "NotAllowedError") {
+                return { state: "denied" };
+            }
+            if (error.name === "NotFoundError" || error.name === "OverconstrainedError") {
+                return { state: "unsupported", message: absent };
+            }
+            return { state: (await queryPermission(kind)) || "unknown" };
+        }
+    };
+
+    // A page that holds the location answers at once, and otherwise a position that may come from the cache asks the person and then waits a bounded time for a fix. A call that ends without a fix, by its timeout or for want of a position, leaves the state of the Permissions API to tell what the person decided, where the browser knows it.
+    const kLocationRequestMilliseconds = 30000;
+    const requestLocation = async () => {
+        if ((await queryPermission("geolocation")) === "granted") {
+            return { state: "granted" };
+        }
+        return askForLocation();
+    };
+    const askForLocation = () => new Promise((resolve) => {
+        const settle = async () => resolve({ state: (await queryPermission("geolocation")) || "granted" });
+        navigator.geolocation.getCurrentPosition(() => resolve({ state: "granted" }), (error) => (error.code === error.PERMISSION_DENIED ? resolve({ state: "denied" }) : settle()), { maximumAge: Infinity, timeout: kLocationRequestMilliseconds });
+    });
+
+    // Chromium asks for the clipboard when the page reads it, and the other browsers show a paste control at each read, so they tell nothing before.
+    const requestClipboard = async () => {
+        const state = await queryPermission("clipboard-read");
+        if (state !== "prompt") {
+            return { state: state || "unknown" };
+        }
+        try {
+            await navigator.clipboard.readText();
+        } catch {
+            // The state that the browser keeps afterwards tells what the person decided.
+        }
+        return { state: (await queryPermission("clipboard-read")) || "unknown" };
+    };
+
+    // Safari asks for the motion sensors through `DeviceMotionEvent.requestPermission`, whose answer the page keeps until it loads again, and Chromium tells the state of the accelerometer and the gyroscope, while a browser that knows neither name gives the sensors to every page.
+    const checkMotion = async () => {
+        if (haylen.motion.gated) {
+            return { state: haylen.motion.permission() };
+        }
+        const states = (await Promise.all([queryPermission("accelerometer"), queryPermission("gyroscope")])).filter((state) => state !== null);
+        if (states.includes("denied")) {
+            return { state: "denied" };
+        }
+        return { state: states.every((state) => state === "granted") ? "granted" : "prompt" };
+    };
+
+    const requestMotion = () => (haylen.motion.gated ? haylen.motion.request() : checkMotion());
+
+    // Chromium asks for the local network at the first access to it, which a page cannot ask for before, so a state that would prompt answers unknown.
+    const requestLocalNetwork = async () => {
+        const answer = await checkPermission("localNetwork");
+        return answer.state === "prompt" ? { state: "unknown" } : answer;
+    };
+
+    const answerGatedCall = (id, answer) => whenRuntimeReady(() => callEngine("haylen_web_answer_gated_call", null, ["number", "string"], [id, JSON.stringify(answer)]));
+
+    // A failure of the code of a check or a request answers `unsupported` with its message, so the engine always hears back.
+    const settleGatedCall = (id, work) => {
+        Promise.resolve().then(work).then((answer) => answerGatedCall(id, answer), (error) => answerGatedCall(id, { state: "unsupported", message: "The browser failed to answer: " + error.message }));
+    };
+
+    haylen.checkPermission = function (id, kind) {
+        settleGatedCall(id, () => checkPermission(kind));
+    };
+
+    haylen.requestPermission = function (id, kind) {
+        settleGatedCall(id, () => requestPermission(kind));
+    };
+
+    // Asks for the permission where the page does not hold it, and fails with the code `denied` when the person refused it, or `unsupported` with what the page lacks, as plugins expect before they use a capability. A state that the browser tells nothing of lets the use try.
+    const requirePermission = async (id, kind) => {
+        if (!Object.hasOwn(permissions, kind)) {
+            throw new TypeError("The permission \"" + kind + "\" is none of \"" + Object.keys(permissions).join("\", \"") + "\".");
+        }
+        const answer = await requestPermission(kind, "The plugin \"" + id + "\"", id);
+        if (answer.state === "denied" || answer.state === "prompt") {
+            throw Object.assign(new Error(permissionRefusal(kind)), { code: "denied" });
+        }
+        if (answer.state === "unsupported") {
+            throw Object.assign(new Error(answer.message), { code: "unsupported", data: answer.missing ? { missing: answer.missing } : undefined });
+        }
     };
 
     // Makes the context that the web module of a plugin receives in `load(context)`. Methods and events take the id of the plugin in front of their names, as the Lua handle of the plugin expects. The loader calls it for every plugin before the runtime starts.
@@ -1220,6 +1389,9 @@ Module.haylen = Module.haylen || {};
             },
             require(needs) {
                 requirePage(id, needs);
+            },
+            requirePermission(kind) {
+                return requirePermission(id, kind);
             },
         };
     };
@@ -1284,7 +1456,7 @@ Module.haylen = Module.haylen || {};
     haylen.motion = (function () {
         const values = new Float32Array(9);
         const gated = typeof DeviceMotionEvent !== "undefined" && typeof DeviceMotionEvent.requestPermission === "function";
-        let permission = gated ? 1 : 0;
+        let permission = gated ? "prompt" : "granted";
         let listening = 0;
         let delivered = 0;
         const onMotion = (event) => {
@@ -1318,23 +1490,17 @@ Module.haylen = Module.haylen || {};
                 }
                 return (typeof DeviceMotionEvent !== "undefined" ? 3 : 0) | (typeof DeviceOrientationEvent !== "undefined" ? 4 : 0);
             },
-            // Answers 0 when the page may read the sensors, 1 before Safari asked in this visit and 2 after the person refused.
+            gated,
+            // Answers `granted` when the page may read the sensors, `prompt` before Safari asked in this visit and `denied` after the person refused.
             permission: () => permission,
-            // Answers 0 when the person allowed the sensors, 1 when they refused, 2 outside a tap or a click, and 3 when the browser failed to ask.
-            request: (id) => {
-                const answer = (result) => queueMicrotask(() => Module._haylen_web_motion_answered(id, result));
-                if (!gated || permission === 0) {
-                    answer(0);
-                    return;
-                }
-                DeviceMotionEvent.requestPermission().then(
-                    (state) => {
-                        permission = state === "granted" ? 0 : 2;
-                        answer(permission === 0 ? 0 : 1);
-                    },
-                    (error) => answer(error && error.name === "NotAllowedError" ? 2 : 3),
-                );
-            },
+            // Safari shows its prompt only during a tap or a click, and a request outside one leaves the person unasked, which answers `prompt` with the reason.
+            request: () => DeviceMotionEvent.requestPermission().then(
+                (state) => {
+                    permission = state === "granted" ? "granted" : "denied";
+                    return { state: permission };
+                },
+                (error) => ({ state: "prompt", message: error && error.name === "NotAllowedError" ? "The browser asks for the motion sensors only during a tap or a click, so ask from one." : "The browser did not ask for the motion sensors." }),
+            ),
             set: (sensors) => {
                 const motion = (sensors & 3) !== 0;
                 const orientation = (sensors & 4) !== 0;
@@ -1450,27 +1616,26 @@ Module.haylen = Module.haylen || {};
         return JSON.stringify({ current: screenId(current), displays: all.map(describeScreen) });
     };
 
+    // Asks to see every screen, and once the page sees them follows their changes. The permission `screens` asks the same way.
+    const seeEveryScreen = () => window.getScreenDetails().then((details) => {
+        if (pageScreens.details === null) {
+            // The screen of the page keeps its id as the browser describes it in detail, so the app sees the others join it rather than a new screen.
+            pageScreens.ids.set(details.currentScreen, screenId(window.screen));
+            pageScreens.details = details;
+            details.addEventListener("screenschange", displaysChanged);
+            details.addEventListener("screenschange", outputScreensChanged);
+            details.addEventListener("currentscreenchange", displaysChanged);
+            displaysChanged();
+        }
+    });
+
     // Answers 0 once the page sees every screen, 1 when the person or the browser refused it and 2 where the browser has no Window Management API.
     haylen.requestDisplays = function (id) {
         if (typeof window.getScreenDetails !== "function") {
             queueMicrotask(() => Module._haylen_web_displays_answered(id, 2));
             return;
         }
-        window.getScreenDetails().then(
-            (details) => {
-                if (pageScreens.details === null) {
-                    // The screen of the page keeps its id as the browser describes it in detail, so the app sees the others join it rather than a new screen.
-                    pageScreens.ids.set(details.currentScreen, screenId(window.screen));
-                    pageScreens.details = details;
-                    details.addEventListener("screenschange", displaysChanged);
-                    details.addEventListener("screenschange", outputScreensChanged);
-                    details.addEventListener("currentscreenchange", displaysChanged);
-                    displaysChanged();
-                }
-                Module._haylen_web_displays_answered(id, 0);
-            },
-            () => Module._haylen_web_displays_answered(id, 1),
-        );
+        seeEveryScreen().then(() => Module._haylen_web_displays_answered(id, 0), () => Module._haylen_web_displays_answered(id, 1));
     };
     if (window.screen.addEventListener) {
         window.screen.addEventListener("change", displaysChanged);
@@ -2332,30 +2497,41 @@ Module.haylen = Module.haylen || {};
         }
     };
 
-    // Browsers let a page write the clipboard only in a secure context, served over https or from localhost, and shortly after an input of the person, and read it only through what the person pastes. So a write answers the engine once the browser settles it, which a page without the API answers at once with a refusal that the log explains once, and the engine reads the text of the last paste of the page or the last text it wrote.
+    // Browsers let a page write the clipboard only in a secure context, served over https or from localhost, and shortly after an input of the person. Chromium reads it for a page that the person allowed, and the other browsers show a paste control at each read. So a write and a read answer the engine once the browser settles them, and a paste of the person into a field of the UI takes the text of the last paste of the page or the last text it wrote.
     let clipboardText = "";
-    let warnedWithoutClipboard = false;
     window.addEventListener("paste", (event) => {
         clipboardText = event.clipboardData.getData("text/plain");
     }, true);
     haylen.clipboardText = function () {
         return clipboardText;
     };
+    const withoutClipboard = (action) => ({ state: "unsupported", message: "The page cannot " + action + " the clipboard, because browsers give the clipboard only to pages served over https or from localhost." });
     haylen.writeClipboard = function (id, text) {
-        if (!navigator.clipboard) {
-            if (!warnedWithoutClipboard) {
-                warnedWithoutClipboard = true;
-                console.warn("The page cannot write the clipboard, because browsers give the clipboard only to pages served over https or from localhost.");
+        settleGatedCall(id, async () => {
+            if (!navigator.clipboard || typeof navigator.clipboard.writeText !== "function") {
+                return withoutClipboard("write");
             }
-            queueMicrotask(() => Module._haylen_web_clipboard_written(id, 0));
-            return;
-        }
-        navigator.clipboard.writeText(text).then(() => {
+            try {
+                await navigator.clipboard.writeText(text);
+            } catch (error) {
+                return { state: "denied", message: "The browser refused to write the clipboard: " + error.message + " Browsers write it only shortly after an input of the person, such as a click or a key." };
+            }
             clipboardText = text;
-            Module._haylen_web_clipboard_written(id, 1);
-        }, (error) => {
-            console.warn("The browser refused to write the clipboard: " + error.message);
-            Module._haylen_web_clipboard_written(id, 0);
+            return { state: "granted" };
+        });
+    };
+    haylen.readClipboard = function (id) {
+        settleGatedCall(id, async () => {
+            if (!navigator.clipboard || typeof navigator.clipboard.readText !== "function") {
+                return withoutClipboard("read");
+            }
+            try {
+                const text = await navigator.clipboard.readText();
+                return { state: "granted", text };
+            } catch (error) {
+                const refused = (await queryPermission("clipboard-read")) === "denied";
+                return { state: "denied", message: refused ? permissionRefusal("clipboard") : "The browser did not let the page read the clipboard: " + error.message };
+            }
         });
     };
 

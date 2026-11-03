@@ -35,6 +35,7 @@
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/AppleOutputs.hpp"
+#import "platform/apple/ApplePermissions.hpp"
 #import "platform/apple/ApplePlugins.hpp"
 #import "platform/apple/AppleScreens.hpp"
 #import "platform/apple/AppleSplash.hpp"
@@ -334,25 +335,24 @@ SystemInfo Services::getSystemInfo() {
     return AppleSystem::getInfo();
 }
 
-void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
+void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
     AppleSystem::openUrl(url, std::move(callback));
 }
 
-// Apple platforms ask the person for the local network the first time the app reaches it, and tell apps neither the answer nor a way to ask before, so the state stays unknown.
-Permission::State Services::getPermission(Permission::Kind) {
-    return Permission::State::Unknown;
+void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    ApplePermissions::check(kind, std::move(callback));
 }
 
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Unknown});
+void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    ApplePermissions::request(kind, std::move(callback));
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
 }
 
-void Services::vibrate(float) {
-    AppleSystem::vibrate();
+Permission::Answer Services::vibrate(float) {
+    return AppleSystem::vibrate();
 }
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {

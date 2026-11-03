@@ -1,4 +1,4 @@
-// The microphone of the {{TITLE}} plugin on the web: `getUserMedia` into the audio stream `microphone`, through an audio worklet whose blocks of samples reach the page. The browser asks the person for the microphone, which it offers only to secure pages.
+// The microphone of the {{TITLE}} plugin on the web: `getUserMedia` into the audio stream `microphone`, through an audio worklet whose blocks of samples reach the page, once the page holds the permission `microphone`, which the browser offers only to secure pages.
 const failure = (message, code) => Object.assign(new Error(message), { code });
 
 export default function registerMicrophone(context) {
@@ -11,13 +11,14 @@ export default function registerMicrophone(context) {
     };
 
     context.register("startMicrophone", async () => {
-        context.require({ secureContext: true, api: ["navigator.mediaDevices.getUserMedia", "AudioWorkletNode"], permissionsPolicy: "microphone" });
+        context.require({ api: "AudioWorkletNode" });
+        await context.requirePermission("microphone");
         stop();
         let media;
         try {
             media = await navigator.mediaDevices.getUserMedia({ audio: { channelCount: 1, echoCancellation: false } });
         } catch (error) {
-            throw failure(`The microphone did not start: ${error.message}`, error.name === "NotAllowedError" ? "permissionDenied" : "unsupported");
+            throw failure(`The microphone did not start: ${error.message}`, "microphoneFailed");
         }
         const audio = new AudioContext();
         await audio.audioWorklet.addModule(new URL("./microphone-worklet.js", import.meta.url));

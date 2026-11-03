@@ -403,14 +403,14 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         });
     }
 
-    // Called from the frame thread of the engine, which puts text on the clipboard of the system and learns whether it got there, which it misses while no activity exists.
-    static boolean setClipboard(byte[] text) {
+    // Called from the frame thread of the engine, which puts text on the clipboard of the system and hears the JSON of the answer, unsupported while no activity exists.
+    static byte[] setClipboard(byte[] text) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
-            return false;
+            return answer("unsupported", "The clipboard is out of reach while the app has no activity.", null);
         }
         activity.getSystemService(ClipboardManager.class).setPrimaryClip(ClipData.newPlainText("text", new String(text, StandardCharsets.UTF_8)));
-        return true;
+        return answer("granted", "", null);
     }
 
     // Called from the frame thread of the engine, which reads the text on the clipboard of the system, empty when it holds none or Android keeps it from an app without the focus.
@@ -421,20 +421,32 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return text.toString().getBytes(StandardCharsets.UTF_8);
     }
 
-    // Called from the frame thread of the engine. Devices without a vibrator do nothing, and so does an app without the permission `VIBRATE`, which the log tells once.
-    static void vibrate(long milliseconds) {
+    // Called from the frame thread of the engine, which hears the JSON of the answer. A device without a vibrator answers unsupported, and so does an app without the permission `VIBRATE`, with what it lacks, which the log tells once.
+    static byte[] vibrate(long milliseconds) {
         HaylenActivity activity = HaylenBridge.activity();
         if (activity == null) {
-            return;
+            return answer("unsupported", "The device vibrates only while the app has an activity.", null);
         }
-        if (!activity.requirements.isGranted(Manifest.permission.VIBRATE)) {
-            activity.requirements.report(HaylenRequirements.Requirement.permission(Manifest.permission.VIBRATE), Log.WARN, "\"system.vibrate\" does nothing");
-            return;
+        HaylenRequirements.Requirement requirement = HaylenRequirements.Requirement.permission(Manifest.permission.VIBRATE);
+        if (!activity.requirements.isGranted(requirement.name())) {
+            activity.requirements.report(requirement, Log.WARN, "\"system.vibrate\" fails with the code \"unsupported\"");
+            return answer("unsupported", "The engine needs " + requirement.description() + ", which the app lacks. " + requirement.instructions(), requirement);
         }
         Vibrator vibrator = activity.getSystemService(Vibrator.class);
-        if (vibrator != null && vibrator.hasVibrator()) {
-            vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE));
+        if (vibrator == null || !vibrator.hasVibrator()) {
+            return answer("unsupported", "This device has no vibration motor.", null);
         }
+        vibrator.vibrate(VibrationEffect.createOneShot(milliseconds, VibrationEffect.DEFAULT_AMPLITUDE));
+        return answer("granted", "", null);
+    }
+
+    // The JSON of `Permission::Answer::fromJson`, with the requirement the app lacks, if any.
+    private static byte[] answer(String state, String message, HaylenRequirements.Requirement missing) {
+        Map<String, Object> answer = new HashMap<>();
+        answer.put("state", state);
+        answer.put("message", message);
+        answer.put("missing", missing != null ? new JSONArray().put(new JSONObject(missing.toMap())) : new JSONArray());
+        return new JSONObject(answer).toString().getBytes(StandardCharsets.UTF_8);
     }
 
     // Called from the frame thread of the engine with the low and the high frequency motors of a controller from 0 to 1, where both at 0 stop it. A controller with two vibrators gets one motor on each, one with a single vibrator gets the stronger motor, and a controller without one, or an app without the permission `VIBRATE`, which the log tells once, does nothing.

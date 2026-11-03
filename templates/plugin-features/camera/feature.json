@@ -2,7 +2,6 @@
     "choice": true,
     "description": "The camera into a video stream and photos as JPEG bytes, after the person allowed the camera.",
     "parts": [
-        "permissions",
         "desktop-unsupported"
     ],
     "blocks": {
@@ -16,7 +15,7 @@
             "private lateinit var camera: {{NAME}}Camera"
         ],
         "ANDROID_LOAD": [
-            "camera = {{NAME}}Camera(context, permissions)",
+            "camera = {{NAME}}Camera(context)",
             "camera.register()"
         ],
         "ANDROID_MANIFEST": [

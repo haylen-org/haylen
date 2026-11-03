@@ -107,8 +107,8 @@ EM_JS(void, haylen_js_announce, (const char* text, int interrupt), {
     Module.haylen.accessibility.announce(UTF8ToString(text), interrupt > 0);
 });
 
-EM_JS(void, haylen_js_vibrate, (float seconds), {
-    Module.haylen.vibrate(seconds);
+EM_JS(int, haylen_js_vibrate, (float seconds), {
+    return Module.haylen.vibrate(seconds);
 });
 
 EM_JS(void, haylen_js_now_playing, (const char* json, const uint8_t* artwork, int size), {
@@ -287,26 +287,38 @@ SystemInfo Services::getSystemInfo() {
     };
 }
 
-// The page opens the url in a new tab at once, so the answer comes during the call.
-void Services::openUrl(const std::string& url, std::function<void(bool opened)> callback) {
-    callback(haylen_js_open_url(url.c_str()) != 0);
+// The page opens the url in a new tab at once, so the answer comes during the call. A browser that blocks the tab tells only that it did.
+void Services::openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback) {
+    if (haylen_js_open_url(url.c_str()) != 0) {
+        callback({.state = Permission::State::Granted});
+        return;
+    }
+    callback({.state = Permission::State::Denied, .message = "The browser blocked the new tab, because it opens one only shortly after an input of the person, such as a click or a key."});
 }
 
-// This platform asks the person for none of the permissions of `Permission::Kind`, so the app always holds them.
-Permission::State Services::getPermission(Permission::Kind) {
-    return Permission::State::Granted;
+// The browser tells the state of most permissions through the Permissions API, and asks the person through the API of each capability.
+void Services::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    WebPage::checkPermission(kind, std::move(callback));
 }
 
-void Services::requestPermission(Permission::Kind, std::function<void(Permission::Answer answer)> callback) {
-    callback({.state = Permission::State::Granted});
+void Services::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    WebPage::requestPermission(kind, std::move(callback));
 }
 
 std::string Services::explainBlockedSocket(std::intptr_t) {
     return {};
 }
 
-void Services::vibrate(float seconds) {
-    haylen_js_vibrate(seconds);
+// The page answers 0 without the Vibration API, 1 once the device vibrates and 2 when the browser refused, as it does before the first input of the person.
+Permission::Answer Services::vibrate(float seconds) {
+    switch (haylen_js_vibrate(seconds)) {
+    case 1:
+        return {.state = Permission::State::Granted};
+    case 2:
+        return {.state = Permission::State::Denied, .message = "The browser vibrates only after an input of the person, such as a tap."};
+    default:
+        return {.state = Permission::State::Unsupported, .message = "The browser has no Vibration API."};
+    }
 }
 
 void Services::setNowPlaying(const std::optional<MediaSession::NowPlaying>& value) {

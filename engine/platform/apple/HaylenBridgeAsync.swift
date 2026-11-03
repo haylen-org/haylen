@@ -89,6 +89,20 @@ extension HaylenPluginContext {
             throw HaylenFailure(failure["message"] as? String ?? error.localizedDescription, code: "unsupported", data: failure["data"] as? [String: [[String: String]]])
         }
     }
+
+    // Asks for the permission `name` of `system.permission`, such as "camera", where the app does not hold it yet, before the plugin uses the capability. Throws a `HaylenFailure` with the code `denied` when the person refused it, or `unsupported` with the reason, whose data lists in `missing` what the project lacks.
+    func requirePermission(_ name: String) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, any Error>) in
+            requirePermission(name) { error in
+                guard let error else {
+                    continuation.resume()
+                    return
+                }
+                let failure = (error as NSError).userInfo
+                continuation.resume(throwing: HaylenFailure(failure["message"] as? String ?? error.localizedDescription, code: failure["code"] as? String, data: failure["data"] as? [String: [[String: String]]]))
+            }
+        }
+    }
 }
 
 extension HaylenScreen {

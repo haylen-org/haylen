@@ -2,7 +2,6 @@
     "choice": true,
     "description": "The microphone into an audio stream that plays as a voice and gives its samples to Lua, after the person allowed the microphone.",
     "parts": [
-        "permissions",
         "desktop-unsupported"
     ],
     "blocks": {
@@ -16,7 +15,7 @@
             "private lateinit var microphone: {{NAME}}Microphone"
         ],
         "ANDROID_LOAD": [
-            "microphone = {{NAME}}Microphone(context, permissions)",
+            "microphone = {{NAME}}Microphone(context)",
             "microphone.register()"
         ],
         "ANDROID_MANIFEST": [

@@ -2,6 +2,7 @@ package com.haylen.plugins.{{PACKAGE}}
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
@@ -13,17 +14,17 @@ import dev.haylen.HaylenBridge
 import dev.haylen.HaylenPluginContext
 import org.json.JSONObject
 
-// The location of the {{TITLE}} plugin on Android: one fix of `LocationManager`, from the GPS where it is on and from the network otherwise, or every change while the app watches, sent batched as the event `located`, after the person allowed the location.
-class {{NAME}}Location(private val context: HaylenPluginContext, private val permissions: {{NAME}}Permissions) {
+// The location of the {{TITLE}} plugin on Android: one fix of `LocationManager`, from the GPS where it is on and the person allowed the precise location, and from the network otherwise, or every change while the app watches, sent batched as the event `located`, after the person allowed the location.
+class {{NAME}}Location(private val context: HaylenPluginContext) {
     private var watcher: LocationListener? = null
 
     fun register() {
         context.register("locate") { _, reply ->
-            permissions.withPermission(context, Manifest.permission.ACCESS_FINE_LOCATION, reply) { locate(reply) }
+            context.requirePermission("location", reply) { locate(reply) }
         }
 
         context.register("watchLocation") { _, reply ->
-            permissions.withPermission(context, Manifest.permission.ACCESS_FINE_LOCATION, reply) {
+            context.requirePermission("location", reply) {
                 watch()
                 reply.success(null)
             }
@@ -35,9 +36,12 @@ class {{NAME}}Location(private val context: HaylenPluginContext, private val per
         }
     }
 
+    // The GPS reads the location only for an app that holds the precise one, while a person who allowed the approximate one gets the location of the network.
     private fun manager(): Pair<LocationManager, String> {
         val locations = context.application().getSystemService(LocationManager::class.java)
-        val provider = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER).firstOrNull { locations?.isProviderEnabled(it) == true }
+        val precise = ContextCompat.checkSelfPermission(context.application(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+        val providers = if (precise) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER) else listOf(LocationManager.NETWORK_PROVIDER)
+        val provider = providers.firstOrNull { locations?.isProviderEnabled(it) == true }
         if (locations == null || provider == null) {
             throw HaylenBridge.Failure("This device has no location turned on.", "unsupported", null)
         }

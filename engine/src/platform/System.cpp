@@ -29,7 +29,7 @@ const Battery& System::getBattery() const noexcept {
     return battery;
 }
 
-void System::openUrl(std::string_view url, std::function<void(bool opened)> callback) {
+void System::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
     if (url.empty()) {
         throw std::invalid_argument("Opening a url needs a url.");
     }
@@ -40,47 +40,51 @@ std::string System::getClipboard() const {
     return host.getClipboard();
 }
 
-void System::setClipboard(std::string_view text, std::function<void(bool written)> callback) {
+void System::readClipboard(std::function<void(Permission::Answer answer, std::string text)> callback) {
+    host.readClipboard(awaitReply(std::move(callback)));
+}
+
+void System::setClipboard(std::string_view text, std::function<void(Permission::Answer answer)> callback) {
     host.setClipboard(text, awaitAnswer(std::move(callback)));
 }
 
-// The platform may answer during the request, and the answer waits for the next pump like any other.
-std::function<void(bool)> System::awaitAnswer(std::function<void(bool)> callback) {
+void System::checkPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    host.checkPermission(kind, awaitAnswer(std::move(callback)));
+}
+
+void System::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
+    host.requestPermission(kind, awaitAnswer(std::move(callback)));
+}
+
+// The platform answers during the call.
+void System::vibrate(float seconds, std::function<void(Permission::Answer answer)> callback) {
+    if (!std::isfinite(seconds) || seconds <= 0.0F) {
+        throw std::invalid_argument("A vibration lasts a positive number of seconds.");
+    }
+    awaitAnswer(std::move(callback))(host.vibrate(seconds));
+}
+
+// The platform may answer during the call, and the answer waits for the next pump like any other. A call without a callback, such as a copy of the UI, keeps none.
+System::Callback System::awaitReply(Callback callback) {
     const std::uint64_t id = nextRequest++;
-    pending.emplace(id, std::move(callback));
+    if (callback) {
+        pending.emplace(id, std::move(callback));
+    }
     // clang-format off
-    return [shared = std::weak_ptr<Inbox>(inbox), id](bool succeeded) {
+    return [shared = std::weak_ptr<Inbox>(inbox), id](Permission::Answer answer, std::string text) {
         if (const std::shared_ptr<Inbox> alive = shared.lock()) {
             const std::scoped_lock lock(alive->mutex);
-            alive->answers.push_back({.id = id, .succeeded = succeeded});
+            alive->replies.push_back({.id = id, .answer = std::move(answer), .text = std::move(text)});
         }
     };
     // clang-format on
 }
 
-Permission::State System::getPermission(Permission::Kind kind) const {
-    return host.getPermission(kind);
-}
-
-// The platform may answer during the request, and the answer waits for the next pump like any other.
-void System::requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) {
-    const std::uint64_t id = nextRequest++;
-    pendingPermissions.emplace(id, std::move(callback));
+std::function<void(Permission::Answer)> System::awaitAnswer(std::function<void(Permission::Answer)> callback) {
     // clang-format off
-    host.requestPermission(kind, [shared = std::weak_ptr<Inbox>(inbox), id](Permission::Answer answer) {
-        if (const std::shared_ptr<Inbox> alive = shared.lock()) {
-            const std::scoped_lock lock(alive->mutex);
-            alive->permissions.emplace_back(id, std::move(answer));
-        }
-    });
+    Callback reply = awaitReply(callback ? Callback([callback = std::move(callback)](Permission::Answer answer, std::string) { callback(std::move(answer)); }) : Callback());
     // clang-format on
-}
-
-void System::vibrate(float seconds) {
-    if (!std::isfinite(seconds) || seconds <= 0.0F) {
-        throw std::invalid_argument("A vibration lasts a positive number of seconds.");
-    }
-    host.vibrate(seconds);
+    return [reply = std::move(reply)](Permission::Answer answer) { reply(std::move(answer), {}); };
 }
 
 void System::guardCrashes(const std::filesystem::path& report) {
@@ -115,33 +119,19 @@ void System::stopRumbles() {
 }
 
 void System::pump() {
-    std::vector<Answer> answers;
-    std::vector<std::pair<std::uint64_t, Permission::Answer>> permissions;
+    std::vector<Reply> replies;
     {
         const std::scoped_lock lock(inbox->mutex);
-        answers.swap(inbox->answers);
-        permissions.swap(inbox->permissions);
+        replies.swap(inbox->replies);
     }
-    for (const Answer& answer : answers) {
-        const auto found = pending.find(answer.id);
+    for (Reply& reply : replies) {
+        const auto found = pending.find(reply.id);
         if (found == pending.end()) {
             continue;
         }
-        const std::function<void(bool)> callback = std::move(found->second);
+        const Callback callback = std::move(found->second);
         pending.erase(found);
-        if (callback) {
-            callback(answer.succeeded);
-        }
-    }
-
-    for (auto& [id, answer] : permissions) {
-        const auto found = pendingPermissions.find(id);
-        if (found == pendingPermissions.end()) {
-            continue;
-        }
-        const std::function<void(Permission::Answer)> callback = std::move(found->second);
-        pendingPermissions.erase(found);
-        callback(std::move(answer));
+        callback(std::move(reply.answer), std::move(reply.text));
     }
 
     const Theme reportedTheme = host.getTheme();

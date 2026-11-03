@@ -22,10 +22,7 @@ final class {{NAME}}Microphone {
             #if os(tvOS)
             throw HaylenFailure("Apple TV gives apps no microphone.", code: "unsupported")
             #else
-            try context.require(.usageDescription("NSMicrophoneUsageDescription"))
-            guard await AVCaptureDevice.requestAccess(for: .audio) else {
-                throw HaylenFailure("The person has not allowed the microphone.", code: "permissionDenied")
-            }
+            try await context.requirePermission("microphone")
             self.recording?.stop()
             let recording = try {{NAME}}MicrophoneRecording(context: context)
             self.recording = recording
