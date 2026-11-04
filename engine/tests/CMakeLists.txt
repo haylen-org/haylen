@@ -68,6 +68,7 @@ set(HAYLEN_TEST_SOURCES
   audio/AudioTests.cpp
   audio/EffectTests.cpp
   audio/MixerLuaTests.cpp
+  audio/OggPageIndexTests.cpp
   audio/OutputTests.cpp
   audio/PauseTests.cpp
   audio/SpatializationTests.cpp
@@ -323,7 +324,7 @@ gtest_discover_tests(haylen-tests
   PROPERTIES TIMEOUT 120
 )
 
-# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files and of SVG documents run their parsers on the inputs libFuzzer generates.
+# The fuzzers of the content formats, of input recordings, of MessagePack, of image placeholders, of image files, of SVG documents and of Ogg pages run their parsers on the inputs libFuzzer generates.
 if(HAYLEN_BUILD_FUZZERS)
   add_executable(haylen-content-fuzzer fuzz/ContentFuzzer.cpp support/ContentParsers.cpp support/ReleaseFixture.cpp support/TemporaryDirectory.cpp support/TestFiles.cpp)
   set_target_properties(haylen-content-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
@@ -361,4 +362,11 @@ if(HAYLEN_BUILD_FUZZERS)
   target_link_libraries(haylen-vector-image-fuzzer PRIVATE haylen::engine)
   target_link_options(haylen-vector-image-fuzzer PRIVATE -fsanitize=fuzzer)
   haylen_enable_warnings(haylen-vector-image-fuzzer)
+
+  add_executable(haylen-ogg-fuzzer fuzz/OggPageFuzzer.cpp)
+  set_target_properties(haylen-ogg-fuzzer PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
+  target_include_directories(haylen-ogg-fuzzer PRIVATE "${HAYLEN_ENGINE_DIR}/src")
+  target_link_libraries(haylen-ogg-fuzzer PRIVATE haylen::engine)
+  target_link_options(haylen-ogg-fuzzer PRIVATE -fsanitize=fuzzer)
+  haylen_enable_warnings(haylen-ogg-fuzzer)
 endif()

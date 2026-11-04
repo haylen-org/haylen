@@ -392,6 +392,7 @@ Music, effects, buses, filters, positional sound, interruptions and many voices 
 | `AUD-008` | Voice limits | A hundred coins with and without the limit of their sound, a line whose priority outlasts bursts that fill every voice, and a tone that stops and resumes quickly without clicks. |  |
 | `AUD-009` | Loudness and output | Thirty explosions with the limiter of the master bus on and off, its threshold and the gain it takes away, and the state and latency of the output with the unlock of a browser. |  |
 | `AUD-010` | Now playing | A track in the now-playing controls of the system with its artwork, length and position, whose commands from the controls, media keys, headsets and remotes change what plays. |  |
+| `AUD-011` | Seeking a long track | A streamed Ogg Vorbis track of two and a half minutes that jumps to its end, back to its start, ten seconds either way and anywhere at once, with the time each jump took until the sound played on. |  |
 
 #### Components (CMP)
 

@@ -64,10 +64,33 @@ When a ring runs dry, the voice plays silence until the sound arrives. That happ
 
 Folders, zip archives and protected releases all stream. A protected release decrypts and decompresses only the chunks around the cursor of a voice, one at a time. So a streamed track never exists decrypted as a whole, in memory or on disk. A read that fails, such as a damaged chunk of a release, ends the voice and reports an engine error.
 
-Every format streams, with two differences:
+Every format streams, with two differences in MP3 files:
 
 - MP3 encoders usually write a Xing or Info header with the length of the file. An MP3 file without one is read through once when the sound loads, since only its frames tell its length.
-- Ogg Vorbis seeks by decoding forward, and a seek back decodes again from the start of the file. So a voice of a long Ogg Vorbis track that often seeks back reads more of the file than a voice of the other formats.
+- MP3 seeks by decoding forward, and a seek back decodes again from the start of the file. So a voice of a long MP3 track that often seeks back reads more of the file than a voice of the other formats.
+
+### Seeking in streamed sounds
+
+A voice of a streamed sound seeks when the app moves its cursor, when it starts partway with `startAt` and each time it goes back to the start of its loop. WAV files seek straight to the frame, and FLAC files find it through their seek table or by halving the file.
+
+An Ogg Vorbis file is a chain of pages of a few KiB. The header of each page tells how many frames the file holds up to the end of that page. Each voice keeps an index of these pages, about 16 bytes per page, which is a few KiB for each minute of music.
+
+1. While the voice plays, it records every page it reads.
+2. A seek to a part that the voice never read halves that part of the file a few times, reading one page each time, until it finds a page close to the frame. Then it reads the page headers from there.
+3. Decoding starts at the last page that ends a little before the frame. Vorbis needs one packet of sound before the frame to decode it, so the page ends at least that early.
+4. The voice decodes forward only from that page and drops the frames before the frame it seeks to.
+
+So a seek reads only a few pages, anywhere in a track of any length, and it is exact. The frames after it are the same frames, bit for bit, that a decoding from the start of the file gives. A long track can seek back and forth as often as a player drags its progress bar.
+
+```lua
+local assets = require('haylen.assets')
+local audio = require('haylen.audio')
+
+local album = assets.load('music/album-03.ogg', 'sound', {stream = true})
+local track = audio.playMusic(album)
+audio.setCursor(track, album.duration - 20)
+audio.setCursor(track, 30)
+```
 
 ### Sounds made at run time
 

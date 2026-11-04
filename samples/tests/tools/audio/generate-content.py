@@ -1,4 +1,4 @@
-"""Synthesizes every sound of the audio tests: interface clicks, a chop, footsteps, a hit, a swing, a wooden pickup, an explosion, a fire loop, a hum, a plucked loop and two short music loops.
+"""Synthesizes every sound of the audio tests: interface clicks, a chop, footsteps, a hit, a swing, a wooden pickup, an explosion, a fire loop, a hum, a plucked loop, two short music loops and a long track that the seek test streams.
 
 Run it from anywhere with `uv run --with numpy --with soundfile python3 samples/tests/tools/audio/generate-content.py`. The same run always writes the same files, as WAV, OGG Vorbis and MP3, the formats the tests read.
 """
@@ -106,6 +106,16 @@ def write(path: str, channels: list[np.ndarray] | np.ndarray, rate: int, kind: s
 
 def ogg(path: str, channels, rate: int) -> None:
     write(path, channels, rate, "OGG", "VORBIS")
+
+
+def long_ogg(path: str, channels: list[np.ndarray], rate: int, compression: float) -> None:
+    """Writes a long Ogg Vorbis file block by block, at a lower quality that keeps a track of minutes small."""
+    data = np.clip(np.stack(channels, axis=1), -1, 1)
+    target = AUDIO / path
+    target.parent.mkdir(parents=True, exist_ok=True)
+    with soundfile.SoundFile(target, "w", rate, data.shape[1], format="OGG", subtype="VORBIS", compression_level=compression) as file:
+        for start in range(0, len(data), 1 << 16):
+            file.write(data[start : start + (1 << 16)])
 
 
 def click() -> None:
@@ -417,6 +427,53 @@ def lively_loop() -> None:
     write("music/lively-loop.mp3", song.render(), Arrangement.rate, "MP3", "MPEG_LAYER_III")
 
 
+def journey() -> None:
+    """A track of two and a half minutes in three sections of fifty seconds, long enough to show how fast a streamed Ogg Vorbis sound seeks back from its end."""
+    rate = Arrangement.rate
+    beat = 60 / 96
+    bars = 60
+    sections = [
+        [(57, [57, 60, 64]), (53, [53, 57, 60]), (48, [55, 60, 64]), (55, [55, 59, 62])],
+        [(50, [57, 62, 65]), (55, [55, 59, 62]), (52, [55, 59, 64]), (57, [57, 61, 64])],
+        [(48, [55, 60, 64]), (53, [57, 60, 65]), (55, [59, 62, 67]), (48, [55, 60, 64])],
+    ]
+    count = int(round(bars * 4 * beat * rate))
+    left, right = np.zeros(count + rate * 4), np.zeros(count + rate * 4)
+
+    def add(time: float, pan: float, gain: float, sound: np.ndarray) -> None:
+        index = int(round(time * rate))
+        left[index : index + len(sound)] += sound * gain * np.cos((pan + 1) * np.pi / 4)
+        right[index : index + len(sound)] += sound * gain * np.sin((pan + 1) * np.pi / 4)
+
+    rng = np.random.default_rng(96)
+    for bar in range(bars):
+        part = bar // 20
+        root, chord = sections[part][bar % 4]
+        start = bar * 4 * beat
+        for index, note in enumerate(chord):
+            add(start, -0.4 + 0.4 * index, 0.1, pad(sound(4 * beat + 0.8), midi(note), 4 * beat))
+        add(start, 0.0, 0.45, bass(sound(2 * beat), midi(root - 12), 2 * beat))
+        add(start + 2 * beat, 0.0, 0.4, bass(sound(2 * beat), midi(root - 12), 2 * beat))
+        pattern = [chord[0], chord[1], chord[2], chord[1] + 12, chord[2], chord[1], chord[0] + 12, chord[2]]
+        for step, note in enumerate(pattern):
+            add(start + step * beat / 2, 0.3 if step % 2 else -0.3, 0.18, pluck(sound(1.4), midi(note + 12), 0.6))
+        if part > 0:
+            for kick_beat in (0, 2):
+                add(start + kick_beat * beat, 0.0, 0.55, kick(sound(0.4)))
+        if part > 1:
+            for eighth in range(8):
+                add(start + eighth * beat / 2 + beat / 4, 0.25, 0.08, hat(sound(0.12), 900 + bar * 8 + eighth))
+        if bar % 2 == 0:
+            for step in range(4):
+                add(start + step * beat * 2, 0.1, 0.24, bell(sound(2 * beat + 1.0), midi(int(rng.choice(chord)) + 12 + 12 * (step % 2))))
+    mixed = []
+    for side, channel in enumerate((left, right)):
+        wet = room(channel, rate, 1.8, 0.3, 400 + side)[: len(channel)]
+        mixed.append(fade_edges(wet[: count + rate * 2], rate, 0.01, 2.0))
+    peak = max(np.max(np.abs(channel)) for channel in mixed)
+    long_ogg("music/journey.ogg", [np.tanh(1.3 * channel / peak) * 0.88 for channel in mixed], rate, 1.0)
+
+
 def pluck_loop() -> None:
     rate = 22050
     beat = 0.5
@@ -446,6 +503,7 @@ def main() -> None:
     pluck_loop()
     calm_loop()
     lively_loop()
+    journey()
 
 
 if __name__ == "__main__":

@@ -5,11 +5,18 @@
 #include <stdexcept>
 #include <utility>
 
+#include "audio/VorbisDecoder.hpp"
 #include "haylen/io/PackageReader.hpp"
 
 namespace haylen::audio {
 
-ReaderDecoder::ReaderDecoder(std::shared_ptr<io::PackageReader> value) : reader(std::move(value)), window(kWindowSize) {
+ReaderDecoder::ReaderDecoder(std::shared_ptr<io::PackageReader> value) : reader(std::move(value)) {
+    if (VorbisDecoder::isVorbis(*reader)) {
+        vorbis = std::make_unique<VorbisDecoder>(*reader);
+        return;
+    }
+
+    window.resize(kWindowSize);
     const ma_decoder_config config = ma_decoder_config_init(ma_format_f32, 0, 0);
     if (ma_decoder_init(&ReaderDecoder::onRead, &ReaderDecoder::onSeek, this, &config, &decoder) != MA_SUCCESS) {
         rethrowFailure();
@@ -18,7 +25,9 @@ ReaderDecoder::ReaderDecoder(std::shared_ptr<io::PackageReader> value) : reader(
 }
 
 ReaderDecoder::~ReaderDecoder() {
-    ma_decoder_uninit(&decoder);
+    if (!vorbis) {
+        ma_decoder_uninit(&decoder);
+    }
 }
 
 // The callbacks never let an exception into the decoder, which is C code, and a reader that failed once is not read again.
@@ -82,41 +91,28 @@ std::size_t ReaderDecoder::fetch(std::span<std::uint8_t> target) {
     return filled;
 }
 
+std::uint32_t ReaderDecoder::getChannels() const noexcept {
+    return vorbis ? vorbis->getChannels() : decoder.outputChannels;
+}
+
+std::uint32_t ReaderDecoder::getSampleRate() const noexcept {
+    return vorbis ? vorbis->getSampleRate() : decoder.outputSampleRate;
+}
+
 std::uint64_t ReaderDecoder::getLength() {
+    if (vorbis) {
+        return vorbis->getLength();
+    }
     ma_uint64 frames = 0;
     ma_decoder_get_length_in_pcm_frames(&decoder, &frames);
     rethrowFailure();
-    return frames > 0 ? frames : readOggLength();
-}
-
-// The Vorbis decoder reads through callbacks only by having data pushed into it, which leaves it without the length of the file, so the length comes from the granule position of the last Ogg page, which counts the frames up to the end of that page.
-std::uint64_t ReaderDecoder::readOggLength() {
-    const std::uint64_t size = reader->getSize();
-    std::array<std::uint8_t, kOggCapture.size()> start{};
-    if (size < kOggHeaderSize || reader->read(0, start) != start.size() || start != kOggCapture) {
-        return 0;
-    }
-
-    std::vector<std::uint8_t> tail(static_cast<std::size_t>(std::min<std::uint64_t>(size, kOggLargestPage)));
-    reader->readExactly(size - tail.size(), tail);
-    for (std::size_t page = tail.size() - kOggHeaderSize + 1; page-- > 0;) {
-        if (!std::equal(kOggCapture.begin(), kOggCapture.end(), tail.begin() + static_cast<std::ptrdiff_t>(page)) || tail[page + kOggCapture.size()] != 0) {
-            continue;
-        }
-        std::uint64_t granule = 0;
-        for (std::size_t index = 8; index-- > 0;) {
-            granule = (granule << 8U) | tail[page + kOggGranuleOffset + index];
-        }
-
-        // A page on which no packet ends has no granule position.
-        if (granule != std::numeric_limits<std::uint64_t>::max()) {
-            return granule;
-        }
-    }
-    return 0;
+    return frames;
 }
 
 std::uint64_t ReaderDecoder::read(std::span<float> target) {
+    if (vorbis) {
+        return vorbis->read(target);
+    }
     ma_uint64 decoded = 0;
     ma_decoder_read_pcm_frames(&decoder, target.data(), target.size() / decoder.outputChannels, &decoded);
     rethrowFailure();
@@ -124,6 +120,9 @@ std::uint64_t ReaderDecoder::read(std::span<float> target) {
 }
 
 bool ReaderDecoder::seek(std::uint64_t frame) {
+    if (vorbis) {
+        return vorbis->seek(frame);
+    }
     const ma_result result = ma_decoder_seek_to_pcm_frame(&decoder, frame);
     rethrowFailure();
     return result == MA_SUCCESS;

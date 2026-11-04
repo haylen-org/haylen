@@ -5,6 +5,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iterator>
+#include <limits>
 #include <map>
 #include <memory>
 #include <span>
@@ -48,6 +49,30 @@ class StreamedSoundTest : public MixerFixture {
       private:
         std::shared_ptr<io::PackageReader> inner;
         std::uint64_t failAt;
+    };
+
+    // Reads a file from memory and keeps the lowest offset that a read started at since the last reset.
+    class LowestReadReader final : public io::PackageReader {
+      public:
+        explicit LowestReadReader(std::vector<std::uint8_t> file) : inner(makeReader(std::move(file))) {}
+
+        [[nodiscard]] std::uint64_t getSize() const noexcept override {
+            return inner->getSize();
+        }
+        [[nodiscard]] std::size_t read(std::uint64_t offset, std::span<std::uint8_t> target) override {
+            lowest = std::min(lowest, offset);
+            return inner->read(offset, target);
+        }
+        [[nodiscard]] std::uint64_t getLowest() const noexcept {
+            return lowest;
+        }
+        void reset() noexcept {
+            lowest = std::numeric_limits<std::uint64_t>::max();
+        }
+
+      private:
+        std::shared_ptr<io::PackageReader> inner;
+        std::uint64_t lowest = std::numeric_limits<std::uint64_t>::max();
     };
 
     // Two mebi frames of 16-bit stereo, which make a file of 8 MiB.
@@ -226,7 +251,7 @@ TEST_F(StreamedSoundTest, DecodesThroughAWindowOfTheFile) {
 }
 
 TEST_F(StreamedSoundTest, StreamsEveryCompressedFormatLikeItsDecodedSound) {
-    for (const std::string name : {"tone.ogg", "tone.mp3", "tone-without-header.mp3", "tone.flac"}) {
+    for (const std::string name : {"tone.ogg", "notes.ogg", "tone.mp3", "tone-without-header.mp3", "tone.flac"}) {
         SCOPED_TRACE(name);
         const std::vector<std::uint8_t> file = readTestFile(name);
         ASSERT_FALSE(file.empty());
@@ -242,6 +267,96 @@ TEST_F(StreamedSoundTest, StreamsEveryCompressedFormatLikeItsDecodedSound) {
         samples.resize(frames * decoder.getChannels());
         EXPECT_EQ(samples, decoded.getData()->samples);
     }
+}
+
+TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileToTheExactFrame) {
+    for (const std::string name : {"notes.ogg", "tone.ogg"}) {
+        SCOPED_TRACE(name);
+        const std::vector<std::uint8_t> file = readTestFile(name);
+        const Sound decoded = Sound::decode(file);
+        const std::vector<float>& expected = decoded.getData()->samples;
+        const std::uint64_t length = decoded.getFrameCount();
+        const std::uint32_t channels = decoded.getChannels();
+        const auto reader = std::make_shared<LowestReadReader>(file);
+        ReaderDecoder decoder(reader);
+
+        // Seeks go back and forth, near the start, where the first packets only prime the decoder, near the end, and to scattered frames of the whole file.
+        std::vector<std::uint64_t> frames{length / 2, length / 3, 0, 1, 1023, 1024, 2047, 2048, 4097, length - 1, length - 9, length - 2048, length / 2 + 1, 600, length / 2 - 1};
+        for (std::uint64_t step = 1; step <= 60; ++step) {
+            frames.push_back(step * 2654435761U % length);
+        }
+        std::vector<float> block(std::size_t{3000} * channels);
+        for (const std::uint64_t frame : frames) {
+            reader->reset();
+            ASSERT_TRUE(decoder.seek(frame)) << frame;
+
+            // A seek into the last quarter of the file starts at a page before the frame and never reads the start of the file again.
+            if (frame >= length * 3 / 4) {
+                EXPECT_GT(reader->getLowest(), 0U) << frame;
+            }
+            const std::uint64_t count = decoder.read(block);
+            ASSERT_EQ(count, std::min<std::uint64_t>(3000, length - frame)) << frame;
+            ASSERT_TRUE(std::equal(block.begin(), block.begin() + static_cast<std::ptrdiff_t>(count * channels), expected.begin() + static_cast<std::ptrdiff_t>(frame * channels))) << "The frames after frame " << frame << " differ from a decoding of the whole file.";
+        }
+
+        // The end of the file is a place to seek to, with no frames after it, and frames past it are not.
+        EXPECT_TRUE(decoder.seek(length));
+        EXPECT_EQ(decoder.read(block), 0U);
+        EXPECT_FALSE(decoder.seek(length + 1));
+        EXPECT_TRUE(decoder.seek(7));
+        ASSERT_EQ(decoder.read(block), 3000U);
+        EXPECT_TRUE(std::equal(block.begin(), block.end(), expected.begin() + static_cast<std::ptrdiff_t>(7 * channels)));
+    }
+}
+
+TEST_F(StreamedSoundTest, LoopsAnOggVorbisFileBetweenLoopPointsExactly) {
+    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    const Sound decoded = Sound::decode(file);
+    const std::vector<float>& expected = decoded.getData()->samples;
+    const std::uint32_t channels = decoded.getChannels();
+    const std::uint64_t loopStart = decoded.getFrameCount() / 5 + 17;
+    const std::uint64_t loopEnd = decoded.getFrameCount() * 3 / 4 + 5;
+
+    // The decoder plays to the end of the loop and goes on from its start, as the fill of a looping voice does, three times over.
+    ReaderDecoder decoder(makeReader(file));
+    std::vector<float> block(std::size_t{4096} * channels);
+    std::uint64_t position = 0;
+    for (int pass = 0; pass < 3; ++pass) {
+        while (position < loopEnd) {
+            const auto count = static_cast<std::size_t>(std::min<std::uint64_t>(4096, loopEnd - position));
+            ASSERT_EQ(decoder.read(std::span(block).first(count * channels)), count);
+            ASSERT_TRUE(std::equal(block.begin(), block.begin() + static_cast<std::ptrdiff_t>(count * channels), expected.begin() + static_cast<std::ptrdiff_t>(position * channels))) << pass << " " << position;
+            position += count;
+        }
+        ASSERT_TRUE(decoder.seek(loopStart));
+        position = loopStart;
+    }
+}
+
+TEST_F(StreamedSoundTest, SeeksAnOggVorbisFileByReadingOnlyThePagesAroundTheFrame) {
+    const std::vector<std::uint8_t> file = readTestFile("notes.ogg");
+    std::map<std::string, std::vector<std::uint8_t>> files;
+    files.emplace("content/music/notes.ogg", file);
+    const auto package = std::make_shared<test::CountingPackage>(std::make_shared<io::MemoryPackage>("music", std::move(files)));
+    const Sound decoded = Sound::decode(file);
+    const std::uint64_t length = decoded.getFrameCount();
+    std::vector<float> block(std::size_t{256} * decoded.getChannels());
+
+    // A decoder that never read the end of the file finds the page before the frame by bisecting the file.
+    ReaderDecoder fresh(package->openAssetReader("music/notes.ogg"));
+    package->reset();
+    ASSERT_TRUE(fresh.seek(length - 5000));
+    ASSERT_EQ(fresh.read(block), 256U);
+    EXPECT_LT(package->getReadBytes(), file.size() / 2);
+
+    // A decoder that played the file seeks back near its end through the pages it recorded.
+    ReaderDecoder played(package->openAssetReader("music/notes.ogg"));
+    while (played.read(block) > 0) {}
+    package->reset();
+    ASSERT_TRUE(played.seek(length - 5000));
+    ASSERT_EQ(played.read(block), 256U);
+    EXPECT_LT(package->getReadBytes(), file.size() / 8);
+    EXPECT_LE(package->getLargestRead(), ReaderDecoder::kWindowSize);
 }
 
 TEST_F(StreamedSoundTest, ReadsTheLengthOfAnOggFileFromItsLastWholePage) {
