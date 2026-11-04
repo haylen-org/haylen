@@ -38,6 +38,7 @@ void ImageButton::render(Context& context, const math::Rect& bounds) {
         Typography::drawAligned(context, Theme::Font::Button, area, context.getColor(Theme::Color::OnAccent), shown, Alignment::Center);
     }
     if (state.clicked) {
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "click");
     }
 }

@@ -427,7 +427,7 @@ end)
 
 ## Give it a look
 
-A theme holds every color, metric, font and surface that the components use. No component draws a literal color, so a theme changes the look of every GUI at once.
+A theme holds every color, metric, font, surface and sound that the components use. No component draws a literal color, so a theme changes the look of every GUI at once.
 
 ### Themes
 
@@ -509,7 +509,7 @@ The fill of toggles, sliders and progress bars stays inside the `padding` of the
 
 ### One node in another look
 
-Every node takes the common properties `theme` and `style`, which reach the node and every node inside it. The property `theme` draws the subtree with another registered theme, such as a light card in a dark screen. The property `style` replaces single values of the theme, such as one button that is rounder and greener than the others. It takes the sections `colors`, `metrics`, `fonts` and `surfaces` of a theme file.
+Every node takes the common properties `theme` and `style`, which reach the node and every node inside it. The property `theme` draws the subtree with another registered theme, such as a light card in a dark screen. The property `style` replaces single values of the theme, such as one button that is rounder and greener than the others. It takes the sections `colors`, `metrics`, `fonts`, `surfaces` and `sounds` of a theme file.
 
 Styles nest, so a value that a style leaves out comes from the style or theme around the node. A color of a style can name a theme color role, such as `'accentText'`. The UI looks that role up every frame. So a styled node follows a theme switch, higher contrast and reduced transparency without being built again. The property `cursor` sets the shape of the mouse cursor over a node.
 
@@ -522,6 +522,39 @@ ui.mount(ui.row{style = {colors = {accent = '#FF2E9E62'}, metrics = {controlRadi
     ui.card{theme = 'light', ui.label{text = 'A light card'}},
 })
 ```
+
+### Sounds
+
+A theme can also decide how the UI sounds. Its section `sounds` names a sound file for each kind of interaction: `press` for buttons, rows and menu items, `focus` for each move of the focus with keys, gamepads and remotes, `toggle` for check boxes, toggles and other choices, `step` for sliders and steppers, and `type` for typing in text fields. The engine plays them itself, so the app needs no listener on every control to click. The reference lists [which components play each sound and every key](../lua-api/ui.md#theme-sounds).
+
+Every sound loads once, in the background, when its theme registers or when a node with a style that names it first draws. A press never waits for a file. The sounds play through the [bus](../audio/audio.md#buses) `ui` of the mixer unless a sound names another bus. So a settings screen mutes all of them with one call, `audio.setBusMuted('ui', true)`, and a volume slider sets `audio.setBusVolume('ui', value)`.
+
+Fast input never piles sounds up. Each kind of interaction plays one sound at a time, and a new one cuts the old one with a short fade. A sound also waits for its `interval`, 50 milliseconds by default, so a held arrow key that races through a list plays an even row of ticks. Raise the interval of `focus` or `type` when your ticks are long.
+
+A style changes the sounds of one part of the screen. A style with `sounds = {press = false}` makes a button silent, and a style with another `press` sound gives a confirm button its own chime. Like every value of a style, it reaches the nodes inside the node too.
+
+Contrast and motion settings never change the sounds: the high contrast theme plays the sounds of the theme you chose, and screen readers and reduced motion leave them on. They are sounds of the app like any other, so the [audio session](../audio/audio.md#ios-and-tvos-sessions) still applies, and the silent switch of an iPhone quiets them in the default `ambient` session.
+
+```lua
+local audio = require('haylen.audio')
+local ui = require('haylen.ui')
+
+ui.setTheme(ui.addTheme({name = 'clicky', sounds = {
+    press = {sound = 'audio/ui/click.ogg'},
+    focus = {sound = 'audio/ui/tick.ogg', volume = 0.6, interval = 0.08},
+    toggle = {sound = 'audio/ui/switch.ogg'},
+}}, 'dark'))
+
+ui.mount(ui.column{gap = 16,
+    ui.button{text = 'Start'},
+    ui.button{text = 'Buy', style = {sounds = {press = {sound = 'audio/ui/coins.ogg'}}}},
+    ui.checkbox{text = 'Interface sounds', checked = true, onChange = function(event)
+        audio.setBusMuted('ui', not event.checked)
+    end},
+})
+```
+
+The test `GUI-034` of the test project plays every sound of a theme, with a silent button, a button with its own sound and a switch that mutes the bus.
 
 ### The Tiny Island theme
 

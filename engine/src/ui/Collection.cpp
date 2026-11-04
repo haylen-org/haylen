@@ -1463,6 +1463,7 @@ void Collection::press(Context& context, std::size_t index) {
         select(index, selected[index] == 0);
         values["selected"] = selected[index] != 0;
     }
+    context.playSound(Theme::Sound::Press);
     context.emit(*this, "select", std::move(values));
 }
 

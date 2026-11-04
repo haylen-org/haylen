@@ -725,6 +725,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/ui/ScrollFade.cpp
   src/ui/Scrollbar.cpp
   src/ui/Scroller.cpp
+  src/ui/SoundLibrary.cpp
   src/ui/Style.cpp
   src/ui/Surfaces.cpp
   src/ui/TextEditor.cpp

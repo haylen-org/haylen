@@ -16,6 +16,7 @@ math::Vec2 Checkbox::measureContent(Context& context, float availableWidth) {
 
 void Checkbox::render(Context& context, const math::Rect& bounds) {
     if (Widgets::checkbox(context, bounds, checked, context.getText(text))) {
+        context.playSound(Theme::Sound::Toggle);
         context.emit(*this, "change", {{"checked", checked}});
     }
     if (takeFocusRequest()) {

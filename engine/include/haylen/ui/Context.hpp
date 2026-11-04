@@ -113,13 +113,19 @@ class Context final {
     // Returns a registered theme by name, or null for a name the UI does not know.
     using ThemeSource = std::function<const Theme*(std::string_view name)>;
 
-    // The sources a context reads images, fonts, themes and the textures of styles from.
+    // Plays the sound of an interaction, and starts loading a sound file that a style names.
+    using SoundPlayer = std::function<void(Theme::Sound role, const Theme::Cue& cue)>;
+    using SoundLoader = std::function<void(std::string_view path)>;
+
+    // The sources a context reads images, fonts, themes and the textures of styles from, and the player of the sounds of the UI.
     struct Sources {
         ImageSource images;
         ImageSizeSource imageSizes;
         FontSource fonts;
         ThemeSource themes;
         Theme::TextureLoader textures;
+        SoundPlayer sounds;
+        SoundLoader soundFiles;
     };
 
     Context(Backend& uiBackend, FocusNavigator& focusNavigator, const localization::Catalog& textCatalog, const input::Input& devices, Sources sources, std::shared_ptr<text::RichTextRegistry> registry);
@@ -151,6 +157,8 @@ class Context final {
     // Holds an item that the pointer drags outside drag and drop, such as the lifted item of a collection, for the next frame, so it scrolls the areas it nears.
     void carryItem() noexcept;
     [[nodiscard]] const Theme::Image* getSurface(Theme::Surface role) const;
+    // Plays the sound that the styles and the theme around the node being drawn give an interaction, if any.
+    void playSound(Theme::Sound role) const;
     [[nodiscard]] const std::string& getFontName(Theme::Font role) const noexcept;
     // The size of the em square of a font role in UI units, which the text scale multiplies.
     [[nodiscard]] float getFontSize(Theme::Font role) const noexcept;
@@ -285,6 +293,8 @@ class Context final {
         const Style* style = nullptr;
         bool imgui = false;
     };
+
+    [[nodiscard]] const Theme::Cue* findSound(Theme::Sound role) const noexcept;
 
     // Returns the color of a role that the layers below the end give, from the node being drawn out to the active theme.
     [[nodiscard]] math::Color findColor(Theme::Color role, std::size_t end) const noexcept;

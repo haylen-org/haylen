@@ -237,6 +237,10 @@ void Component::draw(Context& context, const math::Rect& layout) {
     }
 
     const bool styled = pushStyle(context, true);
+    if (focus.takeArrival(drawId)) {
+        context.playSound(Theme::Sound::Focus);
+    }
+
     if (!common.enabled) {
         ImGui::BeginDisabled();
     }

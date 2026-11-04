@@ -52,6 +52,7 @@ void Chip::render(Context& context, const math::Rect& bounds) {
 
     if (state.clicked) {
         selected = !selected;
+        context.playSound(Theme::Sound::Toggle);
         context.emit(*this, "change", {{"selected", selected}});
     }
 }

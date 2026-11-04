@@ -33,7 +33,8 @@ struct SceneView;
 
 namespace haylen::ui {
 class ImageLibrary;
-}
+class SoundLibrary;
+} // namespace haylen::ui
 
 namespace haylen::plugins {
 
@@ -56,7 +57,7 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] bool isCapturingBack() const override;
     [[nodiscard]] bool isFrameComplete() const override;
 
-    // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme.
+    // Builds a theme that `loadTheme` read from a changed file again on its base, and applies it when it is the current theme, and loads the sounds of the UI read from changed files again.
     void packageChanged(core::Engine& engine, std::span<const std::string> paths) override;
 
     [[nodiscard]] ui::Backend& getBackend();
@@ -85,7 +86,7 @@ class UiPlugin final : public Plugin {
     // Hands out the events of every mounted GUI once per frame, before the app updates.
     core::Signal<ui::Gui&, const ui::Event&> events;
 
-    // The theme the app chose. While the system asks for higher contrast the UI draws the high contrast theme that the chosen theme names, and while it asks for reduced transparency it draws the surfaces of the theme opaque, so `getTheme` returns the theme the UI draws. Throws for a theme whose high contrast theme the UI does not know.
+    // The theme the app chose. While the system asks for higher contrast the UI draws the high contrast theme that the chosen theme names with the sounds of the chosen theme, and while it asks for reduced transparency it draws the surfaces of the theme opaque, so `getTheme` returns the theme the UI draws. Throws for a theme whose high contrast theme the UI does not know. A theme starts loading its sounds in the background once it is added.
     void addTheme(ui::Theme theme);
     void setTheme(std::string_view name);
     [[nodiscard]] const std::string& getThemeName() const noexcept {
@@ -99,7 +100,7 @@ class UiPlugin final : public Plugin {
     [[nodiscard]] const ui::Theme* findTheme(std::string_view name) const;
     [[nodiscard]] std::vector<std::string> getThemes() const;
 
-    // Registers a theme from its JSON definition on top of the theme named `base`, registers the fonts it lists and returns the theme name.
+    // Registers a theme from its JSON definition on top of the theme named `base`, registers the fonts it lists and returns the theme name. Throws for a sound file that the package does not hold.
     std::string addTheme(core::Engine& engine, const core::Json& definition, std::string_view base = "dark");
     std::string loadTheme(core::Engine& engine, std::string_view path, std::string_view base = "dark");
     void addFont(core::Engine& engine, const std::string& name, std::string_view path);
@@ -202,6 +203,7 @@ class UiPlugin final : public Plugin {
     std::vector<platform::Accessibility::Request> accessibilityRequests;
     std::uint64_t nextOrder = 0;
     std::unique_ptr<ui::ImageLibrary> images;
+    std::unique_ptr<ui::SoundLibrary> sounds;
     std::map<std::string, std::string, std::less<>> fontPaths;
 
     // The base of every theme file that `loadTheme` read, by its asset path.

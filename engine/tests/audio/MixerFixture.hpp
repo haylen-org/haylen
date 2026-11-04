@@ -19,6 +19,7 @@
 #include "haylen/core/JobSystem.hpp"
 #include "haylen/io/PackageReader.hpp"
 #include "io/MemoryReader.hpp"
+#include "support/TestFiles.hpp"
 #include "support/VarnRuntime.hpp"
 
 namespace haylen::audio {
@@ -36,39 +37,6 @@ class MixerFixture : public ::testing::Test {
         EXPECT_TRUE(jobErrors.empty()) << jobErrors.front();
     }
 
-    // Encodes interleaved samples in the range -1 to 1 as a 16-bit PCM WAV file.
-    [[nodiscard]] static std::vector<std::uint8_t> makeWav(std::uint32_t sampleRate, std::uint16_t channels, const std::vector<float>& samples) {
-        std::vector<std::uint8_t> file;
-        // clang-format off
-        const auto append = [&file](std::uint32_t value, int bytes) {
-            for (int index = 0; index < bytes; ++index) {
-                file.push_back(static_cast<std::uint8_t>((value >> (8 * index)) & 0xFFU));
-            }
-        };
-        // clang-format on
-        const auto appendText = [&file](const char* text) { file.insert(file.end(), text, text + 4); };
-        const auto dataSize = static_cast<std::uint32_t>(samples.size() * 2);
-
-        appendText("RIFF");
-        append(36 + dataSize, 4);
-        appendText("WAVE");
-        appendText("fmt ");
-        append(16, 4);
-        append(1, 2);
-        append(channels, 2);
-        append(sampleRate, 4);
-        append(sampleRate * channels * 2, 4);
-        append(channels * 2U, 2);
-        append(16, 2);
-        appendText("data");
-        append(dataSize, 4);
-        for (const float sample : samples) {
-            const auto value = static_cast<std::int16_t>(std::lround(std::clamp(sample, -1.0F, 1.0F) * 32767.0F));
-            append(static_cast<std::uint16_t>(value), 2);
-        }
-        return file;
-    }
-
     // Reads a file from memory the way a package reads it, for the sounds that stream it.
     [[nodiscard]] static std::shared_ptr<io::PackageReader> makeReader(std::vector<std::uint8_t> file) {
         return std::make_shared<io::MemoryReader>(std::make_shared<const std::vector<std::uint8_t>>(std::move(file)));
@@ -80,7 +48,7 @@ class MixerFixture : public ::testing::Test {
     }
 
     [[nodiscard]] static Sound makeTone(std::size_t frames, float value = 0.5F) {
-        return Sound::decode(makeWav(kRate, 1, makeSignal(frames, 1, value)));
+        return Sound::decode(test::TestFiles::wav(kRate, 1, makeSignal(frames, 1, value)));
     }
 
     // A whole number of periods, so the sine loops without a seam.
@@ -90,14 +58,14 @@ class MixerFixture : public ::testing::Test {
         for (std::size_t index = 0; index < samples.size(); ++index) {
             samples[index] = amplitude * static_cast<float>(std::sin(2.0 * std::numbers::pi * static_cast<double>(index) / static_cast<double>(period)));
         }
-        return Sound::decode(makeWav(kRate, 1, samples));
+        return Sound::decode(test::TestFiles::wav(kRate, 1, samples));
     }
 
     // One sample at the value followed by silence.
     [[nodiscard]] static Sound makeImpulse(std::size_t frames, float value = 1.0F) {
         std::vector<float> samples(frames, 0.0F);
         samples.front() = value;
-        return Sound::decode(makeWav(kRate, 1, samples));
+        return Sound::decode(test::TestFiles::wav(kRate, 1, samples));
     }
 
     [[nodiscard]] static std::size_t toFrames(float seconds) {
@@ -111,7 +79,7 @@ class MixerFixture : public ::testing::Test {
             samples[frame * 2] = static_cast<float>(frame % kPositionPeriod + 1) / 32767.0F;
             samples[frame * 2 + 1] = static_cast<float>(frame / kPositionPeriod + 1) / 32767.0F;
         }
-        return makeWav(kRate, 2, samples);
+        return test::TestFiles::wav(kRate, 2, samples);
     }
 
     // Mixes blocks until the voice played the count of frames or ended, polling the job system and posting the fills of streamed voices between the blocks as a frame does, and returns the position of every frame it played. Where the ring of a streamed voice ran dry the mix is silent, which holds no position.

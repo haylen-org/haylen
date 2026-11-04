@@ -91,6 +91,7 @@ class UiLua final {
     static int setImage(lua_State* L);
     static int removeImage(lua_State* L);
     static int themeSurface(lua_State* L);
+    static int themeSound(lua_State* L);
     static int onEvent(lua_State* L);
     static int addFont(lua_State* L);
     static int usingPointer(lua_State* L);

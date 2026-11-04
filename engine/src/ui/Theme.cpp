@@ -136,6 +136,31 @@ Theme::Image Theme::readImage(const core::Json& value, const std::string& contex
     return image;
 }
 
+// A cue names its sound file and may set the bus, the volume and the interval, whose defaults are those of `Cue`.
+Theme::Cue Theme::readCue(const core::Json& value, const std::string& context) {
+    core::JsonValidator::requireKnownKeys(value, {"sound", "bus", "volume", "interval"}, context);
+    if (!value.contains("sound") || !value.at("sound").is_string() || value.at("sound").get_ref<const std::string&>().empty()) {
+        throw std::invalid_argument("T" + context.substr(1) + " must name a sound file in \"sound\".");
+    }
+
+    Cue cue{.sound = value.at("sound").get<std::string>()};
+    if (value.contains("bus")) {
+        if (!value.at("bus").is_string() || value.at("bus").get_ref<const std::string&>().empty()) {
+            throw std::invalid_argument("The bus of " + context + " must be the name of an audio bus.");
+        }
+        cue.bus = value.at("bus").get<std::string>();
+    }
+
+    if (value.contains("volume")) {
+        cue.volume = readNumber(value.at("volume"), "The volume of " + context);
+    }
+
+    if (value.contains("interval")) {
+        cue.interval = readNumber(value.at("interval"), "The interval of " + context);
+    }
+    return cue;
+}
+
 // Every copy of a tiled piece covers at least one design unit, so tiling always ends and never draws an unbounded number of copies. A piece without area draws nothing and needs no check.
 void Theme::checkTiles(const Image& image, const std::string& context) {
     for (const std::size_t index : kTiledPieces) {
@@ -170,6 +195,10 @@ std::optional<Theme::Font> Theme::fontFromName(std::string_view value) noexcept 
 
 std::optional<Theme::Surface> Theme::surfaceFromName(std::string_view value) noexcept {
     return fromName<Surface>(kSurfaceNames, value, std::identity());
+}
+
+std::optional<Theme::Sound> Theme::soundFromName(std::string_view value) noexcept {
+    return fromName<Sound>(kSoundNames, value, std::identity());
 }
 
 Theme Theme::dark() {
@@ -232,7 +261,7 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
     if (!document.is_object()) {
         throw std::invalid_argument("A theme must be a JSON object.");
     }
-    core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces", "imageFilter", "highContrast"}, "the theme");
+    core::JsonValidator::requireKnownKeys(document, {"name", "colors", "metrics", "fonts", "fontFiles", "surfaces", "sounds", "imageFilter", "highContrast"}, "the theme");
     if (!document.contains("name") || !document.at("name").is_string() || document.at("name").get<std::string>().empty()) {
         throw std::invalid_argument("A theme needs a name.");
     }
@@ -319,12 +348,33 @@ Theme Theme::fromJson(const core::Json& document, const Theme& base, const Textu
         }
         theme.setSurface(*role, readImage(value, "the theme surface \"" + key + "\"", loadTexture));
     }
+    for (const auto& [key, value] : readSection(document, "sounds").items()) {
+        const std::optional<Sound> role = soundFromName(key);
+        if (!role) {
+            throw std::invalid_argument("The theme has no sound named \"" + key + "\".");
+        }
+
+        if (value.is_null() || (value.is_boolean() && !value.get<bool>())) {
+            theme.setSound(*role, std::nullopt);
+            continue;
+        }
+
+        if (!value.is_object()) {
+            throw std::invalid_argument("The theme sound \"" + key + "\" must be an object, \"null\" or \"false\".");
+        }
+        theme.setSound(*role, readCue(value, "the theme sound \"" + key + "\""));
+    }
     return theme;
 }
 
 const Theme::Image* Theme::getSurface(Surface role) const noexcept {
     const std::optional<Image>& image = surfaces[static_cast<std::size_t>(role)];
     return image ? &*image : nullptr;
+}
+
+const Theme::Cue* Theme::getSound(Sound role) const noexcept {
+    const std::optional<Cue>& cue = sounds[static_cast<std::size_t>(role)];
+    return cue ? &*cue : nullptr;
 }
 
 void Theme::setMetric(Metric role, float value) {
@@ -343,6 +393,14 @@ void Theme::setFont(Font role, FontStyle value) {
 
 void Theme::setSurface(Surface role, std::optional<Image> value) {
     surfaces[static_cast<std::size_t>(role)] = std::move(value);
+}
+
+void Theme::setSound(Sound role, std::optional<Cue> value) {
+    const bool valid = !value || (!value->sound.empty() && !value->bus.empty() && value->volume >= 0.0F && std::isfinite(value->volume) && value->interval >= 0.0F && std::isfinite(value->interval));
+    if (!valid) {
+        throw std::invalid_argument("A theme sound needs a sound file, a bus, and a volume and an interval that are non-negative numbers.");
+    }
+    sounds[static_cast<std::size_t>(role)] = std::move(value);
 }
 
 // ImGui insets the grab of a scroll bar by the same padding on every side, which it rounds down to whole units, so the padding is the gap rounded up, and a child window without padding keeps its content that far from the grab too.

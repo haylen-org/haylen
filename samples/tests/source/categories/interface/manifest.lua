@@ -37,5 +37,6 @@ return {
         {code = 'GUI-031', title = 'Smooth curves', description = 'Every curved component and shape in the design and physical scales, beside their magnified edges, which fade over one pixel.', module = 'smooth-curves'},
         {code = 'GUI-032', title = 'Images made at run time', description = 'A minimap rendered into a render target every frame, a portrait composed on the CPU and a vector image built in code, in components.', module = 'runtime-images'},
         {code = 'GUI-033', title = 'Image theme', description = 'A casual fantasy theme drawn from one atlas of nine-slice pieces and a set of icons, beside the default theme at several UI scales.', module = 'image-theme'},
+        {code = 'GUI-034', title = 'Theme sounds', description = 'A theme that plays sounds for presses, focus moves, choices, slider steps and typing, styles that silence or replace the sound of one control, and a switch that mutes them.', module = 'theme-sounds'},
     },
 }

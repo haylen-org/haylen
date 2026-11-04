@@ -137,6 +137,7 @@ void SlotGrid::drawSlot(Context& context, const Slot& slot, const math::Rect& ar
         context.emit(*this, "drop", {{"item", slot.id}, {"source", moved.dropped->first}, {"sourceItem", moved.dropped->second}});
     } else if (state.clicked && !(draggable && activated)) {
         selected = slot.id;
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "select", {{"item", slot.id}});
     }
 }

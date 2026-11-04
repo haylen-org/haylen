@@ -46,10 +46,12 @@ TEST(ThemeTest, ReadsEveryRoleByName) {
     EXPECT_EQ(Theme::fontFromName("monospace"), Theme::Font::Monospace);
     EXPECT_EQ(Theme::surfaceFromName("buttonPrimaryPressed"), Theme::Surface::ButtonPrimaryPressed);
     EXPECT_EQ(Theme::surfaceFromName("slotHighlighted"), Theme::Surface::SlotHighlighted);
+    EXPECT_EQ(Theme::soundFromName("type"), Theme::Sound::Type);
     EXPECT_FALSE(Theme::colorFromName("purple").has_value());
     EXPECT_FALSE(Theme::metricFromName("width").has_value());
     EXPECT_FALSE(Theme::fontFromName("huge").has_value());
     EXPECT_FALSE(Theme::surfaceFromName("floor").has_value());
+    EXPECT_FALSE(Theme::soundFromName("click").has_value());
 }
 
 TEST(ThemeTest, ShipsDarkAndLightThemes) {
@@ -177,6 +179,8 @@ TEST(ThemeTest, RejectsBrokenThemes) {
     EXPECT_THROW(theme.setMetric(Theme::Metric::ItemSpacing, -2.0F), std::invalid_argument);
     EXPECT_THROW(theme.setFont(Theme::Font::Body, {.font = "", .size = 10.0F}), std::invalid_argument);
     EXPECT_THROW(theme.setFont(Theme::Font::Body, {.font = "default", .size = 0.0F}), std::invalid_argument);
+    EXPECT_THROW(theme.setSound(Theme::Sound::Press, Theme::Cue{}), std::invalid_argument);
+    EXPECT_THROW(theme.setSound(Theme::Sound::Press, Theme::Cue{.sound = "ui/tap.wav", .volume = -1.0F}), std::invalid_argument);
 }
 
 TEST(ThemeTest, SyncsTheImGuiStyle) {

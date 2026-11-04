@@ -774,6 +774,30 @@ int UiLua::themeSurface(lua_State* L) {
     return 1;
 }
 
+// Returns the sound the active theme gives an interaction as `{sound, bus, volume, interval}`, or `nil` for an interaction that plays nothing.
+int UiLua::themeSound(lua_State* L) {
+    const std::string name = lua::Stack::read<std::string>(L, 1);
+    const std::optional<Theme::Sound> role = Theme::soundFromName(name);
+    if (!role) {
+        return luaL_error(L, "The theme has no sound named \"%s\".", name.c_str());
+    }
+    const Theme::Cue* cue = getPlugin(L).getTheme().getSound(*role);
+    if (cue == nullptr) {
+        lua_pushnil(L);
+        return 1;
+    }
+    lua_createtable(L, 0, 4);
+    lua::Stack::push(L, cue->sound);
+    lua_setfield(L, -2, "sound");
+    lua::Stack::push(L, cue->bus);
+    lua_setfield(L, -2, "bus");
+    lua::Stack::push(L, cue->volume);
+    lua_setfield(L, -2, "volume");
+    lua::Stack::push(L, cue->interval);
+    lua_setfield(L, -2, "interval");
+    return 1;
+}
+
 // Calls `listener(event)` for every event of every mounted GUI with `onEvent(listener[, {owner = scene}])` and returns the connection. A listener with an owner ends when the owner is released, such as a scene when it unloads.
 int UiLua::onEvent(lua_State* L) {
     luaL_checktype(L, 1, LUA_TFUNCTION);
@@ -969,7 +993,7 @@ int UiLua::kinds(lua_State* L) {
 
 int UiLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"setTextScale", &lua::Binding::native<&setTextScale>}, {"textScale", &lua::Binding::native<&textScale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
+        {"mount", &lua::Binding::native<&mount>}, {"node", &lua::Binding::native<&node>}, {"setTheme", &lua::Binding::native<&setTheme>}, {"theme", &lua::Binding::native<&theme>}, {"themes", &lua::Binding::native<&themes>}, {"loadTheme", &lua::Binding::native<&loadTheme>}, {"addTheme", &lua::Binding::native<&addTheme>}, {"themeColor", &lua::Binding::native<&themeColor>}, {"themeMetric", &lua::Binding::native<&themeMetric>}, {"themeFont", &lua::Binding::native<&themeFont>}, {"themeSurface", &lua::Binding::native<&themeSurface>}, {"themeSound", &lua::Binding::native<&themeSound>}, {"themeImageFilter", &lua::Binding::native<&themeImageFilter>}, {"setImage", &lua::Binding::native<&setImage>}, {"removeImage", &lua::Binding::native<&removeImage>}, {"addFont", &lua::Binding::native<&addFont>}, {"usingPointer", &lua::Binding::native<&usingPointer>}, {"usingKeyboard", &lua::Binding::native<&usingKeyboard>}, {"focused", &lua::Binding::native<&focused>}, {"focusOwner", &lua::Binding::native<&focusOwner>}, {"clearFocus", &lua::Binding::native<&clearFocus>}, {"focusRingVisible", &lua::Binding::native<&focusRingVisible>}, {"safeAreaVisible", &lua::Binding::native<&safeAreaVisible>}, {"setSafeAreaVisible", &lua::Binding::native<&setSafeAreaVisible>}, {"setDirection", &lua::Binding::native<&setDirection>}, {"direction", &lua::Binding::native<&direction>}, {"setScaleMode", &lua::Binding::native<&setScaleMode>}, {"scaleMode", &lua::Binding::native<&scaleMode>}, {"setScale", &lua::Binding::native<&setScale>}, {"scale", &lua::Binding::native<&scale>}, {"setTextScale", &lua::Binding::native<&setTextScale>}, {"textScale", &lua::Binding::native<&textScale>}, {"kinds", &lua::Binding::native<&kinds>}, {"onEvent", &lua::Binding::native<&onEvent>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     lua_createtable(L, 0, 1);

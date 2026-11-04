@@ -90,6 +90,7 @@ Component* Accordion::getSection(std::size_t index) const {
 // A section that opens alone closes the others, and each of them reports its toggle first.
 void Accordion::toggle(Context& context, const ChoiceItem& item) {
     const bool open = !expanded.contains(item.id);
+    context.playSound(Theme::Sound::Press);
     if (!open) {
         expanded.erase(item.id);
     } else {

@@ -153,7 +153,7 @@ TEST_F(StyleTest, PaintsTheSurfacesAStyleGivesOnceTheirImagesLoad) {
 TEST_F(StyleTest, ReportsTheProblemsOfAStyle) {
     // clang-format off
     const std::vector<std::pair<std::string, std::string>> cases{
-        {R"({"kind": "button", "style": "big"})", R"(The property "style" of a "button" must be a table with "colors", "metrics", "fonts" or "surfaces".)"},
+        {R"({"kind": "button", "style": "big"})", R"(The property "style" of a "button" must be a table with "colors", "metrics", "fonts", "surfaces" or "sounds".)"},
         {R"({"kind": "button", "style": {"sizes": {}}})", R"(Unknown key "sizes" in the property "style" of a "button".)"},
         {R"({"kind": "button", "style": {"colors": {"purple": "#FFFFFFFF"}}})", R"(The property "style" of a "button" has no color role named "purple".)"},
         {R"({"kind": "button", "style": {"colors": {"accent": "blue"}}})", R"(The color "accent" of the property "style" of a "button" must name a theme color such as "accent" or "textMuted".)"},
@@ -163,6 +163,10 @@ TEST_F(StyleTest, ReportsTheProblemsOfAStyle) {
         {R"({"kind": "button", "style": {"fonts": {"huge": {}}}})", R"(The property "style" of a "button" has no font role named "huge".)"},
         {R"({"kind": "button", "style": {"surfaces": {"floor": false}}})", R"(The property "style" of a "button" has no surface named "floor".)"},
         {R"({"kind": "button", "style": {"surfaces": {"button": {"slice": 8}}}})", R"(The image of the surface "button" of the property "style" of a "button" must be a path.)"},
+        {R"({"kind": "button", "style": {"sounds": {"click": false}}})", R"(The property "style" of a "button" has no sound named "click".)"},
+        {R"({"kind": "button", "style": {"sounds": {"press": "ui/tap.wav"}}})", R"(The sound "press" of the property "style" of a "button" must be a table or "false".)"},
+        {R"({"kind": "button", "style": {"sounds": {"press": {"volume": 1}}}})", R"(The sound "press" of the property "style" of a "button" must name a sound file in "sound".)"},
+        {R"({"kind": "button", "style": {"sounds": {"press": {"sound": "ui/tap.wav", "loud": true}}}})", R"(Unknown key "loud" in the sound "press" of the property "style" of a "button".)"},
         {R"({"kind": "button", "cursor": "hand"})", R"(The property "cursor" of a "button" must be "default", "arrow", "iBeam", "crosshair", "pointingHand", "resizeHorizontal", "resizeVertical", "resizeDiagonalDown", "resizeDiagonalUp", "resizeAll" or "notAllowed".)"},
     };
     // clang-format on

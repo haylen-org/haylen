@@ -15,7 +15,7 @@ class MixerLuaTest : public MixerFixture {
   protected:
     // An engine whose Lua state holds audio, the hit sound and a one-second loop.
     [[nodiscard]] static std::unique_ptr<test::EngineFixture> makeEngine() {
-        const std::vector<std::uint8_t> hit = makeWav(kRate, 1, makeSignal(4800, 1, 0.5F));
+        const std::vector<std::uint8_t> hit = test::TestFiles::wav(kRate, 1, makeSignal(4800, 1, 0.5F));
         auto fixture = std::make_unique<test::EngineFixture>(std::map<std::string, std::string>{{"content/sfx/hit.wav", std::string(hit.begin(), hit.end())}});
         fixture->runLua("audio = require('haylen.audio') events = require('haylen.events') haylen = require('haylen') hit = require('haylen.assets').load('sfx/hit.wav')");
         return fixture;

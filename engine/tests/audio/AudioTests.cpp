@@ -32,7 +32,7 @@ class AudioAssetTest : public MixerFixture {};
 class AudioLuaTest : public MixerFixture {};
 
 TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
-    const std::vector<std::uint8_t> file = makeWav(22050, 2, makeSignal(2205, 2, 0.25F));
+    const std::vector<std::uint8_t> file = test::TestFiles::wav(22050, 2, makeSignal(2205, 2, 0.25F));
 
     const Sound decoded = Sound::decode(file);
     EXPECT_TRUE(decoded.isValid());
@@ -54,7 +54,7 @@ TEST_F(SoundTest, DecodesAndStreamsAudioFiles) {
     EXPECT_THROW((void)Sound::decode(test::TestFiles::bytes("not audio")), std::runtime_error);
     EXPECT_THROW((void)Sound::stream(makeReader({})), std::runtime_error);
     EXPECT_THROW((void)Sound::stream(nullptr), std::invalid_argument);
-    EXPECT_THROW((void)Sound::decode(makeWav(kRate, 1, {})), std::runtime_error);
+    EXPECT_THROW((void)Sound::decode(test::TestFiles::wav(kRate, 1, {})), std::runtime_error);
 }
 
 TEST_F(SoundTest, MakesSoundsFromRawSamples) {
@@ -491,7 +491,7 @@ TEST_F(SoundTest, ReadsTheSessionFromAppJson) {
 }
 
 TEST_F(AudioAssetTest, LoadsSoundsThroughTheAssetManager) {
-    const std::vector<std::uint8_t> wav = makeWav(kRate, 1, makeSignal(480, 1, 0.5F));
+    const std::vector<std::uint8_t> wav = test::TestFiles::wav(kRate, 1, makeSignal(480, 1, 0.5F));
     test::EngineFixture fixture({{"content/sfx/hit.wav", std::string(wav.begin(), wav.end())}});
     assets::Manager& assets = fixture.engine().getAssets();
 
@@ -504,8 +504,8 @@ TEST_F(AudioAssetTest, LoadsSoundsThroughTheAssetManager) {
 }
 
 TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
-    const std::vector<std::uint8_t> hit = makeWav(kRate, 1, makeSignal(4800, 1, 0.5F));
-    const std::vector<std::uint8_t> theme = makeWav(kRate, 2, makeSignal(48000, 2, 0.25F));
+    const std::vector<std::uint8_t> hit = test::TestFiles::wav(kRate, 1, makeSignal(4800, 1, 0.5F));
+    const std::vector<std::uint8_t> theme = test::TestFiles::wav(kRate, 2, makeSignal(48000, 2, 0.25F));
     test::EngineFixture fixture({{"content/sfx/hit.wav", std::string(hit.begin(), hit.end())}, {"content/music/theme.wav", std::string(theme.begin(), theme.end())}});
     fixture.runLua("audio = require('haylen.audio') assets = require('haylen.assets') hit = assets.load('sfx/hit.wav') theme = assets.load('music/theme.wav', nil, {stream = true})");
 
@@ -572,7 +572,7 @@ TEST_F(AudioLuaTest, PlaysSoundsFromLua) {
 // The bytes of a sound file or of raw samples, such as the audio a plugin returns, become a sound.
 TEST_F(AudioLuaTest, MakesSoundsFromBytes) {
     test::EngineFixture fixture;
-    const std::vector<std::uint8_t> wav = makeWav(22050, 2, makeSignal(2205, 2, 0.25F));
+    const std::vector<std::uint8_t> wav = test::TestFiles::wav(22050, 2, makeSignal(2205, 2, 0.25F));
     lua_pushlstring(fixture.lua(), reinterpret_cast<const char*>(wav.data()), wav.size());
     lua_setglobal(fixture.lua(), "wav");
     fixture.runLua("audio = require('haylen.audio')");

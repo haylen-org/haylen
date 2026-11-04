@@ -203,6 +203,7 @@ void SegmentedControl::select(Context& context, int index) {
         return;
     }
     selected = items[static_cast<std::size_t>(index)].id;
+    context.playSound(Theme::Sound::Toggle);
     context.emit(*this, "change", {{"value", selected}});
 }
 

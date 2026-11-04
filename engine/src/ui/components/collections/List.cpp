@@ -112,6 +112,7 @@ void List::drawRow(Context& context, const math::Rect& bounds, float height, std
         context.emit(*this, "drop", {{"item", item.id}, {"source", moved.dropped->first}, {"sourceItem", moved.dropped->second}});
     } else if (state.clicked && (!draggable || !activated || choosing)) {
         selected = item.id;
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "select", {{"item", item.id}});
     }
 }

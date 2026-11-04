@@ -19,7 +19,7 @@ struct ImGuiStyle;
 
 namespace haylen::ui {
 
-// Every semantic color, metric, font and surface a component may ask for, so no component reads a literal.
+// Every semantic color, metric, font, surface and sound a component may ask for, so no component reads a literal.
 class Theme final {
   public:
     // Colors come in families: surfaces, states, borders, text, the accent and four tones. A tone has its fill, the ink written on that fill, a subtle background and a text color readable on the window.
@@ -199,6 +199,15 @@ class Theme final {
         FocusRing,
     };
 
+    // The interactions a theme may give a sound: a press of a button or of an item, a move of the focus with the keyboard, a gamepad or a remote, a choice that changes, such as a checkbox, a toggle or a radio group, a step of a slider or a stepper, and an edit of the text of a field.
+    enum class Sound : std::uint8_t {
+        Press,
+        Focus,
+        Toggle,
+        Step,
+        Type,
+    };
+
     // The font a role draws with, the size of its em square, the style of its face, where a font without a face for the style draws with its regular face, and whether its letters join into ligatures.
     struct FontStyle {
         std::string font = "default";
@@ -220,6 +229,14 @@ class Theme final {
         bool whole = false;
     };
 
+    // The sound an interaction plays: a sound file of the package `content/` folder, the audio bus it plays through, its volume and the shortest time in seconds between two plays of its interaction.
+    struct Cue {
+        std::string sound;
+        std::string bus = "ui";
+        float volume = 1.0F;
+        float interval = 0.05F;
+    };
+
     // Loads a texture for a theme image from a path relative to the package `content/` folder.
     using TextureLoader = std::function<graphics::Texture(std::string_view path, graphics::Texture::Options options)>;
 
@@ -227,6 +244,7 @@ class Theme final {
     static constexpr std::size_t kMetricCount = static_cast<std::size_t>(Metric::ChipRadius) + 1;
     static constexpr std::size_t kFontCount = static_cast<std::size_t>(Font::Monospace) + 1;
     static constexpr std::size_t kSurfaceCount = static_cast<std::size_t>(Surface::FocusRing) + 1;
+    static constexpr std::size_t kSoundCount = static_cast<std::size_t>(Sound::Type) + 1;
 
     // The built-in themes. The dark and light themes name their high contrast variants, which keep their metrics and fonts with colors of stronger contrast.
     [[nodiscard]] static Theme dark();
@@ -234,18 +252,20 @@ class Theme final {
     [[nodiscard]] static Theme darkHighContrast();
     [[nodiscard]] static Theme lightHighContrast();
 
-    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles`, `surfaces`, `imageFilter` and `highContrast`, which names the theme to use while the system asks for higher contrast, or is `false` to keep this one, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
+    // Reads a theme on top of a base theme. The JSON holds `name`, optional `colors`, `metrics`, `fonts`, `fontFiles`, `surfaces`, `sounds`, `imageFilter` and `highContrast`, which names the theme to use while the system asks for higher contrast, or is `false` to keep this one, and `fontFiles` maps font names to TrueType files the caller registers before drawing.
     [[nodiscard]] static Theme fromJson(const core::Json& document, const Theme& base, const TextureLoader& loadTexture);
 
     // Read the values of theme files and styles, where the context starts the message of an error, such as `The theme color "accent"`.
     [[nodiscard]] static math::Color readColor(const core::Json& value, const std::string& context);
     [[nodiscard]] static float readNumber(const core::Json& value, const std::string& context);
     [[nodiscard]] static Image readImage(const core::Json& value, const std::string& context, const TextureLoader& loadTexture);
+    [[nodiscard]] static Cue readCue(const core::Json& value, const std::string& context);
 
     [[nodiscard]] static std::optional<Color> colorFromName(std::string_view value) noexcept;
     [[nodiscard]] static std::optional<Metric> metricFromName(std::string_view value) noexcept;
     [[nodiscard]] static std::optional<Font> fontFromName(std::string_view value) noexcept;
     [[nodiscard]] static std::optional<Surface> surfaceFromName(std::string_view value) noexcept;
+    [[nodiscard]] static std::optional<Sound> soundFromName(std::string_view value) noexcept;
 
     [[nodiscard]] const std::string& getName() const noexcept {
         return name;
@@ -260,6 +280,8 @@ class Theme final {
         return fonts[static_cast<std::size_t>(role)];
     }
     [[nodiscard]] const Image* getSurface(Surface role) const noexcept;
+    // Returns the sound of an interaction, or null for an interaction that plays nothing, which is every interaction of the built-in themes.
+    [[nodiscard]] const Cue* getSound(Sound role) const noexcept;
     [[nodiscard]] const std::map<std::string, std::string, std::less<>>& getFontFiles() const noexcept {
         return fontFiles;
     }
@@ -285,6 +307,8 @@ class Theme final {
     void setMetric(Metric role, float value);
     void setFont(Font role, FontStyle value);
     void setSurface(Surface role, std::optional<Image> value);
+    // Throws `std::invalid_argument` for a cue without a sound file or a bus, or with a volume or an interval that is negative or not finite.
+    void setSound(Sound role, std::optional<Cue> value);
     void setImageFilter(graphics::Texture::Filter value) noexcept {
         imageFilter = value;
     }
@@ -473,6 +497,7 @@ class Theme final {
         "scrollbarTrack",
         "focusRing",
     };
+    static constexpr std::array<std::string_view, kSoundCount> kSoundNames{"press", "focus", "toggle", "step", "type"};
     // clang-format on
     static constexpr std::array<float, kFontCount> kFontSizes{26.0F, 20.0F, 26.0F, 32.0F, 48.0F, 18.0F};
 
@@ -492,6 +517,7 @@ class Theme final {
     std::array<float, kMetricCount> metrics{};
     std::array<FontStyle, kFontCount> fonts{};
     std::array<std::optional<Image>, kSurfaceCount> surfaces{};
+    std::array<std::optional<Cue>, kSoundCount> sounds{};
     std::map<std::string, std::string, std::less<>> fontFiles;
     graphics::Texture::Filter imageFilter = graphics::Texture::Filter::Nearest;
 };

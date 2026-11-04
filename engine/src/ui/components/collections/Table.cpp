@@ -71,6 +71,7 @@ void Table::render(Context& context, const math::Rect& bounds) {
         }
         if (state.clicked) {
             selected = entry.id;
+            context.playSound(Theme::Sound::Press);
             context.emit(*this, "select", {{"item", entry.id}});
         }
     }

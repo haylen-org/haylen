@@ -117,6 +117,7 @@ void Tree::drawItems(Context& context, const math::Rect& bounds, const std::vect
             toggle(context, item);
         } else if (state.clicked) {
             selected = item.id;
+            context.playSound(Theme::Sound::Press);
             context.emit(*this, "select", {{"item", item.id}});
         }
         if (open && !toggled) {
@@ -132,6 +133,7 @@ void Tree::toggle(Context& context, const ChoiceItem& item) {
     } else {
         expanded.erase(item.id);
     }
+    context.playSound(Theme::Sound::Press);
     context.emit(*this, "toggle", {{"item", item.id}, {"expanded", open}});
 }
 

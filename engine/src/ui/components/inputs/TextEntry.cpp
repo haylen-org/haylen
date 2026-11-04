@@ -36,6 +36,7 @@ void TextEntry::drawEntry(Context& context, const math::Rect& bounds, platform::
     const std::string_view hint = context.getText(placeholder);
     const TextEditor::Result result = TextEditor::draw(context, bounds, value, {.placeholder = hint, .input = getInputOptions(keyboard), .focus = takeFocusRequest(), .reserveStart = reserveStart, .reserveEnd = reserveEnd, .scrollbar = scrollbar});
     if (result.changed) {
+        context.playSound(Theme::Sound::Type);
         context.emit(*this, "change", {{"value", value}});
     }
     if (result.submitted) {

@@ -2068,7 +2068,7 @@ print(set, drawn)
 
 ## Themes
 
-A theme holds every color, metric, font and surface the components use. The engine ships the themes `dark`, which is active at start, and `light`. Each has a high contrast theme, `darkHighContrast` and `lightHighContrast`, which the UI draws instead while the system asks for higher contrast. An app adds its own themes from JSON files or Lua tables. The active theme also styles the windows of [`haylen.imgui`](imgui.md). The [UI guide](../ui/ui.md#give-it-a-look) explains how to design a theme.
+A theme holds every color, metric, font, surface and sound the components use. The engine ships the themes `dark`, which is active at start, and `light`. Each has a high contrast theme, `darkHighContrast` and `lightHighContrast`, which the UI draws instead while the system asks for higher contrast. An app adds its own themes from JSON files or Lua tables. The active theme also styles the windows of [`haylen.imgui`](imgui.md). The [UI guide](../ui/ui.md#give-it-a-look) explains how to design a theme.
 
 ### ui.setTheme(name)
 
@@ -2147,6 +2147,7 @@ A theme file is a JSON object in the package assets. It starts from a base theme
 | `fonts` | object | [Font roles](#theme-fonts) mapped to `{"font": name, "size": number, "bold": boolean, "italic": boolean, "ligatures": boolean}`, where every key is optional and the size is the size of the em square. |
 | `fontFiles` | object | Font names mapped to TrueType or OpenType files in the package assets. The function `ui.loadTheme` registers them, unless a font with that name already exists. |
 | `surfaces` | object | [Surfaces](#theme-surfaces) mapped to nine-slice images, or to `null` to go back to flat colors. |
+| `sounds` | object | [Interactions](#theme-sounds) mapped to the sounds they play, or to `null` or `false` to play nothing. |
 | `imageFilter` | string | The texture filter of the pictures components show: `'nearest'`, the default, for pixel art, or `'linear'` for painted art that the screen scales. It covers the pictures of `image`, `icon`, `imageButton`, `avatar`, `circularProgress` and the touch controls. A switch to a theme with another filter loads the pictures again. |
 | `highContrast` | string or `false` | The name of the theme the UI draws while the system asks for higher contrast, or `false` to keep this theme. A theme that leaves it out takes the one of its base. So themes built on `dark` and `light` switch to `darkHighContrast` and `lightHighContrast`. |
 
@@ -2163,7 +2164,7 @@ Unknown keys, roles, metrics and surfaces are errors, so a typo never goes unnot
 - `The theme font "<name>" must be a known role with an object value.` and `Unknown key "<key>" in the theme font "<name>".`
 - `The theme font "<name>" must name its font with a string.`, `The size of the theme font "<name>" must be a non-negative number.`, `The theme font "<name>" must set "bold" to "true" or "false".` and the same for `italic` and `ligatures`.
 - `A theme font needs a font name and a positive size.` for a role with an empty font name or a size of zero.
-- The errors of [surface images](#theme-surfaces).
+- The errors of [surface images](#theme-surfaces) and of [theme sounds](#theme-sounds).
 
 ```json
 {
@@ -2198,12 +2199,13 @@ ui.mount(ui.panel{
 
 ### Styles
 
-A style replaces values of the theme for one node and every node inside it. Any value a component reads can change for one node without a theme of its own: colors, metrics, fonts and surfaces. Set it with the [common property](#common-properties) `style`. It takes the sections of a [theme file](#theme-files):
+A style replaces values of the theme for one node and every node inside it. Any value a component reads can change for one node without a theme of its own: colors, metrics, fonts, surfaces and sounds. Set it with the [common property](#common-properties) `style`. It takes the sections of a [theme file](#theme-files):
 
 - The section `colors` maps color roles to colors.
 - The section `metrics` maps metrics to numbers.
 - The section `fonts` maps font roles to tables, which set only the keys they list.
 - The section `surfaces` maps surfaces to images, which load in the background the first time they draw, while the flat colors stand in. A surface set to `false` paints with flat colors, whatever the theme has.
+- The section `sounds` maps [interactions](#theme-sounds) to sounds, which replace the sound of the theme for the node and the nodes inside it and load in the background the first time the node draws. An interaction set to `false` plays nothing, whatever the theme has.
 
 Values that a style leaves out come from the style or theme around the node, so styles nest. A color of a style is either a color of its own, such as `'#FF2E9E62'`, or the name of a [theme color role](#theme-colors), such as `'accent'` or `'textMuted'`. A role takes its color each frame from the theme of the node, when the node gives a `theme`, or from the theme and styles around it. So a styled node follows `ui.setTheme`, higher contrast and reduced transparency without being built again. A role never comes from the colors of the same style, so `{accent = '#FFFF0000', border = 'accent'}` gives the border the accent of the theme around the node.
 
@@ -2225,7 +2227,7 @@ ui.mount(ui.column{
 
 Each error of a style starts with the property that holds it:
 
-- `The property "style" of a "<kind>" must be a table with "colors", "metrics", "fonts" or "surfaces".`
+- `The property "style" of a "<kind>" must be a table with "colors", "metrics", "fonts", "surfaces" or "sounds".`
 - `Unknown key "<key>" in the property "style" of a "<kind>".`
 - `The property "style" of a "<kind>" must hold a table in "<section>".`
 - `The property "style" of a "<kind>" has no color role named "<name>".`, and the same for metrics, font roles and surfaces.
@@ -2235,6 +2237,7 @@ Each error of a style starts with the property that holds it:
 - `The font "<name>" of the property "style" of a "<kind>" must be a table.`, `... must name its font with a string.` and `... must set "bold" to "true" or "false".`, and the same for `italic` and `ligatures`.
 - `The size of the font "<name>" of the property "style" of a "<kind>" must be positive.`
 - `The image of the surface "<name>" of the property "style" of a "<kind>" must be a path.`
+- `The sound "<name>" of the property "style" of a "<kind>" must be a table or "false".`, and the errors of [theme sounds](#theme-sounds) for its keys, such as `The sound "<name>" of the property "style" of a "<kind>" must name a sound file in "sound".`.
 
 The other values of a surface image are checked once its image has loaded, with the errors of theme surfaces.
 
@@ -2563,6 +2566,73 @@ local ui = require('haylen.ui')
 
 ui.setTheme(ui.addTheme({name = 'painted', imageFilter = 'linear'}))
 print(ui.themeImageFilter())
+```
+
+### Theme sounds
+
+A theme may give the interactions of the UI a sound each, such as a click for every press. The built-in themes play nothing. A theme starts loading its sounds in the background once it is registered, and the mixer plays them on the frame thread. The [UI guide](../ui/ui.md#sounds) explains how to choose them.
+
+| Interaction | When it plays |
+| --- | --- |
+| `press` | A press of a button, an image button, a menu button, a popover, a combo, a tab, a list row, a table row, a tree row, a slot, a collection item, an item of a menu or a context menu, a dialog button, a toast or its action, the clear button of a filter field or the header of an accordion section. |
+| `focus` | The player moves the focus with the keyboard, a gamepad or a remote: a direction, Tab, `uiFocus` or a page of a collection. A pointer, a script and a screen reader move the focus without it. |
+| `toggle` | A choice changes: a checkbox, a toggle, a radio group, a selectable chip, a segmented control or the pick of a combo. |
+| `step` | A slider, a range slider or a stepper changes its value, or a step button of a number field is pressed. |
+| `type` | The text of a text field, a secret field, a text area, a filter field or a number field changes as the player types, deletes or pastes. |
+
+Each interaction maps to a table with these keys:
+
+| Key | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `sound` | string | | The sound file in the package assets. It is required. |
+| `bus` | string | `'ui'` | The [audio bus](audio.md#buses) the sound plays through, so the bus mutes it and sets its volume. |
+| `volume` | number | `1` | The volume of the sound, from 0. |
+| `interval` | number | `0.05` | The shortest time in seconds between two plays of the interaction. |
+
+An interaction plays one sound at a time. A play fades out the sound of the last play of the same interaction over 10 milliseconds, and a play that comes sooner than `interval` after the last play of the interaction plays nothing, so a held direction that moves the focus fast plays a steady row of ticks instead of a pile of them. The sounds play in the high contrast theme too, which takes the sounds of the theme the app chose, and screen readers and reduced motion never silence them. A sound that is still loading plays nothing.
+
+These errors can happen:
+
+- `The theme has no sound named "<name>".`
+- `The theme sound "<name>" must be an object, "null" or "false".` and `Unknown key "<key>" in the theme sound "<name>".`
+- `The theme sound "<name>" must name a sound file in "sound".`
+- `The bus of the theme sound "<name>" must be the name of an audio bus.`
+- `The volume of the theme sound "<name>" must be a non-negative number.` and the same for `interval`.
+- `The theme "<theme>" plays the sound file "<path>", which the package does not hold.`, when `ui.loadTheme` or `ui.addTheme` registers the theme.
+- A sound file that cannot be decoded raises `The UI sound "<path>" could not be loaded.` with the reason when its interaction plays, and a bus that the mixer does not have raises `The audio bus "<bus>" does not exist.` then.
+
+```lua
+local audio = require('haylen.audio')
+local ui = require('haylen.ui')
+
+ui.setTheme(ui.addTheme({name = 'arcade', sounds = {
+    press = {sound = 'audio/ui/click.ogg', volume = 0.8},
+    focus = {sound = 'audio/ui/tick.ogg', interval = 0.08},
+    toggle = {sound = 'audio/ui/switch.ogg'},
+    step = {sound = 'audio/ui/step.ogg', volume = 0.6},
+    type = {sound = 'audio/ui/key.ogg', volume = 0.7},
+}}, 'dark'))
+
+ui.mount(ui.column{
+    ui.button{text = 'Play'},
+    ui.button{text = 'Quiet', style = {sounds = {press = false}}},
+    ui.toggle{text = 'Interface sounds', checked = true, onChange = function(event)
+        audio.setBusMuted('ui', not event.checked)
+    end},
+})
+```
+
+### ui.themeSound(interaction)
+
+Returns the sound that the active theme gives an [interaction](#theme-sounds) as `{sound, bus, volume, interval}`, or `nil` when the interaction plays nothing. An unknown interaction raises `The theme has no sound named "<name>".`.
+
+```lua
+local ui = require('haylen.ui')
+
+local press = ui.themeSound('press')
+if press then
+    print(press.sound, press.bus, press.volume)
+end
 ```
 
 ## Focus and navigation

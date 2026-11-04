@@ -16,6 +16,7 @@ math::Vec2 Toggle::measureContent(Context& context, float availableWidth) {
 
 void Toggle::render(Context& context, const math::Rect& bounds) {
     if (Widgets::toggle(context, bounds, checked, context.getText(text))) {
+        context.playSound(Theme::Sound::Toggle);
         context.emit(*this, "change", {{"checked", checked}});
     }
     if (takeFocusRequest()) {

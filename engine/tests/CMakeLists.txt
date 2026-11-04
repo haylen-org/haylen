@@ -257,6 +257,7 @@ set(HAYLEN_TEST_SOURCES
   ui/SmoothEdgeTests.cpp
   ui/TextInputTests.cpp
   ui/StyleTests.cpp
+  ui/ThemeSoundTests.cpp
   ui/ThemeTests.cpp
   ui/ToastStackTests.cpp
   ui/TransformTests.cpp

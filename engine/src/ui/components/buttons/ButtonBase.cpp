@@ -29,6 +29,9 @@ bool ButtonBase::drawButton(Context& context, const math::Rect& bounds, bool che
     if (takeFocusRequest()) {
         Widgets::focusItem(context);
     }
+    if (clicked) {
+        context.playSound(Theme::Sound::Press);
+    }
     return clicked;
 }
 

@@ -36,9 +36,9 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
     const std::string subject = PropertyReader::describeProperty(path);
     const std::string inside = "t" + subject.substr(1);
     if (!value.is_object()) {
-        throw std::invalid_argument(subject + " must be a table with \"colors\", \"metrics\", \"fonts\" or \"surfaces\".");
+        throw std::invalid_argument(subject + " must be a table with \"colors\", \"metrics\", \"fonts\", \"surfaces\" or \"sounds\".");
     }
-    core::JsonValidator::requireKnownKeys(value, {"colors", "metrics", "fonts", "surfaces"}, inside);
+    core::JsonValidator::requireKnownKeys(value, {"colors", "metrics", "fonts", "surfaces", "sounds"}, inside);
 
     Style style;
     for (const auto& [key, color] : readSection(value, "colors", subject).items()) {
@@ -71,7 +71,31 @@ Style Style::fromJson(const core::Json& value, std::string_view path) {
         }
         style.surfaces[static_cast<std::size_t>(*role)] = std::move(entry);
     }
+    readSounds(style, readSection(value, "sounds", subject), subject, inside);
     return style;
+}
+
+// A sound set to `false` plays nothing, whatever the theme gives the interaction.
+void Style::readSounds(Style& style, const core::Json& section, const std::string& subject, const std::string& inside) {
+    for (const auto& [key, value] : section.items()) {
+        const std::optional<Theme::Sound> role = Theme::soundFromName(key);
+        if (!role) {
+            throw std::invalid_argument(subject + " has no sound named \"" + key + "\".");
+        }
+
+        const auto index = static_cast<std::size_t>(*role);
+        style.soundsSet.set(index);
+
+        if (value.is_null() || (value.is_boolean() && !value.get<bool>())) {
+            continue;
+        }
+
+        const std::string sound = "the sound \"" + key + "\" of " + inside;
+        if (!value.is_object()) {
+            throw std::invalid_argument("T" + sound.substr(1) + " must be a table or \"false\".");
+        }
+        style.sounds[index] = Theme::readCue(value, sound);
+    }
 }
 
 void Style::readFonts(Style& style, const core::Json& section, const std::string& subject, const std::string& inside) {
@@ -106,6 +130,24 @@ void Style::readFonts(Style& style, const core::Json& section, const std::string
                 throw std::invalid_argument("T" + font.substr(1) + " must set \"" + flag + "\" to \"true\" or \"false\".");
             }
             *field = value.at(flag).get<bool>();
+        }
+    }
+}
+
+const Theme::Cue* Style::findSound(Theme::Sound role) const noexcept {
+    const std::optional<Theme::Cue>& cue = sounds[static_cast<std::size_t>(role)];
+    return cue ? &*cue : nullptr;
+}
+
+void Style::loadSounds(const std::function<void(std::string_view path)>& load) const {
+    if (soundsLoaded) {
+        return;
+    }
+    soundsLoaded = true;
+
+    for (const std::optional<Theme::Cue>& cue : sounds) {
+        if (cue) {
+            load(cue->sound);
         }
     }
 }

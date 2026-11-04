@@ -42,6 +42,7 @@
 #include "ui/ImGuiConverter.hpp"
 #include "ui/ImGuiLua.hpp"
 #include "ui/ImageLibrary.hpp"
+#include "ui/SoundLibrary.hpp"
 #include "ui/TextSession.hpp"
 #include "ui/UiLua.hpp"
 #include "ui/components/BuiltInComponents.hpp"
@@ -65,15 +66,22 @@ void UiPlugin::start(core::Engine& engine) {
     scaling = engine.getConfig().uiScaling;
     // clang-format off
     images = std::make_unique<ui::ImageLibrary>(engine.getAssets(), engine.getGraphics(), engine.getJobs());
+    sounds = std::make_unique<ui::SoundLibrary>(engine.getAssets(), engine.getAudio());
     ui::Context::Sources sources{
         .images = [this](std::string_view path, float scale) { return images->getTexture(path, getTheme().getImageFilter(), scale); },
         .imageSizes = [this](std::string_view path) { return images->getSize(path, getTheme().getImageFilter()); },
         .fonts = [this](std::string_view name) { return getFontFamily(*owner, name); },
         .themes = [this](std::string_view name) { return findTheme(name); },
         .textures = [this](std::string_view path, graphics::Texture::Options options) { return images->getTexture(path, options.filter, 1.0F); },
+        .sounds = [this](ui::Theme::Sound role, const ui::Theme::Cue& cue) { sounds->play(role, cue, elapsed); },
+        .soundFiles = [this](std::string_view path) { sounds->load(path); },
     };
     context = std::make_unique<ui::Context>(*backend, focus, engine.getPlugin<LocalizationPlugin>().getCatalog(), engine.getInput(), std::move(sources), engine.getPlugin<TextPlugin>().getRegistry());
     // clang-format on
+
+    for (const auto& [name, theme] : themes) {
+        sounds->load(theme);
+    }
     setTheme(themeName);
 }
 
@@ -88,8 +96,9 @@ void UiPlugin::stop(core::Engine& engine) {
     engine.getInput().setPointerCaptured(false);
     engine.getActionMaps().setCapture({});
 
-    // Pending image loads finish into a library that no longer exists, so they drop their result.
+    // Pending image and sound loads finish into libraries that no longer exist, so they drop their result.
     images.reset();
+    sounds.reset();
     fontPaths.clear();
     themeFiles.clear();
     fontFamilies.clear();
@@ -536,7 +545,11 @@ std::shared_ptr<ui::Gui> UiPlugin::findMounted(const ui::Gui* gui) const {
 
 void UiPlugin::addTheme(ui::Theme theme) {
     const std::string name = theme.getName();
-    themes.insert_or_assign(name, std::move(theme));
+    const auto added = themes.insert_or_assign(name, std::move(theme)).first;
+    if (sounds) {
+        sounds->load(added->second);
+    }
+
     if (backend && (name == themeName || name == themes.find(themeName)->second.getHighContrast())) {
         setTheme(themeName);
     }
@@ -561,6 +574,14 @@ void UiPlugin::applyTheme(bool highContrast, bool reducedTransparency) {
     const ui::Theme& chosen = themes.find(themeName)->second;
     const auto variant = highContrast && !chosen.getHighContrast().empty() ? themes.find(chosen.getHighContrast()) : themes.end();
     shownTheme = variant != themes.end() ? variant->second : chosen;
+
+    // Higher contrast changes how the UI looks and never how it sounds, so the high contrast theme plays the sounds of the chosen theme.
+    for (std::size_t index = 0; index < ui::Theme::kSoundCount; ++index) {
+        const auto role = static_cast<ui::Theme::Sound>(index);
+        const ui::Theme::Cue* cue = chosen.getSound(role);
+        shownTheme.setSound(role, cue != nullptr ? std::optional<ui::Theme::Cue>(*cue) : std::nullopt);
+    }
+
     if (reducedTransparency) {
         shownTheme.makeSurfacesOpaque();
     }
@@ -619,6 +640,13 @@ std::string UiPlugin::addTheme(core::Engine& engine, const core::Json& definitio
         }
     }
 
+    for (std::size_t index = 0; index < ui::Theme::kSoundCount; ++index) {
+        const ui::Theme::Cue* cue = theme.getSound(static_cast<ui::Theme::Sound>(index));
+        if (cue != nullptr && !engine.getAssets().exists(cue->sound)) {
+            throw std::invalid_argument("The theme \"" + theme.getName() + "\" plays the sound file \"" + cue->sound + "\", which the package does not hold.");
+        }
+    }
+
     std::string name = theme.getName();
     addTheme(std::move(theme));
     return name;
@@ -636,7 +664,9 @@ void UiPlugin::packageChanged(core::Engine& engine, std::span<const std::string>
         if (!io::Path::isInside(path, io::Path::kContentDirectory)) {
             continue;
         }
-        const auto theme = themeFiles.find(std::string_view(path).substr(io::Path::kContentDirectory.size() + 1));
+        const std::string_view asset = std::string_view(path).substr(io::Path::kContentDirectory.size() + 1);
+        sounds->reload(asset);
+        const auto theme = themeFiles.find(asset);
         if (theme == themeFiles.end() || !engine.getPackage().exists(path)) {
             continue;
         }

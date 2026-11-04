@@ -1,4 +1,4 @@
-"""Synthesizes every sound of the audio tests: interface clicks, a chop, footsteps, a hit, a swing, a wooden pickup, an explosion, a fire loop, a hum, a plucked loop, two short music loops and a long track that the seek test streams.
+"""Synthesizes every sound of the audio tests: interface clicks, the focus tick, toggle, slider step and key of the theme sounds, a chop, footsteps, a hit, a swing, a wooden pickup, an explosion, a fire loop, a hum, a plucked loop, two short music loops and a long track that the seek test streams.
 
 Run it from anywhere with `uv run --with numpy --with soundfile python3 samples/tests/tools/audio/generate-content.py`. The same run always writes the same files, as WAV, OGG Vorbis and MP3, the formats the tests read.
 """
@@ -137,6 +137,39 @@ def confirm() -> None:
         tone = np.sin(2 * np.pi * frequency * local + index * np.sin(2 * np.pi * frequency * 2 * local))
         chime += active * tone * decay(local, 0.11)
     ogg("ui/confirm.ogg", normalize(fade_edges(chime, rate), 0.6), rate)
+
+
+def focus_tick() -> None:
+    rate = 44100
+    t = seconds(0.06, rate)
+    tick = np.sin(2 * np.pi * 1750 * t) * decay(t, 0.007) + 0.25 * np.sin(2 * np.pi * 3500 * t) * decay(t, 0.003)
+    ogg("ui/focus.ogg", normalize(fade_edges(tick, rate, fade_out=0.01), 0.35), rate)
+
+
+def toggle() -> None:
+    rate = 44100
+    t = seconds(0.14, rate)
+    snap = np.zeros_like(t)
+    for start, frequency, gain in ((0.0, 1200.0, 0.8), (0.045, 1800.0, 1.0)):
+        local = np.maximum(t - start, 0)
+        snap += (t >= start) * gain * np.sin(2 * np.pi * frequency * local) * decay(local, 0.012)
+    body = shape_spectrum(noise(len(t), 7), rate, band(1500, 7000)) * decay(t, 0.002)
+    ogg("ui/toggle.ogg", normalize(fade_edges(snap + 0.4 * body, rate), 0.5), rate)
+
+
+def step() -> None:
+    rate = 44100
+    t = seconds(0.04, rate)
+    blip = np.sin(2 * np.pi * 2600 * t) * decay(t, 0.004)
+    ogg("ui/step.ogg", normalize(fade_edges(blip, rate, fade_out=0.008), 0.3), rate)
+
+
+def key() -> None:
+    rate = 44100
+    t = seconds(0.05, rate)
+    thock = 0.6 * np.sin(2 * np.pi * 420 * t) * decay(t, 0.006)
+    clack = shape_spectrum(noise(len(t), 11), rate, band(1800, 6000)) * decay(t, 0.0025)
+    ogg("ui/key.ogg", normalize(fade_edges(thock + clack, rate, fade_out=0.01), 0.3), rate)
 
 
 def chop() -> None:
@@ -492,6 +525,10 @@ def pluck_loop() -> None:
 def main() -> None:
     click()
     confirm()
+    focus_tick()
+    toggle()
+    step()
+    key()
     chop()
     hit()
     footsteps()

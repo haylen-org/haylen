@@ -177,6 +177,9 @@ class FocusNavigator final {
     // Takes the direction the focused component uses itself this frame, such as left and right on a slider.
     [[nodiscard]] std::optional<FocusDirection> takeDirection(ImGuiID node);
 
+    // Takes whether the player moved the focus to a node with the keyboard, a gamepad or a remote in the last frame, which the node answers with the sound of the focus while it draws.
+    [[nodiscard]] bool takeArrival(ImGuiID node) noexcept;
+
     // Takes the events waiting for a node: focus, blur and cancel.
     [[nodiscard]] std::vector<std::string_view> takeNotices(ImGuiID node);
 
@@ -306,6 +309,10 @@ class FocusNavigator final {
     std::optional<std::pair<ImGuiID, FocusDirection>> pendingDirection;
     std::optional<std::pair<ImGuiID, Paging>> pendingPaging;
     ImGuiID reveal = 0;
+
+    // Whether the navigation of the player moved the focus in this frame, and the node it moved to in the last one.
+    bool navigated = false;
+    ImGuiID arrival = 0;
 
     // The collection and the item of the cell being drawn, whose targets take their names.
     const Component* cellOwner = nullptr;

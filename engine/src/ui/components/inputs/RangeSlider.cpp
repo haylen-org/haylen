@@ -92,6 +92,7 @@ void RangeSlider::render(Context& context, const math::Rect& bounds) {
         Typography::drawAligned(context, Theme::Font::Body, context.mirror({bounds.getRight() - label, bounds.y, label, bounds.height}, bounds), context.getColor(Theme::Color::TextMuted), range, Alignment::End);
     }
     if (changed) {
+        context.playSound(Theme::Sound::Step);
         context.emit(*this, "change", {{"low", low}, {"high", high}});
     }
 }

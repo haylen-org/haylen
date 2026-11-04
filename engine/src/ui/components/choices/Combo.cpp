@@ -49,10 +49,12 @@ void Combo::render(Context& context, const math::Rect& bounds) {
     Widgets::arrow(context, center, chevron * 0.5F, ImGuiDir_Down, context.getColor(Theme::Color::TextMuted));
 
     if (state.clicked) {
+        context.playSound(Theme::Sound::Press);
         ImGui::OpenPopup("##list");
     }
     if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##list", items, selected, bounds, bounds.width); picked && *picked != selected) {
         selected = *picked;
+        context.playSound(Theme::Sound::Toggle);
         context.emit(*this, "change", {{"value", selected}});
     }
 }

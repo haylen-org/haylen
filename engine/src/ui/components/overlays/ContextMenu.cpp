@@ -42,6 +42,7 @@ void ContextMenu::render(Context& context, const math::Rect& bounds) {
         openedAt = *opening;
     }
     if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##context", items, {}, {openedAt.x, openedAt.y, 0.0F, 0.0F}, 0.0F)) {
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "select", {{"item", *picked}});
     }
 }

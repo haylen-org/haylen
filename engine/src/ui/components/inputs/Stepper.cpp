@@ -131,6 +131,7 @@ void Stepper::step(Context& context, int direction) {
         next = std::clamp(next, minimum, maximum);
         if (next != value) {
             value = next;
+            context.playSound(Theme::Sound::Step);
             context.emit(*this, "change", {{"value", value}});
         }
         return;
@@ -146,6 +147,7 @@ void Stepper::step(Context& context, int direction) {
         const ChoiceItem& item = items[static_cast<std::size_t>((other % count + count) % count)];
         if (item.enabled) {
             selected = item.id;
+            context.playSound(Theme::Sound::Step);
             context.emit(*this, "change", {{"value", selected}});
             return;
         }

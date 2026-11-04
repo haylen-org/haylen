@@ -44,6 +44,7 @@ void Slider::render(Context& context, const math::Rect& bounds) {
         value = moved;
     }
     if (changed) {
+        context.playSound(Theme::Sound::Step);
         context.emit(*this, "change", {{"value", value}});
     }
     if (takeFocusRequest()) {

@@ -145,6 +145,7 @@ bool FocusNavigator::takePageAction(const NavigationInput& navigation, const Tar
         }
         if (const std::optional<std::size_t> scope = findCollection(drawn.nodes[current.node].scope)) {
             ringVisible = true;
+            navigated = true;
             pendingPaging = {drawn.scopes[*scope].id, Paging{.kind = kind}};
         }
         return true;
@@ -304,6 +305,7 @@ void FocusNavigator::endDraw() {
     popupsAtEnd = g.OpenPopupStack.Size;
     popupAtEnd = popupsAtEnd > 0 ? g.OpenPopupStack.back().Window : nullptr;
     activeAtEnd = g.ActiveId;
+    arrival = 0;
 
     if (find(drawn, g.NavId) == nullptr && focusedItem != 0 && (g.NavId == focusedItem || g.NavId == 0)) {
         if (!hasTargets(focusedGui)) {
@@ -325,8 +327,10 @@ void FocusNavigator::endDraw() {
         if (owner != 0) {
             notify(owner, "focus");
         }
+        arrival = navigated ? owner : 0;
         focusedNode = owner;
     }
+    navigated = false;
     focusedItem = focused != nullptr ? focused->id : 0;
     focusedPlay = focused != nullptr && focused->play;
     focusedGui = node != nullptr ? node->gui : nullptr;
@@ -431,6 +435,14 @@ std::optional<FocusDirection> FocusNavigator::takeDirection(ImGuiID node) {
         return std::nullopt;
     }
     return std::exchange(pendingDirection, std::nullopt)->second;
+}
+
+bool FocusNavigator::takeArrival(ImGuiID node) noexcept {
+    if (node != arrival) {
+        return false;
+    }
+    arrival = 0;
+    return true;
 }
 
 std::vector<std::string_view> FocusNavigator::takeNotices(ImGuiID node) {
@@ -614,6 +626,7 @@ void FocusNavigator::switchFocus(const Target* source) {
         return;
     }
     ringVisible = true;
+    navigated = true;
     apply(*target);
 }
 
@@ -629,6 +642,7 @@ void FocusNavigator::move(const Target& source, FocusDirection direction) {
         pendingDirection = {node.id, direction};
         return;
     }
+    navigated = true;
 
     // A neighbor named explicitly wins over the search, and a node that names itself keeps the focus.
     const std::string& neighbor = node.neighbors[static_cast<std::size_t>(direction)];
@@ -665,6 +679,7 @@ void FocusNavigator::tab(const Target& source, bool backward) {
         ImGui::ClearActiveID();
     }
     ringVisible = true;
+    navigated = true;
     apply(next);
     if (next.inputable) {
         activate(next);
@@ -685,6 +700,7 @@ void FocusNavigator::enter(bool backward) {
         }
     }
     ringVisible = true;
+    navigated = true;
     apply(*chosen);
     if (chosen->inputable) {
         activate(*chosen);

@@ -20,6 +20,7 @@ void MenuButton::render(Context& context, const math::Rect& bounds) {
         ImGui::OpenPopup("##menu");
     }
     if (const std::optional<std::string> picked = PopupList::draw(context, popup, "##menu", items, {}, bounds, bounds.width)) {
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "select", {{"item", *picked}});
     }
 }

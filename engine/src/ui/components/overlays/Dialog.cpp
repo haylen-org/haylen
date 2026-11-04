@@ -262,6 +262,7 @@ void Dialog::drawContent(Context& context, const math::Rect& frame, const math::
         ImGui::PopID();
         if (pressed && open) {
             open = false;
+            context.playSound(Theme::Sound::Press);
             context.emit(*this, "answer", {{"button", button->id}});
         }
     }

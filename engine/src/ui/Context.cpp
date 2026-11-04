@@ -60,6 +60,9 @@ void Context::pushStyle(std::string_view themeName, const Style* style, bool dra
     if (!drawing) {
         return;
     }
+    if (style != nullptr) {
+        style->loadSounds(sources.soundFiles);
+    }
     ImGui::PushStyleVar(ImGuiStyleVar_DisabledAlpha, getMetric(Theme::Metric::DisabledOpacity));
 }
 
@@ -148,6 +151,26 @@ const Theme::Image* Context::getSurface(Theme::Surface role) const {
         }
     }
     return layers.front().theme->getSurface(role);
+}
+
+void Context::playSound(Theme::Sound role) const {
+    if (const Theme::Cue* cue = findSound(role)) {
+        sources.sounds(role, *cue);
+    }
+}
+
+// A style that sets the sound of an interaction gives its cue, or silence when it sets the interaction to play nothing.
+const Theme::Cue* Context::findSound(Theme::Sound role) const noexcept {
+    for (auto layer = layers.rbegin(); layer != layers.rend(); ++layer) {
+        if (layer->style != nullptr && layer->style->hasSound(role)) {
+            return layer->style->findSound(role);
+        }
+
+        if (layer->theme != nullptr) {
+            return layer->theme->getSound(role);
+        }
+    }
+    return layers.front().theme->getSound(role);
 }
 
 const std::string& Context::getFontName(Theme::Font role) const noexcept {

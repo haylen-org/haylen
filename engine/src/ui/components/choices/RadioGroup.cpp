@@ -53,6 +53,7 @@ void RadioGroup::render(Context& context, const math::Rect& bounds) {
         ImGui::PopID();
         if (picked && item.id != selected) {
             selected = item.id;
+            context.playSound(Theme::Sound::Toggle);
             context.emit(*this, "change", {{"value", item.id}});
         }
         cursor = horizontal ? math::Vec2{cursor.x + size.x + spacing, cursor.y} : math::Vec2{cursor.x, cursor.y + size.y};

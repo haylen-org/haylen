@@ -62,6 +62,7 @@ void Tabs::render(Context& context, const math::Rect& bounds) {
 
         if (state.clicked && !current) {
             selected = item.id;
+            context.playSound(Theme::Sound::Press);
             context.emit(*this, "select", {{"item", item.id}});
         }
     }

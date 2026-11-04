@@ -28,6 +28,7 @@ void FilterField::render(Context& context, const math::Rect& bounds) {
     Widgets::cross(context, center, icon * 0.15F, stroke, context.getColor(state.hovered ? Theme::Color::Text : Theme::Color::TextMuted));
     if (state.clicked) {
         value.clear();
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "change", {{"value", value}});
     }
 }

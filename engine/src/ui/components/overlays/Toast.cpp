@@ -365,6 +365,7 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
     ImGui::SetCursorScreenPos(ImGuiConverter::toImVec2(frame.getMin()));
     ImGui::SetNextItemAllowOverlap();
     if (ImGui::InvisibleButton("##body", ImGuiConverter::toImVec2(frame.getSize())) && !notice.swiping && !notice.leaving) {
+        context.playSound(Theme::Sound::Press);
         context.emit(*this, "click", describeNotice(notice));
         notice.leaving = true;
         notice.reason = Reason::Clicked;
@@ -386,6 +387,7 @@ void Toast::drawParts(Context& context, Notice& notice, const Layout& layout, ma
         }
         Typography::drawAligned(context, Theme::Font::Button, area, colors.ink, context.getText(shown.action), Alignment::Center);
         if (pressed.clicked && !notice.leaving) {
+            context.playSound(Theme::Sound::Press);
             context.emit(*this, "action", describeNotice(notice));
             notice.leaving = true;
             notice.reason = Reason::Action;

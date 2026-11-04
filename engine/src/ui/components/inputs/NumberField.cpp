@@ -67,11 +67,16 @@ void NumberField::render(Context& context, const math::Rect& bounds) {
     // Numeric keypads have no minus sign, so a field that takes negative numbers types on the text keyboard.
     const platform::TextInput::Keyboard keyboard = minimum < 0.0 ? platform::TextInput::Keyboard::Text : (decimals > 0 ? platform::TextInput::Keyboard::Decimal : platform::TextInput::Keyboard::Number);
     const TextEditor::Result typed = TextEditor::draw(context, middle, text, {.input = {.keyboard = keyboard, .returnKey = returnKey, .capitalization = platform::TextInput::Capitalization::None}, .focus = takeFocusRequest(), .centered = true});
+    if (typed.changed) {
+        context.playSound(Theme::Sound::Type);
+    }
+
     const bool editing = ImGui::IsItemActive();
     const bool committed = typed.submitted || ImGui::IsItemDeactivated();
     double next = value;
     if (lower || raise) {
         next = std::clamp(value + (raise ? step : -step), minimum, maximum);
+        context.playSound(Theme::Sound::Step);
     } else if (typed.changed || committed) {
         // A typed number inside the range counts at once, and one outside it waits until the editing ends, which brings it into the range.
         double parsed = 0.0;
