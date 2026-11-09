@@ -68,6 +68,7 @@ TEST_F(InspectorTest, EditsValuesThroughTheirSettersWithTheirChecks) {
     EXPECT_NE(fixture.lua("return run('set watched.camera.minZoom -1')").find("The smallest zoom must be above 0 and not above the largest zoom."), std::string::npos);
     EXPECT_NE(fixture.lua("return run('inspect nowhere')").find("The inspector has no root \"nowhere\"."), std::string::npos);
     EXPECT_NE(fixture.lua("return run('inspect watched.player.speed.deeper')").find("is of the type \"number\", which holds no \"deeper\"."), std::string::npos);
+    EXPECT_EQ(fixture.lua("run('set watched.player.items.1x knife') return player.items[1]"), "axe") << "A key that only starts with digits is a name.";
 }
 
 TEST_F(InspectorTest, HoldsWatchedValuesWeaklyAndStaysOffOutsideDevelopment) {

@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -50,6 +52,7 @@ class Inspector final {
     static void pushModuleField(lua_State* L, const char* module, const char* field, bool call);
     static void pushPath(lua_State* L, std::span<const std::string> path);
     static void pushKey(lua_State* L, int container, const std::string& key);
+    [[nodiscard]] static std::optional<std::int64_t> readIndex(std::string_view key) noexcept;
     [[nodiscard]] static Entry describe(lua_State* L, std::string key, int index, bool editable);
     [[nodiscard]] static std::string describeValue(lua_State* L, int index);
     [[nodiscard]] static std::string describeKey(lua_State* L, int index);

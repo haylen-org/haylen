@@ -48,14 +48,12 @@ std::vector<Inspector::Entry> Inspector::list(lua_State* L, std::span<const std:
     // Integer keys come first in their order, and names follow in the order of the alphabet.
     // clang-format off
     std::ranges::sort(entries, [](const Entry& left, const Entry& right) {
-        std::int64_t first = 0;
-        std::int64_t second = 0;
-        const bool leftNumber = std::from_chars(left.key.data(), left.key.data() + left.key.size(), first).ec == std::errc{};
-        const bool rightNumber = std::from_chars(right.key.data(), right.key.data() + right.key.size(), second).ec == std::errc{};
-        if (leftNumber != rightNumber) {
-            return leftNumber;
+        const std::optional<std::int64_t> first = readIndex(left.key);
+        const std::optional<std::int64_t> second = readIndex(right.key);
+        if (first.has_value() != second.has_value()) {
+            return first.has_value();
         }
-        return leftNumber ? first < second : left.key < right.key;
+        return first ? *first < *second : left.key < right.key;
     });
     // clang-format on
     return entries;
@@ -198,18 +196,28 @@ void Inspector::pushPath(lua_State* L, std::span<const std::string> path) {
 
 // A key that reads as an integer names the item of a sequence when the table holds no text key of that name.
 void Inspector::pushKey(lua_State* L, int container, const std::string& key) {
-    lua_Integer number = 0;
-    const bool numeric = std::from_chars(key.data(), key.data() + key.size(), number).ec == std::errc{};
-    if (numeric && lua_istable(L, container)) {
+    const std::optional<std::int64_t> number = readIndex(key);
+    if (number && lua_istable(L, container)) {
         lua_pushlstring(L, key.data(), key.size());
         if (lua_rawget(L, container) == LUA_TNIL) {
             lua_pop(L, 1);
-            lua_pushinteger(L, number);
+            lua_pushinteger(L, *number);
             return;
         }
         lua_pop(L, 1);
     }
     lua_pushlstring(L, key.data(), key.size());
+}
+
+// Only a key that is a whole number throughout names an integer key, so a name such as `2x` stays a name.
+std::optional<std::int64_t> Inspector::readIndex(std::string_view key) noexcept {
+    std::int64_t number = 0;
+    const char* end = key.data() + key.size();
+    const std::from_chars_result read = std::from_chars(key.data(), end, number);
+    if (read.ec != std::errc{} || read.ptr != end) {
+        return std::nullopt;
+    }
+    return number;
 }
 
 Inspector::Entry Inspector::describe(lua_State* L, std::string key, int index, bool editable) {
