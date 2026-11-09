@@ -1949,6 +1949,24 @@ class PluginReferenceTest(unittest.TestCase):
         self.assertEqual(json.loads((root / "assets" / haylen.ANDROID_PLUGINS_FILE).read_text())["plugins"][0]["parameters"], values)
         self.assertEqual(haylen.write_web_plugins(haylen.App(self.app, "web"), self.scratch / "site")[0]["parameters"], values)
 
+    def test_plugin_add_references_a_folder_by_its_short_path_through_symbolic_links(self):
+        self.write_plugin(self.scratch / "real" / "camera", "camera")
+        (self.scratch / "real" / "apps").mkdir()
+        shutil.move(self.app, self.scratch / "real" / "apps" / "app")
+        (self.scratch / "linked").symlink_to(self.scratch / "real")
+        self.app.symlink_to(self.scratch / "real" / "apps" / "app")
+        self.write_app({})
+
+        # The app and the plugin are named through other links than the ones they lie behind, as "/tmp" and "/private/tmp" of macOS.
+        haylen.command_plugin_add(haylen.build_parser().parse_args(["plugin", "add", str(self.scratch / "linked" / "camera"), "--reference", "--app", str(self.app)]))
+        self.assertEqual(json.loads((self.app / "app.json").read_text())["plugins"]["camera"], {"path": "../../camera"})
+        self.assertEqual(haylen.App(self.app, "web").plugins[0].folder, self.scratch / "real" / "camera")
+
+        # A folder that shares only the root of the file system with the app stays absolute, since a path through the root breaks once the app moves.
+        far = Path("/haylen-plugins/camera").resolve()
+        self.assertEqual(haylen.app_relative(Path("/haylen-apps/app"), far), far.as_posix())
+        self.assertEqual(haylen.app_relative(Path("/haylen-apps/app"), Path("/haylen-apps/plugins/camera")), "../plugins/camera")
+
     def test_plugin_add_refuses_an_entry_whose_values_lie_outside_its_parameters(self):
         far = self.write_plugin(self.scratch / "far-plugin", "far", {"prefetchPacks": {"type": "array", "default": [], "description": "Packs."}})
         self.write_app({"far": {"prefetchPacks": ["intro"]}})

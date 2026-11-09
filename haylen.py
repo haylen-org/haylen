@@ -6306,11 +6306,12 @@ def is_git_repository(value: str) -> bool:
 
 
 def app_relative(app: Path, path: Path) -> str:
-    """Writes a path for `app.json` relative to the app folder, so the app and its plugins move together between machines, or absolute on another drive of Windows, which no relative path reaches."""
-    try:
-        return Path(os.path.relpath(path, app)).as_posix()
-    except ValueError:
-        return path.as_posix()
+    """Writes a path for `app.json` relative to the app folder, so the app and its plugins move together between machines. Both sides resolve their symbolic links first, such as `/tmp` of macOS, which leads to `/private/tmp`. A path that shares no folder with the app but the root of the file system, or lies on another drive of Windows, stays absolute, since a relative path through the root breaks once the app moves."""
+    folder = app.resolve()
+    target = path.resolve()
+    if target.anchor != folder.anchor or os.path.commonpath([folder, target]) == folder.anchor:
+        return target.as_posix()
+    return Path(os.path.relpath(target, folder)).as_posix()
 
 
 def command_plugin_add(args: argparse.Namespace) -> None:

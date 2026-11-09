@@ -323,7 +323,7 @@ A `file` parameter is a path relative to the app folder. Files such as `Services
 
 ### References
 
-A plugin that lives outside the app, such as one that several apps share or one that its author works on next to an app, stays where it is. The entry of `app.json` names its folder with `path`, or its repository with `git` and `ref`. A repository that holds several plugins, one in each folder, adds `path` with the folder of the plugin, so the repository has one checkout for all of them. The command `plugin add` with `--reference` writes such an entry, with the path relative to the app folder:
+A plugin that lives outside the app, such as one that several apps share or one that its author works on next to an app, stays where it is. The entry of `app.json` names its folder with `path`, or its repository with `git` and `ref`. A repository that holds several plugins, one in each folder, adds `path` with the folder of the plugin, so the repository has one checkout for all of them. The command `plugin add` with `--reference` writes such an entry, with the path relative to the app folder after it resolved the symbolic links of both, such as `/tmp` of macOS, which leads to `/private/tmp`. A folder that shares no folder with the app but the root of the file system, or lies on another drive of Windows, stays absolute, since a path through the root breaks once the app moves:
 
 ```sh
 haylen plugin add ../plugins/camera --reference
