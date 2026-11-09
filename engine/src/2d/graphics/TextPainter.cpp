@@ -69,7 +69,7 @@ void TextPainter::paintText(const text::Layout& layout, math::Vec2 position, con
         paintPlainGlyphs(layout, style, Layer::Outline);
     }
     paintPlainGlyphs(layout, style, Layer::Fill);
-    paintBoxes(layout, false);
+    paintBoxes(layout, false, style.color);
 }
 
 // A synthetic bold bitmap glyph draws a second copy a native pixel to the right. Only distance field glyphs have outlines, and color glyphs fill with their own colors in the alpha of the text.
@@ -167,7 +167,7 @@ void TextPainter::paintRichText(const text::Layout& layout, math::Vec2 position,
     blockRotation = 0.0F;
     blockTint = tint;
     pixels.reset();
-    paintBoxes(layout, true);
+    paintBoxes(layout, true, blockTint);
     paintGlows(layout);
     paintShadows(layout);
     for (const text::Layout::Image& image : layout.images) {
@@ -177,15 +177,15 @@ void TextPainter::paintRichText(const text::Layout& layout, math::Vec2 position,
     }
     paintOutlines(layout);
     paintGlyphs(layout);
-    paintBoxes(layout, false);
+    paintBoxes(layout, false, blockTint);
 }
 
-void TextPainter::paintBoxes(const text::Layout& layout, bool underText) {
+void TextPainter::paintBoxes(const text::Layout& layout, bool underText, math::Color tint) {
     using Kind = text::Layout::Box::Kind;
     for (const text::Layout::Box& box : layout.boxes) {
         const bool under = box.kind == Kind::Background || box.kind == Kind::CellBackground;
         if (box.visible && under == underText && !box.rect.isEmpty()) {
-            add(Program::Sprite, white, GpuInstance::make(*white.getResource(), {.position = place(box.rect.getMin()), .size = box.rect.getSize() * blockScale, .pivot = {}, .rotation = blockRotation, .color = box.color * blockTint}));
+            add(Program::Sprite, white, GpuInstance::make(*white.getResource(), {.position = place(box.rect.getMin()), .size = box.rect.getSize() * blockScale, .pivot = {}, .rotation = blockRotation, .color = box.color * tint}));
         }
     }
 }

@@ -258,6 +258,21 @@ TEST_F(TextPainterTest, StretchesPlainTextByTheScaleOfItsStyle) {
     }
 }
 
+// A plain layout serves its text in every color, so its underline takes the color of each style that draws it.
+TEST_F(TextPainterTest, DrawsTheLinesOfPlainTextInTheColorOfTheStyle) {
+    text::Font& font = *fixture.engine().getDefaultFont();
+    const graphics::Texture& white = fixture.engine().getGraphics().getWhiteTexture();
+    for (const math::Color color : {math::Color{1.0F, 0.0F, 0.0F, 1.0F}, math::Color{0.0F, 0.0F, 1.0F, 1.0F}}) {
+        const text::Style style{.size = 16.0F, .color = color, .underline = true};
+        TextPainter painter = makePainter();
+        painter.paintText(*font.layout("Line", style), {}, style, {});
+        const TextPainter::Batch& line = painter.getBatches().back();
+        ASSERT_EQ(line.texture, white);
+        ASSERT_EQ(line.instances.size(), 1U);
+        EXPECT_EQ(line.instances[0].color, GpuInstance::make(*white.getResource(), {.color = color}).color);
+    }
+}
+
 // On a display with two pixels a unit, snapped text moves as one block to the nearest pixel column and puts every baseline on the nearest pixel row.
 TEST_F(TextPainterTest, SnapsSmallTextToWholePixels) {
     text::Font& font = *fixture.engine().getDefaultFont();

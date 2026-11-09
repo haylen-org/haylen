@@ -38,7 +38,8 @@ Layout LayoutBuilder::layoutPlainText(std::string_view text, const Style& style,
         start = end + 1;
     }
 
-    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = style.color, .maxWidth = style.maxWidth, .balance = style.balance, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .ligatures = style.ligatures, .code = style.code};
+    // A plain layout serves its text in every color, so its lines are white and take the color of the style as they draw.
+    const RichTextOptions plainOptions{.size = style.size, .bold = style.bold, .italic = style.italic, .color = math::Color::white(), .maxWidth = style.maxWidth, .balance = style.balance, .align = style.align, .direction = style.direction, .language = style.language, .lineSpacing = style.lineSpacing, .ligatures = style.ligatures, .code = style.code};
     return LayoutBuilder(plain, plainOptions, nullptr, baseFamily, baseFont).build();
 }
 

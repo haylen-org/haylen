@@ -72,7 +72,7 @@ class TextPainter final {
     void add(Program program, const graphics::Texture& texture, const GpuInstance& instance);
     void addColorGlyph(const text::Layout::Glyph& glyph, SpriteInstance instance);
     void paintPlainGlyphs(const text::Layout& layout, const text::Style& style, Layer layer);
-    void paintBoxes(const text::Layout& layout, bool underText);
+    void paintBoxes(const text::Layout& layout, bool underText, math::Color tint);
     void paintGlows(const text::Layout& layout);
     void paintShadows(const text::Layout& layout);
     void paintOutlines(const text::Layout& layout);
