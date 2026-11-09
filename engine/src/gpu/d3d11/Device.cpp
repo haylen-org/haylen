@@ -519,6 +519,11 @@ bool Device::prepareSwapchain(SurfaceChain& chain) {
         return false;
     }
     HResult::check(result, "resize the swapchain");
+
+    // The driver keeps the buffers of every earlier size until the device is trimmed, which piles them up while a drag resizes the window every frame.
+    ComPtr<IDXGIDevice3> dxgiDevice;
+    HResult::check(device.As(&dxgiDevice), "reach the DXGI device to trim it");
+    dxgiDevice->Trim();
     makeSwapchainTargets(chain);
     return true;
 }

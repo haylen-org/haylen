@@ -57,7 +57,7 @@ A flip model swapchain holds one sample per pixel. A window with multisampling d
 
 A transparent window shows what lies behind it through the alpha of its pixels. Only a swapchain for composition keeps that alpha, so the devices show a transparent window through DirectComposition, which composites the frames over the desktop with premultiplied alpha. The window must have no redirection bitmap, which the platform asks for with the extended style `WS_EX_NOREDIRECTIONBITMAP`, or Windows draws an opaque background behind the frames.
 
-A window that changes size resizes the swapchain before its next frame. A minimized window has no drawable, so its passes into the swapchain record nothing until the window comes back. The platform can let go of the window and give a device a new one, and the device keeps every object it made.
+A window that changes size resizes the swapchain before its next frame. Direct3D 11 then trims its device, so the driver lets go of the buffers of the earlier sizes at once instead of keeping them while a drag resizes the window every frame. On a laptop with an NVIDIA GeForce MX110, a window that resized every frame for 20 seconds held 15 MB of dedicated GPU memory on average with the trim and 72 MB without it. Direct3D 12 has no such trim. A minimized window has no drawable, so its passes into the swapchain record nothing until the window comes back. The platform can let go of the window and give a device a new one, and the device keeps every object it made.
 
 ## Shaders
 
