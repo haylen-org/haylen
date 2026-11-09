@@ -2142,24 +2142,53 @@ Module.haylen = Module.haylen || {};
     // Takes 0 for landscape, 1 for portrait and 2 for any. Browsers refuse the lock outside fullscreen pages on phones, which leaves the orientation free.
     // Fullscreen covers the element that holds the canvas and the overlay of the runtime, so the fields and the views of plugins stay over the app. Browsers grant it only shortly after an input of the person, and Safari before 16.4 names it with its prefix.
     // The Fullscreen API takes the screen to cover once the person let the page see every screen, and a page that is fullscreen on another screen moves there.
-    haylen.setFullscreen = function (id, value, display) {
-        settleGatedCall(id, async () => {
-            const holder = Module.canvas.parentElement;
-            const current = document.fullscreenElement || document.webkitFullscreenElement;
-            const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
-            if (value && (!current || target !== undefined)) {
-                if (!holder.requestFullscreen && !holder.webkitRequestFullscreen) {
-                    return { state: "unsupported", message: "The browser has no Fullscreen API." };
-                }
-                try {
-                    await (holder.requestFullscreen ? holder.requestFullscreen(target !== undefined ? { screen: target } : {}) : holder.webkitRequestFullscreen());
-                } catch (error) {
-                    return { state: "denied", message: "The browser refused fullscreen: " + error.message + " Browsers go fullscreen only shortly after an input of the person, such as a click or a key." };
-                }
-            } else if (!value && current) {
-                await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
+    const changeFullscreen = async (value, display) => {
+        const holder = Module.canvas.parentElement;
+        const current = document.fullscreenElement || document.webkitFullscreenElement;
+        const target = pageScreens.details !== null ? pageScreens.details.screens.find((shown) => screenId(shown) === display) : undefined;
+        if (value && (current !== holder || target !== undefined)) {
+            if (!holder.requestFullscreen && !holder.webkitRequestFullscreen) {
+                return { state: "unsupported", message: "The browser has no Fullscreen API." };
             }
-            return { state: "granted" };
+            try {
+                await (holder.requestFullscreen ? holder.requestFullscreen(target !== undefined ? { screen: target } : {}) : holder.webkitRequestFullscreen());
+            } catch (error) {
+                return { state: "denied", message: "The browser refused fullscreen: " + error.message + " Browsers go fullscreen only shortly after an input of the person, such as a click or a key." };
+            }
+        } else if (!value && current === holder) {
+            await (document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen());
+        }
+        return { state: "granted" };
+    };
+
+    // The app is fullscreen while the element that holds the canvas and the overlay covers the screen.
+    haylen.isFullscreen = function () {
+        return (document.fullscreenElement || document.webkitFullscreenElement) === Module.canvas.parentElement;
+    };
+
+    // A newer change replaces the change that waits for the browser, whose call the page denies, and starts once the browser settled that change, so it starts from the mode that change left.
+    let fullscreenChange = null;
+    haylen.setFullscreen = function (id, value, display) {
+        const previous = fullscreenChange;
+        if (previous !== null) {
+            answerGatedCall(previous.id, { state: "denied", message: "A newer change of fullscreen replaced this one before the window finished it." });
+        }
+        const change = { id, settled: null };
+        change.settled = (async () => {
+            if (previous !== null) {
+                await previous.settled.catch(() => undefined);
+            }
+            return changeFullscreen(value, display);
+        })();
+        fullscreenChange = change;
+        settleGatedCall(id, async () => {
+            try {
+                return await change.settled;
+            } finally {
+                if (fullscreenChange === change) {
+                    fullscreenChange = null;
+                }
+            }
         });
     };
 

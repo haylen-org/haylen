@@ -877,6 +877,10 @@ WEB_WAKE_LOCK_STEPS = {
     "missing": ["ready", "warned", "runs on"],
 }
 WEB_WAKE_LOCK_BROWSERS = {"granted": "grants the wake lock", "refused": "refuses the wake lock", "missing": "has no Screen Wake Lock API"}
+# The fullscreen check of the web: an app that covers the screen, leaves fullscreen and asks for both at once at its keys, whose page a headless browser opens. Each promise settles once the window reports the mode it asked for, and a change that a newer one replaces fails with the code "denied" while the page ends in the mode of the newer change.
+WEB_FULLSCREEN_APP = ENGINE_DIR / "tests" / "data" / "web-fullscreen"
+WEB_FULLSCREEN_DRIVER = ENGINE_DIR / "tests" / "web" / "fullscreen-check.mjs"
+WEB_FULLSCREEN_STEPS = ["ready", "entered", "heard", "left", "replaced", "replacing", "ends windowed"]
 # The plugin check of the web: an app whose plugin requires a feature that the permissions policy of the page refuses and one that the policy does not govern, whose page a headless browser opens with that policy. The page must lack the refused feature alone, since a feature that the policy does not govern is left to the error of its API. The plugin also throws an error of the page, whose numeric code is no code of a failure, so its call must fail with the code "exception", and requires a permission whose request ends without a prompt, which must fail with the code "denied" and the sentence that says so. Last it requires a permission that it never registered, which must fail with the code "unsupported" as on Apple platforms.
 WEB_PLUGINS_APP = ENGINE_DIR / "tests" / "data" / "web-plugins"
 WEB_PLUGINS_DRIVER = ENGINE_DIR / "tests" / "web" / "plugin-check.mjs"
@@ -912,7 +916,7 @@ def free_port() -> int:
 
 
 def command_test_web(args: argparse.Namespace) -> None:
-    """Runs the error screen check, the wake lock check, the plugin check and the memory check of the web in headless browsers, whose pages draw through the graphics API that "--graphics-api" names, or the error screen check on each one and the other checks through the first that starts."""
+    """Runs the error screen check, the wake lock check, the fullscreen check, the plugin check and the memory check of the web in headless browsers, whose pages draw through the graphics API that "--graphics-api" names, or the error screen check on each one and the other checks through the first that starts."""
     if args.graphics_api is not None and args.graphics_api not in WEB_GRAPHICS_APIS:
         raise BuildError(f'The checks of the web draw through "{WEB_GRAPHICS_APIS[0]}" or "{WEB_GRAPHICS_APIS[1]}", not "{args.graphics_api}".')
     args.config = "Release"
@@ -922,6 +926,7 @@ def command_test_web(args: argparse.Namespace) -> None:
     ensure_artifacts(target.artifacts, args.engine_config, args.jobs)
     check_web_error_screen(args, target)
     check_web_wake_lock(args, target)
+    check_web_fullscreen(args, target)
     check_web_plugins(args, target)
     check_web_memory_pages(args, target)
 
@@ -976,6 +981,21 @@ def check_web_wake_lock(args: argparse.Namespace, target) -> None:
         server.shutdown()
         server.server_close()
     terminal.success("The page took the wake lock while the app kept the screen on, gave it up when it hid, took it again when it showed and released it when the app let the screen sleep, and a browser that refused it or lacked it only warned.")
+
+
+def check_web_fullscreen(args: argparse.Namespace, target) -> None:
+    """Builds the site of the fullscreen check app, opens it in a headless browser, and stops when the page misses a step or reports an error."""
+    site = target.prepare(App(WEB_FULLSCREEN_APP, target.plugins), args)
+    server = serve_site(site)
+    try:
+        with headless_browser([], "the fullscreen check of the web") as debugging:
+            terminal.step("Running the fullscreen check of the web in a headless browser")
+            report = json.loads(capture([emsdk_node(), WEB_FULLSCREEN_DRIVER, str(debugging), f"http://127.0.0.1:{server.server_address[1]}/{web_page_query(args)}"]))
+        check_web_page_steps(report, WEB_FULLSCREEN_STEPS, "The page of the fullscreen check")
+    finally:
+        server.shutdown()
+        server.server_close()
+    terminal.success("Each change of fullscreen settled once the window reported its mode, and a change that a newer one replaced failed with the code \"denied\" while the page ended in the mode of the newer one.")
 
 
 def check_web_plugins(args: argparse.Namespace, target) -> None:

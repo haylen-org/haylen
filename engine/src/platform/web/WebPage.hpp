@@ -26,7 +26,10 @@ class WebPage final {
     // Returns the CSS selector of the canvas the page handed to the runtime as `Module.canvas`.
     [[nodiscard]] static std::string getCanvasSelector();
 
-    // Puts the element that holds the canvas and the overlay of the page in fullscreen on the screen with the id, or takes the page out of it, and answers once the browser settled it. The window of SDL follows the change, so it reports whether the page is fullscreen.
+    // Whether the element that holds the canvas and the overlay of the page is fullscreen. SDL follows only a fullscreen of the canvas itself, so the page reports it.
+    [[nodiscard]] static bool isFullscreen() noexcept;
+
+    // Puts the element that holds the canvas and the overlay of the page in fullscreen on the screen with the id, or takes the page out of it, and answers once the browser settled it. A newer change replaces one that the browser has not settled, which answers `Denied`, and starts once the browser settled it.
     static void setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback);
 
     // Keeps the screen on through a wake lock of the browser while the page shows, or lets it go, and answers with the first request of the lock.

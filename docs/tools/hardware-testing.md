@@ -67,7 +67,7 @@ The web runs in Chrome, which `haylen.py` starts without a window. Install Chrom
 | What | Command |
 | --- | --- |
 | GPU tests on WebGPU and WebGL2 | `haylen test --gpu --platform web` builds the GPU tests to WebAssembly, opens them in a page and reads the results back. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. |
-| The checks of the page | `haylen test --platform web` runs the error screen check, the wake lock check, the plugin check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
+| The checks of the page | `haylen test --platform web` runs the error screen check, the wake lock check, the fullscreen check, the plugin check and the memory check, which only a browser can show. Add `--graphics-api webGpu` or `--graphics-api webGl2` for one API. Headless Chrome on Linux cannot present a WebGPU canvas, so there they take `--graphics-api webGl2`. |
 | The test project | `haylen run samples/tests --platform web` serves the page. Open the address it prints, add `?graphicsApi=webGl2` to choose WebGL2, and start run-all from the menu. |
 
 Headless Chrome draws through SwiftShader, its software rasterizer, so its GPU times measure the processor. To draw on the real GPU of the machine, start Chrome with `--enable-gpu`, and with `--use-angle=metal` on a Mac, then open the same pages. Safari and Firefox open the page of `haylen run` too, for a check by hand.

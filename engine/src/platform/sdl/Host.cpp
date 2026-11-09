@@ -51,7 +51,11 @@ float Host::getDpiScale() const noexcept {
 }
 
 bool Host::isFullscreen() const noexcept {
+#if defined(__EMSCRIPTEN__)
+    return WebPage::isFullscreen();
+#else
     return (SDL_GetWindowFlags(runtime.getWindow().get()) & SDL_WINDOW_FULLSCREEN) != 0U;
+#endif
 }
 
 // Desktops open a window of SDL on the display of the output, iPhones and iPads show it in the scene of an external display, a page opens a window of the browser on the screen of the output, and the other platforms end it with the reason.
@@ -113,10 +117,6 @@ void Host::setFullscreen(bool value, std::function<void(Permission::Answer answe
         return;
     }
 #if defined(__EMSCRIPTEN__)
-    if (isFullscreen() == value) {
-        callback({.state = Permission::State::Granted});
-        return;
-    }
     WebPage::setFullscreen(value, getDisplayId(), std::move(callback));
 #else
     if (!fullscreenRequest.isPending() && isFullscreen() == value) {

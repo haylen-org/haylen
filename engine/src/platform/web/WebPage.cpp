@@ -61,6 +61,10 @@ EM_JS(void, haylen_js_set_fullscreen, (double id, int value, const char* display
     Module.haylen.setFullscreen(id, value !== 0, UTF8ToString(display));
 });
 
+EM_JS(int, haylen_js_fullscreen, (), {
+    return Module.haylen.isFullscreen() ? 1 : 0;
+});
+
 EM_JS(void, haylen_js_keep_screen_on, (double id, int value), {
     Module.haylen.keepScreenOn(id, value !== 0);
 });
@@ -113,6 +117,10 @@ template <typename Body> int WebPage::answer(Body&& body) {
         lastError = error.what();
         return -1;
     }
+}
+
+bool WebPage::isFullscreen() noexcept {
+    return haylen_js_fullscreen() != 0;
 }
 
 void WebPage::setFullscreen(bool value, std::string_view display, std::function<void(Permission::Answer answer)> callback) {
