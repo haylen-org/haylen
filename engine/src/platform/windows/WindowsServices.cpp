@@ -114,6 +114,8 @@ void Services::setWindowStyle(const WindowStyle& value) {
     WindowsDesktop::setStyle(value);
 }
 
+void Services::setWindowBackground(const math::Color&) {}
+
 math::Rect Services::getWindowFrame() {
     return WindowsDesktop::getFrame();
 }

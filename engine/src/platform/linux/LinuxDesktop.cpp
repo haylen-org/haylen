@@ -12,6 +12,7 @@
 #include "haylen/platform/Event.hpp"
 #include "platform/NativeWindow.hpp"
 #include "platform/Player.hpp"
+#include "platform/linux/LinuxVisualColor.hpp"
 
 // Xlib defines macros such as `None` and `Bool`, so it comes after the engine headers that use those names.
 #include <X11/Xatom.h>
@@ -215,6 +216,22 @@ void LinuxDesktop::applySizeHints(::Display* display, ::Window window, int width
         hints.min_height = hints.max_height = height;
     }
     XSetWMNormalHints(display, window, &hints);
+}
+
+// The server fills a window with its background as it maps it, before the app presented a frame into it, and with or without a compositor it keeps nothing that the app presented while the window was hidden. A window of a visual of another class than true color keeps its background. A window on Wayland, which shows only the frames of the app, has none.
+void LinuxDesktop::setBackground(const math::Color& value) {
+    ::Display* display = getDisplay();
+    if (display == nullptr) {
+        return;
+    }
+    const ::Window window = getWindow();
+    XWindowAttributes attributes{};
+    if (XGetWindowAttributes(display, window, &attributes) == 0 || attributes.visual == nullptr || attributes.visual->c_class != TrueColor) {
+        return;
+    }
+    const Visual& visual = *attributes.visual;
+    XSetWindowBackground(display, window, LinuxVisualColor::toPixel(value, visual.red_mask, visual.green_mask, visual.blue_mask));
+    XFlush(display);
 }
 
 // Motif hints are how X11 apps ask window managers for a window without decorations.

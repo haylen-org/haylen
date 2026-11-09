@@ -312,6 +312,11 @@ void Player::initialize() {
     Services::watchWindow();
     NativeApi::setWindow(Services::getNativeWindow());
     Player& runtime = getCurrent();
+    // The window shows the launch color of the app until the app draws into it, and a transparent window keeps the desktop showing through.
+    const core::AppConfig& config = runtime.pending.config;
+    if (!config.window.transparent) {
+        Services::setWindowBackground(config.splash.background);
+    }
     runtime.initialized = true;
     runtime.launch();
 }

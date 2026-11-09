@@ -101,6 +101,8 @@ bool Services::hasDesktop() noexcept {
 
 void Services::setWindowStyle(const WindowStyle&) {}
 
+void Services::setWindowBackground(const math::Color&) {}
+
 // The window of the activity fills its display.
 math::Rect Services::getWindowFrame() {
     return {0.0F, 0.0F, NativeWindow::getFramebufferSize().x / NativeWindow::getScale(), NativeWindow::getFramebufferSize().y / NativeWindow::getScale()};

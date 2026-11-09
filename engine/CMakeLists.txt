@@ -841,6 +841,7 @@ add_library(haylen-platform STATIC
   src/platform/android/AndroidYuvImage.cpp
   src/platform/linux/LinuxFilePattern.cpp
   src/platform/linux/LinuxSystemReader.cpp
+  src/platform/linux/LinuxVisualColor.cpp
   src/platform/MemoryWarning.cpp
   src/platform/ReportedState.cpp
   src/platform/SupportedOrientations.cpp

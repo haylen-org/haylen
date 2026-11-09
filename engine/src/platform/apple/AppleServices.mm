@@ -150,6 +150,8 @@ bool Services::hasDesktop() noexcept {
     return TARGET_OS_OSX != 0;
 }
 
+void Services::setWindowBackground(const math::Color&) {}
+
 void Services::setWindowStyle([[maybe_unused]] const WindowStyle& value) {
 #if TARGET_OS_OSX
     AppleDesktop::setStyle(value);

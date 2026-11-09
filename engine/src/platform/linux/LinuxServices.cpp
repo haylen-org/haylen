@@ -96,6 +96,10 @@ void Services::setWindowStyle(const WindowStyle& value) {
     LinuxDesktop::setStyle(value);
 }
 
+void Services::setWindowBackground(const math::Color& value) {
+    LinuxDesktop::setBackground(value);
+}
+
 math::Rect Services::getWindowFrame() {
     return LinuxDesktop::getFrame();
 }

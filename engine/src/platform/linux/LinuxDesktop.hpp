@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 
+#include "haylen/math/Color.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Display.hpp"
@@ -20,6 +21,7 @@ namespace haylen::platform {
 class LinuxDesktop final {
   public:
     static void setStyle(const WindowStyle& value);
+    static void setBackground(const math::Color& value);
     [[nodiscard]] static math::Rect getFrame();
 
     // The title of the window and its top left corner on the screen in pixels, which screen readers read.

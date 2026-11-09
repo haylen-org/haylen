@@ -13,6 +13,7 @@
 
 #include "haylen/core/Json.hpp"
 #include "haylen/input/GamepadState.hpp"
+#include "haylen/math/Color.hpp"
 #include "haylen/math/Insets.hpp"
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
@@ -67,6 +68,9 @@ class Services final {
 
     // Gives the window the decorations, the level and the taskbar presence of the style, which also decides whether the player can resize it. Platforms whose window always fills the screen ignore it.
     static void setWindowStyle(const WindowStyle& value);
+
+    // Gives the window the color it shows where the app has not drawn yet, on a system that paints a window itself as it shows it, as X11 does. The other systems show the frames that the app drew.
+    static void setWindowBackground(const math::Color& value);
 
     // The content area of the window in desktop points, with y down from the top left corner of the primary monitor.
     [[nodiscard]] static math::Rect getWindowFrame();

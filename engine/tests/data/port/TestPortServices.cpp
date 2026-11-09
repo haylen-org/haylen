@@ -49,6 +49,8 @@ bool Services::hasDesktop() noexcept {
 
 void Services::setWindowStyle(const WindowStyle&) {}
 
+void Services::setWindowBackground(const math::Color&) {}
+
 math::Rect Services::getWindowFrame() {
     return {0.0F, 0.0F, TestPortWindow::kSize.x, TestPortWindow::kSize.y};
 }
