@@ -1421,6 +1421,24 @@ class CleanTest(unittest.TestCase):
         self.assertEqual(output.getvalue(), "")
 
 
+class CoverageTest(unittest.TestCase):
+    def test_the_report_reads_the_tests_by_the_name_of_their_executable_on_this_machine(self):
+        for system, executable in (("windows", "haylen-tests.exe"), ("linux", "haylen-tests")):
+            commands = []
+
+            # The run of the tests writes a profile, as the instrumented tests do.
+            def record(command: list, **_) -> None:
+                commands.append([str(part) for part in command])
+                if command[0] == "ctest":
+                    (Path(command[2]) / "coverage").mkdir(parents=True, exist_ok=True)
+                    (Path(command[2]) / "coverage" / "haylen-1.profraw").write_bytes(b"")
+
+            with tempfile.TemporaryDirectory() as scratch, mock.patch.object(haylen, "BUILD_ROOT", Path(scratch)), mock.patch.object(haylen, "host_name", return_value=system), mock.patch.object(haylen, "configure_command", return_value=(["cmake", "-B", "tree"], {})), mock.patch.object(haylen, "llvm_tool", side_effect=lambda name: name), mock.patch.object(haylen, "run", side_effect=record), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+                haylen.command_coverage(haylen.build_parser().parse_args(["coverage", "--jobs", "4"]))
+                binary = str(Path(scratch) / "coverage" / "bin" / executable)
+            self.assertEqual([command[2] for command in commands if command[0] == "llvm-cov"], [binary, binary])
+
+
 class PythonVersionTest(unittest.TestCase):
     def test_an_older_python_stops_with_the_version_it_needs(self):
         script = f"import runpy, sys; sys.version_info = (3, 11, 9); runpy.run_path({str(haylen.ROOT / 'haylen.py')!r})"

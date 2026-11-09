@@ -1710,7 +1710,7 @@ def command_coverage(args: argparse.Namespace) -> None:
     merged = profiles / "haylen.profdata"
     run([llvm_tool("llvm-profdata"), "merge", "-sparse", *raw, "-o", merged])
 
-    binary = directory / "bin" / "haylen-tests"
+    binary = directory / "bin" / executable_name("haylen-tests")
     ignore = r"(_deps|\.cache|engine/tests|engine/src/platform/(apple|android|web|windows|linux)|generated)"
     report = [llvm_tool("llvm-cov"), "report", binary, f"-instr-profile={merged}", f"-ignore-filename-regex={ignore}"]
     run(report, stream=True)
