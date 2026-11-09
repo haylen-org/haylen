@@ -40,10 +40,6 @@
     static void request(long, byte[]);
     static boolean isHeld(byte[]);
 }
--keep class dev.haylen.HaylenDialogs {
-    static void show(long, byte[], byte[]);
-    static void cancel(long);
-}
 
 -keep class dev.haylen.HaylenScreens {
     static void open(long, byte[], byte[], byte[], byte[][], long[], byte[], boolean);

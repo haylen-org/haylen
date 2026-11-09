@@ -16,7 +16,6 @@
 #include "platform/ScreenRelay.hpp"
 #include "platform/linux/LinuxAccessibility.hpp"
 #include "platform/linux/LinuxDesktop.hpp"
-#include "platform/linux/LinuxDialogs.hpp"
 #include "platform/linux/LinuxGlib.hpp"
 #include "platform/linux/LinuxLinks.hpp"
 #include "platform/linux/LinuxMonitors.hpp"
@@ -224,15 +223,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 // Linux has no decoder of video files that every distribution ships, as the video reference explains.
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
     return nullptr;
-}
-
-// Picked files are files of the computer, which the app reads where they are.
-void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path&) {
-    LinuxDialogs::show(id, request);
-}
-
-void Services::cancelDialog(std::uint64_t id) {
-    LinuxDialogs::cancel(id);
 }
 
 // Linux has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.

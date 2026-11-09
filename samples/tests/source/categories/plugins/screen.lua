@@ -1,6 +1,5 @@
--- The plugin opens a screen of its own, a UIKit controller or an AppKit sheet on Apple platforms, an AndroidX activity on Android, a popup page on the web and a native window over the window of the app on the desktops, and its answer reaches the call. Apple platforms add the same question in SwiftUI. The engine covers the app before the screen shows, so the app is inactive, halted and muted, and it draws nothing under the opaque screen. A second screen fails with `busy` while one shows, and a timer of the app gives a screen up while it shows, which closes it. A screen whose app restarts before it ends, the redirect screen of the web, whose page loads again, and the screen of an Android app whose process ended under it reach the next app as `screenRestored` with the state the app gave. A screen opened right in the answer of a message waits until the app is active and then opens.
+-- The plugin opens a screen of its own, a UIKit controller or an AppKit sheet on Apple platforms, an AndroidX activity on Android, a popup page on the web and a native window over the window of the app on the desktops, and its answer reaches the call. Apple platforms add the same question in SwiftUI. The engine covers the app before the screen shows, so the app is inactive, halted and muted, and it draws nothing under the opaque screen. A second screen fails with `busy` while one shows, and a timer of the app gives a screen up while it shows, which closes it. A screen whose app restarts before it ends, the redirect screen of the web, whose page loads again, and the screen of an Android app whose process ended under it reach the next app as `screenRestored` with the state the app gave.
 local async = require('async')
-local dialogs = require('haylen.dialogs')
 local haylen = require('haylen')
 local platform = require('haylen.platform')
 local ui = require('haylen.ui')
@@ -29,7 +28,6 @@ Screen.rows = {
     {key = 'restored', name = 'The next app hears "screenRestored"', waiting = 'Restart under it, answer the screen and open this test again.'},
     {key = 'redirect', name = 'The redirect comes back as "screenRestored"', waiting = 'Open by redirect, answer the page and open this test again.'},
     {key = 'swiftUI', name = 'The SwiftUI screen answers the call', waiting = 'Open in SwiftUI and answer or close it.'},
-    {key = 'dialog', name = 'A screen opens in the answer of a message', waiting = 'Open after a message, then answer the message and the screen.'},
 }
 
 function Screen:enter()
@@ -45,7 +43,6 @@ function Screen:enter()
             ui.button{id = 'restart', text = 'Restart under it', onClick = function() self:openAndRestart() end},
             ui.button{id = 'redirect', text = 'Open by redirect', enabled = haylen.platform == 'web', onClick = function() self:openRedirect() end},
             ui.button{id = 'swiftUI', text = 'Open in SwiftUI', enabled = Screen.apple[haylen.platform] ~= nil, onClick = function() self:openSwiftUI() end},
-            ui.button{id = 'dialog', text = 'Open after a message', onClick = function() self:openFromDialog() end},
             ui.label{text = 'Each platform opens its own kind of screen: a UIKit controller or an AppKit sheet, an AndroidX activity, a popup page of the browser or a window over the app. Only the web opens by redirect, and only Apple platforms open SwiftUI.', color = 'textMuted', font = 'caption'},
         },
     }
@@ -166,31 +163,6 @@ function Screen:openSwiftUI()
             self.results:failure('swiftUI', name, err)
         else
             self.results:set('swiftUI', 'pass', name, string.format('The person %s through "%s" in %s.', answer.confirmed and 'confirmed' or 'declined', answer.via, answer.language))
-        end
-    end)
-end
-
--- The answer of a message arrives while the app is still inactive on some platforms, a frame or two before its window has the focus again, and the screen that the answer opens waits until the app is active.
-function Screen:openFromDialog()
-    self:act(function()
-        local name = Screen.rows[8].name
-        self.results:set('dialog', 'waiting', name, 'Answer the message, and the screen opens.')
-        local button, failure = dialogs.message({title = 'Native screen', text = 'Open the screen of the plugin from the answer of this message?', buttons = {'Open the screen'}}):await()
-        if failure then
-            self.results:failure('dialog', name, failure)
-            return
-        elseif not button then
-            self.results:set('dialog', 'info', name, 'The message closed without an answer, so no screen opened.')
-            return
-        end
-        local state = haylen.appState()
-        local answer, err = demo.openScreen({state = {test = 'screen'}}):await()
-        if err and err.code == 'cancelled' then
-            self.results:set('dialog', 'pass', name, string.format('The screen opened in the answer of the message, while the app was "%s", and the person closed it.', state))
-        elseif err then
-            self.results:failure('dialog', name, err)
-        else
-            self.results:set('dialog', 'pass', name, string.format('The screen opened in the answer of the message, while the app was "%s", and the person %s.', state, answer.confirmed and 'confirmed' or 'declined'))
         end
     end)
 end

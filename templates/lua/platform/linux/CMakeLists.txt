@@ -41,8 +41,8 @@ set(CPACK_PACKAGE_ICON "${HAYLEN_APP_IDENTIFIER}.svg")
 set(CPACK_DEBIAN_FILE_NAME DEB-DEFAULT)
 set(CPACK_DEBIAN_PACKAGE_SECTION games)
 set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-# The engine loads GTK for the theme and the dialogs and the sound servers when it runs, so the package recommends them.
-set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "libgtk-3-0t64 | libgtk-3-0, libpulse0 | libasound2t64 | libasound2")
+# The engine loads GIO for the theme and the monitors of the system, and the sound servers, when it runs, so the package recommends them.
+set(CPACK_DEBIAN_PACKAGE_RECOMMENDS "libglib2.0-0t64 | libglib2.0-0, libpulse0 | libasound2t64 | libasound2")
 # The tool appimagetool looks for AppStream metadata only under its legacy name, while the metainfo keeps the current one.
 set(CPACK_APPIMAGE_NO_APPSTREAM ON)
 include(CPack)

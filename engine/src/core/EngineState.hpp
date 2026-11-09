@@ -40,7 +40,6 @@
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/Accessibility.hpp"
 #include "haylen/platform/Bridge.hpp"
-#include "haylen/platform/Dialogs.hpp"
 #include "haylen/platform/Displays.hpp"
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Orientation.hpp"
@@ -87,7 +86,6 @@ struct EngineState {
     std::unique_ptr<platform::Outputs> outputs;
     std::unique_ptr<platform::MediaSession> mediaSession;
     std::unique_ptr<platform::Accessibility> accessibility;
-    std::unique_ptr<platform::Dialogs> dialogs;
     std::unique_ptr<platform::Screens> screens;
     std::unique_ptr<graphics2d::Renderer> renderer;
 

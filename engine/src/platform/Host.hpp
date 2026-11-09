@@ -20,7 +20,6 @@
 #include "haylen/platform/AccessibilityElement.hpp"
 #include "haylen/platform/AccessibilitySettings.hpp"
 #include "haylen/platform/Battery.hpp"
-#include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/MediaSession.hpp"
 #include "haylen/platform/Output.hpp"
 #include "haylen/platform/Permission.hpp"
@@ -148,12 +147,6 @@ class Host : public Window {
 
     // The sentence that engine-owned network errors end with while the project of the app lacks what network access needs on this platform, such as the permission `INTERNET` that an Android app does not declare, or an empty text. The engine reads it when an app starts.
     [[nodiscard]] virtual std::string getNetworkRequirement() const = 0;
-
-    // Shows a native dialog, which the platform answers exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
-    virtual void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) = 0;
-
-    // Closes a dialog that the app gave up, where the platform can. Its answer is dropped either way.
-    virtual void cancelDialog(std::uint64_t id) = 0;
 
     // Opens the screen of a plugin over the app, which the engine covered already. The platform keeps the id, the plugin, the screen and the state where it keeps them across the end of the process, and ends the screen exactly once through `ScreenRelay::finish` with the same id, from any thread, with its result or a failure, such as `cancelled` when the user closed it, `notActive` when the platform cannot present it now or `unsupported`. A screen that ended after the process did reaches the next app through `ScreenRelay::restore` with the kept state.
     virtual void openScreen(const ScreenRequest& request) = 0;

@@ -754,7 +754,7 @@ HTTP requests with Varn "http" and WebSockets with "haylen.net" against public e
 
 #### Platform (PLT)
 
-The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", the native dialogs, every event of the platform, the displays and the outputs on other displays. The tests are in `source/categories/platform/`.
+The bridge to the native code of the plugin "platform-sample", what the window and the device report, "haylen.system", every event of the platform, the displays and the outputs on other displays. The tests are in `source/categories/platform/`.
 
 | Code | Test | What it shows | Unsupported on |
 | --- | --- | --- | --- |
@@ -762,7 +762,6 @@ The bridge to the native code of the plugin "platform-sample", what the window a
 | `PLT-002` | Custom handler | The method "platform-sample.echo", answered by Java, Objective-C or JavaScript, and its failure without a text. |  |
 | `PLT-003` | Window and device | Platform, graphics API, safe area, orientation, pointer, fullscreen, keeping the screen on, the on-screen keyboard and the network. |  |
 | `PLT-004` | System | What "haylen.system" tells about the device, its theme, battery, power saving and time zone with their changes, and a copy to the clipboard and a read of it. |  |
-| `PLT-005` | Dialogs | A native message, the pickers of files, of a place to save and of a folder, and a message that the app gives up. |  |
 | `PLT-006` | Event checklist | Every event that comes from the platform, marked live as it fires, and the events this platform never sends with the reason. |  |
 | `PLT-007` | Launching apps | A small app package that the test writes into its storage and launches in place of the project, whose quit starts the project again. |  |
 | `PLT-008` | Displays | Every display where it sits with its id, scale, rate and modes, the window moved to another display, fullscreen on it and in its lowest mode, and the events of the displays. |  |

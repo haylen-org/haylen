@@ -173,10 +173,10 @@ Any app opens the package that the first argument of its command line names inst
 
 C++ apps and the `haylen` player embed `engine/platform/windows/haylen.manifest`, the application manifest of the engine. The function `haylen_add_app` adds it to the sources of every Windows target, and the SDK installs it with the other platform files. It selects two things:
 
-- Version 6 of the Common Controls, where the task dialogs of [`haylen.dialogs`](../lua-api/dialogs.md) live.
+- Version 6 of the Common Controls, which gives the task dialogs and the controls that native libraries show, such as those of [plugins](../platform/plugins.md#the-desktop-part), the current look of Windows.
 - UTF-8 as the code page of the process, since the engine keeps every text and path in UTF-8.
 
-Lua apps embed the manifest of their Windows project instead, which selects the same, as the [Windows template](distribution.md#windows) describes. Linux apps load GIO for the theme and GTK 3 for the dialogs at run time, where the system has them, so building needs neither.
+Lua apps embed the manifest of their Windows project instead, which selects the same, as the [Windows template](distribution.md#windows) describes. Linux apps load GIO for the theme at run time, where the system has it, so building needs none.
 
 ### Apple bundles
 

@@ -20,7 +20,7 @@ class Promise;
 
 namespace haylen::platform {
 
-// Installs `haylen.platform`, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins, and the class of the calls that it and `haylen.dialogs` return.
+// Installs `haylen.platform`, which calls native methods, answers them from Lua, listens to native events and hands plugin modules the handles of their plugins, and the class of the platform calls, which other modules return too.
 class PlatformLua final {
   public:
     // A call as Lua holds it: the promise that its awaiters wait on, the error that it failed with and how the service that runs it gives it up, which returns whether it was still pending.

@@ -31,7 +31,6 @@ class Runtime;
 namespace haylen::platform {
 class Accessibility;
 class Bridge;
-class Dialogs;
 class Displays;
 class Outputs;
 class Host;
@@ -193,7 +192,6 @@ class Engine final {
     [[nodiscard]] platform::Outputs& getOutputs() noexcept;
     [[nodiscard]] platform::MediaSession& getMediaSession() noexcept;
     [[nodiscard]] platform::Accessibility& getAccessibility() noexcept;
-    [[nodiscard]] platform::Dialogs& getDialogs() noexcept;
     [[nodiscard]] platform::Screens& getScreens() noexcept;
     [[nodiscard]] plugins::PluginRegistry& getPlugins() noexcept;
     [[nodiscard]] const std::shared_ptr<text::Font>& getDefaultFont() noexcept;

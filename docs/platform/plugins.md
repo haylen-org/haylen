@@ -1553,7 +1553,7 @@ The activity is a `ComponentActivity`. So plugins start activities for a result,
 
 Sometimes the activity is gone by the time the other activity returns, after the activity was recreated or the process ended while the other app showed. Then Android keeps the result, and delivers it to the launcher with the same key of the new activity once that one starts. No call of the app waits for it then, and no app of the new process listens yet. So a plugin that reports such a result to the app sends it retained, which waits for the first listener.
 
-The activity registers launchers of its own, under keys that start with `haylen.`, for the [dialogs](../lua-api/dialogs.md) of the engine, the [permissions](#permissions) and the [screens](#android-screens) of plugins. So plugins keep their keys out of that prefix, and register the permissions they own with `context.registerPermission`, which the launcher of the engine asks for, instead of a launcher of their own.
+The activity registers launchers of its own, under keys that start with `haylen.`, for the [permissions](#permissions) and the [screens](#android-screens) of plugins. So plugins keep their keys out of that prefix, and register the permissions they own with `context.registerPermission`, which the launcher of the engine asks for, instead of a launcher of their own.
 
 ```kotlin
 override fun onActivityCreated(activity: HaylenActivity, savedInstanceState: Bundle?) {
@@ -1723,7 +1723,7 @@ The desktop part of a plugin is a C or C++ library in `native/`, which the [`nat
 - hears the errors of the app with `registerErrorHandler`;
 - feeds the [streams](#streams) of the plugin and opens its [screens](#desktop-screens) over the window of the app.
 
-Native libraries receive no parameters, since they have no context. So the Lua API passes what the library needs in its calls. The library and its handlers belong to the process, so the init function runs again after a restart and registers its handlers again. The [native code guide](native.md#libraries-that-talk-to-the-app) explains such libraries.
+Native libraries receive no parameters, since they have no context. So the Lua API passes what the library needs in its calls. The library and its handlers belong to the process, so the init function runs again after a restart and registers its handlers again. On Linux the frame thread dispatches the default main context of GLib once per frame without waiting, so a library that uses GLib or GTK 3 on the frame thread, such as for a dialog over the window of the app, receives their signals there. The [native code guide](native.md#libraries-that-talk-to-the-app) explains such libraries.
 
 ```c
 #include "haylen/platform/native/HaylenNative.h"
@@ -1848,7 +1848,7 @@ The method `confirm` is the [screen](#plugin-screens) of the plugin. It asks a q
 - **Apple platforms.** They show a UIKit controller of `NativeDemoConfirm.swift`, presented full screen, whose swipe and Menu button end the screen as `cancelled`, and an AppKit sheet on macOS. They add `swiftUI`, the same question in the SwiftUI view of `NativeDemoConfirmView.swift` through a hosting controller. It presents over the app on iOS, iPadOS and tvOS, and in a window of its own on Mac Catalyst and macOS. Its Close button ends the screen as `cancelled` with `fail`, which closes the window of Mac Catalyst too.
 - **Android.** Android registers the screen as the contract of `NativeDemoConfirm.kt`, which starts `NativeDemoConfirmActivity`, an `AppCompatActivity` of its own. Its Back button gives `null`, and so ends the screen as `cancelled`. A cancel of the app finishes the activity. When the process ended while it showed, its end reaches the next app as `screenRestored`.
 
-The Native screen test of the sample opens the screen and shows that the app was covered and drew nothing under it. It tries a second screen, which fails with `busy`, and cancels one from a timer while it shows. It restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state. It also opens the screen right in the answer of a message of [`haylen.dialogs`](../lua-api/dialogs.md), which waits until the app is active.
+The Native screen test of the sample opens the screen and shows that the app was covered and drew nothing under it. It tries a second screen, which fails with `busy`, and cancels one from a timer while it shows. It restarts the app under a screen with `haylen.requestRestart()`, so the next app receives `screenRestored` with the state.
 
 ### Native results
 

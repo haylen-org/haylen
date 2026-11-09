@@ -5353,7 +5353,7 @@ DESKTOP_LAYOUTS = {"windows": ("", "{executable}.exe"), "linux": ("lib/{executab
 LINUX_APP_FOLDERS = ("app", "lib")
 # What the engine needs from the application manifest of a Windows executable, each with the text that shows it in the manifest and the snippet that adds it.
 WINDOWS_MANIFEST_NEEDS = {
-    "the Common Controls of version 6, which the message dialogs of Haylen need": ("Microsoft.Windows.Common-Controls", '<dependency>\n  <dependentAssembly>\n    <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>\n  </dependentAssembly>\n</dependency>'),
+    "the Common Controls of version 6, which give the task dialogs and the controls that native libraries show the current look of Windows": ("Microsoft.Windows.Common-Controls", '<dependency>\n  <dependentAssembly>\n    <assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" version="6.0.0.0" processorArchitecture="*" publicKeyToken="6595b64144ccf1df" language="*"/>\n  </dependentAssembly>\n</dependency>'),
     "UTF-8 as the code page of the process, which the text of Haylen needs": (">UTF-8</activeCodePage>", '<activeCodePage xmlns="http://schemas.microsoft.com/SMI/2019/WindowsSettings">UTF-8</activeCodePage>'),
 }
 WINDOWS_MANIFEST_RESOURCE = 24

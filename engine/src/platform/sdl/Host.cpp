@@ -133,7 +133,7 @@ void Host::setFullscreen(bool value, std::function<void(Permission::Answer answe
 #endif
 }
 
-// The page puts the element that holds the canvas and its overlay in fullscreen, so the dialogs, the fields and the views of plugins stay over the app, on the screen that the Fullscreen API takes. Desktops move the window, and the other platforms keep it on its display.
+// The page puts the element that holds the canvas and its overlay in fullscreen, so the fields and the views of plugins stay over the app, on the screen that the Fullscreen API takes. Desktops move the window, and the other platforms keep it on its display.
 void Host::enterFullscreen(const Fullscreen& value, std::function<void(Permission::Answer answer)> callback) {
 #if defined(__EMSCRIPTEN__)
     const FullscreenTarget target = resolveFullscreen(value);

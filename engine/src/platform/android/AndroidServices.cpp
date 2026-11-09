@@ -11,7 +11,6 @@
 #include <span>
 #include <string>
 #include <utility>
-#include <variant>
 
 #include "content/FolderStoreFiles.hpp"
 #include "content/ReleasePackage.hpp"
@@ -20,7 +19,6 @@
 #include "haylen/io/Package.hpp"
 #include "platform/AccessibilityRelay.hpp"
 #include "platform/BridgeRelay.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/LinkRelay.hpp"
 #include "platform/MemoryWarning.hpp"
 #include "platform/NativeHost.hpp"
@@ -32,7 +30,6 @@
 #include "platform/android/AndroidAssetReader.hpp"
 #include "platform/android/AndroidBatteryStatus.hpp"
 #include "platform/android/AndroidDeviceInfo.hpp"
-#include "platform/android/AndroidDialogJson.hpp"
 #include "platform/android/AndroidDisplays.hpp"
 #include "platform/android/AndroidGamepads.hpp"
 #include "platform/android/AndroidKeys.hpp"
@@ -248,24 +245,6 @@ std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageRea
     return std::make_unique<AndroidVideoDecoder>(std::move(file), path);
 }
 
-// Script texts may hold bytes that are not UTF-8, which reach the dialog replaced instead of failing it.
-void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
-    const auto show = [id](const core::Json& dialog, std::span<const std::uint8_t> data) { JavaBridge::showDialog(id, dialog.dump(-1, ' ', false, core::Json::error_handler_t::replace), data); };
-    if (const auto* message = std::get_if<DialogRequest::Message>(&request.dialog)) {
-        show(AndroidDialogJson::describe(*message), {});
-    } else if (const auto* files = std::get_if<DialogRequest::OpenFiles>(&request.dialog)) {
-        show(AndroidDialogJson::describe(*files, folder), {});
-    } else if (const auto* save = std::get_if<DialogRequest::SaveFile>(&request.dialog)) {
-        show(AndroidDialogJson::describe(*save), save->data);
-    } else {
-        DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Android folders have no paths, so Android opens no folders."}});
-    }
-}
-
-void Services::cancelDialog(std::uint64_t id) {
-    JavaBridge::cancelDialog(id);
-}
-
 void Services::openScreen(const ScreenRequest& request) {
     JavaBridge::openScreen(request);
 }
@@ -456,26 +435,6 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenPowerSaving_nativePowerSaving(JNIEn
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenTimeZone_nativeTimeZone(JNIEnv* env, jclass, jbyteArray zone) {
     haylen::platform::NativeHost::getSystemState().setTimeZone(haylen::platform::JavaBridge::toString(*env, zone));
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeButton(JNIEnv*, jclass, jlong id, jint button) {
-    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.button = static_cast<std::size_t>(button)});
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeFiles(JNIEnv* env, jclass, jlong id, jbyteArray json) {
-    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.files = haylen::platform::AndroidDialogJson::readFiles(haylen::platform::JavaBridge::toString(*env, json))});
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeSaved(JNIEnv* env, jclass, jlong id, jbyteArray name) {
-    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.saved = haylen::platform::DialogResult::File{.name = haylen::platform::JavaBridge::toString(*env, name)}});
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeDismissed(JNIEnv*, jclass, jlong id) {
-    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {});
-}
-
-JNIEXPORT void JNICALL Java_dev_haylen_HaylenDialogs_nativeFailed(JNIEnv* env, jclass, jlong id, jbyteArray code, jbyteArray message) {
-    haylen::platform::DialogRelay::resolve(static_cast<std::uint64_t>(id), {.failure = haylen::platform::AndroidDialogJson::readFailure(haylen::platform::JavaBridge::toString(*env, code), haylen::platform::JavaBridge::toString(*env, message))});
 }
 
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenScreen_nativeFinish(JNIEnv* env, jclass, jlong id, jboolean ok, jbyteArray json, jobjectArray buffers) {

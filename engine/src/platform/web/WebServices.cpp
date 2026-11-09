@@ -9,7 +9,6 @@
 #include <span>
 #include <string>
 #include <utility>
-#include <variant>
 #include <vector>
 
 #include "content/ReleasePackage.hpp"
@@ -17,9 +16,7 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "haylen/io/Package.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/NativeWindow.hpp"
-#include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebDisplays.hpp"
 #include "platform/web/WebPage.hpp"
 #include "platform/web/WebStoreFiles.hpp"
@@ -109,14 +106,6 @@ EM_JS(void, haylen_js_announce, (const char* text, int interrupt), {
 
 EM_JS(void, haylen_js_now_playing, (const char* json, const uint8_t* artwork, int size), {
     Module.haylen.nowPlaying(json ? JSON.parse(UTF8ToString(json)) : null, HEAPU8.slice(artwork, artwork + size));
-});
-
-EM_JS(void, haylen_js_show_dialog, (double id, const char* json, const uint8_t* data, int size), {
-    Module.haylen.showDialog(id, JSON.parse(UTF8ToString(json)), HEAPU8.slice(data, data + size));
-});
-
-EM_JS(void, haylen_js_cancel_dialog, (double id), {
-    Module.haylen.cancelDialog(id);
 });
 
 EM_JS(char*, haylen_js_release_address, (), {
@@ -332,24 +321,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WebVideoDecoder>(*file, path);
-}
-
-// The page shows the dialog in the frame that asked for it, and titles that are not UTF-8 reach it replaced.
-void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
-    const auto show = [id](const core::Json& dialog, std::span<const std::uint8_t> data) { haylen_js_show_dialog(static_cast<double>(id), dialog.dump(-1, ' ', false, core::Json::error_handler_t::replace).c_str(), data.data(), static_cast<int>(data.size())); };
-    if (const auto* message = std::get_if<DialogRequest::Message>(&request.dialog)) {
-        show(WebDialogJson::describeMessage(*message), {});
-    } else if (const auto* files = std::get_if<DialogRequest::OpenFiles>(&request.dialog)) {
-        show(WebDialogJson::describeOpenFiles(*files, folder), {});
-    } else if (const auto* save = std::get_if<DialogRequest::SaveFile>(&request.dialog)) {
-        show(WebDialogJson::describeSaveFile(*save), save->data);
-    } else {
-        DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "Browsers give pages no paths of folders, so the web opens no folders."}});
-    }
-}
-
-void Services::cancelDialog(std::uint64_t id) {
-    haylen_js_cancel_dialog(static_cast<double>(id));
 }
 
 // The page opens the screen before the call returns, one frame after the request, so a popup opens while the tap that asked for it still counts as an activation of the user.

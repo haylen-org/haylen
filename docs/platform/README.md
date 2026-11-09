@@ -18,7 +18,6 @@ Platform covers the window and the device, the services every platform offers, t
 | Name | Description | Link |
 | --- | --- | --- |
 | `haylen.accessibility` | The accessibility settings of the system with their changes: text scale, reduced motion, high contrast, reduced transparency and screen readers. | [`lua-api/accessibility.md`](../lua-api/accessibility.md) |
-| `haylen.dialogs` | Native message boxes and pickers of files to open, of a destination to save to and of a folder, which never block the app. | [`lua-api/dialogs.md`](../lua-api/dialogs.md) |
 | `haylen.display` | The displays of the device with their ids, areas, scales, refresh rates and modes, the display of the window, their changes and the screens of a browser. | [`lua-api/display.md`](../lua-api/display.md) |
 | `haylen.native` | Native libraries for Varn's `ffi`, found where the app ships them, their symbols, callbacks from any thread and the interface of the engine for libraries. | [`lua-api/native.md`](../lua-api/native.md) |
 | `haylen.platform` | The JSON bridge to native code, such as sign-in and purchases, with bytes next to the JSON, typed errors, timeouts, cancellation, calls without answers, retained and batched events, the handles of the plugins of the app, their screens and the video and audio streams of their native parts. | [`lua-api/platform.md`](../lua-api/platform.md) |

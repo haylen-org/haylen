@@ -1,6 +1,6 @@
 # 📖 `haylen.platform`
 
-The module `haylen.platform` connects Lua to native code. Use it to call a method that native code answers, to listen to events that native code sends and to reach the native part of a plugin. Use it for what the engine does not wrap, such as sign-in, purchases, sharing, opening links or vibrating. The engine wraps some services itself: what the device is and the clipboard live in [`haylen.system`](system.md), and native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md). The [platform bridge guide](../platform/platform-bridge.md) explains how a call travels and how each platform answers it, the [plugin guide](../platform/plugins.md) shows how plugins use this module, and the [native code guide](../platform/native.md) compares the bridge with the other ways to reach native code.
+The module `haylen.platform` connects Lua to native code. Use it to call a method that native code answers, to listen to events that native code sends and to reach the native part of a plugin. Use it for what the engine does not wrap, such as sign-in, purchases, sharing, opening links or vibrating. The engine wraps some services itself: what the device is and the clipboard live in [`haylen.system`](system.md). The [platform bridge guide](../platform/platform-bridge.md) explains how a call travels and how each platform answers it, the [plugin guide](../platform/plugins.md) shows how plugins use this module, and the [native code guide](../platform/native.md) compares the bridge with the other ways to reach native code.
 
 ```lua
 local platform = require('haylen.platform')
@@ -295,7 +295,7 @@ end
 
 ## PlatformCall
 
-A `PlatformCall`, named `haylen.PlatformCall` in messages, is a call that has not settled yet or that settled. The functions `platform.call` and `handle:openScreen` return one, and so does every function of [`haylen.dialogs`](dialogs.md).
+A `PlatformCall`, named `haylen.PlatformCall` in messages, is a call that has not settled yet or that settled. The functions `platform.call` and `handle:openScreen` return one.
 
 ### call:await()
 
@@ -510,23 +510,7 @@ async.spawn(function()
 end)
 ```
 
-A screen may open right in the answer of a dialog. That answer arrives while the app is still `'inactive'` on some platforms, so the screen then waits until the app is `'active'`.
-
-```lua
-local async = require('async')
-local dialogs = require('haylen.dialogs')
-local platform = require('haylen.platform')
-
-local paywall = platform.plugin('paywall')
-
-async.spawn(function()
-    local button = dialogs.message({text = 'Unlock every level?', buttons = {'See the offer', 'Later'}}):await()
-    if button == 1 then
-        local purchase, err = paywall:openScreen('offer', {offering = 'levels'}, {timeout = 300}):await()
-        print(purchase and purchase.product or err.code)
-    end
-end)
-```
+A screen may open right in the answer of other native UI, such as a message box that a plugin shows. That answer arrives while the app is still `'inactive'` on some platforms, so the screen then waits until the app is `'active'`.
 
 ## VideoStream
 

@@ -67,13 +67,12 @@ class WebPage final {
     static void hide();
     static void setOnline(bool online);
 
-    // The color scheme, the languages as a JSON array of tags, the accessibility preferences, the battery and the time zone that the page reports when the runtime starts and whenever they change, and the answers of native dialogs as the JSON that `WebDialogJson::readAnswer` reads.
+    // The color scheme, the languages as a JSON array of tags, the accessibility preferences, the battery and the time zone that the page reports when the runtime starts and whenever they change.
     static void setTheme(bool dark);
     static void setLanguages(const char* json);
     static void setBattery(double level, bool charging, bool full);
     static void setTimeZone(const char* zone);
     static void setAccessibility(double textScale, bool reducedMotion, bool highContrast, bool reducedTransparency);
-    static void resolveDialog(double id, const char* json);
 
     // Answers of page handlers and events of the page, with their byte buffers as a table of an address and a size in wasm memory for each, which the page frees once the call returns. The flags of an event are those of `HaylenNativeEmitFlags`.
     static void resolve(double call, bool ok, const char* json, const std::uint32_t* buffers, int count);

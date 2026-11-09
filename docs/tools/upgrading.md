@@ -320,6 +320,28 @@ haptics.vibrate(0.08)
 
 On Android the permission `android.permission.VIBRATE` comes with the manifest of the `haptics` module. The manifest of the template keeps it for the rumble of gamepads.
 
+### Native dialogs
+
+The engine has no `haylen.dialogs`. The native message boxes and pickers live in the plugin `dialogs`, whose Lua API keeps the functions, options, answers, errors and calls of the module: `message`, `openFiles`, `saveFile` and `openFolder`, with `openPhotos`, the photo picker of the system, which needs no permission. Add the plugin to the app, by a copy or by a reference to its folder:
+
+```sh
+haylen plugin add ~/plugins/dialogs --app ~/apps/my-game
+```
+
+Then require the plugin by its id instead of the module of the engine:
+
+```lua
+local dialogs = require('dialogs')
+
+local button = dialogs.message({title = 'Unsaved map', text = 'Save the changes before leaving?', kind = 'warning', buttons = {'Save', 'Discard', 'Cancel'}}):await()
+```
+
+These things change with the move:
+
+- C++ code calls the methods of the plugin through the bridge, such as `engine.getPlatform().call("dialogs.message", ...)`, with the parameters and answers that the README of the plugin lists, instead of `engine.getDialogs()`.
+- Picked files that have no path of their own, on phones, tablets and the web, are copies in a folder of the plugin, which the README of the plugin names, and no longer under `tmp/dialogs` of the storage on every platform.
+- On Linux the pickers and messages load GTK 3 when they show. The Debian package of the Linux template recommends GIO and the sound servers alone, so an app that shows dialogs adds `libgtk-3-0t64 | libgtk-3-0` to `CPACK_DEBIAN_PACKAGE_RECOMMENDS` of `platform/linux/CMakeLists.txt`.
+
 ## Verify
 
 An upgrade is done when every platform of the app builds, runs and passes its checks:

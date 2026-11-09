@@ -4,7 +4,7 @@
 
 namespace haylen::platform {
 
-// GLib, GObject and GIO of the desktop, which the engine loads at run time through GIO, whose dependencies bring the other two, so apps also run on systems without them. The engine runs the main context of GLib once per frame without blocking, where the change signals of the settings portal and the answers of GTK dialogs reach the frame thread.
+// GLib, GObject and GIO of the desktop, which the engine loads at run time through GIO, whose dependencies bring the other two, so apps also run on systems without them. The engine runs the main context of GLib once per frame without blocking, where the signals of GLib reach the frame thread, such as the changes of the settings portal and those of the toolkits that native libraries use on the frame thread.
 class LinuxGlib final {
   public:
     // Loads GIO the first time and returns its handle, which is null on systems without it.

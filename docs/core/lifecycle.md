@@ -181,7 +181,7 @@ The event loop and the platform bridge run inside the frames of the app. So noth
 - **iOS, iPadOS, tvOS and Mac Catalyst.** The frames go on while the scene is inactive, such as under the app switcher or Control Center, and they stop while it is in the background.
 - **The web.** Browsers stop the frames of a hidden tab.
 
-Where the frames stop, these things wait and arrive in the first frame after the app comes back: the replies and events of the platform bridge, the answers of native dialogs and screens, Varn timers, network callbacks and `async` results.
+Where the frames stop, these things wait and arrive in the first frame after the app comes back: the replies and events of the platform bridge, the ends of screens, Varn timers, network callbacks and `async` results.
 
 Android also freezes the processes of cached apps. Freezing stops every thread of the app until it comes back, its ticks, the transfers of the network and the threads of native plugins included, so a connection may time out meanwhile. An app that the person left, such as with Home, stays the previous app for about a minute. Then it becomes cached, and Android freezes it some seconds later.
 

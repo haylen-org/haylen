@@ -459,7 +459,7 @@ int PlatformLua::open(lua_State* L) {
     return 1;
 }
 
-// Calls and their errors exist before any module is required, because `haylen.dialogs` returns calls too.
+// Calls and their errors exist before any module is required, so every module that returns calls finds their class.
 void PlatformLua::install(lua_State* L) {
     luaL_newmetatable(L, kErrorType);
     lua_pushcfunction(L, &errorToString);

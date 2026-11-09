@@ -169,7 +169,6 @@ set(HAYLEN_TEST_SOURCES
   platform/AccessibilityTests.cpp
   platform/AndroidBatteryStatusTests.cpp
   platform/AndroidDeviceInfoTests.cpp
-  platform/AndroidDialogJsonTests.cpp
   platform/AndroidFramePacerTests.cpp
   platform/FrameRateGateTests.cpp
   platform/AndroidGamepadStatesTests.cpp
@@ -180,12 +179,10 @@ set(HAYLEN_TEST_SOURCES
   platform/CrashGuardTests.cpp
   platform/DevelopmentConnectionTests.cpp
   platform/DeviceRecoveryTests.cpp
-  platform/DialogsTests.cpp
   platform/FoldTests.cpp
   platform/GraphicsApiOrderTests.cpp
   platform/HeadlessPlayerTests.cpp
   platform/LaunchOptionsTests.cpp
-  platform/LinuxFilePatternTests.cpp
   platform/LinuxSystemReaderTests.cpp
   platform/LinuxVisualColorTests.cpp
   platform/MediaSessionTests.cpp
@@ -204,7 +201,6 @@ set(HAYLEN_TEST_SOURCES
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
   platform/SystemTests.cpp
-  platform/WebDialogJsonTests.cpp
   platform/WebEntryTests.cpp
   platform/DisplayLuaTests.cpp
   platform/WindowLuaTests.cpp

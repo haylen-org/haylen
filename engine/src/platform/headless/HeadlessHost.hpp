@@ -55,13 +55,6 @@ class HeadlessHost final : public Host {
         bool interrupt = false;
     };
 
-    // A native dialog the engine asked for, with the folder where the platform would keep copies of picked files.
-    struct DialogCall {
-        std::uint64_t id = 0;
-        DialogRequest request;
-        std::filesystem::path folder;
-    };
-
     explicit HeadlessHost(std::filesystem::path directory, math::Vec2 size = {1920.0F, 1080.0F});
 
     [[nodiscard]] math::Vec2 getFramebufferSize() const noexcept override {
@@ -378,12 +371,6 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::string getNetworkRequirement() const override {
         return networkRequirement;
     }
-    void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override {
-        dialogCalls.push_back({.id = id, .request = request, .folder = folder});
-    }
-    void cancelDialog(std::uint64_t id) override {
-        cancelledDialogs.push_back(id);
-    }
     void openScreen(const ScreenRequest& request) override {
         screenRequests.push_back(request);
     }
@@ -643,12 +630,6 @@ class HeadlessHost final : public Host {
     [[nodiscard]] const std::vector<Rumble>& getRumbles() const noexcept {
         return rumbles;
     }
-    [[nodiscard]] const std::vector<DialogCall>& getDialogRequests() const noexcept {
-        return dialogCalls;
-    }
-    [[nodiscard]] const std::vector<std::uint64_t>& getCancelledDialogs() const noexcept {
-        return cancelledDialogs;
-    }
 
     // The screens the engine opened on the headless platform and the ids of those it gave up, which tests end through `ScreenRelay::finish` the way native code does.
     [[nodiscard]] const std::vector<ScreenRequest>& getScreenRequests() const noexcept {
@@ -700,8 +681,6 @@ class HeadlessHost final : public Host {
     bool backgroundAudio = false;
     bool accessibilityWanted = false;
     VideoOpener videoOpener;
-    std::vector<DialogCall> dialogCalls;
-    std::vector<std::uint64_t> cancelledDialogs;
     std::vector<ScreenRequest> screenRequests;
     std::vector<std::uint64_t> cancelledScreens;
     std::filesystem::path crashReport;

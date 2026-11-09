@@ -18,7 +18,6 @@
 #include "haylen/math/Polygon.hpp"
 #include "haylen/math/Rect.hpp"
 #include "haylen/platform/AccessibilityElement.hpp"
-#include "haylen/platform/DialogRequest.hpp"
 #include "haylen/platform/Display.hpp"
 #include "haylen/platform/Fold.hpp"
 #include "haylen/platform/MediaSession.hpp"
@@ -155,12 +154,6 @@ class Services final {
 
     // Opens a decoder of a video file with the decoder of the platform, from any thread, as `Host::openVideo` describes.
     [[nodiscard]] static std::unique_ptr<VideoDecoder> openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path);
-
-    // Shows a native dialog and answers it exactly once through `DialogRelay::resolve` with the same id, from any thread. Picked files that have no path of their own are copied into `folder`, which the platform creates when it needs it.
-    static void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder);
-
-    // Closes a dialog that the app gave up, where the platform can.
-    static void cancelDialog(std::uint64_t id);
 
     // Opens the screen of a plugin and ends it exactly once through `ScreenRelay::finish`, from any thread, as `Host::openScreen` describes, and dismisses a screen that the app gave up where the platform can.
     static void openScreen(const ScreenRequest& request);

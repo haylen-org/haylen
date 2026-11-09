@@ -7,7 +7,6 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/core/Log.hpp"
 #include "platform/BridgeRelay.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/android/AndroidOutputs.hpp"
 #include "varn/dataview/DataViewJni.h"
@@ -47,9 +46,6 @@ jclass JavaBridge::permissionsClass = nullptr;
 jmethodID JavaBridge::permissionStateMethod = nullptr;
 jmethodID JavaBridge::permissionHeldMethod = nullptr;
 jmethodID JavaBridge::requestPermissionMethod = nullptr;
-jclass JavaBridge::dialogsClass = nullptr;
-jmethodID JavaBridge::showDialogMethod = nullptr;
-jmethodID JavaBridge::cancelDialogMethod = nullptr;
 jclass JavaBridge::screensClass = nullptr;
 jmethodID JavaBridge::openScreenMethod = nullptr;
 jmethodID JavaBridge::cancelScreenMethod = nullptr;
@@ -76,13 +72,12 @@ jint JavaBridge::load(JavaVM* vm) {
     pluginsClass = findClass(*env, "dev/haylen/HaylenPlugins");
     editorClass = findClass(*env, "dev/haylen/HaylenEditText");
     activityClass = findClass(*env, "dev/haylen/HaylenActivity");
-    dialogsClass = findClass(*env, "dev/haylen/HaylenDialogs");
     screensClass = findClass(*env, "dev/haylen/HaylenScreens");
     accessibilityClass = findClass(*env, "dev/haylen/HaylenAccessibilityTree");
     mediaSessionClass = findClass(*env, "dev/haylen/HaylenMediaSession");
     permissionsClass = findClass(*env, "dev/haylen/HaylenPermissions");
     outputsClass = findClass(*env, "dev/haylen/HaylenOutputs");
-    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || dialogsClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr || permissionsClass == nullptr || outputsClass == nullptr) {
+    if (byteArrayClass == nullptr || bridgeClass == nullptr || pluginsClass == nullptr || editorClass == nullptr || activityClass == nullptr || screensClass == nullptr || accessibilityClass == nullptr || mediaSessionClass == nullptr || permissionsClass == nullptr || outputsClass == nullptr) {
         return JNI_ERR;
     }
     dispatchMethod = findMethod(*env, bridgeClass, "dispatch", "(J[B[B[[B[J)V");
@@ -102,8 +97,6 @@ jint JavaBridge::load(JavaVM* vm) {
     clipboardMethod = findMethod(*env, activityClass, "clipboard", "()[B");
     networkRequirementMethod = findMethod(*env, activityClass, "networkRequirement", "()[B");
     developmentServerMethod = findMethod(*env, activityClass, "developmentServer", "()[B");
-    showDialogMethod = findMethod(*env, dialogsClass, "show", "(J[B[B)V");
-    cancelDialogMethod = findMethod(*env, dialogsClass, "cancel", "(J)V");
     openScreenMethod = findMethod(*env, screensClass, "open", "(J[B[B[B[[B[J[BZ)V");
     cancelScreenMethod = findMethod(*env, screensClass, "cancel", "(J)V");
     updateAccessibilityMethod = findMethod(*env, accessibilityClass, "update", "([B)V");
@@ -116,7 +109,7 @@ jint JavaBridge::load(JavaVM* vm) {
     closeOutputMethod = findMethod(*env, outputsClass, "close", "(I)V");
     requestPermissionMethod = findMethod(*env, permissionsClass, "request", "(J[B)V");
     const jmethodID idsMethod = findMethod(*env, pluginsClass, "ids", "()[B");
-    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, showDialogMethod, cancelDialogMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
+    for (const jmethodID method : {dispatchMethod, cancelMethod, setAppRunningMethod, reportErrorMethod, editMethod, finishMethod, lockOrientationMethod, setStatusBarMethod, setSystemGesturesMethod, keepScreenOnMethod, captureBackMethod, systemInfoMethod, rumbleGamepadMethod, setClipboardMethod, clipboardMethod, networkRequirementMethod, developmentServerMethod, openScreenMethod, cancelScreenMethod, updateAccessibilityMethod, announceMethod, updateMediaSessionMethod, setBackgroundAudioMethod, permissionStateMethod, permissionHeldMethod, requestPermissionMethod, openOutputMethod, closeOutputMethod, idsMethod}) {
         if (method == nullptr) {
             return JNI_ERR;
         }
@@ -358,24 +351,6 @@ void JavaBridge::setBackgroundAudio(bool value) {
     JNIEnv& env = getEnv();
     env.CallStaticVoidMethod(mediaSessionClass, setBackgroundAudioMethod, value ? JNI_TRUE : JNI_FALSE);
     clearException(env, "dev.haylen.HaylenMediaSession.setBackground");
-}
-
-void JavaBridge::showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data) {
-    JNIEnv& env = getEnv();
-    {
-        const JavaLocalRef request = toBytes(env, requestJson);
-        const JavaLocalRef bytes = toBytes(env, std::string_view(reinterpret_cast<const char*>(data.data()), data.size()));
-        env.CallStaticVoidMethod(dialogsClass, showDialogMethod, static_cast<jlong>(id), request.get(), bytes.get());
-    }
-    if (clearException(env, "dev.haylen.HaylenDialogs.show")) {
-        DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Failed, .message = "The dialog failed, because the Java method \"dev.haylen.HaylenDialogs.show\" threw an exception."}});
-    }
-}
-
-void JavaBridge::cancelDialog(std::uint64_t id) {
-    JNIEnv& env = getEnv();
-    env.CallStaticVoidMethod(dialogsClass, cancelDialogMethod, static_cast<jlong>(id));
-    clearException(env, "dev.haylen.HaylenDialogs.cancel");
 }
 
 void JavaBridge::openScreen(const ScreenRequest& request) {

@@ -8,7 +8,6 @@
 #include "haylen/core/Json.hpp"
 #include "haylen/io/Package.hpp"
 #include "platform/BridgeRelay.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/ScreenRelay.hpp"
 
 namespace haylen::platform {
@@ -157,12 +156,6 @@ void Services::announce(std::string_view, bool) {}
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader>, std::string_view) {
     return nullptr;
 }
-
-void Services::showDialog(std::uint64_t id, const DialogRequest&, const std::filesystem::path&) {
-    DialogRelay::resolve(id, {.failure = DialogResult::Failure{.code = DialogResult::Code::Unsupported, .message = "The test port shows no dialogs."}});
-}
-
-void Services::cancelDialog(std::uint64_t) {}
 
 void Services::openScreen(const ScreenRequest& request) {
     ScreenRelay::finish(request.id, false, core::Json{{"message", "No native screen is registered for \"" + request.plugin + "." + request.screen + "\"."}, {"code", "noHandler"}}.dump());

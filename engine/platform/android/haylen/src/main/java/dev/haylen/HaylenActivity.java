@@ -158,9 +158,8 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         followNetwork();
         HaylenPlugins.checkLoaded(getApplication());
 
-        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the dialogs, of the permissions and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
+        // The audio focus follows the lifecycle before the plugins do, so it is requested before they hear of a resume and abandoned after they hear of a pause. The launchers of the permissions and of the screens of plugins are registered before the activity starts, like the launchers of the plugins.
         getLifecycle().addObserver(new HaylenAudioFocus(this));
-        HaylenDialogs.activityCreated(this);
         HaylenPermissions.activityCreated(this);
         HaylenScreens.activityCreated(this);
         HaylenPlugins.activityCreated(this, savedInstanceState);
@@ -310,13 +309,12 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return super.dispatchGenericMotionEvent(event);
     }
 
-    // The app stops inside `GameActivity`, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the views they left over the app and the messages that still show go with the activity.
+    // The app stops inside `GameActivity`, which runs its cleanup and lets the activity finish, while the bridge, the editor and the listeners it may still use are attached. The plugins hear of it next, and the views they left over the app go with the activity.
     @Override
     protected void onDestroy() {
         super.onDestroy();
         HaylenPlugins.activityDestroyed(this);
         overlays.removeAll();
-        HaylenDialogs.activityDestroyed();
         splash.dismiss();
         battery.unregister();
         powerSaving.unregister();

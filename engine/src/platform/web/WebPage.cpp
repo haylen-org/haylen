@@ -32,12 +32,10 @@
 #include "platform/BridgeRelay.hpp"
 #include "platform/ConsoleRelay.hpp"
 #include "platform/DevelopmentSession.hpp"
-#include "platform/DialogRelay.hpp"
 #include "platform/NativeHost.hpp"
 #include "platform/Player.hpp"
 #include "platform/ScreenRelay.hpp"
 #include "platform/Services.hpp"
-#include "platform/web/WebDialogJson.hpp"
 #include "platform/web/WebEntry.hpp"
 #include "platform/web/WebTextInput.hpp"
 
@@ -331,10 +329,6 @@ void WebPage::setAccessibility(double textScale, bool reducedMotion, bool highCo
     NativeHost::getSystemState().setAccessibility({.textScale = static_cast<float>(textScale), .reducedMotion = reducedMotion, .highContrast = highContrast, .reducedTransparency = reducedTransparency, .screenReader = false});
 }
 
-void WebPage::resolveDialog(double id, const char* json) {
-    DialogRelay::resolve(static_cast<std::uint64_t>(id), WebDialogJson::readAnswer(json));
-}
-
 std::vector<std::vector<std::byte>> WebPage::readBuffers(const std::uint32_t* table, int count) {
     std::vector<std::vector<std::byte>> buffers;
     buffers.reserve(static_cast<std::size_t>(count));
@@ -570,10 +564,6 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_battery(double level, int charging, int ful
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_time_zone(const char* zone) {
     haylen::platform::WebEntry::guard("haylen_web_time_zone", [&] { haylen::platform::WebPage::setTimeZone(zone); });
-}
-
-EMSCRIPTEN_KEEPALIVE void haylen_web_resolve_dialog(double id, const char* json) {
-    haylen::platform::WebEntry::guard("haylen_web_resolve_dialog", [&] { haylen::platform::WebPage::resolveDialog(id, json); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_text_edited(double field, double revision, const char* text, int selectionStart, int selectionEnd, int compositionStart, int compositionEnd) {

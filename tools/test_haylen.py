@@ -2543,7 +2543,7 @@ class DesktopProjectTest(unittest.TestCase):
         messages = [requirement.message for requirement in haylen.check_desktop(app, project, arguments)]
         self.assertEqual(messages, [
             'The app needs the native library "glue.dll" next to its executable, which the built app lacks.',
-            "The application manifest of the built executable lacks the Common Controls of version 6, which the message dialogs of Haylen need.",
+            "The application manifest of the built executable lacks the Common Controls of version 6, which give the task dialogs and the controls that native libraries show the current look of Windows.",
             "The application manifest of the built executable lacks UTF-8 as the code page of the process, which the text of Haylen needs.",
         ])
 

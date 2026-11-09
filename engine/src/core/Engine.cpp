@@ -90,7 +90,6 @@ Engine::Engine(platform::Host& host, std::shared_ptr<io::Package> package, AppCo
     current.outputs = std::make_unique<platform::Outputs>(host, *current.displays, *current.graphics, current.events);
     current.mediaSession = std::make_unique<platform::MediaSession>(host, current.events);
     current.accessibility = std::make_unique<platform::Accessibility>(host, current.events);
-    current.dialogs = std::make_unique<platform::Dialogs>(host, current.storage->getRoot() / "tmp" / "dialogs");
     current.screens = std::make_unique<platform::Screens>(host, *current.platform, [this] { return getAppState(); });
     current.renderer = std::make_unique<graphics2d::Renderer>(*current.graphics, *current.jobs);
     current.assets = std::make_unique<assets::Manager>(*current.package, *current.jobs, *current.graphics, current.events);
@@ -143,7 +142,6 @@ Engine::~Engine() {
     current.scenes.reset();
     current.screens.reset();
     current.platform.reset();
-    current.dialogs.reset();
     current.accessibility.reset();
     current.system->stopRumbles();
     current.system.reset();
@@ -347,7 +345,6 @@ void Engine::frame(double frameSeconds) {
             publishLinks();
             current.accessibility->pump();
             current.tweens.setReducedMotion(current.accessibility->getSettings().reducedMotion);
-            current.dialogs->pump();
             current.screens->pump();
             // A screen that ended in the pump uncovers the app before the code that awaited its answer resumes.
             applyCover();
@@ -1344,10 +1341,6 @@ platform::MediaSession& Engine::getMediaSession() noexcept {
 
 platform::Accessibility& Engine::getAccessibility() noexcept {
     return *state->accessibility;
-}
-
-platform::Dialogs& Engine::getDialogs() noexcept {
-    return *state->dialogs;
 }
 
 platform::Screens& Engine::getScreens() noexcept {

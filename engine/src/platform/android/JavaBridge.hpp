@@ -21,7 +21,7 @@
 
 namespace haylen::platform {
 
-// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the native dialogs of `dev.haylen.HaylenDialogs`, the screens of plugins of `dev.haylen.HaylenScreens` and the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree` and the permissions of `dev.haylen.HaylenPermissions`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
+// Calls into the Java side of the `haylen` Android library: the platform bridge of `dev.haylen.HaylenBridge`, the plugins of `dev.haylen.HaylenPlugins`, the hidden text field of `dev.haylen.HaylenEditText`, the orientation lock, the back callback and the system services of `dev.haylen.HaylenActivity`, the screens of plugins of `dev.haylen.HaylenScreens` and the elements that screen readers read of `dev.haylen.HaylenAccessibilityTree` and the permissions of `dev.haylen.HaylenPermissions`. A native thread attaches to the Java VM the first time it calls Java and detaches when it ends. An exception that a Java method throws never stays pending: it is logged with its stack and cleared, and a call that expects an answer gets a failed one.
 class JavaBridge final {
   public:
     // Resolves the Java classes the native side calls, including the HTTP transport of Varn, which `JNI_OnLoad` does because the app class loader is still in reach there, and reads the plugins that the process loaded before. Returns the JNI version, or `JNI_ERR` when the APK lacks a class.
@@ -88,10 +88,6 @@ class JavaBridge final {
     // The clipboard of the system, which the frame thread reads and writes. A write answers unsupported while no activity exists or when Java fails.
     [[nodiscard]] static Permission::Answer setClipboard(std::string_view text);
     [[nodiscard]] static std::string getClipboard();
-
-    // Shows the dialog that the JSON of `AndroidDialogJson` describes, with the data of a save as bytes, and the Java side answers through the dialog relay. A dialog that Java never took fails at once.
-    static void showDialog(std::uint64_t id, std::string_view requestJson, std::span<const std::uint8_t> data);
-    static void cancelDialog(std::uint64_t id);
 
     // Shows an output in a presentation on the display of the number that the display manager gives, or dismisses it, through `HaylenOutputs`. A presentation that Java never took ends its output.
     static void openOutput(std::uint32_t number, std::string_view display, std::string_view title);
@@ -167,9 +163,6 @@ class JavaBridge final {
     static jmethodID clipboardMethod;
     static jmethodID networkRequirementMethod;
     static jmethodID developmentServerMethod;
-    static jclass dialogsClass;
-    static jmethodID showDialogMethod;
-    static jmethodID cancelDialogMethod;
     static jclass screensClass;
     static jmethodID openScreenMethod;
     static jmethodID cancelScreenMethod;

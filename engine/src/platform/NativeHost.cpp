@@ -375,14 +375,6 @@ std::string NativeHost::getNetworkRequirement() const {
 #endif
 }
 
-void NativeHost::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
-    Services::showDialog(id, request, folder);
-}
-
-void NativeHost::cancelDialog(std::uint64_t id) {
-    Services::cancelDialog(id);
-}
-
 void NativeHost::openScreen(const ScreenRequest& request) {
     Services::openScreen(request);
 }

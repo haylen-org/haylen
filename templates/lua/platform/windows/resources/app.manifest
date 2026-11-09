@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<!-- The application manifest: Windows 10 and 11, the Common Controls that message dialogs need, UTF-8 as the code page of the process, per-monitor DPI awareness and no elevation. -->
+<!-- The application manifest: Windows 10 and 11, the Common Controls of version 6 for the controls that native libraries show, UTF-8 as the code page of the process, per-monitor DPI awareness and no elevation. -->
 <assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>

@@ -101,8 +101,6 @@ class NativeHost : public Host {
     void requestPermission(Permission::Kind kind, std::function<void(Permission::Answer answer)> callback) override;
     [[nodiscard]] BlockedReason getBlockedReason() const override;
     [[nodiscard]] std::string getNetworkRequirement() const override;
-    void showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) override;
-    void cancelDialog(std::uint64_t id) override;
     void openScreen(const ScreenRequest& request) override;
     void cancelScreen(std::uint64_t id) override;
     [[nodiscard]] DevelopmentSession* getDevelopmentSession() const noexcept override {

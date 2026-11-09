@@ -27,7 +27,6 @@
 #import "platform/apple/AppleBridge.hpp"
 #import "platform/apple/AppleCutouts.hpp"
 #import "platform/apple/AppleDesktop.hpp"
-#import "platform/apple/AppleDialogs.hpp"
 #import "platform/apple/AppleDisplays.hpp"
 #import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleGamepads.hpp"
@@ -385,14 +384,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<AppleVideoDecoder>(std::move(file), path);
-}
-
-void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path& folder) {
-    AppleDialogs::show(id, request, folder);
-}
-
-void Services::cancelDialog(std::uint64_t id) {
-    AppleDialogs::cancel(id);
 }
 
 // Native libraries of the macOS player open the screens they registered before the platform is asked for them.

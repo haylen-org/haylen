@@ -22,7 +22,6 @@
 #include "platform/ScreenRelay.hpp"
 #include "platform/windows/WindowsAccessibility.hpp"
 #include "platform/windows/WindowsDesktop.hpp"
-#include "platform/windows/WindowsDialogs.hpp"
 #include "platform/windows/WindowsLinks.hpp"
 #include "platform/windows/WindowsMediaSession.hpp"
 #include "platform/windows/WindowsMemory.hpp"
@@ -240,15 +239,6 @@ void Services::announce(std::string_view text, bool interrupt) {
 
 std::unique_ptr<VideoDecoder> Services::openVideo(std::shared_ptr<io::PackageReader> file, std::string_view path) {
     return std::make_unique<WindowsVideoDecoder>(std::move(file), path);
-}
-
-// Picked files are files of the computer, which the app reads where they are.
-void Services::showDialog(std::uint64_t id, const DialogRequest& request, const std::filesystem::path&) {
-    WindowsDialogs::show(id, request);
-}
-
-void Services::cancelDialog(std::uint64_t id) {
-    WindowsDialogs::cancel(id);
 }
 
 // Windows has no screen registry in the language of the platform, so native libraries open the screens of plugins, before the platform is asked.

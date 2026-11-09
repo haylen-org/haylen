@@ -73,7 +73,7 @@ The runtime of a port does what every platform layer does, as the [architecture 
 1. **A host** derived from `platform::NativeHost`. It adds what the window does: the size and scale of the framebuffer, fullscreen, the title, the cursor, the clipboard, closing the window, its focus, `endSplashScreen`, which takes the splash screen of the platform away once the app drew its first complete frame, keeping the screen on, pacing its frames at the frame rate of the app in `applyFrameRate`, the controllers, `getTextInput`, which hands over the text input of the services, `prepareGpuDevice`, which answers `true` once the device of the next app can be created, `createGpuDevice`, which hands over the device that draws into the window, and `pumpHaltedEvents`, which keeps the platform responsive while the [debugger](../tools/debugger.md) halts the frame thread and answers whether the platform asks the frame to finish.
 2. **A window** derived from `platform::NativeWindow`, installed with `NativeWindow::install` while it is open, which hands the services its native handles.
 3. **A runtime** that holds the entry point of the process. It calls `Player::create` with the command line and the host, opens the window for the APIs of `Player::getGraphicsApis` until a device starts, calls `Player::initialize`, then `Player::frame` once a frame, hands events of the system to `Player::handleEvent`, replaces a device that `isLost` reports and calls `Player::cleanup` when the app ends.
-4. **The services** of the platform: the definitions of the static methods of `platform::Services` in `engine/src/platform/Services.hpp`. They tell the name of the platform, open the package that ships with the app, give the folders of user data and of downloaded content, report what the device is, show dialogs, answer the bridge, run text input and read video. A service the platform does not offer answers the way the contract of its method says, such as a dialog that fails with `unsupported`.
+4. **The services** of the platform: the definitions of the static methods of `platform::Services` in `engine/src/platform/Services.hpp`. They tell the name of the platform, open the package that ships with the app, give the folders of user data and of downloaded content, report what the device is, answer the bridge, run text input and read video. A service the platform does not offer answers the way the contract of its method says, such as a screen that fails with `noHandler`.
 
 The runtime reaches the system of the console through its SDK, or through SDL 3 where the console maker provides its port of SDL to licensed developers. A runtime on SDL can start from the SDL platform layer of the engine, `engine/src/platform/sdl/`, as a copy in the private repository, and keep its own changes there.
 
@@ -141,7 +141,7 @@ The custom shaders of apps are packages too, which `haylen shaders` compiles. A 
 
 ## Testing a port
 
-The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without dialogs or plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The app checks the platform, the operating system and the graphics API, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
+The command `haylen test --port` builds the engine with the test port of `engine/tests/data/port` in `build/<host>-port-<config>` and plays the app of `engine/tests/data/port-app` on it. The test port has the platform `test-port`, a runtime that plays the app without a window, services that answer like a console without plugins, and a device of the API `port` built on `gpu::NullDevice`, which checks every call of the engine against the contract and runs the code that its shader tool wrote. The app checks the platform, the operating system and the graphics API, draws shapes, sprites and text, and quits with the status `0`. It needs no SDK, so it builds on the desktops of the public repository and keeps the mechanism working for every port.
 
 ```sh
 haylen test --port
@@ -260,7 +260,7 @@ Every port, whatever the platform, implements the same parts of the engine:
 | Lifecycle | The app states `active`, `inactive` and `background`, suspend and resume, and low memory, handed to the player as events. |
 | Audio | The audio setup that `getAudioSetup` of the host returns, with a backend of its own for the mixer where miniaudio has none for the platform. |
 | Graphics | A device of the engine named in `GRAPHICS_APIS`, or `gpu::PortDevice` with the shader command. |
-| Optional services | Dialogs, video, accessibility, the media session and the bridge of native plugins, each answering with `unsupported` or doing nothing where the platform lacks it. |
+| Optional services | Video, accessibility, the media session and the bridge of native plugins, each answering with `unsupported` or doing nothing where the platform lacks it. |
 
 ## Limits
 
