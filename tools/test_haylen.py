@@ -3013,6 +3013,37 @@ class CheckTest(unittest.TestCase):
                 haylen.command_check(mock.Mock(app=str(app), platform="web", config="Release"))
             self.assertEqual(checked, [haylen.App(app, "web").build_folder / "web"])
 
+    def test_checks_the_apple_bundles_that_cpp_apps_build_with_ninja_and_xcode(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch).resolve() / "game"
+            app.mkdir()
+            (app / "app.json").write_text('{"name": "Game", "identifier": "com.example.game", "version": "1.0.0"}')
+            (app / "CMakeLists.txt").write_text("")
+            builds = Path(scratch).resolve() / "cpp"
+            layouts = {"macos": ("macos-debug/bin/main/main.app/Contents", "Contents/MacOS/main"), "ios-simulator": ("ios-simulator-debug/bin/main.app", "main")}
+            for platform, (contents, executable) in layouts.items():
+                info = {"CFBundleExecutable": "main", "UIApplicationSceneManifest": {}}
+                bundle = builds / haylen.build_folder_name(app) / contents
+                (bundle / "Resources").mkdir(parents=True)
+                (bundle / "Info.plist").write_bytes(haylen.plistlib.dumps(info))
+                shutil.copy(haylen.ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy", bundle / ("Resources" if platform == "macos" else ""))
+                patches = [mock.patch.object(haylen, "CPP_BUILDS_DIR", builds), mock.patch.object(haylen, "ARTIFACTS_DIR", Path(scratch) / "artifacts"), mock.patch.object(haylen, "apple_entitlements", return_value={}), mock.patch.object(haylen, "capture", return_value=""), mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {}))]
+                with contextlib.ExitStack() as stack:
+                    for patch in patches:
+                        stack.enter_context(patch)
+                    linked = stack.enter_context(mock.patch.object(haylen, "apple_linked", return_value=set()))
+                    haylen.command_check(haylen.build_parser().parse_args(["check", str(app), "--platform", platform]))
+                self.assertEqual(linked.call_args.args[0], builds / haylen.build_folder_name(app) / layouts[platform][0].removesuffix("/Contents") / executable, platform)
+
+    def test_stops_at_the_cpp_builds_that_the_cmake_project_lays_out_itself(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            app = Path(scratch).resolve() / "game"
+            app.mkdir()
+            (app / "app.json").write_text('{"name": "Game", "identifier": "com.example.game", "version": "1.0.0"}')
+            (app / "CMakeLists.txt").write_text("")
+            with self.assertRaisesRegex(haylen.BuildError, 'The command "check" covers C\\+\\+ apps on Apple platforms and Android.'):
+                haylen.command_check(haylen.build_parser().parse_args(["check", str(app), "--platform", "web"]))
+
 
 class WebMemoryTest(unittest.TestCase):
     """The memory check of the web stops on a page that failed, missed the download or holds memory that grows with what it downloads."""

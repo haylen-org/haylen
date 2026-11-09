@@ -257,6 +257,8 @@ haylen check ~/apps/my-game --platform web --config Release --coop same-origin
 
 Compares the last build of an app for a platform with what the engine and every plugin of the platform need. It prints each missing requirement with who needs it, why, and the snippet to add with the file to put it in. The command fails when anything is missing, so continuous integration can run it. The option `--platform` is required, `--config` picks the build to check, `Debug` by default, and `--coop` names the opener policy that the server of a web site sends.
 
+The command checks C++ apps too, on Apple platforms and Android. On Apple platforms it reads the bundle that `run` built from the CMake project of the app, of the `haylen_add_app` target that `--target` names, `main` by default. The CMake project of a C++ app lays out its web site and its Windows and Linux builds itself, so the command stops on those platforms with a sentence that says so.
+
 The command `run` runs the same check after each build and prints what it finds as warnings. A feature whose requirement is missing logs once and answers `unsupported` instead of stopping the app, as the [plugin guide](../platform/plugins.md#requirements) describes. A Release build is different: what a release never ships stops `run` before it launches, as [release builds](#release-builds) explain.
 
 | Platform | What it reads | What it checks |

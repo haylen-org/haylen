@@ -4011,6 +4011,15 @@ def apple_product(app: App, platform: str, config: str) -> Path:
     return bundles[-1]
 
 
+def cpp_apple_product(project: Path, target: str, folder: Path, platform: str, config: str) -> Path:
+    """Finds the app bundle of a target that the last build of a C++ app for an Apple run platform left in the build folder of the platform and configuration inside the build folder of the app, where Ninja places it in `bin/<target>` and the Xcode generator in `bin`."""
+    products = folder / f"{platform}-{config.lower()}" / "bin"
+    bundles = sorted(products.glob(f"**/{target}.app"), key=lambda bundle: bundle.stat().st_mtime) if products.is_dir() else []
+    if not bundles:
+        raise BuildError(f'No app of the target "{target}" of `{shown_path(project)}` was built for "{platform}" in the "{config}" configuration. Build it with "{TOOL} run {shown_path(project)} --platform {platform} --config {config} --target {target}".')
+    return bundles[-1]
+
+
 def build_apple(app: App, root: Path, args: argparse.Namespace) -> tuple[Path, dict | None]:
     """Builds the scheme of a run platform into the build folder of the app, outside the project, and returns the app bundle with the simulator it runs on."""
     settings = APPLE_RUNS[args.platform]
@@ -4089,11 +4098,12 @@ def apple_entitlements(bundle: Path, executable: Path) -> dict:
 
 
 def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirement]:
-    """Checks the app bundle of the last build of a run platform against what the engine and every plugin of the platform need: `Info.plist` keys, system frameworks, entitlements, privacy declarations, plugin classes and resources."""
+    """Checks the app bundle of the last build of a run platform against what the engine and every plugin of the platform need: `Info.plist` keys, system frameworks, entitlements, privacy declarations, plugin classes and resources. The bundle of a Lua app comes from its Apple project, and the bundle of a C++ app from its CMake project, whose `haylen_add_app` gives it the parts that the target templates give a Lua app."""
     settings = APPLE_RUNS[args.platform]
     template = settings["template"]
     folder = APPLE_TEMPLATES[template][0]
-    bundle = apple_product(app, args.platform, args.config)
+    cpp = app_kind(app.folder) == "cpp"
+    bundle = cpp_apple_product(app.folder, args.target, CPP_BUILDS_DIR / build_folder_name(app.folder), args.platform, args.config) if cpp else apple_product(app, args.platform, args.config)
     contents = bundle / "Contents" if args.platform in {"macos", "catalyst"} else bundle
     resources = contents / "Resources" if args.platform in {"macos", "catalyst"} else bundle
     info = read_plist(contents / "Info.plist")
@@ -4107,24 +4117,35 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
     targets = f'the target of `{shown_path(root / "project.yml")}`'
     missing: list[Requirement] = []
 
+    # A C++ app takes every part from "haylen_add_app", which reads them from the file that "run" writes, and only its Info.plist comes from templates of the developer.
+    built = f'Build the app with "{TOOL} run {shown_path(app.folder)} --platform {args.platform} --config {args.config} --target {args.target}", whose "haylen_add_app" gives it the frameworks, sources, entitlements, privacy declarations and resources of the engine and its plugins.'
+    templates = built if cpp else f'Keep "templates: [{template}]" on {targets}.'
+    plist_file = f'the "{"mac" if folder == "macos" else folder}/Info.plist.in" of the "APPLE_PROJECT" of "haylen_add_app"' if cpp else f'`{shown_path(root / folder / "Info.plist")}`'
+    plist_advice = f'Keep "@HAYLEN_PLUGIN_KEYS@" in {plist_file}, or add to it:' if cpp else f"Add to {plist_file}:"
+
     def need_framework(owner: str, framework: str) -> None:
-        if framework not in linked:
-            missing.append(Requirement(f'{owner} needs "{framework}", which the built app does not link.', f'Keep "templates: [{template}]" on {targets}, or add to its "dependencies":', f"- sdk: {framework}"))
+        if framework in linked:
+            return
+        message = f'{owner} needs "{framework}", which the built app does not link.'
+        missing.append(Requirement(message, built) if cpp else Requirement(message, f'Keep "templates: [{template}]" on {targets}, or add to its "dependencies":', f"- sdk: {framework}"))
 
     def need_plist(owner: str, key: str, value: object) -> None:
         if not holds(info, {key: value}):
-            missing.append(Requirement(f'{owner} needs "{key}" in the "Info.plist" of the app, which the built app lacks.', f'Add to `{shown_path(root / folder / "Info.plist")}`:', plist_snippet(key, value)))
+            missing.append(Requirement(f'{owner} needs "{key}" in the "Info.plist" of the app, which the built app lacks.', plist_advice, plist_snippet(key, value)))
 
     def need_privacy(owner: str, needed: dict) -> None:
         for key, value in needed.items():
-            if not holds(privacy, {key: value}):
-                missing.append(Requirement(f'{owner} needs "{key}" in the privacy manifest of the app, which the built app lacks.', f'Keep "templates: [{template}]" on {targets}, or add to `{shown_path(root / "PrivacyInfo.xcprivacy")}`:', plist_snippet(key, value)))
+            if holds(privacy, {key: value}):
+                continue
+            message = f'{owner} needs "{key}" in the privacy manifest of the app, which the built app lacks.'
+            missing.append(Requirement(message, built) if cpp else Requirement(message, f'Keep "templates: [{template}]" on {targets}, or add to `{shown_path(root / "PrivacyInfo.xcprivacy")}`:', plist_snippet(key, value)))
 
-    for framework in apple_frameworks()[settings["frameworks"]]:
+    # The engine target of a C++ app links the frameworks of the engine itself, while a Lua app takes them from the target templates, and the privacy manifest of the engine comes from its sources instead of its artifacts.
+    for framework in [] if cpp else apple_frameworks()[settings["frameworks"]]:
         need_framework("Haylen", framework)
     if folder != "macos" and "UIApplicationSceneManifest" not in info:
-        missing.append(Requirement('Haylen needs "UIApplicationSceneManifest" in the "Info.plist" of the app, which the built app lacks, since the runtime draws in the window of a scene.', f'Add to `{shown_path(root / folder / "Info.plist")}`:', plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": folder == "ios"})))
-    need_privacy("Haylen", engine_privacy())
+        missing.append(Requirement('Haylen needs "UIApplicationSceneManifest" in the "Info.plist" of the app, which the built app lacks, since the runtime draws in the window of a scene.', f"Add to {plist_file}:", plist_snippet("UIApplicationSceneManifest", {"UIApplicationSupportsMultipleScenes": folder == "ios"})))
+    need_privacy("Haylen", read_plist(ENGINE_DIR / "platform" / "apple" / "PrivacyInfo.xcprivacy") if cpp else engine_privacy())
     if app.background_audio and folder in {"ios", "tvos", "visionos"} and args.platform != "catalyst":
         need_plist('The audio that plays in the background, which "audio.background" of "app.json" declares,', "UIBackgroundModes", ["audio"])
 
@@ -4134,20 +4155,22 @@ def check_apple(app: App, root: Path, args: argparse.Namespace) -> list[Requirem
             continue
         owner = f'The plugin "{plugin.id}"'
         if "class" in apple and apple["class"] not in classes:
-            missing.append(Requirement(f'{owner} needs its Apple sources in the app, whose class "{apple["class"]}" the built app lacks, so the plugin does not load.', f'Keep "templates: [{template}]" on {targets}.'))
+            missing.append(Requirement(f'{owner} needs its Apple sources in the app, whose class "{apple["class"]}" the built app lacks, so the plugin does not load.', templates))
         for framework in apple.get("frameworks", []):
             need_framework(owner, framework)
         expanded = expand_app_settings(apple, apple_app_settings(app))
         for key, value in expanded.get("infoPlist", {}).items():
             need_plist(owner, key, value)
         for key, value in expanded.get("entitlements", {}).items():
-            if not holds(entitlements, {key: value}):
-                missing.append(Requirement(f'{owner} needs the entitlement "{key}", which the built app is not signed with.', f'Add to `{shown_path(root / entitlements_file)}`:', plist_snippet(key, value)))
+            if holds(entitlements, {key: value}):
+                continue
+            message = f'{owner} needs the entitlement "{key}", which the built app is not signed with.'
+            missing.append(Requirement(message, built) if cpp else Requirement(message, f'Add to `{shown_path(root / entitlements_file)}`:', plist_snippet(key, value)))
         need_privacy(owner, apple.get("privacy", {}))
         for resource in plugin.manifest["apple"].get("resources", []):
             source = plugin_file(app, plugin, resource)
             if source is not None and not (resources / source.name).exists():
-                missing.append(Requirement(f'{owner} needs "{source.name}" at the root of the app bundle, which the built app lacks.', f'Keep "templates: [{template}]" on {targets}.'))
+                missing.append(Requirement(f'{owner} needs "{source.name}" at the root of the app bundle, which the built app lacks.', templates))
     if args.config == "Release":
         release = "Contents/Resources/app" if args.platform in {"macos", "catalyst"} else "app"
         missing += [Requirement(problem, RELEASE_ADVICE) for problem in release_problems(app, folder_entries(bundle), release, read_secrets(app))]
@@ -6087,7 +6110,17 @@ def command_check(args: argparse.Namespace) -> None:
     app = resolve_app(args.app)
     target = RUN_TARGETS[args.platform]
     info = App(app, target.plugins)
-    root = info.build_folder / "web" if args.platform == "web" else project_root(info, target.template)
+    cpp = app_kind(app) == "cpp"
+    if cpp and target.template not in {"apple", "android"}:
+        raise BuildError(f'The command "check" covers C++ apps on Apple platforms and Android. The CMake project of a C++ app lays out its build for "{args.platform}" itself, so the command cannot read it.')
+
+    # The Apple bundle of a C++ app comes from its CMake project, which is the folder of the app.
+    if cpp and target.template == "apple":
+        root = app
+    elif args.platform == "web":
+        root = info.build_folder / "web"
+    else:
+        root = project_root(info, target.template)
     missing = target.check(info, root, args)
     report_requirements(missing)
     if missing:
@@ -6649,9 +6682,8 @@ def run_cpp_apple(project: Path, target: str, folder: Path, args: argparse.Names
     app = configure_cpp_apple(target, directory, command, args.platform, args)
     run(["cmake", "--build", directory, "--config", args.config, "--target", target, "--parallel", str(args.jobs), *(["--", "-allowProvisioningUpdates"] if device else [])])
 
-    # Ninja places the bundle in `bin/<target>`, while the Xcode generator places it in `bin`.
     settings = APPLE_RUNS[args.platform]
-    bundle = next((directory / "bin").glob(f"**/{target}.app"))
+    bundle = cpp_apple_product(project, target, folder, args.platform, args.config)
     if args.config == "Release":
         stop_on_release_problems(cpp_release_problems(cpp_release_app(directory, target), bundle, "Contents/Resources/app" if args.platform == "catalyst" else "app"))
         write_apple_asset_packs(app, directory / "haylen-release" / target / "packs")
@@ -8066,6 +8098,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_app_argument(check)
     check.add_argument("--platform", required=True, choices=[name for name, target in RUN_TARGETS.items() if target.check], help="The platform whose last build to check.")
     check.add_argument("--config", default="Debug", choices=["Debug", "Release"], help="Configuration of the build to check.")
+    check.add_argument("--target", default="main", help='The "haylen_add_app" target of a C++ app, "main" by default, as the C++ template names it.')
     check.add_argument("--coop", default="off", choices=["off", "same-origin-allow-popups", "same-origin"], help='The "Cross-Origin-Opener-Policy" header that the server of the site sends, on the web.')
     check.set_defaults(handler=command_check)
 
