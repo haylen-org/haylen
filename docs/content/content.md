@@ -108,7 +108,7 @@ The class `content::ReleaseBuilder` builds the release of an app package into a 
 
 ```cpp
 content::ReleaseBuilder builder(keys, activeKeyId, signingKey, std::make_shared<const content::RecordCache>(cacheFolder));
-content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 1002003});
+content::ReleaseBuilder::Result result = builder.build(*io::Package::openDirectory(appFolder), releaseFolder, earlierReleaseFolder, {.profile = "apple", .appBuild = 14});
 ```
 
 The app domain takes `app.json`, every file under `source` and, for every plugin that `app.json` lists, its `plugin.json` and the files under its `source`. The content domain takes every file under `content`. Nothing else of the package folder takes part, so platform projects, notes, plugins that the app does not list and the `.DS_Store` files of file managers never reach a release. The builder decides the domain of every file by its folder, so no file of `source` can ever become content. The file `app.json` must be valid, as the engine reads it.
@@ -458,7 +458,7 @@ haylen content diff ~/apps/my-game old-release build/apps/my-game-1a2b3c4d/relea
 haylen content publish ~/apps/my-game --platform android --channel stable --output ~/cdn/my-game
 ```
 
-The profile of a release names the platform family it was made for: `apple` for every target of the Apple project, `android`, `windows`, `linux` and `web`. The build number of an app comes from its version, so `1.2.3` is 1002003, as on Android.
+The profile of a release names the platform family it was made for: `apple` for every target of the Apple project, `android`, `windows`, `linux` and `web`. The build number of a release is the `build` of `app.json`, the same number that the stores receive, as [the version and build number](../tools/distribution.md#version-and-build-number) of the platforms describe.
 
 ### Staging and the bootstrap
 

@@ -87,7 +87,8 @@ print('Halts in the background: ' .. tostring(config.lifecycle.pauseOnBackground
 | --- | --- | --- | --- |
 | `name` | string | `"Haylen App"` | The name of the app that people see. |
 | `identifier` | string | `"com.haylen.app"` | A unique id in reverse domain form. It also names the folder where [`haylen.storage`](storage.md) and [`haylen.preferences`](preferences.md) keep their files. |
-| `version` | string | `"1.0.0"` | The version of the app. |
+| `version` | string | `"1.0.0"` | The version of the app that people see, such as `"1.2.0"`. |
+| `build` | integer | `1` | The build number of the app, a whole number from 1 to 2100000000 that grows with every upload to a store, such as 1, 2 and 3. Every platform takes its build number from it, as [the version and build number](../tools/distribution.md#version-and-build-number) describe. Another value stops the start with `The "build" value <value> in "app.json" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.` |
 | `description` | string | The value of `name` | One sentence about the app. The Windows and Linux templates give it to the executable, the desktop entry, the AppStream metainfo and the packages. |
 | `company` | string | The value of `name` | The person or company that publishes the app, in the same places. |
 | `copyright` | string | `"Copyright © <company>"` | The copyright notice of the app, which the Windows executable and the installer show. |
@@ -732,6 +733,7 @@ Reads what an app package says about itself, such as the name and the logo that 
 | `name` | string | The `name` of `app.json`. |
 | `identifier` | string | The `identifier` of `app.json`. |
 | `version` | string | The `version` of `app.json`. |
+| `build` | integer | The `build` of `app.json`, 1 when it gives none. |
 | `logo` | string or nil | The path of `splash.logo`, relative to `content/`, or nil when `app.json` names none. |
 | `logoBytes` | string or nil | The bytes of that file, such as the text of an SVG document or the bytes of a PNG image, which [`graphics.newTexture`](graphics.md#graphicsnewtexturebytes-options) or [`graphics.newVectorImage`](graphics.md#graphicsnewvectorimagetext) turn into a picture. |
 

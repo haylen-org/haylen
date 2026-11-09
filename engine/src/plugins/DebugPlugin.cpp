@@ -194,7 +194,7 @@ void DebugPlugin::publishCrashContext(core::Engine& engine) {
         }
     }
     const core::AppConfig& config = engine.getConfig();
-    core::Json context = {{"app", {{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}}}, {"breadcrumbs", std::move(recent)}, {"log", std::move(log)}};
+    core::Json context = {{"app", {{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}, {"build", config.build}}}, {"breadcrumbs", std::move(recent)}, {"log", std::move(log)}};
     std::string text = context.dump(-1, ' ', false, core::Json::error_handler_t::replace);
     if (text.size() > platform::CrashGuard::kContextSize) {
         context.erase("log");

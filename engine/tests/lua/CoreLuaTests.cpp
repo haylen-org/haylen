@@ -84,7 +84,7 @@ TEST(CoreLuaTest, LaunchesAnotherAppPackageOnceTheFrameEnds) {
 // A list of downloaded apps shows each one by what its package says, read on the I/O pool.
 TEST(CoreLuaTest, ReadsWhatAnAppPackageSaysAboutItself) {
     test::TemporaryDirectory guest;
-    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.guest", "version": "2.1.0", "splash": {"logo": "brand/logo.svg"}})");
+    guest.write("app.json", R"({"name": "Guest", "identifier": "com.haylen.guest", "version": "2.1.0", "build": 7, "splash": {"logo": "brand/logo.svg"}})");
     guest.write("content/brand/logo.svg", "<svg/>");
     test::TemporaryDirectory plain;
     plain.write("app.json", R"({"name": "Plain", "identifier": "com.haylen.plain"})");
@@ -97,13 +97,13 @@ TEST(CoreLuaTest, ReadsWhatAnAppPackageSaysAboutItself) {
             local info = haylen.packageInfo(')" + guest.getPath().generic_string() + R"('):await()
             local bare = haylen.packageInfo(')" + plain.getPath().generic_string() + R"('):await()
             local _, failure = haylen.packageInfo(')" + (plain.getPath() / "missing.zip").generic_string() + R"('):await()
-            read = table.concat({info.name, info.identifier, info.version, info.logo, info.logoBytes, bare.name, tostring(bare.logo), tostring(failure)}, '|')
+            read = table.concat({info.name, info.identifier, info.version, info.build, info.logo, info.logoBytes, bare.name, bare.build, tostring(bare.logo), tostring(failure)}, '|')
         end)
     )");
     // clang-format on
     ASSERT_TRUE(fixture.frameUntil([&] { return fixture.lua("return read ~= nil") == "true"; }));
     const std::string read = fixture.lua("return read");
-    EXPECT_EQ(read.substr(0, read.find("|nil|")), "Guest|com.haylen.guest|2.1.0|brand/logo.svg|<svg/>|Plain");
+    EXPECT_EQ(read.substr(0, read.find("|nil|")), "Guest|com.haylen.guest|2.1.0|7|brand/logo.svg|<svg/>|Plain|1");
     EXPECT_NE(read.find("The app package could not be read. No app package is at"), std::string::npos);
 }
 

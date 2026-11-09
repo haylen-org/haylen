@@ -520,7 +520,7 @@ The runtime reports back through callbacks that the page assigns to `Module.hayl
 | --- | --- |
 | `onLog(level, message)` | The `level` is `'debug'`, `'info'`, `'warning'` or `'error'`. |
 | `onError(error)` | `{message, file, line, traceback, frames}` of the error that stopped the app, with an empty `file` when no script position is known. The `traceback` is the stack as text, one frame per line. The `frames` list the same frames as `{source, line, function, kind}` objects, innermost first, with the kind `lua`, `c` or `main`. |
-| `onStarted(app)` | `{name, identifier, version}` from `app.json`. |
+| `onStarted(app)` | `{name, identifier, version, build}` from `app.json`. |
 | `onStopped()` | The app ended. |
 | `onLoadProgress(progress)` | `{loaded, total}` in bytes while the runtime downloads what the app needs before it starts: the WebAssembly module, unless the page instantiates it with `Module.instantiateWasm`, the files that the build preloads and the package of `packageUrl`. The `total` is 0 while the size of a download is unknown, as for a compressed response, which tells only its compressed length. |
 | `onSplashEnded(splash)` | `{fadeOut}`, the seconds of the fade out of `app.json`. The runtime ended the splash screen, which the page then fades out over those seconds. |

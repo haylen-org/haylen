@@ -24,6 +24,7 @@ class CoreLua final {
         std::string name;
         std::string identifier;
         std::string version;
+        std::uint32_t build = 1;
         std::string logo;
         std::vector<std::uint8_t> logoBytes;
     };

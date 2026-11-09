@@ -147,6 +147,9 @@ struct AppConfig {
     std::string name = "Haylen App";
     std::string identifier = "com.haylen.app";
     std::string version = "1.0.0";
+
+    // The build number of the app, a whole number that grows with every upload to a store, while `version` is the version that people see. It is the bundle version of Apple platforms, the version code of Android and the app build that protected releases and content updates match.
+    std::uint32_t build = 1;
     std::string description = "Haylen App";
     std::string company = "Haylen App";
     std::string copyright = "Copyright \xC2\xA9 Haylen App";
@@ -204,11 +207,15 @@ struct AppConfig {
     [[nodiscard]] static std::optional<content::Delivery> deliveryFromName(std::string_view name) noexcept;
     [[nodiscard]] static std::string_view deliveryName(content::Delivery value) noexcept;
 
+    // The largest build number, the largest version code that Google Play takes.
+    static constexpr std::uint32_t kMaxBuild = 2'100'000'000;
+
   private:
     static const std::array<std::pair<std::string_view, Debug::Reload>, 2> kReloadNames;
     static const std::array<std::pair<std::string_view, content::Delivery>, 3> kDeliveryNames;
 
     template <typename T> static void readValue(const Json& object, const char* key, T& target);
+    [[nodiscard]] static std::uint32_t readBuild(const Json& document);
     static void requirePositive(double value, const char* key);
     static void requireNonNegative(double value, const char* key);
     [[nodiscard]] static math::Color readColor(const Json& object, const char* key, const char* name);

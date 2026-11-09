@@ -751,7 +751,7 @@ What stays in the template belongs to the developer: the deployment targets, C++
 
 - The folder `source/` is one that Xcode keeps in sync, so every Objective-C, C++ and Swift file in it builds into every target.
 - The module of the targets is `HaylenApp`, so Objective-C++ reaches Swift classes through `HaylenApp-Swift.h`.
-- The targets read their product name and bundle identifier from `HAYLEN_PRODUCT_NAME` and `HAYLEN_BUNDLE_IDENTIFIER`, and their version from `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION`, which `haylen/Haylen.xcconfig` sets from `app.json`.
+- The targets read their product name and bundle identifier from `HAYLEN_PRODUCT_NAME` and `HAYLEN_BUNDLE_IDENTIFIER`, their version from `MARKETING_VERSION` and their build number from `CURRENT_PROJECT_VERSION`, which `haylen/Haylen.xcconfig` sets from the `version` and the `build` of `app.json`.
 - Builds for this Mac, native or Mac Catalyst, sign with the ad hoc identity. Device builds use the team of `HAYLEN_APPLE_TEAM`.
 
 The `Info.plist` of each platform is complete. It holds `$(HAYLEN_DISPLAY_NAME)`, `$(MARKETING_VERSION)` and the other build settings for the values of `app.json`. Its other keys are visible defaults that the developer changes or deletes:
@@ -779,7 +779,7 @@ templates/common/platform/android/
   app/src/main/res/           Adaptive launcher icon with its monochrome layer and Android TV banner.
 ```
 
-The app module depends on `dev.haylen:haylen` from the Maven repository of the artifacts, which brings GameActivity, AppCompat, the activity library and core. It reads the application id, the version name and code, the label, the screen orientation, the status bar, the native library and the manifest placeholders from `haylen/haylen.properties`. It adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version code comes from the version, so 1.2.3 becomes 1002003. The SDK levels and R8 are choices of the developer. The signing reads the keys of `keystore/`, as [distribution android-key](#distribution-android-key) describes. The `minSdk` of 27 is what the engine library needs.
+The app module depends on `dev.haylen:haylen` from the Maven repository of the artifacts, which brings GameActivity, AppCompat, the activity library and core. It reads the application id, the version name and code, the label, the screen orientation, the status bar, the native library and the manifest placeholders from `haylen/haylen.properties`. It adds `haylen/assets`, `haylen/res` and `haylen/jniLibs` to its source folders, as [the Android project](#the-android-project) describes. The version name is the `version` of `app.json`, and the version code is its `build`, which grows with every upload to Google Play. The SDK levels and R8 are choices of the developer. The signing reads the keys of `keystore/`, as [distribution android-key](#distribution-android-key) describes. The `minSdk` of 27 is what the engine library needs.
 
 The manifest declares the permissions `INTERNET`, `ACCESS_NETWORK_STATE` and `VIBRATE` as visible defaults. Network access, the network events and the rumble of gamepads need them, and an app deletes those it does not use, since the engine library declares no permission. A feature whose permission is missing logs once what is missing and does nothing or fails, as the [plugin guide](../platform/plugins.md#android-requirements) describes. The `<application>` sets `android:enableOnBackInvokedCallback`, which lets the back callback of `HaylenActivity` play the predictive back animation of the system.
 
@@ -827,6 +827,7 @@ The resource script `resources/app.rc` reads the values of `app.json` from `hayl
 | --- | --- |
 | `CompanyName` | `company` of `app.json`. |
 | `FileDescription`, `ProductName` | `name`. |
+| `FILEVERSION`, `PRODUCTVERSION` | The numbers of `version` followed by `build`, so the version `1.2` of build 7 is `1.2.0.7`. The resource holds numbers up to 65535, and a larger one stops the build with a message that names it. |
 | `FileVersion`, `ProductVersion` | `version`. |
 | `LegalCopyright` | `copyright`. |
 | `OriginalFilename` | The executable. |
@@ -871,14 +872,37 @@ The script `haylen.py` writes one folder inside a project, `haylen/`, which the 
 
 The command [`prepare`](#prepare) writes the folder `haylen/`. The command [`run`](#run) prepares the project, generates `App.xcodeproj` again when it may, builds, [checks](#check) the built app and launches it.
 
+### Version and build number
+
+Every platform takes two numbers from `app.json`. The `version`, such as `1.2.0`, is the version that people see in the stores. The `build` is a whole number that grows with every upload of the app, such as 1, 2 and 3, and it starts at 1 when `app.json` gives none. The `build` is the only source of every build number of the app, so nothing derives one from the version, and a project of the developer never sets one of its own.
+
+| Platform | `version` | `build` |
+| --- | --- | --- |
+| Apple | `MARKETING_VERSION`, which is `CFBundleShortVersionString`. | `CURRENT_PROJECT_VERSION`, which is `CFBundleVersion`. |
+| Android | `versionName`. | `versionCode`. |
+| Windows | The first three numbers of the version resource and its texts. | The fourth number of the version resource. |
+| Linux | The version of the `.deb` package and the AppImage. | Nothing, since the desktop entry and the metainfo carry no build number. |
+| Protected releases | Nothing. | The app build of the release and of the content that [`content publish`](#content) publishes. |
+
+Google Play refuses an upload whose `versionCode` is not higher than the last one, and takes at most 2100000000, so the `build` is a number from 1 to 2100000000. The App Store refuses a build number that it already received for the same version. A content channel serves the build that published it and every later build, as the [content guide](../content/content.md#publication-trees) explains. So raise the `build` before every upload, and keep the `version` for what people see.
+
+```json
+{
+    "name": "Sky Garden",
+    "identifier": "com.example.skygarden",
+    "version": "1.2.0",
+    "build": 14
+}
+```
+
 ### The Apple project
 
-The file `project.yml` includes `haylen/project.yml`, and every target names its template in `templates`. XcodeGen appends the lists of a template to the lists of the target, and a setting of the target wins over the setting of the template. So the developer adds frameworks, sources and settings to a target, or points `INFOPLIST_FILE` at a file of their own and leaves the completed `Info.plist` behind. The file `App.xcconfig` starts with `#include "haylen/Haylen.xcconfig"`, and its settings after the include win, such as a build number from continuous integration in `CURRENT_PROJECT_VERSION`. The sources of each target leave its `Info.plist` out of the resources with `excludes` and list it with `buildPhase: none`, since the target builds the completed copy.
+The file `project.yml` includes `haylen/project.yml`, and every target names its template in `templates`. XcodeGen appends the lists of a template to the lists of the target, and a setting of the target wins over the setting of the template. So the developer adds frameworks, sources and settings to a target, or points `INFOPLIST_FILE` at a file of their own and leaves the completed `Info.plist` behind. The file `App.xcconfig` starts with `#include "haylen/Haylen.xcconfig"`, and its settings after the include win, such as a development team in `DEVELOPMENT_TEAM`. The sources of each target leave its `Info.plist` out of the resources with `excludes` and list it with `buildPhase: none`, since the target builds the completed copy.
 
 | File in `haylen/` | Contents |
 | --- | --- |
 | `project.yml` | The target templates `HaylenIOS`, `HaylenTVOS`, `HaylenVisionOS` and `HaylenMacOS`, and the Swift packages of the plugins. Each template links `Haylen.xcframework` and the system frameworks of the engine from the list that the artifacts publish, with IOKit for Mac Catalyst alone. It leaves out a framework that a target of the template links itself, since XcodeGen refuses a dependency listed twice. It copies the package and the privacy manifest, and on iOS and tvOS the splash assets. It sets `INFOPLIST_FILE` to the completed `Info.plist` and `CODE_SIGN_ENTITLEMENTS` to the completed entitlements when there are any. It adds the native parts of the plugins of its platforms, as the [plugin guide](../platform/plugins.md#apple-platforms) describes. The phase `Embed native libraries` joins the templates of the platforms that the app has native libraries for. It copies the libraries of the file list `haylen/native/<platform>-<sdk>.xcfilelist` into the folder `Frameworks` of the bundle and signs them with the identity of the app. Scripts run without the script sandbox in a template with any build phase, which would need every file of a bundle and the temporary files of `codesign` listed one by one. |
-| `Haylen.xcconfig` | `HAYLEN_PRODUCT_NAME`, `HAYLEN_DISPLAY_NAME`, `HAYLEN_BUNDLE_IDENTIFIER`, `MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` from `app.json`, and `OTHER_LDFLAGS` with `HAYLEN_NATIVE_LDFLAGS`, which links static native libraries. |
+| `Haylen.xcconfig` | `HAYLEN_PRODUCT_NAME`, `HAYLEN_DISPLAY_NAME`, `HAYLEN_BUNDLE_IDENTIFIER`, `MARKETING_VERSION` from `version` and `CURRENT_PROJECT_VERSION` from `build` of `app.json`, and `OTHER_LDFLAGS` with `HAYLEN_NATIVE_LDFLAGS`, which links static native libraries. |
 | `ios/Info.plist`, `tvos/Info.plist`, `macos/Info.plist` | The `Info.plist` of the developer, completed. |
 | `ios/App.entitlements`, `ios/Catalyst.entitlements`, `tvos/App.entitlements`, `macos/App.entitlements` | The entitlements of the developer at the same path, completed with the `entitlements` of the plugins of iOS, Mac Catalyst, tvOS and macOS, written when either has any. |
 | `PrivacyInfo.xcprivacy` | The [privacy manifest](#privacy-manifest) of the app. |
@@ -923,7 +947,7 @@ The Gradle scripts of the developer read `haylen/haylen.properties`:
 | --- | --- |
 | `repository`, `engineVersion` | The local Maven repository of the artifacts and the engine version. The file `settings.gradle.kts` gives every module the version as the extra property `haylenEngineVersion`, with which plugin modules depend on the engine libraries. |
 | `ndkVersion` | The NDK of the engine, which builds the native libraries and strips their debug information from the APK of every build type, while the build folder keeps the libraries with it for the debugger. |
-| `name`, `identifier`, `versionName`, `versionCode`, `orientation`, `statusBar` | The identity, version, orientation and status bar of `app.json`. |
+| `name`, `identifier`, `versionName`, `versionCode`, `orientation`, `statusBar` | The identity, the `version`, the `build`, the orientation and the status bar of `app.json`. |
 | `library` | The native library that `HaylenActivity` loads: `haylen`, the Lua player, for the debug builds of Lua apps, `haylen-app` for their release builds, or the library of a C++ app. The template stops a release build of a project whose library is `haylen`, since that project holds the development package. |
 | `plugins`, `gradlePlugins`, `placeholder.<name>` | The plugin modules as `id=folder` entries, their Gradle plugins as `id=version` entries and their manifest placeholders, as the [plugin guide](../platform/plugins.md#android) describes. |
 | `assetPacks` | The asset packs of a large release and of store packs, which `settings.gradle.kts` and the app module include, as [release builds](#release-builds) describe. |

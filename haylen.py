@@ -170,6 +170,9 @@ ANDROID_PACK_DELIVERIES = {"install-time": "with the app", "fast-follow": "right
 # Google Play takes asset packs that deliver after the install of at most 1.5 GB each, and at most 100 asset packs in an app.
 ANDROID_STORE_PACK_LIMIT = 1500 * 1000**2
 ANDROID_MAXIMUM_ASSET_PACKS = 100
+# The build number of an app is at most the largest version code that Google Play takes, and the version resource of Windows holds numbers of 16 bits.
+MAXIMUM_BUILD = 2_100_000_000
+WINDOWS_MAXIMUM_VERSION_NUMBER = 65535
 STORE_RELEASE_LIMITS = {"apple": (4 * 1024**3, "the 4 GB that the App Store accepts for the uncompressed size of an iOS or tvOS app"), "android": (4 * 1000**3, "the 4 GB that Google Play accepts for the download of an app with its install-time asset packs")}
 # Symbol files, which stay with the developer and never ship.
 SYMBOL_SUFFIXES = (".pdb", ".debug", ".dwo", ".dsym", ".map", ".symbols")
@@ -2120,6 +2123,10 @@ class App:
             raise BuildError(f'The "orientation" of `{where}` must be "landscape", "portrait" or "any".')
         if not re.fullmatch(r"\d+(\.\d+){0,2}", self.version):
             raise BuildError(f'The "version" of `{where}` must be one to three numbers separated by dots, such as "1.2.0".')
+        # The build number grows with every upload to a store, apart from the version that people see.
+        self.build: int = document.get("build", 1)
+        if not isinstance(self.build, int) or isinstance(self.build, bool) or not 1 <= self.build <= MAXIMUM_BUILD:
+            raise BuildError(f'The "build" of `{where}` must be a whole number from 1 to {MAXIMUM_BUILD} that grows with every upload of the app, such as 1, 2 and 3.')
         # The publisher of the app follows its name until it gives its own, as the engine reads it.
         self.description: str = document.get("description", self.name)
         self.company: str = document.get("company", self.name)
@@ -2179,11 +2186,6 @@ class App:
         """The folder under `build/apps` that holds everything `haylen.py` builds for the app, which no other app shares."""
         return APPS_DIR / build_folder_name(self.folder)
 
-    @property
-    def version_code(self) -> int:
-        """Android needs an integer that grows with every version, so `1.2.3` becomes `1002003`."""
-        parts = [int(part) for part in self.version.split(".")] + [0, 0]
-        return parts[0] * 1_000_000 + parts[1] * 1_000 + parts[2]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -2389,7 +2391,7 @@ def build_apple_native(app: App, library: NativeLibrary, slice_name: str, jobs: 
         "CFBundlePackageType": "FMWK",
         "CFBundleShortVersionString": app.version,
         "CFBundleSupportedPlatforms": [FRAMEWORK_PLATFORMS[slice_name]],
-        "CFBundleVersion": app.version,
+        "CFBundleVersion": str(app.build),
         "MinimumOSVersion": APPLE_MINIMUM_VERSIONS[system],
     }
     (framework / "Info.plist").write_bytes(plistlib.dumps(info, sort_keys=True))
@@ -3532,7 +3534,7 @@ def write_apple_privacy(app: App, root: Path, generated: Path) -> None:
 
 def apple_app_settings(app: App) -> dict[str, str]:
     """The build settings of the identity of an app that `Haylen.xcconfig` gives every target, which the `Info.plist` keys and entitlements of plugins may name as `$(NAME)`."""
-    return {"HAYLEN_PRODUCT_NAME": app.name, "HAYLEN_DISPLAY_NAME": app.name, "HAYLEN_BUNDLE_IDENTIFIER": app.identifier, "MARKETING_VERSION": app.version, "CURRENT_PROJECT_VERSION": app.version}
+    return {"HAYLEN_PRODUCT_NAME": app.name, "HAYLEN_DISPLAY_NAME": app.name, "HAYLEN_BUNDLE_IDENTIFIER": app.identifier, "MARKETING_VERSION": app.version, "CURRENT_PROJECT_VERSION": str(app.build)}
 
 
 def expand_app_settings(value: object, settings: dict[str, str]) -> object:
@@ -4266,7 +4268,7 @@ def prepare_android(app: App, root: Path, library: str, config: str, jobs: int, 
         "name": app.name,
         "identifier": app.identifier,
         "versionName": app.version,
-        "versionCode": str(app.version_code),
+        "versionCode": str(app.build),
         "orientation": ANDROID_ORIENTATIONS[app.orientation],
         "statusBar": app.status_bar,
         "library": library,
@@ -5462,13 +5464,16 @@ def rc_text(value: str) -> str:
 
 
 def write_windows_resources(app: App, generated: Path) -> None:
-    """Writes `HaylenApp.h`, which gives the resource script of the project the name, the version, the company and the copyright of `app.json` for the version resource of the executable."""
-    numbers = [*app.version.split("."), "0", "0", "0"][:4]
+    """Writes `HaylenApp.h`, which gives the resource script of the project the name, the version, the company and the copyright of `app.json` for the version resource of the executable, whose four numbers are the three of the version and the build number."""
+    version = [int(part) for part in app.version.split(".")]
+    numbers = [*version, 0, 0][:3] + [app.build]
+    if max(numbers) > WINDOWS_MAXIMUM_VERSION_NUMBER:
+        raise BuildError(f'The version resource of Windows holds numbers up to {WINDOWS_MAXIMUM_VERSION_NUMBER}, and the "version" "{app.version}" or the "build" "{app.build}" of `{shown_path(app.folder / "app.json")}` goes past it.')
     strings = {"NAME": app.name, "DESCRIPTION": app.description, "COMPANY": app.company, "COPYRIGHT": app.copyright, "EXECUTABLE": f"{app.executable}.exe", "VERSION": app.version}
     lines = [
         "// Written by haylen.py from app.json. The resource script of the project includes it.",
         *(f"#define HAYLEN_APP_{name} {rc_text(value)}" for name, value in strings.items()),
-        f"#define HAYLEN_APP_VERSION_NUMBERS {', '.join(numbers)}",
+        f"#define HAYLEN_APP_VERSION_NUMBERS {', '.join(str(number) for number in numbers)}",
         "",
     ]
     write_if_changed(generated / "HaylenApp.h", "\n".join(lines))
@@ -6820,7 +6825,7 @@ def cpp_apple_extension(app: App, plugin: Plugin, extension: dict, folder: Path)
         "CFBundleName": name,
         "CFBundlePackageType": "XPC!",
         "CFBundleShortVersionString": app.version,
-        "CFBundleVersion": app.version,
+        "CFBundleVersion": str(app.build),
         **expand_app_settings(extension.get("infoPlist", {}), settings),
     }
     info[attributes] = {point: extension["point"], **info.get(attributes, {})}
@@ -6952,7 +6957,7 @@ def build_release(app: App, profile: str, config: str, jobs: int, previous: str 
     folder = release_folder(app, profile)
     staging = folder.with_name(f"{profile}.new")
     shutil.rmtree(staging, ignore_errors=True)
-    command = [tool, "build", stage_package(app), "--keys", keys, "--profile", profile, "--build", str(app.version_code), "--output", staging, "--cache", app.build_folder / "content-cache"]
+    command = [tool, "build", stage_package(app), "--keys", keys, "--profile", profile, "--build", str(app.build), "--output", staging, "--cache", app.build_folder / "content-cache"]
     if previous:
         command += ["--previous", Path(previous).resolve()]
     elif (folder / "app.hmanifest").is_file():
@@ -7007,7 +7012,7 @@ def warn_store_size(folder: Path, profile: str) -> None:
 def write_bootstrap(app: App, profile: str, destination: Path, config: str, jobs: int) -> None:
     """Writes the bootstrap of the release build of an app, which compiles in its identity and its sealed content keys, and keeps the file as it is when nothing changed."""
     tool = content_tool(config, jobs)
-    run([tool, "bootstrap", "--keys", ensure_keys(app, tool), "--profile", profile, "--build", str(app.version_code), "--output", destination], echo=False)
+    run([tool, "bootstrap", "--keys", ensure_keys(app, tool), "--profile", profile, "--build", str(app.build), "--output", destination], echo=False)
 
 
 def read_secrets(app: App) -> dict[str, bytes]:
@@ -7105,7 +7110,7 @@ def command_content_publish(args: argparse.Namespace) -> None:
     # The first generation of a channel keeps the shards of the release that ships with the app, so installed apps download only what changed.
     release = release_folder(app, CONTENT_PROFILES[args.platform])
     shipped = ["--release", release] if (release / "content.hmanifest").is_file() else []
-    run([tool, "publish", stage_package(app), "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.version_code), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache", *shipped])
+    run([tool, "publish", stage_package(app), "--keys", keys, "--profile", CONTENT_PROFILES[args.platform], "--build", str(app.build), "--channel", args.channel, "--output", Path(args.output).resolve(), "--cache", app.build_folder / "content-cache", *shipped])
 
 
 # Steam: the depots of a release for SteamPipe, which delivers the app with its protected content and the packs of the app as depots of their own, so a Steam app needs no content server of its own.

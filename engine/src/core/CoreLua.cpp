@@ -126,7 +126,7 @@ CoreLua::PackageInfo CoreLua::readPackageInfo(const std::filesystem::path& path)
     }
     const std::unique_ptr<io::Package> package = io::Package::open(path);
     const AppConfig config = AppConfig::fromPackage(*package);
-    PackageInfo info{.name = config.name, .identifier = config.identifier, .version = config.version, .logo = config.splash.logo};
+    PackageInfo info{.name = config.name, .identifier = config.identifier, .version = config.version, .build = config.build, .logo = config.splash.logo};
     if (!info.logo.empty()) {
         info.logoBytes = package->read("content/" + info.logo);
     }
@@ -145,13 +145,15 @@ int CoreLua::rootPackageInfo(lua_State* L) {
             return;
         }
         promise.resolveWith([info = std::move(*result.value)](lua_State* state) {
-            lua_createtable(state, 0, 5);
+            lua_createtable(state, 0, 6);
             lua::Stack::push(state, info.name);
             lua_setfield(state, -2, "name");
             lua::Stack::push(state, info.identifier);
             lua_setfield(state, -2, "identifier");
             lua::Stack::push(state, info.version);
             lua_setfield(state, -2, "version");
+            lua_pushinteger(state, info.build);
+            lua_setfield(state, -2, "build");
             if (!info.logo.empty()) {
                 lua::Stack::push(state, info.logo);
                 lua_setfield(state, -2, "logo");

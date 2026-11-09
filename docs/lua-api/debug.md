@@ -608,7 +608,7 @@ end
 Returns the report of the native crash that ended the last run of the app, or `nil`. A report is `{reason, context}`:
 
 - `reason` is `'segmentationFault'`, `'busError'`, `'illegalInstruction'`, `'arithmeticError'`, `'abort'` or `'trap'` on the platforms with signals, and `'accessViolation'`, `'stackOverflow'`, `'illegalInstruction'`, `'divideByZero'`, `'breakpoint'` or `'exception'` on Windows.
-- `context` holds `app` with `name`, `identifier` and `version`, `breadcrumbs` as `{time, message, data}`, and `log` as `{level, text}`. Each message and line keeps at most 256 characters. When the context would pass 32 KiB, it drops the log and the data of the breadcrumbs.
+- `context` holds `app` with `name`, `identifier`, `version` and `build`, `breadcrumbs` as `{time, message, data}`, and `log` as `{level, text}`. Each message and line keeps at most 256 characters. When the context would pass 32 KiB, it drops the log and the data of the breadcrumbs.
 
 The engine removes the report once it read it, so the next start holds none.
 

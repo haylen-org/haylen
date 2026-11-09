@@ -102,7 +102,7 @@ function(haylen_setup_web_page target shell)
   )
 endfunction()
 
-function(haylen_setup_apple_bundle target project_dir display_name identifier version show_in_taskbar status_bar background_audio)
+function(haylen_setup_apple_bundle target project_dir display_name identifier version build show_in_taskbar status_bar background_audio)
   # The keys of the plugins that haylen.py writes hold the background mode with the modes of the plugins, and an app without them gets it here.
   set(HAYLEN_BACKGROUND_MODES "")
   if(background_audio AND NOT HAYLEN_PLATFORM STREQUAL "macos" AND NOT HAYLEN_PLUGIN_KEYS MATCHES "<key>UIBackgroundModes</key>")
@@ -150,7 +150,7 @@ function(haylen_setup_apple_bundle target project_dir display_name identifier ve
     MACOSX_BUNDLE_BUNDLE_NAME "${display_name}"
     MACOSX_BUNDLE_GUI_IDENTIFIER "${identifier}"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${version}"
-    MACOSX_BUNDLE_BUNDLE_VERSION "${version}"
+    MACOSX_BUNDLE_BUNDLE_VERSION "${build}"
     XCODE_ATTRIBUTE_PRODUCT_BUNDLE_IDENTIFIER "${identifier}"
     XCODE_ATTRIBUTE_CODE_SIGN_STYLE "Automatic"
   )
@@ -421,7 +421,7 @@ function(haylen_add_apple_extension target name contents)
   add_dependencies(${target} ${extension})
   haylen_embed_apple(${target} "$<TARGET_BUNDLE_DIR:${extension}>" "${folder}" ON)
 endfunction()
-# Reads the name, identifier and version of an app package, so the app carries the same values the runtime reads.
+# Reads the name, identifier, version and build number of an app package, so the app carries the same values the runtime reads.
 function(haylen_read_app_info target package)
   if(NOT EXISTS "${package}/app.json")
     message(FATAL_ERROR "The app package of ${target} needs an app.json: ${package}")
@@ -434,6 +434,17 @@ function(haylen_read_app_info target package)
     endif()
     set(app_${key} "${value}" PARENT_SCOPE)
   endforeach()
+
+  # The build number grows with every upload, from 1 up to the largest version code that Google Play takes, like the runtime reads it.
+  string(JSON build_type ERROR_VARIABLE error TYPE "${document}" build)
+  set(build 1)
+  if(NOT error)
+    string(JSON build GET "${document}" build)
+  endif()
+  if((NOT error AND NOT build_type STREQUAL "NUMBER") OR NOT build MATCHES "^[1-9][0-9]*$" OR build GREATER 2100000000)
+    message(FATAL_ERROR "The \"build\" of the app.json of ${target} must be a whole number from 1 to 2100000000 that grows with every upload of the app: ${package}/app.json")
+  endif()
+  set(app_build "${build}" PARENT_SCOPE)
 
   # Windows show in the taskbar unless the window section of app.json says otherwise, like the runtime.
   string(JSON show_in_taskbar ERROR_VARIABLE error GET "${document}" window showInTaskbar)
@@ -514,7 +525,7 @@ function(haylen_add_app target)
       target_sources(${target} PRIVATE ${package_files})
     endforeach()
     haylen_add_apple_plugins(${target})
-    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_show_in_taskbar}" "${app_status_bar}" "${app_background_audio}")
+    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_build}" "${app_show_in_taskbar}" "${app_status_bar}" "${app_background_audio}")
   elseif(EMSCRIPTEN)
     haylen_setup_web_page(${target} "${arg_WEB_SHELL}")
     foreach(entry path IN ZIP_LISTS package_entries package_paths)
@@ -564,7 +575,7 @@ function(haylen_add_release target package entries paths apple_project web_shell
     message(FATAL_ERROR "A protected release needs the content tool of the host. Name it with \"HAYLEN_CONTENT_TOOL\", such as the haylen-content of the desktop artifacts that \"haylen.py engine --platform desktop\" builds.")
   endif()
 
-  # The profile names the platform family of the release, and the build number comes from the version, 1.2.3 being 1002003. Android releases build shards that fill an install-time asset pack of haylen.py several times over, as CONTENT_SHARD_TARGETS of haylen.py says.
+  # The profile names the platform family of the release, and the release serves the build number of app.json. Android releases build shards that fill an install-time asset pack of haylen.py several times over, as CONTENT_SHARD_TARGETS of haylen.py says.
   set(shard_target "")
   if(APPLE)
     set(profile apple)
@@ -578,12 +589,6 @@ function(haylen_add_release target package entries paths apple_project web_shell
   else()
     set(profile linux)
   endif()
-  string(REGEX MATCHALL "[0-9]+" parts "${app_version}")
-  list(APPEND parts 0 0 0)
-  list(GET parts 0 major)
-  list(GET parts 1 minor)
-  list(GET parts 2 patch)
-  math(EXPR build "${major} * 1000000 + ${minor} * 1000 + ${patch}")
   file(READ "${package}/app.json" document)
   string(JSON server ERROR_VARIABLE missing GET "${document}" content updates baseUrl)
   if(missing)
@@ -608,13 +613,13 @@ function(haylen_add_release target package entries paths apple_project web_shell
   list(JOIN entries "|" joined_entries)
   list(JOIN paths "|" joined_paths)
   add_custom_command(OUTPUT "${stamp}"
-    COMMAND "${CMAKE_COMMAND}" "-DTOOL=${tool}" "-DENTRIES=${joined_entries}" "-DPATHS=${joined_paths}" "-DPACKAGE=${folder}/package" "-DIDENTIFIER=${app_identifier}" "-DKEYS=${keys}" "-DPROFILE=${profile}" "-DBUILD=${build}" "-DRELEASE=${folder}/release" "-DPREVIOUS=${HAYLEN_PREVIOUS_RELEASE}" "-DCACHE=${folder}/cache" "-DSHIPPED=${folder}/shipped" "-DPACKS=${folder}/packs" "-DSERVER=${server}" "-DSHARD_TARGET=${shard_target}" "-DBOOT=${boot}" "-DSTAMP=${stamp}" -P "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake"
+    COMMAND "${CMAKE_COMMAND}" "-DTOOL=${tool}" "-DENTRIES=${joined_entries}" "-DPATHS=${joined_paths}" "-DPACKAGE=${folder}/package" "-DIDENTIFIER=${app_identifier}" "-DKEYS=${keys}" "-DPROFILE=${profile}" "-DBUILD=${app_build}" "-DRELEASE=${folder}/release" "-DPREVIOUS=${HAYLEN_PREVIOUS_RELEASE}" "-DCACHE=${folder}/cache" "-DSHIPPED=${folder}/shipped" "-DPACKS=${folder}/packs" "-DSERVER=${server}" "-DSHARD_TARGET=${shard_target}" "-DBOOT=${boot}" "-DSTAMP=${stamp}" -P "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake"
     DEPENDS ${package_files} "${HAYLEN_CMAKE_DIR}/haylen-release-content.cmake" ${tool_target}
     COMMENT "Building the protected release of ${target}."
     VERBATIM
   )
   add_custom_command(OUTPUT "${bootstrap}"
-    COMMAND "${tool}" bootstrap --keys "${keys}" --profile "${profile}" --build "${build}" --output "${bootstrap}"
+    COMMAND "${tool}" bootstrap --keys "${keys}" --profile "${profile}" --build "${app_build}" --output "${bootstrap}"
     DEPENDS "${stamp}"
     COMMENT "Writing the bootstrap of ${target}."
     VERBATIM
@@ -635,7 +640,7 @@ function(haylen_add_release target package entries paths apple_project web_shell
       set(project_dir "${HAYLEN_ENGINE_DIR}/platform/apple")
     endif()
     haylen_add_apple_plugins(${target})
-    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_show_in_taskbar}" "${app_status_bar}" "${app_background_audio}")
+    haylen_setup_apple_bundle(${target} "${project_dir}" "${app_name}" "${app_identifier}" "${app_version}" "${app_build}" "${app_show_in_taskbar}" "${app_status_bar}" "${app_background_audio}")
   elseif(EMSCRIPTEN)
     # The page preloads the manifests and the app domain, and the shards of the content stay in the "app" folder next to it, where downloads read them by range.
     haylen_setup_web_page(${target} "${web_shell}")

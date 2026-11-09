@@ -66,6 +66,7 @@ TEST(CrashLuaTest, HandsTheReportOfALastCrashToTheNextStartAndKeepsBreadcrumbs) 
     const core::Json context = core::Json::parse(fixture.host().getCrashContext());
     EXPECT_EQ(context.at("breadcrumbs").back().at("message"), "Opened the shop.");
     EXPECT_EQ(context.at("app").at("identifier"), fixture.engine().getConfig().identifier);
+    EXPECT_EQ(context.at("app").at("build"), fixture.engine().getConfig().build);
     EXPECT_TRUE(context.at("log").is_array());
 
     fixture.runLua("for index = 1, 150 do debugging.addBreadcrumb('Step ' .. index) end");

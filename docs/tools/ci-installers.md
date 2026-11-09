@@ -34,7 +34,7 @@ Every job builds the Release configuration. So every result holds the [protected
 - The app has its content keys, which `haylen content keys <app>` shows, and creates on the machine of the developer, as [key folders](../content/content.md#key-folders) describe. Every release of an app needs the keys of its earlier releases, so the workflow receives a copy of them.
 - The bundle identifier of `app.json` is registered as an App ID in the account of the Apple Developer Program, with an app record in App Store Connect for iOS, tvOS and macOS. The app exists in the Play Console.
 - The Mac App Store accepts only sandboxed apps. So `platform/apple/macos/App.entitlements` of the app holds `com.apple.security.app-sandbox` set to `true`, with the entitlements that the app needs, such as `com.apple.security.network.client`. The Developer ID build carries them too.
-- The version of `app.json` grows with every store release, since Android derives its version code from it. The workflow gives Apple builds the number of the run as their build number.
+- The `build` of `app.json` grows before every run that uploads to a store, since every store refuses a build number it already received, and the `version` changes with every release that people see. Every platform takes its build number from the `build`, as [the version and build number](distribution.md#version-and-build-number) describe.
 
 ## Secrets
 
@@ -187,7 +187,7 @@ jobs:
           xcodebuild archive -project "$APP/platform/apple/App.xcodeproj" -scheme macOS -configuration Release \
             -destination "generic/platform=macOS" -archivePath "$RUNNER_TEMP/macos.xcarchive" \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$SIGNING_IDENTITY" DEVELOPMENT_TEAM="$NOTARIZATION_TEAM_ID" \
-            CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" OTHER_CODE_SIGN_FLAGS="--timestamp --keychain $KEYCHAIN"
+            OTHER_CODE_SIGN_FLAGS="--timestamp --keychain $KEYCHAIN"
           options="$RUNNER_TEMP/export.plist"
           plutil -create xml1 "$options"
           plutil -insert method -string developer-id "$options"
@@ -293,7 +293,7 @@ jobs:
           xcodebuild archive -project "$APP/platform/apple/App.xcodeproj" -scheme macOS -configuration Release \
             -destination "generic/platform=macOS" -archivePath "$archive" \
             CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="$MAS_APP_IDENTITY" PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
-            DEVELOPMENT_TEAM="$NOTARIZATION_TEAM_ID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER" OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN"
+            DEVELOPMENT_TEAM="$NOTARIZATION_TEAM_ID" OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN"
           identifier=$(/usr/libexec/PlistBuddy -c "Print :ApplicationProperties:CFBundleIdentifier" "$archive/Info.plist")
           options="$RUNNER_TEMP/export.plist"
           plutil -create xml1 "$options"
@@ -379,7 +379,7 @@ jobs:
           archive="$RUNNER_TEMP/$SCHEME.xcarchive"
           xcodebuild archive -project "$APP/platform/apple/App.xcodeproj" -scheme "$SCHEME" -configuration Release \
             -destination "generic/platform=$SCHEME" -archivePath "$archive" "${authentication[@]}" \
-            CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$NOTARIZATION_TEAM_ID" CURRENT_PROJECT_VERSION="$GITHUB_RUN_NUMBER"
+            CODE_SIGN_STYLE=Automatic DEVELOPMENT_TEAM="$NOTARIZATION_TEAM_ID"
           options="$RUNNER_TEMP/export.plist"
           plutil -create xml1 "$options"
           plutil -insert method -string app-store-connect "$options"

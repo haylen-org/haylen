@@ -148,6 +148,7 @@ TEST(AppConfigTest, ReadsEveryField) {
         "name": "Tiny Island",
         "identifier": "com.haylen.tinyisland",
         "version": "2.0.0",
+        "build": 14,
         "window": {"title": "Island", "width": 800, "height": 600, "fullscreen": true, "highDpi": false, "resizable": false, "vsync": false, "sampleCount": 4},
         "design": {"width": 1280, "height": 720, "scaling": "fit"},
         "orientation": "portrait",
@@ -163,6 +164,7 @@ TEST(AppConfigTest, ReadsEveryField) {
     EXPECT_EQ(config.name, "Tiny Island");
     EXPECT_EQ(config.identifier, "com.haylen.tinyisland");
     EXPECT_EQ(config.version, "2.0.0");
+    EXPECT_EQ(config.build, 14U);
     EXPECT_EQ(config.window.title, "Island");
     EXPECT_EQ(config.window.width, 800);
     EXPECT_TRUE(config.window.fullscreen);
@@ -234,6 +236,21 @@ TEST(AppConfigTest, ThePublisherFollowsTheNameUntilTheAppGivesItsOwn) {
     EXPECT_EQ(named.website, "");
     EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"website", "https://harbor.example"}}).toJson().at("website"), "https://harbor.example");
     EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).toJson().at("copyright"), core::AppConfig{}.copyright);
+}
+
+// The build number grows with every upload, apart from the version that people see, and stays within the version codes that Google Play takes.
+TEST(AppConfigTest, TheBuildNumberIsAWholeNumberFromOne) {
+    EXPECT_EQ(core::AppConfig::fromJson(core::Json::object()).build, 1U);
+    EXPECT_EQ(core::AppConfig::fromJson(core::Json{{"build", core::AppConfig::kMaxBuild}}).toJson().at("build"), core::AppConfig::kMaxBuild);
+    for (const char* document : {R"({"build": 0})", R"({"build": -3})", R"({"build": 2.5})", R"({"build": "7"})", R"({"build": 2100000001})", R"({"build": 18446744073709551615})"}) {
+        EXPECT_THROW((void)core::AppConfig::fromJson(core::Json::parse(document)), std::invalid_argument) << document;
+    }
+    try {
+        (void)core::AppConfig::fromJson(core::Json{{"build", "7"}});
+        FAIL() << "A build number in a string must be refused.";
+    } catch (const std::invalid_argument& error) {
+        EXPECT_STREQ(error.what(), "The \"build\" value \"7\" in \"app.json\" is not a build number. It is a whole number from 1 to 2100000000 that grows with every upload of the app.");
+    }
 }
 
 TEST(AppConfigTest, RejectsInvalidValues) {

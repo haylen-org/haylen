@@ -180,7 +180,7 @@ std::string WebPage::getCanvasSelector() {
 
 void WebPage::reportStarted(const core::AppConfig& config) {
     lastStats = emscripten_get_now();
-    haylen_js_started(core::Json{{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}}.dump().c_str());
+    haylen_js_started(core::Json{{"name", config.name}, {"identifier", config.identifier}, {"version", config.version}, {"build", config.build}}.dump().c_str());
 }
 
 void WebPage::reportStopped() noexcept {

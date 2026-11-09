@@ -79,6 +79,24 @@ The values that come from `app.json`, such as the name, the identifier, the vers
 | `source/` | Run the app on the desktop with `haylen run`, then on each platform. A removed Lua function or option raises an error that names it. Look the name up in the [Lua API reference](../lua-api/README.md), which documents the current form. | Calls that became asynchronous and return a promise, options that moved into an options table, and names that changed. |
 | `content/` | Usually nothing. Shaders of the app compile again by themselves with `haylen shaders`. | A shader that includes the shader library of the engine may need the current names of the library. |
 
+### The build number
+
+The `build` of `app.json` is the build number of every platform: `CFBundleVersion` on Apple platforms, `versionCode` on Android, the fourth number of the Windows version resource and the app build of protected releases, as [the version and build number](distribution.md#version-and-build-number) describe. The `version` is only the version that people see. An `app.json` without `build` builds as build 1, so an app that already reached a store sets it before its next upload:
+
+1. Find the last `versionCode` that Google Play received in the Play Console, under the app bundles of the app, and the last build that App Store Connect received for the current version.
+2. Set `build` above the highest of them, because Google Play refuses an upload whose `versionCode` is not higher than the last one.
+3. If the app publishes content with `haylen content publish`, keep `build` at or above the build of the last publication, since a channel serves the build that published it and every later build.
+4. Remove any setting of `CURRENT_PROJECT_VERSION` from `App.xcconfig`, from the Xcode project and from the scripts of continuous integration, and any `versionCode` that a Gradle script sets on its own, so the `build` stays the only source.
+
+```json
+{
+    "version": "1.2.3",
+    "build": 48
+}
+```
+
+The Windows version resource holds numbers up to 65535. So a Windows build of an app whose `build` goes past that number stops with a message that names it.
+
 ## The Apple project
 
 The project lives in `platform/apple/`. Its source of truth is `project.yml`, and `App.xcodeproj` is generated from it.

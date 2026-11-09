@@ -133,10 +133,10 @@ class RequirementTest(unittest.TestCase):
         self.assertFalse(haylen.holds({"com.apple.developer.game-center": False}, {"com.apple.developer.game-center": True}))
 
     def test_plugin_values_name_the_build_settings_of_the_identity_of_the_app(self):
-        app = mock.Mock(identifier="com.haylen.music", version="1.2.0")
+        app = mock.Mock(identifier="com.haylen.music", version="1.2.0", build=4)
         app.name = "Music"
-        apple = {"entitlements": {"com.apple.security.application-groups": ["group.$(HAYLEN_BUNDLE_IDENTIFIER)"]}, "infoPlist": {"Build": "$(MARKETING_VERSION)", "Other": "$(SRCROOT)/file"}}
-        self.assertEqual(haylen.expand_app_settings(apple, haylen.apple_app_settings(app)), {"entitlements": {"com.apple.security.application-groups": ["group.com.haylen.music"]}, "infoPlist": {"Build": "1.2.0", "Other": "$(SRCROOT)/file"}})
+        apple = {"entitlements": {"com.apple.security.application-groups": ["group.$(HAYLEN_BUNDLE_IDENTIFIER)"]}, "infoPlist": {"Version": "$(MARKETING_VERSION)", "Build": "$(CURRENT_PROJECT_VERSION)", "Other": "$(SRCROOT)/file"}}
+        self.assertEqual(haylen.expand_app_settings(apple, haylen.apple_app_settings(app)), {"entitlements": {"com.apple.security.application-groups": ["group.com.haylen.music"]}, "infoPlist": {"Version": "1.2.0", "Build": "4", "Other": "$(SRCROOT)/file"}})
 
     def test_release_builds_find_plugin_classes_by_their_runtime_names(self):
         listing = "\n".join(["App.app/App (architecture x86_64):", "Contents of (__TEXT,__objc_classname) section", "000000010128a820  StorePlugin", "000000010128a837  _TtC9HaylenApp9AppBridge", "000000010128a84d  ", "App.app/App (architecture arm64):", "Contents of (__TEXT,__objc_classname) section", "0000000100f0a820  StorePlugin"])
@@ -377,6 +377,41 @@ class AndroidNdkTest(unittest.TestCase):
             properties = (root / "haylen" / "haylen.properties").read_text(encoding="utf-8")
         self.assertIn(f"ndkVersion={haylen.ANDROID_NDK_VERSION}", properties.splitlines())
         self.assertIn('ndkVersion = haylen.getProperty("ndkVersion")', (haylen.COMMON_TEMPLATE / "platform" / "android" / "app" / "build.gradle.kts").read_text(encoding="utf-8"))
+
+
+class BuildNumberTest(unittest.TestCase):
+    def setUp(self):
+        self.scratch = Path(tempfile.mkdtemp()).resolve()
+        self.addCleanup(shutil.rmtree, self.scratch)
+        self.app = self.scratch / "app"
+        shutil.copytree(haylen.COMMON_TEMPLATE / "content", self.app / "content")
+        self.document = json.loads((haylen.COMMON_TEMPLATE / "app.json").read_text(encoding="utf-8"))
+
+    def write_app(self, **values) -> haylen.App:
+        (self.app / "app.json").write_text(json.dumps(self.document | values))
+        return haylen.App(self.app, "android")
+
+    def test_new_apps_start_at_build_1_apart_from_their_version(self):
+        self.assertEqual((self.document["version"], self.document["build"]), ("1.0.0", 1))
+        del self.document["build"]
+        self.assertEqual(self.write_app().build, 1)
+
+    def test_the_build_number_is_the_version_code_and_the_bundle_version(self):
+        app = self.write_app(version="2.4.1", build=12)
+        root = self.scratch / "android"
+        with mock.patch.object(haylen, "terminal", haylen.Terminal(io.StringIO(), io.StringIO(), {})):
+            haylen.prepare_android(app, root, "main", "Debug", 1)
+        properties = (root / "haylen" / "haylen.properties").read_text(encoding="utf-8").splitlines()
+        self.assertIn("versionName=2.4.1", properties)
+        self.assertIn("versionCode=12", properties)
+        settings = haylen.apple_app_settings(app)
+        self.assertEqual((settings["MARKETING_VERSION"], settings["CURRENT_PROJECT_VERSION"]), ("2.4.1", "12"))
+
+    def test_a_build_number_is_a_whole_number_from_1(self):
+        for value in (0, -2, 1.5, "3", True, None, haylen.MAXIMUM_BUILD + 1):
+            with self.subTest(value=value), self.assertRaisesRegex(haylen.BuildError, f'The "build" of `.*` must be a whole number from 1 to {haylen.MAXIMUM_BUILD} that grows with every upload of the app'):
+                self.write_app(build=value)
+        self.assertEqual(self.write_app(build=haylen.MAXIMUM_BUILD).build, haylen.MAXIMUM_BUILD)
 
 
 class TextFileTest(unittest.TestCase):
@@ -2503,7 +2538,16 @@ class DesktopProjectTest(unittest.TestCase):
         header = (generated / "HaylenApp.h").read_text()
         self.assertIn('#define HAYLEN_APP_EXECUTABLE "sky-garden.exe"', header)
         self.assertIn('#define HAYLEN_APP_COPYRIGHT "Copyright \u00a9 Sky Garden"', header)
-        self.assertIn("#define HAYLEN_APP_VERSION_NUMBERS 1, 2, 0, 0", header)
+        self.assertIn("#define HAYLEN_APP_VERSION_NUMBERS 1, 2, 0, 1", header)
+        self.assertIn('#define HAYLEN_APP_VERSION "1.2"', header)
+
+        # The fourth number is the build number, and the resource holds numbers of 16 bits alone.
+        (self.app / "app.json").write_text(json.dumps({"name": "Sky Garden", "identifier": "com.example.skygarden", "version": "1.2", "build": 37}))
+        haylen.write_windows_resources(haylen.App(self.app, "windows"), generated)
+        self.assertIn("#define HAYLEN_APP_VERSION_NUMBERS 1, 2, 0, 37", (generated / "HaylenApp.h").read_text())
+        (self.app / "app.json").write_text(json.dumps({"name": "Sky Garden", "identifier": "com.example.skygarden", "version": "1.2", "build": 65536}))
+        with self.assertRaisesRegex(haylen.BuildError, 'The version resource of Windows holds numbers up to 65535, and the "version" "1.2" or the "build" "65536" of'):
+            haylen.write_windows_resources(haylen.App(self.app, "windows"), generated)
 
     def test_development_builds_stop_a_release_of_the_development_package(self):
         self.assertIn("#if defined(NDEBUG)\n#error", haylen.development_bootstrap("defined(NDEBUG)"))
@@ -3013,7 +3057,7 @@ class CppReleaseTest(unittest.TestCase):
     def test_a_release_follows_the_release_that_shipped_before_the_one_of_the_build_folder(self):
         scratch = Path(tempfile.mkdtemp()).resolve()
         self.addCleanup(shutil.rmtree, scratch)
-        app = mock.Mock(folder=scratch / "game", build_folder=scratch / "build", version_code=7, content_server=None, content_packs=[])
+        app = mock.Mock(folder=scratch / "game", build_folder=scratch / "build", build=7, content_server=None, content_packs=[])
         app.layout = haylen.PackageLayout(app.folder, {})
         local = haylen.release_folder(app, "desktop")
         local.mkdir(parents=True)

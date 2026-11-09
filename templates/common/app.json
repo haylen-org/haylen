@@ -2,6 +2,7 @@
     "name": "Haylen App",
     "identifier": "com.haylen.app",
     "version": "1.0.0",
+    "build": 1,
     "description": "An app made with Haylen.",
     "orientation": "landscape",
     "window": {
