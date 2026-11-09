@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <cstdint>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -92,6 +94,16 @@ TEST(ExpressionTest, EvaluatesWithTheTruthOfLua) {
     EXPECT_EQ(refusal("gold 5"), "The expression \"gold 5\" has text after its end.");
     EXPECT_EQ(refusal("'open"), "The expression \"'open\" has a string that is not closed at character 1.");
     EXPECT_THROW((void)Expression::parse("title + 1").evaluate(lookup), std::invalid_argument);
+}
+
+// Integers keep every digit and wrap around past 64 bits, and longer whole numbers are floats, as in Lua.
+TEST(ExpressionTest, ReadsAndComputesIntegersAsLuaDoes) {
+    const Expression::Lookup lookup = [](std::string_view) { return core::Json(); };
+    EXPECT_EQ(Expression::parse("9007199254740993").evaluate(lookup), 9007199254740993);
+    EXPECT_EQ(Expression::parse("9223372036854775807 + 1").evaluate(lookup), std::numeric_limits<std::int64_t>::min());
+    EXPECT_EQ(Expression::parse("-(0 - 9223372036854775807 - 1)").evaluate(lookup), std::numeric_limits<std::int64_t>::min());
+    EXPECT_EQ(Expression::parse("4294967296 * 4294967296").evaluate(lookup), 0);
+    EXPECT_EQ(Expression::parse("99999999999999999999").evaluate(lookup), 1e20);
 }
 
 TEST_F(ConversationTest, NamesTheNodeAndTheFieldOfAMistake) {

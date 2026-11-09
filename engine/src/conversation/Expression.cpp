@@ -1,6 +1,8 @@
 #include "haylen/conversation/Expression.hpp"
 
+#include <algorithm>
 #include <cctype>
+#include <charconv>
 #include <format>
 #include <stdexcept>
 #include <system_error>
@@ -40,7 +42,7 @@ double Expression::number(const core::Json& value, std::string_view operation) c
     return value.get<double>();
 }
 
-// Integers stay integers through addition, subtraction and multiplication, so counters keep their type.
+// Integers stay integers through addition, subtraction and multiplication, so counters keep their type, and they wrap around past the range of 64 bits, as in Lua.
 core::Json Expression::evaluate(std::size_t index, const Lookup& lookup) const {
     const Term& term = terms[index];
     switch (term.kind) {
@@ -52,7 +54,7 @@ core::Json Expression::evaluate(std::size_t index, const Lookup& lookup) const {
         return !isTrue(evaluate(term.left, lookup));
     case Kind::Negate: {
         const core::Json value = evaluate(term.left, lookup);
-        return value.is_number_integer() ? core::Json(-value.get<std::int64_t>()) : core::Json(-number(value, "-"));
+        return value.is_number_integer() ? core::Json(static_cast<std::int64_t>(0U - static_cast<std::uint64_t>(value.get<std::int64_t>()))) : core::Json(-number(value, "-"));
     }
     case Kind::Binary:
         break;
@@ -74,9 +76,9 @@ core::Json Expression::evaluate(std::size_t index, const Lookup& lookup) const {
         return left.is_number() && right.is_number() ? left.get<double>() != right.get<double>() : left != right;
     }
     if ((operation == "+" || operation == "-" || operation == "*") && left.is_number_integer() && right.is_number_integer()) {
-        const std::int64_t a = left.get<std::int64_t>();
-        const std::int64_t b = right.get<std::int64_t>();
-        return operation == "+" ? a + b : operation == "-" ? a - b : a * b;
+        const auto a = static_cast<std::uint64_t>(left.get<std::int64_t>());
+        const auto b = static_cast<std::uint64_t>(right.get<std::int64_t>());
+        return static_cast<std::int64_t>(operation == "+" ? a + b : operation == "-" ? a - b : a * b);
     }
     const double a = number(left, operation);
     const double b = number(right, operation);
@@ -206,8 +208,11 @@ std::size_t Expression::Reader::readPrimary() {
         }
         const std::string_view digits = text.substr(position, static_cast<std::size_t>(end - (text.data() + position)));
         position += digits.size();
-        const bool whole = digits.find_first_of(".eE") == std::string_view::npos;
-        return add({.kind = Kind::Literal, .operation = {}, .value = whole ? core::Json(static_cast<std::int64_t>(value)) : core::Json(value), .left = 0, .right = 0});
+
+        // Whole numbers that fit 64 bits are integers with every digit, and longer ones stay floats, as in Lua.
+        std::int64_t whole = 0;
+        const bool integral = digits.find_first_of(".eE") == std::string_view::npos && std::from_chars(digits.data(), digits.data() + digits.size(), whole).ec == std::errc{};
+        return add({.kind = Kind::Literal, .operation = {}, .value = integral ? core::Json(whole) : core::Json(value), .left = 0, .right = 0});
     }
     if (std::isalpha(static_cast<unsigned char>(first)) != 0 || first == '_') {
         const std::size_t start = position;

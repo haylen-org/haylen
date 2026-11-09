@@ -145,7 +145,7 @@ The `if` of a step or a choice and the values of `set` are expressions. They rea
 
 | Part | Examples and rules |
 | --- | --- |
-| Numbers | `10`, `2.5`, `1e3`. A number starts with a digit, and a whole number stays an integer. |
+| Numbers | `10`, `2.5`, `1e3`. A number starts with a digit, and a whole number that fits 64 bits stays an integer, while a longer one is a decimal number, as in Lua. |
 | Strings | `'Brave'` or `"Brave"`. A string ends at the next quote of its kind and has no escapes. |
 | Values | `true`, `false` and `nil`. |
 | Variables | `gold`, `metSmith`. A name holds letters, digits, `_` and `.`, and does not start with a digit. A variable that was never set is `nil`. |
@@ -161,7 +161,7 @@ These rules decide the value of an expression:
 - The words `and` and `or` return one of their values, as in Lua. So `title or 'Traveler'` gives a default.
 - From the loosest to the tightest, the order is `or`, `and`, `not`, the comparisons, `+` and `-`, `*` and `/`, and the minus sign. Unlike Lua, `not` is looser than a comparison, so `not gold > 5` means `not (gold > 5)`.
 - An expression holds one comparison without parentheses. Write `gold > 5 and gold < 20` instead of a chain.
-- Integers stay integers through `+`, `-` and `*`, and `/` always gives a decimal number.
+- Integers stay integers through `+`, `-` and `*`, and wrap around past the range of 64 bits, as in Lua. The operator `/` always gives a decimal number.
 - The operators `==` and `~=` compare numbers by value, so `1 == 1.0` is true, and other values by their type and content.
 - Arithmetic and the comparisons `<`, `<=`, `>` and `>=` need numbers. Any other value raises `The expression "<text>" uses "<operator>" with a value that is not a number.` when the step runs or the choice is offered. The error comes from the call that ran it, which is `talk:start`, `state:advance` or `state:choose`.
 
