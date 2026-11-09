@@ -8541,6 +8541,9 @@ class Terminated(BaseException):
 
 
 def main() -> None:
+    # A console of Windows takes any text, while a pipe or a file there takes the code page of the system, so a character outside it, such as in the name or the log of an app, prints as a replacement instead of stopping the command.
+    for stream in (sys.stdout, sys.stderr):
+        stream.reconfigure(errors="replace")
     Terminated.install()
     args = build_parser().parse_args()
     terminal.verbose = args.verbose

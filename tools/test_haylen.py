@@ -423,6 +423,15 @@ class TextFileTest(unittest.TestCase):
         self.assertTrue(calls)
         self.assertEqual([node.lineno for node in calls if not any(keyword.arg == "encoding" for keyword in node.keywords)], [])
 
+    def test_a_text_outside_the_code_page_of_a_pipe_prints_without_stopping_the_command(self):
+        # Python writes to a pipe or a file of Windows in the code page of the system, which lacks most characters of the names and the logs of apps.
+        with tempfile.TemporaryDirectory() as scratch:
+            folder = Path(scratch) / "omega"
+            result = subprocess.run([sys.executable, str(haylen.ROOT / "haylen.py"), "new", str(folder), "--name", "Game Ω"], env={**os.environ, "PYTHONIOENCODING": "cp1252", "PYTHONUTF8": "0", "NO_COLOR": "1"}, capture_output=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode("utf-8", "replace"))
+            self.assertIn(b'Created the Lua app "Game ?"', result.stdout)
+            self.assertEqual(json.loads((folder / "app.json").read_text(encoding="utf-8"))["name"], "Game Ω")
+
 
 class FileNameTest(unittest.TestCase):
     def test_tracked_files_use_dashes_where_nothing_requires_underscores(self):
