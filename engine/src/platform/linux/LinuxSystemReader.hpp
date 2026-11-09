@@ -9,7 +9,7 @@
 
 namespace haylen::platform {
 
-// Reads what Linux tells about the device from the texts of its files and variables: the distribution in `/etc/os-release`, the processor in `/proc/cpuinfo`, the batteries in `/sys/class/power_supply`, the languages in `LANGUAGE` and `LANG` and the time zone in `TZ` and the link `/etc/localtime`. It compiles on every platform, so the tests of every host check it with files of their own.
+// Reads what Linux tells about the device from the texts of its files and variables: the distribution in `/etc/os-release`, the processor in `/proc/cpuinfo`, the batteries in `/sys/class/power_supply`, the languages in `LANGUAGE`, `LC_ALL`, `LC_MESSAGES` and `LANG` and the time zone in `TZ` and the link `/etc/localtime`. It compiles on every platform, so the tests of every host check it with files of their own.
 class LinuxSystemReader final {
   public:
     // The whole text of a file, which is empty when the file cannot be read.
@@ -30,8 +30,8 @@ class LinuxSystemReader final {
     // The locale of a variable such as `LANG` as a BCP 47 tag, such as `pt-BR` for `pt_BR.UTF-8`. The C and POSIX locales name no language, so their tag is empty.
     [[nodiscard]] static std::string toLanguageTag(std::string_view locale);
 
-    // The languages of `LANGUAGE`, a list in the order of preference separated by colons, followed by the one of `LANG`, each once.
-    [[nodiscard]] static std::vector<std::string> readLanguages(std::string_view language, std::string_view lang);
+    // The languages the way gettext reads them: the list of `LANGUAGE` in the order of preference, separated by colons, followed by the locale of messages, which is the first of `LC_ALL`, `LC_MESSAGES` and `LANG` that is set, each once. A locale of messages that names no language, such as `C`, leaves `LANGUAGE` unread.
+    [[nodiscard]] static std::vector<std::string> readLanguages(std::string_view language, std::string_view all, std::string_view messages, std::string_view lang);
 
     // The IANA name that `TZ` gives, with or without a leading colon or as a file of the time zone database, and without `TZ` the name at the end of the target of the link `/etc/localtime`.
     [[nodiscard]] static std::string readTimeZone(std::string_view tz, std::string_view localTime);

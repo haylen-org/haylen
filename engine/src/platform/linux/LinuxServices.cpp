@@ -30,6 +30,7 @@ std::string_view Services::getName() noexcept {
 }
 
 void Services::initialize() {
+    LinuxSystem::reportLanguages();
     LinuxSystem::watchBattery();
     LinuxSettings::observe();
     LinuxMonitors::observe();

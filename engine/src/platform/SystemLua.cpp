@@ -36,6 +36,11 @@ int SystemLua::theme(lua_State* L) {
     return 1;
 }
 
+int SystemLua::languages(lua_State* L) {
+    lua::Stack::push(L, lua::Runtime::getEngine(L).getSystem().getLanguages());
+    return 1;
+}
+
 int SystemLua::battery(lua_State* L) {
     lua::JsonConverter::push(L, lua::Runtime::getEngine(L).getSystem().getBattery().toJson());
     return 1;
@@ -173,7 +178,7 @@ int SystemLua::clearNowPlaying(lua_State* L) {
 
 int SystemLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
+        {"info", &info}, {"theme", &theme}, {"battery", &battery}, {"powerSaving", &powerSaving}, {"timeZone", &timeZone}, {"languages", &languages}, {"openUrl", &lua::Binding::native<&openUrl>}, {"clipboard", &lua::Binding::native<&clipboard>}, {"setClipboard", &lua::Binding::native<&setClipboard>}, {"vibrate", &lua::Binding::native<&vibrate>}, {"permission", &lua::Binding::native<&permission>}, {"requestPermission", &lua::Binding::native<&requestPermission>}, {"setNowPlaying", &lua::Binding::native<&setNowPlaying>}, {"clearNowPlaying", &lua::Binding::native<&clearNowPlaying>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

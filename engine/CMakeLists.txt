@@ -432,6 +432,7 @@ set(HAYLEN_ENGINE_SOURCES
   src/io/ZipReader.cpp
   src/localization/Catalog.cpp
   src/localization/DateFormat.cpp
+  src/localization/LanguageTag.cpp
   src/localization/ListFormat.cpp
   src/localization/LocaleData.cpp
   src/localization/LocalizationLua.cpp
@@ -875,6 +876,7 @@ elseif(APPLE)
     src/platform/apple/AppleOutputs.mm
     src/platform/apple/AppleDialogs.mm
     src/platform/apple/AppleKeyboard.mm
+    src/platform/apple/AppleLanguages.mm
     src/platform/apple/AppleMediaSession.mm
     src/platform/apple/AppleNetwork.mm
     src/platform/apple/AppleNotifications.mm

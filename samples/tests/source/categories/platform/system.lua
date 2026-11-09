@@ -1,4 +1,4 @@
--- What `haylen.system` tells about the device, its theme, its battery, its power saving mode and its time zone with their changes as they happen, and an address to open and a vibration to play, with the answer of the address and the frames it took.
+-- What `haylen.system` tells about the device, its theme, its battery, its power saving mode, its time zone and its languages with their changes as they happen, and an address to open and a vibration to play, with the answer of the address and the frames it took.
 local haylen = require('haylen')
 local system = require('haylen.system')
 local ui = require('haylen.ui')
@@ -7,10 +7,10 @@ local Test = require('harness.test')
 
 local System = haylen.class('System', Test)
 
-System.events = {'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'timeZoneChanged'}
+System.events = {'systemThemeChanged', 'batteryChanged', 'powerSavingChanged', 'timeZoneChanged', 'systemLanguagesChanged'}
 System.fields = {
     {'os', 'System'}, {'osVersion', 'Version'}, {'deviceKind', 'Kind of device'}, {'deviceModel', 'Model'}, {'manufacturer', 'Manufacturer'},
-    {'cpuName', 'Processor'}, {'cpuCores', 'Processor cores'}, {'gpuName', 'Graphics'}, {'memoryBytes', 'Memory'}, {'locale', 'Language'},
+    {'cpuName', 'Processor'}, {'cpuCores', 'Processor cores'}, {'gpuName', 'Graphics'}, {'memoryBytes', 'Memory'},
     {'languages', 'Preferred languages'}, {'timeZone', 'Time zone'}, {'theme', 'Theme'}, {'battery', 'Battery'}, {'powerSaving', 'Power saving'},
 }
 System.kept = 20
@@ -45,6 +45,8 @@ function System.describeEvent(name, data)
         return 'Power saving is now ' .. describePowerSaving(data.enabled):lower() .. '.'
     elseif name == 'timeZoneChanged' then
         return 'The time zone is now "' .. data.timeZone .. '".'
+    elseif name == 'systemLanguagesChanged' then
+        return 'The device now prefers "' .. table.concat(data.languages, '", "') .. '".'
     end
     return 'The theme is now "' .. tostring(data.theme) .. '".'
 end
@@ -75,7 +77,7 @@ function System:enter()
         }
     end
     self:frame{
-        hint = 'Switch the system between light and dark, plug the charger in, turn power saving on or change the time zone, and the change arrives as an event.',
+        hint = 'Switch the system between light and dark, plug the charger in, turn power saving on, or change the time zone or the languages of the device, and the change arrives as an event.',
         focus = 'open',
         controls = {
             ui.button{id = 'open', text = 'Open "example.com"', variant = 'primary', onClick = function() self:open('https://example.com') end},
@@ -97,7 +99,7 @@ function System:enter()
                 ui.scroll{id = 'eventsScroll', grow = 1, height = 0, focusable = false, visible = false, ui.list{id = 'events', items = {}}},
             },
         }},
-        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level, system.powerSaving(), system.timeZone())\nlocal _, message = system.openUrl('https://example.com'):await()\nlocal _, why = system.vibrate(0.08):await()",
+        code = "local info = system.info()\nprint(info.os, info.deviceModel, info.cpuCores)\nprint(system.theme(), system.battery().level, system.powerSaving(), system.timeZone())\nprint(table.concat(system.languages(), ', '))\nlocal _, message = system.openUrl('https://example.com'):await()\nlocal _, why = system.vibrate(0.08):await()",
     }
     self:showValues()
 end
@@ -148,7 +150,8 @@ function System:values()
     end
     values.gpuName = device.gpuName and shortened(device.gpuName) or 'Not reported'
     values.memoryBytes = device.memoryBytes and string.format('%.1f GB', device.memoryBytes / 2 ^ 30) or 'Not reported'
-    values.languages = #device.languages > 0 and table.concat(device.languages, ', ') or 'Not reported'
+    local languages = system.languages()
+    values.languages = #languages > 0 and table.concat(languages, ', ') or 'Not reported'
     values.theme = system.theme()
     values.battery = describeBattery(system.battery())
     values.timeZone = system.timeZone() or 'Not reported'

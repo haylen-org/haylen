@@ -32,8 +32,6 @@ SystemInfo LinuxSystem::getInfo() {
         .cpuName = LinuxSystemReader::readCpuName(LinuxSystemReader::readText("/proc/cpuinfo")),
         .cpuCores = static_cast<int>(sysconf(_SC_NPROCESSORS_ONLN)),
         .memoryBytes = pages > 0 && pageSize > 0 ? static_cast<std::uint64_t>(pages) * static_cast<std::uint64_t>(pageSize) : 0,
-        .locale = LinuxSystemReader::toLanguageTag(getVariable("LANG")),
-        .languages = LinuxSystemReader::readLanguages(getVariable("LANGUAGE"), getVariable("LANG")),
     };
 }
 
@@ -65,6 +63,10 @@ void LinuxSystem::openUrl(const std::string& url, std::function<void(Permission:
         done({.state = Permission::State::Unsupported, .message = std::format("No app on this device opens \"{}\".", url)});
     }).detach();
     // clang-format on
+}
+
+void LinuxSystem::reportLanguages() {
+    NativeHost::getSystemState().setLanguages(LinuxSystemReader::readLanguages(getVariable("LANGUAGE"), getVariable("LC_ALL"), getVariable("LC_MESSAGES"), getVariable("LANG")));
 }
 
 void LinuxSystem::watchBattery() {

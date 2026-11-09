@@ -1,12 +1,12 @@
 # 📖 `haylen.system`
 
-The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode and the time zone of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, those of the engine and those of the plugins of the app, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to pick the language of a first launch, to match the colors of the app to the system, to do less work on a low battery or while the system saves power, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
+The module `haylen.system` tells what the device and its operating system are, and follows the theme, the battery, the power saving mode, the time zone and the languages of the system. It also offers services that every system has. It opens a url with the app that handles it, reads and writes the clipboard, vibrates the device, and checks and asks for the [permissions](#permissions) that a system grants while the app runs, those of the engine and those of the plugins of the app, with one vocabulary of states on every platform. It shows what the app plays in the now-playing controls of the system, whose media keys and buttons reach the app. Use it to know the languages the person prefers, to match the colors of the app to the system, to do less work on a low battery or while the system saves power, and for links to web pages, stores and mail. Native message boxes and file pickers live in [`haylen.dialogs`](dialogs.md), and the methods of the app and its plugins live in [`haylen.platform`](platform.md).
 
 ```lua
 local system = require('haylen.system')
 ```
 
-The platform reads what the device is once, when the first app of the process starts. It reads the theme, the battery, the power saving mode and the time zone whenever the system reports a change. The engine publishes each change once, at the start of the next frame, as the [events](#events) `systemThemeChanged`, `batteryChanged`, `powerSavingChanged` and `timeZoneChanged`.
+The platform reads what the device is once, when the first app of the process starts. It reads the theme, the battery, the power saving mode, the time zone and the languages whenever the system reports a change. The engine publishes each change once, at the start of the next frame, as the [events](#events) `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `timeZoneChanged` and `systemLanguagesChanged`.
 
 ## Functions
 
@@ -27,18 +27,23 @@ Returns a new table that describes the device. A value that the platform does no
 | `bits` | integer | The width of the pointers of the app, `32` or `64`. |
 | `memoryBytes` | integer or `nil` | The total memory of the device in bytes. |
 | `gpuName` | string or `nil` | The GPU that the graphics device of the engine runs on, as its graphics API names it. That is the Metal device, the adapter of Direct3D 11, the `GL_RENDERER` string of OpenGL, or on WebGL 2 the renderer that `WEBGL_debug_renderer_info` unmasks where the browser offers it. On WebGPU it is the adapter info, whose description the vendor and the architecture replace where the browser leaves it empty. |
-| `locale` | string or `nil` | The language of the user as a BCP 47 tag, such as `'pt-BR'`. |
-| `languages` | table | Every language that the user prefers, most preferred first, as BCP 47 tags. It is empty where the platform does not report them. |
 
 ```lua
-local localization = require('haylen.localization')
 local system = require('haylen.system')
 
 local info = system.info()
 print(string.format('%s %s on a %s.', info.os, info.osVersion or '', info.deviceKind))
-if info.locale then
-    localization.setLanguage(localization.findBestMatch(info.locale) or 'en')
-end
+```
+
+### system.languages()
+
+Returns a new list of the languages that the person prefers on the device, most preferred first, as the app last heard at the start of a frame. Each one is a language tag in its canonical form, such as `'pt-BR'` or `'zh-Hans-CN'`, as [`localization.normalizeTag`](localization.md#localizationnormalizetagtag) writes it. The engine leaves out what the platform reports twice and, with a warning in the log, what is no language tag. The list is empty where the platform tells none. The event `systemLanguagesChanged` reports every change. The current language of [`haylen.localization`](localization.md) follows this list until the app picks one, and the [localization guide](../core/localization.md#where-the-languages-come-from) tells where each platform reads it.
+
+```lua
+local system = require('haylen.system')
+
+local languages = system.languages()
+print('The device prefers ' .. (languages[1] or 'no language it tells') .. '.')
 ```
 
 ### system.theme()
@@ -312,6 +317,7 @@ The engine publishes these changes on [`haylen.events`](events.md#engine-events)
 | `batteryChanged` | The level, the charging or the state of the battery changed. | The table that `system.battery()` returns. |
 | `powerSavingChanged` | The power saving mode of the system turned on or off. | `{enabled}`, the boolean that `system.powerSaving()` returns. |
 | `timeZoneChanged` | The time zone of the device changed. | `{timeZone}`, the IANA name that `system.timeZone()` returns. |
+| `systemLanguagesChanged` | The languages that the person prefers changed, such as when the person picked another language in the settings of the device. | `{languages}`, the list that `system.languages()` returns. |
 | `mediaCommand` | A control of the system, a media key or a headset button asked the app to change what plays. It comes only once the app showed what plays with [`system.setNowPlaying`](#systemsetnowplayinginfo). | `{command}`, one of the names of `commands`, with `position` in seconds for `'seek'`. |
 
 ```lua
@@ -388,18 +394,18 @@ end)
 
 ## Platforms
 
-This table tells where each platform reads the theme, the battery and what the device is.
+This table tells where each platform reads the theme, the battery and what the device is. The [localization guide](../core/localization.md#where-the-languages-come-from) tells where each platform reads the languages.
 
 | Platform | Theme | Battery | Device |
 | --- | --- | --- | --- |
-| macOS | The appearance of the app, with every change. | The power sources of the Mac, `'none'` on desktops without a battery. | The model, the processor, the memory, the version and the languages of the Mac. |
-| iOS and iPadOS | The trait collection of the app, with every change. | The battery of the device, whose level the system updates about once a minute. | The model identifier, the version, the cores, the memory, the languages and the time zone. The simulator reports the model it simulates, and the processor and the memory of the Mac. |
-| Mac Catalyst | The trait collection of the app, with every change. | The power sources of the Mac, `'none'` on desktops without a battery. | `'macOs'`, with the model, the processor, the memory, the version and the languages of the Mac. |
-| tvOS | The trait collection of the app, with every change. | `'none'`, since TVs run on mains power. | The model identifier, the version, the cores, the memory and the languages. |
-| Android | The night mode of the configuration, with every change. The activity handles the change itself, because the manifest of the template lists `uiMode` in its `configChanges`. | The sticky battery broadcast, heard while the activity lives, with every change. It is `'none'` on devices without a battery, such as TVs. A plugged battery that Android keeps from charging counts as discharging. | The model and its maker, the processor where Android 12 and later name it, the cores, the memory, the version, the languages and the time zone. A TV is a device in the television mode or with the leanback feature. A tablet is a device whose smallest screen side has 600 dp. A value that the device reports as unknown stays `nil`. |
-| Web | The media query `prefers-color-scheme`, with every change. | The Battery Status API with every change, where the browser has it, which only Chromium browsers do. It is `'unknown'` elsewhere. A browser that cannot read a battery, as on a desktop without one, reports a full one. | What the browser tells, which it limits on purpose. That is the system it runs on with its version and the model of a phone through `navigator.userAgentData` where the browser has it, the cores, the memory that `navigator.deviceMemory` rounds and caps, the languages and the time zone. The processor and the maker stay `nil`. |
-| Windows | The app theme of the personalization settings, with every change. | The power status of the system, with every change that Windows announces, `'none'` on desktops without a battery. | The version of the kernel, the model and the maker of the computer and the processor from the registry, the cores, the memory, the languages of the user and the time zone. The ICU of Windows 10 1903 and later gives the IANA name of the time zone. |
-| Linux | The color scheme of the settings portal of the desktop, with every change, through GIO, which the engine loads at run time. Without GIO or the portal the theme stays `'light'` and never changes. | The first battery among the power supplies of the system, read when the app starts and every 30 seconds, `'none'` without one. | The distribution of `os-release` with the release of the kernel, the model and the maker of the computer, the processor, which ARM processors often leave out, the cores, the memory, the languages of `LANGUAGE` and `LANG`, and the time zone of `TZ` or `/etc/localtime`. |
+| macOS | The appearance of the app, with every change. | The power sources of the Mac, `'none'` on desktops without a battery. | The model, the processor, the memory and the version of the Mac. |
+| iOS and iPadOS | The trait collection of the app, with every change. | The battery of the device, whose level the system updates about once a minute. | The model identifier, the version, the cores, the memory and the time zone. The simulator reports the model it simulates, and the processor and the memory of the Mac. |
+| Mac Catalyst | The trait collection of the app, with every change. | The power sources of the Mac, `'none'` on desktops without a battery. | `'macOs'`, with the model, the processor, the memory and the version of the Mac. |
+| tvOS | The trait collection of the app, with every change. | `'none'`, since TVs run on mains power. | The model identifier, the version, the cores and the memory. |
+| Android | The night mode of the configuration, with every change. The activity handles the change itself, because the manifest of the template lists `uiMode` in its `configChanges`. | The sticky battery broadcast, heard while the activity lives, with every change. It is `'none'` on devices without a battery, such as TVs. A plugged battery that Android keeps from charging counts as discharging. | The model and its maker, the processor where Android 12 and later name it, the cores, the memory, the version and the time zone. A TV is a device in the television mode or with the leanback feature. A tablet is a device whose smallest screen side has 600 dp. A value that the device reports as unknown stays `nil`. |
+| Web | The media query `prefers-color-scheme`, with every change. | The Battery Status API with every change, where the browser has it, which only Chromium browsers do. It is `'unknown'` elsewhere. A browser that cannot read a battery, as on a desktop without one, reports a full one. | What the browser tells, which it limits on purpose. That is the system it runs on with its version and the model of a phone through `navigator.userAgentData` where the browser has it, the cores, the memory that `navigator.deviceMemory` rounds and caps, and the time zone. The processor and the maker stay `nil`. |
+| Windows | The app theme of the personalization settings, with every change. | The power status of the system, with every change that Windows announces, `'none'` on desktops without a battery. | The version of the kernel, the model and the maker of the computer and the processor from the registry, the cores, the memory and the time zone. The ICU of Windows 10 1903 and later gives the IANA name of the time zone. |
+| Linux | The color scheme of the settings portal of the desktop, with every change, through GIO, which the engine loads at run time. Without GIO or the portal the theme stays `'light'` and never changes. | The first battery among the power supplies of the system, read when the app starts and every 30 seconds, `'none'` without one. | The distribution of `os-release` with the release of the kernel, the model and the maker of the computer, the processor, which ARM processors often leave out, the cores, the memory, and the time zone of `TZ` or `/etc/localtime`. |
 
 This table tells where each platform reads the power saving mode and the time zone.
 
@@ -450,6 +456,7 @@ The function `engine.getSystem()` returns the `haylen::platform::System` of the 
 | `getBattery()` | The `haylen::platform::Battery`, with its optional `level`, `charging` and `State`. |
 | `getPowerSaving()` | A `std::optional<bool>`, empty where the platform does not tell. |
 | `getTimeZone()` | The IANA name of the time zone, empty where the platform does not tell. |
+| `getLanguages()` | The languages that the person prefers, most preferred first, in their canonical form. |
 | `openUrl(url, callback)` | Opens the url and calls back on the frame thread, at a later frame, with a `haylen::platform::Permission::Answer`, whose state is `Granted`, or `Denied` or `Unsupported` with the sentence in `message`. |
 | `getClipboard()` | The text on the clipboard for a paste of the person into a field of the UI. |
 | `readClipboard(callback)` | Reads the text on the clipboard for the app and calls back at a later frame with an `Answer` and the text. |

@@ -8,6 +8,7 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 | --- | --- | --- |
 | Architecture | The libraries the engine builds, the source layout, plugins, the host boundary, the platform layers, the GPU devices and the renderers, the frame, threads, resource ownership, app packages, the web runtime and how hot reload works. | [`architecture.md`](architecture.md) |
 | Lifecycle | What happens from start to stop: app states on each platform, the scene lifecycle, the game pause and process modes, autoloads and the owners that end listeners, timers and tasks. | [`lifecycle.md`](lifecycle.md) |
+| Localization | Texts per language, the `localization` section of `app.json`, language tags in any form and their canonical form, the order in which the language is picked from the device or the app, where each platform keeps the languages of the person, and the events of a change. | [`localization.md`](localization.md) |
 | Lua | The first steps of a Lua app: the app package and `app.json`, modules and asset paths, scenes, autoloads, classes, owners, disk access, asynchronous code, errors, hot reload, performance and Lua modules written in C++. | [`lua.md`](lua.md) |
 
 ## Lua API
@@ -20,7 +21,7 @@ The core runs an app: the engine and its plugins, the frame, the threads, the Lu
 | `haylen.conversation` | Branching conversations with lines, choices, conditions, variables, commands, variants and saves. | [`lua-api/conversation.md`](../lua-api/conversation.md) |
 | `haylen.events` | The event bus with channels, priorities, filters, owners and queued delivery, and the lifecycle events of the engine. | [`lua-api/events.md`](../lua-api/events.md) |
 | `haylen.jobs` | Long Lua work spread over several frames under a time budget. | [`lua-api/jobs.md`](../lua-api/jobs.md) |
-| `haylen.localization` | Translated text with placeholders, plural forms, a fallback language, the best match for the device and pseudo translation, the direction of each language, numbers, dates and lists written the way each language writes them, and assets per language. | [`lua-api/localization.md`](../lua-api/localization.md) |
+| `haylen.localization` | Translated text with placeholders, plural forms, a fallback language, a language that follows the device or the choice of the app, canonical language tags, the best match of a tag and pseudo translation, the direction of each language, numbers, dates and lists written the way each language writes them, and assets per language. | [`lua-api/localization.md`](../lua-api/localization.md) |
 | `haylen.log` | Messages with a level in the engine log, the level that filters them and where each platform writes them. | [`lua-api/log.md`](../lua-api/log.md) |
 | `haylen.math` | The types `Vec2`, `Rect`, `Color` and `Transform2D` and how to pass them, random numbers, noise, easing, geometry, ray casts against shapes, polygon booleans, marching squares, splines, springs, signal filters, shuffle bags, weighted choices and Poisson disk sampling. | [`lua-api/math.md`](../lua-api/math.md) |
 | `haylen.preferences` | Player choices that persist between sessions under dotted keys, with the volumes, full screen and action map of the engine. | [`lua-api/preferences.md`](../lua-api/preferences.md) |

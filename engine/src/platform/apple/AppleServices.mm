@@ -32,6 +32,7 @@
 #import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleGamepads.hpp"
 #import "platform/apple/AppleKeyboard.hpp"
+#import "platform/apple/AppleLanguages.hpp"
 #import "platform/apple/AppleMediaSession.hpp"
 #import "platform/apple/AppleNetwork.hpp"
 #import "platform/apple/AppleOrientation.hpp"
@@ -67,6 +68,7 @@ void Services::initialize() {
     ApplePowerSaving::observe();
     AppleTimeZone::observe();
     AppleAccessibility::observe();
+    AppleLanguages::observe();
 #if TARGET_OS_OSX
     // AppKit sends apps no memory warnings, so the runtime follows the memory pressure of the system with its level.
     static dispatch_source_t pressure = dispatch_source_create(DISPATCH_SOURCE_TYPE_MEMORYPRESSURE, 0, DISPATCH_MEMORYPRESSURE_WARN | DISPATCH_MEMORYPRESSURE_CRITICAL, dispatch_get_main_queue());

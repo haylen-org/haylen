@@ -155,7 +155,7 @@ The class `plugins::BuiltInPlugins` in `engine/src/plugins/BuiltInPlugins.cpp` r
 | `audio` | `haylen.audio` | Registers the asset type `sound`. |
 | `video` | `haylen.video` | Opens the videos of the app with the decoder of the platform, and keeps each one current at the start of every frame until it is released. |
 | `physics2d`, `tiled`, `nodes2d`, `spatial2d`, `procedural2d`, `navigation2d` | `haylen.physics2d`, `haylen.tiled`, `haylen.nodes2d`, `haylen.spatial2d`, `haylen.procedural2d`, `haylen.navigation2d` | `tiled` registers the asset types `tiled`, `tiledWorld` and `tiledRules`, and `nodes2d` registers `prefab`. |
-| `localization` | `haylen.localization` | Rebuilds the texts of a changed folder in development. |
+| `localization` | `haylen.localization` | Loads the languages of `app.json` on start, follows the languages of the system at the start of every frame and publishes `languageChanged`, and rebuilds the texts of a changed folder in development. |
 | `conversation` | `haylen.conversation` | Registers the asset type `conversation`. |
 | `storage` | `haylen.storage`, `haylen.preferences` | Loads the preferences on start, and writes them on suspend and stop. |
 | `debug` | `haylen.debug` | Draws the compact statistics with the renderer and the full debug overlay with ImGui, which F3 cycles by default. It runs the debug drawings over every canvas through a canvas overlay of the renderer, which F4 switches by default. It samples monitors and publishes object events. Plugins add drawings with `DebugPlugin::addDrawer`, as the `physics2d` plugin does for the worlds that Lua makes. |

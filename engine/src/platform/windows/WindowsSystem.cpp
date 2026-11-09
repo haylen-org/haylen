@@ -29,8 +29,6 @@ SystemInfo WindowsSystem::getInfo() {
         .cpuName = readMachineText(kProcessorKey, L"ProcessorNameString"),
         .cpuCores = static_cast<int>(GetActiveProcessorCount(ALL_PROCESSOR_GROUPS)),
         .memoryBytes = getMemory(),
-        .locale = getLocale(),
-        .languages = getLanguages(),
     };
 }
 
@@ -44,6 +42,10 @@ void WindowsSystem::openUrl(const std::string& url, std::function<void(Permissio
 
 void WindowsSystem::reportTheme() {
     NativeHost::getSystemState().setTheme(WindowsSettings::readTheme());
+}
+
+void WindowsSystem::reportLanguages() {
+    NativeHost::getSystemState().setLanguages(getLanguages());
 }
 
 void WindowsSystem::reportAccessibility() {
@@ -74,12 +76,6 @@ std::string WindowsSystem::getSystemVersion() {
         return {};
     }
     return std::to_string(info.dwMajorVersion) + "." + std::to_string(info.dwMinorVersion) + "." + std::to_string(info.dwBuildNumber);
-}
-
-std::string WindowsSystem::getLocale() {
-    std::array<wchar_t, LOCALE_NAME_MAX_LENGTH> name{};
-    GetUserDefaultLocaleName(name.data(), static_cast<int>(name.size()));
-    return WindowsText::toUtf8(name.data());
 }
 
 // The languages arrive as one buffer of texts that each end with a null, followed by one more null.

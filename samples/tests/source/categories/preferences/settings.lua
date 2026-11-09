@@ -29,7 +29,7 @@ end
 
 -- Returns the state of the engine that the tests change, which `restore` puts back.
 function settings.snapshot()
-    local snapshot = {volumes = {}, muted = {}, fullscreen = window.fullscreen(), language = localization.language()}
+    local snapshot = {volumes = {}, muted = {}, fullscreen = window.fullscreen(), language = localization.language(), followingSystem = localization.followingSystem()}
     for _, bus in ipairs(settings.buses) do
         snapshot.volumes[bus] = audio.busVolume(bus)
         snapshot.muted[bus] = audio.busMuted(bus)
@@ -43,7 +43,9 @@ function settings.restore(snapshot)
         audio.setBusMuted(bus, snapshot.muted[bus])
     end
     window.setFullscreen(snapshot.fullscreen)
-    if snapshot.language ~= '' then
+    if snapshot.followingSystem then
+        localization.followSystem()
+    else
         localization.setLanguage(snapshot.language)
     end
 end

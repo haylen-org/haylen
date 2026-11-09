@@ -9,8 +9,8 @@ const std::array<std::pair<std::string_view, SystemInfo::DeviceKind>, 5> SystemI
 const std::array<std::pair<std::string_view, SystemInfo::Architecture>, 6> SystemInfo::kArchitectureNames{{{"arm64", Architecture::Arm64}, {"arm", Architecture::Arm}, {"x64", Architecture::X64}, {"x86", Architecture::X86}, {"wasm32", Architecture::Wasm32}, {"wasm64", Architecture::Wasm64}}};
 
 core::Json SystemInfo::toJson() const {
-    core::Json json{{"os", osName(os)}, {"deviceKind", deviceKindName(deviceKind)}, {"architecture", architectureName(architecture)}, {"bits", bits}, {"languages", languages}};
-    const std::array<std::pair<const char*, const std::string*>, 6> texts{{{"osVersion", &osVersion}, {"deviceModel", &deviceModel}, {"manufacturer", &manufacturer}, {"cpuName", &cpuName}, {"gpuName", &gpuName}, {"locale", &locale}}};
+    core::Json json{{"os", osName(os)}, {"deviceKind", deviceKindName(deviceKind)}, {"architecture", architectureName(architecture)}, {"bits", bits}};
+    const std::array<std::pair<const char*, const std::string*>, 5> texts{{{"osVersion", &osVersion}, {"deviceModel", &deviceModel}, {"manufacturer", &manufacturer}, {"cpuName", &cpuName}, {"gpuName", &gpuName}}};
     for (const auto& [key, text] : texts) {
         if (!text->empty()) {
             json[key] = *text;

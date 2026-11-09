@@ -188,6 +188,16 @@ These options start the values of [`haylen.lifecycle()`](#haylenlifecycle), and 
 | `debug.showSafeArea` | boolean | `false` | Shows the debug view of the safe area from the start, as [`ui.setSafeAreaVisible`](ui.md#uisetsafeareavisiblevisible) describes. |
 | `debug.reload` | string | `"module"` | How a changed Lua module applies while the app runs in development. `"module"` reloads it in place with the state of the app, and `"restart"` restarts the app, as [hot reload](../core/lua.md#hot-reload) describes. |
 
+#### Localization
+
+These fields load the texts of the app before any Lua runs, as the [localization guide](../core/localization.md#configuring-the-languages) explains. Tags may be written with `-` or `_` in any case, and `haylen.config` holds them in their canonical form, such as `"pt-BR"`.
+
+| Field | Type | Default | Meaning |
+| --- | --- | --- | --- |
+| `localization.folder` | string | Absent | The folder under `content/` whose `.json` files load as languages, each named after its language tag, such as `"locale"` for `content/locale/en.json` and `content/locale/pt-BR.json`, as [`localization.loadFolder`](localization.md#localizationloadfolderfolder) loads them. |
+| `localization.fallback` | string | The first language of the folder | The language that gives the texts that the current language lacks, and the current language when no language of the app is close to the one wanted. Its file must be in the folder. |
+| `localization.language` | string | Absent | The language that the app starts in, as [`localization.setLanguage`](localization.md#localizationsetlanguagetag) picks it. Without it the app follows the languages of the system. |
+
 #### Content, autoloads, native libraries and plugins
 
 | Field | Type | Default | Meaning |
@@ -883,6 +893,10 @@ The engine checks `app.json` before any Lua runs. A package whose `app.json` fai
 | `The "debug.safeArea" in "app.json" is invalid. <reason>` | The simulated safe area is wrong, for the reason that follows. |
 | `The "debug.fold" in "app.json" is invalid. <reason>` | The simulated fold is wrong, for the reason that follows. |
 | `The "debug.reload" option must be "module" or "restart".` | The reload mode has another value. |
+| `The "localization.<key>" value "<value>" in "app.json" is no language tag. Write a language such as "en", "pt-BR" or "pt_BR".` | The `localization.fallback` or `localization.language` is not a language tag. |
+| `The "localization.fallback" of "app.json" needs a "localization.folder" that holds its language file.` | The fallback is set without the folder. |
+| `The folder "<folder>" of "localization.folder" in "app.json" holds no language file. Add a file such as "<folder>/en.json".` | The folder has no `.json` file. The app shows it on the error screen once it starts. |
+| `The "localization.fallback" of "app.json" names "<language>", whose file the folder "<folder>" lacks.` | The folder has no file of the fallback language. The app shows it on the error screen once it starts. |
 | `The "autoload" list in "app.json" has an empty module name.` | An autoload has an empty name. |
 | `The "native" section of "app.json" must be an object of libraries.` | The section `native` is not an object. |
 | `The "plugins" section of "app.json" must be an object of plugins by id.` | The section `plugins` is not an object. |

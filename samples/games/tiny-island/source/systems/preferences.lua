@@ -35,7 +35,13 @@ function preferences.apply()
     audio.setBusVolume('sfx', effects)
     audio.setBusVolume('ui', effects)
     audio.setBusVolume('ambience', effects)
-    localization.setLanguage(preferences.get('language'))
+    -- The language follows the system until the player picks one.
+    local language = stored.get('language')
+    if language then
+        localization.setLanguage(language)
+    else
+        localization.followSystem()
+    end
     if preferences.desktop() and window.fullscreen() ~= preferences.get('fullscreen') then
         window.setFullscreen(preferences.get('fullscreen'))
     end

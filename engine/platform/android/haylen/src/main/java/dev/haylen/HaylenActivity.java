@@ -47,7 +47,6 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -111,6 +110,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeDensity(getResources().getDisplayMetrics().density);
         nativeOrientation(getResources().getConfiguration().orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(getResources().getConfiguration()));
+        nativeLanguages(readLanguages(getResources().getConfiguration()));
         battery.register();
         powerSaving.register();
         timeZone.register();
@@ -279,6 +279,7 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         nativeDensity(configuration.densityDpi / (float) DisplayMetrics.DENSITY_DEFAULT);
         nativeOrientation(configuration.orientation == Configuration.ORIENTATION_PORTRAIT);
         nativeTheme(isDark(configuration));
+        nativeLanguages(readLanguages(configuration));
         applyStatusBar();
         accessibility.report();
         displays.report();
@@ -423,12 +424,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         }
         ActivityManager.MemoryInfo memory = new ActivityManager.MemoryInfo();
         activity.getSystemService(ActivityManager.class).getMemoryInfo(memory);
-        LocaleList locales = LocaleList.getDefault();
-        JSONArray languages = new JSONArray();
-        for (int index = 0; index < locales.size(); ++index) {
-            languages.put(locales.get(index).toLanguageTag());
-        }
-
         Map<String, Object> info = new HashMap<>();
         info.put("osVersion", Build.VERSION.RELEASE);
         info.put("deviceModel", Build.MODEL);
@@ -442,8 +437,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         info.put("memoryBytes", memory.totalMem);
         info.put("television", isTelevision(activity));
         info.put("tablet", activity.getResources().getConfiguration().smallestScreenWidthDp >= 600);
-        info.put("locale", Locale.getDefault().toLanguageTag());
-        info.put("languages", languages);
         return new JSONObject(info).toString().getBytes(StandardCharsets.UTF_8);
     }
 
@@ -674,6 +667,16 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
         return context.getSystemService(UiModeManager.class).getCurrentModeType() == Configuration.UI_MODE_TYPE_TELEVISION || context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_LEANBACK);
     }
 
+    // The locales of the configuration are the languages the person prefers, or the language that the settings of Android 13 and later give the app alone, as a JSON array of tags.
+    private static byte[] readLanguages(Configuration configuration) {
+        LocaleList locales = configuration.getLocales();
+        JSONArray languages = new JSONArray();
+        for (int index = 0; index < locales.size(); ++index) {
+            languages.put(locales.get(index).toLanguageTag());
+        }
+        return languages.toString().getBytes(StandardCharsets.UTF_8);
+    }
+
     private static boolean isDark(Configuration configuration) {
         return (configuration.uiMode & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
     }
@@ -737,4 +740,6 @@ public class HaylenActivity extends GameActivity implements InputManager.InputDe
     private static native void nativeUrlOpened(long request, boolean opened);
 
     private static native void nativeTheme(boolean dark);
+
+    private static native void nativeLanguages(byte[] languages);
 }

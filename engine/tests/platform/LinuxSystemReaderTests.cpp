@@ -73,10 +73,18 @@ TEST(LinuxSystemReaderTest, TurnsLocalesIntoLanguageTags) {
     EXPECT_EQ(LinuxSystemReader::toLanguageTag("POSIX"), "");
     EXPECT_EQ(LinuxSystemReader::toLanguageTag(""), "");
 
-    EXPECT_EQ(LinuxSystemReader::readLanguages("pt_BR:pt:en", "pt_BR.UTF-8"), (std::vector<std::string>{"pt-BR", "pt", "en"}));
-    EXPECT_EQ(LinuxSystemReader::readLanguages("", "en_GB.UTF-8"), (std::vector<std::string>{"en-GB"}));
-    EXPECT_EQ(LinuxSystemReader::readLanguages("fr::C", "C"), (std::vector<std::string>{"fr"}));
-    EXPECT_TRUE(LinuxSystemReader::readLanguages("", "").empty());
+    EXPECT_EQ(LinuxSystemReader::readLanguages("pt_BR:pt:en", "", "", "pt_BR.UTF-8"), (std::vector<std::string>{"pt-BR", "pt", "en"}));
+    EXPECT_EQ(LinuxSystemReader::readLanguages("", "", "", "en_GB.UTF-8"), (std::vector<std::string>{"en-GB"}));
+    EXPECT_EQ(LinuxSystemReader::readLanguages("fr::C", "", "", "de_DE.UTF-8"), (std::vector<std::string>{"fr", "de-DE"}));
+    EXPECT_TRUE(LinuxSystemReader::readLanguages("", "", "", "").empty());
+}
+
+// The first of LC_ALL, LC_MESSAGES and LANG that is set is the locale of messages, and gettext reads no LANGUAGE while that locale is C.
+TEST(LinuxSystemReaderTest, ReadsTheLanguagesInTheOrderOfGettext) {
+    EXPECT_EQ(LinuxSystemReader::readLanguages("", "es_ES.UTF-8", "fr_FR.UTF-8", "de_DE.UTF-8"), (std::vector<std::string>{"es-ES"}));
+    EXPECT_EQ(LinuxSystemReader::readLanguages("", "", "fr_FR.UTF-8", "de_DE.UTF-8"), (std::vector<std::string>{"fr-FR"}));
+    EXPECT_EQ(LinuxSystemReader::readLanguages("pt_BR:en", "", "", "C.UTF-8"), std::vector<std::string>());
+    EXPECT_EQ(LinuxSystemReader::readLanguages("pt_BR:en", "C", "", "pt_BR.UTF-8"), std::vector<std::string>());
 }
 
 TEST(LinuxSystemReaderTest, NamesTheTimeZoneFromTzOrTheLocalTimeLink) {

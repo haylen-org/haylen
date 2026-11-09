@@ -95,6 +95,10 @@ EM_JS(char*, haylen_js_system_info, (), {
     return stringToNewUTF8(Module.haylen.systemInfo());
 });
 
+EM_JS(char*, haylen_js_languages, (), {
+    return stringToNewUTF8(Module.haylen.languages());
+});
+
 EM_JS(int, haylen_js_open_url, (const char* url), {
     return Module.haylen.openUrl(UTF8ToString(url)) ? 1 : 0;
 });
@@ -134,12 +138,16 @@ std::string_view Services::getName() noexcept {
     return "web";
 }
 
+// The languages are known before the first app starts, so it never starts in a language that the page then changes.
 void Services::initialize() {
     // clang-format off
     core::Log::addListener([](core::Log::Level level, std::string_view message) {
         haylen_js_log(static_cast<int>(level), std::string(message).c_str());
     });
     // clang-format on
+    char* languages = haylen_js_languages();
+    WebPage::setLanguages(languages);
+    std::free(languages);
 }
 
 void Services::shutdown() noexcept {}
@@ -280,8 +288,6 @@ SystemInfo Services::getSystemInfo() {
         .deviceKind = SystemInfo::DeviceKind::Browser,
         .cpuCores = details.value("cpuCores", 0),
         .memoryBytes = details.value("memoryBytes", std::uint64_t{0}),
-        .locale = details.value("locale", std::string()),
-        .languages = details.at("languages").get<std::vector<std::string>>(),
     };
 }
 

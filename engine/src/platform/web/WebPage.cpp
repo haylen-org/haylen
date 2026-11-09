@@ -6,6 +6,7 @@
 #include <exception>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -15,6 +16,7 @@
 #include "haylen/content/Bootstrap.hpp"
 #include "haylen/core/AppConfig.hpp"
 #include "haylen/core/Engine.hpp"
+#include "haylen/core/Json.hpp"
 #include "haylen/debug/Profiler.hpp"
 #include "haylen/io/MemoryPackage.hpp"
 #include "haylen/io/Package.hpp"
@@ -306,6 +308,10 @@ void WebPage::setTimeZone(const char* zone) {
     NativeHost::getSystemState().setTimeZone(zone);
 }
 
+void WebPage::setLanguages(const char* json) {
+    NativeHost::getSystemState().setLanguages(core::Json::parse(json).get<std::vector<std::string>>());
+}
+
 // A full battery on mains power does not charge, as on the other platforms.
 void WebPage::setBattery(double level, bool charging, bool full) {
     Battery battery{.level = static_cast<float>(level)};
@@ -544,6 +550,10 @@ EMSCRIPTEN_KEEPALIVE void haylen_web_network(int online) {
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_theme(int dark) {
     haylen::platform::WebEntry::guard("haylen_web_theme", [&] { haylen::platform::WebPage::setTheme(dark != 0); });
+}
+
+EMSCRIPTEN_KEEPALIVE void haylen_web_languages(const char* json) {
+    haylen::platform::WebEntry::guard("haylen_web_languages", [&] { haylen::platform::WebPage::setLanguages(json); });
 }
 
 EMSCRIPTEN_KEEPALIVE void haylen_web_accessibility_action(double element, int action) {

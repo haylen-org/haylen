@@ -6,6 +6,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "content/format/Manifest.hpp"
 #include "haylen/assets/GroupManifest.hpp"
@@ -14,6 +15,7 @@
 #include "haylen/io/Package.hpp"
 #include "haylen/io/Path.hpp"
 #include "haylen/platform/Window.hpp"
+#include "localization/LanguageTag.hpp"
 
 namespace haylen::core {
 
@@ -62,6 +64,36 @@ bool AppConfig::isServerAddress(std::string_view url) noexcept {
         }
     }
     return false;
+}
+
+// A tag that `app.json` leaves out stays empty, and any other comes back in its canonical form.
+std::string AppConfig::readLanguageTag(const Json& section, const char* key) {
+    std::string tag;
+    readValue(section, key, tag);
+    if (!section.contains(key)) {
+        return tag;
+    }
+    std::optional<std::string> canonical = localization::LanguageTag::parse(tag);
+    if (!canonical) {
+        throw std::invalid_argument("The \"localization." + std::string(key) + "\" value \"" + tag + "\" in \"app.json\" is no language tag. Write a language such as \"en\", \"pt-BR\" or \"pt_BR\".");
+    }
+    return std::move(*canonical);
+}
+
+// The fallback names a file of the folder, which the localization plugin checks once it loaded the folder.
+void AppConfig::readLocalization(const Json& section, AppConfig& config) {
+    JsonValidator::requireKnownKeys(section, {"folder", "fallback", "language"}, "the \"localization\" section of \"app.json\"");
+    Localization& localization = config.localization;
+    readValue(section, "folder", localization.folder);
+    if (section.contains("folder")) {
+        localization.folder = io::Path::normalize(localization.folder);
+    }
+    localization.fallback = readLanguageTag(section, "fallback");
+    localization.language = readLanguageTag(section, "language");
+
+    if (!localization.fallback.empty() && localization.folder.empty()) {
+        throw std::invalid_argument("The \"localization.fallback\" of \"app.json\" needs a \"localization.folder\" that holds its language file.");
+    }
 }
 
 void AppConfig::readContent(const Json& section, AppConfig& config) {
@@ -321,7 +353,7 @@ AppConfig AppConfig::fromPackage(const io::Package& package) {
 }
 
 AppConfig AppConfig::fromJson(const Json& document) {
-    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "autoload", "native", "plugins"}, "\"app.json\"");
+    JsonValidator::requireKnownKeys(document, {"name", "identifier", "version", "description", "company", "copyright", "website", "window", "design", "orientation", "fixedRate", "maxFrameTime", "clearColor", "splash", "lifecycle", "audio", "input", "ui", "debug", "content", "localization", "autoload", "native", "plugins"}, "\"app.json\"");
 
     AppConfig config;
     readValue(document, "name", config.name);
@@ -601,6 +633,9 @@ AppConfig AppConfig::fromJson(const Json& document) {
     if (document.contains("content")) {
         readContent(document.at("content"), config);
     }
+    if (document.contains("localization")) {
+        readLocalization(document.at("localization"), config);
+    }
     return config;
 }
 
@@ -667,8 +702,21 @@ Json AppConfig::toJson() const {
         }
         pluginsJson[id] = std::move(written);
     }
+
+    Json localizationJson = Json::object();
+    if (!localization.folder.empty()) {
+        localizationJson["folder"] = localization.folder;
+    }
+
+    if (!localization.fallback.empty()) {
+        localizationJson["fallback"] = localization.fallback;
+    }
+
+    if (!localization.language.empty()) {
+        localizationJson["language"] = localization.language;
+    }
     return {
-        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"background", audioSession.background}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
+        {"name", name}, {"identifier", identifier}, {"version", version}, {"description", description}, {"company", company}, {"copyright", copyright}, {"website", website}, {"window", windowJson}, {"design", {{"width", JsonNumber::fromFloat(designSize.x)}, {"height", JsonNumber::fromFloat(designSize.y)}, {"scaling", graphics::Viewport::scalingPolicyName(scaling)}}}, {"orientation", platform::Window::orientationName(orientation)}, {"fixedRate", fixedRate}, {"maxFrameTime", maxFrameTime}, {"clearColor", clearColor.toHex()}, {"splash", splashJson}, {"lifecycle", {{"pauseOnBackground", lifecycle.pauseOnBackground}, {"pauseOnFocusLoss", lifecycle.pauseOnFocusLoss}, {"muteOnFocusLoss", lifecycle.muteOnFocusLoss}}}, {"audio", {{"iosSession", audio::Session::categoryName(audioSession.category)}, {"mixWithOthers", audioSession.mixWithOthers}, {"background", audioSession.background}, {"latency", audio::OutputSettings::latencyName(audioOutput.latency)}, {"limiter", audioOutput.limiter}}}, {"input", {{"mouseAsTouch", input.mouseAsTouch}, {"touchAsMouse", input.touchAsMouse}, {"scrollSpeed", JsonNumber::fromFloat(input.scrollSpeed)}}}, {"ui", {{"scaleMode", std::string(ui::Scaling::modeName(uiScaling.mode))}, {"scale", JsonNumber::fromFloat(uiScaling.factor)}}}, {"debug", debugJson}, {"content", contentJson}, {"localization", localizationJson}, {"autoload", autoloads}, {"native", native}, {"plugins", pluginsJson},
     };
 }
 

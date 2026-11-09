@@ -24,6 +24,10 @@
         "console": true
     },
     "autoload": ["categories.events.player-data"],
+    "localization": {
+        "folder": "localization/locale",
+        "fallback": "en"
+    },
     "content": {
         "delivery": [
             {"match": "delivery/later/**", "mode": "onDemand"},

@@ -1,6 +1,11 @@
 #include "platform/SystemState.hpp"
 
+#include <algorithm>
+#include <optional>
 #include <utility>
+
+#include "haylen/core/Log.hpp"
+#include "localization/LanguageTag.hpp"
 
 namespace haylen::platform {
 
@@ -52,6 +57,37 @@ void SystemState::setAccessibility(const AccessibilitySettings& value) {
 AccessibilitySettings SystemState::getAccessibility() const {
     const std::scoped_lock lock(mutex);
     return accessibility;
+}
+
+void SystemState::setLanguages(std::span<const std::string> value) {
+    std::vector<std::string> tags;
+    for (const std::string& reported : value) {
+        std::optional<std::string> canonical = localization::LanguageTag::parse(reported);
+        if (!canonical) {
+            core::Log::warning("The system prefers the language \"{}\", which is no language tag, so the engine leaves it out.", reported);
+            continue;
+        }
+        if (std::ranges::find(tags, *canonical) == tags.end()) {
+            tags.push_back(std::move(*canonical));
+        }
+    }
+
+    const std::scoped_lock lock(mutex);
+    if (tags == languages) {
+        return;
+    }
+    languages = std::move(tags);
+    ++languagesRevision;
+}
+
+std::vector<std::string> SystemState::getLanguages() const {
+    const std::scoped_lock lock(mutex);
+    return languages;
+}
+
+std::uint64_t SystemState::getLanguagesRevision() const {
+    const std::scoped_lock lock(mutex);
+    return languagesRevision;
 }
 
 } // namespace haylen::platform

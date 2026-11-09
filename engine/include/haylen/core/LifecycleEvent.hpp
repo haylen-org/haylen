@@ -82,6 +82,8 @@ class LifecycleEvent final {
     static constexpr std::string_view kNetworkOffline = "networkOffline";
 
     static constexpr std::string_view kSystemThemeChanged = "systemThemeChanged";
+    static constexpr std::string_view kSystemLanguagesChanged = "systemLanguagesChanged";
+    static constexpr std::string_view kLanguageChanged = "languageChanged";
     static constexpr std::string_view kBatteryChanged = "batteryChanged";
     static constexpr std::string_view kPowerSavingChanged = "powerSavingChanged";
     static constexpr std::string_view kTimeZoneChanged = "timeZoneChanged";

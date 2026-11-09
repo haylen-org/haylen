@@ -119,6 +119,9 @@ class Host : public Window {
 
     // The IANA name of the time zone of the device, such as `America/Sao_Paulo`, or an empty text where the platform does not tell, which the engine reads once per frame.
     [[nodiscard]] virtual std::string getTimeZone() const = 0;
+    // The languages the person prefers, most preferred first, in their canonical form, as the platform last reported them, with the revision that grows whenever they change. The engine reads the revision once per frame and the languages when it changed.
+    [[nodiscard]] virtual std::vector<std::string> getLanguages() const = 0;
+    [[nodiscard]] virtual std::uint64_t getLanguagesRevision() const = 0;
 
     // The accessibility settings as the platform last reported them, which the engine reads once per frame to publish `accessibilitySettingsChanged`.
     [[nodiscard]] virtual AccessibilitySettings getAccessibilitySettings() const = 0;

@@ -81,14 +81,24 @@ std::string LinuxSystemReader::toLanguageTag(std::string_view locale) {
     return tag;
 }
 
-std::vector<std::string> LinuxSystemReader::readLanguages(std::string_view language, std::string_view lang) {
+std::vector<std::string> LinuxSystemReader::readLanguages(std::string_view language, std::string_view all, std::string_view messages, std::string_view lang) {
+    std::string_view locale = lang;
+    if (!all.empty()) {
+        locale = all;
+    } else if (!messages.empty()) {
+        locale = messages;
+    }
     std::vector<std::string> tags;
+    if (toLanguageTag(locale).empty()) {
+        return tags;
+    }
+
     for (std::size_t start = 0; start <= language.size();) {
         const std::size_t end = std::min(language.find(':', start), language.size());
         addLanguage(tags, language.substr(start, end - start));
         start = end + 1;
     }
-    addLanguage(tags, lang);
+    addLanguage(tags, locale);
     return tags;
 }
 

@@ -7,6 +7,7 @@
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "haylen/core/EventBus.hpp"
 #include "haylen/core/LifecycleEvent.hpp"
@@ -16,7 +17,8 @@ namespace haylen::platform {
 
 const std::array<std::pair<std::string_view, Theme>, 2> System::kThemeNames{{{"light", Theme::Light}, {"dark", Theme::Dark}}};
 
-System::System(Host& owner, Bridge& channel, core::EventBus& bus, std::string gpuName, std::function<std::vector<AppPlugin>()> plugins) : host(owner), bridge(channel), events(bus), appPlugins(std::move(plugins)), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()) {
+System::System(Host& owner, Bridge& channel, core::EventBus& bus, std::string gpuName, std::function<std::vector<AppPlugin>()> plugins) : host(owner), bridge(channel), events(bus), appPlugins(std::move(plugins)), info(owner.getSystemInfo()), theme(owner.getTheme()), battery(owner.getBattery()), powerSaving(owner.getPowerSaving()), timeZone(owner.getTimeZone()), languagesRevision(owner.getLanguagesRevision()) {
+    languages = owner.getLanguages();
     info.gpuName = std::move(gpuName);
 }
 
@@ -38,6 +40,10 @@ std::optional<bool> System::getPowerSaving() const noexcept {
 
 const std::string& System::getTimeZone() const noexcept {
     return timeZone;
+}
+
+const std::vector<std::string>& System::getLanguages() const noexcept {
+    return languages;
 }
 
 void System::openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback) {
@@ -224,6 +230,18 @@ void System::publishChanges() {
         tzset();
 #endif
         events.emit(core::LifecycleEvent::kTimeZoneChanged, {{"timeZone", timeZone}});
+    }
+
+    // The revision tells of a change without a copy of the list, and a list that changed back between two frames publishes nothing.
+    const std::uint64_t reportedRevision = host.getLanguagesRevision();
+    if (reportedRevision == languagesRevision) {
+        return;
+    }
+    languagesRevision = reportedRevision;
+    std::vector<std::string> reportedLanguages = host.getLanguages();
+    if (reportedLanguages != languages) {
+        languages = std::move(reportedLanguages);
+        events.emit(core::LifecycleEvent::kSystemLanguagesChanged, {{"languages", languages}});
     }
 }
 

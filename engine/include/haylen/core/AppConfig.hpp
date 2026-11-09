@@ -137,6 +137,13 @@ struct AppConfig {
         [[nodiscard]] std::string_view getPack(std::string_view path) const noexcept;
     };
 
+    // The texts the app ships, from the `localization` object: the folder under `content` whose JSON files load as languages before any script runs, the fallback language among them, and the language the app starts in. Without a language the app follows the languages of the system. The languages are in their canonical form, such as `pt-BR`.
+    struct Localization {
+        std::string folder;
+        std::string fallback;
+        std::string language;
+    };
+
     std::string name = "Haylen App";
     std::string identifier = "com.haylen.app";
     std::string version = "1.0.0";
@@ -164,6 +171,7 @@ struct AppConfig {
     Debug debug{};
 
     Content content{};
+    Localization localization{};
 
     // Lua modules that load before the first scene and live for the whole app.
     std::vector<std::string> autoloads;
@@ -211,6 +219,8 @@ struct AppConfig {
     static void expandGroups(const io::Package& package, Content& content);
     [[nodiscard]] static bool isContentPattern(std::string_view pattern) noexcept;
     static void readContent(const Json& section, AppConfig& config);
+    [[nodiscard]] static std::string readLanguageTag(const Json& section, const char* key);
+    static void readLocalization(const Json& section, AppConfig& config);
     [[nodiscard]] static bool isServerAddress(std::string_view url) noexcept;
     [[nodiscard]] static bool isPluginId(std::string_view text) noexcept;
     [[nodiscard]] static platform::Orientation orientationFromName(const std::string& text);

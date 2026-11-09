@@ -411,6 +411,10 @@ JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeTheme(JNIEnv*, jclas
     haylen::platform::NativeHost::getSystemState().setTheme(dark == JNI_TRUE ? haylen::platform::Theme::Dark : haylen::platform::Theme::Light);
 }
 
+JNIEXPORT void JNICALL Java_dev_haylen_HaylenActivity_nativeLanguages(JNIEnv* env, jclass, jbyteArray languages) {
+    haylen::platform::NativeHost::getSystemState().setLanguages(haylen::platform::AndroidDeviceInfo::toLanguages(haylen::platform::JavaBridge::toString(*env, languages)));
+}
+
 JNIEXPORT void JNICALL Java_dev_haylen_HaylenAccessibility_nativeAccessibility(JNIEnv*, jclass, jfloat textScale, jboolean reducedMotion, jboolean highContrast, jboolean screenReader) {
     haylen::platform::NativeHost::getSystemState().setAccessibility({.textScale = textScale, .reducedMotion = reducedMotion == JNI_TRUE, .highContrast = highContrast == JNI_TRUE, .reducedTransparency = false, .screenReader = screenReader == JNI_TRUE});
 }

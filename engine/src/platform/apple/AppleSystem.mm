@@ -46,10 +46,6 @@ SystemInfo AppleSystem::getInfo() {
     info.cpuName = readSysctl("machdep.cpu.brand_string");
     info.cpuCores = static_cast<int>(NSProcessInfo.processInfo.processorCount);
     info.memoryBytes = NSProcessInfo.processInfo.physicalMemory;
-    info.locale = getLanguageTag().UTF8String;
-    for (NSString* language in NSLocale.preferredLanguages) {
-        info.languages.emplace_back(language.UTF8String);
-    }
     return info;
 }
 
@@ -91,11 +87,6 @@ Permission::Answer AppleSystem::vibrate() {
 #else
     return {.state = Permission::State::Unsupported, .message = "A Mac has no vibration motor."};
 #endif
-}
-
-NSString* AppleSystem::getLanguageTag() {
-    NSString* preferred = NSLocale.preferredLanguages.firstObject;
-    return preferred != nil ? preferred : [NSLocale.currentLocale.localeIdentifier stringByReplacingOccurrencesOfString:@"_" withString:@"-"];
 }
 
 std::string AppleSystem::readSysctl(const char* name) {

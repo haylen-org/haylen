@@ -9,11 +9,14 @@
 
 namespace haylen::platform {
 
-// The system of Linux as the engine sees it: what the device is, the battery, the time zone and opening urls with the app that handles them.
+// The system of Linux as the engine sees it: what the device is, the languages, the battery, the time zone and opening urls with the app that handles them.
 class LinuxSystem final {
   public:
     [[nodiscard]] static SystemInfo getInfo();
     static void openUrl(const std::string& url, std::function<void(Permission::Answer answer)> callback);
+
+    // Reports the languages of the environment of the process, which Linux sets when the session starts and never changes while the app runs.
+    static void reportLanguages();
 
     // Reports the battery now and then every 30 seconds from a thread of its own, since Linux announces no change and some batteries take a while to read.
     static void watchBattery();

@@ -290,6 +290,10 @@ LRESULT CALLBACK WindowsDesktop::windowProcedure(HWND window, UINT message, WPAR
         if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"ImmersiveColorSet") {
             WindowsSystem::reportTheme();
         }
+        // Windows names the regional and language settings as the international settings.
+        if (lParam != 0 && std::wstring_view(reinterpret_cast<const wchar_t*>(lParam)) == L"intl") {
+            WindowsSystem::reportLanguages();
+        }
         // The accessibility settings change with several of the settings that Windows announces, so every announcement reads them again.
         WindowsSystem::reportAccessibility();
         break;

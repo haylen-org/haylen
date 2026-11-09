@@ -310,6 +310,14 @@ std::string NativeHost::getTimeZone() const {
     return getSystemState().getTimeZone();
 }
 
+std::vector<std::string> NativeHost::getLanguages() const {
+    return getSystemState().getLanguages();
+}
+
+std::uint64_t NativeHost::getLanguagesRevision() const {
+    return getSystemState().getLanguagesRevision();
+}
+
 AccessibilitySettings NativeHost::getAccessibilitySettings() const {
     return getSystemState().getAccessibility();
 }

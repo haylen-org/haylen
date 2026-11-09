@@ -36,8 +36,6 @@ Module.haylen = Module.haylen || {};
             deviceModel: details.model || undefined,
             cpuCores: navigator.hardwareConcurrency || undefined,
             memoryBytes: memory ? Math.round(memory * 1073741824) : undefined,
-            locale: navigator.language || undefined,
-            languages: [...(navigator.languages || [])],
         });
     };
 
@@ -48,6 +46,16 @@ Module.haylen = Module.haylen || {};
     // Browsers announce no change of the time zone, so the page reads it again whenever the person comes back to it, which is when the system may have changed it.
     const reportTimeZone = () => {
         callEngine("haylen_web_time_zone", null, ["string"], [Intl.DateTimeFormat().resolvedOptions().timeZone || ""]);
+    };
+
+    // The browser lists the languages of its settings, most preferred first, and older browsers name only one. The engine reads them when it starts, and the page reports every later change.
+    haylen.languages = function () {
+        const languages = navigator.languages && navigator.languages.length > 0 ? [...navigator.languages] : [navigator.language];
+        return JSON.stringify(languages);
+    };
+
+    const reportLanguages = () => {
+        callEngine("haylen_web_languages", null, ["string"], [haylen.languages()]);
     };
 
     // The text scale is the default font size of the browser, which the user sets in its preferences, over the usual 16 pixels. Browsers without the media queries of reduced transparency report no preference.
@@ -2617,7 +2625,7 @@ Module.haylen = Module.haylen || {};
         }
     });
 
-    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the time zone, the color scheme, the accessibility preferences and the battery reach the app when it starts and whenever they change.
+    // A hidden page sends the app to the background, a page that goes away makes the user data durable, and the network state, the time zone, the color scheme, the languages, the accessibility preferences and the battery reach the app when it starts and whenever they change.
     Module.postRun.push(function () {
         Module.canvas.addEventListener("pointerup", focusTapped, true);
         document.addEventListener("selectionchange", () => {
@@ -2647,6 +2655,7 @@ Module.haylen = Module.haylen || {};
         reportTimeZone();
         reportTheme();
         device.darkScheme.addEventListener("change", reportTheme);
+        window.addEventListener("languagechange", reportLanguages);
         reportAccessibility();
         for (const query of [device.reducedMotion, device.highContrast, device.reducedTransparency]) {
             query.addEventListener("change", reportAccessibility);

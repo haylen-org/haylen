@@ -20,9 +20,6 @@ class AppleSystem final {
   private:
     [[nodiscard]] static Permission::Answer answerOpened(bool opened, const std::string& url);
 
-    // The first preferred language as a BCP 47 tag, the format every platform reports.
-    [[nodiscard]] static NSString* getLanguageTag();
-
     // The text value of a `sysctl` name, empty where the kernel has none, such as the processor name on iPhones.
     [[nodiscard]] static std::string readSysctl(const char* name);
 };

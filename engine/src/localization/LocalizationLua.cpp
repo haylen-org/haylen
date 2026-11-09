@@ -8,7 +8,6 @@
 #include <string_view>
 #include <vector>
 
-#include "haylen/assets/Manager.hpp"
 #include "haylen/core/Engine.hpp"
 #include "haylen/localization/DateFormat.hpp"
 #include "haylen/localization/ListFormat.hpp"
@@ -46,6 +45,16 @@ int LocalizationLua::setLanguage(lua_State* L) {
 
 int LocalizationLua::language(lua_State* L) {
     lua::Stack::push(L, getCatalog(L).getLanguage());
+    return 1;
+}
+
+int LocalizationLua::followSystem(lua_State* L) {
+    getCatalog(L).followSystem();
+    return 0;
+}
+
+int LocalizationLua::followingSystem(lua_State* L) {
+    lua::Stack::push(L, getCatalog(L).isFollowingSystem());
     return 1;
 }
 
@@ -103,6 +112,11 @@ int LocalizationLua::direction(lua_State* L) {
 
 int LocalizationLua::findBestMatch(lua_State* L) {
     lua::Stack::push(L, getCatalog(L).findBestMatch(lua::Stack::read<std::string_view>(L, 1)));
+    return 1;
+}
+
+int LocalizationLua::normalizeTag(lua_State* L) {
+    lua::Stack::push(L, Catalog::normalizeTag(lua::Stack::read<std::string_view>(L, 1)));
     return 1;
 }
 
@@ -198,25 +212,15 @@ int LocalizationLua::pluralCategory(lua_State* L) {
     return 1;
 }
 
-// Returns `i18n/<language>/<path>` when the package holds that asset for the current language, then for its base language, and the path itself otherwise.
 int LocalizationLua::assetPath(lua_State* L) {
-    const std::string_view path = lua::Stack::read<std::string_view>(L, 1);
-    const std::string language = getCatalog(L).getLanguage();
-    const assets::Manager& assets = lua::Runtime::getEngine(L).getAssets();
-    for (const std::string_view tag : {std::string_view(language), std::string_view(language).substr(0, language.find_first_of("-_"))}) {
-        std::string localized = "i18n/" + std::string(tag) + "/" + std::string(path);
-        if (!tag.empty() && assets.exists(localized)) {
-            lua::Stack::push(L, localized);
-            return 1;
-        }
-    }
-    lua::Stack::push(L, path);
+    core::Engine& engine = lua::Runtime::getEngine(L);
+    lua::Stack::push(L, engine.getPlugin<plugins::LocalizationPlugin>().getAssetPath(engine.getAssets(), lua::Stack::read<std::string_view>(L, 1)));
     return 1;
 }
 
 int LocalizationLua::open(lua_State* L) {
     const luaL_Reg functions[] = {
-        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"format", &lua::Binding::native<&format>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
+        {"add", &lua::Binding::native<&add>}, {"loadFolder", &lua::Binding::native<&loadFolder>}, {"setLanguage", &lua::Binding::native<&setLanguage>}, {"language", &lua::Binding::native<&language>}, {"followSystem", &lua::Binding::native<&followSystem>}, {"followingSystem", &lua::Binding::native<&followingSystem>}, {"setFallback", &lua::Binding::native<&setFallback>}, {"fallback", &lua::Binding::native<&fallback>}, {"setPseudo", &lua::Binding::native<&setPseudo>}, {"pseudo", &lua::Binding::native<&pseudo>}, {"languages", &lua::Binding::native<&languages>}, {"has", &lua::Binding::native<&has>}, {"text", &lua::Binding::native<&text>}, {"format", &lua::Binding::native<&format>}, {"findBestMatch", &lua::Binding::native<&findBestMatch>}, {"normalizeTag", &lua::Binding::native<&normalizeTag>}, {"direction", &lua::Binding::native<&direction>}, {"formatNumber", &lua::Binding::native<&formatNumber>}, {"formatDate", &lua::Binding::native<&formatDate>}, {"formatList", &lua::Binding::native<&formatList>}, {"pluralCategory", &lua::Binding::native<&pluralCategory>}, {"assetPath", &lua::Binding::native<&assetPath>}, {nullptr, nullptr},
     };
     lua::Binding::newModule(L, functions);
     return 1;

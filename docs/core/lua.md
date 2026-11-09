@@ -63,6 +63,7 @@ These are the parts of `app.json` that most apps set.
 | `orientation`, `splash` | How a phone holds the app, and the launch screen. |
 | `lifecycle`, `audio` | What the app does when it loses the focus, and how it shares sound with other apps. |
 | `debug` | The debug statistics, drawings and the reload mode of development. |
+| `localization` | The folder of the texts of each language and the fallback language, which the [localization guide](localization.md#configuring-the-languages) explains. |
 | `autoload`, `plugins` | The modules that load before the first scene, and the plugins of the app. |
 
 The reference of [`haylen.config`](../lua-api/haylen.md#haylenconfig) lists every field with its default. Scripts read the same settings, with every default filled in, from `require('haylen').config`.
@@ -76,7 +77,6 @@ The file `source/main.lua` is the entry point of the app. It runs once when the 
 ```lua
 local assets = require('haylen.assets')
 local input = require('haylen.input')
-local localization = require('haylen.localization')
 local scene = require('haylen.scene')
 local ui = require('haylen.ui')
 
@@ -84,8 +84,6 @@ local preferences = require('systems.preferences')
 
 assets.defineGroups(assets.json('preload.json'))
 input.loadActions(assets.json('input/actions.json'))
-localization.loadFolder('locale')
-localization.setFallback('en')
 ui.setTheme(ui.loadTheme('ui/theme.json', 'dark'))
 preferences.apply()
 

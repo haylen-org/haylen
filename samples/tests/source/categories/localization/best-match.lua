@@ -1,4 +1,4 @@
--- The function `system.info` of `haylen.system` reports the language of the device as a tag such as `pt-BR`, and `localization.findBestMatch` finds the language of the app closest to it: the exact tag, or the same base language, ignoring case and treating `_` like `-`.
+-- The function `localization.findBestMatch` finds the language of the app closest to a tag: the tag itself, then the tag without its last subtags, such as `pt` for `pt-BR`, then the first language of the app with the same language and a script that agrees, such as `pt-BR` for `pt-PT`. Tags may use `-` or `_` in any case, and `localization.normalizeTag` writes them the canonical way. The function `system.languages` lists the languages the person prefers on the device.
 local haylen = require('haylen')
 local localization = require('haylen.localization')
 local system = require('haylen.system')
@@ -9,24 +9,28 @@ local LanguageTest = require('categories.localization.language-test')
 local BestMatch = haylen.class('BestMatch', LanguageTest)
 
 BestMatch.code = [[
-local tag = system.info().locale  -- Such as "pt-BR", nil where the platform does not tell.
-local match = localization.findBestMatch(tag)  -- The tag itself, the same base language or nil.
-if match then
-    localization.setLanguage(match)
+localization.normalizeTag('PT_br')  -- "pt-BR"
+localization.findBestMatch('pt-PT')  -- The tag, a shorter tag, another region or nil.
+for _, tag in ipairs(system.languages()) do
+    print(tag, localization.findBestMatch(tag))
 end]]
 
-BestMatch.hint = 'Use the language of the device, type any tag and press Enter, or pick a row of the table to switch to its match.'
-BestMatch.tags = {'pt-BR', 'pt-PT', 'pt', 'PT_br', 'es-MX', 'es-419', 'en-GB', 'EN-us', 'ja-JP', 'fr-FR', 'zh-Hans-CN'}
+BestMatch.hint = 'Use the first language of the device, type any tag and press Enter, or pick a row of the table to switch to its match.'
+BestMatch.tags = {'pt-BR', 'pt-PT', 'pt', 'PT_br', 'es-MX', 'es-419', 'en-GB', 'EN-us', 'ja-JP', 'fr-FR', 'zh-Hans-CN', 'en-US-u-mu-celsius'}
 
--- Tells how a tag matched: the same tag, the same base language or nothing.
-local function reason(tag, match)
+-- Tells how a tag matched: the same tag, a shorter tag, another region of the same language or nothing.
+function BestMatch.reason(tag, match)
     if match == nil then
         return 'No language of the app'
     end
-    if tag:lower():gsub('_', '-') == match:lower() then
+    local canonical = localization.normalizeTag(tag)
+    if canonical == match then
         return 'The same tag'
     end
-    return 'The same base language'
+    if canonical:sub(1, #match + 1) == match .. '-' then
+        return 'A shorter tag'
+    end
+    return 'Another region of the language'
 end
 
 function BestMatch:init(entry)
@@ -38,22 +42,22 @@ function BestMatch:content()
     local rows = {}
     for index, tag in ipairs(BestMatch.tags) do
         local match = localization.findBestMatch(tag)
-        rows[index] = {id = tag, cells = {tag, match or 'None', reason(tag, match)}}
+        rows[index] = {id = tag, cells = {tag, localization.normalizeTag(tag), match or 'None', BestMatch.reason(tag, match)}}
     end
     return {
         ui.panel{width = 640, align = 'stretch',
             ui.scroll{grow = 1, height = 0, ui.column{gap = 12,
                 ui.sectionTitle{text = 'This device'},
                 ui.label{id = 'locale', text = ''},
-                ui.button{id = 'device', text = 'Use the language of the device', enabled = false, align = 'stretch', onClick = function()
+                ui.button{id = 'device', text = 'Use the first language of the device', enabled = false, align = 'stretch', onClick = function()
                     localization.setLanguage(self.deviceMatch)
                 end},
                 ui.sectionTitle{text = 'Any tag'},
                 ui.textField{id = 'tag', value = self.typed, maxLength = 35, autocorrect = false, autocapitalize = 'none', returnKey = 'done', onChange = function(event)
                     self:typeTag(event.value)
                 end, onSubmit = function(event)
-                    local match = localization.findBestMatch(event.value)
-                    if match then
+                    local valid, match = pcall(localization.findBestMatch, event.value)
+                    if valid and match then
                         localization.setLanguage(match)
                     end
                 end},
@@ -62,7 +66,7 @@ function BestMatch:content()
         },
         ui.panel{grow = 1, align = 'stretch', gap = 12,
             ui.label{text = 'The app has "' .. table.concat(localization.languages(), '", "') .. '".', color = 'textMuted'},
-            ui.scroll{grow = 1, height = 0, ui.table{id = 'tags', columns = {{text = 'Tag', width = 220}, {text = 'Best match', width = 220}, {text = 'Why'}}, rows = rows, onSelect = function(event)
+            ui.scroll{grow = 1, height = 0, ui.table{id = 'tags', columns = {{text = 'Tag', width = 260}, {text = 'Canonical', width = 200}, {text = 'Best match', width = 160}, {text = 'Why'}}, rows = rows, onSelect = function(event)
                 local match = localization.findBestMatch(event.item)
                 if match then
                     localization.setLanguage(match)
@@ -72,25 +76,30 @@ function BestMatch:content()
     }
 end
 
--- A platform that does not report the language of the device leaves the locale of `system.info` `nil`.
+-- A platform that tells no language of the person leaves the list of `system.languages` empty.
 function BestMatch:enter()
     BestMatch.super.enter(self)
     self:typeTag(self.typed)
-    local tag = system.info().locale
+    local tag = system.languages()[1]
     if not tag then
-        self:set('locale', {text = 'The platform does not report the language of the device.', color = 'dangerText'})
+        self:set('locale', {text = 'The platform does not report the languages of the device.', color = 'dangerText'})
         return
     end
     self.deviceMatch = localization.findBestMatch(tag)
-    self:set('locale', {text = string.format('The device language is "%s", and "findBestMatch" picks %s.', tag, self.deviceMatch and '"' .. self.deviceMatch .. '"' or 'nothing')})
+    self:set('locale', {text = string.format('The device prefers "%s", and "findBestMatch" picks %s.', table.concat(system.languages(), '", "'), self.deviceMatch and '"' .. self.deviceMatch .. '"' or 'nothing')})
     self:set('device', {enabled = self.deviceMatch ~= nil})
 end
 
+-- A typed text that is no language tag shows the sentence that `normalizeTag` raises.
 function BestMatch:typeTag(tag)
     self.typed = tag
-    local match = tag ~= '' and localization.findBestMatch(tag) or nil
-    local why = match and reason(tag, match):lower() or 'since no language of the app is close'
-    self:set('typed', {text = string.format('The call "localization.findBestMatch(\'%s\')" returns %s, %s.', tag, match and '"' .. match .. '"' or '"nil"', why)})
+    local valid, result = pcall(localization.normalizeTag, tag)
+    if not valid then
+        self:set('typed', {text = tostring(result):gsub('^.-:%d+: ', '')})
+        return
+    end
+    local match = localization.findBestMatch(tag)
+    self:set('typed', {text = string.format('The tag "%s" is "%s", and "findBestMatch" returns %s: %s.', tag, result, match and '"' .. match .. '"' or '"nil"', BestMatch.reason(tag, match):lower())})
 end
 
 return BestMatch

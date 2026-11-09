@@ -10,7 +10,7 @@ namespace haylen::localization {
 
 class Catalog;
 
-// Installs `haylen.localization`, which adds languages, picks the current one and translates keys.
+// Installs `haylen.localization`, which adds languages, follows the languages of the system or the choice of the app and translates keys.
 class LocalizationLua final {
   public:
     static void install(lua_State* L);
@@ -30,6 +30,8 @@ class LocalizationLua final {
     static int loadFolder(lua_State* L);
     static int setLanguage(lua_State* L);
     static int language(lua_State* L);
+    static int followSystem(lua_State* L);
+    static int followingSystem(lua_State* L);
     static int setFallback(lua_State* L);
     static int fallback(lua_State* L);
     static int setPseudo(lua_State* L);
@@ -39,6 +41,7 @@ class LocalizationLua final {
     static int text(lua_State* L);
     static int format(lua_State* L);
     static int findBestMatch(lua_State* L);
+    static int normalizeTag(lua_State* L);
     static int direction(lua_State* L);
     static int formatNumber(lua_State* L);
     static int formatDate(lua_State* L);

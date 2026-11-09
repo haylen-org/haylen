@@ -8,11 +8,15 @@ local localization = require('haylen.localization')
 
 ## How translation works
 
-The module keeps a catalog of texts. Each language adds a table that maps keys, such as `menu.play`, to texts. The app asks for a key with `localization.text`, and the catalog answers with the text of the current language.
+The module keeps a catalog of texts. Each language adds a table that maps keys, such as `menu.play`, to texts. The app asks for a key with `localization.text`, and the catalog answers with the text of the current language. The [localization guide](../core/localization.md) explains the whole system, from the files to the languages of each platform.
 
-The first language added becomes both the current language and the fallback language, until you choose others. A key that the current language lacks comes from the fallback language. A key that both lack comes back unchanged, so a missing translation shows its key on the screen.
+The current language follows the languages that the person prefers on the device, which [`system.languages()`](system.md#systemlanguages) lists, until the app picks one with [`localization.setLanguage`](#localizationsetlanguagetag). Either way it is the added language closest to what is wanted, in the order that [choosing the language](#choosing-the-language) describes, or the fallback language when none is close. The first language added is the fallback language until the app names another.
 
-GUIs of [`haylen.ui`](ui.md) translate any text given as `{key = 'menu.play'}` or `{key = 'hud.day', args = {day = 3}}` through this module, every time they draw it. So a change of language shows at once.
+A key that the current language lacks comes from the fallback language. A key that both lack comes back unchanged, so a missing translation shows its key on the screen.
+
+GUIs of [`haylen.ui`](ui.md) translate any text given as `{key = 'menu.play'}` or `{key = 'hud.day', args = {day = 3}}` through this module, every time they draw it. So a change of language shows at once, whether the app or the system made it.
+
+Every language tag may be written with `-` or `_` and in any case, such as `pt-BR`, `pt_BR` or `PT_br`. The module keeps it in its canonical form, as [`localization.normalizeTag`](#localizationnormalizetagtag) writes it, and returns it that way.
 
 ## Language tables
 
@@ -39,30 +43,37 @@ A language that reads right to left declares it with `"@direction": "rightToLeft
 }
 ```
 
-The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `i18n/en.json` and `i18n/pt-BR.json`. The function [`localization.loadFolder`](#localizationloadfolderfolder) adds them all.
+The usual layout keeps one JSON file per language in a folder of the content, named after its language tag, such as `locale/en.json` and `locale/pt-BR.json`. The section `localization` of [`app.json`](haylen.md#localization) loads that folder before any Lua runs, and [`localization.loadFolder`](#localizationloadfolderfolder) loads any other folder.
+
+```json
+{
+    "localization": {"folder": "locale", "fallback": "en"}
+}
+```
 
 ## Languages
 
 ### localization.loadFolder(folder)
 
-Adds every `.json` file under `folder` of the content, subfolders included, as the language that its file is named after. So `i18n/pt-BR.json` adds the language `pt-BR`. Returns the list of languages, in the order of the sorted file paths. Other files are ignored.
+Adds every `.json` file under `folder` of the content, subfolders included, as the language that its file is named after. So `locale/pt-BR.json` and `locale/pt_BR.json` both add the language `pt-BR`. Returns the list of languages in their canonical form, in the order of the sorted file paths. Other files are ignored.
 
-A file that is not valid JSON raises `The localization file "<path>" is not valid JSON.`. A table with a wrong entry raises the errors of [`localization.add`](#localizationaddlanguage-table).
+A file that is not valid JSON raises `The localization file "<path>" is not valid JSON.`. A file whose name is no language tag raises `The localization file "<path>" is not named after a language tag. Name it after its language, such as "en.json", "pt-BR.json" or "pt_BR.json".`. A table with a wrong entry raises the errors of [`localization.add`](#localizationaddlanguage-table).
 
-In development, a saved change to a file of a loaded folder adds the file again, so `localization.text` returns its new texts at once. A text that the file no longer has stays until the app restarts. A file that fails while an editor still writes it waits for the next save, with a warning in the log. The [Lua guide](../core/lua.md#hot-reload) explains hot reload.
+In development, a saved change to a file of a loaded folder adds the file again, so `localization.text` returns its new texts at once. The folder of `app.json` counts as loaded. A text that the file no longer has stays until the app restarts. A file that fails while an editor still writes it waits for the next save, with a warning in the log. The [Lua guide](../core/lua.md#hot-reload) explains hot reload.
 
 ```lua
 local localization = require('haylen.localization')
 
-local languages = localization.loadFolder('i18n')
+local languages = localization.loadFolder('dialogue')
 print('Loaded ' .. table.concat(languages, ', ') .. '.')
 ```
 
 ### localization.add(language, table)
 
-Adds a language table for `language`. When the language already exists, the table merges into it: its keys replace the same keys and add the new ones. A later table without `@direction` keeps the direction that the language already declared. A table with a wrong entry changes nothing.
+Adds a language table for `language`, a language tag in any form. When the language already exists, the table merges into it: its keys replace the same keys and add the new ones. A later table without `@direction` keeps the direction that the language already declared. A table with a wrong entry changes nothing. A language that is closer to the wanted one than the current language becomes current at once.
 
 - An empty language raises `A localization table needs a language.`.
+- A language that is no language tag raises the error of [`localization.normalizeTag`](#localizationnormalizetagtag).
 - A table that is not a table with string keys, such as a list, raises `The localization table of "<language>" must be a JSON object.`.
 
 ```lua
@@ -73,15 +84,77 @@ localization.add('fr', {menu = {play = 'Jouer', quit = 'Quitter'}})
 localization.add('en', {menu = {settings = 'Settings'}})
 ```
 
-### localization.setLanguage(language)
+### localization.languages()
 
-Makes `language` the current language. A language that was never added raises `No localization table was added for "<language>".`.
+Returns the list of every language added, in the order in which each was first added. The folder of `app.json` adds its languages first, in the order of their file names.
 
 ```lua
 local localization = require('haylen.localization')
 
-localization.loadFolder('i18n')
-localization.setLanguage('pt-BR')
+for _, language in ipairs(localization.languages()) do
+    print(language)
+end
+```
+
+### localization.direction(language)
+
+Returns `'rightToLeft'` when `language` declares with `@direction` that it reads right to left, and `'leftToRight'` otherwise. Without `language`, it answers for the current language.
+
+The letters of a text decide the direction of the text itself. The direction of a language decides the layout of a UI around the text. A language that was never added raises `No localization table was added for "<language>".`. A call without `language` before any language is added has no language to answer for, so it raises the error of [`localization.normalizeTag`](#localizationnormalizetagtag) for the empty current language.
+
+```lua
+local localization = require('haylen.localization')
+
+localization.add('en', {hello = 'Hello'})
+localization.add('ar', {['@direction'] = 'rightToLeft', hello = 'مرحبا'})
+print(localization.direction(), localization.direction('ar')) -- leftToRight rightToLeft
+```
+
+## Choosing the language
+
+The current language is the added language closest to what is wanted. While the app follows the system, what is wanted is each language of [`system.languages()`](system.md#systemlanguages) in turn, most preferred first, and the first one with a close language wins. Once the app picks a language with `localization.setLanguage`, what is wanted is that language alone, and it stays wanted when the system changes or the app adds languages. For each wanted tag the engine tries these steps in order:
+
+1. The same tag, so `pt-BR` finds `pt-BR`.
+2. The tag without its last subtag, again and again, so `zh-Hans-CN` finds `zh-Hans` and then `zh`, and `pt-BR` finds `pt`.
+3. Another region of the same language, the first one added, so `pt-PT` finds `pt-BR` and `es` finds `es-MX`. A tag with a script only matches languages without a script or with the same one, so `zh-Hant-HK` finds `zh-Hant-TW` but never `zh-Hans`.
+
+When no wanted tag finds a language, the current language is the fallback language, which is the first language added until [`localization.setFallback`](#localizationsetfallbacklanguage) or `app.json` names another. The event [`languageChanged`](#events) tells the app of every change of the current language.
+
+### localization.setLanguage(tag)
+
+Picks the language of the app, so the current language stops following the system. The tag may be any language tag, and the current language becomes the added language closest to it, or the fallback language. So `localization.setLanguage('pt_PT')` makes `pt-BR` current in an app that has only `pt-BR` and `en`. The choice stays while languages are added, and a language added later that is closer takes over. A text that is no language tag raises the error of [`localization.normalizeTag`](#localizationnormalizetagtag).
+
+```lua
+local localization = require('haylen.localization')
+local preferences = require('haylen.preferences')
+
+local chosen = preferences.get('game.language')
+if chosen then
+    localization.setLanguage(chosen)
+end
+```
+
+### localization.followSystem()
+
+Lets the current language follow the languages of the system again, after a call of `localization.setLanguage`. Every app starts this way, unless the field `localization.language` of `app.json` names a language.
+
+```lua
+local localization = require('haylen.localization')
+local preferences = require('haylen.preferences')
+
+-- The player picked "Same as the device" in the settings.
+preferences.remove('game.language')
+localization.followSystem()
+```
+
+### localization.followingSystem()
+
+Returns `true` while the current language follows the languages of the system, and `false` once the app picked one.
+
+```lua
+local localization = require('haylen.localization')
+
+print(localization.followingSystem() and 'The language follows the device.' or 'The player picked the language.')
 ```
 
 ### localization.language()
@@ -91,18 +164,16 @@ Returns the current language, or an empty string before any language is added.
 ```lua
 local localization = require('haylen.localization')
 
-localization.loadFolder('i18n')
 print('The language is ' .. localization.language() .. '.')
 ```
 
 ### localization.setFallback(language)
 
-Makes `language` the fallback language, which gives the keys that the current language lacks. A language that was never added raises `No localization table was added for "<language>".`.
+Makes `language` the fallback language, which gives the keys that the current language lacks and becomes current when no added language is close to the one wanted. A language that was never added raises `No localization table was added for "<language>".`.
 
 ```lua
 local localization = require('haylen.localization')
 
-localization.loadFolder('i18n')
 localization.setFallback('en')
 ```
 
@@ -113,68 +184,37 @@ Returns the fallback language, or an empty string before any language is added.
 ```lua
 local localization = require('haylen.localization')
 
-localization.loadFolder('i18n')
 print('The fallback is ' .. localization.fallback() .. '.')
-```
-
-### localization.languages()
-
-Returns a sorted list of every language added.
-
-```lua
-local localization = require('haylen.localization')
-
-localization.loadFolder('i18n')
-for _, language in ipairs(localization.languages()) do
-    print(language)
-end
 ```
 
 ### localization.findBestMatch(tag)
 
-Returns the added language that best matches `tag`, a BCP 47 language tag such as `'pt-BR'`, or `nil` when none matches. The match ignores case and treats `_` like `-`.
-
-- An exact match wins.
-- Otherwise a language with the same base language matches, such as `pt` or `pt-PT` for `pt-BR`.
-- Among those, the plain base language wins, so `pt-BR` finds `pt` before `pt-PT`. Without it, the first such language in sorted order wins.
-
-The language of the device comes from the field `locale` of [`system.info`](system.md#systeminfo), a tag such as `'pt-BR'`. Its field `languages` lists every language that the player prefers, most preferred first.
+Returns the added language closest to `tag` by the three steps of [choosing the language](#choosing-the-language), or `nil` when none matches. It never returns the fallback language for a tag that matches nothing. A text that is no language tag raises the error of [`localization.normalizeTag`](#localizationnormalizetagtag).
 
 ```lua
 local localization = require('haylen.localization')
-local preferences = require('haylen.preferences')
-local system = require('haylen.system')
 
-localization.loadFolder('i18n')
-localization.setFallback('en')
-
-local chosen = preferences.get('game.language')
-if chosen then
-    localization.setLanguage(chosen)
-else
-    -- The first preferred language of the player that the app has wins.
-    for _, tag in ipairs(system.info().languages) do
-        local language = localization.findBestMatch(tag)
-        if language then
-            localization.setLanguage(language)
-            break
-        end
-    end
-end
+localization.add('en', {})
+localization.add('pt-BR', {})
+print(localization.findBestMatch('pt_PT'), localization.findBestMatch('de')) -- pt-BR nil
 ```
 
-### localization.direction(language)
+### localization.normalizeTag(tag)
 
-Returns `'rightToLeft'` when `language` declares with `@direction` that it reads right to left, and `'leftToRight'` otherwise. Without `language`, it answers for the current language.
+Returns `tag` in the canonical form of BCP 47 language tags: the language in lowercase, the script with a capital, the region in uppercase and the variants in lowercase. So `pt_br` is `pt-BR` and `ZH_hans_cn` is `zh-Hans-CN`. A tag takes `-` or `_` between its subtags.
 
-The letters of a text decide the direction of the text itself. The direction of a language decides the layout of a UI around the text. A language that was never added raises `No localization table was added for "<language>".`. A call without `language` before any language is added raises it too, with the empty current language as the name.
+- The language is two or three letters, such as `en` or `fil`.
+- A script of four letters may follow, such as `Hans`.
+- A region of two letters or three digits may follow, such as `BR` or `419`.
+- Variants may follow, such as `valencia` or `1901`.
+- A subtag of one letter starts extensions or private use, such as the `-u-mu-celsius` that Android adds for the units the person prefers. They name no language, so the canonical form leaves them out, and `en-US-u-mu-celsius` is `en-US`.
+
+Any other text raises `The language tag "<tag>" is not valid. Write a language such as "en", with a script or a region where it needs one, such as "zh-Hans", "pt-BR" or "pt_BR".`.
 
 ```lua
 local localization = require('haylen.localization')
 
-localization.add('en', {hello = 'Hello'})
-localization.add('ar', {['@direction'] = 'rightToLeft', hello = 'مرحبا'})
-print(localization.direction(), localization.direction('ar')) -- leftToRight rightToLeft
+print(localization.normalizeTag('PT_br')) -- pt-BR
 ```
 
 ## Texts
@@ -279,8 +319,10 @@ end
 Returns the path of the asset `path` for the current language. So voiced lines and pictures with text can come in each language, with a common fallback. It tries these paths in order and returns the first that the package holds:
 
 1. The path `i18n/<language>/<path>` of the current language, such as `i18n/pt-BR/voice/intro.ogg`.
-2. The same path for the base language, such as `i18n/pt/voice/intro.ogg` for `pt-BR`.
+2. The same path for the tag without its last subtag, again and again, such as `i18n/pt/voice/intro.ogg` for `pt-BR`.
 3. The path itself.
+
+The folders under `i18n` take the canonical form of their language, such as `pt-BR`.
 
 ```lua
 local assets = require('haylen.assets')
@@ -390,16 +432,38 @@ print(localization.formatList({'Ada', 'Grace', 'Hedy'}, {language = 'en'})) -- A
 print(localization.formatList({'red', 'blue'}, {type = 'or', language = 'es'})) -- red o blue
 ```
 
+## Events
+
+The module publishes this event on [`haylen.events`](events.md#devices-and-system). It comes at the start of the frame after the change, once, however many changes the frame made. Texts given as keys to GUIs change by themselves, so the event serves texts that the app keeps, such as those it drew into a texture.
+
+| Event | When | Data |
+| --- | --- | --- |
+| `languageChanged` | The current language changed, because the app picked one, the languages of the system changed, the fallback changed or the app added a language that matches better. | `{language, previous}`, where `previous` is empty when no language was current before. |
+
+```lua
+local events = require('haylen.events')
+
+events.on('languageChanged', function(change)
+    print('The language went from ' .. change.previous .. ' to ' .. change.language .. '.')
+end)
+```
+
+## C++
+
+The class `haylen::localization::Catalog` of `haylen/localization/Catalog.hpp` holds the catalog, and `engine.getPlugin<haylen::plugins::LocalizationPlugin>().getCatalog()` returns the one of the running app. Its methods carry the names of the Lua functions: `add`, `setLanguage`, `followSystem`, `isFollowingSystem`, `getLanguage`, `setFallback`, `getFallback`, `getLanguages`, `findBestMatch`, the static `normalizeTag`, `getDirection`, `has`, `getText`, the static `format` and `setPseudo`. The method `setSystemLanguages` hands it the languages of the system, which the plugin does at every change. The plugin `LocalizationPlugin` of `haylen/plugins/LocalizationPlugin.hpp` offers `loadFolder` and `getAssetPath`. They throw `std::invalid_argument` or `std::runtime_error` with the messages of Lua.
+
 ## Errors
 
 | Message | Cause |
 | --- | --- |
 | `A localization table needs a language.` | The function `localization.add` received an empty language. |
+| `The language tag "<tag>" is not valid. Write a language such as "en", with a script or a region where it needs one, such as "zh-Hans", "pt-BR" or "pt_BR".` | A function received a text that is no language tag. |
+| `The localization file "<path>" is not named after a language tag. Name it after its language, such as "en.json", "pt-BR.json" or "pt_BR.json".` | The function `localization.loadFolder` found a file whose name is no language tag. |
 | `The localization table of "<language>" must be a JSON object.` | The function `localization.add` received a list or another value instead of a table with string keys. |
 | `The localization entry "<key>" must be text, a plural form or a group of entries.` | A language table holds a number, a boolean or a list. |
 | `The "@direction" of the localization table of "<language>" must be "leftToRight" or "rightToLeft".` | A language table declares another direction. |
 | `The localization file "<path>" is not valid JSON.` | The function `localization.loadFolder` found a broken file. |
-| `No localization table was added for "<language>".` | The function `localization.setLanguage`, `localization.setFallback` or `localization.direction` named a language that was never added. |
+| `No localization table was added for "<language>".` | The function `localization.setFallback` or `localization.direction` named a language that was never added. |
 | `Localization arguments must be a JSON object.` | The function `localization.text` or `localization.format` received a list as arguments. |
 | `A <type> cannot be converted to JSON.` | A language table or the arguments hold a function, a thread or a userdata. |
 | `A <type> key cannot be converted to JSON.` | A language table or the arguments hold a table with a key that is not a string or a number. |

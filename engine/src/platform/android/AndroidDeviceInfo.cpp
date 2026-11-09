@@ -24,9 +24,11 @@ SystemInfo AndroidDeviceInfo::toSystemInfo(std::string_view json) {
     info.cpuName = device.value("cpuName", "");
     info.cpuCores = device.value("cpuCores", 0);
     info.memoryBytes = device.value("memoryBytes", std::uint64_t{0});
-    info.locale = device.value("locale", "");
-    info.languages = device.value("languages", std::vector<std::string>());
     return info;
+}
+
+std::vector<std::string> AndroidDeviceInfo::toLanguages(std::string_view json) {
+    return core::Json::parse(json).get<std::vector<std::string>>();
 }
 
 } // namespace haylen::platform

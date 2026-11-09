@@ -43,7 +43,7 @@ function settings:enter()
 
     local bridge = {widgets.button('device', 'settings.device', function()
         local info = system.info()
-        self.gui:set('bridge', {text = string.format('Device "%s", system "%s" %s, locale "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', info.locale or '')})
+        self.gui:set('bridge', {text = string.format('Device "%s", system "%s" %s, language "%s"', info.deviceModel or info.deviceKind, info.os, info.osVersion or '', system.languages()[1] or '')})
     end, {variant = 'default', grow = 1})}
     if signIn.available then
         bridge[2] = widgets.button('signIn', 'settings.signIn', function()

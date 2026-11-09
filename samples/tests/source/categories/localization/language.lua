@@ -10,11 +10,9 @@ local language = {}
 language.tags = {'en', 'pt-BR', 'es', 'ja', 'ar', 'hi'}
 language.folder = 'localization/locale'
 
--- Loads the translations, gives every theme font role its family, lets the UI take the direction of the language and starts in English. Returns what the app used before, which `restore` puts back.
+-- Gives every theme font role its family, lets the UI take the direction of the language and starts in English. The section "localization" of "app.json" loaded the translations of the folder when the project started. Returns what the app used before, which `restore` puts back.
 function language.setup()
-    local previous = {language = localization.language(), fallback = localization.fallback(), theme = ui.theme(), direction = ui.direction()}
-    localization.loadFolder(language.folder)
-    localization.setFallback('en')
+    local previous = {language = localization.language(), followingSystem = localization.followingSystem(), fallback = localization.fallback(), theme = ui.theme(), direction = ui.direction()}
     if not language.family then
         local japanese = assets.font('fonts/mplus-1p-regular.ttf')
         local arabic = assets.font('fonts/noto-sans-arabic-regular.ttf')
@@ -34,8 +32,12 @@ end
 function language.restore(previous)
     ui.setDirection(previous.direction)
     ui.setTheme(previous.theme)
-    localization.setLanguage(previous.language ~= '' and previous.language or 'en')
-    localization.setFallback(previous.fallback ~= '' and previous.fallback or 'en')
+    localization.setFallback(previous.fallback)
+    if previous.followingSystem then
+        localization.followSystem()
+    else
+        localization.setLanguage(previous.language)
+    end
 end
 
 -- Moves to the next language of the list, or the previous one with a step of -1.

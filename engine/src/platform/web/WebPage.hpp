@@ -67,8 +67,9 @@ class WebPage final {
     static void hide();
     static void setOnline(bool online);
 
-    // The color scheme, the accessibility preferences, the battery and the time zone that the page reports when the runtime starts and whenever they change, and the answers of native dialogs as the JSON that `WebDialogJson::readAnswer` reads.
+    // The color scheme, the languages as a JSON array of tags, the accessibility preferences, the battery and the time zone that the page reports when the runtime starts and whenever they change, and the answers of native dialogs as the JSON that `WebDialogJson::readAnswer` reads.
     static void setTheme(bool dark);
+    static void setLanguages(const char* json);
     static void setBattery(double level, bool charging, bool full);
     static void setTimeZone(const char* zone);
     static void setAccessibility(double textScale, bool reducedMotion, bool highContrast, bool reducedTransparency);

@@ -19,6 +19,10 @@
         "pauseOnFocusLoss": true
     },
     "clearColor": "#FF2FB3C4",
+    "localization": {
+        "folder": "locale",
+        "fallback": "en"
+    },
     "plugins": {
         "sign-in": {
             "parameters": {

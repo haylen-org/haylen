@@ -13,7 +13,7 @@ local language = require('categories.localization.language')
 local Switch = haylen.class('Switch', LanguageTest)
 
 Switch.code = [[
-localization.loadFolder('localization/locale')
+-- The app.json of the project holds "localization": {"folder": "localization/locale", "fallback": "en"}.
 localization.setLanguage('pt-BR')  -- Every text given as a key changes at once.
 ui.label{text = {key = 'menu.title'}, font = 'title'}
 ui.button{id = 'play', text = {key = 'menu.play'}, variant = 'primary'}

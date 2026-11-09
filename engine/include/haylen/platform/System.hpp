@@ -30,7 +30,7 @@ namespace haylen::platform {
 
 class Host;
 
-// The operating system of the device as the app sees it: what the device is, its theme, its battery, its power saving mode and its time zone, the services it offers apps and the permissions the person grants at run time. The engine owns it and publishes `systemThemeChanged`, `batteryChanged`, `powerSavingChanged` and `timeZoneChanged` once per change. Every method runs on the frame thread, and so does every callback.
+// The operating system of the device as the app sees it: what the device is, its theme, its battery, its power saving mode, its time zone and the languages the person prefers, the services it offers apps and the permissions the person grants at run time. The engine owns it and publishes `systemThemeChanged`, `batteryChanged`, `powerSavingChanged`, `timeZoneChanged` and `systemLanguagesChanged` once per change. Every method runs on the frame thread, and so does every callback.
 class System final {
     struct Inbox;
 
@@ -50,6 +50,8 @@ class System final {
 
     // The IANA name of the time zone of the device, such as `America/Sao_Paulo`, or an empty text where the platform does not tell.
     [[nodiscard]] const std::string& getTimeZone() const noexcept;
+    // The languages the person prefers on the system, most preferred first, in the canonical form of BCP 47, such as `pt-BR`. The list is empty where the platform tells none.
+    [[nodiscard]] const std::vector<std::string>& getLanguages() const noexcept;
 
     // Opens the url with the app the system picks for it, such as the browser for a web page, and calls back at a later pump with `Granted` once an app took it, `Unsupported` when no app opens it or `Denied` when the platform refused it, such as a browser that opens a tab only shortly after an input of the person. Throws `std::invalid_argument` for an empty url.
     void openUrl(std::string_view url, std::function<void(Permission::Answer answer)> callback);
@@ -89,7 +91,7 @@ class System final {
     // Keeps the callback of a call that a platform may gate until its answer, and returns what the platform calls with the answer from any thread, which reaches the callback at the next pump, such as the answers of the fullscreen of the window.
     [[nodiscard]] std::function<void(Permission::Answer)> awaitAnswer(std::function<void(Permission::Answer)> callback);
 
-    // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving and the time zone. The engine calls it at the start of every frame.
+    // Delivers the answers the platform gave since the last pump and publishes the changes of the theme, the battery, the power saving, the time zone and the languages. The engine calls it at the start of every frame.
     void pump();
 
     [[nodiscard]] static std::string_view themeName(Theme value) noexcept;
@@ -133,6 +135,8 @@ class System final {
     Battery battery;
     std::optional<bool> powerSaving;
     std::string timeZone;
+    std::vector<std::string> languages;
+    std::uint64_t languagesRevision = 0;
     std::bitset<input::Input::kMaxGamepads> rumbling;
     std::uint64_t nextRequest = 1;
     std::unordered_map<std::uint64_t, Callback> pending;

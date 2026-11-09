@@ -38,6 +38,7 @@ std::string_view Services::getName() noexcept {
 
 void Services::initialize() {
     WindowsSystem::reportTheme();
+    WindowsSystem::reportLanguages();
     WindowsSystem::reportAccessibility();
     WindowsSystem::reportPowerStatus();
     WindowsSystem::reportTimeZone();

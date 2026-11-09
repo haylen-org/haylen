@@ -1,14 +1,13 @@
 #include <gtest/gtest.h>
 
 #include <string>
-#include <vector>
 
 #include "platform/android/AndroidDeviceInfo.hpp"
 
 namespace haylen::platform {
 
 TEST(AndroidDeviceInfoTest, ReadsWhatTheJavaSideTells) {
-    const SystemInfo info = AndroidDeviceInfo::toSystemInfo(R"({"osVersion": "16", "deviceModel": "Phone 9", "manufacturer": "Maker", "cpuName": "Chip G4", "cpuCores": 8, "memoryBytes": 12884901888, "television": false, "tablet": false, "locale": "pt-BR", "languages": ["pt-BR", "en-US"]})");
+    const SystemInfo info = AndroidDeviceInfo::toSystemInfo(R"({"osVersion": "16", "deviceModel": "Phone 9", "manufacturer": "Maker", "cpuName": "Chip G4", "cpuCores": 8, "memoryBytes": 12884901888, "television": false, "tablet": false})");
     EXPECT_EQ(info.os, SystemInfo::Os::Android);
     EXPECT_EQ(info.deviceKind, SystemInfo::DeviceKind::Phone);
     EXPECT_EQ(info.osVersion, "16");
@@ -17,8 +16,6 @@ TEST(AndroidDeviceInfoTest, ReadsWhatTheJavaSideTells) {
     EXPECT_EQ(info.cpuName, "Chip G4");
     EXPECT_EQ(info.cpuCores, 8);
     EXPECT_EQ(info.memoryBytes, 12884901888U);
-    EXPECT_EQ(info.locale, "pt-BR");
-    EXPECT_EQ(info.languages, (std::vector<std::string>{"pt-BR", "en-US"}));
 }
 
 TEST(AndroidDeviceInfoTest, TellsTheKindOfDeviceAndLeavesTheRestUnknown) {
@@ -30,12 +27,10 @@ TEST(AndroidDeviceInfoTest, TellsTheKindOfDeviceAndLeavesTheRestUnknown) {
     EXPECT_EQ(empty.deviceKind, SystemInfo::DeviceKind::Phone);
     EXPECT_TRUE(empty.cpuName.empty());
     EXPECT_EQ(empty.memoryBytes, 0U);
-    EXPECT_TRUE(empty.languages.empty());
     const core::Json json = empty.toJson();
-    EXPECT_EQ(json.size(), 5U);
+    EXPECT_EQ(json.size(), 4U);
     EXPECT_EQ(json["deviceKind"], "phone");
     EXPECT_EQ(json["os"], "android");
-    EXPECT_TRUE(json["languages"].empty());
 }
 
 } // namespace haylen::platform

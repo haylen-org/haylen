@@ -2,10 +2,12 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <memory>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -342,6 +344,12 @@ class HeadlessHost final : public Host {
     [[nodiscard]] std::string getTimeZone() const override {
         return systemState.getTimeZone();
     }
+    [[nodiscard]] std::vector<std::string> getLanguages() const override {
+        return systemState.getLanguages();
+    }
+    [[nodiscard]] std::uint64_t getLanguagesRevision() const override {
+        return systemState.getLanguagesRevision();
+    }
     [[nodiscard]] AccessibilitySettings getAccessibilitySettings() const override {
         return systemState.getAccessibility();
     }
@@ -514,7 +522,7 @@ class HeadlessHost final : public Host {
         systemInfo = std::move(value);
     }
 
-    // Change the theme, the battery, the power saving, the time zone and the accessibility settings from any thread, the way platform services report them. The engine publishes the change at its next frame.
+    // Change the theme, the battery, the power saving, the time zone, the accessibility settings and the languages from any thread, the way platform services report them. The engine publishes the change at its next frame.
     void setTheme(Theme value) {
         systemState.setTheme(value);
     }
@@ -529,6 +537,9 @@ class HeadlessHost final : public Host {
     }
     void setAccessibilitySettings(const AccessibilitySettings& value) {
         systemState.setAccessibility(value);
+    }
+    void setLanguages(std::span<const std::string> value) {
+        systemState.setLanguages(value);
     }
 
     // Decodes the video files of the apps that open videos from now on, from a worker of the I/O pool, the way the decoder of a platform does.

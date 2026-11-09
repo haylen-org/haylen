@@ -1,5 +1,6 @@
 #include "haylen/localization/Catalog.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cctype>
 #include <cmath>
@@ -9,6 +10,7 @@
 
 #include "haylen/localization/PluralRules.hpp"
 #include "haylen/text/Style.hpp"
+#include "localization/LanguageTag.hpp"
 
 namespace haylen::localization {
 
@@ -35,18 +37,6 @@ void Catalog::flatten(const core::Json& table, const std::string& prefix, Table&
             throw std::invalid_argument("The localization entry \"" + path + "\" must be text, a plural form or a group of entries.");
         }
     }
-}
-
-std::string Catalog::normalizeTag(std::string_view tag) {
-    std::string normalized(tag);
-    for (char& character : normalized) {
-        character = character == '_' ? '-' : static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
-    }
-    return normalized;
-}
-
-std::string_view Catalog::getBaseLanguage(std::string_view tag) {
-    return tag.substr(0, tag.find('-'));
 }
 
 std::string Catalog::formatArgument(const core::Json& value) {
@@ -131,33 +121,35 @@ void Catalog::add(const std::string& name, const core::Json& table) {
     if (name.empty()) {
         throw std::invalid_argument("A localization table needs a language.");
     }
+    const std::string tag = LanguageTag::normalize(name);
     if (!table.is_object()) {
-        throw std::invalid_argument("The localization table of \"" + name + "\" must be a JSON object.");
+        throw std::invalid_argument("The localization table of \"" + tag + "\" must be a JSON object.");
     }
 
     std::optional<text::Direction> direction;
     if (const auto declared = table.find(kDirectionKey); declared != table.end()) {
         direction = declared->is_string() ? text::Style::directionFromName(declared->get<std::string>()) : std::nullopt;
         if (!direction || *direction == text::Direction::Auto) {
-            throw std::invalid_argument("The \"@direction\" of the localization table of \"" + name + "\" must be \"leftToRight\" or \"rightToLeft\".");
+            throw std::invalid_argument("The \"@direction\" of the localization table of \"" + tag + "\" must be \"leftToRight\" or \"rightToLeft\".");
         }
     }
     core::Json texts = table;
     texts.erase(std::string(kDirectionKey));
 
-    Table entries = tables.contains(name) ? tables.find(name)->second : Table{};
+    Table entries = tables.contains(tag) ? tables.find(tag)->second : Table{};
     flatten(texts, "", entries);
-    tables[name] = std::move(entries);
+    tables[tag] = std::move(entries);
     if (direction) {
-        directions.insert_or_assign(name, *direction);
+        directions.insert_or_assign(tag, *direction);
     }
 
-    if (language.empty()) {
-        language = name;
+    if (std::ranges::find(languages, tag) == languages.end()) {
+        languages.push_back(tag);
     }
     if (fallback.empty()) {
-        fallback = name;
+        fallback = tag;
     }
+    resolveLanguage();
 }
 
 void Catalog::requireLanguage(std::string_view name) const {
@@ -166,27 +158,49 @@ void Catalog::requireLanguage(std::string_view name) const {
     }
 }
 
+void Catalog::resolveLanguage() {
+    const std::span<const std::string> wanted = choice.empty() ? std::span<const std::string>(systemLanguages) : std::span<const std::string>(&choice, 1);
+    for (const std::string& tag : wanted) {
+        const std::optional<std::size_t> found = LanguageTag::findBestMatch(tag, languages);
+        if (found) {
+            language = languages[*found];
+            return;
+        }
+    }
+    language = fallback;
+}
+
 void Catalog::setLanguage(std::string_view value) {
-    requireLanguage(value);
-    language = value;
+    choice = LanguageTag::normalize(value);
+    resolveLanguage();
+}
+
+void Catalog::followSystem() {
+    choice.clear();
+    resolveLanguage();
+}
+
+void Catalog::setSystemLanguages(std::span<const std::string> value) {
+    std::vector<std::string> tags;
+    tags.reserve(value.size());
+    for (const std::string& tag : value) {
+        tags.push_back(LanguageTag::normalize(tag));
+    }
+    systemLanguages = std::move(tags);
+    resolveLanguage();
 }
 
 void Catalog::setFallback(std::string_view value) {
-    requireLanguage(value);
-    fallback = value;
-}
-
-std::vector<std::string> Catalog::getLanguages() const {
-    std::vector<std::string> names;
-    for (const auto& [name, entries] : tables) {
-        names.push_back(name);
-    }
-    return names;
+    std::string tag = LanguageTag::normalize(value);
+    requireLanguage(tag);
+    fallback = std::move(tag);
+    resolveLanguage();
 }
 
 text::Direction Catalog::getDirection(std::string_view name) const {
-    requireLanguage(name);
-    const auto found = directions.find(name);
+    const std::string tag = LanguageTag::normalize(name);
+    requireLanguage(tag);
+    const auto found = directions.find(tag);
     return found != directions.end() ? found->second : text::Direction::LeftToRight;
 }
 
@@ -238,19 +252,15 @@ std::string Catalog::getText(std::string_view key, const core::Json& arguments) 
 }
 
 std::optional<std::string> Catalog::findBestMatch(std::string_view tag) const {
-    const std::string wanted = normalizeTag(tag);
-    const std::string_view wantedBase = getBaseLanguage(wanted);
-    std::optional<std::string> sameBase;
-    for (const auto& [name, entries] : tables) {
-        const std::string candidate = normalizeTag(name);
-        if (candidate == wanted) {
-            return name;
-        }
-        if (getBaseLanguage(candidate) == wantedBase && (!sameBase || candidate == wantedBase)) {
-            sameBase = name;
-        }
+    const std::optional<std::size_t> found = LanguageTag::findBestMatch(LanguageTag::normalize(tag), languages);
+    if (!found) {
+        return std::nullopt;
     }
-    return sameBase;
+    return languages[*found];
+}
+
+std::string Catalog::normalizeTag(std::string_view tag) {
+    return LanguageTag::normalize(tag);
 }
 
 } // namespace haylen::localization
