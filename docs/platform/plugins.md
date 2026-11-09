@@ -1,6 +1,6 @@
 # 🧩 Plugins
 
-This guide is for developers who make native plugins, and for app developers who add them to an app. A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. The guide follows the path of a plugin author. It starts with `haylen.py plugin new` and `plugin.json`. Then it covers the Lua API, the services of the engine, the requirements and the native part of each platform. It ends with publishing the plugin in a repository of its own. The [`haylen.platform` reference](../lua-api/platform.md) lists the Lua API that plugins build on, and the [platform bridge guide](platform-bridge.md) explains the calls and events underneath.
+This guide is for developers who make native plugins, and for app developers who add them to an app. A plugin gives Lua apps a capability that each platform implements natively, such as ads, analytics, sign-in or purchases. The guide follows the path of a plugin author. It starts with `haylen.py plugin new` and `plugin.json`. Then it covers the Lua API, the services of the engine, the requirements and the native part of each platform. It ends with publishing the plugin in a git repository. The [`haylen.platform` reference](../lua-api/platform.md) lists the Lua API that plugins build on, and the [platform bridge guide](platform-bridge.md) explains the calls and events underneath.
 
 ## What a plugin is
 
@@ -25,7 +25,7 @@ A plugin needs only the folders of the platforms it supports. The paths in `plug
 
 An app lists the plugins it uses in its `app.json`, each from its folder `plugins/<id>/`, from a folder anywhere on disk or from a git repository, at its root or in a folder of it. Then `haylen.py` finds and checks them, puts their Lua code into the package, and brings their native parts into the project of each platform through its generated folder `haylen/`. So an app still never compiles the engine.
 
-These plugins are distributable folders. They are not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. Plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live in their own repositories under [haylen-org](https://github.com/haylen-org). Apps add them with `haylen.py plugin add` and the address of the repository, or reference the repository in `app.json`. The engine repository holds no third-party SDK. Instead, [the demo plugin of the test project](#demo-plugin) uses every capability of a plugin, built on the APIs of each platform alone.
+These plugins are distributable folders. They are not the engine plugins of `haylen::plugins`, which are the C++ subsystems that make up the engine. The plugins of system capabilities, such as the camera or notifications, and the plugins that bring third-party SDKs, such as ads, analytics, crash reporting, sign-in or purchases, live outside the engine repository, in a repository of [haylen-org](https://github.com/haylen-org) with one folder for each plugin. Apps add them with `haylen.py plugin add`, the address of the repository and the folder of the plugin, or reference that folder of the repository in `app.json`. The engine repository holds no third-party SDK. Instead, [the demo plugin of the test project](#demo-plugin) uses every capability of a plugin, built on the APIs of each platform alone.
 
 ## Make a plugin
 
@@ -1771,16 +1771,17 @@ MY_PLUGIN_EXPORT int my_plugin_haylen_init(const HaylenNativeApi* api) {
 
 ## Publish a plugin
 
-A plugin lives in a repository of its own, so many apps share it. Plugins that bring third-party SDKs live under [haylen-org](https://github.com/haylen-org), never in the engine repository.
+A plugin lives in a git repository, so many apps share it. The repository holds the plugin at its root, or several plugins with one folder each, as the plugins of system capabilities and third-party SDKs of [haylen-org](https://github.com/haylen-org) do, never in the engine repository.
 
 1. **Keep the root files.** The repository keeps the `.gitignore`, `.editorconfig` and `.clang-format` that `plugin new` copies from `templates/plugin`.
 2. **Write the README.** The `README.md` documents the complete Lua API with examples, the setup on each platform and every parameter.
 3. **Declare what the SDK needs.** The `plugin.json` declares the SDK and what it needs from the project: its Swift package pinned to one exact version and its frameworks, its Gradle dependencies, the usage descriptions, entitlements, manifest entries and privacy declarations. Parameters carry the keys of the app, such as `iosAppId` and `androidAppId`. Every native handler checks its [requirements](#requirements) before it calls the SDK.
 4. **Raise the version.** The `version` of `plugin.json` tells apps which release they hold, and `handle.version` and `platform.plugins()` report it while the app runs.
-5. **Tag a release.** Apps add the plugin with `haylen plugin add <repository> --ref <tag>`, or reference the repository at the tag with `--reference`. The command copies the root of the repository at that tag, or the folder of the plugin that `--path` names in a repository of several plugins, without its git history and its build outputs. Running it again with a new tag replaces the copy and keeps the values that the app gives.
+5. **Name a release.** Apps add the plugin with `haylen plugin add <repository> --ref <tag>`, with `--path <folder>` in a repository of several plugins, or reference the repository at the tag with `--reference`. The command copies the root of the repository at that tag, or the folder of the plugin that `--path` names in a repository of several plugins, without its git history and its build outputs. Running it again with a new tag replaces the copy and keeps the values that the app gives.
 
 ```sh
 haylen plugin add https://example.com/plugins/store.git --ref 2.1.0 --app ~/apps/my-game
+haylen plugin add https://example.com/plugins.git --ref main --path store --app ~/apps/my-game
 ```
 
 ## Demo plugin

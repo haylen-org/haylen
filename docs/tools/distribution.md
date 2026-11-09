@@ -325,7 +325,7 @@ The option `--template` generates the `App.xcodeproj` of the Apple template of t
 ```sh
 haylen plugin list
 haylen plugin add ~/plugins/camera-scanner --app ~/apps/my-game
-haylen plugin add https://github.com/haylen-org/background-assets.git --ref main --app ~/apps/my-game
+haylen plugin add https://example.com/plugins.git --ref main --path background-assets --app ~/apps/my-game
 haylen plugin add ~/plugins/camera-scanner --reference --app ~/apps/my-game
 haylen plugin remove camera-scanner --app ~/apps/my-game
 haylen plugin new ~/plugins/my-plugin --with camera,microphone
@@ -1100,7 +1100,7 @@ The template includes the packs through the `assetPacks` entries of `haylen/hayl
 
 ### Packs that stores deliver
 
-The named packs of `content.delivery` become asset packs of Google Play when a plugin of the app delivers them. Such a plugin declares `assetPacks` in the `android` section of its `plugin.json`, such as the `play-asset-delivery` plugin of [haylen-org](https://github.com/haylen-org/play-asset-delivery):
+The named packs of `content.delivery` become asset packs of Google Play when a plugin of the app delivers them. Such a plugin declares `assetPacks` in the `android` section of its `plugin.json`, such as the plugin `play-asset-delivery` that [haylen-org](https://github.com/haylen-org) publishes:
 
 - `prepare` writes an asset pack for every named pack into `haylen/asset-packs/`, with the shards of the pack at the root of its assets.
 - The pack takes the name of the named pack, with every dash and dot as an underscore, and with `pack_` in front of a name that starts with a digit.
@@ -1109,7 +1109,7 @@ The named packs of `content.delivery` become asset packs of Google Play when a p
 
 Without such a plugin, the named packs stay for the content server. The bundle of `:app:bundleRelease` carries those packs. The command `run` installs it with bundletool in the local testing mode of Google Play, signed with the upload key of the project, so the library of Play delivers each pack from the device as the store would. The check of the Release build stops when the bundle lacks a shard of a pack.
 
-On iOS, tvOS, visionOS and macOS the named packs become asset packs of Background Assets, which the App Store hosts. That happens when a plugin of the app declares `assetPacks` in the `apple` section of its `plugin.json`, such as the `background-assets` plugin of [haylen-org](https://github.com/haylen-org/background-assets):
+On iOS, tvOS, visionOS and macOS the named packs become asset packs of Background Assets, which the App Store hosts. That happens when a plugin of the app declares `assetPacks` in the `apple` section of its `plugin.json`, such as the plugin `background-assets` that [haylen-org](https://github.com/haylen-org) publishes:
 
 - `prepare` and `run` in the Release configuration pack each named pack with `xcrun ba-package` into `build/apps/<app>-<hash>/release/apple.asset-packs/<pack>.aar`, with the shards of the pack in a folder named after it.
 - Each archive serves the platforms of the plugin among iOS, tvOS, visionOS and macOS.

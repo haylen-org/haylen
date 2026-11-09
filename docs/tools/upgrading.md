@@ -211,7 +211,7 @@ Every entry of the `plugins` section of `app.json` is an object whose parameter 
 }
 ```
 
-A plugin that the app keeps as a copy in `plugins/<id>/`, but that lives in a folder or a repository of its own, can become a reference instead, so the app follows the plugin without copying it again. Run `haylen plugin add` with the folder or the repository and `--reference`, which writes the entry with the values that the app gives and deletes the copy:
+A plugin that the app keeps as a copy in `plugins/<id>/`, but that lives in a folder or a git repository of its own, can become a reference instead, so the app follows the plugin without copying it again. Run `haylen plugin add` with the folder or the repository and `--reference`, which writes the entry with the values that the app gives and deletes the copy:
 
 ```sh
 haylen plugin add ~/plugins/my-plugin --reference --app ~/apps/my-game
