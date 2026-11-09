@@ -45,7 +45,7 @@ print('Fullscreen:', window.fullscreen())
 
 ### window.setFullscreen(enabled, options)
 
-Switches between fullscreen and a window, and returns a Varn promise that resolves on a later frame, with nothing once the window is in that mode. Nothing changes when the window already is in that mode on that display. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame. A platform that refuses the change rejects the promise with a [failure](system.md#failures) of the code `'denied'`, such as a browser without a click, a tap or a key of the person shortly before, or of the code `'unsupported'` with the reason, such as a phone that cannot move its window to another display. The engine logs each reason once, and a rejection that nothing awaits never stops the app.
+Switches between fullscreen and a window, and returns a Varn promise that resolves on a later frame, with nothing once the window is in that mode, so `window.fullscreen()` reports the new mode from then on. A desktop such as macOS animates the window into its mode, and the promise waits for the end of that animation. Nothing changes when the window already is in that mode on that display. A call that comes while the window has not finished the change of an earlier call replaces it, and the promise of the earlier call rejects with the code `'denied'`. Every change, from the app or from the player, publishes the event `windowFullscreenChanged` on the next frame. A platform that refuses the change rejects the promise with a [failure](system.md#failures) of the code `'denied'`, such as a browser without a click, a tap or a key of the person shortly before, or of the code `'unsupported'` with the reason, such as a phone that cannot move its window to another display. The engine logs each reason once, and a rejection that nothing awaits never stops the app.
 
 The table `options` goes only with `true`, and chooses where and how the window goes fullscreen. Without it, the window covers the display that shows it, at the mode that the desktop runs in.
 
@@ -835,6 +835,8 @@ These messages are raised by the functions of the module.
 | `A fullscreen mode needs a positive "width" and "height" in pixels.` | The `mode` of `window.setFullscreen` has no size. |
 | `The window of this platform stays on the display that shows it, in the mode that the system picks.` | The rejection of `window.setFullscreen` with the code `'unsupported'` on a phone, a tablet or a TV that got another display or a mode. |
 | `bad argument #2 to 'setFullscreen' (options only go with true)` | The function `window.setFullscreen(false, options)` got options. |
+| `A newer change of fullscreen replaced this one before the window finished it.` | The rejection of `window.setFullscreen` with the code `'denied'` for a call that a later call replaced. |
+| `The window closed before it finished the change of fullscreen.` | The rejection of `window.setFullscreen` with the code `'denied'` for a call whose window closed first. |
 | `bad argument #1 to '<function>' (unknown value '<name>')` | The functions `setCursor`, `lockOrientation`, `setStatusBar` or `setSystemGestures` got a name they do not know. |
 | `The window opened opaque, so it cannot turn transparent. Set "window.transparent" in "app.json" to open a window that can.` | The function `window.setTransparent(true)` ran on a window that opened opaque. |
 | `bad argument #3 to 'setFrame' (positive width expected)` | The width of `window.setFrame` is not positive. |

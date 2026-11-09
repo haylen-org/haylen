@@ -12,6 +12,7 @@
 #include <SDL3/SDL_video.h>
 
 #include "platform/NativeHost.hpp"
+#include "platform/sdl/FullscreenRequest.hpp"
 
 namespace haylen::platform::sdl {
 
@@ -52,6 +53,9 @@ class Host final : public platform::NativeHost {
     void closeOutput(std::uint32_t number) override;
     [[nodiscard]] OutputReport getOutputReport(std::uint32_t number) const override;
 
+    // Follows the window as SDL reports that it entered or left fullscreen, whoever asked for it, and answers the request of the app that waited for that mode.
+    void followFullscreen(bool entered);
+
   protected:
     void requestWindowClose() override;
     void setWindowFocusable(bool value) override;
@@ -66,6 +70,7 @@ class Host final : public platform::NativeHost {
     void enterDesktopFullscreen(const FullscreenTarget& target, std::function<void(Permission::Answer answer)> callback);
 
     Runtime& runtime;
+    FullscreenRequest fullscreenRequest;
 
     // The cursors of the system, which SDL makes the first time the app shows each one.
     std::array<SDL_Cursor*, kCursorCount> cursors{};

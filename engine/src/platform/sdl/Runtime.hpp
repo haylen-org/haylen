@@ -34,6 +34,8 @@
 
 namespace haylen::platform::sdl {
 
+class Host;
+
 // Plays apps in the window that SDL opens, through the main callbacks of SDL, which run the same frames on the desktops, on the display link of UIKit and on the animation frames of the browser. It opens the window for the graphics API that starts first among the ones the app prefers, calls the player of the platform as the window opens, draws its frames, receives its events and closes, and hands the player the GPU device of that window.
 class Runtime final {
   public:
@@ -140,6 +142,8 @@ class Runtime final {
     void followWindow(const SDL_Event& event);
     void updateCallbackRate();
 
+    // The host of the player, which the player owns while the window lives.
+    Host* host = nullptr;
     Window window;
     OutputWindows outputs;
     Events events;

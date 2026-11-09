@@ -959,7 +959,7 @@ endif()
 
 # Every platform but Android runs apps through the platform layer of SDL. The application delegate of macOS is the runtime's own, so SDL leaves the menus, the quit requests and the events of plugins to it, the scene delegate of UIKit derives from the one of SDL, which runs the app in its scene, and the view controller of the window answers UIKit with the status bar of the app.
 if(NOT ANDROID AND NOT HAYLEN_PORT_PLATFORM)
-  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/OutputWindows.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/WaylandDisplays.cpp src/platform/sdl/Window.cpp)
+  list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/Events.cpp src/platform/sdl/FrameTimer.cpp src/platform/sdl/FullscreenRequest.cpp src/platform/sdl/GlContext.cpp src/platform/sdl/Host.cpp src/platform/sdl/Keys.cpp src/platform/sdl/OutputWindows.cpp src/platform/sdl/Runtime.cpp src/platform/sdl/WaylandDisplays.cpp src/platform/sdl/Window.cpp)
   # Windows and Linux type through the text events of SDL, while the other platforms edit text in a native field of their own.
   if(HAYLEN_PLATFORM MATCHES "^(windows|linux)$")
     list(APPEND HAYLEN_RUNTIME_SOURCES src/platform/sdl/TextInput.cpp)

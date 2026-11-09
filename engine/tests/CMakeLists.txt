@@ -198,6 +198,7 @@ set(HAYLEN_TEST_SOURCES
   platform/sdl/EventsTests.cpp
   platform/sdl/GamepadsTests.cpp
   platform/sdl/FrameTimerTests.cpp
+  platform/sdl/FullscreenRequestTests.cpp
   platform/StreamTests.cpp
   platform/SupportedOrientationsTests.cpp
   platform/SurfaceCheckTests.cpp
@@ -266,8 +267,8 @@ set(HAYLEN_TEST_SOURCES
   ui/WheelTests.cpp
 )
 
-# The tests of the platform layer of SDL compile the translation of its events, the controllers, which virtual controllers of SDL stand in for, and the timing of the frames, which need no window.
-add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FrameTimer.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
+# The tests of the platform layer of SDL compile the translation of its events, the controllers, which virtual controllers of SDL stand in for, the timing of the frames and the requests of fullscreen, which need no window.
+add_executable(haylen-tests ${HAYLEN_TEST_SOURCES} "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Events.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FrameTimer.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/FullscreenRequest.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Gamepads.cpp" "${HAYLEN_ENGINE_DIR}/src/platform/sdl/Keys.cpp")
 set_target_properties(haylen-tests PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/$<0:>")
 # The tests export the variables that the drivers of a laptop with two GPUs read, like the player and the apps.
 if(WIN32)

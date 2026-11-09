@@ -188,7 +188,9 @@ SDL_AppResult Runtime::initialize(int argc, char* argv[]) {
 #endif
     // Without a player there is no window and no error screen, so a failure to create one goes to the log and the page, which would otherwise wait for an app that never starts.
     try {
-        Player::create(argc, argv, std::make_unique<Host>(*this));
+        auto created = std::make_unique<Host>(*this);
+        host = created.get();
+        Player::create(argc, argv, std::move(created));
     } catch (const std::exception& error) {
         core::Log::error("The player could not start: {}", error.what());
         Services::reportError(lua::Error(error.what()).toJson());
@@ -376,6 +378,7 @@ void Runtime::quit() noexcept {
         started = false;
         Player::cleanup();
     }
+    host = nullptr;
     platform::NativeWindow::install(nullptr);
     openedDevice.reset();
     outputs.closeAll();
@@ -417,7 +420,7 @@ Events::Context Runtime::getContext() const noexcept {
     return {.density = window.getPixelDensity(), .framebuffer = window.getPixelSize(), .modifiers = SDL_GetModState()};
 }
 
-// The swapchain follows the drawable as its size or scale changes, and the frames slow down while the window shows nothing, since no display paces them then. The Metal view of UIKit reports the size of its drawable on its own, such as when the scene turns to the orientation of the app after the window opened, before SDL reports the window resized.
+// The swapchain follows the drawable as its size or scale changes, the frames slow down while the window shows nothing, since no display paces them then, and the host follows the window into fullscreen and out of it. The Metal view of UIKit reports the size of its drawable on its own, such as when the scene turns to the orientation of the app after the window opened, before SDL reports the window resized.
 void Runtime::followWindow(const SDL_Event& event) {
     switch (event.type) {
     case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
@@ -443,6 +446,10 @@ void Runtime::followWindow(const SDL_Event& event) {
         }
         return;
     }
+    case SDL_EVENT_WINDOW_ENTER_FULLSCREEN:
+    case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
+        host->followFullscreen(event.type == SDL_EVENT_WINDOW_ENTER_FULLSCREEN);
+        return;
 #if defined(_WIN32) || defined(__linux__)
     case SDL_EVENT_WINDOW_FOCUS_GAINED:
         textInput.restore();
