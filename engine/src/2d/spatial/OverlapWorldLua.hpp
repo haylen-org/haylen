@@ -34,8 +34,12 @@ class OverlapWorldLua final {
     static constexpr std::size_t kPlacementSize = 6;
     static constexpr std::size_t kContactSize = 8;
 
+    // The first number past the ids of 32 bits, which a float holds exactly.
+    static constexpr float kIdLimit = 4294967296.0F;
+
     [[nodiscard]] static ScriptedOverlapWorld& check(lua_State* L);
     [[nodiscard]] static std::uint32_t readId(lua_State* L, int index);
+    [[nodiscard]] static std::uint32_t readBufferId(lua_State* L, float value);
     [[nodiscard]] static std::uint32_t readMask(lua_State* L, const char* field, std::uint32_t fallback);
 
     static int newOverlapWorld(lua_State* L);

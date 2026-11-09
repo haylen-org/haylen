@@ -32,6 +32,14 @@ std::uint32_t OverlapWorldLua::readId(lua_State* L, int index) {
     return static_cast<std::uint32_t>(id);
 }
 
+// Reads an entity or a set of a placement in a float buffer, which only a whole number that 32 bits hold names.
+std::uint32_t OverlapWorldLua::readBufferId(lua_State* L, float value) {
+    if (!(value >= 0.0F && value < kIdLimit) || std::trunc(value) != value) {
+        luaL_error(L, "The entity and the set of a placement in a buffer are whole numbers of 32 bits.");
+    }
+    return static_cast<std::uint32_t>(value);
+}
+
 // Reads the bits of a box at the top of the stack, which are integers of 32 bits.
 std::uint32_t OverlapWorldLua::readMask(lua_State* L, const char* field, std::uint32_t fallback) {
     if (lua_getfield(L, -1, field) == LUA_TNIL) {
@@ -118,7 +126,7 @@ int OverlapWorldLua::placeAll(lua_State* L) {
     luaL_argcheck(L, first >= 1, 3, "the first value of a buffer is at position 1");
     for (std::size_t offset = static_cast<std::size_t>(first - 1); offset + kPlacementSize <= values.size(); offset += kPlacementSize) {
         const std::span<const float> group = values.subspan(offset, kPlacementSize);
-        world.place(static_cast<std::uint32_t>(group[0]), {group[1], group[2]}, group[3], group[4] < 0.0F, static_cast<std::uint32_t>(group[5]));
+        world.place(readBufferId(L, group[0]), {group[1], group[2]}, group[3], group[4] < 0.0F, readBufferId(L, group[5]));
     }
     return 0;
 }

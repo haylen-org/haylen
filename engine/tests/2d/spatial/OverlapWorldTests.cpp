@@ -160,4 +160,23 @@ TEST(OverlapWorldLuaTest, PlacesFromBuffersAndWritesContactsIntoThem) {
     EXPECT_NE(fixture.lua("spatial2d.newOverlapWorld({cellSize = -1})").find("The cell size of an overlap world must be 0 or positive."), std::string::npos);
 }
 
+// An entity or a set of a buffer that is no whole number of 32 bits names nothing, so it fails instead of placing whatever its conversion lands on.
+TEST(OverlapWorldLuaTest, RejectsPlacementsWhoseIdsAreNotWholeNumbersOf32Bits) {
+    test::EngineFixture fixture;
+    // clang-format off
+    fixture.runLua(R"(
+        spatial2d = require('haylen.spatial2d')
+        collections = require('haylen.collections')
+        world = spatial2d.newOverlapWorld()
+        set = world:defineSet({{width = 10, height = 10}})
+        entity = world:add()
+        placements = collections.newFloatBuffer(6)
+    )");
+    // clang-format on
+    for (const std::string& group : {"entity + 0.5, 4, 0, 0, 1, set", "-1, 4, 0, 0, 1, set", "5e9, 4, 0, 0, 1, set", "0 / 0, 4, 0, 0, 1, set", "entity, 4, 0, 0, 1, set + 0.5"}) {
+        EXPECT_NE(fixture.lua("placements:set(1, {" + group + "}) world:placeAll(placements)").find("The entity and the set of a placement in a buffer are whole numbers of 32 bits."), std::string::npos) << group;
+    }
+    fixture.runLua("placements:set(1, {entity, 4, 0, 0, 1, set}) world:placeAll(placements)");
+}
+
 } // namespace haylen::spatial2d

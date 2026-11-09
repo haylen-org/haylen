@@ -790,7 +790,7 @@ world:place(hero, 200, 0, 420, -1, standing)
 
 ### world:placeAll(buffer, first)
 
-Places many entities in one call from a [float buffer](collections.md#collectionsnewfloatbuffersize-value). Each entity takes six numbers, `entity, x, y, depth, facing, set`, read from the position `first`, `1` by default, to the end of the buffer. A `first` below 1 raises `bad argument #2 to 'placeAll' (the first value of a buffer is at position 1)`.
+Places many entities in one call from a [float buffer](collections.md#collectionsnewfloatbuffersize-value). Each entity takes six numbers, `entity, x, y, depth, facing, set`, read from the position `first`, `1` by default, to the end of the buffer. An entity or a set that is not a whole number of 32 bits raises `The entity and the set of a placement in a buffer are whole numbers of 32 bits.`, and a `first` below 1 raises `bad argument #2 to 'placeAll' (the first value of a buffer is at position 1)`.
 
 ```lua
 local collections = require('haylen.collections')
@@ -938,3 +938,4 @@ These messages come from the functions and methods of the module. Messages that 
 | `The overlap world has no box set <id>.` | The method `world:place` got an unknown set. |
 | `bad argument #1 to 'place' (an id is an integer of 32 bits)` | An id of an `OverlapWorld` method is negative or too large. |
 | `bad argument #2 to 'placeAll' (the first value of a buffer is at position 1)` | The `first` of `world:placeAll` is below 1. |
+| `The entity and the set of a placement in a buffer are whole numbers of 32 bits.` | An entity or a set that `world:placeAll` reads is negative, fractional, too large or not a number. |
