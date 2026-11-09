@@ -223,6 +223,8 @@ APPLE_SLICES = {
     "xros": ["arm64"],
     "xros-simulator": ["arm64"],
 }
+# The SDK of each slice of `Haylen.xcframework`. Mac Catalyst builds with the SDK of macOS.
+APPLE_SLICE_SDKS = {"macos": "macosx", "ios": "iphoneos", "ios-simulator": "iphonesimulator", "ios-maccatalyst": "macosx", "tvos": "appletvos", "tvos-simulator": "appletvsimulator", "xros": "xros", "xros-simulator": "xrsimulator"}
 
 # The slices of `Haylen.xcframework` that a run of each Apple platform needs: the device and the simulator of its family, since the project of the app builds for either one in Xcode, or the one slice of macOS and of Mac Catalyst.
 APPLE_RUN_SLICES = {"macos": ["macos"], "catalyst": ["ios-maccatalyst"], "ios": ["ios", "ios-simulator"], "ios-simulator": ["ios", "ios-simulator"], "tvos": ["tvos", "tvos-simulator"], "tvos-simulator": ["tvos", "tvos-simulator"], "visionos": ["xros", "xros-simulator"], "visionos-simulator": ["xros", "xros-simulator"]}
@@ -1921,9 +1923,9 @@ def write_manifest(platform_name: str, entry: dict) -> None:
 def apple_slice_options(slice_name: str, arch: str) -> list[str]:
     if slice_name == "ios-maccatalyst":
         return [f"-DCMAKE_TOOLCHAIN_FILE={ENGINE_DIR / 'cmake' / 'haylen-catalyst.toolchain.cmake'}", f"-DCMAKE_OSX_ARCHITECTURES={arch}"]
-    systems = {"macos": ("macOS", "macosx"), "ios": ("iOS", "iphoneos"), "ios-simulator": ("iOS", "iphonesimulator"), "tvos": ("tvOS", "appletvos"), "tvos-simulator": ("tvOS", "appletvsimulator"), "xros": ("visionOS", "xros"), "xros-simulator": ("visionOS", "xrsimulator")}
-    system, sdk = systems[slice_name]
-    options = [f"-DCMAKE_OSX_ARCHITECTURES={arch}", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS[system]}", f"-DCMAKE_OSX_SYSROOT={sdk}"]
+    systems = {"macos": "macOS", "ios": "iOS", "ios-simulator": "iOS", "tvos": "tvOS", "tvos-simulator": "tvOS", "xros": "visionOS", "xros-simulator": "visionOS"}
+    system = systems[slice_name]
+    options = [f"-DCMAKE_OSX_ARCHITECTURES={arch}", f"-DCMAKE_OSX_DEPLOYMENT_TARGET={APPLE_MINIMUM_VERSIONS[system]}", f"-DCMAKE_OSX_SYSROOT={APPLE_SLICE_SDKS[slice_name]}"]
     if system != "macOS":
         options.append(f"-DCMAKE_SYSTEM_NAME={system}")
     return options
@@ -2323,10 +2325,9 @@ def package_folder(layout: PackageLayout, output: Path) -> None:
 NATIVE_PLATFORMS = ("macos", "ios", "tvos", "android", "windows", "linux")
 # The native platform of `app.json` whose libraries each Apple slice builds or takes. Mac Catalyst and visionOS run the iOS API, so they ship the iOS libraries built for their slices.
 APPLE_SLICE_NATIVE_PLATFORMS = {"macos": "macos", "ios-maccatalyst": "ios", "ios": "ios", "ios-simulator": "ios", "tvos": "tvos", "tvos-simulator": "tvos", "xros": "ios", "xros-simulator": "ios"}
-# The slice of `APPLE_SLICES` that each Apple run platform builds, the target template and platform whose embed phase ships its libraries, and the SDK of the setting that links its static libraries.
+# The slice of `APPLE_SLICES` that each Apple run platform builds, and the target template and platform whose embed phase ships its libraries.
 APPLE_NATIVE_SLICES = {"macos": "macos", "catalyst": "ios-maccatalyst", "ios": "ios", "ios-simulator": "ios-simulator", "tvos": "tvos", "tvos-simulator": "tvos-simulator", "visionos": "xros", "visionos-simulator": "xros-simulator"}
 APPLE_NATIVE_KEYS = {"macos": "macos-macosx", "ios-maccatalyst": "ios-macosx", "ios": "ios-iphoneos", "ios-simulator": "ios-iphonesimulator", "tvos": "tvos-appletvos", "tvos-simulator": "tvos-appletvsimulator", "xros": "visionos-xros", "xros-simulator": "visionos-xrsimulator"}
-APPLE_STATIC_SDKS = {"ios-maccatalyst": "macosx", "ios": "iphoneos", "ios-simulator": "iphonesimulator", "tvos": "appletvos", "tvos-simulator": "appletvsimulator", "xros": "xros", "xros-simulator": "xrsimulator"}
 # The condition of each platform whose apps may link native libraries statically, which keeps their symbols in the table of the app. The iOS one holds for Mac Catalyst and visionOS too.
 APPLE_STATIC_CONDITIONS = {"ios": "TARGET_OS_IOS || TARGET_OS_VISION", "tvos": "TARGET_OS_TV"}
 XCFRAMEWORK_SLICES = {"macos": ("macos", None), "ios-maccatalyst": ("ios", "maccatalyst"), "ios": ("ios", None), "ios-simulator": ("ios", "simulator"), "tvos": ("tvos", None), "tvos-simulator": ("tvos", "simulator"), "xros": ("xros", None), "xros-simulator": ("xros", "simulator")}
@@ -2475,7 +2476,7 @@ def prepare_apple_native(app: App, generated: Path, run_platform: str, jobs: int
         return []
     flags = " ".join(f'"$(PROJECT_DIR)/{GENERATED_FOLDER}/native/{key}/{path.name}"' for path in linked)
     if slice_name != "ios-maccatalyst":
-        return [f"HAYLEN_NATIVE_LDFLAGS[sdk={APPLE_STATIC_SDKS[slice_name]}*] = {flags}"]
+        return [f"HAYLEN_NATIVE_LDFLAGS[sdk={APPLE_SLICE_SDKS[slice_name]}*] = {flags}"]
     # The macOS target builds with the same SDK as Mac Catalyst, so only the build of the iOS target whose `IS_MACCATALYST` is `YES` links them.
     return [f"HAYLEN_NATIVE_LDFLAGS_MACCATALYST_YES = {flags}", "HAYLEN_NATIVE_LDFLAGS[sdk=macosx*] = $(HAYLEN_NATIVE_LDFLAGS_MACCATALYST_$(IS_MACCATALYST))"]
 
@@ -3603,11 +3604,26 @@ def expand_app_settings(value: object, settings: dict[str, str]) -> object:
     return value
 
 
+def apple_architecture_settings() -> list[str]:
+    """The settings of `Haylen.xcconfig` that build every target for the architectures of the slice of `Haylen.xcframework` of its SDK, since a configuration that builds every architecture of the SDK, such as Release, would otherwise build one that the slice lacks, such as `x86_64` for the visionOS simulator."""
+    settings = ["// Every target builds the architectures of the slice of the engine for its SDK."]
+    for slice_name, architectures in APPLE_SLICES.items():
+        if APPLE_SLICE_SDKS[slice_name] != "macosx":
+            settings.append(f"ARCHS[sdk={APPLE_SLICE_SDKS[slice_name]}*] = {' '.join(architectures)}")
+
+    # The macOS target builds with the same SDK as Mac Catalyst, so the iOS target whose `IS_MACCATALYST` is `YES` takes the architectures of Mac Catalyst.
+    settings.append(f"HAYLEN_ENGINE_ARCHS_MACCATALYST_NO = {' '.join(APPLE_SLICES['macos'])}")
+    settings.append(f"HAYLEN_ENGINE_ARCHS_MACCATALYST_YES = {' '.join(APPLE_SLICES['ios-maccatalyst'])}")
+    settings.append("ARCHS[sdk=macosx*] = $(HAYLEN_ENGINE_ARCHS_MACCATALYST_$(IS_MACCATALYST))")
+    return settings
+
+
 def write_apple_xcconfig(app: App, generated: Path, native: list[str]) -> None:
     """Writes `Haylen.xcconfig`, which `App.xcconfig` includes first, so the lines of the developer after the include win."""
     xcconfig = [
         "// Written by haylen.py from app.json. The file App.xcconfig includes it first, so its own settings win.",
         *(f"{name} = {value}" for name, value in apple_app_settings(app).items()),
+        *apple_architecture_settings(),
         *native,
         "OTHER_LDFLAGS = $(inherited) $(HAYLEN_NATIVE_LDFLAGS)",
         "// A release keeps its debug information in a dSYM next to the build and strips the app as it builds, so a release that runs is the one that ships.",

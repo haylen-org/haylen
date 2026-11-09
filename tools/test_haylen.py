@@ -2802,6 +2802,16 @@ class DesktopProjectTest(unittest.TestCase):
         for setting in ("DEBUG_INFORMATION_FORMAT[config=Release] = dwarf-with-dsym", "DEPLOYMENT_POSTPROCESSING[config=Release] = YES", "STRIP_STYLE[config=Release] = all"):
             self.assertIn(setting, xcconfig)
 
+    def test_apple_targets_build_only_the_architectures_of_the_engine_slices(self):
+        generated = self.scratch / "generated"
+        haylen.write_apple_xcconfig(haylen.App(self.app, "visionos"), generated, [])
+        xcconfig = (generated / "Haylen.xcconfig").read_text()
+        for sdk, architectures in (("iphoneos", "arm64"), ("iphonesimulator", "arm64 x86_64"), ("appletvos", "arm64"), ("appletvsimulator", "arm64 x86_64"), ("xros", "arm64"), ("xrsimulator", "arm64")):
+            self.assertIn(f"ARCHS[sdk={sdk}*] = {architectures}\n", xcconfig)
+        self.assertIn("HAYLEN_ENGINE_ARCHS_MACCATALYST_NO = arm64 x86_64\n", xcconfig)
+        self.assertIn("HAYLEN_ENGINE_ARCHS_MACCATALYST_YES = arm64 x86_64\n", xcconfig)
+        self.assertIn("ARCHS[sdk=macosx*] = $(HAYLEN_ENGINE_ARCHS_MACCATALYST_$(IS_MACCATALYST))\n", xcconfig)
+
     def test_a_release_site_minifies_its_scripts_and_leaves_the_runtimes(self):
         emsdk = self.scratch / "emsdk"
         node = emsdk / "node" / "24.0.0_64bit" / "bin" / ("node.exe" if haylen.host_name() == "windows" else "node")
