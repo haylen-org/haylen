@@ -24,11 +24,17 @@ class AppleDisplays final {
 #if !TARGET_OS_VISION
     [[nodiscard]] static NSString* getId(UIScreen* screen);
 
+    // Tells the running app that the screen of the window reads differently after a layout of the window, such as when the interface turns, which turns the bounds of the screen and the safe area of the window. The view controller of the window calls it with every layout, on the main thread.
+    static void followWindow();
+
   private:
     [[nodiscard]] static Display describe(UIScreen* screen);
 
     static NSMapTable<UIScreen*, NSString*>* ids;
     static NSUInteger counted;
+
+    // The screen of the window as the last layout of the window described it.
+    static Display& windowDisplay;
 #endif
 };
 

@@ -2,12 +2,14 @@
 
 #if TARGET_OS_IOS && !TARGET_OS_MACCATALYST
 #import "platform/apple/AppleCutouts.hpp"
+#import "platform/apple/AppleDisplays.hpp"
 #import "platform/apple/AppleFold.hpp"
 #import "platform/apple/AppleOrientation.hpp"
 #import "platform/apple/AppleStatusBar.hpp"
 #import "platform/apple/AppleSystemGestures.hpp"
 
 using haylen::platform::AppleCutouts;
+using haylen::platform::AppleDisplays;
 using haylen::platform::AppleFold;
 using haylen::platform::AppleOrientation;
 using haylen::platform::AppleStatusBar;
@@ -16,12 +18,13 @@ using haylen::platform::Window;
 
 @implementation HaylenRootViewController
 
-// The fold of a foldable iPhone and the cutouts of the screen move with every layout of the window, such as when the device turns or folds.
+// The fold of a foldable iPhone, the cutouts of the screen and the bounds and work area of the screen of the window move with every layout of the window, such as when the device turns or folds.
 - (void)viewDidLayoutSubviews {
     [super viewDidLayoutSubviews];
     AppleFold::attach(self.view);
     AppleFold::refresh(self.view);
     AppleCutouts::refresh(self.view);
+    AppleDisplays::followWindow();
 }
 
 - (BOOL)prefersStatusBarHidden {

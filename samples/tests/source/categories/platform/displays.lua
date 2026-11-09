@@ -120,12 +120,13 @@ function Displays:draw(area)
         graphics2d.drawRectOutline({x, y, width, height}, shows and 3 or 1.5, shown.primary and Test.accent or Test.line)
         -- The captions sit inside the work area, so its outline never crosses them.
         local work = shown.workArea
-        local workTop, workHeight = y + (work.y - shown.bounds.y) * fit, work.height * fit
-        graphics2d.drawRectOutline({x + (work.x - shown.bounds.x) * fit, workTop, work.width * fit, workHeight}, 1, Test.muted)
-        Test.caption(shown.name ~= '' and shown.name or shown.id, x + 12, workTop + 10, {size = 22, color = Test.ink, maxWidth = width - 24})
-        Test.caption(string.format('%g by %g points at %gx, %g Hz, %s', shown.bounds.width, shown.bounds.height, shown.scale, shown.refreshRate, Displays.count(#shown.modes, 'mode')), x + 12, workTop + 40, {maxWidth = width - 24})
+        local workLeft, workTop = x + (work.x - shown.bounds.x) * fit, y + (work.y - shown.bounds.y) * fit
+        local workWidth, workHeight = work.width * fit, work.height * fit
+        graphics2d.drawRectOutline({workLeft, workTop, workWidth, workHeight}, 1, Test.muted)
+        Test.caption(shown.name ~= '' and shown.name or shown.id, workLeft + 12, workTop + 10, {size = 22, color = Test.ink, maxWidth = workWidth - 24})
+        Test.caption(string.format('%g by %g points at %gx, %g Hz, %s', shown.bounds.width, shown.bounds.height, shown.scale, shown.refreshRate, Displays.count(#shown.modes, 'mode')), workLeft + 12, workTop + 40, {maxWidth = workWidth - 24})
         if shows then
-            Test.caption('The window is here', x + 12, workTop + workHeight - 34, {color = Test.green})
+            Test.caption('The window is here', workLeft + 12, workTop + workHeight - 34, {color = Test.green, maxWidth = workWidth - 24})
         end
     end
 

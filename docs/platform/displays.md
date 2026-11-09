@@ -52,7 +52,7 @@ The work area leaves out what the system keeps for itself: the taskbar of Window
 
 ## Following the changes
 
-The engine reads the displays when the app starts and again whenever the platform reports a change. Each display that the change touched publishes one event: `displayConnected`, `displayDisconnected` or `displayChanged`. The event `windowDisplayChanged` follows the window as it moves to another display. A window that moves to a display of another scale also changes its framebuffer, which `windowResized` reports, and the viewport follows on its own.
+The engine reads the displays when the app starts and again whenever the platform reports a change. On iPhones and iPads the screen that shows the window turns with the interface of the app, so its bounds and its work area change with every turn, such as when a scene opens upright and turns to the orientation of the app right after. Each display that the change touched publishes one event: `displayConnected`, `displayDisconnected` or `displayChanged`. The event `windowDisplayChanged` follows the window as it moves to another display. A window that moves to a display of another scale also changes its framebuffer, which `windowResized` reports, and the viewport follows on its own.
 
 ```lua
 local display = require('haylen.display')

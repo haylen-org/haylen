@@ -26,6 +26,7 @@ std::string AppleDisplays::getWindowDisplayId() {
 #else
 NSMapTable<UIScreen*, NSString*>* AppleDisplays::ids = [NSMapTable weakToStrongObjectsMapTable];
 NSUInteger AppleDisplays::counted = 0;
+Display& AppleDisplays::windowDisplay = *new Display();
 
 NSString* AppleDisplays::getId(UIScreen* screen) {
     if (screen == UIScreen.mainScreen) {
@@ -86,6 +87,22 @@ std::string AppleDisplays::getWindowDisplayId() {
     UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
     UIScreen* screen = window.windowScene.screen;
     return getId(screen != nil ? screen : UIScreen.mainScreen).UTF8String;
+}
+
+// A scene often opens upright and turns to the orientation of the app right after, and UIKit reports no change of the screen when it turns.
+void AppleDisplays::followWindow() {
+    UIWindow* window = (__bridge UIWindow*)NativeWindow::getHandle();
+    UIScreen* screen = window.windowScene.screen;
+    if (screen == nil) {
+        return;
+    }
+
+    Display shown = describe(screen);
+    if (shown == windowDisplay) {
+        return;
+    }
+    windowDisplay = std::move(shown);
+    changed();
 }
 #endif
 
