@@ -245,7 +245,7 @@ gpu::Surface Window::getNativeSurface() const {
     return describe(window, metalView);
 }
 
-gpu::Surface Window::describe(SDL_Window* described, SDL_MetalView view) {
+gpu::Surface Window::describe([[maybe_unused]] SDL_Window* described, SDL_MetalView view) {
     if (view != nullptr) {
         return {.kind = gpu::Surface::Kind::MetalLayer, .layer = SDL_Metal_GetLayer(view)};
     }
