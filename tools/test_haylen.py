@@ -1259,6 +1259,14 @@ class AppleGpuTestsTest(unittest.TestCase):
             with mock.patch.object(haylen, "require_host"), self.assertRaisesRegex(haylen.BuildError, "Name the device"):
                 haylen.command_test(haylen.build_parser().parse_args(["test", "--gpu", "--platform", platform_name]))
 
+    def test_a_desktop_that_is_not_this_machine_runs_no_tests_of_this_machine(self):
+        other = next(name for name in ("linux", "windows") if name != haylen.host_name())
+        for extra in ([], ["--gpu"]):
+            with mock.patch.object(haylen, "command_build") as build, mock.patch.object(haylen, "run") as run, self.assertRaisesRegex(haylen.BuildError, f'Builds for "{other}" need a "{other}" host'):
+                haylen.command_test(haylen.build_parser().parse_args(["test", "--platform", other, *extra]))
+            build.assert_not_called()
+            run.assert_not_called()
+
 
 class UiTestsTest(unittest.TestCase):
     def test_the_runner_runs_the_scheme_of_the_platform_on_the_simulator_and_names_the_app_to_it(self):

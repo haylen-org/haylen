@@ -1155,7 +1155,7 @@ def command_test(args: argparse.Namespace) -> None:
             raise BuildError('The iOS, tvOS and visionOS devices run only the GPU tests. Add "--gpu" or a name of "gpu::Device::kApiNames" with "--graphics-api".')
         command_test_gpu_apple_device(args)
         return
-    args.platform = host_name()
+    require_host(args.platform)
     if gpu:
         command_test_gpu(args)
         return
